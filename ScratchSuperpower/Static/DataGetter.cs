@@ -7,7 +7,7 @@ public static class DataGetter
 {
     const string _connString = "Server=localhost;Database=Magic;Integrated Security=True;MultipleActiveResultSets=True;Command Timeout=3600;TrustServerCertificate=True";
 
-    public static List<Card> GetCards(int? maxSetSequence = null, bool ignoreEmptyText = false)
+    public static List<Card> GetCards(int? maxSetSequence = null, bool cleanText = true, bool ignoreEmptyText = false)
     {
         var conditions = new List<string>();
 
@@ -24,7 +24,14 @@ public static class DataGetter
         var query = "select * from Card" + whereClause;
 
         using var conn = new SqlConnection(_connString);
-        return conn.Query<Card>(query, new { MaxSequence = maxSetSequence }).ToList();
+        
+        var cards = conn.Query<Card>(query, new { MaxSequence = maxSetSequence }).ToList();
+        
+        if (cleanText)
+            cards.ForEach(x => x.CleanText());
+
+        return cards;
     }
+
 }
 

@@ -4,7 +4,7 @@ namespace MTGCardParser.TokenCaptures;
 
 public class LifeChangeQuantity : ITokenCapture
 {
-    public static string RegexTemplate => $@"§{nameof(LifeVerb)}§ §{nameof(Quantity)}§ life";
+    public string RegexTemplate => $@"§{nameof(LifeVerb)}§ §{nameof(Quantity)}§ life";
 
     public LifeVerb LifeVerb { get; set; }
     public Quantity Quantity { get; set; }

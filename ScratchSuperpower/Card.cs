@@ -15,5 +15,19 @@ public class Card
     public string Loyalty { get; set; }
     public string SetCode { get; set; }
     public int SetSequence { get; set; }
+
+    string _originalText;
+    public string OriginalText => _originalText ?? Text;
+
+    public void CleanText()
+    {
+        _originalText = Text;
+
+        if (Text is null)
+            return;
+
+        Text = Text.Replace("Name", "{this}");
+        Text = Text.ToLower();
+    }
 }
 

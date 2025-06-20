@@ -2,7 +2,7 @@
 
 public class AtOrUntilPlayerPhase : ITokenCapture
 {
-    public static string RegexTemplate => $@"§{nameof(AtOrUntil)}§ the §{nameof(When)}§ of §{nameof(Whose)}§ §{nameof(Phase)}§";
+    public string RegexTemplate => $@"§{nameof(AtOrUntil)}§ the §{nameof(When)}§ of §{nameof(Whose)}§ §{nameof(Phase)}§";
 
     public AtOrUntil? AtOrUntil { get; set; }
     public When? When { get; set; }

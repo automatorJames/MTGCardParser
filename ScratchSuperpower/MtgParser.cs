@@ -1,4 +1,4 @@
-﻿using Superpower;
+﻿/*using Superpower;
 using Superpower.Model;
 using Superpower.Parsers;
 using System.Linq;
@@ -132,4 +132,4 @@ public static class MtgParser
         .Or(TriggeredAbilityParser.Try())
         .Or(StaticAbilityParser)
         .AtEnd();
-}
+}*/
