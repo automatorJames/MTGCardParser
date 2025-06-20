@@ -34,6 +34,19 @@ public static class Lists
         "bury", "landhome", "substance"
     ];
 
+    public static readonly List<string> CardTypes = 
+    [
+        "artifact",
+        "creature",
+        "enchantment",
+        "instant",
+        "land",
+        "planeswalker",
+        "sorcery",
+        "battle",
+        "tribal"
+    ];
+
     public static readonly HashSet<string> Subtypes =
     [
         "advisor", "aetherborn", "ajani", "ally", "angel", "angrath", "antelope", "ape", "arcane",
@@ -67,6 +80,41 @@ public static class Lists
         "venser", "viashino", "volver", "vraska", "wall", "warlock", "warrior", "weird", "werewolf",
         "whale", "wizard", "wolf", "wolverine", "wombat", "worm", "wraith", "wurm", "xenagos", "yeti",
         "zombie", "zubera"
+    ];
+
+    public static readonly List<string> Colors =
+    [
+        "white",
+        "blue",
+        "black",
+        "red",
+        "green"
+    ];
+
+    public static readonly List<string> GamePhases =
+    [
+        "upkeep",
+        "draw step",
+        "main phase",
+        "combat phase",
+        "combat step",
+        "declare attackers step",
+        "declare blockers step",
+        "damage step",
+        "end step",
+        "end of turn"
+    ];
+
+    public static readonly List<string> PlayerIdentifiers =
+    [
+        "your opponent's",
+        "each opponent's",
+        "an opponent's",
+        "the active player's",
+        "the defending player's",
+        "the attacking player's",
+        "each player's",
+        "your"
     ];
 }
 
