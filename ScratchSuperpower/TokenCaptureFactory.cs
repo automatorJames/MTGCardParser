@@ -1,19 +1,12 @@
-﻿using MTGCardParser.TokenCaptures;
-using Superpower;
-using Superpower.Model;
-using Superpower.Parsers;
-using Superpower.Tokenizers;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
-
-namespace MTGCardParser;
+﻿namespace MTGCardParser;
 
 public static class TokenCaptureFactory
 {
     static readonly Tokenizer<Type> _tokenizer;
     static readonly Dictionary<Type, string> _regexTemplates = new();
     static readonly Dictionary<Type, string> _renderedRegexes = new();
-    static readonly HashSet<Type> _appliedOrderTypes = new();
+
+    public static readonly HashSet<Type> AppliedOrderTypes = new();
 
     static TokenCaptureFactory()
     {
@@ -55,7 +48,7 @@ public static class TokenCaptureFactory
         return _tokenizer.Tokenize(cardText);
     }
 
-    public static List<Type> GetTokenCaptureTypes() =>
+    static List<Type> GetTokenCaptureTypes() =>
         Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t =>
@@ -64,6 +57,7 @@ public static class TokenCaptureFactory
                 // 2) It implements ITokenCapture (directly or indirectly)
                 && typeof(ITokenCapture).IsAssignableFrom(t))
             .ToList();
+
     public static Tokenizer<Type> GetTokenizer()
     {
         var tokenizerBuilder = new TokenizerBuilder<Type>();
@@ -71,7 +65,6 @@ public static class TokenCaptureFactory
         tokenizerBuilder.Ignore(Span.Regex(@"[ \t]+"));
 
         tokenizerBuilder
-            .Match(typeof(Newline))
             .Match(typeof(Period))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
@@ -87,7 +80,7 @@ public static class TokenCaptureFactory
 
         // Apply assembly types that weren't applied above (failsafe for laziness)
         foreach (var key in _regexTemplates.Keys)
-            if (!_appliedOrderTypes.Contains(key))
+            if (!AppliedOrderTypes.Contains(key))
                 tokenizerBuilder.Match(key);
 
         tokenizerBuilder
@@ -150,13 +143,13 @@ public static class TokenCaptureFactory
 
     public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
-        if (_appliedOrderTypes.Contains(tokenCaptureType))
+        if (AppliedOrderTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
         var renderedRegex = GetRenderedRegex(tokenCaptureType);
         tokenizerBuilder.Match(Span.Regex(_renderedRegexes[tokenCaptureType]), tokenCaptureType);
 
-        _appliedOrderTypes.Add(tokenCaptureType);
+        AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;
     }

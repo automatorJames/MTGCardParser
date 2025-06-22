@@ -21,7 +21,6 @@ public class TokenTester
     // NEW: A blacklist of types to exclude from highlighting in the coverage report.
     private static readonly List<Type> HighlightBlacklist = new()
     {
-        typeof(Newline),
         typeof(Period)
     };
 
@@ -33,7 +32,7 @@ public class TokenTester
 
         _cards = DataGetter.GetCards(maxSetSequence, ignoreEmptyText: ignoreEmptyText);
 
-        _tokenCaptureTypes = TokenCaptureFactory.GetTokenCaptureTypes().OrderBy(t => t.Name).ToList();
+        _tokenCaptureTypes = TokenCaptureFactory.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
 
         for (int i = 0; i < _tokenCaptureTypes.Count; i++)
         {
@@ -118,7 +117,42 @@ public class TokenTester
 
     #region HTML Generation Methods
 
-    private void GenerateTypeKeyHtml() { /* ... unchanged ... */ }
+    private void GenerateTypeKeyHtml()
+    {
+        string htmlContent = HtmlReportGenerator.Generate("Token Type Key & Regex Analysis", sb =>
+        {
+            foreach (var type in TokenCaptureFactory.AppliedOrderTypes)
+            {
+                if (!_tokenCaptureCounts.ContainsKey(type)) continue;
+
+                string typeName = type.Name;
+                int count = _tokenCaptureCounts[type];
+                string colorHex = ToHex(_typeColors[type]);
+                string regexTemplate = TokenCaptureFactory.GetRegexTemplate(type);
+                string renderedRegex = TokenCaptureFactory.GetRenderedRegex(type);
+
+                sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
+
+                // Header with Type Name (highlighted) and Count
+                sb.Append("<h3>");
+                sb.Append($"<span class=\"highlight\" style=\"background-color: {colorHex};\">{HtmlReportGenerator.Encode(typeName)}</span>");
+                sb.Append($" {count} occurrences");
+                sb.Append("</h3>");
+
+                // Regex Template
+                sb.Append("<h4>Regex Template</h4>");
+                sb.Append($"<pre><code>{HtmlReportGenerator.Encode(regexTemplate)}</code></pre>");
+
+                // Rendered Regex
+                sb.Append("<h4>Rendered Regex</h4>");
+                sb.Append($"<pre><code>{HtmlReportGenerator.Encode(renderedRegex)}</code></pre>");
+
+                sb.Append("</div>");
+            }
+        });
+
+        File.WriteAllText(Path.Combine(_outputDir, "Type Key.html"), htmlContent);
+    }
 
     private void GenerateCardCoverageHtml()
     {
@@ -182,7 +216,7 @@ public class TokenTester
                         }
 
                         totalChars += charCount;
-                        if (j < tokens.Count - 1 && token.Kind != typeof(Newline) && tokens[j + 1].Kind != typeof(Newline))
+                        if (j < tokens.Count - 1)
                         {
                             sb.Append(" ");
                             totalChars++;
