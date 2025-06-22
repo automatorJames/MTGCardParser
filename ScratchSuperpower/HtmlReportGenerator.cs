@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using Superpower.Model;
+using System.Net;
 
 using System.Text;
 
@@ -84,6 +85,32 @@ public static class HtmlReportGenerator
             color: #1e1e1e;
             padding: 0.1em 0.3em;
             border-radius: 3px;
+        }}
+        .highlight {{
+            position: relative;
+            cursor: help;
+        }}
+
+        .highlight::after {{
+            content: attr(data-title);
+            position: absolute;
+            left: 50%;
+            bottom: 100%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.05s;
+            z-index: 999;
+            margin-bottom: 4px;
+        }}
+
+        .highlight:hover::after {{
+            opacity: 1;
         }}
     </style>
 </head>

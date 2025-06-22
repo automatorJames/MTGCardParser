@@ -2,6 +2,8 @@
 
 public class Card
 {
+    public static string ThisToken = "{this}";
+
     public int CardId { get; set; }
     public string Name { get; set; }
     public string Text { get; set; }
@@ -16,18 +18,33 @@ public class Card
     public string SetCode { get; set; }
     public int SetSequence { get; set; }
 
-    string _originalText;
-    public string OriginalText => _originalText ?? Text;
-
-    public void CleanText()
+    string[] _cleanedLines; 
+    public string[] CleanedLines
     {
-        _originalText = Text;
+        get
+        {
+            if (_cleanedLines is null)
+                _cleanedLines = GetCleanedLines();
 
+            return _cleanedLines;
+        }
+    }
+
+    public List<List<Token<Type>>> ProcessedLineTokens { get; set; } = new();
+
+    public List<Token<Type>> CombinedTokens => ProcessedLineTokens.SelectMany(x => x).ToList();
+
+    string[] GetCleanedLines()
+    {
         if (Text is null)
-            return;
+            return [];
 
-        Text = Text.Replace("Name", "{this}");
-        Text = Text.ToLower();
+        var text = Text;
+        text = text.Replace(Name, ThisToken);
+        text = text.ToLower();
+        var lines = text.Split('\n');
+
+        return lines;
     }
 }
 
