@@ -11,7 +11,6 @@ public static class StringExtensions
             throw new Exception($"Regex templates must have an even number of {delimiter} delimiters");
 
         var finalRegex = regexTemplate;
-
         var autoCaptureGroupNames = Regex.Matches(regexTemplate, @"§(?<name>[^§]+)§");
 
         foreach (Match autoCaptureGroupName in autoCaptureGroupNames.Cast<Match>())
@@ -23,17 +22,25 @@ public static class StringExtensions
                 throw new Exception($"No property named {name} found on type {type.Name}");
 
             var propertyType = property.PropertyType;
-            var enumType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
 
-            if (!enumType.IsEnum)
-                throw new Exception($"Property {name} on type {type.Name} is not an enum (or nullable enum)");
+            var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
 
-            var enumValues = Enum.GetValues(enumType)
-                .Cast<object>()
-                .Select(x => x.ToRegexPattern());
+            if (underlyingType.IsEnum)
+            {
+                var enumValues = Enum.GetValues(underlyingType)
+                    .Cast<object>()
+                    .Select(x => x.ToRegexPattern());
 
-            var autoEnumCaptureGroupStr = GetAlternation(enumValues, name);
-            finalRegex = Regex.Replace(finalRegex, autoCaptureGroupName.Value, autoEnumCaptureGroupStr);
+                var autoEnumCaptureGroupStr = GetAlternation(enumValues, name);
+                finalRegex = Regex.Replace(finalRegex, autoCaptureGroupName.Value, autoEnumCaptureGroupStr);
+            }
+            else if (underlyingType == typeof(bool))
+            {
+                var regPattern = property.ToRegexPattern();
+                finalRegex = Regex.Replace(finalRegex, autoCaptureGroupName.Value, regPattern);
+            }
+            else
+                throw new Exception($"Property {name} on type {type.Name} is not an enum or nullable enum");
         }
 
         if (wrapInWordBoundaries)
@@ -52,11 +59,27 @@ public static class StringExtensions
         var type = obj.GetType();
         if (type.GetField(obj.ToString()).IsDefined(typeof(RegPatAttribute), false))
         {
-            var descriptionAttribute = type.GetField(obj.ToString()).GetCustomAttributes(typeof(RegPatAttribute), false)[0] as RegPatAttribute;
-            val = descriptionAttribute.Patterns.GetAlternation();
+            var regPatAttribute = type.GetField(obj.ToString()).GetCustomAttributes(typeof(RegPatAttribute), false)[0] as RegPatAttribute;
+            val = regPatAttribute.Patterns.GetAlternation();
         }
         else
             val = obj.ToString();
+
+        return val.ToLower();
+    }
+
+    public static string ToRegexPattern(this PropertyInfo prop, bool toLower = true, bool isOptionalMatch = true, bool spaceAfter = true)
+    {
+        if (prop is null)
+            return null;
+
+        string val = prop.GetCustomAttribute<RegPatAttribute>()?.Patterns?.GetAlternation() ?? prop.Name;
+
+        if (spaceAfter)
+            val += " ";
+
+        if (isOptionalMatch)
+            val = $"({val})?";
 
         return val.ToLower();
     }

@@ -21,6 +21,7 @@ public static class HtmlReportGenerator
             font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 2rem;
+            line-height: 24px;
         }}
         h1, h2, h3 {{
             color: #569cd6;
@@ -81,7 +82,7 @@ public static class HtmlReportGenerator
             cursor: help;
         }}
         .unmatched-highlight {{
-            background-color: #d16969; /* A muted red for unmatched spans */
+            background-color: #6980d1;
             color: #1e1e1e;
             padding: 0.1em 0.3em;
             border-radius: 3px;

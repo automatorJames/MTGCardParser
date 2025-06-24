@@ -10,7 +10,7 @@ public class TokenTester
     private readonly string _outputDir;
 
     // Data collection
-    private readonly Dictionary<string, (int Count, string FirstCard, string FirstCardText)> _unmatchedSpans = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, (int Count, string FirstCard, string FirstCardText, TextSpan FirstOccurrence)> _unmatchedSpans = new(StringComparer.OrdinalIgnoreCase);
     private int _totalUnmatchedTokens;
     private int _totalPlaceholderTokens;
     private readonly List<Type> _tokenCaptureTypes;
@@ -76,22 +76,26 @@ public class TokenTester
 
     private void AnalyzeTokens(Card card)
     {
-        var unmatchedBuffer = new List<string>();
-        
+        // The buffer now holds the complete token to preserve its TextSpan.
+        var unmatchedBuffer = new List<Token<Type>>();
+
         foreach (var lineTokenSet in card.ProcessedLineTokens)
         {
             foreach (var token in lineTokenSet)
             {
+                // Assuming `typeof(string)` is your "unmatched" token kind.
                 if (token.Kind == typeof(string))
                 {
                     _totalUnmatchedTokens++;
-                    unmatchedBuffer.Add(token.Span.ToStringValue());
+                    unmatchedBuffer.Add(token); // Add the entire token to the buffer.
                 }
                 else
                 {
+                    // A matched token was found, so flush any preceding unmatched tokens.
                     FlushUnmatchedBuffer(card, unmatchedBuffer);
                     unmatchedBuffer.Clear();
 
+                    // Process the matched token.
                     if (token.Kind == typeof(Placeholder))
                         _totalPlaceholderTokens++;
                     else if (_tokenCaptureCounts.ContainsKey(token.Kind))
@@ -99,20 +103,35 @@ public class TokenTester
                 }
             }
 
+            // Flush any remaining unmatched tokens at the end of the card's text.
             FlushUnmatchedBuffer(card, unmatchedBuffer);
+            unmatchedBuffer.Clear(); // Clear for the next card.
         }
     }
 
-    private void FlushUnmatchedBuffer(Card card, List<string> buffer)
+    private void FlushUnmatchedBuffer(Card card, List<Token<Type>> buffer)
     {
         if (buffer.Count == 0) return;
-        var span = string.Join(" ", buffer).Trim();
-        if (string.IsNullOrEmpty(span)) return;
 
-        if (_unmatchedSpans.TryGetValue(span, out var info))
-            _unmatchedSpans[span] = (info.Count + 1, info.FirstCard, info.FirstCardText);
+        // Create a new TextSpan that covers the entire sequence of unmatched tokens.
+        var startSpan = buffer.First().Span;
+        var endSpan = buffer.Last().Span;
+        var combinedSpan = startSpan.Until(endSpan);
+
+        // Use the text from the combined span as the dictionary key.
+        var spanText = combinedSpan.ToStringValue().Trim();
+        if (string.IsNullOrEmpty(spanText)) return;
+
+        if (_unmatchedSpans.TryGetValue(spanText, out var info))
+        {
+            // If this text has been seen before, just increment the count.
+            _unmatchedSpans[spanText] = (info.Count + 1, info.FirstCard, info.FirstCardText, info.FirstOccurrence);
+        }
         else
-            _unmatchedSpans[span] = (1, card.Name, card.Text);
+        {
+            // This is the first time we've seen this text; store it with its positional data.
+            _unmatchedSpans[spanText] = (1, card.Name, card.Text, combinedSpan);
+        }
     }
 
     #region HTML Generation Methods
@@ -169,6 +188,7 @@ public class TokenTester
                 int matchedChars = 0;
                 int totalChars = 0;
 
+                string cumulativeCardText = "";
                 bool lastSpanEndedInTermination = true; // starts as true to capitalize first letter;
 
                 for (int i = 0; i < card.ProcessedLineTokens.Count; i++)
@@ -192,7 +212,9 @@ public class TokenTester
                         if (lastSpanEndedInTermination && textValue.Length > 0)
                             textValue = textValue.Substring(0, 1).ToUpper() + textValue.Substring(1);
 
-                        lastSpanEndedInTermination = textValue.EndsWith(".");
+                        cumulativeCardText += " " + textValue;
+
+                        lastSpanEndedInTermination = textValue.Replace("\"", "").EndsWith(".");
 
                         string encodedText = HtmlReportGenerator.Encode(textValue);
                         int charCount = textValue.Replace("\n", "").Length;
@@ -248,7 +270,7 @@ public class TokenTester
                 .ThenBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            foreach (var (span, (count, firstCard, firstCardText)) in sortedSpans)
+            foreach (var (span, (count, firstCard, firstCardText, firstOccurrence)) in sortedSpans)
             {
                 sb.Append("<tr>");
                 sb.Append($"<td>{count}</td>");
@@ -256,20 +278,54 @@ public class TokenTester
                 sb.Append($"<td>{HtmlReportGenerator.Encode(firstCard)}</td>");
                 sb.Append("<td>");
 
-                int index = firstCardText.IndexOf(span, StringComparison.OrdinalIgnoreCase);
-                if (index == -1)
+                // Use the stored TextSpan for precise highlighting.
+                // The TextSpan's source is the line it was found in.
+                string lineSource = firstOccurrence.Source;
+                // Find where this specific line starts within the full card text.
+                int lineStartIndex = firstCardText.IndexOf(lineSource, StringComparison.Ordinal);
+
+                // If the line is found, calculate the absolute position of the span.
+                if (lineStartIndex != -1)
                 {
-                    sb.Append(HtmlReportGenerator.Encode(firstCardText).Replace("\n", "<br>"));
+                    int spanStartInLine = firstOccurrence.Position.Absolute;
+                    int spanLength = firstOccurrence.Length;
+                    int absoluteStartIndex = lineStartIndex + spanStartInLine;
+
+                    // Ensure the calculated position is within bounds.
+                    if (absoluteStartIndex + spanLength <= firstCardText.Length)
+                    {
+                        string pre = HtmlReportGenerator.Encode(firstCardText.Substring(0, absoluteStartIndex));
+                        string match = HtmlReportGenerator.Encode(firstCardText.Substring(absoluteStartIndex, spanLength));
+                        string post = HtmlReportGenerator.Encode(firstCardText.Substring(absoluteStartIndex + spanLength));
+
+                        sb.Append(pre.Replace("\n", "<br>"));
+                        sb.Append($"<span class=\"unmatched-highlight\">{match}</span>");
+                        sb.Append(post.Replace("\n", "<br>"));
+                    }
+                    else
+                    {
+                        // Fallback for safety, though this case should be rare.
+                        sb.Append(HtmlReportGenerator.Encode(firstCardText).Replace("\n", "<br>"));
+                    }
                 }
                 else
                 {
-                    string pre = HtmlReportGenerator.Encode(firstCardText.Substring(0, index));
-                    string match = HtmlReportGenerator.Encode(firstCardText.Substring(index, span.Length));
-                    string post = HtmlReportGenerator.Encode(firstCardText.Substring(index + span.Length));
+                    // Fallback: if the original line can't be found, highlight the first string match.
+                    int index = firstCardText.IndexOf(span, StringComparison.OrdinalIgnoreCase);
+                    if (index == -1)
+                    {
+                        sb.Append(HtmlReportGenerator.Encode(firstCardText).Replace("\n", "<br>"));
+                    }
+                    else
+                    {
+                        string pre = HtmlReportGenerator.Encode(firstCardText.Substring(0, index));
+                        string match = HtmlReportGenerator.Encode(firstCardText.Substring(index, span.Length));
+                        string post = HtmlReportGenerator.Encode(firstCardText.Substring(index + span.Length));
 
-                    sb.Append(pre.Replace("\n", "<br>"));
-                    sb.Append($"<span class=\"unmatched-highlight\">{match}</span>");
-                    sb.Append(post.Replace("\n", "<br>"));
+                        sb.Append(pre.Replace("\n", "<br>"));
+                        sb.Append($"<span class=\"unmatched-highlight\">{match}</span>");
+                        sb.Append(post.Replace("\n", "<br>"));
+                    }
                 }
 
                 sb.Append("</td>");
@@ -281,6 +337,7 @@ public class TokenTester
 
         File.WriteAllText(Path.Combine(_outputDir, "Unmatched Spans.html"), htmlContent);
     }
+
     #endregion
 
     #region Color Generation (Unchanged)

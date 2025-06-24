@@ -2,26 +2,29 @@
 
 public class AtOrUntilPlayerPhase : ITokenCapture
 {
-    public string RegexTemplate => $@"§{nameof(AtOrUntil)}§ the §{nameof(When)}§ of §{nameof(Whose)}§ §{nameof(Phase)}§";
+    public string RegexTemplate => $@"§{nameof(ActivateOnly)}§§{nameof(TemporalDisposition)}§ the §{nameof(PhasePart)}§ of §{nameof(Whose)}§ §{nameof(Phase)}§";
 
-    public AtOrUntil? AtOrUntil { get; set; }
-    public When? When { get; set; }
+    public TemporalDisposition? TemporalDisposition { get; set; }
+    public PhasePart? PhasePart { get; set; }
     public Whose? Whose { get; set; }
     public Phase? Phase { get; set; }
+
+    [RegPat("activate only")]
+    public bool ActivateOnly { get; set; }
 }
 
-public enum AtOrUntil
+public enum TemporalDisposition
 {
     At,
+    During,
     Until
 }
 
-public enum When
+public enum PhasePart
 {
     Beginning,
     End
 }
-
 
 public enum Whose
 {

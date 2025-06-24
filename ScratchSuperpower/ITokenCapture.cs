@@ -5,7 +5,7 @@ public interface ITokenCapture
     public string RegexTemplate { get; }
     public string RenderedRegex => RegexTemplate.RenderRegex(GetType());
 
-    // Default implementation automatically populates scalar (non-collection) enum properties TokenSegment properties from token value
+    // Default implementation automatically populates scalar (non-collection) enum, bool, and TokenSegment properties from token value
     public void PopulateScalarValues(string tokenString)
     {
         var type = GetType();
@@ -27,6 +27,19 @@ public interface ITokenCapture
                 var matchingEnumVal = group.Value.ParseTokenEnumIgnoreCase(underlyingEnumType);
                 enumProp.SetValue(this, matchingEnumVal);
             }
+        }
+
+        var boolProps = type.GetProperties().Where(x => x.PropertyType == typeof(bool));
+        foreach (var boolProp in boolProps)
+        {
+            var group = match.Groups[boolProp.Name];
+
+            if (!group.Success)
+                throw new Exception($"No capture group defined that maches property name {boolProp.Name}");
+
+            var textIsPresent = !string.IsNullOrEmpty(group.Value);
+
+            boolProp.SetValue(this, textIsPresent);
         }
 
         var tokenSegmentProps = type.GetProperties().Where(x => x.PropertyType == typeof(TokenSegment));

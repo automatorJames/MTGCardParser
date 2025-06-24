@@ -66,6 +66,8 @@ public static class TokenCaptureFactory
 
         tokenizerBuilder
             .Match(typeof(Period))
+            .Match(typeof(This))
+            .Match(typeof(ActivatedAbility))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
             .Match(typeof(AtOrUntilPlayerPhase))
@@ -73,10 +75,7 @@ public static class TokenCaptureFactory
             .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
             .Match(typeof(ManaValue))
-            .Match(typeof(Parenthetical))
-            .Match(typeof(ActivatedAbility));
-
-        //tokenizerBuilder.Match(typeof(Parenthetical));
+            .Match(typeof(Parenthetical));
 
         // Apply assembly types that weren't applied above (failsafe for laziness)
         foreach (var key in _regexTemplates.Keys)
@@ -85,16 +84,6 @@ public static class TokenCaptureFactory
 
         tokenizerBuilder
             .Match(@"\S+", isPlaceholder: false);
-
-        //var thingy = tokenizerBuilder.Build();
-        //var tokes = thingy.Tokenize("at the beginning of your upkeep, sacrifice {this} unless you pay {w}{w}.").ToList();
-        //var toke = tokes.First();
-        //var instance = HydrateFromToken(toke);
-
-        //foreach (var item in _registry)
-        //    tokenizerBuilder.Match(Span.Regex(item.Value), item.Key);
-        //
-        //tokenizerBuilder.PatternMatch(MtgToken.Text, @"\S+", wrapInWordboundary: false);
 
         return tokenizerBuilder.Build();
 
