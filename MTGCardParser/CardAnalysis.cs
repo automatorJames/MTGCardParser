@@ -1,6 +1,4 @@
-﻿using System.Net.WebSockets;
-
-namespace MTGCardParser;
+﻿namespace MTGCardParser;
 
 public class CardAnalysis
 {

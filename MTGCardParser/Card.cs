@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace MTGCardParser;
+﻿namespace MTGCardParser;
 
 public class Card
 {

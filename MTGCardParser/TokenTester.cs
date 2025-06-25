@@ -1,7 +1,4 @@
-﻿using MTGCardParser.TokenCaptures;
-using System.Text;
-
-namespace MTGCardParser;
+﻿namespace MTGCardParser;
 
 public class TokenTester
 {
@@ -14,7 +11,6 @@ public class TokenTester
     readonly List<Type> _tokenCaptureTypes;
     readonly Dictionary<Type, Color> _typeColors = new();
 
-
     public TokenTester(int? maxSetSequence = null, bool ignoreEmptyText = true)
     {
         _outputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MTG_Parser_Analysis");
@@ -25,7 +21,7 @@ public class TokenTester
         for (int i = 0; i < _tokenCaptureTypes.Count; i++)
         {
             var type = _tokenCaptureTypes[i];
-            _typeColors[type] = GenerateColorForTypeName(type.Name);
+            _typeColors[type] = GenerateColorForType(type);
         }
     }
 
@@ -53,12 +49,14 @@ public class TokenTester
                 string colorHex = ToHex(_typeColors[type]);
                 string regexTemplate = TokenCaptureFactory.GetRegexTemplate(type);
                 string renderedRegex = TokenCaptureFactory.GetRenderedRegex(type);
+                string encodedTypeName = HtmlReportGenerator.Encode(typeName);
 
                 sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
 
                 // Header with Type Name (highlighted) and Count
                 sb.Append("<h3>");
-                sb.Append($"<span class=\"highlight\" style=\"background-color: {colorHex};\">{HtmlReportGenerator.Encode(typeName)}</span>");
+                // Standard hover-tooltip implementation for this page
+                sb.Append($"<span class=\"highlight\" data-title=\"{encodedTypeName}\" style=\"background-color: {colorHex};\">{encodedTypeName}</span>");
                 sb.Append($" {count} occurrences");
                 sb.Append("</h3>");
 
@@ -81,13 +79,15 @@ public class TokenTester
     {
         string htmlContent = HtmlReportGenerator.Generate("Card Coverage Analysis", sb =>
         {
-            sb.Append("<table><thead><tr><th>Card Name</th><th>Text</th><th>Coverage %</th></tr></thead><tbody>");
+            sb.Append("<table><thead><tr><th>Card Name</th><th>Text</th><th>Coverage</th></tr></thead><tbody>");
 
             foreach (var analyzedCard in AggregateCardAnalysis.AnalyzedCards)
             {
                 sb.Append("<tr>");
                 sb.Append($"<td>{HtmlReportGenerator.Encode(analyzedCard.Card.Name)}</td>");
-                sb.Append("<td>");
+
+                // Add data-original-text attribute with the raw card text for clipboard copy
+                sb.Append($"<td data-original-text=\"{HtmlReportGenerator.Encode(analyzedCard.Card.Text)}\">");
 
                 int matchedChars = 0;
                 int totalChars = 0;
@@ -106,7 +106,6 @@ public class TokenTester
 
                         textValue = textValue.Replace(Card.ThisToken, analyzedCard.Card.Name);
 
-                        // line break
                         if (i > 0 && j == 0)
                         {
                             sb.Append("<br><br>");
@@ -117,7 +116,6 @@ public class TokenTester
                             textValue = textValue.Substring(0, 1).ToUpper() + textValue.Substring(1);
 
                         cumulativeCardText += " " + textValue;
-
                         lastSpanEndedInTermination = textValue.Replace("\"", "").EndsWith(".");
 
                         string encodedText = HtmlReportGenerator.Encode(textValue);
@@ -126,9 +124,16 @@ public class TokenTester
                         if (token.Kind != typeof(string))
                         {
                             string colorHex = ToHex(_typeColors[token.Kind]);
-                            // NEW: Add a `title` attribute for the tooltip.
                             string typeName = HtmlReportGenerator.Encode(token.Kind.Name);
-                            sb.Append($"<span class=\"highlight\" data-title=\"{typeName}\" style=\"background-color: {colorHex};\">{encodedText}</span>");
+                            sb.Append($"<span class=\"highlight\" data-title=\"{typeName}\" style=\"background-color: {colorHex};\">");
+
+                            if (token.Kind.Name != "Punctuation")
+                            {
+                                // Superscript label with color matching the highlight
+                                sb.Append($"<span class=\"highlight-label\" style=\"color: {colorHex};\">{typeName}</span>");
+                            }
+                            sb.Append(encodedText);
+                            sb.Append("</span>");
                             matchedChars += charCount;
                         }
                         else
@@ -153,7 +158,7 @@ public class TokenTester
             }
 
             sb.Append("</tbody></table>");
-        });
+        }, isCardCoveragePage: true); // <-- Pass true to enable special functionality
 
         File.WriteAllText(Path.Combine(_outputDir, "Card Coverage.html"), htmlContent);
     }
@@ -177,23 +182,16 @@ public class TokenTester
                 sb.Append($"<td>{HtmlReportGenerator.Encode(item.Value.FirstRepresentativeCard.Card.Name)}</td>");
                 sb.Append("<td>");
 
-                // Use the stored TextSpan for precise highlighting.
-                // The TextSpan's source is the line it was found in.
                 string lineSource = item.Value.FirstRepresentativeCardOccurrence.Source;
-
                 var firstCardText = item.Value.FirstRepresentativeCard.Card.Text;
-
-                // Find where this specific line starts within the full card text.
                 int lineStartIndex = firstCardText.IndexOf(lineSource, StringComparison.Ordinal);
 
-                // If the line is found, calculate the absolute position of the span.
                 if (lineStartIndex != -1)
                 {
                     int spanStartInLine = item.Value.FirstRepresentativeCardOccurrence.Position.Absolute;
                     int spanLength = item.Value.FirstRepresentativeCardOccurrence.Length;
                     int absoluteStartIndex = lineStartIndex + spanStartInLine;
 
-                    // Ensure the calculated position is within bounds.
                     if (absoluteStartIndex + spanLength <= firstCardText.Length)
                     {
                         string pre = HtmlReportGenerator.Encode(firstCardText.Substring(0, absoluteStartIndex));
@@ -206,13 +204,11 @@ public class TokenTester
                     }
                     else
                     {
-                        // Fallback for safety, though this case should be rare.
                         sb.Append(HtmlReportGenerator.Encode(firstCardText).Replace("\n", "<br>"));
                     }
                 }
                 else
                 {
-                    // Fallback: if the original line can't be found, highlight the first string match.
                     int index = firstCardText.IndexOf(item.Key.ToStringValue(), StringComparison.OrdinalIgnoreCase);
                     if (index == -1)
                     {
@@ -257,9 +253,12 @@ public class TokenTester
         }
     }
 
-    static Color GenerateColorForTypeName(string name)
+    static Color GenerateColorForType(Type type)
     {
-        int hash = GetDeterministicHash(name);
+        if (type == typeof(Punctuation))
+            return HslToRgb(0, 0, .7);
+
+        int hash = GetDeterministicHash(type.Name);
         double hue = (Math.Abs(hash) % 360) / 360.0;
         return HslToRgb(hue, 0.9, 0.7);
     }
