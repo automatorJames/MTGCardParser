@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.Enums;
+﻿namespace MTGCardParser;
 
 public enum Quantity
 {

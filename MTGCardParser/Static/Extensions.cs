@@ -2,9 +2,9 @@
 
 namespace MTGCardParser.Static;
 
-public static class StringExtensions
+public static class Extensions
 {
-    public static string ToRegexPattern(this object obj, bool toLower = true)
+    public static string ToRegexPattern(this object obj, bool toLower = true, bool addOptionalPlural = false)
     {
         if (obj is null)
             return null;
@@ -20,10 +20,13 @@ public static class StringExtensions
         else
             val = obj.ToString();
 
+        if (addOptionalPlural)
+            val = val.Pluralize();
+
         return val.ToLower();
     }
 
-    public static string ToRegexPattern(this PropertyInfo prop, bool toLower = true, bool isOptionalMatch = true, bool spaceAfter = true)
+    public static string ToRegexPattern(this PropertyInfo prop, bool toLower = true, bool spaceAfter = true)
     {
         if (prop is null)
             return null;
@@ -33,10 +36,12 @@ public static class StringExtensions
         if (spaceAfter)
             val += " ";
 
-        if (isOptionalMatch)
-            val = $"({val})?";
+        val = $@"(?<{prop.Name}>{val.ToLower()})?";
 
-        return val.ToLower();
+        //if (isOptionalMatch)
+        //    val = $"({val})?";
+
+        return val;
     }
 
     public static string GetAlternation(this IEnumerable<string> items, string namedCaptureGroup = null, bool wrapInWordBoundaries = true)
@@ -55,7 +60,7 @@ public static class StringExtensions
         return alternation;
     }
 
-    public static object ParseTokenEnumIgnoreCase(this string input, Type enumType)
+    public static object ParseTokenEnumValue(this string input, Type enumType, Type containingType)
     {
         if (!enumType.IsEnum)
             throw new ArgumentException($"Type {enumType.Name} is not an enum.");
@@ -66,19 +71,23 @@ public static class StringExtensions
 
             if 
             (
-                field is not null 
-                && field.GetCustomAttributes(typeof(RegPatAttribute), false).FirstOrDefault() is RegPatAttribute attr 
-                && attr.Patterns is not null && attr.Patterns.Length > 0
+                field.GetCustomAttributes(typeof(RegPatAttribute), false).FirstOrDefault() is RegPatAttribute attr 
+                && attr.Patterns is not null 
+                && attr.Patterns.Length > 0
             )
             {
                 var pattern = attr.Patterns.GetAlternation();
                 if (Regex.IsMatch(input, pattern, RegexOptions.IgnoreCase))
                     return val;
             }
-            else if (val.ToString().Equals(input, StringComparison.OrdinalIgnoreCase))
+            else if (enumType.ShouldPluralize(containingType))
             {
-                return val;
+                var pluralizedVal = val.ToString().ToLower().Pluralize();
+                if (Regex.IsMatch(input, pluralizedVal, RegexOptions.IgnoreCase))
+                    return val;
             }
+            else if (val.ToString().Equals(input, StringComparison.OrdinalIgnoreCase))
+                return val;
         }
 
         throw new ArgumentException($"No matching enum value of type {enumType.Name} for string '{input}'.");
@@ -95,9 +104,11 @@ public static class StringExtensions
 
     public static string GetRenderedRegex(this Type type)
     {
-        var template = GetRegexTemplate(type);
+        if (!typeof(ITokenCapture).IsAssignableFrom(type))
+            throw new ArgumentException($"Type {type.Name} does not implement {nameof(ITokenCapture)}.");
 
-        return ITokenCapture.RenderRegex(template, type);
+        var instance = (ITokenCapture)Activator.CreateInstance(type)!;
+        return instance.RenderedRegex;
     }
 
     public static string WrapInWordBoundaries(this string regexPattern)
@@ -188,6 +199,34 @@ public static class StringExtensions
         }
 
         return sb.ToString();
+    }
+
+    public static bool ShouldPluralize(this Type enumType, Type containingType)
+    {
+        var shouldPluralizeEnum = enumType.GetCustomAttribute<RegOptAttribute>()?.OptionalPlural ?? false;
+
+        if (shouldPluralizeEnum)
+            return true;
+
+        return containingType.GetCustomAttribute<RegOptAttribute>()?.OptionalPlural ?? false;
+    }
+        
+    public static string Pluralize(this string word, bool appendQuestionMark = true)
+    {
+        if (string.IsNullOrWhiteSpace(word))
+            return word;
+
+        // Basic rules (can be expanded for more accuracy)
+        if (word.EndsWith("y", StringComparison.OrdinalIgnoreCase) && word.Length > 1 && !"aeiou".Contains(char.ToLower(word[word.Length - 2])))
+            return word.Substring(0, word.Length - 1) + "ies";
+        if (word.EndsWith("s", StringComparison.OrdinalIgnoreCase) ||
+            word.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
+            word.EndsWith("z", StringComparison.OrdinalIgnoreCase) ||
+            word.EndsWith("ch", StringComparison.OrdinalIgnoreCase) ||
+            word.EndsWith("sh", StringComparison.OrdinalIgnoreCase))
+            return word + "es";
+
+        return word + "s" + (appendQuestionMark ? "?" : "");
     }
 }
 

@@ -38,10 +38,6 @@ public class Card
         var text = Text;
         text = text.Replace(Name, ThisToken);
         text = text.ToLower();
-
-        // Insert a space before punctuation to ease space-split capture
-        text = Regex.Replace(text, @"([.;,""])", " $1");
-
         var lines = text.Split('\n');
 
         return lines;

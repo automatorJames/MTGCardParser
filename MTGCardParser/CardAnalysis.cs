@@ -9,6 +9,7 @@ public class CardAnalysis
     public List<Token<Type>[]> UnmatchedSegments { get; private set; } = new();
     public List<TextSpan> UnmatchedSegmentSpans { get; private set; } = new();
     public List<string> UnmatchedSegmentCombinations { get; private set; } = new();
+    public List<ClauseEffects> Clauses { get; private set; } = new();
 
     public int UnmatchedTokenCount => UnmatchedSegments
         .SelectMany(x => x)
@@ -123,6 +124,19 @@ public class CardAnalysis
                 throw new Exception($"Dictionary contains no key for {token.Kind.Name}");
             else
                 dict[token.Kind]++;
+    }
+
+    public void SetClauseEffects()
+    {
+        foreach (var line in ProcessedLineTokens)
+        {
+            List<ITokenCapture> list = new();
+
+            foreach (var token in line.Where(x => x.Kind != typeof(string)))
+                list.Add(ITokenCapture.InstantiateFromToken(token));
+
+            Clauses.Add(new(list));
+        }
     }
 }
 

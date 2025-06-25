@@ -5,19 +5,21 @@ namespace MTGCardParser;
 public interface ITokenCapture
 {
     public string RegexTemplate { get; }
-    public string RenderedRegex => RenderRegex(RegexTemplate, GetType());
+    public string RenderedRegex => GetRenderedRegex();
+
 
     // Default implementation automatically populates scalar (non-collection) enum, bool, and TokenSegment properties from token value
     public void PopulateScalarValues(string tokenString)
     {
         var type = GetType();
-        var regexTemplate = GetInstanceRegexTemplate();
-        string regex = RenderRegex(regexTemplate, type);
-        var match = Regex.Match(tokenString, regex);
+        var match = Regex.Match(tokenString, RenderedRegex);
 
         var enumProps = type.GetProperties().Where(x => x.PropertyType.IsEnum || (Nullable.GetUnderlyingType(x.PropertyType) is not null));
         foreach (var enumProp in enumProps)
         {
+            if (!match.Groups.ContainsKey(enumProp.Name))
+                throw new Exception($"No capture group defined on type {type.Name} that maches property name {enumProp.Name}");
+
             var underlyingEnumType = Nullable.GetUnderlyingType(enumProp.PropertyType) ?? enumProp.PropertyType;
             var group = match.Groups[enumProp.Name];
 
@@ -26,7 +28,7 @@ public interface ITokenCapture
 
             if (group.Value is not null)
             {
-                var matchingEnumVal = group.Value.ParseTokenEnumIgnoreCase(underlyingEnumType);
+                var matchingEnumVal = group.Value.ParseTokenEnumValue(underlyingEnumType, type);
                 enumProp.SetValue(this, matchingEnumVal);
             }
         }
@@ -34,24 +36,21 @@ public interface ITokenCapture
         var boolProps = type.GetProperties().Where(x => x.PropertyType == typeof(bool));
         foreach (var boolProp in boolProps)
         {
+            if (!match.Groups.ContainsKey(boolProp.Name))
+                throw new Exception($"No capture group defined on type {type.Name} that maches property name {boolProp.Name}");
+
             var group = match.Groups[boolProp.Name];
-
-            if (!group.Success)
-                throw new Exception($"No capture group defined that maches property name {boolProp.Name}");
-
             var textIsPresent = !string.IsNullOrEmpty(group.Value);
-
             boolProp.SetValue(this, textIsPresent);
         }
 
         var tokenSegmentProps = type.GetProperties().Where(x => x.PropertyType == typeof(TokenSegment));
         foreach (var tokenSegmentProp in tokenSegmentProps)
         {
+            if (!match.Groups.ContainsKey(tokenSegmentProp.Name))
+                throw new Exception($"No capture group defined on type {type.Name} that maches property name {tokenSegmentProp.Name}");
+
             var group = match.Groups[tokenSegmentProp.Name];
-
-            if (!group.Success)
-                throw new Exception($"No capture group defined that maches property name {tokenSegmentProp.Name}");
-
             TokenSegment tokenSegment = new(group.Value);
             tokenSegmentProp.SetValue(this, tokenSegment);
         }
@@ -64,17 +63,19 @@ public interface ITokenCapture
         return regexTemplate;
     }
 
-    public static string RenderRegex(string regexTemplate, Type type, string delimiter = "§")
+    public string GetRenderedRegex(string delimiter = "§")
     {
-        var delimiterCount = Regex.Count(regexTemplate, delimiter);
+        var type = this.GetType();
+        var delimiterCount = Regex.Count(RegexTemplate, delimiter);
+
         if (delimiterCount % 2 != 0)
-            throw new Exception($"Regex templates must have an even number of {delimiter} delimiters");
+            throw new Exception($"Regex templates must have an even number of {delimiter} delimiters, but found {delimiterCount}");
 
-        var finalRegex = regexTemplate;
-        var autoCaptureGroupNames = Regex.Matches(regexTemplate, @"§(?<name>[^§]+)§");
+        var finalRegex = RegexTemplate;
+        var autoCaptureGroupNames = Regex.Matches(RegexTemplate, @"§(?<name>[^§]+)§");
 
-        var regOpt = type.GetCustomAttribute<RegOptAttribute>() ?? new();
-        bool shouldWrapAlternationsInWordBoundaries = !regOpt.DoNotWrapInWordBoundaries;
+        var classRegOptions = type.GetCustomAttribute<RegOptAttribute>() ?? new();
+        bool shouldWrapAlternationsInWordBoundaries = !classRegOptions.DoNotWrapInWordBoundaries;
 
         foreach (Match autoCaptureGroupName in autoCaptureGroupNames.Cast<Match>())
         {
@@ -90,9 +91,12 @@ public interface ITokenCapture
 
             if (underlyingType.IsEnum)
             {
+                var enumRegOptions = underlyingType.GetCustomAttribute<RegOptAttribute>() ?? new();
+                var addOptionalPlural = classRegOptions.OptionalPlural || enumRegOptions.OptionalPlural;
+
                 var enumValues = Enum.GetValues(underlyingType)
                     .Cast<object>()
-                    .Select(x => x.ToRegexPattern());
+                    .Select(x => x.ToRegexPattern(addOptionalPlural: addOptionalPlural));
 
                 var autoEnumCaptureGroupStr = enumValues.GetAlternation(name, shouldWrapAlternationsInWordBoundaries);
                 finalRegex = Regex.Replace(finalRegex, autoCaptureGroupName.Value, autoEnumCaptureGroupStr);
@@ -106,10 +110,22 @@ public interface ITokenCapture
                 throw new Exception($"Property {name} on type {type.Name} is not an enum or nullable enum");
         }
 
-
         finalRegex = finalRegex.WrapInWordBoundaries();
 
         return finalRegex;
+    }
+
+    public static ITokenCapture InstantiateFromToken(Token<Type> token)
+    {
+        var type = token.Kind;
+
+        if (!type.IsAssignableTo(typeof(ITokenCapture)))
+            throw new Exception($"{type.Name} does not implement ITokenCapture");
+
+        var instance = (ITokenCapture)Activator.CreateInstance(type);
+        instance.PopulateScalarValues(token.ToStringValue());
+
+        return instance;
     }
 }
 

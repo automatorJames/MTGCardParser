@@ -1,6 +1,6 @@
 ﻿using MTGCardParser.TokenCaptures;
 using System.Text.RegularExpressions;
-using static MTGCardParser.Static.StringExtensions;
+using static MTGCardParser.Static.Extensions;
 
 namespace MTGCardParser;
 

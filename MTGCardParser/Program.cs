@@ -8,6 +8,6 @@ internal class Program
         //var result = MtgTextAnalyzer.GetCoveragePatterns(cards);
 
         var tokenTester = new TokenTester(1, true);
-        tokenTester.Process();
+        tokenTester.Process(hydrateAllTokenInstances: true);
     }
 }

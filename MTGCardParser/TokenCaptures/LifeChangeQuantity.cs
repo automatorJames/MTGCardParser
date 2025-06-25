@@ -1,6 +1,4 @@
-﻿using MTGCardParser.Enums;
-
-namespace MTGCardParser.TokenCaptures;
+﻿namespace MTGCardParser.TokenCaptures;
 
 public class LifeChangeQuantity : ITokenCapture
 {

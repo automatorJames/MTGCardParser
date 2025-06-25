@@ -39,9 +39,9 @@ public static class TokenCaptureFactory
         return _renderedRegexes[type];
     }
 
-    public static TokenList<Type> Tokenize(string cardText)
+    public static TokenList<Type> Tokenize(string text)
     {
-        return _tokenizer.Tokenize(cardText);
+        return _tokenizer.Tokenize(text);
     }
 
     static List<Type> GetTokenCaptureTypes() =>
@@ -62,6 +62,7 @@ public static class TokenCaptureFactory
 
         tokenizerBuilder
             .Match(typeof(This))
+            .Match(typeof(LoseOrGainAbility))
             .Match(typeof(ActivatedAbility))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
@@ -79,7 +80,7 @@ public static class TokenCaptureFactory
                 tokenizerBuilder.Match(key);
 
         tokenizerBuilder
-            .Match(@"\S+");
+            .Match(@"[^.,;""\s]+");
 
         return tokenizerBuilder.Build();
 
