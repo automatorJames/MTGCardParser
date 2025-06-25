@@ -1,4 +1,6 @@
-﻿namespace MTGCardParser;
+﻿using System.Text.RegularExpressions;
+
+namespace MTGCardParser;
 
 public class Card
 {
@@ -30,10 +32,6 @@ public class Card
         }
     }
 
-    public List<List<Token<Type>>> ProcessedLineTokens { get; set; } = new();
-
-    public List<Token<Type>> CombinedTokens => ProcessedLineTokens.SelectMany(x => x).ToList();
-
     string[] GetCleanedLines()
     {
         if (Text is null)
@@ -42,6 +40,10 @@ public class Card
         var text = Text;
         text = text.Replace(Name, ThisToken);
         text = text.ToLower();
+
+        // Insert a space before punctuation to ease space-split capture
+        text = Regex.Replace(text, @"([.;,""])", " $1");
+
         var lines = text.Split('\n');
 
         return lines;

@@ -12,3 +12,4 @@ global using MTGCardParser.TokenCaptures;
 global using Superpower;
 global using Superpower.Parsers;
 global using Superpower.Tokenizers;
+global using MTGCardParser.Attributes;

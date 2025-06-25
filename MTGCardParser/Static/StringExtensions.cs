@@ -4,51 +4,6 @@ namespace MTGCardParser.Static;
 
 public static class StringExtensions
 {
-    public static string RenderRegex(this string regexTemplate, Type type, string delimiter = "§", bool wrapInWordBoundaries = true)
-    {
-        var delimiterCount = Regex.Count(regexTemplate, delimiter);
-        if (delimiterCount % 2 != 0)
-            throw new Exception($"Regex templates must have an even number of {delimiter} delimiters");
-
-        var finalRegex = regexTemplate;
-        var autoCaptureGroupNames = Regex.Matches(regexTemplate, @"§(?<name>[^§]+)§");
-
-        foreach (Match autoCaptureGroupName in autoCaptureGroupNames.Cast<Match>())
-        {
-            var name = autoCaptureGroupName.Groups["name"].Value;
-            var property = type.GetProperty(name);
-
-            if (property is null)
-                throw new Exception($"No property named {name} found on type {type.Name}");
-
-            var propertyType = property.PropertyType;
-
-            var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
-
-            if (underlyingType.IsEnum)
-            {
-                var enumValues = Enum.GetValues(underlyingType)
-                    .Cast<object>()
-                    .Select(x => x.ToRegexPattern());
-
-                var autoEnumCaptureGroupStr = GetAlternation(enumValues, name);
-                finalRegex = Regex.Replace(finalRegex, autoCaptureGroupName.Value, autoEnumCaptureGroupStr);
-            }
-            else if (underlyingType == typeof(bool))
-            {
-                var regPattern = property.ToRegexPattern();
-                finalRegex = Regex.Replace(finalRegex, autoCaptureGroupName.Value, regPattern);
-            }
-            else
-                throw new Exception($"Property {name} on type {type.Name} is not an enum or nullable enum");
-        }
-
-        if (wrapInWordBoundaries)
-            finalRegex = finalRegex.WrapInWordBoundaries();
-
-        return finalRegex;
-    }
-
     public static string ToRegexPattern(this object obj, bool toLower = true)
     {
         if (obj is null)
@@ -84,12 +39,18 @@ public static class StringExtensions
         return val.ToLower();
     }
 
-    public static string GetAlternation(this IEnumerable<string> items, string namedCaptureGroup = null)
+    public static string GetAlternation(this IEnumerable<string> items, string namedCaptureGroup = null, bool wrapInWordBoundaries = true)
     {
+        if (items.Count() == 1)
+            return items.First();
+
         var alternation = "(" + string.Join("|", items.OrderByDescending(s => s.Length)) + ")";
 
         if (namedCaptureGroup is not null)
-            alternation = $@"\b(?<{namedCaptureGroup}>{alternation})\b";
+            alternation = $@"(?<{namedCaptureGroup}>{alternation})";
+
+        if (wrapInWordBoundaries)
+            alternation = $@"\b{alternation}\b";
 
         return alternation;
     }
@@ -132,13 +93,18 @@ public static class StringExtensions
         return instance.RegexTemplate;
     }
 
+    public static string GetRenderedRegex(this Type type)
+    {
+        var template = GetRegexTemplate(type);
+
+        return ITokenCapture.RenderRegex(template, type);
+    }
+
     public static string WrapInWordBoundaries(this string regexPattern)
     {
         // Return immediately for null or empty strings.
         if (string.IsNullOrEmpty(regexPattern))
-        {
             return regexPattern;
-        }
 
         bool prependBoundary = false;
         bool appendBoundary = false;

@@ -18,11 +18,8 @@ public static class TokenCaptureFactory
     {
         foreach (var type in GetTokenCaptureTypes())
         {
-            var regexTemplate = type.GetRegexTemplate();
-            var regexPattern = regexTemplate.RenderRegex(type);
-
-            _regexTemplates.Add(type, regexTemplate);
-            _renderedRegexes.Add(type, regexPattern);
+            _regexTemplates.Add(type, type.GetRegexTemplate());
+            _renderedRegexes.Add(type, type.GetRenderedRegex());
         }
     }
 
@@ -41,7 +38,6 @@ public static class TokenCaptureFactory
 
         return _renderedRegexes[type];
     }
-
 
     public static TokenList<Type> Tokenize(string cardText)
     {
@@ -65,7 +61,6 @@ public static class TokenCaptureFactory
         tokenizerBuilder.Ignore(Span.Regex(@"[ \t]+"));
 
         tokenizerBuilder
-            .Match(typeof(Period))
             .Match(typeof(This))
             .Match(typeof(ActivatedAbility))
             .Match(typeof(EnchantCard))
@@ -75,6 +70,7 @@ public static class TokenCaptureFactory
             .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
             .Match(typeof(ManaValue))
+            .Match(typeof(Punctuation))
             .Match(typeof(Parenthetical));
 
         // Apply assembly types that weren't applied above (failsafe for laziness)
@@ -83,7 +79,7 @@ public static class TokenCaptureFactory
                 tokenizerBuilder.Match(key);
 
         tokenizerBuilder
-            .Match(@"\S+", isPlaceholder: false);
+            .Match(@"\S+");
 
         return tokenizerBuilder.Build();
 
@@ -143,10 +139,9 @@ public static class TokenCaptureFactory
         return tokenizerBuilder;
     }
 
-    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, string regexPattern, bool wrapInWordboundary = true, bool isPlaceholder = true)
+    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, string regexPattern, bool wrapInWordboundary = true)
     {
-        var type = isPlaceholder ? typeof(Placeholder) : typeof(string);
-        tokenizerBuilder.Match(Span.Regex(regexPattern), type);
+        tokenizerBuilder.Match(Span.Regex(regexPattern), typeof(string));
         return tokenizerBuilder;
     }
 }
