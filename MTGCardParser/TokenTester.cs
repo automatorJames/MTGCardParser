@@ -26,7 +26,7 @@ public class TokenTester
         for (int i = 0; i < _tokenCaptureTypes.Count; i++)
         {
             var type = _tokenCaptureTypes[i];
-            _typeColors[type] = GenerateColorForTypeName(type.Name);
+            _typeColors[type] = GenerateColorForType(type);
         }
     }
 
@@ -302,9 +302,12 @@ public class TokenTester
         unchecked { const int fnvPrime = 16777619; int hash = (int)2166136261; foreach (char c in text) { hash ^= c; hash *= fnvPrime; } return hash; }
     }
 
-    static Color GenerateColorForTypeName(string name)
+    static Color GenerateColorForType(Type type)
     {
-        int hash = GetDeterministicHash(name);
+        if (type == typeof(Punctuation))
+            return HslToRgb(0, 0, 0.6);
+
+        int hash = GetDeterministicHash(type.Name);
         double hue = (Math.Abs(hash) % 360) / 360.0;
         return HslToRgb(hue, 0.9, 0.7);
     }
