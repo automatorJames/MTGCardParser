@@ -2,12 +2,9 @@
 
 namespace MTGCardParser;
 
-public abstract class TokenCaptureBase<T> : ITokenCapture where T : TokenCaptureBase<T>
+public abstract class TokenCaptureBase<T>
 {
     public abstract RegexTemplate<T> RegexTemplate { get; }
-    public string RenderedRegex => RegexTemplate.RenderedRegex;
-    RegexTemplate ITokenCapture.RegexTemplate => this.RegexTemplate;
-
     //protected TokenCaptureBase()
     //{
     //}

@@ -1,8 +1,9 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class Parenthetical : TokenCaptureBase<Parenthetical>
+[NoSpaces]
+public class Parenthetical : ITokenCapture
 {
-    public override RegexTemplate<Parenthetical> RegexTemplate => new(@"\(", nameof(Content), @"\)");
+    public RegexTemplate<Parenthetical> RegexTemplate => new(@"\(", nameof(Content), @"\)");
 
     [RegexPattern(@"([^)]*)")]
     public TokenSegment Content { get; set; }

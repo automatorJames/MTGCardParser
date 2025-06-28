@@ -1,8 +1,8 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class EnchantCard : TokenCaptureBase<EnchantCard>
+public class EnchantCard : ITokenCapture
 {
-    public override RegexTemplate<EnchantCard> RegexTemplate => new("enchant", nameof(CardType));
+    public RegexTemplate<EnchantCard> RegexTemplate => new("enchant", nameof(CardType));
 
     public CardType? CardType { get; set; }
 }

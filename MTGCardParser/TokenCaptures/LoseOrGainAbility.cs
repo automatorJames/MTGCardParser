@@ -1,8 +1,9 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class LoseOrGainAbility : TokenCaptureBase<LoseOrGainAbility>
+[NoSpaces]
+public class LoseOrGainAbility : ITokenCapture
 {
-    public override RegexTemplate<LoseOrGainAbility> RegexTemplate => new(nameof(LoseOrGain), "\"", nameof(Ability), "\"");
+    public RegexTemplate<LoseOrGainAbility> RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
 
 
     [RegexPattern("[^\"]+")]

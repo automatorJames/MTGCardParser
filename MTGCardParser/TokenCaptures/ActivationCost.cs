@@ -1,8 +1,9 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class ActivationCost : TokenCaptureBase<ActivationCost>
+[NoSpaces]
+public class ActivationCost : ITokenCapture
 {
-    public override RegexTemplate<ActivationCost> RegexTemplate => new("^", nameof(ActivationCostSegment), ":");
+    public RegexTemplate<ActivationCost> RegexTemplate => new("^", nameof(ActivationCostSegment), ":");
 
     [RegexPattern("[^:]+")]
     public TokenSegment ActivationCostSegment { get; set; }

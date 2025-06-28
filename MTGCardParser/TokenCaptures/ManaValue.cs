@@ -1,8 +1,8 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class ManaValue : TokenCaptureBase<ManaValue>
+public class ManaValue : ITokenCapture
 {
-    public override RegexTemplate<ManaValue> RegexTemplate => new(nameof(ManaSymbols));
+    public RegexTemplate<ManaValue> RegexTemplate => new(nameof(ManaSymbols));
 
 
     [RegexPattern(@"(?<=\{)(?:[0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)(?=\})")]

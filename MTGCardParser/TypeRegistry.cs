@@ -4,7 +4,7 @@ public static class TypeRegistry
 {
     public static Dictionary<Type, List<CaptureProp>> CaptureProps { get; set; } = new();
     public static Dictionary<Type, string> TypeRegexPatterns { get; set; } = new();
-    public static Dictionary<PropertyInfo, string> PropRegexPatterns { get; set; } = new();
+    public static Dictionary<PropertyInfo, IRegexSegment> PropRegexPatterns { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
@@ -31,18 +31,19 @@ public static class TypeRegistry
             CaptureProps[type] = captureProps;
             TypeRegexPatterns[type] = instance.RenderedRegex;
 
-            foreach (var propEntry in instance.RegexTemplate.PropRegexPatterns)
+            foreach (var propEntry in instance.RegexTemplate.PropRegexSegments)
                 PropRegexPatterns[propEntry.Key] = propEntry.Value;
 
-            foreach (var enumEntry in instance.RegexTemplate.EnumRegexes)
-            {
-                if (!EnumRegexes.ContainsKey(enumEntry.Key))
-                {
-                    var newEnumEntry = EnumRegexes[enumEntry.Key] = new();
+            var unregisteredEnums = instance.RegexTemplate.PropRegexSegments
+                .Where(x => x.Value is EnumCaptureGroup enumCap && !EnumRegexes.ContainsKey(enumCap.EnumType))
+                .Select(x => x.Value as EnumCaptureGroup);
 
-                    foreach (var enumValueEntry in instance.RegexTemplate.EnumRegexes[enumEntry.Key])
-                        newEnumEntry[enumValueEntry.Key] = enumValueEntry.Value;
-                }
+            foreach (var enumEntry in unregisteredEnums)
+            {
+                var newEnumEntry = EnumRegexes[enumEntry.EnumType] = new();
+
+                foreach (var enumValueEntry in enumEntry.EnumMemberRegexes)
+                    newEnumEntry[enumValueEntry.Key] = enumValueEntry.Value;
             }
         }
     }

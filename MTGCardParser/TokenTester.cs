@@ -304,6 +304,9 @@ public class TokenTester
         if (type == typeof(Punctuation))
             return HslToRgb(0, 0, 0.6);
 
+        else if (type == typeof(Parenthetical))
+            return HslToRgb(0, 0, 0.4);
+
         int hash = GetDeterministicHash(type.Name);
         double hue = (Math.Abs(hash) % 360) / 360.0;
         return HslToRgb(hue, 0.9, 0.7);

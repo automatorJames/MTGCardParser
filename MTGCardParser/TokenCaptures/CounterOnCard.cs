@@ -1,8 +1,8 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class CounterOnCard : TokenCaptureBase<CounterOnCard>
+public class CounterOnCard :ITokenCapture
 {
-    public override RegexTemplate<CounterOnCard> RegexTemplate => new(nameof(CounterType), "counter");
+    public RegexTemplate<CounterOnCard> RegexTemplate => new(nameof(CounterType), "counter");
 
     public CounterType? CounterType { get; set; }
 }

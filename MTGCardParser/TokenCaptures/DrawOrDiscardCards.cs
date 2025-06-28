@@ -1,8 +1,8 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class DrawOrDiscardCards : TokenCaptureBase<DrawOrDiscardCards>
+public class DrawOrDiscardCards : ITokenCapture
 {
-    public override RegexTemplate<DrawOrDiscardCards> RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
+    public RegexTemplate<DrawOrDiscardCards> RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
 
     public CardVerb? CardVerb { get; set; }
     public Quantity? Quantity { get; set; }

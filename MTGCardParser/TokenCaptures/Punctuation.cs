@@ -1,8 +1,8 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class Punctuation : TokenCaptureBase<Punctuation>
+public class Punctuation : ITokenCapture
 {
-    public override RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));
+    public RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));
 
     public PunctuationCharacter? PunctuationCharacter { get; set; }
 }

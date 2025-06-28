@@ -239,10 +239,16 @@ public static class HtmlReportGenerator
             if (event.target.closest('a, button, input, .effect-details-block')) return;
 
             let textToCopy = (target.tagName === 'TD' && target.hasAttribute('data-original-text')) ? target.getAttribute('data-original-text') : target.innerText.trim();
+            
             if (textToCopy) {
+                // If the shift key is not held, convert text to lowercase before copying.
+                if (!event.shiftKey) {
+                    textToCopy = textToCopy.toLowerCase();
+                }
                 navigator.clipboard.writeText(textToCopy).then(() => showCopyFeedback(event.clientX, event.clientY)).catch(err => console.error('Failed to copy text: ', err));
             }
         });
+
         let feedbackDiv = null, feedbackTimeout = null;
         function showCopyFeedback(x, y) {
             if (!feedbackDiv) {
