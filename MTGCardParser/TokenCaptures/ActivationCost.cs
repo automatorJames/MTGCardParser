@@ -8,4 +8,3 @@ public class ActivationCost : ITokenCapture
     [RegexPattern("[^:]+")]
     public TokenSegment ActivationCostSegment { get; set; }
 }
-

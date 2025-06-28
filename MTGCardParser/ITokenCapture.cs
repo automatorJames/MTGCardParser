@@ -5,7 +5,6 @@ public interface ITokenCapture
     static string RegexTemplatePropName = "RegexTemplate";
 
     public RegexTemplate RegexTemplate => GetRegexTemplate();
-    public string RenderedRegex => RegexTemplate.RenderedRegex;
 
     RegexTemplate GetRegexTemplate()
     {

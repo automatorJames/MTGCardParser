@@ -3,17 +3,11 @@
 public static class TypeRegistry
 {
     public static Dictionary<Type, List<CaptureProp>> CaptureProps { get; set; } = new();
-    public static Dictionary<Type, string> TypeRegexPatterns { get; set; } = new();
+    public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
     public static Dictionary<PropertyInfo, IRegexSegment> PropRegexPatterns { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
-
-    //static TypeRegistry()
-    //{
-    //    RegisterTypes();
-    //    InitializeTokenizer();
-    //}
 
     public static void Initialize()
     {
@@ -29,12 +23,13 @@ public static class TypeRegistry
             var type = instance.GetType();
             var captureProps = GetCaptureProps(type);
             CaptureProps[type] = captureProps;
-            TypeRegexPatterns[type] = instance.RenderedRegex;
+            var regexTemplate = new RegexTemplate(instance.RegexTemplate);
+            TypeRegexTemplates[type] = regexTemplate;
 
-            foreach (var propEntry in instance.RegexTemplate.PropRegexSegments)
+            foreach (var propEntry in regexTemplate.PropRegexSegments)
                 PropRegexPatterns[propEntry.Key] = propEntry.Value;
 
-            var unregisteredEnums = instance.RegexTemplate.PropRegexSegments
+            var unregisteredEnums = regexTemplate.PropRegexSegments
                 .Where(x => x.Value is EnumCaptureGroup enumCap && !EnumRegexes.ContainsKey(enumCap.EnumType))
                 .Select(x => x.Value as EnumCaptureGroup);
 
@@ -63,7 +58,7 @@ public static class TypeRegistry
         // Otherwise handle instantiation here
         else
         {
-            var typeMatch = Regex.Match(matchString, TypeRegexPatterns[type]);
+            var typeMatch = Regex.Match(matchString, TypeRegexTemplates[type].RenderedRegex);
 
             foreach (var captureProp in CaptureProps[type])
                 captureProp.SetValue(instance, typeMatch);
@@ -101,20 +96,20 @@ public static class TypeRegistry
 
         tokenizerBuilder
             .Match(typeof(This))
+            .Match(typeof(ActivatedAbility))
             .Match(typeof(LoseOrGainAbility))
-            //.Match(typeof(ActivatedAbility))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
             .Match(typeof(AtOrUntilPlayerPhase))
             .Match(typeof(IfYouDo))
             .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
-            .Match(typeof(ManaValue))
             .Match(typeof(Punctuation))
+            .Match(typeof(ManaValue))
             .Match(typeof(Parenthetical));
         
         // Apply assembly types that weren't applied above (failsafe for laziness)
-        foreach (var key in TypeRegexPatterns.Keys)
+        foreach (var key in TypeRegexTemplates.Keys)
             if (!AppliedOrderTypes.Contains(key))
                 tokenizerBuilder.Match(key);
 
@@ -129,7 +124,7 @@ public static class TypeRegistry
         if (AppliedOrderTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
-        tokenizerBuilder.Match(Span.Regex(TypeRegexPatterns[tokenCaptureType]), tokenCaptureType);
+        tokenizerBuilder.Match(Span.Regex(TypeRegexTemplates[tokenCaptureType].RenderedRegex), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;

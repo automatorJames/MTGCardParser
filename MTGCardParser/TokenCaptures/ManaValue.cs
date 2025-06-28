@@ -5,7 +5,8 @@ public class ManaValue : ITokenCapture
     public RegexTemplate<ManaValue> RegexTemplate => new(nameof(ManaSymbols));
 
 
-    [RegexPattern(@"(?<=\{)(?:[0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)(?=\})")]
+    [RegexPattern(@"(\{([0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)\})+")]
+    //[RegexPattern(@"(?<ManaSymols>\{c\}\{c\}\{c\})")]
     public TokenSegment ManaSymbols { get; set; }
 
 
@@ -15,45 +16,51 @@ public class ManaValue : ITokenCapture
 
         foreach (Match match in matches)
         {
-            var symbol = match.Groups["ManaSymbol"].Value.ToLowerInvariant();
+            var symbols = match.Groups[nameof(ManaSymbols)].Value.ToLowerInvariant();
+            var symbolsMatches = Regex.Matches(symbols, @"(?<=\{)[^{}]+(?=\})");
 
-            switch (symbol)
+            foreach (var symbol in symbolsMatches.Select(x => x.Value))
             {
-                case "w": White++; break;
-                case "u": Blue++; break;
-                case "b": Black++; break;
-                case "r": Red++; break;
-                case "g": Green++; break;
-                case "x": X++; break;
-                case "c": Colorless++; break;
-                case "∞": Infinite++; break;
-                case "p": Phyrexian++; break;
-                case "s": Snow++; break;
 
-                case "w/u": HybridWhiteBlue++; break;
-                case "w/b": HybridWhiteBlack++; break;
-                case "u/b": HybridBlueBlack++; break;
-                case "u/r": HybridBlueRed++; break;
-                case "b/r": HybridBlackRed++; break;
-                case "b/g": HybridBlackGreen++; break;
-                case "r/g": HybridRedGreen++; break;
-                case "r/w": HybridRedWhite++; break;
-                case "g/w": HybridGreenWhite++; break;
-                case "g/u": HybridGreenBlue++; break;
+                switch (symbol)
+                {
+                    case "w": White++; break;
+                    case "u": Blue++; break;
+                    case "b": Black++; break;
+                    case "r": Red++; break;
+                    case "g": Green++; break;
+                    case "x": X++; break;
+                    case "c": Colorless++; break;
+                    case "∞": Infinite++; break;
+                    case "p": Phyrexian++; break;
+                    case "s": Snow++; break;
 
-                case "2/w": TwoOrWhite++; break;
-                case "2/u": TwoOrBlue++; break;
-                case "2/b": TwoOrBlack++; break;
-                case "2/r": TwoOrRed++; break;
-                case "2/g": TwoOrGreen++; break;
+                    case "w/u": HybridWhiteBlue++; break;
+                    case "w/b": HybridWhiteBlack++; break;
+                    case "u/b": HybridBlueBlack++; break;
+                    case "u/r": HybridBlueRed++; break;
+                    case "b/r": HybridBlackRed++; break;
+                    case "b/g": HybridBlackGreen++; break;
+                    case "r/g": HybridRedGreen++; break;
+                    case "r/w": HybridRedWhite++; break;
+                    case "g/w": HybridGreenWhite++; break;
+                    case "g/u": HybridGreenBlue++; break;
 
-                default:
-                    if (int.TryParse(symbol, out int numericValue))
-                        Colorless += numericValue;
-                    else
-                        throw new Exception($"Unrecognized mana symbol: {symbol}");
-                    break;
+                    case "2/w": TwoOrWhite++; break;
+                    case "2/u": TwoOrBlue++; break;
+                    case "2/b": TwoOrBlack++; break;
+                    case "2/r": TwoOrRed++; break;
+                    case "2/g": TwoOrGreen++; break;
+
+                    default:
+                        if (int.TryParse(symbol, out int numericValue))
+                            Colorless += numericValue;
+                        else
+                            throw new Exception($"Unrecognized mana symbol: {symbol}");
+                        break;
+                }
             }
+
         }
 
         return true;

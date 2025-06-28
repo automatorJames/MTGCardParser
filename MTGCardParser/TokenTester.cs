@@ -175,7 +175,7 @@ public class TokenTester
                 string typeName = type.Name;
                 int count = AggregateCardAnalysis.TokenCaptureCounts[type];
                 string colorHex = ToHex(_typeColors[type]);
-                string renderedRegex = TypeRegistry.TypeRegexPatterns[type];
+                string renderedRegex = TypeRegistry.TypeRegexTemplates[type].RenderedRegex;
                 string encodedTypeName = HtmlReportGenerator.Encode(typeName);
                 sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
                 sb.Append("<h3>");
