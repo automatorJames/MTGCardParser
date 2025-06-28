@@ -474,3 +474,15 @@ public enum LoseOrGain
     Lose,
     Gain
 }
+
+public enum PermanentVerb
+{
+    [RegexPattern("get(s)?")]
+    Get,
+
+    [RegexPattern("have|has")]
+    Have,
+
+    [RegexPattern("deal(s)?")]
+    Deal
+}

@@ -59,13 +59,21 @@ public class RegexTemplate<T> : RegexTemplate
             var segmentString = segment.RegexString;
             RenderedRegex += segmentString;
 
-            if (i < RegexSegments.Count - 1 && !_noSpaces && !(segment is CaptureGroup capGroup && capGroup.CapturePropType == CapturePropType.Bool))
+            var shouldAddSpace =
+                !_noSpaces
+                && i < RegexSegments.Count - 1
+                && !(segment is CaptureGroup capGroup && capGroup.CapturePropType == CapturePropType.Bool)
+                && !TerminalPunctuation.Contains(segmentString);
+
+            if (shouldAddSpace)
                 RenderedRegex += " ";
         }
 
         // We don't need word boundaries where there are spaces (this step just improves regex human readability)
         RenderedRegex = RenderedRegex.Replace(@"\b \b", " ");
     }
+
+    static HashSet<string> TerminalPunctuation = [".", ",", ";"];
 
     CaptureGroup TokenCaptureSubPropertyToCaptureGroup(PropertyInfo subTokenCaptureProp)
     {

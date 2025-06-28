@@ -2,7 +2,8 @@
 
 public class EnchantedCard : ITokenCapture
 {
-    public RegexTemplate<EnchantCard> RegexTemplate => new("enchanted", nameof(CardType));
+    public RegexTemplate<EnchantedCard> RegexTemplate => new("enchanted", nameof(CardType), nameof(PermanentVerb));
 
     public CardType? CardType { get; set; }
+    public PermanentVerb? PermanentVerb { get; set; }
 }

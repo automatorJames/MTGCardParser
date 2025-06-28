@@ -6,7 +6,6 @@ public class ActivatedAbility : ITokenCapture
 
     public ActivationCost ActivationCost { get; set; }
 
-    [RegexPattern(@".+\.")]
+    [RegexPattern(@".+\.\)?")]
     public TokenSegment Effect { get; set; }
-
 }
