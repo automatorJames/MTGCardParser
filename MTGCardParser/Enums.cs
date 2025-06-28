@@ -2,37 +2,37 @@
 
 public enum Quantity
 {
-    [RegPat("none", "zero", "0")]
+    [RegexPattern("none", "zero", "0")]
     Zero = 0,
 
-    [RegPat("one", "1")]
+    [RegexPattern("one", "1")]
     One = 1,
 
-    [RegPat("two", "2")]
+    [RegexPattern("two", "2")]
     Two = 2,
 
-    [RegPat("three", "3")]
+    [RegexPattern("three", "3")]
     Three = 3,
 
-    [RegPat("four", "4")]
+    [RegexPattern("four", "4")]
     Four = 4,
 
-    [RegPat("five", "5")]
+    [RegexPattern("five", "5")]
     Five = 5,
 
-    [RegPat("six", "6")]
+    [RegexPattern("six", "6")]
     Six = 6,
 
-    [RegPat("seven", "7")]
+    [RegexPattern("seven", "7")]
     Seven = 7,
 
-    [RegPat("eight", "8")]
+    [RegexPattern("eight", "8")]
     Eight = 8,
 
-    [RegPat("nine", "9")]
+    [RegexPattern("nine", "9")]
     Nine = 9,
 
-    [RegPat("ten", "10")]
+    [RegexPattern("ten", "10")]
     Ten = 10
 }
 
@@ -54,8 +54,8 @@ public enum Keyword
     // Evergreen
     Deathtouch,
     Defender,
-    [RegPat("first strike")] FirstStrike,
-    [RegPat("double strike")] DoubleStrike,
+    [RegexPattern("first strike")] FirstStrike,
+    [RegexPattern("double strike")] DoubleStrike,
     Enchant,
     Equip,
     Flash,
@@ -87,10 +87,10 @@ public enum Keyword
     Affinity,
     Amplify,
     Annihilator,
-    [RegPat("aura swap")] AuraSwap,
+    [RegexPattern("aura swap")] AuraSwap,
     Banding,
-    [RegPat("bands with other")] BandsWithOther,
-    [RegPat("battle cry")] BattleCry,
+    [RegexPattern("bands with other")] BandsWithOther,
+    [RegexPattern("battle cry")] BattleCry,
     Bestow,
     Bloodthirst,
     Bushido,
@@ -102,7 +102,7 @@ public enum Keyword
     Clash,
     Conspire,
     Convoke,
-    [RegPat("cumulative upkeep")] CumulativeUpkeep,
+    [RegexPattern("cumulative upkeep")] CumulativeUpkeep,
     Cycling,
     Delve,
     Detain,
@@ -131,8 +131,8 @@ public enum Keyword
     Horsemanship,
     Infect,
     Kicker,
-    [RegPat("level up")] LevelUp,
-    [RegPat("living weapon")] LivingWeapon,
+    [RegexPattern("level up")] LevelUp,
+    [RegexPattern("living weapon")] LivingWeapon,
     Madness,
     Miracle,
     Modular,
@@ -162,11 +162,11 @@ public enum Keyword
     Soulbond,
     Soulshift,
     Splice,
-    [RegPat("split second")] SplitSecond,
+    [RegexPattern("split second")] SplitSecond,
     Storm,
     Sunburst,
     Suspend,
-    [RegPat("totem armor")] TotemArmor,
+    [RegexPattern("totem armor")] TotemArmor,
     Transfigure,
     Transform,
     Transmute,
@@ -183,12 +183,12 @@ public enum Keyword
     Channel,
     Chroma,
     Domain,
-    [RegPat("fateful hour")] FatefulHour,
+    [RegexPattern("fateful hour")] FatefulHour,
     Grandeur,
     Hellbent,
     Heroic,
     Imprint,
-    [RegPat("join forces")] JoinForces,
+    [RegexPattern("join forces")] JoinForces,
     Kinship,
     Landfall,
     Metalcraft,
@@ -206,8 +206,8 @@ public enum Keyword
 public enum CounterType
 {
     // Common counters
-    [RegPat(@"\+1/\+1")] PlusOnePlusOne,
-    [RegPat(@"-1/-1")] MinusOneMinusOne,
+    [RegexPattern(@"\+1/\+1")] PlusOnePlusOne,
+    [RegexPattern(@"-1/-1")] MinusOneMinusOne,
     Charge,
     Defense,
     Energy,
@@ -221,8 +221,8 @@ public enum CounterType
 
     // Keyword counters
     Deathtouch,
-    [RegPat("double strike")] DoubleStrike,
-    [RegPat("first strike")] FirstStrike,
+    [RegexPattern("double strike")] DoubleStrike,
+    [RegexPattern("first strike")] FirstStrike,
     Flying,
     Haste,
     Hexproof,
@@ -236,7 +236,7 @@ public enum CounterType
 
     // Mechanic counters
     Age,
-    [RegPat("crank!")] Crank,
+    [RegexPattern("crank!")] Crank,
     Divinity,
     Fade,
     Ki,
@@ -403,7 +403,7 @@ public enum CounterType
     Pin,
     Plot,
     Polyp,
-    [RegPat("Pop!")] Pop,
+    [RegexPattern("Pop!")] Pop,
     Possession,
     Prey,
     Pupa,
@@ -435,7 +435,7 @@ public enum CounterType
     Takeover,
     Task,
     Theft,
-    [RegPat("third-degree-burn")] ThirdDegreeBurn,
+    [RegexPattern("third-degree-burn")] ThirdDegreeBurn,
     Tower,
     Training,
     Trap,
@@ -452,8 +452,8 @@ public enum CounterType
 
     // Test card counters
     Art,
-    [RegPat("base power")] BasePower,
-    [RegPat("base toughness")] BaseToughness,
+    [RegexPattern("base power")] BasePower,
+    [RegexPattern("base toughness")] BaseToughness,
     Day,
     Glass,
     Hole,
@@ -466,4 +466,11 @@ public enum CounterType
     Shy,
     Stroopwafel,
     Token
+}
+
+[RegexOptions(OptionalPlural = true)]
+public enum LoseOrGain
+{
+    Lose,
+    Gain
 }

@@ -1,23 +1,24 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-[RegOpt(DoNotWrapInWordBoundaries = true)]
-public class Punctuation : ITokenCapture
+public class Punctuation : TokenCaptureBase<Punctuation>
 {
-    public string RegexTemplate => $@"§{nameof(PunctuationCharacter)}§";
+    public override RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));
+
     public PunctuationCharacter? PunctuationCharacter { get; set; }
 }
 
+[RegexOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
 public enum PunctuationCharacter
 {
-    [RegPat(@"\.")] 
+    [RegexPattern(@"\.")] 
     Period,
 
-    [RegPat(@",")]
+    [RegexPattern(@",")]
     Comma,
 
-    [RegPat(@"""")]
+    [RegexPattern(@"""")]
     Quote,
 
-    [RegPat(@";")]
+    [RegexPattern(@";")]
     Semicolon
 }

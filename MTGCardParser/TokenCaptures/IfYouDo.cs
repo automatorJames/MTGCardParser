@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class IfYouDo : ITokenCapture
+public class IfYouDo : TokenCaptureBase<IfYouDo>
 {
-    public string RegexTemplate => $@"if you do,";
+    public override RegexTemplate<IfYouDo> RegexTemplate => new("if you do,");
 }

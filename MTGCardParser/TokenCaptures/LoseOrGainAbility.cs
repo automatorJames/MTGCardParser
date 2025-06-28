@@ -1,18 +1,12 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class LoseOrGainAbility : ITokenCapture
+public class LoseOrGainAbility : TokenCaptureBase<LoseOrGainAbility>
 {
-    public string RegexTemplate => $@"§{nameof(LoseOrGain)}§ ""(?<{nameof(Ability)}>[^""]+)""";
+    public override RegexTemplate<LoseOrGainAbility> RegexTemplate => new(nameof(LoseOrGain), "\"", nameof(Ability), "\"");
 
+
+    [RegexPattern("[^\"]+")]
     public TokenSegment Ability { get; set; }
+
     public LoseOrGain? LoseOrGain { get; set; }
-}
-
-public enum LoseOrGain
-{
-    [RegPat("loses?")]
-    Lose,
-
-    [RegPat("gains?")]
-    Gain
 }

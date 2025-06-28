@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class This : ITokenCapture
+public class This : TokenCaptureBase<This>
 {
-    public string RegexTemplate => @"\{this\}";
+    public override RegexTemplate<This> RegexTemplate => new(@"\{this\}");
 }

@@ -4,6 +4,7 @@ internal class Program
 {
     static void Main(string[] args)
     {
+        TypeRegistry.Initialize();
         //var cards = DataGetter.GetCards(1, true);
         //var result = MtgTextAnalyzer.GetCoveragePatterns(cards);
 

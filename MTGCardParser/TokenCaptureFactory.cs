@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser;
+﻿/*namespace MTGCardParser;
 
 public static class TokenCaptureFactory
 {
@@ -17,10 +17,7 @@ public static class TokenCaptureFactory
     static void RegisterRegexTemplates()
     {
         foreach (var type in GetTokenCaptureTypes())
-        {
-            _regexTemplates.Add(type, type.GetRegexTemplate());
-            _renderedRegexes.Add(type, type.GetRenderedRegex());
-        }
+            _renderedRegexes.Add(type, ITokenCapture.GetRenderedRegex(type));
     }
 
     public static string GetRegexTemplate(Type type)
@@ -54,96 +51,97 @@ public static class TokenCaptureFactory
                 && typeof(ITokenCapture).IsAssignableFrom(t))
             .ToList();
 
-    public static Tokenizer<Type> GetTokenizer()
-    {
-        var tokenizerBuilder = new TokenizerBuilder<Type>();
+    //public static Tokenizer<Type> GetTokenizer()
+    //{
+    //    var tokenizerBuilder = new TokenizerBuilder<Type>();
+    //
+    //    tokenizerBuilder.Ignore(Span.Regex(@"[ \t]+"));
+    //
+    //    tokenizerBuilder
+    //        .Match(typeof(This))
+    //        .Match(typeof(LoseOrGainAbility))
+    //        .Match(typeof(ActivatedAbility))
+    //        .Match(typeof(EnchantCard))
+    //        .Match(typeof(CardKeyword))
+    //        .Match(typeof(AtOrUntilPlayerPhase))
+    //        .Match(typeof(IfYouDo))
+    //        .Match(typeof(EnchantedCard))
+    //        .Match(typeof(LifeChangeQuantity))
+    //        .Match(typeof(ManaValue))
+    //        .Match(typeof(Punctuation))
+    //        .Match(typeof(Parenthetical));
+    //
+    //    // Apply assembly types that weren't applied above (failsafe for laziness)
+    //    foreach (var key in _regexTemplates.Keys)
+    //        if (!AppliedOrderTypes.Contains(key))
+    //            tokenizerBuilder.Match(key);
+    //
+    //    tokenizerBuilder
+    //        .Match(@"[^.,;""\s]+");
+    //
+    //    return tokenizerBuilder.Build();
+    //
+    //
+    //    //return new TokenizerBuilder<MtgToken>()
+    //    //.Ignore(Span.Regex(@"[ \t]+"))
+    //    ////.PatternMatch(MtgToken.Newline, "\n", wrapInWordboundary: false)
+    //    ////.PatternMatch(MtgToken.Period, ".", wrapInWordboundary: false)
+    //    //.PatternMatch(MtgToken.This, @"\{this\}", wrapInWordboundary: false)
+    //    //.PatternMatch(MtgToken.Target, "target(s|ed)?")
+    //    //.PatternMatch(MtgToken.Until, "until")
+    //    //.PatternMatch(MtgToken.Tap, @"\{t\}", wrapInWordboundary: false)
+    //    //.PatternMatch(MtgToken.X, "x")
+    //    //.PatternMatch(MtgToken.Destroy, "destroy(s|ed)?")
+    //    //.PatternMatch(MtgToken.ThatDamage, "that damage")
+    //    ////.PatternMatch(MtgToken.PayCost)
+    //    ////.PatternMatch(MtgToken.Color)
+    //    ////.PatternMatch(MtgToken.EnchantCardType)
+    //    ////.PatternMatch(MtgToken.CardType)
+    //    ////.PatternMatch(MtgToken.SubType)
+    //    ////.PatternMatch(MtgToken.CardQuantityChange)
+    //    ////.PatternMatch(MtgToken.Keyword)
+    //    ////.PatternMatch(MtgToken.PlusMinusPowerToughness)
+    //    ////.PatternMatch(MtgToken.AddMana)
+    //    ////.PatternMatch(MtgToken.ManaCost)
+    //    ////.PatternMatch(MtgToken.GamePhase)
+    //    ////.PatternMatch(MtgToken.Who)
+    //    ////.PatternMatch(MtgToken.DealDamageAmount)
+    //    ////.PatternMatch(MtgToken.NextDamageAmount)
+    //    ////.PatternMatch(MtgToken.Quantity)
+    //    //.PatternMatch(MtgToken.When, "when(ever)?")
+    //    //.PatternMatch(MtgToken.Has, "(has|had|have)")
+    //    //.PatternMatch(MtgToken.Get, "get(s)?")
+    //    //.PatternMatch(MtgToken.From, "from")
+    //    //.PatternMatch(MtgToken.May, "may")
+    //    //.PatternMatch(MtgToken.DamageToAny, "damage to any")
+    //    //.PatternMatch(MtgToken.IfYouDo, "if you do,")
+    //    //.PatternMatch(MtgToken.That, "that")
+    //    //.PatternMatch(MtgToken.And, "and")
+    //    //.PatternMatch(MtgToken.If, "if")
+    //    //.PatternMatch(MtgToken.Possessive, "'s", wrapInWordboundary: false)
+    //    //.PatternMatch(MtgToken.Comma, ",", wrapInWordboundary: false)
+    //    //.PatternMatch(MtgToken.Text, @"\S+", wrapInWordboundary: false)
+    //    //.Build();
+    //}
 
-        tokenizerBuilder.Ignore(Span.Regex(@"[ \t]+"));
-
-        tokenizerBuilder
-            .Match(typeof(This))
-            .Match(typeof(LoseOrGainAbility))
-            .Match(typeof(ActivatedAbility))
-            .Match(typeof(EnchantCard))
-            .Match(typeof(CardKeyword))
-            .Match(typeof(AtOrUntilPlayerPhase))
-            .Match(typeof(IfYouDo))
-            .Match(typeof(EnchantedCard))
-            .Match(typeof(LifeChangeQuantity))
-            .Match(typeof(ManaValue))
-            .Match(typeof(Punctuation))
-            .Match(typeof(Parenthetical));
-
-        // Apply assembly types that weren't applied above (failsafe for laziness)
-        foreach (var key in _regexTemplates.Keys)
-            if (!AppliedOrderTypes.Contains(key))
-                tokenizerBuilder.Match(key);
-
-        tokenizerBuilder
-            .Match(@"[^.,;""\s]+");
-
-        return tokenizerBuilder.Build();
-
-
-        //return new TokenizerBuilder<MtgToken>()
-        //.Ignore(Span.Regex(@"[ \t]+"))
-        ////.PatternMatch(MtgToken.Newline, "\n", wrapInWordboundary: false)
-        ////.PatternMatch(MtgToken.Period, ".", wrapInWordboundary: false)
-        //.PatternMatch(MtgToken.This, @"\{this\}", wrapInWordboundary: false)
-        //.PatternMatch(MtgToken.Target, "target(s|ed)?")
-        //.PatternMatch(MtgToken.Until, "until")
-        //.PatternMatch(MtgToken.Tap, @"\{t\}", wrapInWordboundary: false)
-        //.PatternMatch(MtgToken.X, "x")
-        //.PatternMatch(MtgToken.Destroy, "destroy(s|ed)?")
-        //.PatternMatch(MtgToken.ThatDamage, "that damage")
-        ////.PatternMatch(MtgToken.PayCost)
-        ////.PatternMatch(MtgToken.Color)
-        ////.PatternMatch(MtgToken.EnchantCardType)
-        ////.PatternMatch(MtgToken.CardType)
-        ////.PatternMatch(MtgToken.SubType)
-        ////.PatternMatch(MtgToken.CardQuantityChange)
-        ////.PatternMatch(MtgToken.Keyword)
-        ////.PatternMatch(MtgToken.PlusMinusPowerToughness)
-        ////.PatternMatch(MtgToken.AddMana)
-        ////.PatternMatch(MtgToken.ManaCost)
-        ////.PatternMatch(MtgToken.GamePhase)
-        ////.PatternMatch(MtgToken.Who)
-        ////.PatternMatch(MtgToken.DealDamageAmount)
-        ////.PatternMatch(MtgToken.NextDamageAmount)
-        ////.PatternMatch(MtgToken.Quantity)
-        //.PatternMatch(MtgToken.When, "when(ever)?")
-        //.PatternMatch(MtgToken.Has, "(has|had|have)")
-        //.PatternMatch(MtgToken.Get, "get(s)?")
-        //.PatternMatch(MtgToken.From, "from")
-        //.PatternMatch(MtgToken.May, "may")
-        //.PatternMatch(MtgToken.DamageToAny, "damage to any")
-        //.PatternMatch(MtgToken.IfYouDo, "if you do,")
-        //.PatternMatch(MtgToken.That, "that")
-        //.PatternMatch(MtgToken.And, "and")
-        //.PatternMatch(MtgToken.If, "if")
-        //.PatternMatch(MtgToken.Possessive, "'s", wrapInWordboundary: false)
-        //.PatternMatch(MtgToken.Comma, ",", wrapInWordboundary: false)
-        //.PatternMatch(MtgToken.Text, @"\S+", wrapInWordboundary: false)
-        //.Build();
-    }
-
-    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
-    {
-        if (AppliedOrderTypes.Contains(tokenCaptureType))
-            return tokenizerBuilder;
-
-        var renderedRegex = GetRenderedRegex(tokenCaptureType);
-        tokenizerBuilder.Match(Span.Regex(_renderedRegexes[tokenCaptureType]), tokenCaptureType);
-
-        AppliedOrderTypes.Add(tokenCaptureType);
-
-        return tokenizerBuilder;
-    }
-
-    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, string regexPattern, bool wrapInWordboundary = true)
-    {
-        tokenizerBuilder.Match(Span.Regex(regexPattern), typeof(string));
-        return tokenizerBuilder;
-    }
+    //public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
+    //{
+    //    if (AppliedOrderTypes.Contains(tokenCaptureType))
+    //        return tokenizerBuilder;
+    //
+    //    var renderedRegex = GetRenderedRegex(tokenCaptureType);
+    //    tokenizerBuilder.Match(Span.Regex(_renderedRegexes[tokenCaptureType]), tokenCaptureType);
+    //
+    //    AppliedOrderTypes.Add(tokenCaptureType);
+    //
+    //    return tokenizerBuilder;
+    //}
+    //
+    //public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, string regexPattern, bool wrapInWordboundary = true)
+    //{
+    //    tokenizerBuilder.Match(Span.Regex(regexPattern), typeof(string));
+    //    return tokenizerBuilder;
+    //}
 }
 
+*/

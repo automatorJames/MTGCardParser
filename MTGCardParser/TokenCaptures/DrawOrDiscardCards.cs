@@ -1,14 +1,14 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class DrawOrDiscardCards : ITokenCapture
+public class DrawOrDiscardCards : TokenCaptureBase<DrawOrDiscardCards>
 {
-    public string RegexTemplate => $@"§{nameof(CardVerb)}§ §{nameof(Quantity)}§ cards?";
+    public override RegexTemplate<DrawOrDiscardCards> RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
 
     public CardVerb? CardVerb { get; set; }
     public Quantity? Quantity { get; set; }
 }
 
-[RegOpt(OptionalPlural = true)]
+[RegexOptions(OptionalPlural = true)]
 public enum CardVerb
 {
     Draw,

@@ -1,15 +1,15 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class AtOrUntilPlayerPhase : ITokenCapture
+public class AtOrUntilPlayerPhase : TokenCaptureBase<AtOrUntilPlayerPhase>
 {
-    public string RegexTemplate => $@"§{nameof(ActivateOnly)}§§{nameof(TemporalDisposition)}§ the §{nameof(PhasePart)}§ of §{nameof(Whose)}§ §{nameof(Phase)}§";
+    public override RegexTemplate<AtOrUntilPlayerPhase> RegexTemplate => new(nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase));
 
     public TemporalDisposition? TemporalDisposition { get; set; }
     public PhasePart? PhasePart { get; set; }
     public Whose? Whose { get; set; }
     public Phase? Phase { get; set; }
 
-    [RegPat("activate only")]
+    [RegexPattern("activate only")]
     public bool ActivateOnly { get; set; }
 }
 
@@ -28,7 +28,7 @@ public enum PhasePart
 
 public enum Whose
 {
-    [RegPat("your opponent's")]
+    [RegexPattern("your opponent's")]
     YourOpponents,
     Your,
     Each
@@ -36,33 +36,33 @@ public enum Whose
 
 public enum Phase
 {
-    [RegPat("upkeep")]
+    [RegexPattern("upkeep")]
     Upkeep,
 
-    [RegPat("draw step")]
+    [RegexPattern("draw step")]
     DrawStep,
 
-    [RegPat("main phase")]
+    [RegexPattern("main phase")]
     MainPhase,
 
-    [RegPat("combat phase")]
+    [RegexPattern("combat phase")]
     CombatPhase,
 
-    [RegPat("combat step")]
+    [RegexPattern("combat step")]
     CombatStep,
 
-    [RegPat("declare attackers step")]
+    [RegexPattern("declare attackers step")]
     DeclareAttackersStep,
 
-    [RegPat("declare blockers step")]
+    [RegexPattern("declare blockers step")]
     DeclareBlockersStep,
 
-    [RegPat("damage step")]
+    [RegexPattern("damage step")]
     DamageStep,
 
-    [RegPat("end step")]
+    [RegexPattern("end step")]
     EndStep,
 
-    [RegPat("end of turn")]
+    [RegexPattern("end of turn")]
     EndOfTurn
 }

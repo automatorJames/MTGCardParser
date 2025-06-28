@@ -1,21 +1,17 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class ManaValue : ITokenCapture
+public class ManaValue : TokenCaptureBase<ManaValue>
 {
-    public string RegexTemplate => @"(?:\{(?<ManaSymbol>[0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)\})+";
+    public override RegexTemplate<ManaValue> RegexTemplate => new(nameof(ManaSymbols));
 
-    public ManaValue()
-    {
-    }
 
-    public ManaValue(string tokenString)
-    {
-        PopulateScalarValues(tokenString);
-    }
+    [RegexPattern(@"(?<=\{)(?:[0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)(?=\})")]
+    public TokenSegment ManaSymbols { get; set; }
 
-    public void PopulateScalarValues(string tokenString)
+
+    public bool HandleInstantiation(string tokenMatchString)
     {
-        var matches = Regex.Matches(tokenString, RegexTemplate);
+        var matches = Regex.Matches(tokenMatchString, RegexTemplate.RenderedRegex);
 
         foreach (Match match in matches)
         {
@@ -59,6 +55,8 @@ public class ManaValue : ITokenCapture
                     break;
             }
         }
+
+        return true;
     }
 
     public int Colorless { get; set; }

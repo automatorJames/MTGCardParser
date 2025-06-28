@@ -1,8 +1,4 @@
-﻿using MTGCardParser.TokenCaptures;
-using System.Text.RegularExpressions;
-using static MTGCardParser.Static.Extensions;
-
-namespace MTGCardParser;
+﻿namespace MTGCardParser;
 
 public class RegexPatternGetter
 {

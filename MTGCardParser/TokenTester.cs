@@ -21,7 +21,7 @@ public class TokenTester
         _outputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MTG_Parser_Analysis");
         Directory.CreateDirectory(_outputDir);
         _cards = DataGetter.GetCards(maxSetSequence, ignoreEmptyText: ignoreEmptyText);
-        _tokenCaptureTypes = TokenCaptureFactory.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
+        _tokenCaptureTypes = TypeRegistry.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
 
         for (int i = 0; i < _tokenCaptureTypes.Count; i++)
         {
@@ -169,22 +169,19 @@ public class TokenTester
     {
         string htmlContent = HtmlReportGenerator.Generate("Token Type Key & Regex Analysis", sb =>
         {
-            foreach (var type in TokenCaptureFactory.AppliedOrderTypes)
+            foreach (var type in TypeRegistry.AppliedOrderTypes)
             {
                 if (!AggregateCardAnalysis.TokenCaptureCounts.ContainsKey(type)) continue;
                 string typeName = type.Name;
                 int count = AggregateCardAnalysis.TokenCaptureCounts[type];
                 string colorHex = ToHex(_typeColors[type]);
-                string regexTemplate = TokenCaptureFactory.GetRegexTemplate(type);
-                string renderedRegex = TokenCaptureFactory.GetRenderedRegex(type);
+                string renderedRegex = TypeRegistry.TypeRegexPatterns[type];
                 string encodedTypeName = HtmlReportGenerator.Encode(typeName);
                 sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
                 sb.Append("<h3>");
                 sb.Append($"<span class=\"highlight\" data-title=\"{encodedTypeName}\" style=\"background-color: {colorHex};\">{encodedTypeName}</span>");
                 sb.Append($" {count} occurrences");
                 sb.Append("</h3>");
-                sb.Append("<h4>Regex Template</h4>");
-                sb.Append($"<pre><code>{HtmlReportGenerator.Encode(regexTemplate)}</code></pre>");
                 sb.Append("<h4>Rendered Regex</h4>");
                 sb.Append($"<pre><code>{HtmlReportGenerator.Encode(renderedRegex)}</code></pre>");
                 sb.Append("</div>");

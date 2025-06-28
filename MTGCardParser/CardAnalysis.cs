@@ -22,7 +22,7 @@ public class CardAnalysis
 
         foreach (var line in card.CleanedLines)
         {
-            var lineTokens = TokenCaptureFactory.Tokenize(line).ToList();
+            var lineTokens = TypeRegistry.Tokenizer.Tokenize(line).ToList();
             ProcessedLineTokens.Add(lineTokens);
         }
 
@@ -133,7 +133,7 @@ public class CardAnalysis
             List<ITokenCapture> list = new();
 
             foreach (var token in line.Where(x => x.Kind != typeof(string)))
-                list.Add(ITokenCapture.InstantiateFromToken(token));
+                list.Add(TypeRegistry.HydrateFromToken(token));
 
             Clauses.Add(new(list));
         }
