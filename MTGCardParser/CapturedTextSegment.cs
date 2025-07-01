@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser;
 
-public class TokenSegment(string text)
+public class CapturedTextSegment(string text)
 {
     public string Text { get; set; } = text;
 

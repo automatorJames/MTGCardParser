@@ -468,7 +468,7 @@ public enum CounterType
     Token
 }
 
-[RegexOptions(OptionalPlural = true)]
+[EnumOptions(OptionalPlural = true)]
 public enum LoseOrGain
 {
     Lose,

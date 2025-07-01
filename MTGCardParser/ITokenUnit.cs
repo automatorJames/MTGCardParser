@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser;
 
-public interface ITokenCapture
+public interface ITokenUnit
 {
     static string RegexTemplatePropName = "RegexTemplate";
 

@@ -1,33 +1,25 @@
 ﻿
 namespace MTGCardParser;
 
-public record EnumCaptureGroup : IRegexSegment
+public record EnumCaptureSegment : PropRegexSegmentBase
 {
-    public string Name { get; init; }
-    public string RegexString { get; private set; }
-    public Regex Regex { get; private set; }
-    public Type EnumType { get; init; }
-    public RegexOptionsAttribute Options { get; init; }
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
+    public EnumOptionsAttribute Options { get; init; }
 
 
-    public EnumCaptureGroup(Type enumType)
+    public EnumCaptureSegment(CaptureProp captureProp) : base(captureProp)
     {
-        var underlyingEnumType = Nullable.GetUnderlyingType(enumType) ?? enumType;
+        if (CaptureProp.CapturePropType != CapturePropType.Enum)
+            throw new ArgumentException($"Type '{CaptureProp.Name}' isn't an enum");
 
-        if (!underlyingEnumType.IsEnum)
-            throw new ArgumentException($"{underlyingEnumType} isn't an enum type");
-
-        Name = enumType.Name;
-        EnumType = underlyingEnumType;
-        Options = underlyingEnumType.GetCustomAttribute<RegexOptionsAttribute>() ?? new();
+        Options = CaptureProp.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
         SetRegex();
     }
 
     void SetRegex()
     {
-        var alternations = GetAlternations(EnumType);
-        RegexString = $@"(?<{Name}>{alternations})";
+        var alternations = GetAlternations();
+        RegexString = $@"(?<{CaptureProp.Name}>{alternations})";
 
         if (Options.WrapInWordBoundaries)
             RegexString = $@"\b{RegexString}\b";
@@ -35,18 +27,18 @@ public record EnumCaptureGroup : IRegexSegment
         Regex = new Regex(RegexString);
     }
 
-    string GetAlternations(Type underlyingEnumType)
+    string GetAlternations()
     {
         List<string> allMemberAlternatives = new();
-        var enumRegOptions = underlyingEnumType.GetCustomAttribute<RegexOptionsAttribute>() ?? new();
-        var enumValues = Enum.GetValues(underlyingEnumType).Cast<object>();
+        var enumRegOptions = CaptureProp.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+        var enumValues = Enum.GetValues(CaptureProp.UnderlyingType).Cast<object>();
 
         foreach (var enumValue in enumValues)
         {
             List<string> memberAlternatives = new();
 
             var enumAsString = enumValue.ToString();
-            var regexPatternAttribute = underlyingEnumType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
+            var regexPatternAttribute = CaptureProp.UnderlyingType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
             if (regexPatternAttribute != null)
                 // Add the enum member's specified string[] of patterns

@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class DrawOrDiscardCards : ITokenCapture
+public class DrawOrDiscardCards : ITokenUnit
 {
     public RegexTemplate<DrawOrDiscardCards> RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
 
@@ -8,7 +8,7 @@ public class DrawOrDiscardCards : ITokenCapture
     public Quantity? Quantity { get; set; }
 }
 
-[RegexOptions(OptionalPlural = true)]
+[EnumOptions(OptionalPlural = true)]
 public enum CardVerb
 {
     Draw,

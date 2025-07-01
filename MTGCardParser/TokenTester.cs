@@ -21,7 +21,7 @@ public class TokenTester
         _outputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MTG_Parser_Analysis");
         Directory.CreateDirectory(_outputDir);
         _cards = DataGetter.GetCards(maxSetSequence, ignoreEmptyText: ignoreEmptyText);
-        _tokenCaptureTypes = TypeRegistry.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
+        _tokenCaptureTypes = TokenUnitRegexRegister.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
 
         for (int i = 0; i < _tokenCaptureTypes.Count; i++)
         {
@@ -151,7 +151,7 @@ public class TokenTester
 
     private string GetValueCssClass(Type type)
     {
-        if (type == typeof(TokenSegment)) return "value-tokensegment";
+        if (type == typeof(CapturedTextSegment)) return "value-tokensegment";
         bool isEnum = type.IsEnum || (Nullable.GetUnderlyingType(type)?.IsEnum ?? false);
         if (isEnum) return "value-enum";
         return "value-default";
@@ -169,13 +169,13 @@ public class TokenTester
     {
         string htmlContent = HtmlReportGenerator.Generate("Token Type Key & Regex Analysis", sb =>
         {
-            foreach (var type in TypeRegistry.AppliedOrderTypes)
+            foreach (var type in TokenUnitRegexRegister.AppliedOrderTypes)
             {
                 if (!AggregateCardAnalysis.TokenCaptureCounts.ContainsKey(type)) continue;
                 string typeName = type.Name;
                 int count = AggregateCardAnalysis.TokenCaptureCounts[type];
                 string colorHex = ToHex(_typeColors[type]);
-                string renderedRegex = TypeRegistry.TypeRegexTemplates[type].RenderedRegex;
+                string renderedRegex = TokenUnitRegexRegister.TypeRegexTemplates[type].RenderedRegex;
                 string encodedTypeName = HtmlReportGenerator.Encode(typeName);
                 sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
                 sb.Append("<h3>");

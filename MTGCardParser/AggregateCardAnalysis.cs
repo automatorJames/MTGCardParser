@@ -9,7 +9,7 @@ public class AggregateCardAnalysis
 
     public AggregateCardAnalysis(List<Card> cards)
     {
-        foreach (var type in TypeRegistry.AppliedOrderTypes.OrderBy(x => x.Name))
+        foreach (var type in TokenUnitRegexRegister.AppliedOrderTypes.OrderBy(x => x.Name))
             TokenCaptureCounts[type] = 0;
 
         foreach (Card card in cards)

@@ -2,7 +2,7 @@
 
 public record ClauseEffects
 (
-    List<ITokenCapture> Effects
+    List<ITokenUnit> Effects
 );
 
 

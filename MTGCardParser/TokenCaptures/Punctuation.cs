@@ -1,13 +1,13 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class Punctuation : ITokenCapture
+public class Punctuation : ITokenUnit
 {
     public RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));
 
     public PunctuationCharacter? PunctuationCharacter { get; set; }
 }
 
-[RegexOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
+[EnumOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
 public enum PunctuationCharacter
 {
     [RegexPattern(@"\.")] 

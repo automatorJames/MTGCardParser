@@ -1,11 +1,12 @@
 ﻿namespace MTGCardParser;
 
-public static class TypeRegistry
+public static class TokenUnitRegexRegister
 {
-    public static Dictionary<Type, List<CaptureProp>> CaptureProps { get; set; } = new();
+    //public static Dictionary<Type, List<PropertyInfo>> TypeCaptureProps { get; set; } = new();
     public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
-    public static Dictionary<PropertyInfo, IRegexSegment> PropRegexPatterns { get; set; } = new();
+    //public static Dictionary<CaptureProp, IPropRegexSegment> PropRegexSegments { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
+    //public static Dictionary<PropertyInfo, List<PropertyInfo>> AlternatePropSets { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
@@ -21,55 +22,47 @@ public static class TypeRegistry
         foreach (var instance in instances)
         {
             var type = instance.GetType();
-            var captureProps = GetCaptureProps(type);
-            CaptureProps[type] = captureProps;
             var regexTemplate = new RegexTemplate(instance.RegexTemplate);
             TypeRegexTemplates[type] = regexTemplate;
+            var propCaptureSegments = regexTemplate.PropCaptureSegments;
 
-            foreach (var propEntry in regexTemplate.PropRegexSegments)
-                PropRegexPatterns[propEntry.Key] = propEntry.Value;
+            //foreach (var propCaptureSegment in propCaptureSegments)
+            //    PropRegexSegments[propCaptureSegment.CaptureProp] = propCaptureSegment;
 
-            var unregisteredEnums = regexTemplate.PropRegexSegments
-                .Where(x => x.Value is EnumCaptureGroup enumCap && !EnumRegexes.ContainsKey(enumCap.EnumType))
-                .Select(x => x.Value as EnumCaptureGroup);
+            var unregisteredEnums = propCaptureSegments
+                .OfType<EnumCaptureSegment>()
+                .Where(x => !EnumRegexes.ContainsKey(x.CaptureProp.UnderlyingType));
 
             foreach (var enumEntry in unregisteredEnums)
-            {
-                var newEnumEntry = EnumRegexes[enumEntry.EnumType] = new();
-
-                foreach (var enumValueEntry in enumEntry.EnumMemberRegexes)
-                    newEnumEntry[enumValueEntry.Key] = enumValueEntry.Value;
-            }
+                EnumRegexes[enumEntry.CaptureProp.UnderlyingType] = enumEntry.EnumMemberRegexes;
         }
     }
 
-    public static ITokenCapture HydrateFromToken(Token<Type> token) => InstantiateFromTypeAndMatchString(token.Kind, token.ToStringValue());
+    public static ITokenUnit HydrateFromToken(Token<Type> token) => InstantiateFromTypeAndMatchString(token.Kind, token.ToStringValue());
 
-    public static ITokenCapture InstantiateFromTypeAndMatchString(Type type, string matchString)
+    public static ITokenUnit InstantiateFromTypeAndMatchString(Type type, string matchString)
     {
-        if (!type.IsAssignableTo(typeof(ITokenCapture)))
-            throw new Exception($"{type.Name} does not implement {nameof(ITokenCapture)}");
+        if (!type.IsAssignableTo(typeof(ITokenUnit)))
+            throw new Exception($"{type.Name} does not implement {nameof(ITokenUnit)}");
 
-        var instance = (ITokenCapture)Activator.CreateInstance(type);
+        var parentInstance = (ITokenUnit)Activator.CreateInstance(type);
 
         // If implementing class overrides instantiation, return after handling
-        if (instance.HandleInstantiation(matchString))
-            return instance;
-        // Otherwise handle instantiation here
+        if (parentInstance.HandleInstantiation(matchString))
+            return parentInstance;
+        // Otherwise handle default instantiation
         else
         {
-            var typeMatch = Regex.Match(matchString, TypeRegexTemplates[type].RenderedRegex);
+            foreach (var propCaptureSegment in parentInstance.RegexTemplate.PropCaptureSegments)
+                propCaptureSegment.SetValueFromMatchString(parentInstance, matchString);
 
-            foreach (var captureProp in CaptureProps[type])
-                captureProp.SetValue(instance, typeMatch);
-
-            return instance;
+            return parentInstance;
         }
     }
 
-    static List<ITokenCapture> GetTokenCaptureInstances() =>
+    static List<ITokenUnit> GetTokenCaptureInstances() =>
         GetTokenCaptureTypes()
-        .Select(x => (ITokenCapture)Activator.CreateInstance(x))
+        .Select(x => (ITokenUnit)Activator.CreateInstance(x))
         .ToList();
 
     static List<Type> GetTokenCaptureTypes() =>
@@ -79,14 +72,11 @@ public static class TypeRegistry
                 // 1) It’s a concrete class
                 t.IsClass && !t.IsAbstract
                 // 2) It implements ITokenCapture (directly or indirectly)
-                && typeof(ITokenCapture).IsAssignableFrom(t))
+                && typeof(ITokenUnit).IsAssignableFrom(t))
             .ToList();
 
 
-    static List<CaptureProp> GetCaptureProps(Type type) => 
-        type.GetPropertiesForCapture()
-        .Select(x => new CaptureProp(x))
-        .ToList();
+    //static List<PropertyInfo> GetCaptureProps(Type type) => type.GetPropertiesForCapture().ToList();
 
     static void InitializeTokenizer()
     {

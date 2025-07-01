@@ -1,8 +1,8 @@
 ﻿namespace MTGCardParser.Attributes;
 
 [AttributeUsage(AttributeTargets.Enum)]
-public class RegexOptionsAttribute : Attribute
+public class EnumOptionsAttribute : Attribute
 {
     public bool WrapInWordBoundaries { get; set; } = true;
-    public bool OptionalPlural { get; set; } = true;
+    public bool OptionalPlural { get; set; } = false;
 }

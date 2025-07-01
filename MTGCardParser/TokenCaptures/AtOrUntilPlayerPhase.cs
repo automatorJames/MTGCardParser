@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class AtOrUntilPlayerPhase : ITokenCapture
+public class AtOrUntilPlayerPhase : ITokenUnit
 {
     public RegexTemplate<AtOrUntilPlayerPhase> RegexTemplate => new(nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase));
 

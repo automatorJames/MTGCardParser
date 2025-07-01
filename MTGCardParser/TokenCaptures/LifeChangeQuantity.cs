@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
-public class LifeChangeQuantity : ITokenCapture
+public class LifeChangeQuantity : ITokenUnit
 {
     public RegexTemplate<LifeChangeQuantity> RegexTemplate => new(nameof(LifeVerb), nameof(Quantity), "life");
 

@@ -1,13 +1,13 @@
 ﻿namespace MTGCardParser.TokenCaptures;
 
 [NoSpaces]
-public class LoseOrGainAbility : ITokenCapture
+public class LoseOrGainAbility : ITokenUnit
 {
     public RegexTemplate<LoseOrGainAbility> RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
 
 
     [RegexPattern("[^\"]+")]
-    public TokenSegment Ability { get; set; }
+    public CapturedTextSegment Ability { get; set; }
 
     public LoseOrGain? LoseOrGain { get; set; }
 }

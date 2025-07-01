@@ -3,12 +3,9 @@ using System.Text;
 
 namespace MTGCardParser;
 
-public record RegexSegment : IRegexSegment
+public record TextSegment : RegexSegmentBase
 {
-    public Regex Regex { get; init; }
-    public string RegexString { get; init; }
-
-    public RegexSegment(string pattern)
+    public TextSegment(string pattern)
     {
         RegexString = WrapInSmartWordBoundaries(pattern);
         Regex = new Regex(RegexString);
