@@ -7,7 +7,7 @@ public static class TokenUnitRegexRegister
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
-    public static void Initialize()
+    static TokenUnitRegexRegister()
     {
         RegisterTypes();
         InitializeTokenizer();
