@@ -1,20 +1,15 @@
-﻿namespace MTGCardParser;
+﻿using MTGCardParser.RegexSegmentDTOs.Interfaces;
+
+namespace MTGCardParser;
 
 public class RegexTemplate
 {
     protected bool _noSpaces;
     public List<CaptureProp> CaptureProps { get; set; }
     public string RenderedRegex { get; set; }
-
-    //public Dictionary<PropertyInfo, List<PropertyInfo>> AlternatePropSets { get; set; } = new();
-    //public Dictionary<PropertyInfo, IPropRegexSegment> PropRegexSegments { get; set; } = new();
-
     public List<IRegexSegment> RegexSegments { get; set; } = new();
-
-    public List<IPropRegexSegment> PropCaptureSegments => 
-        RegexSegments
-        .OfType<IPropRegexSegment>()
-        .ToList();
+    public List<IPropRegexSegment> PropCaptureSegments => RegexSegments.OfType<IPropRegexSegment>().ToList();
+    public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
 
     public RegexTemplate()
     {
@@ -22,7 +17,6 @@ public class RegexTemplate
 
     public RegexTemplate(RegexTemplate source)
     {
-        //PropRegexSegments = source.PropRegexSegments.ToDictionary();
         RegexSegments = source.RegexSegments.ToList();
         RenderedRegex = source.RenderedRegex;
     }
@@ -34,61 +28,6 @@ public class RegexTemplate<T> : RegexTemplate
     {
         CaptureProps = GetPropertiesForCapture();
         _noSpaces = typeof(T).GetCustomAttribute<NoSpacesAttribute>() is not null;
-
-        // Combines single snippets and array snippets
-        //List<string> unpackedTemplateSnippets = new();
-
-        //foreach (var snippetObj in templateSnippets)
-        //{
-        //    if (snippetObj is string snippetString)
-        //        unpackedTemplateSnippets.Add(snippetString);
-        //    else if (snippetObj is CaptureAlternatives captureAlternatives)
-        //    {
-        //        List<PropertyInfo> alternatePropSet = new();
-        //        
-        //        foreach (var snippetArrayItem in captureAlternatives.Names)
-        //        {
-        //            var matchingProp = captureProps.FirstOrDefault(x => x.Name == snippetArrayItem);
-        //
-        //            if (matchingProp is null)
-        //                throw new Exception($"Each snippet passed in an array must match a property, but found no property name {snippetArrayItem}");
-        //
-        //            alternatePropSet.Add(matchingProp);
-        //            unpackedTemplateSnippets.Add(snippetArrayItem);
-        //        }
-        //
-        //        // Each prop in the set gets its own key pointing to the List
-        //        foreach (var alternateProp in alternatePropSet)
-        //            AlternatePropSets[alternateProp] = alternatePropSet;
-        //    }
-        //    else
-        //        throw new Exception($"Snippet must only be of type string or CaptureAlternatives");
-        //}
-        //
-        //for (int i = 0; i < unpackedTemplateSnippets.Count; i++)
-        //{
-        //    string snippet = unpackedTemplateSnippets[i];
-        //    var matchingProp = captureProps.FirstOrDefault(x => x.Name == snippet);
-        //
-        //    if (matchingProp != null)
-        //    {
-        //        IRegexSegment regexSegment;
-        //
-        //        var underlyingType = Nullable.GetUnderlyingType(matchingProp.PropertyType) ?? matchingProp.PropertyType;
-        //
-        //        if (underlyingType.IsEnum)
-        //            regexSegment = new EnumCaptureGroup(underlyingType, matchingProp);
-        //        else if (underlyingType.IsAssignableTo(typeof(ITokenCapture)))
-        //            regexSegment = TokenCaptureSubPropertyToCaptureGroup(matchingProp);
-        //        else
-        //            regexSegment = PropertyToCaptureGroup(matchingProp);
-        //
-        //        RegexSegments.Add(regexSegment);
-        //        PropRegexSegments[matchingProp] = regexSegment;
-        //    }
-        //    else
-        //        RegexSegments.Add(new TextRegexSegment(snippet));
-        //}
 
         foreach (var snippetObj in templateSnippets)
         {
@@ -115,55 +54,6 @@ public class RegexTemplate<T> : RegexTemplate
             RegexSegments.Add(resolvedSegment);
         }
 
-        //int currentAlternateIndex = -1;
-        //List<PropertyInfo> currentAlternateSet = null;
-        //bool isLastAlternate = false;
-        //
-        ////for (int i = 0; i < RegexSegments.Count; i++)
-        //{
-        //    var segment = RegexSegments[i];
-        //    var segmentString = segment.RegexString;
-        //
-        //    if (segment is IPropRegexSegment propRegexSegment && AlternatePropSets.TryGetValue(propRegexSegment.Prop, out currentAlternateSet))
-        //    {
-        //        currentAlternateIndex = currentAlternateSet.IndexOf(propRegexSegment.Prop);
-        //
-        //        if (currentAlternateIndex == 0)
-        //            // Begin alternate capture
-        //            RenderedRegex += "(";
-        //
-        //        isLastAlternate = currentAlternateIndex == currentAlternateSet.Count - 1;
-        //    }
-        //    else
-        //    {
-        //        currentAlternateIndex = -1;
-        //        currentAlternateSet = null;
-        //    }
-        //
-        //    RenderedRegex += segmentString;
-        //    var shouldAddAltPipe = currentAlternateSet != null && !isLastAlternate;
-        //
-        //    if (shouldAddAltPipe)
-        //        RenderedRegex += "|";
-        //
-        //    if (isLastAlternate)
-        //    {
-        //        // End alternate capture
-        //        RenderedRegex += ")";
-        //        isLastAlternate = false;
-        //    }
-        //
-        //    var shouldAddSpace =
-        //        !_noSpaces
-        //        && (currentAlternateIndex == -1 || isLastAlternate)
-        //        && i < RegexSegments.Count - 1
-        //        && !(segment is TokenCaptureSegment capGroup && capGroup.CapturePropType == CapturePropType.Bool)
-        //        && !TerminalPunctuation.Contains(segmentString);
-        //
-        //    if (shouldAddSpace)
-        //        RenderedRegex += " ";
-        //}
-
         for (int i = 0; i < RegexSegments.Count; i++)
         {
             var segment = RegexSegments[i]; 
@@ -172,7 +62,7 @@ public class RegexTemplate<T> : RegexTemplate
             var shouldAddSpace =
                 !_noSpaces
                 && i < RegexSegments.Count - 1
-                && !(segment is PropCaptureSegment propCap && propCap.CaptureProp.CapturePropType == CapturePropType.Bool)
+                && !(segment is ScalarCaptureSegment propCap && propCap.IsBool)
                 && !TerminalPunctuation.Contains(segment.RegexString);
 
             if (shouldAddSpace)
@@ -195,22 +85,6 @@ public class RegexTemplate<T> : RegexTemplate
         return matchingProp;
     }
 
-    //IRegexSegment ResolvePropToRegexSegment(PropertyInfo prop)
-    //{
-    //    IRegexSegment resolvedSegment;
-    //
-    //    var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-    //
-    //    if (underlyingType.IsEnum)
-    //        resolvedSegment = new EnumCaptureGroup(underlyingType, prop);
-    //    else if (underlyingType.IsAssignableTo(typeof(ITokenizedCard)))
-    //        resolvedSegment = TokenCaptureSubPropertyToCaptureGroup(prop);
-    //    else
-    //        resolvedSegment = PropertyToCaptureGroup(prop);
-    //
-    //    return resolvedSegment;
-    //}
-
     IRegexSegment ResolveSnippetToRegexSegment(string templateSnippet, bool forceResolveTokenUnit = false)
     {
         var matchingProp = GetMatchingProp(templateSnippet, isRequiredToExistOnType: forceResolveTokenUnit);
@@ -226,26 +100,12 @@ public class RegexTemplate<T> : RegexTemplate
             {
                 CapturePropType.TokenUnit => new TokenCaptureSegment(matchingProp),
                 CapturePropType.Enum => new EnumCaptureSegment(matchingProp),
-                _ => new PropCaptureSegment(matchingProp),
+                _ => new ScalarCaptureSegment(matchingProp),
             };
         }
         else
             return new TextSegment(templateSnippet);
     }
-
-    //TokenCaptureSegment TokenCaptureSubPropertyToCaptureGroup(CaptureProp subTokenCaptureProp)
-    //{
-    //    var instanceOfPropType = (ITokenUnit)Activator.CreateInstance(subTokenCaptureProp.Prop.PropertyType);
-    //    return new TokenCaptureSegment(subTokenCaptureProp, instanceOfPropType.RegexTemplate.RenderedRegex);
-    //}
-    //
-    //PropCaptureSegment PropertyToCaptureGroup(CaptureProp captureProp)
-    //{
-    //    var patterns = regexPatternAttribute?.Patterns ?? [prop.Name];
-    //    var groupIsOptional = prop.PropertyType == typeof(bool);
-    //
-    //    return new PropCaptureSegment(prop, regexPatternAttribute.Patterns, captureGroupType, new());
-    //}
 
     List<CaptureProp> GetPropertiesForCapture() =>
          typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
