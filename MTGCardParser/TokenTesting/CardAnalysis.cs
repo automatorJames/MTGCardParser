@@ -1,6 +1,4 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
-
-namespace MTGCardParser.TokenTesting;
+﻿namespace MTGCardParser.TokenTesting;
 
 public class CardAnalysis
 {
@@ -51,7 +49,6 @@ public class CardAnalysis
 
                 // token strings represent unmatched tokens
                 // although Punctuation tokens are technically captured, we want to treat them as uncaptured and later append them to the preceding string
-                //if (token.Kind == typeof(string) || token.Kind == typeof(Punctuation))
                 if (token.Kind == typeof(string))
                     tokens.Add(token);
 

@@ -8,7 +8,7 @@ public class TokenTester
     readonly string _outputDir;
     readonly List<Card> _cards;
 
-    readonly List<Type> _tokenCaptureTypes;
+    readonly List<Type> _tokenUnitTypes;
     readonly Dictionary<Type, Color> _typeColors = new();
 
     public TokenTester(int? maxSetSequence = null, bool ignoreEmptyText = true)
@@ -16,11 +16,11 @@ public class TokenTester
         _outputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MTG_Parser_Analysis");
         Directory.CreateDirectory(_outputDir);
         _cards = DataGetter.GetCards(maxSetSequence, ignoreEmptyText: ignoreEmptyText);
-        _tokenCaptureTypes = TokenUnitRegexRegister.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
+        _tokenUnitTypes = TokenUnitRegexRegister.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
 
-        for (int i = 0; i < _tokenCaptureTypes.Count; i++)
+        for (int i = 0; i < _tokenUnitTypes.Count; i++)
         {
-            var type = _tokenCaptureTypes[i];
+            var type = _tokenUnitTypes[i];
             _typeColors[type] = GenerateColorForType(type);
         }
     }

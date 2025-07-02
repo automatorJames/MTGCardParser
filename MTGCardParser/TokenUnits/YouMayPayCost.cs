@@ -1,6 +1,4 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
-
-namespace MTGCardParser.TokenUnits;
+﻿namespace MTGCardParser.TokenUnits;
 
 [NoSpaces]
 public class YouMayPayCost : ITokenUnit

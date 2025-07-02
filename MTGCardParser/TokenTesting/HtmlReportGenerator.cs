@@ -1,6 +1,4 @@
-﻿// Splice in this updated version of HtmlReportGenerator.cs
-
-namespace MTGCardParser.TokenTesting;
+﻿namespace MTGCardParser.TokenTesting;
 using System.Net;
 using System.Text;
 

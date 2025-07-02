@@ -1,6 +1,4 @@
-﻿using MTGCardParser.RegexSegmentDTOs.Interfaces;
-
-namespace MTGCardParser;
+﻿namespace MTGCardParser;
 
 public class RegexTemplate
 {
