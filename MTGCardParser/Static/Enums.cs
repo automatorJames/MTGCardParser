@@ -471,6 +471,7 @@ public enum CounterType
 [EnumOptions(OptionalPlural = true)]
 public enum LoseOrGain
 {
+    
     Lose,
     Gain
 }
@@ -484,5 +485,22 @@ public enum PermanentVerb
     Have,
 
     [RegexPattern("deal(s)?")]
-    Deal
+    Deal,
+
+    [RegexPattern("gain(s)?")]
+    Gain,
+
+    [RegexPattern("lose(es)?")]
+    Lose,
+}
+
+public enum WhichPlayer
+{
+    You,
+
+    [RegexPattern("each opponent")]
+    EachOpponent,
+
+    [RegexPattern("each opponent")]
+    AnyOpponent
 }

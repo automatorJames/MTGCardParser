@@ -33,7 +33,7 @@ public static class HtmlReportGenerator
             border-bottom-style: dashed;
             margin-top: 1.5rem;
             margin-bottom: 0.5rem;
-            transition: box-shadow 0.2s ease-in-out; /* Add transition for smooth highlight */
+            transition: box-shadow 0.2s ease-in-out;
         }}
         table {{
             width: 100%;
@@ -134,7 +134,7 @@ public static class HtmlReportGenerator
             padding-top: 0.5rem;
         }}
         .effect-details-block > h4 {{
-            padding-left: 12px;
+            padding-left: 8px;
         }}
         .effect-details-block table {{
             width: auto;
@@ -167,6 +167,7 @@ public static class HtmlReportGenerator
             font-weight: bold;
             border-bottom: none;
             transition: box-shadow 0.2s ease-in-out;
+            padding-left: 8px;
         }}
         .value-default {{ color: #b5cea8; }}
         .value-enum {{ color: #c586c0; }}

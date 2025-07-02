@@ -84,7 +84,7 @@ public static class TokenUnitRegexRegister
         tokenizerBuilder
             .Match(typeof(This))
             .Match(typeof(ActivatedAbility))
-            .Match(typeof(LoseOrGainAbility))
+            .Match(typeof(GainOrLoseAbility))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
             .Match(typeof(AtOrUntilPlayerPhase))

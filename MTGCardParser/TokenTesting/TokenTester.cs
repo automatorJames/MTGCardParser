@@ -9,6 +9,7 @@ public class TokenTester
     // Configuration
     readonly string _outputDir;
     readonly List<Card> _cards;
+    private readonly bool _omitCapturedTextSegmentProperties = true;
 
     readonly List<Type> _tokenUnitTypes;
     readonly Dictionary<Type, Color> _typeColors = new();
@@ -152,6 +153,11 @@ public class TokenTester
         var visibleScalarProps = new List<(PropertyInfo prop, object value)>();
         foreach (var prop in scalarProperties)
         {
+            if (_omitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment))
+            {
+                continue;
+            }
+
             var value = prop.GetValue(instance);
             if (value != null && prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType)))
             {
