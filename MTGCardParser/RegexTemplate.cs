@@ -8,6 +8,11 @@ public class RegexTemplate
     public List<IRegexSegment> RegexSegments { get; set; } = new();
     public List<IPropRegexSegment> PropCaptureSegments => RegexSegments.OfType<IPropRegexSegment>().ToList();
     public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
+    public List<TokenCaptureSegment> AllUnwrappedTokenCaptureSegments =>
+        RegexSegments.OfType<TokenCaptureSegment>()
+        .Concat(AlternativePropCaptureSets.SelectMany(x => x.Alternatives))
+        .OrderBy(x => CaptureProps.IndexOf(x.CaptureProp))
+        .ToList();
 
     public RegexTemplate()
     {

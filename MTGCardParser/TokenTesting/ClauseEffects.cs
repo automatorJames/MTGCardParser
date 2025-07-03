@@ -4,5 +4,3 @@ public record ClauseEffects
 (
     List<ITokenUnit> Effects
 );
-
-

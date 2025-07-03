@@ -1,13 +1,13 @@
 ﻿namespace MTGCardParser.Static;
 
-public static class TokenUnitRegexRegister
+public static class TokenClassRegistry
 {
     public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
-    static TokenUnitRegexRegister()
+    static TokenClassRegistry()
     {
         RegisterTypes();
         InitializeTokenizer();
@@ -100,8 +100,11 @@ public static class TokenUnitRegexRegister
             if (!AppliedOrderTypes.Contains(key))
                 tokenizerBuilder.Match(key);
 
-        tokenizerBuilder
-            .Match(@"[^.,;""\s]+");
+        // Catch anything else with the default string pattern
+        tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
+
+        //tokenizerBuilder
+        //    .Match(@"[^.,;""\s]+");
 
         Tokenizer = tokenizerBuilder.Build();
     }

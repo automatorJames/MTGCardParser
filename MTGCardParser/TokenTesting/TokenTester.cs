@@ -1,4 +1,10 @@
-﻿using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Drawing;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+using MTGCardParser.Data;
+using Superpower.Model;
 
 namespace MTGCardParser.TokenTesting;
 
@@ -21,7 +27,7 @@ public class TokenTester
         _outputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MTG_Parser_Analysis");
         Directory.CreateDirectory(_outputDir);
         _cards = DataGetter.GetCards(maxSetSequence, ignoreEmptyText: ignoreEmptyText);
-        _tokenUnitTypes = TokenUnitRegexRegister.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
+        _tokenUnitTypes = TokenClassRegistry.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
 
         for (int i = 0; i < _tokenUnitTypes.Count; i++)
         {
@@ -49,48 +55,6 @@ public class TokenTester
         }
 
         Console.WriteLine($"HTML reports generated successfully in: {_outputDir}");
-    }
-
-    private string RenderTokenWithSubUnderlines(string tokenText, string captureId, Dictionary<string, (int Index, int Length)> propertySpans, IReadOnlyDictionary<string, string> propertyColorMap)
-    {
-        if (!propertySpans.Any())
-        {
-            return HtmlReportGenerator.Encode(tokenText);
-        }
-
-        var segments = new List<(int start, int end, string propName)>();
-        foreach (var prop in propertySpans)
-        {
-            segments.Add((prop.Value.Index, prop.Value.Index + prop.Value.Length, prop.Key));
-        }
-        segments = segments.OrderBy(s => s.start).ToList();
-
-        var sb = new StringBuilder();
-        int currentIndex = 0;
-
-        foreach (var seg in segments)
-        {
-            if (seg.start > currentIndex)
-            {
-                sb.Append(HtmlReportGenerator.Encode(tokenText.Substring(currentIndex, seg.start - currentIndex)));
-            }
-            if (seg.start < currentIndex) continue;
-
-            string segText = tokenText.Substring(seg.start, seg.end - seg.start);
-            string color = propertyColorMap.GetValueOrDefault(seg.propName, "#ffffff");
-            sb.Append($"<span class=\"prop-capture\" data-capture-id=\"{captureId}\" data-property-name=\"{seg.propName}\" style=\"--prop-color: {color};\">");
-            sb.Append(HtmlReportGenerator.Encode(segText));
-            sb.Append("</span>");
-
-            currentIndex = seg.end;
-        }
-
-        if (currentIndex < tokenText.Length)
-        {
-            sb.Append(HtmlReportGenerator.Encode(tokenText.Substring(currentIndex)));
-        }
-
-        return sb.ToString();
     }
 
     private static IEnumerable<CaptureProp> GetOrderedPropertiesFromTemplate(RegexTemplate template)
@@ -172,7 +136,7 @@ public class TokenTester
             foreach (var (prop, value) in visibleScalarProps)
             {
                 string propColor = propertyColorMap.GetValueOrDefault(prop.Name, "inherit");
-                sb.Append($"<tr data-property-name=\"{prop.Name}\">");
+                sb.Append($"<tr data-property-name=\"{prop.Name}\" data-capture-id=\"{captureId}\">");
                 sb.Append($"<td><span style=\"color: {propColor}; font-weight: bold;\">{HtmlReportGenerator.Encode(prop.Name)}</span></td>");
 
                 string valueClass = GetValueCssClass(prop.PropertyType);
@@ -198,13 +162,86 @@ public class TokenTester
             {
                 sb.Append("<div class=\"property-child-block\">");
                 string propColor = propertyColorMap.GetValueOrDefault(prop.Name, "inherit");
-                sb.Append($"<h5 data-property-name=\"{prop.Name}\" style=\"color: {propColor};\">{HtmlReportGenerator.Encode(prop.Name)}</h5>");
+                sb.Append($"<h5 data-property-name=\"{prop.Name}\" data-capture-id=\"{captureId}\" style=\"color: {propColor};\">{HtmlReportGenerator.Encode(prop.Name)}</h5>");
                 RenderTokenUnitDetails(sb, value, captureId, propertyColorMap);
                 sb.Append("</div>");
             }
         }
     }
 
+    private string BuildNestedEffectHtml(
+    ITokenUnit effect,
+    string effectText,
+    object cardId,
+    int lineIndex,
+    IReadOnlyDictionary<string, string> propertyColorMap,
+    ref int captureIdCounter,
+    StringBuilder detailsHtmlBuilder)
+    {
+
+        // Assign a unique ID for this effect instance
+        string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
+        captureIdCounter++;
+        var instanceType = effect.GetType();
+        var template = effect.RegexTemplate;
+
+        // A segment is a part of the text that needs special rendering.
+        // Store the final HTML for the segment directly, avoiding lambdas.
+        var segments = new List<(int Index, int Length, string HtmlContent)>();
+
+        var tokenCaptureProps = effect.RegexTemplate.AllUnwrappedTokenCaptureSegments;
+
+        for (int i = 0; i < tokenCaptureProps.Count; i++)
+        {
+            TokenCaptureSegment propCaptureSegment = tokenCaptureProps[i];
+            var propValue = propCaptureSegment.CaptureProp.Prop.GetValue(effect);
+            if (propValue == null) continue;
+
+            var propCaptureText = propCaptureSegment.Regex.Match(effectText).Value;
+            if (propValue is ITokenUnit childTokenUnit)
+            {
+                // Recursively build the HTML for the child token
+                var segmentHtml = BuildNestedEffectHtml(childTokenUnit, propCaptureText + "baazh", cardId, lineIndex, propertyColorMap, ref captureIdCounter, detailsHtmlBuilder);
+                segments.Add((i, propCaptureText.Length, segmentHtml));
+            }
+            else
+            {
+                continue; // Skip this segment
+            }
+
+        }
+
+        // 2. Build the final HTML string by assembling the segments.
+        var inlineHtmlBuilder = new StringBuilder();
+        segments = segments.OrderBy(s => s.Index).ToList();
+        int currentIndex = 0;
+
+        foreach (var (index, length, htmlContent) in segments)
+        {
+            if (index > currentIndex)
+            {
+                inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex, index - currentIndex)));
+            }
+            if (index < currentIndex) continue;
+
+            inlineHtmlBuilder.Append(htmlContent);
+            currentIndex = index + length;
+        }
+
+        if (currentIndex < effectText.Length)
+        {
+            inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex)));
+        }
+
+        // 3. Generate the details block for the current effect.
+        string colorHex = ToHex(_typeColors[instanceType]);
+        detailsHtmlBuilder.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{instanceType.Name}</h4>");
+        RenderTokenUnitDetails(detailsHtmlBuilder, effect, captureId, propertyColorMap);
+        detailsHtmlBuilder.Append("</div>");
+
+        // 4. Wrap the inline text in its own span and return.
+        return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex};\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder.ToString()}</span>";
+    }
 
     void GenerateCardVariableCaptureHtml()
     {
@@ -221,14 +258,14 @@ public class TokenTester
                     if (i >= analyzedCard.Clauses.Count) continue;
 
                     var lineTokens = analyzedCard.ProcessedLineTokens[i];
-                    var effectsToShow = analyzedCard.Clauses[i].Effects.Where(e => e.GetType() != typeof(Punctuation)).ToList();
+                    var effectsToShow = analyzedCard.Clauses[i].Effects.Where(e => !e.GetType().IsDefined(typeof(IgnoreInAnalysisAttribute))).ToList();
                     if (!effectsToShow.Any()) continue;
 
                     sb.Append("<div class=\"line-capture-block\">");
                     sb.Append($"<h5 class=\"line-label\">Line #{i + 1}</h5>");
 
                     var allLineProperties = effectsToShow
-                        .SelectMany(eff => GetOrderedPropertiesFromTemplate((eff as ITokenUnit)?.RegexTemplate).Select(p => p.Name))
+                        .SelectMany(eff => GetOrderedPropertiesFromTemplate(eff?.RegexTemplate).Select(p => p.Name))
                         .Distinct().ToList();
 
                     var propertyColorMap = new Dictionary<string, string>();
@@ -237,52 +274,30 @@ public class TokenTester
                         propertyColorMap[allLineProperties[k]] = _propertyCaptureColors[k % _propertyCaptureColors.Count];
                     }
 
-                    sb.Append($"<pre class=\"line-text\">");
+                    var lineTextBuilder = new StringBuilder();
+                    var detailsBuilder = new StringBuilder();
+                    int captureIdCounter = 0; // Reset for each line to keep IDs manageable
                     int effectIndex = 0;
+
                     foreach (var token in lineTokens)
                     {
                         var tokenText = token.ToStringValue();
-                        if (token.Kind != typeof(string) && token.Kind != typeof(Punctuation))
+                        if (!token.Kind.IsDefined(typeof(IgnoreInAnalysisAttribute)))
                         {
                             var effect = effectsToShow[effectIndex];
-                            string colorHex = ToHex(_typeColors[token.Kind]);
-                            string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{effectIndex}";
-
-                            var regex = TokenUnitRegexRegister.TypeRegexTemplates[effect.GetType()].RenderedRegex;
-                            var match = Regex.Match(tokenText, regex, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-                            var propertySpans = new Dictionary<string, (int Index, int Length)>();
-                            if (match.Success)
-                            {
-                                var properties = GetOrderedPropertiesFromTemplate((effect as ITokenUnit)?.RegexTemplate);
-                                foreach (var prop in properties)
-                                {
-                                    var group = match.Groups[prop.Name];
-                                    if (group.Success && group.Length > 0)
-                                    {
-                                        propertySpans[prop.Name] = (group.Index, group.Length);
-                                    }
-                                }
-                            }
-                            string underlinedText = RenderTokenWithSubUnderlines(tokenText, captureId, propertySpans, propertyColorMap);
-                            sb.Append($"<span class=\"captured-text\" style=\"--main-color: {colorHex};\" data-capture-id=\"{captureId}\">{underlinedText}</span>");
+                            lineTextBuilder.Append(BuildNestedEffectHtml(effect, tokenText, analyzedCard.Card.CardId, i, propertyColorMap, ref captureIdCounter, detailsBuilder));
                             effectIndex++;
                         }
-                        else { sb.Append(HtmlReportGenerator.Encode(tokenText)); }
-                        sb.Append(" ");
+                        else
+                        {
+                            lineTextBuilder.Append(HtmlReportGenerator.Encode(tokenText));
+                        }
+                        lineTextBuilder.Append(" ");
                     }
-                    sb.Append("</pre>");
 
-                    for (int j = 0; j < effectsToShow.Count; j++)
-                    {
-                        var effect = effectsToShow[j];
-                        string colorHex = ToHex(_typeColors[effect.GetType()]);
-                        string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{j}";
+                    sb.Append($"<pre class=\"line-text\">{lineTextBuilder.ToString().TrimEnd()}</pre>");
+                    sb.Append(detailsBuilder.ToString());
 
-                        sb.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\">");
-                        sb.Append($"<h4 style=\"color: {colorHex};\">{effect.GetType().Name}</h4>");
-                        RenderTokenUnitDetails(sb, effect, captureId, propertyColorMap);
-                        sb.Append("</div>");
-                    }
                     sb.Append("</div>");
                 }
                 sb.Append("</div>");
@@ -291,6 +306,7 @@ public class TokenTester
 
         File.WriteAllText(Path.Combine(_outputDir, "Card Variable Capture.html"), htmlContent);
     }
+
 
     private string GetValueCssClass(Type type)
     {
@@ -312,13 +328,13 @@ public class TokenTester
     {
         string htmlContent = HtmlReportGenerator.Generate("Token Type Key & Regex Analysis", sb =>
         {
-            foreach (var type in TokenUnitRegexRegister.AppliedOrderTypes)
+            foreach (var type in TokenClassRegistry.AppliedOrderTypes)
             {
                 if (!AggregateCardAnalysis.TokenCaptureCounts.ContainsKey(type)) continue;
                 string typeName = type.Name;
                 int count = AggregateCardAnalysis.TokenCaptureCounts[type];
                 string colorHex = ToHex(_typeColors[type]);
-                string renderedRegex = TokenUnitRegexRegister.TypeRegexTemplates[type].RenderedRegex;
+                string renderedRegex = TokenClassRegistry.TypeRegexTemplates[type].RenderedRegex;
                 string encodedTypeName = HtmlReportGenerator.Encode(typeName);
                 sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
                 sb.Append("<h3>");
@@ -363,7 +379,7 @@ public class TokenTester
                             string colorHex = ToHex(_typeColors[token.Kind]);
                             string typeName = HtmlReportGenerator.Encode(token.Kind.Name);
                             sb.Append($"<span class=\"highlight\" data-title=\"{typeName}\" style=\"background-color: {colorHex};\">");
-                            if (token.Kind.Name != "Punctuation") sb.Append($"<span class=\"highlight-label\" style=\"color: {colorHex};\">{typeName}</span>");
+                            if (token.Kind != typeof(Punctuation)) sb.Append($"<span class=\"highlight-label\" style=\"color: {colorHex};\">{typeName}</span>");
                             sb.Append(encodedText);
                             sb.Append("</span>");
                             matchedChars += charCount;

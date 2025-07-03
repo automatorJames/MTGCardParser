@@ -114,15 +114,21 @@ public static class HtmlReportGenerator
             padding: 1rem;
             cursor: default;
             line-height: 2.2em;
-            margin-bottom: -1rem;
+            margin-bottom: 1rem; /* Adjust to create space for details blocks */
         }}
-        .captured-text {{
-            border-bottom: 2px solid; 
-            border-color: var(--main-color);
-            padding-bottom: 3px; 
+        .nested-underline {{
+            border-bottom: 1px solid; 
+            border-color: var(--underline-color);
+            padding-bottom: 4px; /* Base padding for the first level */
             cursor: pointer;
             transition: filter 0.2s ease-in-out;
         }}
+        /* For each level of nesting, add more padding to push parent underlines down */
+        .nested-underline .nested-underline {{ padding-bottom: 8px; }}
+        .nested-underline .nested-underline .nested-underline {{ padding-bottom: 12px; }}
+        .nested-underline .nested-underline .nested-underline .nested-underline {{ padding-bottom: 16px; }}
+        .nested-underline .nested-underline .nested-underline .nested-underline .nested-underline {{ padding-bottom: 20px; }}
+
         .prop-capture {{
             border-top: 2px solid; 
             border-color: var(--prop-color);
@@ -132,6 +138,7 @@ public static class HtmlReportGenerator
             margin-left: 2rem;
             border-radius: 4px;
             padding-top: 0.5rem;
+            margin-bottom: 0.5rem;
         }}
         .effect-details-block > h4 {{
             padding-left: 8px;
@@ -175,7 +182,7 @@ public static class HtmlReportGenerator
         .value-empty {{ color: #808080; font-style: italic; }}
 
         /* Hover states */
-        .captured-text.highlight-active {{
+        .nested-underline.highlight-active {{
             filter: brightness(1.6);
         }}
         
@@ -292,10 +299,10 @@ public static class HtmlReportGenerator
                         document.querySelectorAll(`[data-capture-id='${lastCaptureId}']`).forEach(el => el.classList.remove('highlight-active'));
                     }
                     if (captureId) {
-                        const span = document.querySelector(`.captured-text[data-capture-id='${captureId}']`);
+                        const span = document.querySelector(`.nested-underline[data-capture-id='${captureId}']`);
                         const block = document.querySelector(`.effect-details-block[data-capture-id='${captureId}']`);
                         if (span && block) {
-                            const mainColor = span.style.getPropertyValue('--main-color');
+                            const mainColor = span.style.getPropertyValue('--underline-color');
                             span.classList.add('highlight-active');
                             block.classList.add('highlight-active');
                             block.style.setProperty('--highlight-color', mainColor);

@@ -22,7 +22,7 @@ public class CardAnalysis
 
         foreach (var line in card.CleanedLines)
         {
-            var lineTokens = TokenUnitRegexRegister.Tokenizer.Tokenize(line).ToList();
+            var lineTokens = TokenClassRegistry.Tokenizer.Tokenize(line).ToList();
             ProcessedLineTokens.Add(lineTokens);
         }
 
@@ -132,7 +132,7 @@ public class CardAnalysis
             List<ITokenUnit> list = new();
 
             foreach (var token in line.Where(x => x.Kind != typeof(string)))
-                list.Add(TokenUnitRegexRegister.HydrateFromToken(token));
+                list.Add(TokenClassRegistry.HydrateFromToken(token));
 
             Clauses.Add(new(list));
         }

@@ -1,7 +1,6 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
+[IgnoreInAnalysis]
 public class Punctuation : ITokenUnit
 {
     public RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));

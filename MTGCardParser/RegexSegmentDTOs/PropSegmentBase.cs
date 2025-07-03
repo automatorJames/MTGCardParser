@@ -27,7 +27,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         if (IsChildTokenUnit)
             throw new InvalidOperationException($"Can't set scalar prop value on TokenUnit");
 
-        var typeMatch = Regex.Match(matchString, TokenUnitRegexRegister.TypeRegexTemplates[parentObject.GetType()].RenderedRegex);
+        var typeMatch = Regex.Match(matchString, TokenClassRegistry.TypeRegexTemplates[parentObject.GetType()].RenderedRegex);
 
         if (!typeMatch.Groups[CaptureProp.Name].Success)
             return;
@@ -47,7 +47,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         if (!IsChildTokenUnit)
             throw new InvalidOperationException($"TokenUnit values can only be set on TokenUnit types");
 
-        var propInstance = TokenUnitRegexRegister.InstantiateFromTypeAndMatchString(CaptureProp.UnderlyingType, matchString);
+        var propInstance = TokenClassRegistry.InstantiateFromTypeAndMatchString(CaptureProp.UnderlyingType, matchString);
 
         if (propInstance is not null)
         {
@@ -60,10 +60,10 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
 
     object GetEnumMatchValue(string matchString)
     {
-        if (!TokenUnitRegexRegister.EnumRegexes.ContainsKey(CaptureProp.UnderlyingType))
-            throw new Exception($"Enum type {CaptureProp.UnderlyingType.Name} is not registered in {nameof(TokenUnitRegexRegister)}");
+        if (!TokenClassRegistry.EnumRegexes.ContainsKey(CaptureProp.UnderlyingType))
+            throw new Exception($"Enum type {CaptureProp.UnderlyingType.Name} is not registered in {nameof(TokenClassRegistry)}");
 
-        foreach (var enumMemberRegex in TokenUnitRegexRegister.EnumRegexes[CaptureProp.UnderlyingType])
+        foreach (var enumMemberRegex in TokenClassRegistry.EnumRegexes[CaptureProp.UnderlyingType])
             if (enumMemberRegex.Value.IsMatch(matchString))
                 return enumMemberRegex.Key;
 
