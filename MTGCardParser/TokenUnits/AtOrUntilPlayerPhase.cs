@@ -1,8 +1,6 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
-public class AtOrUntilPlayerPhase : ITokenUnit
+public class AtOrUntilPlayerPhase : TokenUnitBase
 {
     public RegexTemplate<AtOrUntilPlayerPhase> RegexTemplate => new(nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase));
 

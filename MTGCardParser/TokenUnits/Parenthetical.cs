@@ -1,9 +1,7 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
-
-namespace MTGCardParser.TokenUnits;
+﻿namespace MTGCardParser.TokenUnits;
 
 [NoSpaces]
-public class Parenthetical : ITokenUnit
+public class Parenthetical : TokenUnitBase
 {
     public RegexTemplate<Parenthetical> RegexTemplate => new(@"\(", nameof(Content), @"\)");
 

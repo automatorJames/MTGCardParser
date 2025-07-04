@@ -1,8 +1,6 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
-public class ActivatedAbility : ITokenUnit
+public class ActivatedAbility : TokenUnitBase
 {
     public RegexTemplate<ActivatedAbility> RegexTemplate => new(nameof(ActivationCost), nameof(Effect));
 

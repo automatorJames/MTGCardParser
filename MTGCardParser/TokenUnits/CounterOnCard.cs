@@ -1,8 +1,6 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
-public class CounterOnCard :ITokenUnit
+public class CounterOnCard :TokenUnitBase
 {
     public RegexTemplate<CounterOnCard> RegexTemplate => new(nameof(CounterType), "counter");
 

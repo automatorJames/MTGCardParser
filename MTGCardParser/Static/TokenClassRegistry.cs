@@ -3,6 +3,7 @@
 public static class TokenClassRegistry
 {
     public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
+    public static Dictionary<Type, Regex> TypeRegexes { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
@@ -19,8 +20,9 @@ public static class TokenClassRegistry
         foreach (var instance in instances)
         {
             var type = instance.GetType();
-            var regexTemplate = new RegexTemplate(instance.RegexTemplate);
+            var regexTemplate = new RegexTemplate(instance.GetRegexTemplate());
             TypeRegexTemplates[type] = regexTemplate;
+            TypeRegexes[type] = new Regex(regexTemplate.RenderedRegexString, RegexOptions.Compiled);
             var propCaptureSegments = regexTemplate.PropCaptureSegments;
 
             var unregisteredEnums = propCaptureSegments
@@ -32,36 +34,8 @@ public static class TokenClassRegistry
         }
     }
 
-    public static ITokenUnit HydrateFromToken(Token<Type> token) => InstantiateFromTypeAndMatchString(token.Kind, token.ToStringValue());
-
-    public static ITokenUnit InstantiateFromTypeAndMatchString(Type type, string matchString)
-    {
-        if (!type.IsAssignableTo(typeof(ITokenUnit)))
-            throw new Exception($"{type.Name} does not implement {nameof(ITokenUnit)}");
-
-        var parentInstance = (ITokenUnit)Activator.CreateInstance(type);
-
-        if (parentInstance.HandleInstantiation(matchString))
-            // If implementing class overrides instantiation, return after handling
-            return parentInstance;
-        else
-        {
-            // Otherwise handle default instantiation
-            foreach (var propCaptureSegment in parentInstance.RegexTemplate.PropCaptureSegments)
-                propCaptureSegment.SetValueFromMatchString(parentInstance, matchString);
-
-            foreach (var alternativeCaptureSet in parentInstance.RegexTemplate.AlternativePropCaptureSets)
-            {
-                // .Any() is used here as a short-circuiting evaluator with the side effect of setting the value on the instance
-                bool matchFound = alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchString(parentInstance, matchString));
-
-                if (!matchFound)
-                    throw new Exception($"Match string '{matchString}' was passed to an alternative set, but no alternative was matched");
-            }
-
-            return parentInstance;
-        }
-    }
+    public static ITokenUnit HydrateFromToken(Token<Type> token) 
+        => TokenUnitBase.InstantiateFromMatchString(token.Kind, token.Span);
 
     static List<ITokenUnit> GetTokenCaptureInstances() =>
         GetTokenCaptureTypes()
@@ -84,6 +58,7 @@ public static class TokenClassRegistry
         tokenizerBuilder
             .Match(typeof(This))
             .Match(typeof(ActivatedAbility))
+            .Match(typeof(YouMayPayCost))
             .Match(typeof(GainOrLoseAbility))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
@@ -114,7 +89,7 @@ public static class TokenClassRegistry
         if (AppliedOrderTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
-        tokenizerBuilder.Match(Span.Regex(TypeRegexTemplates[tokenCaptureType].RenderedRegex), tokenCaptureType);
+        tokenizerBuilder.Match(Span.Regex(TypeRegexTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;

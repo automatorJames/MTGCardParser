@@ -1,20 +1,17 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
-public class ManaValue : ITokenUnit
+public class ManaValue : TokenUnitBase
 {
     public RegexTemplate<ManaValue> RegexTemplate => new(nameof(ManaSymbols));
-
 
     [RegexPattern(@"(\{([0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)\})+")]
     //[RegexPattern(@"(?<ManaSymols>\{c\}\{c\}\{c\})")]
     public CapturedTextSegment ManaSymbols { get; set; }
 
 
-    public bool HandleInstantiation(string tokenMatchString)
+    public override void SetPropertiesFromMatchSpan()
     {
-        var matches = Regex.Matches(tokenMatchString, RegexTemplate.RenderedRegex);
+        var matches = Regex.Matches(MatchSpan.ToStringValue(), RegexTemplate.RenderedRegexString);
 
         foreach (Match match in matches)
         {
@@ -64,8 +61,6 @@ public class ManaValue : ITokenUnit
             }
 
         }
-
-        return true;
     }
 
     public int Colorless { get; set; }

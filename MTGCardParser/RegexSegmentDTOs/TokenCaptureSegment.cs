@@ -7,7 +7,7 @@ public record TokenCaptureSegment : PropSegmentBase
     public TokenCaptureSegment(CaptureProp captureProp) : base(captureProp)
     {
         var instanceOfPropType = (ITokenUnit)Activator.CreateInstance(captureProp.UnderlyingType);
-        RegexString = instanceOfPropType.RegexTemplate.RenderedRegex;
+        RegexString = instanceOfPropType.GetRegexTemplate().RenderedRegexString;
         Regex = new Regex(RegexString);
     }
 }

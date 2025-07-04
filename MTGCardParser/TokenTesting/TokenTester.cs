@@ -84,7 +84,7 @@ public class TokenTester
                                         .Where(p => p.Name != "RegexTemplate" && p.CanRead)
                                         .ToDictionary(p => p.Name);
 
-        var orderedPropNames = GetOrderedPropertiesFromTemplate((instance as ITokenUnit)?.RegexTemplate)
+        var orderedPropNames = GetOrderedPropertiesFromTemplate((instance as ITokenUnit)?.GetRegexTemplate())
             .Select(p => p.Name)
             .Distinct()
             .ToList();
@@ -169,79 +169,135 @@ public class TokenTester
         }
     }
 
+    //private string BuildNestedEffectHtml(
+    //ITokenUnit effect,
+    //string effectText,
+    //object cardId,
+    //int lineIndex,
+    //IReadOnlyDictionary<string, string> propertyColorMap,
+    //ref int captureIdCounter,
+    //StringBuilder detailsHtmlBuilder)
+    //{
+    //
+    //    // Assign a unique ID for this effect instance
+    //    string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
+    //    captureIdCounter++;
+    //    var instanceType = effect.GetType();
+    //    var template = effect.GetRegexTemplate();
+    //
+    //    // A segment is a part of the text that needs special rendering.
+    //    // Store the final HTML for the segment directly, avoiding lambdas.
+    //    var segments = new List<(int Index, int Length, string HtmlContent)>();
+    //
+    //    var tokenCaptureProps = template.AllUnwrappedTokenCaptureSegments;
+    //
+    //    for (int i = 0; i < tokenCaptureProps.Count; i++)
+    //    {
+    //        TokenCaptureSegment propCaptureSegment = tokenCaptureProps[i];
+    //        var propValue = propCaptureSegment.CaptureProp.Prop.GetValue(effect);
+    //        if (propValue == null) continue;
+    //
+    //        var propCaptureText = propCaptureSegment.Regex.Match(effectText).Value;
+    //        if (propValue is ITokenUnit childTokenUnit)
+    //        {
+    //            // Recursively build the HTML for the child token
+    //            var segmentHtml = BuildNestedEffectHtml(childTokenUnit, propCaptureText, cardId, lineIndex, propertyColorMap, ref captureIdCounter, detailsHtmlBuilder);
+    //            segments.Add((i, propCaptureText.Length, segmentHtml));
+    //        }
+    //        else
+    //        {
+    //            continue; // Skip this segment
+    //        }
+    //
+    //    }
+    //
+    //    // 2. Build the final HTML string by assembling the segments.
+    //    var inlineHtmlBuilder = new StringBuilder();
+    //    segments = segments.OrderBy(s => s.Index).ToList();
+    //    int currentIndex = 0;
+    //
+    //    foreach (var (index, length, htmlContent) in segments)
+    //    {
+    //        if (index > currentIndex)
+    //        {
+    //            inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex, index - currentIndex)));
+    //        }
+    //        if (index < currentIndex) continue;
+    //
+    //        inlineHtmlBuilder.Append(htmlContent);
+    //        currentIndex = index + length;
+    //    }
+    //
+    //    if (currentIndex < effectText.Length)
+    //    {
+    //        inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex)));
+    //    }
+    //
+    //    // 3. Generate the details block for the current effect.
+    //    string colorHex = ToHex(_typeColors[instanceType]);
+    //    detailsHtmlBuilder.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{instanceType.Name}</h4>");
+    //    RenderTokenUnitDetails(detailsHtmlBuilder, effect, captureId, propertyColorMap);
+    //    detailsHtmlBuilder.Append("</div>");
+    //
+    //    // 4. Wrap the inline text in its own span and return.
+    //    return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex};\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder.ToString()}</span>";
+    //}
+
     private string BuildNestedEffectHtml(
-    ITokenUnit effect,
-    string effectText,
-    object cardId,
-    int lineIndex,
-    IReadOnlyDictionary<string, string> propertyColorMap,
-    ref int captureIdCounter,
-    StringBuilder detailsHtmlBuilder)
+        ITokenUnit effect,
+        string effectText,
+        object cardId,
+        int lineIndex,
+        IReadOnlyDictionary<string, string> propertyColorMap,
+        ref int captureIdCounter,
+        StringBuilder detailsHtmlBuilder)
     {
+        const int pixelGapPerUnderline = 4;
 
         // Assign a unique ID for this effect instance
         string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
         captureIdCounter++;
-        var instanceType = effect.GetType();
-        var template = effect.RegexTemplate;
+        var childTokenSpans = new List<string>();
 
-        // A segment is a part of the text that needs special rendering.
-        // Store the final HTML for the segment directly, avoiding lambdas.
-        var segments = new List<(int Index, int Length, string HtmlContent)>();
-
-        var tokenCaptureProps = effect.RegexTemplate.AllUnwrappedTokenCaptureSegments;
-
-        for (int i = 0; i < tokenCaptureProps.Count; i++)
+        foreach (var childToken in effect.ChildTokens.OrderBy(x => x.MatchSpan.Position.Absolute))
         {
-            TokenCaptureSegment propCaptureSegment = tokenCaptureProps[i];
-            var propValue = propCaptureSegment.CaptureProp.Prop.GetValue(effect);
-            if (propValue == null) continue;
+            var segmentHtml = BuildNestedEffectHtml(
+                childToken,
+                childToken.MatchSpan.ToStringValue(),
+                cardId,
+                lineIndex,
+                propertyColorMap,
+                ref captureIdCounter,
+                detailsHtmlBuilder
+            );
 
-            var propCaptureText = propCaptureSegment.Regex.Match(effectText).Value;
-            if (propValue is ITokenUnit childTokenUnit)
-            {
-                // Recursively build the HTML for the child token
-                var segmentHtml = BuildNestedEffectHtml(childTokenUnit, propCaptureText + "baazh", cardId, lineIndex, propertyColorMap, ref captureIdCounter, detailsHtmlBuilder);
-                segments.Add((i, propCaptureText.Length, segmentHtml));
-            }
-            else
-            {
-                continue; // Skip this segment
-            }
-
+            childTokenSpans.Add(segmentHtml);
         }
 
         // 2. Build the final HTML string by assembling the segments.
         var inlineHtmlBuilder = new StringBuilder();
-        segments = segments.OrderBy(s => s.Index).ToList();
-        int currentIndex = 0;
 
-        foreach (var (index, length, htmlContent) in segments)
+        inlineHtmlBuilder.Append(effect.MatchSpan.ToStringValue());
+
+        foreach (var span in childTokenSpans)
         {
-            if (index > currentIndex)
-            {
-                inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex, index - currentIndex)));
-            }
-            if (index < currentIndex) continue;
+            var thing1 = HtmlReportGenerator.Encode(effect.MatchSpan.ToStringValue());
+            var thing2 = span;
 
-            inlineHtmlBuilder.Append(htmlContent);
-            currentIndex = index + length;
-        }
-
-        if (currentIndex < effectText.Length)
-        {
-            inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex)));
+            inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effect.MatchSpan.ToStringValue()));
+            inlineHtmlBuilder.Append(span);
         }
 
         // 3. Generate the details block for the current effect.
-        string colorHex = ToHex(_typeColors[instanceType]);
-        detailsHtmlBuilder.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{instanceType.Name}</h4>");
+        string colorHex = ToHex(_typeColors[effect.GetType()]);
+        detailsHtmlBuilder.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{effect.GetType().Name}</h4>");
         RenderTokenUnitDetails(detailsHtmlBuilder, effect, captureId, propertyColorMap);
         detailsHtmlBuilder.Append("</div>");
 
         // 4. Wrap the inline text in its own span and return.
-        return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex};\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder.ToString()}</span>";
+        return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex}; padding-bottom: {pixelGapPerUnderline * effect.GetDeepestChildLevel() + pixelGapPerUnderline}px;\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder}</span>";
     }
+
 
     void GenerateCardVariableCaptureHtml()
     {
@@ -265,7 +321,7 @@ public class TokenTester
                     sb.Append($"<h5 class=\"line-label\">Line #{i + 1}</h5>");
 
                     var allLineProperties = effectsToShow
-                        .SelectMany(eff => GetOrderedPropertiesFromTemplate(eff?.RegexTemplate).Select(p => p.Name))
+                        .SelectMany(eff => GetOrderedPropertiesFromTemplate(eff?.GetRegexTemplate()).Select(p => p.Name))
                         .Distinct().ToList();
 
                     var propertyColorMap = new Dictionary<string, string>();
@@ -334,7 +390,7 @@ public class TokenTester
                 string typeName = type.Name;
                 int count = AggregateCardAnalysis.TokenCaptureCounts[type];
                 string colorHex = ToHex(_typeColors[type]);
-                string renderedRegex = TokenClassRegistry.TypeRegexTemplates[type].RenderedRegex;
+                string renderedRegex = TokenClassRegistry.TypeRegexTemplates[type].RenderedRegexString;
                 string encodedTypeName = HtmlReportGenerator.Encode(typeName);
                 sb.Append($"<div class=\"type-card\" style=\"border-left-color: {colorHex};\">");
                 sb.Append("<h3>");

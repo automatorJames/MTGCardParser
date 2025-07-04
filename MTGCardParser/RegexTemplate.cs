@@ -4,7 +4,7 @@ public class RegexTemplate
 {
     protected bool _noSpaces;
     public List<CaptureProp> CaptureProps { get; set; }
-    public string RenderedRegex { get; set; }
+    public string RenderedRegexString { get; set; }
     public List<IRegexSegment> RegexSegments { get; set; } = new();
     public List<IPropRegexSegment> PropCaptureSegments => RegexSegments.OfType<IPropRegexSegment>().ToList();
     public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
@@ -21,7 +21,7 @@ public class RegexTemplate
     public RegexTemplate(RegexTemplate source)
     {
         RegexSegments = source.RegexSegments.ToList();
-        RenderedRegex = source.RenderedRegex;
+        RenderedRegexString = source.RenderedRegexString;
     }
 }
 
@@ -60,7 +60,7 @@ public class RegexTemplate<T> : RegexTemplate
         for (int i = 0; i < RegexSegments.Count; i++)
         {
             var segment = RegexSegments[i]; 
-            RenderedRegex += segment.RegexString;
+            RenderedRegexString += segment.RegexString;
 
             var shouldAddSpace =
                 !_noSpaces
@@ -69,11 +69,11 @@ public class RegexTemplate<T> : RegexTemplate
                 && !TerminalPunctuation.Contains(segment.RegexString);
 
             if (shouldAddSpace)
-                RenderedRegex += " ";
+                RenderedRegexString += " ";
         }
 
         // We don't need word boundaries where there are spaces (this step just improves regex human readability)
-        RenderedRegex = RenderedRegex.Replace(@"\b \b", " ");
+        RenderedRegexString = RenderedRegexString.Replace(@"\b \b", " ");
     }
 
     static HashSet<string> TerminalPunctuation = [".", ",", ";"];

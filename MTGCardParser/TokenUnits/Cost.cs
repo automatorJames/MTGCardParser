@@ -1,8 +1,6 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
-public class Cost : ITokenUnit
+public class Cost : TokenUnitBase
 {
     public RegexTemplate<Cost> RegexTemplate => new("you may pay ", nameof(ManaValue), @"\.");
 

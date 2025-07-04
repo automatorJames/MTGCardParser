@@ -2,24 +2,37 @@
 
 public interface ITokenUnit
 {
-    static string RegexTemplatePropName = "RegexTemplate";
+    public RegexTemplate GetRegexTemplate();
+    public void SetPropertiesFromMatchSpan();
+    public ITokenUnit ParentToken { get; set; }
+    public List<ITokenUnit> ChildTokens { get; set; }
+    public int RecursiveDepth { get; set; }
+    public TextSpan MatchSpan { get; set; }
+    public Dictionary<CaptureProp, TextSpan> PropMatches { get; set; }
 
-    public RegexTemplate RegexTemplate => GetRegexTemplate();
-
-    RegexTemplate GetRegexTemplate()
+    public int GetDeepestChildLevel()
     {
-        var prop = GetType().GetProperty(RegexTemplatePropName);
+        IEnumerable<ITokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;
+        var deepestDepth = 0;
 
-        if (prop is null)
-            throw new Exception($"{GetType().Name} doesn't contain a property named {RegexTemplate})");
+        while (childrenAtCurrentRecursiveLevel.Any())
+        {
+            deepestDepth++;
+            childrenAtCurrentRecursiveLevel = childrenAtCurrentRecursiveLevel.SelectMany(x => x.ChildTokens);
+        }
 
-        return prop.GetValue(this) as RegexTemplate;
+        return deepestDepth;
     }
 
-    public virtual bool HandleInstantiation(string tokenMatchString)
+    public NestedTokenSpan GetNestedSpan()
     {
-        // Default implementation handles nothing and leaves the work to TypeRegistry
-        return false;
+        var flatGraph = ChildTokens
+            .SelectMany(x => x.ChildTokens)
+            .Concat([this])
+            .OrderBy(x => x.MatchSpan.Position.Absolute)
+            .ToList();
+
+        
     }
 }
 

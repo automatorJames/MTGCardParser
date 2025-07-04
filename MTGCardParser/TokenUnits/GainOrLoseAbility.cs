@@ -1,7 +1,7 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
 [NoSpaces]
-public class GainOrLoseAbility : ITokenUnit
+public class GainOrLoseAbility : TokenUnitBase
 {
     public RegexTemplate<GainOrLoseAbility> RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
 

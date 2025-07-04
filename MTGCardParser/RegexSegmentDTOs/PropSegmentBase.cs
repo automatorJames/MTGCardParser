@@ -1,4 +1,6 @@
-﻿namespace MTGCardParser.RegexSegmentDTOs;
+﻿using System.Text.RegularExpressions;
+
+namespace MTGCardParser.RegexSegmentDTOs;
 
 public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
 {
@@ -11,51 +13,55 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         CaptureProp = captureProp;
     }
 
-    public bool SetValueFromMatchString(object parentObject, string matchString)
+    public bool SetValueFromMatchSpan(ITokenUnit parentToken, TextSpan matchSpan)
     {
         if (IsChildTokenUnit)
-            return SetChildTokenUnitValue(parentObject, matchString);
+            return SetChildTokenUnitValue(parentToken, matchSpan);
         else
-        {
-            SetScalarPropValue(parentObject, matchString);
-            return true; // Always attempt a set, doesn't matter if it matched
-        }
+            return SetScalarPropValue(parentToken, matchSpan);       
     }
 
-    void SetScalarPropValue(object parentObject, string matchString)
+    public bool SetScalarPropValue(ITokenUnit parentToken, TextSpan matchSpan)
     {
         if (IsChildTokenUnit)
             throw new InvalidOperationException($"Can't set scalar prop value on TokenUnit");
 
-        var typeMatch = Regex.Match(matchString, TokenClassRegistry.TypeRegexTemplates[parentObject.GetType()].RenderedRegex);
+        var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
 
-        if (!typeMatch.Groups[CaptureProp.Name].Success)
-            return;
+        if (subMatchSpan is null)
+            return false;
 
         var valueToSet = CaptureProp.CapturePropType switch
         {
-            CapturePropType.Enum => GetEnumMatchValue(matchString),
-            CapturePropType.CapturedTextSegment => new CapturedTextSegment(matchString),
-            CapturePropType.Bool => !string.IsNullOrEmpty(matchString),
+            CapturePropType.Enum => GetEnumMatchValue(subMatchSpan.Value.ToStringValue()),
+            CapturePropType.CapturedTextSegment => new CapturedTextSegment(subMatchSpan.Value.ToStringValue()),
+            CapturePropType.Bool => !string.IsNullOrEmpty(subMatchSpan.Value.ToStringValue()),
         };
 
-        CaptureProp.Prop.SetValue(parentObject, valueToSet);
+        CaptureProp.Prop.SetValue(parentToken, valueToSet);
+        parentToken.PropMatches[CaptureProp] = subMatchSpan.Value;
+
+        return true;
     }
 
-    bool SetChildTokenUnitValue(object parentObject, string matchString)
+    public bool SetChildTokenUnitValue(ITokenUnit parentToken, TextSpan matchSpan)
     {
         if (!IsChildTokenUnit)
             throw new InvalidOperationException($"TokenUnit values can only be set on TokenUnit types");
 
-        var propInstance = TokenClassRegistry.InstantiateFromTypeAndMatchString(CaptureProp.UnderlyingType, matchString);
+        var subMatchSpan = GetPropTypeSubMatch(matchSpan);
 
-        if (propInstance is not null)
-        {
-            CaptureProp.Prop.SetValue(parentObject, propInstance);
-            return true;
-        }
-        else
+        if (subMatchSpan is null)
             return false;
+
+        var propInstance = TokenUnitBase.InstantiateFromMatchString(CaptureProp.UnderlyingType, subMatchSpan.Value, parentToken);
+
+        if (propInstance is null)
+            throw new Exception($"Failed to instantiate {CaptureProp.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
+
+        CaptureProp.Prop.SetValue(parentToken, propInstance);
+        parentToken.ChildTokens.Add(propInstance);
+        return true;
     }
 
     object GetEnumMatchValue(string matchString)
@@ -69,6 +75,31 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
 
         return null;
     }
+
+    TextSpan? GetGroupSubMatch(ITokenUnit parentToken, TextSpan matchSpanToCheck)
+    {
+        var matchText = matchSpanToCheck.ToStringValue();
+        var typeMatch = Regex.Match(matchText, TokenClassRegistry.TypeRegexTemplates[parentToken.GetType()].RenderedRegexString);
+        return GetTextSubSpan(matchSpanToCheck, typeMatch);
+    }
+
+    TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
+    {
+        var match = TokenClassRegistry.TypeRegexes[CaptureProp.UnderlyingType].Match(matchSpanToCheck.ToStringValue());
+        return GetTextSubSpan(matchSpanToCheck, match);
+    }
+
+    TextSpan? GetTextSubSpan(TextSpan originalSpan, Match match)
+    {
+        if (match is null || !match.Success) 
+            return null;
+
+        var combinedMatchIndex = originalSpan.Position.Absolute + match.Index;
+        var newPosition = new Position(combinedMatchIndex, originalSpan.Position.Line, combinedMatchIndex + 1);
+
+        return new TextSpan(originalSpan.Source, newPosition, match.Length);
+    }
+
 }
 
 public enum CapturePropType

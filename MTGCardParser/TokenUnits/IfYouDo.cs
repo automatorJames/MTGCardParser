@@ -1,8 +1,6 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-namespace MTGCardParser.TokenUnits;
-
-public class IfYouDo : ITokenUnit
+public class IfYouDo : TokenUnitBase
 {
     public RegexTemplate<IfYouDo> RegexTemplate => new("if you do,");
 }
