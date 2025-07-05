@@ -24,15 +24,26 @@ public interface ITokenUnit
         return deepestDepth;
     }
 
-    public NestedTokenSpan GetNestedSpan()
+    public List<ITokenUnit> FlattenTokenTree(ITokenUnit root = null)
     {
-        var flatGraph = ChildTokens
-            .SelectMany(x => x.ChildTokens)
-            .Concat([this])
-            .OrderBy(x => x.MatchSpan.Position.Absolute)
-            .ToList();
+        root ??= this;
+        var list = new List<ITokenUnit>();
 
-        
+        void Recurse(ITokenUnit token)
+        {
+            list.Add(token);
+            if (token.ChildTokens != null)
+            {
+                foreach (var child in token.ChildTokens)
+                    Recurse(child);
+            }
+        }
+
+        Recurse(root);
+
+        return list
+            .OrderBy(t => t.MatchSpan.Position.Absolute)
+            .ToList();
     }
 }
 

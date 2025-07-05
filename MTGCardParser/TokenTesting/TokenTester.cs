@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Drawing;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using MTGCardParser.Data;
@@ -243,78 +244,71 @@ public class TokenTester
     //    return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex};\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder.ToString()}</span>";
     //}
 
-    private string BuildNestedEffectHtml(
-        ITokenUnit effect,
-        string effectText,
+
+    string WrapTokenInStartSpanTag(ITokenUnit token, string textSpan, string captureId)
+    {
+        const int pixelGapPerUnderline = 4;
+
+        var tag =
+            $@"<span class=""nested-underline"" style=""--underline-color: {ToHex(_typeColors[token.GetType()])}; "
+            + $@"padding-bottom: {pixelGapPerUnderline * token.GetDeepestChildLevel() + pixelGapPerUnderline}px;"" "
+            + $@"data-capture-id=""{captureId}"">";
+
+        tag += HtmlReportGenerator.Encode(textSpan);
+
+        return tag;
+    }
+
+    string BuildNestedEffectHtml(
+        ITokenUnit token,
         object cardId,
         int lineIndex,
         IReadOnlyDictionary<string, string> propertyColorMap,
         ref int captureIdCounter,
-        StringBuilder detailsHtmlBuilder)
+        StringBuilder sb)
     {
-        const int pixelGapPerUnderline = 4;
+        var html = "";
 
         // Assign a unique ID for this effect instance
         string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
         captureIdCounter++;
         var childTokenSpans = new List<string>();
-        var flattenedTokenSegments = effect.ChildTokens.Concat([effect]).OrderBy(x => x.MatchSpan.Position.Absolute);
-        int currentPointer = 0;
-        int totalSpanLength = effect.MatchSpan.Length;
-        Dictionary<int, ITokenUnit> tokenIndex = flattenedTokenSegments.ToDictionary(x => x.MatchSpan.Position.Absolute, x => x);
+        int currentspanStart = 0;
+        int currentSpanEnd = 0;
+        var flattenedTokens = token.FlattenTokenTree();
 
-        foreach (var item in tokenIndex)
+        for (int i = 0; i < flattenedTokens.Count; i++)
         {
-            
-        }
+            var currentToken = flattenedTokens[i];
+            var nexttoken = i == flattenedTokens.Count - 1 ? currentToken : flattenedTokens[i + 1];
+            currentspanStart = currentToken.MatchSpan.Position.Absolute;
 
-        while (currentPointer < totalSpanLength)
-        {
-            var subspanText = token
-        }
+            if (i == flattenedTokens.Count - 1)
+                currentSpanEnd = currentspanStart + token.MatchSpan.Length;
+            else
+                currentSpanEnd = nexttoken.MatchSpan.Position.Absolute;
 
+            var currentSpanLength = currentSpanEnd - currentspanStart;
 
+            var textspan = token.MatchSpan.Source.Substring(currentspanStart, currentSpanLength);
+            html += WrapTokenInStartSpanTag(currentToken, textspan, captureId);
 
-        int nextChildPosition = 0;
-        for (int i = 0; i < effect.MatchSpan.Length; i++)
-        {
-            nextChildPosition = flattenedTokenSegments.Select(x => x.MatchSpan.Position.Absolute)
-        }
+            if (nexttoken.RecursiveDepth <= currentToken.RecursiveDepth)
+                html += @"</span>";
 
-        foreach (var childToken in effect.ChildTokens.OrderBy(x => x.MatchSpan.Position.Absolute))
-        {
-            var segmentHtml = BuildNestedEffectHtml(
-                childToken,
-                childToken.MatchSpan.ToStringValue(),
-                cardId,
-                lineIndex,
-                propertyColorMap,
-                ref captureIdCounter,
-                detailsHtmlBuilder
-            );
-
-            childTokenSpans.Add(segmentHtml);
-        }
-
-        // 2. Build the final HTML string by assembling the segments.
-        var inlineHtmlBuilder = new StringBuilder();
-
-        inlineHtmlBuilder.Append(effect.MatchSpan.ToStringValue());
-
-        foreach (var span in childTokenSpans)
-        {
-            inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effect.MatchSpan.ToStringValue()));
-            inlineHtmlBuilder.Append(span);
+            if (i == flattenedTokens.Count - 1)
+                for (int j = 0; j < currentToken.RecursiveDepth; j++)
+                    html += @"</span>";
         }
 
         // 3. Generate the details block for the current effect.
-        string colorHex = ToHex(_typeColors[effect.GetType()]);
-        detailsHtmlBuilder.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{effect.GetType().Name}</h4>");
-        RenderTokenUnitDetails(detailsHtmlBuilder, effect, captureId, propertyColorMap);
-        detailsHtmlBuilder.Append("</div>");
-
-        // 4. Wrap the inline text in its own span and return.
-        return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex}; padding-bottom: {pixelGapPerUnderline * effect.GetDeepestChildLevel() + pixelGapPerUnderline}px;\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder}</span>";
+        string colorHex = ToHex(_typeColors[token.GetType()]);
+        html += ($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{token.GetType().Name}</h4>");
+        StringBuilder tokenUnitDetailStringBuilder = new();
+        RenderTokenUnitDetails(tokenUnitDetailStringBuilder, token, captureId, propertyColorMap);
+        html += tokenUnitDetailStringBuilder.ToString() + "</div>";
+        sb.Append(html);
+        return sb.ToString();
     }
 
 
@@ -360,7 +354,7 @@ public class TokenTester
                         if (!token.Kind.IsDefined(typeof(IgnoreInAnalysisAttribute)))
                         {
                             var effect = effectsToShow[effectIndex];
-                            lineTextBuilder.Append(BuildNestedEffectHtml(effect, tokenText, analyzedCard.Card.CardId, i, propertyColorMap, ref captureIdCounter, detailsBuilder));
+                            lineTextBuilder.Append(BuildNestedEffectHtml(effect, analyzedCard.Card.CardId, i, propertyColorMap, ref captureIdCounter, detailsBuilder));
                             effectIndex++;
                         }
                         else
