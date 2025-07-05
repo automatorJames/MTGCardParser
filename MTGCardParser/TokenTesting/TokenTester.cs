@@ -258,6 +258,28 @@ public class TokenTester
         string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
         captureIdCounter++;
         var childTokenSpans = new List<string>();
+        var flattenedTokenSegments = effect.ChildTokens.Concat([effect]).OrderBy(x => x.MatchSpan.Position.Absolute);
+        int currentPointer = 0;
+        int totalSpanLength = effect.MatchSpan.Length;
+        Dictionary<int, ITokenUnit> tokenIndex = flattenedTokenSegments.ToDictionary(x => x.MatchSpan.Position.Absolute, x => x);
+
+        foreach (var item in tokenIndex)
+        {
+            
+        }
+
+        while (currentPointer < totalSpanLength)
+        {
+            var subspanText = token
+        }
+
+
+
+        int nextChildPosition = 0;
+        for (int i = 0; i < effect.MatchSpan.Length; i++)
+        {
+            nextChildPosition = flattenedTokenSegments.Select(x => x.MatchSpan.Position.Absolute)
+        }
 
         foreach (var childToken in effect.ChildTokens.OrderBy(x => x.MatchSpan.Position.Absolute))
         {
@@ -281,9 +303,6 @@ public class TokenTester
 
         foreach (var span in childTokenSpans)
         {
-            var thing1 = HtmlReportGenerator.Encode(effect.MatchSpan.ToStringValue());
-            var thing2 = span;
-
             inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effect.MatchSpan.ToStringValue()));
             inlineHtmlBuilder.Append(span);
         }

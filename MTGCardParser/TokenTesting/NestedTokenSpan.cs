@@ -9,7 +9,7 @@
 
     public NestedTokenSpan(Type tokenUnitType, TextSpan textSpan, int index, int length, List<ITokenUnit> tokenChildren)
     {
-        var flattenedChildren = token
+        var flattenedChildren = token;
 
         TokenUnitType = tokenUnitType;
         TextSpan = textSpan;
