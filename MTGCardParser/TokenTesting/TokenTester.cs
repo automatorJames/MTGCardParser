@@ -170,148 +170,6 @@ public class TokenTester
         }
     }
 
-    //private string BuildNestedEffectHtml(
-    //ITokenUnit effect,
-    //string effectText,
-    //object cardId,
-    //int lineIndex,
-    //IReadOnlyDictionary<string, string> propertyColorMap,
-    //ref int captureIdCounter,
-    //StringBuilder detailsHtmlBuilder)
-    //{
-    //
-    //    // Assign a unique ID for this effect instance
-    //    string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
-    //    captureIdCounter++;
-    //    var instanceType = effect.GetType();
-    //    var template = effect.GetRegexTemplate();
-    //
-    //    // A segment is a part of the text that needs special rendering.
-    //    // Store the final HTML for the segment directly, avoiding lambdas.
-    //    var segments = new List<(int Index, int Length, string HtmlContent)>();
-    //
-    //    var tokenCaptureProps = template.AllUnwrappedTokenCaptureSegments;
-    //
-    //    for (int i = 0; i < tokenCaptureProps.Count; i++)
-    //    {
-    //        TokenCaptureSegment propCaptureSegment = tokenCaptureProps[i];
-    //        var propValue = propCaptureSegment.CaptureProp.Prop.GetValue(effect);
-    //        if (propValue == null) continue;
-    //
-    //        var propCaptureText = propCaptureSegment.Regex.Match(effectText).Value;
-    //        if (propValue is ITokenUnit childTokenUnit)
-    //        {
-    //            // Recursively build the HTML for the child token
-    //            var segmentHtml = BuildNestedEffectHtml(childTokenUnit, propCaptureText, cardId, lineIndex, propertyColorMap, ref captureIdCounter, detailsHtmlBuilder);
-    //            segments.Add((i, propCaptureText.Length, segmentHtml));
-    //        }
-    //        else
-    //        {
-    //            continue; // Skip this segment
-    //        }
-    //
-    //    }
-    //
-    //    // 2. Build the final HTML string by assembling the segments.
-    //    var inlineHtmlBuilder = new StringBuilder();
-    //    segments = segments.OrderBy(s => s.Index).ToList();
-    //    int currentIndex = 0;
-    //
-    //    foreach (var (index, length, htmlContent) in segments)
-    //    {
-    //        if (index > currentIndex)
-    //        {
-    //            inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex, index - currentIndex)));
-    //        }
-    //        if (index < currentIndex) continue;
-    //
-    //        inlineHtmlBuilder.Append(htmlContent);
-    //        currentIndex = index + length;
-    //    }
-    //
-    //    if (currentIndex < effectText.Length)
-    //    {
-    //        inlineHtmlBuilder.Append(HtmlReportGenerator.Encode(effectText.Substring(currentIndex)));
-    //    }
-    //
-    //    // 3. Generate the details block for the current effect.
-    //    string colorHex = ToHex(_typeColors[instanceType]);
-    //    detailsHtmlBuilder.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{instanceType.Name}</h4>");
-    //    RenderTokenUnitDetails(detailsHtmlBuilder, effect, captureId, propertyColorMap);
-    //    detailsHtmlBuilder.Append("</div>");
-    //
-    //    // 4. Wrap the inline text in its own span and return.
-    //    return $"<span class=\"nested-underline\" style=\"--underline-color: {colorHex};\" data-capture-id=\"{captureId}\">{inlineHtmlBuilder.ToString()}</span>";
-    //}
-
-
-    string WrapTokenInStartSpanTag(ITokenUnit token, string textSpan, string captureId)
-    {
-        const int pixelGapPerUnderline = 4;
-
-        var tag =
-            $@"<span class=""nested-underline"" style=""--underline-color: {ToHex(_typeColors[token.GetType()])}; "
-            + $@"padding-bottom: {pixelGapPerUnderline * token.GetDeepestChildLevel() + pixelGapPerUnderline}px;"" "
-            + $@"data-capture-id=""{captureId}"">";
-
-        tag += HtmlReportGenerator.Encode(textSpan);
-
-        return tag;
-    }
-
-    string BuildNestedEffectHtml(
-        ITokenUnit token,
-        object cardId,
-        int lineIndex,
-        IReadOnlyDictionary<string, string> propertyColorMap,
-        ref int captureIdCounter,
-        StringBuilder sb)
-    {
-        var html = "";
-
-        // Assign a unique ID for this effect instance
-        string captureId = $"capture-{cardId}-{lineIndex}-{captureIdCounter}";
-        captureIdCounter++;
-        var childTokenSpans = new List<string>();
-        int currentspanStart = 0;
-        int currentSpanEnd = 0;
-        var flattenedTokens = token.FlattenTokenTree();
-
-        for (int i = 0; i < flattenedTokens.Count; i++)
-        {
-            var currentToken = flattenedTokens[i];
-            var nexttoken = i == flattenedTokens.Count - 1 ? currentToken : flattenedTokens[i + 1];
-            currentspanStart = currentToken.MatchSpan.Position.Absolute;
-
-            if (i == flattenedTokens.Count - 1)
-                currentSpanEnd = currentspanStart + token.MatchSpan.Length;
-            else
-                currentSpanEnd = nexttoken.MatchSpan.Position.Absolute;
-
-            var currentSpanLength = currentSpanEnd - currentspanStart;
-
-            var textspan = token.MatchSpan.Source.Substring(currentspanStart, currentSpanLength);
-            html += WrapTokenInStartSpanTag(currentToken, textspan, captureId);
-
-            if (nexttoken.RecursiveDepth <= currentToken.RecursiveDepth)
-                html += @"</span>";
-
-            if (i == flattenedTokens.Count - 1)
-                for (int j = 0; j < currentToken.RecursiveDepth; j++)
-                    html += @"</span>";
-        }
-
-        // 3. Generate the details block for the current effect.
-        string colorHex = ToHex(_typeColors[token.GetType()]);
-        html += ($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\"><h4 style=\"color: {colorHex};\">{token.GetType().Name}</h4>");
-        StringBuilder tokenUnitDetailStringBuilder = new();
-        RenderTokenUnitDetails(tokenUnitDetailStringBuilder, token, captureId, propertyColorMap);
-        html += tokenUnitDetailStringBuilder.ToString() + "</div>";
-        sb.Append(html);
-        return sb.ToString();
-    }
-
-
     void GenerateCardVariableCaptureHtml()
     {
         string htmlContent = HtmlReportGenerator.Generate("Card Variable Capture", sb =>
@@ -345,25 +203,24 @@ public class TokenTester
 
                     var lineTextBuilder = new StringBuilder();
                     var detailsBuilder = new StringBuilder();
-                    int captureIdCounter = 0; // Reset for each line to keep IDs manageable
-                    int effectIndex = 0;
+                    int captureIdCounter = 0; // Reset for each line
 
-                    foreach (var token in lineTokens)
+                    // Iterate directly over the effects you want to show. This is much cleaner.
+                    foreach (var effect in effectsToShow)
                     {
-                        var tokenText = token.ToStringValue();
-                        if (!token.Kind.IsDefined(typeof(IgnoreInAnalysisAttribute)))
-                        {
-                            var effect = effectsToShow[effectIndex];
-                            lineTextBuilder.Append(BuildNestedEffectHtml(effect, analyzedCard.Card.CardId, i, propertyColorMap, ref captureIdCounter, detailsBuilder));
-                            effectIndex++;
-                        }
-                        else
-                        {
-                            lineTextBuilder.Append(HtmlReportGenerator.Encode(tokenText));
-                        }
-                        lineTextBuilder.Append(" ");
+                        // Assign a unique ID for this effect instance for linking spans to details
+                        string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{captureIdCounter}";
+                        captureIdCounter++;
+
+                        // 1. Build the nested HTML for the spans and append it to the line builder
+                        RenderNestedTokenHtml(lineTextBuilder, effect, captureId, propertyColorMap);
+                        lineTextBuilder.Append(" "); // Add space between effects
+
+                        // 2. Build the details block for this effect and append it to the details builder
+                        RenderEffectDetails(detailsBuilder, effect, captureId, propertyColorMap);
                     }
 
+                    // This part remains the same
                     sb.Append($"<pre class=\"line-text\">{lineTextBuilder.ToString().TrimEnd()}</pre>");
                     sb.Append(detailsBuilder.ToString());
 
@@ -374,6 +231,81 @@ public class TokenTester
         }, isVariableCapturePage: true);
 
         File.WriteAllText(Path.Combine(_outputDir, "Card Variable Capture.html"), htmlContent);
+    }
+
+    /// <summary>
+    /// Recursively renders a token and its children as nested <span> elements.
+    /// This version correctly handles overlapping spans by calculating the "prefix" and "suffix"
+    /// text of a parent token that exists around its children.
+    /// </summary>
+    private void RenderNestedTokenHtml(
+        StringBuilder sb,
+        ITokenUnit token,
+        string rootCaptureId,
+        IReadOnlyDictionary<string, string> propertyColorMap)
+    {
+        var parentSpan = token.MatchSpan;
+        var sortedChildren = token.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).ToList();
+
+        const int pixelGapPerUnderline = 4;
+        sb.Append($@"<span class=""nested-underline"" style=""--underline-color: {ToHex(_typeColors[token.GetType()])}; padding-bottom: {pixelGapPerUnderline * token.GetDeepestChildLevel() + pixelGapPerUnderline}px;"" data-capture-id=""{rootCaptureId}"">");
+
+        if (!sortedChildren.Any())
+        {
+            sb.Append(HtmlReportGenerator.Encode(parentSpan.ToStringValue()));
+        }
+        else
+        {
+            int currentIndexInParentText = 0;
+
+            foreach (var child in sortedChildren)
+            {
+                var childSpan = child.MatchSpan;
+                int childRelativeStart = childSpan.Position.Absolute - parentSpan.Position.Absolute;
+
+                if (childRelativeStart > currentIndexInParentText)
+                {
+                    int prefixLength = childRelativeStart - currentIndexInParentText;
+                    string prefixText = parentSpan.Source.Substring(parentSpan.Position.Absolute + currentIndexInParentText, prefixLength);
+                    sb.Append(HtmlReportGenerator.Encode(prefixText));
+                }
+
+                RenderNestedTokenHtml(sb, child, rootCaptureId, propertyColorMap);
+
+                currentIndexInParentText = childRelativeStart + childSpan.Length;
+            }
+
+            // d) Render any remaining text in the parent after the last child.
+            if (currentIndexInParentText < parentSpan.Length)
+            {
+                // We now provide the leng
+                // th to ensure we don't read past the end of the parent's span.
+                int suffixLength = parentSpan.Length - currentIndexInParentText;
+                string suffixText = parentSpan.Source.Substring(parentSpan.Position.Absolute + currentIndexInParentText, suffixLength);
+                sb.Append(HtmlReportGenerator.Encode(suffixText));
+            }
+        }
+
+        sb.Append("</span>");
+    }
+
+    /// <summary>
+    /// Renders the separate details block for a single effect.
+    /// </summary>
+    private void RenderEffectDetails(
+        StringBuilder sb,
+        ITokenUnit token,
+        string captureId,
+        IReadOnlyDictionary<string, string> propertyColorMap)
+    {
+        string colorHex = ToHex(_typeColors[token.GetType()]);
+        sb.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\">");
+        sb.Append($"<h4 style=\"color: {colorHex};\">{token.GetType().Name}</h4>");
+
+        // Re-use your existing details rendering logic
+        RenderTokenUnitDetails(sb, token, captureId, propertyColorMap);
+
+        sb.Append("</div>");
     }
 
 
