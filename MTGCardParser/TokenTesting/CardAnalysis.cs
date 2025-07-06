@@ -9,7 +9,7 @@ public class CardAnalysis
     public List<Token<Type>[]> UnmatchedSegments { get; private set; } = new();
     public List<TextSpan> UnmatchedSegmentSpans { get; private set; } = new();
     public List<string> UnmatchedSegmentCombinations { get; private set; } = new();
-    public List<ClauseEffects> Clauses { get; private set; } = new();
+    public List<ClauseTokens> Clauses { get; private set; } = new();
 
     public int UnmatchedTokenCount => UnmatchedSegments
         .SelectMany(x => x)

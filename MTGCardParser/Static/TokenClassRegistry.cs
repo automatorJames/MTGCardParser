@@ -2,6 +2,9 @@
 
 public static class TokenClassRegistry
 {
+    private static bool _isInitialized;
+    public static bool IsInitialized => _isInitialized;
+
     public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
@@ -12,6 +15,7 @@ public static class TokenClassRegistry
     {
         RegisterTypes();
         InitializeTokenizer();
+        _isInitialized = true;
     }
 
     static void RegisterTypes()

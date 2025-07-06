@@ -1,4 +1,4 @@
-﻿@inject TokenTester Tester
+﻿@inject CardTextAnalyzer Analyzer
 
 @if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
 {
@@ -10,7 +10,7 @@ else
     const int pixelGapPerUnderline = 4;
     var deepestLevel = Token.GetDeepestChildLevel();
     var padding = pixelGapPerUnderline * deepestLevel + pixelGapPerUnderline;
-    var color = Tester.ToHex(Tester.GetTypeColor(Token.GetType()));
+    var color = Analyzer.ToHex(Analyzer.TypeColors[Token.GetType()]);
     
     <span class="nested-underline" style="--underline-color: @color; padding-bottom: @(padding)px;" data-capture-id="@RootCaptureId">
         @if (!sortedChildren.Any())

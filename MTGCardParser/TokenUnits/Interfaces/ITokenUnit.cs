@@ -3,6 +3,7 @@
 public interface ITokenUnit
 {
     public RegexTemplate GetRegexTemplate();
+    public Type Type { get; }
     public void SetPropertiesFromMatchSpan();
     public ITokenUnit ParentToken { get; set; }
     public List<ITokenUnit> ChildTokens { get; set; }

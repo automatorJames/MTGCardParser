@@ -1,6 +1,6 @@
 ﻿@page "/type-key"
 @inject AggregateCardAnalysis Analysis
-@inject TokenTester Tester
+@inject CardTextAnalyzer Analyzer
 
 <h1>Token Type Key & Regex Analysis</h1>
 
@@ -10,6 +10,6 @@
 
     <TypeCard Type="type"
               Count="Analysis.TokenCaptureCounts[type]"
-              ColorHex=@(Tester.ToHex(Tester.GetTypeColor(type)))
+              ColorHex=@(Analyzer.ToHex(Analyzer.TypeColors[type]))
               RenderedRegex=@TokenClassRegistry.TypeRegexTemplates[type].RenderedRegexString />
 }

@@ -7,7 +7,7 @@ public class AggregateCardAnalysis
     public Dictionary<Type, int> TokenCaptureCounts { get; set; } = new();
     public int TotalUnmatchedTokens { get; set; }
 
-    public AggregateCardAnalysis(List<Card> cards)
+    public AggregateCardAnalysis(List<Card> cards, bool hydrateAllTokenInstances = true)
     {
         foreach (var type in TokenClassRegistry.AppliedOrderTypes.OrderBy(x => x.Name))
             TokenCaptureCounts[type] = 0;
@@ -27,6 +27,10 @@ public class AggregateCardAnalysis
 
             AnalyzedCards.Add(analyzedCard);
         }
+
+        if (hydrateAllTokenInstances)
+            foreach (var card in AnalyzedCards)
+                card.SetClauseEffects();
     }
 }
 

@@ -1,4 +1,4 @@
-﻿@inject TokenTester Tester
+﻿@inject CardTextAnalyzer Analyzer
 
 @if (visibleScalarProps.Any())
 {
@@ -10,10 +10,10 @@
             @foreach (var (prop, value) in visibleScalarProps)
             {
                 string propColor = PropertyColorMap.GetValueOrDefault(prop.Name, "inherit");
-                string valueClass = Tester.GetValueCssClass(prop.PropertyType);
+                string valueClass = GetValueCssClass(prop.PropertyType);
                 <tr data-property-name="@prop.Name" data-capture-id="@CaptureId">
                     <td><span style="color: @propColor; font-weight: bold;">@prop.Name</span></td>
-                    <td class="@valueClass">@Tester.GetFriendlyTypeName(prop.PropertyType)</td>
+                    <td class="@valueClass">@GetFriendlyTypeName(prop.PropertyType)</td>
                     @if (value == null || (value is string s && string.IsNullOrEmpty(s)))
                     {
                         <td class="value-empty">(empty)</td>
@@ -40,7 +40,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public object Instance { get; set; } = default!;
+    public ITokenUnit Instance { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public string CaptureId { get; set; } = default!;
@@ -48,8 +48,11 @@
     [Parameter, EditorRequired]
     public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
 
+    [Parameter]
+    public bool OmitCapturedTextSegmentProperties { get; set; } = true;
+
     private List<(PropertyInfo prop, object? value)> visibleScalarProps = new();
-    private List<(PropertyInfo prop, object value)> childTokenUnitProperties = new();
+    private List<(PropertyInfo prop, ITokenUnit value)> childTokenUnitProperties = new();
 
     protected override void OnInitialized()
     {
@@ -58,7 +61,8 @@
             .Where(p => p.Name != "RegexTemplate" && p.CanRead)
             .ToDictionary(p => p.Name);
 
-        var orderedPropNames = Tester.GetOrderedPropertiesFromTemplate((Instance as ITokenUnit)?.GetRegexTemplate())
+        var orderedPropNames = Instance.GetRegexTemplate()
+            .GetOrderedCaptureProps()
             .Select(p => p.Name)
             .Distinct()
             .ToList();
@@ -78,15 +82,31 @@
 
             if (typeof(ITokenUnit).IsAssignableFrom(prop.PropertyType))
             {
-                childTokenUnitProperties.Add((prop, value));
+                childTokenUnitProperties.Add((prop, (ITokenUnit)value));
             }
             else
             {
-                if (Tester.OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment)) continue;
+                if (OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment)) continue;
                 if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
                 
                 visibleScalarProps.Add((prop, value));
             }
         }
+    }
+
+    public string GetValueCssClass(Type type)
+    {
+        if (type == typeof(CapturedTextSegment)) return "value-tokensegment";
+        bool isEnum = type.IsEnum || (Nullable.GetUnderlyingType(type)?.IsEnum ?? false);
+        if (isEnum) return "value-enum";
+        return "value-default";
+    }
+
+    public string GetFriendlyTypeName(Type type)
+    {
+        bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
+        if (type.IsEnum || isNullableEnum) return "Enum";
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return $"{type.GetGenericArguments()[0].Name}?";
+        return type.Name;
     }
 }

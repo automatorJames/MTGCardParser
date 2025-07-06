@@ -14,11 +14,10 @@ public class Program
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
 
-        var tokenTester = new TokenTester(1, true);
-        tokenTester.Process(hydrateAllTokenInstances: true);
+        var cardTextAnalyzer = new CardTextAnalyzer(1);
 
-        builder.Services.AddSingleton(tokenTester);
-        builder.Services.AddSingleton(tokenTester.AggregateCardAnalysis);
+        builder.Services.AddSingleton(cardTextAnalyzer);
+        builder.Services.AddSingleton(cardTextAnalyzer.AggregateCardAnalysis);
 
         var app = builder.Build();
 

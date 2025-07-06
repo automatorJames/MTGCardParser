@@ -1,8 +1,8 @@
-﻿@inject TokenTester Tester
+﻿@inject CardTextAnalyzer Analyzer
 
 @if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is null)
 {
-    string colorHex = Tester.ToHex(Tester.GetTypeColor(Token.GetType()));
+    string colorHex = Analyzer.ToHex(Analyzer.TypeColors[Token.Type]);
     <div class="effect-details-block" data-capture-id="@CaptureId">
         <h5 style="color: @colorHex;">@Token.GetType().Name</h5>
         <TokenUnitDetails Instance="Token" CaptureId="@CaptureId" PropertyColorMap="PropertyColorMap" />

@@ -4,6 +4,14 @@ public abstract class TokenUnitBase : ITokenUnit
 {
     static string RegexTemplatePropName = "RegexTemplate";
 
+    Type _type;
+    public Type Type
+    {
+        get => _type ??= GetType();
+    }
+
+    //public RegexTemplate RegexTemplate => GetRegexTemplate();
+
     public ITokenUnit ParentToken { get; set; }
     public List<ITokenUnit> ChildTokens { get; set; } = new();
     public int RecursiveDepth { get; set; }
@@ -22,6 +30,9 @@ public abstract class TokenUnitBase : ITokenUnit
 
     public RegexTemplate GetRegexTemplate()
     {
+        if (TokenClassRegistry.IsInitialized)
+            return TokenClassRegistry.TypeRegexTemplates[Type];
+
         var prop = GetType().GetProperty(RegexTemplatePropName);
 
         if (prop is null)

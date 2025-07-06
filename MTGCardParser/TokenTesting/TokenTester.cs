@@ -1,4 +1,4 @@
-﻿using System.Text;
+﻿/*using System.Text;
 
 namespace MTGCardParser.TokenTesting;
 
@@ -30,6 +30,27 @@ public class TokenTester
         }
     }
 
+    //public void Process(bool hydrateAllTokenInstances = false)
+    //{
+    //    AggregateCardAnalysis = new(_cards);
+    //
+    //    Console.WriteLine("\nGenerating HTML reports...");
+    //    GenerateTypeKeyHtml();
+    //    GenerateCardCoverageHtml();
+    //    GenerateUnmatchedSpansHtml();
+    //
+    //    if (hydrateAllTokenInstances)
+    //    {
+    //        Console.WriteLine("Hydrating token instances for detailed capture report...");
+    //        foreach (var card in AggregateCardAnalysis.AnalyzedCards)
+    //            card.SetClauseEffects();
+    //
+    //        GenerateCardVariableCaptureHtml();
+    //    }
+    //
+    //    Console.WriteLine($"HTML reports generated successfully in: {_outputDir}");
+    //}
+
     public void Process(bool hydrateAllTokenInstances = false)
     {
         AggregateCardAnalysis = new(_cards);
@@ -51,34 +72,17 @@ public class TokenTester
         Console.WriteLine($"HTML reports generated successfully in: {_outputDir}");
     }
 
-    public IEnumerable<CaptureProp> GetOrderedPropertiesFromTemplate(RegexTemplate template)
-    {
-        if (template == null) yield break;
 
-        foreach (var segment in template.RegexSegments)
-        {
-            if (segment is IPropRegexSegment propSegment)
-            {
-                yield return propSegment.CaptureProp;
-            }
-            else if (segment is TokenCaptureAlternativeSet alternativeSet)
-            {
-                foreach (var altPropSegment in alternativeSet.Alternatives)
-                {
-                    yield return altPropSegment.CaptureProp;
-                }
-            }
-        }
-    }
-
-    private void RenderTokenUnitDetails(StringBuilder sb, object instance, string captureId, IReadOnlyDictionary<string, string> propertyColorMap)
+*//*    private void RenderTokenUnitDetails(StringBuilder sb, object instance, string captureId, IReadOnlyDictionary<string, string> propertyColorMap)
     {
         var instanceType = instance.GetType();
         var allProperties = instanceType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                                         .Where(p => p.Name != "RegexTemplate" && p.CanRead)
                                         .ToDictionary(p => p.Name);
 
-        var orderedPropNames = GetOrderedPropertiesFromTemplate((instance as ITokenUnit)?.GetRegexTemplate())
+        var orderedPropNames = (instance as ITokenUnit)?
+            .GetRegexTemplate()
+            .GetOrderedCaptureProps()
             .Select(p => p.Name)
             .Distinct()
             .ToList();
@@ -99,13 +103,9 @@ public class TokenTester
             if (!allProperties.TryGetValue(propName, out var prop)) continue;
 
             if (typeof(ITokenUnit).IsAssignableFrom(prop.PropertyType))
-            {
                 childTokenUnitProperties.Add(prop);
-            }
             else
-            {
                 scalarProperties.Add(prop);
-            }
         }
 
         var visibleScalarProps = new List<(PropertyInfo prop, object value)>();
@@ -180,7 +180,7 @@ public class TokenTester
                     if (i >= analyzedCard.Clauses.Count) continue;
 
                     var lineTokens = analyzedCard.ProcessedLineTokens[i];
-                    var effectsToShow = analyzedCard.Clauses[i].Effects;
+                    var effectsToShow = analyzedCard.Clauses[i].CapturedTokens;
                     if (!effectsToShow.Any()) continue;
 
                     sb.Append("<div class=\"line-capture-block\">");
@@ -524,7 +524,7 @@ public class TokenTester
             sb.Append("</tbody></table>");
         });
         File.WriteAllText(Path.Combine(_outputDir, "Unmatched Spans.html"), htmlContent);
-    }
+    }*//*
 
     public static int GetDeterministicHash(string text)
     {
@@ -543,6 +543,7 @@ public class TokenTester
         double hue = Math.Abs(hash) % 360 / 360.0;
         return HslToRgb(hue, 0.9, 0.7);
     }
+
     static Color HslToRgb(double h, double s, double l)
     {
         double r, g, b;
@@ -557,6 +558,7 @@ public class TokenTester
         }
         return Color.FromArgb(255, (int)(r * 255), (int)(g * 255), (int)(b * 255));
     }
+
     static double HueToRgb(double p, double q, double t)
     {
         if (t < 0) t += 1;
@@ -566,5 +568,6 @@ public class TokenTester
         if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
         return p;
     }
+
     public string ToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
-}
+}*/

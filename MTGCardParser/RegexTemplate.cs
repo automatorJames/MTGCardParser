@@ -23,6 +23,16 @@ public class RegexTemplate
         RegexSegments = source.RegexSegments.ToList();
         RenderedRegexString = source.RenderedRegexString;
     }
+
+    public IEnumerable<CaptureProp> GetOrderedCaptureProps()
+    {
+        foreach (var segment in RegexSegments)
+            if (segment is IPropRegexSegment propSegment)
+                yield return propSegment.CaptureProp;
+            else if (segment is TokenCaptureAlternativeSet alternativeSet)
+                foreach (var altPropSegment in alternativeSet.Alternatives)
+                    yield return altPropSegment.CaptureProp;
+    }
 }
 
 public class RegexTemplate<T> : RegexTemplate
