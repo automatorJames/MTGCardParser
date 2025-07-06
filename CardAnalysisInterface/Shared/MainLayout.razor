@@ -1,17 +1,24 @@
 ﻿@inherits LayoutComponentBase
 
-<PageTitle>CardAnalysisInterface</PageTitle>
-
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+    <nav class="top-row px-4">
+        <a class="navbar-brand" href="">MTG Analysis</a>
+
+        <NavLink class="nav-link" href="type-key" Match="NavLinkMatch.All">
+            <span class="oi oi-key" aria-hidden="true"></span> Type Key
+        </NavLink>
+        <NavLink class="nav-link" href="card-coverage">
+            <span class="oi oi-pie-chart" aria-hidden="true"></span> Coverage
+        </NavLink>
+        <NavLink class="nav-link" href="unmatched-spans">
+            <span class="oi oi-warning" aria-hidden="true"></span> Unmatched
+        </NavLink>
+        <NavLink class="nav-link" href="variable-capture">
+            <span class="oi oi-beaker" aria-hidden="true"></span> Capture
+        </NavLink>
+    </nav>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
-        </div>
-
         <article class="content px-4">
             @Body
         </article>
