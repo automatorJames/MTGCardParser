@@ -185,7 +185,7 @@ public class TokenTester
                     if (i >= analyzedCard.Clauses.Count) continue;
 
                     var lineTokens = analyzedCard.ProcessedLineTokens[i];
-                    var effectsToShow = analyzedCard.Clauses[i].Effects.Where(e => !e.GetType().IsDefined(typeof(IgnoreInAnalysisAttribute))).ToList();
+                    var effectsToShow = analyzedCard.Clauses[i].Effects;
                     if (!effectsToShow.Any()) continue;
 
                     sb.Append("<div class=\"line-capture-block\">");
@@ -248,6 +248,13 @@ public class TokenTester
         var sortedChildren = token.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).ToList();
 
         const int pixelGapPerUnderline = 4;
+
+        if (token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
+        {
+            sb.Append(token.MatchSpan.ToStringValue());
+            return;
+        }
+
         // We pass the rootCaptureId here for the main underline span
         sb.Append($@"<span class=""nested-underline"" style=""--underline-color: {ToHex(_typeColors[token.GetType()])}; padding-bottom: {pixelGapPerUnderline * token.GetDeepestChildLevel() + pixelGapPerUnderline}px;"" data-capture-id=""{rootCaptureId}"">");
 
@@ -302,6 +309,9 @@ public class TokenTester
         string captureId,
         IReadOnlyDictionary<string, string> propertyColorMap)
     {
+        if (token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
+            return;
+
         string colorHex = ToHex(_typeColors[token.GetType()]);
         sb.Append($"<div class=\"effect-details-block\" data-capture-id=\"{captureId}\">");
         sb.Append($"<h4 style=\"color: {colorHex};\">{token.GetType().Name}</h4>");
