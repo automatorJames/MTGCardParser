@@ -1,12 +1,14 @@
-﻿namespace MTGCardParser.TokenTesting;
-using System.Net;
+﻿using System.Net;
 using System.Text;
+
+namespace MTGCardParser.TokenTesting;
 
 public static class HtmlReportGenerator
 {
     private static string GetHeader(string title, bool isCardCoveragePage = false, bool isVariableCapturePage = false)
     {
         var sb = new StringBuilder();
+        // NOTE: The double braces {{ and }} are intentional for C# string interpolation.
         sb.Append($@"
 <!DOCTYPE html>
 <html lang=""en"">
@@ -133,6 +135,7 @@ public static class HtmlReportGenerator
             border-top: 2px solid; 
             border-color: var(--prop-color);
             padding-top: 3px;
+            transition: border-top-width 0.1s ease-in-out, filter 0.1s ease-in-out;
         }}
         .effect-details-block {{
             margin-left: 2rem;
@@ -186,6 +189,12 @@ public static class HtmlReportGenerator
             filter: brightness(1.6);
         }}
         
+        /* NEW: This class will be added ONLY to the specific overline being hovered. */
+        .prop-capture.prop-highlight-inline {{
+            border-top-width: 3px;
+            filter: brightness(1.5);
+        }}
+
         .effect-details-block.highlight-active > h4 {{
              box-shadow: inset 3px 0 0 0 var(--highlight-color);
         }}
@@ -315,6 +324,8 @@ public static class HtmlReportGenerator
                         const oldBlock = document.querySelector(`.effect-details-block[data-capture-id='${lastCaptureId}']`);
                         if(oldBlock) {
                             oldBlock.querySelectorAll('.property-highlight').forEach(el => el.classList.remove('property-highlight'));
+                            // NEW: Also remove the specific inline highlight when the hover context changes.
+                            document.querySelectorAll('.prop-highlight-inline').forEach(el => el.classList.remove('prop-highlight-inline'));
                         }
                      }
                      if (captureId && propertyName) {
@@ -327,6 +338,13 @@ public static class HtmlReportGenerator
                                     el.classList.add('property-highlight');
                                     el.style.setProperty('--highlight-color', propColor);
                                 });
+
+                                // NEW: This is the hook. When we highlight a property in the details table,
+                                // we also highlight the corresponding specific overline span in the text.
+                                const propSpanInText = document.querySelector(`.prop-capture[data-capture-id='${captureId}'][data-property-name='${propertyName}']`);
+                                if (propSpanInText) {
+                                    propSpanInText.classList.add('prop-highlight-inline');
+                                }
                             }
                         }
                      }
@@ -341,6 +359,8 @@ public static class HtmlReportGenerator
                     const block = document.querySelector(`.effect-details-block[data-capture-id='${lastCaptureId}']`);
                     if(block) {
                        block.querySelectorAll('.property-highlight').forEach(el => el.classList.remove('property-highlight'));
+                       // NEW: Clean up the inline highlight on mouseleave as well.
+                       document.querySelectorAll('.prop-highlight-inline').forEach(el => el.classList.remove('prop-highlight-inline'));
                     }
                 }
                 lastCaptureId = null;
