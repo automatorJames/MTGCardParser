@@ -17,11 +17,8 @@
         if (token.Kind != typeof(string))
         {
             string colorHex = Analyzer.ToHex(Analyzer.TypeColors[token.Kind]);
-            <span class="highlight" data-title="@typeName" style="background-color: @colorHex;">
-                @if (token.Kind != typeof(Punctuation))
-                {
-                    <span class="highlight-label" style="color: @colorHex;">@typeName</span>
-                }
+            <span class="highlight" data-title=@typeName style=@($"background-color: {colorHex};")>
+                <span class="highlight-label" style=@($"color: {colorHex};")>@typeName</span>
                 @textValue
             </span>
         }

@@ -51,24 +51,10 @@
 
 
 @code {
-    private IJSObjectReference? module;
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        {
-            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/analysis.js");
-            await module.InvokeVoidAsync("initCardCaptureHover");
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (module != null)
-        {
-            await module.InvokeVoidAsync("disposeCardCaptureHover");
-            await module.DisposeAsync();
-        }
+            await JSRuntime.InvokeVoidAsync("initCardCaptureHover");
     }
 
     private IReadOnlyDictionary<string, string> GetPropertyColorMap(IEnumerable<ITokenUnit> effects)
@@ -83,5 +69,10 @@
             map[allLineProperties[k]] = Analyzer.PropertyCaptureColors[k % Analyzer.PropertyCaptureColors.Count];
 
         return map;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("disposeCardCaptureHover");
     }
 }

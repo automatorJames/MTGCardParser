@@ -37,7 +37,7 @@ let mouseoverHandler;
 let mouseleaveHandler;
 
 // By adding 'export', we make this function callable from the Blazor component.
-export function initCardCaptureHover() {
+function initCardCaptureHover() {
     const mainContent = document.getElementById('main-content');
     if (!mainContent) {
         console.error("#main-content not found. Hover will not work.");
@@ -111,17 +111,14 @@ export function initCardCaptureHover() {
     // Attach the event listeners.
     mainContent.addEventListener('mouseover', mouseoverHandler);
     mainContent.addEventListener('mouseleave', mouseleaveHandler);
-
-    console.log("Card capture hover events initialized successfully.");
 }
 
 // Also export the cleanup function.
-export function disposeCardCaptureHover() {
+function disposeCardCaptureHover() {
     const mainContent = document.getElementById('main-content');
     // Check that the handlers were actually created before trying to remove them.
     if (mainContent && mouseoverHandler && mouseleaveHandler) {
         mainContent.removeEventListener('mouseover', mouseoverHandler);
         mainContent.removeEventListener('mouseleave', mouseleaveHandler);
-        console.log("Card capture hover events disposed.");
     }
 }

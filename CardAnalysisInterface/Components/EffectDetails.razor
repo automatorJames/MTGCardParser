@@ -4,7 +4,7 @@
 {
     string colorHex = Analyzer.ToHex(Analyzer.TypeColors[Token.Type]);
     <div class="effect-details-block" data-capture-id="@CaptureId">
-        <h5 style="color: @colorHex;">@Token.GetType().Name</h5>
+        <h5 style="color: @colorHex; padding-left: 16px;">@Token.GetType().Name</h5>
         <TokenUnitDetails Instance="Token" CaptureId="@CaptureId" PropertyColorMap="PropertyColorMap" />
     </div>
 }
