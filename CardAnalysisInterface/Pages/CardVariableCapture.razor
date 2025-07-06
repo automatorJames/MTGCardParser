@@ -2,15 +2,18 @@
 @attribute [StreamRendering]
 @inject AggregateCardAnalysis Analysis
 @inject TokenTester Tester
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 <body class="page-variable-capture">
     <h1>Card Variable Capture</h1>
 
     <div id="main-content">
+        @* ... The rest of your HTML content remains exactly the same ... *@
         @foreach (var analyzedCard in Analysis.AnalyzedCards)
         {
             <div class="card-capture-block">
-                <h2>@analyzedCard.Card.Name</h2>
+                <h3>@analyzedCard.Card.Name</h3>
                 <pre class="full-original-text">@analyzedCard.Card.Text</pre>
 
                 @for (int i = 0; i < analyzedCard.Clauses.Count; i++)
@@ -21,7 +24,7 @@
                     var propertyColorMap = GetPropertyColorMap(effectsToShow);
                     int captureIdCounter = 0;
 
-                    <div class="line-capture-block">
+                    <div class="line-capture-block">    
                         <h5 class="line-label">Line #@(i + 1)</h5>
 
                         <pre class="line-text">
@@ -48,6 +51,36 @@
 
 
 @code {
+    // This private field will store the JS module for easy access.
+    private IJSObjectReference? module;
+
+    // 3. This method runs AFTER the component has been rendered to the DOM.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // We only want to run the setup logic ONCE.
+        if (firstRender)
+        {
+            // Import our JS file as a module.
+            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/analysis.js");
+
+            // Call the initialization function within that module.
+            await module.InvokeVoidAsync("initCardCaptureHover"); // Direct call
+        }
+    }
+
+    // 4. This method is called when the component is being removed (e.g., user navigates away).
+    // It's part of the IAsyncDisposable interface.
+    public async ValueTask DisposeAsync()
+    {
+        if (module != null)
+        {
+            // Call the cleanup function in our JS module.
+            await module.InvokeVoidAsync("disposeCardCaptureHover"); // Direct call
+            // Dispose the module reference.
+            await module.DisposeAsync();
+        }
+    }
+
     private IReadOnlyDictionary<string, string> GetPropertyColorMap(IEnumerable<ITokenUnit> effects)
     {
         var allLineProperties = effects

@@ -34,7 +34,7 @@ else
                 {
                     int prefixLength = childRelativeStart - currentIndexInParentText;
                     string prefixText = Token.MatchSpan.Source.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
-                    <PropCapturedText TextSegment="prefixText"
+                    <PropCapturedText TextSegment=@prefixText
                                       SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
                                       ParentToken="Token"
                                       PropertyColorMap="PropertyColorMap"
@@ -53,7 +53,7 @@ else
             {
                 int suffixLength = Token.MatchSpan.Length - currentIndexInParentText;
                 string suffixText = Token.MatchSpan.Source.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, suffixLength);
-                <PropCapturedText TextSegment="suffixText"
+                <PropCapturedText TextSegment=@suffixText
                                   SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
                                   ParentToken="Token"
                                   PropertyColorMap="PropertyColorMap"
