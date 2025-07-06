@@ -241,21 +241,24 @@ public class TokenTester
     private void RenderNestedTokenHtml(
         StringBuilder sb,
         ITokenUnit token,
-        string rootCaptureId,
+        string rootCaptureId, // Passed for clarity, though my helper parses it.
         IReadOnlyDictionary<string, string> propertyColorMap)
     {
         var parentSpan = token.MatchSpan;
         var sortedChildren = token.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).ToList();
 
         const int pixelGapPerUnderline = 4;
+        // We pass the rootCaptureId here for the main underline span
         sb.Append($@"<span class=""nested-underline"" style=""--underline-color: {ToHex(_typeColors[token.GetType()])}; padding-bottom: {pixelGapPerUnderline * token.GetDeepestChildLevel() + pixelGapPerUnderline}px;"" data-capture-id=""{rootCaptureId}"">");
 
         if (!sortedChildren.Any())
         {
-            sb.Append(HtmlReportGenerator.Encode(parentSpan.ToStringValue()));
+            // BASE CASE: Leaf node. Render its text, but check for property captures within it.
+            RenderTextWithPropCaptures(sb, parentSpan.ToStringValue(), parentSpan.Position.Absolute, token, propertyColorMap);
         }
         else
         {
+            // RECURSIVE STEP: Parent node.
             int currentIndexInParentText = 0;
 
             foreach (var child in sortedChildren)
@@ -263,26 +266,27 @@ public class TokenTester
                 var childSpan = child.MatchSpan;
                 int childRelativeStart = childSpan.Position.Absolute - parentSpan.Position.Absolute;
 
+                // a) Render the prefix text, checking for property captures.
                 if (childRelativeStart > currentIndexInParentText)
                 {
                     int prefixLength = childRelativeStart - currentIndexInParentText;
                     string prefixText = parentSpan.Source.Substring(parentSpan.Position.Absolute + currentIndexInParentText, prefixLength);
-                    sb.Append(HtmlReportGenerator.Encode(prefixText));
+                    RenderTextWithPropCaptures(sb, prefixText, parentSpan.Position.Absolute + currentIndexInParentText, token, propertyColorMap);
                 }
 
+                // b) Recursively render the child (which handles its own underlines and overlines).
                 RenderNestedTokenHtml(sb, child, rootCaptureId, propertyColorMap);
 
+                // c) Update our position.
                 currentIndexInParentText = childRelativeStart + childSpan.Length;
             }
 
-            // d) Render any remaining text in the parent after the last child.
+            // d) Render the suffix text, checking for property captures.
             if (currentIndexInParentText < parentSpan.Length)
             {
-                // We now provide the leng
-                // th to ensure we don't read past the end of the parent's span.
                 int suffixLength = parentSpan.Length - currentIndexInParentText;
                 string suffixText = parentSpan.Source.Substring(parentSpan.Position.Absolute + currentIndexInParentText, suffixLength);
-                sb.Append(HtmlReportGenerator.Encode(suffixText));
+                RenderTextWithPropCaptures(sb, suffixText, parentSpan.Position.Absolute + currentIndexInParentText, token, propertyColorMap);
             }
         }
 
@@ -308,6 +312,69 @@ public class TokenTester
         sb.Append("</div>");
     }
 
+    /// <summary>
+    /// Renders a raw text segment, interleaving it with <span> tags for any property captures
+    /// that fall within that segment. This is used to create the "overlines".
+    /// </summary>
+    private void RenderTextWithPropCaptures(
+        StringBuilder sb,
+        string textSegment,
+        int segmentAbsoluteStart,
+        ITokenUnit parentToken, // We need the parent to get PropMatches and the root capture ID
+        IReadOnlyDictionary<string, string> propertyColorMap)
+    {
+        // Filter to only scalar properties. TokenUnit properties are handled by the nested underline recursion.
+        var scalarPropMatches = parentToken.PropMatches
+            .Where(kvp => kvp.Key.CapturePropType != CapturePropType.TokenUnit)
+            .Select(kvp => new { Prop = kvp.Key, Span = kvp.Value })
+            .OrderBy(p => p.Span.Position.Absolute)
+            .ToList();
+
+        if (string.IsNullOrEmpty(textSegment) || !scalarPropMatches.Any())
+        {
+            // If there's no text or no props to render, just append the encoded text.
+            sb.Append(HtmlReportGenerator.Encode(textSegment));
+            return;
+        }
+
+        int currentIndexInSegment = 0;
+
+        foreach (var propMatch in scalarPropMatches)
+        {
+            // Check if this property capture is within our current text segment.
+            if (propMatch.Span.Position.Absolute >= segmentAbsoluteStart &&
+                propMatch.Span.Position.Absolute < segmentAbsoluteStart + textSegment.Length)
+            {
+                int propRelativeStart = propMatch.Span.Position.Absolute - segmentAbsoluteStart;
+
+                // 1. Render text before this property capture
+                if (propRelativeStart > currentIndexInSegment)
+                {
+                    sb.Append(HtmlReportGenerator.Encode(textSegment.Substring(currentIndexInSegment, propRelativeStart - currentIndexInSegment)));
+                }
+
+                // 2. Render the property capture itself, wrapped in an overline span
+                string propColor = propertyColorMap.TryGetValue(propMatch.Prop.Name, out var color) ? color : "#888";
+                string propText = propMatch.Span.ToStringValue();
+
+                // The data-capture-id must link back to the main token's detail block.
+                string rootCaptureId = sb.ToString().Split(new[] { "data-capture-id=\"" }, StringSplitOptions.None).Last().Split('\"').First();
+
+                sb.Append($@"<span class=""prop-capture"" style=""--prop-color: {propColor};"" data-capture-id=""{rootCaptureId}"" data-property-name=""{propMatch.Prop.Name}"">");
+                sb.Append(HtmlReportGenerator.Encode(propText));
+                sb.Append("</span>");
+
+                // 3. Update our position
+                currentIndexInSegment = propRelativeStart + propMatch.Span.Length;
+            }
+        }
+
+        // Render any remaining text after the last property capture
+        if (currentIndexInSegment < textSegment.Length)
+        {
+            sb.Append(HtmlReportGenerator.Encode(textSegment.Substring(currentIndexInSegment)));
+        }
+    }
 
     private string GetValueCssClass(Type type)
     {

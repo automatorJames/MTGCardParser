@@ -31,11 +31,12 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         if (subMatchSpan is null)
             return false;
 
+        var subMatchText = subMatchSpan.Value.ToStringValue();
         var valueToSet = CaptureProp.CapturePropType switch
         {
-            CapturePropType.Enum => GetEnumMatchValue(subMatchSpan.Value.ToStringValue()),
-            CapturePropType.CapturedTextSegment => new CapturedTextSegment(subMatchSpan.Value.ToStringValue()),
-            CapturePropType.Bool => !string.IsNullOrEmpty(subMatchSpan.Value.ToStringValue()),
+            CapturePropType.Enum => GetEnumMatchValue(subMatchText),
+            CapturePropType.CapturedTextSegment => new CapturedTextSegment(subMatchText),
+            CapturePropType.Bool => !string.IsNullOrEmpty(subMatchText),
         };
 
         CaptureProp.Prop.SetValue(parentToken, valueToSet);
@@ -79,8 +80,16 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
     TextSpan? GetGroupSubMatch(ITokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
-        var typeMatch = Regex.Match(matchText, TokenClassRegistry.TypeRegexTemplates[parentToken.GetType()].RenderedRegexString);
-        return GetTextSubSpan(matchSpanToCheck, typeMatch);
+        var regex = TokenClassRegistry.TypeRegexTemplates[parentToken.GetType()].RenderedRegexString;
+        var match = Regex.Match(matchText, regex);
+        var matchPropGroup = match.Groups[CaptureProp.Name];
+
+        if (!matchPropGroup.Success)
+            return null;
+
+        var newCombinedIndex = matchSpanToCheck.Position.Absolute + matchPropGroup.Index;
+        var newPosition = new Position(newCombinedIndex, matchSpanToCheck.Position.Line, newCombinedIndex + 1);
+        return new TextSpan(matchSpanToCheck.Source, newPosition, matchPropGroup.Length);
     }
 
     TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
