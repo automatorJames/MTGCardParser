@@ -1,0 +1,41 @@
+﻿@if (string.IsNullOrEmpty(highlightedText))
+{
+    @((MarkupString)Occurrence.FirstRepresentativeCard.Card.Text.Replace("\n", "<br>"))
+}
+else
+{
+    @((MarkupString)highlightedText)
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public UnmatchedSpanOccurrence Occurrence { get; set; } = default!;
+
+    private string? highlightedText;
+
+    protected override void OnInitialized()
+    {
+        var cardText = Occurrence.FirstRepresentativeCard.Card.Text;
+        var lineSource = Occurrence.FirstRepresentativeCardOccurrence.Source;
+        int lineStartIndex = cardText.IndexOf(lineSource, StringComparison.Ordinal);
+
+        if (lineStartIndex != -1)
+        {
+            int spanStartInLine = Occurrence.FirstRepresentativeCardOccurrence.Position.Absolute;
+            int spanLength = Occurrence.FirstRepresentativeCardOccurrence.Length;
+            int absoluteStartIndex = lineStartIndex + spanStartInLine;
+
+            if (absoluteStartIndex + spanLength <= cardText.Length)
+            {
+                string pre = System.Net.WebUtility.HtmlEncode(cardText.Substring(0, absoluteStartIndex));
+                string match = System.Net.WebUtility.HtmlEncode(cardText.Substring(absoluteStartIndex, spanLength));
+                string post = System.Net.WebUtility.HtmlEncode(cardText.Substring(absoluteStartIndex + spanLength));
+
+                highlightedText = $"{pre.Replace("\n", "<br>")}<span class=\"unmatched-highlight\">{match}</span>{post.Replace("\n", "<br>")}";
+                return;
+            }
+        }
+        // Fallback for safety, though the above should usually work.
+        highlightedText = System.Net.WebUtility.HtmlEncode(cardText).Replace("\n", "<br>");
+    }
+}

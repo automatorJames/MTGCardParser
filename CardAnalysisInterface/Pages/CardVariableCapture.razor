@@ -1,0 +1,64 @@
+﻿@page "/variable-capture"
+@attribute [StreamRendering]
+@inject AggregateCardAnalysis Analysis
+@inject TokenTester Tester
+
+<body class="page-variable-capture">
+    <h1>Card Variable Capture</h1>
+
+    <div id="main-content">
+        @foreach (var analyzedCard in Analysis.AnalyzedCards)
+        {
+            <div class="card-capture-block">
+                <h2>@analyzedCard.Card.Name</h2>
+                <pre class="full-original-text">@analyzedCard.Card.Text</pre>
+
+                @for (int i = 0; i < analyzedCard.Clauses.Count; i++)
+                {
+                    var effectsToShow = analyzedCard.Clauses[i].Effects;
+                    if (!effectsToShow.Any()) continue;
+
+                    var propertyColorMap = GetPropertyColorMap(effectsToShow);
+                    int captureIdCounter = 0;
+
+                    <div class="line-capture-block">
+                        <h5 class="line-label">Line #@(i + 1)</h5>
+
+                        <pre class="line-text">
+                            @foreach (var effect in effectsToShow)
+                            {
+                                string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{captureIdCounter++}";
+                                <NestedTokenSpan Token="effect" RootCaptureId="@captureId" PropertyColorMap="propertyColorMap" />
+                                @(" ")
+                            }
+                        </pre>
+
+                        @{ captureIdCounter = 0; }
+                        @foreach (var effect in effectsToShow)
+                        {
+                            string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{captureIdCounter++}";
+                            <EffectDetails Token="effect" CaptureId="@captureId" PropertyColorMap="propertyColorMap" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</body>
+
+
+@code {
+    private IReadOnlyDictionary<string, string> GetPropertyColorMap(IEnumerable<ITokenUnit> effects)
+    {
+        var allLineProperties = effects
+            .SelectMany(eff => Tester.GetOrderedPropertiesFromTemplate(eff?.GetRegexTemplate()).Select(p => p.Name))
+            .Distinct().ToList();
+
+        var map = new Dictionary<string, string>();
+        for (int k = 0; k < allLineProperties.Count; k++)
+        {
+            map[allLineProperties[k]] = Tester.PropertyCaptureColors[k % Tester.PropertyCaptureColors.Count];
+        }
+        return map;
+    }
+}

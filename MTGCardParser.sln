@@ -5,6 +5,8 @@ VisualStudioVersion = 17.12.35521.163
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MTGCardParser", "MTGCardParser\MTGCardParser.csproj", "{9418E140-9EAC-480F-937E-8EF53B66982B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardAnalysisInterface", "CardAnalysisInterface\CardAnalysisInterface.csproj", "{670AFB56-3936-4855-B56E-EA735AD3ED06}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,8 +17,15 @@ Global
 		{9418E140-9EAC-480F-937E-8EF53B66982B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9418E140-9EAC-480F-937E-8EF53B66982B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9418E140-9EAC-480F-937E-8EF53B66982B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{670AFB56-3936-4855-B56E-EA735AD3ED06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{670AFB56-3936-4855-B56E-EA735AD3ED06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{670AFB56-3936-4855-B56E-EA735AD3ED06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{670AFB56-3936-4855-B56E-EA735AD3ED06}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F57BE0B4-E629-4B9D-8883-7EC134EBD751}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,36 @@
+﻿@page "/unmatched-spans"
+@inject AggregateCardAnalysis Analysis
+
+<h1>Unmatched Spans Report</h1>
+
+<div id="main-content">
+    <table>
+        <thead>
+            <tr>
+                <th>Count</th>
+                <th>Span Text</th>
+                <th>First Card</th>
+                <th>First Card Text</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                var sortedSpans = Analysis.UnmatchedSegmentSpans
+                    .OrderByDescending(kv => kv.Value.Count)
+                    .ThenBy(kv => kv.Key.ToStringValue())
+                    .ToList();
+            }
+            @foreach (var item in sortedSpans)
+            {
+                <tr>
+                    <td>@item.Value.Count</td>
+                    <td>@item.Key.ToString()</td>
+                    <td>@item.Value.FirstRepresentativeCard.Card.Name</td>
+                    <td>
+                        <HighlightedUnmatchedSpan Occurrence="item.Value" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

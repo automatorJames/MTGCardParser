@@ -1,0 +1,92 @@
+﻿@inject TokenTester Tester
+
+@if (visibleScalarProps.Any())
+{
+    <table>
+        <thead>
+            <tr><th>Property</th><th>Type</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var (prop, value) in visibleScalarProps)
+            {
+                string propColor = PropertyColorMap.GetValueOrDefault(prop.Name, "inherit");
+                string valueClass = Tester.GetValueCssClass(prop.PropertyType);
+                <tr data-property-name="@prop.Name" data-capture-id="@CaptureId">
+                    <td><span style="color: @propColor; font-weight: bold;">@prop.Name</span></td>
+                    <td class="@valueClass">@Tester.GetFriendlyTypeName(prop.PropertyType)</td>
+                    @if (value == null || (value is string s && string.IsNullOrEmpty(s)))
+                    {
+                        <td class="value-empty">(empty)</td>
+                    }
+                    else
+                    {
+                        <td class="@valueClass">@value.ToString()</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@foreach (var (prop, value) in childTokenUnitProperties)
+{
+    <div class="property-child-block">
+        @{ string propColor = PropertyColorMap.GetValueOrDefault(prop.Name, "inherit"); }
+        <h5 data-property-name="@prop.Name" data-capture-id="@CaptureId" style="color: @propColor;">@prop.Name</h5>
+        <TokenUnitDetails Instance="value" CaptureId="@CaptureId" PropertyColorMap="PropertyColorMap" />
+    </div>
+}
+
+
+@code {
+    [Parameter, EditorRequired]
+    public object Instance { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string CaptureId { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
+
+    private List<(PropertyInfo prop, object? value)> visibleScalarProps = new();
+    private List<(PropertyInfo prop, object value)> childTokenUnitProperties = new();
+
+    protected override void OnInitialized()
+    {
+        var instanceType = Instance.GetType();
+        var allProperties = instanceType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(p => p.Name != "RegexTemplate" && p.CanRead)
+            .ToDictionary(p => p.Name);
+
+        var orderedPropNames = Tester.GetOrderedPropertiesFromTemplate((Instance as ITokenUnit)?.GetRegexTemplate())
+            .Select(p => p.Name)
+            .Distinct()
+            .ToList();
+        
+        // Add any remaining properties not in the template
+        foreach (var propName in allProperties.Keys.Where(k => !orderedPropNames.Contains(k)))
+        {
+            orderedPropNames.Add(propName);
+        }
+
+        foreach (var propName in orderedPropNames)
+        {
+            if (!allProperties.TryGetValue(propName, out var prop)) continue;
+            
+            var value = prop.GetValue(Instance);
+            if (value == null) continue;
+
+            if (typeof(ITokenUnit).IsAssignableFrom(prop.PropertyType))
+            {
+                childTokenUnitProperties.Add((prop, value));
+            }
+            else
+            {
+                if (Tester.OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment)) continue;
+                if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
+                
+                visibleScalarProps.Add((prop, value));
+            }
+        }
+    }
+}

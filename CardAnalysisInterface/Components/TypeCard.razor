@@ -1,0 +1,24 @@
+﻿<div class="type-card" style="border-left-color: @ColorHex;">
+    <h3>
+        <span class="highlight" data-title="@TypeName" style="background-color: @ColorHex;">@TypeName</span>
+        @Count occurrences
+    </h3>
+    <h4>Rendered Regex</h4>
+    <pre><code>@RenderedRegex</code></pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Type Type { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public int Count { get; set; }
+
+    [Parameter, EditorRequired]
+    public string ColorHex { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string RenderedRegex { get; set; } = default!;
+
+    private string TypeName => Type.Name;
+}

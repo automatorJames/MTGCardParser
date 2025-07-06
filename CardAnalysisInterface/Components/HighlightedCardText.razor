@@ -1,0 +1,44 @@
+﻿@inject TokenTester Tester
+
+@for (int i = 0; i < AnalyzedCard.ProcessedLineTokens.Count; i++)
+{
+    var tokens = AnalyzedCard.ProcessedLineTokens[i];
+    if (i > 0)
+    {
+        <br />
+        <br />
+    }
+    for (int j = 0; j < tokens.Count; j++)
+    {
+        var token = tokens[j];
+        string textValue = token.Span.ToStringValue().Replace(Card.ThisToken, AnalyzedCard.Card.Name);
+        string typeName = token.Kind.Name;
+
+        if (token.Kind != typeof(string))
+        {
+            string colorHex = Tester.ToHex(Tester.GetTypeColor(token.Kind));
+            <span class="highlight" data-title="@typeName" style="background-color: @colorHex;">
+                @if (token.Kind != typeof(Punctuation))
+                {
+                    <span class="highlight-label" style="color: @colorHex;">@typeName</span>
+                }
+                @textValue
+            </span>
+        }
+        else
+        {
+            @textValue
+        }
+
+        if (j < tokens.Count - 1)
+        {
+            @(" ")
+        }
+    }
+}
+
+
+@code {
+    [Parameter, EditorRequired]
+    public CardAnalysis AnalyzedCard { get; set; } = default!;
+}

@@ -1,0 +1,67 @@
+﻿@if (string.IsNullOrEmpty(TextSegment) || !ScalarPropMatches.Any())
+{
+    @TextSegment
+}
+else
+{
+    int currentIndexInSegment = 0;
+    foreach (var propMatch in ScalarPropMatches)
+    {
+        if (propMatch.Span.Position.Absolute >= SegmentAbsoluteStart &&
+            propMatch.Span.Position.Absolute < SegmentAbsoluteStart + TextSegment.Length)
+        {
+            int propRelativeStart = propMatch.Span.Position.Absolute - SegmentAbsoluteStart;
+
+            // 1. Render text before
+            if (propRelativeStart > currentIndexInSegment)
+            {
+                @TextSegment.Substring(currentIndexInSegment, propRelativeStart - currentIndexInSegment)
+            }
+
+            // 2. Render the property capture
+            string propColor = PropertyColorMap.GetValueOrDefault(propMatch.Prop.Name, "#888");
+            string propText = propMatch.Span.ToStringValue();
+
+            <span class="prop-capture" style="--prop-color: @propColor;" data-capture-id="@RootCaptureId" data-property-name="@propMatch.Prop.Name">
+                @propText
+            </span>
+
+            // 3. Update position
+            currentIndexInSegment = propRelativeStart + propMatch.Span.Length;
+        }
+    }
+
+    // Render remaining text
+    if (currentIndexInSegment < TextSegment.Length)
+    {
+        @TextSegment.Substring(currentIndexInSegment)
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string TextSegment { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public int SegmentAbsoluteStart { get; set; }
+
+    [Parameter, EditorRequired]
+    public ITokenUnit ParentToken { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string RootCaptureId { get; set; } = default!;
+
+    private List<(CaptureProp Prop, TextSpan Span)> ScalarPropMatches { get; set; } = new();
+
+    protected override void OnInitialized()
+    {
+        ScalarPropMatches = ParentToken.PropMatches
+            .Where(kvp => kvp.Key.CapturePropType != CapturePropType.TokenUnit)
+            .Select(kvp => (kvp.Key, kvp.Value))
+            .OrderBy(p => p.Value.Position.Absolute)
+            .ToList();
+    }
+}

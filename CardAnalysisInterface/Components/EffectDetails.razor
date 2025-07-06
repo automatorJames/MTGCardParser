@@ -1,0 +1,21 @@
+﻿@inject TokenTester Tester
+
+@if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is null)
+{
+    string colorHex = Tester.ToHex(Tester.GetTypeColor(Token.GetType()));
+    <div class="effect-details-block" data-capture-id="@CaptureId">
+        <h4 style="color: @colorHex;">@Token.GetType().Name</h4>
+        <TokenUnitDetails Instance="Token" CaptureId="@CaptureId" PropertyColorMap="PropertyColorMap" />
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public ITokenUnit Token { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string CaptureId { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
+}

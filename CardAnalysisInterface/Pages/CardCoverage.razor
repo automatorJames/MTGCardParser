@@ -1,0 +1,57 @@
+﻿@page "/card-coverage"
+@inject AggregateCardAnalysis Analysis
+@inject TokenTester Tester
+
+<body class="page-variable-capture">
+    <h1>Card Coverage Analysis</h1>
+
+    <div id="main-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>Card Name</th>
+                    <th>Text</th>
+                    <th>Coverage</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var analyzedCard in Analysis.AnalyzedCards)
+                {
+                    <tr>
+                        <td>@analyzedCard.Card.Name</td>
+                        <td data-original-text="@analyzedCard.Card.Text">
+                            <HighlightedCardText AnalyzedCard="analyzedCard" />
+                        </td>
+                        <td>@GetCoverage(analyzedCard).ToString("F1")%</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</body>
+
+
+@code {
+    private double GetCoverage(CardAnalysis analyzedCard)
+    {
+        int matchedChars = 0;
+        int totalChars = 0;
+
+        foreach (var token in analyzedCard.CombinedTokens)
+        {
+            var textValue = token.Span.ToStringValue().Replace(Card.ThisToken, analyzedCard.Card.Name);
+            int charCount = textValue.Replace("\n", "").Length;
+
+            if (token.Kind != typeof(string))
+            {
+                matchedChars += charCount;
+            }
+            totalChars += charCount;
+        }
+
+        // Account for spaces between tokens
+        totalChars += analyzedCard.CombinedTokens.Count - 1;
+
+        return totalChars > 0 ? matchedChars * 100.0 / totalChars : 0.0;
+    }
+}

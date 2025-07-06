@@ -1,0 +1,75 @@
+﻿@inject TokenTester Tester
+
+@if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
+{
+    @Token.MatchSpan.ToStringValue()
+}
+else
+{
+    var sortedChildren = Token.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).ToList();
+    const int pixelGapPerUnderline = 4;
+    var deepestLevel = Token.GetDeepestChildLevel();
+    var padding = pixelGapPerUnderline * deepestLevel + pixelGapPerUnderline;
+    var color = Tester.ToHex(Tester.GetTypeColor(Token.GetType()));
+    
+    <span class="nested-underline" style="--underline-color: @color; padding-bottom: @(padding)px;" data-capture-id="@RootCaptureId">
+        @if (!sortedChildren.Any())
+        {
+            <PropCapturedText TextSegment="@Token.MatchSpan.ToStringValue()"
+                              SegmentAbsoluteStart="@Token.MatchSpan.Position.Absolute"
+                              ParentToken="Token"
+                              PropertyColorMap="PropertyColorMap"
+                              RootCaptureId="@RootCaptureId" />
+        }
+        else
+        {
+            int currentIndexInParentText = 0;
+            foreach (var child in sortedChildren)
+            {
+                var childSpan = child.MatchSpan;
+                int childRelativeStart = childSpan.Position.Absolute - Token.MatchSpan.Position.Absolute;
+
+                // a) Render prefix text
+                if (childRelativeStart > currentIndexInParentText)
+                {
+                    int prefixLength = childRelativeStart - currentIndexInParentText;
+                    string prefixText = Token.MatchSpan.Source.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
+                    <PropCapturedText TextSegment="prefixText"
+                                      SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
+                                      ParentToken="Token"
+                                      PropertyColorMap="PropertyColorMap"
+                                      RootCaptureId="@RootCaptureId" />
+                }
+                
+                // b) Render the child recursively
+                <NestedTokenSpan Token="child" RootCaptureId="@RootCaptureId" PropertyColorMap="PropertyColorMap" />
+
+                // c) Update position
+                currentIndexInParentText = childRelativeStart + childSpan.Length;
+            }
+
+            // d) Render suffix text
+            if (currentIndexInParentText < Token.MatchSpan.Length)
+            {
+                int suffixLength = Token.MatchSpan.Length - currentIndexInParentText;
+                string suffixText = Token.MatchSpan.Source.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, suffixLength);
+                <PropCapturedText TextSegment="suffixText"
+                                  SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
+                                  ParentToken="Token"
+                                  PropertyColorMap="PropertyColorMap"
+                                  RootCaptureId="@RootCaptureId" />
+            }
+        }
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public ITokenUnit Token { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string RootCaptureId { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
+}

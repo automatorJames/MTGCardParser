@@ -1,11 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Drawing;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.RegularExpressions;
-using MTGCardParser.Data;
-using Superpower.Model;
+﻿using System.Text;
 
 namespace MTGCardParser.TokenTesting;
 
@@ -16,12 +9,12 @@ public class TokenTester
     // Configuration
     readonly string _outputDir;
     readonly List<Card> _cards;
-    private readonly bool _omitCapturedTextSegmentProperties = true;
+    public readonly bool OmitCapturedTextSegmentProperties = true;
 
     readonly List<Type> _tokenUnitTypes;
     readonly Dictionary<Type, Color> _typeColors = new();
 
-    private static readonly IReadOnlyList<string> _propertyCaptureColors = new List<string> { "#9d81ba", "#7b8dcf", "#5ca9b4", "#7d9e5b", "#d8a960", "#c77e59", "#b9676f", "#8f8f8f" }.AsReadOnly();
+    public readonly IReadOnlyList<string> PropertyCaptureColors = new List<string> { "#9d81ba", "#7b8dcf", "#5ca9b4", "#7d9e5b", "#d8a960", "#c77e59", "#b9676f", "#8f8f8f" }.AsReadOnly();
 
     public TokenTester(int? maxSetSequence = null, bool ignoreEmptyText = true)
     {
@@ -58,7 +51,7 @@ public class TokenTester
         Console.WriteLine($"HTML reports generated successfully in: {_outputDir}");
     }
 
-    private static IEnumerable<CaptureProp> GetOrderedPropertiesFromTemplate(RegexTemplate template)
+    public IEnumerable<CaptureProp> GetOrderedPropertiesFromTemplate(RegexTemplate template)
     {
         if (template == null) yield break;
 
@@ -118,7 +111,7 @@ public class TokenTester
         var visibleScalarProps = new List<(PropertyInfo prop, object value)>();
         foreach (var prop in scalarProperties)
         {
-            if (_omitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment))
+            if (OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment))
             {
                 continue;
             }
@@ -170,6 +163,8 @@ public class TokenTester
         }
     }
 
+    public Color GetTypeColor(Type type) => _typeColors[type];
+
     void GenerateCardVariableCaptureHtml()
     {
         string htmlContent = HtmlReportGenerator.Generate("Card Variable Capture", sb =>
@@ -198,7 +193,7 @@ public class TokenTester
                     var propertyColorMap = new Dictionary<string, string>();
                     for (int k = 0; k < allLineProperties.Count; k++)
                     {
-                        propertyColorMap[allLineProperties[k]] = _propertyCaptureColors[k % _propertyCaptureColors.Count];
+                        propertyColorMap[allLineProperties[k]] = PropertyCaptureColors[k % PropertyCaptureColors.Count];
                     }
 
                     var lineTextBuilder = new StringBuilder();
@@ -386,7 +381,7 @@ public class TokenTester
         }
     }
 
-    private string GetValueCssClass(Type type)
+    public string GetValueCssClass(Type type)
     {
         if (type == typeof(CapturedTextSegment)) return "value-tokensegment";
         bool isEnum = type.IsEnum || (Nullable.GetUnderlyingType(type)?.IsEnum ?? false);
@@ -394,7 +389,7 @@ public class TokenTester
         return "value-default";
     }
 
-    private string GetFriendlyTypeName(Type type)
+    public string GetFriendlyTypeName(Type type)
     {
         bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
         if (type.IsEnum || isNullableEnum) return "Enum";
@@ -571,5 +566,5 @@ public class TokenTester
         if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
         return p;
     }
-    static string ToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+    public string ToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 }

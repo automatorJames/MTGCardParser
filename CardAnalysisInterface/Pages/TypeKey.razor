@@ -1,0 +1,17 @@
+﻿@page "/type-key"
+@inject AggregateCardAnalysis Analysis
+@inject TokenTester Tester
+
+<h1>Token Type Key & Regex Analysis</h1>
+
+<div id="main-content">
+    @foreach (var type in TokenClassRegistry.AppliedOrderTypes)
+    {
+        if (!Analysis.TokenCaptureCounts.ContainsKey(type)) continue;
+
+        <TypeCard Type="type"
+                  Count="Analysis.TokenCaptureCounts[type]"
+                  ColorHex=@(Tester.ToHex(Tester.GetTypeColor(type)))
+                  RenderedRegex=@TokenClassRegistry.TypeRegexTemplates[type].RenderedRegexString />
+    }
+</div>
