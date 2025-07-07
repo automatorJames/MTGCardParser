@@ -1,6 +1,6 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (_visibleScalarPropValues.Any())
+@if (_visibleScalarPropValues.Any() || _distilledValues.Any())
 {
     <table>
         <thead>
@@ -35,6 +35,15 @@
                     }
                 </tr>
             }
+
+            @foreach (var distilledValueItem in _distilledValues)
+            {
+                <tr data-property-name=@(distilledValueItem.Key.Name) data-capture-id=@(CaptureId)>
+                    <td><span style=@($"color: #888; font-weight: bold;")>@distilledValueItem.Key.Name</span></td>
+                    <td class="value-default">@GetFriendlyTypeName(distilledValueItem.Key.PropertyType)</td>
+                    <td class=value-default>@distilledValueItem.Value.ToString()</td>
+                </tr>
+            }
         </tbody>
     </table>
 }
@@ -60,11 +69,10 @@
     public bool OmitCapturedTextSegmentProperties { get; set; } = true;
 
     Dictionary<CaptureProp, object?> _visibleScalarPropValues = new(new CapturePropComparer());
+    Dictionary<PropertyInfo, object> _distilledValues = new();
 
     protected override void OnInitialized()
     {
-        if (Instance.Type == typeof(ManaValue)) Debugger.Break();
-
         var orderedCaptureProps = Instance.GetRegexTemplate()
             .GetOrderedCaptureProps()
             .Where(x => x.CapturePropType != CapturePropType.TokenUnit)
@@ -81,6 +89,8 @@
 
             _visibleScalarPropValues[captureProp] = value;
         }
+
+        _distilledValues = Instance.GetDistilledValues();
     }
 
     public string GetCssClass(CaptureProp captureProp)

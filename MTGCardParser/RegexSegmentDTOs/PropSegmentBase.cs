@@ -116,6 +116,7 @@ public enum CapturePropType
     Enum,
     CapturedTextSegment,
     Bool,
+    DistilledValue,
     TokenUnit
 }
 

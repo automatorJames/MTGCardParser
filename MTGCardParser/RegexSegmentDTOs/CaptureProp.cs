@@ -1,6 +1,4 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
-
-namespace MTGCardParser.RegexSegmentDTOs;
+﻿namespace MTGCardParser.RegexSegmentDTOs;
 
 public record CaptureProp
 {

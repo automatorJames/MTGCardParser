@@ -123,10 +123,10 @@ public class RegexTemplate<T> : RegexTemplate
     List<CaptureProp> GetPropertiesForCapture() =>
          typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
         .Where(p => !p.GetMethod.IsVirtual)
-        .Where(x => 
-            (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum 
-             || x.PropertyType == typeof(bool) 
-             || x.PropertyType == typeof(CapturedTextSegment) 
+        .Where(x =>
+            (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum
+             || x.PropertyType == typeof(bool)
+             || x.PropertyType == typeof(CapturedTextSegment)
              || x.PropertyType.IsAssignableTo(typeof(ITokenUnit)))
         .Select(x => new CaptureProp(x))
         .ToList();

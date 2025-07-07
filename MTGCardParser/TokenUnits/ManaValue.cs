@@ -62,33 +62,33 @@ public class ManaValue : TokenUnitBase
         }
     }
 
-    public int Colorless { get; set; }
-    public int White { get; set; }
-    public int Blue { get; set; }
-    public int Black { get; set; }
-    public int Red { get; set; }
-    public int Green { get; set; }
-
-    public int HybridWhiteBlue { get; set; }     // {w/u}
-    public int HybridWhiteBlack { get; set; }    // {w/b}
-    public int HybridBlueBlack { get; set; }     // {u/b}
-    public int HybridBlueRed { get; set; }       // {u/r}
-    public int HybridBlackRed { get; set; }      // {b/r}
-    public int HybridBlackGreen { get; set; }    // {b/g}
-    public int HybridRedGreen { get; set; }      // {r/g}
-    public int HybridRedWhite { get; set; }      // {r/w}
-    public int HybridGreenWhite { get; set; }    // {g/w}
-    public int HybridGreenBlue { get; set; }     // {g/u}
-
-    public int TwoOrWhite { get; set; }          // {2/w}
-    public int TwoOrBlue { get; set; }           // {2/u}
-    public int TwoOrBlack { get; set; }          // {2/b}
-    public int TwoOrRed { get; set; }            // {2/r}
-    public int TwoOrGreen { get; set; }          // {2/g}
-
-    public int X { get; set; }                   // {x}
-    public int Phyrexian { get; set; }           // {p}
-    public int Snow { get; set; }                // {s}
-    public int Infinite { get; set; }            // {∞}
+    [DistilledValue] public int Colorless { get; set; }
+    [DistilledValue] public int White { get; set; }
+    [DistilledValue] public int Blue { get; set; }
+    [DistilledValue] public int Black { get; set; }
+    [DistilledValue] public int Red { get; set; }
+    [DistilledValue] public int Green { get; set; }
+    
+    [DistilledValue] public int HybridWhiteBlue { get; set; }     // {w/u}
+    [DistilledValue] public int HybridWhiteBlack { get; set; }    // {w/b}
+    [DistilledValue] public int HybridBlueBlack { get; set; }     // {u/b}
+    [DistilledValue] public int HybridBlueRed { get; set; }       // {u/r}
+    [DistilledValue] public int HybridBlackRed { get; set; }      // {b/r}
+    [DistilledValue] public int HybridBlackGreen { get; set; }    // {b/g}
+    [DistilledValue] public int HybridRedGreen { get; set; }      // {r/g}
+    [DistilledValue] public int HybridRedWhite { get; set; }      // {r/w}
+    [DistilledValue] public int HybridGreenWhite { get; set; }    // {g/w}
+    [DistilledValue] public int HybridGreenBlue { get; set; }     // {g/u}
+    
+    [DistilledValue] public int TwoOrWhite { get; set; }          // {2/w}
+    [DistilledValue] public int TwoOrBlue { get; set; }           // {2/u}
+    [DistilledValue] public int TwoOrBlack { get; set; }          // {2/b}
+    [DistilledValue] public int TwoOrRed { get; set; }            // {2/r}
+    [DistilledValue] public int TwoOrGreen { get; set; }          // {2/g}
+    
+    [DistilledValue] public int X { get; set; }                   // {x}
+    [DistilledValue] public int Phyrexian { get; set; }           // {p}
+    [DistilledValue] public int Snow { get; set; }                // {s}
+    [DistilledValue] public int Infinite { get; set; }            // {∞}
 }
 

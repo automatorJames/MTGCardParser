@@ -46,5 +46,7 @@ public interface ITokenUnit
             .OrderBy(t => t.MatchSpan.Position.Absolute)
             .ToList();
     }
+
+    public Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true);
 }
 

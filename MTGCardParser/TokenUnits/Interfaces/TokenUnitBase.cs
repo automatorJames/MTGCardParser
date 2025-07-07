@@ -10,8 +10,6 @@ public abstract class TokenUnitBase : ITokenUnit
         get => _type ??= GetType();
     }
 
-    //public RegexTemplate RegexTemplate => GetRegexTemplate();
-
     public ITokenUnit ParentToken { get; set; }
     public List<ITokenUnit> ChildTokens { get; set; } = new();
     public int RecursiveDepth { get; set; }
@@ -53,6 +51,24 @@ public abstract class TokenUnitBase : ITokenUnit
         tokenInstance.SetPropertiesFromMatchSpan();
 
         return tokenInstance;
+    }
+
+    public Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
+    {
+        Dictionary<PropertyInfo, object> dict = new();
+        var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);
+
+        foreach (var distilledProp in distilledProps)
+        {
+            var val = distilledProp.GetValue(this);
+
+            if (distilledProp.PropertyType.IsValueType && val.Equals(Activator.CreateInstance(distilledProp.PropertyType))) 
+                continue;
+
+            dict[distilledProp] = val;
+        }
+
+        return dict;
     }
 }
 
