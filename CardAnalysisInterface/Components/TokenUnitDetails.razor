@@ -1,6 +1,6 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (visibleScalarPropValues.Any())
+@if (_visibleScalarPropValues.Any())
 {
     <table>
         <thead>
@@ -8,19 +8,24 @@
         </thead>
         <tbody>
             @{
-                var keys = visibleScalarPropValues.Keys.ToList();
+                var keys = _visibleScalarPropValues.Keys.ToList();
             }
 
-            @for (int i = 0; i < visibleScalarPropValues.Count; i++)
+            @for (int i = 0; i < _visibleScalarPropValues.Count; i++)
             {
                 var key = keys[i];
-                var value = visibleScalarPropValues[key];
+                var value = _visibleScalarPropValues[key];
                 string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
                 string valueClass = GetCssClass(key);
                 <tr data-property-name=@(key.Name) data-capture-id=@(CaptureId)>
                     <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
                     <td class="@valueClass">@GetFriendlyTypeName(key.Prop.PropertyType)</td>
-                    @if (value == null || (value is string s && string.IsNullOrEmpty(s)))
+
+                    @if(key.CapturePropType == CapturePropType.TokenUnit)
+                    {
+                        <td class="value-empty">(below)</td>
+                    }
+                    else if (value == null || (value is string s && string.IsNullOrEmpty(s)))
                     {
                         <td class="value-empty">(empty)</td>
                     }
@@ -34,11 +39,12 @@
     </table>
 }
 
-@foreach (var childToken in Instance.ChildTokens)
+@foreach (var (childToken, i) in Instance.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).Select((token, index) => (token, index)))
 {
+    var childCaptureId = $"{CaptureId}-child{i}";
     <div class="property-child-block">
-        <h5 data-property-name=@(childToken.Type.Name) data-capture-id=@CaptureId style=@($"color: {Analysis.TypeColors[childToken.Type]};")>@childToken.Type.Name</h5>
-        <TokenUnitDetails Instance=@childToken CaptureId=@CaptureId />
+        <h5 data-property-name=@(childToken.Type.Name) data-capture-id=@childCaptureId style=@($"color: {Analysis.TypeColors[childToken.Type]};")>@childToken.Type.Name</h5>
+        <TokenUnitDetails Instance=@childToken CaptureId=@childCaptureId />
     </div>
 }
 
@@ -53,12 +59,15 @@
     [Parameter]
     public bool OmitCapturedTextSegmentProperties { get; set; } = true;
 
-    Dictionary<CaptureProp, object?> visibleScalarPropValues = new(new CapturePropComparer());
+    Dictionary<CaptureProp, object?> _visibleScalarPropValues = new(new CapturePropComparer());
 
     protected override void OnInitialized()
     {
+        if (Instance.Type == typeof(ManaValue)) Debugger.Break();
+
         var orderedCaptureProps = Instance.GetRegexTemplate()
             .GetOrderedCaptureProps()
+            .Where(x => x.CapturePropType != CapturePropType.TokenUnit)
             .ToList();
 
         foreach (var captureProp in orderedCaptureProps)
@@ -70,7 +79,7 @@
             if (OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment)) continue;
             if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
 
-            visibleScalarPropValues[captureProp] = value;
+            _visibleScalarPropValues[captureProp] = value;
         }
     }
 
@@ -91,6 +100,7 @@
         bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
         if (type.IsEnum || isNullableEnum) return "Enum";
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return $"{type.GetGenericArguments()[0].Name}?";
+        if (type.IsAssignableTo(typeof(ITokenUnit))) return "Token Unit";
         return type.Name;
     }
 }

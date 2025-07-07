@@ -12,20 +12,21 @@ else
     var padding = pixelGapPerUnderline * deepestLevel + pixelGapPerUnderline;
     var color = Analysis.TypeColors[Token.Type];
     
-    <span class="nested-underline" style="--underline-color: @color; padding-bottom: @(padding)px;" data-capture-id="@RootCaptureId">
+    <span class="nested-underline" style="--underline-color: @color; padding-bottom: @(padding)px;" data-capture-ids="@AllCaptureIds">
         @if (!sortedChildren.Any())
         {
             <PropCapturedText 
                 TextSegment=@Token.MatchSpan.ToStringValue()
                 SegmentAbsoluteStart=@Token.MatchSpan.Position.Absolute
                 ParentToken=@Token
-                RootCaptureId=@RootCaptureId />
+                AllCaptureIds="@AllCaptureIds" />
         }
         else
         {
             int currentIndexInParentText = 0;
-            foreach (var child in sortedChildren)
+            for (int i = 0; i < sortedChildren.Count; i++)
             {
+                var child = sortedChildren[i];
                 var childSpan = child.MatchSpan;
                 int childRelativeStart = childSpan.Position.Absolute - Token.MatchSpan.Position.Absolute;
 
@@ -37,11 +38,12 @@ else
                     <PropCapturedText TextSegment=@prefixText
                                       SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
                                       ParentToken=@Token
-                                      RootCaptureId=@RootCaptureId />
+                                      AllCaptureIds="@AllCaptureIds" />
                 }
                 
                 // b) Render the child recursively
-                <NestedTokenSpan Token=@child RootCaptureId=@RootCaptureId />
+                var childCaptureId = $"{CaptureId}-child{i}";
+                <NestedTokenSpan Token=@child CaptureId="@childCaptureId" AncestorIds="@AllCaptureIds" />
 
                 // c) Update position
                 currentIndexInParentText = childRelativeStart + childSpan.Length;
@@ -55,7 +57,7 @@ else
                 <PropCapturedText TextSegment=@suffixText
                                   SegmentAbsoluteStart=@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)
                                   ParentToken=@Token
-                                  RootCaptureId=@RootCaptureId />
+                                  AllCaptureIds="@AllCaptureIds" />
             }
         }
     </span>
@@ -66,5 +68,10 @@ else
     public ITokenUnit Token { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public string RootCaptureId { get; set; } = default!;
+    public string CaptureId { get; set; } = default!;
+
+    [Parameter]
+    public string AncestorIds { get; set; } = "";
+
+    private string AllCaptureIds => $"{AncestorIds} {CaptureId}".Trim();
 }

@@ -29,7 +29,7 @@
                             @foreach (var effect in clauseTokens)
                             {
                                 string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{captureIdCounter++}";
-                                <NestedTokenSpan Token="effect" RootCaptureId="@captureId" />
+                                <NestedTokenSpan Token="effect" CaptureId="@captureId" />
                                 @(" ")
                             }
                         </pre>

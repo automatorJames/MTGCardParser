@@ -226,7 +226,7 @@ pre.line-text {
     filter: brightness(1.5);
 }
 
-.effect-details-block.highlight-active > h5 {
+.effect-details-block.highlight-active > h5, h5.highlight-active {
     box-shadow: inset var(--highlight-inset) 0 0 0 var(--highlight-color);
     transition: box-shadow var(--fade-time) var(--highlight-easing);
 }

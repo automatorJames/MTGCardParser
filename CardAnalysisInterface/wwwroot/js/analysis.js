@@ -44,67 +44,74 @@ function initCardCaptureHover() {
         return;
     }
 
-    let lastCaptureId = null;
+    let lastCaptureIds = [];
     let lastPropertyName = null;
 
     // Define the handler functions and assign them to our module-scoped variables.
     mouseoverHandler = (event) => {
-        const target = event.target.closest('[data-capture-id]');
-        const captureId = target ? target.dataset.captureId : null;
+        const target = event.target.closest('[data-capture-ids], [data-capture-id]');
+
+        const captureIdsAttr = target ? (target.dataset.captureIds || target.dataset.captureId) : '';
+        const currentIds = captureIdsAttr.split(' ').filter(Boolean);
         const propertyName = target ? target.dataset.propertyName : null;
 
-        if (captureId !== lastCaptureId) {
-            if (lastCaptureId) {
-                document.querySelectorAll(`[data-capture-id='${lastCaptureId}']`).forEach(el => el.classList.remove('highlight-active'));
-            }
-            if (captureId) {
-                const span = document.querySelector(`.nested-underline[data-capture-id='${captureId}']`);
-                const block = document.querySelector(`.effect-details-block[data-capture-id='${captureId}']`);
-                if (span && block) {
-                    const mainColor = span.style.getPropertyValue('--underline-color');
-                    span.classList.add('highlight-active');
-                    block.classList.add('highlight-active');
-                    block.style.setProperty('--highlight-color', mainColor);
-                }
+        if (currentIds.join(' ') !== lastCaptureIds.join(' ')) {
+            document.querySelectorAll('.highlight-active').forEach(el => el.classList.remove('highlight-active'));
+
+            if (currentIds.length > 0) {
+                const rootId = currentIds[0];
+                const rootSpan = document.querySelector(`.nested-underline[data-capture-ids~='${rootId}']`);
+                const mainColor = rootSpan ? rootSpan.style.getPropertyValue('--underline-color') : 'transparent';
+
+                currentIds.forEach(id => {
+                    document.querySelectorAll(`.nested-underline[data-capture-ids~='${id}']`).forEach(el => el.classList.add('highlight-active'));
+
+                    const detailBlock = document.querySelector(`.effect-details-block[data-capture-id='${id}']`);
+                    if (detailBlock) {
+                        detailBlock.classList.add('highlight-active');
+                        detailBlock.style.setProperty('--highlight-color', mainColor);
+                    }
+
+                    const detailHeader = document.querySelector(`h5[data-capture-id='${id}']`);
+                    if (detailHeader) {
+                        detailHeader.classList.add('highlight-active');
+                        detailHeader.style.setProperty('--highlight-color', mainColor);
+                    }
+                });
             }
         }
 
-        if (propertyName !== lastPropertyName || captureId !== lastCaptureId) {
-            if (lastCaptureId) {
-                const oldBlock = document.querySelector(`.effect-details-block[data-capture-id='${lastCaptureId}']`);
-                if (oldBlock) {
-                    oldBlock.querySelectorAll('.property-highlight').forEach(el => el.classList.remove('property-highlight'));
-                    document.querySelectorAll('.prop-highlight-inline').forEach(el => el.classList.remove('prop-highlight-inline'));
-                }
-            }
-            if (captureId && propertyName) {
-                const newBlock = document.querySelector(`.effect-details-block[data-capture-id='${captureId}']`);
-                const propSpanInText = document.querySelector(`.prop-capture[data-capture-id='${captureId}'][data-property-name='${propertyName}']`);
+        const primaryId = currentIds.length > 0 ? currentIds[currentIds.length - 1] : null;
+        const lastPrimaryId = lastCaptureIds.length > 0 ? lastCaptureIds[lastCaptureIds.length - 1] : null;
 
-                if (newBlock && propSpanInText) {
+        if (propertyName !== lastPropertyName || primaryId !== lastPrimaryId) {
+            document.querySelectorAll('.property-highlight, .prop-highlight-inline').forEach(el => {
+                el.classList.remove('property-highlight', 'prop-highlight-inline');
+            });
+
+            if (primaryId && propertyName) {
+                const propSpanInText = document.querySelector(`.prop-capture[data-capture-ids~='${primaryId}'][data-property-name='${propertyName}']`);
+                if (propSpanInText) {
                     const propColor = propSpanInText.style.getPropertyValue('--prop-color');
-                    newBlock.querySelectorAll(`[data-property-name='${propertyName}']`).forEach(el => {
+                    propSpanInText.classList.add('prop-highlight-inline');
+
+                    document.querySelectorAll(`[data-capture-id='${primaryId}'][data-property-name='${propertyName}']`).forEach(el => {
                         el.classList.add('property-highlight');
                         el.style.setProperty('--highlight-color', propColor);
                     });
-                    propSpanInText.classList.add('prop-highlight-inline');
                 }
             }
         }
-        lastCaptureId = captureId;
+
+        lastCaptureIds = currentIds;
         lastPropertyName = propertyName;
     };
 
     mouseleaveHandler = () => {
-        if (lastCaptureId) {
-            document.querySelectorAll('.highlight-active').forEach(el => el.classList.remove('highlight-active'));
-            const block = document.querySelector(`.effect-details-block[data-capture-id='${lastCaptureId}']`);
-            if (block) {
-                block.querySelectorAll('.property-highlight').forEach(el => el.classList.remove('property-highlight'));
-                document.querySelectorAll('.prop-highlight-inline').forEach(el => el.classList.remove('prop-highlight-inline'));
-            }
-        }
-        lastCaptureId = null;
+        document.querySelectorAll('.highlight-active, .property-highlight, .prop-highlight-inline').forEach(el => {
+            el.classList.remove('highlight-active', 'property-highlight', 'prop-highlight-inline');
+        });
+        lastCaptureIds = [];
         lastPropertyName = null;
     };
 
