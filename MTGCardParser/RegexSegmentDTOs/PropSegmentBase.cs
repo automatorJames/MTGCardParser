@@ -13,7 +13,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         CaptureProp = captureProp;
     }
 
-    public bool SetValueFromMatchSpan(ITokenUnit parentToken, TextSpan matchSpan)
+    public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
         if (IsChildTokenUnit)
             return SetChildTokenUnitValue(parentToken, matchSpan);
@@ -21,7 +21,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
             return SetScalarPropValue(parentToken, matchSpan);       
     }
 
-    public bool SetScalarPropValue(ITokenUnit parentToken, TextSpan matchSpan)
+    public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
     {
         if (IsChildTokenUnit)
             throw new InvalidOperationException($"Can't set scalar prop value on TokenUnit");
@@ -45,7 +45,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         return true;
     }
 
-    public bool SetChildTokenUnitValue(ITokenUnit parentToken, TextSpan matchSpan)
+    public bool SetChildTokenUnitValue(TokenUnit parentToken, TextSpan matchSpan)
     {
         if (!IsChildTokenUnit)
             throw new InvalidOperationException($"TokenUnit values can only be set on TokenUnit types");
@@ -55,7 +55,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         if (subMatchSpan is null)
             return false;
 
-        var propInstance = TokenUnitBase.InstantiateFromMatchString(CaptureProp.UnderlyingType, subMatchSpan.Value, parentToken);
+        var propInstance = TokenUnit.InstantiateFromMatchString(CaptureProp.UnderlyingType, subMatchSpan.Value, parentToken);
 
         if (propInstance is null)
             throw new Exception($"Failed to instantiate {CaptureProp.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
@@ -77,7 +77,7 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
         return null;
     }
 
-    TextSpan? GetGroupSubMatch(ITokenUnit parentToken, TextSpan matchSpanToCheck)
+    TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
         var regex = TokenClassRegistry.TypeRegexTemplates[parentToken.GetType()].RenderedRegexString;

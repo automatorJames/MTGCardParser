@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class ManaValue : TokenUnitBase
+public class ManaValue : TokenUnit
 {
     public RegexTemplate<ManaValue> RegexTemplate => new(nameof(ManaSymbols));
 

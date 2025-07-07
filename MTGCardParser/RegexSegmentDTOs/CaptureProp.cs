@@ -27,7 +27,7 @@ public record CaptureProp
             return CapturePropType.CapturedTextSegment;
         else if (underlyingType == typeof(bool))
             return CapturePropType.Bool;
-        else if (underlyingType.IsAssignableTo(typeof(ITokenUnit)))
+        else if (underlyingType.IsAssignableTo(typeof(TokenUnit)))
             return CapturePropType.TokenUnit;
         else
             throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(CapturePropType)} type");

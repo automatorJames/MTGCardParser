@@ -50,7 +50,7 @@ else
     public int SegmentAbsoluteStart { get; set; }
 
     [Parameter, EditorRequired]
-    public ITokenUnit ParentToken { get; set; } = default!;
+    public TokenUnit ParentToken { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public string AllCaptureIds { get; set; } = default!;

@@ -1,12 +1,10 @@
-﻿using MTGCardParser.TokenUnits.Interfaces;
-
-namespace MTGCardParser.RegexSegmentDTOs;
+﻿namespace MTGCardParser.RegexSegmentDTOs;
 
 public record TokenCaptureSegment : PropSegmentBase
 {
     public TokenCaptureSegment(CaptureProp captureProp) : base(captureProp)
     {
-        var instanceOfPropType = (ITokenUnit)Activator.CreateInstance(captureProp.UnderlyingType);
+        var instanceOfPropType = (TokenUnit)Activator.CreateInstance(captureProp.UnderlyingType);
         RegexString = instanceOfPropType.GetRegexTemplate().RenderedRegexString;
         Regex = new Regex(RegexString);
     }

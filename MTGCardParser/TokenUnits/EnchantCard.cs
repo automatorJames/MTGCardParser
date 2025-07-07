@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class EnchantCard : TokenUnitBase
+public class EnchantCard : TokenUnit
 {
     public RegexTemplate<EnchantCard> RegexTemplate => new("enchant", nameof(CardType));
 

@@ -38,12 +38,12 @@ public static class TokenClassRegistry
         }
     }
 
-    public static ITokenUnit HydrateFromToken(Token<Type> token) 
-        => TokenUnitBase.InstantiateFromMatchString(token.Kind, token.Span);
+    public static TokenUnit HydrateFromToken(Token<Type> token) 
+        => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
 
-    static List<ITokenUnit> GetTokenCaptureInstances() =>
+    static List<TokenUnit> GetTokenCaptureInstances() =>
         GetTokenCaptureTypes()
-        .Select(x => (ITokenUnit)Activator.CreateInstance(x))
+        .Select(x => (TokenUnit)Activator.CreateInstance(x))
         .ToList();
 
     static List<Type> GetTokenCaptureTypes() =>
@@ -51,7 +51,7 @@ public static class TokenClassRegistry
             .GetTypes()
             .Where(t =>
                 t.IsClass && !t.IsAbstract
-                && typeof(ITokenUnit).IsAssignableFrom(t))
+                && typeof(TokenUnit).IsAssignableFrom(t))
             .ToList();
 
     static void InitializeTokenizer()

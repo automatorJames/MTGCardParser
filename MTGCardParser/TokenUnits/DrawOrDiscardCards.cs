@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class DrawOrDiscardCards : TokenUnitBase
+public class DrawOrDiscardCards : TokenUnit
 {
     public RegexTemplate<DrawOrDiscardCards> RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
 

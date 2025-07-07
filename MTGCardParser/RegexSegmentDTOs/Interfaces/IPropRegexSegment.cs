@@ -4,7 +4,7 @@ public interface IPropRegexSegment
 {
     public CaptureProp CaptureProp { get; }
     public bool IsChildTokenUnit { get; }
-    public bool SetValueFromMatchSpan(ITokenUnit parentToken, TextSpan matchSpan);
-    public bool SetScalarPropValue(ITokenUnit parentToken, TextSpan matchSpan);
-    public bool SetChildTokenUnitValue(ITokenUnit parentToken, TextSpan matchSpan);
+    public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan);
+    public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan);
+    public bool SetChildTokenUnitValue(TokenUnit parentToken, TextSpan matchSpan);
 }

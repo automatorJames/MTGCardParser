@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class LifeQuantity : TokenUnitBase
+public class LifeQuantity : TokenUnit
 {
     public RegexTemplate<LifeQuantity> RegexTemplate => new(nameof(Quantity), "life");
 

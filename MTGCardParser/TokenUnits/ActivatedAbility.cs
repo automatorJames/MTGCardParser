@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class ActivatedAbility : TokenUnitBase
+public class ActivatedAbility : TokenUnit
 {
     public RegexTemplate<ActivatedAbility> RegexTemplate => new(nameof(ActivationCost), nameof(Effect));
 

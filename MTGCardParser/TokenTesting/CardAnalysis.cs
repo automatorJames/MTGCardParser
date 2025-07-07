@@ -129,7 +129,7 @@ public class CardAnalysis
     {
         foreach (var line in ProcessedLineTokens)
         {
-            List<ITokenUnit> list = new();
+            List<TokenUnit> list = new();
 
             foreach (var token in line.Where(x => x.Kind != typeof(string)))
                 list.Add(TokenClassRegistry.HydrateFromToken(token));

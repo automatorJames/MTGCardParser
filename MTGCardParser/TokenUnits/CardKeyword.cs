@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class CardKeyword : TokenUnitBase
+public class CardKeyword : TokenUnit
 {
     public RegexTemplate<CardKeyword> RegexTemplate => new(nameof(Keyword));
 

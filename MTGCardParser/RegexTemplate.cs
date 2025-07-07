@@ -104,10 +104,10 @@ public class RegexTemplate<T> : RegexTemplate
 
         if (matchingProp is not null)
         {
-            var isTokenUnitType = matchingProp.UnderlyingType.IsAssignableTo(typeof(ITokenUnit));
+            var isTokenUnitType = matchingProp.UnderlyingType.IsAssignableTo(typeof(TokenUnit));
 
             if (forceResolveTokenUnit && matchingProp.CapturePropType != CapturePropType.TokenUnit)
-                throw new Exception($"Prop type {matchingProp.UnderlyingType.Name} is required to implement ({nameof(ITokenUnit)})");
+                throw new Exception($"Prop type {matchingProp.UnderlyingType.Name} is required to implement ({nameof(TokenUnit)})");
 
             return matchingProp.CapturePropType switch
             {
@@ -127,7 +127,7 @@ public class RegexTemplate<T> : RegexTemplate
             (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum
              || x.PropertyType == typeof(bool)
              || x.PropertyType == typeof(CapturedTextSegment)
-             || x.PropertyType.IsAssignableTo(typeof(ITokenUnit)))
+             || x.PropertyType.IsAssignableTo(typeof(TokenUnit)))
         .Select(x => new CaptureProp(x))
         .ToList();
 }

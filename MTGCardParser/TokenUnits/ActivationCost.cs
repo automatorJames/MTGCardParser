@@ -1,7 +1,7 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
 [NoSpaces]
-public class ActivationCost : TokenUnitBase
+public class ActivationCost : TokenUnit
 {
     public RegexTemplate<ActivationCost> RegexTemplate => new("^", nameof(ActivationCostSegment), ":");
 

@@ -1,7 +1,7 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
 [IgnoreInAnalysis]
-public class DefaultUnmatchedString : TokenUnitBase
+public class DefaultUnmatchedString : TokenUnit
 {
     public RegexTemplate<Cost> RegexTemplate => new(@"[^.,;""\s]+");
 }

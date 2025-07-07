@@ -80,7 +80,7 @@ public class TokenTester
                                         .Where(p => p.Name != "RegexTemplate" && p.CanRead)
                                         .ToDictionary(p => p.Name);
 
-        var orderedPropNames = (instance as ITokenUnit)?
+        var orderedPropNames = (instance as TokenUnitBase)?
             .GetRegexTemplate()
             .GetOrderedCaptureProps()
             .Select(p => p.Name)
@@ -102,7 +102,7 @@ public class TokenTester
         {
             if (!allProperties.TryGetValue(propName, out var prop)) continue;
 
-            if (typeof(ITokenUnit).IsAssignableFrom(prop.PropertyType))
+            if (typeof(TokenUnitBase).IsAssignableFrom(prop.PropertyType))
                 childTokenUnitProperties.Add(prop);
             else
                 scalarProperties.Add(prop);
@@ -235,7 +235,7 @@ public class TokenTester
     /// </summary>
     private void RenderNestedTokenHtml(
         StringBuilder sb,
-        ITokenUnit token,
+        TokenUnitBase token,
         string rootCaptureId, // Passed for clarity, though my helper parses it.
         IReadOnlyDictionary<string, string> propertyColorMap)
     {
@@ -300,7 +300,7 @@ public class TokenTester
     /// </summary>
     private void RenderEffectDetails(
         StringBuilder sb,
-        ITokenUnit token,
+        TokenUnitBase token,
         string captureId,
         IReadOnlyDictionary<string, string> propertyColorMap)
     {
@@ -325,7 +325,7 @@ public class TokenTester
         StringBuilder sb,
         string textSegment,
         int segmentAbsoluteStart,
-        ITokenUnit parentToken, // We need the parent to get PropMatches and the root capture ID
+        TokenUnitBase parentToken, // We need the parent to get PropMatches and the root capture ID
         IReadOnlyDictionary<string, string> propertyColorMap)
     {
         // Filter to only scalar properties. TokenUnit properties are handled by the nested underline recursion.

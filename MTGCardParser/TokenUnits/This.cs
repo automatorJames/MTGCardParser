@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class This : TokenUnitBase
+public class This : TokenUnit
 {
     public RegexTemplate<This> RegexTemplate => new(@"\{this\}");
 }

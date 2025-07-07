@@ -2,5 +2,5 @@
 
 public record ClauseTokens
 (
-    List<ITokenUnit> CapturedTokens
+    List<TokenUnit> CapturedTokens
 );

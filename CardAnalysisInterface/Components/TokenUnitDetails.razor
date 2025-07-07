@@ -60,7 +60,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public ITokenUnit Instance { get; set; } = default!;
+    public TokenUnit Instance { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public string CaptureId { get; set; } = default!;
@@ -110,7 +110,7 @@
         bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
         if (type.IsEnum || isNullableEnum) return "Enum";
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return $"{type.GetGenericArguments()[0].Name}?";
-        if (type.IsAssignableTo(typeof(ITokenUnit))) return "Token Unit";
+        if (type.IsAssignableTo(typeof(TokenUnit))) return "Token Unit";
         return type.Name;
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class CounterOnCard :TokenUnitBase
+public class CounterOnCard :TokenUnit
 {
     public RegexTemplate<CounterOnCard> RegexTemplate => new(nameof(CounterType), "counter");
 

@@ -1,6 +1,6 @@
-﻿namespace MTGCardParser.TokenUnits.Interfaces;
+﻿namespace MTGCardParser.TokenUnits;
 
-public abstract class TokenUnitBase : ITokenUnit
+public abstract class TokenUnit
 {
     static string RegexTemplatePropName = "RegexTemplate";
 
@@ -10,8 +10,8 @@ public abstract class TokenUnitBase : ITokenUnit
         get => _type ??= GetType();
     }
 
-    public ITokenUnit ParentToken { get; set; }
-    public List<ITokenUnit> ChildTokens { get; set; } = new();
+    public TokenUnit ParentToken { get; set; }
+    public List<TokenUnit> ChildTokens { get; set; } = new();
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
     public Dictionary<CaptureProp, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
@@ -39,12 +39,12 @@ public abstract class TokenUnitBase : ITokenUnit
         return prop.GetValue(this) as RegexTemplate;
     }
 
-    public static ITokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, ITokenUnit parentToken = null)
+    public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null)
     {
-        if (!type.IsAssignableTo(typeof(ITokenUnit)))
-            throw new Exception($"{type.Name} does not implement {nameof(ITokenUnit)}");
+        if (!type.IsAssignableTo(typeof(TokenUnit)))
+            throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
 
-        var tokenInstance = (ITokenUnit)Activator.CreateInstance(type);
+        var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
         tokenInstance.ParentToken = parentToken;
         tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
         tokenInstance.MatchSpan = matchSpan;
@@ -69,6 +69,20 @@ public abstract class TokenUnitBase : ITokenUnit
         }
 
         return dict;
+    }
+
+    public int GetDeepestChildLevel()
+    {
+        IEnumerable<TokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;
+        var deepestDepth = 0;
+
+        while (childrenAtCurrentRecursiveLevel.Any())
+        {
+            deepestDepth++;
+            childrenAtCurrentRecursiveLevel = childrenAtCurrentRecursiveLevel.SelectMany(x => x.ChildTokens);
+        }
+
+        return deepestDepth;
     }
 }
 
