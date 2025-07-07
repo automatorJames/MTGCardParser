@@ -98,11 +98,5 @@ public static class TokenClassRegistry
 
         return tokenizerBuilder;
     }
-
-    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, string regexPattern, bool wrapInWordboundary = true)
-    {
-        tokenizerBuilder.Match(Span.Regex(regexPattern), typeof(string));
-        return tokenizerBuilder;
-    }
 }
 

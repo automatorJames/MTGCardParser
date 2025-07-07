@@ -41,10 +41,9 @@
             var textValue = token.Span.ToStringValue().Replace(Card.ThisToken, analyzedCard.Card.Name);
             int charCount = textValue.Replace("\n", "").Length;
 
-            if (token.Kind != typeof(string))
-            {
+            if (token.Kind != typeof(DefaultUnmatchedString))
                 matchedChars += charCount;
-            }
+
             totalChars += charCount;
         }
 

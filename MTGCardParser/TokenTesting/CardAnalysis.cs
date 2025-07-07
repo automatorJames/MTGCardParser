@@ -13,7 +13,7 @@ public class CardAnalysis
 
     public int UnmatchedTokenCount => UnmatchedSegments
         .SelectMany(x => x)
-        .Where(x => x.Kind == typeof(string))
+        .Where(x => x.Kind == typeof(DefaultUnmatchedString))
         .Count();
 
     public CardAnalysis(Card card)
@@ -49,7 +49,7 @@ public class CardAnalysis
 
                 // token strings represent unmatched tokens
                 // although Punctuation tokens are technically captured, we want to treat them as uncaptured and later append them to the preceding string
-                if (token.Kind == typeof(string))
+                if (token.Kind == typeof(DefaultUnmatchedString))
                     tokens.Add(token);
 
                 // Add the accumulated tokens to UnmatchedSegments
@@ -116,7 +116,7 @@ public class CardAnalysis
 
     public void AddAccumulatedCapturedTokenTypeCounts(Dictionary<Type, int> dict)
     {
-        var nonPlaceholderNonStringTokens = CombinedTokens.Where(x => x.Kind != typeof(string));
+        var nonPlaceholderNonStringTokens = CombinedTokens.Where(x => x.Kind != typeof(DefaultUnmatchedString));
 
         foreach (var token in nonPlaceholderNonStringTokens)
             if (!dict.ContainsKey(token.Kind))
@@ -131,7 +131,7 @@ public class CardAnalysis
         {
             List<TokenUnit> list = new();
 
-            foreach (var token in line.Where(x => x.Kind != typeof(string)))
+            foreach (var token in line)
                 list.Add(TokenClassRegistry.HydrateFromToken(token));
 
             Clauses.Add(new(list));
