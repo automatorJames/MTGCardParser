@@ -1,4 +1,4 @@
-﻿@inject CardTextAnalyzer Analyzer
+﻿@inject AggregateCardAnalysis Analysis
 
 @if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
 {
@@ -10,16 +10,16 @@ else
     const int pixelGapPerUnderline = 4;
     var deepestLevel = Token.GetDeepestChildLevel();
     var padding = pixelGapPerUnderline * deepestLevel + pixelGapPerUnderline;
-    var color = Analyzer.ToHex(Analyzer.TypeColors[Token.GetType()]);
+    var color = Analysis.TypeColors[Token.Type];
     
     <span class="nested-underline" style="--underline-color: @color; padding-bottom: @(padding)px;" data-capture-id="@RootCaptureId">
         @if (!sortedChildren.Any())
         {
-            <PropCapturedText TextSegment="@Token.MatchSpan.ToStringValue()"
-                              SegmentAbsoluteStart="@Token.MatchSpan.Position.Absolute"
-                              ParentToken="Token"
-                              PropertyColorMap="PropertyColorMap"
-                              RootCaptureId="@RootCaptureId" />
+            <PropCapturedText 
+                TextSegment=@Token.MatchSpan.ToStringValue()
+                SegmentAbsoluteStart=@Token.MatchSpan.Position.Absolute
+                ParentToken=@Token
+                RootCaptureId=@RootCaptureId />
         }
         else
         {
@@ -33,16 +33,15 @@ else
                 if (childRelativeStart > currentIndexInParentText)
                 {
                     int prefixLength = childRelativeStart - currentIndexInParentText;
-                    string prefixText = Token.MatchSpan.Source.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
+                    string prefixText = @Token.MatchSpan.Source!.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
                     <PropCapturedText TextSegment=@prefixText
                                       SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
-                                      ParentToken="Token"
-                                      PropertyColorMap="PropertyColorMap"
-                                      RootCaptureId="@RootCaptureId" />
+                                      ParentToken=@Token
+                                      RootCaptureId=@RootCaptureId />
                 }
                 
                 // b) Render the child recursively
-                <NestedTokenSpan Token="child" RootCaptureId="@RootCaptureId" PropertyColorMap="PropertyColorMap" />
+                <NestedTokenSpan Token=@child RootCaptureId=@RootCaptureId />
 
                 // c) Update position
                 currentIndexInParentText = childRelativeStart + childSpan.Length;
@@ -52,12 +51,11 @@ else
             if (currentIndexInParentText < Token.MatchSpan.Length)
             {
                 int suffixLength = Token.MatchSpan.Length - currentIndexInParentText;
-                string suffixText = Token.MatchSpan.Source.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, suffixLength);
+                string suffixText = Token.MatchSpan.Source!.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, suffixLength);
                 <PropCapturedText TextSegment=@suffixText
-                                  SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
-                                  ParentToken="Token"
-                                  PropertyColorMap="PropertyColorMap"
-                                  RootCaptureId="@RootCaptureId" />
+                                  SegmentAbsoluteStart=@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)
+                                  ParentToken=@Token
+                                  RootCaptureId=@RootCaptureId />
             }
         }
     </span>
@@ -69,7 +67,4 @@ else
 
     [Parameter, EditorRequired]
     public string RootCaptureId { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
 }

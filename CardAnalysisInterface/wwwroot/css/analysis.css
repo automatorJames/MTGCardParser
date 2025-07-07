@@ -1,6 +1,6 @@
 ﻿:root {
     --fade-time: 0.2s;
-    --highlight-inset: 6px;
+    --highlight-inset: 4px;
     --highlight-easing: ease-in-out;
 }
 

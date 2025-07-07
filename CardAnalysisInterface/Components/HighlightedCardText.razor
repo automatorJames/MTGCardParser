@@ -1,4 +1,4 @@
-﻿@inject CardTextAnalyzer Analyzer
+﻿@inject AggregateCardAnalysis Analysis
 
 @for (int i = 0; i < AnalyzedCard.ProcessedLineTokens.Count; i++)
 {
@@ -16,7 +16,7 @@
 
         if (token.Kind != typeof(string))
         {
-            string colorHex = Analyzer.ToHex(Analyzer.TypeColors[token.Kind]);
+            string colorHex = Analysis.TypeColors[token.Kind];
             <span class="highlight" data-title=@typeName style=@($"background-color: {colorHex};")>
                 <span class="highlight-label" style=@($"color: {colorHex};")>@typeName</span>
                 @textValue

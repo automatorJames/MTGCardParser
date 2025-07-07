@@ -8,4 +8,5 @@ public class ActivatedAbility : TokenUnitBase
 
     [RegexPattern(@".+\.\)?")]
     public CapturedTextSegment Effect { get; set; }
+
 }

@@ -1,6 +1,3 @@
-using CardAnalysisInterface.Data;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using MTGCardParser.TokenTesting;
 
 namespace CardAnalysisInterface;
@@ -14,10 +11,7 @@ public class Program
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
 
-        var cardTextAnalyzer = new CardTextAnalyzer(1);
-
-        builder.Services.AddSingleton(cardTextAnalyzer);
-        builder.Services.AddSingleton(cardTextAnalyzer.AggregateCardAnalysis);
+        builder.Services.AddSingleton(new AggregateCardAnalysis(1));
 
         var app = builder.Build();
 

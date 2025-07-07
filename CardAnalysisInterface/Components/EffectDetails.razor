@@ -1,11 +1,11 @@
-﻿@inject CardTextAnalyzer Analyzer
+﻿@inject AggregateCardAnalysis Analysis
 
 @if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is null)
 {
-    string colorHex = Analyzer.ToHex(Analyzer.TypeColors[Token.Type]);
+    string colorHex = Analysis.TypeColors[Token.Type];
     <div class="effect-details-block" data-capture-id="@CaptureId">
-        <h5 style="color: @colorHex; padding-left: 16px;">@Token.GetType().Name</h5>
-        <TokenUnitDetails Instance="Token" CaptureId="@CaptureId" PropertyColorMap="PropertyColorMap" />
+        <h5 style=@($"color: {colorHex}; padding-left: 16px;")>@Token.Type.Name</h5>
+        <TokenUnitDetails Instance="Token" CaptureId="@CaptureId" />
     </div>
 }
 
@@ -15,7 +15,4 @@
 
     [Parameter, EditorRequired]
     public string CaptureId { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
 }

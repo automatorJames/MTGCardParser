@@ -1,12 +1,16 @@
-﻿@if (string.IsNullOrEmpty(TextSegment) || !ScalarPropMatches.Any())
+﻿@inject AggregateCardAnalysis Analysis
+
+@if (string.IsNullOrEmpty(TextSegment) || !ScalarPropMatches.Any())
 {
     @TextSegment
 }
 else
 {
     int currentIndexInSegment = 0;
-    foreach (var propMatch in ScalarPropMatches)
+    for (int i = 0; i < ScalarPropMatches.Count; i++)
     {
+        var propMatch = ScalarPropMatches[i];
+
         if (propMatch.Span.Position.Absolute >= SegmentAbsoluteStart &&
             propMatch.Span.Position.Absolute < SegmentAbsoluteStart + TextSegment.Length)
         {
@@ -19,7 +23,7 @@ else
             }
 
             // 2. Render the property capture
-            string propColor = PropertyColorMap.GetValueOrDefault(propMatch.Prop.Name, "#888");
+            string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
             string propText = propMatch.Span.ToStringValue();
 
             <span class="prop-capture" style="--prop-color: @propColor;" data-capture-id="@RootCaptureId" data-property-name="@propMatch.Prop.Name">
@@ -47,9 +51,6 @@ else
 
     [Parameter, EditorRequired]
     public ITokenUnit ParentToken { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public IReadOnlyDictionary<string, string> PropertyColorMap { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public string RootCaptureId { get; set; } = default!;
