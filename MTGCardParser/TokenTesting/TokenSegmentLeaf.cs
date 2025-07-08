@@ -6,9 +6,10 @@
 /// </summary>
 public record TokenSegmentLeaf : TokenSegment
 {
-    public IReadOnlyList<LeafPart> Parts { get; }
+    public List<LeafPart> Parts { get; }
 
-    public TokenSegmentLeaf(string leafText, int leafAbsoluteStart, IReadOnlyList<KeyValuePair<CaptureProp, TextSpan>> parentPropMatches)
+    // The signature now accepts our clean, new type.
+    public TokenSegmentLeaf(string leafText, int leafAbsoluteStart, List<IndexedPropertyCapture> orderedParentCaptures)
     {
         var parts = new List<LeafPart>();
         if (string.IsNullOrEmpty(leafText))
@@ -17,11 +18,10 @@ public record TokenSegmentLeaf : TokenSegment
             return;
         }
 
-        // 1. Filter and sort properties relevant to THIS leaf.
-        var relevantCaptures = parentPropMatches
-            .Select((kvp, index) => new { Prop = kvp.Key, Span = kvp.Value, OriginalIndex = index })
-            .Where(x => x.Span.Position.Absolute >= leafAbsoluteStart && (x.Span.Position.Absolute + x.Span.Length) <= (leafAbsoluteStart + leafText.Length))
-            .OrderBy(x => x.Span.Position.Absolute)
+        // The captures are already ordered, so we just need to filter them.
+        var relevantCaptures = orderedParentCaptures
+            .Where(c => c.Span.Position.Absolute >= leafAbsoluteStart &&
+                        (c.Span.Position.Absolute + c.Span.Length) <= (leafAbsoluteStart + leafText.Length))
             .ToList();
 
         if (!relevantCaptures.Any())
@@ -31,7 +31,8 @@ public record TokenSegmentLeaf : TokenSegment
             return;
         }
 
-        // 2. Build the sequence of LeafParts.
+        // The rest of the logic is now much cleaner to read as it operates
+        // on the self-documenting 'IndexedPropertyCapture' record.
         int currentIndexInLeaf = 0;
         foreach (var capture in relevantCaptures)
         {
@@ -41,13 +42,12 @@ public record TokenSegmentLeaf : TokenSegment
             {
                 parts.Add(new PlainTextPart(leafText.Substring(currentIndexInLeaf, propRelativeStart - currentIndexInLeaf)));
             }
-            
-            parts.Add(new PropertyCapturePart(capture.Span.ToStringValue(), capture.Prop, capture.OriginalIndex));
-            
+
+            parts.Add(new PropertyCapturePart(capture.Span.ToStringValue(), capture.Property, capture.OriginalIndex));
+
             currentIndexInLeaf = propRelativeStart + capture.Span.Length;
         }
 
-        // 3. Render any remaining text.
         if (currentIndexInLeaf < leafText.Length)
         {
             parts.Add(new PlainTextPart(leafText.Substring(currentIndexInLeaf)));
