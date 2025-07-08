@@ -1,120 +1,119 @@
-﻿namespace MTGCardParser.BaseClasses
+﻿namespace MTGCardParser.BaseClasses;
+
+public abstract class TokenUnit
 {
-    public abstract class TokenUnit
+    static string RegexTemplatePropName = "RegexTemplate";
+
+    Type _type;
+    public Type Type
     {
-        static string RegexTemplatePropName = "RegexTemplate";
-
-        Type _type;
-        public Type Type
+        get
         {
-            get
-            {
-                if (_type is null)
-                    _type = GetType();
+            if (_type is null)
+                _type = GetType();
 
-                return _type;
-            }
+            return _type;
+        }
+    }
+
+    Dictionary<PropertyInfo, object> _distilledValues;
+    public Dictionary<PropertyInfo, object> DistilledValues
+    {
+        get
+        {
+            if (_distilledValues is null)
+                _distilledValues = GetDistilledValues();
+
+            return _distilledValues;
+        }
+    }
+
+    public TokenUnit ParentToken { get; set; }
+    public List<TokenUnit> ChildTokens { get; set; } = new();
+    public int RecursiveDepth { get; set; }
+    public TextSpan MatchSpan { get; set; }
+    public Dictionary<CaptureProp, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
+
+    /// <summary>
+    /// A pre-processed and ordered list of all property captures for this token.
+    /// This is the preferred way to iterate over captures for rendering or processing.
+    /// </summary>
+    public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
+
+    public virtual void SetPropertiesFromMatchSpan()
+    {
+        var regexTemplate = GetRegexTemplate();
+        regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
+
+        foreach (var alternativeCaptureSet in regexTemplate.AlternativePropCaptureSets)
+            if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
+                throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
+
+        // After PropMatches is fully populated, create the ordered and indexed list one time.
+        var propMatchesAsList = PropMatches.ToList(); // Create a stable list to get an index.
+
+        OrderedPropCaptures = propMatchesAsList
+            .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
+            .OrderBy(capture => capture.Span.Position.Absolute)
+            .ToList();
+    }
+
+    public RegexTemplate GetRegexTemplate()
+    {
+        if (TokenClassRegistry.IsInitialized)
+            return TokenClassRegistry.TypeRegexTemplates[Type];
+
+        var prop = GetType().GetProperty(RegexTemplatePropName);
+
+        if (prop is null)
+            throw new Exception($"{GetType().Name} doesn't contain a property named {RegexTemplatePropName})");
+
+        return prop.GetValue(this) as RegexTemplate;
+    }
+
+    public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null)
+    {
+        if (!type.IsAssignableTo(typeof(TokenUnit)))
+            throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
+
+        var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
+        tokenInstance.ParentToken = parentToken;
+        tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
+        tokenInstance.MatchSpan = matchSpan;
+        tokenInstance.SetPropertiesFromMatchSpan(); // This will now also populate OrderedPropCaptures
+
+        return tokenInstance;
+    }
+
+    Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
+    {
+        Dictionary<PropertyInfo, object> dict = new();
+        var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);
+
+        foreach (var distilledProp in distilledProps)
+        {
+            var val = distilledProp.GetValue(this);
+
+            if (distilledProp.PropertyType.IsValueType && val.Equals(Activator.CreateInstance(distilledProp.PropertyType)))
+                continue;
+
+            dict[distilledProp] = val;
         }
 
-        Dictionary<PropertyInfo, object> _distilledValues;
-        public Dictionary<PropertyInfo, object> DistilledValues
-        {
-            get
-            {
-                if (_distilledValues is null)
-                    _distilledValues = GetDistilledValues();
+        return dict;
+    }
 
-                return _distilledValues;
-            }
+    public int GetDeepestChildLevel()
+    {
+        IEnumerable<TokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;
+        var deepestDepth = 0;
+
+        while (childrenAtCurrentRecursiveLevel.Any())
+        {
+            deepestDepth++;
+            childrenAtCurrentRecursiveLevel = childrenAtCurrentRecursiveLevel.SelectMany(x => x.ChildTokens);
         }
 
-        public TokenUnit ParentToken { get; set; }
-        public List<TokenUnit> ChildTokens { get; set; } = new();
-        public int RecursiveDepth { get; set; }
-        public TextSpan MatchSpan { get; set; }
-        public Dictionary<CaptureProp, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
-
-        /// <summary>
-        /// A pre-processed and ordered list of all property captures for this token.
-        /// This is the preferred way to iterate over captures for rendering or processing.
-        /// </summary>
-        public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
-
-        public virtual void SetPropertiesFromMatchSpan()
-        {
-            var regexTemplate = GetRegexTemplate();
-            regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
-
-            foreach (var alternativeCaptureSet in regexTemplate.AlternativePropCaptureSets)
-                if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
-                    throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
-
-            // After PropMatches is fully populated, create the ordered and indexed list one time.
-            var propMatchesAsList = PropMatches.ToList(); // Create a stable list to get an index.
-
-            OrderedPropCaptures = propMatchesAsList
-                .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
-                .OrderBy(capture => capture.Span.Position.Absolute)
-                .ToList();
-        }
-
-        public RegexTemplate GetRegexTemplate()
-        {
-            if (TokenClassRegistry.IsInitialized)
-                return TokenClassRegistry.TypeRegexTemplates[Type];
-
-            var prop = GetType().GetProperty(RegexTemplatePropName);
-
-            if (prop is null)
-                throw new Exception($"{GetType().Name} doesn't contain a property named {RegexTemplatePropName})");
-
-            return prop.GetValue(this) as RegexTemplate;
-        }
-
-        public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null)
-        {
-            if (!type.IsAssignableTo(typeof(TokenUnit)))
-                throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
-
-            var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
-            tokenInstance.ParentToken = parentToken;
-            tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
-            tokenInstance.MatchSpan = matchSpan;
-            tokenInstance.SetPropertiesFromMatchSpan(); // This will now also populate OrderedPropCaptures
-
-            return tokenInstance;
-        }
-
-        Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
-        {
-            Dictionary<PropertyInfo, object> dict = new();
-            var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);
-
-            foreach (var distilledProp in distilledProps)
-            {
-                var val = distilledProp.GetValue(this);
-
-                if (distilledProp.PropertyType.IsValueType && val.Equals(Activator.CreateInstance(distilledProp.PropertyType)))
-                    continue;
-
-                dict[distilledProp] = val;
-            }
-
-            return dict;
-        }
-
-        public int GetDeepestChildLevel()
-        {
-            IEnumerable<TokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;
-            var deepestDepth = 0;
-
-            while (childrenAtCurrentRecursiveLevel.Any())
-            {
-                deepestDepth++;
-                childrenAtCurrentRecursiveLevel = childrenAtCurrentRecursiveLevel.SelectMany(x => x.ChildTokens);
-            }
-
-            return deepestDepth;
-        }
+        return deepestDepth;
     }
 }
