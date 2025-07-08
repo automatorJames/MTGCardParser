@@ -1,6 +1,4 @@
 ﻿using MTGCardParser.BaseClasses;
-using System.Text.RegularExpressions;
-
 namespace MTGCardParser.RegexSegmentDTOs;
 
 public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
