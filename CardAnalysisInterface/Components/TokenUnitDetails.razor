@@ -1,6 +1,6 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (_visibleScalarPropValues.Any() || _distilledValues.Any())
+@if (_visibleScalarPropValues.Any() || PositionalToken.Token.DistilledValues.Any())
 {
     <table>
         <thead>
@@ -17,7 +17,7 @@
                 var value = _visibleScalarPropValues[key];
                 string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
                 string valueClass = GetCssClass(key);
-                <tr data-property-name=@(key.Name) data-capture-id=@(CaptureId)>
+                <tr data-property-name=@(key.Name) data-capture-id=@PositionalToken.CaptureId>
                     <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
                     <td class="@valueClass">@GetFriendlyTypeName(key.Prop.PropertyType)</td>
 
@@ -36,9 +36,9 @@
                 </tr>
             }
 
-            @foreach (var distilledValueItem in _distilledValues)
+            @foreach (var distilledValueItem in PositionalToken.Token.DistilledValues)
             {
-                <tr data-property-name=@(distilledValueItem.Key.Name) data-capture-id=@(CaptureId)>
+                <tr data-property-name=@(distilledValueItem.Key.Name) data-capture-id=@(PositionalToken.CaptureId)>
                     <td><span style=@($"color: #888; font-weight: bold;")>@distilledValueItem.Key.Name</span></td>
                     <td class="value-default">@GetFriendlyTypeName(distilledValueItem.Key.PropertyType)</td>
                     <td class=value-default>@distilledValueItem.Value.ToString()</td>
@@ -48,32 +48,28 @@
     </table>
 }
 
-@foreach (var (childToken, i) in Instance.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).Select((token, index) => (token, index)))
+@foreach (var child in PositionalToken.Children)
 {
-    var childCaptureId = $"{CaptureId}-child{i}";
     <div class="property-child-block">
-        <h5 data-property-name=@(childToken.Type.Name) data-capture-id=@childCaptureId style=@($"color: {Analysis.TypeColors[childToken.Type]};")>@childToken.Type.Name</h5>
-        <TokenUnitDetails Instance=@childToken CaptureId=@childCaptureId />
+        <h5 data-property-name=@(child.Token.Type.Name) data-capture-id=@child.CaptureId style=@($"color: {Analysis.TypeColors[child.Token.Type]};")>@child.Token.Type.Name</h5>
+        <TokenUnitDetails PositionalToken=@child />
     </div>
 }
 
 
 @code {
     [Parameter, EditorRequired]
-    public TokenUnit Instance { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public string CaptureId { get; set; } = default!;
+    public PositionalToken PositionalToken { get; set; } = default!;
 
     [Parameter]
     public bool OmitCapturedTextSegmentProperties { get; set; } = true;
 
     Dictionary<CaptureProp, object?> _visibleScalarPropValues = new(new CapturePropComparer());
-    Dictionary<PropertyInfo, object> _distilledValues = new();
 
     protected override void OnInitialized()
     {
-        var orderedCaptureProps = Instance.GetRegexTemplate()
+        var orderedCaptureProps = PositionalToken.Token
+            .GetRegexTemplate()
             .GetOrderedCaptureProps()
             .Where(x => x.CapturePropType != CapturePropType.TokenUnit)
             .ToList();
@@ -81,7 +77,7 @@
         foreach (var captureProp in orderedCaptureProps)
         {
             var prop = captureProp.Prop;
-            var value = prop.GetValue(Instance);
+            var value = prop.GetValue(PositionalToken.Token);
 
             if (value == null) continue;
             if (OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment)) continue;
@@ -89,8 +85,6 @@
 
             _visibleScalarPropValues[captureProp] = value;
         }
-
-        _distilledValues = Instance.GetDistilledValues();
     }
 
     public string GetCssClass(CaptureProp captureProp)

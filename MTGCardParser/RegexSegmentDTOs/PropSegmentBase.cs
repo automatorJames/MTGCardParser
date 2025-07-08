@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using MTGCardParser.BaseClasses;
+using System.Text.RegularExpressions;
 
 namespace MTGCardParser.RegexSegmentDTOs;
 

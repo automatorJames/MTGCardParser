@@ -9,7 +9,7 @@ public class CardAnalysis
     public List<Token<Type>[]> UnmatchedSegments { get; private set; } = new();
     public List<TextSpan> UnmatchedSegmentSpans { get; private set; } = new();
     public List<string> UnmatchedSegmentCombinations { get; private set; } = new();
-    public List<ClauseTokens> Clauses { get; private set; } = new();
+    public List<CapturedLine> CapturedLines { get; private set; } = new();
 
     public int UnmatchedTokenCount => UnmatchedSegments
         .SelectMany(x => x)
@@ -125,16 +125,17 @@ public class CardAnalysis
                 dict[token.Kind]++;
     }
 
-    public void SetClauseEffects()
+    public void SetCapturedLines()
     {
-        foreach (var line in ProcessedLineTokens)
+        for (int i = 0; i < ProcessedLineTokens.Count; i++)
         {
+            List<Token<Type>> line = ProcessedLineTokens[i];
             List<TokenUnit> list = new();
 
             foreach (var token in line)
                 list.Add(TokenClassRegistry.HydrateFromToken(token));
 
-            Clauses.Add(new(list));
+            CapturedLines.Add(new (list, Card, i));
         }
     }
 }

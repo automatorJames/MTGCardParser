@@ -1,4 +1,6 @@
-﻿namespace MTGCardParser.RegexSegmentDTOs;
+﻿using MTGCardParser.BaseClasses;
+
+namespace MTGCardParser.RegexSegmentDTOs;
 
 public record TokenCaptureSegment : PropSegmentBase
 {

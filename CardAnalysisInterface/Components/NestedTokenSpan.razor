@@ -1,62 +1,59 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (Token.GetType().GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
+@if (PositionalToken.Token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
 {
-    @Token.MatchSpan.ToStringValue()
+    @PositionalToken.Token.MatchSpan.ToStringValue()
 }
 else
 {
-    var sortedChildren = Token.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).ToList();
     const int pixelGapPerUnderline = 4;
-    var deepestLevel = Token.GetDeepestChildLevel();
+    var deepestLevel = PositionalToken.Token.GetDeepestChildLevel();
     var padding = pixelGapPerUnderline * deepestLevel + pixelGapPerUnderline;
-    var color = Analysis.TypeColors[Token.Type];
-    
-    <span class="nested-underline" style="--underline-color: @color; padding-bottom: @(padding)px;" data-capture-ids="@AllCaptureIds">
-        @if (!sortedChildren.Any())
+    var color = Analysis.TypeColors[PositionalToken.Token.Type];
+
+    <span class="nested-underline" style=@($"--underline-color: {color}; padding-bottom: {padding}px;") data-capture-ids="@AllCaptureIds">
+        @if (!PositionalToken.Children.Any())
         {
             <PropCapturedText 
-                TextSegment=@Token.MatchSpan.ToStringValue()
-                SegmentAbsoluteStart=@Token.MatchSpan.Position.Absolute
-                ParentToken=@Token
+                TextSegment=@PositionalToken.Token.MatchSpan.ToStringValue()
+                SegmentAbsoluteStart=@PositionalToken.Token.MatchSpan.Position.Absolute
+                ParentToken=@PositionalToken.Token
                 AllCaptureIds="@AllCaptureIds" />
         }
         else
         {
             int currentIndexInParentText = 0;
-            for (int i = 0; i < sortedChildren.Count; i++)
+            foreach (var child in PositionalToken.Children)
             {
-                var child = sortedChildren[i];
-                var childSpan = child.MatchSpan;
-                int childRelativeStart = childSpan.Position.Absolute - Token.MatchSpan.Position.Absolute;
+                var childSpan = child.Token.MatchSpan;
+                int childRelativeStart = childSpan.Position.Absolute - PositionalToken.Token.MatchSpan.Position.Absolute;
 
                 // a) Render prefix text
                 if (childRelativeStart > currentIndexInParentText)
                 {
                     int prefixLength = childRelativeStart - currentIndexInParentText;
-                    string prefixText = @Token.MatchSpan.Source!.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
+                    string prefixText = PositionalToken.Token.MatchSpan.Source!.Substring(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
                     <PropCapturedText TextSegment=@prefixText
-                                      SegmentAbsoluteStart="@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)"
-                                      ParentToken=@Token
-                                      AllCaptureIds="@AllCaptureIds" />
+                                      SegmentAbsoluteStart=@(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText)
+                                      ParentToken=@PositionalToken.Token
+                                      AllCaptureIds=@AllCaptureIds />
                 }
                 
                 // b) Render the child recursively
-                var childCaptureId = $"{CaptureId}-child{i}";
-                <NestedTokenSpan Token=@child CaptureId="@childCaptureId" AncestorIds="@AllCaptureIds" />
+                <NestedTokenSpan PositionalToken=@child AncestorIds="@AllCaptureIds" />
 
                 // c) Update position
                 currentIndexInParentText = childRelativeStart + childSpan.Length;
             }
 
             // d) Render suffix text
-            if (currentIndexInParentText < Token.MatchSpan.Length)
+            if (currentIndexInParentText < PositionalToken.Token.MatchSpan.Length)
             {
-                int suffixLength = Token.MatchSpan.Length - currentIndexInParentText;
-                string suffixText = Token.MatchSpan.Source!.Substring(Token.MatchSpan.Position.Absolute + currentIndexInParentText, suffixLength);
+                int suffixLength = PositionalToken.Token.MatchSpan.Length - currentIndexInParentText;
+                string suffixText = PositionalToken.Token.MatchSpan.Source!.Substring(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText, suffixLength);
                 <PropCapturedText TextSegment=@suffixText
-                                  SegmentAbsoluteStart=@(Token.MatchSpan.Position.Absolute + currentIndexInParentText)
-                                  ParentToken=@Token
+                                  SegmentAbsoluteStart=@(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText)
+                                  ParentToken=@PositionalToken.Token
                                   AllCaptureIds="@AllCaptureIds" />
             }
         }
@@ -65,13 +62,10 @@ else
 
 @code {
     [Parameter, EditorRequired]
-    public TokenUnit Token { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public string CaptureId { get; set; } = default!;
+    public PositionalToken PositionalToken { get; set; } = default!;
 
     [Parameter]
     public string AncestorIds { get; set; } = "";
 
-    private string AllCaptureIds => $"{AncestorIds} {CaptureId}".Trim();
+    private string AllCaptureIds => $"{AncestorIds} {PositionalToken.CaptureId}".Trim();
 }

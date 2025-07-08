@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.TokenUnits;
+﻿namespace MTGCardParser.BaseClasses;
 
 public abstract class TokenUnit
 {
@@ -7,7 +7,25 @@ public abstract class TokenUnit
     Type _type;
     public Type Type
     {
-        get => _type ??= GetType();
+        get
+        {
+            if (_type is null)
+                _type = GetType();
+
+            return _type;
+        }
+    }
+
+    Dictionary<PropertyInfo, object> _distilledValues;
+    public Dictionary<PropertyInfo, object> DistilledValues
+    {
+        get
+        {
+            if (_distilledValues is null)
+                _distilledValues = GetDistilledValues();
+
+            return _distilledValues;
+        }
     }
 
     public TokenUnit ParentToken { get; set; }
@@ -53,7 +71,7 @@ public abstract class TokenUnit
         return tokenInstance;
     }
 
-    public Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
+    Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
     {
         Dictionary<PropertyInfo, object> dict = new();
         var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);

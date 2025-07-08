@@ -26,7 +26,7 @@ else
             string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
             string propText = propMatch.Span.ToStringValue();
 
-            <span class="prop-capture" style="--prop-color: @propColor;" data-capture-ids="@AllCaptureIds" data-property-name="@propMatch.Prop.Name">
+            <span class="prop-capture" style=@($"--prop-color: {propColor};") data-capture-ids=@AllCaptureIds data-property-name=@propMatch.Prop.Name>
                 @propText
             </span>
 

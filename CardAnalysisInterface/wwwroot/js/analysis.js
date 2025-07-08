@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
 let mouseoverHandler;
 let mouseleaveHandler;
 
-// By adding 'export', we make this function callable from the Blazor component.
 function initCardCaptureHover() {
     const mainContent = document.getElementById('main-content');
     if (!mainContent) {

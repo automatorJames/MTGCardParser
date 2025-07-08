@@ -1,4 +1,6 @@
-﻿namespace MTGCardParser.Static;
+﻿using MTGCardParser.BaseClasses;
+
+namespace MTGCardParser.Static;
 
 public static class TokenClassRegistry
 {

@@ -45,7 +45,7 @@ public class AggregateCardAnalysis
         }
 
         foreach (var card in AnalyzedCards)
-            card.SetClauseEffects();
+            card.SetCapturedLines();
     }
 
     public static int GetDeterministicHash(string text)

@@ -15,30 +15,22 @@
                 <h3>@analyzedCard.Card.Name</h3>
                 <pre class="full-original-text">@analyzedCard.Card.Text</pre>
 
-                @for (int i = 0; i < analyzedCard.Clauses.Count; i++)
+                @foreach (var capturedLine in analyzedCard.CapturedLines)
                 {
-                    var clauseTokens = analyzedCard.Clauses[i].CapturedTokens;
-                    if (!clauseTokens.Any()) continue;
-
-                    int captureIdCounter = 0;
-
                     <div class="line-capture-block">    
-                        <h5 class="line-label">Line #@(i + 1)</h5>
+                        <h5 class="line-label">Line #@(capturedLine.LineIndex + 1)</h5>
 
                         <pre class="line-text">
-                            @foreach (var effect in clauseTokens)
+                            @foreach (var token in capturedLine.Tokens)
                             {
-                                string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{captureIdCounter++}";
-                                <NestedTokenSpan Token="effect" CaptureId="@captureId" />
+                                <NestedTokenSpan PositionalToken=@token />
                                 @(" ")
                             }
                         </pre>
 
-                        @{ captureIdCounter = 0; }
-                        @foreach (var effect in clauseTokens)
+                        @foreach (var token in capturedLine.Tokens)
                         {
-                            string captureId = $"capture-{analyzedCard.Card.CardId}-{i}-{captureIdCounter++}";
-                            <EffectDetails Token="effect" CaptureId="@captureId" />
+                            <EffectVariables PositionalToken=@token />
                         }
                     </div>
                 }

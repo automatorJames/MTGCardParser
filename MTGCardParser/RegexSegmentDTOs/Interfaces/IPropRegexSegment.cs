@@ -1,4 +1,6 @@
-﻿namespace MTGCardParser.RegexSegmentDTOs.Interfaces;
+﻿using MTGCardParser.BaseClasses;
+
+namespace MTGCardParser.RegexSegmentDTOs.Interfaces;
 
 public interface IPropRegexSegment
 {
