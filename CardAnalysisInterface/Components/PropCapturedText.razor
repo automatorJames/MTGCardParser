@@ -1,20 +1,22 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (string.IsNullOrEmpty(TextSegment) || !ScalarPropMatches.Any())
+@if (string.IsNullOrEmpty(TextSegment) || !ParentToken.PropMatches.Any())
 {
     @TextSegment
 }
 else
 {
+    var items = ParentToken.PropMatches.ToList();
     int currentIndexInSegment = 0;
-    for (int i = 0; i < ScalarPropMatches.Count; i++)
+    for (int i = 0; i < ParentToken.PropMatches.Count; i++)
     {
-        var propMatch = ScalarPropMatches[i];
+        var propMatch = items[i];
+        var captureProp = propMatch.Key;
+        var span = propMatch.Value;
 
-        if (propMatch.Span.Position.Absolute >= SegmentAbsoluteStart &&
-            propMatch.Span.Position.Absolute < SegmentAbsoluteStart + TextSegment.Length)
+        if (span.Position.Absolute >= SegmentAbsoluteStart && span.Position.Absolute < SegmentAbsoluteStart + TextSegment.Length)
         {
-            int propRelativeStart = propMatch.Span.Position.Absolute - SegmentAbsoluteStart;
+            int propRelativeStart = span.Position.Absolute - SegmentAbsoluteStart;
 
             // 1. Render text before
             if (propRelativeStart > currentIndexInSegment)
@@ -24,14 +26,14 @@ else
 
             // 2. Render the property capture
             string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
-            string propText = propMatch.Span.ToStringValue();
+            string propText = span.ToStringValue();
 
-            <span class="prop-capture" style=@($"--prop-color: {propColor};") data-capture-ids=@AllCaptureIds data-property-name=@propMatch.Prop.Name>
+            <span class="prop-capture" style=@($"--prop-color: {propColor};") data-capture-ids=@AllCaptureIds data-property-name=@captureProp.Name>
                 @propText
             </span>
 
             // 3. Update position
-            currentIndexInSegment = propRelativeStart + propMatch.Span.Length;
+            currentIndexInSegment = propRelativeStart + span.Length;
         }
     }
 
@@ -54,15 +56,4 @@ else
 
     [Parameter, EditorRequired]
     public string AllCaptureIds { get; set; } = default!;
-
-    private List<(CaptureProp Prop, TextSpan Span)> ScalarPropMatches { get; set; } = new();
-
-    protected override void OnInitialized()
-    {
-        ScalarPropMatches = ParentToken.PropMatches
-            .Where(kvp => kvp.Key.CapturePropType != CapturePropType.TokenUnit)
-            .Select(kvp => (kvp.Key, kvp.Value))
-            .OrderBy(p => p.Value.Position.Absolute)
-            .ToList();
-    }
 }
