@@ -7,13 +7,14 @@ public static class TokenClassRegistry
 
     public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = new();
-    public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
+
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
     static TokenClassRegistry()
     {
         RegisterTypes();
+        BakeAllRegexes();
         InitializeTokenizer();
         _isInitialized = true;
     }
@@ -24,21 +25,25 @@ public static class TokenClassRegistry
         foreach (var instance in instances)
         {
             var type = instance.GetType();
-            var regexTemplate = new RegexTemplate(instance.GetRegexTemplate());
-            TypeRegexTemplates[type] = regexTemplate;
-            TypeRegexes[type] = new Regex(regexTemplate.RenderedRegexString, RegexOptions.Compiled);
-            var propCaptureSegments = regexTemplate.PropCaptureSegments;
-
-            var unregisteredEnums = propCaptureSegments
-                .OfType<EnumCaptureSegment>()
-                .Where(x => !EnumRegexes.ContainsKey(x.CaptureProp.UnderlyingType));
-
-            foreach (var enumEntry in unregisteredEnums)
-                EnumRegexes[enumEntry.CaptureProp.UnderlyingType] = enumEntry.EnumMemberRegexes;
+            var regexTemplate = instance.GetRegexTemplate();
+            TypeRegexTemplates[type] = new RegexTemplate(regexTemplate);
         }
     }
 
-    public static TokenUnit HydrateFromToken(Token<Type> token) 
+    private static void BakeAllRegexes()
+    {
+        foreach (var kvp in TypeRegexTemplates)
+        {
+            var tokenType = kvp.Key;
+            var template = kvp.Value;
+            var renderedString = template.RenderedRegexString;
+
+            // CORRECTED: Remove RegexOptions.IgnoreCase, as patterns are now manually lowercased.
+            TypeRegexes[tokenType] = new Regex(renderedString, RegexOptions.Singleline | RegexOptions.Compiled);
+        }
+    }
+
+    public static TokenUnit HydrateFromToken(Token<Type> token)
         => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
 
     static List<TokenUnit> GetTokenCaptureInstances() =>
@@ -64,26 +69,21 @@ public static class TokenClassRegistry
             .Match(typeof(ActivatedAbility))
             .Match(typeof(YouMayPayCost))
             .Match(typeof(GainOrLoseAbility))
+            .Match(typeof(EnchantedCard))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))
             .Match(typeof(AtOrUntilPlayerPhase))
             .Match(typeof(IfYouDo))
-            .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
             .Match(typeof(Punctuation))
             .Match(typeof(ManaValue))
             .Match(typeof(Parenthetical));
-        
-        // Apply assembly types that weren't applied above (failsafe for laziness)
+
         foreach (var key in TypeRegexTemplates.Keys)
             if (!AppliedOrderTypes.Contains(key))
                 tokenizerBuilder.Match(key);
 
-        // Catch anything else with the default string pattern
         tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
-
-        //tokenizerBuilder
-        //    .Match(@"[^.,;""\s]+");
 
         Tokenizer = tokenizerBuilder.Build();
     }
@@ -93,10 +93,11 @@ public static class TokenClassRegistry
         if (AppliedOrderTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
+        // CORRECTED: Remove RegexOptions.IgnoreCase here as well. The tokenizer should match the pre-lowercased patterns.
+        // The tokenizer also lowercases the input text by default, making this match work.
         tokenizerBuilder.Match(Span.Regex(TypeRegexTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;
     }
 }
-

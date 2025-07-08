@@ -17,11 +17,11 @@
                 var value = _visibleScalarPropValues[key];
                 string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
                 string valueClass = GetCssClass(key);
-                <tr data-property-name=@(key.Name) data-capture-id=@PositionalToken.CaptureId>
-                    <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
+                <tr data-property-name=@(key.Prop.Name) data-capture-id=@PositionalToken.CaptureId>
+                    <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Prop.Name</span></td>
                     <td class="@valueClass">@GetFriendlyTypeName(key.Prop.PropertyType)</td>
 
-                    @if(key.CapturePropType == CapturePropType.TokenUnit)
+                    @if(key is TokenUnitPropertyCapture)
                     {
                         <td class="value-empty">(below)</td>
                     }
@@ -64,14 +64,14 @@
     [Parameter]
     public bool OmitCapturedTextSegmentProperties { get; set; } = true;
 
-    Dictionary<CaptureProp, object?> _visibleScalarPropValues = new(new CapturePropComparer());
+    Dictionary<PropertyCapture, object?> _visibleScalarPropValues = new(new PropertyCaptureComparer());
 
     protected override void OnInitialized()
     {
         var orderedCaptureProps = PositionalToken.Token
             .GetRegexTemplate()
-            .GetOrderedCaptureProps()
-            .Where(x => x.CapturePropType != CapturePropType.TokenUnit)
+            .PropertyCaptures
+            .Where(x => x is not TokenUnitPropertyCapture)
             .ToList();
 
         foreach (var captureProp in orderedCaptureProps)
@@ -87,16 +87,14 @@
         }
     }
 
-    public string GetCssClass(CaptureProp captureProp)
+    public string GetCssClass(PropertyCapture propertyCapture)
     {
-        var capturePropType = captureProp.CapturePropType;
+        var type = propertyCapture.GetType();
 
-        return captureProp.CapturePropType switch
-        {
-            CapturePropType.CapturedTextSegment => "value-tokensegment",
-            CapturePropType.Enum => "value-enum",
-            _ => "value-default"
-        };
+        if (type == typeof(TextSegmentPropertyCapture)) return "value-tokensegment";
+        if (type == typeof(EnumPropertyCapture)) return "value-enum";
+
+        return "value-default";
     }
 
     public string GetFriendlyTypeName(Type type)

@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.RegexSegmentDTOs;
+﻿/*namespace MTGCardParser.RegexSegmentDTOs;
 
 public record ScalarCaptureSegment : PropSegmentBase
 {
@@ -17,3 +17,4 @@ public record ScalarCaptureSegment : PropSegmentBase
     }
 }
 
+*/

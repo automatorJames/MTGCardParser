@@ -1,4 +1,4 @@
-﻿using MTGCardParser.BaseClasses;
+﻿/*using MTGCardParser.BaseClasses;
 namespace MTGCardParser.RegexSegmentDTOs;
 
 public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
@@ -110,6 +110,8 @@ public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
 
 }
 
+*/
+
 public enum CapturePropType
 {
     Enum,
@@ -118,4 +120,3 @@ public enum CapturePropType
     DistilledValue,
     TokenUnit
 }
-

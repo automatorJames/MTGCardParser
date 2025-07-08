@@ -9,58 +9,58 @@ public class ManaValue : TokenUnit
     public CapturedTextSegment ManaSymbols { get; set; }
 
 
-    public override void SetPropertiesFromMatchSpan()
-    {
-        var matches = Regex.Matches(MatchSpan.ToStringValue(), RegexTemplate.RenderedRegexString);
-
-        foreach (Match match in matches)
-        {
-            var symbols = match.Groups[nameof(ManaSymbols)].Value.ToLowerInvariant();
-            var symbolsMatches = Regex.Matches(symbols, @"(?<=\{)[^{}]+(?=\})");
-
-            foreach (var symbol in symbolsMatches.Select(x => x.Value))
-            {
-
-                switch (symbol)
-                {
-                    case "w": White++; break;
-                    case "u": Blue++; break;
-                    case "b": Black++; break;
-                    case "r": Red++; break;
-                    case "g": Green++; break;
-                    case "x": X++; break;
-                    case "c": Colorless++; break;
-                    case "∞": Infinite++; break;
-                    case "p": Phyrexian++; break;
-                    case "s": Snow++; break;
-
-                    case "w/u": HybridWhiteBlue++; break;
-                    case "w/b": HybridWhiteBlack++; break;
-                    case "u/b": HybridBlueBlack++; break;
-                    case "u/r": HybridBlueRed++; break;
-                    case "b/r": HybridBlackRed++; break;
-                    case "b/g": HybridBlackGreen++; break;
-                    case "r/g": HybridRedGreen++; break;
-                    case "r/w": HybridRedWhite++; break;
-                    case "g/w": HybridGreenWhite++; break;
-                    case "g/u": HybridGreenBlue++; break;
-
-                    case "2/w": TwoOrWhite++; break;
-                    case "2/u": TwoOrBlue++; break;
-                    case "2/b": TwoOrBlack++; break;
-                    case "2/r": TwoOrRed++; break;
-                    case "2/g": TwoOrGreen++; break;
-
-                    default:
-                        if (int.TryParse(symbol, out int numericValue))
-                            Colorless += numericValue;
-                        else
-                            throw new Exception($"Unrecognized mana symbol: {symbol}");
-                        break;
-                }
-            }
-        }
-    }
+    //public override void SetPropertiesFromMatchSpan()
+    //{
+    //    var matches = Regex.Matches(MatchSpan.ToStringValue(), RegexTemplate.RenderedRegexString);
+    //
+    //    foreach (Match match in matches)
+    //    {
+    //        var symbols = match.Groups[nameof(ManaSymbols)].Value.ToLowerInvariant();
+    //        var symbolsMatches = Regex.Matches(symbols, @"(?<=\{)[^{}]+(?=\})");
+    //
+    //        foreach (var symbol in symbolsMatches.Select(x => x.Value))
+    //        {
+    //
+    //            switch (symbol)
+    //            {
+    //                case "w": White++; break;
+    //                case "u": Blue++; break;
+    //                case "b": Black++; break;
+    //                case "r": Red++; break;
+    //                case "g": Green++; break;
+    //                case "x": X++; break;
+    //                case "c": Colorless++; break;
+    //                case "∞": Infinite++; break;
+    //                case "p": Phyrexian++; break;
+    //                case "s": Snow++; break;
+    //
+    //                case "w/u": HybridWhiteBlue++; break;
+    //                case "w/b": HybridWhiteBlack++; break;
+    //                case "u/b": HybridBlueBlack++; break;
+    //                case "u/r": HybridBlueRed++; break;
+    //                case "b/r": HybridBlackRed++; break;
+    //                case "b/g": HybridBlackGreen++; break;
+    //                case "r/g": HybridRedGreen++; break;
+    //                case "r/w": HybridRedWhite++; break;
+    //                case "g/w": HybridGreenWhite++; break;
+    //                case "g/u": HybridGreenBlue++; break;
+    //
+    //                case "2/w": TwoOrWhite++; break;
+    //                case "2/u": TwoOrBlue++; break;
+    //                case "2/b": TwoOrBlack++; break;
+    //                case "2/r": TwoOrRed++; break;
+    //                case "2/g": TwoOrGreen++; break;
+    //
+    //                default:
+    //                    if (int.TryParse(symbol, out int numericValue))
+    //                        Colorless += numericValue;
+    //                    else
+    //                        throw new Exception($"Unrecognized mana symbol: {symbol}");
+    //                    break;
+    //            }
+    //        }
+    //    }
+    //}
 
     [DistilledValue] public int Colorless { get; set; }
     [DistilledValue] public int White { get; set; }

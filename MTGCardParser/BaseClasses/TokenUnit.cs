@@ -32,31 +32,12 @@ public abstract class TokenUnit
     public List<TokenUnit> ChildTokens { get; set; } = new();
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
-    public Dictionary<CaptureProp, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
 
-    /// <summary>
-    /// A pre-processed and ordered list of all property captures for this token.
-    /// This is the preferred way to iterate over captures for rendering or processing.
-    /// </summary>
+    // This now uses the new, robust PropertyCapture class as its key.
+    public Dictionary<PropertyCapture, TextSpan> PropMatches { get; set; } = new();
+
+    // This remains the source for the UI layer.
     public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
-
-    public virtual void SetPropertiesFromMatchSpan()
-    {
-        var regexTemplate = GetRegexTemplate();
-        regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
-
-        foreach (var alternativeCaptureSet in regexTemplate.AlternativePropCaptureSets)
-            if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
-                throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
-
-        // After PropMatches is fully populated, create the ordered and indexed list one time.
-        var propMatchesAsList = PropMatches.ToList(); // Create a stable list to get an index.
-
-        OrderedPropCaptures = propMatchesAsList
-            .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
-            .OrderBy(capture => capture.Span.Position.Absolute)
-            .ToList();
-    }
 
     public RegexTemplate GetRegexTemplate()
     {
@@ -71,18 +52,40 @@ public abstract class TokenUnit
         return prop.GetValue(this) as RegexTemplate;
     }
 
+    /// <summary>
+    /// Creates and fully hydrates a TokenUnit instance from a given text span.
+    /// This method now orchestrates the entire process, delegating the complex
+    /// hydration logic to the RegexTemplate.
+    /// </summary>
     public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null)
     {
         if (!type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
 
-        var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
-        tokenInstance.ParentToken = parentToken;
-        tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
-        tokenInstance.MatchSpan = matchSpan;
-        tokenInstance.SetPropertiesFromMatchSpan(); // This will now also populate OrderedPropCaptures
+        var instance = (TokenUnit)Activator.CreateInstance(type);
+        instance.ParentToken = parentToken;
+        instance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
+        instance.MatchSpan = matchSpan;
 
-        return tokenInstance;
+        // 1. Get the template and the corresponding static regex.
+        var template = instance.GetRegexTemplate();
+        var regex = TokenClassRegistry.TypeRegexes[type];
+
+        // 2. Perform the match to get group information.
+        var match = regex.Match(matchSpan.ToStringValue());
+        if (!match.Success)
+            throw new InvalidOperationException($"'{matchSpan.ToStringValue()}' did not successfully match the regex for type '{type.Name}'. This should not happen if the tokenizer is configured correctly.");
+
+        // 3. Delegate hydration to the template. This populates all properties and PropMatches.
+        template.HydrateInstance(instance, match);
+
+        // 4. Build the ordered list for the UI, now that PropMatches is populated.
+        instance.OrderedPropCaptures = instance.PropMatches
+            .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
+            .OrderBy(capture => capture.Span.Position.Absolute)
+            .ToList();
+
+        return instance;
     }
 
     Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)

@@ -10,10 +10,13 @@
 
         case PropertyCapturePart propCapturePart:
             var propColor = Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
+
+            var propertyName = propCapturePart.Property.Prop.Name;
+
             <span class="prop-capture"
                   style=@($"--prop-color: {propColor};")
                   data-capture-ids="@AllCaptureIds"
-                  data-property-name="@propCapturePart.Property.Name">
+                  data-property-name="@propertyName">
                 @propCapturePart.Text
             </span>
             break;

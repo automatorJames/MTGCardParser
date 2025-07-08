@@ -1,4 +1,4 @@
-﻿using MTGCardParser.RegexSegmentDTOs.Interfaces;
+﻿/*using MTGCardParser.RegexSegmentDTOs.Interfaces;
 
 namespace MTGCardParser.RegexSegmentDTOs;
 
@@ -60,3 +60,4 @@ public record EnumCaptureSegment : PropSegmentBase
     }
 }
 
+*/

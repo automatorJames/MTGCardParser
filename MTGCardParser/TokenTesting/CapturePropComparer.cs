@@ -2,9 +2,9 @@
 
 namespace MTGCardParser.TokenTesting;
 
-public class CapturePropComparer : IEqualityComparer<CaptureProp>
+public class PropertyCaptureComparer : IEqualityComparer<PropertyCapture>
 {
-    public bool Equals(CaptureProp x, CaptureProp y) => x.Prop == y.Prop;
-    public int GetHashCode([DisallowNull] CaptureProp obj) => obj.Prop.GetHashCode();
+    public bool Equals(PropertyCapture x, PropertyCapture y) => x.Prop == y.Prop;
+    public int GetHashCode([DisallowNull] PropertyCapture obj) => obj.Prop.GetHashCode();
 }
 

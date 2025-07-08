@@ -1,6 +1,6 @@
 ﻿namespace MTGCardParser.RegexSegmentDTOs;
 
-public record TokenCaptureAlternativeSet : RegexSegmentBase
+/*public record TokenCaptureAlternativeSet : RegexSegmentBase
 {
     public List<TokenCaptureSegment> Alternatives { get; init; }
 
@@ -25,4 +25,4 @@ public record TokenCaptureAlternativeSet : RegexSegmentBase
         RegexString += ")";
         Regex = new Regex(RegexString);
     }
-}
+}*/
