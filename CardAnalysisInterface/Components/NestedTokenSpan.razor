@@ -15,10 +15,10 @@ else
         @if (!PositionalToken.Children.Any())
         {
             <PropCapturedText 
-                TextSegment=@PositionalToken.Token.MatchSpan.ToStringValue()
-                SegmentAbsoluteStart=@PositionalToken.Token.MatchSpan.Position.Absolute
-                ParentToken=@PositionalToken.Token
-                AllCaptureIds="@AllCaptureIds" />
+            TextSegment=@PositionalToken.Token.MatchSpan.ToStringValue()
+            SegmentAbsoluteStart=@PositionalToken.Token.MatchSpan.Position.Absolute
+            ParentToken=@PositionalToken.Token
+            AllCaptureIds="@AllCaptureIds" />
         }
         else
         {
@@ -34,11 +34,11 @@ else
                     int prefixLength = childRelativeStart - currentIndexInParentText;
                     string prefixText = PositionalToken.Token.MatchSpan.Source!.Substring(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText, prefixLength);
                     <PropCapturedText TextSegment=@prefixText
-                                      SegmentAbsoluteStart=@(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText)
-                                      ParentToken=@PositionalToken.Token
-                                      AllCaptureIds=@AllCaptureIds />
+                    SegmentAbsoluteStart=@(PositionalToken.Token.MatchSpan.Position.Absolute + currentIndexInParentText)
+                    ParentToken=@PositionalToken.Token
+                    AllCaptureIds=@AllCaptureIds />
                 }
-                
+
                 // b) Render the child recursively
                 <NestedTokenSpan PositionalToken=@child AncestorIds="@AllCaptureIds" />
 
