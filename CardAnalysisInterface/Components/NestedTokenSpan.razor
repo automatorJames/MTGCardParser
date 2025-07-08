@@ -17,17 +17,13 @@ else
             @switch (segment)
             {
                 case TokenSegmentLeaf tokenSegmentLeaf:
-                    <PropCapturedText 
-                        TextSegment=@tokenSegmentLeaf.Text
-                        SegmentAbsoluteStart=@tokenSegmentLeaf.AbsoluteStart
-                        ParentToken=@PositionalToken.Token
-                        AllCaptureIds="@AllCaptureIds" />
+                    <CaptureLeaf Leaf=@tokenSegmentLeaf
+                                 AllCaptureIds="@AllCaptureIds" />
                     break;
 
                 case TokenSegmentBranch tokenSegmentBranch:
-                    <NestedTokenSpan 
-                        PositionalToken=@tokenSegmentBranch.ChildToken
-                        AncestorIds="@AllCaptureIds" />
+                    <NestedTokenSpan PositionalToken=@tokenSegmentBranch.ChildToken
+                                     AncestorIds="@AllCaptureIds" />
                     break;
             }
         }

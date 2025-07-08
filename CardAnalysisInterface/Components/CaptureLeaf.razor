@@ -1,0 +1,29 @@
+﻿@inject AggregateCardAnalysis Analysis
+
+@foreach (var part in Leaf.Parts)
+{
+    @switch (part)
+    {
+        case PlainTextPart plainTextPart:
+            @plainTextPart.Text
+            break;
+
+        case PropertyCapturePart propCapturePart:
+            var propColor = Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
+            <span class="prop-capture"
+                  style=@($"--prop-color: {propColor};")
+                  data-capture-ids="@AllCaptureIds"
+                  data-property-name="@propCapturePart.Property.Name">
+                @propCapturePart.Text
+            </span>
+            break;
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TokenSegmentLeaf Leaf { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string AllCaptureIds { get; set; } = default!;
+}
