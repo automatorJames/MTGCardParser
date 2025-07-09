@@ -13,7 +13,7 @@ public record EnumRegexProp : RegexPropBase
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        if (RegexPropInfo.CapturePropType != RegexPropType.Enum)
+        if (RegexPropInfo.RegexPropType != RegexPropType.Enum)
             throw new ArgumentException($"Type '{RegexPropInfo.Name}' isn't an enum");
 
         Options = RegexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();

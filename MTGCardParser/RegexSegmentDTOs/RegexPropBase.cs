@@ -7,12 +7,28 @@
 public abstract record RegexPropBase : RegexSegmentBase
 {
     public RegexPropInfo RegexPropInfo { get; init; }
-    public bool IsBool => RegexPropInfo.CapturePropType == RegexPropType.Bool;
-    public bool IsChildTokenUnit => RegexPropInfo.CapturePropType == RegexPropType.TokenUnit;
+    public bool IsBool => RegexPropInfo.RegexPropType == RegexPropType.Bool;
+    public bool IsChildTokenUnit => RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
     
     public RegexPropBase(RegexPropInfo captureProp)
     {
         RegexPropInfo = captureProp;
+        SetRegex();
+    }
+
+    protected virtual void SetRegex()
+    {
+        // Default implementation
+
+        var items = RegexPropInfo.AttributePatterns.OrderByDescending(s => s.Length).ToList();
+        var combinedItems = string.Join('|', items);
+        
+        if (this is BoolRegexProp boolRegexProp)
+            RegexString = $@"(?<{RegexPropInfo.Name}>\s?{combinedItems}\s?)?";
+        else
+            RegexString = $"(?<{RegexPropInfo.Name}>{combinedItems})";
+
+        Regex = new Regex(RegexString);
     }
 
     public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
@@ -34,10 +50,10 @@ public abstract record RegexPropBase : RegexSegmentBase
             return false;
 
         var subMatchText = subMatchSpan.Value.ToStringValue();
-        var valueToSet = RegexPropInfo.CapturePropType switch
+        var valueToSet = RegexPropInfo.RegexPropType switch
         {
             RegexPropType.Enum => GetEnumMatchValue(subMatchText),
-            RegexPropType.TextPlaceholder => new PlaceholderCapture(subMatchText),
+            RegexPropType.Placeholder => new PlaceholderCapture(subMatchText),
             RegexPropType.Bool => !string.IsNullOrEmpty(subMatchText),
         };
 
@@ -116,7 +132,7 @@ public abstract record RegexPropBase : RegexSegmentBase
 public enum RegexPropType
 {
     Enum,
-    TextPlaceholder,
+    Placeholder,
     Bool,
     DistilledValue,
     TokenUnit

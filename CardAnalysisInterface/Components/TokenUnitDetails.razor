@@ -21,7 +21,7 @@
                     <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
                     <td class="@valueClass">@GetFriendlyTypeName(key.Prop.PropertyType)</td>
 
-                    @if(key.CapturePropType == RegexPropType.TokenUnit)
+                    @if(key.RegexPropType == RegexPropType.TokenUnit)
                     {
                         <td class="value-empty">(below)</td>
                     }
@@ -64,36 +64,36 @@
     [Parameter]
     public bool OmitCapturedTextSegmentProperties { get; set; } = true;
 
-    Dictionary<CaptureProp, object?> _visibleScalarPropValues = new(new CapturePropComparer());
+    Dictionary<RegexPropInfo, object?> _visibleScalarPropValues = new(new CapturePropComparer());
 
     protected override void OnInitialized()
     {
-        var orderedCaptureProps = PositionalToken.Token
+        var orderedRegexProps = PositionalToken.Token
             .GetRegexTemplate()
-            .GetOrderedCaptureProps()
-            .Where(x => x.CapturePropType != RegexPropType.TokenUnit)
+            .GetOrderedProps()
+            .Where(x => x.RegexPropType != RegexPropType.TokenUnit)
             .ToList();
 
-        foreach (var captureProp in orderedCaptureProps)
+        foreach (var captureProp in orderedRegexProps)
         {
             var prop = captureProp.Prop;
             var value = prop.GetValue(PositionalToken.Token);
 
             if (value == null) continue;
-            if (OmitCapturedTextSegmentProperties && prop.ProTextPlaceholder(CapturedTextSegment)) continue;
+            if (OmitCapturedTextSegmentProperties && captureProp.RegexPropType == RegexPropType.Placeholder) continue;
             if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
 
             _visibleScalarPropValues[captureProp] = value;
         }
     }
 
-    public string GetCssClass(CaptureProp captureProp)
+    public string GetCssClass(RegexPropInfo regexPropInfo)
     {
-        var capturePropType = captureProp.CapturePropType;
+        var capturePropType = regexPropInfo.RegexPropType;
 
-        return captureProp.CapturePropType switch
+        return regexPropInfo.RegexPropType switch
         {
-            RegexPropType.TextPlaceholder => "value-tokensegment",
+            RegexPropType.Placeholder => "value-tokensegment",
             RegexPropType.Enum => "value-enum",
             _ => "value-default"
         };

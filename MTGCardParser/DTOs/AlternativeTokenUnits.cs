@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.RegexSegmentDTOs;
+﻿namespace MTGCardParser.DTOs;
 
 /// <summary>
 /// Serves as a mechanism for parent TokenUnits to define a group of two or more property names whose associated Regexes serve as

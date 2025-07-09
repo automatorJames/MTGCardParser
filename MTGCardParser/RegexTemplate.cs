@@ -24,7 +24,7 @@ public class RegexTemplate
         RenderedRegexString = source.RenderedRegexString;
     }
 
-    public IEnumerable<RegexPropInfo> GetOrderedCaptureProps()
+    public IEnumerable<RegexPropInfo> GetOrderedProps()
     {
         foreach (var segment in RegexSegments)
             if (segment is RegexPropBase propSegment)
@@ -39,7 +39,7 @@ public class RegexTemplate<T> : RegexTemplate
 {
     public RegexTemplate(params object[] templateSnippets)
     {
-        _regexPropInfos = GetPropertiesForCapture();
+        _regexPropInfos = GetRegexProps();
         _noSpaces = typeof(T).GetCustomAttribute<NoSpacesAttribute>() is not null;
 
         foreach (var snippetObj in templateSnippets)
@@ -47,7 +47,7 @@ public class RegexTemplate<T> : RegexTemplate
             RegexSegmentBase resolvedSegment;
 
             if (snippetObj is string snippetString)
-                resolvedSegment = ResolveSnippetToRegexSegment(snippetString);
+                resolvedSegment = ResolveSnippetToRegexProp(snippetString);
 
             else if (snippetObj is AlternativeTokenUnits captureAlternatives)
             {
@@ -55,7 +55,7 @@ public class RegexTemplate<T> : RegexTemplate
 
                 foreach (var alternative in captureAlternatives.Names)
                 {
-                    var resolvedAlternative = (TokenRegexProp)ResolveSnippetToRegexSegment(alternative, forceResolveTokenUnit: true);
+                    var resolvedAlternative = (TokenRegexProp)ResolveSnippetToRegexProp(alternative, forceResolveTokenUnit: true);
                     alternativeTokenCaptureSegments.Add(resolvedAlternative);
                 }
 
@@ -75,7 +75,7 @@ public class RegexTemplate<T> : RegexTemplate
             var shouldAddSpace =
                 !_noSpaces
                 && i < RegexSegments.Count - 1
-                && !(segment is ScalarRegexProp propCap && propCap.IsBool)
+                && !(segment is BoolRegexProp)
                 && !TerminalPunctuation.Contains(segment.RegexString);
 
             if (shouldAddSpace)
@@ -98,7 +98,7 @@ public class RegexTemplate<T> : RegexTemplate
         return matchingProp;
     }
 
-    RegexSegmentBase ResolveSnippetToRegexSegment(string templateSnippet, bool forceResolveTokenUnit = false)
+    RegexSegmentBase ResolveSnippetToRegexProp(string templateSnippet, bool forceResolveTokenUnit = false)
     {
         var matchingProp = GetMatchingProp(templateSnippet, isRequiredToExistOnType: forceResolveTokenUnit);
 
@@ -106,21 +106,23 @@ public class RegexTemplate<T> : RegexTemplate
         {
             var isTokenUnitType = matchingProp.UnderlyingType.IsAssignableTo(typeof(TokenUnit));
 
-            if (forceResolveTokenUnit && matchingProp.CapturePropType != RegexPropType.TokenUnit)
+            if (forceResolveTokenUnit && matchingProp.RegexPropType != RegexPropType.TokenUnit)
                 throw new Exception($"Prop type {matchingProp.UnderlyingType.Name} is required to implement ({nameof(TokenUnit)})");
 
-            return matchingProp.CapturePropType switch
+            return matchingProp.RegexPropType switch
             {
                 RegexPropType.TokenUnit => new TokenRegexProp(matchingProp),
                 RegexPropType.Enum => new EnumRegexProp(matchingProp),
-                _ => new ScalarRegexProp(matchingProp),
+                RegexPropType.Bool => new BoolRegexProp(matchingProp),
+                RegexPropType.Placeholder => new PlaceholderRegexProp(matchingProp),
+                _ => throw new Exception($"Prop type '{matchingProp.Prop.PropertyType.Name}' is not a valid RegexProp type")
             };
         }
         else
             return new TextSegment(templateSnippet);
     }
 
-    List<RegexPropInfo> GetPropertiesForCapture() =>
+    List<RegexPropInfo> GetRegexProps() =>
          typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
         .Where(p => !p.GetMethod.IsVirtual)
         .Where(x =>
