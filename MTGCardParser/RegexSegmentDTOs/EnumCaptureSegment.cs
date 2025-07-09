@@ -1,6 +1,4 @@
-﻿using MTGCardParser.RegexSegmentDTOs.Interfaces;
-
-namespace MTGCardParser.RegexSegmentDTOs;
+﻿namespace MTGCardParser.RegexSegmentDTOs;
 
 public record EnumCaptureSegment : PropSegmentBase
 {
@@ -50,7 +48,7 @@ public record EnumCaptureSegment : PropSegmentBase
 
             if (Options.OptionalPlural)
                 for (int i = 0; i < memberAlternatives.Count; i++)
-                    memberAlternatives[i] = IRegexSegment.AddOptionalPluralization(memberAlternatives[i]);
+                    memberAlternatives[i] = memberAlternatives[i].AddOptionalPluralization();
 
             EnumMemberRegexes[enumValue] = new Regex($@"\b{string.Join('|', memberAlternatives.OrderByDescending(s => s.Length))}\b");
             allMemberAlternatives.AddRange(memberAlternatives);

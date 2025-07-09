@@ -5,7 +5,7 @@ public class RegexTemplate
     protected bool _noSpaces;
     public List<CaptureProp> CaptureProps { get; set; }
     public string RenderedRegexString { get; set; }
-    public List<IRegexSegment> RegexSegments { get; set; } = new();
+    public List<RegexSegmentBase> RegexSegments { get; set; } = new();
     public List<PropSegmentBase> PropCaptureSegments => RegexSegments.OfType<PropSegmentBase>().ToList();
     public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
     public List<TokenCaptureSegment> AllUnwrappedTokenCaptureSegments =>
@@ -44,7 +44,7 @@ public class RegexTemplate<T> : RegexTemplate
 
         foreach (var snippetObj in templateSnippets)
         {
-            IRegexSegment resolvedSegment;
+            RegexSegmentBase resolvedSegment;
 
             if (snippetObj is string snippetString)
                 resolvedSegment = ResolveSnippetToRegexSegment(snippetString);
@@ -98,7 +98,7 @@ public class RegexTemplate<T> : RegexTemplate
         return matchingProp;
     }
 
-    IRegexSegment ResolveSnippetToRegexSegment(string templateSnippet, bool forceResolveTokenUnit = false)
+    RegexSegmentBase ResolveSnippetToRegexSegment(string templateSnippet, bool forceResolveTokenUnit = false)
     {
         var matchingProp = GetMatchingProp(templateSnippet, isRequiredToExistOnType: forceResolveTokenUnit);
 
