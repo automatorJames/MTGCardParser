@@ -32,7 +32,7 @@ public abstract class TokenUnit
     public List<TokenUnit> ChildTokens { get; set; } = new();
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
-    public Dictionary<CaptureProp, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
+    public Dictionary<RegexPropInfo, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -40,7 +40,7 @@ public abstract class TokenUnit
     /// </summary>
     public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
 
-    public virtual void SetPropertiesFromMatchSpan()
+    public virtual void SetPropertiesFromMatch()
     {
         var regexTemplate = GetRegexTemplate();
         regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
@@ -80,7 +80,7 @@ public abstract class TokenUnit
         tokenInstance.ParentToken = parentToken;
         tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
         tokenInstance.MatchSpan = matchSpan;
-        tokenInstance.SetPropertiesFromMatchSpan(); // This will now also populate OrderedPropCaptures
+        tokenInstance.SetPropertiesFromMatch(); // This will now also populate OrderedPropCaptures
 
         return tokenInstance;
     }

@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.TokenTesting;
+﻿namespace MTGCardParser.Comparers;
 
 class TextSpanAsStringComparer : IEqualityComparer<TextSpan>
 {

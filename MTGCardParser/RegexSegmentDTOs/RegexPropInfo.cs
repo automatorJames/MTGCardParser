@@ -1,16 +1,19 @@
-﻿using MTGCardParser.BaseClasses;
+﻿namespace MTGCardParser.RegexSegmentDTOs;
 
-namespace MTGCardParser.RegexSegmentDTOs;
-
-public record CaptureProp
+/// <summary>
+/// Records property information specific to the domain of this library. This record is used by processes
+/// that need to distinguish among domain-relevent property types (enums, bools, text placeholders, and child token units).
+/// Offers conveniences such as exposing attribute-defined Regex patterns, if any.
+/// </summary>
+public record RegexPropInfo
 {
     public PropertyInfo Prop { get; init; }
-    public CapturePropType CapturePropType { get; init; }
+    public RegexPropType CapturePropType { get; init; }
     public Type UnderlyingType { get; init; }
     public string Name { get; init; }
     public string[] AttributePatterns { get; init; }
 
-    public CaptureProp(PropertyInfo prop)
+    public RegexPropInfo(PropertyInfo prop)
     {
         Prop = prop;
         CapturePropType = GetCapturePropType(prop);
@@ -19,18 +22,18 @@ public record CaptureProp
         AttributePatterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [Prop.Name];
     }
 
-    CapturePropType GetCapturePropType(PropertyInfo prop)
+    RegexPropType GetCapturePropType(PropertyInfo prop)
     {
         var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 
         if (underlyingType.IsEnum)
-            return CapturePropType.Enum;
-        else if (underlyingType == typeof(CapturedTextSegment))
-            return CapturePropType.CapturedTextSegment;
+            return RegexPropType.Enum;
+        else if (underlyingType == typeof(PlaceholderCapture))
+            return RegexPropType.TextPlaceholder;
         else if (underlyingType == typeof(bool))
-            return CapturePropType.Bool;
+            return RegexPropType.Bool;
         else if (underlyingType.IsAssignableTo(typeof(TokenUnit)))
-            return CapturePropType.TokenUnit;
+            return RegexPropType.TokenUnit;
         else
             throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(CapturePropType)} type");
     }

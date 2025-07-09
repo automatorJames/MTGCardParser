@@ -30,11 +30,11 @@ public static class TokenClassRegistry
             var propCaptureSegments = regexTemplate.PropCaptureSegments;
 
             var unregisteredEnums = propCaptureSegments
-                .OfType<EnumCaptureSegment>()
-                .Where(x => !EnumRegexes.ContainsKey(x.CaptureProp.UnderlyingType));
+                .OfType<EnumRegexProp>()
+                .Where(x => !EnumRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType));
 
             foreach (var enumEntry in unregisteredEnums)
-                EnumRegexes[enumEntry.CaptureProp.UnderlyingType] = enumEntry.EnumMemberRegexes;
+                EnumRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
         }
     }
 

@@ -1,24 +1,29 @@
 ﻿namespace MTGCardParser.RegexSegmentDTOs;
 
-public record EnumCaptureSegment : PropSegmentBase
+/// <summary>
+/// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the
+/// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
+/// by a specific text match must be isolated to a single member value.
+/// </summary>
+public record EnumRegexProp : RegexPropBase
 {
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
     public EnumOptionsAttribute Options { get; init; }
 
 
-    public EnumCaptureSegment(CaptureProp captureProp) : base(captureProp)
+    public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        if (CaptureProp.CapturePropType != CapturePropType.Enum)
-            throw new ArgumentException($"Type '{CaptureProp.Name}' isn't an enum");
+        if (RegexPropInfo.CapturePropType != RegexPropType.Enum)
+            throw new ArgumentException($"Type '{RegexPropInfo.Name}' isn't an enum");
 
-        Options = CaptureProp.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+        Options = RegexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
         SetRegex();
     }
 
     void SetRegex()
     {
         var alternations = GetAlternations();
-        RegexString = $@"(?<{CaptureProp.Name}>{alternations})";
+        RegexString = $@"(?<{RegexPropInfo.Name}>{alternations})";
 
         if (Options.WrapInWordBoundaries)
             RegexString = $@"\b{RegexString}\b";
@@ -29,15 +34,15 @@ public record EnumCaptureSegment : PropSegmentBase
     string GetAlternations()
     {
         List<string> allMemberAlternatives = new();
-        var enumRegOptions = CaptureProp.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
-        var enumValues = Enum.GetValues(CaptureProp.UnderlyingType).Cast<object>();
+        var enumRegOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+        var enumValues = Enum.GetValues(RegexPropInfo.UnderlyingType).Cast<object>();
 
         foreach (var enumValue in enumValues)
         {
             List<string> memberAlternatives = new();
 
             var enumAsString = enumValue.ToString();
-            var regexPatternAttribute = CaptureProp.UnderlyingType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
+            var regexPatternAttribute = RegexPropInfo.UnderlyingType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
             if (regexPatternAttribute != null)
                 // Add the enum member's specified string[] of patterns

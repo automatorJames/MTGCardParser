@@ -7,7 +7,7 @@ public class GainOrLoseAbility : TokenUnit
 
 
     [RegexPattern("[^\"]+")]
-    public CapturedTextSegment Ability { get; set; }
+    public PlaceholderCapture Ability { get; set; }
 
     public LoseOrGain? LoseOrGain { get; set; }
 }

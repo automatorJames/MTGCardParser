@@ -7,6 +7,6 @@ public class ActivatedAbility : TokenUnit
     public ActivationCost ActivationCost { get; set; }
 
     [RegexPattern(@".+\.\)?")]
-    public CapturedTextSegment Effect { get; set; }
+    public PlaceholderCapture Effect { get; set; }
 
 }

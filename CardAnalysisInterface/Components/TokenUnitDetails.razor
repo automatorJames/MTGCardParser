@@ -21,7 +21,7 @@
                     <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
                     <td class="@valueClass">@GetFriendlyTypeName(key.Prop.PropertyType)</td>
 
-                    @if(key.CapturePropType == CapturePropType.TokenUnit)
+                    @if(key.CapturePropType == RegexPropType.TokenUnit)
                     {
                         <td class="value-empty">(below)</td>
                     }
@@ -71,7 +71,7 @@
         var orderedCaptureProps = PositionalToken.Token
             .GetRegexTemplate()
             .GetOrderedCaptureProps()
-            .Where(x => x.CapturePropType != CapturePropType.TokenUnit)
+            .Where(x => x.CapturePropType != RegexPropType.TokenUnit)
             .ToList();
 
         foreach (var captureProp in orderedCaptureProps)
@@ -80,7 +80,7 @@
             var value = prop.GetValue(PositionalToken.Token);
 
             if (value == null) continue;
-            if (OmitCapturedTextSegmentProperties && prop.PropertyType == typeof(CapturedTextSegment)) continue;
+            if (OmitCapturedTextSegmentProperties && prop.ProTextPlaceholder(CapturedTextSegment)) continue;
             if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
 
             _visibleScalarPropValues[captureProp] = value;
@@ -93,8 +93,8 @@
 
         return captureProp.CapturePropType switch
         {
-            CapturePropType.CapturedTextSegment => "value-tokensegment",
-            CapturePropType.Enum => "value-enum",
+            RegexPropType.TextPlaceholder => "value-tokensegment",
+            RegexPropType.Enum => "value-enum",
             _ => "value-default"
         };
     }

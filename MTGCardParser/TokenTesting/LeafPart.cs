@@ -17,4 +17,4 @@ public record PlainTextPart(string Text) : LeafPart;
 /// <param name="Text">The text of the property capture.</param>
 /// <param name="Property">The metadata of the captured property.</param>
 /// <param name="PropertyIndex">The original index of this property within the parent token's list of captures, used for consistent coloring.</param>
-public record PropertyCapturePart(string Text, CaptureProp Property, int PropertyIndex) : LeafPart;
+public record PropertyCapturePart(string Text, RegexPropInfo Property, int PropertyIndex) : LeafPart;

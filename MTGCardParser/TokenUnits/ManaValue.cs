@@ -6,10 +6,10 @@ public class ManaValue : TokenUnit
 
     [RegexPattern(@"(\{([0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)\})+")]
     //[RegexPattern(@"(?<ManaSymols>\{c\}\{c\}\{c\})")]
-    public CapturedTextSegment ManaSymbols { get; set; }
+    public PlaceholderCapture ManaSymbols { get; set; }
 
 
-    public override void SetPropertiesFromMatchSpan()
+    public override void SetPropertiesFromMatch()
     {
         var matches = Regex.Matches(MatchSpan.ToStringValue(), RegexTemplate.RenderedRegexString);
 

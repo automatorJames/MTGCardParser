@@ -1,14 +1,18 @@
 ﻿namespace MTGCardParser.RegexSegmentDTOs;
 
-public abstract record PropSegmentBase : RegexSegmentBase
+/// <summary>
+/// The base class for all TokenUnit properties associated with some Regex pattern, including child TokenUnit properties.
+/// Includes mechanisms for setting values for properties of all relevant types.
+/// </summary>
+public abstract record RegexPropBase : RegexSegmentBase
 {
-    public CaptureProp CaptureProp { get; init; }
-    public bool IsBool => CaptureProp.CapturePropType == CapturePropType.Bool;
-    public bool IsChildTokenUnit => CaptureProp.CapturePropType == CapturePropType.TokenUnit;
+    public RegexPropInfo RegexPropInfo { get; init; }
+    public bool IsBool => RegexPropInfo.CapturePropType == RegexPropType.Bool;
+    public bool IsChildTokenUnit => RegexPropInfo.CapturePropType == RegexPropType.TokenUnit;
     
-    public PropSegmentBase(CaptureProp captureProp)
+    public RegexPropBase(RegexPropInfo captureProp)
     {
-        CaptureProp = captureProp;
+        RegexPropInfo = captureProp;
     }
 
     public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
@@ -30,15 +34,15 @@ public abstract record PropSegmentBase : RegexSegmentBase
             return false;
 
         var subMatchText = subMatchSpan.Value.ToStringValue();
-        var valueToSet = CaptureProp.CapturePropType switch
+        var valueToSet = RegexPropInfo.CapturePropType switch
         {
-            CapturePropType.Enum => GetEnumMatchValue(subMatchText),
-            CapturePropType.CapturedTextSegment => new CapturedTextSegment(subMatchText),
-            CapturePropType.Bool => !string.IsNullOrEmpty(subMatchText),
+            RegexPropType.Enum => GetEnumMatchValue(subMatchText),
+            RegexPropType.TextPlaceholder => new PlaceholderCapture(subMatchText),
+            RegexPropType.Bool => !string.IsNullOrEmpty(subMatchText),
         };
 
-        CaptureProp.Prop.SetValue(parentToken, valueToSet);
-        parentToken.PropMatches[CaptureProp] = subMatchSpan.Value;
+        RegexPropInfo.Prop.SetValue(parentToken, valueToSet);
+        parentToken.PropMatches[RegexPropInfo] = subMatchSpan.Value;
 
         return true;
     }
@@ -53,22 +57,22 @@ public abstract record PropSegmentBase : RegexSegmentBase
         if (subMatchSpan is null)
             return false;
 
-        var propInstance = TokenUnit.InstantiateFromMatchString(CaptureProp.UnderlyingType, subMatchSpan.Value, parentToken);
+        var propInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken);
 
         if (propInstance is null)
-            throw new Exception($"Failed to instantiate {CaptureProp.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
+            throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
 
-        CaptureProp.Prop.SetValue(parentToken, propInstance);
+        RegexPropInfo.Prop.SetValue(parentToken, propInstance);
         parentToken.ChildTokens.Add(propInstance);
         return true;
     }
 
     object GetEnumMatchValue(string matchString)
     {
-        if (!TokenClassRegistry.EnumRegexes.ContainsKey(CaptureProp.UnderlyingType))
-            throw new Exception($"Enum type {CaptureProp.UnderlyingType.Name} is not registered in {nameof(TokenClassRegistry)}");
+        if (!TokenClassRegistry.EnumRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
+            throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenClassRegistry)}");
 
-        foreach (var enumMemberRegex in TokenClassRegistry.EnumRegexes[CaptureProp.UnderlyingType])
+        foreach (var enumMemberRegex in TokenClassRegistry.EnumRegexes[RegexPropInfo.UnderlyingType])
             if (enumMemberRegex.Value.IsMatch(matchString))
                 return enumMemberRegex.Key;
 
@@ -80,7 +84,7 @@ public abstract record PropSegmentBase : RegexSegmentBase
         var matchText = matchSpanToCheck.ToStringValue();
         var regex = TokenClassRegistry.TypeRegexTemplates[parentToken.GetType()].RenderedRegexString;
         var match = Regex.Match(matchText, regex);
-        var matchPropGroup = match.Groups[CaptureProp.Name];
+        var matchPropGroup = match.Groups[RegexPropInfo.Name];
 
         if (!matchPropGroup.Success)
             return null;
@@ -92,7 +96,7 @@ public abstract record PropSegmentBase : RegexSegmentBase
 
     TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
     {
-        var match = TokenClassRegistry.TypeRegexes[CaptureProp.UnderlyingType].Match(matchSpanToCheck.ToStringValue());
+        var match = TokenClassRegistry.TypeRegexes[RegexPropInfo.UnderlyingType].Match(matchSpanToCheck.ToStringValue());
         return GetTextSubSpan(matchSpanToCheck, match);
     }
 
@@ -109,10 +113,10 @@ public abstract record PropSegmentBase : RegexSegmentBase
 
 }
 
-public enum CapturePropType
+public enum RegexPropType
 {
     Enum,
-    CapturedTextSegment,
+    TextPlaceholder,
     Bool,
     DistilledValue,
     TokenUnit

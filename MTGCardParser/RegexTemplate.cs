@@ -3,15 +3,15 @@
 public class RegexTemplate
 {
     protected bool _noSpaces;
-    public List<CaptureProp> CaptureProps { get; set; }
+    protected List<RegexPropInfo> _regexPropInfos;
+
     public string RenderedRegexString { get; set; }
     public List<RegexSegmentBase> RegexSegments { get; set; } = new();
-    public List<PropSegmentBase> PropCaptureSegments => RegexSegments.OfType<PropSegmentBase>().ToList();
+    public List<RegexPropBase> PropCaptureSegments => RegexSegments.OfType<RegexPropBase>().ToList();
     public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
-    public List<TokenCaptureSegment> AllUnwrappedTokenCaptureSegments =>
-        RegexSegments.OfType<TokenCaptureSegment>()
+    public List<TokenRegexProp> AllUnwrappedTokenCaptureSegments =>
+        RegexSegments.OfType<TokenRegexProp>()
         .Concat(AlternativePropCaptureSets.SelectMany(x => x.Alternatives))
-        .OrderBy(x => CaptureProps.IndexOf(x.CaptureProp))
         .ToList();
 
     public RegexTemplate()
@@ -24,14 +24,14 @@ public class RegexTemplate
         RenderedRegexString = source.RenderedRegexString;
     }
 
-    public IEnumerable<CaptureProp> GetOrderedCaptureProps()
+    public IEnumerable<RegexPropInfo> GetOrderedCaptureProps()
     {
         foreach (var segment in RegexSegments)
-            if (segment is PropSegmentBase propSegment)
-                yield return propSegment.CaptureProp;
+            if (segment is RegexPropBase propSegment)
+                yield return propSegment.RegexPropInfo;
             else if (segment is TokenCaptureAlternativeSet alternativeSet)
                 foreach (var altPropSegment in alternativeSet.Alternatives)
-                    yield return altPropSegment.CaptureProp;
+                    yield return altPropSegment.RegexPropInfo;
     }
 }
 
@@ -39,7 +39,7 @@ public class RegexTemplate<T> : RegexTemplate
 {
     public RegexTemplate(params object[] templateSnippets)
     {
-        CaptureProps = GetPropertiesForCapture();
+        _regexPropInfos = GetPropertiesForCapture();
         _noSpaces = typeof(T).GetCustomAttribute<NoSpacesAttribute>() is not null;
 
         foreach (var snippetObj in templateSnippets)
@@ -49,13 +49,13 @@ public class RegexTemplate<T> : RegexTemplate
             if (snippetObj is string snippetString)
                 resolvedSegment = ResolveSnippetToRegexSegment(snippetString);
 
-            else if (snippetObj is CaptureAlternatives captureAlternatives)
+            else if (snippetObj is AlternativeTokenUnits captureAlternatives)
             {
-                List<TokenCaptureSegment> alternativeTokenCaptureSegments = new();
+                List<TokenRegexProp> alternativeTokenCaptureSegments = new();
 
                 foreach (var alternative in captureAlternatives.Names)
                 {
-                    var resolvedAlternative = (TokenCaptureSegment)ResolveSnippetToRegexSegment(alternative, forceResolveTokenUnit: true);
+                    var resolvedAlternative = (TokenRegexProp)ResolveSnippetToRegexSegment(alternative, forceResolveTokenUnit: true);
                     alternativeTokenCaptureSegments.Add(resolvedAlternative);
                 }
 
@@ -75,7 +75,7 @@ public class RegexTemplate<T> : RegexTemplate
             var shouldAddSpace =
                 !_noSpaces
                 && i < RegexSegments.Count - 1
-                && !(segment is ScalarCaptureSegment propCap && propCap.IsBool)
+                && !(segment is ScalarRegexProp propCap && propCap.IsBool)
                 && !TerminalPunctuation.Contains(segment.RegexString);
 
             if (shouldAddSpace)
@@ -88,9 +88,9 @@ public class RegexTemplate<T> : RegexTemplate
 
     static HashSet<string> TerminalPunctuation = [".", ",", ";"];
 
-    CaptureProp GetMatchingProp(string propName, bool isRequiredToExistOnType = false)
+    RegexPropInfo GetMatchingProp(string propName, bool isRequiredToExistOnType = false)
     {
-        var matchingProp = CaptureProps.FirstOrDefault(x => x.Name == propName);
+        var matchingProp = _regexPropInfos.FirstOrDefault(x => x.Name == propName);
 
         if (isRequiredToExistOnType && matchingProp is null)
             throw new Exception($"Property {propName} is required, but not found on type '{typeof(T).Name}'");
@@ -106,29 +106,29 @@ public class RegexTemplate<T> : RegexTemplate
         {
             var isTokenUnitType = matchingProp.UnderlyingType.IsAssignableTo(typeof(TokenUnit));
 
-            if (forceResolveTokenUnit && matchingProp.CapturePropType != CapturePropType.TokenUnit)
+            if (forceResolveTokenUnit && matchingProp.CapturePropType != RegexPropType.TokenUnit)
                 throw new Exception($"Prop type {matchingProp.UnderlyingType.Name} is required to implement ({nameof(TokenUnit)})");
 
             return matchingProp.CapturePropType switch
             {
-                CapturePropType.TokenUnit => new TokenCaptureSegment(matchingProp),
-                CapturePropType.Enum => new EnumCaptureSegment(matchingProp),
-                _ => new ScalarCaptureSegment(matchingProp),
+                RegexPropType.TokenUnit => new TokenRegexProp(matchingProp),
+                RegexPropType.Enum => new EnumRegexProp(matchingProp),
+                _ => new ScalarRegexProp(matchingProp),
             };
         }
         else
             return new TextSegment(templateSnippet);
     }
 
-    List<CaptureProp> GetPropertiesForCapture() =>
+    List<RegexPropInfo> GetPropertiesForCapture() =>
          typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
         .Where(p => !p.GetMethod.IsVirtual)
         .Where(x =>
             (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum
              || x.PropertyType == typeof(bool)
-             || x.PropertyType == typeof(CapturedTextSegment)
+             || x.PropertyType == typeof(PlaceholderCapture)
              || x.PropertyType.IsAssignableTo(typeof(TokenUnit)))
-        .Select(x => new CaptureProp(x))
+        .Select(x => new RegexPropInfo(x))
         .ToList();
 }
 
