@@ -1,7 +1,6 @@
-﻿using MTGCardParser.BaseClasses;
-namespace MTGCardParser.RegexSegmentDTOs;
+﻿namespace MTGCardParser.RegexSegmentDTOs;
 
-public abstract record PropSegmentBase : RegexSegmentBase, IPropRegexSegment
+public abstract record PropSegmentBase : RegexSegmentBase
 {
     public CaptureProp CaptureProp { get; init; }
     public bool IsBool => CaptureProp.CapturePropType == CapturePropType.Bool;

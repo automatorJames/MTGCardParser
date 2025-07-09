@@ -6,7 +6,7 @@ public class RegexTemplate
     public List<CaptureProp> CaptureProps { get; set; }
     public string RenderedRegexString { get; set; }
     public List<IRegexSegment> RegexSegments { get; set; } = new();
-    public List<IPropRegexSegment> PropCaptureSegments => RegexSegments.OfType<IPropRegexSegment>().ToList();
+    public List<PropSegmentBase> PropCaptureSegments => RegexSegments.OfType<PropSegmentBase>().ToList();
     public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
     public List<TokenCaptureSegment> AllUnwrappedTokenCaptureSegments =>
         RegexSegments.OfType<TokenCaptureSegment>()
@@ -27,7 +27,7 @@ public class RegexTemplate
     public IEnumerable<CaptureProp> GetOrderedCaptureProps()
     {
         foreach (var segment in RegexSegments)
-            if (segment is IPropRegexSegment propSegment)
+            if (segment is PropSegmentBase propSegment)
                 yield return propSegment.CaptureProp;
             else if (segment is TokenCaptureAlternativeSet alternativeSet)
                 foreach (var altPropSegment in alternativeSet.Alternatives)
