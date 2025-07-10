@@ -56,9 +56,9 @@
 
 @foreach (var child in PositionalToken.Children)
 {
-    <div class="property-child-block">
+    <div class="property-child-block" @key=@child.CaptureId>
         <h5 data-property-name=@(child.Token.Type.Name) data-capture-id=@child.CaptureId style=@($"color: {Analysis.TypeColors[child.Token.Type]}; --highlight-color: {Analysis.TypeColors[child.Token.Type]};")>@child.Token.Type.Name</h5>
-        <TokenUnitDetails PositionalToken=@child />
+        <TokenUnitDetails PositionalToken=@child @key=@child.CaptureId />
     </div>
 }
 

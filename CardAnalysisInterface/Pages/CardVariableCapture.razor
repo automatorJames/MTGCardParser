@@ -15,20 +15,20 @@
 
                 @foreach (var capturedLine in analyzedCard.CapturedLines)
                 {
-                    <div class="line-capture-block">    
+                    <div class="line-capture-block" @key=@(analyzedCard.Card.Name + capturedLine.LineIndex)>
                         <h5 class="line-label">Line #@(capturedLine.LineIndex + 1)</h5>
 
                         <pre class="line-text">
                             @foreach (var token in capturedLine.Tokens)
                             {
-                                <NestedTokenSpan PositionalToken=@token />
+                                <NestedTokenSpan PositionalToken=@token @key=@token.CaptureId />
                                 @(" ")
                             }
                         </pre>
 
                         @foreach (var token in capturedLine.Tokens)
                         {
-                            <EffectVariables PositionalToken=@token />
+                            <EffectVariables PositionalToken=@token @key=@token.CaptureId />
                         }
                     </div>
                 }

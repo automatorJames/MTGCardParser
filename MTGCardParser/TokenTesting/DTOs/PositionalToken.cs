@@ -17,7 +17,8 @@ public record PositionalToken
         LineIndex = lineIndex;
         TokenIndex = tokenIndex;
         Token = token;
-        CaptureId = $"{card.Name}-{card.CardId}-{lineIndex}-{tokenIndex}";
+        CaptureId = $"{card.Name.Replace(' ', '-')}-{card.CardId}-{lineIndex}-{tokenIndex}";
+        //CaptureId = $"{card.CardId}-{lineIndex}-{tokenIndex}";
 
         if (childIndex.HasValue)
             CaptureId += $"-child{childIndex.Value}";
