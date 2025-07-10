@@ -4,7 +4,7 @@
 {
     string colorHex = Analysis.TypeColors[PositionalToken.Token.Type];
     <div class="effect-details-block" data-capture-id=@PositionalToken.CaptureId>
-        <h5 style=@($"color: {colorHex}; padding-left: 16px;")>@PositionalToken.Token.Type.Name</h5>
+        <h5 style=@($"color: {colorHex}; --highlight-color: {Analysis.TypeColors[PositionalToken.Token.Type]}; padding-left: 16px;")>@PositionalToken.Token.Type.Name</h5>
         <TokenUnitDetails PositionalToken=@PositionalToken />
     </div>
 }

@@ -4,16 +4,16 @@
 {
     @switch (part)
     {
-        case PlainTextPart plainTextPart:
+        case NonPropertyTokenLeafPart plainTextPart:
             @plainTextPart.Text
             break;
 
-        case PropertyCapturePart propCapturePart:
+        case PropertyCaptureTokenLeafPart propCapturePart:
             var propColor = Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
-            <span class="prop-capture"
-                  style=@($"--prop-color: {propColor};")
-                  data-capture-ids="@AllCaptureIds"
-                  data-property-name="@propCapturePart.Property.Name">
+            <span class=@($"prop-capture{(Leaf.IsComplexToken ? " complex" : "")}")
+            style=@($"--prop-color: {GetPropColor(propCapturePart)};")
+            data-capture-ids="@AllCaptureIds"
+            data-property-name=@GetDataPropertyName(propCapturePart)>
                 @propCapturePart.Text
             </span>
             break;
@@ -25,5 +25,29 @@
     public TokenSegmentLeaf Leaf { get; set; } = default!;
 
     [Parameter, EditorRequired]
+    public PositionalToken ParentToken { get; set; } = default!;
+
+    [Parameter, EditorRequired]
     public string AllCaptureIds { get; set; } = default!;
+
+    string GetDataPropertyName(PropertyCaptureTokenLeafPart part)
+    {
+        // Highlight all properties in the complex type by keying on the parent's CaptureId
+        if (Leaf.IsComplexToken)
+            return ParentToken.CaptureId;
+
+        // Highlight only the relevant property row
+        return part.Property.Name;
+    }
+
+    string GetPropColor(PropertyCaptureTokenLeafPart part)
+    {
+        // Make the overline match the coloer of the parent token type
+        if (Leaf.IsComplexToken)
+            return Analysis.TypeColors[ParentToken.Token.Type];
+
+        // Get a positional color
+        return Analysis.PropertyCaptureColors[part.PropertyIndex % Analysis.PropertyCaptureColors.Count];
+    }
+
 }

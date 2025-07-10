@@ -6,24 +6,25 @@
 }
 else
 {
-    const int pixelGapPerUnderline = 4;
     var deepestLevel = PositionalToken.Token.GetDeepestChildLevel();
-    var padding = pixelGapPerUnderline * deepestLevel + pixelGapPerUnderline;
     var color = Analysis.TypeColors[PositionalToken.Token.Type];
 
-    <span class="nested-underline" style=@($"--underline-color: {color}; padding-bottom: {padding}px;") data-capture-ids="@AllCaptureIds">
+    <span class="nested-underline" style=@($"--underline-color: {color};") data-capture-ids="@AllCaptureIds">
         @foreach (var segment in PositionalToken.Segments)
         {
             @switch (segment)
             {
                 case TokenSegmentLeaf tokenSegmentLeaf:
-                    <CaptureLeaf Leaf=@tokenSegmentLeaf
-                                 AllCaptureIds="@AllCaptureIds" />
+                    <CaptureLeaf 
+                        Leaf=@tokenSegmentLeaf
+                        ParentToken=@PositionalToken         
+                        AllCaptureIds=@AllCaptureIds />
                     break;
 
                 case TokenSegmentBranch tokenSegmentBranch:
-                    <NestedTokenSpan PositionalToken=@tokenSegmentBranch.ChildToken
-                                     AncestorIds="@AllCaptureIds" />
+                    <NestedTokenSpan 
+                        PositionalToken=@tokenSegmentBranch.ChildToken
+                        AncestorIds=@AllCaptureIds />
                     break;
             }
         }

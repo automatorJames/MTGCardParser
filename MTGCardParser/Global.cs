@@ -18,3 +18,4 @@ global using MTGCardParser.RegexSegmentDTOs;
 global using MTGCardParser.BaseClasses;
 global using MTGCardParser.Comparers;
 global using MTGCardParser.DTOs;
+global using MTGCardParser.TokenTesting.DTOs;

@@ -3,8 +3,7 @@
 public class RegexTemplate
 {
     protected bool _noSpaces;
-    protected List<RegexPropInfo> _regexPropInfos;
-
+    public List<RegexPropInfo> RegexPropInfos { get; set; }
     public string RenderedRegexString { get; set; }
     public List<RegexSegmentBase> RegexSegments { get; set; } = new();
     public List<RegexPropBase> PropCaptureSegments => RegexSegments.OfType<RegexPropBase>().ToList();
@@ -39,7 +38,7 @@ public class RegexTemplate<T> : RegexTemplate
 {
     public RegexTemplate(params object[] templateSnippets)
     {
-        _regexPropInfos = GetRegexProps();
+        RegexPropInfos = GetRegexProps();
         _noSpaces = typeof(T).GetCustomAttribute<NoSpacesAttribute>() is not null;
 
         foreach (var snippetObj in templateSnippets)
@@ -90,7 +89,7 @@ public class RegexTemplate<T> : RegexTemplate
 
     RegexPropInfo GetMatchingProp(string propName, bool isRequiredToExistOnType = false)
     {
-        var matchingProp = _regexPropInfos.FirstOrDefault(x => x.Name == propName);
+        var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Name == propName);
 
         if (isRequiredToExistOnType && matchingProp is null)
             throw new Exception($"Property {propName} is required, but not found on type '{typeof(T).Name}'");

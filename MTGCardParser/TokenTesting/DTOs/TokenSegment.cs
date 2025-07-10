@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.TokenTesting;
+﻿namespace MTGCardParser.TokenTesting.DTOs;
 
 /// <summary>
 /// Represents a segment within a token's text. This can be either

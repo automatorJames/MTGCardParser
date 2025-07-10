@@ -58,23 +58,17 @@ function initCardCaptureHover() {
             document.querySelectorAll('.highlight-active').forEach(el => el.classList.remove('highlight-active'));
 
             if (currentIds.length > 0) {
-                const rootId = currentIds[0];
-                const rootSpan = document.querySelector(`.nested-underline[data-capture-ids~='${rootId}']`);
-                const mainColor = rootSpan ? rootSpan.style.getPropertyValue('--underline-color') : 'transparent';
-
                 currentIds.forEach(id => {
                     document.querySelectorAll(`.nested-underline[data-capture-ids~='${id}']`).forEach(el => el.classList.add('highlight-active'));
 
                     const detailBlock = document.querySelector(`.effect-details-block[data-capture-id='${id}']`);
                     if (detailBlock) {
                         detailBlock.classList.add('highlight-active');
-                        detailBlock.style.setProperty('--highlight-color', mainColor);
                     }
 
                     const detailHeader = document.querySelector(`h5[data-capture-id='${id}']`);
                     if (detailHeader) {
                         detailHeader.classList.add('highlight-active');
-                        detailHeader.style.setProperty('--highlight-color', mainColor);
                     }
                 });
             }
@@ -91,12 +85,10 @@ function initCardCaptureHover() {
             if (primaryId && propertyName) {
                 const propSpanInText = document.querySelector(`.prop-capture[data-capture-ids~='${primaryId}'][data-property-name='${propertyName}']`);
                 if (propSpanInText) {
-                    const propColor = propSpanInText.style.getPropertyValue('--prop-color');
                     propSpanInText.classList.add('prop-highlight-inline');
 
                     document.querySelectorAll(`[data-capture-id='${primaryId}'][data-property-name='${propertyName}']`).forEach(el => {
                         el.classList.add('property-highlight');
-                        el.style.setProperty('--highlight-color', propColor);
                     });
                 }
             }

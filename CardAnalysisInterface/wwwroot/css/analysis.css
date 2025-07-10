@@ -112,17 +112,22 @@ pre.full-original-text {
 }
 
 pre.line-text {
-    color: #d4d4d4;
+    color: #aaa; /* darker gray for non-span text */
     padding: 1rem;
     cursor: default;
-    line-height: 2.2em;
-    margin-bottom: 1rem; /* Adjust to create space for details blocks */
+    line-height: 3em;
+    margin-bottom: 1rem;
 }
 
+    /* Override color for span children only */
+    pre.line-text span {
+        color: #d4d4d4;
+    }
+
 .nested-underline {
-    border-bottom: 1px solid;
+    border-bottom: 2px solid;
     border-color: var(--underline-color);
-    padding-bottom: 4px; /* Base padding for the first level */
+    padding-bottom: 2px; /* Base padding for the first level */
     cursor: pointer;
     transition: filter var(--fade-time) var(--highlight-easing);
 }
@@ -146,9 +151,14 @@ pre.line-text {
 .prop-capture {
     border-top: 2px solid;
     border-color: var(--prop-color);
-    padding-top: 3px;
+    padding-top: 1px;
     transition: border-top-width 0.1s var(--highlight-easing), filter 0.1s var(--highlight-easing);
 }
+
+    .prop-capture.complex {
+        border-top: 2px dotted;
+        border-color: var(--prop-color);
+    }
 
 .effect-details-block {
     margin-left: 2rem;
@@ -217,12 +227,11 @@ pre.line-text {
 
 /* Hover states */
 .nested-underline.highlight-active {
-    filter: brightness(1.6);
+    filter: brightness(1.5);
 }
 
 /* NEW: This class will be added ONLY to the specific overline being hovered. */
 .prop-capture.prop-highlight-inline {
-    border-top-width: 3px;
     filter: brightness(1.5);
 }
 

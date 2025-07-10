@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.TokenTesting;
+﻿namespace MTGCardParser.TokenTesting.DTOs;
 
 /// <summary>
 /// Represents a nested child token as a segment within its parent.

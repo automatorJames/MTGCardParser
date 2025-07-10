@@ -19,4 +19,3 @@ public class UnmatchedSpanOccurrence
         return x;
     }
 }
-

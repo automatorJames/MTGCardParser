@@ -1,5 +1,5 @@
 ﻿// PositionalToken.cs
-namespace MTGCardParser.TokenTesting;
+namespace MTGCardParser.TokenTesting.DTOs;
 
 public record PositionalToken
 {
@@ -31,7 +31,7 @@ public record PositionalToken
 
     /// <summary>
     /// This method breaks the token's text down into a series of leaves (text) and branches (child tokens).
-    /// It now leverages the pre-processed property captures from the TokenUnit.
+    /// It leverages the pre-processed property captures from the TokenUnit.
     /// </summary>
     private List<TokenSegment> DigestSegments()
     {
@@ -42,7 +42,7 @@ public record PositionalToken
         {
             // If there are no children, the token is a single leaf containing the entire text.
             // Pass the clean, pre-processed list to the new leaf.
-            segments.Add(new TokenSegmentLeaf(parentSpan.ToStringValue(), parentSpan.Position.Absolute, Token.OrderedPropCaptures));
+            segments.Add(new TokenSegmentLeaf(parentSpan.ToStringValue(), parentSpan.Position.Absolute, Token));
             return segments;
         }
 
@@ -61,7 +61,7 @@ public record PositionalToken
                 string prefixText = parentSpan.Source!.Substring(prefixAbsoluteStart, prefixLength);
 
                 // Pass the clean, pre-processed list to the new prefix leaf.
-                segments.Add(new TokenSegmentLeaf(prefixText, prefixAbsoluteStart, Token.OrderedPropCaptures));
+                segments.Add(new TokenSegmentLeaf(prefixText, prefixAbsoluteStart, Token));
             }
 
             // b) Create the child token branch
@@ -79,7 +79,7 @@ public record PositionalToken
             string suffixText = parentSpan.Source!.Substring(suffixAbsoluteStart, suffixLength);
 
             // Pass the clean, pre-processed list to the new suffix leaf.
-            segments.Add(new TokenSegmentLeaf(suffixText, suffixAbsoluteStart, Token.OrderedPropCaptures));
+            segments.Add(new TokenSegmentLeaf(suffixText, suffixAbsoluteStart, Token));
         }
 
         return segments;

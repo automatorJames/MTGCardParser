@@ -1,4 +1,4 @@
-﻿namespace MTGCardParser.TokenTesting;
+﻿namespace MTGCardParser.TokenTesting.DTOs;
 
 public record CapturedLine
 {

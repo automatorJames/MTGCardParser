@@ -40,24 +40,6 @@ public abstract class TokenUnit
     /// </summary>
     public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
 
-    public virtual void SetPropertiesFromMatch()
-    {
-        var regexTemplate = GetRegexTemplate();
-        regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
-
-        foreach (var alternativeCaptureSet in regexTemplate.AlternativePropCaptureSets)
-            if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
-                throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
-
-        // After PropMatches is fully populated, create the ordered and indexed list one time.
-        var propMatchesAsList = PropMatches.ToList(); // Create a stable list to get an index.
-
-        OrderedPropCaptures = propMatchesAsList
-            .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
-            .OrderBy(capture => capture.Span.Position.Absolute)
-            .ToList();
-    }
-
     public RegexTemplate GetRegexTemplate()
     {
         if (TokenClassRegistry.IsInitialized)
@@ -80,9 +62,27 @@ public abstract class TokenUnit
         tokenInstance.ParentToken = parentToken;
         tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
         tokenInstance.MatchSpan = matchSpan;
-        tokenInstance.SetPropertiesFromMatch(); // This will now also populate OrderedPropCaptures
+        tokenInstance.SetPropertiesFromMatch();
 
         return tokenInstance;
+    }
+
+    public virtual void SetPropertiesFromMatch()
+    {
+        var regexTemplate = GetRegexTemplate();
+        regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
+
+        foreach (var alternativeCaptureSet in regexTemplate.AlternativePropCaptureSets)
+            if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
+                throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
+
+        // After PropMatches is fully populated, create the ordered and indexed list one time.
+        var propMatchesAsList = PropMatches.ToList(); // Create a stable list to get an index.
+
+        OrderedPropCaptures = propMatchesAsList
+            .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
+            .OrderBy(capture => capture.Span.Position.Absolute)
+            .ToList();
     }
 
     Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)

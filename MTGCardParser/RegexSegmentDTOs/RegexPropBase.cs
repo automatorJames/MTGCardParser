@@ -79,6 +79,7 @@ public abstract record RegexPropBase : RegexSegmentBase
             throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
 
         RegexPropInfo.Prop.SetValue(parentToken, propInstance);
+        parentToken.PropMatches[RegexPropInfo] = subMatchSpan.Value;
         parentToken.ChildTokens.Add(propInstance);
         return true;
     }
