@@ -2,7 +2,11 @@
 
 public class RegexTemplate
 {
-    protected bool _noSpaces;
+    static HashSet<string> TerminalPunctuation = [".", ",", ";"];
+
+    bool _noSpaces;
+    Type _parentType;
+
     public List<RegexPropInfo> RegexPropInfos { get; set; }
     public string RenderedRegexString { get; set; }
     public List<RegexSegmentBase> RegexSegments { get; set; } = new();
@@ -13,33 +17,15 @@ public class RegexTemplate
         .Concat(AlternativePropCaptureSets.SelectMany(x => x.Alternatives))
         .ToList();
 
-    public RegexTemplate()
-    {
-    }
-
-    public RegexTemplate(RegexTemplate source)
-    {
-        RegexSegments = source.RegexSegments.ToList();
-        RenderedRegexString = source.RenderedRegexString;
-    }
-
-    public IEnumerable<RegexPropInfo> GetOrderedProps()
-    {
-        foreach (var segment in RegexSegments)
-            if (segment is RegexPropBase propSegment)
-                yield return propSegment.RegexPropInfo;
-            else if (segment is TokenCaptureAlternativeSet alternativeSet)
-                foreach (var altPropSegment in alternativeSet.Alternatives)
-                    yield return altPropSegment.RegexPropInfo;
-    }
-}
-
-public class RegexTemplate<T> : RegexTemplate
-{
     public RegexTemplate(params object[] templateSnippets)
     {
+        if (templateSnippets is null || templateSnippets.Length == 0)
+            throw new ArgumentNullException(nameof(templateSnippets));
+
+        ValidateAndInferCallerType();
+
         RegexPropInfos = GetRegexProps();
-        _noSpaces = typeof(T).GetCustomAttribute<NoSpacesAttribute>() is not null;
+        _noSpaces = _parentType.GetCustomAttribute<NoSpacesAttribute>() is not null;
 
         foreach (var snippetObj in templateSnippets)
         {
@@ -68,7 +54,7 @@ public class RegexTemplate<T> : RegexTemplate
 
         for (int i = 0; i < RegexSegments.Count; i++)
         {
-            var segment = RegexSegments[i]; 
+            var segment = RegexSegments[i];
             RenderedRegexString += segment.RegexString;
 
             var shouldAddSpace =
@@ -85,14 +71,24 @@ public class RegexTemplate<T> : RegexTemplate
         RenderedRegexString = RenderedRegexString.Replace(@"\b \b", " ");
     }
 
-    static HashSet<string> TerminalPunctuation = [".", ",", ";"];
+    void ValidateAndInferCallerType()
+    {
+        var stack = new StackTrace();
+        var callerFrame = stack.GetFrame(2);
+        var callerType = callerFrame?.GetMethod()?.DeclaringType;
+
+        if (callerType == null || !callerType.IsAssignableTo(typeof(TokenUnit)))
+            throw new InvalidOperationException($"Only {nameof(TokenUnit)} types may construct {nameof(RegexTemplate)}");
+
+        _parentType = callerType;
+    }
 
     RegexPropInfo GetMatchingProp(string propName, bool isRequiredToExistOnType = false)
     {
         var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Name == propName);
 
         if (isRequiredToExistOnType && matchingProp is null)
-            throw new Exception($"Property {propName} is required, but not found on type '{typeof(T).Name}'");
+            throw new Exception($"Property {propName} is required, but not found on type '{_parentType.Name}'");
 
         return matchingProp;
     }
@@ -122,7 +118,7 @@ public class RegexTemplate<T> : RegexTemplate
     }
 
     List<RegexPropInfo> GetRegexProps() =>
-         typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+         _parentType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
         .Where(p => !p.GetMethod.IsVirtual)
         .Where(x =>
             (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum
@@ -131,5 +127,20 @@ public class RegexTemplate<T> : RegexTemplate
              || x.PropertyType.IsAssignableTo(typeof(TokenUnit)))
         .Select(x => new RegexPropInfo(x))
         .ToList();
-}
 
+    public RegexTemplate(RegexTemplate source)
+    {
+        RegexSegments = source.RegexSegments.ToList();
+        RenderedRegexString = source.RenderedRegexString;
+    }
+
+    public IEnumerable<RegexPropInfo> GetOrderedProps()
+    {
+        foreach (var segment in RegexSegments)
+            if (segment is RegexPropBase propSegment)
+                yield return propSegment.RegexPropInfo;
+            else if (segment is TokenCaptureAlternativeSet alternativeSet)
+                foreach (var altPropSegment in alternativeSet.Alternatives)
+                    yield return altPropSegment.RegexPropInfo;
+    }
+}

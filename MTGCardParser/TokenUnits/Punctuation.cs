@@ -3,7 +3,7 @@
 [IgnoreInAnalysis]
 public class Punctuation : TokenUnit
 {
-    public RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));
+    public RegexTemplate RegexTemplate => new(nameof(PunctuationCharacter));
 
     public PunctuationCharacter PunctuationCharacter { get; set; }
 }

@@ -2,7 +2,7 @@
 
 public class DrawOrDiscardCards : TokenUnit
 {
-    public RegexTemplate<DrawOrDiscardCards> RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
+    public RegexTemplate RegexTemplate => new(nameof(CardVerb), nameof(Quantity), "cards?");
 
     public CardVerb CardVerb { get; set; }
     public Quantity Quantity { get; set; }

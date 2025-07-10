@@ -2,5 +2,5 @@
 
 public class IfYouDo : TokenUnit
 {
-    public RegexTemplate<IfYouDo> RegexTemplate => new("if you do,");
+    public RegexTemplate RegexTemplate => new("if you do,");
 }

@@ -3,7 +3,7 @@
 [NoSpaces]
 public class OptionalPayCost : TokenUnit
 {
-    public RegexTemplate<OptionalPayCost> RegexTemplate => new(nameof(PayOptionType), " pay ", new AlternativeTokenUnits(nameof(ManaValue), nameof(LifeQuantity)), @"\.");
+    public RegexTemplate RegexTemplate => new(nameof(PayOptionType), " pay ", new AlternativeTokenUnits(nameof(ManaValue), nameof(LifeQuantity)), @"\.");
 
     public PayOptionType PayOptionType { get; set; }
     public ManaValue ManaValue { get; set; }

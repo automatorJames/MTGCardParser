@@ -2,7 +2,7 @@
 
 //public class QuotedAbility : TokenUnitBase
 //{
-//    public RegexTemplate<GainOrLoseAbility> RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
+//    public RegexTemplate RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
 //
 //    public CardVerb? CardVerb { get; set; }
 //}

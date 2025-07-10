@@ -3,7 +3,7 @@
 [NoSpaces]
 public class ActivationCost : TokenUnit
 {
-    public RegexTemplate<ActivationCost> RegexTemplate => new("^", nameof(ActivationCostSegment), ":");
+    public RegexTemplate RegexTemplate => new("^", nameof(ActivationCostSegment), ":");
 
     [RegexPattern("[^:]+")]
     public PlaceholderCapture ActivationCostSegment { get; set; }

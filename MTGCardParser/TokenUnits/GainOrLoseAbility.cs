@@ -3,7 +3,7 @@
 [NoSpaces]
 public class GainOrLoseAbility : TokenUnit
 {
-    public RegexTemplate<GainOrLoseAbility> RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
+    public RegexTemplate RegexTemplate => new(nameof(LoseOrGain), " \"", nameof(Ability), "\"");
 
     public LoseOrGain? LoseOrGain { get; set; }
 

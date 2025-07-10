@@ -1,9 +1,9 @@
 ﻿namespace MTGCardParser.TokenUnits;
 
-public class Target : TokenUnit
+/*public class Target : TokenUnit
 {
-    public RegexTemplate<Target> RegexTemplate => new();
+    public RegexTemplate RegexTemplate => new();
 
-}
+}*/
 
 
