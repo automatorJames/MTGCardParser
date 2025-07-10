@@ -5,7 +5,7 @@ public class GainOrLoseAbility : TokenUnit
 {
     public GainOrLoseAbility() : base(nameof(LoseOrGain), " \"", nameof(Ability), "\"") { }
 
-    public LoseOrGain? LoseOrGain { get; set; }
+    public GainOrLose LoseOrGain { get; set; }
 
     [RegexPattern("[^\"]+")]
     public PlaceholderCapture Ability { get; set; }

@@ -2,8 +2,6 @@
 
 public class ActivatedAbility : TokenUnit
 {
-    public ActivatedAbility() : base(nameof(ActivationCost), nameof(Effect)) { }
-
     public ActivationCost ActivationCost { get; set; }
 
     [RegexPattern(@".+\.\)?")]

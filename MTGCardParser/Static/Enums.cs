@@ -54,8 +54,8 @@ public enum Keyword
     // Evergreen
     Deathtouch,
     Defender,
-    [RegexPattern("first strike")] FirstStrike,
-    [RegexPattern("double strike")] DoubleStrike,
+    FirstStrike,
+    DoubleStrike,
     Enchant,
     Equip,
     Flash,
@@ -87,10 +87,10 @@ public enum Keyword
     Affinity,
     Amplify,
     Annihilator,
-    [RegexPattern("aura swap")] AuraSwap,
+    AuraSwap,
     Banding,
-    [RegexPattern("bands with other")] BandsWithOther,
-    [RegexPattern("battle cry")] BattleCry,
+    BandsWithOther,
+    BattleCry,
     Bestow,
     Bloodthirst,
     Bushido,
@@ -102,7 +102,7 @@ public enum Keyword
     Clash,
     Conspire,
     Convoke,
-    [RegexPattern("cumulative upkeep")] CumulativeUpkeep,
+    CumulativeUpkeep,
     Cycling,
     Delve,
     Detain,
@@ -131,8 +131,8 @@ public enum Keyword
     Horsemanship,
     Infect,
     Kicker,
-    [RegexPattern("level up")] LevelUp,
-    [RegexPattern("living weapon")] LivingWeapon,
+    LevelUp,
+    LivingWeapon,
     Madness,
     Miracle,
     Modular,
@@ -162,11 +162,11 @@ public enum Keyword
     Soulbond,
     Soulshift,
     Splice,
-    [RegexPattern("split second")] SplitSecond,
+    SplitSecond,
     Storm,
     Sunburst,
     Suspend,
-    [RegexPattern("totem armor")] TotemArmor,
+    TotemArmor,
     Transfigure,
     Transform,
     Transmute,
@@ -183,12 +183,12 @@ public enum Keyword
     Channel,
     Chroma,
     Domain,
-    [RegexPattern("fateful hour")] FatefulHour,
+    FatefulHour,
     Grandeur,
     Hellbent,
     Heroic,
     Imprint,
-    [RegexPattern("join forces")] JoinForces,
+    JoinForces,
     Kinship,
     Landfall,
     Metalcraft,
@@ -221,8 +221,8 @@ public enum CounterType
 
     // Keyword counters
     Deathtouch,
-    [RegexPattern("double strike")] DoubleStrike,
-    [RegexPattern("first strike")] FirstStrike,
+     DoubleStrike,
+    FirstStrike,
     Flying,
     Haste,
     Hexproof,
@@ -452,8 +452,8 @@ public enum CounterType
 
     // Test card counters
     Art,
-    [RegexPattern("base power")] BasePower,
-    [RegexPattern("base toughness")] BaseToughness,
+    BasePower,
+    BaseToughness,
     Day,
     Glass,
     Hole,
@@ -469,9 +469,8 @@ public enum CounterType
 }
 
 [EnumOptions(OptionalPlural = true)]
-public enum LoseOrGain
+public enum GainOrLose
 {
-    
     Lose,
     Gain
 }

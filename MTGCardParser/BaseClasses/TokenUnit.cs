@@ -42,6 +42,17 @@ public abstract class TokenUnit
 
     protected TokenUnit(params object[] templateSnippets)
     {
+        if (templateSnippets.Length == 0)
+        {
+            // If children pass no arguments or call the default parameterless base constructor,
+            // we assume they want to construct snippets from their ordered properties.
+            
+            templateSnippets = Type
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Select(x => x.Name)
+                .ToArray();
+        }
+
         if (TokenClassRegistry.TokenTemplates.ContainsKey(Type))
             Template = TokenClassRegistry.TokenTemplates[Type];
         else

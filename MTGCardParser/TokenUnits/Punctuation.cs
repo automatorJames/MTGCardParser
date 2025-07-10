@@ -3,8 +3,6 @@
 [IgnoreInAnalysis]
 public class Punctuation : TokenUnit
 {
-    public Punctuation(): base(nameof(PunctuationCharacter)) { }
-
     public PunctuationCharacter PunctuationCharacter { get; set; }
 }
 
