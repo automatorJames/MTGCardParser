@@ -7,23 +7,19 @@ public class RegexTemplate
     bool _noSpaces;
     Type _parentType;
 
-    public List<RegexPropInfo> RegexPropInfos { get; set; }
-    public string RenderedRegexString { get; set; }
-    public List<RegexSegmentBase> RegexSegments { get; set; } = new();
+    public string RenderedRegexString { get; private set; }
+    public List<RegexPropInfo> RegexPropInfos { get; private set; }
+    public List<RegexPropInfo> OrderedProps { get; private set; }
+    public List<RegexSegmentBase> RegexSegments { get; private set; } = new();
     public List<RegexPropBase> PropCaptureSegments => RegexSegments.OfType<RegexPropBase>().ToList();
     public List<TokenCaptureAlternativeSet> AlternativePropCaptureSets => RegexSegments.OfType<TokenCaptureAlternativeSet>().ToList();
-    public List<TokenRegexProp> AllUnwrappedTokenCaptureSegments =>
-        RegexSegments.OfType<TokenRegexProp>()
-        .Concat(AlternativePropCaptureSets.SelectMany(x => x.Alternatives))
-        .ToList();
 
-    public RegexTemplate(params object[] templateSnippets)
+    public RegexTemplate(Type type, params object[] templateSnippets)
     {
         if (templateSnippets is null || templateSnippets.Length == 0)
             throw new ArgumentNullException(nameof(templateSnippets));
 
-        ValidateAndInferCallerType();
-
+        _parentType = type;
         RegexPropInfos = GetRegexProps();
         _noSpaces = _parentType.GetCustomAttribute<NoSpacesAttribute>() is not null;
 
@@ -69,18 +65,8 @@ public class RegexTemplate
 
         // We don't need word boundaries where there are spaces (this step just improves regex human readability)
         RenderedRegexString = RenderedRegexString.Replace(@"\b \b", " ");
-    }
 
-    void ValidateAndInferCallerType()
-    {
-        var stack = new StackTrace();
-        var callerFrame = stack.GetFrame(2);
-        var callerType = callerFrame?.GetMethod()?.DeclaringType;
-
-        if (callerType == null || !callerType.IsAssignableTo(typeof(TokenUnit)))
-            throw new InvalidOperationException($"Only {nameof(TokenUnit)} types may construct {nameof(RegexTemplate)}");
-
-        _parentType = callerType;
+        OrderedProps = GetOrderedProps().ToList();
     }
 
     RegexPropInfo GetMatchingProp(string propName, bool isRequiredToExistOnType = false)
@@ -128,13 +114,7 @@ public class RegexTemplate
         .Select(x => new RegexPropInfo(x))
         .ToList();
 
-    public RegexTemplate(RegexTemplate source)
-    {
-        RegexSegments = source.RegexSegments.ToList();
-        RenderedRegexString = source.RenderedRegexString;
-    }
-
-    public IEnumerable<RegexPropInfo> GetOrderedProps()
+    IEnumerable<RegexPropInfo> GetOrderedProps()
     {
         foreach (var segment in RegexSegments)
             if (segment is RegexPropBase propSegment)

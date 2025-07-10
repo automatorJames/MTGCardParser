@@ -2,9 +2,6 @@
 
 public static class TokenClassRegistry
 {
-    private static bool _isInitialized;
-    public static bool IsInitialized => _isInitialized;
-
     public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
@@ -15,36 +12,47 @@ public static class TokenClassRegistry
     {
         RegisterTypes();
         InitializeTokenizer();
-        _isInitialized = true;
     }
 
     static void RegisterTypes()
     {
-        var instances = GetTokenCaptureInstances();
-        foreach (var instance in instances)
-        {
-            var type = instance.GetType();
-            var regexTemplate = new RegexTemplate(instance.GetRegexTemplate());
-            TypeRegexTemplates[type] = regexTemplate;
-            TypeRegexes[type] = new Regex(regexTemplate.RenderedRegexString, RegexOptions.Compiled);
-            var propCaptureSegments = regexTemplate.PropCaptureSegments;
+        foreach (var type in GetTokenCaptureTypes())
+            SetTypeTemplate(type);
+    }
 
-            var unregisteredEnums = propCaptureSegments
-                .OfType<EnumRegexProp>()
-                .Where(x => !EnumRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType));
+    public static Regex GetTypeRegex(Type type)
+    {
+        if (!TypeRegexes.ContainsKey(type))
+            SetTypeTemplate(type);
 
-            foreach (var enumEntry in unregisteredEnums)
-                EnumRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
-        }
+        return TypeRegexes[type];
+    }
+
+    public static RegexTemplate GetTypeTemplate(Type type)
+    {
+        if (!TypeRegexTemplates.ContainsKey(type))
+            SetTypeTemplate(type);
+
+        return TypeRegexTemplates[type];
+    }
+
+    public static void SetTypeTemplate(Type type)
+    {
+        var instance = (TokenUnit)Activator.CreateInstance(type);
+        TypeRegexTemplates[type] = instance.Template;
+        TypeRegexes[type] = new Regex(instance.Template.RenderedRegexString, RegexOptions.Compiled);
+        var propCaptureSegments = instance.Template.PropCaptureSegments;
+
+        var unregisteredEnums = propCaptureSegments
+            .OfType<EnumRegexProp>()
+            .Where(x => !EnumRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType));
+
+        foreach (var enumEntry in unregisteredEnums)
+            EnumRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
     }
 
     public static TokenUnit HydrateFromToken(Token<Type> token) 
         => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
-
-    static List<TokenUnit> GetTokenCaptureInstances() =>
-        GetTokenCaptureTypes()
-        .Select(x => (TokenUnit)Activator.CreateInstance(x))
-        .ToList();
 
     static List<Type> GetTokenCaptureTypes() =>
         Assembly.GetExecutingAssembly()
@@ -81,9 +89,6 @@ public static class TokenClassRegistry
 
         // Catch anything else with the default string pattern
         tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
-
-        //tokenizerBuilder
-        //    .Match(@"[^.,;""\s]+");
 
         Tokenizer = tokenizerBuilder.Build();
     }

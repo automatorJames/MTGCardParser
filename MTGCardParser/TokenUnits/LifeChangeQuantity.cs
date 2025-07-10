@@ -2,7 +2,7 @@
 
 public class LifeChangeQuantity : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new(nameof(WhichPlayer), nameof(LifeVerb), nameof(Quantity), "life");
+    public LifeChangeQuantity() : base(nameof(WhichPlayer), nameof(LifeVerb), nameof(Quantity), "life") { }
 
     public WhichPlayer WhichPlayer { get; set; }
     public LifeVerb LifeVerb { get; set; }

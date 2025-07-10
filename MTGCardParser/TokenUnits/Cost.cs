@@ -2,7 +2,7 @@
 
 public class Cost : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new("you may pay ", nameof(ManaValue), @"\.");
+    public Cost() : base("you may pay ", nameof(ManaValue), @"\.") { }
 
     public ManaValue ManaValue { get; set; }
     public LifeQuantity LifeQuantity { get; set; }

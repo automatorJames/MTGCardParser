@@ -2,8 +2,8 @@
 
 /*public class Target : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new();
+    public override RegexTemplate Template => new();
 
-}*/
-
+}
+*/
 

@@ -9,9 +9,7 @@ public record TokenRegexProp : RegexPropBase
 {
     public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        var instanceOfPropType = (TokenUnit)Activator.CreateInstance(captureProp.UnderlyingType);
-        RegexString = instanceOfPropType.GetRegexTemplate().RenderedRegexString;
-        Regex = new Regex(RegexString);
+        Regex = TokenClassRegistry.GetTypeRegex(captureProp.UnderlyingType);
     }
 }
 

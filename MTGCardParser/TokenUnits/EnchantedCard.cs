@@ -2,7 +2,7 @@
 
 public class EnchantedCard : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new("enchanted", nameof(CardType), nameof(PermanentVerb));
+    public EnchantedCard() : base("enchanted", nameof(CardType), nameof(PermanentVerb)) { }
 
     public CardType CardType { get; set; }
     public PermanentVerb? PermanentVerb { get; set; }

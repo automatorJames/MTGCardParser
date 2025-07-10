@@ -2,5 +2,5 @@
 
 public class This : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new(@"\{this\}");
+    public This() : base(@"\{this\}") { }
 }

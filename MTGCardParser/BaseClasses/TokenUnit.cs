@@ -2,7 +2,7 @@
 
 public abstract class TokenUnit
 {
-    static string RegexTemplatePropName = "RegexTemplate";
+    public RegexTemplate Template { get; init; }
 
     Type _type;
     public Type Type
@@ -40,17 +40,12 @@ public abstract class TokenUnit
     /// </summary>
     public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
 
-    public RegexTemplate GetRegexTemplate()
+    protected TokenUnit(params object[] templateSnippets)
     {
-        if (TokenClassRegistry.IsInitialized)
-            return TokenClassRegistry.TypeRegexTemplates[Type];
-
-        var prop = GetType().GetProperty(RegexTemplatePropName);
-
-        if (prop is null)
-            throw new Exception($"{GetType().Name} doesn't contain a property named {RegexTemplatePropName})");
-
-        return prop.GetValue(this) as RegexTemplate;
+        if (TokenClassRegistry.TypeRegexTemplates.ContainsKey(Type))
+            Template = TokenClassRegistry.TypeRegexTemplates[Type];
+        else
+            Template = new(Type, templateSnippets);
     }
 
     public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null)
@@ -69,10 +64,9 @@ public abstract class TokenUnit
 
     public virtual void SetPropertiesFromMatch()
     {
-        var regexTemplate = GetRegexTemplate();
-        regexTemplate.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
+        Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
 
-        foreach (var alternativeCaptureSet in regexTemplate.AlternativePropCaptureSets)
+        foreach (var alternativeCaptureSet in Template.AlternativePropCaptureSets)
             if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
                 throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
 

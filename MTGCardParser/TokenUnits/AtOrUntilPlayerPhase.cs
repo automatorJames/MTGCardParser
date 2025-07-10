@@ -2,7 +2,7 @@
 
 public class AtOrUntilPlayerPhase : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new(nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase));
+    public AtOrUntilPlayerPhase() : base (nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase)) { }
 
     public TemporalDisposition TemporalDisposition { get; set; }
     public PhasePart PhasePart { get; set; }

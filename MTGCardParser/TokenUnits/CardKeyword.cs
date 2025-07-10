@@ -2,7 +2,7 @@
 
 public class CardKeyword : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new(nameof(Keyword));
+    public CardKeyword() : base(nameof(Keyword)) { }
 
     public Keyword Keyword { get; set; }
 }

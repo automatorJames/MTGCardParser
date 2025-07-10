@@ -2,7 +2,7 @@
 
 public class ActivatedAbility : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new(nameof(ActivationCost), nameof(Effect));
+    public ActivatedAbility() : base(nameof(ActivationCost), nameof(Effect)) { }
 
     public ActivationCost ActivationCost { get; set; }
 

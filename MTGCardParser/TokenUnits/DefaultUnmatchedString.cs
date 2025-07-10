@@ -3,6 +3,6 @@
 [IgnoreInAnalysis]
 public class DefaultUnmatchedString : TokenUnit
 {
-    public RegexTemplate RegexTemplate => new(@"[^.,;""\s]+");
+    public DefaultUnmatchedString() : base(@"[^.,;""\s]+") { }
 }
 

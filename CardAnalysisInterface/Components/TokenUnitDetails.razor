@@ -72,8 +72,8 @@
     protected override void OnInitialized()
     {
         var orderedRegexProps = PositionalToken.Token
-            .GetRegexTemplate()
-            .GetOrderedProps()
+            .Template
+            .OrderedProps
             .Where(x => x.RegexPropType != RegexPropType.TokenUnit)
             .ToList();
 

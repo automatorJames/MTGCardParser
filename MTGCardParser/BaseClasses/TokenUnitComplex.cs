@@ -12,5 +12,7 @@ public abstract class TokenUnitComplex : TokenUnit
         // Second, apply whatever class-specific decomposition is necessary
         SetComplexValuesFromMatch();
     }
+
+    protected TokenUnitComplex(params object[] templateSnippets) : base(templateSnippets) { }
 }
 
