@@ -62,7 +62,7 @@ public static class TokenClassRegistry
         tokenizerBuilder
             .Match(typeof(This))
             .Match(typeof(ActivatedAbility))
-            .Match(typeof(YouMayPayCost))
+            .Match(typeof(OptionalPayCost))
             .Match(typeof(GainOrLoseAbility))
             .Match(typeof(EnchantCard))
             .Match(typeof(CardKeyword))

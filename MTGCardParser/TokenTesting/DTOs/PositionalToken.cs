@@ -10,6 +10,7 @@ public record PositionalToken
     public string CaptureId { get; init; }
     public List<PositionalToken> Children { get; init; } = [];
     public List<TokenSegment> Segments { get; init; }
+    public bool IsComplex { get; init; }
 
     public PositionalToken(TokenUnit token, Card card, int lineIndex, int tokenIndex, int? childIndex = null)
     {
@@ -18,7 +19,7 @@ public record PositionalToken
         TokenIndex = tokenIndex;
         Token = token;
         CaptureId = $"{card.Name.Replace(' ', '-')}-{card.CardId}-{lineIndex}-{tokenIndex}";
-        //CaptureId = $"{card.CardId}-{lineIndex}-{tokenIndex}";
+        IsComplex = Token is TokenUnitComplex;
 
         if (childIndex.HasValue)
             CaptureId += $"-child{childIndex.Value}";

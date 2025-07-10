@@ -4,10 +4,10 @@ public class AtOrUntilPlayerPhase : TokenUnit
 {
     public RegexTemplate<AtOrUntilPlayerPhase> RegexTemplate => new(nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase));
 
-    public TemporalDisposition? TemporalDisposition { get; set; }
-    public PhasePart? PhasePart { get; set; }
-    public Whose? Whose { get; set; }
-    public Phase? Phase { get; set; }
+    public TemporalDisposition TemporalDisposition { get; set; }
+    public PhasePart PhasePart { get; set; }
+    public Whose Whose { get; set; }
+    public Phase Phase { get; set; }
 
     [RegexPattern("activate only")]
     public bool ActivateOnly { get; set; }

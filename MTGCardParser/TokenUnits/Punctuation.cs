@@ -5,7 +5,7 @@ public class Punctuation : TokenUnit
 {
     public RegexTemplate<Punctuation> RegexTemplate => new(nameof(PunctuationCharacter));
 
-    public PunctuationCharacter? PunctuationCharacter { get; set; }
+    public PunctuationCharacter PunctuationCharacter { get; set; }
 }
 
 [EnumOptions(WrapInWordBoundaries = false, OptionalPlural = false)]

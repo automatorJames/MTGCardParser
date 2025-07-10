@@ -67,9 +67,6 @@
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
 
-    [Parameter]
-    public bool OmitCapturedTextSegmentProperties { get; set; } = true;
-
     Dictionary<RegexPropInfo, object?> _visibleScalarPropValues = new(new CapturePropComparer());
 
     protected override void OnInitialized()
@@ -86,7 +83,7 @@
             var value = prop.GetValue(PositionalToken.Token);
 
             if (value == null) continue;
-            if (OmitCapturedTextSegmentProperties && captureProp.RegexPropType == RegexPropType.Placeholder) continue;
+            if (PositionalToken.IsComplex && captureProp.RegexPropType == RegexPropType.Placeholder) continue;
             if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
 
             _visibleScalarPropValues[captureProp] = value;
