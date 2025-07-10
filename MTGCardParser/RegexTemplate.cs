@@ -8,6 +8,7 @@ public class RegexTemplate
     Type _parentType;
 
     public string RenderedRegexString { get; private set; }
+    public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; }
     public List<RegexPropInfo> OrderedProps { get; private set; }
     public List<RegexSegmentBase> RegexSegments { get; private set; } = new();
@@ -66,6 +67,7 @@ public class RegexTemplate
         // We don't need word boundaries where there are spaces (this step just improves regex human readability)
         RenderedRegexString = RenderedRegexString.Replace(@"\b \b", " ");
 
+        Regex = new Regex(RenderedRegexString, RegexOptions.Compiled);
         OrderedProps = GetOrderedProps().ToList();
     }
 

@@ -19,7 +19,7 @@ public record RegexPropInfo
         RegexPropType = GetCapturePropType(prop);
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
         Name = prop.Name;
-        AttributePatterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [Prop.Name];
+        AttributePatterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [prop.Name];
     }
 
     RegexPropType GetCapturePropType(PropertyInfo prop)

@@ -42,8 +42,8 @@ public abstract class TokenUnit
 
     protected TokenUnit(params object[] templateSnippets)
     {
-        if (TokenClassRegistry.TypeRegexTemplates.ContainsKey(Type))
-            Template = TokenClassRegistry.TypeRegexTemplates[Type];
+        if (TokenClassRegistry.TokenTemplates.ContainsKey(Type))
+            Template = TokenClassRegistry.TokenTemplates[Type];
         else
             Template = new(Type, templateSnippets);
     }

@@ -8,22 +8,20 @@
 public record EnumRegexProp : RegexPropBase
 {
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
-    public EnumOptionsAttribute Options { get; init; }
-
+    public EnumOptionsAttribute Options { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        if (RegexPropInfo.RegexPropType != RegexPropType.Enum)
-            throw new ArgumentException($"Type '{RegexPropInfo.Name}' isn't an enum");
-
-        Options = RegexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
-        SetRegex();
+        if (captureProp.RegexPropType != RegexPropType.Enum)
+            throw new ArgumentException($"Type '{captureProp.Name}' isn't an enum");
     }
 
-    void SetRegex()
+    protected override void SetRegex(RegexPropInfo captureProp)
     {
+        Options = captureProp.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+
         var alternations = GetAlternations();
-        RegexString = $@"(?<{RegexPropInfo.Name}>{alternations})";
+        RegexString = $@"(?<{captureProp.Name}>{alternations})";
 
         if (Options.WrapInWordBoundaries)
             RegexString = $@"\b{RegexString}\b";

@@ -2,8 +2,7 @@
 
 public static class TokenClassRegistry
 {
-    public static Dictionary<Type, RegexTemplate> TypeRegexTemplates { get; set; } = new();
-    public static Dictionary<Type, Regex> TypeRegexes { get; set; } = new();
+    public static Dictionary<Type, RegexTemplate> TokenTemplates { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
@@ -20,27 +19,18 @@ public static class TokenClassRegistry
             SetTypeTemplate(type);
     }
 
-    public static Regex GetTypeRegex(Type type)
-    {
-        if (!TypeRegexes.ContainsKey(type))
-            SetTypeTemplate(type);
-
-        return TypeRegexes[type];
-    }
-
     public static RegexTemplate GetTypeTemplate(Type type)
     {
-        if (!TypeRegexTemplates.ContainsKey(type))
+        if (!TokenTemplates.ContainsKey(type))
             SetTypeTemplate(type);
 
-        return TypeRegexTemplates[type];
+        return TokenTemplates[type];
     }
 
     public static void SetTypeTemplate(Type type)
     {
         var instance = (TokenUnit)Activator.CreateInstance(type);
-        TypeRegexTemplates[type] = instance.Template;
-        TypeRegexes[type] = new Regex(instance.Template.RenderedRegexString, RegexOptions.Compiled);
+        TokenTemplates[type] = instance.Template;
         var propCaptureSegments = instance.Template.PropCaptureSegments;
 
         var unregisteredEnums = propCaptureSegments
@@ -83,7 +73,7 @@ public static class TokenClassRegistry
             .Match(typeof(Parenthetical));
         
         // Apply assembly types that weren't applied above (failsafe for laziness)
-        foreach (var key in TypeRegexTemplates.Keys)
+        foreach (var key in TokenTemplates.Keys)
             if (!AppliedOrderTypes.Contains(key))
                 tokenizerBuilder.Match(key);
 
@@ -98,7 +88,7 @@ public static class TokenClassRegistry
         if (AppliedOrderTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
-        tokenizerBuilder.Match(Span.Regex(TypeRegexTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
+        tokenizerBuilder.Match(Span.Regex(TokenTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;

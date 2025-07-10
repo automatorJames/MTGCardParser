@@ -7,9 +7,16 @@
 /// </summary>
 public record TokenRegexProp : RegexPropBase
 {
+
     public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        Regex = TokenClassRegistry.GetTypeRegex(captureProp.UnderlyingType);
+    }
+
+    protected override void SetRegex(RegexPropInfo captureProp)
+    {
+        var template = TokenClassRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+        RegexString = template.RenderedRegexString;
+        Regex = template.Regex;
     }
 }
 

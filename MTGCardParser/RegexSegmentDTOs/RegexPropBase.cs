@@ -13,20 +13,20 @@ public abstract record RegexPropBase : RegexSegmentBase
     public RegexPropBase(RegexPropInfo captureProp)
     {
         RegexPropInfo = captureProp;
-        SetRegex();
+        SetRegex(captureProp);
     }
 
-    protected virtual void SetRegex()
+    protected virtual void SetRegex(RegexPropInfo captureProp)
     {
         // Default implementation
 
-        var items = RegexPropInfo.AttributePatterns.OrderByDescending(s => s.Length).ToList();
+        var items = captureProp.AttributePatterns.OrderByDescending(s => s.Length).ToList();
         var combinedItems = string.Join('|', items);
-        
+
         if (this is BoolRegexProp boolRegexProp)
-            RegexString = $@"(?<{RegexPropInfo.Name}>\s?{combinedItems}\s?)?";
+            RegexString = $@"(?<{captureProp.Name}>\s?{combinedItems}\s?)?";
         else
-            RegexString = $"(?<{RegexPropInfo.Name}>{combinedItems})";
+            RegexString = $"(?<{captureProp.Name}>{combinedItems})";
 
         Regex = new Regex(RegexString);
     }
@@ -99,7 +99,7 @@ public abstract record RegexPropBase : RegexSegmentBase
     TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
-        var regex = TokenClassRegistry.TypeRegexTemplates[parentToken.GetType()].RenderedRegexString;
+        var regex = TokenClassRegistry.TokenTemplates[parentToken.GetType()].RenderedRegexString;
         var match = Regex.Match(matchText, regex);
         var matchPropGroup = match.Groups[RegexPropInfo.Name];
 
@@ -113,7 +113,8 @@ public abstract record RegexPropBase : RegexSegmentBase
 
     TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
     {
-        var match = TokenClassRegistry.TypeRegexes[RegexPropInfo.UnderlyingType].Match(matchSpanToCheck.ToStringValue());
+        var regex = TokenClassRegistry.TokenTemplates[RegexPropInfo.UnderlyingType].Regex;
+        var match = regex.Match(matchSpanToCheck.ToStringValue());
         return GetTextSubSpan(matchSpanToCheck, match);
     }
 

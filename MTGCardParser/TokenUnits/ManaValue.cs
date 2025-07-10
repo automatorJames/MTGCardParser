@@ -9,8 +9,7 @@ public class ManaValue : TokenUnitComplex
 
     public override void SetComplexValuesFromMatch()
     {
-        var regex = TokenClassRegistry.GetTypeRegex(typeof(ManaValue));
-        var matches = regex.Matches(MatchSpan.ToStringValue());
+        var matches = Template.Regex.Matches(MatchSpan.ToStringValue());
 
         foreach (Match match in matches)
         {
