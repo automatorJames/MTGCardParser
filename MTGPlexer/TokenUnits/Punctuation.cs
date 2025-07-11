@@ -1,6 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [IgnoreInAnalysis]
+[Color("#999999")]
 public class Punctuation : TokenUnit
 {
     public PunctuationCharacter PunctuationCharacter { get; set; }

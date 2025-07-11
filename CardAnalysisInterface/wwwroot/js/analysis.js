@@ -29,93 +29,93 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// --- VARIABLE CAPTURE PAGE HOVER LOGIC ---
+// --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
 
 // These variables will hold our event handlers so they can be removed later,
-// which is crucial for preventing memory leaks in a Single Page Application (SPA) like Blazor.
+// crucial for preventing memory leaks in a Single Page Application (SPA).
 let mouseoverHandler;
 let mouseleaveHandler;
+
 const highlightActiveClass = 'highlight-active';
-const dataPathAttribute = '[data-path]';
+const dataPathSelector = '[data-path]';
+const boundaryClass = 'match-boundary';
 
 function initCardCaptureHover() {
     const mainContent = document.getElementById('main-content');
     if (!mainContent) {
-        console.error("#main-content not found. Hover highlighting will not work.");
         return;
     }
 
+    // A simple handler to find and remove all existing highlights from the page.
+    const clearHighlights = () => {
+        // Querying by the class is more direct than storing a list of highlighted elements.
+        const highlightedElements = document.querySelectorAll('.' + highlightActiveClass);
+        highlightedElements.forEach(el => {
+            el.classList.remove(highlightActiveClass);
+        });
+    };
+
+    // This is the core logic, which executes on every mouseover event.
     mouseoverHandler = (event) => {
-        // 1. CLEAN SLATE
-        // Always remove all highlights first. This part was correct.
-        const elements = document.getElementsByClassName(highlightActiveClass);
-        // A while loop is safer for removing classes from a live HTMLCollection.
-        while (elements.length > 0) {
-            elements[0].classList.remove(highlightActiveClass);
+        // Always start with a clean slate by clearing previous highlights.
+        clearHighlights();
+
+        // Find the element with a data-path that the user is actually hovering over.
+        const hoveredElement = event.target.closest(dataPathSelector);
+        if (!hoveredElement) return;
+
+        const hoveredPath = hoveredElement.dataset.path;
+        if (!hoveredPath) return;
+
+
+        // --- EFFICIENT HIGHLIGHTING ALGORITHM ---
+        // This brilliant solution avoids performance issues by splitting the work into two phases:
+        // 1. A fast, targeted "Collect" phase that traverses UP the DOM tree.
+        // 2. A single "Distribute" phase that scans the document for exact matches.
+        // This is vastly more performant than doing complex comparisons on every element in the DOM.
+
+        // --- PHASE 1: COLLECT ---
+        // We travel up from the hovered element, collecting the `data-path` of all valid
+        // ancestors into a Set. A Set provides highly efficient, near-instant lookups.
+        const pathsToHighlight = new Set();
+        let currentElement = hoveredElement;
+
+        while (currentElement) {
+            const currentPath = currentElement.dataset.path;
+
+            // An ancestor is valid if its path is a prefix of the hovered path.
+            // This elegantly identifies all hierarchical parents.
+            if (currentPath && hoveredPath.startsWith(currentPath)) {
+                pathsToHighlight.add(currentPath);
+            }
+
+            // Stop traversing upwards once we hit a designated boundary parent.
+            // This contains the search to a relevant component area.
+            if (currentElement.classList.contains(boundaryClass)) {
+                break;
+            }
+
+            currentElement = currentElement.parentElement;
         }
 
-        // 2. HIGHLIGHT LOCAL TEXT SPANS (The new, direct method)
-        // This logic appeared correct and was left as is.
-        const underlineTarget = event.target.closest('.nested-underline');
-        if (underlineTarget) {
-            underlineTarget.classList.add(highlightActiveClass);
-
-            // Get all ancestor spans (parent, grandparent, etc) and add highlight-active on them
-            let ancestor = underlineTarget.parentElement;
-            while (ancestor) {
-                if (ancestor.tagName === 'SPAN') {
-                    ancestor.classList.add(highlightActiveClass);
+        // --- PHASE 2: DISTRIBUTE ---
+        // Now, with a small and efficient Set of paths to find, we do one single
+        // scan of the document. For each element with a data-path, we check if
+        // its path exists in our Set. This is the key to the algorithm's speed.
+        if (pathsToHighlight.size > 0) {
+            const allPathElements = document.querySelectorAll(dataPathSelector);
+            allPathElements.forEach(el => {
+                if (pathsToHighlight.has(el.dataset.path)) {
+                    el.classList.add(highlightActiveClass);
                 }
-                ancestor = ancestor.parentElement;
-            }
-        }
-
-        const propTarget = event.target.closest('.prop-capture');
-        if (propTarget) {
-            propTarget.classList.add(highlightActiveClass);
-        }
-
-        // 3. HIGHLIGHT THE REMOTE DETAILS TABLE (Corrected Logic)
-        // Find the interactive element to get the ID for linking to the table.
-        const interactiveTarget = event.target.closest(dataPathAttribute);
-        if (!interactiveTarget) return;
-
-        // Get the single ID from the 'data-path' attribute.
-        const id = interactiveTarget.dataset.path;
-        if (!id) return; // Exit if the element doesn't have the data-path.
-
-        const propertyName = interactiveTarget.dataset.propertyName || null;
-
-        // Highlight corresponding details block and header.
-        // No loop is needed since we're only looking for one ID.
-        const detailBlock = document.querySelector(`.effect-details-block[data-path="${id}"]`);
-        if (detailBlock) {
-            detailBlock.classList.add(highlightActiveClass);
-        }
-
-        const detailHeader = document.querySelector(`h5[data-path="${id}"]`);
-        if (detailHeader) {
-            detailHeader.classList.add(highlightActiveClass);
-        }
-
-        // Highlight the specific property row in the table, if applicable.
-        if (propertyName && detailBlock) {
-            // Assume the property row is within the detailBlock and has its own data attribute.
-            const propertyRow = detailBlock.querySelector(`[data-property-name="${propertyName}"]`);
-            if (propertyRow) {
-                propertyRow.classList.add(highlightActiveClass);
-            }
+            });
         }
     };
 
-    mouseleaveHandler = () => {
-        // Using a while loop here is also safer.
-        const elements = document.getElementsByClassName(highlightActiveClass);
-        while (elements.length > 0) {
-            elements[0].classList.remove(highlightActiveClass);
-        }
-    };
+    // The mouseleave event should always fire immediately to clear highlights.
+    mouseleaveHandler = () => clearHighlights();
 
+    // Attach the finalized event listeners.
     mainContent.addEventListener('mouseover', mouseoverHandler);
     mainContent.addEventListener('mouseleave', mouseleaveHandler);
 }

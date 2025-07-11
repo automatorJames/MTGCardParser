@@ -12,13 +12,18 @@ public record RegexPropInfo
     public Type UnderlyingType { get; init; }
     public string Name { get; init; }
     public string[] AttributePatterns { get; init; }
+    public PropertyInfo UndistilledProp { get; init; }
+    public string UndistilledNameOrName => UndistilledProp?.Name ?? Name;
 
     public RegexPropInfo(PropertyInfo prop)
     {
         // If this prop is distilled from another one, get the other one
         var distilledValAttribute = prop.GetCustomAttribute<DistilledValueAttribute>();
-        if (distilledValAttribute != null )
+        if (distilledValAttribute != null)
+        {
             prop = distilledValAttribute.GetDistilledFromProp(prop);
+            UndistilledProp = prop;
+        }
 
         Prop = prop;
         RegexPropType = GetCapturePropType(prop);

@@ -25,16 +25,16 @@
     [Parameter, EditorRequired]
     public PositionalToken ImmediateParentToken { get; set; } = default!;
 
-    string GetClass() => $"prop-capture{(Leaf.IsComplexToken ? " complex" : "")}";
+    string GetClass() => $"prop-capture-inline{(Leaf.IsComplexToken ? " complex" : "")}";
 
     string GetStyle(PropertyCaptureTokenLeafPart propCapturePart)
     {
-        var style = $"--prop-color: {GetPropColor(propCapturePart)}; ";
+        var style = propCapturePart.Palette.ToColorStyle();
 
         //A wee harmless hack to ensure the overline highlights at the same lower Y coord as the closest underline
         var paddingBottom = 8 + (ImmediateParentToken.NestedDepth * 4);
 
-        style += $"padding-bottom: {paddingBottom}px;";
+        style += $" padding-bottom: {paddingBottom}px;";
 
         return style;
     }
@@ -46,7 +46,7 @@
             return ImmediateParentToken.Palette.Hex;
 
         // Get the positional color
-        return propCapturePart.Hex;
+        return propCapturePart.Palette.Hex;
     }
 
 }

@@ -12,7 +12,7 @@ public record PositionalToken
     public bool IsComplex { get; init; }
     public bool IgnoreInAnalysis { get; init; }
     public int NestedDepth { get; init; }
-    public TypeColorPalette Palette { get; init; }
+    public DeterministicColorPalette Palette { get; init; }
     public string Path { get; init; }
     public List<ScalarPropVal> PropVals { get; init; }
 

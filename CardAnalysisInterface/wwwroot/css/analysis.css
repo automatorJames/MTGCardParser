@@ -1,7 +1,8 @@
 ﻿:root {
-    --fade-time: 0.2s;
+    --fade-time: 0.25s;
     --highlight-inset: 4px;
-    --highlight-easing: ease-in-out;
+    --highlight-easing: ease;
+    --underline-width: 3px;
 }
 
 body {
@@ -18,7 +19,7 @@ h1, h2, h3, h4, h5 {
     padding-bottom: 8px;
 }
 
-h5{
+h5 {
     font-size: 1.15rem;
 }
 
@@ -27,7 +28,6 @@ h4 {
     border-bottom-style: dashed;
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
-    transition: box-shadow var(--fade-time) var(--highlight-easing);
 }
 
 table {
@@ -55,8 +55,9 @@ tbody tr:nth-of-type(even) {
     background-color: #2a2d2e;
 }
 
-tbody tr {
-    transition: box-shadow var(--fade-time) var(--highlight-easing);
+[data-path] {
+    border-color: var(--color);
+    transition: all var(--fade-time) var(--highlight-easing);
 }
 
 .type-card {
@@ -86,6 +87,19 @@ pre {
 code {
     font-family: Consolas, "Courier New", monospace;
     color: #9cdcfe;
+}
+
+.copy-feedback {
+    position: fixed;
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+    font-size: 0.9em;
 }
 
 /* --- Card Variable Capture Page Styles --- */
@@ -128,28 +142,31 @@ pre.line-text {
         color: #d4d4d4;
     }
 
-/* --- MODIFIED FOR SMOOTH, ISOLATED HIGHLIGHT --- */
-
 .nested-underline {
-    border-bottom: 2px solid;
-    border-color: var(--underline-color);
+    border-bottom-width: var(--underline-width);
+    border-bottom-style: solid;
     padding-bottom: 2px;
-    cursor: pointer;
-    /* Transition both border-width and border-color for a smooth effect */
-    transition: border-bottom-width 0.15s var(--highlight-easing), border-bottom-color 0.15s var(--highlight-easing);
 }
 
-.prop-capture {
-    border-top: 2px solid;
-    border-color: var(--prop-color);
+.prop-capture-table-cell {
+    color: var(--color);
+    font-weight: bold;
+}
+
+.prop-capture-inline {
+    border-top-width: var(--underline-width);
+    border-top-style: solid;
     padding-top: 1px;
-    /* Transition both border-width and border-color for a smooth effect */
-    transition: border-top-width 0.15s var(--highlight-easing), border-top-color 0.15s var(--highlight-easing);
 }
 
-    .prop-capture.complex {
+    .prop-capture-inline.complex {
         border-top-style: dotted;
     }
+
+.token-type-name {
+    color: var(--color);
+    border-bottom: 1px solid var(--lowlight-color);
+}
 
 /* For each level of nesting, add more padding to push parent underlines down. */
 .nested-underline .nested-underline {
@@ -186,7 +203,6 @@ pre.line-text {
         width: auto;
         min-width: 600px;
         margin-top: 10px;
-        box-shadow: none;
         border: 1px solid #444;
     }
 
@@ -216,7 +232,6 @@ pre.line-text {
         font-weight: bold;
         border-bottom: none;
         padding-left: 8px;
-        transition: box-shadow var(--fade-time) var(--highlight-easing);
     }
 
 .value-default {
@@ -236,75 +251,23 @@ pre.line-text {
     font-style: italic;
 }
 
-/* THE FINAL FIX: Change border-width and border-color on hover. */
-/* This creates a "grow" and "glow" effect without affecting children. */
+
+/* --- HIGHLIGHT ACTIVE STATES --- */
+/* These rules define *what* an element should look like when highlighted. */
+
 .nested-underline.highlight-active {
-    border-bottom-width: 3px;
     border-bottom-color: var(--highlight-color);
 }
 
-.prop-capture.highlight-active {
-    border-top-width: 3px;
-    border-top-color: #fff; /* A bright, universal highlight color */
-}
-    .prop-capture.highlight-active.complex {
-        border-top-width: 2px;
-        border-top-color: #fff; /* A bright, universal highlight color */
-    }
-
-
-.effect-details-block.highlight-active > h5, h5.highlight-active {
-    box-shadow: inset var(--highlight-inset) 0 0 0 var(--highlight-color);
-    transition: box-shadow var(--fade-time) var(--highlight-easing);
+.prop-capture-inline.highlight-active {
+    border-top-color: var(--highlight-color);
 }
 
-
-.highlight {
-    position: relative;
-    padding: 0.1em 0.3em;
-    border-radius: 3px;
-    color: #1e1e1e;
-    cursor: help;
+.token-type-name.highlight-active {
+    box-shadow: inset var(--underline-width) 0 0 0 var(--color);
+    border-bottom: 1px solid var(--color);
 }
 
-.unmatched-highlight {
-    background-color: #6980d1;
-    color: #1e1e1e;
-    padding: 0.1em 0.3em;
-    border-radius: 3px;
-}
-
-.highlight::after {
-    content: attr(data-title);
-    position: absolute;
-    left: 50%;
-    bottom: 100%;
-    transform: translateX(-50%);
-    background: #333;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.05s;
-    z-index: 999;
-    margin-bottom: 4px;
-}
-
-.highlight:hover::after {
-    opacity: 1;
-}
-
-.copy-feedback {
-    position: fixed;
-    background-color: #4CAF50;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.5s;
-    pointer-events: none;
-    font-size: 0.9em;
+.prop-capture-table-cell.highlight-active {
+    box-shadow: inset var(--underline-width) -1px 0 0 var(--highlight-color);
 }

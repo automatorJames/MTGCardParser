@@ -2,7 +2,7 @@
 
 @if (PositionalToken.PropVals.Any())
 {
-    <table>
+    <table class="property-capture-table" data-path=@PositionalToken.Path style=@PositionalToken.Palette.ToColorStyle()>
         <thead>
             <tr><th>Property</th><th>Type</th><th>Value</th></tr>
         </thead>
@@ -10,12 +10,16 @@
             @foreach (var propVal in PositionalToken.PropVals)
             {
                 string valueClass = GetCssClass(propVal.RegexPropInfo);
-                <tr 
-                style=@($"--highlight-color: {propVal.HexColor};")
-                data-path=@propVal.Path>
-                    <td><span style=@($"color: {propVal.HexColor}; font-weight: bold;")>@propVal.RegexPropInfo.Name</span></td>
+                <tr>
+                    <td 
+                    data-path=@propVal.Path
+                    class="prop-capture-table-cell"
+                    style=@propVal.Palette.ToColorStyle()>
+                        @propVal.RegexPropInfo.UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence)
+                    </td>
+
                     <td class=@valueClass>@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
-                    <td class="@valueClass">@propVal.StringVal</td>
+                    <td>@propVal.StringVal</td>
                 </tr>
             }
         </tbody>
@@ -26,11 +30,11 @@
 {
     <div class="property-child-block">
         <h5 
-            data-path=@child.Path 
-            style=@GetTokenStyle(child)>
-            @child.Token.Type.Name
+        data-path=@child.Path
+        style=@child.Palette.ToColorStyle()>
+            @child.Token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)
         </h5>
-        <TokenUnitDetails PositionalToken=@child />
+        <PropertyCaptureTable PositionalToken=@child />
     </div>
 }
 
@@ -39,18 +43,20 @@
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
 
-    string GetTokenStyle(PositionalToken token)
-        => $"color: {token.Palette.Hex}; --highlight-color: {token.Palette.Hex};";
-
     string GetCssClass(RegexPropInfo regexPropInfo)
     {
+        var defaultVal = "value-default";
+
+        if (regexPropInfo.UndistilledProp != null)
+            return defaultVal;
+
         var capturePropType = regexPropInfo.RegexPropType;
 
         return regexPropInfo.RegexPropType switch
         {
             RegexPropType.Placeholder => "value-tokensegment",
             RegexPropType.Enum => "value-enum",
-            _ => "value-default"
+            _ => defaultVal
         };
     }
 

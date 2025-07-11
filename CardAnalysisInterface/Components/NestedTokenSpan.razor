@@ -8,7 +8,7 @@ else
 {
     var deepestLevel = PositionalToken.Token.GetDeepestChildLevel();
 
-    <span class="nested-underline" style=@($"--underline-color: {PositionalToken.Palette.Hex};") data-path=@PositionalToken.Path>
+    <span class="nested-underline" style=@PositionalToken.Palette.ToColorStyle() data-path=@PositionalToken.Path>
         @foreach (var segment in PositionalToken.Segments)
         {
             @switch (segment)

@@ -1,11 +1,12 @@
-﻿namespace MTGPlexer.Static;
+﻿using System.ComponentModel;
+
+namespace MTGPlexer.Static;
 
 public static partial class TokenClassRegistry
 {
-    public static List<string> PropertyCaptureColors => ["#9d81ba", "#7b8dcf", "#5ca9b4", "#7d9e5b", "#d8a960", "#c77e59", "#b9676f", "#8f8f8f"];
     public static Dictionary<Type, RegexTemplate> TokenTemplates { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
-    public static Dictionary<Type, TypeColorPalette> TypeColorPalettes { get; set; } = new();
+    public static Dictionary<Type, DeterministicColorPalette> TypeColorPalettes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 

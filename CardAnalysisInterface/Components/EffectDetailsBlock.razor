@@ -1,20 +1,25 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-<div class="effect-details-block" data-path=@PositionalToken.Path>
-    <h5 data-path=@PositionalToken.Path style =@cssProperties.ToInlineStyle()>@PositionalToken.Token.Type.Name</h5>
-    <TokenUnitDetails PositionalToken=@PositionalToken />
+<div class="effect-details-block transitionable match-boundary" data-path=@PositionalToken.Path>
+    <h5 
+    data-path=@PositionalToken.Path 
+    class="token-type-name"
+    style=@GetStyle()>
+        @PositionalToken.Token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)
+    </h5>
+    <PropertyCaptureTable PositionalToken=@PositionalToken />
 </div>
 
 @code {
-    Dictionary<string, string> cssProperties => new()
-    {
-        ["color"] = PositionalToken.Palette.Hex,
-        ["--highlight-color:"] = PositionalToken.Palette.Hex,
-        ["padding-left"] = "16px",
-        ["border-bottom"] = $"1px solid {PositionalToken.Palette.HexDark}"
-    };
 
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
+
+    string GetStyle()
+    {
+        var style = PositionalToken.Palette.ToColorStyle();
+        style += "padding-left: 16px;";
+        return style;
+    }
 
 }

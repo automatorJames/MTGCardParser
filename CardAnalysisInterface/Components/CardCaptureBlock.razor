@@ -4,13 +4,13 @@
 
     @foreach (var capturedLine in CardAnalysis.CapturedLines)
     {
-        <div class="line-capture-block" @key=@(CardAnalysis.Card.Name + capturedLine.LineIndex)>
+        <div class="line-capture-block match-boundary">
             <h5 class="line-label">Line #@(capturedLine.LineIndex + 1)</h5>
 
             <pre class="line-text">
                 @foreach (var token in capturedLine.Tokens)
                 {
-                <NestedTokenSpan PositionalToken=@token />
+                    <NestedTokenSpan PositionalToken=@token />
                     @(" ")
                 }
                             </pre>

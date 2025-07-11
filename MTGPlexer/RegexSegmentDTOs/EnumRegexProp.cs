@@ -47,7 +47,7 @@ public record EnumRegexProp : RegexPropBase
                 memberAlternatives.AddRange(regexPatternAttribute.Patterns);
             else
                 // Otherwise add the normalized enum iteself
-                memberAlternatives.Add(SplitOnCapitalsToLower(enumAsString));
+                memberAlternatives.Add(enumAsString.ToFriendlyCase());
 
             if (Options.OptionalPlural)
                 for (int i = 0; i < memberAlternatives.Count; i++)
@@ -58,15 +58,6 @@ public record EnumRegexProp : RegexPropBase
         }
 
         return string.Join("|", allMemberAlternatives.OrderByDescending(s => s.Length));
-    }
-
-    string SplitOnCapitalsToLower(string input)
-    {
-        if (input == null)
-            return string.Empty;
-
-        var result = Regex.Replace(input, "(?<!^)([A-Z])", " $1");
-        return result.ToLower();
     }
 }
 

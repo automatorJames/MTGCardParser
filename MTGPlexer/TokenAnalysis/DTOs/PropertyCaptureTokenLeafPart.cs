@@ -8,13 +8,13 @@
 /// <param name="Position">The position of this property within the parent token's list of captures, used for consistent coloring.</param>
 public record PropertyCaptureTokenLeafPart : TokenLeafPart
 {
-    public string Hex { get; }
+    public DeterministicColorPalette Palette { get; }
     public RegexPropInfo Property { get; }
     public string Path { get; }
 
     public PropertyCaptureTokenLeafPart(string text, RegexPropInfo property, int index, string parentPath) : base(text)
     {
-        Hex = TokenClassRegistry.PropertyCaptureColors[index % TokenClassRegistry.PropertyCaptureColors.Count];
+        Palette = new(index);
         Property = property;
         Path = $"{parentPath}.{property.Name}";
     }
