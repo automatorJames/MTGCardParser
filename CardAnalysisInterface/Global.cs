@@ -1,3 +1,3 @@
-﻿global using MTGCardParser.Static;
+﻿global using MTGPlexer.Static;
 global using CardAnalysisInterface;
 global using CardAnalysisInterface.Components;

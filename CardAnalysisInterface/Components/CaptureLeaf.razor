@@ -16,6 +16,12 @@
             data-property-name=@GetDataPropertyName(propCapturePart)>
                 @propCapturePart.Text
             </span>
+
+            //if (propCapturePart.Text == "{g}{g}{g}{g}")
+            //{
+            //    Debugger.Break();
+            //}
+
             break;
     }
 }
@@ -32,6 +38,7 @@
 
     string GetDataPropertyName(PropertyCaptureTokenLeafPart part)
     {
+
         // Highlight all properties in the complex type by keying on the parent's CaptureId
         if (Leaf.IsComplexToken)
             return ParentToken.CaptureId;

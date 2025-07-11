@@ -124,41 +124,49 @@ pre.line-text {
         color: #d4d4d4;
     }
 
+/* --- MODIFIED FOR SMOOTH, ISOLATED HIGHLIGHT --- */
+
 .nested-underline {
     border-bottom: 2px solid;
     border-color: var(--underline-color);
-    padding-bottom: 2px; /* Base padding for the first level */
+    padding-bottom: 2px;
     cursor: pointer;
-    transition: filter var(--fade-time) var(--highlight-easing);
+    /* Transition both border-width and border-color for a smooth effect */
+    transition: border-bottom-width 0.15s var(--highlight-easing), border-bottom-color 0.15s var(--highlight-easing);
 }
-    /* For each level of nesting, add more padding to push parent underlines down */
-    .nested-underline .nested-underline {
-        padding-bottom: 8px;
-    }
-
-        .nested-underline .nested-underline .nested-underline {
-            padding-bottom: 12px;
-        }
-
-            .nested-underline .nested-underline .nested-underline .nested-underline {
-                padding-bottom: 16px;
-            }
-
-                .nested-underline .nested-underline .nested-underline .nested-underline .nested-underline {
-                    padding-bottom: 20px;
-                }
 
 .prop-capture {
     border-top: 2px solid;
     border-color: var(--prop-color);
     padding-top: 1px;
-    transition: border-top-width 0.1s var(--highlight-easing), filter 0.1s var(--highlight-easing);
+    padding-bottom: 4px; /* A little hack to ensure the overline highlights at the same lower Y coord as the closest underline */
+    /* Transition both border-width and border-color for a smooth effect */
+    transition: border-top-width 0.15s var(--highlight-easing), border-top-color 0.15s var(--highlight-easing);
 }
 
     .prop-capture.complex {
-        border-top: 2px dotted;
-        border-color: var(--prop-color);
+        border-top-style: dotted;
     }
+
+/* For each level of nesting, add more padding to push parent underlines down. */
+.nested-underline .nested-underline {
+    padding-bottom: 8px;
+}
+
+    .nested-underline .nested-underline .nested-underline {
+        padding-bottom: 12px;
+    }
+
+        .nested-underline .nested-underline .nested-underline .nested-underline {
+            padding-bottom: 16px;
+        }
+
+            .nested-underline .nested-underline .nested-underline .nested-underline .nested-underline {
+                padding-bottom: 20px;
+            }
+
+
+/* --- HOVER STATES AND OTHER STYLES --- */
 
 .effect-details-block {
     margin-left: 2rem;
@@ -225,15 +233,22 @@ pre.line-text {
     font-style: italic;
 }
 
-/* Hover states */
+/* THE FINAL FIX: Change border-width and border-color on hover. */
+/* This creates a "grow" and "glow" effect without affecting children. */
 .nested-underline.highlight-active {
-    filter: brightness(1.5);
+    border-bottom-width: 3px;
+    border-bottom-color: #fff; /* A bright, universal highlight color */
 }
 
-/* NEW: This class will be added ONLY to the specific overline being hovered. */
 .prop-capture.prop-highlight-inline {
-    filter: brightness(1.5);
+    border-top-width: 3px;
+    border-top-color: #fff; /* A bright, universal highlight color */
 }
+    .prop-capture.prop-highlight-inline.complex {
+        border-top-width: 2px;
+        border-top-color: #fff; /* A bright, universal highlight color */
+    }
+
 
 .effect-details-block.highlight-active > h5, h5.highlight-active {
     box-shadow: inset var(--highlight-inset) 0 0 0 var(--highlight-color);

@@ -1,4 +1,4 @@
-using MTGCardParser.TokenTesting;
+using MTGPlexer.TokenTesting;
 
 namespace CardAnalysisInterface;
 public class Program
