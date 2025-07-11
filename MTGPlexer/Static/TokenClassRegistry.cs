@@ -1,9 +1,11 @@
 ﻿namespace MTGPlexer.Static;
 
-public static class TokenClassRegistry
+public static partial class TokenClassRegistry
 {
+    public static List<string> PropertyCaptureColors => ["#9d81ba", "#7b8dcf", "#5ca9b4", "#7d9e5b", "#d8a960", "#c77e59", "#b9676f", "#8f8f8f"];
     public static Dictionary<Type, RegexTemplate> TokenTemplates { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
+    public static Dictionary<Type, TypeColorPalette> TypeColorPalettes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
@@ -39,6 +41,8 @@ public static class TokenClassRegistry
 
         foreach (var enumEntry in unregisteredEnums)
             EnumRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
+
+        TypeColorPalettes[type] = new(type);
     }
 
     public static TokenUnit HydrateFromToken(Token<Type> token) 
@@ -52,46 +56,5 @@ public static class TokenClassRegistry
                 && typeof(TokenUnit).IsAssignableFrom(t))
             .ToList();
 
-    static void InitializeTokenizer()
-    {
-        var tokenizerBuilder = new TokenizerBuilder<Type>();
-        tokenizerBuilder.Ignore(Span.Regex(@"[ \t]+"));
-
-        tokenizerBuilder
-            .Match(typeof(This))
-            .Match(typeof(ActivatedAbility))
-            .Match(typeof(OptionalPayCost))
-            .Match(typeof(GainOrLoseAbility))
-            .Match(typeof(EnchantCard))
-            .Match(typeof(CardKeyword))
-            .Match(typeof(AtOrUntilPlayerPhase))
-            .Match(typeof(IfYouDo))
-            .Match(typeof(EnchantedCard))
-            .Match(typeof(LifeChangeQuantity))
-            .Match(typeof(Punctuation))
-            .Match(typeof(ManaValue))
-            .Match(typeof(Parenthetical));
-        
-        // Apply assembly types that weren't applied above (failsafe for laziness)
-        foreach (var key in TokenTemplates.Keys)
-            if (!AppliedOrderTypes.Contains(key))
-                tokenizerBuilder.Match(key);
-
-        // Catch anything else with the default string pattern
-        tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
-
-        Tokenizer = tokenizerBuilder.Build();
-    }
-
-    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
-    {
-        if (AppliedOrderTypes.Contains(tokenCaptureType))
-            return tokenizerBuilder;
-
-        tokenizerBuilder.Match(Span.Regex(TokenTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
-        AppliedOrderTypes.Add(tokenCaptureType);
-
-        return tokenizerBuilder;
-    }
 }
 

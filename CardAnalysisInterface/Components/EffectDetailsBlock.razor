@@ -1,13 +1,20 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-<div class="effect-details-block" data-capture-id=@PositionalToken.CaptureId>
-    <h5 style=@($"color: {_colorHex}; --highlight-color: {Analysis.TypeColors[PositionalToken.Token.Type]}; padding-left: 16px;")>@PositionalToken.Token.Type.Name</h5>
+<div class="effect-details-block" data-path=@PositionalToken.Path>
+    <h5 data-path=@PositionalToken.Path style =@cssProperties.ToInlineStyle()>@PositionalToken.Token.Type.Name</h5>
     <TokenUnitDetails PositionalToken=@PositionalToken />
 </div>
 
 @code {
-    string _colorHex => Analysis.TypeColors[PositionalToken.Token.Type];
+    Dictionary<string, string> cssProperties => new()
+    {
+        ["color"] = PositionalToken.Palette.Hex,
+        ["--highlight-color:"] = PositionalToken.Palette.Hex,
+        ["padding-left"] = "16px",
+        ["border-bottom"] = $"1px solid {PositionalToken.Palette.HexDark}"
+    };
 
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
+
 }

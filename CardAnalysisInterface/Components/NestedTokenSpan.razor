@@ -7,24 +7,18 @@
 else
 {
     var deepestLevel = PositionalToken.Token.GetDeepestChildLevel();
-    var color = Analysis.TypeColors[PositionalToken.Token.Type];
 
-    <span class="nested-underline" style=@($"--underline-color: {color};") data-capture-ids="@AllCaptureIds">
+    <span class="nested-underline" style=@($"--underline-color: {PositionalToken.Palette.Hex};") data-path=@PositionalToken.Path>
         @foreach (var segment in PositionalToken.Segments)
         {
             @switch (segment)
             {
                 case TokenSegmentLeaf tokenSegmentLeaf:
-                    <CaptureLeaf 
-                        Leaf=@tokenSegmentLeaf
-                        ImmediateParentToken=@PositionalToken         
-                        AllCaptureIds=@AllCaptureIds />
+                    <CaptureLeaf Leaf=@tokenSegmentLeaf ImmediateParentToken=@PositionalToken />
                     break;
 
                 case TokenSegmentBranch tokenSegmentBranch:
-                    <NestedTokenSpan 
-                        PositionalToken=@tokenSegmentBranch.ChildToken
-                        AncestorIds=@AllCaptureIds />
+                    <NestedTokenSpan PositionalToken=@tokenSegmentBranch.ChildToken />
                     break;
             }
         }
@@ -37,6 +31,4 @@ else
 
     [Parameter]
     public string AncestorIds { get; set; } = "";
-
-    private string AllCaptureIds => $"{AncestorIds} {PositionalToken.CaptureId}".Trim();
 }

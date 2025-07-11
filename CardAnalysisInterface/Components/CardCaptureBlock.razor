@@ -10,14 +10,14 @@
             <pre class="line-text">
                 @foreach (var token in capturedLine.Tokens)
                 {
-                <NestedTokenSpan PositionalToken=@token @key=@token.CaptureId />
+                <NestedTokenSpan PositionalToken=@token />
                     @(" ")
                 }
                             </pre>
 
             @foreach (var token in capturedLine.Tokens.Where(x => !x.IgnoreInAnalysis))
             {
-                <EffectDetailsBlock PositionalToken=@token @key=@token.CaptureId />
+                <EffectDetailsBlock PositionalToken=@token />
             }
         </div>
     }

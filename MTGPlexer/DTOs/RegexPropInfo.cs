@@ -15,6 +15,11 @@ public record RegexPropInfo
 
     public RegexPropInfo(PropertyInfo prop)
     {
+        // If this prop is distilled from another one, get the other one
+        var distilledValAttribute = prop.GetCustomAttribute<DistilledValueAttribute>();
+        if (distilledValAttribute != null )
+            prop = distilledValAttribute.GetDistilledFromProp(prop);
+
         Prop = prop;
         RegexPropType = GetCapturePropType(prop);
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;

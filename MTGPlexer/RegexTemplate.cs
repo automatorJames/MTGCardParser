@@ -2,7 +2,8 @@
 
 public class RegexTemplate
 {
-    static HashSet<string> TerminalPunctuation = [".", ",", ";"];
+    public static HashSet<string> Punctuation = [".", ",", ";", "\""];
+    public static HashSet<string> TerminalPunctuation = [".", ",", ";"];
 
     bool _noSpaces;
     Type _parentType;

@@ -9,6 +9,6 @@
 
     <TypeCard Type=@type
               Count=@Analysis.TokenCaptureCounts[type]
-              ColorHex=@(Analysis.TypeColors[type])
+              ColorHex=@(TokenClassRegistry.TypeColorPalettes[type].Hex)
               RenderedRegex=@TokenClassRegistry.TokenTemplates[type].RenderedRegexString />
 }

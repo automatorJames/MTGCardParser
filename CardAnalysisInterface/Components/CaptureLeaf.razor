@@ -9,11 +9,9 @@
             break;
 
         case PropertyCaptureTokenLeafPart propCapturePart:
-            var propColor = Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
             <span class=@GetClass()
             style=@GetStyle(propCapturePart)
-            data-capture-ids="@AllCaptureIds"
-            data-property-name=@GetDataPropertyName(propCapturePart)>
+            data-path=@propCapturePart.Path>
                 @propCapturePart.Text
             </span>
             break;
@@ -26,9 +24,6 @@
 
     [Parameter, EditorRequired]
     public PositionalToken ImmediateParentToken { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public string AllCaptureIds { get; set; } = default!;
 
     string GetClass() => $"prop-capture{(Leaf.IsComplexToken ? " complex" : "")}";
 
@@ -44,25 +39,14 @@
         return style;
     }
 
-    string GetDataPropertyName(PropertyCaptureTokenLeafPart propCapturePart)
-    {
-
-        // Highlight all properties in the complex type by keying on the parent's CaptureId
-        if (Leaf.IsComplexToken)
-            return ImmediateParentToken.CaptureId;
-
-        // Highlight only the relevant property row
-        return propCapturePart.Property.Name;
-    }
-
     string GetPropColor(PropertyCaptureTokenLeafPart propCapturePart)
     {
-        // Make the overline match the coloer of the parent token type
+        // Make the overline match the color of the parent token type
         if (Leaf.IsComplexToken)
-            return Analysis.TypeColors[ImmediateParentToken.Token.Type];
+            return ImmediateParentToken.Palette.Hex;
 
-        // Get a positional color
-        return Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
+        // Get the positional color
+        return propCapturePart.Hex;
     }
 
 }

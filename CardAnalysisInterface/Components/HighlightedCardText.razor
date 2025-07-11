@@ -16,8 +16,7 @@
 
         if (token.Kind != typeof(DefaultUnmatchedString))
         {
-            string colorHex = Analysis.TypeColors[token.Kind];
-            <span class="highlight" data-title=@typeName style=@($"background-color: {colorHex};")>
+            <span class="highlight" data-title=@typeName style=@($"background-color: {TokenClassRegistry.TypeColorPalettes[token.Kind].Hex};")>
                 @textValue
             </span>
         }

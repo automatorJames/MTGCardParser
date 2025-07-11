@@ -1,53 +1,21 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (_visibleScalarPropValues.Any() || PositionalToken.Token.DistilledValues.Any())
+@if (PositionalToken.PropVals.Any())
 {
     <table>
         <thead>
             <tr><th>Property</th><th>Type</th><th>Value</th></tr>
         </thead>
         <tbody>
-            @{
-                var keys = _visibleScalarPropValues.Keys.ToList();
-            }
-
-            @for (int i = 0; i < _visibleScalarPropValues.Count; i++)
+            @foreach (var propVal in PositionalToken.PropVals)
             {
-                var key = keys[i];
-                var value = _visibleScalarPropValues[key];
-                string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
-                string valueClass = GetCssClass(key);
+                string valueClass = GetCssClass(propVal.RegexPropInfo);
                 <tr 
-                style=@($"--highlight-color: {propColor};") 
-                data-property-name=@(key.Name) 
-                data-capture-id=@PositionalToken.CaptureId>
-                    <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
-                    <td class=@valueClass>@GetFriendlyTypeName(key.Prop.PropertyType)</td>
-
-                    @if(key.RegexPropType == RegexPropType.TokenUnit)
-                    {
-                        <td class="value-empty">(below)</td>
-                    }
-                    else if (value == null || (value is string s && string.IsNullOrEmpty(s)))
-                    {
-                        <td class="value-empty">(empty)</td>
-                    }
-                    else
-                    {
-                        <td class="@valueClass">@value.ToString()</td>
-                    }
-                </tr>
-            }
-
-            @foreach (var distilledValueItem in PositionalToken.Token.DistilledValues)
-            {
-                <tr 
-                style=@($"--highlight-color: #aaa")
-                data-property-name=@PositionalToken.CaptureId
-                data-capture-id=@PositionalToken.CaptureId>
-                    <td><span style=@($"font-weight: bold; color: #aaa")>@distilledValueItem.Key.Name</span></td>
-                    <td class="value-default">@GetFriendlyTypeName(distilledValueItem.Key.PropertyType)</td>
-                    <td class=value-default>@distilledValueItem.Value.ToString()</td>
+                style=@($"--highlight-color: {propVal.HexColor};")
+                data-path=@propVal.Path>
+                    <td><span style=@($"color: {propVal.HexColor}; font-weight: bold;")>@propVal.RegexPropInfo.Name</span></td>
+                    <td class=@valueClass>@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
+                    <td class="@valueClass">@propVal.StringVal</td>
                 </tr>
             }
         </tbody>
@@ -56,9 +24,13 @@
 
 @foreach (var child in PositionalToken.ChildTokens)
 {
-    <div class="property-child-block" @key=@child.CaptureId>
-        <h5 data-property-name=@(child.Token.Type.Name) data-capture-id=@child.CaptureId style=@($"color: {Analysis.TypeColors[child.Token.Type]}; --highlight-color: {Analysis.TypeColors[child.Token.Type]};")>@child.Token.Type.Name</h5>
-        <TokenUnitDetails PositionalToken=@child @key=@child.CaptureId />
+    <div class="property-child-block">
+        <h5 
+            data-path=@child.Path 
+            style=@GetTokenStyle(child)>
+            @child.Token.Type.Name
+        </h5>
+        <TokenUnitDetails PositionalToken=@child />
     </div>
 }
 
@@ -67,29 +39,10 @@
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
 
-    Dictionary<RegexPropInfo, object> _visibleScalarPropValues = new(new CapturePropComparer());
+    string GetTokenStyle(PositionalToken token)
+        => $"color: {token.Palette.Hex}; --highlight-color: {token.Palette.Hex};";
 
-    protected override void OnInitialized()
-    {
-        var orderedRegexProps = PositionalToken.Token
-            .Template
-            .OrderedProps
-            .Where(x => x.RegexPropType != RegexPropType.TokenUnit)
-            .ToList();
-
-        foreach (var captureProp in orderedRegexProps)
-        {
-            var prop = captureProp.Prop;
-            var value = prop.GetValue(PositionalToken.Token);
-
-            if (value == null) continue;
-            if (PositionalToken.IsComplex && captureProp.RegexPropType == RegexPropType.Placeholder) continue;
-
-            _visibleScalarPropValues[captureProp] = value;
-        }
-    }
-
-    public string GetCssClass(RegexPropInfo regexPropInfo)
+    string GetCssClass(RegexPropInfo regexPropInfo)
     {
         var capturePropType = regexPropInfo.RegexPropType;
 
@@ -101,7 +54,7 @@
         };
     }
 
-    public string GetFriendlyTypeName(Type type)
+    string GetFriendlyTypeName(Type type)
     {
         bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
         if (type.IsEnum || isNullableEnum) return "Enum";

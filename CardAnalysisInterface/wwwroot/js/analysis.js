@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // which is crucial for preventing memory leaks in a Single Page Application (SPA) like Blazor.
 let mouseoverHandler;
 let mouseleaveHandler;
+const highlightActiveClass = 'highlight-active';
+const dataPathAttribute = '[data-path]';
 
 function initCardCaptureHover() {
     const mainContent = document.getElementById('main-content');
@@ -45,22 +47,24 @@ function initCardCaptureHover() {
 
     mouseoverHandler = (event) => {
         // 1. CLEAN SLATE
-        // Always remove all highlights first.
-        document.querySelectorAll('.highlight-active, .property-highlight, .prop-highlight-inline').forEach(el => {
-            el.classList.remove('highlight-active', 'property-highlight', 'prop-highlight-inline');
-        });
+        // Always remove all highlights first. This part was correct.
+        const elements = document.getElementsByClassName(highlightActiveClass);
+        // A while loop is safer for removing classes from a live HTMLCollection.
+        while (elements.length > 0) {
+            elements[0].classList.remove(highlightActiveClass);
+        }
 
         // 2. HIGHLIGHT LOCAL TEXT SPANS (The new, direct method)
-        // Find the single closest underline and overline to the cursor and highlight them.
+        // This logic appeared correct and was left as is.
         const underlineTarget = event.target.closest('.nested-underline');
         if (underlineTarget) {
-            underlineTarget.classList.add('highlight-active');
+            underlineTarget.classList.add(highlightActiveClass);
 
             // Get all ancestor spans (parent, grandparent, etc) and add highlight-active on them
             let ancestor = underlineTarget.parentElement;
             while (ancestor) {
                 if (ancestor.tagName === 'SPAN') {
-                    ancestor.classList.add('highlight-active');
+                    ancestor.classList.add(highlightActiveClass);
                 }
                 ancestor = ancestor.parentElement;
             }
@@ -68,40 +72,48 @@ function initCardCaptureHover() {
 
         const propTarget = event.target.closest('.prop-capture');
         if (propTarget) {
-            propTarget.classList.add('prop-highlight-inline');
+            propTarget.classList.add(highlightActiveClass);
         }
 
-        // 3. HIGHLIGHT THE REMOTE DETAILS TABLE (This logic remains the same)
-        // Find the interactive element to get the IDs for linking to the table.
-        const interactiveTarget = event.target.closest('[data-capture-ids], [data-capture-id]');
+        // 3. HIGHLIGHT THE REMOTE DETAILS TABLE (Corrected Logic)
+        // Find the interactive element to get the ID for linking to the table.
+        const interactiveTarget = event.target.closest(dataPathAttribute);
         if (!interactiveTarget) return;
 
-        const captureIdsAttr = interactiveTarget.dataset.captureIds || interactiveTarget.dataset.captureId;
-        const allIds = captureIdsAttr.split(' ').filter(Boolean);
+        // Get the single ID from the 'data-path' attribute.
+        const id = interactiveTarget.dataset.path;
+        if (!id) return; // Exit if the element doesn't have the data-path.
+
         const propertyName = interactiveTarget.dataset.propertyName || null;
 
-        // Highlight corresponding details blocks/headers
-        allIds.forEach(id => {
-            const detailBlock = document.querySelector(`.effect-details-block[data-capture-id="${id}"]`);
-            if (detailBlock) detailBlock.classList.add('highlight-active');
+        // Highlight corresponding details block and header.
+        // No loop is needed since we're only looking for one ID.
+        const detailBlock = document.querySelector(`.effect-details-block[data-path="${id}"]`);
+        if (detailBlock) {
+            detailBlock.classList.add(highlightActiveClass);
+        }
 
-            const detailHeader = document.querySelector(`h5[data-capture-id="${id}"]`);
-            if (detailHeader) detailHeader.classList.add('highlight-active');
-        });
+        const detailHeader = document.querySelector(`h5[data-path="${id}"]`);
+        if (detailHeader) {
+            detailHeader.classList.add(highlightActiveClass);
+        }
 
-        // Highlight the specific property row in the table
-        const primaryId = allIds.length > 0 ? allIds[allIds.length - 1] : null;
-        if (primaryId && propertyName) {
-            document.querySelectorAll(`[data-capture-id="${primaryId}"][data-property-name="${propertyName}"]`).forEach(el => {
-                el.classList.add('property-highlight');
-            });
+        // Highlight the specific property row in the table, if applicable.
+        if (propertyName && detailBlock) {
+            // Assume the property row is within the detailBlock and has its own data attribute.
+            const propertyRow = detailBlock.querySelector(`[data-property-name="${propertyName}"]`);
+            if (propertyRow) {
+                propertyRow.classList.add(highlightActiveClass);
+            }
         }
     };
 
     mouseleaveHandler = () => {
-        document.querySelectorAll('.highlight-active, .property-highlight, .prop-highlight-inline').forEach(el => {
-            el.classList.remove('highlight-active', 'property-highlight', 'prop-highlight-inline');
-        });
+        // Using a while loop here is also safer.
+        const elements = document.getElementsByClassName(highlightActiveClass);
+        while (elements.length > 0) {
+            elements[0].classList.remove(highlightActiveClass);
+        }
     };
 
     mainContent.addEventListener('mouseover', mouseoverHandler);

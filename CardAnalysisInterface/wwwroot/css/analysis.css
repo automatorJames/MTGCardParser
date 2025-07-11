@@ -240,14 +240,14 @@ pre.line-text {
 /* This creates a "grow" and "glow" effect without affecting children. */
 .nested-underline.highlight-active {
     border-bottom-width: 3px;
-    border-bottom-color: #fff; /* A bright, universal highlight color */
+    border-bottom-color: var(--highlight-color);
 }
 
-.prop-capture.prop-highlight-inline {
+.prop-capture.highlight-active {
     border-top-width: 3px;
     border-top-color: #fff; /* A bright, universal highlight color */
 }
-    .prop-capture.prop-highlight-inline.complex {
+    .prop-capture.highlight-active.complex {
         border-top-width: 2px;
         border-top-color: #fff; /* A bright, universal highlight color */
     }
@@ -258,10 +258,6 @@ pre.line-text {
     transition: box-shadow var(--fade-time) var(--highlight-easing);
 }
 
-tr.property-highlight, h5.property-highlight {
-    box-shadow: inset var(--highlight-inset) 0 0 0 var(--highlight-color);
-    transition: box-shadow var(--fade-time) var(--highlight-easing);
-}
 
 .highlight {
     position: relative;

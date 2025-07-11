@@ -6,12 +6,12 @@
 /// </summary>
 /// <param name="Property">The metadata for the captured property.</param>
 /// <param name="Span">The text span of the capture.</param>
-/// <param name="OriginalIndex">A stable, zero-based index of this capture within its parent token's original list of properties.</param>
+/// <param name="Position">A stable, zero-based index of this capture within its parent token's original list of properties.</param>
 public record IndexedPropertyCapture
 {
     public RegexPropInfo RegexPropInfo { get; init; }
     public TextSpan Span { get; init; }
-    public int OriginalIndex { get; init; }
+    public int Position { get; init; }
     public int SpanStart { get; init; }
     public int SpanEnd { get; init; }
 
@@ -19,10 +19,10 @@ public record IndexedPropertyCapture
     {
         RegexPropInfo = property;
         Span = span;
-        OriginalIndex = originalIndex;
+        Position = originalIndex;
         SpanStart = Span.Position.Absolute;
         SpanEnd = Span.Position.Absolute + Span.Length;
     }
 
-    public override string ToString() => $"Prop: {RegexPropInfo.Name} | Prop Index: {OriginalIndex} | Capture: \"{Span.ToStringValue()}\"";
+    public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {Position} | Capture: \"{Span.ToStringValue()}\"";
 }

@@ -6,13 +6,19 @@
 /// </summary>
 public record TokenSegmentLeaf : TokenSegment
 {
-    public List<TokenLeafPart> Parts { get; }
+    public List<TokenLeafPart> Parts { get; private set; }
     public bool IsComplexToken { get; }
+    public string ParentPath { get; }
 
-    public TokenSegmentLeaf(string leafText, int leafAbsoluteStart, TokenUnit token)
+    public TokenSegmentLeaf(string leafText, int leafAbsoluteStart, TokenUnit token, string parentPath)
     {
         IsComplexToken = token is TokenUnitComplex;
+        ParentPath = parentPath;
+        Decompose(leafText, leafAbsoluteStart, token);
+    }
 
+    void Decompose(string leafText, int leafAbsoluteStart, TokenUnit token)
+    {
         var parts = new List<TokenLeafPart>();
         if (string.IsNullOrEmpty(leafText))
         {
@@ -23,7 +29,9 @@ public record TokenSegmentLeaf : TokenSegment
         var leafAbsoluteEnd = leafAbsoluteStart + leafText.Length;
 
         // Get the property captures whose spans are contained within this leaf's span
-        var relevantPropertyCaptures = token.OrderedPropCaptures.Where(x => x.SpanStart >= leafAbsoluteStart && x.SpanEnd <= leafAbsoluteEnd);
+        var relevantPropertyCaptures = token.OrderedPropCaptures
+            .Where(x => x.SpanStart >= leafAbsoluteStart && x.SpanEnd <= leafAbsoluteEnd)
+            .ToList();
 
         // If no properties fall within this leaf, it will be rendered as non-property leaf part
         // This means it will have underlines signifying its part of one or more tokens, but it won't have an overline
@@ -35,13 +43,15 @@ public record TokenSegmentLeaf : TokenSegment
         else
         {
             int currentIndexInLeaf = 0;
-            foreach (var capture in relevantPropertyCaptures)
+
+            for (int i = 0; i < relevantPropertyCaptures.Count; i++)
             {
+                var capture = relevantPropertyCaptures[i];
                 int propRelativeStart = capture.SpanStart - leafAbsoluteStart;
 
                 if (propRelativeStart > currentIndexInLeaf)
                 {
-                    // There is a some text left of the captured property value that's not part of the property itself, so encapsulate it here
+                    // There is some text left of the captured property value that's not part of the property itself, so encapsulate it here
                     // This part of the text will not have an overline
                     var precedingTextSnippet = leafText.Substring(currentIndexInLeaf, propRelativeStart - currentIndexInLeaf);
                     parts.Add(new NonPropertyTokenLeafPart(precedingTextSnippet));
@@ -49,7 +59,7 @@ public record TokenSegmentLeaf : TokenSegment
 
                 // Add the captured property itself
                 // It will be displayed with an overline
-                parts.Add(new PropertyCaptureTokenLeafPart(capture.Span.ToStringValue(), capture.RegexPropInfo, capture.OriginalIndex));
+                parts.Add(new PropertyCaptureTokenLeafPart(capture.Span.ToStringValue(), capture.RegexPropInfo, capture.Position, ParentPath));
                 currentIndexInLeaf = propRelativeStart + capture.Span.Length;
             }
 
