@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenTesting.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
 /// <summary>
 /// A part of a leaf that is simple, un-captured text.

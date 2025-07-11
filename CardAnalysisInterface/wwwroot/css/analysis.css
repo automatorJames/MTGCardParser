@@ -18,6 +18,10 @@ h1, h2, h3, h4, h5 {
     padding-bottom: 8px;
 }
 
+h5{
+    font-size: 1.15rem;
+}
+
 h4 {
     color: #9cdcfe;
     border-bottom-style: dashed;
@@ -139,7 +143,6 @@ pre.line-text {
     border-top: 2px solid;
     border-color: var(--prop-color);
     padding-top: 1px;
-    padding-bottom: 4px; /* A little hack to ensure the overline highlights at the same lower Y coord as the closest underline */
     /* Transition both border-width and border-color for a smooth effect */
     transition: border-top-width 0.15s var(--highlight-easing), border-top-color 0.15s var(--highlight-easing);
 }

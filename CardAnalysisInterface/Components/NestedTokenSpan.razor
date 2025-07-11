@@ -1,6 +1,6 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (PositionalToken.Token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null)
+@if (PositionalToken.IgnoreInAnalysis)
 {
     @PositionalToken.Token.MatchSpan.ToStringValue()
 }
@@ -17,7 +17,7 @@ else
                 case TokenSegmentLeaf tokenSegmentLeaf:
                     <CaptureLeaf 
                         Leaf=@tokenSegmentLeaf
-                        ParentToken=@PositionalToken         
+                        ImmediateParentToken=@PositionalToken         
                         AllCaptureIds=@AllCaptureIds />
                     break;
 

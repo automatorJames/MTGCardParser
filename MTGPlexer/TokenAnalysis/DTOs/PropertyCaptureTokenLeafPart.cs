@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenTesting.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
 /// <summary>
 /// A part of a leaf that corresponds to a captured property on a TokenUnit.

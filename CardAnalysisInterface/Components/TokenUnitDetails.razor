@@ -18,43 +18,43 @@
                 string propColor = Analysis.PropertyCaptureColors[i % Analysis.PropertyCaptureColors.Count];
                 string valueClass = GetCssClass(key);
                 <tr 
-                    style=@($"--highlight-color: {propColor};") 
-                    data-property-name=@(key.Name) 
-                    data-capture-id=@PositionalToken.CaptureId>
-                        <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
-                        <td class=@valueClass>@GetFriendlyTypeName(key.Prop.PropertyType)</td>
+                style=@($"--highlight-color: {propColor};") 
+                data-property-name=@(key.Name) 
+                data-capture-id=@PositionalToken.CaptureId>
+                    <td><span style=@($"color: {propColor}; font-weight: bold;")>@key.Name</span></td>
+                    <td class=@valueClass>@GetFriendlyTypeName(key.Prop.PropertyType)</td>
 
-                        @if(key.RegexPropType == RegexPropType.TokenUnit)
-                        {
-                            <td class="value-empty">(below)</td>
-                        }
-                        else if (value == null || (value is string s && string.IsNullOrEmpty(s)))
-                        {
-                            <td class="value-empty">(empty)</td>
-                        }
-                        else
-                        {
-                            <td class="@valueClass">@value.ToString()</td>
-                        }
+                    @if(key.RegexPropType == RegexPropType.TokenUnit)
+                    {
+                        <td class="value-empty">(below)</td>
+                    }
+                    else if (value == null || (value is string s && string.IsNullOrEmpty(s)))
+                    {
+                        <td class="value-empty">(empty)</td>
+                    }
+                    else
+                    {
+                        <td class="@valueClass">@value.ToString()</td>
+                    }
                 </tr>
             }
 
             @foreach (var distilledValueItem in PositionalToken.Token.DistilledValues)
             {
                 <tr 
-                    style=@($"--highlight-color: #aaa")
-                    data-property-name=@PositionalToken.CaptureId
-                    data-capture-id=@PositionalToken.CaptureId>
-                        <td><span style=@($"font-weight: bold; color: #aaa")>@distilledValueItem.Key.Name</span></td>
-                        <td class="value-default">@GetFriendlyTypeName(distilledValueItem.Key.PropertyType)</td>
-                        <td class=value-default>@distilledValueItem.Value.ToString()</td>
+                style=@($"--highlight-color: #aaa")
+                data-property-name=@PositionalToken.CaptureId
+                data-capture-id=@PositionalToken.CaptureId>
+                    <td><span style=@($"font-weight: bold; color: #aaa")>@distilledValueItem.Key.Name</span></td>
+                    <td class="value-default">@GetFriendlyTypeName(distilledValueItem.Key.PropertyType)</td>
+                    <td class=value-default>@distilledValueItem.Value.ToString()</td>
                 </tr>
             }
         </tbody>
     </table>
 }
 
-@foreach (var child in PositionalToken.Children)
+@foreach (var child in PositionalToken.ChildTokens)
 {
     <div class="property-child-block" @key=@child.CaptureId>
         <h5 data-property-name=@(child.Token.Type.Name) data-capture-id=@child.CaptureId style=@($"color: {Analysis.TypeColors[child.Token.Type]}; --highlight-color: {Analysis.TypeColors[child.Token.Type]};")>@child.Token.Type.Name</h5>
@@ -67,7 +67,7 @@
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
 
-    Dictionary<RegexPropInfo, object?> _visibleScalarPropValues = new(new CapturePropComparer());
+    Dictionary<RegexPropInfo, object> _visibleScalarPropValues = new(new CapturePropComparer());
 
     protected override void OnInitialized()
     {
@@ -84,7 +84,6 @@
 
             if (value == null) continue;
             if (PositionalToken.IsComplex && captureProp.RegexPropType == RegexPropType.Placeholder) continue;
-            if (prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
 
             _visibleScalarPropValues[captureProp] = value;
         }

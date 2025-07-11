@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenTesting.DTOs; // Or your preferred namespace
+﻿namespace MTGPlexer.TokenAnalysis.DTOs; // Or your preferred namespace
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index

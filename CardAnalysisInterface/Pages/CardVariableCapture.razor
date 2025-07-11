@@ -9,30 +9,7 @@
     <div id="main-content">
         @foreach (var analyzedCard in Analysis.AnalyzedCards)
         {
-            <div class="card-capture-block">
-                <h3>@analyzedCard.Card.Name</h3>
-                <pre class="full-original-text">@analyzedCard.Card.Text</pre>
-
-                @foreach (var capturedLine in analyzedCard.CapturedLines)
-                {
-                    <div class="line-capture-block" @key=@(analyzedCard.Card.Name + capturedLine.LineIndex)>
-                        <h5 class="line-label">Line #@(capturedLine.LineIndex + 1)</h5>
-
-                        <pre class="line-text">
-                            @foreach (var token in capturedLine.Tokens)
-                            {
-                                <NestedTokenSpan PositionalToken=@token @key=@token.CaptureId />
-                                @(" ")
-                            }
-                        </pre>
-
-                        @foreach (var token in capturedLine.Tokens)
-                        {
-                            <EffectVariables PositionalToken=@token @key=@token.CaptureId />
-                        }
-                    </div>
-                }
-            </div>
+            <CardCaptureBlock CardAnalysis=analyzedCard />
         }
     </div>
 </body>

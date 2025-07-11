@@ -1,6 +1,6 @@
-﻿namespace MTGPlexer.TokenTesting;
+﻿namespace MTGPlexer.TokenAnalysis;
 
-public class CardAnalysis
+public class AnalyzedCard
 {
     public Card Card { get; set; }
 
@@ -16,7 +16,7 @@ public class CardAnalysis
         .Where(x => x.Kind == typeof(DefaultUnmatchedString))
         .Count();
 
-    public CardAnalysis(Card card)
+    public AnalyzedCard(Card card)
     {
          Card = card;
 
@@ -138,5 +138,7 @@ public class CardAnalysis
             CapturedLines.Add(new (list, Card, i));
         }
     }
+
+    public override string ToString() => Card.ToString();
 }
 

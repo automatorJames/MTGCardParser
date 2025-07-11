@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenTesting.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
 /// <summary>
 /// Represents a content leaf whose text has been fully segmented into
@@ -64,4 +64,6 @@ public record TokenSegmentLeaf : TokenSegment
             Parts = parts;
         }
     }
+
+    public override string ToString() => string.Join("", Parts.Select(x => x.Text)).Trim();
 }

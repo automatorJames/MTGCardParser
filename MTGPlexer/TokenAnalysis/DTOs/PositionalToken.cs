@@ -1,5 +1,4 @@
-﻿// PositionalToken.cs
-namespace MTGPlexer.TokenTesting.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
 public record PositionalToken
 {
@@ -8,25 +7,36 @@ public record PositionalToken
     public int TokenIndex { get; init; }
     public TokenUnit Token { get; init; }
     public string CaptureId { get; init; }
-    public List<PositionalToken> Children { get; init; } = [];
+    public PositionalToken Parent{ get; init; }
+    public List<PositionalToken> ChildTokens { get; init; } = [];
     public List<TokenSegment> Segments { get; init; }
     public bool IsComplex { get; init; }
+    public bool IgnoreInAnalysis { get; init; }
+    public int NestedDepth { get; init; }
+    public string TokenPath { get; init; }
 
-    public PositionalToken(TokenUnit token, Card card, int lineIndex, int tokenIndex, int? childIndex = null)
+    public PositionalToken(TokenUnit token, Card card, int lineIndex, int tokenIndex, PositionalToken parent = null, int? childIndex = null)
     {
+        Parent = parent;
+        TokenPath = parent != null ? parent.TokenPath + "." : "";
+        TokenPath += token.Type.Name;
         Card = card;
         LineIndex = lineIndex;
         TokenIndex = tokenIndex;
         Token = token;
-        CaptureId = $"{card.Name.Replace(' ', '-')}-{card.CardId}-{lineIndex}-{tokenIndex}";
         IsComplex = Token is TokenUnitComplex;
+        IgnoreInAnalysis = Token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null;
+        CaptureId = $"{card.Name.Replace(' ', '-')}-{card.CardId}-{lineIndex}-{tokenIndex}";
 
         if (childIndex.HasValue)
+        {
             CaptureId += $"-child{childIndex.Value}";
+            NestedDepth = childIndex.Value + 1;
+        }
 
         // The list of children is created here, which is needed for segment digestion.
         foreach (var (child, idx) in token.ChildTokens.OrderBy(c => c.MatchSpan.Position.Absolute).Select((token, index) => (token, index)))
-            Children.Add(new(child, card, lineIndex, tokenIndex, idx));
+            ChildTokens.Add(new(child, card, lineIndex, tokenIndex, this, idx));
 
         Segments = DigestSegments();
     }
@@ -40,7 +50,7 @@ public record PositionalToken
         var segments = new List<TokenSegment>();
         var parentSpan = Token.MatchSpan;
 
-        if (!Children.Any())
+        if (!ChildTokens.Any())
         {
             // If there are no children, the token is a single leaf containing the entire text.
             // Pass the clean, pre-processed list to the new leaf.
@@ -50,7 +60,7 @@ public record PositionalToken
 
         int currentIndexInParentText = 0;
 
-        foreach (var child in Children)
+        foreach (var child in ChildTokens)
         {
             var childSpan = child.Token.MatchSpan;
             int childRelativeStart = childSpan.Position.Absolute - parentSpan.Position.Absolute;
@@ -86,4 +96,6 @@ public record PositionalToken
 
         return segments;
     }
+
+    public override string ToString() => Token.ToString();
 }

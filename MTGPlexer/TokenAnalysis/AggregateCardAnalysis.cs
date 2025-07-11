@@ -1,8 +1,8 @@
-﻿namespace MTGPlexer.TokenTesting;
+﻿namespace MTGPlexer.TokenAnalysis;
 
 public class AggregateCardAnalysis
 {
-    public List<CardAnalysis> AnalyzedCards = new();
+    public List<AnalyzedCard> AnalyzedCards = new();
     public Dictionary<TextSpan, UnmatchedSpanOccurrence> UnmatchedSegmentSpans { get; set; } = new(new TextSpanAsStringComparer());
     public Dictionary<Type, int> TokenCaptureCounts { get; set; } = new();
     public Dictionary<Type, string> TypeColors { get; set; } = new();
@@ -20,17 +20,17 @@ public class AggregateCardAnalysis
             TypeColors[type] = GenerateColorHexForType(type);
         }
 
-        Process(cards);
+        Analyze(cards);
     }
 
-    public void Process(List<Card> cards)
+    public void Analyze(List<Card> cards)
     {
         foreach (var type in TokenClassRegistry.AppliedOrderTypes.OrderBy(x => x.Name))
             TokenCaptureCounts[type] = 0;
 
         foreach (Card card in cards)
         {
-            var analyzedCard = new CardAnalysis(card);
+            var analyzedCard = new AnalyzedCard(card);
             analyzedCard.AddAccumulatedCapturedTokenTypeCounts(TokenCaptureCounts);
 
             TotalUnmatchedTokens += analyzedCard.UnmatchedTokenCount;

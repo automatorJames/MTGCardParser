@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace MTGPlexer.TokenTesting;
+namespace MTGPlexer.TokenAnalysis;
 
 public class CapturePropComparer : IEqualityComparer<RegexPropInfo>
 {

@@ -10,18 +10,12 @@
 
         case PropertyCaptureTokenLeafPart propCapturePart:
             var propColor = Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
-            <span class=@($"prop-capture{(Leaf.IsComplexToken ? " complex" : "")}")
-            style=@($"--prop-color: {GetPropColor(propCapturePart)};")
+            <span class=@GetClass()
+            style=@GetStyle(propCapturePart)
             data-capture-ids="@AllCaptureIds"
             data-property-name=@GetDataPropertyName(propCapturePart)>
                 @propCapturePart.Text
             </span>
-
-            //if (propCapturePart.Text == "{g}{g}{g}{g}")
-            //{
-            //    Debugger.Break();
-            //}
-
             break;
     }
 }
@@ -31,30 +25,44 @@
     public TokenSegmentLeaf Leaf { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public PositionalToken ParentToken { get; set; } = default!;
+    public PositionalToken ImmediateParentToken { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public string AllCaptureIds { get; set; } = default!;
 
-    string GetDataPropertyName(PropertyCaptureTokenLeafPart part)
+    string GetClass() => $"prop-capture{(Leaf.IsComplexToken ? " complex" : "")}";
+
+    string GetStyle(PropertyCaptureTokenLeafPart propCapturePart)
+    {
+        var style = $"--prop-color: {GetPropColor(propCapturePart)}; ";
+
+        //A wee harmless hack to ensure the overline highlights at the same lower Y coord as the closest underline
+        var paddingBottom = 8 + (ImmediateParentToken.NestedDepth * 4);
+
+        style += $"padding-bottom: {paddingBottom}px;";
+
+        return style;
+    }
+
+    string GetDataPropertyName(PropertyCaptureTokenLeafPart propCapturePart)
     {
 
         // Highlight all properties in the complex type by keying on the parent's CaptureId
         if (Leaf.IsComplexToken)
-            return ParentToken.CaptureId;
+            return ImmediateParentToken.CaptureId;
 
         // Highlight only the relevant property row
-        return part.Property.Name;
+        return propCapturePart.Property.Name;
     }
 
-    string GetPropColor(PropertyCaptureTokenLeafPart part)
+    string GetPropColor(PropertyCaptureTokenLeafPart propCapturePart)
     {
         // Make the overline match the coloer of the parent token type
         if (Leaf.IsComplexToken)
-            return Analysis.TypeColors[ParentToken.Token.Type];
+            return Analysis.TypeColors[ImmediateParentToken.Token.Type];
 
         // Get a positional color
-        return Analysis.PropertyCaptureColors[part.PropertyIndex % Analysis.PropertyCaptureColors.Count];
+        return Analysis.PropertyCaptureColors[propCapturePart.PropertyIndex % Analysis.PropertyCaptureColors.Count];
     }
 
 }

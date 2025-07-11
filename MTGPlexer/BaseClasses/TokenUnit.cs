@@ -121,4 +121,6 @@ public abstract class TokenUnit
 
         return deepestDepth;
     }
+
+    public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
 }

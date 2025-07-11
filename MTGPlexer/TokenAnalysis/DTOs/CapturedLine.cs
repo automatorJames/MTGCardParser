@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenTesting.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
 public record CapturedLine
 {

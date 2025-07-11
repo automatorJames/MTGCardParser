@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenTesting.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
 /// <summary>
 /// Represents a segment within a token's text. This can be either

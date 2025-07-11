@@ -55,6 +55,15 @@ function initCardCaptureHover() {
         const underlineTarget = event.target.closest('.nested-underline');
         if (underlineTarget) {
             underlineTarget.classList.add('highlight-active');
+
+            // Get all ancestor spans (parent, grandparent, etc) and add highlight-active on them
+            let ancestor = underlineTarget.parentElement;
+            while (ancestor) {
+                if (ancestor.tagName === 'SPAN') {
+                    ancestor.classList.add('highlight-active');
+                }
+                ancestor = ancestor.parentElement;
+            }
         }
 
         const propTarget = event.target.closest('.prop-capture');

@@ -1,12 +1,12 @@
-﻿namespace MTGPlexer.TokenTesting;
+﻿namespace MTGPlexer.TokenAnalysis;
 
 public class UnmatchedSpanOccurrence
 {
     public int Count { get; set; }
-    public CardAnalysis FirstRepresentativeCard { get; set; }
+    public AnalyzedCard FirstRepresentativeCard { get; set; }
     public TextSpan FirstRepresentativeCardOccurrence { get; set; }
 
-    public UnmatchedSpanOccurrence(CardAnalysis firstRepresentativeCard, TextSpan firstRepresentativeCardOccurrence)
+    public UnmatchedSpanOccurrence(AnalyzedCard firstRepresentativeCard, TextSpan firstRepresentativeCardOccurrence)
     {
         Count = 1;
         FirstRepresentativeCard = firstRepresentativeCard;

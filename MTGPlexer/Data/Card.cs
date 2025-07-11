@@ -42,5 +42,7 @@ public class Card
 
         return lines;
     }
+
+    public override string ToString() => Name;
 }
 
