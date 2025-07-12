@@ -1,41 +1,44 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-<div class="property-table-wrapper" style=@PositionalToken.Parent?.Palette.ToColorStyle(-1) data-path=@PositionalToken.Parent?.Path>
-    <h5 data-path=@PositionalToken.Path
-        class="token-type-name"
-        style=@PositionalToken.Palette.ToColorStyle()>
+<div class="property-table-wrapper">
+    <span data-path=@PositionalToken.Path
+    class="token-type-name"
+    style=@PositionalToken.Palette.ToColorStyle()>
         @PositionalToken.Token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)
-    </h5>
-    @if (PositionalToken.PropVals.Any())
-    {
-        <table class="property-capture-table" data-path=@PositionalToken.Path style=@PositionalToken.Palette.ToColorStyle()>
-            <thead>
-                <tr><th>Property</th><th>Type</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var propVal in PositionalToken.PropVals)
-                {
-                    string valueClass = GetCssClass(propVal.RegexPropInfo);
-                    <tr>
-                        <td 
-                        data-path=@propVal.Path
-                        class="prop-capture-table-cell"
-                        style=@propVal.Palette.ToColorStyle()>
-                            @propVal.RegexPropInfo.UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence)
-                        </td>
-    
-                        <td class=@valueClass>@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
-                        <td>@propVal.StringVal</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+    </span>
 
-    @foreach (var child in PositionalToken.ChildTokens)
-    {
-        <PropertyCaptureTable PositionalToken=@child />
-    }
+    <div class="content-box" data-path=@PositionalToken.Path style=@PositionalToken.Palette.ToColorStyle(-1))>
+
+        @if (PositionalToken.PropVals.Any())
+        {
+            <table class="property-capture-table" data-path=@PositionalToken.Path>
+                <thead>
+                    <tr><th>Property</th><th>Type</th><th>Value</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var propVal in PositionalToken.PropVals)
+                    {
+                        <tr>
+                            <td data-path=@propVal.Path
+                            class="prop-capture-table-cell"
+                            style=@propVal.Palette.ToColorStyle()>
+                                @propVal.RegexPropInfo.UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence)
+                            </td>
+
+                            <td class="@GetCssClass(propVal.RegexPropInfo)">@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
+                            <td>@propVal.StringVal</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @* The recursive children are now INSIDE the content-box, so the vertical line contains them. *@
+        @foreach (var child in PositionalToken.ChildTokens)
+        {
+            <PropertyCaptureTable PositionalToken=@child />
+        }
+    </div>
 </div>
 
 

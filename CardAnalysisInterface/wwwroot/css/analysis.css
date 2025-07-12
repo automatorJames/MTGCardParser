@@ -158,9 +158,10 @@ pre.line-text {
     }
 
 .token-type-name {
+    font-size: 1.15rem;
+    font-weight: 500;
     color: var(--color);
-    border-bottom: 1px solid var(--lowlight-color);
-    padding-left: 12px;
+    padding-left: 24px;
 }
 
 .nested-underline {
@@ -186,7 +187,18 @@ pre.line-text {
                 padding-bottom: 24px;
             }
 
-
+/*
+ * 2. DEFINE the new "L" bracket style for the content-box.
+ */
+.content-box {
+    /* The "L" shape, using the color from its inline style */
+    border-top: 1px solid var(--color);
+    border-left: 1px solid var(--color);
+    /* Creates a small gap between the h5 title and the top of the "L" */
+    margin-top: 5px;
+    /* Pushes the content (table, child wrappers) away from the vertical line */
+    padding-left: 20px;
+}
 
 /*
  * By default, the top-level wrapper inside the details block has no special styling.
@@ -197,18 +209,13 @@ pre.line-text {
 }
 
 /*
- * This is the magic rule. It applies to ANY wrapper that is nested
- * inside another one (i.e., Levels 2 and deeper).
- *
- * The border creates the vertical line.
- * The padding creates the inset for that level's content and ALL of its children.
- * Because this rule applies at every level, the padding effect becomes cumulative,
- * creating the beautiful nested hierarchy automatically.
+ * 3. MODIFY the recursive wrapper rule. Its job is now ONLY to provide
+ *    the indentation space for the next level's "L" bracket.
  */
 .property-table-wrapper > .property-table-wrapper {
-    border-left: 1px solid var(--color);
-    padding-left: 20px; /* The inset distance for the next level */
-    margin-top: 15px; /* Vertical space between sibling groups */
+    /* The border is now drawn by the .content-box, so we remove it from here */
+    padding-left: 20px;
+    margin-top: 15px;
 }
 
 
@@ -274,14 +281,14 @@ pre.line-text {
 }
 
 .token-type-name.highlight-active {
-    box-shadow: inset var(--underline-width) 0 0 0 var(--color);
-    border-bottom: 1px solid var(--color);
+    color: var(--highlight-color);
+}
+
+.content-box.highlight-active {
+    border-top: 1px solid var(--highlight-color);
+    border-left: 1px solid var(--highlight-color);
 }
 
 .prop-capture-table-cell.highlight-active {
     box-shadow: inset var(--underline-width) -1px 0 0 var(--highlight-color);
-}
-
-.property-table-wrapper.highlight-active {
-    border-left: 1px solid var(--highlight-color);
 }

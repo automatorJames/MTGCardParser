@@ -60,6 +60,7 @@ public record PositionalToken
             var value = prop.GetValue(Token);
 
             if (value == null) continue;
+            if (!prop.PropertyType.IsEnum && prop.PropertyType.IsValueType && value.Equals(Activator.CreateInstance(prop.PropertyType))) continue;
             if (IsComplex && captureProp.RegexPropType == RegexPropType.Placeholder) continue;
 
             list.Add(new(captureProp, value, i, Path));
