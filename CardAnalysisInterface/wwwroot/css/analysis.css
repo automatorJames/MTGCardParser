@@ -197,7 +197,7 @@ pre.line-text {
     /* Creates a small gap between the h5 title and the top of the "L" */
     margin-top: 5px;
     /* Pushes the content (table, child wrappers) away from the vertical line */
-    padding-left: 20px;
+    padding-left: 12px;
 }
 
 /*

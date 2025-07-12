@@ -1,9 +1,8 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-/*public class Target : TokenUnit
+public class Target : TokenUnit
 {
-    public override RegexTemplate Template => new();
+    public Target() : base("target") { }
 
 }
-*/
 

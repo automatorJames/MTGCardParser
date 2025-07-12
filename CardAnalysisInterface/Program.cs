@@ -11,7 +11,7 @@ public class Program
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
 
-        builder.Services.AddSingleton(new AggregateCardAnalysis(10));
+        builder.Services.AddSingleton(new AggregateCardAnalysis(1));
 
         var app = builder.Build();
 

@@ -44,7 +44,7 @@ main {
 .top-row .navbar-brand {
     font-size: 1.2rem;
     font-weight: 500;
-    color: #d4d4d4;
+    color: grey;
     margin-right: auto; /* Pushes all other items to the center/right */
 }
 

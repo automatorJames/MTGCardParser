@@ -18,6 +18,11 @@ a, .btn-link {
     border-color: #1861ac;
 }
 
+.navbar-brand,
+.nav-link{
+    color: grey;
+}
+
 .content {
     padding-top: 1.1rem;
 }
