@@ -1,12 +1,6 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-<div class="effect-details-block transitionable match-boundary" data-path=@PositionalToken.Path>
-    <h5 
-    data-path=@PositionalToken.Path 
-    class="token-type-name"
-    style=@GetStyle()>
-        @PositionalToken.Token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)
-    </h5>
+<div class="effect-details-block match-boundary">
     <PropertyCaptureTable PositionalToken=@PositionalToken />
 </div>
 
@@ -14,12 +8,5 @@
 
     [Parameter, EditorRequired]
     public PositionalToken PositionalToken { get; set; } = default!;
-
-    string GetStyle()
-    {
-        var style = PositionalToken.Palette.ToColorStyle();
-        style += "padding-left: 16px;";
-        return style;
-    }
 
 }

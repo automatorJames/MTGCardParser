@@ -1,42 +1,42 @@
 ﻿@inject AggregateCardAnalysis Analysis
 
-@if (PositionalToken.PropVals.Any())
-{
-    <table class="property-capture-table" data-path=@PositionalToken.Path style=@PositionalToken.Palette.ToColorStyle()>
-        <thead>
-            <tr><th>Property</th><th>Type</th><th>Value</th></tr>
-        </thead>
-        <tbody>
-            @foreach (var propVal in PositionalToken.PropVals)
-            {
-                string valueClass = GetCssClass(propVal.RegexPropInfo);
-                <tr>
-                    <td 
-                    data-path=@propVal.Path
-                    class="prop-capture-table-cell"
-                    style=@propVal.Palette.ToColorStyle()>
-                        @propVal.RegexPropInfo.UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence)
-                    </td>
+<div class="property-table-wrapper" style=@PositionalToken.Parent?.Palette.ToColorStyle(-1) data-path=@PositionalToken.Parent?.Path>
+    <h5 data-path=@PositionalToken.Path
+        class="token-type-name"
+        style=@PositionalToken.Palette.ToColorStyle()>
+        @PositionalToken.Token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)
+    </h5>
+    @if (PositionalToken.PropVals.Any())
+    {
+        <table class="property-capture-table" data-path=@PositionalToken.Path style=@PositionalToken.Palette.ToColorStyle()>
+            <thead>
+                <tr><th>Property</th><th>Type</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var propVal in PositionalToken.PropVals)
+                {
+                    string valueClass = GetCssClass(propVal.RegexPropInfo);
+                    <tr>
+                        <td 
+                        data-path=@propVal.Path
+                        class="prop-capture-table-cell"
+                        style=@propVal.Palette.ToColorStyle()>
+                            @propVal.RegexPropInfo.UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence)
+                        </td>
+    
+                        <td class=@valueClass>@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
+                        <td>@propVal.StringVal</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 
-                    <td class=@valueClass>@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
-                    <td>@propVal.StringVal</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@foreach (var child in PositionalToken.ChildTokens)
-{
-    <div class="property-child-block">
-        <h5 
-        data-path=@child.Path
-        style=@child.Palette.ToColorStyle()>
-            @child.Token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)
-        </h5>
+    @foreach (var child in PositionalToken.ChildTokens)
+    {
         <PropertyCaptureTable PositionalToken=@child />
-    </div>
-}
+    }
+</div>
 
 
 @code {
