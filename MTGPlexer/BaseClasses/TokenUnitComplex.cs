@@ -13,6 +13,6 @@ public abstract class TokenUnitComplex : TokenUnit
         SetComplexValuesFromMatch();
     }
 
-    protected TokenUnitComplex(params object[] templateSnippets) : base(templateSnippets) { }
+    protected TokenUnitComplex(params string[] templateSnippets) : base(templateSnippets) { }
 }
 

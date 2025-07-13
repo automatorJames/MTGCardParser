@@ -16,3 +16,5 @@ global using Superpower.Parsers;
 global using Superpower.Tokenizers;
 global using System.Reflection;
 global using System.Text.RegularExpressions;
+global using System.Diagnostics;
+global using static MTGPlexer.Extensions;

@@ -8,7 +8,7 @@
 /// <param name="Position">The position of this property within the parent token's list of captures, used for consistent coloring.</param>
 public record PropertyCaptureTokenLeafPart : TokenLeafPart
 {
-    public DeterministicColorPalette Palette { get; }
+    public DeterministicPalette Palette { get; }
     public RegexPropInfo Property { get; }
     public string Path { get; }
 

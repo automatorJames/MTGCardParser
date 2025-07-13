@@ -1,0 +1,30 @@
+﻿<div class="card-capture-block">
+    <h3>@CardDigest.Card.Name</h3>
+    <pre class="full-original-text">@CardDigest.Card.Text</pre>
+
+    @foreach (var line in CardDigest.Lines)
+    {
+        <div class="line-capture-block match-boundary">
+            <h5 class="line-label">Line #@(line.LineIndex + 1)</h5>
+
+            <pre class="line-text">
+                @foreach (var root in line.SpanRoots)
+                {
+                    <NestedSpanRecursive Span=@root />
+                }
+            </pre>
+
+            @foreach (var root in line.SpanRoots.Where(x => !x.IgnoreInAnalysis))
+            {
+                <PropertyValueTable Span=@root />
+            }
+        </div>
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public CardDigest CardDigest { get; set; }
+
+}

@@ -14,7 +14,7 @@ public record TokenRegexProp : RegexPropBase
 
     protected override void SetRegex(RegexPropInfo captureProp)
     {
-        var template = TokenClassRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
         RegexString = template.RenderedRegexString;
         Regex = template.Regex;
     }

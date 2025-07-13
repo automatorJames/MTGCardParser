@@ -5,6 +5,6 @@
 /// </summary>
 /// <param name="ChildToken">The positional token for the child.</param>
 public record TokenSegmentBranch(PositionalToken ChildToken) : TokenSegment
-{
+{   
     public override string ToString() => ChildToken.ToString();
 }

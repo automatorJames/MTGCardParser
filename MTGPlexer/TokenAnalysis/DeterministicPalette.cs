@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace MTGPlexer.TokenAnalysis;
 
-public record DeterministicColorPalette
+public record DeterministicPalette
 {
     public string Hex { get; private set; }
     public string HexLight { get; private set; }
@@ -17,7 +17,7 @@ public record DeterministicColorPalette
     private const double LightLightness = 0.85;
     private const double DarkLightness = 0.3;
 
-    public DeterministicColorPalette(Type type)
+    public DeterministicPalette(Type type)
     {
         var colorAttribute = type.GetCustomAttribute<ColorAttribute>();
 
@@ -27,17 +27,17 @@ public record DeterministicColorPalette
             SetFromSeed(type.Name);
     }
 
-    public DeterministicColorPalette(string seed)
+    public DeterministicPalette(string seed)
     {
         SetFromSeed(seed);
     }
 
-    public DeterministicColorPalette(HexColor color)
+    public DeterministicPalette(HexColor color)
     {
         SetFromColor(color);
     }
 
-    public DeterministicColorPalette(int rainbowIndex)
+    public DeterministicPalette(int rainbowIndex)
     {
         SetFromRaindbowIndex(rainbowIndex);
     }

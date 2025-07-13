@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysis.DTOs;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.TokenAnalysis.DTOs;
 
 public record PositionalToken
 {
@@ -12,9 +14,10 @@ public record PositionalToken
     public bool IsComplex { get; init; }
     public bool IgnoreInAnalysis { get; init; }
     public int NestedDepth { get; init; }
-    public DeterministicColorPalette Palette { get; init; }
+    public DeterministicPalette Palette { get; init; }
     public string Path { get; init; }
     public List<ScalarPropVal> PropVals { get; init; }
+    public bool IsTransparentInAnalysisDisplay { get; init; }
 
     public PositionalToken(TokenUnit token, Card card, int lineIndex, int position, PositionalToken parent = null, int? childIndex = null)
     {
@@ -26,8 +29,9 @@ public record PositionalToken
         Position = position;
         Token = token;
         IsComplex = Token is TokenUnitComplex;
+        IsTransparentInAnalysisDisplay = Token is TokenUnitOneOf;
         IgnoreInAnalysis = Token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null;
-        Palette = TokenClassRegistry.TypeColorPalettes[token.Type];
+        Palette = TokenTypeRegistry.TypeColorPalettes[token.Type];
 
         if (childIndex.HasValue)
             NestedDepth = childIndex.Value + 1;
@@ -49,7 +53,7 @@ public record PositionalToken
 
         var orderedRegexProps = Token
             .Template
-            .OrderedProps
+            .RegexPropInfos
             .Where(x => x.RegexPropType != RegexPropType.TokenUnit)
             .ToList();
 
@@ -129,7 +133,7 @@ public record PositionalToken
         // d) Create suffix text segment (a leaf)
         if (currentIndexInParentText < parentSpan.Length)
         {
-            int suffixLength = parentSpan.Length - currentIndexInParentText;
+            int suffixLength = parentSpan.Length - currentIndexInParentText;    
             int suffixAbsoluteStart = parentSpan.Position.Absolute + currentIndexInParentText;
             string suffixText = parentSpan.Source!.Substring(suffixAbsoluteStart, suffixLength);
 

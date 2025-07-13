@@ -26,7 +26,7 @@
                             </td>
 
                             <td class="@GetCssClass(propVal.RegexPropInfo)">@GetFriendlyTypeName(propVal.RegexPropInfo.UnderlyingType)</td>
-                            <td>@propVal.StringVal</td>
+                            <td>@propVal.ValueAsString</td>
                         </tr>
                     }
                 </tbody>
@@ -36,7 +36,17 @@
         @* The recursive children are now INSIDE the content-box, so the vertical line contains them. *@
         @foreach (var child in PositionalToken.ChildTokens)
         {
-            <PropertyCaptureTable PositionalToken=@child />
+            if (child.IsTransparentInAnalysisDisplay)
+            {
+                foreach (var grandchild in child.ChildTokens)
+                {
+                    <PropertyCaptureTable PositionalToken=@grandchild />
+                }
+            }
+            else
+            {
+                <PropertyCaptureTable PositionalToken=@child />
+            }
         }
     </div>
 </div>

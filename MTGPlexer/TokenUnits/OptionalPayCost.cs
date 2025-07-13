@@ -3,11 +3,10 @@
 [NoSpaces]
 public class OptionalPayCost : TokenUnit
 {
-    public OptionalPayCost() : base(nameof(PayOptionType), " pay ", new AlternativeTokenUnits(nameof(ManaValue), nameof(LifeQuantity)), @"\.") { }
+    public OptionalPayCost() : base(nameof(PayOptionType), " pay ", nameof(Cost)) { }
 
     public PayOptionType PayOptionType { get; set; }
-    public ManaValue ManaValue { get; set; }
-    public LifeQuantity LifeQuantity { get; set; }
+    public Cost Cost { get; set; }
 }
 
 public enum PayOptionType

@@ -22,7 +22,7 @@ public class AnalyzedCard
 
         foreach (var line in card.CleanedLines)
         {
-            var lineTokens = TokenClassRegistry.Tokenizer.Tokenize(line).ToList();
+            var lineTokens = TokenTypeRegistry.Tokenizer.Tokenize(line).ToList();
             ProcessedLineTokens.Add(lineTokens);
         }
 
@@ -133,7 +133,7 @@ public class AnalyzedCard
             List<TokenUnit> list = new();
 
             foreach (var token in line)
-                list.Add(TokenClassRegistry.HydrateFromToken(token));
+                list.Add(TokenTypeRegistry.HydrateFromToken(token));
 
             CapturedLines.Add(new (list, Card, i));
         }

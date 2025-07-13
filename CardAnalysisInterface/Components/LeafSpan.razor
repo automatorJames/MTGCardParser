@@ -1,0 +1,28 @@
+﻿<span class=@GetClass()
+style=@Leaf.Palette.ToColorStyle()
+data-path=@Leaf.Path>
+    @Leaf.Text
+</span>
+
+@code {
+
+    NestedSpanTwig _terminalAsTwig;
+    NestedSpanLeaf _terminalAsLeaf;
+
+    [Parameter, EditorRequired]
+    public NestedSpanLeaf Leaf { get; set; } = default!;
+
+    string GetClass() => $"prop-capture-inline{(Leaf.PropertyCapture.IsComplex ? " complex" : "")};";
+
+    //string GetStyle(PropertyCaptureTokenLeafPart propCapturePart)
+    //{
+    //    var style = propCapturePart.Palette.ToColorStyle();
+    //
+    //    //A wee harmless hack to ensure the overline highlights at the same lower Y coord as the closest underline
+    //    var paddingBottom = 8 + (ImmediateParentToken.NestedDepth * 4);
+    //
+    //    style += $" padding-bottom: {paddingBottom}px;";
+    //
+    //    return style;
+    //}
+}

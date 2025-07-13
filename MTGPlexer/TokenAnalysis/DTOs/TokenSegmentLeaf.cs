@@ -29,8 +29,8 @@ public record TokenSegmentLeaf : TokenSegment
         var leafAbsoluteEnd = leafAbsoluteStart + leafText.Length;
 
         // Get the property captures whose spans are contained within this leaf's span
-        var relevantPropertyCaptures = token.OrderedPropCaptures
-            .Where(x => x.SpanStart >= leafAbsoluteStart && x.SpanEnd <= leafAbsoluteEnd)
+        var relevantPropertyCaptures = token.IndexedPropertyCaptures
+            .Where(x => x.Start >= leafAbsoluteStart && x.End <= leafAbsoluteEnd)
             .ToList();
 
         // If no properties fall within this leaf, it will be rendered as non-property leaf part
@@ -47,7 +47,7 @@ public record TokenSegmentLeaf : TokenSegment
             for (int i = 0; i < relevantPropertyCaptures.Count; i++)
             {
                 var capture = relevantPropertyCaptures[i];
-                int propRelativeStart = capture.SpanStart - leafAbsoluteStart;
+                int propRelativeStart = capture.Start - leafAbsoluteStart;
 
                 if (propRelativeStart > currentIndexInLeaf)
                 {
@@ -59,7 +59,7 @@ public record TokenSegmentLeaf : TokenSegment
 
                 // Add the captured property itself
                 // It will be displayed with an overline
-                parts.Add(new PropertyCaptureTokenLeafPart(capture.Span.ToStringValue(), capture.RegexPropInfo, capture.Position, ParentPath));
+                parts.Add(new PropertyCaptureTokenLeafPart(capture.Span.ToStringValue(), capture.RegexPropInfo, capture.Index, ParentPath));
                 currentIndexInLeaf = propRelativeStart + capture.Span.Length;
             }
 

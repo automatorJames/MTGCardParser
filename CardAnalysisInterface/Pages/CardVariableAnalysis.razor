@@ -1,4 +1,5 @@
-﻿@page "/variable-capture"
+﻿@page "/"
+@page "/variable-analysis"
 @inject AggregateCardAnalysis Analysis
 @inject IJSRuntime JSRuntime
 
@@ -6,9 +7,9 @@
     <h1>Card Variable Capture</h1>
 
     <div id="main-content">
-        @foreach (var analyzedCard in Analysis.AnalyzedCards)
+        @foreach (var cardDigest in Analysis.DigestedCards)
         {
-            <CardCaptureBlock CardAnalysis=analyzedCard />
+            <CardVariableBlock CardDigest=cardDigest />
         }
     </div>
 </body>

@@ -8,21 +8,50 @@ else
 {
     var deepestLevel = PositionalToken.Token.GetDeepestChildLevel();
 
-    <span class="nested-underline" style=@PositionalToken.Palette.ToColorStyle() data-path=@PositionalToken.Path>
-        @foreach (var segment in PositionalToken.Segments)
-        {
-            @switch (segment)
+    if (PositionalToken.IsTransparentInAnalysisDisplay)
+    {
+        <span class="nested-underline eat-my-shite-willy" style=@PositionalToken.Palette.ToColorStyle() data-path=@PositionalToken.Path>
+            @foreach (var segment in PositionalToken.Segments)
             {
-                case TokenSegmentLeaf tokenSegmentLeaf:
+                if (segment is TokenSegmentLeaf tokenSegmentLeaf)
+                {
                     <CaptureLeaf Leaf=@tokenSegmentLeaf ImmediateParentToken=@PositionalToken />
-                    break;
-
-                case TokenSegmentBranch tokenSegmentBranch:
-                    <NestedTokenSpan PositionalToken=@tokenSegmentBranch.ChildToken />
-                    break;
+                }
             }
-        }
-    </span>
+
+
+            @foreach (var grandchild in PositionalToken.ChildTokens)
+            {
+                @foreach (var segment in grandchild.Segments)
+                {
+                    if (segment is TokenSegmentLeaf tokenSegmentLeaf)
+                    {
+                        <CaptureLeaf Leaf=@tokenSegmentLeaf ImmediateParentToken=@PositionalToken />
+                    }
+                    else if (segment is TokenSegmentBranch tokenSegmentBranch)
+                    {
+                        <NestedTokenSpan PositionalToken=@tokenSegmentBranch.ChildToken />
+                    }
+                }
+            }
+        </span>
+    }
+    else
+    {
+        <span class="nested-underline" style=@PositionalToken.Palette.ToColorStyle() data-path=@PositionalToken.Path>
+            @foreach (var segment in PositionalToken.Segments)
+            {
+                if (segment is TokenSegmentLeaf tokenSegmentLeaf)
+                {
+                    <CaptureLeaf Leaf=@tokenSegmentLeaf ImmediateParentToken=@PositionalToken />
+                }
+                else if (segment is TokenSegmentBranch tokenSegmentBranch)
+                {
+                    <NestedTokenSpan PositionalToken=@tokenSegmentBranch.ChildToken />
+                }
+            }
+        </span>
+    }
 }
 
 @code {

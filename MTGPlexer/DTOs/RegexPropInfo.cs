@@ -7,12 +7,14 @@
 /// </summary>
 public record RegexPropInfo
 {
-    public PropertyInfo Prop { get; init; }
-    public RegexPropType RegexPropType { get; init; }
-    public Type UnderlyingType { get; init; }
-    public string Name { get; init; }
-    public string[] AttributePatterns { get; init; }
-    public PropertyInfo UndistilledProp { get; init; }
+    public PropertyInfo Prop { get; }
+    public RegexPropType RegexPropType { get; }
+    public Type UnderlyingType { get; }
+    public string Name { get; }
+    public string[] AttributePatterns { get; }
+    public PropertyInfo UndistilledProp { get; }
+    public string FriendlyTypeName { get; }
+    public string FriendlyPropName { get; }
     public string UndistilledNameOrName => UndistilledProp?.Name ?? Name;
 
     public RegexPropInfo(PropertyInfo prop)
@@ -30,6 +32,8 @@ public record RegexPropInfo
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
         Name = prop.Name;
         AttributePatterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [prop.Name];
+        FriendlyTypeName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
+        FriendlyTypeName = GetFriendlyTypeName(UnderlyingType);
     }
 
     RegexPropType GetCapturePropType(PropertyInfo prop)
@@ -42,10 +46,22 @@ public record RegexPropInfo
             return RegexPropType.Placeholder;
         else if (underlyingType == typeof(bool))
             return RegexPropType.Bool;
+        else if (underlyingType.IsAssignableTo(typeof(TokenUnitOneOf)))
+            return RegexPropType.TokenUnitOneOf;
         else if (underlyingType.IsAssignableTo(typeof(TokenUnit)))
             return RegexPropType.TokenUnit;
         else
             throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(RegexPropType)} type");
     }
+
+    string GetFriendlyTypeName(Type type)
+    {
+        bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
+        if (type.IsEnum || isNullableEnum) return "Enum";
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return $"{type.GetGenericArguments()[0].Name}?";
+        if (type.IsAssignableTo(typeof(TokenUnit))) return "Token Unit";
+        return type.Name;
+    }
+
 }
 

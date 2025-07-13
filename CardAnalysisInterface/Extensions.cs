@@ -5,7 +5,7 @@ public static class Extensions
     public static string ToInlineStyle(this Dictionary<string, string> cssProperties) 
         => string.Join("; ", cssProperties.Select(x => x.Key + ": " + x.Value));
 
-    public static string ToColorStyle(this DeterministicColorPalette palette, int shift = 0)
+    public static string ToColorStyle(this DeterministicPalette palette, int shift = 0)
     {
         var defaultValues = $"--color: {palette.Hex}; --highlight-color: {palette.HexLight}; --lowlight-color: {palette.HexDark};";
 

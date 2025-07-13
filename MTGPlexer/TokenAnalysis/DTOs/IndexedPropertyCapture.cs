@@ -9,20 +9,32 @@
 /// <param name="Position">A stable, zero-based index of this capture within its parent token's original list of properties.</param>
 public record IndexedPropertyCapture
 {
-    public RegexPropInfo RegexPropInfo { get; init; }
-    public TextSpan Span { get; init; }
-    public int Position { get; init; }
-    public int SpanStart { get; init; }
-    public int SpanEnd { get; init; }
+    public RegexPropInfo RegexPropInfo { get; }
+    public TextSpan Span { get; }
+    public int Index { get; }
+    public int Start { get; }
+    public int End { get; }
+    public int Length { get; }
+    public bool IsChildToken { get; }
+    public bool IsComplex { get; }
+    public object Value { get; }
+    public int CapturePosition { get; }
+    public DeterministicPalette Palette { get; }
 
-    public IndexedPropertyCapture(RegexPropInfo property, TextSpan span, int originalIndex)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, TextSpan span, object value, int capturePosition)
     {
-        RegexPropInfo = property;
+        RegexPropInfo = regexPropInfo;
         Span = span;
-        Position = originalIndex;
-        SpanStart = Span.Position.Absolute;
-        SpanEnd = Span.Position.Absolute + Span.Length;
+        Start = Span.Position.Absolute;
+        End = Span.Position.Absolute + Span.Length;
+        Length = Span.Length;
+        IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit;
+        IsComplex = value is TokenUnitComplex;
+        Value = value;
+        CapturePosition = capturePosition;
+        Palette = new(CapturePosition);
+        // todo: have to handle TokenUnitOneOfTypes with special logic
     }
 
-    public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {Position} | Capture: \"{Span.ToStringValue()}\"";
+    public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {CapturePosition} | Capture: \"{Span.ToStringValue()}\"";
 }

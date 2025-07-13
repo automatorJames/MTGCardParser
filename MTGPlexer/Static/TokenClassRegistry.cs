@@ -1,22 +1,22 @@
-﻿using System.ComponentModel;
+﻿namespace MTGPlexer.Static;
 
-namespace MTGPlexer.Static;
-
-public static partial class TokenClassRegistry
+public static partial class TokenTypeRegistry
 {
+    static HashSet<Type> _invalidTypes = [];
+
     public static Dictionary<Type, RegexTemplate> TokenTemplates { get; set; } = new();
     public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
-    public static Dictionary<Type, DeterministicColorPalette> TypeColorPalettes { get; set; } = new();
+    public static Dictionary<Type, DeterministicPalette> TypeColorPalettes { get; set; } = new();
     public static Tokenizer<Type> Tokenizer { get; set; }
     public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
-    static TokenClassRegistry()
+    static TokenTypeRegistry()
     {
-        RegisterTypes();
+        ValidateAndRegisterTypes();
         InitializeTokenizer();
     }
 
-    static void RegisterTypes()
+    static void ValidateAndRegisterTypes()
     {
         foreach (var type in GetTokenCaptureTypes())
             SetTypeTemplate(type);
@@ -33,6 +33,13 @@ public static partial class TokenClassRegistry
     public static void SetTypeTemplate(Type type)
     {
         var instance = (TokenUnit)Activator.CreateInstance(type);
+
+        if (!instance.ValidateStructure())
+        {
+            _invalidTypes.Add(type);
+            return;
+        }
+
         TokenTemplates[type] = instance.Template;
         var propCaptureSegments = instance.Template.PropCaptureSegments;
 

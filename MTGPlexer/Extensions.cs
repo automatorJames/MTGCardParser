@@ -105,5 +105,10 @@ public static class Extensions
         /// </summary>
         Title
     }
+
+    public static PropertyInfo[] GetPublicDeclaredProps(this Type type) => 
+        type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+    public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
 }
 

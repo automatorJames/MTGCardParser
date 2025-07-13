@@ -1,0 +1,39 @@
+﻿@if (Span.IgnoreInAnalysis)
+{
+    @Span.TokenSpan.ToStringValue()
+}
+else
+{
+    <span class="nested-underline" style=@Span.Palette.ToColorStyle() data-path=@Span.Path>
+        @foreach (var childSpan in Span.Children)
+        {
+            @if (childSpan is NestedSpanBranch branch)
+            {
+                <NestedSpanRecursive Span=@branch />
+            }
+            else if (childSpan is NestedSpanTerminal terminal)
+            {
+                if (terminal is NestedSpanLeaf leaf)
+                {
+                    <LeafSpan Leaf=@leaf />
+                }
+                else if (terminal is NestedSpanTwig twig)
+                {
+                    @twig.Text
+                }
+
+                @(" ")
+            }
+        }
+    </span>
+}
+
+
+@code {
+
+    [Parameter, EditorRequired]
+    public NestedSpanBranch Span { get; set; } = default!;
+
+    [Parameter]
+    public string AncestorIds { get; set; } = "";
+}

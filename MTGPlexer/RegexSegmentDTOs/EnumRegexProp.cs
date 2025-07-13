@@ -16,12 +16,12 @@ public record EnumRegexProp : RegexPropBase
             throw new ArgumentException($"Type '{captureProp.Name}' isn't an enum");
     }
 
-    protected override void SetRegex(RegexPropInfo captureProp)
+    protected override void SetRegex(RegexPropInfo regexPropInfo)
     {
-        Options = captureProp.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+        Options = regexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
 
         var alternations = GetAlternations();
-        RegexString = $@"(?<{captureProp.Name}>{alternations})";
+        RegexString = $@"(?<{regexPropInfo.Name}>{alternations})";
 
         if (Options.WrapInWordBoundaries)
             RegexString = $@"\b{RegexString}\b";
@@ -38,7 +38,6 @@ public record EnumRegexProp : RegexPropBase
         foreach (var enumValue in enumValues)
         {
             List<string> memberAlternatives = new();
-
             var enumAsString = enumValue.ToString();
             var regexPatternAttribute = RegexPropInfo.UnderlyingType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
@@ -53,7 +52,12 @@ public record EnumRegexProp : RegexPropBase
                 for (int i = 0; i < memberAlternatives.Count; i++)
                     memberAlternatives[i] = memberAlternatives[i].AddOptionalPluralization();
 
-            EnumMemberRegexes[enumValue] = new Regex($@"\b{string.Join('|', memberAlternatives.OrderByDescending(s => s.Length))}\b");
+            var memberRenderedString = $@"{string.Join('|', memberAlternatives.OrderByDescending(s => s.Length))}";
+
+            if (Options.WrapInWordBoundaries)
+                memberRenderedString = $@"\b{memberRenderedString}\b";
+
+            EnumMemberRegexes[enumValue] = new Regex(memberRenderedString);
             allMemberAlternatives.AddRange(memberAlternatives);
         }
 

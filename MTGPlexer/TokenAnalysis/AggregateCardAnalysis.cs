@@ -2,7 +2,8 @@
 
 public class AggregateCardAnalysis
 {
-    public List<AnalyzedCard> AnalyzedCards = new();
+    public List<AnalyzedCard> AnalyzedCards { get; } = new();
+    public List<CardDigest> DigestedCards { get; } = new();
     public Dictionary<TextSpan, UnmatchedSpanOccurrence> UnmatchedSegmentSpans { get; set; } = new(new TextSpanAsStringComparer());
     public Dictionary<Type, int> TokenCaptureCounts { get; set; } = new();
     public int TotalUnmatchedTokens { get; set; }
@@ -10,17 +11,19 @@ public class AggregateCardAnalysis
     public AggregateCardAnalysis(int? maxSetSequence = null, bool ignoreEmptyText = true)
     {
         var cards = DataGetter.GetCards(maxSetSequence, ignoreEmptyText: ignoreEmptyText);
-        var tokenUnitTypes = TokenClassRegistry.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
+        var tokenUnitTypes = TokenTypeRegistry.AppliedOrderTypes.OrderBy(t => t.Name).ToList();
         Analyze(cards);
     }
 
     public void Analyze(List<Card> cards)
     {
-        foreach (var type in TokenClassRegistry.AppliedOrderTypes.OrderBy(x => x.Name))
+        foreach (var type in TokenTypeRegistry.AppliedOrderTypes.OrderBy(x => x.Name))
             TokenCaptureCounts[type] = 0;
 
         foreach (Card card in cards)
         {
+            DigestedCards.Add(new(card));
+
             var analyzedCard = new AnalyzedCard(card);
             analyzedCard.AddAccumulatedCapturedTokenTypeCounts(TokenCaptureCounts);
 

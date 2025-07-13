@@ -9,6 +9,7 @@ public abstract record RegexPropBase : RegexSegmentBase
     public RegexPropInfo RegexPropInfo { get; init; }
     public bool IsBool => RegexPropInfo.RegexPropType == RegexPropType.Bool;
     public bool IsChildTokenUnit => RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
+    public bool IsChildTokenUnitOneOf => RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
     
     public RegexPropBase(RegexPropInfo captureProp)
     {
@@ -31,7 +32,49 @@ public abstract record RegexPropBase : RegexSegmentBase
         Regex = new Regex(RegexString);
     }
 
-    public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
+    //public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
+    //{
+    //    if (IsChildTokenUnitOneOf)
+    //    {
+    //        var oneOfPropInstance = Activator.CreateInstance(RegexPropInfo.UnderlyingType);
+    //        var tokenProps = oneOfPropInstance.GetType().GetPublicDeclaredProps();
+    //
+    //        foreach (var tokenProp in tokenProps)
+    //        {
+    //            var alternateInstanceVal = (TokenUnit)Activator.CreateInstance(tokenProp.PropertyType);
+    //            var setAlternateSuccessfully = SetScalarPropValue(alternateInstanceVal, matchSpan);
+    //            if (setAlternateSuccessfully)
+    //            {
+    //                tokenProp.SetValue(parentToken, alternateInstanceVal);
+    //                return true;
+    //            }
+    //        }
+    //
+    //        // Short circuits on first matching alternative
+    //        if (!tokenProps.Any(x =>
+    //        {
+    //            var alternateInstanceVal = (TokenUnit)Activator.CreateInstance(x.PropertyType);
+    //            var setAlternateSuccessfully = SetScalarPropValue(alternateInstanceVal, matchSpan);
+    //            if (setAlternateSuccessfully)
+    //            {
+    //                x.SetValue(parentToken, alternateInstanceVal);
+    //                return true;
+    //            }
+    //
+    //            return false;
+    //        })) throw new Exception("At least one match must be found for TokenUnitOneOf");
+    //
+    //        return true;
+    //    }
+    //
+    //    else if (IsChildTokenUnit)
+    //        return SetChildTokenUnitValue(parentToken, matchSpan);
+    //
+    //    else
+    //        return SetScalarPropValue(parentToken, matchSpan);       
+    //}
+
+    public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
         if (IsChildTokenUnit)
             return SetChildTokenUnitValue(parentToken, matchSpan);
@@ -39,11 +82,9 @@ public abstract record RegexPropBase : RegexSegmentBase
             return SetScalarPropValue(parentToken, matchSpan);       
     }
 
+
     public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
     {
-        if (IsChildTokenUnit)
-            throw new InvalidOperationException($"Can't set scalar prop value on TokenUnit");
-
         var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
 
         if (subMatchSpan is null)
@@ -58,16 +99,13 @@ public abstract record RegexPropBase : RegexSegmentBase
         };
 
         RegexPropInfo.Prop.SetValue(parentToken, valueToSet);
-        parentToken.PropMatches[RegexPropInfo] = subMatchSpan.Value;
+        parentToken.AddPropertyCapture(RegexPropInfo, subMatchSpan.Value, valueToSet);
 
         return true;
     }
 
     public bool SetChildTokenUnitValue(TokenUnit parentToken, TextSpan matchSpan)
     {
-        if (!IsChildTokenUnit)
-            throw new InvalidOperationException($"TokenUnit values can only be set on TokenUnit types");
-
         var subMatchSpan = GetPropTypeSubMatch(matchSpan);
 
         if (subMatchSpan is null)
@@ -79,17 +117,17 @@ public abstract record RegexPropBase : RegexSegmentBase
             throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
 
         RegexPropInfo.Prop.SetValue(parentToken, propInstance);
-        parentToken.PropMatches[RegexPropInfo] = subMatchSpan.Value;
+        parentToken.AddPropertyCapture(RegexPropInfo, subMatchSpan.Value, propInstance);
         parentToken.ChildTokens.Add(propInstance);
         return true;
     }
 
     object GetEnumMatchValue(string matchString)
     {
-        if (!TokenClassRegistry.EnumRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
-            throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenClassRegistry)}");
+        if (!TokenTypeRegistry.EnumRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
+            throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenTypeRegistry)}");
 
-        foreach (var enumMemberRegex in TokenClassRegistry.EnumRegexes[RegexPropInfo.UnderlyingType])
+        foreach (var enumMemberRegex in TokenTypeRegistry.EnumRegexes[RegexPropInfo.UnderlyingType])
             if (enumMemberRegex.Value.IsMatch(matchString))
                 return enumMemberRegex.Key;
 
@@ -99,7 +137,7 @@ public abstract record RegexPropBase : RegexSegmentBase
     TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
-        var regex = TokenClassRegistry.TokenTemplates[parentToken.GetType()].RenderedRegexString;
+        var regex = TokenTypeRegistry.TokenTemplates[parentToken.GetType()].RenderedRegexString;
         var match = Regex.Match(matchText, regex);
         var matchPropGroup = match.Groups[RegexPropInfo.Name];
 
@@ -113,7 +151,7 @@ public abstract record RegexPropBase : RegexSegmentBase
 
     TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
     {
-        var regex = TokenClassRegistry.TokenTemplates[RegexPropInfo.UnderlyingType].Regex;
+        var regex = TokenTypeRegistry.TokenTemplates[RegexPropInfo.UnderlyingType].Regex;
         var match = regex.Match(matchSpanToCheck.ToStringValue());
         return GetTextSubSpan(matchSpanToCheck, match);
     }
@@ -137,6 +175,7 @@ public enum RegexPropType
     Placeholder,
     Bool,
     DistilledValue,
-    TokenUnit
+    TokenUnit,
+    TokenUnitOneOf
 }
 

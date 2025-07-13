@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.Static;
 
-public static partial class TokenClassRegistry
+public static partial class TokenTypeRegistry
 {
     static void InitializeTokenizer()
     {
@@ -37,9 +37,9 @@ public static partial class TokenClassRegistry
         Tokenizer = tokenizerBuilder.Build();
     }
 
-    public static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
+    static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
-        if (AppliedOrderTypes.Contains(tokenCaptureType))
+        if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
         tokenizerBuilder.Match(Span.Regex(TokenTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);

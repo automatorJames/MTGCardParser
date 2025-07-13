@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.BaseClasses;
+﻿using System.Numerics;
+
+namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {
@@ -29,20 +31,20 @@ public abstract class TokenUnit
     }
 
     public TokenUnit ParentToken { get; set; }
-    public List<TokenUnit> ChildTokens { get; set; } = new();
+    public List<TokenUnit> ChildTokens { get; set; } = [];
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
-    public Dictionary<RegexPropInfo, TextSpan> PropMatches { get; set; } = new(new CapturePropComparer());
+    //public List<PropCapture> PropCaptures { get; set; } = [];
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
     /// This is the preferred way to iterate over captures for rendering or processing.
     /// </summary>
-    public List<IndexedPropertyCapture> OrderedPropCaptures { get; private set; } = [];
+    public List<IndexedPropertyCapture> IndexedPropertyCaptures { get; set; } = [];
 
-    protected TokenUnit(params object[] templateSnippets)
+    protected TokenUnit(params string[] templateSnippets)
     {
-        if (templateSnippets.Length == 0 && !TokenClassRegistry.TokenTemplates.ContainsKey(Type))
+        if (templateSnippets.Length == 0 && !TokenTypeRegistry.TokenTemplates.ContainsKey(Type))
         {
             // If children pass no arguments or call the default parameterless base constructor,
             // we assume they want to construct snippets from their ordered properties.
@@ -55,8 +57,8 @@ public abstract class TokenUnit
 
         // Always check the static registry first, since constructing the template is somewhat heavy
         // (not much, but it adds up over all instantiations across large bodies of text)
-        if (TokenClassRegistry.TokenTemplates.ContainsKey(Type))
-            Template = TokenClassRegistry.TokenTemplates[Type];
+        if (TokenTypeRegistry.TokenTemplates.ContainsKey(Type))
+            Template = TokenTypeRegistry.TokenTemplates[Type];
         else
             Template = new(Type, templateSnippets);
     }
@@ -68,9 +70,13 @@ public abstract class TokenUnit
 
         var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
         tokenInstance.ParentToken = parentToken;
-        tokenInstance.RecursiveDepth = parentToken is null ? 0 : parentToken.RecursiveDepth + 1;
         tokenInstance.MatchSpan = matchSpan;
         tokenInstance.SetPropertiesFromMatch();
+
+        tokenInstance.RecursiveDepth = 
+            parentToken is null ? 0 
+            : parentToken is TokenUnitOneOf ? parentToken.RecursiveDepth
+            : parentToken.RecursiveDepth + 1;
 
         return tokenInstance;
     }
@@ -78,18 +84,6 @@ public abstract class TokenUnit
     public virtual void SetPropertiesFromMatch()
     {
         Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
-
-        foreach (var alternativeCaptureSet in Template.AlternativePropCaptureSets)
-            if (!alternativeCaptureSet.Alternatives.Any(x => x.SetValueFromMatchSpan(this, MatchSpan)))
-                throw new Exception($"Match string '{MatchSpan.ToStringValue()}' was passed to an alternative set, but no alternative was matched");
-
-        // After PropMatches is fully populated, create the ordered and indexed list one time.
-        var propMatchesAsList = PropMatches.ToList(); // Create a stable list to get an index.
-
-        OrderedPropCaptures = propMatchesAsList
-            .Select((kvp, index) => new IndexedPropertyCapture(kvp.Key, kvp.Value, index))
-            .OrderBy(capture => capture.Span.Position.Absolute)
-            .ToList();
     }
 
     Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
@@ -115,7 +109,7 @@ public abstract class TokenUnit
         IEnumerable<TokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;
         var deepestDepth = 0;
 
-        while (childrenAtCurrentRecursiveLevel.Any())
+        while (childrenAtCurrentRecursiveLevel.Any(x => x is not TokenUnitOneOf))
         {
             deepestDepth++;
             childrenAtCurrentRecursiveLevel = childrenAtCurrentRecursiveLevel.SelectMany(x => x.ChildTokens);
@@ -123,6 +117,35 @@ public abstract class TokenUnit
 
         return deepestDepth;
     }
+
+    public void AddPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)
+    {
+        var capturePosition = IndexedPropertyCaptures.Count;
+        IndexedPropertyCaptures.Add(new(regexPropInfo, textSpan, propVal, capturePosition));
+    }
+
+    /// <summary>
+    /// Only intended to be called by TokenClassRegistry upon startup. May be overridden by
+    /// inheriting abstract classes who want to specify their own validation requirements.
+    /// </summary>
+    public virtual bool ValidateStructure()
+    {
+        if (string.IsNullOrEmpty(Template.RenderedRegexString))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Called after hydration to ensure the token conforms to expected data requirements.
+    /// May be overridden by inheriting abstract classes who want to specify their own validation 
+    /// requirements, and may be overriden by concrete classes for type-specific requirements.
+    /// </summary>
+    public virtual bool ValidateHydratedToken()
+    {
+        return true;
+    }
+
 
     public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
 }
