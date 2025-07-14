@@ -22,7 +22,6 @@ public record NestedSpanBranch : NestedSpan
 
     List<NestedSpan> DigestChildren(TokenUnit token)
     {
-        //if (token.MatchSpan.ToStringValue() == "enchant creature") Debugger.Break();
 
 
         var parentSpan = token.MatchSpan;
@@ -46,10 +45,14 @@ public record NestedSpanBranch : NestedSpan
             if (indexedProp.Start > cursor)
             {
                 var snippetStart = cursor - parentSpan.Position.Absolute;
-                var snippetLength = indexedProp.Start - cursor - 1; // minus 1 to account for space
+                var snippetLength = indexedProp.Start - cursor;
                 var precedingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
-                children.Add(new NestedSpanTwig(token, Path, NestedDepth, precedingText));
-                cursor += precedingText.Length + 1; // + 1 to account for trailing space
+
+                if (precedingText != " ")
+                    children.Add(new NestedSpanTwig(token, Path, NestedDepth, precedingText.TrimStart()));
+
+                //cursor += precedingText.Length + 1; // + 1 to account for trailing space
+                cursor += precedingText.Length; // + 1 to account for trailing space
             }
 
             // Child TokenUnits get digested recursively
@@ -65,12 +68,13 @@ public record NestedSpanBranch : NestedSpan
             {
                 var leaf = new NestedSpanLeaf(indexedProp, Path.Dot(indexedProp.RegexPropInfo.Name), NestedDepth);
                 children.Add(leaf);
-                cursor += indexedProp.Length + 1; // + 1 to account for trailing space
+                cursor += indexedProp.Length;
+                //cursor += indexedProp.Length + 1; // + 1 to account for trailing space
             }
 
-            // If cursor isn't at the end of the parent span, advance it one (space between words)
-            if (cursor < parentSpanEnd)
-                cursor++;
+            //// If cursor isn't at the end of the parent span, advance it one (space between words)
+            //if (cursor < parentSpanEnd)
+            //    cursor++;
         }
 
         // Create a final TextUnit for any trailing text after the last child.
@@ -82,6 +86,9 @@ public record NestedSpanBranch : NestedSpan
             children.Add(new NestedSpanTwig(token, Path, NestedDepth, followingText));
         }
 
+        if (token.MatchSpan.ToStringValue() == "({t}: add {b} or {r}.)") Debugger.Break();
         return children;
     }
+
+    public override string ToString() => TokenSpan.ToStringValue();
 }

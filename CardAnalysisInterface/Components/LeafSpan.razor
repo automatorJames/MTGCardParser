@@ -4,6 +4,7 @@ data-path=@Leaf.Path>
     @Leaf.Text
 </span>
 
+
 @code {
 
     NestedSpanTwig _terminalAsTwig;
@@ -12,7 +13,7 @@ data-path=@Leaf.Path>
     [Parameter, EditorRequired]
     public NestedSpanLeaf Leaf { get; set; } = default!;
 
-    string GetClass() => $"prop-capture-inline{(Leaf.PropertyCapture.IsComplex ? " complex" : "")};";
+    string GetClass() => $"prop-capture-inline leaf{(Leaf.PropertyCapture.IsComplex ? " complex" : "")}";
 
     //string GetStyle(PropertyCaptureTokenLeafPart propCapturePart)
     //{

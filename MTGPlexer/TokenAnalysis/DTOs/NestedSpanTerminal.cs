@@ -7,7 +7,4 @@ public abstract record NestedSpanTerminal
     string Text,
     DeterministicPalette Palette
 ) 
-: NestedSpan(Path, NestedDepth, Palette)
-{
-    //public bool IgnoreInAnalysis { get; } = Token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() is not null;
-}
+: NestedSpan(Path, NestedDepth, Palette);

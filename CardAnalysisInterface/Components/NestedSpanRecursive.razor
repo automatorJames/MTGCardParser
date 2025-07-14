@@ -1,12 +1,16 @@
 ﻿@if (Span.IgnoreInAnalysis)
 {
-    @Span.TokenSpan.ToStringValue()
+    <span class="analysis-ignored-span">
+        @Span.TokenSpan.ToStringValue()
+    </span>
 }
 else
 {
     <span class="nested-underline" style=@Span.Palette.ToColorStyle() data-path=@Span.Path>
-        @foreach (var childSpan in Span.Children)
+        @for (int i = 0; i < Span.Children.Count; i++)
         {
+            var childSpan = Span.Children[i];
+
             @if (childSpan is NestedSpanBranch branch)
             {
                 <NestedSpanRecursive Span=@branch />
@@ -19,14 +23,16 @@ else
                 }
                 else if (terminal is NestedSpanTwig twig)
                 {
-                    @twig.Text
+                    <span class="twig">
+                        @twig.Text
+                    </span>
                 }
-
-                @(" ")
             }
+
         }
     </span>
 }
+@(" ")
 
 
 @code {

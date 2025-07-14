@@ -8,7 +8,5 @@ public record NestedSpanLeaf
 ) 
 : NestedSpanTerminal(Path, NestedDepth, PropertyCapture.Span.ToStringValue(), PropertyCapture.Palette)
 {
-    //public bool IsComplex { get; } = Token is TokenUnitComplex;
-
     public override string ToString() => PropertyCapture.Span.ToStringValue();
 }
