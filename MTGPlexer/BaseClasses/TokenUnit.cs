@@ -34,7 +34,6 @@ public abstract class TokenUnit
     public List<TokenUnit> ChildTokens { get; set; } = [];
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
-    //public List<PropCapture> PropCaptures { get; set; } = [];
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.

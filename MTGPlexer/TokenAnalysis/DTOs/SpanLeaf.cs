@@ -1,12 +1,12 @@
 ﻿namespace MTGPlexer.TokenAnalysis.DTOs;
 
-public record NestedSpanLeaf
+public record SpanLeaf
 (
     IndexedPropertyCapture PropertyCapture,
     string Path,
     int NestedDepth
 ) 
-: NestedSpanTerminal(Path, NestedDepth, PropertyCapture.Span.ToStringValue().Trim(), PropertyCapture.Palette)
+: SpanTerminal(Path, NestedDepth, PropertyCapture.Span.ToStringValue().Trim(), PropertyCapture.Palette, PropertyCapture.IgnoreInAnalysis)
 {
     public override string ToString() => PropertyCapture.Span.ToStringValue();
 }

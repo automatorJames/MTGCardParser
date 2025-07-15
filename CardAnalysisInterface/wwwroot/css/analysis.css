@@ -80,7 +80,7 @@ pre {
     border-radius: 4px;
     border: 1px solid #444;
     white-space: pre-wrap;
-    word-break: break-all;
+    word-wrap: break-word;
     cursor: copy;
 }
 
@@ -155,8 +155,17 @@ pre span span {
 
 /* 2) “Sibling” spans (any span immediately following another): */
 /*    give any <span> that comes right after a sibling span a left‑margin */
-pre span + span {
+pre span + span,
+pre followingtext + span,
+pre span + precedingtext {
     margin-left: 0.5em;
+}
+/*
+  The Fix: Target a span that immediately follows a sibling span
+  which HAS a <br> tag somewhere inside it.
+*/
+pre span:has(br) + span {
+    margin-left: 0;
 }
 
 .prop-capture-table-cell {

@@ -1,5 +1,4 @@
-﻿@page "/type-key"
-@inject AggregateCardAnalysis Analysis
+﻿@* @page "/type-key"
 
 <h1>Token Type Key & Regex Analysis</h1>
 
@@ -12,3 +11,4 @@
               ColorHex=@(TokenTypeRegistry.TypeColorPalettes[type].Hex)
               RenderedRegex=@TokenTypeRegistry.TokenTemplates[type].RenderedRegexString />
 }
+ *@

@@ -10,7 +10,22 @@
             <pre class="line-text">
                 @foreach (var root in line.SpanRoots)
                 {
+                    @if (root.AttachedPrecedingText != null)
+                    {
+                        <precedingtext>@root.AttachedPrecedingText</precedingtext>
+                    }
+
                     <NestedSpanRecursive Span=@root />
+
+                    @if (root.AttachedFollowingText != null)
+                    {
+                        <followingtext>@root.AttachedFollowingText</followingtext>
+
+                        if (_terminals.Contains(root.AttachedFollowingText))
+                        {
+                            <br />
+                        }
+                    }
                 }
             </pre>
 
@@ -26,5 +41,7 @@
 
     [Parameter]
     public CardDigest CardDigest { get; set; }
+
+    static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 
 }

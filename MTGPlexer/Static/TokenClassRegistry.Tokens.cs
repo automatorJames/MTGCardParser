@@ -18,7 +18,8 @@ public static partial class TokenTypeRegistry
             .Match(typeof(IfYouDo))
             .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
-            .Match(typeof(Punctuation))
+            .Match(typeof(PunctuationTerminal))
+            .Match(typeof(PunctuationEnclosing))
             .Match(typeof(ManaValue))
             .Match(typeof(Parenthetical));
 

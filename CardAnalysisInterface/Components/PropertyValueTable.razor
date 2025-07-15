@@ -43,13 +43,13 @@
 
 @code {
     [Parameter, EditorRequired]
-    public NestedSpanBranch Span { get; set; } = default!;
+    public SpanBranch Span { get; set; } = default!;
 
     string GetWrapperCss()
     {
         var css = "property-table-wrapper";
 
-        if (Span is NestedSpanRoot)
+        if (Span is SpanRoot)
             css += " match-boundary";
 
         return css;

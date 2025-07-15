@@ -4,9 +4,6 @@
 /// Represents a property capture from a token, enriched with a stable index
 /// for consistent processing (e.g., coloring) and ordered by position.
 /// </summary>
-/// <param name="Property">The metadata for the captured property.</param>
-/// <param name="Span">The text span of the capture.</param>
-/// <param name="Position">A stable, zero-based index of this capture within its parent token's original list of properties.</param>
 public record IndexedPropertyCapture
 {
     public RegexPropInfo RegexPropInfo { get; }
@@ -20,6 +17,7 @@ public record IndexedPropertyCapture
     public object Value { get; }
     public int CapturePosition { get; }
     public DeterministicPalette Palette { get; }
+    public bool IgnoreInAnalysis { get; }
 
     public IndexedPropertyCapture(RegexPropInfo regexPropInfo, TextSpan span, object value, int capturePosition)
     {
@@ -33,6 +31,8 @@ public record IndexedPropertyCapture
         Value = value;
         CapturePosition = capturePosition;
         Palette = new(CapturePosition);
+        IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
+
         // todo: have to handle TokenUnitOneOfTypes with special logic
     }
 

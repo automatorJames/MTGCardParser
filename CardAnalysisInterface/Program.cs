@@ -1,5 +1,3 @@
-using MTGPlexer.TokenAnalysis;
-
 namespace CardAnalysisInterface;
 public class Program
 {
@@ -11,7 +9,7 @@ public class Program
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
 
-        builder.Services.AddSingleton(new AggregateCardAnalysis(1));
+        builder.Services.AddSingleton(new CardDigester(1));
 
         var app = builder.Build();
 

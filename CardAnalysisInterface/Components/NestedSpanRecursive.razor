@@ -1,43 +1,39 @@
-﻿@if (Span.IgnoreInAnalysis)
-{
-    <span class="analysis-ignored-span">
-        @Span.TokenSpan.ToStringValue()
-    </span>
-}
-else
-{
-    <span class="nested-underline" style=@Span.Palette.ToColorStyle() data-path=@Span.Path>
-        @for (int i = 0; i < Span.Children.Count; i++)
-        {
-            var childSpan = Span.Children[i];
+﻿<span class=@_class style=@_style data-path=@_dataPath>
+    @for (int i = 0; i < Span.Children.Count; i++)
+    {
+        var childSpan = Span.Children[i];
 
-            @if (childSpan is NestedSpanBranch branch)
+        @if (childSpan is SpanBranch branch)
+        {
+            <NestedSpanRecursive Span=@branch />
+        }
+        else if (childSpan is SpanTerminal terminal)
+        {
+            if (terminal is SpanLeaf leaf)
             {
-                <NestedSpanRecursive Span=@branch />
+                <LeafSpan Leaf=@leaf />
             }
-            else if (childSpan is NestedSpanTerminal terminal)
+            else if (terminal is SpanTwig twig)
             {
-                if (terminal is NestedSpanLeaf leaf)
-                {
-                    <LeafSpan Leaf=@leaf />
-                }
-                else if (terminal is NestedSpanTwig twig)
-                {
-                    <span class="twig">
-                        @twig.Text
-                    </span>
-                }
+                <span class=@_twigClass>
+                    @twig.Text
+                </span>
             }
         }
-    </span>
-}
+    }
+</span>
 
 
 @code {
 
     [Parameter, EditorRequired]
-    public NestedSpanBranch Span { get; set; } = default!;
+    public SpanBranch Span { get; set; } = default!;
 
     [Parameter]
     public string AncestorIds { get; set; } = "";
+
+    string _class => Span.IgnoreInAnalysis ? "analysis-ignored-span" : "nested-underline";
+    string _twigClass => Span.IgnoreInAnalysis ? "" : "twig";
+    string _style => Span.IgnoreInAnalysis ? "" : Span.Palette.ToColorStyle();
+    string _dataPath => Span.IgnoreInAnalysis ? "" : Span.Path;
 }

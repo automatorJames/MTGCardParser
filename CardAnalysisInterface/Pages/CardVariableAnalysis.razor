@@ -1,13 +1,13 @@
 ﻿@page "/"
 @page "/variable-analysis"
-@inject AggregateCardAnalysis Analysis
 @inject IJSRuntime JSRuntime
+@inject CardDigester CardDigester
 
 <body class="page-variable-capture">
     <h1>Card Variable Capture</h1>
 
     <div id="main-content">
-        @foreach (var cardDigest in Analysis.DigestedCards)
+        @foreach (var cardDigest in CardDigester.DigestedCards)
         {
             <CardVariableBlock CardDigest=cardDigest />
         }

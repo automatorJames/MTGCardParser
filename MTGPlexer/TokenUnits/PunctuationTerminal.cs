@@ -1,8 +1,9 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[FollowsToken]
 [IgnoreInAnalysis]
 [Color("#999999")]
-public class Punctuation : TokenUnit
+public class PunctuationTerminal : TokenUnit
 {
     public PunctuationCharacter PunctuationCharacter { get; set; }
 }
@@ -15,9 +16,6 @@ public enum PunctuationCharacter
 
     [RegexPattern(@",")]
     Comma,
-
-    [RegexPattern(@"""")]
-    Quote,
 
     [RegexPattern(@";")]
     Semicolon

@@ -1,21 +1,20 @@
-﻿<span class=@GetClass()
-style=@Leaf.Palette.ToColorStyle()
-data-path=@Leaf.Path>
+﻿<span class=@_class
+style=@_style
+data-path=@_dataPath>
     @Leaf.Text
 </span>
 
 
 @code {
 
-    NestedSpanTwig _terminalAsTwig;
-    NestedSpanLeaf _terminalAsLeaf;
-
     [Parameter, EditorRequired]
-    public NestedSpanLeaf Leaf { get; set; } = default!;
+    public SpanLeaf Leaf { get; set; } = default!;
 
-    string GetClass() => $"prop-capture-inline leaf{(Leaf.PropertyCapture.IsComplex ? " complex" : "")}";
+    string _class => Leaf.IgnoreInAnalysis ? "" : $"prop-capture-inline leaf{(Leaf.PropertyCapture.IsComplex ? " complex" : "")}";
+    string _style => Leaf.IgnoreInAnalysis ? "" : Leaf.Palette.ToColorStyle();
+    string _dataPath => Leaf.IgnoreInAnalysis ? "" : Leaf.Path;
 
-    //string GetStyle(PropertyCaptureTokenLeafPart propCapturePart)
+    //string getstyle(propertyCaptureTokenLeafPart propCapturePart)
     //{
     //    var style = propCapturePart.Palette.ToColorStyle();
     //
