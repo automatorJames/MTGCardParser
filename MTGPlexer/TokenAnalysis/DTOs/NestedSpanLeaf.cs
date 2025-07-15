@@ -6,7 +6,7 @@ public record NestedSpanLeaf
     string Path,
     int NestedDepth
 ) 
-: NestedSpanTerminal(Path, NestedDepth, PropertyCapture.Span.ToStringValue(), PropertyCapture.Palette)
+: NestedSpanTerminal(Path, NestedDepth, PropertyCapture.Span.ToStringValue().Trim(), PropertyCapture.Palette)
 {
     public override string ToString() => PropertyCapture.Span.ToStringValue();
 }

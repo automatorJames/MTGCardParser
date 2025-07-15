@@ -22,15 +22,13 @@ public record NestedSpanBranch : NestedSpan
 
     List<NestedSpan> DigestChildren(TokenUnit token)
     {
-
-
         var parentSpan = token.MatchSpan;
         var parentSpanEnd = parentSpan.Position.Absolute + parentSpan.Length;
 
         // If there are no children, this is a leaf node.
         // We treat its entire content as a single TextUnit.
         if (!token.IndexedPropertyCaptures.Any())
-            return [new NestedSpanTwig(token, Path, NestedDepth, token.MatchSpan.ToStringValue())];
+            return [new NestedSpanTwig(token, Path, NestedDepth, token.MatchSpan.ToStringValue().Trim())];
 
         // If there are children, dissect the parent's text.
         List<NestedSpan> children = [];
@@ -49,7 +47,7 @@ public record NestedSpanBranch : NestedSpan
                 var precedingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
 
                 if (precedingText != " ")
-                    children.Add(new NestedSpanTwig(token, Path, NestedDepth, precedingText.TrimStart()));
+                    children.Add(new NestedSpanTwig(token, Path, NestedDepth, precedingText.Trim()));
 
                 //cursor += precedingText.Length + 1; // + 1 to account for trailing space
                 cursor += precedingText.Length; // + 1 to account for trailing space
@@ -82,11 +80,11 @@ public record NestedSpanBranch : NestedSpan
         {
             var snippetStart = cursor - parentSpan.Position.Absolute;
             var snippetLength = parentSpanEnd - cursor;
-            var followingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+            var followingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength).Trim();
             children.Add(new NestedSpanTwig(token, Path, NestedDepth, followingText));
         }
 
-        if (token.MatchSpan.ToStringValue() == "({t}: add {b} or {r}.)") Debugger.Break();
+        //if (token.MatchSpan.ToStringValue().Contains("you may pay {w}{w}")) Debugger.Break();
         return children;
     }
 
