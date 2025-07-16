@@ -32,7 +32,7 @@ else
                                     @leaf.PropertyCapture.RegexPropInfo.FriendlyPropName
                                 </td>
 
-                                <td class="@GetPropertyTypeCss(leaf.PropertyCapture.RegexPropInfo)" style="color:grey; font-style: italic">
+                                <td style="color:grey; font-style: italic">
                                     @leaf.PropertyCapture.RegexPropInfo.FriendlyTypeName
                                 </td>
                                 <td>@leaf.PropertyCapture.Value.ToString()</td>
@@ -65,22 +65,5 @@ else
             css += " match-boundary";
 
         return css;
-    }
-
-    string GetPropertyTypeCss(RegexPropInfo regexPropInfo)
-    {
-        var defaultVal = "value-default";
-
-        if (regexPropInfo.UndistilledProp != null)
-            return defaultVal;
-
-        var capturePropType = regexPropInfo.RegexPropType;
-
-        return regexPropInfo.RegexPropType switch
-        {
-            RegexPropType.Placeholder => "value-tokensegment",
-            RegexPropType.Enum => "value-enum",
-            _ => defaultVal
-        };
     }
 }
