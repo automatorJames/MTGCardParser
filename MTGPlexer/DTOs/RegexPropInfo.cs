@@ -15,19 +15,9 @@ public record RegexPropInfo
     public PropertyInfo UndistilledProp { get; }
     public string FriendlyTypeName { get; }
     public string FriendlyPropName { get; }
-    //public string UndistilledNameOrName => UndistilledProp?.Name ?? Name;
-    //public string UndistilledNameOrNameFriendly => UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence);
 
     public RegexPropInfo(PropertyInfo prop)
     {
-        //// If this prop is distilled from another one, get the other one
-        //var distilledValAttribute = prop.GetCustomAttribute<DistilledValueAttribute>();
-        //if (distilledValAttribute != null)
-        //{
-        //    prop = distilledValAttribute.GetDistilledFromProp(prop);
-        //    UndistilledProp = prop;
-        //}
-
         Prop = prop;
         RegexPropType = GetCapturePropType(prop);
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
@@ -60,10 +50,17 @@ public record RegexPropInfo
     string GetFriendlyTypeName(Type type)
     {
         bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
-        if (type.IsEnum || isNullableEnum) return "Enum";
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return $"{type.GetGenericArguments()[0].Name}?";
-        if (type.IsAssignableTo(typeof(TokenUnit))) return "Token Unit";
-        return type.Name;
+
+        if (type.IsEnum || isNullableEnum)
+            return "enumerable";
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            return $"{type.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
+
+        if (type == typeof(int))
+            return "integer";
+
+        return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
 }
