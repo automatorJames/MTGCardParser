@@ -19,6 +19,12 @@ h1, h2, h3, h4, h5 {
     padding-bottom: 8px;
 }
 
+cardname {
+    color: #96aabb;
+    font-weight: 500;
+    font-size: 28px;
+}
+
 h5 {
     font-size: 1.15rem;
 }

@@ -45,16 +45,8 @@ public record DeterministicPalette
     void SetFromSeed(string seed)
     {
         int hash = GetDeterministicHash(seed);
-
-        // --- FIX ---
-        // Treat the signed hash as a full-range unsigned integer.
         uint unsignedHash = (uint)hash;
-
-        // Divide by the maximum possible value to map it to the [0, 1] range.
-        // This provides a far more uniform distribution of hues than the modulo operator.
         double hue = unsignedHash / (double)uint.MaxValue;
-        // --- END FIX ---
-
         Hex = HslToHex(hue, BaseSaturation, BaseLightness);
         SetLightDarkFromHue(hue);
     }

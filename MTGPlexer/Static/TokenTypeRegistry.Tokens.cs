@@ -18,10 +18,10 @@ public static partial class TokenTypeRegistry
             .Match(typeof(IfYouDo))
             .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
-            .Match(typeof(PunctuationTerminal))
-            .Match(typeof(PunctuationEnclosing))
+            .Match(typeof(Parenthetical))
             .Match(typeof(ManaValue))
-            .Match(typeof(Parenthetical));
+            .Match(typeof(PunctuationTerminal))
+            .Match(typeof(PunctuationEnclosing));
 
         var remainingLengthOrderedTypeRegexItems = Templates
             .Where(x => !AppliedOrderTypes.Contains(x.Key))
