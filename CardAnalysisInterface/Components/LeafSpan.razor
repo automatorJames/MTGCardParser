@@ -10,7 +10,7 @@ data-path=@_dataPath>
     [Parameter, EditorRequired]
     public SpanLeaf Leaf { get; set; } = default!;
 
-    string _class => Leaf.IgnoreInAnalysis ? "" : $"prop-capture-inline leaf{(Leaf.PropertyCapture.IsComplex ? " complex" : "")}";
+    string _class => Leaf.IgnoreInAnalysis ? "" : $"prop-capture-inline leaf{(Leaf.PropertyCapture.IsDistilled ? " complex" : "")}";
     string _style => Leaf.IgnoreInAnalysis ? "" : Leaf.Palette.ToColorStyle();
     string _dataPath => Leaf.IgnoreInAnalysis ? "" : Leaf.Path;
 

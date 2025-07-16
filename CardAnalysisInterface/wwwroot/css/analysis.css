@@ -31,9 +31,9 @@ h4 {
 }
 
 table {
-    width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
+    margin-bottom: 20px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.4);
 }
 
@@ -117,11 +117,11 @@ code {
     }
 
 .line-label {
-    font-size: 0.9em;
+    font-size: 0.8em;
     color: #888;
     margin-top: 2rem;
-    margin-bottom: 0.5rem;
-    border-bottom: 1px dashed #444;
+    margin-bottom: 0rem;
+    border-bottom: none;
 }
 
 pre.full-original-text {
@@ -133,7 +133,7 @@ pre.line-text {
     color: #aaa; /* darker gray for non-span text */
     padding: 1rem;
     cursor: default;
-    line-height: 3em;
+    line-height: 4em;
     margin-bottom: 1rem;
 }
 
@@ -226,72 +226,18 @@ pre span:has(br) + span {
     padding-left: 12px;
 }
 
-/*
- * By default, the top-level wrapper inside the details block has no special styling.
- * This is our Level 1 "root".
- */
-.effect-details-block > .property-table-wrapper {
-    /* No border, no padding, no extra margin */
+.property-capture-table th, .property-capture-table td {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    border: none;
+    border-bottom: 1px solid #444;
+    cursor: default;
+    min-width: 225px;
 }
 
-/*
- * 3. MODIFY the recursive wrapper rule. Its job is now ONLY to provide
- *    the indentation space for the next level's "L" bracket.
- */
-.property-table-wrapper > .property-table-wrapper {
-    /* The border is now drawn by the .content-box, so we remove it from here */
-    padding-left: 20px;
-    margin-top: 15px;
-}
-
-
-/* --- HOVER STATES AND OTHER STYLES --- */
-
-.effect-details-block {
-    margin-left: 2rem;
-    border-radius: 4px;
-    padding-top: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-    .effect-details-block > h4 {
-        padding-left: 8px;
-    }
-
-    .effect-details-block table {
-        width: auto;
-        min-width: 600px;
-        margin-top: 10px;
-        border: 1px solid #444;
-    }
-
-    .effect-details-block th, .effect-details-block td {
-        padding: 6px 12px;
-        font-size: 0.9em;
-        border: none;
-        border-bottom: 1px solid #444;
-        cursor: default;
-    }
-
-    .effect-details-block tr:last-child td {
-        border-bottom: none;
-    }
-
-.value-default {
-    color: #b5cea8;
-}
-
-.value-enum {
-    color: #c586c0;
-}
-
-.value-tokensegment {
-    color: #ce9178;
-}
-
-.value-empty {
-    color: #808080;
-    font-style: italic;
+.property-capture-table th,
+.property-capture-table td {
+    
 }
 
 

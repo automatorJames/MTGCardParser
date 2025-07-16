@@ -16,4 +16,6 @@ public record SpanRoot: SpanBranch
             .GetCustomAttribute<TokenPlacementAttribute>()?.Placement
             ?? TokenPlacement.Independent;
     }
+
+    public override string ToString() => base.Text;
 }

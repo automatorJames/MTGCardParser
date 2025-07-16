@@ -6,7 +6,9 @@ public record SpanBranch : NestedSpan
     public List<NestedSpan> Children { get; }
     public List<SpanBranch> Branches { get; }
     public List<SpanLeaf> Leaves { get; }
+    public List<SpanLeaf> LeavesOrDistilled { get; private set; } = [];
     public TextSpan TokenSpan { get; }
+    public bool CollapseInAnalysis { get; }
     public string Text => TokenSpan.ToStringValue().Trim();
 
     public SpanBranch(TokenUnit token, string parentPath, int parentDepth) 
@@ -16,7 +18,9 @@ public record SpanBranch : NestedSpan
         Children = DigestChildren(token);
         Branches = Children.OfType<SpanBranch>().ToList();
         Leaves = Children.OfType<SpanLeaf>().ToList();
+        SetLeavesOrDistilled(token);
         TokenSpan = token.MatchSpan;
+        CollapseInAnalysis = token is TokenUnitOneOf;
     }
 
     List<NestedSpan> DigestChildren(TokenUnit token)
@@ -80,6 +84,31 @@ public record SpanBranch : NestedSpan
 
         //if (token.MatchSpan.ToStringValue() == "({t}: add {b} or {r}.)") Debugger.Break();
         return children;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    void SetLeavesOrDistilled(TokenUnit token)
+    {
+        if (token is TokenUnitDistilled tokenUnitDistilled)
+        {
+            List<SpanLeaf> distilledLeaves = [];
+            foreach (var leaf in Leaves)
+            {
+                var distilledPropVals = tokenUnitDistilled.DistilledValues[leaf.PropertyCapture.RegexPropInfo.Prop];
+
+                foreach (var propVal in distilledPropVals)
+                {
+                    var newRegexPropInfo = new RegexPropInfo(propVal.Key);
+                    var newPropCapture = leaf.PropertyCapture with { RegexPropInfo = newRegexPropInfo, Value = propVal.Value };
+                    var distilledLeaf = leaf with { PropertyCapture = newPropCapture };
+                    LeavesOrDistilled.Add(distilledLeaf);
+                }
+            }
+        }
+        else
+            LeavesOrDistilled = Leaves;
     }
 
     public override string ToString() => TokenSpan.ToStringValue();

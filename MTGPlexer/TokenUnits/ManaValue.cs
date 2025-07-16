@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-public class ManaValue : TokenUnitComplex
+public class ManaValue : TokenUnitDistilled
 {
     public ManaValue() : base(nameof(ManaSymbols)) { }
 

@@ -110,5 +110,8 @@ public static class Extensions
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
+
+    public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();
+    public static Type UnderlyingType(this Type type) => Nullable.GetUnderlyingType(type) ?? type;
 }
 

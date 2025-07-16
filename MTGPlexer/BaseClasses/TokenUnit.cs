@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace MTGPlexer.BaseClasses;
+﻿namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {
@@ -18,17 +16,17 @@ public abstract class TokenUnit
         }
     }
 
-    Dictionary<PropertyInfo, object> _distilledValues;
-    public Dictionary<PropertyInfo, object> DistilledValues
-    {
-        get
-        {
-            if (_distilledValues is null)
-                _distilledValues = GetDistilledValues();
-
-            return _distilledValues;
-        }
-    }
+    //Dictionary<PropertyInfo, object> _distilledValues;
+    //public Dictionary<PropertyInfo, object> DistilledValues
+    //{
+    //    get
+    //    {
+    //        if (_distilledValues is null)
+    //            _distilledValues = GetDistilledValues();
+    //
+    //        return _distilledValues;
+    //    }
+    //}
 
     public TokenUnit ParentToken { get; set; }
     public List<TokenUnit> ChildTokens { get; set; } = [];
@@ -43,7 +41,7 @@ public abstract class TokenUnit
 
     protected TokenUnit(params string[] templateSnippets)
     {
-        if (templateSnippets.Length == 0 && !TokenTypeRegistry.TokenTemplates.ContainsKey(Type))
+        if (templateSnippets.Length == 0 && !TokenTypeRegistry.Templates.ContainsKey(Type))
         {
             // If children pass no arguments or call the default parameterless base constructor,
             // we assume they want to construct snippets from their ordered properties.
@@ -56,8 +54,8 @@ public abstract class TokenUnit
 
         // Always check the static registry first, since constructing the template is somewhat heavy
         // (not much, but it adds up over all instantiations across large bodies of text)
-        if (TokenTypeRegistry.TokenTemplates.ContainsKey(Type))
-            Template = TokenTypeRegistry.TokenTemplates[Type];
+        if (TokenTypeRegistry.Templates.ContainsKey(Type))
+            Template = TokenTypeRegistry.Templates[Type];
         else
             Template = new(Type, templateSnippets);
     }
@@ -85,23 +83,23 @@ public abstract class TokenUnit
         Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
     }
 
-    Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
-    {
-        Dictionary<PropertyInfo, object> dict = new();
-        var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);
-
-        foreach (var distilledProp in distilledProps)
-        {
-            var val = distilledProp.GetValue(this);
-
-            if (distilledProp.PropertyType.IsValueType && val.Equals(Activator.CreateInstance(distilledProp.PropertyType)))
-                continue;
-
-            dict[distilledProp] = val;
-        }
-
-        return dict;
-    }
+    //Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
+    //{
+    //    Dictionary<PropertyInfo, object> dict = new();
+    //    var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);
+    //
+    //    foreach (var distilledProp in distilledProps)
+    //    {
+    //        var val = distilledProp.GetValue(this);
+    //
+    //        if (distilledProp.PropertyType.IsValueType && val.Equals(Activator.CreateInstance(distilledProp.PropertyType)))
+    //            continue;
+    //
+    //        dict[distilledProp] = val;
+    //    }
+    //
+    //    return dict;
+    //}
 
     public int GetDeepestChildLevel()
     {
@@ -124,7 +122,7 @@ public abstract class TokenUnit
     }
 
     /// <summary>
-    /// Only intended to be called by TokenClassRegistry upon startup. May be overridden by
+    /// Only intended to be called by TokenTypeRegistry once upon startup. May be overridden by
     /// inheriting abstract classes who want to specify their own validation requirements.
     /// </summary>
     public virtual bool ValidateStructure()

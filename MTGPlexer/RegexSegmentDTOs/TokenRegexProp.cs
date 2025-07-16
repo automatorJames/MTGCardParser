@@ -18,5 +18,7 @@ public record TokenRegexProp : RegexPropBase
         RegexString = template.RenderedRegexString;
         Regex = template.Regex;
     }
+
+    public override string ToString() => base.ToString();
 }
 

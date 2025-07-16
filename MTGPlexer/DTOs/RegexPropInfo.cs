@@ -15,24 +15,25 @@ public record RegexPropInfo
     public PropertyInfo UndistilledProp { get; }
     public string FriendlyTypeName { get; }
     public string FriendlyPropName { get; }
-    public string UndistilledNameOrName => UndistilledProp?.Name ?? Name;
+    //public string UndistilledNameOrName => UndistilledProp?.Name ?? Name;
+    //public string UndistilledNameOrNameFriendly => UndistilledNameOrName.ToFriendlyCase(TitleDisplayOption.Sentence);
 
     public RegexPropInfo(PropertyInfo prop)
     {
-        // If this prop is distilled from another one, get the other one
-        var distilledValAttribute = prop.GetCustomAttribute<DistilledValueAttribute>();
-        if (distilledValAttribute != null)
-        {
-            prop = distilledValAttribute.GetDistilledFromProp(prop);
-            UndistilledProp = prop;
-        }
+        //// If this prop is distilled from another one, get the other one
+        //var distilledValAttribute = prop.GetCustomAttribute<DistilledValueAttribute>();
+        //if (distilledValAttribute != null)
+        //{
+        //    prop = distilledValAttribute.GetDistilledFromProp(prop);
+        //    UndistilledProp = prop;
+        //}
 
         Prop = prop;
         RegexPropType = GetCapturePropType(prop);
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
         Name = prop.Name;
         AttributePatterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [prop.Name];
-        FriendlyTypeName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
+        FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName(UnderlyingType);
     }
 
@@ -50,6 +51,8 @@ public record RegexPropInfo
             return RegexPropType.TokenUnitOneOf;
         else if (underlyingType.IsAssignableTo(typeof(TokenUnit)))
             return RegexPropType.TokenUnit;
+        else if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
+            return RegexPropType.DistilledValue;
         else
             throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(RegexPropType)} type");
     }

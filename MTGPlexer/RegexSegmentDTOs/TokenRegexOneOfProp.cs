@@ -16,37 +16,30 @@ public record TokenRegexOneOfProp : RegexPropBase
             .Select(x => new RegexPropInfo(x))
             .Select(y => new TokenRegexProp(y))
             .ToList();
+
+        RegexString = $"({string.Join('|', _alternativeTokenProps.Select(x => x.RegexString))})";
+        Regex = new Regex(RegexString);
     }
 
     protected override void SetRegex(RegexPropInfo captureProp)
     {
-        var tokenProps = captureProp.UnderlyingType
-            .GetPublicDeclaredProps()
-            .ToList();
-
-        RegexString = "(";
-
-        for (int i = 0; i < tokenProps.Count; i++)
-        {
-            var tokenProp = tokenProps[i];
-            var template = TokenTypeRegistry.GetTypeTemplate(tokenProp.PropertyType);
-
-            RegexString += template.RenderedRegexString;
-
-            if (i < tokenProps.Count - 1)
-                RegexString += "|";
-        }
-
-        RegexString += ")";
-        Regex = new Regex(RegexString);
+        // Regex already set in constructor
+        // This override prevents the base class overwriting it
     }
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
-        var oneOfPropInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, matchSpan, parentToken);
+        var subMatchSpan = GetPropTypeSubMatch(matchSpan);
+
+        if (subMatchSpan is null)
+            throw new Exception($"No alternative for {nameof(TokenUnitOneOf)} type '{RegexPropInfo.UnderlyingType.Name}' matched '{matchSpan.ToStringValue()}'");
+
+        var oneOfPropInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken);
         RegexPropInfo.Prop.SetValue(parentToken, oneOfPropInstance);
-        parentToken.AddPropertyCapture(RegexPropInfo, matchSpan, oneOfPropInstance);
+        parentToken.AddPropertyCapture(RegexPropInfo, subMatchSpan.Value, oneOfPropInstance);
         parentToken.ChildTokens.Add(oneOfPropInstance);
         return true;
     }
+
+    public override string ToString() => base.ToString();
 }

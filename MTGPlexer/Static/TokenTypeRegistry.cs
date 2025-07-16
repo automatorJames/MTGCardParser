@@ -4,11 +4,12 @@ public static partial class TokenTypeRegistry
 {
     static HashSet<Type> _invalidTypes = [];
 
-    public static Dictionary<Type, RegexTemplate> TokenTemplates { get; set; } = new();
-    public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = new();
-    public static Dictionary<Type, DeterministicPalette> TypeColorPalettes { get; set; } = new();
+    public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
+    public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = [];
+    public static Dictionary<Type, Dictionary<PropertyInfo, List<PropertyInfo>>> DistilledProperties { get; set; } = [];
+    public static Dictionary<Type, DeterministicPalette> TypeColorPalettes { get; set; } = [];
+    public static HashSet<Type> AppliedOrderTypes { get; set; } = [];
     public static Tokenizer<Type> Tokenizer { get; set; }
-    public static HashSet<Type> AppliedOrderTypes { get; set; } = new();
 
     static TokenTypeRegistry()
     {
@@ -24,10 +25,10 @@ public static partial class TokenTypeRegistry
 
     public static RegexTemplate GetTypeTemplate(Type type)
     {
-        if (!TokenTemplates.ContainsKey(type))
+        if (!Templates.ContainsKey(type))
             SetTypeTemplate(type);
 
-        return TokenTemplates[type];
+        return Templates[type];
     }
 
     public static void SetTypeTemplate(Type type)
@@ -40,7 +41,7 @@ public static partial class TokenTypeRegistry
             return;
         }
 
-        TokenTemplates[type] = instance.Template;
+        Templates[type] = instance.Template;
         var propCaptureSegments = instance.Template.PropCaptureSegments;
 
         var unregisteredEnums = propCaptureSegments
@@ -51,6 +52,14 @@ public static partial class TokenTypeRegistry
             EnumRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
 
         TypeColorPalettes[type] = new(type);
+
+        if (instance is TokenUnitDistilled tokenUnitComplex)
+        {
+            DistilledProperties[type] = new();
+
+            foreach (var item in tokenUnitComplex.GetDistilledPropAssociations())
+                DistilledProperties[type][item.Key] = item.Value;
+        }
     }
 
     public static TokenUnit HydrateFromToken(Token<Type> token) 

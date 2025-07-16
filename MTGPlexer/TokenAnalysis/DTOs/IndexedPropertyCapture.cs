@@ -6,18 +6,18 @@
 /// </summary>
 public record IndexedPropertyCapture
 {
-    public RegexPropInfo RegexPropInfo { get; }
+    public RegexPropInfo RegexPropInfo { get; set; }
     public TextSpan Span { get; }
     public int Index { get; }
     public int Start { get; }
     public int End { get; }
     public int Length { get; }
     public bool IsChildToken { get; }
-    public bool IsComplex { get; }
-    public object Value { get; }
+    public object Value { get; set; }
     public int CapturePosition { get; }
     public DeterministicPalette Palette { get; }
     public bool IgnoreInAnalysis { get; }
+    public bool IsDistilled { get; }
 
     public IndexedPropertyCapture(RegexPropInfo regexPropInfo, TextSpan span, object value, int capturePosition)
     {
@@ -27,13 +27,11 @@ public record IndexedPropertyCapture
         End = Span.Position.Absolute + Span.Length;
         Length = Span.Length;
         IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit;
-        IsComplex = value is TokenUnitComplex;
         Value = value;
         CapturePosition = capturePosition;
         Palette = new(CapturePosition);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
-
-        // todo: have to handle TokenUnitOneOfTypes with special logic
+        IsDistilled = value is TokenUnitDistilled;
     }
 
     public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {CapturePosition} | Capture: \"{Span.ToStringValue()}\"";

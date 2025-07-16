@@ -23,7 +23,7 @@ public static partial class TokenTypeRegistry
             .Match(typeof(ManaValue))
             .Match(typeof(Parenthetical));
 
-        var remainingLengthOrderedTypeRegexItems = TokenTemplates
+        var remainingLengthOrderedTypeRegexItems = Templates
             .Where(x => !AppliedOrderTypes.Contains(x.Key))
             .OrderByDescending(x => x.Value.RenderedRegexString.Length)
             .ToList();
@@ -43,7 +43,7 @@ public static partial class TokenTypeRegistry
         if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType))
             return tokenizerBuilder;
 
-        tokenizerBuilder.Match(Span.Regex(TokenTemplates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
+        tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;

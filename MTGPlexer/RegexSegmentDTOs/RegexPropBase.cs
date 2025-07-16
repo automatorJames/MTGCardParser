@@ -32,48 +32,6 @@ public abstract record RegexPropBase : RegexSegmentBase
         Regex = new Regex(RegexString);
     }
 
-    //public bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
-    //{
-    //    if (IsChildTokenUnitOneOf)
-    //    {
-    //        var oneOfPropInstance = Activator.CreateInstance(RegexPropInfo.UnderlyingType);
-    //        var tokenProps = oneOfPropInstance.GetType().GetPublicDeclaredProps();
-    //
-    //        foreach (var tokenProp in tokenProps)
-    //        {
-    //            var alternateInstanceVal = (TokenUnit)Activator.CreateInstance(tokenProp.PropertyType);
-    //            var setAlternateSuccessfully = SetScalarPropValue(alternateInstanceVal, matchSpan);
-    //            if (setAlternateSuccessfully)
-    //            {
-    //                tokenProp.SetValue(parentToken, alternateInstanceVal);
-    //                return true;
-    //            }
-    //        }
-    //
-    //        // Short circuits on first matching alternative
-    //        if (!tokenProps.Any(x =>
-    //        {
-    //            var alternateInstanceVal = (TokenUnit)Activator.CreateInstance(x.PropertyType);
-    //            var setAlternateSuccessfully = SetScalarPropValue(alternateInstanceVal, matchSpan);
-    //            if (setAlternateSuccessfully)
-    //            {
-    //                x.SetValue(parentToken, alternateInstanceVal);
-    //                return true;
-    //            }
-    //
-    //            return false;
-    //        })) throw new Exception("At least one match must be found for TokenUnitOneOf");
-    //
-    //        return true;
-    //    }
-    //
-    //    else if (IsChildTokenUnit)
-    //        return SetChildTokenUnitValue(parentToken, matchSpan);
-    //
-    //    else
-    //        return SetScalarPropValue(parentToken, matchSpan);       
-    //}
-
     public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
         if (IsChildTokenUnit)
@@ -137,7 +95,7 @@ public abstract record RegexPropBase : RegexSegmentBase
     TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
-        var regex = TokenTypeRegistry.TokenTemplates[parentToken.GetType()].RenderedRegexString;
+        var regex = TokenTypeRegistry.Templates[parentToken.GetType()].RenderedRegexString;
         var match = Regex.Match(matchText, regex);
         var matchPropGroup = match.Groups[RegexPropInfo.Name];
 
@@ -149,9 +107,9 @@ public abstract record RegexPropBase : RegexSegmentBase
         return new TextSpan(matchSpanToCheck.Source, newPosition, matchPropGroup.Length);
     }
 
-    TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
+    protected TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
     {
-        var regex = TokenTypeRegistry.TokenTemplates[RegexPropInfo.UnderlyingType].Regex;
+        var regex = TokenTypeRegistry.Templates[RegexPropInfo.UnderlyingType].Regex;
         var match = regex.Match(matchSpanToCheck.ToStringValue());
         return GetTextSubSpan(matchSpanToCheck, match);
     }
@@ -166,6 +124,8 @@ public abstract record RegexPropBase : RegexSegmentBase
 
         return new TextSpan(originalSpan.Source, newPosition, match.Length);
     }
+
+    public override string ToString() => base.ToString();
 
 }
 

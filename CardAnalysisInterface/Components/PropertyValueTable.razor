@@ -1,44 +1,56 @@
-﻿<div class=@GetWrapperCss()>
-    <span data-path=@Span.Path
-    class="token-type-name"
-    style=@Span.Palette.ToColorStyle()>
-        @Span.DisplayName
-    </span>
+﻿@if (Span.CollapseInAnalysis)
+{
+    @foreach (var branch in Span.Branches)
+    {
+        <PropertyValueTable Span=@branch />
+    }
+}
+else
+{
+    <div class=@GetWrapperCss()>
+        <span data-path=@Span.Path
+              class="token-type-name"
+              style=@Span.Palette.ToColorStyle()>
+            @Span.DisplayName
+        </span>
 
-    <div class="content-box" data-path=@Span.Path style=@Span.Palette.ToColorStyle(-1))>
+        <div class="content-box" data-path=@Span.Path style=@Span.Palette.ToColorStyle(-1))>
 
-        @if (Span.Leaves.Any())
-        {
-            <table class="property-capture-table" data-path=@Span.Path>
-                <thead>
-                    <tr><th>Property</th><th>Type</th><th>Value</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var leaf in Span.Leaves)
-                    {
-                        <tr>
-                            <td data-path=@leaf.Path
-                            class="prop-capture-table-cell"
-                            style=@leaf.Palette.ToColorStyle()>
-                                @leaf.PropertyCapture.RegexPropInfo.RegexPropType
-                            </td>
+            @if (Span.LeavesOrDistilled.Any())
+            {
+                <table class="property-capture-table" data-path=@Span.Path>
+                    <thead>
+                        <tr><th>Property</th><th>Type</th><th>Value</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var leaf in Span.LeavesOrDistilled)
+                        {
+                            <tr>
+                                <td data-path=@leaf.Path
+                                    class="prop-capture-table-cell"
+                                    style=@leaf.Palette.ToColorStyle()>
+                                    @leaf.PropertyCapture.RegexPropInfo.FriendlyPropName
+                                </td>
 
-                            <td class="@GetPropertyTypeCss(leaf.PropertyCapture.RegexPropInfo)">
-                                @leaf.PropertyCapture.RegexPropInfo.FriendlyTypeName
-                            </td>
-                            <td>@leaf.PropertyCapture.Value.ToString()</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
+                                <td class="@GetPropertyTypeCss(leaf.PropertyCapture.RegexPropInfo)" style="color:grey; font-style: italic">
+                                    @leaf.PropertyCapture.RegexPropInfo.FriendlyTypeName
+                                </td>
+                                <td>@leaf.PropertyCapture.Value.ToString()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
 
-        @foreach (var branch in Span.Branches)
-        {
-            <PropertyValueTable Span=@branch />
-        }
+            @foreach (var branch in Span.Branches)
+            {
+                <PropertyValueTable Span=@branch />
+            }
+        </div>
     </div>
-</div>
+}
+
+
 
 
 @code {

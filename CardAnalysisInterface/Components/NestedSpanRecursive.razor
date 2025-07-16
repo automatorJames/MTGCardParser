@@ -1,27 +1,35 @@
-﻿<span class=@_class style=@_style data-path=@_dataPath>
-    @for (int i = 0; i < Span.Children.Count; i++)
+﻿@if (Span.CollapseInAnalysis)
+{
+    foreach (var branch in Span.Branches)
     {
-        var childSpan = Span.Children[i];
-
-        @if (childSpan is SpanBranch branch)
-        {
-            <NestedSpanRecursive Span=@branch />
-        }
-        else if (childSpan is SpanTerminal terminal)
-        {
-            if (terminal is SpanLeaf leaf)
-            {
-                <LeafSpan Leaf=@leaf />
-            }
-            else if (terminal is SpanTwig twig)
-            {
-                <span class=@_twigClass>
-                    @twig.Text
-                </span>
-            }
-        }
+        <NestedSpanRecursive Span=@branch />
     }
-</span>
+}
+else
+{
+    <span class=@_class style=@_style data-path=@_dataPath>
+        @foreach (var child in Span.Children)
+        {
+            @if (child is SpanBranch branch)
+            {
+                <NestedSpanRecursive Span=@branch />
+            }
+            else if (child is SpanTerminal terminal)
+            {
+                if (terminal is SpanLeaf leaf)
+                {
+                    <LeafSpan Leaf=@leaf />
+                }
+                else if (terminal is SpanTwig twig)
+                {
+                    <span class=@_twigClass>
+                        @twig.Text
+                    </span>
+                }
+            }
+        }    
+    </span>
+}
 
 
 @code {
