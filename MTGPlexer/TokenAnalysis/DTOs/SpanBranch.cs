@@ -86,9 +86,6 @@ public record SpanBranch : NestedSpan
         return children;
     }
 
-    /// <summary>
-    /// 
-    /// </summary>
     void SetLeavesOrDistilled(TokenUnit token)
     {
         if (token is TokenUnitDistilled tokenUnitDistilled)

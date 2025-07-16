@@ -17,7 +17,7 @@ public record IndexedPropertyCapture
     public int CapturePosition { get; }
     public DeterministicPalette Palette { get; }
     public bool IgnoreInAnalysis { get; }
-    public bool IsDistilled { get; }
+    public bool IsDistilledValue { get; set; }
 
     public IndexedPropertyCapture(RegexPropInfo regexPropInfo, TextSpan span, object value, int capturePosition)
     {
@@ -31,7 +31,6 @@ public record IndexedPropertyCapture
         CapturePosition = capturePosition;
         Palette = new(CapturePosition);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
-        IsDistilled = value is TokenUnitDistilled;
     }
 
     public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {CapturePosition} | Capture: \"{Span.ToStringValue()}\"";

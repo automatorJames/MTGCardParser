@@ -170,7 +170,6 @@ pre span:has(br) + span {
 
 .prop-capture-table-cell {
     color: var(--color);
-    font-weight: bold;
 }
 
 .prop-capture-inline {
@@ -179,7 +178,7 @@ pre span:has(br) + span {
     padding-top: 1px;
 }
 
-    .prop-capture-inline.complex {
+    .prop-capture-inline.distilled {
         border-top-style: dotted;
     }
 
@@ -261,6 +260,12 @@ pre span:has(br) + span {
     border-left: 1px solid var(--highlight-color);
 }
 
+/* All cells get a bottom stroke */
 .prop-capture-table-cell.highlight-active {
+    box-shadow: inset 0 -1px 0 0 var(--highlight-color);
+}
+
+/* First column gets bottom and left stroke */
+.prop-capture-table-cell.first-column.highlight-active {
     box-shadow: inset var(--underline-width) -1px 0 0 var(--highlight-color);
 }

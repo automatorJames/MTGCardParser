@@ -1,7 +1,7 @@
 ﻿<span class=@_class
 style=@_style
 data-path=@_dataPath>
-    @Leaf.Text
+    @FormatText(Leaf.Text)
 </span>
 
 
@@ -10,19 +10,36 @@ data-path=@_dataPath>
     [Parameter, EditorRequired]
     public SpanLeaf Leaf { get; set; } = default!;
 
-    string _class => Leaf.IgnoreInAnalysis ? "" : $"prop-capture-inline leaf{(Leaf.PropertyCapture.IsDistilled ? " complex" : "")}";
-    string _style => Leaf.IgnoreInAnalysis ? "" : Leaf.Palette.ToColorStyle();
+    [Parameter]
+    public bool Capitalize { get; set; }
+
+    string _class => 
+        Leaf.IgnoreInAnalysis ? "" 
+        : $"prop-capture-inline leaf{(Leaf.PropertyCapture.RegexPropInfo.UnderlyingType == typeof(PlaceholderCapture) ? " distilled" : "")}";
+
+    string _style => GetStyle();
     string _dataPath => Leaf.IgnoreInAnalysis ? "" : Leaf.Path;
 
-    //string getstyle(propertyCaptureTokenLeafPart propCapturePart)
-    //{
-    //    var style = propCapturePart.Palette.ToColorStyle();
-    //
-    //    //A wee harmless hack to ensure the overline highlights at the same lower Y coord as the closest underline
-    //    var paddingBottom = 8 + (ImmediateParentToken.NestedDepth * 4);
-    //
-    //    style += $" padding-bottom: {paddingBottom}px;";
-    //
-    //    return style;
-    //}
+    string FormatText(string text)
+    {
+        if (Capitalize)
+            return text.CapitalizeFirstWord();
+
+        return text;
+    }
+
+    string GetStyle()
+    {
+        if (Leaf.IgnoreInAnalysis)
+            return "";
+
+        var style = Leaf.Palette.ToColorStyle();
+
+        //A wee harmless hack to ensure the overline highlights at the same lower Y coord as the closest underline
+        var paddingBottom = 8 + (Leaf.NestedDepth * 4);
+    
+        style += $" padding-bottom: {paddingBottom}px;";
+    
+        return style;
+    }
 }

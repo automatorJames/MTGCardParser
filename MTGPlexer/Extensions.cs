@@ -106,6 +106,14 @@ public static class Extensions
         Title
     }
 
+    public static string CapitalizeFirstWord(this string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input;
+
+        return char.ToUpper(input[0]) + input.Substring(1);
+    }
+
     public static PropertyInfo[] GetPublicDeclaredProps(this Type type) => 
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 

@@ -26,16 +26,25 @@ else
                         @foreach (var leaf in Span.LeavesOrDistilled)
                         {
                             <tr>
-                                <td data-path=@leaf.Path
-                                    class="prop-capture-table-cell"
-                                    style=@leaf.Palette.ToColorStyle()>
+                                <td 
+                                data-path=@leaf.Path
+                                class="prop-capture-table-cell first-column"
+                                style=@(leaf.Palette.ToColorStyle() + "font-weight: bold")>
                                     @leaf.PropertyCapture.RegexPropInfo.FriendlyPropName
                                 </td>
 
-                                <td class="@GetPropertyTypeCss(leaf.PropertyCapture.RegexPropInfo)" style="color:grey; font-style: italic">
+                                <td 
+                                data-path=@leaf.Path
+                                class="prop-capture-table-cell"
+                                style=@(leaf.Palette.ToColorStyle() + "color:grey; font-style: italic;")>
                                     @leaf.PropertyCapture.RegexPropInfo.FriendlyTypeName
                                 </td>
-                                <td>@leaf.PropertyCapture.Value.ToString()</td>
+                                <td 
+                                data-path=@leaf.Path
+                                class="prop-capture-table-cell"
+                                style=@(leaf.Palette.ToColorStyle() + "color:white;")>
+                                    @leaf.PropertyCapture.Value.ToString()
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -65,22 +74,5 @@ else
             css += " match-boundary";
 
         return css;
-    }
-
-    string GetPropertyTypeCss(RegexPropInfo regexPropInfo)
-    {
-        var defaultVal = "value-default";
-
-        if (regexPropInfo.UndistilledProp != null)
-            return defaultVal;
-
-        var capturePropType = regexPropInfo.RegexPropType;
-
-        return regexPropInfo.RegexPropType switch
-        {
-            RegexPropType.Placeholder => "value-tokensegment",
-            RegexPropType.Enum => "value-enum",
-            _ => defaultVal
-        };
     }
 }

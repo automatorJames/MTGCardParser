@@ -4,6 +4,7 @@
 
     @foreach (var line in CardDigest.Lines)
     {
+        _capitalizeNextSpan = true;
         <div class="line-capture-block match-boundary">
             <h5 class="line-label">Line #@(line.LineIndex + 1)</h5>
 
@@ -15,7 +16,8 @@
                         <precedingtext>@root.AttachedPrecedingText</precedingtext>
                     }
 
-                    <NestedSpanRecursive Span=@root />
+                    <NestedSpanRecursive Span=@root Capitalize=@_capitalizeNextSpan />
+                    _capitalizeNextSpan = false;
 
                     @if (root.AttachedFollowingText != null)
                     {
@@ -24,6 +26,7 @@
                         if (_terminals.Contains(root.AttachedFollowingText))
                         {
                             <br />
+                            _capitalizeNextSpan = true;
                         }
                     }
                 }
@@ -38,6 +41,7 @@
 </div>
 
 @code {
+    bool _capitalizeNextSpan;
 
     [Parameter]
     public CardDigest CardDigest { get; set; }
