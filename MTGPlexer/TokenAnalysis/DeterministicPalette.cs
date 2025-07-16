@@ -13,8 +13,8 @@ public record DeterministicPalette
     private const double LightSaturation = 0.9;
     private const double DarkSaturation = 0.3;
 
-    private const double BaseLightness = 0.7;
-    private const double LightLightness = 0.85;
+    private const double BaseLightness = 0.65;
+    private const double LightLightness = 0.95;
     private const double DarkLightness = 0.3;
 
     public DeterministicPalette(Type type)
@@ -45,7 +45,16 @@ public record DeterministicPalette
     void SetFromSeed(string seed)
     {
         int hash = GetDeterministicHash(seed);
-        double hue = Math.Abs(hash) % 360 / 360.0;
+
+        // --- FIX ---
+        // Treat the signed hash as a full-range unsigned integer.
+        uint unsignedHash = (uint)hash;
+
+        // Divide by the maximum possible value to map it to the [0, 1] range.
+        // This provides a far more uniform distribution of hues than the modulo operator.
+        double hue = unsignedHash / (double)uint.MaxValue;
+        // --- END FIX ---
+
         Hex = HslToHex(hue, BaseSaturation, BaseLightness);
         SetLightDarkFromHue(hue);
     }

@@ -2,6 +2,7 @@
 
 public record SpanBranch : NestedSpan
 {
+    public string CardName { get; set; }
     public string DisplayName { get; set; }
     public List<NestedSpan> Children { get; }
     public List<SpanBranch> Branches { get; }
@@ -11,9 +12,14 @@ public record SpanBranch : NestedSpan
     public bool CollapseInAnalysis { get; }
     public string Text => TokenSpan.ToStringValue().Trim();
 
-    public SpanBranch(TokenUnit token, string parentPath, int parentDepth) 
-        : base(parentPath.Dot(token.Type.Name), parentDepth + 1, TokenTypeRegistry.TypeColorPalettes[token.Type], token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
+    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth) 
+        : base(
+            Path: parentPath.Dot(token.Type.Name), 
+            NestedDepth: parentDepth + 1, 
+            Palette: TokenTypeRegistry.TypeColorPalettes[token.Type], 
+            IgnoreInAnalysis: token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
     {
+        CardName = cardName;
         DisplayName = token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         Children = DigestChildren(token);
         Branches = Children.OfType<SpanBranch>().ToList();
@@ -58,7 +64,7 @@ public record SpanBranch : NestedSpan
             // Child TokenUnits get digested recursively
             if (indexedProp.Value is TokenUnit childToken)
             {
-                SpanBranch branch = new SpanBranch(childToken, Path.Dot(childToken.Type.Name), NestedDepth);
+                SpanBranch branch = new SpanBranch(childToken, CardName, Path.Dot(childToken.Type.Name), NestedDepth);
                 children.Add(branch);
                 cursor += childToken.MatchSpan.Length;
             }

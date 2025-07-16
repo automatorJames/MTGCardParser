@@ -48,6 +48,8 @@ else
 
     string FormatText(string text)
     {
+        text = text.Replace("{this}", Span.CardName);
+
         if (Capitalize)
         {
             Capitalize = false;

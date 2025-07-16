@@ -7,7 +7,8 @@ public record SpanRoot: SpanBranch
     public string AttachedPrecedingText { get; }
     public string AttachedFollowingText { get; set; }
 
-    public SpanRoot(TokenUnit rootToken, string cardName, string precedingText = null) : base(rootToken, parentPath: cardName, parentDepth: -1)
+    public SpanRoot(TokenUnit rootToken, string cardName, string precedingText = null) 
+        : base(rootToken, cardName, parentPath: cardName, parentDepth: -1)
     {
         RootToken = rootToken;
         AttachedPrecedingText = precedingText;

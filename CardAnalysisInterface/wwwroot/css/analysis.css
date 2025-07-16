@@ -121,7 +121,8 @@ code {
     color: #888;
     margin-top: 2rem;
     margin-bottom: 0rem;
-    border-bottom: none;
+    padding-top: 9px;
+    border-top: 1px dashed;
 }
 
 pre.full-original-text {
@@ -189,6 +190,11 @@ pre span:has(br) + span {
     padding-left: 24px;
 }
 
+    .token-type-name + .token-type-name {
+        display: block;
+        margin-top: 24px;
+    }
+
 .nested-underline {
     border-bottom-width: var(--underline-width);
     border-bottom-style: solid;
@@ -221,6 +227,7 @@ pre span:has(br) + span {
     border-left: 1px solid var(--color);
     /* Creates a small gap between the h5 title and the top of the "L" */
     margin-top: 5px;
+    margin-bottom: 24px;
     /* Pushes the content (table, child wrappers) away from the vertical line */
     padding-left: 12px;
 }
@@ -234,11 +241,15 @@ pre span:has(br) + span {
     min-width: 225px;
 }
 
-.property-capture-table th,
-.property-capture-table td {
-    
+.prop-capture-table-cell.type-column {
+    color: grey;
+    font-style: italic;
 }
 
+.prop-capture-table-cell.value-column {
+    color: white;
+    font-weight: normal;
+}
 
 /* --- HIGHLIGHT ACTIVE STATES --- */
 /* These rules define *what* an element should look like when highlighted. */
@@ -265,7 +276,38 @@ pre span:has(br) + span {
     box-shadow: inset 0 -1px 0 0 var(--highlight-color);
 }
 
-/* First column gets bottom and left stroke */
 .prop-capture-table-cell.first-column.highlight-active {
     box-shadow: inset var(--underline-width) -1px 0 0 var(--highlight-color);
+}
+
+/* --- MUTE ACTIVE STATES --- */
+/* These rules define what an element should look like when muted. */
+
+.nested-underline.mute-active {
+    border-bottom-color: var(--lowlight-color);
+}
+
+.prop-capture-inline.mute-active {
+    border-top-color: var(--lowlight-color);
+}
+
+.token-type-name.mute-active {
+    color: var(--lowlight-color);
+}
+
+/* All cells get a bottom stroke */
+.prop-capture-table-cell.first-column.highlight-active {
+    color: var(--highlight-color);
+}
+
+.prop-capture-table-cell.first-column.mute-active {
+    color: var(--lowlight-color);
+}
+
+.prop-capture-table-cell.type-column.mute-active {
+    color: dimgrey;
+}
+
+.prop-capture-table-cell.value-column.mute-active {
+    color: gray;
 }

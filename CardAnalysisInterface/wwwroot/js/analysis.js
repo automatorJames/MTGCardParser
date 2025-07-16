@@ -37,6 +37,7 @@ let mouseoverHandler;
 let mouseleaveHandler;
 
 const highlightActiveClass = 'highlight-active';
+const muteActiveClass = 'mute-active'; // New class for muting
 const dataPathSelector = '[data-path]';
 const boundaryClass = 'match-boundary';
 
@@ -46,19 +47,20 @@ function initCardCaptureHover() {
         return;
     }
 
-    // A simple handler to find and remove all existing highlights from the page.
-    const clearHighlights = () => {
-        // Querying by the class is more direct than storing a list of highlighted elements.
-        const highlightedElements = document.querySelectorAll('.' + highlightActiveClass);
-        highlightedElements.forEach(el => {
+    // A handler to find and remove all existing highlights and mutes from the page.
+    const clearClasses = () => {
+        // Query for all elements with either class for a comprehensive cleanup.
+        const activeElements = document.querySelectorAll(`.${highlightActiveClass}, .${muteActiveClass}`);
+        activeElements.forEach(el => {
             el.classList.remove(highlightActiveClass);
+            el.classList.remove(muteActiveClass);
         });
     };
 
     // This is the core logic, which executes on every mouseover event.
     mouseoverHandler = (event) => {
-        // Always start with a clean slate by clearing previous highlights.
-        clearHighlights();
+        // Always start with a clean slate by clearing previous classes.
+        clearClasses();
 
         // Find the element with a data-path that the user is actually hovering over.
         const hoveredElement = event.target.closest(dataPathSelector);
@@ -67,11 +69,15 @@ function initCardCaptureHover() {
         const hoveredPath = hoveredElement.dataset.path;
         if (!hoveredPath) return;
 
+        // Determine the boundary for the current interaction.
+        const boundary = hoveredElement.closest('.' + boundaryClass);
+        if (!boundary) return;
 
-        // --- EFFICIENT HIGHLIGHTING ALGORITHM ---
-        // This brilliant solution avoids performance issues by splitting the work into two phases:
+
+        // --- EFFICIENT HIGHLIGHTING & MUTING ALGORITHM ---
+        // This solution avoids performance issues by splitting the work into two phases:
         // 1. A fast, targeted "Collect" phase that traverses UP the DOM tree.
-        // 2. A single "Distribute" phase that scans the document for exact matches.
+        // 2. A single "Distribute" phase that scans only within the boundary for matches.
         // This is vastly more performant than doing complex comparisons on every element in the DOM.
 
         // --- PHASE 1: COLLECT ---
@@ -80,7 +86,7 @@ function initCardCaptureHover() {
         const pathsToHighlight = new Set();
         let currentElement = hoveredElement;
 
-        while (currentElement) {
+        while (currentElement && currentElement !== boundary.parentElement) {
             const currentPath = currentElement.dataset.path;
 
             // An ancestor is valid if its path is a prefix of the hovered path.
@@ -89,31 +95,30 @@ function initCardCaptureHover() {
                 pathsToHighlight.add(currentPath);
             }
 
-            // Stop traversing upwards once we hit a designated boundary parent.
-            // This contains the search to a relevant component area.
-            if (currentElement.classList.contains(boundaryClass)) {
-                break;
-            }
-
             currentElement = currentElement.parentElement;
         }
 
+
         // --- PHASE 2: DISTRIBUTE ---
         // Now, with a small and efficient Set of paths to find, we do one single
-        // scan of the document. For each element with a data-path, we check if
-        // its path exists in our Set. This is the key to the algorithm's speed.
+        // scan of all elements with a `data-path` *within the boundary*.
+        // For each element, we check if its path exists in our Set.
         if (pathsToHighlight.size > 0) {
-            const allPathElements = document.querySelectorAll(dataPathSelector);
-            allPathElements.forEach(el => {
+            const allPathElementsInBoundary = boundary.querySelectorAll(dataPathSelector);
+            allPathElementsInBoundary.forEach(el => {
                 if (pathsToHighlight.has(el.dataset.path)) {
+                    // If the path matches, add the highlight class.
                     el.classList.add(highlightActiveClass);
+                } else {
+                    // Otherwise, add the mute class.
+                    el.classList.add(muteActiveClass);
                 }
             });
         }
     };
 
-    // The mouseleave event should always fire immediately to clear highlights.
-    mouseleaveHandler = () => clearHighlights();
+    // The mouseleave event should always fire immediately to clear classes.
+    mouseleaveHandler = () => clearClasses();
 
     // Attach the finalized event listeners.
     mainContent.addEventListener('mouseover', mouseoverHandler);
