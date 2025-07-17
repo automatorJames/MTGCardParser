@@ -1,5 +1,5 @@
 ﻿@page "/"
-@page "/variable-analysis"
+@page "/card-analysis"
 @inject IJSRuntime JSRuntime
 @inject CardDigester CardDigester
 @inject RuntimeSettings RuntimeSettings
@@ -9,7 +9,7 @@
     <div id="main-content">
         @foreach (var cardDigest in GetFilteredCards())
         {
-            <CardVariableBlock CardDigest=cardDigest />
+            <CardBlock CardDigest=cardDigest />
         }
     </div>
 </body>

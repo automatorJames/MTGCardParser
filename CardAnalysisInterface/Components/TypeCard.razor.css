@@ -1,0 +1,21 @@
+﻿.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.match-count {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.match-count.zero {
+    color: #9a3c3c;
+}
+
+.matches-label {
+    font-size: .8em;
+    font-style: italic;
+    color: #888;
+    font-weight: normal;
+}

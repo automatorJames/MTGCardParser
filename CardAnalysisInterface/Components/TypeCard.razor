@@ -1,24 +1,24 @@
-﻿<div class="type-card" style="border-left-color: @ColorHex;">
-    <h3>
-        <span class="highlight" data-title="@TypeName" style="background-color: @ColorHex;">@TypeName</span>
-        @Count occurrences
-    </h3>
-    <h4>Rendered Regex</h4>
-    <pre><code>@RenderedRegex</code></pre>
+﻿<div class="card-header">
+    <TokenTypeName TokenType=@TokenType />
+    <span class="match-count @(Count == 0 ? "zero" : "")">
+        <i class="matches-label">matches:</i> @Count
+    </span>
 </div>
+<pre style=@_palette.ToColorStyle()><code>@_regexString</code></pre>
 
 @code {
+    string _regexString;
+    DeterministicPalette _palette;
+
     [Parameter, EditorRequired]
-    public Type Type { get; set; } = default!;
+    public Type TokenType { get; set; }
 
     [Parameter, EditorRequired]
     public int Count { get; set; }
 
-    [Parameter, EditorRequired]
-    public string ColorHex { get; set; } = default!;
-
-    [Parameter, EditorRequired]
-    public string RenderedRegex { get; set; } = default!;
-
-    private string TypeName => Type.Name;
+    protected override void OnInitialized()
+    {
+        _regexString = TokenTypeRegistry.Templates[TokenType].RenderedRegexString;
+        _palette = TokenTypeRegistry.TypeColorPalettes[TokenType];
+    }
 }

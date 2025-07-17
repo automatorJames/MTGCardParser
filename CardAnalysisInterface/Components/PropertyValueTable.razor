@@ -7,11 +7,7 @@
 }
 else
 {
-    <span data-path=@Span.Path
-    class="token-type-name"
-    style=@Span.Palette.ToColorStyle()>
-        @Span.DisplayName
-    </span>
+    <TokenTypeName TokenType=@Span.TokenType DataPath=@Span.Path />
 
     @if (Span.LeavesOrDistilled.Any())
     {

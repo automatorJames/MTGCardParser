@@ -1,0 +1,22 @@
+﻿<span data-path=@DataPath
+class="token-type-name"
+style=@_palette.ToColorStyle()>
+    @_displayName
+</span>
+
+@code {
+    DeterministicPalette _palette;
+    string _displayName;
+
+    [Parameter, EditorRequired]
+    public Type TokenType { get; set; }
+
+    [Parameter]
+    public string DataPath { get; set; } = null;
+
+    protected override void OnInitialized()
+    {
+        _palette = TokenTypeRegistry.TypeColorPalettes[TokenType];
+        _displayName = TokenType.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
+    }
+}

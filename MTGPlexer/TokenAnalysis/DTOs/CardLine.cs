@@ -6,6 +6,7 @@ public record class CardLine
 
     public List<SpanRoot> SpanRoots { get; }
     public HashSet<string> UnmatchedSpans { get; } = [];
+    public Dictionary<Type, int> TokenCounts { get; } = [];
     public int LineIndex { get; }
 
     public CardLine(Card card, List<Token<Type>> tokens, int lineIndex)
@@ -13,6 +14,7 @@ public record class CardLine
         _card = card;
         LineIndex = lineIndex;
         SpanRoots = GetHydratedTokenUnits(tokens);
+        CountTokenTypes(tokens);
     }
 
     List<SpanRoot> GetHydratedTokenUnits(List<Token<Type>> tokens)
@@ -67,6 +69,17 @@ public record class CardLine
                 var appendedText = (roots[^1].AttachedFollowingText ?? "") + spanWithTextToAttach.Text;
                 roots[^1] = roots[^1] with { AttachedFollowingText = appendedText };
             }
+        }
+    }
+
+    void CountTokenTypes(List<Token<Type>> tokens)
+    {
+        foreach (var token in tokens)
+        {
+            if (!TokenCounts.ContainsKey(token.Kind))
+                TokenCounts[token.Kind] = 0;
+
+            TokenCounts[token.Kind]++;
         }
     }
 

@@ -1,7 +1,7 @@
 ﻿@inject IDialogService DialogService
 
 <div class="card-capture-block">
-    <cardname>@CardDigest.Card.Name</cardname>
+    <blocktitle>@CardDigest.Card.Name</blocktitle>
     <br />
     <br />
     <pre class="full-original-text">@CardDigest.Card.Text</pre>
@@ -12,7 +12,7 @@
         <div class="line-capture-block match-boundary">
             <div class="line-label">Line #@(line.LineIndex + 1)</div>
 
-            <pre class="line-text" @onclick=@(() => OpenRegexEditorDialog(line))>
+            <pre class="line-text">
                 @foreach (var root in line.SpanRoots)
                 {
                     @if (root.AttachedPrecedingText != null)

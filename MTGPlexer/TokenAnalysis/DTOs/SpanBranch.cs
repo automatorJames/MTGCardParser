@@ -9,6 +9,7 @@ public record SpanBranch : NestedSpan
     public List<SpanLeaf> Leaves { get; }
     public List<SpanLeaf> LeavesOrDistilled { get; private set; } = [];
     public TextSpan TokenSpan { get; }
+    public Type TokenType { get; }
     public bool CollapseInAnalysis { get; }
     public string Text => TokenSpan.ToStringValue().Trim();
 
@@ -26,6 +27,7 @@ public record SpanBranch : NestedSpan
         Leaves = Children.OfType<SpanLeaf>().ToList();
         SetLeavesOrDistilled(token);
         TokenSpan = token.MatchSpan;
+        TokenType = token.Type;
         CollapseInAnalysis = token is TokenUnitOneOf;
     }
 

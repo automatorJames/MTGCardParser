@@ -18,9 +18,23 @@
     <nav class="top-row px-4">
         <a class="navbar-brand" href="">MTG Analysis</a>
 
-        <NavLink class="nav-link" href="variable-analysis">
-            <span class="oi oi-beaker" aria-hidden="true"></span> Capture
-        </NavLink>
+            <MudButton 
+                Size=Size.Small 
+                Href="card-analysis" 
+                EndIcon="material-symbols-outlined/playing_cards" 
+                Variant=Variant.Filled 
+                Color=Color.Primary>
+                Card Analysis
+            </MudButton>
+
+            <MudButton 
+                Size=Size.Small
+                Href="type-expressions"
+                EndIcon="material-symbols-outlined/regular_expression"
+                Variant=Variant.Filled
+                Color=Color.Tertiary>
+                Type Expressions
+            </MudButton>
 
         <MudSwitch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Color=Color.Primary UncheckedColor=Color.Surface Label="Hide fully matched cards" />
     </nav>

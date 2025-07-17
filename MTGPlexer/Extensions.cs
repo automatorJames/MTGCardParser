@@ -121,5 +121,16 @@ public static class Extensions
 
     public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();
     public static Type UnderlyingType(this Type type) => Nullable.GetUnderlyingType(type) ?? type;
+
+    public static void CombineDictionaryCounts<T>(this Dictionary<T, int> dictToAddTo, Dictionary<T, int> dictToAddFrom)
+    {
+        foreach (var key in dictToAddFrom.Keys)
+        {
+            if (!dictToAddTo.ContainsKey(key))
+                dictToAddTo[key] = 0;
+
+            dictToAddTo[key] += dictToAddFrom[key];
+        }
+    }
 }
 

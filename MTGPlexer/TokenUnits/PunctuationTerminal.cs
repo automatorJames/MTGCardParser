@@ -1,22 +1,22 @@
-﻿namespace MTGPlexer.TokenUnits;
+﻿//namespace MTGPlexer.TokenUnits;
 
-[FollowsToken]
-[IgnoreInAnalysis]
-[Color("#999999")]
-public class PunctuationTerminal : TokenUnit
-{
-    public PunctuationCharacter PunctuationCharacter { get; set; }
-}
+//[FollowsToken]
+//[IgnoreInAnalysis]
+//[Color("#999999")]
+//public class PunctuationTerminal : TokenUnit
+//{
+//    public PunctuationCharacter PunctuationCharacter { get; set; }
+//}
 
-[EnumOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
-public enum PunctuationCharacter
-{
-    [RegexPattern(@"\.")] 
-    Period,
+//[EnumOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
+//public enum PunctuationCharacter
+//{
+//    [RegexPattern(@"\.")] 
+//    Period,
 
-    [RegexPattern(@",")]
-    Comma,
+//    [RegexPattern(@",")]
+//    Comma,
 
-    [RegexPattern(@";")]
-    Semicolon
-}
+//    [RegexPattern(@";")]
+//    Semicolon
+//}

@@ -5,9 +5,10 @@ public static partial class TokenTypeRegistry
     static void InitializeTokenizer()
     {
         var tokenizerBuilder = new TokenizerBuilder<Type>();
-        tokenizerBuilder.Ignore(Span.Regex(@"[ \t]+"));
+        tokenizerBuilder.Ignore(Span.Regex(@"\s+"));
 
         tokenizerBuilder
+            .Match(typeof(AtOrUntilPlayerPhase))
             .Match(typeof(This))
             .Match(typeof(ActivatedAbility))
             .Match(typeof(OptionalPayCost))
@@ -19,9 +20,9 @@ public static partial class TokenTypeRegistry
             .Match(typeof(EnchantedCard))
             .Match(typeof(LifeChangeQuantity))
             .Match(typeof(Parenthetical))
-            .Match(typeof(ManaValue))
-            .Match(typeof(PunctuationTerminal))
-            .Match(typeof(PunctuationEnclosing));
+            .Match(typeof(ManaValue));
+            //.Match(typeof(PunctuationTerminal))
+            //.Match(typeof(PunctuationEnclosing));
 
         var remainingLengthOrderedTypeRegexItems = Templates
             .Where(x => !AppliedOrderTypes.Contains(x.Key))

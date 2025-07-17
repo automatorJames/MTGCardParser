@@ -1,0 +1,19 @@
+﻿@page "/type-expressions"
+@inject CardDigester CardDigester
+
+@foreach (var item in _appliedOrderTypeCounts)
+{
+    <TypeCard TokenType=@item.Key Count=@item.Value />
+}
+
+@code{
+
+    Dictionary<Type, int> _appliedOrderTypeCounts = [];
+
+    protected override void OnInitialized()
+    {
+        foreach (var type in TokenTypeRegistry.AppliedOrderTypes)
+            _appliedOrderTypeCounts[type] = CardDigester.TokenCounts.TryGetValue(type, out int count) ? count : 0;
+    }
+
+}
