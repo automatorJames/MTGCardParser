@@ -3,7 +3,7 @@
 @inject IJSRuntime JsRuntime
 @implements IAsyncDisposable
 
-<CustomDialog OnBackdropClick="Cancel">
+<CustomDialog OnBackdropClick="HandleCancel">
     <DialogContent>
         <div style="display:flex; align-items:baseline;">
             <span style="color: #A0AEC0; font-weight: 500; font-size: 28px; margin-bottom: 12px;">
@@ -16,6 +16,7 @@
         <div style="display: flex; flex-direction: column; gap: 16px;">
 
             <div class="line-text-container">
+                <!-- The back layer is now the single child that controls height. -->
                 <div class="text-layer-back">
                     @{
                         int cursor = 0;
@@ -34,6 +35,7 @@
                         }
                     }
 
+                    <!-- The colored text layer is now NESTED inside the back layer. -->
                     <div class="text-layer-front">
                         @{
                             cursor = 0;
@@ -43,13 +45,11 @@
                                 {
                                     @Line.SourceText.Substring(cursor, token.Span.Position.Absolute - cursor)
                                 }
-
                                 var tokenText = Line.SourceText.Substring(token.Span.Position.Absolute, token.Span.Length);
                                 var color = token.Kind == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.TypeColorPalettes[token.Kind].Hex;
                                 <span style=@($"color: {color}")>@tokenText</span>
                                 cursor = token.Span.Position.Absolute + token.Span.Length;
                             }
-
                             if (cursor < Line.SourceText.Length)
                             {
                                 @Line.SourceText.Substring(cursor)
@@ -61,77 +61,167 @@
 
             <div>
                 <label for="regex-input-field">Regular expression template</label>
-                <input value="@_newRegexPattern"
-                       @oninput="OnRegexInput"
-                       class="form-control"
-                       placeholder="Apply a new regular expression"
-                       id="regex-input-field"
-                       autocomplete="off" />
+
+                <div class="autocomplete-container">
+                    <input value=@_newRegexPattern
+                           @oninput=@OnTemplateInput
+                           @onkeydown=@OnTemplateKeyDown
+                           class="form-control"
+                           placeholder=@("Type text or @ to see templates")
+                           id="regex-input-field"
+                           autocomplete="off" />
+
+                    @if (_isDropdownVisible)
+                    {
+                        <div id="autocomplete-dropdown-list" class="autocomplete-dropdown">
+                            @foreach (var (suggestion, index) in _autocompleteSuggestions.Select((s, i) => (s, i)))
+                            {
+                                <div id="@($"autocomplete-item-{index}")"
+                                     class="autocomplete-item @(index == _selectedSuggestionIndex ? "selected" : "")"
+                                     @onclick="() => SelectSuggestion(suggestion)">
+                                    <span class="type-name">@suggestion.Name</span>
+                                    <span class="type-kind">@(suggestion.IsEnum ? "Enum" : "Token")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(_renderedRegex))
+                {
+                    <div class="rendered-regex-box">
+                        <pre>@_renderedRegex</pre>
+                    </div>
+                }
             </div>
         </div>
     </DialogContent>
     <DialogActions>
-        <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-        <button class="btn btn-primary" @onclick="Submit">Save</button>
+        <button class="btn btn-secondary" @onclick="HandleCancel">Cancel</button>
+        <button class="btn btn-primary" @onclick="HandleSubmit">Save</button>
     </DialogActions>
 </CustomDialog>
 
 @code {
     [Parameter]
     public CardLine Line { get; set; }
-
     [Parameter]
     public EventCallback<string> OnClose { get; set; }
 
     private string _newRegexPattern = "";
+    private string _renderedRegex = "";
     private List<Match> _currentMatches = new List<Match>();
+
+    private bool _isDropdownVisible = false;
+    private List<Type> _allTemplateTypes = new();
+    private List<Type> _autocompleteSuggestions = new();
+    private int _selectedSuggestionIndex = -1;
+
+    protected override void OnInitialized()
+    {
+        _allTemplateTypes.AddRange(TokenTypeRegistry.AppliedOrderTypes);
+        _allTemplateTypes.AddRange(TokenTypeRegistry.ReferencedEnumTypes);
+        _allTemplateTypes = _allTemplateTypes.OrderBy(t => t.Name).ToList();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Register the keydown listener for the 'Escape' key.
+            await JsRuntime.InvokeVoidAsync("initializeAutocompleteInteraction", "autocomplete-dropdown-list");
             await JsRuntime.InvokeVoidAsync("registerDialogKeyListener", DotNetObjectReference.Create(this));
-
-            // Set focus on the input field.
             await JsRuntime.InvokeVoidAsync("focusElement", "regex-input-field");
         }
     }
 
-    [JSInvokable]
-    public Task HandleEscapeKeyPress()
+    private void OnTemplateInput(ChangeEventArgs e)
     {
-        return Cancel();
-    }
-
-    private void OnRegexInput(ChangeEventArgs e)
-    {
+        JsRuntime.InvokeVoidAsync("setKeyboardNavigating", false);
         _newRegexPattern = e.Value?.ToString() ?? "";
+        UpdateRenderedRegexAndMatches();
 
-        if (string.IsNullOrEmpty(_newRegexPattern))
+        int atIndex = _newRegexPattern.LastIndexOf('@');
+        if (atIndex != -1 && !_newRegexPattern.Substring(atIndex).Contains(' '))
         {
-            _currentMatches.Clear();
+            var filter = _newRegexPattern.Substring(atIndex + 1);
+            _autocompleteSuggestions = _allTemplateTypes
+                .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                .ThenBy(t => t.Name)
+                .ToList();
+
+            _isDropdownVisible = _autocompleteSuggestions.Any();
+            _selectedSuggestionIndex = -1;
         }
         else
+            _isDropdownVisible = false;
+    }
+
+    private async Task OnTemplateKeyDown(KeyboardEventArgs e)
+    {
+        if (!_isDropdownVisible) return;
+
+        switch (e.Key)
         {
-            try
-            {
-                _currentMatches = Regex.Matches(Line.SourceText, _newRegexPattern)
-                                       .Cast<Match>()
-                                       .ToList();
-            }
-            catch (RegexParseException)
-            {
-                _currentMatches.Clear();
-            }
+            case "ArrowDown":
+            case "ArrowUp":
+                await JsRuntime.InvokeVoidAsync("setKeyboardNavigating", true);
+                if (e.Key == "ArrowDown")
+                    _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
+                else
+                    _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
+                await JsRuntime.InvokeVoidAsync("scrollToElement", $"autocomplete-item-{_selectedSuggestionIndex}");
+                break;
+            case "Enter" or "Tab":
+                if (_selectedSuggestionIndex != -1)
+                    await SelectSuggestion(_autocompleteSuggestions[_selectedSuggestionIndex]);
+                break;
+            case "Escape":
+                _isDropdownVisible = false;
+                break;
         }
     }
 
-    private Task Submit() => OnClose.InvokeAsync(_newRegexPattern);
-    private Task Cancel() => OnClose.InvokeAsync(null);
-
-    public async ValueTask DisposeAsync()
+    private async Task SelectSuggestion(Type selection)
     {
-        await JsRuntime.InvokeVoidAsync("disposeDialogKeyListener");
+        int atIndex = _newRegexPattern.LastIndexOf('@');
+        _newRegexPattern = _newRegexPattern.Substring(0, atIndex) + $"@{selection.Name} ";
+        _isDropdownVisible = false;
+        await JsRuntime.InvokeVoidAsync("setKeyboardNavigating", false);
+        UpdateRenderedRegexAndMatches();
+        await JsRuntime.InvokeVoidAsync("focusElement", "regex-input-field");
     }
+
+    private void UpdateRenderedRegexAndMatches()
+    {
+        if (!_newRegexPattern.Contains("@"))
+        {
+            _renderedRegex = "";
+            try
+            {
+                _currentMatches = Regex.Matches(Line.SourceText, _newRegexPattern).Cast<Match>().ToList();
+            }
+            catch (Exception) { _currentMatches.Clear(); }
+            return;
+        }
+
+        try
+        {
+            _renderedRegex = TokenTypeRegistry.RenderTemplateToRegexString(_newRegexPattern);
+            _currentMatches = Regex.Matches(Line.SourceText, _renderedRegex).Cast<Match>().ToList();
+        }
+        catch (Exception)
+        {
+            _renderedRegex = "Error: Invalid template";
+            _currentMatches.Clear();
+        }
+    }
+
+    private Task HandleSubmit() => OnClose.InvokeAsync(_newRegexPattern);
+    private Task HandleCancel() => OnClose.InvokeAsync(null);
+
+    [JSInvokable]
+    public Task HandleEscapeKeyPress() => HandleCancel();
+
+    public async ValueTask DisposeAsync() { await JsRuntime.InvokeVoidAsync("disposeDialogKeyListener"); }
 }

@@ -14,4 +14,3 @@ public enum PayOptionType
     UnlessYou,
     YouMay
 }
-

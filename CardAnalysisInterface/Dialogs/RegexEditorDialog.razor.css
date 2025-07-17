@@ -1,6 +1,4 @@
-﻿/* The main container with a new, more visible default text color. */
-.line-text-container {
-    position: relative;
+﻿.line-text-container {
     background-color: var(--dark-grey);
     padding: 1rem;
     border-radius: 4px;
@@ -8,36 +6,71 @@
     font-family: 'Courier New', Courier, monospace;
     font-size: 1.1em;
     line-height: 1.6;
+    color: #E2E8F0;
     white-space: pre-wrap;
     word-break: break-word;
 }
 
-/* 
-  The back layer is the positioning context for the front layer.
-  Its text is invisible, and its natural height determines the container's size.
-*/
 .text-layer-back {
     position: relative;
     color: transparent;
 }
 
-/* 
-  The front layer is absolutely positioned to the corners of its parent 
-  (.text-layer-back), ensuring a perfect overlay.
-*/
 .text-layer-front {
     position: absolute;
     top: 0;
     left: 0;
 }
 
-/* This span provides the underline effect for matched text. */
 .highlight-token {
     text-decoration: underline;
-    /* TWEAK 3: A fresh, vibrant cyan for the underline color. */
-    text-decoration-color: rgba(79, 209, 219, 0.8); /* Vibrant, modern cyan */
-
+    text-decoration-color: rgba(79, 209, 219, 0.8);
     text-decoration-thickness: 2px;
-    /* TWEAK 2: Increased offset for more vertical "breathing room". */
     text-underline-offset: 6px;
+}
+
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    width: 100%;
+    background-color: #2D3748;
+    border: 1px solid #4A5568;
+    border-radius: 4px;
+    margin-top: 4px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 1100;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.autocomplete-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #4A5568;
+}
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+    .autocomplete-item:hover, .autocomplete-item.selected {
+        background-color: #4A5568;
+    }
+
+/* --- THE FIX --- */
+.autocomplete-dropdown.keyboard-navigating .autocomplete-item:hover {
+    background-color: transparent;
+}
+
+.autocomplete-item .type-name {
+    font-weight: 600;
+}
+
+.autocomplete-item .type-kind {
+    font-size: 0.8em;
+    color: #A0AEC0;
+    margin-left: 0.5rem;
 }
