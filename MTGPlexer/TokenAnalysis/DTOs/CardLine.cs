@@ -2,17 +2,20 @@
 
 public record class CardLine
 {
-    Card _card;
-
+    public Card Card { get; }
+    public string SourceText { get; }
     public List<SpanRoot> SpanRoots { get; }
     public HashSet<string> UnmatchedSpans { get; } = [];
+    public List<Token<Type>> SourceTokens { get; } = [];
     public Dictionary<Type, int> TokenCounts { get; } = [];
     public int LineIndex { get; }
 
-    public CardLine(Card card, List<Token<Type>> tokens, int lineIndex)
+    public CardLine(Card card, string sourceText, List<Token<Type>> tokens, int lineIndex)
     {
-        _card = card;
+        Card = card;
+        SourceText = sourceText;
         LineIndex = lineIndex;
+        SourceTokens = tokens;
         SpanRoots = GetHydratedTokenUnits(tokens);
         CountTokenTypes(tokens);
     }
@@ -24,7 +27,7 @@ public record class CardLine
         // A buffer to hold a preceding text attached to the next root (if any)
         string textToPrecedeNext = null;
 
-        // Track tokensd with "EnclosesTokens" (like double quotes) to ensure correct attachment
+        // Track tokens with "EnclosesTokens" (like double quotes) to ensure correct attachment
         Dictionary<Type, int> enclosingTokenCountPerType = new();
 
         foreach (var token in tokens)
@@ -34,7 +37,7 @@ public record class CardLine
 
             var hydratedTokenUnit = TokenTypeRegistry.HydrateFromToken(token);
 
-            var root = new SpanRoot(hydratedTokenUnit, _card.Name, textToPrecedeNext);
+            var root = new SpanRoot(hydratedTokenUnit, Card.Name, textToPrecedeNext);
             textToPrecedeNext = null;
 
             if (root.Placement == TokenPlacement.FollowsPrevious)

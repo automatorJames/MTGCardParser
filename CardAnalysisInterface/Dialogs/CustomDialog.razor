@@ -1,0 +1,33 @@
+﻿<div class="custom-dialog-backdrop" @onclick="HandleBackdropClick">
+    <div class="custom-dialog-container" @onclick:stopPropagation="true">
+        @if (TitleContent != null)
+        {
+            <div class="custom-dialog-header">
+                @TitleContent
+            </div>
+        }
+        <div class="custom-dialog-content">
+            @DialogContent
+        </div>
+        <div class="custom-dialog-actions">
+            @DialogActions
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment TitleContent { get; set; }
+
+    [Parameter]
+    public RenderFragment DialogContent { get; set; }
+
+    [Parameter]
+    public RenderFragment DialogActions { get; set; }
+
+    // This callback will notify the parent that the backdrop was clicked.
+    [Parameter]
+    public EventCallback OnBackdropClick { get; set; }
+
+    private Task HandleBackdropClick() => OnBackdropClick.InvokeAsync();
+}

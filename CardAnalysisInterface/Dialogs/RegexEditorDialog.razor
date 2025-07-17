@@ -1,73 +1,137 @@
-﻿@inject IDialogService DialogService
+﻿@using System.Text.RegularExpressions
+@using System.Linq
 @inject IJSRuntime JsRuntime
-@inject ISnackbar Snackbar
+@implements IAsyncDisposable
 
-<MudDialog>
-    <TitleContent>
-        <MudText Typo="Typo.h6">Regex Editor</MudText>
-    </TitleContent>
+<CustomDialog OnBackdropClick="Cancel">
     <DialogContent>
-        <MudStack Spacing="4">
-            <MudPaper Class="pa-4" Elevation="0" Bordered="true">
-                <div class="line-label">Line #@(Line.LineIndex + 1)</div>
+        <div style="display:flex; align-items:baseline;">
+            <span style="color: #A0AEC0; font-weight: 500; font-size: 28px; margin-bottom: 12px;">
+                @Line.Card.Name
+            </span>
+            <span style="color: #718096; margin-left: auto; font-size: 0.8em;">
+                @($"Line #{Line.LineIndex + 1}")
+            </span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
 
-                @* This ID is the target for our JavaScript function. *@
-                <pre class="line-text" id="regex-line-container">
-                    @* This rendering logic is reused from your main page. *@
-                    @foreach (var root in Line.SpanRoots)
-                    {
-                        @if (root.AttachedPrecedingText != null)
+            <div class="line-text-container">
+                <div class="text-layer-back">
+                    @{
+                        int cursor = 0;
+                        foreach (var match in _currentMatches.OrderBy(m => m.Index))
                         {
-                        <precedingtext>@root.AttachedPrecedingText</precedingtext>
+                            if (match.Index > cursor)
+                            {
+                                @Line.SourceText.Substring(cursor, match.Index - cursor)
+                            }
+                            <span class="highlight-token">@match.Value</span>
+                            cursor = match.Index + match.Length;
                         }
-
-                    <NestedSpanRecursive Span=@root />
-
-                        @if (root.AttachedFollowingText != null)
+                        if (cursor < Line.SourceText.Length)
                         {
-                        <followingtext>@root.AttachedFollowingText</followingtext>
+                            @Line.SourceText.Substring(cursor)
                         }
                     }
-                </pre>
-            </MudPaper>
 
-            <MudPaper Class="pa-4" Elevation="0" Bordered="true">
-                <MudTextField @bind-Value="_newRegexPattern"
-                              Label="Regular Expression"
-                              Variant="Variant.Outlined"
-                              Placeholder="Enter a .NET regular expression"
-                              id="regex-input-field"
-                              Immediate="true"
-                              Clearable="true"
-                              HelperText="Matches will be highlighted above in real-time." />
-            </MudPaper>
-        </MudStack>
+                    <div class="text-layer-front">
+                        @{
+                            cursor = 0;
+                            foreach (var token in Line.SourceTokens.OrderBy(t => t.Span.Position.Absolute))
+                            {
+                                if (token.Span.Position.Absolute > cursor)
+                                {
+                                    @Line.SourceText.Substring(cursor, token.Span.Position.Absolute - cursor)
+                                }
+
+                                var tokenText = Line.SourceText.Substring(token.Span.Position.Absolute, token.Span.Length);
+                                var color = token.Kind == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.TypeColorPalettes[token.Kind].Hex;
+                                <span style=@($"color: {color}")>@tokenText</span>
+                                cursor = token.Span.Position.Absolute + token.Span.Length;
+                            }
+
+                            if (cursor < Line.SourceText.Length)
+                            {
+                                @Line.SourceText.Substring(cursor)
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label for="regex-input-field">Regular expression template</label>
+                <input value="@_newRegexPattern"
+                       @oninput="OnRegexInput"
+                       class="form-control"
+                       placeholder="Apply a new regular expression"
+                       id="regex-input-field"
+                       autocomplete="off" />
+            </div>
+        </div>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">Save</MudButton>
+        <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+        <button class="btn btn-primary" @onclick="Submit">Save</button>
     </DialogActions>
-</MudDialog>
+</CustomDialog>
 
 @code {
-    [CascadingParameter]
-    IMudDialogInstance MudDialog { get; set; }
-
     [Parameter]
     public CardLine Line { get; set; }
 
-    private string _newRegexPattern;
+    [Parameter]
+    public EventCallback<string> OnClose { get; set; }
+
+    private string _newRegexPattern = "";
+    private List<Match> _currentMatches = new List<Match>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // CORRECTED: Call the standalone JS function using the injected 'JsRuntime' instance.
-            await JsRuntime.InvokeVoidAsync("initRegexEditor", "regex-line-container", "regex-input-field");
+            // Register the keydown listener for the 'Escape' key.
+            await JsRuntime.InvokeVoidAsync("registerDialogKeyListener", DotNetObjectReference.Create(this));
+
+            // Set focus on the input field.
+            await JsRuntime.InvokeVoidAsync("focusElement", "regex-input-field");
         }
     }
 
-    // When submitting, we pass the new regex pattern back to the caller.
-    void Submit() => MudDialog.Close(DialogResult.Ok(_newRegexPattern));
-    void Cancel() => MudDialog.Cancel();
+    [JSInvokable]
+    public Task HandleEscapeKeyPress()
+    {
+        return Cancel();
+    }
+
+    private void OnRegexInput(ChangeEventArgs e)
+    {
+        _newRegexPattern = e.Value?.ToString() ?? "";
+
+        if (string.IsNullOrEmpty(_newRegexPattern))
+        {
+            _currentMatches.Clear();
+        }
+        else
+        {
+            try
+            {
+                _currentMatches = Regex.Matches(Line.SourceText, _newRegexPattern)
+                                       .Cast<Match>()
+                                       .ToList();
+            }
+            catch (RegexParseException)
+            {
+                _currentMatches.Clear();
+            }
+        }
+    }
+
+    private Task Submit() => OnClose.InvokeAsync(_newRegexPattern);
+    private Task Cancel() => OnClose.InvokeAsync(null);
+
+    public async ValueTask DisposeAsync()
+    {
+        await JsRuntime.InvokeVoidAsync("disposeDialogKeyListener");
+    }
 }

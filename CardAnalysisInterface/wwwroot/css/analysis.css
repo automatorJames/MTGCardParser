@@ -5,23 +5,9 @@
     --underline-width: 2px;
 }
 
-body {
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
-    line-height: 24px;
-}
-
 h1, h2, h3, h4, h5 {
     color: #569cd6;
     padding-bottom: 8px;
-}
-
-blocktitle {
-    color: #96aabb;
-    font-weight: 500;
-    font-size: 28px;
 }
 
 h5 {
@@ -45,9 +31,8 @@ table {
 th, td {
     padding: 12px 15px;
     text-align: left;
-    border: 1px solid #444;
+    border: 1px solid var(--outline-grey);
     vertical-align: top;
-    cursor: copy;
 }
 
 thead tr {
@@ -66,13 +51,12 @@ tbody tr:nth-of-type(even) {
 }
 
 pre {
-    background-color: #1e1e1e;
+    background-color: var(--dark-grey);
     padding: 1rem;
     border-radius: 4px;
-    border: 1px solid var(--lowlight-color, #444);
+    border: 1px solid var(--lowlight-color, var(--outline-grey));
     white-space: pre-wrap;
     word-wrap: break-word;
-    cursor: copy;
 }
 
 code {
@@ -80,23 +64,10 @@ code {
     color: #9cdcfe;
 }
 
-.copy-feedback {
-    position: fixed;
-    background-color: #4CAF50;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.5s;
-    pointer-events: none;
-    font-size: 0.9em;
-}
-
 /* --- Card Variable Capture Page Styles --- */
 .card-capture-block {
-    background-color: #252526;
-    border: 1px solid #444;
+    background-color: var(--light-grey);
+    border: 1px solid var(--outline-grey);
     border-radius: 4px;
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -109,12 +80,14 @@ code {
 
 .line-label {
     font-size: 0.8em;
-    color: #888;
+    color: var(--subtext-grey);
+    width: 100%;
+}
+
+.line-label.dashed-border {
     margin-top: 2rem;
-    margin-bottom: 0rem;
     padding-top: 9px;
     border-top: 1px dashed;
-    width: 100%;
 }
 
 pre.full-original-text {
@@ -228,7 +201,7 @@ pre span:has(br) + span {
     padding: 6px 12px;
     font-size: 0.9em;
     border: none;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--outline-grey);
     cursor: default;
     min-width: 225px;
 }

@@ -1,42 +1,11 @@
 ﻿@inherits LayoutComponentBase
 @inject RuntimeSettings RuntimeSettings
 
-<MudThemeProvider />
-<MudPopoverProvider />
-<MudSnackbarProvider />
-
-<MudDialogProvider FullWidth=true
-                   MaxWidth=MaxWidth.ExtraSmall
-                   CloseButton=true
-                   BackdropClick=false
-                   NoHeader=true
-                   Position=DialogPosition.Center
-                   CloseOnEscapeKey=true
-                   BackgroundClass="blurry-background"/>
-
 <div class="page">
     <nav class="top-row px-4">
         <a class="navbar-brand" href="">MTG Analysis</a>
 
-            <MudButton 
-                Size=Size.Small 
-                Href="card-analysis" 
-                EndIcon="material-symbols-outlined/playing_cards" 
-                Variant=Variant.Filled 
-                Color=Color.Primary>
-                Card Analysis
-            </MudButton>
 
-            <MudButton 
-                Size=Size.Small
-                Href="type-expressions"
-                EndIcon="material-symbols-outlined/regular_expression"
-                Variant=Variant.Filled
-                Color=Color.Tertiary>
-                Type Expressions
-            </MudButton>
-
-        <MudSwitch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Color=Color.Primary UncheckedColor=Color.Surface Label="Hide fully matched cards" />
     </nav>
 
     <main>

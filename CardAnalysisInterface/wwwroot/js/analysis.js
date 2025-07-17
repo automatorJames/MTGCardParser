@@ -1,35 +1,4 @@
-﻿// --- CLICK TO COPY LOGIC ---
-// This part remains unchanged and works fine as it is.
-document.addEventListener('DOMContentLoaded', () => {
-    document.body.addEventListener('click', (event) => {
-        let target = event.target.closest('pre, td');
-        if (!target) return;
-        if (document.body.classList.contains('page-variable-capture') && !target.classList.contains('full-original-text')) return;
-        let textToCopy = (target.tagName === 'TD' && target.hasAttribute('data-original-text')) ? target.getAttribute('data-original-text') : target.innerText.trim();
-        if (textToCopy) {
-            if (!event.shiftKey) textToCopy = textToCopy.toLowerCase();
-            navigator.clipboard.writeText(textToCopy).then(() => showCopyFeedback(event.clientX, event.clientY)).catch(err => console.error('Failed to copy text: ', err));
-        }
-    });
-
-    let feedbackDiv = null, feedbackTimeout = null;
-    function showCopyFeedback(x, y) {
-        if (!feedbackDiv) {
-            feedbackDiv = document.createElement('div');
-            feedbackDiv.className = 'copy-feedback';
-            feedbackDiv.textContent = 'Copied';
-            document.body.appendChild(feedbackDiv);
-        }
-        clearTimeout(feedbackTimeout);
-        feedbackDiv.style.left = `${x + 15}px`;
-        feedbackDiv.style.top = `${y + 15}px`;
-        feedbackDiv.style.opacity = '1';
-        feedbackTimeout = setTimeout(() => { feedbackDiv.style.opacity = '0'; }, 1200);
-    }
-});
-
-
-// --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
+﻿// --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
 
 // These variables will hold our event handlers so they can be removed later,
 // crucial for preventing memory leaks in a Single Page Application (SPA).
@@ -42,7 +11,7 @@ const dataPathSelector = '[data-path]';
 const boundaryClass = 'match-boundary';
 
 function initCardCaptureHover() {
-    const mainContent = document.getElementById('main-content');
+    const mainContent = document.getElementById('card-analysis');
     if (!mainContent) {
         return;
     }
@@ -126,7 +95,7 @@ function initCardCaptureHover() {
 }
 
 function disposeCardCaptureHover() {
-    const mainContent = document.getElementById('main-content');
+    const mainContent = document.getElementById('card-analysis');
     if (mainContent && mouseoverHandler && mouseleaveHandler) {
         mainContent.removeEventListener('mouseover', mouseoverHandler);
         mainContent.removeEventListener('mouseleave', mouseleaveHandler);
@@ -135,55 +104,98 @@ function disposeCardCaptureHover() {
 
 // Regex Editor Dialog
 
-function initRegexEditor(containerId, inputId) {
+// This function receives an array of matches from Blazor and renders them.
+function renderHighlights(containerId, matches) {
     const container = document.getElementById(containerId);
-    const input = document.getElementById(inputId);
+    if (!container) return;
 
-    if (!container || !input) {
-        console.error("RegexEditor init failed: container or input not found.");
+    let highlightLayer = container.querySelector('.highlight-layer');
+    if (!highlightLayer) {
+        highlightLayer = document.createElement('div');
+        highlightLayer.className = 'highlight-layer';
+        container.appendChild(highlightLayer);
+    }
+
+    highlightLayer.innerHTML = '';
+
+    if (!matches || matches.length === 0) {
         return;
     }
 
-    // Find all elements that contain the raw, unmatched text.
-    const textNodes = container.querySelectorAll('precedingtext, followingtext');
-
-    // Store the original text content of each node so we can restore it.
-    textNodes.forEach(node => {
-        node.dataset.originalText = node.textContent;
-    });
-
-    const onInput = () => {
-        const pattern = input.value;
-
-        textNodes.forEach(node => {
-            const originalText = node.dataset.originalText;
-
-            // Always restore the original, un-highlighted text first.
-            node.innerHTML = originalText;
-
-            // Only attempt to match if the pattern is not empty.
-            if (pattern) {
-                try {
-                    // 'g' flag finds all occurrences, not just the first.
-                    const regex = new RegExp(pattern, 'g');
-
-                    // Replace matches with a highlighted span. We must check for
-                    // a non-empty match to avoid infinite loops with patterns like `*` or `?`.
-                    if (originalText.match(regex)) {
-                        node.innerHTML = originalText.replace(regex, (match) => {
-                            if (match) {
-                                return `<span class="preview-highlight">${match}</span>`;
-                            }
-                            return '';
-                        });
-                    }
-                } catch (e) {
-                    // Invalid regex syntax. We catch this to prevent console errors
-                    // while the user is in the middle of typing the pattern.
-                }
+    // --- REVISED and ROBUST findNodeAndOffset function ---
+    // This function uses a TreeWalker to reliably find the text node and offset
+    // for a given character index, correctly handling nested <span> elements.
+    function findNodeAndOffset(parent, characterIndex) {
+        const walker = document.createTreeWalker(parent, NodeFilter.SHOW_TEXT);
+        let remainingOffset = characterIndex;
+        let currentNode;
+        while (currentNode = walker.nextNode()) {
+            if (remainingOffset <= currentNode.length) {
+                return { node: currentNode, offset: remainingOffset };
             }
-        });
+            remainingOffset -= currentNode.length;
+        }
+        return null; // Index is out of bounds
+    }
+
+    for (const match of matches) {
+        const startIndex = match.index;
+        const endIndex = startIndex + match.length;
+
+        const range = document.createRange();
+        const start = findNodeAndOffset(container, startIndex);
+        const end = findNodeAndOffset(container, endIndex);
+
+        // Ensure both start and end points were found before creating a range.
+        if (start && end) {
+            range.setStart(start.node, start.offset);
+            range.setEnd(end.node, end.offset);
+
+            const rects = range.getClientRects();
+            const containerRect = container.getBoundingClientRect();
+
+            for (const rect of rects) {
+                const highlightEl = document.createElement('div');
+                highlightEl.className = 'preview-highlight';
+                highlightEl.style.top = `${rect.top - containerRect.top}px`;
+                highlightEl.style.left = `${rect.left - containerRect.left}px`;
+                highlightEl.style.width = `${rect.width}px`;
+                highlightEl.style.height = `${rect.height}px`;
+                highlightLayer.appendChild(highlightEl);
+            }
+        }
+    }
+}
+
+// This function registers a global keydown event listener.
+function registerDialogKeyListener(dotnetHelper) {
+    // We define the handler function inside so we can reference it later to remove it.
+    const keydownHandler = (e) => {
+        if (e.key === 'Escape') {
+            // Call the specified method on our .NET component instance.
+            dotnetHelper.invokeMethodAsync('HandleEscapeKeyPress');
+        }
     };
 
-    input.addEventListener('input', onInput);
+    document.addEventListener('keydown', keydownHandler);
+
+    // Store the handler on a global object so we can find it to dispose of it.
+    // This prevents adding multiple listeners if the dialog is opened/closed quickly.
+    window.dialogKeyListener = keydownHandler;
+}
+
+// This function cleans up the event listener to prevent memory leaks.
+function disposeDialogKeyListener() {
+    if (window.dialogKeyListener) {
+        document.removeEventListener('keydown', window.dialogKeyListener);
+        delete window.dialogKeyListener;
+    }
+}
+
+// This function finds an element by its ID and sets focus on it.
+function focusElement(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.focus();
+    }
 }

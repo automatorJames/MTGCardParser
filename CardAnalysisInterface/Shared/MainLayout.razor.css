@@ -18,8 +18,8 @@
     gap: 1.5rem; /* Space between items */
     /* Appearance */
     height: 3.5rem;
-    background-color: #252526;
-    border-bottom: 1px solid #444;
+    background-color: var(--light-grey);
+    border-bottom: 1px solid var(--outline-grey);
 }
 
 /* --- Main Content Area --- */
@@ -27,7 +27,7 @@ main {
     flex-grow: 1; /* This makes the main content area take up all remaining vertical space */
     display: flex;
     flex-direction: column;
-    background-color: #1e1e1e;
+    background-color: var(--dark-grey);
 }
 
 .content {

@@ -1,0 +1,43 @@
+﻿/* The main container with a new, more visible default text color. */
+.line-text-container {
+    position: relative;
+    background-color: var(--dark-grey);
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--lowlight-color, var(--outline-grey));
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.1em;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 
+  The back layer is the positioning context for the front layer.
+  Its text is invisible, and its natural height determines the container's size.
+*/
+.text-layer-back {
+    position: relative;
+    color: transparent;
+}
+
+/* 
+  The front layer is absolutely positioned to the corners of its parent 
+  (.text-layer-back), ensuring a perfect overlay.
+*/
+.text-layer-front {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* This span provides the underline effect for matched text. */
+.highlight-token {
+    text-decoration: underline;
+    /* TWEAK 3: A fresh, vibrant cyan for the underline color. */
+    text-decoration-color: rgba(79, 209, 219, 0.8); /* Vibrant, modern cyan */
+
+    text-decoration-thickness: 2px;
+    /* TWEAK 2: Increased offset for more vertical "breathing room". */
+    text-underline-offset: 6px;
+}

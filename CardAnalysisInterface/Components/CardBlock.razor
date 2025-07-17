@@ -1,18 +1,14 @@
-﻿@inject IDialogService DialogService
-
-<div class="card-capture-block">
-    <blocktitle>@CardDigest.Card.Name</blocktitle>
-    <br />
-    <br />
+﻿<div class="card-capture-block">
+    <div class="card-title">@CardDigest.Card.Name</div>
     <pre class="full-original-text">@CardDigest.Card.Text</pre>
 
     @foreach (var line in CardDigest.Lines)
     {
         _capitalizeNextSpan = true;
         <div class="line-capture-block match-boundary">
-            <div class="line-label">Line #@(line.LineIndex + 1)</div>
+            <div class="line-label dashed-border">Line #@(line.LineIndex + 1)</div>
 
-            <pre class="line-text">
+            <pre class="line-text" @onclick=@(() => OpenRegexEditorDialog(line))>
                 @foreach (var root in line.SpanRoots)
                 {
                     @if (root.AttachedPrecedingText != null)
@@ -44,21 +40,46 @@
     }
 </div>
 
+@if (_isDialogOpen)
+{
+    <RegexEditorDialog Line="_selectedLine" OnClose="HandleDialogClose" />
+}
+
 @code {
     bool _capitalizeNextSpan;
+    bool _isDialogOpen = false;
+    CardLine _selectedLine;
 
     [Parameter]
     public CardDigest CardDigest { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 
-    async Task OpenRegexEditorDialog(CardLine line)
+    private void OpenRegexEditorDialog(CardLine line)
     {
-        var dialogParams = new DialogParameters<RegexEditorDialog>
-        {
-            { x => x.Line, line }
-        };
+        _selectedLine = line;
+        _isDialogOpen = true;
+        // We call StateHasChanged() to ensure the UI re-renders and shows the dialog.
+        StateHasChanged();
+    }
 
-        var dialog = await DialogService.ShowAsync<RegexEditorDialog>("", dialogParams);
+    private void HandleDialogClose(string regexResult)
+    {
+        _isDialogOpen = false; // Hide the dialog
+
+        if (regexResult != null) // Check if the user clicked "Save"
+        {
+            Console.WriteLine($"User saved new regex: {regexResult}");
+            //
+            // --> This is where you put your logic to process the new regex.
+            //
+        }
+        else
+        {
+            Console.WriteLine("Dialog was cancelled.");
+        }
+
+        // We need to re-render to hide the dialog.
+        StateHasChanged();
     }
 }

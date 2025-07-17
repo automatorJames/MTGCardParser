@@ -3,9 +3,7 @@
 public record CardDigest
 {
     public Card Card { get; }
-
     public List<CardLine> Lines { get; } = [];
-
     public List<string> UnmatchedSpans =>
         Lines
         .SelectMany(x => x.UnmatchedSpans)
@@ -22,8 +20,8 @@ public record CardDigest
         {
             Card = card;
             var line = card.CleanedLines[i];
-            var lineTokens = TokenTypeRegistry.Tokenizer.Tokenize(line).ToList();
-            Lines.Add(new(card, lineTokens, i));
+            var lineTokens = TokenTypeRegistry.TokenizeAndCoallesceUnmatched(line);
+            Lines.Add(new(card, line, lineTokens, i));
             CountTokenTypes(lineTokens);
         }
 

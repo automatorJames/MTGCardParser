@@ -5,13 +5,11 @@
 @inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
-<body class="page-variable-capture">
-    <div id="main-content">
-        @foreach (var cardDigest in GetFilteredCards())
-        {
-            <CardBlock CardDigest=cardDigest />
-        }
-    </div>
+<body id="card-analysis">
+    @foreach (var cardDigest in GetFilteredCards())
+    {
+        <CardBlock CardDigest=cardDigest />
+    }
 </body>
 
 

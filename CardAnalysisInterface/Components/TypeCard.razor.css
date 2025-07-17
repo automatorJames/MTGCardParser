@@ -16,6 +16,6 @@
 .matches-label {
     font-size: .8em;
     font-style: italic;
-    color: #888;
+    color: var(--subtext-grey);
     font-weight: normal;
 }

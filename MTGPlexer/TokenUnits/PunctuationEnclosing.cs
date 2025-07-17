@@ -1,4 +1,4 @@
-﻿/*namespace MTGPlexer.TokenUnits;
+﻿namespace MTGPlexer.TokenUnits;
 
 [EnclosesToken]
 [IgnoreInAnalysis]
@@ -13,4 +13,4 @@ public enum EnclosingPunctuationCharacter
 {
     [RegexPattern(@"""")]
     DoubleQuote,
-}*/
+}

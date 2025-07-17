@@ -1,7 +1,28 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+:root {
+    --dark-grey: #1e1e1e;
+    --light-grey: #252526;
+    --navy: #1a202c;
+    --faded-blue: #96aabb;
+    --lightest-blue: #dfe3ec;
+    --subtext-grey: #888888;
+    --outline-grey: #444444;
+}
+
+.card-title {
+    color: #96aabb;
+    font-weight: 500;
+    font-size: 28px;
+    margin-bottom: 24px;
+}
+
+body {
+    background-color: var(--dark-grey);
+    color: #d4d4d4;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    line-height: 24px;
 }
 
 h1:focus {
