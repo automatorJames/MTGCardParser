@@ -5,6 +5,7 @@ public record class CardLine
     Card _card;
 
     public List<SpanRoot> SpanRoots { get; }
+    public HashSet<string> UnmatchedSpans { get; } = [];
     public int LineIndex { get; }
 
     public CardLine(Card card, List<Token<Type>> tokens, int lineIndex)
@@ -26,7 +27,11 @@ public record class CardLine
 
         foreach (var token in tokens)
         {
+            if (token.Kind == typeof(DefaultUnmatchedString))
+                UnmatchedSpans.Add(token.Span.ToStringValue());
+
             var hydratedTokenUnit = TokenTypeRegistry.HydrateFromToken(token);
+
             var root = new SpanRoot(hydratedTokenUnit, _card.Name, textToPrecedeNext);
             textToPrecedeNext = null;
 
@@ -64,5 +69,8 @@ public record class CardLine
             }
         }
     }
+
+    public override string ToString() =>
+        string.Join(' ', SpanRoots.Select(x => x.ToString()));
 }
 

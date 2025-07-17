@@ -1,0 +1,73 @@
+﻿@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Regex Editor</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudPaper Class="pa-4" Elevation="0" Bordered="true">
+                <div class="line-label">Line #@(Line.LineIndex + 1)</div>
+
+                @* This ID is the target for our JavaScript function. *@
+                <pre class="line-text" id="regex-line-container">
+                    @* This rendering logic is reused from your main page. *@
+                    @foreach (var root in Line.SpanRoots)
+                    {
+                        @if (root.AttachedPrecedingText != null)
+                        {
+                        <precedingtext>@root.AttachedPrecedingText</precedingtext>
+                        }
+
+                    <NestedSpanRecursive Span=@root />
+
+                        @if (root.AttachedFollowingText != null)
+                        {
+                        <followingtext>@root.AttachedFollowingText</followingtext>
+                        }
+                    }
+                </pre>
+            </MudPaper>
+
+            <MudPaper Class="pa-4" Elevation="0" Bordered="true">
+                <MudTextField @bind-Value="_newRegexPattern"
+                              Label="Regular Expression"
+                              Variant="Variant.Outlined"
+                              Placeholder="Enter a .NET regular expression"
+                              id="regex-input-field"
+                              Immediate="true"
+                              Clearable="true"
+                              HelperText="Matches will be highlighted above in real-time." />
+            </MudPaper>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public CardLine Line { get; set; }
+
+    private string _newRegexPattern;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // CORRECTED: Call the standalone JS function using the injected 'JsRuntime' instance.
+            await JsRuntime.InvokeVoidAsync("initRegexEditor", "regex-line-container", "regex-input-field");
+        }
+    }
+
+    // When submitting, we pass the new regex pattern back to the caller.
+    void Submit() => MudDialog.Close(DialogResult.Ok(_newRegexPattern));
+    void Cancel() => MudDialog.Cancel();
+}

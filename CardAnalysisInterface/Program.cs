@@ -1,3 +1,5 @@
+using MudBlazor.Services;
+
 namespace CardAnalysisInterface;
 public class Program
 {
@@ -8,6 +10,8 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
+        builder.Services.AddMudServices();
+        builder.Services.AddScoped<RuntimeSettings>();
 
         builder.Services.AddSingleton(new CardDigester(1));
 

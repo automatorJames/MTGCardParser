@@ -1,21 +1,28 @@
 ﻿@inherits LayoutComponentBase
+@inject RuntimeSettings RuntimeSettings
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudSnackbarProvider />
+
+<MudDialogProvider FullWidth=true
+                   MaxWidth=MaxWidth.ExtraSmall
+                   CloseButton=true
+                   BackdropClick=false
+                   NoHeader=true
+                   Position=DialogPosition.Center
+                   CloseOnEscapeKey=true
+                   BackgroundClass="blurry-background"/>
 
 <div class="page">
     <nav class="top-row px-4">
         <a class="navbar-brand" href="">MTG Analysis</a>
 
-        <NavLink class="nav-link" href="type-key" Match="NavLinkMatch.All">
-            <span class="oi oi-key" aria-hidden="true"></span> Type Key
-        </NavLink>
-        <NavLink class="nav-link" href="card-coverage">
-            <span class="oi oi-pie-chart" aria-hidden="true"></span> Coverage
-        </NavLink>
-        <NavLink class="nav-link" href="unmatched-spans">
-            <span class="oi oi-warning" aria-hidden="true"></span> Unmatched
-        </NavLink>
         <NavLink class="nav-link" href="variable-analysis">
             <span class="oi oi-beaker" aria-hidden="true"></span> Capture
         </NavLink>
+
+        <MudSwitch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Color=Color.Primary UncheckedColor=Color.Surface Label="Hide fully matched cards" />
     </nav>
 
     <main>

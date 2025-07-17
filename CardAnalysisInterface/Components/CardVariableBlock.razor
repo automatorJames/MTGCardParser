@@ -1,4 +1,6 @@
-﻿<div class="card-capture-block">
+﻿@inject IDialogService DialogService
+
+<div class="card-capture-block">
     <cardname>@CardDigest.Card.Name</cardname>
     <br />
     <br />
@@ -8,9 +10,9 @@
     {
         _capitalizeNextSpan = true;
         <div class="line-capture-block match-boundary">
-            <h5 class="line-label">Line #@(line.LineIndex + 1)</h5>
+            <div class="line-label">Line #@(line.LineIndex + 1)</div>
 
-            <pre class="line-text">
+            <pre class="line-text" @onclick=@(() => OpenRegexEditorDialog(line))>
                 @foreach (var root in line.SpanRoots)
                 {
                     @if (root.AttachedPrecedingText != null)
@@ -50,4 +52,13 @@
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 
+    async Task OpenRegexEditorDialog(CardLine line)
+    {
+        var dialogParams = new DialogParameters<RegexEditorDialog>
+        {
+            { x => x.Line, line }
+        };
+
+        var dialog = await DialogService.ShowAsync<RegexEditorDialog>("", dialogParams);
+    }
 }

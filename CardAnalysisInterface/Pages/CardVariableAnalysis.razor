@@ -2,10 +2,12 @@
 @page "/variable-analysis"
 @inject IJSRuntime JSRuntime
 @inject CardDigester CardDigester
+@inject RuntimeSettings RuntimeSettings
+@implements IDisposable
 
 <body class="page-variable-capture">
     <div id="main-content">
-        @foreach (var cardDigest in CardDigester.DigestedCards)
+        @foreach (var cardDigest in GetFilteredCards())
         {
             <CardVariableBlock CardDigest=cardDigest />
         }
@@ -14,9 +16,22 @@
 
 
 @code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+
+    protected override void OnInitialized()
     {
-        if (firstRender)
-            await JSRuntime.InvokeVoidAsync("initCardCaptureHover");
+        RuntimeSettings.OnChanged += StateHasChanged;
+    }
+
+    IEnumerable<CardDigest> GetFilteredCards()
+    {
+        if (RuntimeSettings.HideFullyMatchedCards)
+            return CardDigester.DigestedCards.Where(x => !x.IsFullyMatched);
+
+        return CardDigester.DigestedCards;
+    }
+
+    public void Dispose()
+    {
+        RuntimeSettings.OnChanged -= StateHasChanged;
     }
 }

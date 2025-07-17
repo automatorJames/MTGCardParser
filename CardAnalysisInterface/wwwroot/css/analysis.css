@@ -15,7 +15,6 @@ body {
 
 h1, h2, h3, h4, h5 {
     color: #569cd6;
-    border-bottom: 1px solid #444;
     padding-bottom: 8px;
 }
 
@@ -129,6 +128,7 @@ code {
     margin-bottom: 0rem;
     padding-top: 9px;
     border-top: 1px dashed;
+    width: 100%;
 }
 
 pre.full-original-text {
@@ -316,4 +316,16 @@ pre span:has(br) + span {
 
 .prop-capture-table-cell.value-column.mute-active {
     color: gray;
+}
+
+/* Regex Dialog */
+
+.preview-highlight {
+    background-color: #FFECB3; /* A nice, light yellow */
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px #FFD54F; /* A slightly darker yellow border */
+}
+
+precedingtext, followingtext {
+    display: inline;
 }

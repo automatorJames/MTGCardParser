@@ -67,3 +67,7 @@ a, .btn-link {
     .blazor-error-boundary::after {
         content: "An error has occurred."
     }
+
+.blurry-background {
+    backdrop-filter: blur(10px);
+}

@@ -132,3 +132,58 @@ function disposeCardCaptureHover() {
         mainContent.removeEventListener('mouseleave', mouseleaveHandler);
     }
 }
+
+// Regex Editor Dialog
+
+function initRegexEditor(containerId, inputId) {
+    const container = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+
+    if (!container || !input) {
+        console.error("RegexEditor init failed: container or input not found.");
+        return;
+    }
+
+    // Find all elements that contain the raw, unmatched text.
+    const textNodes = container.querySelectorAll('precedingtext, followingtext');
+
+    // Store the original text content of each node so we can restore it.
+    textNodes.forEach(node => {
+        node.dataset.originalText = node.textContent;
+    });
+
+    const onInput = () => {
+        const pattern = input.value;
+
+        textNodes.forEach(node => {
+            const originalText = node.dataset.originalText;
+
+            // Always restore the original, un-highlighted text first.
+            node.innerHTML = originalText;
+
+            // Only attempt to match if the pattern is not empty.
+            if (pattern) {
+                try {
+                    // 'g' flag finds all occurrences, not just the first.
+                    const regex = new RegExp(pattern, 'g');
+
+                    // Replace matches with a highlighted span. We must check for
+                    // a non-empty match to avoid infinite loops with patterns like `*` or `?`.
+                    if (originalText.match(regex)) {
+                        node.innerHTML = originalText.replace(regex, (match) => {
+                            if (match) {
+                                return `<span class="preview-highlight">${match}</span>`;
+                            }
+                            return '';
+                        });
+                    }
+                } catch (e) {
+                    // Invalid regex syntax. We catch this to prevent console errors
+                    // while the user is in the middle of typing the pattern.
+                }
+            }
+        });
+    };
+
+    input.addEventListener('input', onInput);
+}
