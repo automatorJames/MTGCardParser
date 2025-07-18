@@ -14,8 +14,6 @@ function initializeEditor(_dotNetReference, _editorElement) {
         editorElement.addEventListener('input', onEditorInput);
         editorElement.focus();
 
-        // Listen for mousedown on the document to handle the dropdown clicks.
-        // This is more reliable than attaching to a Blazor-rendered element that might not exist yet.
         document.addEventListener('mousedown', onDropdownMouseDown);
     }
 }
@@ -37,6 +35,14 @@ function getEditorRawText() {
     });
     // Strip the zero-width spaces from the final output
     return rawText.replace(/\u200B/g, '');
+}
+
+// *** NEW: This function handles scrolling the dropdown list. ***
+function scrollToAutocompleteItem(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
 }
 
 function insertPillIntoEditor(displayText, rawText, color) {
@@ -63,7 +69,6 @@ function onDropdownMouseDown(event) {
     const item = event.target.closest('.autocomplete-item');
     if (!item) return;
 
-    // *** THIS IS THE KEY FIX: ***
     // Prevent the mousedown event's default action, which is to take focus away from the editor.
     event.preventDefault();
 

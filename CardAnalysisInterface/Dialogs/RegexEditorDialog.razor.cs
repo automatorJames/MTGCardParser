@@ -80,20 +80,24 @@ namespace CardAnalysisInterface.Dialogs
             StateHasChanged();
         }
 
-        private Task OnKeyDown(KeyboardEventArgs e)
+        private async Task OnKeyDown(KeyboardEventArgs e)
         {
             if (!_isDropdownVisible)
             {
-                return Task.CompletedTask;
+                return;
             }
 
             switch (e.Key)
             {
                 case "ArrowDown":
                     _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
+                    // *** FIX: Call JS to scroll the new item into view. ***
+                    await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
                     break;
                 case "ArrowUp":
                     _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
+                    // *** FIX: Call JS to scroll the new item into view. ***
+                    await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
                     break;
                 case "Enter":
                 case "Tab":
@@ -109,7 +113,6 @@ namespace CardAnalysisInterface.Dialogs
             }
 
             StateHasChanged();
-            return Task.CompletedTask;
         }
 
         private async void SelectSuggestion(Type selection)
