@@ -1,209 +1,174 @@
-﻿namespace CardAnalysisInterface.Dialogs;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
-public partial class RegexEditorDialog : ComponentBase
+namespace CardAnalysisInterface.Dialogs
 {
-
-    [Parameter]
-    public CardLine Line { get; set; }
-
-    [Parameter]
-    public EventCallback<string> OnClose { get; set; }
-
-
-    List<RegexPatternDisplaySegment> _patternSegments = new();
-    string _currentTypingText = "";
-    string _renderedRegex = "";
-    List<Match> _currentMatches = new List<Match>();
-    TokenTemplatePreview _tokenTemplatePreview;
-
-    bool _isDropdownVisible = false;
-    List<Type> _allTemplateTypes = new();
-    List<Type> _autocompleteSuggestions = new();
-    int _selectedSuggestionIndex = -1;
-    ElementReference _inputElement;
-
-    // Computed property for the full regex string
-    private string _newRegexPattern => string.Concat(_patternSegments.Select(s => s.OriginalText));
-
-    protected override void OnInitialized()
+    public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
-        _allTemplateTypes.AddRange(TokenTypeRegistry.AppliedOrderTypes);
-        _allTemplateTypes.AddRange(TokenTypeRegistry.ReferencedEnumTypes);
-        _allTemplateTypes = _allTemplateTypes.OrderBy(t => t.Name).ToList();
-        UpdateAndRender();
-    }
+        [Parameter]
+        public CardLine Line { get; set; }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
+        [Parameter]
+        public EventCallback<string> OnClose { get; set; }
+
+        private string _renderedRegex = "";
+        private List<Match> _currentMatches = new List<Match>();
+        private TokenTemplatePreview _tokenTemplatePreview;
+
+        private bool _isDropdownVisible = false;
+        private List<Type> _allTemplateTypes = new();
+        private List<Type> _autocompleteSuggestions = new();
+        private int _selectedSuggestionIndex = -1;
+        private bool _isEditorEmpty = true;
+        private bool _showPreviewBoxes = false;
+
+        private ElementReference _editorElement;
+        private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
+
+        protected override void OnInitialized()
         {
-            await JsRuntime.InvokeVoidAsync("initializeAutocompleteInteraction", "autocomplete-dropdown-list");
-            await JsRuntime.InvokeVoidAsync("registerDialogKeyListener", DotNetObjectReference.Create(this));
-            await JsRuntime.InvokeVoidAsync("focusElement", "regex-ghost-input");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _allTemplateTypes.AddRange(TokenTypeRegistry.AppliedOrderTypes);
+            _allTemplateTypes.AddRange(TokenTypeRegistry.ReferencedEnumTypes);
+            _allTemplateTypes = _allTemplateTypes.OrderBy(t => t.Name).ToList();
         }
-    }
 
-    private void OnTextInput(ChangeEventArgs e)
-    {
-        JsRuntime.InvokeVoidAsync("setKeyboardNavigating", false);
-        _currentTypingText = e.Value?.ToString() ?? "";
-        var fullPatternForSuggestions = _newRegexPattern + _currentTypingText;
-
-        int atIndex = _currentTypingText.LastIndexOf('@');
-        if (atIndex != -1 && !_currentTypingText.Substring(atIndex).Contains(' '))
+        protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            var filter = _currentTypingText.Substring(atIndex + 1);
-            _autocompleteSuggestions = _allTemplateTypes
-                .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
-                .ThenBy(t => t.Name)
-                .ToList();
-
-            _isDropdownVisible = _autocompleteSuggestions.Any();
-            _selectedSuggestionIndex = -1;
+            if (firstRender)
+            {
+                await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement);
+            }
         }
-        else
+
+        [JSInvokable]
+        public void HideDropdown()
         {
             _isDropdownVisible = false;
-        }
-        UpdateRenderedRegexAndMatches();
-    }
-
-    private void CommitTypingText()
-    {
-        if (!string.IsNullOrEmpty(_currentTypingText))
-        {
-            // If the text being typed contains a pending autocomplete, don't commit it.
-            int atIndex = _currentTypingText.LastIndexOf('@');
-            if (atIndex == -1 || _currentTypingText.Substring(atIndex).Contains(' '))
-            {
-                _patternSegments.Add(new RegexPatternDisplaySegment(_currentTypingText, IsPill: false));
-                _currentTypingText = "";
-                UpdateAndRender();
-            }
-        }
-    }
-
-    private async Task OnInputKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Backspace" && string.IsNullOrEmpty(_currentTypingText) && _patternSegments.Any())
-        {
-            var lastSegment = _patternSegments.Last();
-            if (lastSegment.IsPill)
-            {
-                _patternSegments.RemoveAt(_patternSegments.Count - 1);
-            }
-            else // It's a text segment, move it to the typing area for editing.
-            {
-                _currentTypingText = lastSegment.OriginalText;
-                _patternSegments.RemoveAt(_patternSegments.Count - 1);
-            }
-            UpdateAndRender();
-            return;
+            StateHasChanged();
         }
 
-        if (!_isDropdownVisible) return;
-
-        switch (e.Key)
+        [JSInvokable]
+        public void UpdateFromJavaScript(string rawText, string currentWord)
         {
-            case "ArrowDown":
-            case "ArrowUp":
-                await JsRuntime.InvokeVoidAsync("setKeyboardNavigating", true);
-                if (e.Key == "ArrowDown")
-                    _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
-                else
-                    _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
-                await JsRuntime.InvokeVoidAsync("scrollToElement", $"autocomplete-item-{_selectedSuggestionIndex}");
-                break;
-            case "Enter" or "Tab":
-                if (_selectedSuggestionIndex != -1)
-                {
-                    await SelectSuggestion(_autocompleteSuggestions[_selectedSuggestionIndex]);
-                }
-                break;
-            case "Escape":
+            _isEditorEmpty = string.IsNullOrEmpty(rawText);
+
+            if (currentWord.StartsWith("@"))
+            {
+                var filter = currentWord.Substring(1);
+                _autocompleteSuggestions = _allTemplateTypes
+                    .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                    .ThenBy(t => t.Name)
+                    .ToList();
+
+                _isDropdownVisible = _autocompleteSuggestions.Any();
+                _selectedSuggestionIndex = _isDropdownVisible ? 0 : -1;
+            }
+            else
+            {
                 _isDropdownVisible = false;
-                break;
-        }
-    }
+            }
 
-    private async Task SelectSuggestion(Type selection)
-    {
-        int atIndex = _currentTypingText.LastIndexOf('@');
-        string pretext = _currentTypingText.Substring(0, atIndex);
-        if (!string.IsNullOrEmpty(pretext))
-        {
-            _patternSegments.Add(new RegexPatternDisplaySegment(pretext));
+            UpdateRenderedRegexAndMatches(rawText);
+            StateHasChanged();
         }
 
-        var pillText = $"@{selection.Name}";
-        //_patternSegments.Add(new RegexPatternDisplaySegment { OriginalText = pillText, DisplayText = selection.Name, IsPill = true });
-        _patternSegments.Add(new RegexPatternDisplaySegment(pillText, IsPill: true));
-
-        _currentTypingText = " "; // Add a space for better UX
-        _isDropdownVisible = false;
-        await JsRuntime.InvokeVoidAsync("setKeyboardNavigating", false);
-        UpdateAndRender();
-        await FocusInputElement();
-    }
-
-    private void DeletePill(Guid segmentId)
-    {
-        _patternSegments.RemoveAll(s => s.Id == segmentId);
-        UpdateAndRender();
-        FocusInputElement();
-    }
-
-    private void UpdateAndRender()
-    {
-        UpdateRenderedRegexAndMatches();
-        StateHasChanged();
-    }
-
-    private void UpdateRenderedRegexAndMatches()
-    {
-        var patternToRender = _newRegexPattern + _currentTypingText;
-        if (!patternToRender.Contains("@"))
+        private Task OnKeyDown(KeyboardEventArgs e)
         {
-            _renderedRegex = "";
+            if (!_isDropdownVisible)
+            {
+                return Task.CompletedTask;
+            }
+
+            switch (e.Key)
+            {
+                case "ArrowDown":
+                    _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
+                    break;
+                case "ArrowUp":
+                    _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
+                    break;
+                case "Enter":
+                case "Tab":
+                    if (_selectedSuggestionIndex != -1 && _autocompleteSuggestions.Count > _selectedSuggestionIndex)
+                    {
+                        // This path is now only for keyboard.
+                        SelectSuggestion(_autocompleteSuggestions[_selectedSuggestionIndex]);
+                    }
+                    break;
+                case "Escape":
+                    _isDropdownVisible = false;
+                    break;
+            }
+
+            StateHasChanged();
+            return Task.CompletedTask;
+        }
+
+        private async void SelectSuggestion(Type selection)
+        {
+            // This method is now only for keyboard events (Enter/Tab).
+            // It calls the JS insertion function, which will get the current caret info itself.
+            var pillDisplayName = selection.Name;
+            var pillRawText = $"@{pillDisplayName}";
+            var pillColor = TokenTypeRegistry.Palettes[selection].HexDark;
+
+            await JsRuntime.InvokeVoidAsync("insertPillIntoEditor", pillDisplayName, pillRawText, pillColor);
+        }
+
+        private void UpdateRenderedRegexAndMatches(string patternToRender)
+        {
+            var logicalPattern = patternToRender.Replace("\u200B", "").Trim();
+
+            _showPreviewBoxes = logicalPattern.Contains("@");
+
+            if (!_showPreviewBoxes)
+            {
+                _renderedRegex = logicalPattern;
+                _tokenTemplatePreview = null;
+            }
+
             try
             {
-                if (!string.IsNullOrWhiteSpace(patternToRender))
-                    _currentMatches = Regex.Matches(Line.SourceText, patternToRender).Cast<Match>().ToList();
-                else
-                    _currentMatches.Clear();
+                if (_showPreviewBoxes)
+                {
+                    _tokenTemplatePreview = new TokenTemplatePreview(logicalPattern);
+                    _renderedRegex = _tokenTemplatePreview.RenderedRegex;
+                }
+
+                _currentMatches = string.IsNullOrWhiteSpace(_renderedRegex)
+                    ? new List<Match>()
+                    : Regex.Matches(Line.SourceText, _renderedRegex).Cast<Match>().ToList();
             }
-            catch (Exception) { _currentMatches.Clear(); }
-            return;
+            catch (Exception)
+            {
+                _renderedRegex = "Error: Invalid template";
+                _currentMatches.Clear();
+            }
         }
 
-        try
+        private async Task HandleSubmit()
         {
-            _tokenTemplatePreview = new(patternToRender);
-            _renderedRegex = _tokenTemplatePreview.RenderedRegex;
-            _currentMatches = Regex.Matches(Line.SourceText, _renderedRegex).Cast<Match>().ToList();
+            var finalPattern = await JsRuntime.InvokeAsync<string>("getEditorRawText");
+            await OnClose.InvokeAsync(finalPattern.Trim());
         }
-        catch (Exception)
+
+        private Task HandleCancel() => OnClose.InvokeAsync(null);
+
+        public async ValueTask DisposeAsync()
         {
-            _renderedRegex = "Error: Invalid template";
-            _currentMatches.Clear();
+            if (_dotNetRef != null)
+            {
+                await JsRuntime.InvokeVoidAsync("disposeEditor");
+                _dotNetRef.Dispose();
+            }
         }
-    }
-
-    private async Task HandleSubmit()
-    {
-        CommitTypingText();
-        await OnClose.InvokeAsync(_newRegexPattern);
-    }
-
-    private Task HandleCancel() => OnClose.InvokeAsync(null);
-    private async Task FocusInputElement() => await _inputElement.FocusAsync();
-
-    [JSInvokable]
-    public Task HandleEscapeKeyPress() => HandleCancel();
-
-    public async ValueTask DisposeAsync()
-    {
-        await JsRuntime.InvokeVoidAsync("disposeDialogKeyListener");
     }
 }
