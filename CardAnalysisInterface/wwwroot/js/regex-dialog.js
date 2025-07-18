@@ -12,20 +12,22 @@ function initializeEditor(_dotNetReference, _editorElement) {
 
     if (editorElement) {
         editorElement.addEventListener('input', onEditorInput);
+        editorElement.addEventListener('keydown', onEditorKeyDown); // For smart backspace and event prevention
         editorElement.focus();
 
         document.addEventListener('mousedown', onDropdownMouseDown);
-        // *** FIX: Add back the global key listener for Escape. ***
         document.addEventListener('keydown', onGlobalKeyDown);
+
+        ensureInitialAnchor();
     }
 }
 
 function disposeEditor() {
     if (editorElement) {
         editorElement.removeEventListener('input', onEditorInput);
+        editorElement.removeEventListener('keydown', onEditorKeyDown);
     }
     document.removeEventListener('mousedown', onDropdownMouseDown);
-    // *** FIX: Remove the global listener on cleanup. ***
     document.removeEventListener('keydown', onGlobalKeyDown);
     editorDotNetReference = null;
     editorElement = null;
@@ -37,7 +39,6 @@ function getEditorRawText() {
     editorElement.childNodes.forEach(node => {
         rawText += getRawTextFromNode(node);
     });
-    // Strip the zero-width spaces from the final output
     return rawText.replace(/\u200B/g, '');
 }
 
@@ -64,13 +65,45 @@ function insertPillIntoEditor(displayText, rawText, color) {
 
 // --- Internal Helper Functions & Event Handlers ---
 
-// *** FIX: New handler for the global keydown event. ***
 function onGlobalKeyDown(event) {
     if (event.key === 'Escape' && editorDotNetReference) {
-        // Stop the event from bubbling up further.
         event.stopPropagation();
-        // Let the C# component handle the logic.
         editorDotNetReference.invokeMethodAsync('HandleGlobalEscape');
+    }
+}
+
+function onEditorKeyDown(event) {
+    const dropdown = document.getElementById('autocomplete-dropdown-list');
+    const isDropdownVisible = dropdown && dropdown.offsetParent !== null;
+
+    if (isDropdownVisible) {
+        // *** FIX: Only prevent default for keys that navigate or select from the dropdown. ***
+        if (event.key === 'Enter' || event.key === 'Tab' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault();
+        }
+    }
+
+    if (event.key !== 'Backspace') return;
+
+    const selection = window.getSelection();
+    if (!selection.isCollapsed) return;
+
+    const range = selection.getRangeAt(0);
+    const node = range.startContainer;
+    const offset = range.startOffset;
+
+    if (node.nodeType === Node.TEXT_NODE && offset > 0 && node.nodeValue.substring(offset - 1, offset) === '\u200B') {
+        let previousElement = node.previousSibling;
+        if (offset === 1 && node.nodeValue.length === 1) {
+            previousElement = node.previousElementSibling;
+        }
+
+        if (previousElement && previousElement.classList && previousElement.classList.contains('pill-wrapper')) {
+            event.preventDefault();
+            previousElement.remove();
+            onEditorInput();
+            return;
+        }
     }
 }
 
@@ -119,9 +152,9 @@ function performInsertion(range, displayText, rawText, color) {
     onEditorInput();
 }
 
-
 function onEditorInput(event) {
     if (!editorDotNetReference) return;
+    ensureInitialAnchor();
     const rawText = getEditorRawText();
     const caretInfo = getCaretPositionInfo();
     const currentWord = (caretInfo && caretInfo.currentWord) ? caretInfo.currentWord : '';
@@ -179,4 +212,11 @@ function getCaretPositionInfo() {
         range,
         currentWord
     };
+}
+
+function ensureInitialAnchor() {
+    if (editorElement && (editorElement.childNodes.length === 0 || editorElement.firstChild.nodeValue !== '\u200B')) {
+        const zeroWidthSpace = document.createTextNode('\u200B');
+        editorElement.insertBefore(zeroWidthSpace, editorElement.firstChild);
+    }
 }
