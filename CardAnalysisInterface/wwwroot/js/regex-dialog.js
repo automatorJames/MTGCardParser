@@ -15,6 +15,8 @@ function initializeEditor(_dotNetReference, _editorElement) {
         editorElement.focus();
 
         document.addEventListener('mousedown', onDropdownMouseDown);
+        // *** FIX: Add back the global key listener for Escape. ***
+        document.addEventListener('keydown', onGlobalKeyDown);
     }
 }
 
@@ -23,6 +25,8 @@ function disposeEditor() {
         editorElement.removeEventListener('input', onEditorInput);
     }
     document.removeEventListener('mousedown', onDropdownMouseDown);
+    // *** FIX: Remove the global listener on cleanup. ***
+    document.removeEventListener('keydown', onGlobalKeyDown);
     editorDotNetReference = null;
     editorElement = null;
 }
@@ -37,7 +41,6 @@ function getEditorRawText() {
     return rawText.replace(/\u200B/g, '');
 }
 
-// *** NEW: This function handles scrolling the dropdown list. ***
 function scrollToAutocompleteItem(elementId) {
     const element = document.getElementById(elementId);
     if (element) {
@@ -46,9 +49,6 @@ function scrollToAutocompleteItem(elementId) {
 }
 
 function insertPillIntoEditor(displayText, rawText, color) {
-    // This function is now primarily for KEYBOARD insertion.
-    // The caret is guaranteed to be in the right place because focus never left the editor.
-
     const caretInfo = getCaretPositionInfo();
     if (!caretInfo || !caretInfo.selection || !caretInfo.range) return;
 
@@ -64,26 +64,31 @@ function insertPillIntoEditor(displayText, rawText, color) {
 
 // --- Internal Helper Functions & Event Handlers ---
 
+// *** FIX: New handler for the global keydown event. ***
+function onGlobalKeyDown(event) {
+    if (event.key === 'Escape' && editorDotNetReference) {
+        // Stop the event from bubbling up further.
+        event.stopPropagation();
+        // Let the C# component handle the logic.
+        editorDotNetReference.invokeMethodAsync('HandleGlobalEscape');
+    }
+}
+
 function onDropdownMouseDown(event) {
-    // Find the dropdown item that was clicked on.
     const item = event.target.closest('.autocomplete-item');
     if (!item) return;
 
-    // Prevent the mousedown event's default action, which is to take focus away from the editor.
     event.preventDefault();
 
-    // Get the data we stored on the element in the Razor component.
     const displayText = item.dataset.displayText;
     const rawText = item.dataset.rawText;
     const color = item.dataset.color;
 
-    // The editor still has focus, so the caret is exactly where the user left it.
     const caretInfo = getCaretPositionInfo();
     if (!caretInfo) return;
 
     const { range, currentWord } = caretInfo;
 
-    // Replace the trigger word (e.g., "@SomeT")
     if (currentWord && currentWord.startsWith('@')) {
         range.setStart(range.startContainer, range.startOffset - currentWord.length);
         range.deleteContents();
@@ -91,7 +96,6 @@ function onDropdownMouseDown(event) {
 
     performInsertion(range, displayText, rawText, color);
 
-    // After insertion, tell Blazor to hide the dropdown.
     if (editorDotNetReference) {
         editorDotNetReference.invokeMethodAsync('HideDropdown');
     }
