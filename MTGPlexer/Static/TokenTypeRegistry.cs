@@ -6,9 +6,10 @@ public static partial class TokenTypeRegistry
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
-    public static Dictionary<Type, Dictionary<object, Regex>> EnumRegexes { get; set; } = [];
+    public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
+    public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Dictionary<PropertyInfo, List<PropertyInfo>>> DistilledProperties { get; set; } = [];
-    public static Dictionary<Type, DeterministicPalette> TypeColorPalettes { get; set; } = [];
+    public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
     public static HashSet<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer<Type> Tokenizer { get; set; }
@@ -24,7 +25,11 @@ public static partial class TokenTypeRegistry
         foreach (var type in GetTokenCaptureTypes())
             SetTypeTemplate(type);
 
-        ReferencedEnumTypes = EnumRegexes.Keys.ToHashSet();
+        EnumMemberRegexes.Keys.ToList().ForEach(x => {
+            ReferencedEnumTypes.Add(x);
+            Palettes[x] = new(x, baseSaturation: .4, baseLightness: .44);
+            NameToType[x.Name] = x;
+        });
     }
 
     public static RegexTemplate GetTypeTemplate(Type type)
@@ -51,12 +56,15 @@ public static partial class TokenTypeRegistry
 
         var unregisteredEnums = propCaptureSegments
             .OfType<EnumRegexProp>()
-            .Where(x => !EnumRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType));
+            .Where(x => !EnumMemberRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType));
 
         foreach (var enumEntry in unregisteredEnums)
-            EnumRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
+        {
+            EnumMemberRegexes[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.EnumMemberRegexes;
+            EnumRegexStrings[enumEntry.RegexPropInfo.UnderlyingType] = enumEntry.RegexString;
+        }
 
-        TypeColorPalettes[type] = new(type);
+        Palettes[type] = new(type);
 
         if (instance is TokenUnitDistilled tokenUnitComplex)
         {
@@ -65,22 +73,6 @@ public static partial class TokenTypeRegistry
             foreach (var item in tokenUnitComplex.GetDistilledPropAssociations())
                 DistilledProperties[type][item.Key] = item.Value;
         }
-    }
-
-    public static string RenderTemplateToRegexString(string templateString)
-    {
-        var templateReplacement = Regex.Replace(templateString, @"\@(?<TypeName>\w+)\b", match =>
-        {
-            var typeName = match.Groups["TypeName"].Value;
-            var type = NameToType[typeName];
-
-            if (type != null && Templates.TryGetValue(type, out var renderedTemplateSnippet))
-                return renderedTemplateSnippet.RenderedRegexString;
-
-            return match.Value; // fallback: leave original
-        });
-
-        return templateReplacement;
     }
 
     public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text)

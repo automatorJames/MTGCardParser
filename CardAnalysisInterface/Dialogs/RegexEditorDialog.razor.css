@@ -3,8 +3,8 @@
     padding: 1rem;
     border-radius: 4px;
     border: 1px solid var(--lowlight-color, var(--outline-grey));
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 1.1em;
+    font-family: 'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 1.0em;
     line-height: 1.6;
     color: #E2E8F0;
     white-space: pre-wrap;
@@ -24,7 +24,7 @@
 
 .highlight-token {
     text-decoration: underline;
-    text-decoration-color: rgba(79, 209, 219, 0.8);
+    text-decoration-color: rgba(255, 255, 255, 0.5);
     text-decoration-thickness: 2px;
     text-underline-offset: 6px;
 }
@@ -60,7 +60,6 @@
         background-color: #4A5568;
     }
 
-/* --- THE FIX --- */
 .autocomplete-dropdown.keyboard-navigating .autocomplete-item:hover {
     background-color: transparent;
 }
@@ -73,4 +72,95 @@
     font-size: 0.8em;
     color: #A0AEC0;
     margin-left: 0.5rem;
+}
+
+.small-box-label {
+    color: #718096;
+    margin-left: auto;
+    font-size: 0.8em;
+}
+
+.small-box-label .right {
+    align-self: flex-end; /* right-align inside a flex column */
+}
+
+/* --- NEW STYLES FOR PILL INPUT --- */
+
+.regex-input-composite {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px; /* Provides spacing between pills and text */
+    height: auto;
+    min-height: calc(1.5em + 0.75rem + 2px); /* Matches Bootstrap form-control height */
+    cursor: text;
+}
+
+.text-segment {
+    white-space: pre; /* Preserves leading/trailing spaces in text segments */
+    line-height: 1.5;
+}
+
+.ghost-input {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    min-width: 180px; /* Ensures space for the placeholder text */
+}
+
+pre {
+    font-family: 'Consolas', 'Fira Code', monospace;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid var(--outline-grey);
+    border-radius: 4px;
+
+}
+
+.c-sharp .keyword {
+    color: #569CD6;
+}
+
+.c-sharp .type {
+    color: #4EC9B0;
+}
+
+.c-sharp .identifier {
+    color: #9CDCFE;
+}
+
+.c-sharp .string {
+    color: #D69D85;
+}
+
+.c-sharp .comment {
+    color: #6A9955;
+}
+
+.keyword {
+    color: #569CD6;
+}
+
+.type {
+    color: #4EC9B0;
+}
+
+.identifier {
+    color: #9CDCFE;
+}
+
+.string {
+    color: #D69D85;
+}
+
+.comment {
+    color: #6A9955;
 }

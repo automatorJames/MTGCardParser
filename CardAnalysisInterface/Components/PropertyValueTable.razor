@@ -11,7 +11,7 @@ else
 
     @if (Span.LeavesOrDistilled.Any())
     {
-        <div class=@GetWrapperCss()>
+        <div class="property-table-wrapper">
             <div class="content-box" data-path=@Span.Path style=@Span.Palette.ToColorStyle(-1))>
                 <table class="property-capture-table" data-path=@Span.Path>
                     <thead>
@@ -60,16 +60,6 @@ else
 @code {
     [Parameter, EditorRequired]
     public SpanBranch Span { get; set; } = default!;
-
-    string GetWrapperCss()
-    {
-        var css = "property-table-wrapper";
-
-        if (Span is SpanRoot)
-            css += " match-boundary";
-
-        return css;
-    }
 
     string FormatValue(object value)
     {

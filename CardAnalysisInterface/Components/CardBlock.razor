@@ -1,6 +1,10 @@
 ﻿<div class="card-capture-block">
     <div class="card-title">@CardDigest.Card.Name</div>
-    <pre class="full-original-text">@CardDigest.Card.Text</pre>
+
+    @if (_showOriginalText)
+    {
+        <pre class="full-original-text">@CardDigest.Card.Text</pre>
+    }
 
     @foreach (var line in CardDigest.Lines)
     {
@@ -8,7 +12,7 @@
         <div class="line-capture-block match-boundary">
             <div class="line-label dashed-border">Line #@(line.LineIndex + 1)</div>
 
-            <pre class="line-text" @onclick=@(() => OpenRegexEditorDialog(line))>
+            <pre class="nested-underline-container" @onclick=@(() => OpenRegexEditorDialog(line))>
                 @foreach (var root in line.SpanRoots)
                 {
                     @if (root.AttachedPrecedingText != null)
@@ -47,6 +51,7 @@
 
 @code {
     bool _capitalizeNextSpan;
+    bool _showOriginalText = false;
     bool _isDialogOpen = false;
     CardLine _selectedLine;
 

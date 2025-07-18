@@ -16,7 +16,7 @@ style=@_palette.ToColorStyle()>
 
     protected override void OnInitialized()
     {
-        _palette = TokenTypeRegistry.TypeColorPalettes[TokenType];
+        _palette = TokenTypeRegistry.Palettes[TokenType];
         _displayName = TokenType.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
     }
 }

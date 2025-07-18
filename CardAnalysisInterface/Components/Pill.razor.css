@@ -1,0 +1,28 @@
+﻿.pill {
+    display: inline-flex;
+    align-items: center;
+    background-color: #4A5568;
+    color: #E2E8F0;
+    border-radius: 12px;
+    padding: 3px 8px;
+    font-size: 0.9em;
+    line-height: 1.5;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.delete-pill {
+    background: none;
+    border: none;
+    color: #A0AEC0;
+    cursor: pointer;
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-left: 6px;
+    padding: 0;
+    line-height: 1;
+}
+
+    .delete-pill:hover {
+        color: #FFF;
+    }

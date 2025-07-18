@@ -19,6 +19,6 @@
     protected override void OnInitialized()
     {
         _regexString = TokenTypeRegistry.Templates[TokenType].RenderedRegexString;
-        _palette = TokenTypeRegistry.TypeColorPalettes[TokenType];
+        _palette = TokenTypeRegistry.Palettes[TokenType];
     }
 }

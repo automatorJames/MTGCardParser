@@ -17,6 +17,46 @@
     margin-bottom: 24px;
 }
 
+pre.c-sharp {
+    white-space: pre-wrap;
+}
+
+.c-sharp .keyword {
+    color: #569CD6;
+}
+
+.c-sharp .type {
+    color: #4EC9B0;
+}
+
+.c-sharp .identifier {
+    color: #9CDCFE;
+}
+
+.c-sharp .string {
+    color: #D69D85;
+}
+
+.c-sharp .comment {
+    color: #6A9955;
+}
+
+.type {
+    color: #4EC9B0;
+}
+
+.identifier {
+    color: #9CDCFE;
+}
+
+.string {
+    color: #D69D85;
+}
+
+.comment {
+    color: #6A9955;
+}
+
 body {
     background-color: var(--dark-grey);
     color: #d4d4d4;

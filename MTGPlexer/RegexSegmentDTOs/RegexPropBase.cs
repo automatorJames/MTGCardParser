@@ -82,10 +82,10 @@ public abstract record RegexPropBase : RegexSegmentBase
 
     object GetEnumMatchValue(string matchString)
     {
-        if (!TokenTypeRegistry.EnumRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
+        if (!TokenTypeRegistry.EnumMemberRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
             throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenTypeRegistry)}");
 
-        foreach (var enumMemberRegex in TokenTypeRegistry.EnumRegexes[RegexPropInfo.UnderlyingType])
+        foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[RegexPropInfo.UnderlyingType])
             if (enumMemberRegex.Value.IsMatch(matchString))
                 return enumMemberRegex.Key;
 

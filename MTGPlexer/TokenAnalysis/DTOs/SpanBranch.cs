@@ -15,9 +15,9 @@ public record SpanBranch : NestedSpan
 
     public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth) 
         : base(
-            Path: parentPath.Dot(token.Type.Name), 
+            Path: parentPath.Dot($"idx[{token.MatchSpan.Position.Absolute}]").Dot(token.Type.Name), 
             NestedDepth: parentDepth + 1, 
-            Palette: TokenTypeRegistry.TypeColorPalettes[token.Type], 
+            Palette: TokenTypeRegistry.Palettes[token.Type], 
             IgnoreInAnalysis: token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
     {
         CardName = cardName;

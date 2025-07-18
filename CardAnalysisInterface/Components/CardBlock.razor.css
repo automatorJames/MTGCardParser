@@ -1,0 +1,24 @@
+﻿.line-label {
+    font-size: 0.8em;
+    color: var(--subtext-grey);
+    width: 100%;
+}
+
+    .line-label.dashed-border {
+        margin-top: 2rem;
+        padding-top: 9px;
+        border-top: 1px dashed;
+    }
+
+pre.line-text {
+    color: #aaa; /* darker gray for non-span text */
+    padding: 1rem;
+    cursor: default;
+    line-height: 4em;
+    margin-bottom: 1rem;
+}
+
+    /* Override color for span children only */
+    pre.line-text span {
+        color: #d4d4d4;
+    }

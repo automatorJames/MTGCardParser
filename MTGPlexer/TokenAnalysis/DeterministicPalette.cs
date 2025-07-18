@@ -13,18 +13,18 @@ public record DeterministicPalette
     private const double LightSaturation = 0.9;
     private const double DarkSaturation = 0.3;
 
-    private const double BaseLightness = 0.65;
-    private const double LightLightness = 0.95;
+    private const double BaseLightness = 0.6;
+    private const double LightLightness = 0.8;
     private const double DarkLightness = 0.3;
 
-    public DeterministicPalette(Type type)
+    public DeterministicPalette(Type type, double? baseSaturation = null, double? baseLightness = null)
     {
         var colorAttribute = type.GetCustomAttribute<ColorAttribute>();
 
         if (colorAttribute != null)
             SetFromColor(colorAttribute.Color);
         else
-            SetFromSeed(type.Name);
+            SetFromSeed(type.Name, baseSaturation, baseLightness);
     }
 
     public DeterministicPalette(string seed)
@@ -42,12 +42,14 @@ public record DeterministicPalette
         SetFromRaindbowIndex(rainbowIndex);
     }
 
-    void SetFromSeed(string seed)
+    void SetFromSeed(string seed, double? baseSaturation = null, double? baseLightness = null)
     {
+        baseSaturation ??= BaseSaturation;
+        baseLightness ??= BaseLightness;
         int hash = GetDeterministicHash(seed);
         uint unsignedHash = (uint)hash;
         double hue = unsignedHash / (double)uint.MaxValue;
-        Hex = HslToHex(hue, BaseSaturation, BaseLightness);
+        Hex = HslToHex(hue, baseSaturation.Value, baseLightness.Value);
         SetLightDarkFromHue(hue);
     }
 

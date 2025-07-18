@@ -50,7 +50,7 @@ tbody tr:nth-of-type(even) {
     transition: all var(--fade-time) var(--highlight-easing);
 }
 
-pre {
+pre.nested-underline-container {
     background-color: var(--dark-grey);
     padding: 1rem;
     border-radius: 4px;
@@ -78,59 +78,39 @@ code {
         margin-top: 0;
     }
 
-.line-label {
-    font-size: 0.8em;
-    color: var(--subtext-grey);
-    width: 100%;
-}
-
-.line-label.dashed-border {
-    margin-top: 2rem;
-    padding-top: 9px;
-    border-top: 1px dashed;
-}
-
 pre.full-original-text {
     color: #dcdcaa;
     font-style: italic;
-}
-
-pre.line-text {
-    color: #aaa; /* darker gray for non-span text */
     padding: 1rem;
-    cursor: default;
-    line-height: 4em;
-    margin-bottom: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--lowlight-color, var(--outline-grey));
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
-
-    /* Override color for span children only */
-    pre.line-text span {
-        color: #d4d4d4;
-    }
 
 /* 1) “Nested” spans (any span inside another span): */
 /*    give every nested <span> a left‑margin… */
-pre span span {
+pre.nested-underline-container span span {
     margin-left: 0.5em;
 }
     /*    …but remove it on the first child of each parent: */
-    pre span span:first-child {
+    pre.nested-underline-container span span:first-child {
         margin-left: 0;
     }
 
 
 /* 2) “Sibling” spans (any span immediately following another): */
 /*    give any <span> that comes right after a sibling span a left‑margin */
-pre span + span,
-pre followingtext + span,
-pre span + precedingtext {
+pre.nested-underline-container span + span,
+pre.nested-underline-container followingtext + span,
+pre.nested-underline-container span + precedingtext {
     margin-left: 0.5em;
 }
 /*
-  The Fix: Target a span that immediately follows a sibling span
+  Target a span that immediately follows a sibling span
   which HAS a <br> tag somewhere inside it.
 */
-pre span:has(br) + span {
+pre.nested-underline-container span:has(br) + span {
     margin-left: 0;
 }
 
@@ -159,29 +139,6 @@ pre span:has(br) + span {
         display: block;
         margin-top: 24px;
     }
-
-.nested-underline {
-    border-bottom-width: var(--underline-width);
-    border-bottom-style: solid;
-    padding-bottom: 2px;
-}
-
-/* For each level of nesting, add more padding to push parent underlines down. */
-.nested-underline .nested-underline {
-    padding-bottom: 8px;
-}
-
-    .nested-underline .nested-underline .nested-underline {
-        padding-bottom: 14px;
-    }
-
-        .nested-underline .nested-underline .nested-underline .nested-underline {
-            padding-bottom: 20px;
-        }
-
-            .nested-underline .nested-underline .nested-underline .nested-underline .nested-underline {
-                padding-bottom: 24px;
-            }
 
 /*
  * 2. DEFINE the new "L" bracket style for the content-box.
@@ -219,9 +176,6 @@ pre span:has(br) + span {
 /* --- HIGHLIGHT ACTIVE STATES --- */
 /* These rules define *what* an element should look like when highlighted. */
 
-.nested-underline.highlight-active {
-    border-bottom-color: var(--highlight-color);
-}
 
 .prop-capture-inline.highlight-active {
     border-top-color: var(--highlight-color);
@@ -248,9 +202,6 @@ pre span:has(br) + span {
 /* --- MUTE ACTIVE STATES --- */
 /* These rules define what an element should look like when muted. */
 
-.nested-underline.mute-active {
-    border-bottom-color: var(--lowlight-color);
-}
 
 .prop-capture-inline.mute-active {
     border-top-color: var(--lowlight-color);

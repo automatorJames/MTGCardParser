@@ -1,0 +1,32 @@
+﻿
+.nested-underline {
+    border-bottom-width: var(--underline-width);
+    border-bottom-style: solid;
+    padding-bottom: 2px;
+}
+
+    /* For each level of nesting, add more padding to push parent underlines down. */
+    .nested-underline .nested-underline {
+        padding-bottom: 8px;
+    }
+
+        .nested-underline .nested-underline .nested-underline {
+            padding-bottom: 14px;
+        }
+
+            .nested-underline .nested-underline .nested-underline .nested-underline {
+                padding-bottom: 20px;
+            }
+
+                .nested-underline .nested-underline .nested-underline .nested-underline .nested-underline {
+                    padding-bottom: 24px;
+                }
+
+
+    .nested-underline.highlight-active {
+        border-bottom-color: var(--highlight-color);
+    }
+
+    .nested-underline.mute-active {
+        border-bottom-color: var(--lowlight-color);
+    }
