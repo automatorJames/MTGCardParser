@@ -4,3 +4,7 @@ global using CardAnalysisInterface.Components;
 global using MTGPlexer.TokenAnalysis;
 global using MTGPlexer.BaseClasses;
 global using System.Text.RegularExpressions;
+global using Microsoft.AspNetCore.Components.Web;
+global using Microsoft.AspNetCore.Components;
+global using Microsoft.JSInterop;
+global using MTGPlexer.TokenAnalysis.DTOs;
