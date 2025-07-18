@@ -1,24 +1,19 @@
 ﻿// wwwroot/js/regexEditorInterop.js
 
-// Global state variables for the editor instance
 let editorDotNetReference = null;
 let editorElement = null;
-
-// --- Public Functions (Callable from Blazor) ---
+let isInternallyChanging = false;
 
 function initializeEditor(_dotNetReference, _editorElement) {
     editorDotNetReference = _dotNetReference;
     editorElement = _editorElement;
-
     if (editorElement) {
         editorElement.addEventListener('input', onEditorInput);
-        editorElement.addEventListener('keydown', onEditorKeyDown); // For smart backspace and event prevention
-        editorElement.focus();
-
+        editorElement.addEventListener('keydown', onEditorKeyDown);
+        editorElement.addEventListener('blur', onEditorBlur);
         document.addEventListener('mousedown', onDropdownMouseDown);
         document.addEventListener('keydown', onGlobalKeyDown);
-
-        ensureInitialAnchor();
+        editorElement.focus();
     }
 }
 
@@ -26,6 +21,7 @@ function disposeEditor() {
     if (editorElement) {
         editorElement.removeEventListener('input', onEditorInput);
         editorElement.removeEventListener('keydown', onEditorKeyDown);
+        editorElement.removeEventListener('blur', onEditorBlur);
     }
     document.removeEventListener('mousedown', onDropdownMouseDown);
     document.removeEventListener('keydown', onGlobalKeyDown);
@@ -34,36 +30,31 @@ function disposeEditor() {
 }
 
 function getEditorRawText() {
-    if (!editorElement) return '';
-    let rawText = '';
-    editorElement.childNodes.forEach(node => {
-        rawText += getRawTextFromNode(node);
-    });
-    return rawText.replace(/\u200B/g, '');
+    return editorElement ? editorElement.textContent : '';
 }
 
 function scrollToAutocompleteItem(elementId) {
     const element = document.getElementById(elementId);
     if (element) {
-        element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        element.scrollIntoView({ block: 'nearest' });
     }
 }
 
-function insertPillIntoEditor(displayText, rawText, color) {
-    const caretInfo = getCaretPositionInfo();
-    if (!caretInfo || !caretInfo.selection || !caretInfo.range) return;
+// FIX 2: This function now correctly inserts at the caret.
+function commitToken(textToReplace, fullTokenText) {
+    const { range } = getCaretPositionInfo() || {};
+    if (!range) return;
 
-    const { range, currentWord } = caretInfo;
+    // Precisely select the trigger text by moving the start of the range backward.
+    range.setStart(range.startContainer, range.startOffset - textToReplace.length);
 
-    if (currentWord && currentWord.startsWith('@')) {
-        range.setStart(range.startContainer, range.startOffset - currentWord.length);
-        range.deleteContents();
-    }
+    // Replace the selection with the full token text.
+    range.deleteContents();
+    range.insertNode(document.createTextNode(fullTokenText));
 
-    performInsertion(range, displayText, rawText, color);
+    const newCursorPos = range.startOffset + fullTokenText.length;
+    highlightAndRestoreCursor(editorElement.textContent, newCursorPos);
 }
-
-// --- Internal Helper Functions & Event Handlers ---
 
 function onGlobalKeyDown(event) {
     if (event.key === 'Escape' && editorDotNetReference) {
@@ -77,146 +68,144 @@ function onEditorKeyDown(event) {
     const isDropdownVisible = dropdown && dropdown.offsetParent !== null;
 
     if (isDropdownVisible) {
-        // *** FIX: Only prevent default for keys that navigate or select from the dropdown. ***
-        if (event.key === 'Enter' || event.key === 'Tab' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        // When dropdown is visible, we let the C# component handle nav keys.
+        // We just prevent the browser's default action for them.
+        const navKeys = ['Enter', 'Tab', 'ArrowUp', 'ArrowDown'];
+        if (navKeys.includes(event.key)) {
             event.preventDefault();
         }
+        return;
     }
 
-    if (event.key !== 'Backspace') return;
-
-    const selection = window.getSelection();
-    if (!selection.isCollapsed) return;
-
-    const range = selection.getRangeAt(0);
-    const node = range.startContainer;
-    const offset = range.startOffset;
-
-    if (node.nodeType === Node.TEXT_NODE && offset > 0 && node.nodeValue.substring(offset - 1, offset) === '\u200B') {
-        let previousElement = node.previousSibling;
-        if (offset === 1 && node.nodeValue.length === 1) {
-            previousElement = node.previousElementSibling;
-        }
-
-        if (previousElement && previousElement.classList && previousElement.classList.contains('pill-wrapper')) {
-            event.preventDefault();
-            previousElement.remove();
-            onEditorInput();
-            return;
-        }
+    // On "commit" keys like space or enter, trigger a re-highlight.
+    if (event.key === ' ' || event.key === 'Enter') {
+        setTimeout(() => highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement)), 0);
     }
+
+    // FIX 3: When dropdown is not visible, check for atomic deletion.
+    handleAtomicDeletion(event);
 }
 
 function onDropdownMouseDown(event) {
     const item = event.target.closest('.autocomplete-item');
     if (!item) return;
-
     event.preventDefault();
-
-    const displayText = item.dataset.displayText;
-    const rawText = item.dataset.rawText;
-    const color = item.dataset.color;
-
-    const caretInfo = getCaretPositionInfo();
-    if (!caretInfo) return;
-
-    const { range, currentWord } = caretInfo;
-
-    if (currentWord && currentWord.startsWith('@')) {
-        range.setStart(range.startContainer, range.startOffset - currentWord.length);
-        range.deleteContents();
-    }
-
-    performInsertion(range, displayText, rawText, color);
-
+    commitToken(item.dataset.textToReplace, item.dataset.fullTokenText);
     if (editorDotNetReference) {
         editorDotNetReference.invokeMethodAsync('HideDropdown');
     }
 }
 
-function performInsertion(range, displayText, rawText, color) {
-    const pillEl = createPillElement(displayText, rawText, color);
-    range.insertNode(pillEl);
+// FIX 2: This is now a lightweight notification to Blazor.
+function onEditorInput() {
+    if (isInternallyChanging) return;
+    const { currentWord } = getCaretPositionInfo() || {};
+    editorDotNetReference.invokeMethodAsync('UpdateFromJavaScript', editorElement.textContent, currentWord || '');
+}
 
-    const zeroWidthSpace = document.createTextNode('\u200B');
-    range.setStartAfter(pillEl);
-    range.collapse(true);
-    range.insertNode(zeroWidthSpace);
-    range.setStartAfter(zeroWidthSpace);
-    range.collapse(true);
+function onEditorBlur() {
+    // When the user clicks away, apply final formatting.
+    highlightAndRestoreCursor(editorElement.textContent, -1);
+}
 
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
+// FIX 3: This function now correctly handles deletion from anywhere inside a token.
+function handleAtomicDeletion(event) {
+    const { selection, range } = getCaretPositionInfo() || {};
+    if (!selection || !selection.isCollapsed) return;
 
+    const tokenSpan = range.startContainer.parentElement;
+    if (!tokenSpan || !tokenSpan.classList.contains('token-style')) {
+        return;
+    }
+
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        const text = tokenSpan.textContent;
+        const fullText = getEditorRawText();
+        const tokenStartPos = fullText.lastIndexOf(text, getCaretCharacterOffsetWithin(editorElement));
+
+        const newText = fullText.substring(0, tokenStartPos) + fullText.substring(tokenStartPos + text.length);
+        highlightAndRestoreCursor(newText, tokenStartPos);
+    }
+}
+
+function highlightAndRestoreCursor(text, cursorPos) {
+    if (isInternallyChanging) return;
+    isInternallyChanging = true;
+
+    editorElement.innerHTML = '';
+
+    const tokenRegex = /(@\w+)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tokenRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            editorElement.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+        }
+        const span = document.createElement('span');
+        span.className = 'token-style';
+        span.textContent = match[0];
+        editorElement.appendChild(span);
+        lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+        editorElement.appendChild(document.createTextNode(text.substring(lastIndex)));
+    }
+
+    if (cursorPos >= 0) {
+        const result = findNodeAndOffset(editorElement, cursorPos);
+        if (result && result.node) {
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.setStart(result.node, result.offset);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+
+    isInternallyChanging = false;
     onEditorInput();
 }
 
-function onEditorInput(event) {
-    if (!editorDotNetReference) return;
-    ensureInitialAnchor();
-    const rawText = getEditorRawText();
-    const caretInfo = getCaretPositionInfo();
-    const currentWord = (caretInfo && caretInfo.currentWord) ? caretInfo.currentWord : '';
-    editorDotNetReference.invokeMethodAsync('UpdateFromJavaScript', rawText, currentWord);
-}
-
-function getRawTextFromNode(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-        return node.textContent;
-    }
-    if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('pill-wrapper')) {
-        return node.dataset.rawText || '';
-    }
-    let text = '';
-    if (node.childNodes) {
-        for (const child of node.childNodes) {
-            text += getRawTextFromNode(child);
-        }
-    }
-    return text;
-}
-
-function createPillElement(displayText, rawText, color) {
-    const pillWrapper = document.createElement('span');
-    pillWrapper.className = 'pill-wrapper';
-    pillWrapper.contentEditable = 'false';
-    pillWrapper.dataset.rawText = rawText;
-    pillWrapper.style.display = 'inline-block';
-    const pill = document.createElement('span');
-    pill.style.backgroundColor = color;
-    pill.style.color = 'white';
-    pill.style.padding = '2px 8px';
-    pill.style.borderRadius = '12px';
-    pill.style.margin = '0 2px';
-    pill.style.userSelect = 'none';
-    pill.textContent = displayText;
-    pillWrapper.appendChild(pill);
-    return pillWrapper;
-}
 
 function getCaretPositionInfo() {
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || !editorElement.contains(selection.anchorNode)) {
-        return null;
-    }
+    if (!selection || selection.rangeCount === 0) return null;
     const range = selection.getRangeAt(0);
-    const preCaretRange = range.cloneRange();
-    preCaretRange.selectNodeContents(editorElement);
-    preCaretRange.setEnd(range.startContainer, range.startOffset);
-    const text = preCaretRange.toString();
-    const words = text.split(/[\s\u00A0\u200B]+/);
-    const currentWord = words[words.length - 1];
-    return {
-        selection,
-        range,
-        currentWord
-    };
+    const pos = getCaretCharacterOffsetWithin(editorElement);
+    const textBeforeCaret = editorElement.textContent.substring(0, pos);
+    const words = textBeforeCaret.split(/[\s\u00A0]+/);
+    return { selection, range, currentWord: words[words.length - 1] };
 }
 
-function ensureInitialAnchor() {
-    if (editorElement && (editorElement.childNodes.length === 0 || editorElement.firstChild.nodeValue !== '\u200B')) {
-        const zeroWidthSpace = document.createTextNode('\u200B');
-        editorElement.insertBefore(zeroWidthSpace, editorElement.firstChild);
+function getCaretCharacterOffsetWithin(element) {
+    let caretOffset = 0;
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        caretOffset = preCaretRange.toString().length;
     }
+    return caretOffset;
+}
+
+function findNodeAndOffset(element, charOffset) {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let cumulativeOffset = 0;
+    let node;
+    while (node = walker.nextNode()) {
+        const nodeLength = node.length;
+        if (cumulativeOffset + nodeLength >= charOffset) {
+            return { node, offset: charOffset - cumulativeOffset };
+        }
+        cumulativeOffset += nodeLength;
+    }
+    const allTextNodes = Array.from(element.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
+    const lastNode = allTextNodes[allTextNodes.length - 1] || element;
+    return { node: lastNode, offset: lastNode.textContent?.length || 0 };
 }

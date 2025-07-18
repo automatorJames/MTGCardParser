@@ -12,7 +12,6 @@
         <div style="display: flex; flex-direction: column; gap: 16px;">
 
             <div class="line-text-container">
-                <!-- The back layer is now the single child that controls height. -->
                 <div class="text-layer-back">
                     @{
                         int cursor = 0;
@@ -30,8 +29,6 @@
                             @Line.SourceText.Substring(cursor)
                         }
                     }
-
-                    <!-- The colored text layer is now NESTED inside the back layer. -->
                     <div class="text-layer-front">
                         @{
                             cursor = 0;
@@ -56,7 +53,6 @@
             </div>
 
             <div>
-
                 <div class="autocomplete-container">
                     <label for="regex-input-field">Regular expression template</label>
                     <div @ref="_editorElement"
@@ -75,9 +71,8 @@
                             {
                                 <div id="@($"autocomplete-item-{index}")"
                                      class="autocomplete-item @(index == _selectedSuggestionIndex ? "selected" : "")"
-                                     data-display-text="@suggestedType.Name"
-                                     data-raw-text="@($"@{suggestedType.Name}")"
-                                     data-color="@(TokenTypeRegistry.Palettes[suggestedType].HexDark)">
+                                     data-text-to-replace="@_textToReplaceForAutocomplete"
+                                     data-full-token-text="@($"@{suggestedType.Name}")">
                                     <span class="type-name" style=@($"color: {TokenTypeRegistry.Palettes[suggestedType].Hex}; {(suggestedType.IsEnum ? "font-style: italic" : "normal")};")>@suggestedType.Name</span>
                                     <span class="type-kind">@(suggestedType.IsEnum ? "Enum" : "Token Type")</span>
                                 </div>
@@ -88,25 +83,15 @@
 
                 @if (_showPreviewBoxes)
                 {
-                    <br />
-                    <br />
-
+                    <br /> <br />
                     <div style="border-top: 1px dashed var(--outline-grey)" />
-
                     <br />
-
                     <div style="display: flex; flex-direction: column;">
                         <div class="small-box-label right">Rendered regex</div>
-                        <div class="rendered-regex-box">
-                            <pre>@_renderedRegex</pre>
-                        </div>
-
+                        <div class="rendered-regex-box"> <pre>@_renderedRegex</pre> </div>
                         <br />
-
                         <div class="small-box-label right">C# class preview</div>
-                        <div class="rendered-regex-box">
-                            <pre class="c-sharp">@_tokenTemplatePreview.ClassFileStyled</pre>
-                        </div>
+                        <div class="rendered-regex-box"> <pre class="c-sharp">@_tokenTemplatePreview.ClassFileStyled</pre> </div>
                     </div>
                 }
             </div>
@@ -117,3 +102,14 @@
         <button class="btn btn-primary" @onclick="HandleSubmit">Save</button>
     </DialogActions>
 </CustomDialog>
+
+<!-- This defines the appearance of the "tokens" -->
+<style>
+    .token-style {
+        background-color: #4A5568; /* A neutral, dark gray */
+        color: white;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-family: Consolas, monaco, monospace;
+    }
+</style>

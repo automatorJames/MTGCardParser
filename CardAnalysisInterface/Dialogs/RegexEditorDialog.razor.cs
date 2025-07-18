@@ -28,6 +28,8 @@ namespace CardAnalysisInterface.Dialogs
         private bool _isEditorEmpty = true;
         private bool _showPreviewBoxes = false;
 
+        private string _textToReplaceForAutocomplete = "";
+
         private ElementReference _editorElement;
         private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
 
@@ -72,10 +74,11 @@ namespace CardAnalysisInterface.Dialogs
         [JSInvokable]
         public void UpdateFromJavaScript(string rawText, string currentWord)
         {
-            _isEditorEmpty = string.IsNullOrEmpty(rawText.Replace("\u200B", ""));
+            _isEditorEmpty = string.IsNullOrEmpty(rawText);
 
             if (currentWord.StartsWith("@"))
             {
+                _textToReplaceForAutocomplete = currentWord;
                 var filter = currentWord.Substring(1);
                 _autocompleteSuggestions = _allTemplateTypes
                     .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
@@ -89,6 +92,7 @@ namespace CardAnalysisInterface.Dialogs
             else
             {
                 _isDropdownVisible = false;
+                _textToReplaceForAutocomplete = "";
             }
 
             UpdateRenderedRegexAndMatches(rawText);
@@ -97,8 +101,6 @@ namespace CardAnalysisInterface.Dialogs
 
         private async Task OnKeyDown(KeyboardEventArgs e)
         {
-            // This handler now only needs to care about the logical result of key presses,
-            // as the default actions are handled by the JS layer.
             if (!_isDropdownVisible)
             {
                 return;
@@ -108,36 +110,34 @@ namespace CardAnalysisInterface.Dialogs
             {
                 case "ArrowDown":
                     _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
+                    StateHasChanged(); // This is needed to update the 'selected' class
                     await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
                     break;
                 case "ArrowUp":
                     _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
+                    StateHasChanged(); // This is needed to update the 'selected' class
                     await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
                     break;
                 case "Enter":
                 case "Tab":
                     if (_selectedSuggestionIndex != -1 && _autocompleteSuggestions.Count > _selectedSuggestionIndex)
                     {
-                        SelectSuggestion(_autocompleteSuggestions[_selectedSuggestionIndex]);
+                        await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
                     }
                     break;
             }
-
-            StateHasChanged();
         }
 
-        private async void SelectSuggestion(Type selection)
+        private async Task SelectSuggestionByKeyboard(Type selection)
         {
-            var pillDisplayName = selection.Name;
-            var pillRawText = $"@{pillDisplayName}";
-            var pillColor = TokenTypeRegistry.Palettes[selection].HexDark;
-
-            await JsRuntime.InvokeVoidAsync("insertPillIntoEditor", pillDisplayName, pillRawText, pillColor);
+            string fullTokenText = $"@{selection.Name}";
+            await JsRuntime.InvokeVoidAsync("commitToken", _textToReplaceForAutocomplete, fullTokenText);
+            _isDropdownVisible = false;
         }
 
         private void UpdateRenderedRegexAndMatches(string patternToRender)
         {
-            var logicalPattern = patternToRender.Replace("\u200B", "").Trim();
+            var logicalPattern = patternToRender.Trim();
 
             _showPreviewBoxes = logicalPattern.Contains("@");
 
