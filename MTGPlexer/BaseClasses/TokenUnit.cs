@@ -16,18 +16,6 @@ public abstract class TokenUnit
         }
     }
 
-    //Dictionary<PropertyInfo, object> _distilledValues;
-    //public Dictionary<PropertyInfo, object> DistilledValues
-    //{
-    //    get
-    //    {
-    //        if (_distilledValues is null)
-    //            _distilledValues = GetDistilledValues();
-    //
-    //        return _distilledValues;
-    //    }
-    //}
-
     public TokenUnit ParentToken { get; set; }
     public List<TokenUnit> ChildTokens { get; set; } = [];
     public int RecursiveDepth { get; set; }

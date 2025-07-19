@@ -8,7 +8,7 @@ public class PunctuationTerminal : TokenUnit
     public PunctuationCharacter PunctuationCharacter { get; set; }
 }
 
-[EnumOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
+[RegexEnum(WrapInWordBoundaries = false, OptionalPlural = false)]
 public enum PunctuationCharacter
 {
     [RegexPattern(@"\.")] 

@@ -8,7 +8,7 @@ public class DrawOrDiscardCards : TokenUnit
     public Quantity Quantity { get; set; }
 }
 
-[EnumOptions(OptionalPlural = true)]
+[RegexEnum(OptionalPlural = true)]
 public enum CardVerb
 {
     Draw,

@@ -8,7 +8,7 @@ public class PunctuationEnclosing : TokenUnit
     public EnclosingPunctuationCharacter EnclosingPunctuationCharacter { get; set; }
 }
 
-[EnumOptions(WrapInWordBoundaries = false, OptionalPlural = false)]
+[RegexEnum(WrapInWordBoundaries = false, OptionalPlural = false)]
 public enum EnclosingPunctuationCharacter
 {
     [RegexPattern(@"""")]

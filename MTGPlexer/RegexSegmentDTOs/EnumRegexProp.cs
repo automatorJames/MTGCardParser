@@ -8,7 +8,7 @@
 public record EnumRegexProp : RegexPropBase
 {
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
-    public EnumOptionsAttribute Options { get; private set; }
+    public RegexEnumAttribute Options { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
@@ -18,7 +18,7 @@ public record EnumRegexProp : RegexPropBase
 
     protected override void SetRegex(RegexPropInfo regexPropInfo)
     {
-        Options = regexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+        Options = regexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
 
         var alternations = GetAlternations();
         RegexString = $@"(?<{regexPropInfo.Name}>{alternations})";
@@ -32,7 +32,7 @@ public record EnumRegexProp : RegexPropBase
     string GetAlternations()
     {
         List<string> allMemberAlternatives = new();
-        var enumRegOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<EnumOptionsAttribute>() ?? new();
+        var enumRegOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
         var enumValues = Enum.GetValues(RegexPropInfo.UnderlyingType).Cast<object>();
 
         foreach (var enumValue in enumValues)

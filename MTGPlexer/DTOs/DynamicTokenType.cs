@@ -1,18 +1,17 @@
-﻿using Microsoft.AspNetCore.Components;
-using System.Linq;
+﻿namespace MTGPlexer;
 
-namespace CardAnalysisInterface;
-
-public record TokenTemplatePreview
+public record DynamicTokenType
 {
-    List<string> _referencedTypeNames = [];
-
+    protected List<string> _referencedTypeNames = [];
+    protected List<string> _propertyParts = [];
+    protected List<string> _parameterParts = [];
+    public List<string> DynamicSnippets { get; } = [];
     public string ClassName { get; }
-    public string ClassFile { get; private set; }
-    public MarkupString ClassFileStyled { get; private set; }
+    public string ClassString { get; private set; }
+    public string ClassStringStyled { get; private set; }
     public string RenderedRegex { get; }
 
-    public TokenTemplatePreview(string templateString, string className = null)
+    public DynamicTokenType(string templateString, string className = null)
     {
         ClassName = className ?? "NewTokenType";
         RenderedRegex = RenderRegexAndRegisterTypeReferences(templateString);
@@ -45,15 +44,15 @@ public record TokenTemplatePreview
 
     private void BuildClassFile(string templateString)
     {
-        var parameterParts = new List<string>();
-        var propertyParts = new List<string>();
         var wordBuffer = new List<string>();
 
         void FlushWordBuffer()
         {
             if (wordBuffer.Count > 0)
             {
-                parameterParts.Add($"\"{string.Join(' ', wordBuffer)}\"");
+                var wordSnippet = $"\"{string.Join(' ', wordBuffer)}\"";
+                _parameterParts.Add(wordSnippet);
+                DynamicSnippets.Add(wordSnippet);
                 wordBuffer.Clear();
             }
         }
@@ -64,8 +63,9 @@ public record TokenTemplatePreview
             {
                 FlushWordBuffer();
                 var typeName = word.Substring(1);
-                parameterParts.Add($"nameof({typeName})");
-                propertyParts.Add($"public {typeName} {typeName} {{ get; set; }}");
+                _propertyParts.Add($"public {typeName} {typeName} {{ get; set; }}");
+                _parameterParts.Add($"nameof({typeName})");
+                DynamicSnippets.Add(typeName);
             }
             else
             {
@@ -75,13 +75,15 @@ public record TokenTemplatePreview
         FlushWordBuffer();
 
         // --- plain C# class text ---
-        ClassFile = 
+        ClassString = 
             $$"""
+            namespace MTGPlexer.TokenUnits;
+
             public class {{ClassName}} : {{nameof(TokenUnit)}}
             {
-                public {{ClassName}}() : base ({{string.Join(", ", parameterParts)}}) { }
+                public {{ClassName}}() : base ({{string.Join(", ", _parameterParts)}}) { }
 
-                {{string.Join("\r\n    ", propertyParts)}}
+                {{string.Join("\r\n    ", _propertyParts)}}
             }
             """;
 
@@ -92,7 +94,7 @@ public record TokenTemplatePreview
         var baseKw = "<span class=\"keyword\">base</span>";
         var tokenUnitSpan = $"<span class=\"type\">{nameof(TokenUnit)}</span>";
 
-        var styledProps = propertyParts.Select(p =>
+        var styledProps = _propertyParts.Select(p =>
         {
             var m = Regex.Match(p, @"public (\w+) (\w+)");
             if (!m.Success) return p;
@@ -103,14 +105,14 @@ public record TokenTemplatePreview
                 $"{publicKw} <span class=\"type\">{t}</span> " +
                 $"<span class=\"identifier\">{n}</span> {{ " +
                 "<span class=\"keyword\">get</span>; " +
-                "<span class=\"keyword\">set</span>; }}";
+                "<span class=\"keyword\">set</span>; }";
         });
 
-        var classFileStyledText =
+        var classStringStyled =
             $$"""
             {{publicKw}} {{classKw}} {{typeSpan}} : {{tokenUnitSpan}}
             {
-                {{publicKw}} {{typeSpan}}() : {{baseKw}} ({{string.Join(", ", parameterParts.Select(p =>
+                {{publicKw}} {{typeSpan}}() : {{baseKw}} ({{string.Join(", ", _parameterParts.Select(p =>
                 p.StartsWith("nameof")
                   ? $"<span class=\"identifier\">{p}</span>"
                   : $"<span class=\"string\">{p}</span>"))}}) { }
@@ -119,7 +121,7 @@ public record TokenTemplatePreview
             }
             """;
 
-        classFileStyledText = classFileStyledText.Replace("  ", "&nbsp;&nbsp;").Replace("\r\n", "<br>");
-        ClassFileStyled = new MarkupString(classFileStyledText);
+        classStringStyled = classStringStyled.Replace("  ", "&nbsp;&nbsp;").Replace("\r\n", "<br>");
+        ClassStringStyled = classStringStyled;
     }
 }
