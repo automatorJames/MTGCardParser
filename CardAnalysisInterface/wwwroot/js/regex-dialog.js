@@ -8,7 +8,6 @@ function initializeEditor(_dotNetReference, _editorElement) {
     editorDotNetReference = _dotNetReference;
     editorElement = _editorElement;
     if (editorElement) {
-        // MODIFIED: Added 'beforeinput' listener for atomic deletions
         editorElement.addEventListener('beforeinput', onBeforeInput);
         editorElement.addEventListener('input', onEditorInput);
         editorElement.addEventListener('keydown', onEditorKeyDown);
@@ -118,9 +117,6 @@ function onBeforeInput(event) {
 
     // Remove the targeted tokens from the DOM.
     sortedTokens.forEach(t => t.remove());
-
-    // Refresh the editor's state and move the cursor.
-    highlightAndRestoreCursor(getEditorRawText(), cursorPosition);
 }
 
 function getEditorRawText() {

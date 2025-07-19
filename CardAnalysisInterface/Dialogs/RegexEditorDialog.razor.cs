@@ -143,7 +143,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         {
             if (_showPreviewBoxes)
             {
-                _dynamicTokenType = new DynamicTokenType(logicalPattern);
+                // Replace non-breaking space with space
+                var logicalPatternClean = logicalPattern.Replace('\u00A0', ' ');
+
+                _dynamicTokenType = new DynamicTokenType(logicalPatternClean);
                 _renderedRegex = _dynamicTokenType.RenderedRegex;
             }
 
