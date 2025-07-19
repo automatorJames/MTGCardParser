@@ -11,8 +11,6 @@ function initializeEditor(_dotNetReference, _editorElement) {
         editorElement.addEventListener('beforeinput', onBeforeInput);
         editorElement.addEventListener('input', onEditorInput);
         editorElement.addEventListener('keydown', onEditorKeyDown);
-        // REMOVED: The blur event listener is the cause of the cursor reset issue.
-        // editorElement.addEventListener('blur', onEditorBlur); 
         document.addEventListener('mousedown', onDropdownMouseDown);
         document.addEventListener('keydown', onGlobalKeyDown);
         editorElement.focus();
@@ -21,12 +19,9 @@ function initializeEditor(_dotNetReference, _editorElement) {
 
 function disposeEditor() {
     if (editorElement) {
-        // MODIFIED: Remove 'beforeinput' listener
         editorElement.removeEventListener('beforeinput', onBeforeInput);
         editorElement.removeEventListener('input', onEditorInput);
         editorElement.removeEventListener('keydown', onEditorKeyDown);
-        // REMOVED: Corresponding removal for the blur listener.
-        // editorElement.removeEventListener('blur', onEditorBlur);
     }
     document.removeEventListener('mousedown', onDropdownMouseDown);
     document.removeEventListener('keydown', onGlobalKeyDown);
@@ -177,13 +172,6 @@ function onEditorInput() {
     const { currentWord } = getCaretPositionInfo() || {};
     editorDotNetReference.invokeMethodAsync('UpdateFromJavaScript', editorElement.textContent, currentWord || '');
 }
-
-// REMOVED: This function is no longer needed as the blur event is not handled.
-/*
-function onEditorBlur() {
-    highlightAndRestoreCursor(editorElement.textContent, -1);
-}
-*/
 
 function highlightAndRestoreCursor(text, cursorPos) {
     if (isInternallyChanging) return;

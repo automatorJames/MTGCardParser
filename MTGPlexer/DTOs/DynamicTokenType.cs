@@ -5,6 +5,7 @@ public record DynamicTokenType
     protected List<string> _referencedTypeNames = [];
     protected List<string> _propertyParts = [];
     protected List<string> _parameterParts = [];
+    protected List<(string val, bool isType)> _combinedParts = [];
     public List<string> DynamicSnippets { get; } = [];
     public string ClassName { get; }
     public string ClassString { get; private set; }
@@ -50,9 +51,11 @@ public record DynamicTokenType
         {
             if (wordBuffer.Count > 0)
             {
-                var wordSnippet = $"\"{string.Join(' ', wordBuffer)}\"";
+                var combinedValue = string.Join(' ', wordBuffer);
+                var wordSnippet = $"\"{combinedValue}\"";
                 _parameterParts.Add(wordSnippet);
                 DynamicSnippets.Add(wordSnippet);
+                _combinedParts.Add((combinedValue, isType: false));
                 wordBuffer.Clear();
             }
         }
@@ -66,6 +69,7 @@ public record DynamicTokenType
                 _propertyParts.Add($"public {typeName} {typeName} {{ get; set; }}");
                 _parameterParts.Add($"nameof({typeName})");
                 DynamicSnippets.Add(typeName);
+                _combinedParts.Add((typeName, isType: true));
             }
             else
             {
@@ -112,10 +116,9 @@ public record DynamicTokenType
             $$"""
             {{publicKw}} {{classKw}} {{typeSpan}} : {{tokenUnitSpan}}
             {
-                {{publicKw}} {{typeSpan}}() : {{baseKw}} ({{string.Join(", ", _parameterParts.Select(p =>
-                p.StartsWith("nameof")
-                  ? $"<span class=\"identifier\">{p}</span>"
-                  : $"<span class=\"string\">{p}</span>"))}}) { }
+                {{publicKw}} {{typeSpan}}() : {{baseKw}} ({{string.Join(", ", _combinedParts.Select(x =>
+                    x.isType ? $"<span class=\"keyword\">nameof(</span><span class=\"identifier\">{x.val}</span><span class=\"keyword\">)</span>"
+                    : $"<span class=\"string\">\"{x}\"</span>"))}}) { }
 
                 {{string.Join("\r\n    ", styledProps)}}
             }
