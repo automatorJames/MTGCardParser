@@ -124,6 +124,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         string fullTokenText = $"@{selection.Name}";
         await JsRuntime.InvokeVoidAsync("commitToken", _textToReplaceForAutocomplete, fullTokenText);
         _isDropdownVisible = false;
+        StateHasChanged();
     }
 
     private void UpdateRenderedRegexAndMatches(string patternToRender)

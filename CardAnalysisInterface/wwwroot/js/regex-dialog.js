@@ -40,21 +40,30 @@ function scrollToAutocompleteItem(elementId) {
     }
 }
 
-// FIX 2: This function now correctly inserts at the caret.
+// MODIFIED: This function now inserts the token and a space, then moves the cursor after the space.
 function commitToken(textToReplace, fullTokenText) {
     const { range } = getCaretPositionInfo() || {};
     if (!range) return;
 
-    // Precisely select the trigger text by moving the start of the range backward.
+    // Append a non-breaking space to the token. This ensures it's not trimmed by the browser
+    // and provides a clean separation for subsequent typing.
+    const textToInsert = fullTokenText + '\u00A0';
+
+    // Precisely select the trigger text (e.g., "@some") by moving the start of the range backward.
     range.setStart(range.startContainer, range.startOffset - textToReplace.length);
 
-    // Replace the selection with the full token text.
+    // Replace the selection with the full token text and the appended space.
     range.deleteContents();
-    range.insertNode(document.createTextNode(fullTokenText));
+    range.insertNode(document.createTextNode(textToInsert));
 
-    const newCursorPos = range.startOffset + fullTokenText.length;
-    highlightAndRestoreCursor(editorElement.textContent, newCursorPos);
+    // Calculate the new cursor position, which should be after the newly inserted text.
+    const finalCursorPos = range.startOffset + textToInsert.length;
+
+    // Update the editor's content, re-highlight the tokens, and place the cursor correctly.
+    // This will render the token as a span and the space as a text node, with the cursor positioned after both.
+    highlightAndRestoreCursor(editorElement.textContent, finalCursorPos);
 }
+
 
 function onGlobalKeyDown(event) {
     if (event.key === 'Escape' && editorDotNetReference) {
@@ -82,7 +91,7 @@ function onEditorKeyDown(event) {
         setTimeout(() => highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement)), 0);
     }
 
-    // FIX 3: When dropdown is not visible, check for atomic deletion.
+    // When dropdown is not visible, check for atomic deletion.
     handleAtomicDeletion(event);
 }
 
@@ -96,7 +105,6 @@ function onDropdownMouseDown(event) {
     }
 }
 
-// FIX 2: This is now a lightweight notification to Blazor.
 function onEditorInput() {
     if (isInternallyChanging) return;
     const { currentWord } = getCaretPositionInfo() || {};
@@ -108,7 +116,6 @@ function onEditorBlur() {
     highlightAndRestoreCursor(editorElement.textContent, -1);
 }
 
-// FIX 3: This function now correctly handles deletion from anywhere inside a token.
 function handleAtomicDeletion(event) {
     const { selection, range } = getCaretPositionInfo() || {};
     if (!selection || !selection.isCollapsed) return;
