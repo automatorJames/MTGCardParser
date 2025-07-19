@@ -103,9 +103,6 @@ function onBeforeInput(event) {
     // If we have tokens to delete, we take over the deletion process.
     event.preventDefault();
 
-    // To place the cursor correctly, find the character position of the
-    // first token that's about to be deleted.
-    let cursorPosition = -1;
     const sortedTokens = [...tokensToDelete].sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
 
     if (sortedTokens.length > 0) {
@@ -117,10 +114,6 @@ function onBeforeInput(event) {
 
     // Remove the targeted tokens from the DOM.
     sortedTokens.forEach(t => t.remove());
-}
-
-function getEditorRawText() {
-    return editorElement ? editorElement.textContent : '';
 }
 
 function scrollToAutocompleteItem(elementId) {
