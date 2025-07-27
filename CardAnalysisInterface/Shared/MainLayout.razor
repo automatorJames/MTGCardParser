@@ -1,9 +1,28 @@
 ﻿@inherits LayoutComponentBase
 @inject RuntimeSettings RuntimeSettings
+@inject NavigationManager Navigation
 
 <div class="page">
     <nav class="top-row px-4">
         <a class="navbar-brand" href="">MTG Analysis</a>
+        
+        @if (Navigation.ToBaseRelativePath(Navigation.Uri) == "" || Navigation.ToBaseRelativePath(Navigation.Uri) == "card-analysis")
+        {
+            <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
+        }
+        else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "unmatched-spans")
+        {
+            <IntInput @bind-Value=RuntimeSettings.MinUnmatchedSpanOccurences Color="var(--dark-teal)" Label="Min occurr." />
+            <IntInput @bind-Value=RuntimeSettings.MinUnmatchedSpanWords Color="var(--dark-gold)" Label="Min words" />
+            <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
+        }
+
+        &nbsp;
+        &nbsp;
+
+        <NavLink href="/">Card Analysis</NavLink>
+        <NavLink href="type-expressions">Type Expressions</NavLink>
+        <NavLink href="unmatched-spans">Unmatched Spans</NavLink>
     </nav>
 
     <main>

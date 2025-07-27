@@ -1,0 +1,59 @@
+﻿.unmatched-span-card {
+    /* Increased bottom margin for better separation between full card entries */
+    margin-bottom: 2rem;
+}
+
+/* Header is now "naked" above the <pre> block */
+.card-header {
+    display: flex;
+    align-items: baseline;
+    gap: 2rem; /* Widen the gap to suit the larger text */
+    margin-bottom: 0.75rem; /* Controls the space between the text and the box below */
+    padding-left: 0.25rem; /* Small padding to align with the box edge */
+}
+
+/* The <pre> block is back to its simple role */
+pre {
+    background-color: var(--dark-grey, #2d2d2d);
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--lowlight-color, #444);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #f1f1f1;
+    margin: 0;
+}
+
+/* --- Style Tweaks --- */
+
+/* 1. KVP value text is now larger */
+.stat-item {
+    font-size: 1.2em; /* Increased size */
+    font-weight: bold;
+}
+
+/* 2. KVP key text is also larger (relative to its parent) */
+.stat-key {
+    font-size: 0.8em; /* This is 80% of the new, larger 1.4em size */
+    font-style: italic;
+    font-weight: normal;
+    margin-right: 0.6em;
+}
+
+/* --- Palettes (unchanged) --- */
+
+.palette-teal {
+    color: var(--teal);
+}
+
+    .palette-teal .stat-key {
+        color: var(--dark-teal);
+    }
+
+.palette-amber {
+    color: var(--gold);
+}
+
+    .palette-amber .stat-key {
+        color: var(--dark-gold);
+    }

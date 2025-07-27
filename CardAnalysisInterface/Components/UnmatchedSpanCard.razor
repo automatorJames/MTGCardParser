@@ -1,0 +1,16 @@
+﻿<div class="unmatched-span-card">
+    <div class="card-header">
+        <span class="stat-item palette-teal">
+            <i class="stat-key">occurrences:</i> @SpanData.OccurrenceCount
+        </span>
+        <span class="stat-item palette-amber">
+            <i class="stat-key">words:</i> @SpanData.WordCount
+        </span>
+    </div>
+    <pre><code>@SpanData.Text</code></pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public UnmatchedSpanCount SpanData { get; set; }
+}

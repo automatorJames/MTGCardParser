@@ -1,0 +1,90 @@
+﻿<div class="sleek-int-input-container" style="background-color: @Color">
+    <label for="@_inputId" class="input-label" style="color: @LighterColorForText">@Label</label>
+    <input type="text"
+           id="@_inputId"
+           class="int-input-field"
+           value="@Value"
+           @onchange="OnInputChanged" />
+    <div class="spinner-buttons">
+        <button class="spinner-button up" @onclick="IncrementValue">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" /></svg>
+        </button>
+        <button class="spinner-button down" @onclick="DecrementValue">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" /></svg>
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    [Parameter]
+    public string Label { get; set; }
+
+    [Parameter]
+    public string Color { get; set; } = "#2c3e50";
+
+    private string _inputId = $"int-input-{Guid.NewGuid()}";
+    private string LighterColorForText { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // CHANGED: Increased the lightness factor from 0.5 to 0.7
+        LighterColorForText = LightenColor(Color, 0.7);
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newValue))
+        {
+            await UpdateValue(newValue);
+        }
+        else
+        {
+            await UpdateValue(Value);
+        }
+    }
+
+    private async Task IncrementValue() => await UpdateValue(Value + 1);
+    private async Task DecrementValue() => await UpdateValue(Value - 1);
+
+    private async Task UpdateValue(int newValue)
+    {
+        if (newValue != Value)
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private string LightenColor(string hexColor, double amount)
+    {
+        try
+        {
+            var hex = hexColor.StartsWith("#") ? hexColor.Substring(1) : hexColor;
+            if (hex.Length != 6) return "#FFFFFF";
+
+            int r = int.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
+            int g = int.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
+            int b = int.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
+
+            r = (int)(r * (1 - amount) + 255 * amount);
+            g = (int)(g * (1 - amount) + 255 * amount);
+            b = (int)(b * (1 - amount) + 255 * amount);
+
+            r = Math.Clamp(r, 0, 255);
+            g = Math.Clamp(g, 0, 255);
+            b = Math.Clamp(b, 0, 255);
+
+            return $"#{r:X2}{g:X2}{b:X2}";
+        }
+        catch
+        {
+            return "#FFFFFF";
+        }
+    }
+}

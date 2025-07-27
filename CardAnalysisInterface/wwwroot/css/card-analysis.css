@@ -57,6 +57,7 @@ pre.nested-underline-container {
     border: 1px solid var(--lowlight-color, var(--outline-grey));
     white-space: pre-wrap;
     word-wrap: break-word;
+    line-height: 36px;
 }
 
 code {

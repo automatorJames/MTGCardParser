@@ -504,3 +504,9 @@ public enum WhichPlayer
     [RegexPattern("each opponent")]
     AnyOpponent
 }
+
+public enum CardPlace
+{
+    Graveyard,
+    Hand,
+}

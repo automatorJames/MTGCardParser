@@ -200,7 +200,7 @@ public static partial class TokenTypeRegistry
 
     static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
-        if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType))
+        if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsAssignableTo(typeof(TokenUnitProperty)))
             return tokenizerBuilder;
 
         tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RenderedRegexString), tokenCaptureType);

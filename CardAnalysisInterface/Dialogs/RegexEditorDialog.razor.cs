@@ -112,9 +112,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             case "Enter":
             case "Tab":
                 if (_selectedSuggestionIndex != -1 && _autocompleteSuggestions.Count > _selectedSuggestionIndex)
-                {
                     await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
-                }
                 break;
         }
     }
@@ -143,7 +141,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         {
             if (_showPreviewBoxes)
             {
-                // Replace non-breaking space with space
+                // Replace nbsp; with space
                 var logicalPatternClean = logicalPattern.Replace('\u00A0', ' ');
 
                 _dynamicTokenType = new DynamicTokenType(logicalPatternClean);

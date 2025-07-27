@@ -1,0 +1,25 @@
+﻿<label class="switch">
+    <input type="checkbox" checked="@Value" @onchange="OnCheckboxChanged" />
+    <span class="slider"></span>
+</label>
+<label style="margin: -16px;" class="switch-label">@Label</label>
+
+@code {
+    [Parameter]
+    public string Label { get; set; }
+
+    [Parameter]
+    public bool Value { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ValueChanged { get; set; }
+
+    // This method is called when the user clicks the checkbox.
+    // It is responsible for invoking the parent's EventCallback.
+    private async Task OnCheckboxChanged(ChangeEventArgs e)
+    {
+        // When the checkbox value changes, we invoke the 'ValueChanged' callback.
+        // Blazor's @bind-Value in the parent component listens for this specific callback.
+        await ValueChanged.InvokeAsync((bool)e.Value);
+    }
+}

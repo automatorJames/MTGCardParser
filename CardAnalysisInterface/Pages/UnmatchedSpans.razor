@@ -1,0 +1,42 @@
+﻿@page "/unmatched-spans"
+@inject CardDigester CardDigester
+@inject RuntimeSettings RuntimeSettings
+@implements IDisposable
+
+@if (!CardDigester.UnmatchedSpanCounts.Any())
+{
+    <p>No unmatched spans found.</p>
+}
+else
+{
+    @foreach (var span in GetFilteredUnmatchedSpans())
+    {
+        <UnmatchedSpanCard SpanData=@span />
+    }
+}
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        RuntimeSettings.OnChanged += StateHasChanged;
+    }
+
+    IEnumerable<UnmatchedSpanCount> GetFilteredUnmatchedSpans()
+    {
+        var items = CardDigester.UnmatchedSpanCounts
+        .Where(x => x.OccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
+
+        if (RuntimeSettings.OrderByWordCount)
+            return items.OrderByDescending(x => x.WordCount);
+        else
+            return items.OrderByDescending(x => x.OccurrenceCount);
+
+    }
+
+    public void Dispose()
+    {
+        RuntimeSettings.OnChanged -= StateHasChanged;
+    }
+
+}
