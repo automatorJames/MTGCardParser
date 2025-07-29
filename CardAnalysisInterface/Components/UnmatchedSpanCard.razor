@@ -7,10 +7,51 @@
             <i class="stat-key">words:</i> @SpanData.WordCount
         </span>
     </div>
+
     <pre><code>@SpanData.Text</code></pre>
+
+    <div class="context-section">
+        <div class="context-title">Before</div>
+        <div class="context-pairs">
+            @if (SpanData.Preceding.Any())
+            {
+                @foreach (var ctx in SpanData.Preceding)
+                {
+                    <div class="context-pair before">
+                        <span class="context-word">@ctx.Word</span>
+                        <span class="context-freq">@ctx.Frequency</span>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="context-none">— none —</div>
+            }
+        </div>
+    </div>
+
+    <div class="context-section">
+        <div class="context-title">After</div>
+        <div class="context-pairs">
+            @if (SpanData.Following.Any())
+            {
+                @foreach (var ctx in SpanData.Following)
+                {
+                    <div class="context-pair after">
+                        <span class="context-word">@ctx.Word</span>
+                        <span class="context-freq">@ctx.Frequency</span>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="context-none">— none —</div>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
     [Parameter, EditorRequired]
-    public UnmatchedSpanCount SpanData { get; set; }
+    public UnmatchedSpanContext SpanData { get; set; }
 }

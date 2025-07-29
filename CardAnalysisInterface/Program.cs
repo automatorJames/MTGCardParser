@@ -1,3 +1,5 @@
+using MTGPlexer.Data;
+
 namespace CardAnalysisInterface;
 public class Program
 {
@@ -10,7 +12,10 @@ public class Program
         builder.Services.AddServerSideBlazor();
         builder.Services.AddScoped<RuntimeSettings>();
 
-        builder.Services.AddSingleton(new CardDigester(1));
+        CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 1);
+        var cards = cardDataGetter.GetCardsAsync().Result;
+        builder.Services.AddSingleton(cards);
+        builder.Services.AddSingleton<CardDigester>();
 
         var app = builder.Build();
 

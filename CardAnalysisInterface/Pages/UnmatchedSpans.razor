@@ -3,7 +3,7 @@
 @inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
-@if (!CardDigester.UnmatchedSpanCounts.Any())
+@if (!CardDigester.UnmatchedSpanContexts.Any())
 {
     <p>No unmatched spans found.</p>
 }
@@ -22,9 +22,9 @@ else
         RuntimeSettings.OnChanged += StateHasChanged;
     }
 
-    IEnumerable<UnmatchedSpanCount> GetFilteredUnmatchedSpans()
+    IEnumerable<UnmatchedSpanContext> GetFilteredUnmatchedSpans()
     {
-        var items = CardDigester.UnmatchedSpanCounts
+        var items = CardDigester.UnmatchedSpanContexts
         .Where(x => x.OccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
 
         if (RuntimeSettings.OrderByWordCount)

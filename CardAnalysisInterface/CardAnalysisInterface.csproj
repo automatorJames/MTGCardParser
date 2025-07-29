@@ -10,4 +10,8 @@
     <ProjectReference Include="..\MTGPlexer\MTGPlexer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="SampleImages\" />
+  </ItemGroup>
+
 </Project>

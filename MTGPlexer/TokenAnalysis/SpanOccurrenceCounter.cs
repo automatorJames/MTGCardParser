@@ -69,29 +69,25 @@ public class SpanOccurrenceCounter
     /// </summary>
     static Dictionary<string, int> CountSpans(List<CardDigest> digestedCards)
     {
-        var lengthOrderedUnmatchedSpans = digestedCards
-            .SelectMany(x => x.UnmatchedSpans)
-            .OrderByDescending(x => x.Length)
-        .ToList();
+        var allUnmatchedSpans = digestedCards.SelectMany(x => x.UnmatchedSpans).ToList();
 
         // 1) Build a word→ID map (ID=1..), reserve 0 for separator
         var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
         var idToWord = new List<string> { null }; // index=0 unused
         int nextId = 1;
 
-        // Tokenize cards into sequences of IDs
+        // Tokenize unmatched spans into sequences of IDs
         var sequences = new List<int[]>();
-        foreach (var text in lengthOrderedUnmatchedSpans)
+        foreach (var unmatchedSpan in allUnmatchedSpans)
         {
-            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var seq = new int[words.Length];
-            for (int i = 0; i < words.Length; i++)
+            var seq = new int[unmatchedSpan.SpanWordCount];
+            for (int i = 0; i < unmatchedSpan.SpanWordCount; i++)
             {
-                if (!wordToId.TryGetValue(words[i], out var id))
+                if (!wordToId.TryGetValue(unmatchedSpan.SpanWords[i], out var id))
                 {
                     id = nextId++;
-                    wordToId[words[i]] = id;
-                    idToWord.Add(words[i]);
+                    wordToId[unmatchedSpan.SpanWords[i]] = id;
+                    idToWord.Add(unmatchedSpan.SpanWords[i]);
                 }
                 seq[i] = id;
             }
@@ -215,8 +211,8 @@ public class SpanOccurrenceCounter
         }
 
         // 6) Finally, add every whole‑span from input (they occur once unless duplicates exist)
-        var wholeCounts = lengthOrderedUnmatchedSpans
-            .GroupBy(s => s)
+        var wholeCounts = allUnmatchedSpans
+            .GroupBy(s => s.SpanText)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
 
         foreach (var kv in wholeCounts)

@@ -4,10 +4,9 @@ public record CardDigest
 {
     public Card Card { get; }
     public List<CardLine> Lines { get; } = [];
-    public List<string> UnmatchedSpans =>
+    public List<SpanContext> UnmatchedSpans =>
         Lines
         .SelectMany(x => x.UnmatchedSpans)
-        .Distinct()
         .ToList();
 
     public bool IsFullyMatched => UnmatchedSpans.Count() == 0;
