@@ -13,12 +13,12 @@
     <div class="context-section">
         <div class="context-title">Before</div>
         <div class="context-pairs">
-            @if (SpanData.PrecedingWords.Any())
+            @if (SpanData.PrecedingAdjacencies.Any())
             {
-                @foreach (var ctx in SpanData.PrecedingWords)
+                @foreach (var ctx in SpanData.PrecedingAdjacencies)
                 {
                     <div class="context-pair before">
-                        <span class="context-word">@ctx.Word</span>
+                        <span class="context-word">@ctx.Text</span>
                         <span class="context-freq">@ctx.Frequency</span>
                     </div>
                 }
@@ -33,12 +33,12 @@
     <div class="context-section">
         <div class="context-title">After</div>
         <div class="context-pairs">
-            @if (SpanData.FollowingWords.Any())
+            @if (SpanData.FollowingAdjacencies.Any())
             {
-                @foreach (var ctx in SpanData.FollowingWords)
+                @foreach (var ctx in SpanData.FollowingAdjacencies)
                 {
                     <div class="context-pair after">
-                        <span class="context-word">@ctx.Word</span>
+                        <span class="context-word">@ctx.Text</span>
                         <span class="context-freq">@ctx.Frequency</span>
                     </div>
                 }

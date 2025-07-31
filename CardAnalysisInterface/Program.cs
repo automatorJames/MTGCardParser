@@ -16,7 +16,6 @@ public class Program
         var cards = cardDataGetter.GetCardsAsync().Result;
         //var thing = new CorpusAnalyzer(cards);
         builder.Services.AddSingleton(cards);
-        builder.Services.AddSingleton<CardDigester>();
         builder.Services.AddSingleton<CorpusAnalyzer>();
 
         var app = builder.Build();

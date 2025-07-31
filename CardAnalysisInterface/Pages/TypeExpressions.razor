@@ -1,5 +1,5 @@
 ﻿@page "/type-expressions"
-@inject CardDigester CardDigester
+@inject CorpusAnalyzer CorpusAnalyzer
 
 @foreach (var item in _appliedOrderTypeCounts)
 {
@@ -13,7 +13,7 @@
     protected override void OnInitialized()
     {
         foreach (var type in TokenTypeRegistry.AppliedOrderTypes)
-            _appliedOrderTypeCounts[type] = CardDigester.TokenCounts.TryGetValue(type, out int count) ? count : 0;
+            _appliedOrderTypeCounts[type] = CorpusAnalyzer.GlobalTokenCounts.TryGetValue(type, out int count) ? count : 0;
     }
 
 }

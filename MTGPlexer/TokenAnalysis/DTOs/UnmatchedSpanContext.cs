@@ -7,8 +7,8 @@
 public record UnmatchedSpanContext
 (
     UnmatchedSpanCount UnmatchedSpanCount,
-    List<SpanAdjacentWord> Preceding,
-    List<SpanAdjacentWord> Following,
+    List<SpanAdjacency> Preceding,
+    List<SpanAdjacency> Following,
     List<SpanContext> Contexts
 )
 {

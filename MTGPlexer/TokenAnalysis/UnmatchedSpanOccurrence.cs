@@ -1,54 +1,53 @@
 ﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
-/// Represents a single, concrete occurrence of a full unmatched span on a specific card.
-/// This record captures the full context at the point of tokenization.
-/// It replaces the old SpanContext.
+/// Represents a single, specific occurrence of an unmatched span of text from one line of a card.
+/// This record is the "ground truth" and holds the complete context of the line it appeared in.
 /// </summary>
 public record UnmatchedSpanOccurrence
 {
-    public string Key { get; init; }
-    public string CardName { get; init; }
-    public int LineIndex { get; init; }
+    public string CardName { get; }
+    public int LineIndex { get; }
+
+    /// <summary>
+    /// The complete list of tokens from the line where this unmatched span occurred.
+    /// </summary>
+    public List<Token<Type>> LineTokens { get; }
+
+    /// <summary>
+    /// The index of this specific UnmatchedToken within the LineTokens list.
+    /// </summary>
+    public int UnmatchedTokenIndex { get; }
+
+    // --- Derived Properties for Convenience ---
 
     /// <summary>
     /// The full, original unmatched span token.
     /// </summary>
-    public Token<Type> UnmatchedToken { get; init; }
+    public Token<Type> UnmatchedToken => LineTokens[UnmatchedTokenIndex];
 
     /// <summary>
     /// The token immediately preceding the UnmatchedToken on its line. Can be null.
     /// </summary>
-    public Token<Type>? PrecedingToken { get; init; }
+    public Token<Type>? PrecedingToken => UnmatchedTokenIndex > 0 ? LineTokens[UnmatchedTokenIndex - 1] : null;
 
     /// <summary>
     /// The token immediately following the UnmatchedToken on its line. Can be null.
     /// </summary>
-    public Token<Type>? FollowingToken { get; init; }
+    public Token<Type>? FollowingToken => UnmatchedTokenIndex < LineTokens.Count - 1 ? LineTokens[UnmatchedTokenIndex + 1] : null;
 
-    public string PrecedingWord { get; init; }
-    public string FollowingWord { get; init; }
-
-    // Properties are calculated once and stored, per Axiom #2.
     public string SpanText { get; }
     public string[] SpanWords { get; }
-    public int SpanWordCount { get; }
+    public int SpanWordCount => SpanWords.Length;
 
-    public UnmatchedSpanOccurrence(string cardName, int lineIndex, Token<Type>? preceding, Token<Type> unmatched, Token<Type>? following)
+    public UnmatchedSpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
     {
         CardName = cardName;
         LineIndex = lineIndex;
-        PrecedingToken = preceding;
-        UnmatchedToken = unmatched;
-        FollowingToken = following;
-        PrecedingWord = preceding?.ToStringValue().Split(' ').LastOrDefault();
-        FollowingWord = following?.ToStringValue().Split(' ').FirstOrDefault();
+        LineTokens = lineTokens;
+        UnmatchedTokenIndex = unmatchedTokenIndex;
 
-        // Calculate text-based properties immediately.
         SpanText = UnmatchedToken.ToStringValue();
-        SpanWords = SpanText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        SpanWordCount = SpanWords.Length;
-
-        Key = cardName.Dot(unmatched.Span.IndexString());
+        SpanWords = SpanText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
     }
 }

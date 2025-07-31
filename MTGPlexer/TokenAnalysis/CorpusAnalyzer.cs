@@ -44,6 +44,13 @@ public class CorpusAnalyzer
 
     private List<ProcessedCard> ProcessAllCards(List<Card> cards)
     {
+        cards = new List<Card>
+        {
+            new Card { Name = "1", Text = "The dog runs fast and licks faces with glee" },
+            new Card { Name = "2", Text = "The cat runs fast and licks milk with glee" },
+            new Card { Name = "3", Text = "The llama runs fast and licks milk while shitting" }
+        };
+
         var processedCards = new List<ProcessedCard>();
 
         foreach (var card in cards)
@@ -95,9 +102,8 @@ public class CorpusAnalyzer
             // --- Analysis #1: Check for and record unmatched tokens ---
             if (token.Kind == typeof(DefaultUnmatchedString))
             {
-                Token<Type>? preceding = i == 0 ? null : tokens[i - 1];
-                Token<Type>? following = i == tokens.Count - 1 ? null : tokens[i + 1];
-                occurrences.Add(new UnmatchedSpanOccurrence(cardName, lineIndex, preceding, token, following));
+                // Create a new occurrence, giving it the context of the entire line's tokens.
+                occurrences.Add(new UnmatchedSpanOccurrence(cardName, lineIndex, tokens, i));
             }
 
             // --- Analysis #2: Hydrate and build the SpanRoot hierarchy ---
@@ -370,9 +376,9 @@ public class CorpusAnalyzer
                 continue;
 
             bool isMaximal = true;
-            for (int c = 1; c < wordId; c++) // Start from 1 to ignore separator
+            for (int j = 1; j < wordId; j++) // Start from 1 to ignore separator
             {
-                int nextStateIndex = states[i].Next[c];
+                int nextStateIndex = states[i].Next[j];
                 if (nextStateIndex != -1 && states[nextStateIndex].Count == states[i].Count)
                 {
                     isMaximal = false;
@@ -409,25 +415,117 @@ public class CorpusAnalyzer
         return result;
     }
 
-    private List<AnalyzedUnmatchedSpan> ConsolidateResults(Dictionary<string, int> allMaximalAndWholeSpanCounts, List<UnmatchedSpanOccurrence> allUnmatchedOccurrences)
+    /// <summary>
+    /// This method is now responsible for enriching the automaton's output with deep context,
+    /// including both word-level and token-level adjacencies.
+    /// </summary>
+    private List<AnalyzedUnmatchedSpan> ConsolidateResults(Dictionary<string, int> allSpans, List<UnmatchedSpanOccurrence> allUnmatchedOccurrences)
     {
         var result = new List<AnalyzedUnmatchedSpan>();
-
-        // For quick lookup, get the set of all original, full span texts.
         var originalWholeSpanTexts = allUnmatchedOccurrences.Select(o => o.SpanText).ToHashSet(StringComparer.Ordinal);
 
-        foreach (var (spanText, count) in allMaximalAndWholeSpanCounts.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
+        foreach (var (spanText, count) in allSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
         {
-            // Find all original occurrences whose full text contains the current span text.
-            // This correctly associates sub-spans with their parent contexts.
-            var relevantOccurrences = allUnmatchedOccurrences
-                .Where(o => o.SpanText.Contains(spanText, StringComparison.Ordinal))
+            var subSpanContexts = new List<SubSpanContext>();
+            // The dictionary key is now a tuple that uniquely identifies an adjacency by its text and type.
+            var precedingAdjacencyFreq = new Dictionary<(string Text, Type TokenType), int>();
+            var followingAdjacencyFreq = new Dictionary<(string Text, Type TokenType), int>();
+
+            var spanTextWords = spanText.Split(' ');
+
+            foreach (var originalOccurrence in allUnmatchedOccurrences)
+            {
+                // Find where our current span (e.g., "runs fast") exists inside a larger occurrence (e.g., "The dog runs fast...").
+                int wordStartIndex = FindSubArray(originalOccurrence.SpanWords, spanTextWords);
+                if (wordStartIndex == -1) continue;
+
+                var spanWordCount = spanTextWords.Length;
+                subSpanContexts.Add(new SubSpanContext(originalOccurrence, wordStartIndex, spanWordCount));
+
+                // --- ENHANCED ADJACENCY LOGIC ---
+
+                // 1. Determine what PRECEDES the span.
+                if (wordStartIndex == 0)
+                {
+                    // The span starts at the beginning of the original UnmatchedToken.
+                    // Its true predecessor is the Matched Token before the whole thing.
+                    var precedingToken = originalOccurrence.PrecedingToken;
+                    if (precedingToken != null)
+                    {
+                        var key = (precedingToken.Value.ToStringValue(), precedingToken.Value.Kind);
+                        precedingAdjacencyFreq[key] = precedingAdjacencyFreq.GetValueOrDefault(key) + 1;
+                    }
+                }
+                else
+                {
+                    // The span starts in the middle of the original UnmatchedToken.
+                    // Its predecessor is just the word before it within the same token.
+                    string precedingWord = originalOccurrence.SpanWords[wordStartIndex - 1];
+                    var key = (precedingWord, (Type)null); // TokenType is null for unmatched words.
+                    precedingAdjacencyFreq[key] = precedingAdjacencyFreq.GetValueOrDefault(key) + 1;
+                }
+
+                // 2. Determine what FOLLOWS the span.
+                if (wordStartIndex + spanWordCount == originalOccurrence.SpanWordCount)
+                {
+                    // The span ends at the same time as the original UnmatchedToken.
+                    // Its true successor is the Matched Token after the whole thing.
+                    var followingToken = originalOccurrence.FollowingToken;
+                    if (followingToken != null)
+                    {
+                        var key = (followingToken.Value.ToStringValue(), followingToken.Value.Kind);
+                        followingAdjacencyFreq[key] = followingAdjacencyFreq.GetValueOrDefault(key) + 1;
+                    }
+                }
+                else
+                {
+                    // The span ends in the middle of the original UnmatchedToken.
+                    // Its successor is just the word after it within the same token.
+                    string followingWord = originalOccurrence.SpanWords[wordStartIndex + spanWordCount];
+                    var key = (followingWord, (Type)null); // TokenType is null.
+                    followingAdjacencyFreq[key] = followingAdjacencyFreq.GetValueOrDefault(key) + 1;
+                }
+            }
+
+            // Convert frequency dictionaries to the final rich list format.
+            var precedingAdjacencies = precedingAdjacencyFreq
+                .Select(kv => new SpanAdjacency(kv.Key.Text, kv.Key.TokenType, kv.Value))
                 .ToList();
 
-            result.Add(new AnalyzedUnmatchedSpan(spanText, count, originalWholeSpanTexts.Contains(spanText), relevantOccurrences));
+            var followingAdjacencies = followingAdjacencyFreq
+                .Select(kv => new SpanAdjacency(kv.Key.Text, kv.Key.TokenType, kv.Value))
+                .ToList();
+
+            result.Add(new AnalyzedUnmatchedSpan(
+                text: spanText,
+                frequency: count,
+                isFullSpan: originalWholeSpanTexts.Contains(spanText),
+                occurrences: subSpanContexts,
+                precedingAdjacencies: precedingAdjacencies,
+                followingAdjacencies: followingAdjacencies
+            ));
         }
 
         return result;
+    }
+
+    // Helper to find a subarray (sequence of words) within another.
+    private static int FindSubArray(string[] array, string[] subarray)
+    {
+        for (int i = 0; i <= array.Length - subarray.Length; i++)
+        {
+            bool found = true;
+            for (int j = 0; j < subarray.Length; j++)
+            {
+                if (array[i + j] != subarray[j])
+                {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) return i;
+        }
+        return -1;
     }
     #endregion
 }

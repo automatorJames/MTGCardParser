@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿/*namespace MTGPlexer.TokenAnalysis;
 
 public record CardDigester
 {
@@ -89,12 +89,12 @@ public record CardDigester
             // 4) sort adjacent‑word lists by frequency desc
             var preceding = prevFreq
                 .OrderByDescending(kv => kv.Value)
-                .Select(kv => new SpanAdjacentWord(kv.Key, kv.Value))
+                .Select(kv => new SpanAdjacency(kv.Key, kv.Value))
                 .ToList();
 
             var following = nextFreq
                 .OrderByDescending(kv => kv.Value)
-                .Select(kv => new SpanAdjacentWord(kv.Key, kv.Value))
+                .Select(kv => new SpanAdjacency(kv.Key, kv.Value))
                 .ToList();
 
             // 5) build final record
@@ -108,4 +108,4 @@ public record CardDigester
 
         return result;
     }
-}
+}*/

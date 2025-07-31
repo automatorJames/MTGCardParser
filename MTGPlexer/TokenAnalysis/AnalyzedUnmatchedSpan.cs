@@ -1,72 +1,43 @@
 ﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
-/// The primary output record. Represents a unique unmatched span text, its total count
-/// across the corpus, and a list of every specific occurrence with its context.
-/// This fulfills the "List<Something>" requirement.
+/// The final, enriched analysis of a single unique span of text (either full or maximal).
 /// </summary>
 public record AnalyzedUnmatchedSpan
 {
-    /// <summary>
-    /// The text of the unmatched span (e.g., "target creature" or "destroy target creature").
-    /// </summary>
+    /// <summary>The text of the span.</summary>
     public string Text { get; init; }
 
+    /// <summary>How many times this exact span appeared in the corpus.</summary>
+    public int Frequency { get; init; }
+
+    /// <summary>True if this span was one of the original, full unmatched spans from the tokenizer.</summary>
+    public bool IsFullSpan { get; init; }
+
     /// <summary>
-    /// The total number of times this exact text sequence appears in the corpus.
+    /// A complete list of every place this span was found, linking back to the original full context.
     /// </summary>
+    public List<SubSpanContext> Occurrences { get; init; }
+
+    /// <summary>A frequency list of all items that appeared immediately before this span.</summary>
+    public List<SpanAdjacency> PrecedingAdjacencies { get; init; }
+
+    /// <summary>A frequency list of all items that appeared immediately after this span.</summary>
+    public List<SpanAdjacency> FollowingAdjacencies { get; init; }
+
+    public int WordCount { get; init; }
     public int OccurrenceCount { get; init; }
 
-    /// <summary>
-    /// The number of words in the span. Calculated once.
-    /// </summary>
-    public int WordCount { get; init; }
-
-    /// <summary>
-    /// True if this span was one of the original, full unmatched spans from a card.
-    /// </summary>
-    public bool IsOriginalFullSpan { get; init; }
-
-    /// <summary>
-    /// A complete list of every place this span text was found, including the card,
-    /// line, and the immediate preceding/following tokens for that specific instance.
-    /// </summary>
-    public List<UnmatchedSpanOccurrence> Occurrences { get; init; }
-
-    public List<SpanAdjacentWord> PrecedingWords { get; init; }
-    public List<SpanAdjacentWord> FollowingWords { get; init; }
-
-    public AnalyzedUnmatchedSpan(string text, int occurrenceCount, bool isOriginalFullSpan, List<UnmatchedSpanOccurrence> occurrences)
+    public AnalyzedUnmatchedSpan(string text, int frequency, bool isFullSpan, List<SubSpanContext> occurrences, List<SpanAdjacency> precedingAdjacencies, List<SpanAdjacency> followingAdjacencies)
     {
         Text = text;
-        OccurrenceCount = occurrenceCount;
-        WordCount = text.Split(' ').Length;
-        IsOriginalFullSpan = isOriginalFullSpan;
+        Frequency = frequency;
+        IsFullSpan = isFullSpan;
         Occurrences = occurrences;
-
-        Dictionary<string, int> precedingWordCounts = [];
-        Dictionary<string, int> followingWordCounts = [];
-
-        foreach (var occurrence in occurrences)
-        {
-            if (occurrence.PrecedingWord != null)
-                if (!precedingWordCounts.TryAdd(occurrence.PrecedingWord, 1))
-                    precedingWordCounts[occurrence.PrecedingWord]++;
-
-            if (occurrence.FollowingWord != null)
-                if (!followingWordCounts.TryAdd(occurrence.FollowingWord, 1))
-                    followingWordCounts[occurrence.FollowingWord]++;
-        }
-
-        PrecedingWords = precedingWordCounts
-            .OrderByDescending(x => x.Value)
-            .Select(x => new SpanAdjacentWord(x.Key, x.Value))
-            .ToList();
-
-        FollowingWords = followingWordCounts
-            .OrderByDescending(x => x.Value)
-            .Select(x => new SpanAdjacentWord(x.Key, x.Value))
-            .ToList();
+        PrecedingAdjacencies = precedingAdjacencies;
+        FollowingAdjacencies = followingAdjacencies;
+        WordCount = text.Split(' ').Length;
+        OccurrenceCount = occurrences.Count;
     }
 
     public override string ToString() => $"'{Text}' (x{OccurrenceCount})";
