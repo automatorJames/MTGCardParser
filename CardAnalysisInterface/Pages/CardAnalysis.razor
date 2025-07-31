@@ -1,14 +1,14 @@
 ﻿@page "/"
 @page "/card-analysis"
 @inject IJSRuntime JSRuntime
-@inject CardDigester CardDigester
+@inject CorpusAnalyzer CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
 <body id="card-analysis">
-    @foreach (var cardDigest in GetFilteredCards())
+    @foreach (var card in GetFilteredCards())
     {
-        <CardBlock CardDigest=cardDigest />
+        <CardBlock Card=card />
     }
 </body>
 
@@ -25,12 +25,12 @@
             await JSRuntime.InvokeVoidAsync("initCardCaptureHover");
     }
 
-    IEnumerable<CardDigest> GetFilteredCards()
+    IEnumerable<ProcessedCard> GetFilteredCards()
     {
         if (RuntimeSettings.HideFullyMatchedCards)
-            return CardDigester.DigestedCards.Where(x => !x.IsFullyMatched);
+            return CorpusAnalyzer.ProcessedCards.Where(x => !x.IsFullyMatched);
 
-        return CardDigester.DigestedCards;
+        return CorpusAnalyzer.ProcessedCards;
     }
 
     public void Dispose()

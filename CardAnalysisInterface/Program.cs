@@ -14,8 +14,10 @@ public class Program
 
         CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 1);
         var cards = cardDataGetter.GetCardsAsync().Result;
+        //var thing = new CorpusAnalyzer(cards);
         builder.Services.AddSingleton(cards);
         builder.Services.AddSingleton<CardDigester>();
+        builder.Services.AddSingleton<CorpusAnalyzer>();
 
         var app = builder.Build();
 

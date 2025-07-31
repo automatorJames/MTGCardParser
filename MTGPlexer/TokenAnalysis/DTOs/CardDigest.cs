@@ -23,7 +23,6 @@ public record CardDigest
             Lines.Add(new(card, line, lineTokens, i));
             CountTokenTypes(lineTokens);
         }
-
     }
 
     void CountTokenTypes(List<Token<Type>> tokens)

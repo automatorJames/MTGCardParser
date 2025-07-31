@@ -1,9 +1,9 @@
 ﻿@page "/unmatched-spans"
-@inject CardDigester CardDigester
 @inject RuntimeSettings RuntimeSettings
+@inject CorpusAnalyzer CorpusAnalyzer
 @implements IDisposable
 
-@if (!CardDigester.UnmatchedSpanContexts.Any())
+@if (!CorpusAnalyzer.AnalyzedUnmatchedSpans.Any())
 {
     <p>No unmatched spans found.</p>
 }
@@ -22,10 +22,10 @@ else
         RuntimeSettings.OnChanged += StateHasChanged;
     }
 
-    IEnumerable<UnmatchedSpanContext> GetFilteredUnmatchedSpans()
+    IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
     {
-        var items = CardDigester.UnmatchedSpanContexts
-        .Where(x => x.OccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
+        var items = CorpusAnalyzer.AnalyzedUnmatchedSpans
+            .Where(x => x.OccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
 
         if (RuntimeSettings.OrderByWordCount)
             return items.OrderByDescending(x => x.WordCount);

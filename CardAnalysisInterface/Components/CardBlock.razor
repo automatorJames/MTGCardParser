@@ -1,12 +1,12 @@
 ﻿<div class="card-capture-block">
-    <div class="card-title">@CardDigest.Card.Name</div>
+    <div class="card-title">@Card.Card.Name</div>
 
     @if (_showOriginalText)
     {
-        <pre class="full-original-text">@CardDigest.Card.Text</pre>
+        <pre class="full-original-text">@Card.Card.Text</pre>
     }
 
-    @foreach (var line in CardDigest.Lines)
+    @foreach (var line in Card.Lines)
     {
         _capitalizeNextSpan = true;
         <div class="line-capture-block match-boundary">
@@ -53,14 +53,14 @@
     bool _capitalizeNextSpan;
     bool _showOriginalText = false;
     bool _isDialogOpen = false;
-    CardLine _selectedLine;
+    ProcessedLine _selectedLine;
 
     [Parameter]
-    public CardDigest CardDigest { get; set; }
+    public ProcessedCard Card { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 
-    private void OpenRegexEditorDialog(CardLine line)
+    private void OpenRegexEditorDialog(ProcessedLine line)
     {
         _selectedLine = line;
         _isDialogOpen = true;

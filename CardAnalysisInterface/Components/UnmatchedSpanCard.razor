@@ -13,9 +13,9 @@
     <div class="context-section">
         <div class="context-title">Before</div>
         <div class="context-pairs">
-            @if (SpanData.Preceding.Any())
+            @if (SpanData.PrecedingWords.Any())
             {
-                @foreach (var ctx in SpanData.Preceding)
+                @foreach (var ctx in SpanData.PrecedingWords)
                 {
                     <div class="context-pair before">
                         <span class="context-word">@ctx.Word</span>
@@ -33,9 +33,9 @@
     <div class="context-section">
         <div class="context-title">After</div>
         <div class="context-pairs">
-            @if (SpanData.Following.Any())
+            @if (SpanData.FollowingWords.Any())
             {
-                @foreach (var ctx in SpanData.Following)
+                @foreach (var ctx in SpanData.FollowingWords)
                 {
                     <div class="context-pair after">
                         <span class="context-word">@ctx.Word</span>
@@ -53,5 +53,5 @@
 
 @code {
     [Parameter, EditorRequired]
-    public UnmatchedSpanContext SpanData { get; set; }
+    public AnalyzedUnmatchedSpan SpanData { get; set; }
 }

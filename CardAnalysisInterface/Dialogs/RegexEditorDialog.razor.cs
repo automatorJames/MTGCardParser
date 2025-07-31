@@ -3,7 +3,7 @@
 public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 {
     [Parameter]
-    public CardLine Line { get; set; }
+    public ProcessedLine Line { get; set; }
 
     [Parameter]
     public EventCallback<string> OnClose { get; set; }
