@@ -25,12 +25,12 @@ else
     IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
     {
         var items = CorpusAnalyzer.AnalyzedUnmatchedSpans
-            .Where(x => x.OccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
+            .Where(x => x.ExactPhraseFrequency >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
 
         if (RuntimeSettings.OrderByWordCount)
             return items.OrderByDescending(x => x.WordCount);
         else
-            return items.OrderByDescending(x => x.OccurrenceCount);
+            return items.OrderByDescending(x => x.ExactPhraseFrequency);
 
     }
 

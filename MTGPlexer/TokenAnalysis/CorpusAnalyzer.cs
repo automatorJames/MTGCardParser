@@ -44,13 +44,6 @@ public class CorpusAnalyzer
 
     private List<ProcessedCard> ProcessAllCards(List<Card> cards)
     {
-        cards = new List<Card>
-        {
-            new Card { Name = "1", Text = "The dog runs fast and licks faces with glee" },
-            new Card { Name = "2", Text = "The cat runs fast and licks milk with glee" },
-            new Card { Name = "3", Text = "The llama runs fast and licks milk while shitting" }
-        };
-
         var processedCards = new List<ProcessedCard>();
 
         foreach (var card in cards)
@@ -416,8 +409,7 @@ public class CorpusAnalyzer
     }
 
     /// <summary>
-    /// This method is now responsible for enriching the automaton's output with deep context,
-    /// including both word-level and token-level adjacencies.
+    /// Consolidates automaton results, building rich, hierarchical adjacency trees for each span.
     /// </summary>
     private List<AnalyzedUnmatchedSpan> ConsolidateResults(Dictionary<string, int> allSpans, List<UnmatchedSpanOccurrence> allUnmatchedOccurrences)
     {
@@ -427,86 +419,99 @@ public class CorpusAnalyzer
         foreach (var (spanText, count) in allSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
         {
             var subSpanContexts = new List<SubSpanContext>();
-            // The dictionary key is now a tuple that uniquely identifies an adjacency by its text and type.
-            var precedingAdjacencyFreq = new Dictionary<(string Text, Type TokenType), int>();
-            var followingAdjacencyFreq = new Dictionary<(string Text, Type TokenType), int>();
+            var followingSequences = new List<List<(string Text, Type TokenType)>>();
+            var precedingSequences = new List<List<(string Text, Type TokenType)>>();
 
             var spanTextWords = spanText.Split(' ');
 
+            // Step 1: Gather all raw preceding and following sequences for this span.
             foreach (var originalOccurrence in allUnmatchedOccurrences)
             {
-                // Find where our current span (e.g., "runs fast") exists inside a larger occurrence (e.g., "The dog runs fast...").
                 int wordStartIndex = FindSubArray(originalOccurrence.SpanWords, spanTextWords);
                 if (wordStartIndex == -1) continue;
 
                 var spanWordCount = spanTextWords.Length;
                 subSpanContexts.Add(new SubSpanContext(originalOccurrence, wordStartIndex, spanWordCount));
 
-                // --- ENHANCED ADJACENCY LOGIC ---
+                // Extract the full sequence of items that FOLLOW this span instance.
+                var followingSequence = new List<(string Text, Type TokenType)>();
+                for (int i = wordStartIndex + spanWordCount; i < originalOccurrence.SpanWordCount; i++)
+                {
+                    followingSequence.Add((originalOccurrence.SpanWords[i], null));
+                }
+                if (originalOccurrence.FollowingToken is { } ft)
+                {
+                    // Using your provided method call structure
+                    followingSequence.Add((ft.ToStringValue(), ft.Kind));
+                }
+                if (followingSequence.Any()) followingSequences.Add(followingSequence);
 
-                // 1. Determine what PRECEDES the span.
-                if (wordStartIndex == 0)
+                // Extract the full sequence of items that PRECEDE this span instance.
+                var precedingSequence = new List<(string Text, Type TokenType)>();
+                if (originalOccurrence.PrecedingToken is { } pt)
                 {
-                    // The span starts at the beginning of the original UnmatchedToken.
-                    // Its true predecessor is the Matched Token before the whole thing.
-                    var precedingToken = originalOccurrence.PrecedingToken;
-                    if (precedingToken != null)
-                    {
-                        var key = (precedingToken.Value.ToStringValue(), precedingToken.Value.Kind);
-                        precedingAdjacencyFreq[key] = precedingAdjacencyFreq.GetValueOrDefault(key) + 1;
-                    }
+                    // Using your provided method call structure
+                    precedingSequence.Add((pt.ToStringValue(), pt.Kind));
                 }
-                else
+                for (int i = 0; i < wordStartIndex; i++)
                 {
-                    // The span starts in the middle of the original UnmatchedToken.
-                    // Its predecessor is just the word before it within the same token.
-                    string precedingWord = originalOccurrence.SpanWords[wordStartIndex - 1];
-                    var key = (precedingWord, (Type)null); // TokenType is null for unmatched words.
-                    precedingAdjacencyFreq[key] = precedingAdjacencyFreq.GetValueOrDefault(key) + 1;
+                    precedingSequence.Add((originalOccurrence.SpanWords[i], null));
                 }
-
-                // 2. Determine what FOLLOWS the span.
-                if (wordStartIndex + spanWordCount == originalOccurrence.SpanWordCount)
-                {
-                    // The span ends at the same time as the original UnmatchedToken.
-                    // Its true successor is the Matched Token after the whole thing.
-                    var followingToken = originalOccurrence.FollowingToken;
-                    if (followingToken != null)
-                    {
-                        var key = (followingToken.Value.ToStringValue(), followingToken.Value.Kind);
-                        followingAdjacencyFreq[key] = followingAdjacencyFreq.GetValueOrDefault(key) + 1;
-                    }
-                }
-                else
-                {
-                    // The span ends in the middle of the original UnmatchedToken.
-                    // Its successor is just the word after it within the same token.
-                    string followingWord = originalOccurrence.SpanWords[wordStartIndex + spanWordCount];
-                    var key = (followingWord, (Type)null); // TokenType is null.
-                    followingAdjacencyFreq[key] = followingAdjacencyFreq.GetValueOrDefault(key) + 1;
-                }
+                if (precedingSequence.Any()) precedingSequences.Add(precedingSequence);
             }
 
-            // Convert frequency dictionaries to the final rich list format.
-            var precedingAdjacencies = precedingAdjacencyFreq
-                .Select(kv => new SpanAdjacency(kv.Key.Text, kv.Key.TokenType, kv.Value))
-                .ToList();
-
-            var followingAdjacencies = followingAdjacencyFreq
-                .Select(kv => new SpanAdjacency(kv.Key.Text, kv.Key.TokenType, kv.Value))
-                .ToList();
+            // Step 2: Build the hierarchical trees from the raw sequences.
+            var followingAdjacencyTree = BuildAdjacencyTree(followingSequences);
+            var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequences.Select(s => { s.Reverse(); return s; }).ToList());
 
             result.Add(new AnalyzedUnmatchedSpan(
                 text: spanText,
-                frequency: count,
+                // The parameter name is updated here to match the new constructor.
+                exactPhraseFrequency: count,
                 isFullSpan: originalWholeSpanTexts.Contains(spanText),
                 occurrences: subSpanContexts,
-                precedingAdjacencies: precedingAdjacencies,
-                followingAdjacencies: followingAdjacencies
+                precedingAdjacencies: precedingAdjacencyTree,
+                followingAdjacencies: followingAdjacencyTree
             ));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Recursively builds a Trie (an adjacency tree) from a list of sequences.
+    /// </summary>
+    private List<AdjacencyNode> BuildAdjacencyTree(List<List<(string Text, Type TokenType)>> sequences)
+    {
+        if (sequences == null || !sequences.Any(s => s.Any()))
+        {
+            return new List<AdjacencyNode>();
+        }
+
+        // Group sequences by their first element to form the nodes at the current level.
+        var nodeGroups = sequences
+            .Where(s => s.Any())
+            .GroupBy(s => s.First());
+
+        var nodes = new List<AdjacencyNode>();
+        foreach (var group in nodeGroups)
+        {
+            var (text, tokenType) = group.Key;
+            var frequency = group.Count();
+
+            // Prepare the subsequences for the recursive call.
+            var childSequences = group
+                .Select(s => s.Skip(1).ToList())
+                .Where(s => s.Any())
+                .ToList();
+
+            // Recursively build the children for the current node.
+            var children = BuildAdjacencyTree(childSequences);
+
+            nodes.Add(new AdjacencyNode(text, tokenType, frequency, children));
+        }
+
+        return nodes;
     }
 
     // Helper to find a subarray (sequence of words) within another.

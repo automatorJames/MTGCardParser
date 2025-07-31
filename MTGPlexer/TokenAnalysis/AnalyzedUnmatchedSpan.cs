@@ -8,8 +8,17 @@ public record AnalyzedUnmatchedSpan
     /// <summary>The text of the span.</summary>
     public string Text { get; init; }
 
-    /// <summary>How many times this exact span appeared in the corpus.</summary>
-    public int Frequency { get; init; }
+    /// <summary>
+    /// The number of times this EXACT sequence of words appears contiguously in the corpus.
+    /// This value comes directly from the suffix automaton's frequency count.
+    /// </summary>
+    public int ExactPhraseFrequency { get; init; }
+
+    /// <summary>
+    /// The number of unique, longer original unmatched spans that this span is a sub-span of.
+    /// This value comes from counting the list of found contexts.
+    /// </summary>
+    public int ContextualOccurrenceCount { get; init; }
 
     /// <summary>True if this span was one of the original, full unmatched spans from the tokenizer.</summary>
     public bool IsFullSpan { get; init; }
@@ -19,27 +28,27 @@ public record AnalyzedUnmatchedSpan
     /// </summary>
     public List<SubSpanContext> Occurrences { get; init; }
 
-    /// <summary>A frequency list of all items that appeared immediately before this span.</summary>
-    public List<SpanAdjacency> PrecedingAdjacencies { get; init; }
+    /// <summary>A hierarchical tree representing all token/word sequences that appeared immediately BEFORE this span.</summary>
+    public List<AdjacencyNode> PrecedingAdjacencies { get; init; }
 
-    /// <summary>A frequency list of all items that appeared immediately after this span.</summary>
-    public List<SpanAdjacency> FollowingAdjacencies { get; init; }
+    /// <summary>A hierarchical tree representing all token/word sequences that appeared immediately AFTER this span.</summary>
+    public List<AdjacencyNode> FollowingAdjacencies { get; init; }
 
     public int WordCount { get; init; }
-    public int OccurrenceCount { get; init; }
 
-    public AnalyzedUnmatchedSpan(string text, int frequency, bool isFullSpan, List<SubSpanContext> occurrences, List<SpanAdjacency> precedingAdjacencies, List<SpanAdjacency> followingAdjacencies)
+    // Note the change in the parameter name from "frequency" to "exactPhraseFrequency" for clarity.
+    public AnalyzedUnmatchedSpan(string text, int exactPhraseFrequency, bool isFullSpan, List<SubSpanContext> occurrences, List<AdjacencyNode> precedingAdjacencies, List<AdjacencyNode> followingAdjacencies)
     {
         Text = text;
-        Frequency = frequency;
+        ExactPhraseFrequency = exactPhraseFrequency; // Store the automaton's count here.
         IsFullSpan = isFullSpan;
         Occurrences = occurrences;
         PrecedingAdjacencies = precedingAdjacencies;
         FollowingAdjacencies = followingAdjacencies;
         WordCount = text.Split(' ').Length;
-        OccurrenceCount = occurrences.Count;
+        ContextualOccurrenceCount = occurrences.Count; // Store the contextual count here.
     }
 
-    public override string ToString() => $"'{Text}' (x{OccurrenceCount})";
+    // Now your ToString() can be more precise.
+    public override string ToString() => $"'{Text}' (Exact: {ExactPhraseFrequency}, In Contexts: {ContextualOccurrenceCount})";
 }
-
