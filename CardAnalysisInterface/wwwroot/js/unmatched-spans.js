@@ -11,20 +11,21 @@ function render(containerId, spanData) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
     svg.innerHTML = '<defs></defs>';
     container.appendChild(svg);
-    const tooltip = document.getElementById('word-tree-tooltip') || createGlobalTooltip();
-
-    function createGlobalTooltip() {
-        const newTooltip = document.createElement('div');
-        newTooltip.id = 'word-tree-tooltip';
-        document.body.appendChild(newTooltip);
-        return newTooltip;
-    }
 
     const config = {
-        nodeWidth: 160, nodeHeight: 40, hGap: 40, vGap: 20,
-        cornerRadius: 10, truncationLength: 26, blendPercentage: 1,
-        mainSpanWidth: 220, mainSpanFontSize: 14, mainSpanLineHeight: 16,
-        mainSpanPadding: 20, mainSpanFill: '#3a3a3a', mainSpanColor: "#e0e0e0"
+        nodeWidth: 200,
+        nodePadding: 8,
+        mainSpanPadding: 12,
+        nodeHeight: 40,
+        hGap: 40,
+        vGap: 20,
+        cornerRadius: 10,
+        blendPercentage: 1,
+        mainSpanWidth: 220,
+        mainSpanFontSize: 14,
+        mainSpanLineHeight: 16,
+        mainSpanFill: '#3a3a3a',
+        mainSpanColor: "#e0e0e0"
     };
 
     const throughLineColors = [
@@ -68,32 +69,78 @@ function render(containerId, spanData) {
         });
     }
 
-    // --- REWRITTEN & FIXED LAYOUT LOGIC ---
-    function calculateLayout(nodes, depth, parentY, direction) {
+    // --- NEW: Accurate measurement using getComputedTextLength() ---
+    function getNodeMetrics(text, isAnchor) {
+        const nodeWidth = isAnchor ? config.mainSpanWidth : config.nodeWidth;
+        const padding = isAnchor ? config.mainSpanPadding : config.nodePadding;
+        const fontSize = isAnchor ? config.mainSpanFontSize : 12;
+        const fontWeight = isAnchor ? 'bold' : 'normal';
+        const lineHeight = isAnchor ? config.mainSpanLineHeight : 14;
+        const availableWidth = nodeWidth - padding * 2;
+
+        const tempText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        tempText.setAttribute('class', 'node-text'); // Apply basic styles
+        tempText.style.fontSize = `${fontSize}px`;
+        tempText.style.fontWeight = fontWeight;
+        const tempTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        tempText.appendChild(tempTspan);
+        svg.appendChild(tempText); // Add to DOM to be measurable
+
+        const words = text.split(' ');
+        let currentLine = '';
+        const wrappedLines = [];
+
+        for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            tempTspan.textContent = testLine;
+            if (tempTspan.getComputedTextLength() > availableWidth && currentLine) {
+                wrappedLines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+        wrappedLines.push(currentLine);
+
+        svg.removeChild(tempText); // Clean up temp element
+
+        const totalTextHeight = wrappedLines.length * lineHeight;
+        const dynamicHeight = Math.max(config.nodeHeight, totalTextHeight + padding);
+
+        return { dynamicHeight, wrappedLines, lineHeight };
+    }
+
+    function preCalculateAllNodeMetrics(node, isAnchor = false) {
+        if (!node) return;
+        const metrics = getNodeMetrics(node.text, isAnchor);
+        node.dynamicHeight = metrics.dynamicHeight;
+        node.wrappedLines = metrics.wrappedLines;
+        node.lineHeight = metrics.lineHeight;
+
+        if (node.children) node.children.forEach(child => preCalculateAllNodeMetrics(child, false));
+    }
+
+    function calculateLayout(nodes, depth, parentX, parentY, direction) {
         if (!nodes || nodes.length === 0) return { layout: [], totalHeight: 0 };
         const layoutInfo = [], nodeMetrics = [];
         for (const node of nodes) {
-            const childrenResult = calculateLayout(node.children, depth + 1, 0, direction);
+            const childrenResult = calculateLayout(node.children, depth + 1, 0, 0, direction);
             node.childrenLayout = childrenResult.layout;
-            const effectiveHeight = Math.max(config.nodeHeight, childrenResult.totalHeight);
+            const effectiveHeight = Math.max(node.dynamicHeight, childrenResult.totalHeight);
             nodeMetrics.push({ node, effectiveHeight });
         }
         const totalGroupHeight = nodeMetrics.reduce((sum, metric) => sum + metric.effectiveHeight, 0) + Math.max(0, nodes.length - 1) * config.vGap;
         let currentY = parentY - totalGroupHeight / 2;
         for (const metric of nodeMetrics) {
             const { node, effectiveHeight } = metric;
-
-            // This is the new, correct calculation for the node's X position.
-            // It calculates the offset from the center of the SVG, not from the parent.
-            const baseOffset = config.mainSpanWidth / 2 + config.hGap + config.nodeWidth / 2;
-            const stepOffset = config.nodeWidth + config.hGap;
-            const totalOffsetFromCenter = baseOffset + (depth * stepOffset);
-            const nodeX = (width / 2) + (direction * totalOffsetFromCenter);
-
+            const parentWidth = (depth === 0) ? config.mainSpanWidth : config.nodeWidth;
+            const offset = (parentWidth / 2) + config.hGap + (config.nodeWidth / 2);
+            const nodeX = parentX + (direction * offset);
             const nodeY = currentY + effectiveHeight / 2;
             node.layout = { x: nodeX, y: nodeY };
             layoutInfo.push(node);
             for (const childNode of node.childrenLayout) {
+                childNode.layout.x += nodeX;
                 childNode.layout.y += nodeY;
             }
             layoutInfo.push(...node.childrenLayout);
@@ -103,72 +150,31 @@ function render(containerId, spanData) {
     }
 
     function createNode(nodeData, cx, cy, isAdjacency) {
-        const { text, tokenTypeColor } = nodeData;
+        const { tokenTypeColor, dynamicHeight, wrappedLines, lineHeight } = nodeData;
         const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
         group.setAttribute('class', 'node-group');
-
         const sentenceIndices = nodeObjectToSentenceIndices.get(nodeData) || [];
         sentenceIndices.forEach(idx => group.classList.add(`sentence-${idx}`));
 
+        const nodeWidth = isAdjacency ? config.nodeWidth : config.mainSpanWidth;
+
+        const shape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        shape.setAttribute('class', 'node-shape');
+        shape.setAttribute('x', -nodeWidth / 2);
+        shape.setAttribute('y', -dynamicHeight / 2);
+        shape.setAttribute('width', nodeWidth);
+        shape.setAttribute('height', dynamicHeight);
+        shape.setAttribute('rx', 8);
+
+        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textEl.setAttribute('class', 'node-text');
+
         if (!isAdjacency) {
-            const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            textEl.setAttribute('class', 'node-text');
-            textEl.style.fontSize = `${config.mainSpanFontSize}px`;
-            textEl.style.fontWeight = 'bold';
-
-            const words = text.split(' ');
-            let currentLine = '';
-            const wrappedLines = [];
-            const tempTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-            textEl.appendChild(tempTspan);
-            svg.appendChild(textEl);
-            for (const word of words) {
-                tempTspan.textContent = currentLine ? `${currentLine} ${word}` : word;
-                if (tempTspan.getComputedTextLength() > config.mainSpanWidth - config.mainSpanPadding) {
-                    wrappedLines.push(currentLine);
-                    currentLine = word;
-                } else {
-                    currentLine = tempTspan.textContent;
-                }
-            }
-            wrappedLines.push(currentLine);
-            svg.removeChild(textEl);
-            textEl.innerHTML = '';
-
-            const totalTextHeight = wrappedLines.length * config.mainSpanLineHeight;
-            const nodeHeight = Math.max(config.nodeHeight, totalTextHeight + config.mainSpanPadding);
-            const startY = -nodeHeight / 2 + config.mainSpanLineHeight + (nodeHeight - totalTextHeight - config.mainSpanPadding / 2) / 2;
-
-            wrappedLines.forEach((line, i) => {
-                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                tspan.setAttribute('x', 0);
-                tspan.setAttribute('dy', i === 0 ? startY : config.mainSpanLineHeight);
-                tspan.textContent = line;
-                textEl.appendChild(tspan);
-            });
-
-            const shape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            shape.setAttribute('class', 'node-shape');
-            shape.setAttribute('x', -config.mainSpanWidth / 2);
-            shape.setAttribute('y', -nodeHeight / 2);
-            shape.setAttribute('width', config.mainSpanWidth);
-            shape.setAttribute('height', nodeHeight);
-            shape.setAttribute('rx', 8);
             shape.style.fill = config.mainSpanFill;
             shape.style.setProperty('--node-border-color', config.mainSpanColor);
-
-            group.appendChild(shape);
-            group.appendChild(textEl);
-            nodeData.dynamicHeight = nodeHeight;
+            textEl.style.fontSize = `${config.mainSpanFontSize}px`;
+            textEl.style.fontWeight = 'bold';
         } else {
-            const shape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            shape.setAttribute('class', 'node-shape');
-            shape.setAttribute('x', -config.nodeWidth / 2);
-            shape.setAttribute('y', -config.nodeHeight / 2);
-            shape.setAttribute('width', config.nodeWidth);
-            shape.setAttribute('height', config.nodeHeight);
-            shape.setAttribute('rx', 8);
-
             if (sentenceIndices.length > 1) {
                 const defs = svg.querySelector('defs');
                 const gradientId = `grad-node-${containerId}-${nodeData.id}`;
@@ -189,29 +195,26 @@ function render(containerId, spanData) {
                 const colorIndex = colorIndexMap[sentenceIndices[0] % colorIndexMap.length];
                 shape.style.setProperty('--node-border-color', throughLineColors[colorIndex]);
             }
-            group.appendChild(shape);
-
-            const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            textEl.setAttribute('class', 'node-text');
-            if (text.length > config.truncationLength) {
-                textEl.textContent = text.substring(0, config.truncationLength - 3) + '...';
-                group.dataset.fulltext = text;
-            } else {
-                textEl.textContent = text;
-            }
             if (tokenTypeColor) {
                 textEl.style.fill = tokenTypeColor;
                 textEl.style.fontWeight = 'bold';
             }
-            group.appendChild(textEl);
         }
+        group.appendChild(shape);
+
+        const totalTextHeight = wrappedLines.length * lineHeight;
+        const startY = -totalTextHeight / 2 + lineHeight * 0.7;
+        wrappedLines.forEach((line, i) => {
+            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            tspan.setAttribute('x', 0);
+            tspan.setAttribute('dy', i === 0 ? startY : lineHeight);
+            tspan.textContent = line;
+            textEl.appendChild(tspan);
+        });
+        group.appendChild(textEl);
 
         group.setAttribute('transform', `translate(${cx}, ${cy})`);
-        group.addEventListener('mouseover', (e) => {
-            if (e.currentTarget.dataset.fulltext) {
-                tooltip.textContent = e.currentTarget.dataset.fulltext;
-                tooltip.style.opacity = '1';
-            }
+        group.addEventListener('mouseover', () => {
             if (sentenceIndices.length > 0) {
                 svg.classList.add('is-highlighting');
                 sentenceIndices.forEach(idx => {
@@ -220,13 +223,8 @@ function render(containerId, spanData) {
             }
         });
         group.addEventListener('mouseout', () => {
-            tooltip.style.opacity = '0';
             svg.classList.remove('is-highlighting');
             svg.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
-        });
-        group.addEventListener('mousemove', (e) => {
-            tooltip.style.left = `${e.pageX}px`;
-            tooltip.style.top = `${e.pageY}px`;
         });
         svg.appendChild(group);
     }
@@ -242,14 +240,11 @@ function render(containerId, spanData) {
         const d = (ySign === 0)
             ? `M ${startX} ${y1} L ${endX} ${y2}`
             : `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${direction * ySign > 0 ? 1 : 0} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${direction * ySign > 0 ? 0 : 1} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
-
         path.setAttribute('d', d.trim());
         path.setAttribute('class', 'connector-path');
-
         const parentSentences = new Set(nodeObjectToSentenceIndices.get(parentData) || []);
         const commonSentenceIndices = (nodeObjectToSentenceIndices.get(childData) || []).filter(idx => parentSentences.has(idx));
         commonSentenceIndices.forEach(idx => path.classList.add(`sentence-${idx}`));
-
         if (commonSentenceIndices.length === 1) {
             const colorIndex = colorIndexMap[commonSentenceIndices[0] % colorIndexMap.length];
             path.style.setProperty('--node-border-color', throughLineColors[colorIndex]);
@@ -270,24 +265,23 @@ function render(containerId, spanData) {
     // --- Main Render Execution ---
     mapObjectsToSentences();
 
-    // Create a temporary main span to measure its dynamic height
-    createNode(mainSpanData, -9999, -9999, false);
-    const mainSpanHeight = mainSpanData.dynamicHeight || config.nodeHeight;
+    preCalculateAllNodeMetrics(mainSpanData, true);
+    if (mainSpanData.preceding) mainSpanData.preceding.forEach(node => preCalculateAllNodeMetrics(node, false));
+    if (mainSpanData.following) mainSpanData.following.forEach(node => preCalculateAllNodeMetrics(node, false));
 
-    const precedingResult = calculateLayout(mainSpanData.preceding, 0, 0, -1);
-    const followingResult = calculateLayout(mainSpanData.following, 0, 0, 1);
+    const mainSpanX = width / 2;
+    const precedingResult = calculateLayout(mainSpanData.preceding, 0, mainSpanX, 0, -1);
+    const followingResult = calculateLayout(mainSpanData.following, 0, mainSpanX, 0, 1);
 
-    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanHeight) + config.vGap * 2;
-    container.style.height = `${totalHeight}px`;
-    svg.setAttribute('viewBox', `0 0 ${width} ${totalHeight}`);
-
+    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanData.dynamicHeight) + config.vGap * 2;
     const mainSpanY = totalHeight / 2;
+
     precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
     followingResult.layout.forEach(n => n.layout.y += mainSpanY);
 
-    const mainSpanX = width / 2;
+    container.style.height = `${totalHeight}px`;
+    svg.setAttribute('viewBox', `0 0 ${width} ${totalHeight}`);
 
-    svg.innerHTML = '<defs></defs>'; // Clear temp nodes
     drawNodesAndConnectors(mainSpanData.preceding, mainSpanData, mainSpanX, mainSpanY, -1);
     drawNodesAndConnectors(mainSpanData.following, mainSpanData, mainSpanX, mainSpanY, 1);
     createNode(mainSpanData, mainSpanX, mainSpanY, false);
