@@ -1,0 +1,91 @@
+﻿/* UnmatchedSpans.razor.css */
+
+/* Main container for all cards */
+.unmatched-spans-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem;
+}
+
+.word-tree-card {
+    /* UPDATED: Wider card container */
+    width: 90%;
+    background-color: #252525;
+    border-radius: 8px;
+    border: 1px solid #333;
+    overflow: visible;
+}
+
+/* Global Tooltip Style (applies to the element in the body) */
+/* We use ::deep because the tooltip is outside this component's scope. */
+::deep #word-tree-tooltip {
+    position: absolute;
+    background-color: rgba(20, 20, 20, 0.9);
+    color: #f0f0f0;
+    padding: 9px 14px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    white-space: nowrap;
+    z-index: 1000;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translate(-50%, -120%);
+}
+
+
+/* --- ALL SVG STYLES FROM PREVIOUS PROTOTYPE --- */
+/* Use ::deep to ensure styles apply to dynamically generated SVG elements */
+
+::deep .node-group,
+::deep .connector-path {
+    transition: opacity 0.3s ease;
+}
+
+::deep .node-shape {
+    stroke: var(--node-border-color, #666);
+    stroke-width: 1.5px;
+    fill: #2d2d2d;
+    transition: all 0.3s ease;
+}
+
+::deep .node-text {
+    font-size: 12px;
+    fill: #e0e0e0;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    transition: fill 0.3s ease;
+}
+
+::deep .connector-path {
+    stroke: var(--node-border-color, #444);
+    fill: none;
+    stroke-width: 1.5px;
+    transition: all 0.3s ease;
+}
+
+::deep #chart-svg.is-highlighting .node-group,
+::deep #chart-svg.is-highlighting .connector-path {
+    opacity: 0.2;
+}
+
+    ::deep #chart-svg.is-highlighting .node-group.highlight,
+    ::deep #chart-svg.is-highlighting .connector-path.highlight {
+        opacity: 1;
+    }
+
+::deep .node-group.highlight .node-shape,
+::deep .connector-path.highlight {
+    stroke: #ffffff !important;
+    stroke-width: 2.5px;
+}
+
+::deep .node-group.highlight .node-text {
+    fill: #ffffff;
+}

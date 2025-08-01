@@ -1,113 +1,128 @@
-﻿/* --- Original Styles (Unchanged) --- */
-.unmatched-span-card {
+﻿.span-card-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    align-items: center;
+    gap: 0;
+    width: 100%;
     margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #252525;
+    border-radius: 8px;
+    border: 1px solid #333;
+    overflow-x: hidden;
 }
 
-.card-header {
+/* --- Center Panel --- */
+.center-panel {
     display: flex;
-    align-items: baseline;
-    gap: 2rem;
-    margin-bottom: 0.75rem;
-    padding-left: 0.25rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.5rem; /* Reduced gap for a tighter look */
 }
 
-pre {
+.center-text-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.center-text {
     background-color: var(--dark-grey, #2d2d2d);
     padding: 1rem;
     border-radius: 4px;
     border: 1px solid var(--lowlight-color, #444);
     white-space: pre-wrap;
-    word-wrap: break-word;
-    color: #f1f1f1;
-    margin: 0;
+    word-break: break-word;
+    color: var(--base-text-color, #e0e0e0);
+    font-size: 1.1em;
+    width: 100%;
+    min-height: 4em; /* Give it some base height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .stat-item {
-    font-size: 1.2em;
-    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .stat-key {
     font-size: 0.8em;
-    font-style: italic;
-    font-weight: normal;
-    margin-right: 0.6em;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-value {
+    font-size: 1.2em;
+    font-weight: bold;
 }
 
 .palette-teal {
     color: var(--teal);
 }
 
-    .palette-teal .stat-key {
-        color: var(--dark-teal);
-    }
-
 .palette-amber {
     color: var(--gold);
 }
 
-    .palette-amber .stat-key {
-        color: var(--dark-gold);
+/* --- Adjacency Columns --- */
+.adjacency-column {
+    display: flex;
+    min-width: 0;
+    height: 100%;
+    align-items: center; /* This is key to vertically centering the entire tree structure */
+}
+
+    .adjacency-column.before {
+        flex-direction: row-reverse;
+    }
+
+    .adjacency-column.after {
+        flex-direction: row;
+    }
+
+.adjacency-root-container {
+    position: relative;
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-rows: 1fr; /* This is the key to correct vertical distribution */
+    width: 100%;
+}
+
+
+/* --- Connector Lines --- */
+.center-connector {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+    height: 2px;
+    background-color: #383838;
+    z-index: 5;
+}
+
+    .center-connector.before {
+        left: -1.5rem;
+    }
+
+    .center-connector.after {
+        right: -1.5rem;
     }
 
 
-/* --- Final Context Block Styles --- */
-
-.context-section {
-    margin-top: 1.5rem;
+/* This sets the CSS variables for the child component */
+::deep .adjacency-column.before {
+    direction: rtl; /* Right-to-left layout for the preceding tree */
 }
 
-.context-title {
-    font-weight: bold;
-    margin-bottom: 0.75rem;
-    color: var(--hint-color, #aaa);
+::deep .adjacency-column.after {
+    direction: ltr; /* Left-to-right for following tree */
 }
 
-.context-pairs {
-    /* This container will now be only as wide as its content,
-       making the entire block of KVPs align to the left. */
-    display: inline-block;
-}
-
-/* A single Key-Value Pair row */
-.context-pair {
-    display: grid;
-    /* Create two columns sized to their content. This is the key
-       to making the whole block align left as requested. */
-    grid-template-columns: auto auto;
-    /* This creates the fixed-width visual gap. */
-    column-gap: 1rem;
-    align-items: baseline;
-    margin-bottom: 0.5rem; /* Vertical space between pairs */
-}
-
-/* The word (key) is right-justified within its auto-sized column. */
-.context-word {
-    justify-self: end;
-    opacity: 0.9;
-}
-
-/* The frequency (value) is left-justified in its column. */
-.context-freq {
-    justify-self: start;
-    font-weight: bold;
-}
-
-/* Color coding for 'before' pairs */
-.context-pair.before .context-word,
-.context-pair.before .context-freq {
-    color: var(--light-blue, #4fc3f7);
-}
-
-/* Color coding for 'after' pairs */
-.context-pair.after .context-word,
-.context-pair.after .context-freq {
-    color: var(--light-green, #aed581);
-}
-
-/* Style for when no context words exist */
-.context-none {
-    color: var(--hint-color, #888);
-    font-style: italic;
-    margin-bottom: 0.25rem;
+::deep .node-content-wrapper {
+    /* Set the vertical center offset for a node based on its total descendant span */
+    --vertical-center-offset: calc((var(--total-lanes, 1) - 1) / 2);
 }

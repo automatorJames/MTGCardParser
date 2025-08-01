@@ -1,0 +1,48 @@
+﻿@* Renders a single node and its children using pre-calculated layout metadata. *@
+@using MTGPlexer.TokenAnalysis
+
+<!-- The wrapper positions the entire node-and-children block in its correct vertical lane. -->
+<div class="node-layout-wrapper" style="grid-row-start: @(Node.VerticalLane + 1); grid-row-end: @Node.TotalDescendantLanes;">
+
+    <!-- This container handles the node box itself and its outgoing connectors. -->
+    <div class="node-content-wrapper">
+        <div class="adjacency-node" data-tooltip="@Node.Text" style="border-color: @GetNodeColor();">
+            <span class="adjacency-text" style="color: @GetNodeColor();">@Node.Text</span>
+        </div>
+
+        @if (Node.Frequency > 1)
+        {
+            <div class="adjacency-freq">@Node.Frequency</div>
+        }
+    </div>
+
+    <!-- Connector and Children Container -->
+    @if (Node.Children.Any())
+    {
+        <div class="connector-and-children-container">
+            <!-- This is the horizontal line leaving the parent node. -->
+            <div class="connector-h-out"></div>
+            <!-- This container holds all children and the vertical line that connects them. -->
+            <div class="children-container">
+                @foreach (var child in Node.Children)
+                {
+                    <AdjacencyNodeDisplay Node="child" />
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public AdjacencyNode Node { get; set; }
+
+    private string GetNodeColor()
+    {
+        if (Node.TokenType != null && TokenTypeRegistry.Palettes.TryGetValue(Node.TokenType, out var palette))
+        {
+            return palette.Hex;
+        }
+        return "var(--base-text-color)";
+    }
+}

@@ -1,53 +1,55 @@
-﻿<div class="unmatched-span-card">
-    <div class="card-header">
-        <span class="stat-item palette-teal">
-            <i class="stat-key">occurrences:</i> @SpanData.ExactPhraseFrequency
-        </span>
-        <span class="stat-item palette-amber">
-            <i class="stat-key">words:</i> @SpanData.WordCount
-        </span>
+﻿@using MTGPlexer.TokenAnalysis
+
+<div class="span-card-container">
+
+    <!-- Preceding Adjacency Column (40%) -->
+    <div class="adjacency-column before">
+        @if (SpanData.PrecedingAdjacencies.Any())
+        {
+            <div class="adjacency-root-container">
+                @foreach (var node in SpanData.PrecedingAdjacencies)
+                {
+                    <AdjacencyNodeDisplay Node="node" />
+                }
+            </div>
+        }
     </div>
 
-    <pre><code>@SpanData.Text</code></pre>
-
-    <div class="context-section">
-        <div class="context-title">Before</div>
-        <div class="context-pairs">
+    <!-- Center Panel (20%) -->
+    <div class="center-panel">
+        <div class="stat-item">
+            <div class="stat-key">Occurrences</div>
+            <div class="stat-value palette-teal">@SpanData.ExactPhraseFrequency</div>
+        </div>
+        <div class="center-text-wrapper">
+            <!-- Connector lines leaving the center box -->
             @if (SpanData.PrecedingAdjacencies.Any())
             {
-                @foreach (var ctx in SpanData.PrecedingAdjacencies)
-                {
-                    <div class="context-pair before">
-                        <span class="context-word">@ctx.Text</span>
-                        <span class="context-freq">@ctx.Frequency</span>
-                    </div>
-                }
+                <div class="center-connector before"></div>
             }
-            else
+            @if (SpanData.FollowingAdjacencies.Any())
             {
-                <div class="context-none">— none —</div>
+                <div class="center-connector after"></div>
             }
+            <pre class="center-text">@SpanData.Text</pre>
+        </div>
+        <div class="stat-item">
+            <div class="stat-key">Words</div>
+            <div class="stat-value palette-amber">@SpanData.WordCount</div>
         </div>
     </div>
 
-    <div class="context-section">
-        <div class="context-title">After</div>
-        <div class="context-pairs">
-            @if (SpanData.FollowingAdjacencies.Any())
-            {
-                @foreach (var ctx in SpanData.FollowingAdjacencies)
+    <!-- Following Adjacency Column (40%) -->
+    <div class="adjacency-column after">
+        @if (SpanData.FollowingAdjacencies.Any())
+        {
+            <div class="adjacency-root-container">
+                @foreach (var node in SpanData.FollowingAdjacencies)
                 {
-                    <div class="context-pair after">
-                        <span class="context-word">@ctx.Text</span>
-                        <span class="context-freq">@ctx.Frequency</span>
-                    </div>
+                    <AdjacencyNodeDisplay Node="node" />
                 }
-            }
-            else
-            {
-                <div class="context-none">— none —</div>
-            }
-        </div>
+            </div>
+        }
     </div>
 </div>
 

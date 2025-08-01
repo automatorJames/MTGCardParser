@@ -460,18 +460,27 @@ public class CorpusAnalyzer
                 if (precedingSequence.Any()) precedingSequences.Add(precedingSequence);
             }
 
-            // Step 2: Build the hierarchical trees from the raw sequences.
+            // Step 2: Build the initial hierarchical trees from the raw sequences.
             var followingAdjacencyTree = BuildAdjacencyTree(followingSequences);
             var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequences.Select(s => { s.Reverse(); return s; }).ToList());
 
+            // Step 3: Collapse the trees for a cleaner display.
+            var collapsedFollowingTree = CollapseAdjacencyNodes(followingAdjacencyTree, isReversed: false);
+            var collapsedPrecedingTree = CollapseAdjacencyNodes(precedingAdjacencyTree, isReversed: true);
+
+            // =========================================================================
+            // == NEW STEP 4: Calculate layout metadata for the trees.                ==
+            // =========================================================================
+            CalculateTreeLayout(collapsedFollowingTree);
+            CalculateTreeLayout(collapsedPrecedingTree);
+
             result.Add(new AnalyzedUnmatchedSpan(
                 text: spanText,
-                // The parameter name is updated here to match the new constructor.
                 exactPhraseFrequency: count,
                 isFullSpan: originalWholeSpanTexts.Contains(spanText),
                 occurrences: subSpanContexts,
-                precedingAdjacencies: precedingAdjacencyTree,
-                followingAdjacencies: followingAdjacencyTree
+                precedingAdjacencies: collapsedPrecedingTree,
+                followingAdjacencies: collapsedFollowingTree
             ));
         }
 
@@ -533,4 +542,77 @@ public class CorpusAnalyzer
         return -1;
     }
     #endregion
+
+    /// <summary>
+    /// Post-processes a list of adjacency nodes to collapse sequential nodes that have only one child
+    /// and the same frequency, combining their text. It now handles reversed sequences correctly.
+    /// </summary>
+    private List<AdjacencyNode> CollapseAdjacencyNodes(List<AdjacencyNode> nodes, bool isReversed)
+    {
+        if (nodes == null || !nodes.Any()) return new List<AdjacencyNode>();
+
+        var collapsedNodes = new List<AdjacencyNode>();
+        foreach (var node in nodes)
+        {
+            var currentNode = node;
+            var textParts = new List<string> { currentNode.Text };
+
+            while (currentNode.Children.Count == 1 &&
+                   currentNode.Children[0].Frequency == currentNode.Frequency &&
+                   currentNode.Children[0].TokenType == null)
+            {
+                currentNode = currentNode.Children[0];
+                textParts.Add(currentNode.Text);
+            }
+
+            // Recursively collapse the children of the final node in the chain.
+            var newChildren = CollapseAdjacencyNodes(currentNode.Children, isReversed);
+
+            // If the original sequence was reversed, we need to reverse our collected text parts
+            // back to their natural order before joining.
+            if (isReversed)
+            {
+                textParts.Reverse();
+            }
+
+            collapsedNodes.Add(new AdjacencyNode(
+                text: string.Join(" ", textParts),
+                tokenType: node.TokenType,
+                frequency: node.Frequency,
+                children: newChildren
+            ));
+        }
+        return collapsedNodes;
+    }
+
+    /// <summary>
+    /// Recursively traverses the adjacency tree to calculate the vertical lane position
+    /// and total lane span for each node, enabling a stable and predictable UI layout.
+    /// </summary>
+    /// <returns>The total number of vertical lanes required by this level of the tree.</returns>
+    private int CalculateTreeLayout(List<AdjacencyNode> nodes, int startLane = 0)
+    {
+        int currentLane = startLane;
+        foreach (var node in nodes)
+        {
+            node.VerticalLane = currentLane;
+
+            // If the node has children, recursively calculate their layout.
+            // The number of lanes the children occupy determines this node's total descendant span.
+            if (node.Children.Any())
+            {
+                node.TotalDescendantLanes = CalculateTreeLayout(node.Children, currentLane);
+                // The next sibling node will start in the lane after all of the current node's children.
+                currentLane = node.TotalDescendantLanes;
+            }
+            else
+            {
+                // A leaf node occupies only its own lane.
+                node.TotalDescendantLanes = currentLane + 1;
+                currentLane++;
+            }
+        }
+        // Return the final lane number, which represents the total number of lanes used.
+        return currentLane;
+    }
 }

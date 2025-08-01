@@ -1,4 +1,5 @@
 ﻿@page "/unmatched-spans"
+@inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
 @implements IDisposable
@@ -9,34 +10,49 @@
 }
 else
 {
-    @foreach (var span in GetFilteredUnmatchedSpans())
-    {
-        <UnmatchedSpanCard SpanData=@span />
-    }
+    <div class="unmatched-spans-container">
+        @foreach (var (span, index) in GetFilteredUnmatchedSpans().Select((value, i) => (value, i)))
+        {
+            <div id="@($"word-tree-container-{index}")" class="word-tree-card"></div>
+        }
+    </div>
 }
 
 @code {
-
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += StateHasChanged;
     }
 
-    IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var spansToRender = GetFilteredUnmatchedSpans().ToList();
+            for (int i = 0; i < spansToRender.Count; i++)
+            {
+                var span = spansToRender[i];
+                var containerId = $"word-tree-container-{i}";
+                var jsSpanData = WordTreeSpan.FromAnalyzedSpan(span);
+
+                // UPDATED: The JS interop call is now simple and direct.
+                await JSRuntime.InvokeVoidAsync("render", containerId, jsSpanData);
+            }
+        }
+    }
+
+    private IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
     {
         var items = CorpusAnalyzer.AnalyzedUnmatchedSpans
             .Where(x => x.ExactPhraseFrequency >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
 
-        if (RuntimeSettings.OrderByWordCount)
-            return items.OrderByDescending(x => x.WordCount);
-        else
-            return items.OrderByDescending(x => x.ExactPhraseFrequency);
-
+        return RuntimeSettings.OrderByWordCount
+            ? items.OrderByDescending(x => x.WordCount)
+            : items.OrderByDescending(x => x.ExactPhraseFrequency);
     }
 
     public void Dispose()
     {
         RuntimeSettings.OnChanged -= StateHasChanged;
     }
-
 }
