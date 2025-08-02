@@ -2,8 +2,8 @@
 
 namespace MTGPlexer.TokenAnalysis;
 
-public class UnmatchedSpanComparer : IEqualityComparer<SpanContext>
+public class UnmatchedSpanComparer : IEqualityComparer<UnmatchedSpanContext>
 {
-    public bool Equals(SpanContext x, SpanContext y) => x.SpanText == y.SpanText;
-    public int GetHashCode([DisallowNull] SpanContext obj) => obj.SpanText.GetHashCode();
+    public bool Equals(UnmatchedSpanContext x, UnmatchedSpanContext y) => x.SpanText == y.SpanText;
+    public int GetHashCode([DisallowNull] UnmatchedSpanContext obj) => obj.SpanText.GetHashCode();
 }

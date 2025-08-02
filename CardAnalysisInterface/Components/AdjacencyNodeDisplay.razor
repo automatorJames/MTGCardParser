@@ -1,5 +1,6 @@
 ﻿@* Renders a single node and its children using pre-calculated layout metadata. *@
 @using MTGPlexer.TokenAnalysis
+@using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs
 
 <!-- The wrapper positions the entire node-and-children block in its correct vertical lane. -->
 <div class="node-layout-wrapper" style="grid-row-start: @(Node.VerticalLane + 1); grid-row-end: @Node.TotalDescendantLanes;">

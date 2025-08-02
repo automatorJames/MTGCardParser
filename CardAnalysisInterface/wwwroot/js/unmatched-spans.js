@@ -1,6 +1,6 @@
 ﻿// wwwroot/js/wordTree.js
 
-function render(containerId, spanData) {
+function renderTree(containerId, spanData) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Word Tree Error: Container with ID '${containerId}' not found.`);
@@ -39,9 +39,12 @@ function render(containerId, spanData) {
     let { width } = container.getBoundingClientRect();
 
     const mainSpanData = {
-        id: spanData.id, text: spanData.text,
-        preceding: spanData.preceding, following: spanData.following
+        id: spanData.id,
+        text: spanData.text,
+        preceding: spanData.preceding,
+        following: spanData.following
     };
+
     const sentences = spanData.sentences;
 
     function indexAllNodes(node) {

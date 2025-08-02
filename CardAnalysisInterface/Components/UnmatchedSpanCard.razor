@@ -1,4 +1,5 @@
 ﻿@using MTGPlexer.TokenAnalysis
+@using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs
 
 <div class="span-card-container">
 
@@ -19,7 +20,7 @@
     <div class="center-panel">
         <div class="stat-item">
             <div class="stat-key">Occurrences</div>
-            <div class="stat-value palette-teal">@SpanData.ExactPhraseFrequency</div>
+            <div class="stat-value palette-teal">@SpanData.MaximalSpanOccurrenceCount</div>
         </div>
         <div class="center-text-wrapper">
             <!-- Connector lines leaving the center box -->

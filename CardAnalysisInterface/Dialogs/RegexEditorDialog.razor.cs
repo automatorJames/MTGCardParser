@@ -1,4 +1,6 @@
-﻿namespace CardAnalysisInterface.Dialogs;
+﻿using MTGPlexer.DTOs;
+
+namespace CardAnalysisInterface.Dialogs;
 
 public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 {

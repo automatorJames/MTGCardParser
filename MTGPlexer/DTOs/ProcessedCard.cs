@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.DTOs;
+﻿using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+
+namespace MTGPlexer.DTOs;
 
 /// <summary>
 /// Represents a single card and all its processed lines of text.

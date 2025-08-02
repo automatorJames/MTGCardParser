@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 
 /// <summary>
 /// Represents a single node in an adjacency tree, now enriched with layout metadata for rendering.

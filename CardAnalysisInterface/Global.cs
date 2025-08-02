@@ -7,6 +7,6 @@ global using System.Text.RegularExpressions;
 global using Microsoft.AspNetCore.Components.Web;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.JSInterop;
-global using MTGPlexer.TokenAnalysis.DTOs;
-global using MTGPlexer.DTOs;
+global using MTGPlexer.TokenAnalysis.MatchDTOs;
+global using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 global using MTGPlexer;

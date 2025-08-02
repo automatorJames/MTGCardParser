@@ -1,4 +1,5 @@
-﻿<div class="card-header">
+﻿@using MTGPlexer.TokenAnalysis.ColorCoding
+<div class="card-header">
     <TokenTypeName TokenType=@TokenType />
     <span class="match-count @(Count == 0 ? "zero" : "")">
         <i class="matches-label">matches:</i> @Count

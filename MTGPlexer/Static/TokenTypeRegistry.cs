@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using MTGPlexer.TokenAnalysis.ColorCoding;
+using System.Reflection.Emit;
 
 namespace MTGPlexer.Static;
 
@@ -156,41 +157,41 @@ public static partial class TokenTypeRegistry
         var tokenizerBuilder = new TokenizerBuilder<Type>();
         tokenizerBuilder.Ignore(Span.Regex(@"\s+"));
 
-        // Since it's possible for multiple types to define the same order via TokenizationOrder,
-        // Each dictionary entry is a List, though each List should normally only have one item.
-        Dictionary<int, List<Type>> _definedOrderTypes =
-            allTokenTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
-            .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
-            .ToDictionary(x => x.Key, x => x.ToList());
-
-        // Ensure types aren't represented twice, once in the static list, and once in the attribute-having list
-        var typeOrderedItems = TypeOrderList.Except(_definedOrderTypes.SelectMany(x => x.Value)).ToList();
-
-        // Ensure our range spans the entirety of both ordered sources
-        var minPosition = Math.Min(0, _definedOrderTypes.Keys.Min());
-        var maxPosition = Math.Max(typeOrderedItems.Count - 1, _definedOrderTypes.Keys.Max());
-
-        // Ensure we handle (in order) all attribute defined order types, listed ordered types, and all other types
-        for (int i = minPosition; i <= maxPosition; i++)
-        {
-            // handle defined attribute order first
-            // since any key can have N items defined, process all N
-            if (_definedOrderTypes.ContainsKey(i))
-                _definedOrderTypes[i].ForEach(x => tokenizerBuilder.Match(x));
-
-            // handle static listed types next (might be at the same index
-            if (i >= 0 && i < typeOrderedItems.Count)
-                tokenizerBuilder.Match(typeOrderedItems[i]);
-        }
-
-        // handle all remaining types (i.e. those the user didn't bother to define anywhere)
-        // order by descending length, which is a rough approximate of complexity/match length (not exact)
-        var unorderedRemainingTypes = allTokenTypes
-            .Except(AppliedOrderTypes)
-            .OrderByDescending(x => Templates[x].RenderedRegexString.Length);
-
-        foreach (var type in unorderedRemainingTypes)
-            tokenizerBuilder.Match(type);
+        //// Since it's possible for multiple types to define the same order via TokenizationOrder,
+        //// Each dictionary entry is a List, though each List should normally only have one item.
+        //Dictionary<int, List<Type>> _definedOrderTypes =
+        //    allTokenTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
+        //    .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
+        //    .ToDictionary(x => x.Key, x => x.ToList());
+        //
+        //// Ensure types aren't represented twice, once in the static list, and once in the attribute-having list
+        //var typeOrderedItems = TypeOrderList.Except(_definedOrderTypes.SelectMany(x => x.Value)).ToList();
+        //
+        //// Ensure our range spans the entirety of both ordered sources
+        //var minPosition = Math.Min(0, _definedOrderTypes.Keys.Min());
+        //var maxPosition = Math.Max(typeOrderedItems.Count - 1, _definedOrderTypes.Keys.Max());
+        //
+        //// Ensure we handle (in order) all attribute defined order types, listed ordered types, and all other types
+        //for (int i = minPosition; i <= maxPosition; i++)
+        //{
+        //    // handle defined attribute order first
+        //    // since any key can have N items defined, process all N
+        //    if (_definedOrderTypes.ContainsKey(i))
+        //        _definedOrderTypes[i].ForEach(x => tokenizerBuilder.Match(x));
+        //
+        //    // handle static listed types next (might be at the same index
+        //    if (i >= 0 && i < typeOrderedItems.Count)
+        //        tokenizerBuilder.Match(typeOrderedItems[i]);
+        //}
+        //
+        //// handle all remaining types (i.e. those the user didn't bother to define anywhere)
+        //// order by descending length, which is a rough approximate of complexity/match length (not exact)
+        //var unorderedRemainingTypes = allTokenTypes
+        //    .Except(AppliedOrderTypes)
+        //    .OrderByDescending(x => Templates[x].RenderedRegexString.Length);
+        //
+        //foreach (var type in unorderedRemainingTypes)
+        //    tokenizerBuilder.Match(type);
 
         // Catch anything else with the default string pattern
         tokenizerBuilder.Match(typeof(DefaultUnmatchedString));

@@ -1,10 +1,11 @@
 ﻿@page "/unmatched-spans"
+@using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
 @implements IDisposable
 
-@if (!CorpusAnalyzer.AnalyzedUnmatchedSpans.Any())
+@if (!CorpusAnalyzer.UnmatchedDigestedCorpus.Spans.Any())
 {
     <p>No unmatched spans found.</p>
 }
@@ -43,12 +44,12 @@ else
 
     private IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
     {
-        var items = CorpusAnalyzer.AnalyzedUnmatchedSpans
-            .Where(x => x.ExactPhraseFrequency >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
+        var items = CorpusAnalyzer.UnmatchedDigestedCorpus.Spans
+            .Where(x => x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
 
         return RuntimeSettings.OrderByWordCount
             ? items.OrderByDescending(x => x.WordCount)
-            : items.OrderByDescending(x => x.ExactPhraseFrequency);
+            : items.OrderByDescending(x => x.MaximalSpanOccurrenceCount);
     }
 
     public void Dispose()

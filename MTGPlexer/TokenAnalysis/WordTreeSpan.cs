@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+
+namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// A data transfer object representing the entire span visualization for JS.
@@ -22,7 +24,7 @@ public record WordTreeSpan(
                 nodeId = $"n{nodeIdCounter++}";
                 nodeMap[node] = nodeId;
             }
-            var tokenColor = node.TokenType?.Name == "WithGlee" ? "#4CAF50" : null;
+            var tokenColor = node.TokenType is null ? null : TokenTypeRegistry.Palettes[node.TokenType].Hex;
             return new WordTreeNode(nodeId, node.Text, tokenColor, node.Children.Select(ConvertNode).ToList());
         }
 

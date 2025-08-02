@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.TokenAnalysis.ColorCoding;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 public record class ScalarPropVal(RegexPropInfo RegexPropInfo, object Val, int Position, string ParentPath)
 {

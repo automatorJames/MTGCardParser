@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.Attributes;
+﻿using MTGPlexer.TokenAnalysis.ColorCoding;
+
+namespace MTGPlexer.Attributes;
 
 public class ColorAttribute(string hexValue) : Attribute
 {

@@ -1,4 +1,6 @@
-﻿namespace CardAnalysisInterface;
+﻿using MTGPlexer.TokenAnalysis.ColorCoding;
+
+namespace CardAnalysisInterface;
 
 public static class Extensions
 {

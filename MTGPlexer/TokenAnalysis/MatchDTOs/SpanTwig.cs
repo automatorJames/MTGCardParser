@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.MatchDTOs;
 
 public record SpanTwig
 (

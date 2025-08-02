@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 
 /// <summary>
 /// Represents a single, specific occurrence of an unmatched span of text from one line of a card.
@@ -6,6 +6,7 @@
 /// </summary>
 public record UnmatchedSpanOccurrence
 {
+    public string Key { get; }
     public string CardName { get; }
     public int LineIndex { get; }
 
@@ -36,9 +37,10 @@ public record UnmatchedSpanOccurrence
     /// </summary>
     public Token<Type>? FollowingToken => UnmatchedTokenIndex < LineTokens.Count - 1 ? LineTokens[UnmatchedTokenIndex + 1] : null;
 
-    public string SpanText { get; }
-    public string[] SpanWords { get; }
-    public int SpanWordCount => SpanWords.Length;
+    public string Text { get; }
+    public TextSpan Span { get; }
+    public string[] Words { get; }
+    public int SpanWordCount => Words.Length;
 
     public UnmatchedSpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
     {
@@ -46,8 +48,11 @@ public record UnmatchedSpanOccurrence
         LineIndex = lineIndex;
         LineTokens = lineTokens;
         UnmatchedTokenIndex = unmatchedTokenIndex;
-
-        SpanText = UnmatchedToken.ToStringValue();
-        SpanWords = SpanText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Text = UnmatchedToken.ToStringValue();
+        Span = UnmatchedToken.Span;
+        Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Key = cardName.Dot(Span.ToIndexString());
     }
+
+    public override string ToString() => Text;
 }
