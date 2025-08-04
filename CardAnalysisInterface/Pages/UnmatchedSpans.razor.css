@@ -45,7 +45,7 @@
 
 ::deep {
     /* Central control for all animation speeds */
-    --transition-speed: 0.3s;
+    --transition-speed: 0.75s;
 }
 
     /* --- Default Element Styles --- */
