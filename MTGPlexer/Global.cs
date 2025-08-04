@@ -19,4 +19,5 @@ global using System.Text.RegularExpressions;
 global using System.Diagnostics;
 global using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 global using MTGPlexer.TokenAnalysis.MatchDTOs;
+global using MTGPlexer.TokenAnalysis.ColorCoding;
 global using static MTGPlexer.Extensions;

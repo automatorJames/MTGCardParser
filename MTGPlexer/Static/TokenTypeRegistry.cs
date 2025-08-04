@@ -18,6 +18,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Dictionary<PropertyInfo, List<PropertyInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
+    public static Dictionary<string, DeterministicPalette> CorpusItemPalettes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer<Type> Tokenizer { get; set; }

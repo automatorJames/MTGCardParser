@@ -21,7 +21,7 @@ public class CorpusAnalyzer
 
     public CorpusAnalyzer(List<Card> cards)
     {
-
+        cards.ForEach(x => TokenTypeRegistry.CorpusItemPalettes[x.Name] = new DeterministicPalette(x.Name));
 
         // STEP 1: Make a single pass through all cards and lines, performing all
         // initial processing (tokenization, SpanRoot generation, UnmatchedOccurrence collection).
