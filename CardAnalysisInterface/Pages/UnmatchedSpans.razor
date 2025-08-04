@@ -3,16 +3,16 @@
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
-@implements IDisposable
+@implements IAsyncDisposable
 
-@if (!CorpusAnalyzer.UnmatchedDigestedCorpus.Spans.Any())
+@if (GetFilteredUnmatchedSpans() is var filteredSpans && !filteredSpans.Any())
 {
     <p>No unmatched spans found.</p>
 }
 else
 {
     <div class="unmatched-spans-container">
-        @foreach (var (span, index) in GetFilteredUnmatchedSpans().Select((value, i) => (value, i)))
+        @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
         {
             <div id="@($"word-tree-container-{index}")" class="word-tree-card"></div>
         }
@@ -20,6 +20,9 @@ else
 }
 
 @code {
+    // Store the list of spans that are currently rendered to the page.
+    private List<AnalyzedUnmatchedSpan> _renderedSpans = new();
+
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += StateHasChanged;
@@ -27,13 +30,20 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // Get the current list of spans that should be on the page.
+        var spansToRender = GetFilteredUnmatchedSpans().ToList();
+
+        // We only need to call JS interop if the list of spans has changed.
+        // NOTE: This simple check works for additions/removals. More complex diffing
+        // might be needed if the order can change without the count changing.
+        if (!_renderedSpans.SequenceEqual(spansToRender))
         {
-            var spansToRender = GetFilteredUnmatchedSpans().ToList();
-            for (int i = 0; i < spansToRender.Count; i++)
+            _renderedSpans = spansToRender;
+            for (int i = 0; i < _renderedSpans.Count; i++)
             {
-                var span = spansToRender[i];
+                var span = _renderedSpans[i];
                 var containerId = $"word-tree-container-{i}";
+                // Call the main entry point for the JS logic.
                 await JSRuntime.InvokeVoidAsync("renderTree", containerId, span);
             }
         }
@@ -49,8 +59,24 @@ else
             : items.OrderByDescending(x => x.MaximalSpanOccurrenceCount);
     }
 
-    public void Dispose()
+    // This method is called by the Blazor framework when the component is removed.
+    public async ValueTask DisposeAsync()
     {
+        // Clean up the JS-side ResizeObserver for each tree that was rendered.
+        for (int i = 0; i < _renderedSpans.Count; i++)
+        {
+            var containerId = $"word-tree-container-{i}";
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("disposeTree", containerId);
+            }
+            catch (JSDisconnectedException)
+            {
+                // The browser tab is closing, JS interop is not available. This is safe to ignore.
+            }
+        }
+
+        // Unsubscribe from the C# event to prevent memory leaks.
         RuntimeSettings.OnChanged -= StateHasChanged;
     }
 }
