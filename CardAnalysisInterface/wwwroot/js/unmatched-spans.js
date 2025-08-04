@@ -63,7 +63,7 @@ function recalculateAndDraw(container) {
 
     const { keyToColor, allKeys } = prepareColorMap(analyzedSpan);
     const { width: availableWidth } = container.getBoundingClientRect();
-    if (availableWidth <= 0) return; // Don't render if the container isn't visible
+    if (availableWidth <= 0) return;
 
     const mainSpanObject = { text: analyzedSpan.text, id: 'main-anchor', segments: [{ Text: analyzedSpan.text, TokenType: null }] };
     preCalculateAllNodeMetrics(mainSpanObject, true, config, svg);
@@ -74,45 +74,36 @@ function recalculateAndDraw(container) {
     const precedingResult = calculateLayout(analyzedSpan.precedingAdjacencies, 0, mainSpanX, 0, -1, config);
     const followingResult = calculateLayout(analyzedSpan.followingAdjacencies, 0, mainSpanX, 0, 1, config);
 
-    // --- Natural Size Calculation ---
     const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanObject.dynamicHeight) + config.vGap * 2;
     let minX = mainSpanX - config.mainSpanWidth / 2;
     let maxX = mainSpanX + config.mainSpanWidth / 2;
-    const allLayoutNodes = [...precedingResult.layout, ...followingResult.layout];
-    allLayoutNodes.forEach(node => {
+    [...precedingResult.layout, ...followingResult.layout].forEach(node => {
         minX = Math.min(minX, node.layout.x - config.nodeWidth / 2);
         maxX = Math.max(maxX, node.layout.x + config.nodeWidth / 2);
     });
     const naturalTreeWidth = maxX - minX;
     const naturalContentWidth = naturalTreeWidth + config.horizontalPadding * 2;
 
-    // --- NEW: Scaling and Sizing Logic ---
     if (naturalContentWidth <= availableWidth) {
-        // CASE 1: The tree fits. Render at 1:1, centered. NO SCALING UP.
         const margin = (availableWidth - naturalTreeWidth) / 2;
         svg.setAttribute('viewBox', `${minX - margin} 0 ${availableWidth} ${totalHeight}`);
         container.style.height = `${totalHeight}px`;
     } else {
-        // CASE 2: The tree overflows. Scale it DOWN.
         const scaleFactor = availableWidth / naturalContentWidth;
         const newHeight = totalHeight * scaleFactor;
         svg.setAttribute('viewBox', `${minX - config.horizontalPadding} 0 ${naturalContentWidth} ${totalHeight}`);
         container.style.height = `${newHeight}px`;
     }
 
-    // --- Drawing ---
     const mainSpanY = totalHeight / 2;
     precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
     followingResult.layout.forEach(n => n.layout.y += mainSpanY);
 
-    drawNodesAndConnectors(svg, analyzedSpan.precedingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, -1, config, keyToColor, allKeys);
-    drawNodesAndConnectors(svg, analyzedSpan.followingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, 1, config, keyToColor, allKeys);
+    drawNodesAndConnectors(svg, analyzedSpan.precedingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, -1, config, keyToColor, allKeys, container.id);
+    drawNodesAndConnectors(svg, analyzedSpan.followingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, 1, config, keyToColor, allKeys, container.id);
     createNode(svg, mainSpanObject, mainSpanX, mainSpanY, false, config, keyToColor, container.id);
 }
 
-// ===============================================
-// == HELPER FUNCTIONS (No major changes needed) ==
-// ===============================================
 
 function prepareColorMap(analyzedSpan) {
     const throughLineColors = ['#9b59b6', '#3498db', '#1abc9c', '#2ecc71', '#f1c40f', '#e67e22', '#8e44ad', '#2980b9', '#16a085', '#27ae60', '#f39c12', '#e74c3c'];
@@ -281,17 +272,17 @@ function createNode(svg, nodeData, cx, cy, isAdjacencyNode, config, keyToColor, 
     svg.appendChild(group);
 }
 
-function drawNodesAndConnectors(svg, nodes, parentData, parentX, parentY, direction, config, keyToColor, allKeys) {
+function drawNodesAndConnectors(svg, nodes, parentData, parentX, parentY, direction, config, keyToColor, allKeys, containerId) {
     if (!nodes) return;
     for (const node of nodes) {
         const { x: nodeX, y: nodeY } = node.layout;
-        createRoundedConnector(svg, parentData, node, parentX, parentY, nodeX, nodeY, direction, config, keyToColor, allKeys);
-        createNode(svg, node, nodeX, nodeY, true, config, keyToColor, svg.parentNode.id);
-        drawNodesAndConnectors(svg, node.children, node, nodeX, nodeY, direction, config, keyToColor, allKeys);
+        createRoundedConnector(svg, parentData, node, parentX, parentY, nodeX, nodeY, direction, config, keyToColor, allKeys, containerId);
+        createNode(svg, node, nodeX, nodeY, true, config, keyToColor, containerId);
+        drawNodesAndConnectors(svg, node.children, node, nodeX, nodeY, direction, config, keyToColor, allKeys, containerId);
     }
 }
 
-function createRoundedConnector(svg, parentData, childData, x1, y1, x2, y2, direction, config, keyToColor, allKeys) {
+function createRoundedConnector(svg, parentData, childData, x1, y1, x2, y2, direction, config, keyToColor, allKeys, containerId) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
     const startX = x1 + (direction * parentWidth / 2);
@@ -306,13 +297,33 @@ function createRoundedConnector(svg, parentData, childData, x1, y1, x2, y2, dire
     const childKeys = new Set(childData.sourceOccurrenceKeys || []);
     const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
     path.dataset.sourceKeys = JSON.stringify(commonKeys);
-    if (commonKeys.length > 0) {
-        path.setAttribute('class', 'connector-path');
-        if (commonKeys.length === 1) {
-            path.style.setProperty('--node-border-color', keyToColor.get(commonKeys[0]) || '#ccc');
+
+    path.setAttribute('class', 'connector-path');
+
+    if (commonKeys.length > 1) {
+        // Create a multi-color gradient for the connector's stroke
+        const defs = svg.querySelector('defs');
+        const gradientId = `grad-connector-${containerId}-${childData.id}`;
+        if (!defs.querySelector(`#${gradientId}`)) {
+            const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+            gradient.setAttribute('id', gradientId);
+            gradient.setAttribute('x1', '0%');
+            gradient.setAttribute('y1', '0%');
+            gradient.setAttribute('x2', '100%');
+            gradient.setAttribute('y2', '0%');
+            const segmentWidth = 100 / commonKeys.length;
+            const reversedKeys = [...commonKeys].reverse();
+            reversedKeys.forEach((key, i) => {
+                const color = keyToColor.get(key) || '#ccc';
+                gradient.innerHTML += `<stop offset="${i * segmentWidth}%" stop-color="${color}" /><stop offset="${(i + 1) * segmentWidth}%" stop-color="${color}" />`;
+            });
+            defs.appendChild(gradient);
         }
+        path.style.stroke = `url(#${gradientId})`;
+    } else if (commonKeys.length === 1) {
+        path.style.setProperty('--node-border-color', keyToColor.get(commonKeys[0]) || '#ccc');
     } else {
-        path.setAttribute('class', 'connector-path no-common-key');
+        path.classList.add('no-common-key');
     }
     svg.insertBefore(path, svg.firstChild);
 }

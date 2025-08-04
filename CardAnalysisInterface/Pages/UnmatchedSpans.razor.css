@@ -1,7 +1,7 @@
 ﻿/* UnmatchedSpans.razor.css */
 
 /* =================================================================== */
-/* == CONTAINER & TOOLTIP STYLES (Unchanged)                        == */
+/* == CONTAINER & TOOLTIP STYLES                                    == */
 /* =================================================================== */
 
 .unmatched-spans-container {
@@ -21,7 +21,6 @@
 }
 
 ::deep #word-tree-tooltip {
-    /* ... tooltip styles remain unchanged ... */
     position: absolute;
     background-color: rgba(20, 20, 20, 0.9);
     color: #f0f0f0;
@@ -41,15 +40,12 @@
 
 
 /* =================================================================== */
-/* == SVG VISUALIZATION STYLES (Final Refactor)                     == */
+/* == SVG VISUALIZATION STYLES                                      == */
 /* =================================================================== */
 
 ::deep {
-    /*
-     * THIS IS THE CENTRAL CONTROL FOR ANIMATION SPEED
-     * Change this single value to speed up or slow down all transitions.
-    */
-    --transition-speed: 0.1s;
+    /* Central control for all animation speeds */
+    --transition-speed: 0.3s;
 }
 
     /* --- Default Element Styles --- */
@@ -73,15 +69,8 @@
         pointer-events: none;
     }
 
-    /* --- THE CORE ANIMATION FIX --- */
+    /* --- Unified Animation --- */
 
-    /*
- * UNIFIED TRANSITION RULE:
- * 1. All visual elements that change now have their transitions defined here.
- * 2. We use 'linear' timing so the rate of change is constant, making all
- *    animations feel perfectly synchronized.
- * 3. Everything is controlled by the --transition-speed variable.
-*/
     ::deep .node-shape,
     ::deep .connector-path,
     ::deep .node-text {
@@ -91,10 +80,7 @@
 
     /* --- Highlight Effect Logic --- */
 
-    /* 
- * We now apply the opacity change directly to the specific elements
- * instead of the parent group, allowing for a single unified transition rule.
-*/
+    /* Lowlight elements that are NOT being highlighted */
     ::deep .is-highlighting .node-group:not(.highlight):not(.anchor-node-group) .node-shape,
     ::deep .is-highlighting .node-group:not(.highlight):not(.anchor-node-group) .node-text,
     ::deep .is-highlighting .connector-path:not(.highlight) {
@@ -102,13 +88,12 @@
     }
 
     /* 
- * The highlight rule remains the same, overriding the default styles.
- * It uses !important to beat the inline style from the JS gradient.
+ * Style for highlighted elements.
+ * NOTE: `stroke-width` has been removed to keep the thickness constant.
 */
     ::deep .node-group.highlight .node-shape,
     ::deep .connector-path.highlight {
-        stroke: #ffffff !important;
-        stroke-width: 4px;
+        stroke: #ffffff !important; /* !important overrides inline gradient styles */
         opacity: 1;
     }
 
