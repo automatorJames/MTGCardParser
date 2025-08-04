@@ -21,6 +21,14 @@ public class CorpusAnalyzer
 
     public CorpusAnalyzer(List<Card> cards)
     {
+        cards = new List<Card>
+        {
+            new Card{Name = "1", Text = "barkimus rex the dog runs fast and licks faces aggressively" },
+            new Card{Name = "2", Text = "growlethon rex the dog runs fast and licks faces aggressively" },
+            new Card{Name = "3", Text = "grover the dog runs fast and licks faces happily" },
+            new Card{Name = "4", Text = "the cat runs fast and licks milk" },
+        };
+
         // STEP 1: Make a single pass through all cards and lines, performing all
         // initial processing (tokenization, SpanRoot generation, UnmatchedOccurrence collection).
         ProcessedCards = ProcessAllCards(cards);

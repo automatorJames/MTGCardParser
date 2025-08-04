@@ -1,68 +1,91 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Serialization;
+
+namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// Enriched analysis of a single unique span of unmatched text.
+/// This object is now prepared at construction to be passed directly to JavaScript for visualization.
 /// </summary>
 public record AnalyzedUnmatchedSpan
 {
-    /// <summary>The text of the span.</summary>
+    /// <summary>The text of the span. This serves as the anchor text in the visualization.</summary>
+    [JsonPropertyName("text")]
     public string Text { get; init; }
 
-    /// <summary>
-    /// The number of times this EXACT sequence of unmatched Text appears contiguously in the corpus
-    /// as a maximal span, meaning that increasing the span's lengeth on either side would reduce its
-    /// occurrence count.
-    /// </summary>
-    public int MaximalSpanOccurrenceCount { get; init; }
-
-    /// <summary>
-    /// This total corpus-wide ocurrence count of this Text. This includes occurrences where the whole unmatched Text
-    /// comprises exactly this Text in its entirety, and occurrences where this Text is a sub-span within some larger
-    /// unmatched Text.
-    /// </summary>
-    public int TotalOccurrenceCount { get; init; }
-
-    /// <summary>True if this span was one of the original, full unmatched spans from the tokenizer.</summary>
-    public bool IsFullSpan { get; init; }
-
-    /// <summary>
-    /// A complete list of every place this span was found, linking back to the original full context.
-    /// </summary>
-    public List<UnmatchedSubSpanContext> Occurrences { get; init; }
-
     /// <summary>A hierarchical tree representing all token/word sequences that appeared immediately BEFORE this span.</summary>
+    [JsonPropertyName("precedingAdjacencies")]
     public List<AdjacencyNode> PrecedingAdjacencies { get; init; }
 
     /// <summary>A hierarchical tree representing all token/word sequences that appeared immediately AFTER this span.</summary>
+    [JsonPropertyName("followingAdjacencies")]
     public List<AdjacencyNode> FollowingAdjacencies { get; init; }
 
+    // --- Properties Not Directly Used by JS Visualization (but still useful) ---
+
+    [JsonIgnore]
+    public int MaximalSpanOccurrenceCount { get; init; }
+
+    [JsonIgnore]
+    public int TotalOccurrenceCount { get; init; }
+
+    [JsonIgnore]
+    public bool IsFullSpan { get; init; }
+
+    /// <summary>
+    /// A complete list of every place this span was found.
+    /// This is kept for data inspection but not sent to the client by default.
+    /// </summary>
+    [JsonIgnore]
+    public List<UnmatchedSubSpanContext> Occurrences { get; init; }
+
+    [JsonIgnore]
     public int WordCount { get; init; }
 
+    [JsonIgnore]
     public Dictionary<string, int> OccurrencesPerCard => Occurrences
-        .GroupBy(x => x.OriginalOccurrence.CardName)
+        .GroupBy(x => x.OriginalOccurrence.Key.CardName)
         .OrderByDescending(x => x.Count())
         .ThenBy(x => x.Key)
         .ToDictionary(x => x.Key, x => x.Count());
 
-    // Note the change in the parameter name from "frequency" to "exactPhraseFrequency" for clarity.
     public AnalyzedUnmatchedSpan(
-        string text, 
-        int maximalSpanOccurrenceCount, 
-        bool isFullSpan, 
-        List<UnmatchedSubSpanContext> occurrences, 
-        List<AdjacencyNode> precedingAdjacencies, 
+        string text,
+        int maximalSpanOccurrenceCount,
+        bool isFullSpan,
+        List<UnmatchedSubSpanContext> occurrences,
+        List<AdjacencyNode> precedingAdjacencies,
         List<AdjacencyNode> followingAdjacencies)
     {
+        // --- Standard Initializations ---
         Text = text;
-        MaximalSpanOccurrenceCount = maximalSpanOccurrenceCount; // Store the automaton's count here.
+        MaximalSpanOccurrenceCount = maximalSpanOccurrenceCount;
         IsFullSpan = isFullSpan;
         Occurrences = occurrences;
         PrecedingAdjacencies = precedingAdjacencies;
         FollowingAdjacencies = followingAdjacencies;
         WordCount = text.Split(' ').Length;
-        TotalOccurrenceCount = occurrences.Count; // Store the contextual count here.
+        TotalOccurrenceCount = occurrences.Count;
+
+        // --- HYDRATION STEP ---
+        // Instead of transforming into new DTOs, we now "hydrate" the existing
+        // AdjacencyNode trees with the unique IDs required by the JS for DOM manipulation.
+        // This is a one-time operation that makes this entire object "JS-ready".
+        int nodeIdCounter = 0;
+        void HydrateTreeWithIds(IEnumerable<AdjacencyNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                // Set the mutable 'Id' property on the node.
+                node.Id = $"n{nodeIdCounter++}";
+                HydrateTreeWithIds(node.Children);
+            }
+        }
+
+        HydrateTreeWithIds(PrecedingAdjacencies);
+        HydrateTreeWithIds(FollowingAdjacencies);
     }
 
-    // Now your ToString() can be more precise.
     public override string ToString() => $"'{Text}' (Total: {TotalOccurrenceCount} | Maximal: {MaximalSpanOccurrenceCount})";
 }

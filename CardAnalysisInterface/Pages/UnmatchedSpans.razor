@@ -1,5 +1,5 @@
 ﻿@page "/unmatched-spans"
-@using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs
+@using MTGPlexer.TokenAnalysis
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
@@ -34,10 +34,7 @@ else
             {
                 var span = spansToRender[i];
                 var containerId = $"word-tree-container-{i}";
-                var jsSpanData = WordTreeSpan.FromAnalyzedSpan(span);
-
-                // UPDATED: The JS interop call is now simple and direct.
-                await JSRuntime.InvokeVoidAsync("render", containerId, jsSpanData);
+                await JSRuntime.InvokeVoidAsync("renderTree", containerId, span);
             }
         }
     }

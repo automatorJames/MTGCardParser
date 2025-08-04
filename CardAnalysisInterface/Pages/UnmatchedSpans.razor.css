@@ -1,6 +1,9 @@
 ﻿/* UnmatchedSpans.razor.css */
 
-/* Main container for all cards */
+/* =================================================================== */
+/* == CONTAINER & TOOLTIP STYLES (Unchanged)                        == */
+/* =================================================================== */
+
 .unmatched-spans-container {
     display: flex;
     flex-direction: column;
@@ -10,7 +13,6 @@
 }
 
 .word-tree-card {
-    /* UPDATED: Wider card container */
     width: 90%;
     background-color: #252525;
     border-radius: 8px;
@@ -18,9 +20,8 @@
     overflow: visible;
 }
 
-/* Global Tooltip Style (applies to the element in the body) */
-/* We use ::deep because the tooltip is outside this component's scope. */
 ::deep #word-tree-tooltip {
+    /* ... tooltip styles remain unchanged ... */
     position: absolute;
     background-color: rgba(20, 20, 20, 0.9);
     color: #f0f0f0;
@@ -39,52 +40,80 @@
 }
 
 
-/* --- ALL SVG STYLES FROM PREVIOUS PROTOTYPE --- */
-/* Use ::deep to ensure styles apply to dynamically generated SVG elements */
+/* =================================================================== */
+/* == SVG VISUALIZATION STYLES (Final Refactor)                     == */
+/* =================================================================== */
 
-::deep .node-group,
-::deep .connector-path {
-    transition: opacity 0.3s ease;
+::deep {
+    /*
+     * THIS IS THE CENTRAL CONTROL FOR ANIMATION SPEED
+     * Change this single value to speed up or slow down all transitions.
+    */
+    --transition-speed: 0.1s;
 }
 
-::deep .node-shape {
-    stroke: var(--node-border-color, #666);
-    stroke-width: 1.5px;
-    fill: #2d2d2d;
-    transition: all 0.3s ease;
-}
+    /* --- Default Element Styles --- */
 
-::deep .node-text {
-    font-size: 12px;
-    fill: #e0e0e0;
-    text-anchor: middle;
-    pointer-events: none;
-    transition: fill 0.3s ease;
-}
+    ::deep .node-shape {
+        stroke: var(--node-border-color, #666);
+        stroke-width: 1.5px;
+        fill: #2d2d2d;
+    }
 
-::deep .connector-path {
-    stroke: var(--node-border-color, #444);
-    fill: none;
-    stroke-width: 1.5px;
-    transition: all 0.3s ease;
-}
+    ::deep .connector-path {
+        stroke: var(--node-border-color, #444);
+        fill: none;
+        stroke-width: 2.5px;
+    }
 
-::deep #chart-svg.is-highlighting .node-group,
-::deep #chart-svg.is-highlighting .connector-path {
-    opacity: 0.2;
-}
+    ::deep .node-text {
+        font-size: 12px;
+        fill: #e0e0e0;
+        text-anchor: middle;
+        pointer-events: none;
+    }
 
-    ::deep #chart-svg.is-highlighting .node-group.highlight,
-    ::deep #chart-svg.is-highlighting .connector-path.highlight {
+    /* --- THE CORE ANIMATION FIX --- */
+
+    /*
+ * UNIFIED TRANSITION RULE:
+ * 1. All visual elements that change now have their transitions defined here.
+ * 2. We use 'linear' timing so the rate of change is constant, making all
+ *    animations feel perfectly synchronized.
+ * 3. Everything is controlled by the --transition-speed variable.
+*/
+    ::deep .node-shape,
+    ::deep .connector-path,
+    ::deep .node-text {
+        transition: opacity var(--transition-speed) linear, stroke var(--transition-speed) linear, stroke-width var(--transition-speed) linear, fill var(--transition-speed) linear;
+    }
+
+
+    /* --- Highlight Effect Logic --- */
+
+    /* 
+ * We now apply the opacity change directly to the specific elements
+ * instead of the parent group, allowing for a single unified transition rule.
+*/
+    ::deep .is-highlighting .node-group:not(.highlight):not(.anchor-node-group) .node-shape,
+    ::deep .is-highlighting .node-group:not(.highlight):not(.anchor-node-group) .node-text,
+    ::deep .is-highlighting .connector-path:not(.highlight) {
+        opacity: 0.15;
+    }
+
+    /* 
+ * The highlight rule remains the same, overriding the default styles.
+ * It uses !important to beat the inline style from the JS gradient.
+*/
+    ::deep .node-group.highlight .node-shape,
+    ::deep .connector-path.highlight {
+        stroke: #ffffff !important;
+        stroke-width: 4px;
         opacity: 1;
     }
 
-::deep .node-group.highlight .node-shape,
-::deep .connector-path.highlight {
-    stroke: #ffffff !important;
-    stroke-width: 2.5px;
-}
-
-::deep .node-group.highlight .node-text {
-    fill: #ffffff;
-}
+    /* Also make the text in a highlighted node brighter */
+    ::deep .node-group.highlight .node-text {
+        fill: #ffffff;
+        opacity: 1;
+    }

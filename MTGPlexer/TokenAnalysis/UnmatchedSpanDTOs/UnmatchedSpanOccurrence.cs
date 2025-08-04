@@ -6,8 +6,7 @@
 /// </summary>
 public record UnmatchedSpanOccurrence
 {
-    public string Key { get; }
-    public string CardName { get; }
+    public CardSpanKey Key { get; }
     public int LineIndex { get; }
 
     /// <summary>
@@ -37,6 +36,20 @@ public record UnmatchedSpanOccurrence
     /// </summary>
     public Token<Type>? FollowingToken => UnmatchedTokenIndex < LineTokens.Count - 1 ? LineTokens[UnmatchedTokenIndex + 1] : null;
 
+    /// <summary>
+    /// Gets the sequence of tokens preceding the unmatched span on its original line,
+    /// ordered from the one closest to the span to the one furthest away.
+    /// </summary>
+    public IEnumerable<Token<Type>> GetPrecedingTokensOnLine() =>
+        LineTokens.Take(UnmatchedTokenIndex).Reverse();
+
+    /// <summary>
+    /// Gets the sequence of tokens following the unmatched span on its original line,
+    /// ordered from the one closest to the span to the one furthest away.
+    /// </summary>
+    public IEnumerable<Token<Type>> GetFollowingTokensOnLine() =>
+        LineTokens.Skip(UnmatchedTokenIndex + 1);
+
     public string Text { get; }
     public TextSpan Span { get; }
     public string[] Words { get; }
@@ -44,14 +57,13 @@ public record UnmatchedSpanOccurrence
 
     public UnmatchedSpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
     {
-        CardName = cardName;
         LineIndex = lineIndex;
         LineTokens = lineTokens;
         UnmatchedTokenIndex = unmatchedTokenIndex;
         Text = UnmatchedToken.ToStringValue();
         Span = UnmatchedToken.Span;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        Key = cardName.Dot(Span.ToIndexString());
+        Key = new(cardName, Span);
     }
 
     public override string ToString() => Text;

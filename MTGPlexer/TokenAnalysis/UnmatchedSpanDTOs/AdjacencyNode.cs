@@ -1,33 +1,40 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿using System.Text.Json.Serialization;
+
+namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
-/// Represents a single node in an adjacency tree, now enriched with layout metadata for rendering.
+/// Represents a node in an adjacency tree, now capable of holding consolidated segments.
 /// </summary>
 public record AdjacencyNode
 {
-    public string Text { get; init; }
-    public Type TokenType { get; init; }
-    public int Frequency { get; init; }
+    /// <summary>
+    /// A list of sequential segments that make up this node's text.
+    /// A non-consolidated node will have a single segment.
+    /// </summary>
+    [JsonPropertyName("segments")]
+    public List<NodeSegment> Segments { get; init; }
+
+    [JsonIgnore]
+    public List<CardSpanKey> SourceOccurrences { get; init; }
+
     public List<AdjacencyNode> Children { get; init; }
 
-    // --- New Layout Properties ---
+    // --- Properties for JS Visualization ---
 
-    /// <summary>
-    /// The vertical "lane" or "track" this node occupies. The root is 0.
-    /// </summary>
-    public int VerticalLane { get; set; }
+    [JsonPropertyName("id")]
+    public string Id { get; set; }
 
-    /// <summary>
-    /// The total number of vertical lanes this node and all its descendants occupy.
-    /// </summary>
-    public int TotalDescendantLanes { get; set; }
+    [JsonPropertyName("sourceOccurrenceKeys")]
+    public List<string> SourceOccurrenceKeys => SourceOccurrences.Select(k => k.Key).ToList();
 
+    // This helper property joins the text for display logic in JS.
+    [JsonPropertyName("text")]
+    public string Text => string.Join(" ", Segments.Select(s => s.Text));
 
-    public AdjacencyNode(string text, Type tokenType, int frequency, List<AdjacencyNode> children)
+    public AdjacencyNode(List<NodeSegment> segments, List<CardSpanKey> sourceOccurrences, List<AdjacencyNode> children)
     {
-        Text = text;
-        TokenType = tokenType;
-        Frequency = frequency;
+        Segments = segments;
+        SourceOccurrences = sourceOccurrences;
         Children = children;
     }
 }

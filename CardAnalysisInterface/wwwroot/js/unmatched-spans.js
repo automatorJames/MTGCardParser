@@ -1,17 +1,23 @@
-﻿// wwwroot/js/wordTree.js
-
-function renderTree(containerId, spanData) {
+﻿/**
+ * Renders a word tree visualization within a specified container.
+ * @param {string} containerId The ID of the DOM element to render the tree into.
+ * @param {object} analyzedSpan The root data object, corresponding to the C# `AnalyzedUnmatchedSpan` record.
+ *                 This object should have properties: `text`, `precedingAdjacencies`, `followingAdjacencies`.
+ *                 The adjacency nodes should have `id`, `text`, `children`, `sourceOccurrenceKeys`, and `tokenTypeColor`.
+ */
+function renderTree(containerId, analyzedSpan) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Word Tree Error: Container with ID '${containerId}' not found.`);
         return;
     }
-    container.innerHTML = '';
+    container.innerHTML = ''; // Clear previous renders
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
-    svg.innerHTML = '<defs></defs>';
+    svg.innerHTML = '<defs></defs>'; // For gradients
     container.appendChild(svg);
 
+    // --- Configuration ---
     const config = {
         nodeWidth: 200,
         nodePadding: 8,
@@ -34,45 +40,26 @@ function renderTree(containerId, spanData) {
     ];
     const colorIndexMap = [0, 2, 4, 6, 8, 10, 1, 3, 5, 7, 9, 11];
 
-    const nodeObjectToSentenceIndices = new Map();
-    const allNodesById = new Map();
+    // --- Data Preparation ---
+    const allKeys = new Set();
+    const processNodeForKeys = (node) => {
+        if (!node) return;
+        node.sourceOccurrenceKeys.forEach(key => allKeys.add(key));
+        if (node.children) node.children.forEach(processNodeForKeys);
+    };
+    analyzedSpan.precedingAdjacencies.forEach(processNodeForKeys);
+    analyzedSpan.followingAdjacencies.forEach(processNodeForKeys);
+
+    const keyToColor = new Map();
+    Array.from(allKeys).forEach((key, index) => {
+        const colorIdx = colorIndexMap[index % colorIndexMap.length];
+        keyToColor.set(key, throughLineColors[colorIdx]);
+    });
+
     let { width } = container.getBoundingClientRect();
 
-    const mainSpanData = {
-        id: spanData.id,
-        text: spanData.text,
-        preceding: spanData.preceding,
-        following: spanData.following
-    };
+    // --- Helper Functions ---
 
-    const sentences = spanData.sentences;
-
-    function indexAllNodes(node) {
-        if (!node) return;
-        allNodesById.set(node.id, node);
-        if (node.children) node.children.forEach(indexAllNodes);
-    }
-
-    function mapObjectsToSentences() {
-        nodeObjectToSentenceIndices.clear();
-        allNodesById.clear();
-        indexAllNodes(mainSpanData);
-        if (mainSpanData.preceding) mainSpanData.preceding.forEach(indexAllNodes);
-        if (mainSpanData.following) mainSpanData.following.forEach(indexAllNodes);
-        const addNode = (nodeObj, sentenceIndex) => {
-            if (!nodeObjectToSentenceIndices.has(nodeObj)) nodeObjectToSentenceIndices.set(nodeObj, []);
-            nodeObjectToSentenceIndices.get(nodeObj).push(sentenceIndex);
-        };
-        sentences.forEach((sentencePath, index) => {
-            addNode(mainSpanData, index);
-            sentencePath.forEach(nodeId => {
-                const nodeObj = allNodesById.get(nodeId);
-                if (nodeObj) addNode(nodeObj, index);
-            });
-        });
-    }
-
-    // --- NEW: Accurate measurement using getComputedTextLength() ---
     function getNodeMetrics(text, isAnchor) {
         const nodeWidth = isAnchor ? config.mainSpanWidth : config.nodeWidth;
         const padding = isAnchor ? config.mainSpanPadding : config.nodePadding;
@@ -82,12 +69,12 @@ function renderTree(containerId, spanData) {
         const availableWidth = nodeWidth - padding * 2;
 
         const tempText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        tempText.setAttribute('class', 'node-text'); // Apply basic styles
+        tempText.setAttribute('class', 'node-text');
         tempText.style.fontSize = `${fontSize}px`;
         tempText.style.fontWeight = fontWeight;
         const tempTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
         tempText.appendChild(tempTspan);
-        svg.appendChild(tempText); // Add to DOM to be measurable
+        svg.appendChild(tempText);
 
         const words = text.split(' ');
         let currentLine = '';
@@ -104,8 +91,7 @@ function renderTree(containerId, spanData) {
             }
         }
         wrappedLines.push(currentLine);
-
-        svg.removeChild(tempText); // Clean up temp element
+        svg.removeChild(tempText);
 
         const totalTextHeight = wrappedLines.length * lineHeight;
         const dynamicHeight = Math.max(config.nodeHeight, totalTextHeight + padding);
@@ -152,14 +138,26 @@ function renderTree(containerId, spanData) {
         return { layout: layoutInfo, totalHeight: totalGroupHeight };
     }
 
-    function createNode(nodeData, cx, cy, isAdjacency) {
-        const { tokenTypeColor, dynamicHeight, wrappedLines, lineHeight } = nodeData;
+    /**
+     * Creates and appends a single node (either anchor or adjacency) to the SVG.
+     * @param {object} nodeData - The data for the node (text, id, keys, etc.).
+     * @param {number} cx - The center-x coordinate.
+     * @param {number} cy - The center-y coordinate.
+     * @param {boolean} isAdjacencyNode - True if this is a preceding/following node, false for the main anchor.
+     */
+    function createNode(nodeData, cx, cy, isAdjacencyNode) {
+        const { dynamicHeight, wrappedLines, lineHeight, tokenTypeColor } = nodeData;
         const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
         group.setAttribute('class', 'node-group');
-        const sentenceIndices = nodeObjectToSentenceIndices.get(nodeData) || [];
-        sentenceIndices.forEach(idx => group.classList.add(`sentence-${idx}`));
 
-        const nodeWidth = isAdjacency ? config.nodeWidth : config.mainSpanWidth;
+        // Get the source keys only for adjacency nodes. The anchor has no keys.
+        const keys = isAdjacencyNode ? (nodeData.sourceOccurrenceKeys || []) : [];
+        if (isAdjacencyNode) {
+            // Store keys on the DOM element for the hover interaction logic.
+            group.dataset.sourceKeys = JSON.stringify(keys);
+        }
+
+        const nodeWidth = isAdjacencyNode ? config.nodeWidth : config.mainSpanWidth;
 
         const shape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         shape.setAttribute('class', 'node-shape');
@@ -172,32 +170,40 @@ function renderTree(containerId, spanData) {
         const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
         textEl.setAttribute('class', 'node-text');
 
-        if (!isAdjacency) {
+        if (!isAdjacencyNode) {
+            // This is the central anchor node.
+            // Add a specific class so CSS can exclude it from lowlighting.
+            group.classList.add('anchor-node-group');
+
             shape.style.fill = config.mainSpanFill;
             shape.style.setProperty('--node-border-color', config.mainSpanColor);
             textEl.style.fontSize = `${config.mainSpanFontSize}px`;
             textEl.style.fontWeight = 'bold';
+
         } else {
-            if (sentenceIndices.length > 1) {
+            // This is a preceding/following adjacency node.
+            if (keys.length > 1) {
+                // Create a multi-color gradient border for nodes in multiple "through-lines".
                 const defs = svg.querySelector('defs');
-                const gradientId = `grad-node-${containerId}-${nodeData.id}`;
+                const gradientId = `grad-${containerId}-${nodeData.id}`;
                 const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 gradient.setAttribute('id', gradientId);
-                const segmentWidth = 100 / sentenceIndices.length;
-                sentenceIndices.forEach((sentenceIdx, i) => {
-                    const colorIndex = colorIndexMap[sentenceIdx % colorIndexMap.length];
-                    const color = throughLineColors[colorIndex];
+                const segmentWidth = 100 / keys.length;
+                keys.forEach((key, i) => {
+                    const color = keyToColor.get(key) || '#ccc';
                     const solidStart = (i * segmentWidth) + (i === 0 ? 0 : config.blendPercentage);
-                    const solidEnd = ((i + 1) * segmentWidth) - (i === sentenceIndices.length - 1 ? 0 : config.blendPercentage);
+                    const solidEnd = ((i + 1) * segmentWidth) - (i === keys.length - 1 ? 0 : config.blendPercentage);
                     gradient.innerHTML += `<stop offset="${solidStart}%" stop-color="${color}" /><stop offset="${solidEnd}%" stop-color="${color}" />`;
                 });
                 defs.appendChild(gradient);
                 shape.style.stroke = `url(#${gradientId})`;
                 shape.style.strokeWidth = '2.5px';
-            } else if (sentenceIndices.length === 1) {
-                const colorIndex = colorIndexMap[sentenceIndices[0] % colorIndexMap.length];
-                shape.style.setProperty('--node-border-color', throughLineColors[colorIndex]);
+            } else if (keys.length === 1) {
+                // Use a solid color border for nodes in a single "through-line".
+                shape.style.setProperty('--node-border-color', keyToColor.get(keys[0]) || '#ccc');
             }
+
+            // If the source token had a type (e.g., keyword), color its text.
             if (tokenTypeColor) {
                 textEl.style.fill = tokenTypeColor;
                 textEl.style.fontWeight = 'bold';
@@ -205,6 +211,7 @@ function renderTree(containerId, spanData) {
         }
         group.appendChild(shape);
 
+        // Render text with line wrapping.
         const totalTextHeight = wrappedLines.length * lineHeight;
         const startY = -totalTextHeight / 2 + lineHeight * 0.7;
         wrappedLines.forEach((line, i) => {
@@ -217,24 +224,31 @@ function renderTree(containerId, spanData) {
         group.appendChild(textEl);
 
         group.setAttribute('transform', `translate(${cx}, ${cy})`);
-        group.addEventListener('mouseover', () => {
-            if (sentenceIndices.length > 0) {
+
+        // Add hover listeners only to interactive adjacency nodes.
+        if (isAdjacencyNode && keys.length > 0) {
+            group.addEventListener('mouseover', () => {
                 svg.classList.add('is-highlighting');
-                sentenceIndices.forEach(idx => {
-                    svg.querySelectorAll(`.sentence-${idx}`).forEach(el => el.classList.add('highlight'));
+                const hoveredKeys = new Set(keys);
+                svg.querySelectorAll('[data-source-keys]').forEach(el => {
+                    const elKeys = JSON.parse(el.dataset.sourceKeys);
+                    // Highlight if there is any intersection of keys.
+                    if (elKeys.some(key => hoveredKeys.has(key))) {
+                        el.classList.add('highlight');
+                    }
                 });
-            }
-        });
-        group.addEventListener('mouseout', () => {
-            svg.classList.remove('is-highlighting');
-            svg.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
-        });
+            });
+            group.addEventListener('mouseout', () => {
+                svg.classList.remove('is-highlighting');
+                svg.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+            });
+        }
         svg.appendChild(group);
     }
 
     function createRoundedConnector(parentData, childData, x1, y1, x2, y2, direction) {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const parentWidth = parentData.id === mainSpanData.id ? config.mainSpanWidth : config.nodeWidth;
+        const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
         const startX = x1 + (direction * parentWidth / 2);
         const endX = x2 - (direction * config.nodeWidth / 2);
         const midX = (startX + endX) / 2;
@@ -244,14 +258,23 @@ function renderTree(containerId, spanData) {
             ? `M ${startX} ${y1} L ${endX} ${y2}`
             : `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${direction * ySign > 0 ? 1 : 0} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${direction * ySign > 0 ? 0 : 1} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
         path.setAttribute('d', d.trim());
-        path.setAttribute('class', 'connector-path');
-        const parentSentences = new Set(nodeObjectToSentenceIndices.get(parentData) || []);
-        const commonSentenceIndices = (nodeObjectToSentenceIndices.get(childData) || []).filter(idx => parentSentences.has(idx));
-        commonSentenceIndices.forEach(idx => path.classList.add(`sentence-${idx}`));
-        if (commonSentenceIndices.length === 1) {
-            const colorIndex = colorIndexMap[commonSentenceIndices[0] % colorIndexMap.length];
-            path.style.setProperty('--node-border-color', throughLineColors[colorIndex]);
+
+        const parentIsAnchor = parentData.id === 'main-anchor';
+        const parentKeys = parentIsAnchor ? allKeys : new Set(parentData.sourceOccurrenceKeys || []);
+        const childKeys = new Set(childData.sourceOccurrenceKeys || []);
+        const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
+
+        path.dataset.sourceKeys = JSON.stringify(commonKeys);
+
+        if (commonKeys.length > 0) {
+            path.setAttribute('class', 'connector-path');
+            if (commonKeys.length === 1) {
+                path.style.setProperty('--node-border-color', keyToColor.get(commonKeys[0]) || '#ccc');
+            }
+        } else {
+            path.setAttribute('class', 'connector-path no-common-key');
         }
+
         svg.insertBefore(path, svg.firstChild);
     }
 
@@ -266,17 +289,16 @@ function renderTree(containerId, spanData) {
     }
 
     // --- Main Render Execution ---
-    mapObjectsToSentences();
-
-    preCalculateAllNodeMetrics(mainSpanData, true);
-    if (mainSpanData.preceding) mainSpanData.preceding.forEach(node => preCalculateAllNodeMetrics(node, false));
-    if (mainSpanData.following) mainSpanData.following.forEach(node => preCalculateAllNodeMetrics(node, false));
+    const mainSpanObject = { text: analyzedSpan.text, id: 'main-anchor' };
+    preCalculateAllNodeMetrics(mainSpanObject, true);
+    analyzedSpan.precedingAdjacencies.forEach(node => preCalculateAllNodeMetrics(node, false));
+    analyzedSpan.followingAdjacencies.forEach(node => preCalculateAllNodeMetrics(node, false));
 
     const mainSpanX = width / 2;
-    const precedingResult = calculateLayout(mainSpanData.preceding, 0, mainSpanX, 0, -1);
-    const followingResult = calculateLayout(mainSpanData.following, 0, mainSpanX, 0, 1);
+    const precedingResult = calculateLayout(analyzedSpan.precedingAdjacencies, 0, mainSpanX, 0, -1);
+    const followingResult = calculateLayout(analyzedSpan.followingAdjacencies, 0, mainSpanX, 0, 1);
 
-    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanData.dynamicHeight) + config.vGap * 2;
+    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanObject.dynamicHeight) + config.vGap * 2;
     const mainSpanY = totalHeight / 2;
 
     precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
@@ -285,7 +307,7 @@ function renderTree(containerId, spanData) {
     container.style.height = `${totalHeight}px`;
     svg.setAttribute('viewBox', `0 0 ${width} ${totalHeight}`);
 
-    drawNodesAndConnectors(mainSpanData.preceding, mainSpanData, mainSpanX, mainSpanY, -1);
-    drawNodesAndConnectors(mainSpanData.following, mainSpanData, mainSpanX, mainSpanY, 1);
-    createNode(mainSpanData, mainSpanX, mainSpanY, false);
+    drawNodesAndConnectors(analyzedSpan.precedingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, -1);
+    drawNodesAndConnectors(analyzedSpan.followingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, 1);
+    createNode(mainSpanObject, mainSpanX, mainSpanY, false); // isAdjacencyNode = false
 }

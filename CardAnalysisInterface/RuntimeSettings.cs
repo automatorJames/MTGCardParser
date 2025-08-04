@@ -32,7 +32,7 @@ public class RuntimeSettings
         }
     }
 
-    private int _minUnmatchedSpanWords = 3;
+    private int _minUnmatchedSpanWords = 0;
     public int MinUnmatchedSpanWords
     {
         get => _minUnmatchedSpanWords;
@@ -46,7 +46,7 @@ public class RuntimeSettings
         }
     }
 
-    private int _minUnmatchedSpanOccurences = 3;
+    private int _minUnmatchedSpanOccurences = 0;
     public int MinUnmatchedSpanOccurences
     {
         get => _minUnmatchedSpanOccurences;
