@@ -11,6 +11,7 @@
 }
 else
 {
+    <!-- This container's content will be updated automatically by Blazor when StateHasChanged is called -->
     <div class="unmatched-spans-container">
         @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
         {
@@ -20,33 +21,56 @@ else
 }
 
 @code {
-    // Store the list of spans that are currently rendered to the page.
-    private List<AnalyzedUnmatchedSpan> _renderedSpans = new();
+    // This list tracks what JS observers we have created, so we can clean them up.
+    private List<AnalyzedUnmatchedSpan> _spansOnPage = new();
 
     protected override void OnInitialized()
     {
-        RuntimeSettings.OnChanged += StateHasChanged;
+        // Subscribe to the settings changed event.
+        RuntimeSettings.OnChanged += OnSettingsChanged;
     }
 
+    /// <summary>
+    /// This is the event handler for when the user changes a setting.
+    /// Its only job is to tell Blazor that it needs to re-render the component markup.
+    /// </summary>
+    private async void OnSettingsChanged()
+    {
+        // Using InvokeAsync is the correct and safe way to trigger a UI update
+        // from an external event.
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// This Blazor lifecycle method runs *after* the component's markup has been rendered or updated.
+    /// This is the correct place to perform all JS interop.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Get the current list of spans that should be on the page.
         var spansToRender = GetFilteredUnmatchedSpans().ToList();
 
-        // We only need to call JS interop if the list of spans has changed.
-        // NOTE: This simple check works for additions/removals. More complex diffing
-        // might be needed if the order can change without the count changing.
-        if (!_renderedSpans.SequenceEqual(spansToRender))
+        // Check if the list of spans has actually changed. If not, we don't need
+        // to do any expensive JS interop calls. Records have built-in equality.
+        if (_spansOnPage.SequenceEqual(spansToRender))
         {
-            _renderedSpans = spansToRender;
-            for (int i = 0; i < _renderedSpans.Count; i++)
-            {
-                var span = _renderedSpans[i];
-                var containerId = $"word-tree-container-{i}";
-                // Call the main entry point for the JS logic.
-                await JSRuntime.InvokeVoidAsync("renderTree", containerId, span);
-            }
+            return;
         }
+
+        // The list of spans is different, so we must update the visualization.
+
+        // 1. First, clean up all the old JavaScript observers to prevent memory leaks.
+        await CleanupJsObservers(_spansOnPage);
+
+        // 2. Now, render the new set of trees into the new divs.
+        for (int i = 0; i < spansToRender.Count; i++)
+        {
+            var span = spansToRender[i];
+            var containerId = $"word-tree-container-{i}";
+            await JSRuntime.InvokeVoidAsync("renderTree", containerId, span);
+        }
+
+        // 3. Finally, update our tracking list to match what is now on the page.
+        _spansOnPage = spansToRender;
     }
 
     private IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
@@ -59,11 +83,12 @@ else
             : items.OrderByDescending(x => x.MaximalSpanOccurrenceCount);
     }
 
-    // This method is called by the Blazor framework when the component is removed.
-    public async ValueTask DisposeAsync()
+    /// <summary>
+    /// A helper method to tell JavaScript to dispose of the observers for a given list of spans.
+    /// </summary>
+    private async Task CleanupJsObservers(List<AnalyzedUnmatchedSpan> spansToClean)
     {
-        // Clean up the JS-side ResizeObserver for each tree that was rendered.
-        for (int i = 0; i < _renderedSpans.Count; i++)
+        for (int i = 0; i < spansToClean.Count; i++)
         {
             var containerId = $"word-tree-container-{i}";
             try
@@ -72,11 +97,20 @@ else
             }
             catch (JSDisconnectedException)
             {
-                // The browser tab is closing, JS interop is not available. This is safe to ignore.
+                // This can happen if the user navigates away quickly. It's safe to ignore.
             }
         }
+    }
 
-        // Unsubscribe from the C# event to prevent memory leaks.
-        RuntimeSettings.OnChanged -= StateHasChanged;
+    /// <summary>
+    /// This is called by the Blazor framework when the component is removed from the page.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        // 1. Unsubscribe from the C# event to prevent memory leaks.
+        RuntimeSettings.OnChanged -= OnSettingsChanged;
+
+        // 2. Clean up any remaining JavaScript observers.
+        await CleanupJsObservers(_spansOnPage);
     }
 }

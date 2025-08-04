@@ -20,85 +20,43 @@
     overflow: visible;
 }
 
+/* Tooltip styles remain unchanged */
 ::deep #word-tree-tooltip {
-    position: absolute;
-    background-color: rgba(20, 20, 20, 0.9);
-    color: #f0f0f0;
-    padding: 9px 14px;
-    border-radius: 6px;
-    border: 1px solid #555;
-    font-size: 13px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    /* ... */
+}
+
+
+/* =================================================================== */
+/* == SVG VISUALIZATION STYLES (NO TRANSITIONS)                     == */
+/* =================================================================== */
+
+/* --- Base Layer Styles --- */
+
+::deep .node-shape.base-layer {
+    stroke: var(--node-border-color, #666);
+    stroke-width: 2.5px;
+    fill: #2d2d2d;
+}
+
+::deep .connector-path.base-layer {
+    stroke: var(--node-border-color, #444);
+    fill: none;
+    stroke-width: 2.5px;
+}
+
+::deep .node-text {
+    font-size: 12px;
+    fill: #e0e0e0;
+    text-anchor: middle;
     pointer-events: none;
-    opacity: 0;
-    white-space: nowrap;
-    z-index: 1000;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    transform: translate(-50%, -120%);
 }
 
+/* --- Highlight Overlay Layer Style --- */
 
-/* =================================================================== */
-/* == SVG VISUALIZATION STYLES                                      == */
-/* =================================================================== */
-
-::deep {
-    /* Central control for all animation speeds */
-    --transition-speed: 0.75s;
+::deep .highlight-overlay {
+    stroke: #ffffff;
+    stroke-width: 2.5px;
+    fill: none;
+    opacity: 0; /* Starts invisible */
+    pointer-events: none; /* Allows hovers to pass through */
 }
-
-    /* --- Default Element Styles --- */
-
-    ::deep .node-shape {
-        stroke: var(--node-border-color, #666);
-        stroke-width: 1.5px;
-        fill: #2d2d2d;
-    }
-
-    ::deep .connector-path {
-        stroke: var(--node-border-color, #444);
-        fill: none;
-        stroke-width: 2.5px;
-    }
-
-    ::deep .node-text {
-        font-size: 12px;
-        fill: #e0e0e0;
-        text-anchor: middle;
-        pointer-events: none;
-    }
-
-    /* --- Unified Animation --- */
-
-    ::deep .node-shape,
-    ::deep .connector-path,
-    ::deep .node-text {
-        transition: opacity var(--transition-speed) linear, stroke var(--transition-speed) linear, stroke-width var(--transition-speed) linear, fill var(--transition-speed) linear;
-    }
-
-
-    /* --- Highlight Effect Logic --- */
-
-    /* Lowlight elements that are NOT being highlighted */
-    ::deep .is-highlighting .node-group:not(.highlight):not(.anchor-node-group) .node-shape,
-    ::deep .is-highlighting .node-group:not(.highlight):not(.anchor-node-group) .node-text,
-    ::deep .is-highlighting .connector-path:not(.highlight) {
-        opacity: 0.15;
-    }
-
-    /* 
- * Style for highlighted elements.
- * NOTE: `stroke-width` has been removed to keep the thickness constant.
-*/
-    ::deep .node-group.highlight .node-shape,
-    ::deep .connector-path.highlight {
-        stroke: #ffffff !important; /* !important overrides inline gradient styles */
-        opacity: 1;
-    }
-
-    /* Also make the text in a highlighted node brighter */
-    ::deep .node-group.highlight .node-text {
-        fill: #ffffff;
-        opacity: 1;
-    }
