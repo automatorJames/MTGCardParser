@@ -3,7 +3,6 @@
 /* =================================================================== */
 /* == CONTAINER & TOOLTIP STYLES                                    == */
 /* =================================================================== */
-
 .unmatched-spans-container {
     display: flex;
     flex-direction: column;
@@ -20,18 +19,29 @@
     overflow: visible;
 }
 
-/* Tooltip styles remain unchanged */
 ::deep #word-tree-tooltip {
-    /* ... */
+    position: absolute;
+    background-color: rgba(20, 20, 20, 0.9);
+    color: #f0f0f0;
+    padding: 9px 14px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    white-space: nowrap;
+    z-index: 1000;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translate(-50%, -120%);
 }
 
-
 /* =================================================================== */
-/* == SVG VISUALIZATION STYLES (NO TRANSITIONS)                     == */
+/* == SVG VISUALIZATION STYLES (AT-REST STATE ONLY)                 == */
 /* =================================================================== */
 
 /* --- Base Layer Styles --- */
-
 ::deep .node-shape.base-layer {
     stroke: var(--node-border-color, #666);
     stroke-width: 2.5px;
@@ -52,11 +62,10 @@
 }
 
 /* --- Highlight Overlay Layer Style --- */
-
 ::deep .highlight-overlay {
     stroke: #ffffff;
     stroke-width: 2.5px;
     fill: none;
     opacity: 0; /* Starts invisible */
-    pointer-events: none; /* Allows hovers to pass through */
+    pointer-events: none;
 }
