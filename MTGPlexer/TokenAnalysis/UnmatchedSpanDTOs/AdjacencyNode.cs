@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// Represents a node in an adjacency tree, now capable of holding consolidated segments.

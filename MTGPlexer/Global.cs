@@ -20,4 +20,5 @@ global using System.Diagnostics;
 global using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 global using MTGPlexer.TokenAnalysis.MatchDTOs;
 global using MTGPlexer.TokenAnalysis.ColorCoding;
+global using System.Text.Json.Serialization;
 global using static MTGPlexer.Extensions;

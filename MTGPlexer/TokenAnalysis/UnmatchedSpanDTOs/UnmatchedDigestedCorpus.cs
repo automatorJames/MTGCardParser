@@ -130,7 +130,6 @@ public record UnmatchedDigestedCorpus
             result.Add(new AnalyzedUnmatchedSpan(
                 text: spanText,
                 maximalSpanOccurrenceCount: count,
-                isFullSpan: originalWholeSpanTexts.Contains(spanText),
                 occurrences: subSpanContexts,
                 precedingAdjacencies: collapsedPrecedingTree,
                 followingAdjacencies: collapsedFollowingTree

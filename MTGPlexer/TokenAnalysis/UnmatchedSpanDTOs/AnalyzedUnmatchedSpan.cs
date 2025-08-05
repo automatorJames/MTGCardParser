@@ -1,8 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json.Serialization;
-
-namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// Enriched analysis of a single unique span of unmatched text.
@@ -30,9 +26,6 @@ public record AnalyzedUnmatchedSpan
     [JsonIgnore]
     public int TotalOccurrenceCount { get; init; }
 
-    [JsonIgnore]
-    public bool IsFullSpan { get; init; }
-
     /// <summary>
     /// A complete list of every place this span was found.
     /// This is kept for data inspection but not sent to the client by default.
@@ -53,7 +46,6 @@ public record AnalyzedUnmatchedSpan
     public AnalyzedUnmatchedSpan(
         string text,
         int maximalSpanOccurrenceCount,
-        bool isFullSpan,
         List<UnmatchedSubSpanContext> occurrences,
         List<AdjacencyNode> precedingAdjacencies,
         List<AdjacencyNode> followingAdjacencies)
@@ -61,7 +53,6 @@ public record AnalyzedUnmatchedSpan
         // --- Standard Initializations ---
         Text = text;
         MaximalSpanOccurrenceCount = maximalSpanOccurrenceCount;
-        IsFullSpan = isFullSpan;
         Occurrences = occurrences;
         PrecedingAdjacencies = precedingAdjacencies;
         FollowingAdjacencies = followingAdjacencies;
