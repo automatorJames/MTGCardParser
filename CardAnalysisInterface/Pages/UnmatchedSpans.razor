@@ -11,11 +11,30 @@
 }
 else
 {
-    <!-- This container's content will be updated automatically by Blazor when StateHasChanged is called -->
     <div class="unmatched-spans-container">
         @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
         {
-            <div id="@($"word-tree-container-{index}")" class="word-tree-card"></div>
+            <div class="unmatched-spans-card" id="@($"unmatched-card-{index}")">
+                <div class="card-header">
+                    <div class="header-main-info">
+                        <span class="header-span-text" title="@span.Text">@span.Text</span>
+                        <span class="header-stat">Occurrences: @span.MaximalSpanOccurrenceCount</span>
+                        <span class="header-stat">Word Count: @span.WordCount</span>
+                    </div>
+                    <div class="header-card-names">
+                        @foreach (var cardName in span.OccurrencesPerCard.Keys)
+                        {
+                            var color = span.CardColors.TryGetValue(cardName, out var c) ? c : "#dddddd";
+                            <span class="card-name-item"
+                                  data-card-name="@cardName"
+                                  style="border-color: @color;">
+                                @cardName
+                            </span>
+                        }
+                    </div>
+                </div>
+                <div id="@($"word-tree-container-{index}")" class="word-tree-body"></div>
+            </div>
         }
     </div>
 }

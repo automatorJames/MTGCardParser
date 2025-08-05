@@ -1,6 +1,4 @@
-﻿// unmatched-spans.js
-
-// This is the main orchestration file. It uses the Renderer to draw
+﻿// This is the main orchestration file. It uses the Renderer to draw
 // and the Animator to handle events.
 
 const wordTreeObservers = new Map();
@@ -8,7 +6,12 @@ const wordTreeObservers = new Map();
 function renderTree(containerId, analyzedSpan) {
     const container = document.getElementById(containerId);
     if (!container) { return; }
-    container.__data = analyzedSpan;
+
+    // Store the data on the overall card element for easy access
+    const card = container.closest('.unmatched-spans-card');
+    if (card) {
+        card.__data = analyzedSpan;
+    }
 
     if (wordTreeObservers.has(containerId)) {
         recalculateAndDraw(container);
@@ -30,10 +33,16 @@ function disposeTree(containerId) {
         observer.disconnect();
         wordTreeObservers.delete(containerId);
     }
+    const container = document.getElementById(containerId);
+    if (container) {
+        const card = container.closest('.unmatched-spans-card');
+        if (card) card.__data = null;
+    }
 }
 
 function recalculateAndDraw(container) {
-    const analyzedSpan = container.__data;
+    const card = container.closest('.unmatched-spans-card');
+    const analyzedSpan = card ? card.__data : null;
     const svg = container.querySelector('svg');
     if (!analyzedSpan || !svg) return;
 
@@ -49,7 +58,6 @@ function recalculateAndDraw(container) {
 
     const mainSpanObject = { text: analyzedSpan.text, id: 'main-anchor' };
 
-    // Use the renderer module
     const Renderer = window.wordTree.Renderer;
     Renderer.preCalculateAllNodeMetrics(mainSpanObject, true, config, svg);
     analyzedSpan.precedingAdjacencies.forEach(node => Renderer.preCalculateAllNodeMetrics(node, false, config, svg));
@@ -93,9 +101,13 @@ function recalculateAndDraw(container) {
 }
 
 function setupEventListeners(svg, containerId) {
-    const allKeyedElements = Array.from(svg.querySelectorAll('[data-source-keys]'));
+    const Animator = window.wordTree.Animator;
+    const animationManager = wordTreeObservers.get(containerId);
+    const card = document.getElementById(containerId).closest('.unmatched-spans-card');
+    const headerNameItems = Array.from(card.querySelectorAll('[data-card-name]'));
+    const allKeyedSVGElements = Array.from(svg.querySelectorAll('[data-source-keys]'));
 
-    allKeyedElements.forEach(el => {
+    allKeyedSVGElements.forEach(el => {
         el.__layers = {
             base: el.querySelector('.base-layer') || el,
             highlight: el.querySelector('.highlight-overlay'),
@@ -103,18 +115,12 @@ function setupEventListeners(svg, containerId) {
         };
     });
 
-    const Animator = window.wordTree.Animator;
-
-    svg.addEventListener('mouseover', (e) => {
-        const group = e.target.closest('[data-source-keys]');
-        if (!group) return;
-
-        const hoveredKeys = new Set(JSON.parse(group.dataset.sourceKeys));
+    const animateState = (activeKeys) => {
+        // Animate SVG Nodes
         const elementsToAnimate = new Map();
-
-        allKeyedElements.forEach(el => {
+        allKeyedSVGElements.forEach(el => {
             const elKeys = JSON.parse(el.dataset.sourceKeys);
-            const isHighlighted = elKeys.some(key => hoveredKeys.has(key));
+            const isHighlighted = elKeys.some(key => activeKeys.has(key));
             const layers = el.__layers;
 
             if (isHighlighted) {
@@ -127,24 +133,64 @@ function setupEventListeners(svg, containerId) {
                 if (layers.text) elementsToAnimate.set(layers.text, { start: parseFloat(getComputedStyle(layers.text).opacity), end: Animator.config.lowlightOpacity });
             }
         });
-        Animator.animateOpacity(elementsToAnimate, wordTreeObservers.get(containerId));
-    });
+        Animator.animateOpacity(elementsToAnimate, animationManager);
 
-    svg.addEventListener('mouseout', () => {
+        // Highlight Header
+        card.classList.add('highlight-active');
+        const relevantCardNames = new Set();
+        activeKeys.forEach(k => relevantCardNames.add(k.substring(0, k.indexOf('['))));
+        headerNameItems.forEach(item => {
+            const isRelevant = relevantCardNames.has(item.dataset.cardName);
+            item.classList.toggle('highlight', isRelevant);
+            item.classList.toggle('lowlight', !isRelevant);
+        });
+    };
+
+    const resetState = () => {
+        // Reset SVG Nodes
         const elementsToAnimate = new Map();
-        allKeyedElements.forEach(el => {
+        allKeyedSVGElements.forEach(el => {
             const layers = el.__layers;
             elementsToAnimate.set(layers.base, { start: parseFloat(getComputedStyle(layers.base).opacity), end: 1 });
             if (layers.highlight) elementsToAnimate.set(layers.highlight, { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 0 });
             if (layers.text) elementsToAnimate.set(layers.text, { start: parseFloat(getComputedStyle(layers.text).opacity), end: 1 });
         });
-        Animator.animateOpacity(elementsToAnimate, wordTreeObservers.get(containerId));
+        Animator.animateOpacity(elementsToAnimate, animationManager);
+
+        // Reset Header
+        card.classList.remove('highlight-active');
+        headerNameItems.forEach(item => item.classList.remove('highlight', 'lowlight'));
+    };
+
+    // --- Event Listener Attachments ---
+
+    svg.addEventListener('mouseover', e => {
+        const group = e.target.closest('[data-source-keys]');
+        if (group) {
+            animateState(new Set(JSON.parse(group.dataset.sourceKeys)));
+        }
     });
+
+    headerNameItems.forEach(item => {
+        item.addEventListener('mouseover', () => {
+            const cardName = item.dataset.cardName;
+            const keysForCard = new Set();
+            allKeyedSVGElements.forEach(el => {
+                const elKeys = JSON.parse(el.dataset.sourceKeys);
+                elKeys.forEach(key => {
+                    if (key.startsWith(cardName + '[')) {
+                        keysForCard.add(key);
+                    }
+                });
+            });
+            animateState(keysForCard);
+        });
+    });
+
+    card.addEventListener('mouseout', resetState);
 }
 
 function prepareColorMap(analyzedSpan) {
-    const throughLineColors = ['#9b59b6', '#3498db', '#1abc9c', '#2ecc71', '#f1c40f', '#e67e22', '#8e44ad', '#2980b9', '#16a085', '#27ae60', '#f39c12', '#e74c3c'];
-    const colorIndexMap = [0, 2, 4, 6, 8, 10, 1, 3, 5, 7, 9, 11];
     const allKeys = new Set();
     const processNodeForKeys = (node) => {
         if (!node || !node.sourceOccurrenceKeys) return;
@@ -153,10 +199,16 @@ function prepareColorMap(analyzedSpan) {
     };
     analyzedSpan.precedingAdjacencies.forEach(processNodeForKeys);
     analyzedSpan.followingAdjacencies.forEach(processNodeForKeys);
+
     const keyToColor = new Map();
-    Array.from(allKeys).forEach((key, index) => {
-        const colorIdx = colorIndexMap[index % colorIndexMap.length];
-        keyToColor.set(key, throughLineColors[colorIdx]);
+    const cardColors = analyzedSpan.cardColors || {}; // Use the new property from the server
+
+    Array.from(allKeys).forEach(key => {
+        // Extract card name from a key like "CardName[1..5]"
+        const cardName = key.substring(0, key.indexOf('['));
+        const color = cardColors[cardName] || '#dddddd'; // Default color
+        keyToColor.set(key, color);
     });
+
     return { keyToColor, allKeys };
 }

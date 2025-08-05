@@ -7,7 +7,7 @@ window.wordTree = window.wordTree || {};
 
 window.wordTree.Animator = {
     config: {
-        duration: 300, // The one true speed control, in milliseconds
+        duration: 100, // The one true speed control, in milliseconds
         lowlightOpacity: 0.15
     },
 
