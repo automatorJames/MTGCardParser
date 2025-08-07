@@ -6,6 +6,46 @@
 window.wordTree = window.wordTree || {};
 
 window.wordTree.Renderer = {
+
+    /**
+     * Generates SVG <stop> elements for a gradient with blended transitions.
+     * @private
+     */
+    _createGradientStops: function (keys, keyToColor, transitionRatio) {
+        const numKeys = keys.length;
+        const clampedRatio = Math.max(0, Math.min(1, transitionRatio));
+
+        if (numKeys <= 1 || clampedRatio === 0) {
+            // Fallback for simple cases (one color) or hard stops (ratio is 0)
+            let stops = '';
+            const keyList = numKeys > 0 ? keys : ['default'];
+            const numSegments = keyList.length;
+            keyList.forEach((key, i) => {
+                const color = keyToColor.get(key) || '#ccc';
+                stops += `<stop offset="${(i / numSegments) * 100}%" stop-color="${color}" /><stop offset="${((i + 1) / numSegments) * 100}%" stop-color="${color}" />`;
+            });
+            return stops;
+        }
+
+        const transitionZoneWidth = (1 / numKeys) * clampedRatio;
+        const halfTransition = transitionZoneWidth / 2;
+        let stopsHtml = '';
+
+        keys.forEach((key, i) => {
+            const color = keyToColor.get(key) || '#ccc';
+            const bandStart = i / numKeys;
+            const bandEnd = (i + 1) / numKeys;
+
+            const solidStartOffset = (i === 0) ? bandStart : bandStart + halfTransition;
+            const solidEndOffset = (i === numKeys - 1) ? bandEnd : bandEnd - halfTransition;
+
+            stopsHtml += `<stop offset="${solidStartOffset * 100}%" stop-color="${color}" />`;
+            stopsHtml += `<stop offset="${solidEndOffset * 100}%" stop-color="${color}" />`;
+        });
+
+        return stopsHtml;
+    },
+
     preCalculateAllNodeMetrics: function (node, isAnchor, config, svg) {
         if (!node) return;
         const metrics = this.getNodeMetrics(node.text, isAnchor, config, svg);
@@ -16,7 +56,10 @@ window.wordTree.Renderer = {
     },
 
     getNodeMetrics: function (text, isAnchor, config, svg) {
-        const nodeText = text || '';
+        // --- THIS IS THE FIX ---
+        // Ensure nodeText is always a string to prevent .split() errors on non-string types.
+        const nodeText = String(text || '');
+
         const nodeWidth = isAnchor ? config.mainSpanWidth : config.nodeWidth;
         const padding = isAnchor ? config.mainSpanPadding : config.nodePadding;
         const fontSize = isAnchor ? config.mainSpanFontSize : 12;
@@ -121,10 +164,7 @@ window.wordTree.Renderer = {
                 if (!defs.querySelector(`#${gradientId}`)) {
                     const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                     gradient.setAttribute('id', gradientId);
-                    keys.forEach((key, i) => {
-                        const color = keyToColor.get(key) || '#ccc';
-                        gradient.innerHTML += `<stop offset="${(i / keys.length) * 100}%" stop-color="${color}" /><stop offset="${((i + 1) / keys.length) * 100}%" stop-color="${color}" />`;
-                    });
+                    gradient.innerHTML = this._createGradientStops(keys, keyToColor, config.gradientTransitionRatio);
                     defs.appendChild(gradient);
                 }
                 shape.style.stroke = `url(#${gradientId})`;
@@ -174,34 +214,21 @@ window.wordTree.Renderer = {
             if (!defs.querySelector(`#${gradientId}`)) {
                 const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 gradient.setAttribute('id', gradientId);
-
-                // --- THIS IS THE FIX ---
-                // We define the gradient in the user coordinate system, not the object's.
-                // This guarantees it has a valid size, even if the line is perfectly horizontal or vertical.
                 gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
 
                 const deltaX = endX - startX;
                 const deltaY = y2 - y1;
 
                 if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                    // Mostly VERTICAL line: Define a vertical gradient from the start/end Y.
-                    gradient.setAttribute('x1', startX);
-                    gradient.setAttribute('y1', y1);
-                    gradient.setAttribute('x2', startX);
-                    gradient.setAttribute('y2', y2);
+                    gradient.setAttribute('x1', startX); gradient.setAttribute('y1', y1);
+                    gradient.setAttribute('x2', startX); gradient.setAttribute('y2', y2);
                 } else {
-                    // Mostly HORIZONTAL line: Define a horizontal gradient from the start/end X.
-                    gradient.setAttribute('x1', startX);
-                    gradient.setAttribute('y1', y1);
-                    gradient.setAttribute('x2', endX);
-                    gradient.setAttribute('y2', y1);
+                    gradient.setAttribute('x1', startX); gradient.setAttribute('y1', y1);
+                    gradient.setAttribute('x2', endX); gradient.setAttribute('y2', y1);
                 }
 
                 const reversedKeys = [...commonKeys].reverse();
-                reversedKeys.forEach((key, i) => {
-                    const color = keyToColor.get(key) || '#ccc';
-                    gradient.innerHTML += `<stop offset="${(i / reversedKeys.length) * 100}%" stop-color="${color}" /><stop offset="${((i + 1) / reversedKeys.length) * 100}%" stop-color="${color}" />`;
-                });
+                gradient.innerHTML = this._createGradientStops(reversedKeys, keyToColor, config.gradientTransitionRatio);
                 defs.appendChild(gradient);
             }
             basePath.style.stroke = `url(#${gradientId})`;
