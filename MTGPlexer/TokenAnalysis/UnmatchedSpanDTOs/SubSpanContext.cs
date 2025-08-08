@@ -4,14 +4,14 @@
 /// A lightweight pointer that precisely identifies a sub-span within a specific UnmatchedSpanOccurrence.
 /// This is the key to linking maximal spans back to their full, original context.
 /// </summary>
-public record UnmatchedSubSpanContext
+public record SubSpanContext
 {
-    public UnmatchedSpanOccurrence OriginalOccurrence { get; }
+    public SpanOccurrence OriginalOccurrence { get; }
     public int WordStartIndex { get; }
     public int WordCount { get; }
     public string Text { get; }
 
-    public UnmatchedSubSpanContext(UnmatchedSpanOccurrence originalOccurrence, int wordStartIndex, int wordCount)
+    public SubSpanContext(SpanOccurrence originalOccurrence, int wordStartIndex, int wordCount)
     {
         OriginalOccurrence = originalOccurrence;
         WordStartIndex = wordStartIndex;

@@ -19,8 +19,8 @@ public record ProcessedLine
     public List<SpanRoot> SpanRoots { get; init; }
 
     /// <summary>
-    /// A list of all full, unmatched spans found on this specific line.
+    /// A list of all full spans found on this specific line.
     /// </summary>
-    public List<UnmatchedSpanOccurrence> UnmatchedOccurrences { get; init; }
+    public List<SpanOccurrence> SpanOccurrences { get; init; }
 }
 

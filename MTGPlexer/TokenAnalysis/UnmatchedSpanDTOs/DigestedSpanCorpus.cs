@@ -1,15 +1,15 @@
 ﻿namespace MTGPlexer.TokenAnalysis;
 
-public record UnmatchedDigestedCorpus
+public record DigestedSpanCorpus
 {
-    public List<AnalyzedUnmatchedSpan> Spans { get; }
+    public List<AnalyzedSpan> Spans { get; }
 
-    public UnmatchedDigestedCorpus(List<UnmatchedSpanOccurrence> allOccurrences)
+    public DigestedSpanCorpus(List<SpanOccurrence> allOccurrences)
     {
         Spans = RunDigestionAutomaton(allOccurrences);
     }
 
-    private List<AnalyzedUnmatchedSpan> RunDigestionAutomaton(List<UnmatchedSpanOccurrence> allOccurrences)
+    private List<AnalyzedSpan> RunDigestionAutomaton(List<SpanOccurrence> allOccurrences)
     {
         // =================================================================================
         // == STEPS 1 & 2: Suffix Automaton construction (Unchanged)                      ==
@@ -18,7 +18,7 @@ public record UnmatchedDigestedCorpus
         var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
         var idToWord = new List<string>();
         var flattenedWordSequenceIdList = new List<int>();
-        var indexToOccurrenceMap = new List<UnmatchedSpanOccurrence>();
+        var indexToOccurrenceMap = new List<SpanOccurrence>();
         int nextWordId = 0;
         int nextCorrelationId = -1;
 
@@ -69,7 +69,7 @@ public record UnmatchedDigestedCorpus
         // =================================================================================
         // == STEP 3: Extract Spans and Consolidate with Rich, Key-Based Contexts         ==
         // =================================================================================
-        var result = new List<AnalyzedUnmatchedSpan>();
+        var result = new List<AnalyzedSpan>();
         var originalWholeSpanTexts = allOccurrences.Select(o => o.Text).ToHashSet(StringComparer.Ordinal);
         var allMaximalSpans = new Dictionary<string, int>(StringComparer.Ordinal);
 
@@ -90,7 +90,7 @@ public record UnmatchedDigestedCorpus
 
         foreach (var (spanText, count) in allMaximalSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
         {
-            var subSpanContexts = new List<UnmatchedSubSpanContext>();
+            var subSpanContexts = new List<SubSpanContext>();
             var precedingSequencesWithKeys = new List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)>();
             var followingSequencesWithKeys = new List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)>();
             var spanTextWords = spanText.Split(' ');
@@ -105,7 +105,7 @@ public record UnmatchedDigestedCorpus
                     if (originalOccurrence.Words.Skip(i).Take(spanTextWords.Length).SequenceEqual(spanTextWords, StringComparer.Ordinal)) { wordStartIndexInSource = i; break; }
                 }
                 if (wordStartIndexInSource == -1) continue;
-                subSpanContexts.Add(new UnmatchedSubSpanContext(originalOccurrence, wordStartIndexInSource, spanTextWords.Length));
+                subSpanContexts.Add(new SubSpanContext(originalOccurrence, wordStartIndexInSource, spanTextWords.Length));
 
                 var precedingSequence = new List<(string Text, Type TokenType)>();
                 var followingSequence = new List<(string Text, Type TokenType)>();
@@ -127,7 +127,7 @@ public record UnmatchedDigestedCorpus
             var collapsedPrecedingTree = CollapseAdjacencyNodes(precedingAdjacencyTree, isReversed: true);
             var collapsedFollowingTree = CollapseAdjacencyNodes(followingAdjacencyTree, isReversed: false);
 
-            result.Add(new AnalyzedUnmatchedSpan(
+            result.Add(new AnalyzedSpan(
                 text: spanText,
                 maximalSpanOccurrenceCount: count,
                 occurrences: subSpanContexts,
@@ -149,10 +149,11 @@ public record UnmatchedDigestedCorpus
             var sourceOccurrences = group.Select(g => g.Key).Distinct().ToList(); // Use Distinct for safety
             var childSequencesWithKeys = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).Where(x => x.Sequence.Any()).ToList();
             var children = BuildAdjacencyTree(childSequencesWithKeys);
+            DeterministicPalette palette = tokenType is null ? null : TokenTypeRegistry.Palettes[tokenType];
 
             // Create a node with a single segment, ready for potential consolidation
             nodes.Add(new AdjacencyNode(
-                segments: new List<NodeSegment> { new(text, tokenType) },
+                segments: new List<NodeSegment> { new(text, palette) },
                 sourceOccurrences: sourceOccurrences,
                 children: children
             ));

@@ -4,7 +4,7 @@
 /// Represents a single, specific occurrence of an unmatched span of text from one line of a card.
 /// This record is the "ground truth" and holds the complete context of the line it appeared in.
 /// </summary>
-public record UnmatchedSpanOccurrence
+public record SpanOccurrence
 {
     public CardSpanKey Key { get; }
     public int LineIndex { get; }
@@ -55,7 +55,7 @@ public record UnmatchedSpanOccurrence
     public string[] Words { get; }
     public int SpanWordCount => Words.Length;
 
-    public UnmatchedSpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
+    public SpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
     {
         LineIndex = lineIndex;
         LineTokens = lineTokens;

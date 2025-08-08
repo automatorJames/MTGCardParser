@@ -11,9 +11,9 @@ public record ProcessedCard
     public Card Card { get; init; }
     public List<ProcessedLine> Lines { get; init; }
 
-    public List<UnmatchedSpanOccurrence> UnmatchedSpans =>
+    public List<SpanOccurrence> UnmatchedSpans =>
         Lines
-        .SelectMany(x => x.UnmatchedOccurrences)
+        .SelectMany(x => x.SpanOccurrences)
         .ToList();
 
     public bool IsFullyMatched => UnmatchedSpans.Count() == 0;

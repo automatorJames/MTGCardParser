@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 
-public record UnmatchedSpanContext
+public record SpanContext
 {
     public string CardName { get; }
     public Token<Type>? PrecedingToken { get; }
@@ -11,7 +11,7 @@ public record UnmatchedSpanContext
     public int SpanWordCount { get; }
 
 
-    public UnmatchedSpanContext(string cardName, Token<Type>? precedingToken, Token<Type> spanToken, Token<Type>? followingToken)
+    public SpanContext(string cardName, Token<Type>? precedingToken, Token<Type> spanToken, Token<Type>? followingToken)
     {
         CardName = cardName;
         PrecedingToken = precedingToken;

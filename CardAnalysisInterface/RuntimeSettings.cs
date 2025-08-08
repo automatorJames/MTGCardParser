@@ -32,29 +32,29 @@ public class RuntimeSettings
         }
     }
 
-    private int _minUnmatchedSpanWords = 3;
-    public int MinUnmatchedSpanWords
+    private int _minSpanWords = 3;
+    public int MinSpanWords
     {
-        get => _minUnmatchedSpanWords;
+        get => _minSpanWords;
         set
         {
-            if (_minUnmatchedSpanWords != value)
+            if (_minSpanWords != value)
             {
-                _minUnmatchedSpanWords = value;
+                _minSpanWords = value;
                 OnChanged?.Invoke();
             }
         }
     }
 
-    private int _minUnmatchedSpanOccurences = 3;
-    public int MinUnmatchedSpanOccurences
+    private int _minSpanOccurences = 3;
+    public int MinSpanOccurences
     {
-        get => _minUnmatchedSpanOccurences;
+        get => _minSpanOccurences;
         set
         {
-            if (_minUnmatchedSpanOccurences != value)
+            if (_minSpanOccurences != value)
             {
-                _minUnmatchedSpanOccurences = value;
+                _minSpanOccurences = value;
                 OnChanged?.Invoke();
             }
         }

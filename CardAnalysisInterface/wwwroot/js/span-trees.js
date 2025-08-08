@@ -1,4 +1,4 @@
-﻿// unmatched-spans.js
+﻿// span-trees.js
 
 // This is the main orchestration file. It uses the Renderer to draw
 // and the Animator to handle events.
@@ -10,7 +10,7 @@ function renderTree(containerId, analyzedSpan) {
     if (!container) { return; }
 
     // Store the data on the overall card element for easy access
-    const card = container.closest('.unmatched-spans-card');
+    const card = container.closest('.span-trees-card');
     if (card) {
         card.__data = analyzedSpan;
     }
@@ -37,13 +37,13 @@ function disposeTree(containerId) {
     }
     const container = document.getElementById(containerId);
     if (container) {
-        const card = container.closest('.unmatched-spans-card');
+        const card = container.closest('.span-trees-card');
         if (card) card.__data = null;
     }
 }
 
 function recalculateAndDraw(container) {
-    const card = container.closest('.unmatched-spans-card');
+    const card = container.closest('.span-trees-card');
     const analyzedSpan = card ? card.__data : null;
     const svg = container.querySelector('svg');
     if (!analyzedSpan || !svg) return;
@@ -106,7 +106,7 @@ function recalculateAndDraw(container) {
 function setupEventListeners(svg, containerId) {
     const Animator = window.wordTree.Animator;
     const animationManager = wordTreeObservers.get(containerId);
-    const card = document.getElementById(containerId).closest('.unmatched-spans-card');
+    const card = document.getElementById(containerId).closest('.span-trees-card');
     const headerNameItems = Array.from(card.querySelectorAll('[data-card-name]'));
     const allKeyedSVGElements = Array.from(svg.querySelectorAll('[data-source-keys]'));
 

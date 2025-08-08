@@ -11,6 +11,7 @@ public static partial class TokenTypeRegistry
     static Type[] _staticAssemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
+    static string _tokenizerIgnorePattern = @"\s+";
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
@@ -21,14 +22,16 @@ public static partial class TokenTypeRegistry
     public static Dictionary<string, DeterministicPalette> CorpusItemPalettes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
-    public static Tokenizer<Type> Tokenizer { get; set; }
+    public static Tokenizer<Type> ClassTokenizer { get; set; }
+    public static Tokenizer<Type> OriginalTextTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
         foreach (var type in GetAllTokenTypes())
             SetTypeTemplate(type);
 
-        InitializeTokenizer();
+        InitializeClassTokenizer();
+        InitializeOriginalTextTokenizer();
     }
 
     public static RegexTemplate GetTypeTemplate(Type type)
@@ -78,11 +81,11 @@ public static partial class TokenTypeRegistry
         }
     }
 
-    public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text)
+    public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text, bool originalTextOnly)
     {
         List<Token<Type>> coallescedTokens = [];
         List<Token<Type>> unmatchedBuffer = [];
-        var tokens = Tokenizer.Tokenize(text);
+        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
 
         foreach (var token in tokens)
         {
@@ -147,7 +150,7 @@ public static partial class TokenTypeRegistry
         .Concat(_dynamicAssemblyTypes)
         .ToList();
 
-    static void InitializeTokenizer()
+    static void InitializeClassTokenizer()
     {
         // Reset applied orders, since the order may change during runtime
         AppliedOrderTypes = [];
@@ -156,49 +159,58 @@ public static partial class TokenTypeRegistry
         var allTokenTypes = GetAllTokenTypes().Where(x => x != typeof(DefaultUnmatchedString));
 
         var tokenizerBuilder = new TokenizerBuilder<Type>();
-        tokenizerBuilder.Ignore(Span.Regex(@"\s+"));
+        tokenizerBuilder.Ignore(Span.Regex(_tokenizerIgnorePattern));
 
-        //// Since it's possible for multiple types to define the same order via TokenizationOrder,
-        //// Each dictionary entry is a List, though each List should normally only have one item.
-        //Dictionary<int, List<Type>> _definedOrderTypes =
-        //    allTokenTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
-        //    .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
-        //    .ToDictionary(x => x.Key, x => x.ToList());
-        //
-        //// Ensure types aren't represented twice, once in the static list, and once in the attribute-having list
-        //var typeOrderedItems = TypeOrderList.Except(_definedOrderTypes.SelectMany(x => x.Value)).ToList();
-        //
-        //// Ensure our range spans the entirety of both ordered sources
-        //var minPosition = Math.Min(0, _definedOrderTypes.Keys.Min());
-        //var maxPosition = Math.Max(typeOrderedItems.Count - 1, _definedOrderTypes.Keys.Max());
-        //
-        //// Ensure we handle (in order) all attribute defined order types, listed ordered types, and all other types
-        //for (int i = minPosition; i <= maxPosition; i++)
-        //{
-        //    // handle defined attribute order first
-        //    // since any key can have N items defined, process all N
-        //    if (_definedOrderTypes.ContainsKey(i))
-        //        _definedOrderTypes[i].ForEach(x => tokenizerBuilder.Match(x));
-        //
-        //    // handle static listed types next (might be at the same index
-        //    if (i >= 0 && i < typeOrderedItems.Count)
-        //        tokenizerBuilder.Match(typeOrderedItems[i]);
-        //}
-        //
-        //// handle all remaining types (i.e. those the user didn't bother to define anywhere)
-        //// order by descending length, which is a rough approximate of complexity/match length (not exact)
-        //var unorderedRemainingTypes = allTokenTypes
-        //    .Except(AppliedOrderTypes)
-        //    .OrderByDescending(x => Templates[x].RenderedRegexString.Length);
-        //
-        //foreach (var type in unorderedRemainingTypes)
-        //    tokenizerBuilder.Match(type);
+        // Since it's possible for multiple types to define the same order via TokenizationOrder,
+        // Each dictionary entry is a List, though each List should normally only have one item.
+        Dictionary<int, List<Type>> _definedOrderTypes =
+            allTokenTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
+            .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
+            .ToDictionary(x => x.Key, x => x.ToList());
+        
+        // Ensure types aren't represented twice, once in the static list, and once in the attribute-having list
+        var typeOrderedItems = TypeOrderList.Except(_definedOrderTypes.SelectMany(x => x.Value)).ToList();
+        
+        // Ensure our range spans the entirety of both ordered sources
+        var minPosition = Math.Min(0, _definedOrderTypes.Keys.Min());
+        var maxPosition = Math.Max(typeOrderedItems.Count - 1, _definedOrderTypes.Keys.Max());
+        
+        // Ensure we handle (in order) all attribute defined order types, listed ordered types, and all other types
+        for (int i = minPosition; i <= maxPosition; i++)
+        {
+            // handle defined attribute order first
+            // since any key can have N items defined, process all N
+            if (_definedOrderTypes.ContainsKey(i))
+                _definedOrderTypes[i].ForEach(x => tokenizerBuilder.Match(x));
+        
+            // handle static listed types next (might be at the same index
+            if (i >= 0 && i < typeOrderedItems.Count)
+                tokenizerBuilder.Match(typeOrderedItems[i]);
+        }
+        
+        // handle all remaining types (i.e. those the user didn't bother to define anywhere)
+        // order by descending length, which is a rough approximate of complexity/match length (not exact)
+        var unorderedRemainingTypes = allTokenTypes
+            .Except(AppliedOrderTypes)
+            .OrderByDescending(x => Templates[x].RenderedRegexString.Length);
+        
+        foreach (var type in unorderedRemainingTypes)
+            tokenizerBuilder.Match(type);
 
         // Catch anything else with the default string pattern
         tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
 
-        Tokenizer = tokenizerBuilder.Build();
+        ClassTokenizer = tokenizerBuilder.Build();
     }
+
+    static void InitializeOriginalTextTokenizer()
+    {
+        var tokenizerBuilder = new TokenizerBuilder<Type>();
+        tokenizerBuilder.Ignore(Span.Regex(_tokenizerIgnorePattern));
+        tokenizerBuilder.Match(Span.Regex(Templates[typeof(DefaultUnmatchedString)].RenderedRegexString), typeof(DefaultUnmatchedString));
+        OriginalTextTokenizer = tokenizerBuilder.Build();
+    }
+
 
     static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
@@ -299,7 +311,7 @@ public static partial class TokenTypeRegistry
         var type = tb.CreateType()!;
         SetTypeTemplate(type);
         _dynamicAssemblyTypes.Add(type);
-        InitializeTokenizer();
+        InitializeClassTokenizer();
 
         return type;
     }

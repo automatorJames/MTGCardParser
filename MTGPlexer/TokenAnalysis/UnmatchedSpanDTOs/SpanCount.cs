@@ -1,13 +1,13 @@
 ﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
 
-public record UnmatchedSpanCount
+public record SpanCount
 {
     public string Text { get; }
     public int OccurrenceCount { get; }
     public int Length { get; }
     public int WordCount { get; }
 
-    public UnmatchedSpanCount(string text, int occurrenceCount)
+    public SpanCount(string text, int occurrenceCount)
     {
         Text = text;
         OccurrenceCount = occurrenceCount;

@@ -2,7 +2,7 @@
 /* == CONTAINER & CARD STYLES                                       == */
 /* =================================================================== */
 
-.unmatched-spans-container {
+.span-trees-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -10,7 +10,7 @@
     padding: 1rem;
 }
 
-.unmatched-spans-card {
+.span-trees-card {
     width: 90%;
     background-color: #252525;
     border-radius: 8px;
@@ -72,11 +72,11 @@
 }
 
 /* --- Interactivity classes for header items --- */
-.unmatched-spans-card.highlight-active .card-name-item.lowlight {
+.span-trees-card.highlight-active .card-name-item.lowlight {
     opacity: 0.2;
 }
 
-.unmatched-spans-card.highlight-active .card-name-item.highlight {
+.span-trees-card.highlight-active .card-name-item.highlight {
     border-color: white !important; /* Override inline style to show highlight */
     opacity: 1;
 }

@@ -5,7 +5,7 @@ public record class CardLine
     public Card Card { get; }
     public string SourceText { get; }
     public List<SpanRoot> SpanRoots { get; }
-    public List<UnmatchedSpanContext> UnmatchedSpans { get; } = [];
+    public List<SpanContext> UnmatchedSpans { get; } = [];
     public List<Token<Type>> SourceTokens { get; } = [];
     public Dictionary<Type, int> TokenCounts { get; } = [];
     public int LineIndex { get; }
@@ -38,7 +38,7 @@ public record class CardLine
             {
                 Token<Type>? precedingToken = i == 0 ? null : tokens[i - 1];
                 Token<Type>? followingToken = i == tokens.Count - 1 ? null : tokens[i + 1];
-                UnmatchedSpans.Add(new UnmatchedSpanContext(Card.Name, precedingToken, token, followingToken));
+                UnmatchedSpans.Add(new SpanContext(Card.Name, precedingToken, token, followingToken));
             }
 
             var hydratedTokenUnit = TokenTypeRegistry.HydrateFromToken(token);

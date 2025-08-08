@@ -1,20 +1,20 @@
-﻿@page "/unmatched-spans"
+﻿@page "/span-trees"
 @using MTGPlexer.TokenAnalysis
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
 @implements IAsyncDisposable
 
-@if (GetFilteredUnmatchedSpans() is var filteredSpans && !filteredSpans.Any())
+@if (GetFilteredSpans() is var filteredSpans && !filteredSpans.Any())
 {
-    <p>No unmatched spans found.</p>
+    <p>No spans found that meet criteria.</p>
 }
 else
 {
-    <div class="unmatched-spans-container">
+    <div class="span-trees-container">
         @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
         {
-            <div class="unmatched-spans-card" id="@($"unmatched-card-{index}")">
+            <div class="span-trees-card">
                 <div class="card-header">
                     <div class="header-main-info">
                         <span class="header-span-text" title="@span.Text">@span.Text</span>
@@ -41,7 +41,7 @@ else
 
 @code {
     // This list tracks what JS observers we have created, so we can clean them up.
-    private List<AnalyzedUnmatchedSpan> _spansOnPage = new();
+    private List<AnalyzedSpan> _spansOnPage = new();
 
     protected override void OnInitialized()
     {
@@ -66,14 +66,12 @@ else
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var spansToRender = GetFilteredUnmatchedSpans().ToList();
+        var spansToRender = GetFilteredSpans().ToList();
 
         // Check if the list of spans has actually changed. If not, we don't need
         // to do any expensive JS interop calls. Records have built-in equality.
         if (_spansOnPage.SequenceEqual(spansToRender))
-        {
             return;
-        }
 
         // The list of spans is different, so we must update the visualization.
 
@@ -92,10 +90,10 @@ else
         _spansOnPage = spansToRender;
     }
 
-    private IEnumerable<AnalyzedUnmatchedSpan> GetFilteredUnmatchedSpans()
+    private IEnumerable<AnalyzedSpan> GetFilteredSpans()
     {
         var items = CorpusAnalyzer.UnmatchedDigestedCorpus.Spans
-            .Where(x => x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinUnmatchedSpanOccurences && x.WordCount >= RuntimeSettings.MinUnmatchedSpanWords);
+            .Where(x => x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinSpanOccurences && x.WordCount >= RuntimeSettings.MinSpanWords);
 
         return RuntimeSettings.OrderByWordCount
             ? items.OrderByDescending(x => x.WordCount)
@@ -105,7 +103,7 @@ else
     /// <summary>
     /// A helper method to tell JavaScript to dispose of the observers for a given list of spans.
     /// </summary>
-    private async Task CleanupJsObservers(List<AnalyzedUnmatchedSpan> spansToClean)
+    private async Task CleanupJsObservers(List<AnalyzedSpan> spansToClean)
     {
         for (int i = 0; i < spansToClean.Count; i++)
         {

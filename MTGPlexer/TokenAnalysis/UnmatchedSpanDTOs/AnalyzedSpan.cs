@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
-/// Enriched analysis of a single unique span of unmatched text.
+/// Enriched analysis of a single unique span of  text.
 /// This object is now prepared at construction to be passed directly to JavaScript for visualization.
 /// </summary>
-public record AnalyzedUnmatchedSpan
+public record AnalyzedSpan
 {
     /// <summary>The text of the span. This serves as the anchor text in the visualization.</summary>
     [JsonPropertyName("text")]
@@ -22,8 +22,6 @@ public record AnalyzedUnmatchedSpan
     [JsonPropertyName("cardColors")]
     public Dictionary<string, string> CardColors { get; init; }
     
-    // --- Properties Not Directly Used by JS Visualization (but still useful) ---
-    
     [JsonIgnore]
     public int MaximalSpanOccurrenceCount { get; init; }
     
@@ -35,7 +33,7 @@ public record AnalyzedUnmatchedSpan
     /// This is kept for data inspection but not sent to the client by default.
     /// </summary>
     [JsonIgnore]
-    public List<UnmatchedSubSpanContext> Occurrences { get; init; }
+    public List<SubSpanContext> Occurrences { get; init; }
     
     [JsonIgnore]
     public int WordCount { get; init; }
@@ -47,10 +45,10 @@ public record AnalyzedUnmatchedSpan
         .ThenBy(x => x.Key)
         .ToDictionary(x => x.Key, x => x.Count());
     
-    public AnalyzedUnmatchedSpan(
+    public AnalyzedSpan(
         string text,
         int maximalSpanOccurrenceCount,
-        List<UnmatchedSubSpanContext> occurrences,
+        List<SubSpanContext> occurrences,
         List<AdjacencyNode> precedingAdjacencies,
         List<AdjacencyNode> followingAdjacencies)
     {

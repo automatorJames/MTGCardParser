@@ -10,10 +10,10 @@
         {
             <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
         }
-        else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "unmatched-spans")
+        else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "span-trees")
         {
-            <IntInput @bind-Value=RuntimeSettings.MinUnmatchedSpanOccurences Color="var(--dark-teal)" Label="Min occurr." />
-            <IntInput @bind-Value=RuntimeSettings.MinUnmatchedSpanWords Color="var(--dark-gold)" Label="Min words" />
+            <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color="var(--dark-teal)" Label="Min occurr." />
+            <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color="var(--dark-gold)" Label="Min words" />
             <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
         }
 
@@ -22,7 +22,7 @@
 
         <NavLink href="/">Card Analysis</NavLink>
         <NavLink href="type-expressions">Type Expressions</NavLink>
-        <NavLink href="unmatched-spans">Unmatched Spans</NavLink>
+        <NavLink href="span-trees">Unmatched Spans</NavLink>
     </nav>
 
     <main>
