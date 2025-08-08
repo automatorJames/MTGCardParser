@@ -26,85 +26,73 @@ else
                         {
                             var color = span.CardColors.TryGetValue(cardName, out var c) ? c : "#dddddd";
                             <span class="card-name-item"
-                            data-card-name=@cardName
-                            style=@($"border-color: {color};")>
+                                  data-card-name=@cardName
+                                  style=@($"border-color: {color};")>
                                 @cardName
                             </span>
                         }
                     </div>
                 </div>
-                <div id="@($"word-tree-container-{index}")" class="word-tree-body"></div>
+                <div class="word-tree-body">
+                    <div id="@($"spinner-{index}")" class="spinner"></div>
+                    <div id="@($"word-tree-container-{index}")"></div>
+                </div>
             </div>
         }
     </div>
 }
 
 @code {
-    // This list tracks what JS observers we have created, so we can clean them up.
     private List<AnalyzedSpan> _spansOnPage = new();
 
     protected override void OnInitialized()
     {
-        // Subscribe to the settings changed event.
         RuntimeSettings.OnChanged += OnSettingsChanged;
     }
 
-    /// <summary>
-    /// This is the event handler for when the user changes a setting.
-    /// Its only job is to tell Blazor that it needs to re-render the component markup.
-    /// </summary>
     private async void OnSettingsChanged()
     {
-        // Using InvokeAsync is the correct and safe way to trigger a UI update
-        // from an external event.
         await InvokeAsync(StateHasChanged);
     }
 
-    /// <summary>
-    /// This Blazor lifecycle method runs *after* the component's markup has been rendered or updated.
-    /// This is the correct place to perform all JS interop.
-    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         var spansToRender = GetFilteredSpans().ToList();
 
-        // Check if the list of spans has actually changed. If not, we don't need
-        // to do any expensive JS interop calls. Records have built-in equality.
         if (_spansOnPage.SequenceEqual(spansToRender))
             return;
 
-        // The list of spans is different, so we must update the visualization.
-
-        // 1. First, clean up all the old JavaScript observers to prevent memory leaks.
+        // Clean up any old observers
         await CleanupJsObservers(_spansOnPage);
 
-        // 2. Now, render the new set of trees into the new divs.
-        for (int i = 0; i < spansToRender.Count; i++)
-        {
-            var span = spansToRender[i];
-            var containerId = $"word-tree-container-{i}";
-            await JSRuntime.InvokeVoidAsync("renderTree", containerId, span);
-        }
-
-        // 3. Finally, update our tracking list to match what is now on the page.
+        // Track the new list
         _spansOnPage = spansToRender;
+
+        // Kick off each render + its own spinner
+        for (int i = 0; i < _spansOnPage.Count; i++)
+        {
+            var treeId = $"word-tree-container-{i}";
+            var spinnerId = $"spinner-{i}";
+            await JSRuntime.InvokeVoidAsync("renderTreeWithSpinner", treeId, spinnerId, _spansOnPage[i]);
+        }
     }
 
     private IEnumerable<AnalyzedSpan> GetFilteredSpans()
     {
-        DigestedSpanCorpus corpus = RuntimeSettings.ShowOriginalText ? CorpusAnalyzer.OriginalDigestedCorpus : CorpusAnalyzer.UnmatchedDigestedCorpus;
+        DigestedSpanCorpus corpus = RuntimeSettings.ShowOriginalText
+            ? CorpusAnalyzer.OriginalDigestedCorpus
+            : CorpusAnalyzer.UnmatchedDigestedCorpus;
 
         var items = corpus.Spans
-            .Where(x => x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinSpanOccurences && x.WordCount >= RuntimeSettings.MinSpanWords);
+            .Where(x =>
+                x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinSpanOccurences &&
+                x.WordCount >= RuntimeSettings.MinSpanWords);
 
         return RuntimeSettings.OrderByWordCount
             ? items.OrderByDescending(x => x.WordCount)
             : items.OrderByDescending(x => x.MaximalSpanOccurrenceCount);
     }
 
-    /// <summary>
-    /// A helper method to tell JavaScript to dispose of the observers for a given list of spans.
-    /// </summary>
     private async Task CleanupJsObservers(List<AnalyzedSpan> spansToClean)
     {
         for (int i = 0; i < spansToClean.Count; i++)
@@ -116,20 +104,14 @@ else
             }
             catch (JSDisconnectedException)
             {
-                // This can happen if the user navigates away quickly. It's safe to ignore.
+                // ignore if nav away
             }
         }
     }
 
-    /// <summary>
-    /// This is called by the Blazor framework when the component is removed from the page.
-    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        // 1. Unsubscribe from the C# event to prevent memory leaks.
         RuntimeSettings.OnChanged -= OnSettingsChanged;
-
-        // 2. Clean up any remaining JavaScript observers.
         await CleanupJsObservers(_spansOnPage);
     }
 }

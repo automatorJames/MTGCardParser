@@ -1,37 +1,39 @@
 ﻿// span-trees.js
 
-// This is the main orchestration file. It uses the Renderer to draw
-// and the Animator to handle events.
-
+// === Observer storage ===
 const wordTreeObservers = new Map();
 
+// === Main render entrypoint ===
 function renderTree(containerId, analyzedSpan) {
     const container = document.getElementById(containerId);
-    if (!container) { return; }
+    if (!container) return;
 
-    // Store the data on the overall card element for easy access
+    // Attach data to card
     const card = container.closest('.span-trees-card');
-    if (card) {
-        card.__data = analyzedSpan;
-    }
+    if (card) card.__data = analyzedSpan;
 
+    // If already observing, just redraw
     if (wordTreeObservers.has(containerId)) {
         recalculateAndDraw(container);
         return;
     }
 
+    // First‐time setup
     const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
     container.appendChild(svg);
+
     const resizeObserver = new ResizeObserver(() => recalculateAndDraw(container));
     resizeObserver.observe(container);
     wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
+
     recalculateAndDraw(container);
 }
 
+// === Disposal ===
 function disposeTree(containerId) {
     if (wordTreeObservers.has(containerId)) {
         const { observer, animationFrameId } = wordTreeObservers.get(containerId);
-        if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
         observer.disconnect();
         wordTreeObservers.delete(containerId);
     }
@@ -42,6 +44,7 @@ function disposeTree(containerId) {
     }
 }
 
+// === Layout & Draw ===
 function recalculateAndDraw(container) {
     const card = container.closest('.span-trees-card');
     const analyzedSpan = card ? card.__data : null;
@@ -50,9 +53,11 @@ function recalculateAndDraw(container) {
 
     svg.innerHTML = '<defs></defs>';
     const config = {
-        nodeWidth: 200, nodePadding: 8, mainSpanPadding: 12, nodeHeight: 40, hGap: 40, vGap: 20, cornerRadius: 10,
-        mainSpanWidth: 220, mainSpanFontSize: 14, mainSpanLineHeight: 16, mainSpanFill: '#3a3a3a', mainSpanColor: "#e0e0e0", horizontalPadding: 20,
-        gradientTransitionRatio: 0.1 // 0 = hard stop, 1 = full blend
+        nodeWidth: 200, nodePadding: 8, mainSpanPadding: 12,
+        nodeHeight: 40, hGap: 40, vGap: 20, cornerRadius: 10,
+        mainSpanWidth: 220, mainSpanFontSize: 14, mainSpanLineHeight: 16,
+        mainSpanFill: '#3a3a3a', mainSpanColor: "#e0e0e0",
+        horizontalPadding: 20, gradientTransitionRatio: 0.1
     };
 
     const { keyToColor, allKeys } = prepareColorMap(analyzedSpan);
@@ -60,19 +65,25 @@ function recalculateAndDraw(container) {
     if (availableWidth <= 0) return;
 
     const mainSpanObject = { text: analyzedSpan.text, id: 'main-anchor' };
-
     const Renderer = window.wordTree.Renderer;
+
     Renderer.preCalculateAllNodeMetrics(mainSpanObject, true, config, svg);
-    analyzedSpan.precedingAdjacencies.forEach(node => Renderer.preCalculateAllNodeMetrics(node, false, config, svg));
-    analyzedSpan.followingAdjacencies.forEach(node => Renderer.preCalculateAllNodeMetrics(node, false, config, svg));
+    analyzedSpan.precedingAdjacencies.forEach(n => Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
+    analyzedSpan.followingAdjacencies.forEach(n => Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
 
-    const mainSpanX = 0;
-    const precedingResult = Renderer.calculateLayout(analyzedSpan.precedingAdjacencies, 0, mainSpanX, 0, -1, config);
-    const followingResult = Renderer.calculateLayout(analyzedSpan.followingAdjacencies, 0, mainSpanX, 0, 1, config);
+    const precedingResult = Renderer.calculateLayout(
+        analyzedSpan.precedingAdjacencies, 0, 0, 0, -1, config);
+    const followingResult = Renderer.calculateLayout(
+        analyzedSpan.followingAdjacencies, 0, 0, 0, 1, config);
 
-    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanObject.dynamicHeight) + config.vGap * 2;
-    let minX = mainSpanX - config.mainSpanWidth / 2;
-    let maxX = mainSpanX + config.mainSpanWidth / 2;
+    const totalHeight = Math.max(
+        precedingResult.totalHeight,
+        followingResult.totalHeight,
+        mainSpanObject.dynamicHeight
+    ) + config.vGap * 2;
+
+    let minX = -config.mainSpanWidth / 2;
+    let maxX = config.mainSpanWidth / 2;
     [...precedingResult.layout, ...followingResult.layout].forEach(node => {
         minX = Math.min(minX, node.layout.x - config.nodeWidth / 2);
         maxX = Math.max(maxX, node.layout.x + config.nodeWidth / 2);
@@ -87,22 +98,31 @@ function recalculateAndDraw(container) {
         container.style.height = `${totalHeight}px`;
     } else {
         const scaleFactor = availableWidth / naturalContentWidth;
-        const newHeight = totalHeight * scaleFactor;
-        svg.setAttribute('viewBox', `${minX - config.horizontalPadding} 0 ${naturalContentWidth} ${totalHeight}`);
-        container.style.height = `${newHeight}px`;
+        svg.setAttribute(
+            'viewBox',
+            `${minX - config.horizontalPadding} 0 ${naturalContentWidth} ${totalHeight}`
+        );
+        container.style.height = `${totalHeight * scaleFactor}px`;
     }
 
     const mainSpanY = totalHeight / 2;
     precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
     followingResult.layout.forEach(n => n.layout.y += mainSpanY);
 
-    Renderer.drawNodesAndConnectors(svg, analyzedSpan.precedingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, -1, config, keyToColor, allKeys, container.id);
-    Renderer.drawNodesAndConnectors(svg, analyzedSpan.followingAdjacencies, mainSpanObject, mainSpanX, mainSpanY, 1, config, keyToColor, allKeys, container.id);
-    Renderer.createNode(svg, mainSpanObject, mainSpanX, mainSpanY, false, config, keyToColor, container.id);
+    Renderer.drawNodesAndConnectors(
+        svg, analyzedSpan.precedingAdjacencies, mainSpanObject, 0, mainSpanY,
+        -1, config, keyToColor, allKeys, container.id
+    );
+    Renderer.drawNodesAndConnectors(
+        svg, analyzedSpan.followingAdjacencies, mainSpanObject, 0, mainSpanY,
+        1, config, keyToColor, allKeys, container.id
+    );
+    Renderer.createNode(svg, mainSpanObject, 0, mainSpanY, false, config, keyToColor, container.id);
 
     setupEventListeners(svg, container.id);
 }
 
+// === Event wiring ===
 function setupEventListeners(svg, containerId) {
     const Animator = window.wordTree.Animator;
     const animationManager = wordTreeObservers.get(containerId);
@@ -118,100 +138,132 @@ function setupEventListeners(svg, containerId) {
         };
     });
 
-    const animateState = (activeKeys) => {
-        // Animate SVG Nodes
+    const animateState = activeKeys => {
         const elementsToAnimate = new Map();
         allKeyedSVGElements.forEach(el => {
             const elKeys = JSON.parse(el.dataset.sourceKeys);
-            const isHighlighted = elKeys.some(key => activeKeys.has(key));
+            const isHighlighted = elKeys.some(k => activeKeys.has(k));
             const layers = el.__layers;
 
             if (isHighlighted) {
-                elementsToAnimate.set(layers.base, { start: parseFloat(getComputedStyle(layers.base).opacity), end: 1 });
-                if (layers.highlight) elementsToAnimate.set(layers.highlight, { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 1 });
-                if (layers.text) elementsToAnimate.set(layers.text, { start: parseFloat(getComputedStyle(layers.text).opacity), end: 1 });
+                elementsToAnimate.set(
+                    layers.base,
+                    { start: parseFloat(getComputedStyle(layers.base).opacity), end: 1 });
+                if (layers.highlight) elementsToAnimate.set(
+                    layers.highlight,
+                    { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 1 });
+                if (layers.text) elementsToAnimate.set(
+                    layers.text,
+                    { start: parseFloat(getComputedStyle(layers.text).opacity), end: 1 });
             } else {
-                elementsToAnimate.set(layers.base, { start: parseFloat(getComputedStyle(layers.base).opacity), end: Animator.config.lowlightOpacity });
-                if (layers.highlight) elementsToAnimate.set(layers.highlight, { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 0 });
-                if (layers.text) elementsToAnimate.set(layers.text, { start: parseFloat(getComputedStyle(layers.text).opacity), end: Animator.config.lowlightOpacity });
+                elementsToAnimate.set(
+                    layers.base,
+                    { start: parseFloat(getComputedStyle(layers.base).opacity), end: Animator.config.lowlightOpacity });
+                if (layers.highlight) elementsToAnimate.set(
+                    layers.highlight,
+                    { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 0 });
+                if (layers.text) elementsToAnimate.set(
+                    layers.text,
+                    { start: parseFloat(getComputedStyle(layers.text).opacity), end: Animator.config.lowlightOpacity });
             }
         });
         Animator.animateOpacity(elementsToAnimate, animationManager);
 
-        // Highlight Header
         card.classList.add('highlight-active');
-        const relevantCardNames = new Set();
-        activeKeys.forEach(k => relevantCardNames.add(k.substring(0, k.indexOf('['))));
+        const relevant = new Set();
+        activeKeys.forEach(k => relevant.add(k.substring(0, k.indexOf('['))));
         headerNameItems.forEach(item => {
-            const isRelevant = relevantCardNames.has(item.dataset.cardName);
-            item.classList.toggle('highlight', isRelevant);
-            item.classList.toggle('lowlight', !isRelevant);
+            const isRel = relevant.has(item.dataset.cardName);
+            item.classList.toggle('highlight', isRel);
+            item.classList.toggle('lowlight', !isRel);
         });
     };
 
     const resetState = () => {
-        // Reset SVG Nodes
         const elementsToAnimate = new Map();
         allKeyedSVGElements.forEach(el => {
             const layers = el.__layers;
-            elementsToAnimate.set(layers.base, { start: parseFloat(getComputedStyle(layers.base).opacity), end: 1 });
-            if (layers.highlight) elementsToAnimate.set(layers.highlight, { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 0 });
-            if (layers.text) elementsToAnimate.set(layers.text, { start: parseFloat(getComputedStyle(layers.text).opacity), end: 1 });
+            elementsToAnimate.set(
+                layers.base,
+                { start: parseFloat(getComputedStyle(layers.base).opacity), end: 1 });
+            if (layers.highlight) elementsToAnimate.set(
+                layers.highlight,
+                { start: parseFloat(getComputedStyle(layers.highlight).opacity), end: 0 });
+            if (layers.text) elementsToAnimate.set(
+                layers.text,
+                { start: parseFloat(getComputedStyle(layers.text).opacity), end: 1 });
         });
         Animator.animateOpacity(elementsToAnimate, animationManager);
 
-        // Reset Header
         card.classList.remove('highlight-active');
         headerNameItems.forEach(item => item.classList.remove('highlight', 'lowlight'));
     };
 
-    // --- Event Listener Attachments ---
-
     svg.addEventListener('mouseover', e => {
-        const group = e.target.closest('[data-source-keys]');
-        if (group) {
-            animateState(new Set(JSON.parse(group.dataset.sourceKeys)));
-        }
+        const grp = e.target.closest('[data-source-keys]');
+        if (grp) animateState(new Set(JSON.parse(grp.dataset.sourceKeys)));
     });
 
     headerNameItems.forEach(item => {
         item.addEventListener('mouseover', () => {
-            const cardName = item.dataset.cardName;
-            const keysForCard = new Set();
+            const name = item.dataset.cardName;
+            const keys = new Set();
             allKeyedSVGElements.forEach(el => {
-                const elKeys = JSON.parse(el.dataset.sourceKeys);
-                elKeys.forEach(key => {
-                    if (key.startsWith(cardName + '[')) {
-                        keysForCard.add(key);
-                    }
+                JSON.parse(el.dataset.sourceKeys).forEach(k => {
+                    if (k.startsWith(name + '[')) keys.add(k);
                 });
             });
-            animateState(keysForCard);
+            animateState(keys);
         });
     });
 
     card.addEventListener('mouseout', resetState);
 }
 
+// === Color mapping helper ===
 function prepareColorMap(analyzedSpan) {
     const allKeys = new Set();
-    const processNodeForKeys = (node) => {
+    const gather = node => {
         if (!node || !node.sourceOccurrenceKeys) return;
-        node.sourceOccurrenceKeys.forEach(key => allKeys.add(key));
-        if (node.children) node.children.forEach(processNodeForKeys);
+        node.sourceOccurrenceKeys.forEach(k => allKeys.add(k));
+        node.children?.forEach(gather);
     };
-    analyzedSpan.precedingAdjacencies.forEach(processNodeForKeys);
-    analyzedSpan.followingAdjacencies.forEach(processNodeForKeys);
+    analyzedSpan.precedingAdjacencies.forEach(gather);
+    analyzedSpan.followingAdjacencies.forEach(gather);
 
     const keyToColor = new Map();
-    const cardColors = analyzedSpan.cardColors || {}; // Use the new property from the server
+    const cardColors = analyzedSpan.cardColors || {};
 
-    Array.from(allKeys).forEach(key => {
-        // Extract card name from a key like "CardName[1..5]"
-        const cardName = key.substring(0, key.indexOf('['));
-        const color = cardColors[cardName] || '#dddddd'; // Default color
-        keyToColor.set(key, color);
+    allKeys.forEach(k => {
+        const name = k.substring(0, k.indexOf('['));
+        keyToColor.set(k, cardColors[name] || '#dddddd');
     });
-
     return { keyToColor, allKeys };
+}
+
+// === New: per‐container spinner wrapper ===
+function renderTreeWithSpinner(containerId, spinnerId, analyzedSpan) {
+    const container = document.getElementById(containerId);
+    const spinner = document.getElementById(spinnerId);
+    if (!container) return;
+    if (spinner) spinner.style.display = 'block';
+
+    if (wordTreeObservers.has(containerId)) {
+        recalculateAndDraw(container);
+        if (spinner) spinner.style.display = 'none';
+        return;
+    }
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
+    container.appendChild(svg);
+
+    const card = container.closest('.span-trees-card');
+    if (card) card.__data = analyzedSpan;
+
+    const resizeObserver = new ResizeObserver(() => recalculateAndDraw(container));
+    resizeObserver.observe(container);
+    wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
+
+    recalculateAndDraw(container);
+    if (spinner) spinner.style.display = 'none';
 }
