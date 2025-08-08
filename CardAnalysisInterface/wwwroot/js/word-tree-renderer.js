@@ -187,14 +187,39 @@ window.wordTree.Renderer = {
         svg.appendChild(group);
     },
 
+    // --- MODIFIED FUNCTION ---
     createRoundedConnector: function (svg, parentData, childData, x1, y1, x2, y2, direction, config, keyToColor, allKeys, containerId) {
         const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
         const startX = x1 + (direction * parentWidth / 2);
         const endX = x2 - (direction * config.nodeWidth / 2);
         const midX = (startX + endX) / 2;
         const r = config.cornerRadius;
-        const ySign = Math.sign(y2 - y1);
-        const d = (ySign === 0) ? `M ${startX} ${y1} L ${endX} ${y2}` : `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${direction * ySign > 0 ? 1 : 0} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${direction * ySign > 0 ? 0 : 1} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
+        const verticalOffset = Math.abs(y2 - y1);
+
+        let d;
+
+        // Use a small epsilon for floating point comparisons to determine if the line is horizontal
+        if (verticalOffset < 1e-6) {
+            // Case 1: Perfectly horizontal line.
+            d = `M ${startX} ${y1} L ${endX} ${y2}`;
+        } else if (verticalOffset < r * 2) {
+            // Case 2: The "heartbeat" artifact case.
+            // Vertical offset is too small for full-radius curves. Use a smaller radius
+            // equal to half the vertical offset, creating two smooth, connecting curves
+            // with no vertical line segment between them.
+            const smallR = verticalOffset / 2;
+            const ySign = Math.sign(y2 - y1);
+            const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
+            const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
+            d = `M ${startX} ${y1} L ${midX - smallR * direction} ${y1} A ${smallR} ${smallR} 0 0 ${sweepFlag1} ${midX} ${y1 + smallR * ySign} A ${smallR} ${smallR} 0 0 ${sweepFlag2} ${midX + smallR * direction} ${y2} L ${endX} ${y2}`;
+        } else {
+            // Case 3: The standard case with a full radius and a vertical segment.
+            const ySign = Math.sign(y2 - y1);
+            const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
+            const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
+            d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
+        }
+
         const parentIsAnchor = parentData.id === 'main-anchor';
         const parentKeys = parentIsAnchor ? allKeys : new Set(parentData.sourceOccurrenceKeys || []);
         const childKeys = new Set(childData.sourceOccurrenceKeys || []);
