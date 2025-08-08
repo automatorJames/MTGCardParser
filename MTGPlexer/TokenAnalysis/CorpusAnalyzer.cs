@@ -1,6 +1,4 @@
-﻿using MTGPlexer.Data;
-
-namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// A consolidated processor that tokenizes a corpus of cards and produces a complete
@@ -30,6 +28,11 @@ public class CorpusAnalyzer
         ProcessedCards = ProcessAllCards(cards, originalTextOnly: false);
         UnmatchedDigestedCorpus = GetDigestedSpanCorpus(ProcessedCards);
 
+        // Count identified tokens
+        foreach (var processedCard in ProcessedCards)
+            foreach (var line in processedCard.Lines)
+                CountTokenTypes(line.SourceTokens);
+
         // Similarly initialize digested original corpus (no class tokens applied)
         var processedOriginalCards = ProcessAllCards(cards, originalTextOnly: true);
         OriginalDigestedCorpus = GetDigestedSpanCorpus(processedOriginalCards);
@@ -48,7 +51,6 @@ public class CorpusAnalyzer
                 if (string.IsNullOrWhiteSpace(lineText)) continue;
 
                 var tokens = TokenTypeRegistry.TokenizeAndCoallesceUnmatched(lineText, originalTextOnly);
-                CountTokenTypes(tokens);
 
                 // This single method call performs both analyses for the line.
                 (var spanRoots, var spanOccurrences) = HydrateAndAnalyzeLine(card.Name, tokens, i);
@@ -71,7 +73,7 @@ public class CorpusAnalyzer
 
     DigestedSpanCorpus GetDigestedSpanCorpus(List<ProcessedCard> processedCards)
     {
-        var allUnmatchedOccurrences = ProcessedCards
+        var allUnmatchedOccurrences = processedCards
             .SelectMany(card => card.Lines)
             .SelectMany(line => line.SpanOccurrences)
             .ToList();

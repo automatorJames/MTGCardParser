@@ -26,8 +26,8 @@ else
                         {
                             var color = span.CardColors.TryGetValue(cardName, out var c) ? c : "#dddddd";
                             <span class="card-name-item"
-                                  data-card-name="@cardName"
-                                  style="border-color: @color;">
+                            data-card-name=@cardName
+                            style=@($"border-color: {color};")>
                                 @cardName
                             </span>
                         }
@@ -92,7 +92,9 @@ else
 
     private IEnumerable<AnalyzedSpan> GetFilteredSpans()
     {
-        var items = CorpusAnalyzer.UnmatchedDigestedCorpus.Spans
+        DigestedSpanCorpus corpus = RuntimeSettings.ShowOriginalText ? CorpusAnalyzer.OriginalDigestedCorpus : CorpusAnalyzer.UnmatchedDigestedCorpus;
+
+        var items = corpus.Spans
             .Where(x => x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinSpanOccurences && x.WordCount >= RuntimeSettings.MinSpanWords);
 
         return RuntimeSettings.OrderByWordCount

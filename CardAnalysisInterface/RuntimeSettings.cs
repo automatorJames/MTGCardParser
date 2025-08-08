@@ -32,6 +32,20 @@ public class RuntimeSettings
         }
     }
 
+    private bool _showOriginalText;
+    public bool ShowOriginalText
+    {
+        get => _showOriginalText;
+        set
+        {
+            if (_showOriginalText != value)
+            {
+                _showOriginalText = value;
+                OnChanged?.Invoke();
+            }
+        }
+    }
+
     private int _minSpanWords = 3;
     public int MinSpanWords
     {
