@@ -12,8 +12,8 @@
         }
         else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "span-trees")
         {
-            <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color="var(--dark-teal)" Label="Min occurr." />
-            <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color="var(--dark-gold)" Label="Min words" />
+            <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
+            <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
             <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
             <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
         }
@@ -23,7 +23,7 @@
 
         <NavLink href="/">Card Analysis</NavLink>
         <NavLink href="type-expressions">Type Expressions</NavLink>
-        <NavLink href="span-trees">Unmatched Spans</NavLink>
+        <NavLink href="span-trees">Span Trees</NavLink>
     </nav>
 
     <main>

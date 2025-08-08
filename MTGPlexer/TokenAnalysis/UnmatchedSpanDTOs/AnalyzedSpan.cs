@@ -17,11 +17,13 @@ public record AnalyzedSpan
     /// <summary>A hierarchical tree representing all token/word sequences that appeared immediately AFTER this span.</summary>
     [JsonPropertyName("followingAdjacencies")]
     public List<AdjacencyNode> FollowingAdjacencies { get; init; }
-    
-    /// <summary>A dictionary mapping Card Names to their designated hex color codes for the UI.</summary>
+
+    /// <summary>A dictionary mapping Card Names to their positional hex color codes for the UI.</summary>
     [JsonPropertyName("cardColors")]
-    public Dictionary<string, string> CardColors { get; init; }
-    
+    public Dictionary<string, string> CardColors { get; init; } = [];
+
+    public Dictionary<int, DeterministicPalette> PositionalPalette { get; init; }
+
     [JsonIgnore]
     public int MaximalSpanOccurrenceCount { get; init; }
     
@@ -39,11 +41,9 @@ public record AnalyzedSpan
     public int WordCount { get; init; }
     
     [JsonIgnore]
-    public Dictionary<string, int> OccurrencesPerCard => Occurrences
-        .GroupBy(x => x.OriginalOccurrence.Key.CardName)
-        .OrderByDescending(x => x.Count())
-        .ThenBy(x => x.Key)
-        .ToDictionary(x => x.Key, x => x.Count());
+    public Dictionary<string, int> OccurrencesPerCard { get; init; }
+
+    public string[] ContainingCards { get; init; }
     
     public AnalyzedSpan(
         string text,
@@ -60,16 +60,6 @@ public record AnalyzedSpan
         FollowingAdjacencies = followingAdjacencies;
         WordCount = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
         TotalOccurrenceCount = occurrences.Count;
-    
-        // --- Color Hydration ---
-        // Populate the CardColors dictionary using the centrally-defined palettes.
-        CardColors = OccurrencesPerCard.Keys
-            .ToDictionary(
-                cardName => cardName,
-                cardName => TokenTypeRegistry.CorpusItemPalettes.TryGetValue(cardName, out var palette)
-                            ? palette.Hex // Assumes DeterministicPalette has a .CssColor string property
-                            : "#dddddd"       // Fallback color for safety
-            );
 
         // --- HYDRATION STEP ---
         // Instead of transforming into new DTOs, we now "hydrate" the existing
@@ -88,6 +78,19 @@ public record AnalyzedSpan
     
         HydrateTreeWithIds(PrecedingAdjacencies);
         HydrateTreeWithIds(FollowingAdjacencies);
+
+        OccurrencesPerCard = Occurrences
+            .GroupBy(x => x.OriginalOccurrence.Key.CardName)
+            .OrderByDescending(x => x.Count())
+            .ThenBy(x => x.Key)
+            .ToDictionary(x => x.Key, x => x.Count());
+
+        ContainingCards = OccurrencesPerCard.Select(x => x.Key).ToArray();
+
+        PositionalPalette = DeterministicPalette.GetPositionalPalette(ContainingCards.Length);
+
+        for (int i = 0; i < ContainingCards.Length; i++)
+            CardColors[ContainingCards[i]] = PositionalPalette[i].Hex;
     }
 
     public override string ToString() => $"'{Text}' (Total: {TotalOccurrenceCount} | Maximal: {MaximalSpanOccurrenceCount})";

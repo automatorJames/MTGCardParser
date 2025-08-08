@@ -56,8 +56,6 @@ window.wordTree.Renderer = {
     },
 
     getNodeMetrics: function (text, isAnchor, config, svg) {
-        // --- THIS IS THE FIX ---
-        // Ensure nodeText is always a string to prevent .split() errors on non-string types.
         const nodeText = String(text || '');
 
         const nodeWidth = isAnchor ? config.mainSpanWidth : config.nodeWidth;
@@ -187,7 +185,6 @@ window.wordTree.Renderer = {
         svg.appendChild(group);
     },
 
-    // --- MODIFIED FUNCTION ---
     createRoundedConnector: function (svg, parentData, childData, x1, y1, x2, y2, direction, config, keyToColor, allKeys, containerId) {
         const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
         const startX = x1 + (direction * parentWidth / 2);

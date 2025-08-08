@@ -1,10 +1,13 @@
 ﻿using System.ComponentModel;
+using System.Drawing;
 using System.Globalization;
 
 namespace MTGPlexer.TokenAnalysis.ColorCoding;
 
 public record DeterministicPalette
 {
+    static Dictionary<int, Dictionary<int, DeterministicPalette>> _positionalPalettes { get; set; } = [];
+
     public string Hex { get; private set; }
     public string HexLight { get; private set; }
     public string HexDark { get; private set; }
@@ -41,6 +44,47 @@ public record DeterministicPalette
     {
         SetFromRaindbowIndex(rainbowIndex);
     }
+
+    public static DeterministicPalette GetPositionalPalette(int totalItemCount, int itemPosition)
+    {
+        Dictionary<int, DeterministicPalette> positionalPalette;
+
+        if (_positionalPalettes.TryGetValue(totalItemCount, out positionalPalette))
+            return positionalPalette[itemPosition];
+        else
+        {
+            positionalPalette = [];
+            var hues = GetRainbowDivisions(totalItemCount);
+
+            for (int i = 0; i < totalItemCount; i++)
+                positionalPalette[i] = new(hues[i]);
+
+            _positionalPalettes[totalItemCount] = positionalPalette;
+
+            return positionalPalette[itemPosition];
+        }
+    }
+
+    public static Dictionary<int, DeterministicPalette> GetPositionalPalette(int totalItemCount)
+    {
+        Dictionary<int, DeterministicPalette> positionalPalette;
+
+        if (_positionalPalettes.TryGetValue(totalItemCount, out positionalPalette))
+            return positionalPalette;
+        else
+        {
+            positionalPalette = [];
+            var hues = GetRainbowDivisions(totalItemCount);
+
+            for (int i = 0; i < totalItemCount; i++)
+                positionalPalette[i] = new(hues[i]);
+
+            _positionalPalettes[totalItemCount] = positionalPalette;
+
+            return positionalPalette;
+        }
+    }
+
 
     void SetFromSeed(string seed, double? baseSaturation = null, double? baseLightness = null)
     {
@@ -195,6 +239,56 @@ public record DeterministicPalette
     {
         // This function is perfect. It correctly forces saturation to 0.
         return HslToHex(0, 0, newLightness);
+    }
+
+    static HexColor[] GetRainbowDivisions(int numberOfItems)
+    {
+        if (numberOfItems <= 0)
+            return [];
+
+        string[] colors = new string[numberOfItems];
+
+        float hueStart = 270f; // violet
+        float hueEnd = 0f;     // red
+        float hueRange = hueStart - hueEnd;
+
+        float saturation = 0.8f;  // Match #F43DCD vibe
+        float value = 0.96f;
+
+        for (int i = 0; i < numberOfItems; i++)
+        {
+            float t = (float)i / numberOfItems;
+            float hue = hueStart - t * hueRange;
+
+            Color color = FromHsv(hue, saturation, value);
+            colors[i] = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+        }
+
+        Color FromHsv(float hue, float saturation, float value)
+        {
+            int hi = Convert.ToInt32(Math.Floor(hue / 60f)) % 6;
+            float f = hue / 60f - MathF.Floor(hue / 60f);
+
+            value *= 255f;
+            int v = (int)value;
+            int p = (int)(value * (1 - saturation));
+            int q = (int)(value * (1 - f * saturation));
+            int t = (int)(value * (1 - (1 - f) * saturation));
+
+            return hi switch
+            {
+                0 => Color.FromArgb(v, t, p),
+                1 => Color.FromArgb(q, v, p),
+                2 => Color.FromArgb(p, v, t),
+                3 => Color.FromArgb(p, q, v),
+                4 => Color.FromArgb(t, p, v),
+                _ => Color.FromArgb(v, p, q),
+            };
+        }
+
+        return colors
+            .Select(x => new HexColor(x))
+            .ToArray();
     }
 
     public enum RainbowMuted

@@ -2,7 +2,7 @@
 
 /// <summary>
 /// A consolidated processor that tokenizes a corpus of cards and produces a complete
-/// analysis of both matched tokens (as SpanRoots) and unmatched spans in a single workflow.
+/// analysis of both matched tokens (as SpanRoots) and word span trees in a single workflow.
 /// </summary>
 public class CorpusAnalyzer
 {
@@ -21,8 +21,6 @@ public class CorpusAnalyzer
 
     public CorpusAnalyzer(List<Card> cards)
     {
-        cards.ForEach(x => TokenTypeRegistry.CorpusItemPalettes[x.Name] = new DeterministicPalette(x.Name));
-
         // Make a single pass through all cards and lines, performing all
         // initial processing (tokenization, SpanRoot generation, UnmatchedOccurrence collection).
         ProcessedCards = ProcessAllCards(cards, originalTextOnly: false);

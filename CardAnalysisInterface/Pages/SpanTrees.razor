@@ -1,5 +1,4 @@
 ﻿@page "/span-trees"
-@using MTGPlexer.TokenAnalysis
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
@@ -22,12 +21,13 @@ else
                         <span class="header-stat">Word Count: @span.WordCount</span>
                     </div>
                     <div class="header-card-names">
-                        @foreach (var cardName in span.OccurrencesPerCard.Keys)
+                        @for (int i = 0; i < span.ContainingCards.Length; i++)
                         {
-                            var color = span.CardColors.TryGetValue(cardName, out var c) ? c : "#dddddd";
+                            var cardName = span.ContainingCards[i];
+                            var cardPalette = span.PositionalPalette[i];
                             <span class="card-name-item"
                                   data-card-name=@cardName
-                                  style=@($"border-color: {color};")>
+                                  style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight};")>
                                 @cardName
                             </span>
                         }
