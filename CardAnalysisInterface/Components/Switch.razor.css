@@ -1,4 +1,6 @@
-﻿.small-switch-container {
+﻿/* Switch.razor.css */
+
+.small-switch-container {
     display: flex;
     align-items: center;
     gap: 8px; /* Adds space between the switch and the label */
