@@ -136,3 +136,33 @@ a, .btn-link {
 .blurry-background {
     backdrop-filter: blur(10px);
 }
+
+/* In your site's main CSS file */
+
+.highlight-overlay {
+    stroke-width: 2.5px;
+    fill: transparent;
+    opacity: 0;
+}
+
+/* Create a rule for each potential layer, up to a reasonable maximum. */
+.highlight-layer-0 {
+    stroke: var(--highlight-color-0);
+}
+
+.highlight-layer-1 {
+    stroke: var(--highlight-color-1);
+}
+
+.highlight-layer-2 {
+    stroke: var(--highlight-color-2);
+}
+
+.highlight-layer-3 {
+    stroke: var(--highlight-color-3);
+}
+
+.highlight-layer-4 {
+    stroke: var(--highlight-color-4);
+}
+/* etc. */

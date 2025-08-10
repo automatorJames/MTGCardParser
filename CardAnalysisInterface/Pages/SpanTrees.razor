@@ -43,7 +43,7 @@ else
 }
 
 @code {
-    private List<AnalyzedSpan> _spansOnPage = new();
+    private List<AnalyzedSpan> _currentSpans = new();
 
     protected override void OnInitialized()
     {
@@ -59,21 +59,23 @@ else
     {
         var spansToRender = GetFilteredSpans().ToList();
 
-        if (_spansOnPage.SequenceEqual(spansToRender))
+        if (!firstRender && _currentSpans.SequenceEqual(spansToRender))
             return;
 
-        // Clean up any old observers
-        await CleanupJsObservers(_spansOnPage);
+        _currentSpans = spansToRender;
 
-        // Track the new list
-        _spansOnPage = spansToRender;
+        // 1. Call the fast JS function to clear old SVGs and show spinners.
+        //    This also cleans up any observers for cards that no longer exist.
+        await JSRuntime.InvokeVoidAsync("clearAllTreesAndShowSpinners", spansToRender.Count);
 
-        // Kick off each render + its own spinner
-        for (int i = 0; i < _spansOnPage.Count; i++)
+        // 2. Yield control to Blazor's renderer. This is the key step.
+        //    It allows the browser to process the DOM changes from the previous call and paint the spinners.
+        await Task.Yield();
+
+        // 3. If there's anything to render, call the function that does the heavy lifting.
+        if (spansToRender.Any())
         {
-            var treeId = $"word-tree-container-{i}";
-            var spinnerId = $"spinner-{i}";
-            await JSRuntime.InvokeVoidAsync("renderTreeWithSpinner", treeId, spinnerId, _spansOnPage[i]);
+            await JSRuntime.InvokeVoidAsync("renderAllTrees", spansToRender);
         }
     }
 
@@ -93,25 +95,18 @@ else
             : items.OrderByDescending(x => x.MaximalSpanOccurrenceCount);
     }
 
-    private async Task CleanupJsObservers(List<AnalyzedSpan> spansToClean)
-    {
-        for (int i = 0; i < spansToClean.Count; i++)
-        {
-            var containerId = $"word-tree-container-{i}";
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("disposeTree", containerId);
-            }
-            catch (JSDisconnectedException)
-            {
-                // ignore if nav away
-            }
-        }
-    }
-
     public async ValueTask DisposeAsync()
     {
         RuntimeSettings.OnChanged -= OnSettingsChanged;
-        await CleanupJsObservers(_spansOnPage);
+        try
+        {
+            // Clean up everything by telling JS to clear 0 trees, which will
+            // trigger the cleanup logic for all existing observers.
+            await JSRuntime.InvokeVoidAsync("clearAllTreesAndShowSpinners", 0);
+        }
+        catch (JSDisconnectedException)
+        {
+            // ignore if nav away
+        }
     }
 }

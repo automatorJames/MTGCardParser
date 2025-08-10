@@ -2,22 +2,17 @@
 import { WordTree } from "./word-tree-animator.js";
 import { WordTree as RendererTree } from "./word-tree-renderer.js";
 
-// === Type Definitions ===
+// === Type Definitions and Module State (Unchanged) ===
 type CardElement = HTMLElement & { __data?: AnalyzedSpan };
-
 interface WordTreeObserver {
     observer: ResizeObserver;
     animationFrameId: number | null;
 }
-
-// === Module State ===
 const wordTreeObservers = new Map<string, WordTreeObserver>();
 const globalEventSetup = { initialized: false };
 
-// --- This file is now free of the old "prepareColorMap" helper ---
-// --- It uses the new palette system passed down from Blazor ---
-
-// === Global Event Handlers, Event Helpers, and Animation Logic (Unchanged) ===
+// === Global Event Handlers, Animation, and Drawing Logic (Unchanged) ===
+// ... (All functions from setupGlobalEventHandlers to recalculateAndDraw remain unchanged)
 function setupGlobalEventHandlers(): void {
     if (globalEventSetup.initialized) return;
 
@@ -141,7 +136,6 @@ function animateResetState(containerId: string, card: CardElement): void {
     });
 }
 
-// === Drawing and Layout ===
 
 function recalculateAndDraw(container: HTMLElement): void {
     const card = container.closest<CardElement>('.span-trees-card');
@@ -158,7 +152,6 @@ function recalculateAndDraw(container: HTMLElement): void {
         horizontalPadding: 20, gradientTransitionRatio: 0.1
     };
 
-    // --- NEW: Create color maps from the new PositionalPalette ---
     const cardNameToPaletteMap = new Map<string, DeterministicPalette>();
     analyzedSpan.containingCards.forEach((cardName, index) => {
         if (analyzedSpan.positionalPalette[index]) {
@@ -181,7 +174,6 @@ function recalculateAndDraw(container: HTMLElement): void {
     };
     analyzedSpan.precedingAdjacencies.forEach(gatherKeys);
     analyzedSpan.followingAdjacencies.forEach(gatherKeys);
-    // --- End of new color mapping ---
 
     const { width: availableWidth } = container.getBoundingClientRect();
     if (availableWidth <= 0) return;
@@ -224,48 +216,85 @@ function recalculateAndDraw(container: HTMLElement): void {
     RendererTree.Renderer.createNode(svg, mainSpanObject, 0, mainSpanY, false, config, keyToPaletteMap, container.id);
 }
 
-// === Blazor Interop Entrypoints (Unchanged) ===
-export function renderTreeWithSpinner(containerId: string, spinnerId: string, analyzedSpan: AnalyzedSpan): void {
+
+
+// === NEW Blazor Interop Functions ===
+
+/**
+ * A fast, synchronous function to clear all visible trees and show spinners.
+ * It also cleans up observers for any cards that are no longer rendered.
+ * @param {number} count The number of cards that will be rendered.
+ */
+export function clearAllTreesAndShowSpinners(count: number): void {
     setupGlobalEventHandlers();
-    const container = document.getElementById(containerId);
-    const spinner = document.getElementById(spinnerId);
-    if (!container) return;
-    if (spinner) spinner.style.display = 'block';
 
-    const card = container.closest<CardElement>('.span-trees-card');
-    if (card) {
-        card.__data = analyzedSpan;
+    // Clean up any observers that are no longer needed.
+    for (const id of wordTreeObservers.keys()) {
+        const index = parseInt(id.split('-').pop() || '-1');
+        if (index >= count) {
+            const observerData = wordTreeObservers.get(id);
+            if (observerData) {
+                observerData.observer.disconnect();
+                if (observerData.animationFrameId) cancelAnimationFrame(observerData.animationFrameId);
+                wordTreeObservers.delete(id);
+            }
+        }
     }
 
-    if (!wordTreeObservers.has(containerId)) {
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
-        container.appendChild(svg);
-        const resizeObserver = new ResizeObserver(() => recalculateAndDraw(container));
-        resizeObserver.observe(container);
-        wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
-    }
+    // For each card that WILL be rendered, clear it and show the spinner.
+    for (let i = 0; i < count; i++) {
+        const containerId = `word-tree-container-${i}`;
+        const spinnerId = `spinner-${i}`;
+        const container = document.getElementById(containerId);
+        const spinner = document.getElementById(spinnerId);
 
-    recalculateAndDraw(container);
-    if (spinner) spinner.style.display = 'none';
+        if (container) {
+            container.innerHTML = '';
+            container.style.height = ''; // Let it collapse to the spinner's height
+        }
+        if (spinner) {
+            spinner.style.display = 'block';
+        }
+    }
 }
 
-export function disposeTree(containerId: string): void {
-    const observerData = wordTreeObservers.get(containerId);
-    if (observerData) {
-        if (observerData.animationFrameId) {
-            cancelAnimationFrame(observerData.animationFrameId);
-        }
-        observerData.observer.disconnect();
-        wordTreeObservers.delete(containerId);
-    }
-    const container = document.getElementById(containerId);
-    if (container) {
+/**
+ * Renders all the word trees. This function assumes the containers have been
+ * cleared and are showing spinners.
+ * @param {AnalyzedSpan[]} spans The collection of span data to render.
+ */
+export function renderAllTrees(spans: AnalyzedSpan[]): void {
+    spans.forEach((analyzedSpan, index) => {
+        const containerId = `word-tree-container-${index}`;
+        const spinnerId = `spinner-${index}`;
+        const container = document.getElementById(containerId);
+        const spinner = document.getElementById(spinnerId);
+
+        if (!container) return;
+
         const card = container.closest<CardElement>('.span-trees-card');
         if (card) {
-            card.__data = undefined;
+            card.__data = analyzedSpan;
         }
-    }
+
+        // Set up observer if it's new
+        if (!wordTreeObservers.has(containerId)) {
+            const resizeObserver = new ResizeObserver(() => recalculateAndDraw(container));
+            resizeObserver.observe(container);
+            wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
+        }
+
+        // Add the SVG element and draw
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
+        container.appendChild(svg);
+        recalculateAndDraw(container);
+
+        if (spinner) {
+            spinner.style.display = 'none';
+        }
+    });
 }
 
-(window as any).renderTreeWithSpinner = renderTreeWithSpinner;
-(window as any).disposeTree = disposeTree;
+// Expose the new functions to the global scope.
+(window as any).clearAllTreesAndShowSpinners = clearAllTreesAndShowSpinners;
+(window as any).renderAllTrees = renderAllTrees;

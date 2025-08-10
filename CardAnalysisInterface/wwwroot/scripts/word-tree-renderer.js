@@ -197,19 +197,25 @@ export var WordTree;
             const endX = x2 - (direction * config.nodeWidth / 2);
             const midX = (startX + endX) / 2;
             const r = config.cornerRadius;
-            let d;
             const verticalOffset = Math.abs(y2 - y1);
-            const ySign = Math.sign(y2 - y1);
-            const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
-            const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
+            let d;
+            // FIX 1: Explicitly handle perfectly horizontal lines.
             if (verticalOffset < 1e-6) {
                 d = `M ${startX} ${y1} L ${endX} ${y2}`;
             }
             else if (verticalOffset < r * 2) {
+                // Case for shallow curves where full radius isn't possible.
                 const smallR = verticalOffset / 2;
+                const ySign = Math.sign(y2 - y1);
+                const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
+                const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
                 d = `M ${startX} ${y1} L ${midX - smallR * direction} ${y1} A ${smallR} ${smallR} 0 0 ${sweepFlag1} ${midX} ${y1 + smallR * ySign} A ${smallR} ${smallR} 0 0 ${sweepFlag2} ${midX + smallR * direction} ${y2} L ${endX} ${y2}`;
             }
             else {
+                // Standard case for curved connectors.
+                const ySign = Math.sign(y2 - y1);
+                const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
+                const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
                 d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
             }
             const parentKeys = parentData.id === 'main-anchor' ? allKeys : new Set(parentData.sourceOccurrenceKeys || []);
@@ -229,14 +235,37 @@ export var WordTree;
                     const idSuffix = `${containerId}-${childData.id}`;
                     const baseGradientId = `grad-conn-base-${idSuffix}`;
                     const highlightGradientId = `grad-conn-highlight-${idSuffix}`;
+                    // FIX 2: Correctly define the gradient with proper units and orientation.
                     const createGradient = (id, colorProp) => {
                         const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         gradient.setAttribute('id', id);
-                        gradient.innerHTML = _createGradientStops(commonKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
+                        gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+                        const deltaX = endX - startX;
+                        const deltaY = y2 - y1;
+                        // Set gradient vector to match the dominant direction of the line
+                        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                            gradient.setAttribute('x1', '0');
+                            gradient.setAttribute('y1', `${y1}`);
+                            gradient.setAttribute('x2', '0');
+                            gradient.setAttribute('y2', `${y2}`);
+                        }
+                        else {
+                            gradient.setAttribute('x1', `${startX}`);
+                            gradient.setAttribute('y1', '0');
+                            gradient.setAttribute('x2', `${endX}`);
+                            gradient.setAttribute('y2', '0');
+                        }
+                        // Keys must be reversed to match original JS logic for gradient direction
+                        const reversedKeys = [...commonKeys].reverse();
+                        gradient.innerHTML = _createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
                         return gradient;
                     };
-                    defs.appendChild(createGradient(baseGradientId, 'hex'));
-                    defs.appendChild(createGradient(highlightGradientId, 'hexLight'));
+                    if (!defs.querySelector(`#${baseGradientId}`)) {
+                        defs.appendChild(createGradient(baseGradientId, 'hex'));
+                    }
+                    if (!defs.querySelector(`#${highlightGradientId}`)) {
+                        defs.appendChild(createGradient(highlightGradientId, 'hexLight'));
+                    }
                     basePath.style.stroke = `url(#${baseGradientId})`;
                     highlightPath.style.stroke = `url(#${highlightGradientId})`;
                 }
