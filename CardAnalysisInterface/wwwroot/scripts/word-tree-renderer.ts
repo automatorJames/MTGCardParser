@@ -1,4 +1,7 @@
-﻿import { AdjacencyNode } from './models.js';
+﻿import { AdjacencyNode, DeterministicPalette } from './models.js';
+
+// This file contains all the logic for calculating layout and drawing the SVG.
+// It is self-contained and does not handle events or animation.
 
 export namespace WordTree.Renderer {
 
@@ -19,30 +22,36 @@ export namespace WordTree.Renderer {
         gradientTransitionRatio: number;
     }
 
-    function _createGradientStops(keys: string[], keyToColor: Map<string, string>, transitionRatio: number): string {
+    /**
+     * Generates SVG <stop> elements for a gradient.
+     * @private
+     */
+    function _createGradientStops(
+        keys: string[],
+        keyToPaletteMap: Map<string, DeterministicPalette>,
+        colorProperty: 'hex' | 'hexLight',
+        transitionRatio: number
+    ): string {
         const numKeys = keys.length;
-        const clampedRatio = Math.max(0, Math.min(1, transitionRatio));
+        if (numKeys === 0) return '';
 
-        if (numKeys <= 1 || clampedRatio === 0) {
-            let stops = '';
-            const keyList = numKeys > 0 ? keys : ['default'];
-            const numSegments = keyList.length;
-            keyList.forEach((key, i) => {
-                const color = keyToColor.get(key) || '#ccc';
-                stops += `<stop offset="${(i / numSegments) * 100}%" stop-color="${color}" /><stop offset="${((i + 1) / numSegments) * 100}%" stop-color="${color}" />`;
-            });
-            return stops;
+        // Fallback for a simple case of a single color.
+        if (numKeys === 1) {
+            const palette = keyToPaletteMap.get(keys[0]);
+            const color = palette ? palette[colorProperty] : '#ccc';
+            return `<stop offset="0%" stop-color="${color}" /><stop offset="100%" stop-color="${color}" />`;
         }
 
+        const clampedRatio = Math.max(0, Math.min(1, transitionRatio));
         const transitionZoneWidth = (1 / numKeys) * clampedRatio;
         const halfTransition = transitionZoneWidth / 2;
         let stopsHtml = '';
 
         keys.forEach((key, i) => {
-            const color = keyToColor.get(key) || '#ccc';
+            const palette = keyToPaletteMap.get(key);
+            const color = palette ? palette[colorProperty] : '#ccc';
             const bandStart = i / numKeys;
             const bandEnd = (i + 1) / numKeys;
-
             const solidStartOffset = (i === 0) ? bandStart : bandStart + halfTransition;
             const solidEndOffset = (i === numKeys - 1) ? bandEnd : bandEnd - halfTransition;
 
@@ -53,13 +62,14 @@ export namespace WordTree.Renderer {
         return stopsHtml;
     }
 
-    export function preCalculateAllNodeMetrics(node: AdjacencyNode, isAnchor: boolean, config: NodeConfig, svg: SVGSVGElement): void {
+    // Unchanged functions: preCalculateAllNodeMetrics, getNodeMetrics, calculateLayout...
+    export function preCalculateAllNodeMetrics(node: any, isAnchor: boolean, config: NodeConfig, svg: SVGSVGElement): void {
         if (!node) return;
         const metrics = getNodeMetrics(node.text, isAnchor, config, svg);
         node.dynamicHeight = metrics.dynamicHeight;
         node.wrappedLines = metrics.wrappedLines;
         node.lineHeight = metrics.lineHeight;
-        if (node.children) node.children.forEach(child => preCalculateAllNodeMetrics(child, false, config, svg));
+        if (node.children) node.children.forEach((child: AdjacencyNode) => preCalculateAllNodeMetrics(child, false, config, svg));
     }
 
     export function getNodeMetrics(text: string, isAnchor: boolean, config: NodeConfig, svg: SVGSVGElement): { dynamicHeight: number, wrappedLines: string[], lineHeight: number } {
@@ -70,7 +80,6 @@ export namespace WordTree.Renderer {
         const fontWeight = isAnchor ? 'bold' : 'normal';
         const lineHeight = isAnchor ? config.mainSpanLineHeight : 14;
         const availableWidth = nodeWidth - padding * 2;
-
         const tempText = document.createElementNS("http://www.w3.org/2000/svg", "text");
         tempText.setAttribute('class', 'node-text');
         tempText.style.fontSize = `${fontSize}px`;
@@ -78,7 +87,6 @@ export namespace WordTree.Renderer {
         const tempTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
         tempText.appendChild(tempTspan);
         svg.appendChild(tempText);
-
         const words = nodeText.split(' ');
         let currentLine = '';
         const wrappedLines: string[] = [];
@@ -94,29 +102,23 @@ export namespace WordTree.Renderer {
         }
         wrappedLines.push(currentLine);
         svg.removeChild(tempText);
-
         const totalTextHeight = wrappedLines.length * lineHeight;
         const dynamicHeight = Math.max(config.nodeHeight, totalTextHeight + padding * 2);
-
         return { dynamicHeight, wrappedLines, lineHeight };
     }
 
     export function calculateLayout(nodes: AdjacencyNode[], depth: number, parentX: number, parentY: number, direction: number, config: NodeConfig): { layout: AdjacencyNode[], totalHeight: number } {
         if (!nodes || nodes.length === 0) return { layout: [], totalHeight: 0 };
-
         const layoutInfo: AdjacencyNode[] = [];
         const nodeMetrics: { node: AdjacencyNode, effectiveHeight: number }[] = [];
-
         for (const node of nodes) {
             const childrenResult = calculateLayout(node.children, depth + 1, 0, 0, direction, config);
             node.childrenLayout = childrenResult.layout;
             const effectiveHeight = Math.max(node.dynamicHeight, childrenResult.totalHeight);
             nodeMetrics.push({ node, effectiveHeight });
         }
-
         const totalGroupHeight = nodeMetrics.reduce((sum, metric) => sum + metric.effectiveHeight, 0) + Math.max(0, nodes.length - 1) * config.vGap;
         let currentY = parentY - totalGroupHeight / 2;
-
         for (const metric of nodeMetrics) {
             const { node, effectiveHeight } = metric;
             const parentWidth = (depth === 0) ? config.mainSpanWidth : config.nodeWidth;
@@ -125,7 +127,6 @@ export namespace WordTree.Renderer {
             const nodeY = currentY + effectiveHeight / 2;
             node.layout = { x: nodeX, y: nodeY };
             layoutInfo.push(node);
-
             for (const childNode of node.childrenLayout) {
                 childNode.layout.x += nodeX;
                 childNode.layout.y += nodeY;
@@ -136,78 +137,78 @@ export namespace WordTree.Renderer {
         return { layout: layoutInfo, totalHeight: totalGroupHeight };
     }
 
-    export function drawNodesAndConnectors(svg: SVGSVGElement, nodes: AdjacencyNode[], parentData: any, parentX: number, parentY: number, direction: number, config: NodeConfig, keyToColor: Map<string, string>, allKeys: Set<string>, containerId: string): void {
+    export function drawNodesAndConnectors(svg: SVGSVGElement, nodes: AdjacencyNode[], parentData: any, parentX: number, parentY: number, direction: number, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, allKeys: Set<string>, containerId: string): void {
         if (!nodes) return;
         for (const node of nodes) {
             const { x: nodeX, y: nodeY } = node.layout;
-            createRoundedConnector(svg, parentData, node, parentX, parentY, nodeX, nodeY, direction, config, keyToColor, allKeys, containerId);
-            createNode(svg, node, nodeX, nodeY, true, config, keyToColor, containerId);
-            drawNodesAndConnectors(svg, node.children, node, nodeX, nodeY, direction, config, keyToColor, allKeys, containerId);
+            createRoundedConnector(svg, parentData, node, parentX, parentY, nodeX, nodeY, direction, config, keyToPaletteMap, allKeys, containerId);
+            createNode(svg, node, nodeX, nodeY, true, config, keyToPaletteMap, containerId);
+            if (node.children) {
+                drawNodesAndConnectors(svg, node.children, node, nodeX, nodeY, direction, config, keyToPaletteMap, allKeys, containerId);
+            }
         }
     }
 
-    export function createNode(svg: SVGSVGElement, nodeData: any, cx: number, cy: number, isAdjacencyNode: boolean, config: NodeConfig, keyToColor: Map<string, string>, containerId: string): void {
+    export function createNode(svg: SVGSVGElement, nodeData: any, cx: number, cy: number, isAdjacencyNode: boolean, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, containerId: string): void {
         const { dynamicHeight, wrappedLines, lineHeight } = nodeData;
-
         const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
         group.setAttribute('class', 'node-group');
-        if (isAdjacencyNode) {
-            group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceKeys || []);
-        } else {
-            group.classList.add('anchor-node-group');
-        }
 
         const nodeWidth = isAdjacencyNode ? config.nodeWidth : config.mainSpanWidth;
+        const baseShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        baseShape.setAttribute('class', 'node-shape base-layer');
+        baseShape.setAttribute('x', `${-nodeWidth / 2}`); baseShape.setAttribute('y', `${-dynamicHeight / 2}`);
+        baseShape.setAttribute('width', `${nodeWidth}`); baseShape.setAttribute('height', `${dynamicHeight}`); baseShape.setAttribute('rx', "8");
 
-        const shape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        shape.setAttribute('class', 'node-shape base-layer');
-        shape.setAttribute('x', (-nodeWidth / 2).toString());
-        shape.setAttribute('y', (-dynamicHeight / 2).toString());
-        shape.setAttribute('width', nodeWidth.toString());
-        shape.setAttribute('height', dynamicHeight.toString());
-        shape.setAttribute('rx', "8");
-
-        const highlightShape = shape.cloneNode() as SVGRectElement;
+        const highlightShape = baseShape.cloneNode() as SVGRectElement;
         highlightShape.classList.remove('base-layer');
         highlightShape.setAttribute('class', 'highlight-overlay');
 
-        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        textEl.setAttribute('class', 'node-text');
-
-        if (!isAdjacencyNode) {
-            shape.style.fill = config.mainSpanFill;
-            shape.style.setProperty('--node-border-color', config.mainSpanColor);
-            textEl.style.fontSize = `${config.mainSpanFontSize}px`;
-            textEl.style.fontWeight = 'bold';
-        } else {
-            const keys = nodeData.sourceOccurrenceKeys || [];
-            if (keys.length > 1) {
-                const defs = svg.querySelector('defs');
-                if (defs) {
-                    const gradientId = `grad-node-${containerId}-${nodeData.id}`;
-                    if (!defs.querySelector(`#${gradientId}`)) {
-                        const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                        gradient.setAttribute('id', gradientId);
-                        gradient.innerHTML = _createGradientStops(keys, keyToColor, config.gradientTransitionRatio);
-                        defs.appendChild(gradient);
-                    }
-                    shape.style.stroke = `url(#${gradientId})`;
-                }
-            } else if (keys.length === 1) {
-                shape.style.setProperty('--node-border-color', keyToColor.get(keys[0]) || '#ccc');
-            }
-        }
-
-        group.appendChild(shape);
+        group.appendChild(baseShape);
         group.appendChild(highlightShape);
 
-        const totalTextHeight = wrappedLines.length * lineHeight;
-        let startY = -totalTextHeight / 2 + lineHeight * 0.8;
+        if (isAdjacencyNode) {
+            group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceKeys || []);
+            const keys = nodeData.sourceOccurrenceKeys || [];
+            if (keys.length > 0) {
+                const defs = svg.querySelector('defs');
+                if (defs) {
+                    // Create gradient for the base color
+                    const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
+                    const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+                    baseGradient.setAttribute('id', baseGradientId);
+                    baseGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
+                    defs.appendChild(baseGradient);
+                    baseShape.style.stroke = `url(#${baseGradientId})`;
 
+                    // Create gradient for the highlight color
+                    const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
+                    const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+                    highlightGradient.setAttribute('id', highlightGradientId);
+                    highlightGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hexLight', config.gradientTransitionRatio);
+                    defs.appendChild(highlightGradient);
+                    highlightShape.style.stroke = `url(#${highlightGradientId})`;
+                }
+            }
+        } else {
+            group.classList.add('anchor-node-group');
+            baseShape.style.fill = config.mainSpanFill;
+            baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
+        }
+
+        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textEl.setAttribute('class', 'node-text');
+        if (!isAdjacencyNode) {
+            textEl.style.fontSize = `${config.mainSpanFontSize}px`;
+            textEl.style.fontWeight = 'bold';
+        }
+
+        const totalTextHeight = wrappedLines.length * lineHeight;
+        const startY = -totalTextHeight / 2 + lineHeight * 0.8;
         wrappedLines.forEach((line: string, i: number) => {
             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-            tspan.setAttribute('x', "0");
-            tspan.setAttribute('dy', (i === 0 ? startY : lineHeight).toString());
+            tspan.setAttribute('x', '0');
+            tspan.setAttribute('dy', i === 0 ? `${startY}` : `${lineHeight}`);
             tspan.textContent = line;
             textEl.appendChild(tspan);
         });
@@ -217,33 +218,28 @@ export namespace WordTree.Renderer {
         svg.appendChild(group);
     }
 
-    export function createRoundedConnector(svg: SVGSVGElement, parentData: any, childData: AdjacencyNode, x1: number, y1: number, x2: number, y2: number, direction: number, config: NodeConfig, keyToColor: Map<string, string>, allKeys: Set<string>, containerId: string): void {
+    export function createRoundedConnector(svg: SVGSVGElement, parentData: any, childData: AdjacencyNode, x1: number, y1: number, x2: number, y2: number, direction: number, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, allKeys: Set<string>, containerId: string): void {
         const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
         const startX = x1 + (direction * parentWidth / 2);
         const endX = x2 - (direction * config.nodeWidth / 2);
         const midX = (startX + endX) / 2;
         const r = config.cornerRadius;
-        const verticalOffset = Math.abs(y2 - y1);
-
         let d: string;
+        const verticalOffset = Math.abs(y2 - y1);
+        const ySign = Math.sign(y2 - y1);
+        const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
+        const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
 
         if (verticalOffset < 1e-6) {
             d = `M ${startX} ${y1} L ${endX} ${y2}`;
         } else if (verticalOffset < r * 2) {
             const smallR = verticalOffset / 2;
-            const ySign = Math.sign(y2 - y1);
-            const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
-            const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
             d = `M ${startX} ${y1} L ${midX - smallR * direction} ${y1} A ${smallR} ${smallR} 0 0 ${sweepFlag1} ${midX} ${y1 + smallR * ySign} A ${smallR} ${smallR} 0 0 ${sweepFlag2} ${midX + smallR * direction} ${y2} L ${endX} ${y2}`;
         } else {
-            const ySign = Math.sign(y2 - y1);
-            const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
-            const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
             d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
         }
 
-        const parentIsAnchor = parentData.id === 'main-anchor';
-        const parentKeys = parentIsAnchor ? allKeys : new Set<string>(parentData.sourceOccurrenceKeys || []);
+        const parentKeys = parentData.id === 'main-anchor' ? allKeys : new Set<string>(parentData.sourceOccurrenceKeys || []);
         const childKeys = new Set<string>(childData.sourceOccurrenceKeys || []);
         const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
 
@@ -258,41 +254,27 @@ export namespace WordTree.Renderer {
         highlightPath.classList.remove('base-layer');
         highlightPath.setAttribute('class', 'highlight-overlay');
 
-
-        if (commonKeys.length > 1) {
+        if (commonKeys.length > 0) {
             const defs = svg.querySelector('defs');
             if (defs) {
-                const gradientId = `grad-connector-${containerId}-${childData.id}`;
-                if (!defs.querySelector(`#${gradientId}`)) {
+                const idSuffix = `${containerId}-${childData.id}`;
+                const baseGradientId = `grad-conn-base-${idSuffix}`;
+                const highlightGradientId = `grad-conn-highlight-${idSuffix}`;
+
+                const createGradient = (id: string, colorProp: 'hex' | 'hexLight') => {
                     const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                    gradient.setAttribute('id', gradientId);
-                    gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
-
-                    const deltaX = endX - startX;
-                    const deltaY = y2 - y1;
-
-                    if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                        gradient.setAttribute('x1', startX.toString());
-                        gradient.setAttribute('y1', y1.toString());
-                        gradient.setAttribute('x2', startX.toString());
-                        gradient.setAttribute('y2', y2.toString());
-                    } else {
-                        gradient.setAttribute('x1', startX.toString());
-                        gradient.setAttribute('y1', y1.toString());
-                        gradient.setAttribute('x2', endX.toString());
-                        gradient.setAttribute('y2', y1.toString());
-                    }
-
-                    const reversedKeys = [...commonKeys].reverse();
-                    gradient.innerHTML = _createGradientStops(reversedKeys, keyToColor, config.gradientTransitionRatio);
-                    defs.appendChild(gradient);
+                    gradient.setAttribute('id', id);
+                    gradient.innerHTML = _createGradientStops(commonKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
+                    return gradient;
                 }
-                basePath.style.stroke = `url(#${gradientId})`;
-            }
-        } else if (commonKeys.length === 1) {
-            basePath.style.setProperty('--node-border-color', keyToColor.get(commonKeys[0]) || '#ccc');
-        }
 
+                defs.appendChild(createGradient(baseGradientId, 'hex'));
+                defs.appendChild(createGradient(highlightGradientId, 'hexLight'));
+
+                basePath.style.stroke = `url(#${baseGradientId})`;
+                highlightPath.style.stroke = `url(#${highlightGradientId})`;
+            }
+        }
 
         connectorGroup.appendChild(basePath);
         connectorGroup.appendChild(highlightPath);
