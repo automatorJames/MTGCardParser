@@ -11,10 +11,12 @@ public record DeterministicPalette
     public string Hex { get; private set; }
     public string HexLight { get; private set; }
     public string HexDark { get; private set; }
+    public string HexSat { get; private set; } 
 
     private const double BaseSaturation = 0.9;
     private const double LightSaturation = 0.9;
     private const double DarkSaturation = 0.3;
+    private const double SatBoost = 0.3;        
 
     private const double BaseLightness = 0.6;
     private const double LightLightness = 0.8;
@@ -85,7 +87,6 @@ public record DeterministicPalette
         }
     }
 
-
     void SetFromSeed(string seed, double? baseSaturation = null, double? baseLightness = null)
     {
         baseSaturation ??= BaseSaturation;
@@ -95,24 +96,26 @@ public record DeterministicPalette
         double hue = unsignedHash / (double)uint.MaxValue;
         Hex = HslToHex(hue, baseSaturation.Value, baseLightness.Value);
         SetLightDarkFromHue(hue);
+        HexSat = HslToHex(hue, Math.Min(1.0, baseSaturation.Value + SatBoost), baseLightness.Value);
     }
 
     void SetFromColor(HexColor color)
     {
         Hex = color.Value;
 
-        // Check if the provided color is grayscale first.
         if (IsGrayscale(Hex))
         {
-            // If it is, use the dedicated AdjustLightness logic which forces saturation to 0.
             HexLight = AdjustLightness(Hex, LightLightness);
             HexDark = AdjustLightness(Hex, DarkLightness);
+            HexSat = Hex; // keep grayscale intact
         }
         else
         {
-            // Otherwise, proceed with the normal hue-based calculation.
             var hue = HexToHue(Hex);
             SetLightDarkFromHue(hue);
+
+            var (h, s, l) = HexToHsl(Hex);
+            HexSat = HslToHex(h, Math.Min(1.0, s + SatBoost), l);
         }
     }
 
@@ -122,6 +125,7 @@ public record DeterministicPalette
         Hex = rainbowMember.Description();
         var hue = HexToHue(Hex);
         SetLightDarkFromHue(hue);
+        HexSat = HslToHex(hue, Math.Min(1.0, BaseSaturation + SatBoost), BaseLightness);
     }
 
     void SetLightDarkFromHue(double hue)
@@ -130,10 +134,6 @@ public record DeterministicPalette
         HexDark = HslToHex(hue, DarkSaturation, DarkLightness);
     }
 
-    // --- NEW HELPER METHOD ---
-    /// <summary>
-    /// Determines if a hex color is grayscale by checking if its R, G, and B components are equal.
-    /// </summary>
     static bool IsGrayscale(string hex)
     {
         if (string.IsNullOrEmpty(hex)) return false;
@@ -149,7 +149,7 @@ public record DeterministicPalette
         }
         catch
         {
-            return false; // Invalid format
+            return false;
         }
     }
 
@@ -195,12 +195,10 @@ public record DeterministicPalette
         if (hex.Length != 6)
             throw new ArgumentException("Hex must be 6 characters long.", nameof(hex));
 
-        // Parse RGB components
         byte r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
         byte g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
         byte b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
 
-        // Normalize to [0,1]
         double rNorm = r / 255.0;
         double gNorm = g / 255.0;
         double bNorm = b / 255.0;
@@ -216,10 +214,45 @@ public record DeterministicPalette
             hue = 60 * (((gNorm - bNorm) / delta + 6) % 6);
         else if (max == gNorm)
             hue = 60 * ((bNorm - rNorm) / delta + 2);
-        else // max == bNorm
+        else
             hue = 60 * ((rNorm - gNorm) / delta + 4);
 
         return hue / 360.0;
+    }
+
+    static (double h, double s, double l) HexToHsl(string hex)
+    {
+        if (hex.StartsWith("#")) hex = hex[1..];
+        if (hex.Length != 6)
+            throw new ArgumentException("Hex must be 6 characters long.", nameof(hex));
+
+        byte r = byte.Parse(hex[..2], NumberStyles.HexNumber);
+        byte g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
+        byte b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
+
+        double rn = r / 255.0, gn = g / 255.0, bn = b / 255.0;
+        double max = Math.Max(rn, Math.Max(gn, bn));
+        double min = Math.Min(rn, Math.Min(gn, bn));
+        double l = (max + min) / 2.0;
+
+        double h, s;
+        if (max == min)
+        {
+            h = 0; s = 0;
+        }
+        else
+        {
+            double d = max - min;
+            s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min);
+
+            if (max == rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
+            else if (max == gn) h = (bn - rn) / d + 2;
+            else h = (rn - gn) / d + 4;
+
+            h /= 6.0;
+        }
+
+        return (h, s, l);
     }
 
     static double HueToRgb(double p, double q, double t)
@@ -232,12 +265,8 @@ public record DeterministicPalette
         return p;
     }
 
-    /// <summary>
-    /// Creates a grayscale hex color with a specific lightness.
-    /// </summary>
     static string AdjustLightness(string hex, double newLightness)
     {
-        // This function is perfect. It correctly forces saturation to 0.
         return HslToHex(0, 0, newLightness);
     }
 
@@ -252,7 +281,7 @@ public record DeterministicPalette
         float hueEnd = 0f;     // red
         float hueRange = hueStart - hueEnd;
 
-        float saturation = 0.8f;  // Match #F43DCD vibe
+        float saturation = 0.8f;
         float value = 0.96f;
 
         for (int i = 0; i < numberOfItems; i++)

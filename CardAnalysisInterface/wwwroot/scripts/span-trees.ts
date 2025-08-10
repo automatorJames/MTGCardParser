@@ -136,7 +136,6 @@ function animateResetState(containerId: string, card: CardElement): void {
     });
 }
 
-
 function recalculateAndDraw(container: HTMLElement): void {
     const card = container.closest<CardElement>('.span-trees-card');
     const analyzedSpan = card?.__data;

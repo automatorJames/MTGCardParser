@@ -18,10 +18,6 @@ public record AnalyzedSpan
     [JsonPropertyName("followingAdjacencies")]
     public List<AdjacencyNode> FollowingAdjacencies { get; init; }
 
-    /// <summary>A dictionary mapping Card Names to their positional hex color codes for the UI.</summary>
-    [JsonPropertyName("cardColors")]
-    public Dictionary<string, string> CardColors { get; init; } = [];
-
     public Dictionary<int, DeterministicPalette> PositionalPalette { get; init; }
 
     [JsonIgnore]
@@ -88,9 +84,6 @@ public record AnalyzedSpan
         ContainingCards = OccurrencesPerCard.Select(x => x.Key).ToArray();
 
         PositionalPalette = DeterministicPalette.GetPositionalPalette(ContainingCards.Length);
-
-        for (int i = 0; i < ContainingCards.Length; i++)
-            CardColors[ContainingCards[i]] = PositionalPalette[i].Hex;
     }
 
     public override string ToString() => $"'{Text}' (Total: {TotalOccurrenceCount} | Maximal: {MaximalSpanOccurrenceCount})";
