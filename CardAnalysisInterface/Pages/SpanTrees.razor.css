@@ -78,7 +78,7 @@
 }
 
 .span-trees-card.highlight-active .card-name-item.highlight {
-    border-color: white !important;
+    border-color: var(--sat-color);
     color: var(--highlight-color);
     opacity: 1;
 }

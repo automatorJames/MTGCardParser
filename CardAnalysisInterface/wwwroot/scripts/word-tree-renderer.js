@@ -6,10 +6,11 @@ export var WordTree;
     var Renderer;
     (function (Renderer) {
         /**
-         * Generates SVG <stop> elements for a gradient.
-         * @private
+         * EXPORTED: Generates SVG <stop> elements for a gradient. This is now
+         * exported to be used for dynamic gradient updates on hover.
          */
-        function _createGradientStops(keys, keyToPaletteMap, colorProperty, transitionRatio) {
+        function createGradientStops(keys, keyToPaletteMap, colorProperty, // 'hexLight' has been removed
+        transitionRatio) {
             const numKeys = keys.length;
             if (numKeys === 0)
                 return '';
@@ -34,6 +35,7 @@ export var WordTree;
             });
             return stopsHtml;
         }
+        Renderer.createGradientStops = createGradientStops;
         function preCalculateAllNodeMetrics(node, isAnchor, config, svg) {
             if (!node)
                 return;
@@ -129,6 +131,12 @@ export var WordTree;
             const { dynamicHeight, wrappedLines, lineHeight } = nodeData;
             const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
             group.setAttribute('class', 'node-group');
+            if (isAdjacencyNode) {
+                group.id = `group-node-${containerId}-${nodeData.id}`;
+            }
+            else {
+                group.id = `group-node-${containerId}-main-anchor`;
+            }
             const nodeWidth = isAdjacencyNode ? config.nodeWidth : config.mainSpanWidth;
             const baseShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             baseShape.setAttribute('class', 'node-shape base-layer');
@@ -151,13 +159,14 @@ export var WordTree;
                         const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                         const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         baseGradient.setAttribute('id', baseGradientId);
-                        baseGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
+                        baseGradient.innerHTML = createGradientStops(keys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
                         defs.appendChild(baseGradient);
                         baseShape.style.stroke = `url(#${baseGradientId})`;
                         const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                         const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         highlightGradient.setAttribute('id', highlightGradientId);
-                        highlightGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hexLight', config.gradientTransitionRatio);
+                        // UPDATED: Use 'hexSat' for the initial render.
+                        highlightGradient.innerHTML = createGradientStops(keys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
                         defs.appendChild(highlightGradient);
                         highlightShape.style.stroke = `url(#${highlightGradientId})`;
                     }
@@ -212,13 +221,12 @@ export var WordTree;
                 const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
                 d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
             }
-            // OPTIMIZED: Use the pre-calculated Set on each node, removing the need
-            // to create new Sets during the render loop.
             const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set());
             const childKeys = childData.sourceKeysSet || new Set();
             const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
             const connectorGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             connectorGroup.dataset.sourceKeys = JSON.stringify(commonKeys);
+            connectorGroup.id = `group-conn-${containerId}-${childData.id}`;
             const basePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
             basePath.setAttribute('class', 'connector-path base-layer');
             basePath.setAttribute('d', d);
@@ -250,14 +258,15 @@ export var WordTree;
                             gradient.setAttribute('y2', '0');
                         }
                         const reversedKeys = [...commonKeys].reverse();
-                        gradient.innerHTML = _createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
+                        gradient.innerHTML = createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
                         return gradient;
                     };
                     if (!defs.querySelector(`#${baseGradientId}`)) {
                         defs.appendChild(createGradient(baseGradientId, 'hex'));
                     }
                     if (!defs.querySelector(`#${highlightGradientId}`)) {
-                        defs.appendChild(createGradient(highlightGradientId, 'hexLight'));
+                        // UPDATED: Use 'hexSat' for the initial render.
+                        defs.appendChild(createGradient(highlightGradientId, 'hexSat'));
                     }
                     basePath.style.stroke = `url(#${baseGradientId})`;
                     highlightPath.style.stroke = `url(#${highlightGradientId})`;

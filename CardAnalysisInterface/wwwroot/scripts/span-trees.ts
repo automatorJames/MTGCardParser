@@ -6,7 +6,6 @@ import { WordTree as RendererTree } from "./word-tree-renderer.js";
 
 // === Type Definitions and Module State ===
 
-// CardElement now stores the fully processed data structure, optimized for the client.
 type CardElement = HTMLElement & { __data?: ProcessedAnalyzedSpan };
 
 interface WordTreeObserver {
@@ -19,16 +18,7 @@ const globalEventSetup = { initialized: false };
 
 // === One-Time Data Processing Function ===
 
-/**
- * Converts the raw AnalyzedSpan from the server into a fully processed,
- * renderer-optimized structure. It creates Maps and Sets and augments the node
- * tree with pre-calculated key sets. This is called only once per card.
- * @param {AnalyzedSpan} rawSpan The raw data from JSON.
- * @returns {ProcessedAnalyzedSpan} The data structure ready for rendering.
- */
 function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
-    // Augment the node tree by adding a pre-calculated 'sourceKeysSet' to each node
-    // for efficient use by the renderer.
     const traverseAndAugmentNodes = (nodes: AdjacencyNode[]): void => {
         for (const node of nodes) {
             node.sourceKeysSet = new Set(node.sourceOccurrenceKeys);
@@ -37,11 +27,8 @@ function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
             }
         }
     };
-
     traverseAndAugmentNodes(rawSpan.precedingAdjacencies);
     traverseAndAugmentNodes(rawSpan.followingAdjacencies);
-
-    // Return the final processed object with Maps and Sets.
     return {
         ...rawSpan,
         keyToPaletteMap: new Map(Object.entries(rawSpan.keyToPaletteMap)),
@@ -106,8 +93,6 @@ function handleCardNameHover(containerId: string, card: CardElement, cardNameIte
     const cardName = cardNameItem.dataset.cardName;
     const processedData = card.__data;
     if (!cardName || !processedData) return;
-
-    // Use the pre-calculated map from the server data for an instant lookup.
     const keysForCard = processedData.cardNameToKeysMap[cardName] || [];
     animateHighlightState(containerId, card, new Set(keysForCard));
 }
@@ -116,37 +101,58 @@ function handleCardMouseOut(containerId: string, card: CardElement): void {
     animateResetState(containerId, card);
 }
 
-function animateHighlightState(containerId: string, card: CardElement, activeKeys: Set<string>): void {
+function animateHighlightState(containerId: string, card: CardElement, filterKeys: Set<string>): void {
     const svg = document.getElementById(containerId)?.querySelector('svg');
     const animationManager = wordTreeObservers.get(containerId);
-    if (!svg || !animationManager) return;
+    const processedData = card.__data;
+    if (!svg || !animationManager || !processedData) return;
+
+    const defs = svg.querySelector('defs');
+    if (!defs) return;
+
+    const { keyToPaletteMap } = processedData;
+    const config = { gradientTransitionRatio: 0.1 };
 
     const elementsToAnimate = new Map<HTMLElement, { start: number, end: number }>();
     svg.querySelectorAll<HTMLElement>('[data-source-keys]').forEach(el => {
         const elKeys = JSON.parse(el.dataset.sourceKeys || '[]') as string[];
-        const isHighlighted = elKeys.some((k: string) => activeKeys.has(k));
+        const isHighlighted = elKeys.some((k: string) => filterKeys.has(k));
+
         const baseLayer = el.querySelector<HTMLElement>('.base-layer') || el;
         const highlightOverlay = el.querySelector<HTMLElement>('.highlight-overlay');
         const nodeText = el.querySelector<HTMLElement>('.node-text');
-
         const targetOpacity = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
-
         elementsToAnimate.set(baseLayer, { start: parseFloat(getComputedStyle(baseLayer).opacity), end: targetOpacity });
         if (highlightOverlay) elementsToAnimate.set(highlightOverlay, { start: parseFloat(getComputedStyle(highlightOverlay).opacity), end: isHighlighted ? 1 : 0 });
         if (nodeText) elementsToAnimate.set(nodeText, { start: parseFloat(getComputedStyle(nodeText).opacity), end: targetOpacity });
+
+        const idParts = el.id.split('-');
+        const type = idParts[1];
+        const elementId = idParts[idParts.length - 1];
+
+        const keysForGradient = isHighlighted ? elKeys.filter((k: string) => filterKeys.has(k)) : elKeys;
+
+        const baseGradId = `grad-${type}-base-${containerId}-${elementId}`;
+        const highlightGradId = `grad-${type}-highlight-${containerId}-${elementId}`;
+        const baseGrad = defs.querySelector(`#${baseGradId}`);
+        const highlightGrad = defs.querySelector(`#${highlightGradId}`);
+
+        if (baseGrad) {
+            baseGrad.innerHTML = RendererTree.Renderer.createGradientStops(keysForGradient, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
+        }
+        if (highlightGrad) {
+            highlightGrad.innerHTML = RendererTree.Renderer.createGradientStops(keysForGradient, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
+        }
     });
 
     WordTree.Animator.animateOpacity(elementsToAnimate, animationManager);
 
     card.classList.add('highlight-active');
     const headerNameItems = Array.from(card.querySelectorAll<HTMLElement>('[data-card-name]'));
-
     const relevantCardNames = new Set<string>();
-    activeKeys.forEach(key => {
-        const cardName = key.substring(0, key.indexOf('['));
-        relevantCardNames.add(cardName);
+    filterKeys.forEach(key => {
+        relevantCardNames.add(key.substring(0, key.indexOf('[')));
     });
-
     headerNameItems.forEach(item => {
         const isRelevant = relevantCardNames.has(item.dataset.cardName || '');
         item.classList.toggle('highlight', isRelevant);
@@ -157,15 +163,41 @@ function animateHighlightState(containerId: string, card: CardElement, activeKey
 function animateResetState(containerId: string, card: CardElement): void {
     const svg = document.getElementById(containerId)?.querySelector('svg');
     const animationManager = wordTreeObservers.get(containerId);
-    if (!svg || !animationManager) return;
+    const processedData = card.__data;
+    if (!svg || !animationManager || !processedData) return;
+
+    const defs = svg.querySelector('defs');
+    if (!defs) return;
+
+    const { keyToPaletteMap } = processedData;
+    const config = { gradientTransitionRatio: 0.1 };
 
     const elementsToAnimate = new Map<HTMLElement, { start: number, end: number }>();
     svg.querySelectorAll<HTMLElement>('.base-layer, .node-text, .highlight-overlay').forEach(el => {
         const isHighlight = el.classList.contains('highlight-overlay');
         elementsToAnimate.set(el as HTMLElement, { start: parseFloat(getComputedStyle(el).opacity), end: isHighlight ? 0 : 1 });
     });
-
     WordTree.Animator.animateOpacity(elementsToAnimate, animationManager);
+
+    svg.querySelectorAll<HTMLElement>('[data-source-keys]').forEach(el => {
+        const elKeys = JSON.parse(el.dataset.sourceKeys || '[]') as string[];
+        const idParts = el.id.split('-');
+        const type = idParts[1];
+        const elementId = idParts[idParts.length - 1];
+
+        const baseGradId = `grad-${type}-base-${containerId}-${elementId}`;
+        const highlightGradId = `grad-${type}-highlight-${containerId}-${elementId}`;
+        const baseGrad = defs.querySelector(`#${baseGradId}`);
+        const highlightGrad = defs.querySelector(`#${highlightGradId}`);
+
+        if (baseGrad) {
+            baseGrad.innerHTML = RendererTree.Renderer.createGradientStops(elKeys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
+        }
+        if (highlightGrad) {
+            // UPDATED: Reset to 'hexSat' to eliminate the flash of 'hexLight'.
+            highlightGrad.innerHTML = RendererTree.Renderer.createGradientStops(elKeys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
+        }
+    });
 
     card.classList.remove('highlight-active');
     card.querySelectorAll<HTMLElement>('[data-card-name]').forEach(item => {
@@ -173,13 +205,9 @@ function animateResetState(containerId: string, card: CardElement): void {
     });
 }
 
-/**
- * Recalculates layout and redraws the SVG. This function is now maximally
- * efficient, using the pre-processed data directly with no on-the-fly conversions.
- */
 function recalculateAndDraw(container: HTMLElement): void {
     const card = container.closest<CardElement>('.span-trees-card');
-    const processedData = card?.__data; // This is the fully optimized data object
+    const processedData = card?.__data;
     const svg = container.querySelector('svg');
     if (!processedData || !svg) return;
 
@@ -192,8 +220,6 @@ function recalculateAndDraw(container: HTMLElement): void {
         horizontalPadding: 20, gradientTransitionRatio: 0.1
     };
 
-    // EFFICIENT: NO CONVERSIONS.
-    // We directly use the pre-calculated Maps and Sets from the processed data object.
     const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;
 
     const { width: availableWidth } = container.getBoundingClientRect();
@@ -271,11 +297,6 @@ export function clearAllTreesAndShowSpinners(count: number): void {
     }
 }
 
-/**
- * Renders all the word trees. It now calls a processing function to convert
- * the raw server data into a client-optimized structure ONCE.
- * @param {AnalyzedSpan[]} spans The collection of raw span data from the server.
- */
 export function renderAllTrees(spans: AnalyzedSpan[]): void {
     spans.forEach((rawSpan, index) => {
         const containerId = `word-tree-container-${index}`;
@@ -287,7 +308,6 @@ export function renderAllTrees(spans: AnalyzedSpan[]): void {
 
         const card = container.closest<CardElement>('.span-trees-card');
         if (card) {
-            // Process the raw data ONCE to create the final, optimized structure.
             card.__data = processSpanForClient(rawSpan);
         }
 

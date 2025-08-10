@@ -1,4 +1,6 @@
-﻿export namespace WordTree.Animator {
+﻿// word-tree-animator.ts
+
+export namespace WordTree.Animator {
     export interface AnimationManager {
         animationFrameId: number | null;
     }

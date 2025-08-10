@@ -1,3 +1,4 @@
+// word-tree-animator.ts
 export var WordTree;
 (function (WordTree) {
     var Animator;

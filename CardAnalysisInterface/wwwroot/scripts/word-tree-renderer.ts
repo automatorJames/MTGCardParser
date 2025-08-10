@@ -25,13 +25,13 @@ export namespace WordTree.Renderer {
     }
 
     /**
-     * Generates SVG <stop> elements for a gradient.
-     * @private
+     * EXPORTED: Generates SVG <stop> elements for a gradient. This is now
+     * exported to be used for dynamic gradient updates on hover.
      */
-    function _createGradientStops(
+    export function createGradientStops(
         keys: string[],
         keyToPaletteMap: Map<string, DeterministicPalette>,
-        colorProperty: 'hex' | 'hexLight',
+        colorProperty: 'hex' | 'hexSat', // 'hexLight' has been removed
         transitionRatio: number
     ): string {
         const numKeys = keys.length;
@@ -154,6 +154,12 @@ export namespace WordTree.Renderer {
         const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
         group.setAttribute('class', 'node-group');
 
+        if (isAdjacencyNode) {
+            group.id = `group-node-${containerId}-${nodeData.id}`;
+        } else {
+            group.id = `group-node-${containerId}-main-anchor`;
+        }
+
         const nodeWidth = isAdjacencyNode ? config.nodeWidth : config.mainSpanWidth;
         const baseShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         baseShape.setAttribute('class', 'node-shape base-layer');
@@ -177,14 +183,15 @@ export namespace WordTree.Renderer {
                     const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                     const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                     baseGradient.setAttribute('id', baseGradientId);
-                    baseGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
+                    baseGradient.innerHTML = createGradientStops(keys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
                     defs.appendChild(baseGradient);
                     baseShape.style.stroke = `url(#${baseGradientId})`;
 
                     const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                     const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                     highlightGradient.setAttribute('id', highlightGradientId);
-                    highlightGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hexLight', config.gradientTransitionRatio);
+                    // UPDATED: Use 'hexSat' for the initial render.
+                    highlightGradient.innerHTML = createGradientStops(keys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
                     defs.appendChild(highlightGradient);
                     highlightShape.style.stroke = `url(#${highlightGradientId})`;
                 }
@@ -241,15 +248,13 @@ export namespace WordTree.Renderer {
             d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
         }
 
-        // OPTIMIZED: Use the pre-calculated Set on each node, removing the need
-        // to create new Sets during the render loop.
         const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set<string>());
         const childKeys = childData.sourceKeysSet || new Set<string>();
-
         const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
 
         const connectorGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
         connectorGroup.dataset.sourceKeys = JSON.stringify(commonKeys);
+        connectorGroup.id = `group-conn-${containerId}-${childData.id}`;
 
         const basePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
         basePath.setAttribute('class', 'connector-path base-layer');
@@ -266,7 +271,7 @@ export namespace WordTree.Renderer {
                 const baseGradientId = `grad-conn-base-${idSuffix}`;
                 const highlightGradientId = `grad-conn-highlight-${idSuffix}`;
 
-                const createGradient = (id: string, colorProp: 'hex' | 'hexLight') => {
+                const createGradient = (id: string, colorProp: 'hex' | 'hexSat') => {
                     const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                     gradient.setAttribute('id', id);
                     gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
@@ -283,7 +288,7 @@ export namespace WordTree.Renderer {
                     }
 
                     const reversedKeys = [...commonKeys].reverse();
-                    gradient.innerHTML = _createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
+                    gradient.innerHTML = createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
                     return gradient;
                 };
 
@@ -291,7 +296,8 @@ export namespace WordTree.Renderer {
                     defs.appendChild(createGradient(baseGradientId, 'hex'));
                 }
                 if (!defs.querySelector(`#${highlightGradientId}`)) {
-                    defs.appendChild(createGradient(highlightGradientId, 'hexLight'));
+                    // UPDATED: Use 'hexSat' for the initial render.
+                    defs.appendChild(createGradient(highlightGradientId, 'hexSat'));
                 }
 
                 basePath.style.stroke = `url(#${baseGradientId})`;

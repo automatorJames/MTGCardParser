@@ -27,7 +27,7 @@ else
                             var cardPalette = span.CardPalettes[cardName];
                             <span class="card-name-item"
                                   data-card-name=@cardName
-                                  style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight};")>
+                                  style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight}; --sat-color: {cardPalette.HexSat};")>
                                 @cardName
                             </span>
                         }
