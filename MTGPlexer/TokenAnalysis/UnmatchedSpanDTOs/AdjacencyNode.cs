@@ -12,7 +12,6 @@ public record AdjacencyNode
     [JsonPropertyName("segments")]
     public List<NodeSegment> Segments { get; init; }
 
-    [JsonIgnore]
     public List<CardSpanKey> SourceOccurrences { get; init; }
 
     public List<AdjacencyNode> Children { get; init; }

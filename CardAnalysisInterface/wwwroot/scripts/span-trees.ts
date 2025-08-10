@@ -2,8 +2,20 @@
 import { WordTree } from "./word-tree-animator.js";
 import { WordTree as RendererTree } from "./word-tree-renderer.js";
 
-// === Type Definitions and Module State (Unchanged) ===
-type CardElement = HTMLElement & { __data?: AnalyzedSpan };
+// === Type Definitions and Module State ===
+
+/**
+ * Extends the base AnalyzedSpan with pre-calculated lookup maps for efficient
+ * rendering and event handling. This processing is done once per card.
+ */
+interface ProcessedAnalyzedSpan extends AnalyzedSpan {
+    keyToPaletteMap: Map<string, DeterministicPalette>;
+    allKeys: Set<string>;
+    cardNameToKeysMap: Map<string, Set<string>>;
+}
+
+type CardElement = HTMLElement & { __data?: ProcessedAnalyzedSpan };
+
 interface WordTreeObserver {
     observer: ResizeObserver;
     animationFrameId: number | null;
@@ -11,8 +23,57 @@ interface WordTreeObserver {
 const wordTreeObservers = new Map<string, WordTreeObserver>();
 const globalEventSetup = { initialized: false };
 
-// === Global Event Handlers, Animation, and Drawing Logic (Unchanged) ===
-// ... (All functions from setupGlobalEventHandlers to recalculateAndDraw remain unchanged)
+
+// === NEW: One-Time Data Pre-processing Function ===
+
+/**
+ * Traverses the node tree once to create efficient lookup maps.
+ * This avoids expensive re-computation on every render or interaction.
+ * @param {AnalyzedSpan} span The raw data for the span.
+ * @returns {ProcessedAnalyzedSpan} The processed data with lookup maps.
+ */
+function preprocessSpanData(span: AnalyzedSpan): ProcessedAnalyzedSpan {
+    const keyToPaletteMap = new Map<string, DeterministicPalette>();
+    const allKeys = new Set<string>();
+    const cardNameToKeysMap = new Map<string, Set<string>>();
+
+    const traverse = (node: AdjacencyNode) => {
+        if (!node) return;
+
+        node.sourceOccurrenceKeys.forEach(key => {
+            allKeys.add(key);
+            const cardName = key.substring(0, key.indexOf('['));
+
+            // Map the full key to its palette
+            const palette = span.cardPalettes[cardName];
+            if (palette) {
+                keyToPaletteMap.set(key, palette);
+            }
+
+            // Map the card name to its set of keys
+            if (!cardNameToKeysMap.has(cardName)) {
+                cardNameToKeysMap.set(cardName, new Set());
+            }
+            cardNameToKeysMap.get(cardName)!.add(key);
+        });
+
+        node.children?.forEach(traverse);
+    };
+
+    span.precedingAdjacencies.forEach(traverse);
+    span.followingAdjacencies.forEach(traverse);
+
+    return {
+        ...span,
+        keyToPaletteMap,
+        allKeys,
+        cardNameToKeysMap,
+    };
+}
+
+
+// === Global Event Handlers, Animation, and Drawing Logic (Optimized) ===
+
 function setupGlobalEventHandlers(): void {
     if (globalEventSetup.initialized) return;
 
@@ -63,18 +124,14 @@ function handleNodeHover(containerId: string, card: CardElement, svgGroup: HTMLE
     animateHighlightState(containerId, card, new Set(keys));
 }
 
+/** OPTIMIZED: Uses a pre-computed map for an efficient O(1) lookup. */
 function handleCardNameHover(containerId: string, card: CardElement, cardNameItem: HTMLElement): void {
     const cardName = cardNameItem.dataset.cardName;
-    const svg = document.getElementById(containerId)?.querySelector('svg');
-    if (!svg || !cardName) return;
+    const processedData = card.__data;
+    if (!cardName || !processedData) return;
 
-    const keys = new Set<string>();
-    svg.querySelectorAll<HTMLElement>('[data-source-keys]').forEach(el => {
-        const elKeys = JSON.parse(el.dataset.sourceKeys || '[]') as string[];
-        elKeys.forEach((k: string) => {
-            if (k.startsWith(cardName + '[')) keys.add(k);
-        });
-    });
+    // EFFICIENT: Get all keys for the card from the pre-computed map. No tree traversal needed.
+    const keys = processedData.cardNameToKeysMap.get(cardName) || new Set<string>();
 
     animateHighlightState(containerId, card, keys);
 }
@@ -83,6 +140,7 @@ function handleCardMouseOut(containerId: string, card: CardElement): void {
     animateResetState(containerId, card);
 }
 
+/** OPTIMIZED: Derives highlighted card names efficiently from activeKeys. */
 function animateHighlightState(containerId: string, card: CardElement, activeKeys: Set<string>): void {
     const svg = document.getElementById(containerId)?.querySelector('svg');
     const animationManager = wordTreeObservers.get(containerId);
@@ -107,8 +165,13 @@ function animateHighlightState(containerId: string, card: CardElement, activeKey
 
     card.classList.add('highlight-active');
     const headerNameItems = Array.from(card.querySelectorAll<HTMLElement>('[data-card-name]'));
+
+    // EFFICIENT: Determine relevant card names from the small activeKeys set. No tree traversal needed.
     const relevantCardNames = new Set<string>();
-    activeKeys.forEach(k => relevantCardNames.add(k.substring(0, k.indexOf('['))));
+    activeKeys.forEach(key => {
+        const cardName = key.substring(0, key.indexOf('['));
+        relevantCardNames.add(cardName);
+    });
 
     headerNameItems.forEach(item => {
         const isRelevant = relevantCardNames.has(item.dataset.cardName || '');
@@ -136,11 +199,12 @@ function animateResetState(containerId: string, card: CardElement): void {
     });
 }
 
+/** OPTIMIZED: Uses pre-calculated data maps for drawing. */
 function recalculateAndDraw(container: HTMLElement): void {
     const card = container.closest<CardElement>('.span-trees-card');
-    const analyzedSpan = card?.__data;
+    const processedData = card?.__data;
     const svg = container.querySelector('svg');
-    if (!analyzedSpan || !svg) return;
+    if (!processedData || !svg) return;
 
     svg.innerHTML = '<defs></defs>';
     const config: RendererTree.Renderer.NodeConfig = {
@@ -151,39 +215,19 @@ function recalculateAndDraw(container: HTMLElement): void {
         horizontalPadding: 20, gradientTransitionRatio: 0.1
     };
 
-    const cardNameToPaletteMap = new Map<string, DeterministicPalette>();
-    analyzedSpan.containingCards.forEach((cardName, index) => {
-        if (analyzedSpan.positionalPalette[index]) {
-            cardNameToPaletteMap.set(cardName, analyzedSpan.positionalPalette[index]);
-        }
-    });
-
-    const allKeys = new Set<string>();
-    const keyToPaletteMap = new Map<string, DeterministicPalette>();
-    const gatherKeys = (node: AdjacencyNode) => {
-        node.sourceOccurrenceKeys.forEach(key => {
-            allKeys.add(key);
-            const cardName = key.substring(0, key.indexOf('['));
-            const palette = cardNameToPaletteMap.get(cardName);
-            if (palette) {
-                keyToPaletteMap.set(key, palette);
-            }
-        });
-        node.children?.forEach(gatherKeys);
-    };
-    analyzedSpan.precedingAdjacencies.forEach(gatherKeys);
-    analyzedSpan.followingAdjacencies.forEach(gatherKeys);
+    // EFFICIENT: Use the pre-calculated maps directly. No more 'gatherKeys' traversal.
+    const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;
 
     const { width: availableWidth } = container.getBoundingClientRect();
     if (availableWidth <= 0) return;
 
-    const mainSpanObject: any = { text: analyzedSpan.text, id: 'main-anchor' };
+    const mainSpanObject: any = { text: text, id: 'main-anchor' };
     RendererTree.Renderer.preCalculateAllNodeMetrics(mainSpanObject, true, config, svg);
-    analyzedSpan.precedingAdjacencies.forEach(n => RendererTree.Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
-    analyzedSpan.followingAdjacencies.forEach(n => RendererTree.Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
+    precedingAdjacencies.forEach(n => RendererTree.Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
+    followingAdjacencies.forEach(n => RendererTree.Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
 
-    const precedingResult = RendererTree.Renderer.calculateLayout(analyzedSpan.precedingAdjacencies, 0, 0, 0, -1, config);
-    const followingResult = RendererTree.Renderer.calculateLayout(analyzedSpan.followingAdjacencies, 0, 0, 0, 1, config);
+    const precedingResult = RendererTree.Renderer.calculateLayout(precedingAdjacencies, 0, 0, 0, -1, config);
+    const followingResult = RendererTree.Renderer.calculateLayout(followingAdjacencies, 0, 0, 0, 1, config);
 
     const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanObject.dynamicHeight) + config.vGap * 2;
     const mainSpanY = totalHeight / 2;
@@ -210,24 +254,16 @@ function recalculateAndDraw(container: HTMLElement): void {
     precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
     followingResult.layout.forEach(n => n.layout.y += mainSpanY);
 
-    RendererTree.Renderer.drawNodesAndConnectors(svg, analyzedSpan.precedingAdjacencies, mainSpanObject, 0, mainSpanY, -1, config, keyToPaletteMap, allKeys, container.id);
-    RendererTree.Renderer.drawNodesAndConnectors(svg, analyzedSpan.followingAdjacencies, mainSpanObject, 0, mainSpanY, 1, config, keyToPaletteMap, allKeys, container.id);
+    RendererTree.Renderer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, 0, mainSpanY, -1, config, keyToPaletteMap, allKeys, container.id);
+    RendererTree.Renderer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 0, mainSpanY, 1, config, keyToPaletteMap, allKeys, container.id);
     RendererTree.Renderer.createNode(svg, mainSpanObject, 0, mainSpanY, false, config, keyToPaletteMap, container.id);
 }
 
 
+// === Blazor Interop Functions (Optimized) ===
 
-// === NEW Blazor Interop Functions ===
-
-/**
- * A fast, synchronous function to clear all visible trees and show spinners.
- * It also cleans up observers for any cards that are no longer rendered.
- * @param {number} count The number of cards that will be rendered.
- */
 export function clearAllTreesAndShowSpinners(count: number): void {
     setupGlobalEventHandlers();
-
-    // Clean up any observers that are no longer needed.
     for (const id of wordTreeObservers.keys()) {
         const index = parseInt(id.split('-').pop() || '-1');
         if (index >= count) {
@@ -239,17 +275,14 @@ export function clearAllTreesAndShowSpinners(count: number): void {
             }
         }
     }
-
-    // For each card that WILL be rendered, clear it and show the spinner.
     for (let i = 0; i < count; i++) {
         const containerId = `word-tree-container-${i}`;
         const spinnerId = `spinner-${i}`;
         const container = document.getElementById(containerId);
         const spinner = document.getElementById(spinnerId);
-
         if (container) {
             container.innerHTML = '';
-            container.style.height = ''; // Let it collapse to the spinner's height
+            container.style.height = '';
         }
         if (spinner) {
             spinner.style.display = 'block';
@@ -258,8 +291,8 @@ export function clearAllTreesAndShowSpinners(count: number): void {
 }
 
 /**
- * Renders all the word trees. This function assumes the containers have been
- * cleared and are showing spinners.
+ * Renders all the word trees. This function now pre-processes the data
+ * for each tree to enable efficient rendering and interactions.
  * @param {AnalyzedSpan[]} spans The collection of span data to render.
  */
 export function renderAllTrees(spans: AnalyzedSpan[]): void {
@@ -273,17 +306,16 @@ export function renderAllTrees(spans: AnalyzedSpan[]): void {
 
         const card = container.closest<CardElement>('.span-trees-card');
         if (card) {
-            card.__data = analyzedSpan;
+            // Pre-process the raw data into our optimized structure.
+            card.__data = preprocessSpanData(analyzedSpan);
         }
 
-        // Set up observer if it's new
         if (!wordTreeObservers.has(containerId)) {
             const resizeObserver = new ResizeObserver(() => recalculateAndDraw(container));
             resizeObserver.observe(container);
             wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
         }
 
-        // Add the SVG element and draw
         const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
         container.appendChild(svg);
         recalculateAndDraw(container);
@@ -294,6 +326,5 @@ export function renderAllTrees(spans: AnalyzedSpan[]): void {
     });
 }
 
-// Expose the new functions to the global scope.
 (window as any).clearAllTreesAndShowSpinners = clearAllTreesAndShowSpinners;
 (window as any).renderAllTrees = renderAllTrees;

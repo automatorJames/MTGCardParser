@@ -62,7 +62,6 @@ export namespace WordTree.Renderer {
         return stopsHtml;
     }
 
-    // Unchanged functions: preCalculateAllNodeMetrics, getNodeMetrics, calculateLayout...
     export function preCalculateAllNodeMetrics(node: any, isAnchor: boolean, config: NodeConfig, svg: SVGSVGElement): void {
         if (!node) return;
         const metrics = getNodeMetrics(node.text, isAnchor, config, svg);

@@ -18,20 +18,13 @@ public record AnalyzedSpan
     [JsonPropertyName("followingAdjacencies")]
     public List<AdjacencyNode> FollowingAdjacencies { get; init; }
 
-    public Dictionary<int, DeterministicPalette> PositionalPalette { get; init; }
+    public Dictionary<string, DeterministicPalette> CardPalettes { get; init; } = [];
 
     [JsonIgnore]
     public int MaximalSpanOccurrenceCount { get; init; }
     
     [JsonIgnore]
     public int TotalOccurrenceCount { get; init; }
-    
-    /// <summary>
-    /// A complete list of every place this span was found.
-    /// This is kept for data inspection but not sent to the client by default.
-    /// </summary>
-    [JsonIgnore]
-    public List<SubSpanContext> Occurrences { get; init; }
     
     [JsonIgnore]
     public int WordCount { get; init; }
@@ -51,7 +44,6 @@ public record AnalyzedSpan
         // --- Standard Initializations ---
         Text = text;
         MaximalSpanOccurrenceCount = maximalSpanOccurrenceCount;
-        Occurrences = occurrences;
         PrecedingAdjacencies = precedingAdjacencies;
         FollowingAdjacencies = followingAdjacencies;
         WordCount = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
@@ -75,15 +67,17 @@ public record AnalyzedSpan
         HydrateTreeWithIds(PrecedingAdjacencies);
         HydrateTreeWithIds(FollowingAdjacencies);
 
-        OccurrencesPerCard = Occurrences
+        OccurrencesPerCard = occurrences
             .GroupBy(x => x.OriginalOccurrence.Key.CardName)
             .OrderByDescending(x => x.Count())
             .ThenBy(x => x.Key)
             .ToDictionary(x => x.Key, x => x.Count());
 
         ContainingCards = OccurrencesPerCard.Select(x => x.Key).ToArray();
+        var positionalPalette = DeterministicPalette.GetPositionalPalette(ContainingCards.Length);
 
-        PositionalPalette = DeterministicPalette.GetPositionalPalette(ContainingCards.Length);
+        for (int i = 0; i < ContainingCards.Length; i++)
+            CardPalettes[ContainingCards[i]] = positionalPalette[i];
     }
 
     public override string ToString() => $"'{Text}' (Total: {TotalOccurrenceCount} | Maximal: {MaximalSpanOccurrenceCount})";

@@ -30,7 +30,13 @@ export interface AnalyzedSpan {
     text: string;
     precedingAdjacencies: AdjacencyNode[];
     followingAdjacencies: AdjacencyNode[];
-    cardColors: { [key: string]: string };
-    positionalPalette: { [key: number]: DeterministicPalette };
+    cardPalettes: { [key: string]: DeterministicPalette };
     containingCards: string[];
+}
+
+export interface CardSpanKey {
+    key: string;
+    cardName: string;
+    spanStartIndex: number;
+    spanEndIndex: number;
 }

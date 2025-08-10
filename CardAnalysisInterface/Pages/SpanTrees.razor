@@ -24,7 +24,7 @@ else
                         @for (int i = 0; i < span.ContainingCards.Length; i++)
                         {
                             var cardName = span.ContainingCards[i];
-                            var cardPalette = span.PositionalPalette[i];
+                            var cardPalette = span.CardPalettes[cardName];
                             <span class="card-name-item"
                                   data-card-name=@cardName
                                   style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight};")>

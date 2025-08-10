@@ -34,7 +34,6 @@ export var WordTree;
             });
             return stopsHtml;
         }
-        // Unchanged functions: preCalculateAllNodeMetrics, getNodeMetrics, calculateLayout...
         function preCalculateAllNodeMetrics(node, isAnchor, config, svg) {
             if (!node)
                 return;
