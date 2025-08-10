@@ -1,3 +1,4 @@
+// word-tree-renderer.ts
 // This file contains all the logic for calculating layout and drawing the SVG.
 // It is self-contained and does not handle events or animation.
 export var WordTree;
@@ -12,7 +13,6 @@ export var WordTree;
             const numKeys = keys.length;
             if (numKeys === 0)
                 return '';
-            // Fallback for a simple case of a single color.
             if (numKeys === 1) {
                 const palette = keyToPaletteMap.get(keys[0]);
                 const color = palette ? palette[colorProperty] : '#ccc';
@@ -148,14 +148,12 @@ export var WordTree;
                 if (keys.length > 0) {
                     const defs = svg.querySelector('defs');
                     if (defs) {
-                        // Create gradient for the base color
                         const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                         const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         baseGradient.setAttribute('id', baseGradientId);
                         baseGradient.innerHTML = _createGradientStops(keys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
                         defs.appendChild(baseGradient);
                         baseShape.style.stroke = `url(#${baseGradientId})`;
-                        // Create gradient for the highlight color
                         const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                         const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         highlightGradient.setAttribute('id', highlightGradientId);
@@ -198,12 +196,10 @@ export var WordTree;
             const r = config.cornerRadius;
             const verticalOffset = Math.abs(y2 - y1);
             let d;
-            // FIX 1: Explicitly handle perfectly horizontal lines.
             if (verticalOffset < 1e-6) {
                 d = `M ${startX} ${y1} L ${endX} ${y2}`;
             }
             else if (verticalOffset < r * 2) {
-                // Case for shallow curves where full radius isn't possible.
                 const smallR = verticalOffset / 2;
                 const ySign = Math.sign(y2 - y1);
                 const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
@@ -211,14 +207,15 @@ export var WordTree;
                 d = `M ${startX} ${y1} L ${midX - smallR * direction} ${y1} A ${smallR} ${smallR} 0 0 ${sweepFlag1} ${midX} ${y1 + smallR * ySign} A ${smallR} ${smallR} 0 0 ${sweepFlag2} ${midX + smallR * direction} ${y2} L ${endX} ${y2}`;
             }
             else {
-                // Standard case for curved connectors.
                 const ySign = Math.sign(y2 - y1);
                 const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
                 const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
                 d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
             }
-            const parentKeys = parentData.id === 'main-anchor' ? allKeys : new Set(parentData.sourceOccurrenceKeys || []);
-            const childKeys = new Set(childData.sourceOccurrenceKeys || []);
+            // OPTIMIZED: Use the pre-calculated Set on each node, removing the need
+            // to create new Sets during the render loop.
+            const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set());
+            const childKeys = childData.sourceKeysSet || new Set();
             const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
             const connectorGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             connectorGroup.dataset.sourceKeys = JSON.stringify(commonKeys);
@@ -234,14 +231,12 @@ export var WordTree;
                     const idSuffix = `${containerId}-${childData.id}`;
                     const baseGradientId = `grad-conn-base-${idSuffix}`;
                     const highlightGradientId = `grad-conn-highlight-${idSuffix}`;
-                    // FIX 2: Correctly define the gradient with proper units and orientation.
                     const createGradient = (id, colorProp) => {
                         const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         gradient.setAttribute('id', id);
                         gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
                         const deltaX = endX - startX;
                         const deltaY = y2 - y1;
-                        // Set gradient vector to match the dominant direction of the line
                         if (Math.abs(deltaY) > Math.abs(deltaX)) {
                             gradient.setAttribute('x1', '0');
                             gradient.setAttribute('y1', `${y1}`);
@@ -254,7 +249,6 @@ export var WordTree;
                             gradient.setAttribute('x2', `${endX}`);
                             gradient.setAttribute('y2', '0');
                         }
-                        // Keys must be reversed to match original JS logic for gradient direction
                         const reversedKeys = [...commonKeys].reverse();
                         gradient.innerHTML = _createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
                         return gradient;

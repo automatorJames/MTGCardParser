@@ -1,24 +1,41 @@
-﻿export interface DeterministicPalette {
+﻿// models.ts
+
+/**
+ * A standard, deterministic color palette.
+ */
+export interface DeterministicPalette {
     hex: string;
     hexLight: string;
     hexDark: string;
     hexSat: string;
 }
 
+/**
+ * A single, non-divisible segment within a consolidated AdjacencyNode.
+ */
 export interface NodeSegment {
     text: string;
-    // Assuming tokenType is not strictly needed on the client, otherwise define it
-    tokenType: any;
+    palette: DeterministicPalette;
 }
 
+/**
+ * Represents a node in the adjacency tree, including properties added
+ * dynamically by the client for layout and rendering efficiency.
+ */
 export interface AdjacencyNode {
+    // --- Properties from Server ---
     id: string;
     segments: NodeSegment[];
     sourceOccurrenceKeys: string[];
     children: AdjacencyNode[];
     text: string;
 
-    // Properties added dynamically, now explicitly typed
+    // --- Properties added by Client ---
+
+    // Added ONCE during initial processing for renderer efficiency
+    sourceKeysSet?: Set<string>;
+
+    // Added during layout calculation
     dynamicHeight: number;
     wrappedLines: string[];
     lineHeight: number;
@@ -26,17 +43,27 @@ export interface AdjacencyNode {
     layout: { x: number; y: number };
 }
 
+/**
+ * This interface matches the raw JSON payload from the C# server (the DTO).
+ * It uses plain objects and arrays that are easily serializable.
+ */
 export interface AnalyzedSpan {
     text: string;
     precedingAdjacencies: AdjacencyNode[];
     followingAdjacencies: AdjacencyNode[];
-    cardPalettes: { [key: string]: DeterministicPalette };
+    cardPalettes: { [cardName: string]: DeterministicPalette };
     containingCards: string[];
+    keyToPaletteMap: { [key: string]: DeterministicPalette };
+    allKeys: string[];
+    cardNameToKeysMap: { [cardName: string]: string[] };
 }
 
-export interface CardSpanKey {
-    key: string;
-    cardName: string;
-    spanStartIndex: number;
-    spanEndIndex: number;
+/**
+ * This interface represents the fully processed, in-memory data structure
+ * optimized for rendering. It uses Map and Set for efficient lookups and is
+ * generated once when the data is received.
+ */
+export interface ProcessedAnalyzedSpan extends Omit<AnalyzedSpan, 'keyToPaletteMap' | 'allKeys'> {
+    keyToPaletteMap: Map<string, DeterministicPalette>;
+    allKeys: Set<string>;
 }

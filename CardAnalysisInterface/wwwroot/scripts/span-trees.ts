@@ -1,19 +1,12 @@
-﻿import { AnalyzedSpan, AdjacencyNode, DeterministicPalette } from "./models.js";
+﻿// span-trees.ts
+
+import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode } from "./models.js";
 import { WordTree } from "./word-tree-animator.js";
 import { WordTree as RendererTree } from "./word-tree-renderer.js";
 
 // === Type Definitions and Module State ===
 
-/**
- * Extends the base AnalyzedSpan with pre-calculated lookup maps for efficient
- * rendering and event handling. This processing is done once per card.
- */
-interface ProcessedAnalyzedSpan extends AnalyzedSpan {
-    keyToPaletteMap: Map<string, DeterministicPalette>;
-    allKeys: Set<string>;
-    cardNameToKeysMap: Map<string, Set<string>>;
-}
-
+// CardElement now stores the fully processed data structure, optimized for the client.
 type CardElement = HTMLElement & { __data?: ProcessedAnalyzedSpan };
 
 interface WordTreeObserver {
@@ -24,55 +17,40 @@ const wordTreeObservers = new Map<string, WordTreeObserver>();
 const globalEventSetup = { initialized: false };
 
 
-// === NEW: One-Time Data Pre-processing Function ===
+// === One-Time Data Processing Function ===
 
 /**
- * Traverses the node tree once to create efficient lookup maps.
- * This avoids expensive re-computation on every render or interaction.
- * @param {AnalyzedSpan} span The raw data for the span.
- * @returns {ProcessedAnalyzedSpan} The processed data with lookup maps.
+ * Converts the raw AnalyzedSpan from the server into a fully processed,
+ * renderer-optimized structure. It creates Maps and Sets and augments the node
+ * tree with pre-calculated key sets. This is called only once per card.
+ * @param {AnalyzedSpan} rawSpan The raw data from JSON.
+ * @returns {ProcessedAnalyzedSpan} The data structure ready for rendering.
  */
-function preprocessSpanData(span: AnalyzedSpan): ProcessedAnalyzedSpan {
-    const keyToPaletteMap = new Map<string, DeterministicPalette>();
-    const allKeys = new Set<string>();
-    const cardNameToKeysMap = new Map<string, Set<string>>();
-
-    const traverse = (node: AdjacencyNode) => {
-        if (!node) return;
-
-        node.sourceOccurrenceKeys.forEach(key => {
-            allKeys.add(key);
-            const cardName = key.substring(0, key.indexOf('['));
-
-            // Map the full key to its palette
-            const palette = span.cardPalettes[cardName];
-            if (palette) {
-                keyToPaletteMap.set(key, palette);
+function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
+    // Augment the node tree by adding a pre-calculated 'sourceKeysSet' to each node
+    // for efficient use by the renderer.
+    const traverseAndAugmentNodes = (nodes: AdjacencyNode[]): void => {
+        for (const node of nodes) {
+            node.sourceKeysSet = new Set(node.sourceOccurrenceKeys);
+            if (node.children) {
+                traverseAndAugmentNodes(node.children);
             }
-
-            // Map the card name to its set of keys
-            if (!cardNameToKeysMap.has(cardName)) {
-                cardNameToKeysMap.set(cardName, new Set());
-            }
-            cardNameToKeysMap.get(cardName)!.add(key);
-        });
-
-        node.children?.forEach(traverse);
+        }
     };
 
-    span.precedingAdjacencies.forEach(traverse);
-    span.followingAdjacencies.forEach(traverse);
+    traverseAndAugmentNodes(rawSpan.precedingAdjacencies);
+    traverseAndAugmentNodes(rawSpan.followingAdjacencies);
 
+    // Return the final processed object with Maps and Sets.
     return {
-        ...span,
-        keyToPaletteMap,
-        allKeys,
-        cardNameToKeysMap,
+        ...rawSpan,
+        keyToPaletteMap: new Map(Object.entries(rawSpan.keyToPaletteMap)),
+        allKeys: new Set(rawSpan.allKeys),
     };
 }
 
 
-// === Global Event Handlers, Animation, and Drawing Logic (Optimized) ===
+// === Global Event Handlers and Core Logic ===
 
 function setupGlobalEventHandlers(): void {
     if (globalEventSetup.initialized) return;
@@ -124,23 +102,20 @@ function handleNodeHover(containerId: string, card: CardElement, svgGroup: HTMLE
     animateHighlightState(containerId, card, new Set(keys));
 }
 
-/** OPTIMIZED: Uses a pre-computed map for an efficient O(1) lookup. */
 function handleCardNameHover(containerId: string, card: CardElement, cardNameItem: HTMLElement): void {
     const cardName = cardNameItem.dataset.cardName;
     const processedData = card.__data;
     if (!cardName || !processedData) return;
 
-    // EFFICIENT: Get all keys for the card from the pre-computed map. No tree traversal needed.
-    const keys = processedData.cardNameToKeysMap.get(cardName) || new Set<string>();
-
-    animateHighlightState(containerId, card, keys);
+    // Use the pre-calculated map from the server data for an instant lookup.
+    const keysForCard = processedData.cardNameToKeysMap[cardName] || [];
+    animateHighlightState(containerId, card, new Set(keysForCard));
 }
 
 function handleCardMouseOut(containerId: string, card: CardElement): void {
     animateResetState(containerId, card);
 }
 
-/** OPTIMIZED: Derives highlighted card names efficiently from activeKeys. */
 function animateHighlightState(containerId: string, card: CardElement, activeKeys: Set<string>): void {
     const svg = document.getElementById(containerId)?.querySelector('svg');
     const animationManager = wordTreeObservers.get(containerId);
@@ -166,7 +141,6 @@ function animateHighlightState(containerId: string, card: CardElement, activeKey
     card.classList.add('highlight-active');
     const headerNameItems = Array.from(card.querySelectorAll<HTMLElement>('[data-card-name]'));
 
-    // EFFICIENT: Determine relevant card names from the small activeKeys set. No tree traversal needed.
     const relevantCardNames = new Set<string>();
     activeKeys.forEach(key => {
         const cardName = key.substring(0, key.indexOf('['));
@@ -199,10 +173,13 @@ function animateResetState(containerId: string, card: CardElement): void {
     });
 }
 
-/** OPTIMIZED: Uses pre-calculated data maps for drawing. */
+/**
+ * Recalculates layout and redraws the SVG. This function is now maximally
+ * efficient, using the pre-processed data directly with no on-the-fly conversions.
+ */
 function recalculateAndDraw(container: HTMLElement): void {
     const card = container.closest<CardElement>('.span-trees-card');
-    const processedData = card?.__data;
+    const processedData = card?.__data; // This is the fully optimized data object
     const svg = container.querySelector('svg');
     if (!processedData || !svg) return;
 
@@ -215,13 +192,14 @@ function recalculateAndDraw(container: HTMLElement): void {
         horizontalPadding: 20, gradientTransitionRatio: 0.1
     };
 
-    // EFFICIENT: Use the pre-calculated maps directly. No more 'gatherKeys' traversal.
+    // EFFICIENT: NO CONVERSIONS.
+    // We directly use the pre-calculated Maps and Sets from the processed data object.
     const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;
 
     const { width: availableWidth } = container.getBoundingClientRect();
     if (availableWidth <= 0) return;
 
-    const mainSpanObject: any = { text: text, id: 'main-anchor' };
+    const mainSpanObject: any = { text, id: 'main-anchor' };
     RendererTree.Renderer.preCalculateAllNodeMetrics(mainSpanObject, true, config, svg);
     precedingAdjacencies.forEach(n => RendererTree.Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
     followingAdjacencies.forEach(n => RendererTree.Renderer.preCalculateAllNodeMetrics(n, false, config, svg));
@@ -260,10 +238,11 @@ function recalculateAndDraw(container: HTMLElement): void {
 }
 
 
-// === Blazor Interop Functions (Optimized) ===
+// === Blazor Interop Functions ===
 
 export function clearAllTreesAndShowSpinners(count: number): void {
     setupGlobalEventHandlers();
+
     for (const id of wordTreeObservers.keys()) {
         const index = parseInt(id.split('-').pop() || '-1');
         if (index >= count) {
@@ -275,11 +254,13 @@ export function clearAllTreesAndShowSpinners(count: number): void {
             }
         }
     }
+
     for (let i = 0; i < count; i++) {
         const containerId = `word-tree-container-${i}`;
         const spinnerId = `spinner-${i}`;
         const container = document.getElementById(containerId);
         const spinner = document.getElementById(spinnerId);
+
         if (container) {
             container.innerHTML = '';
             container.style.height = '';
@@ -291,12 +272,12 @@ export function clearAllTreesAndShowSpinners(count: number): void {
 }
 
 /**
- * Renders all the word trees. This function now pre-processes the data
- * for each tree to enable efficient rendering and interactions.
- * @param {AnalyzedSpan[]} spans The collection of span data to render.
+ * Renders all the word trees. It now calls a processing function to convert
+ * the raw server data into a client-optimized structure ONCE.
+ * @param {AnalyzedSpan[]} spans The collection of raw span data from the server.
  */
 export function renderAllTrees(spans: AnalyzedSpan[]): void {
-    spans.forEach((analyzedSpan, index) => {
+    spans.forEach((rawSpan, index) => {
         const containerId = `word-tree-container-${index}`;
         const spinnerId = `spinner-${index}`;
         const container = document.getElementById(containerId);
@@ -306,8 +287,8 @@ export function renderAllTrees(spans: AnalyzedSpan[]): void {
 
         const card = container.closest<CardElement>('.span-trees-card');
         if (card) {
-            // Pre-process the raw data into our optimized structure.
-            card.__data = preprocessSpanData(analyzedSpan);
+            // Process the raw data ONCE to create the final, optimized structure.
+            card.__data = processSpanForClient(rawSpan);
         }
 
         if (!wordTreeObservers.has(containerId)) {
@@ -326,5 +307,6 @@ export function renderAllTrees(spans: AnalyzedSpan[]): void {
     });
 }
 
+// Expose the Blazor interop functions to the global scope.
 (window as any).clearAllTreesAndShowSpinners = clearAllTreesAndShowSpinners;
 (window as any).renderAllTrees = renderAllTrees;
