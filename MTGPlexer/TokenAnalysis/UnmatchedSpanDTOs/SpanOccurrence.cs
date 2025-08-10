@@ -36,24 +36,9 @@ public record SpanOccurrence
     /// </summary>
     public Token<Type>? FollowingToken => UnmatchedTokenIndex < LineTokens.Count - 1 ? LineTokens[UnmatchedTokenIndex + 1] : null;
 
-    /// <summary>
-    /// Gets the sequence of tokens preceding the unmatched span on its original line,
-    /// ordered from the one closest to the span to the one furthest away.
-    /// </summary>
-    public IEnumerable<Token<Type>> GetPrecedingTokensOnLine() =>
-        LineTokens.Take(UnmatchedTokenIndex).Reverse();
-
-    /// <summary>
-    /// Gets the sequence of tokens following the unmatched span on its original line,
-    /// ordered from the one closest to the span to the one furthest away.
-    /// </summary>
-    public IEnumerable<Token<Type>> GetFollowingTokensOnLine() =>
-        LineTokens.Skip(UnmatchedTokenIndex + 1);
-
     public string Text { get; }
     public TextSpan Span { get; }
     public string[] Words { get; }
-    public int SpanWordCount => Words.Length;
 
     public SpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
     {
