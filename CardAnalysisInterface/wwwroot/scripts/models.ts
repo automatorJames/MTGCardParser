@@ -2,6 +2,7 @@
     hex: string;
     hexLight: string;
     hexDark: string;
+    hexSat: string;
 }
 
 export interface NodeSegment {
