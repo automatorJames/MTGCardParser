@@ -5,12 +5,7 @@ export var WordTree;
 (function (WordTree) {
     var Renderer;
     (function (Renderer) {
-        /**
-         * EXPORTED: Generates SVG <stop> elements for a gradient. This is now
-         * exported to be used for dynamic gradient updates on hover.
-         */
-        function createGradientStops(keys, keyToPaletteMap, colorProperty, // 'hexLight' has been removed
-        transitionRatio) {
+        function createGradientStops(keys, keyToPaletteMap, colorProperty, transitionRatio) {
             const numKeys = keys.length;
             if (numKeys === 0)
                 return '';
@@ -165,7 +160,6 @@ export var WordTree;
                         const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                         const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                         highlightGradient.setAttribute('id', highlightGradientId);
-                        // UPDATED: Use 'hexSat' for the initial render.
                         highlightGradient.innerHTML = createGradientStops(keys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
                         defs.appendChild(highlightGradient);
                         highlightShape.style.stroke = `url(#${highlightGradientId})`;
@@ -201,6 +195,7 @@ export var WordTree;
             const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
             const startX = x1 + (direction * parentWidth / 2);
             const endX = x2 - (direction * config.nodeWidth / 2);
+            // REVERTED: The horizontal line extension has been removed to restore the grid.
             const midX = (startX + endX) / 2;
             const r = config.cornerRadius;
             const verticalOffset = Math.abs(y2 - y1);
@@ -213,12 +208,14 @@ export var WordTree;
                 const ySign = Math.sign(y2 - y1);
                 const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
                 const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
+                // Path now uses the original midX calculation
                 d = `M ${startX} ${y1} L ${midX - smallR * direction} ${y1} A ${smallR} ${smallR} 0 0 ${sweepFlag1} ${midX} ${y1 + smallR * ySign} A ${smallR} ${smallR} 0 0 ${sweepFlag2} ${midX + smallR * direction} ${y2} L ${endX} ${y2}`;
             }
             else {
                 const ySign = Math.sign(y2 - y1);
                 const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
                 const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
+                // Path now uses the original midX calculation
                 d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
             }
             const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set());
@@ -257,15 +254,14 @@ export var WordTree;
                             gradient.setAttribute('x2', `${endX}`);
                             gradient.setAttribute('y2', '0');
                         }
-                        const reversedKeys = [...commonKeys].reverse();
-                        gradient.innerHTML = createGradientStops(reversedKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
+                        // PRESERVED FIX: The .reverse() call is gone, ensuring consistent gradient order.
+                        gradient.innerHTML = createGradientStops(commonKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
                         return gradient;
                     };
                     if (!defs.querySelector(`#${baseGradientId}`)) {
                         defs.appendChild(createGradient(baseGradientId, 'hex'));
                     }
                     if (!defs.querySelector(`#${highlightGradientId}`)) {
-                        // UPDATED: Use 'hexSat' for the initial render.
                         defs.appendChild(createGradient(highlightGradientId, 'hexSat'));
                     }
                     basePath.style.stroke = `url(#${baseGradientId})`;

@@ -109,13 +109,8 @@ function animateHighlightState(containerId, card, filterKeys) {
         const type = idParts[1];
         const elementId = idParts[idParts.length - 1];
         const keysForGradient = isHighlighted ? elKeys.filter((k) => filterKeys.has(k)) : elKeys;
-        const baseGradId = `grad-${type}-base-${containerId}-${elementId}`;
         const highlightGradId = `grad-${type}-highlight-${containerId}-${elementId}`;
-        const baseGrad = defs.querySelector(`#${baseGradId}`);
         const highlightGrad = defs.querySelector(`#${highlightGradId}`);
-        if (baseGrad) {
-            baseGrad.innerHTML = RendererTree.Renderer.createGradientStops(keysForGradient, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
-        }
         if (highlightGrad) {
             highlightGrad.innerHTML = RendererTree.Renderer.createGradientStops(keysForGradient, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
         }
@@ -155,15 +150,9 @@ function animateResetState(containerId, card) {
         const idParts = el.id.split('-');
         const type = idParts[1];
         const elementId = idParts[idParts.length - 1];
-        const baseGradId = `grad-${type}-base-${containerId}-${elementId}`;
         const highlightGradId = `grad-${type}-highlight-${containerId}-${elementId}`;
-        const baseGrad = defs.querySelector(`#${baseGradId}`);
         const highlightGrad = defs.querySelector(`#${highlightGradId}`);
-        if (baseGrad) {
-            baseGrad.innerHTML = RendererTree.Renderer.createGradientStops(elKeys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
-        }
         if (highlightGrad) {
-            // UPDATED: Reset to 'hexSat' to eliminate the flash of 'hexLight'.
             highlightGrad.innerHTML = RendererTree.Renderer.createGradientStops(elKeys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
         }
     });
@@ -268,7 +257,8 @@ export function renderAllTrees(spans) {
             resizeObserver.observe(container);
             wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
         }
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, 'svg');
         container.appendChild(svg);
         recalculateAndDraw(container);
         if (spinner) {
