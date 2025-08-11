@@ -192,7 +192,7 @@ export namespace WordTree.Renderer {
                 }
             }
         } else {
-            group.classList.add('anchor-node-group');
+            group.classList.add('main-anchor-span');
             baseShape.style.fill = config.mainSpanFill;
             baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
         }
@@ -200,9 +200,9 @@ export namespace WordTree.Renderer {
         const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
         textEl.setAttribute('class', 'node-text');
         if (!isAdjacencyNode) {
+            group.classList.add('anchor-node-group', 'main-anchor-span');
             textEl.style.fontSize = `${config.mainSpanFontSize}px`;
             textEl.style.fontWeight = 'bold';
-            textEl.style.fill = '#000000';
         }
 
         const totalTextHeight = wrappedLines.length * lineHeight;

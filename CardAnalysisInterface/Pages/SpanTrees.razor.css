@@ -114,6 +114,7 @@
     stroke: var(--node-border-color, #666);
     stroke-width: 2.5px;
     fill: #2d2d2d;
+    cursor: pointer;
 }
 
 ::deep .connector-path.base-layer {
@@ -155,4 +156,23 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* smooth glow */
+::deep .main-anchor-span .node-shape.base-layer {
+    transition: filter 150ms ease;
+}
+
+::deep .main-anchor-span:hover .node-shape.base-layer {
+    filter: drop-shadow(0 0 4px rgba(224,224,224,0.3)) drop-shadow(0 0 8px rgba(224,224,224,0.15));
+}
+
+/* text color + smooth fade */
+::deep .main-anchor-span .node-text {
+    fill: #000; /* default black */
+    transition: fill 150ms ease;
+}
+
+::deep .main-anchor-span:hover .node-text {
+    fill: #666; /* lighten on hover */
 }
