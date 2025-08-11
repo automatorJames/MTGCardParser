@@ -5,6 +5,9 @@ export var WordTree;
 (function (WordTree) {
     var Renderer;
     (function (Renderer) {
+        // ---- Internal metadata (no changes to AdjacencyNode interface required) ----
+        const columnIndexMap = new WeakMap(); // 1-based from anchor
+        const fanDeltaMap = new WeakMap(); // δ: extra final-horizontal length used to fan
         function createGradientStops(keys, keyToPaletteMap, colorProperty, transitionRatio) {
             const numKeys = keys.length;
             if (numKeys === 0)
@@ -31,10 +34,10 @@ export var WordTree;
             return stopsHtml;
         }
         Renderer.createGradientStops = createGradientStops;
-        function preCalculateAllNodeMetrics(node, isAnchor, config, svg) {
+        function preCalculateAllNodeMetrics(node, _isAnchor, config, svg) {
             if (!node)
                 return;
-            const metrics = getNodeMetrics(node.text, isAnchor, config, svg);
+            const metrics = getNodeMetrics(node.text, config, svg);
             node.dynamicHeight = metrics.dynamicHeight;
             node.wrappedLines = metrics.wrappedLines;
             node.lineHeight = metrics.lineHeight;
@@ -42,13 +45,13 @@ export var WordTree;
                 node.children.forEach((child) => preCalculateAllNodeMetrics(child, false, config, svg));
         }
         Renderer.preCalculateAllNodeMetrics = preCalculateAllNodeMetrics;
-        function getNodeMetrics(text, isAnchor, config, svg) {
+        function getNodeMetrics(text, config, svg) {
             const nodeText = String(text || '');
-            const nodeWidth = isAnchor ? config.mainSpanWidth : config.nodeWidth;
-            const padding = isAnchor ? config.mainSpanPadding : config.nodePadding;
-            const fontSize = isAnchor ? config.mainSpanFontSize : 12;
-            const fontWeight = isAnchor ? 'bold' : 'normal';
-            const lineHeight = isAnchor ? config.mainSpanLineHeight : 14;
+            const nodeWidth = config.nodeWidth; // same for all nodes (anchor included)
+            const padding = config.nodePadding; // same padding
+            const fontSize = 12; // same font size
+            const fontWeight = 'normal'; // same weight
+            const lineHeight = 14; // same line height
             const availableWidth = nodeWidth - padding * 2;
             const tempText = document.createElementNS("http://www.w3.org/2000/svg", "text");
             tempText.setAttribute('class', 'node-text');
@@ -93,11 +96,12 @@ export var WordTree;
             let currentY = parentY - totalGroupHeight / 2;
             for (const metric of nodeMetrics) {
                 const { node, effectiveHeight } = metric;
-                const parentWidth = (depth === 0) ? config.mainSpanWidth : config.nodeWidth;
+                const parentWidth = config.nodeWidth; // anchor uses same width as others
                 const offset = (parentWidth / 2) + config.hGap + (config.nodeWidth / 2);
                 const nodeX = parentX + (direction * offset);
                 const nodeY = currentY + effectiveHeight / 2;
                 node.layout = { x: nodeX, y: nodeY };
+                columnIndexMap.set(node, depth + 1); // 1-based column index
                 layoutInfo.push(node);
                 for (const childNode of node.childrenLayout) {
                     childNode.layout.x += nodeX;
@@ -109,6 +113,80 @@ export var WordTree;
             return { layout: layoutInfo, totalHeight: totalGroupHeight };
         }
         Renderer.calculateLayout = calculateLayout;
+        /**
+         * Assign per-connector fan deltas (δ) and compute per-column outward push.
+         * Ordering: sort by |dy| ascending (nearest first); nearest gets δ=0, farthest gets (n-1)*fanGap.
+         */
+        function computeColumnOffsetsAndAssignFan(roots, anchorX, anchorY, direction, config) {
+            const fanGap = Math.max(0, config.fanGap ?? 0);
+            const columnStats = new Map();
+            const noteStats = (col, upCount, downCount) => {
+                const cur = columnStats.get(col) ?? { maxUp: 0, maxDown: 0 };
+                if (upCount > cur.maxUp)
+                    cur.maxUp = upCount;
+                if (downCount > cur.maxDown)
+                    cur.maxDown = downCount;
+                columnStats.set(col, cur);
+            };
+            const processChildren = (children, parent) => {
+                if (!children || children.length === 0)
+                    return;
+                const up = [];
+                const down = [];
+                const flat = [];
+                for (const c of children) {
+                    const dy = c.layout.y - parent.layout.y;
+                    if (Math.abs(dy) < 1e-6)
+                        flat.push(c);
+                    else if (dy > 0)
+                        down.push(c);
+                    else
+                        up.push(c);
+                }
+                const byAbsDy = (a, b) => Math.abs(a.layout.y - parent.layout.y) - Math.abs(b.layout.y - parent.layout.y);
+                const assignGroup = (arr, kind) => {
+                    if (arr.length === 0)
+                        return;
+                    // NEAREST first
+                    arr.sort(byAbsDy);
+                    const n = arr.length;
+                    for (let i = 0; i < n; i++) {
+                        const child = arr[i];
+                        const delta = i * fanGap; // nearest δ=0 ... farthest δ=(n-1)*fanGap
+                        fanDeltaMap.set(child, delta);
+                    }
+                    const colIndex = columnIndexMap.get(arr[0]) ?? 0;
+                    if (kind === 'up')
+                        noteStats(colIndex, n, 0);
+                    else
+                        noteStats(colIndex, 0, n);
+                    for (const c of arr)
+                        processChildren(c.children, c);
+                };
+                assignGroup(up, 'up');
+                assignGroup(down, 'down');
+                // same-row connectors: δ=0, then recurse
+                for (const c of flat) {
+                    fanDeltaMap.set(c, 0);
+                    processChildren(c.children, c);
+                }
+            };
+            const pseudoParent = { layout: { x: anchorX, y: anchorY }, children: roots };
+            processChildren(roots, pseudoParent);
+            // Per-column raw push in pixels (NOT cumulative): max(up, down) * fanGap
+            const columnPushRaw = new Map();
+            columnStats.forEach((v, col) => {
+                const needed = fanGap * Math.max(v.maxUp, v.maxDown);
+                columnPushRaw.set(col, needed);
+            });
+            return columnPushRaw;
+        }
+        Renderer.computeColumnOffsetsAndAssignFan = computeColumnOffsetsAndAssignFan;
+        // Helper to access a node's column index without exposing internals
+        function getColumnIndex(node) {
+            return columnIndexMap.get(node) ?? 0;
+        }
+        Renderer.getColumnIndex = getColumnIndex;
         function drawNodesAndConnectors(svg, nodes, parentData, parentX, parentY, direction, config, keyToPaletteMap, allKeys, containerId) {
             if (!nodes)
                 return;
@@ -132,7 +210,7 @@ export var WordTree;
             else {
                 group.id = `group-node-${containerId}-main-anchor`;
             }
-            const nodeWidth = isAdjacencyNode ? config.nodeWidth : config.mainSpanWidth;
+            const nodeWidth = config.nodeWidth; // same for all nodes (anchor included)
             const baseShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             baseShape.setAttribute('class', 'node-shape base-layer');
             baseShape.setAttribute('x', `${-nodeWidth / 2}`);
@@ -173,11 +251,9 @@ export var WordTree;
             }
             const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
             textEl.setAttribute('class', 'node-text');
-            if (!isAdjacencyNode) {
-                group.classList.add('anchor-node-group', 'main-anchor-span');
-                textEl.style.fontSize = `${config.mainSpanFontSize}px`;
-                textEl.style.fontWeight = 'bold';
-            }
+            // Same styles for all nodes
+            textEl.style.fontSize = `12px`;
+            textEl.style.fontWeight = 'normal';
             const totalTextHeight = wrappedLines.length * lineHeight;
             const startY = -totalTextHeight / 2 + lineHeight * 0.8;
             wrappedLines.forEach((line, i) => {
@@ -193,38 +269,58 @@ export var WordTree;
         }
         Renderer.createNode = createNode;
         function createRoundedConnector(svg, parentData, childData, x1, y1, x2, y2, direction, config, keyToPaletteMap, allKeys, containerId) {
-            const parentWidth = parentData.id === 'main-anchor' ? config.mainSpanWidth : config.nodeWidth;
+            const parentWidth = config.nodeWidth; // anchor uses same width as others
             const startX = x1 + (direction * parentWidth / 2);
             const endX = x2 - (direction * config.nodeWidth / 2);
-            // REVERTED: The horizontal line extension has been removed to restore the grid.
-            const midX = (startX + endX) / 2;
-            const r = config.cornerRadius;
+            const ySign = Math.sign(y2 - y1) || 1;
             const verticalOffset = Math.abs(y2 - y1);
+            // Total horizontal “budget” in direction of travel
+            const H = direction * (endX - startX); // > 0
+            // Per-connector fan delta (more delta => longer last horizontal, earlier branch from parent)
+            const deltaRaw = fanDeltaMap.get(childData) || 0;
+            const delta = Math.max(0, Math.min(deltaRaw, Math.max(0, H))); // clamp reasonably
+            // ORIGINAL path shape; pick r & midX within available space
+            const rHorizMax = Math.max(0, (H - delta) / 2);
+            let r = Math.min(config.cornerRadius, rHorizMax);
+            const midX = (startX + endX - direction * delta) / 2;
             let d;
             if (verticalOffset < 1e-6) {
                 d = `M ${startX} ${y1} L ${endX} ${y2}`;
             }
-            else if (verticalOffset < r * 2) {
-                const smallR = verticalOffset / 2;
-                const ySign = Math.sign(y2 - y1);
-                const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
-                const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
-                // Path now uses the original midX calculation
-                d = `M ${startX} ${y1} L ${midX - smallR * direction} ${y1} A ${smallR} ${smallR} 0 0 ${sweepFlag1} ${midX} ${y1 + smallR * ySign} A ${smallR} ${smallR} 0 0 ${sweepFlag2} ${midX + smallR * direction} ${y2} L ${endX} ${y2}`;
-            }
             else {
-                const ySign = Math.sign(y2 - y1);
-                const sweepFlag1 = direction * ySign > 0 ? 1 : 0;
-                const sweepFlag2 = direction * ySign > 0 ? 0 : 1;
-                // Path now uses the original midX calculation
-                d = `M ${startX} ${y1} L ${midX - r * direction} ${y1} A ${r} ${r} 0 0 ${sweepFlag1} ${midX} ${y1 + r * ySign} L ${midX} ${y2 - r * ySign} A ${r} ${r} 0 0 ${sweepFlag2} ${midX + r * direction} ${y2} L ${endX} ${y2}`;
+                if (verticalOffset < 2 * r) {
+                    const smallR = verticalOffset / 2;
+                    const sweep1 = direction * ySign > 0 ? 1 : 0;
+                    const sweep2 = direction * ySign > 0 ? 0 : 1;
+                    d =
+                        `M ${startX} ${y1}` +
+                            ` L ${midX - smallR * direction} ${y1}` +
+                            ` A ${smallR} ${smallR} 0 0 ${sweep1} ${midX} ${y1 + smallR * ySign}` +
+                            ` A ${smallR} ${smallR} 0 0 ${sweep2} ${midX + smallR * direction} ${y2}` +
+                            ` L ${endX} ${y2}`;
+                }
+                else {
+                    const sweep1 = direction * ySign > 0 ? 1 : 0;
+                    const sweep2 = direction * ySign > 0 ? 0 : 1;
+                    d =
+                        `M ${startX} ${y1}` +
+                            ` L ${midX - r * direction} ${y1}` +
+                            ` A ${r} ${r} 0 0 ${sweep1} ${midX} ${y1 + r * ySign}` +
+                            ` L ${midX} ${y2 - r * ySign}` +
+                            ` A ${r} ${r} 0 0 ${sweep2} ${midX + r * direction} ${y2}` +
+                            ` L ${endX} ${y2}`;
+                }
             }
+            emitConnector(svg, d, parentData, childData, startX, y1, endX, y2, keyToPaletteMap, allKeys, containerId);
+        }
+        Renderer.createRoundedConnector = createRoundedConnector;
+        function emitConnector(svg, d, parentData, childData, startX, y1, endX, y2, keyToPaletteMap, allKeys, containerId) {
             const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set());
             const childKeys = childData.sourceKeysSet || new Set();
             const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
-            const connectorGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            connectorGroup.dataset.sourceKeys = JSON.stringify(commonKeys);
-            connectorGroup.id = `group-conn-${containerId}-${childData.id}`;
+            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            group.dataset.sourceKeys = JSON.stringify(commonKeys);
+            group.id = `group-conn-${containerId}-${childData.id}`;
             const basePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
             basePath.setAttribute('class', 'connector-path base-layer');
             basePath.setAttribute('d', d);
@@ -255,8 +351,7 @@ export var WordTree;
                             gradient.setAttribute('x2', `${endX}`);
                             gradient.setAttribute('y2', '0');
                         }
-                        // PRESERVED FIX: The .reverse() call is gone, ensuring consistent gradient order.
-                        gradient.innerHTML = createGradientStops(commonKeys, keyToPaletteMap, colorProp, config.gradientTransitionRatio);
+                        gradient.innerHTML = createGradientStops(commonKeys, keyToPaletteMap, colorProp, 0.1);
                         return gradient;
                     };
                     if (!defs.querySelector(`#${baseGradientId}`)) {
@@ -269,11 +364,10 @@ export var WordTree;
                     highlightPath.style.stroke = `url(#${highlightGradientId})`;
                 }
             }
-            connectorGroup.appendChild(basePath);
-            connectorGroup.appendChild(highlightPath);
-            svg.insertBefore(connectorGroup, svg.firstChild);
+            group.appendChild(basePath);
+            group.appendChild(highlightPath);
+            svg.insertBefore(group, svg.firstChild);
         }
-        Renderer.createRoundedConnector = createRoundedConnector;
     })(Renderer = WordTree.Renderer || (WordTree.Renderer = {}));
 })(WordTree || (WordTree = {}));
 //# sourceMappingURL=word-tree-renderer.js.map

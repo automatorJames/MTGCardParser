@@ -1,4 +1,4 @@
-﻿// span-trees.ts
+﻿// span-trees.ts 
 
 import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode } from "./models.js";
 import { WordTree } from "./word-tree-animator.js";
@@ -134,7 +134,6 @@ function animateHighlightState(containerId: string, card: CardElement, filterKey
 
         const highlightGradId = `grad-${type}-highlight-${containerId}-${elementId}`;
         const highlightGrad = defs.querySelector(`#${highlightGradId}`);
-
         if (highlightGrad) {
             highlightGrad.innerHTML = RendererTree.Renderer.createGradientStops(keysForGradient, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
         }
@@ -182,7 +181,6 @@ function animateResetState(containerId: string, card: CardElement): void {
 
         const highlightGradId = `grad-${type}-highlight-${containerId}-${elementId}`;
         const highlightGrad = defs.querySelector(`#${highlightGradId}`);
-
         if (highlightGrad) {
             highlightGrad.innerHTML = RendererTree.Renderer.createGradientStops(elKeys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
         }
@@ -192,6 +190,17 @@ function animateResetState(containerId: string, card: CardElement): void {
     card.querySelectorAll<HTMLElement>('[data-card-name]').forEach(item => {
         item.classList.remove('highlight', 'lowlight');
     });
+}
+
+// helper: build cumulative column push
+function buildCumulativePush(raw: Map<number, number>, maxCol: number): Map<number, number> {
+    const out = new Map<number, number>();
+    let acc = 0;
+    for (let c = 1; c <= maxCol; c++) {
+        acc += raw.get(c) || 0;
+        out.set(c, acc);
+    }
+    return out;
 }
 
 function recalculateAndDraw(container: HTMLElement): void {
@@ -204,18 +213,15 @@ function recalculateAndDraw(container: HTMLElement): void {
     const config: RendererTree.Renderer.NodeConfig = {
         nodeWidth: 200,
         nodePadding: 8,
-        mainSpanPadding: 12,
         nodeHeight: 40,
         hGap: 40,
         vGap: 20,
         cornerRadius: 10,
-        mainSpanWidth: 220,
-        mainSpanFontSize: 14,
-        mainSpanLineHeight: 16,
         mainSpanFill: '#e0e0e0',
         mainSpanColor: "#e0e0e0",
         horizontalPadding: 20,
-        gradientTransitionRatio: 0.1
+        gradientTransitionRatio: 0.1,
+        fanGap: 20
     };
 
     const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;
@@ -234,8 +240,36 @@ function recalculateAndDraw(container: HTMLElement): void {
     const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanObject.dynamicHeight) + config.vGap * 2;
     const mainSpanY = totalHeight / 2;
 
-    let minX = -config.mainSpanWidth / 2;
-    let maxX = config.mainSpanWidth / 2;
+    // Apply Y offset first (needed for fan direction classification)
+    precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
+    followingResult.layout.forEach(n => n.layout.y += mainSpanY);
+
+    // Compute RAW per-column pushes (per side) and assign fan deltas
+    const followingRawPush = RendererTree.Renderer.computeColumnOffsetsAndAssignFan(followingAdjacencies, 0, mainSpanY, 1, config);
+    const precedingRawPush = RendererTree.Renderer.computeColumnOffsetsAndAssignFan(precedingAdjacencies, 0, mainSpanY, -1, config);
+
+    // Build cumulative pushes so each farther column includes all prior columns' push
+    const maxColFollowing = followingResult.layout.reduce((m, n) => Math.max(m, RendererTree.Renderer.getColumnIndex(n)), 0);
+    const maxColPreceding = precedingResult.layout.reduce((m, n) => Math.max(m, RendererTree.Renderer.getColumnIndex(n)), 0);
+
+    const followingPushCum = buildCumulativePush(followingRawPush, maxColFollowing);
+    const precedingPushCum = buildCumulativePush(precedingRawPush, maxColPreceding);
+
+    // Shift columns outward while preserving vertical alignment within each column
+    precedingResult.layout.forEach(n => {
+        const col = RendererTree.Renderer.getColumnIndex(n);
+        const push = precedingPushCum.get(col) || 0;
+        n.layout.x += -push; // outward to the left
+    });
+    followingResult.layout.forEach(n => {
+        const col = RendererTree.Renderer.getColumnIndex(n);
+        const push = followingPushCum.get(col) || 0;
+        n.layout.x += push; // outward to the right
+    });
+
+    // Compute extents AFTER applying column pushes
+    let minX = -config.nodeWidth / 2;
+    let maxX = config.nodeWidth / 2;
     [...precedingResult.layout, ...followingResult.layout].forEach(node => {
         minX = Math.min(minX, node.layout.x - config.nodeWidth / 2);
         maxX = Math.max(maxX, node.layout.x + config.nodeWidth / 2);
@@ -252,9 +286,6 @@ function recalculateAndDraw(container: HTMLElement): void {
         svg.setAttribute('viewBox', `${minX - config.horizontalPadding} 0 ${naturalContentWidth} ${totalHeight}`);
         container.style.height = `${totalHeight * scaleFactor}px`;
     }
-
-    precedingResult.layout.forEach(n => n.layout.y += mainSpanY);
-    followingResult.layout.forEach(n => n.layout.y += mainSpanY);
 
     RendererTree.Renderer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, 0, mainSpanY, -1, config, keyToPaletteMap, allKeys, container.id);
     RendererTree.Renderer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 0, mainSpanY, 1, config, keyToPaletteMap, allKeys, container.id);
