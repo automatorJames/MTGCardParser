@@ -1,10 +1,12 @@
 ﻿@page "/type-expressions"
 @inject CorpusAnalyzer CorpusAnalyzer
 
-@foreach (var item in _appliedOrderTypeCounts)
-{
-    <TypeCard TokenType=@item.Key Count=@item.Value />
-}
+<div class="type-card-container">
+    @foreach (var item in _appliedOrderTypeCounts)
+    {
+        <TypeCard TokenType=@item.Key Count=@item.Value />
+    }
+</div>
 
 @code{
 

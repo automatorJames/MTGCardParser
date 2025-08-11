@@ -5,12 +5,12 @@
 @inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
-<body id="card-analysis">
+<div class="analyzed-card-container">
     @foreach (var card in GetFilteredCards())
     {
         <CardBlock Card=card />
     }
-</body>
+</div>
 
 @code {
 

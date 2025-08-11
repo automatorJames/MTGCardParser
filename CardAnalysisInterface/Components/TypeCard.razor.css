@@ -1,4 +1,11 @@
-﻿.card-header {
+﻿.type-card {
+    width: 50%;
+    background-color: #252525;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.card-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -27,4 +34,6 @@ pre {
     border: 1px solid var(--lowlight-color, var(--outline-grey));
     white-space: pre-wrap;
     word-wrap: break-word;
+    margin-left: 12px;
+    margin-right: 12px;
 }

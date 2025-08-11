@@ -1,11 +1,13 @@
 ﻿@using MTGPlexer.TokenAnalysis.ColorCoding
-<div class="card-header">
-    <TokenTypeName TokenType=@TokenType />
-    <span class="match-count @(Count == 0 ? "zero" : "")">
-        <i class="matches-label">matches:</i> @Count
-    </span>
+<div class="type-card">
+    <div class="card-header">
+        <TokenTypeName TokenType=@TokenType />
+        <span class="match-count @(Count == 0 ? "zero" : "")">
+            <i class="matches-label">matches:</i> @Count
+        </span>
+    </div>
+    <pre style=@_palette.ToColorStyle()><code>@_regexString</code></pre>
 </div>
-<pre style=@_palette.ToColorStyle()><code>@_regexString</code></pre>
 
 @code {
     string _regexString;

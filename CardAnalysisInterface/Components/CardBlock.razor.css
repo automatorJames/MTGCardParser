@@ -1,4 +1,11 @@
-﻿.line-label {
+﻿.card-capture-block {
+    width: 65%;
+    background-color: #252525;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.line-label {
     font-size: 0.8em;
     color: var(--subtext-grey);
     width: 100%;
