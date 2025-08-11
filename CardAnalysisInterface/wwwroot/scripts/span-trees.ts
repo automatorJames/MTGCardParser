@@ -202,11 +202,20 @@ function recalculateAndDraw(container: HTMLElement): void {
 
     svg.innerHTML = '<defs></defs>';
     const config: RendererTree.Renderer.NodeConfig = {
-        nodeWidth: 200, nodePadding: 8, mainSpanPadding: 12,
-        nodeHeight: 40, hGap: 40, vGap: 20, cornerRadius: 10,
-        mainSpanWidth: 220, mainSpanFontSize: 14, mainSpanLineHeight: 16,
-        mainSpanFill: '#3a3a3a', mainSpanColor: "#e0e0e0",
-        horizontalPadding: 20, gradientTransitionRatio: 0.1
+        nodeWidth: 200,
+        nodePadding: 8,
+        mainSpanPadding: 12,
+        nodeHeight: 40,
+        hGap: 40,
+        vGap: 20,
+        cornerRadius: 10,
+        mainSpanWidth: 220,
+        mainSpanFontSize: 14,
+        mainSpanLineHeight: 16,
+        mainSpanFill: '#e0e0e0',
+        mainSpanColor: "#e0e0e0",
+        horizontalPadding: 20,
+        gradientTransitionRatio: 0.1
     };
 
     const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;

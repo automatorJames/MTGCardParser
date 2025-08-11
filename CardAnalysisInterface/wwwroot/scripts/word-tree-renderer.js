@@ -176,6 +176,7 @@ export var WordTree;
             if (!isAdjacencyNode) {
                 textEl.style.fontSize = `${config.mainSpanFontSize}px`;
                 textEl.style.fontWeight = 'bold';
+                textEl.style.fill = '#000000';
             }
             const totalTextHeight = wrappedLines.length * lineHeight;
             const startY = -totalTextHeight / 2 + lineHeight * 0.8;

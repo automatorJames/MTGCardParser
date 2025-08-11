@@ -17,7 +17,7 @@ public record DeterministicPalette
     public string HexSat { get; private set; }
 
     // --- Core Color Generation Constants ---
-    private const double BaseSaturation = 0.6;
+    private const double BaseSaturation = 0.66;
     private const double FullSaturation = 1.0;
     private const double DarkSaturation = 0.3;
     private const double BaseLightness = 0.6;

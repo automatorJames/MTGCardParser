@@ -202,6 +202,7 @@ export namespace WordTree.Renderer {
         if (!isAdjacencyNode) {
             textEl.style.fontSize = `${config.mainSpanFontSize}px`;
             textEl.style.fontWeight = 'bold';
+            textEl.style.fill = '#000000';
         }
 
         const totalTextHeight = wrappedLines.length * lineHeight;
