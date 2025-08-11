@@ -4,11 +4,27 @@ import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement } from 
 import { setupGlobalEventHandlers, wordTreeObservers } from "./span-tree-event-handler.js";
 import { orchestrateWordTreeRender } from "./span-tree-orchestrator.js";
 
+// --- Virtualization Configuration ---
+const virtualizationConfig = {
+    /** The number of trees to render on the initial load. */
+    initialBatchSize: 5,
+    /** The number of additional trees to render each time the user scrolls near the bottom. */
+    loadMoreBatchSize: 10,
+    /** How close (in pixels) the user must be to the bottom of the rendered content
+     *  to trigger loading the next batch. A larger value means loading sooner. */
+    scrollThreshold: 800
+};
+
+// --- Module-level State for Virtualization ---
+let fullDataset: AnalyzedSpan[] = [];
+let nextItemToRender = 0;
+let isLoadingMore = false;
+let scrollListenerAttached = false;
+
+
 /**
  * Processes raw span data from the server, augmenting it for efficient client-side use.
  * This converts key arrays into Sets for faster lookups.
- * @param rawSpan The raw analysis data for a span.
- * @returns The processed and augmented span data.
  */
 function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
     const traverseAndAugmentNodes = (nodes: AdjacencyNode[]): void => {
@@ -29,33 +45,108 @@ function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
     };
 }
 
+/**
+ * Renders a single word tree into its designated container.
+ * @param spanData The raw data for the tree to render.
+ * @param index The global index of the tree, used to find the correct container.
+ */
+function renderSingleTree(spanData: AnalyzedSpan, index: number): void {
+    const containerId = `word-tree-container-${index}`;
+    const spinnerId = `spinner-${index}`;
+    const container = document.getElementById(containerId);
+    const spinner = document.getElementById(spinnerId);
+
+    if (!container) return;
+
+    const card = container.closest<CardElement>('.span-trees-card');
+    if (card) {
+        card.__data = processSpanForClient(spanData);
+    }
+
+    if (!wordTreeObservers.has(containerId)) {
+        const resizeObserver = new ResizeObserver(() => orchestrateWordTreeRender(container));
+        resizeObserver.observe(container);
+        wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
+    }
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
+    container.appendChild(svg);
+
+    orchestrateWordTreeRender(container);
+
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
+}
+
+/**
+ * Renders the next available batch of word trees from the full dataset.
+ */
+function renderNextBatch(): void {
+    if (isLoadingMore || nextItemToRender >= fullDataset.length) {
+        return; // Either already loading or all items have been rendered
+    }
+    isLoadingMore = true;
+
+    const batchSize = nextItemToRender === 0
+        ? virtualizationConfig.initialBatchSize
+        : virtualizationConfig.loadMoreBatchSize;
+
+    const batchEnd = Math.min(nextItemToRender + batchSize, fullDataset.length);
+
+    for (let i = nextItemToRender; i < batchEnd; i++) {
+        renderSingleTree(fullDataset[i], i);
+    }
+
+    nextItemToRender = batchEnd;
+    isLoadingMore = false;
+}
+
+/**
+ * Checks the user's scroll position and triggers rendering the next batch if needed.
+ */
+function handleScroll(): void {
+    if (isLoadingMore || nextItemToRender >= fullDataset.length) {
+        return;
+    }
+
+    // Find the last rendered element to check its position
+    const lastRenderedIndex = nextItemToRender - 1;
+    if (lastRenderedIndex < 0) return;
+
+    const lastContainer = document.getElementById(`word-tree-container-${lastRenderedIndex}`);
+    if (!lastContainer) return;
+
+    const rect = lastContainer.getBoundingClientRect();
+
+    // If the bottom of the last rendered element is within the viewport plus the threshold, load more.
+    if (rect.bottom < window.innerHeight + virtualizationConfig.scrollThreshold) {
+        // Use requestAnimationFrame to ensure the render call happens smoothly
+        requestAnimationFrame(renderNextBatch);
+    }
+}
+
 
 // === Blazor Interop Functions ===
 
 /**
- * Clears all rendered word trees and displays loading spinners.
- * Also cleans up observers for any trees that are being removed from the display.
- * @param count The number of word tree containers to prepare.
+ * Clears all word tree containers and displays loading spinners in their place.
+ * This prepares the DOM for a fresh render.
  */
 export function clearAllTreesAndShowSpinners(count: number): void {
     setupGlobalEventHandlers();
 
-    // Disconnect observers for trees that are no longer present in the new layout
     for (const id of wordTreeObservers.keys()) {
-        const index = parseInt(id.split('-').pop() || '-1');
-        if (index >= count) {
-            const observerData = wordTreeObservers.get(id);
-            if (observerData) {
-                observerData.observer.disconnect();
-                if (observerData.animationFrameId) {
-                    cancelAnimationFrame(observerData.animationFrameId);
-                }
-                wordTreeObservers.delete(id);
+        const observerData = wordTreeObservers.get(id);
+        if (observerData) {
+            observerData.observer.disconnect();
+            if (observerData.animationFrameId) {
+                cancelAnimationFrame(observerData.animationFrameId);
             }
         }
     }
+    wordTreeObservers.clear();
 
-    // Reset the state of the remaining containers and show their spinners
     for (let i = 0; i < count; i++) {
         const containerId = `word-tree-container-${i}`;
         const spinnerId = `spinner-${i}`;
@@ -63,8 +154,8 @@ export function clearAllTreesAndShowSpinners(count: number): void {
         const spinner = document.getElementById(spinnerId);
 
         if (container) {
-            container.innerHTML = ''; // Clear any previous SVG
-            container.style.height = ''; // Reset height
+            container.innerHTML = '';
+            container.style.height = '300px'; // Give placeholder a default height for the spinner
         }
         if (spinner) {
             spinner.style.display = 'block';
@@ -73,47 +164,29 @@ export function clearAllTreesAndShowSpinners(count: number): void {
 }
 
 /**
- * Renders a word tree for each provided span object from the server.
- * This is the main entry point for drawing the visualization.
- * @param spans An array of raw span data from the server.
+ * Initializes the virtualized rendering process for a full set of spans.
+ * It renders the first batch and sets up a scroll listener to render more on demand.
+ * @param spans The complete array of raw span data from the server.
  */
 export function renderAllTrees(spans: AnalyzedSpan[]): void {
-    spans.forEach((rawSpan, index) => {
-        const containerId = `word-tree-container-${index}`;
-        const spinnerId = `spinner-${index}`;
-        const container = document.getElementById(containerId);
-        const spinner = document.getElementById(spinnerId);
+    // 1. Reset state and store the full dataset
+    isLoadingMore = false;
+    nextItemToRender = 0;
+    fullDataset = spans;
 
-        if (!container) {
-            console.error(`Container with id "${containerId}" not found.`);
-            return;
-        }
+    // 2. Prepare all DOM containers for rendering
+    clearAllTreesAndShowSpinners(spans.length);
 
-        const card = container.closest<CardElement>('.span-trees-card');
-        if (card) {
-            // Process and attach the data to the card element for easy access by event handlers
-            card.__data = processSpanForClient(rawSpan);
-        }
+    // 3. Render the initial batch of trees
+    renderNextBatch();
 
-        // Set up a ResizeObserver for this container if it doesn't already have one
-        if (!wordTreeObservers.has(containerId)) {
-            const resizeObserver = new ResizeObserver(() => orchestrateWordTreeRender(container));
-            resizeObserver.observe(container);
-            wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
-        }
-
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
-        container.appendChild(svg);
-
-        // Kick off the full rendering process
-        orchestrateWordTreeRender(container);
-
-        if (spinner) {
-            spinner.style.display = 'none';
-        }
-    });
+    // 4. Attach the scroll listener if it hasn't been already
+    if (!scrollListenerAttached) {
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        scrollListenerAttached = true;
+    }
 }
 
-// Expose the Blazor interop functions to the global window object for easy access.
+// Expose the Blazor interop functions to the global window object.
 (window as any).clearAllTreesAndShowSpinners = clearAllTreesAndShowSpinners;
 (window as any).renderAllTrees = renderAllTrees;
