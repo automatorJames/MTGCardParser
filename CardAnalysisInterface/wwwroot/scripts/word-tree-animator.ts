@@ -1,5 +1,7 @@
 ﻿// word-tree-animator.ts
 
+import { AnimationController } from "./models.js";
+
 /**
  * The Animator namespace provides utility functions for visual animations,
  * such as smoothly transitioning opacity.
@@ -12,14 +14,6 @@ export namespace WordTree.Animator {
         duration: 100, // Animation duration in milliseconds
         lowlightOpacity: 0.15 // Target opacity for non-highlighted elements
     };
-
-    /**
-     * An interface for an object that can manage an animation frame,
-     * allowing animations to be started and stopped.
-     */
-    export interface AnimationController {
-        animationFrameId: number | null;
-    }
 
     /**
      * Performs linear interpolation between two values.
@@ -54,10 +48,8 @@ export namespace WordTree.Animator {
             const progress = Math.min(elapsed / config.duration, 1);
 
             elementsToAnimate.forEach((targets, element) => {
-                if (element) {
-                    const currentOpacity = lerp(targets.start, targets.end, progress);
-                    element.style.opacity = currentOpacity.toString();
-                }
+                const currentOpacity = lerp(targets.start, targets.end, progress);
+                element.style.opacity = currentOpacity.toString();
             });
 
             if (progress < 1) {
@@ -65,9 +57,7 @@ export namespace WordTree.Animator {
             } else {
                 // Ensure final state is set perfectly
                 elementsToAnimate.forEach((targets, element) => {
-                    if (element) {
-                        element.style.opacity = targets.end.toString();
-                    }
+                    element.style.opacity = targets.end.toString();
                 });
                 animationController.animationFrameId = null;
             }

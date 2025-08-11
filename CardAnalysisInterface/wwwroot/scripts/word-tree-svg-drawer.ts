@@ -1,76 +1,41 @@
 ﻿// word-tree-svg-drawer.ts
 
-import { AdjacencyNode, DeterministicPalette } from './models.js';
-import { getColumnIndex, getFanDelta } from './word-tree-layout-calculator.js';
+import { AdjacencyNode, DeterministicPalette, NodeConfig } from './models.js';
+import { getFanDelta } from './word-tree-layout-calculator.js';
 
 /**
- * Defines the configuration for node and tree rendering.
- */
-export interface NodeConfig {
-    nodeWidth: number;
-    nodePadding: number;
-    nodeHeight: number;
-    hGap: number;
-    vGap: number;
-    cornerRadius: number;
-    mainSpanFill: string;
-    mainSpanColor: string;
-    horizontalPadding: number;
-    gradientTransitionRatio: number;
-    fanGap: number;
-}
-
-/**
- * Generates the SVG <stop> elements for a gradient based on a set of keys.
- * @param sourceKeys The keys to generate gradient stops for.
- * @param keyToPaletteMap A map from key to its color palette.
- * @param colorProperty The color property to use from the palette ('hex' or 'hexSat').
- * @param transitionRatio The ratio of each color band to use for smooth transitions.
- * @returns An HTML string of <stop> elements.
+ * Generates the SVG <stop> elements for a gradient.
  */
 export function createGradientStops(sourceKeys: string[], keyToPaletteMap: Map<string, DeterministicPalette>, colorProperty: 'hex' | 'hexSat', transitionRatio: number): string {
     const numKeys = sourceKeys.length;
     if (numKeys === 0) return '';
-
     if (numKeys === 1) {
-        const palette = keyToPaletteMap.get(sourceKeys[0]);
-        const color = palette ? palette[colorProperty] : '#ccc';
+        const color = keyToPaletteMap.get(sourceKeys[0])?.[colorProperty] ?? '#ccc';
         return `<stop offset="0%" stop-color="${color}" /><stop offset="100%" stop-color="${color}" />`;
     }
 
     const clampedRatio = Math.max(0, Math.min(1, transitionRatio));
-    const transitionZoneWidth = (1 / numKeys) * clampedRatio;
-    const halfTransition = transitionZoneWidth / 2;
+    const step = 1 / numKeys;
+    const halfTransition = (step * clampedRatio) / 2;
     let stopsHtml = '';
 
     sourceKeys.forEach((key, index) => {
-        const palette = keyToPaletteMap.get(key);
-        const color = palette ? palette[colorProperty] : '#ccc';
-        const bandStart = index / numKeys;
-        const bandEnd = (index + 1) / numKeys;
+        const color = keyToPaletteMap.get(key)?.[colorProperty] ?? '#ccc';
+        const bandStart = index * step;
+        const bandEnd = bandStart + step;
         const solidStartOffset = (index === 0) ? bandStart : bandStart + halfTransition;
         const solidEndOffset = (index === numKeys - 1) ? bandEnd : bandEnd - halfTransition;
-
         stopsHtml += `<stop offset="${solidStartOffset * 100}%" stop-color="${color}" />`;
         stopsHtml += `<stop offset="${solidEndOffset * 100}%" stop-color="${color}" />`;
     });
-
     return stopsHtml;
 }
 
 /**
  * Creates and appends a styled SVG group representing a single node.
- * @param svg The parent SVG element.
- * @param nodeData The data for the node to create.
- * @param centerX The x-coordinate of the node's center.
- * @param centerY The y-coordinate of the node's center.
- * @param isAdjacencyNode A flag indicating if this is a standard node (vs. the main anchor).
- * @param config The rendering configuration.
- * @param keyToPaletteMap A map from key to its color palette.
- * @param containerId The ID of the parent container, for creating unique gradient IDs.
  */
-export function createNode(svg: SVGSVGElement, nodeData: any, centerX: number, centerY: number, isAdjacencyNode: boolean, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, containerId: string): void {
-    const { dynamicHeight, wrappedLines, lineHeight } = nodeData;
+export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: boolean, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, containerId: string): void {
+    const { dynamicHeight, wrappedLines, lineHeight, layout } = nodeData;
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.setAttribute('class', 'node-group');
     group.id = isAdjacencyNode ? `group-node-${containerId}-${nodeData.id}` : `group-node-${containerId}-main-anchor`;
@@ -81,14 +46,12 @@ export function createNode(svg: SVGSVGElement, nodeData: any, centerX: number, c
     baseShape.setAttribute('y', `${-dynamicHeight / 2}`);
     baseShape.setAttribute('width', `${config.nodeWidth}`);
     baseShape.setAttribute('height', `${dynamicHeight}`);
-    baseShape.setAttribute('rx', "8");
+    baseShape.setAttribute('rx', `${config.cornerRadius}`);
 
     const highlightShape = baseShape.cloneNode() as SVGRectElement;
     highlightShape.classList.remove('base-layer');
     highlightShape.setAttribute('class', 'highlight-overlay');
-
-    group.appendChild(baseShape);
-    group.appendChild(highlightShape);
+    group.append(baseShape, highlightShape);
 
     if (isAdjacencyNode) {
         group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceKeys || []);
@@ -96,16 +59,17 @@ export function createNode(svg: SVGSVGElement, nodeData: any, centerX: number, c
         if (sourceKeys.length > 0) {
             const defs = svg.querySelector('defs');
             if (defs) {
+                // Define and apply base gradient for the border
                 const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                 const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                baseGradient.setAttribute('id', baseGradientId);
+                baseGradient.id = baseGradientId;
                 baseGradient.innerHTML = createGradientStops(sourceKeys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
                 defs.appendChild(baseGradient);
                 baseShape.style.stroke = `url(#${baseGradientId})`;
-
+                // Define and apply highlight gradient for the border
                 const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                 const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                highlightGradient.setAttribute('id', highlightGradientId);
+                highlightGradient.id = highlightGradientId;
                 highlightGradient.innerHTML = createGradientStops(sourceKeys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
                 defs.appendChild(highlightGradient);
                 highlightShape.style.stroke = `url(#${highlightGradientId})`;
@@ -119,10 +83,8 @@ export function createNode(svg: SVGSVGElement, nodeData: any, centerX: number, c
 
     const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
     textElement.setAttribute('class', 'node-text');
-    textElement.style.fontSize = `12px`;
-
     const totalTextHeight = wrappedLines.length * lineHeight;
-    const startY = -totalTextHeight / 2 + lineHeight * 0.8;
+    const startY = -totalTextHeight / 2 + lineHeight * 0.8; // Vertical centering adjustment
     wrappedLines.forEach((line: string, index: number) => {
         const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
         tspan.setAttribute('x', '0');
@@ -132,52 +94,46 @@ export function createNode(svg: SVGSVGElement, nodeData: any, centerX: number, c
     });
 
     group.appendChild(textElement);
-    group.setAttribute('transform', `translate(${centerX}, ${centerY})`);
+    group.setAttribute('transform', `translate(${layout.x}, ${layout.y})`);
     svg.appendChild(group);
 }
 
+
 /**
  * Creates and appends a rounded SVG path to connect a parent and child node.
- * @param svg The parent SVG element.
- * @param parentData The data object for the parent node.
- * @param childData The data object for the child node.
- * @param direction The layout direction (-1 for left, 1 for right).
- * @param config The rendering configuration.
- * @param keyToPaletteMap A map from key to its color palette.
- * @param allKeys The complete set of keys for the entire tree.
- * @param containerId The ID of the parent container for unique gradient IDs.
+ * This version uses a simplified "takeoff" logic for fanning.
  */
 export function createRoundedConnector(svg: SVGSVGElement, parentData: any, childData: AdjacencyNode, direction: number, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, allKeys: Set<string>, containerId: string): void {
-    const [x1, y1] = [parentData.layout.x, parentData.layout.y];
-    const [x2, y2] = [childData.layout.x, childData.layout.y];
+    const { x: x1, y: y1 } = parentData.layout;
+    const { x: x2, y: y2 } = childData.layout;
 
     const startX = x1 + (direction * config.nodeWidth / 2);
     const endX = x2 - (direction * config.nodeWidth / 2);
 
+    const fanDelta = getFanDelta(childData);
+    const takeoffX = startX + (direction * fanDelta); // Point where the curve begins
     const verticalOffset = Math.abs(y2 - y1);
-    const horizontalBudget = direction * (endX - startX); // Should be > 0
+    const horizontalTurnDistance = Math.abs(endX - takeoffX);
 
-    // Adjust path based on pre-calculated fan-out delta.
-    const fanDelta = Math.max(0, Math.min(getFanDelta(childData), Math.max(0, horizontalBudget)));
-    const cornerRadiusMax = Math.max(0, (horizontalBudget - fanDelta) / 2);
-    const cornerRadius = Math.min(config.cornerRadius, cornerRadiusMax);
-    const midX = (startX + endX - direction * fanDelta) / 2;
+    // Radius cannot exceed half the available horizontal or vertical space for the turn.
+    const radius = Math.min(config.cornerRadius, horizontalTurnDistance / 2, verticalOffset / 2);
     const ySign = Math.sign(y2 - y1) || 1;
 
     let pathData: string;
-    if (verticalOffset < 1e-6) { // Straight horizontal line
+    if (verticalOffset < 1e-6) { // Straight horizontal line (should be rare with fanning).
         pathData = `M ${startX} ${y1} L ${endX} ${y2}`;
     } else {
-        const effectiveRadius = Math.min(cornerRadius, verticalOffset / 2);
+        const midTurnX = (takeoffX + endX) / 2;
         const sweep1 = direction * ySign > 0 ? 1 : 0;
         const sweep2 = direction * ySign > 0 ? 0 : 1;
         pathData =
-            `M ${startX} ${y1}` +
-            ` L ${midX - effectiveRadius * direction} ${y1}` +
-            ` A ${effectiveRadius} ${effectiveRadius} 0 0 ${sweep1} ${midX} ${y1 + effectiveRadius * ySign}` +
-            ` L ${midX} ${y2 - effectiveRadius * ySign}` +
-            ` A ${effectiveRadius} ${effectiveRadius} 0 0 ${sweep2} ${midX + effectiveRadius * direction} ${y2}` +
-            ` L ${endX} ${y2}`;
+            `M ${startX} ${y1}` + // Start at parent edge
+            ` L ${takeoffX} ${y1}` + // Initial straight segment for fanning
+            ` L ${midTurnX - radius * direction} ${y1}` + // Straight segment into the turn
+            ` A ${radius} ${radius} 0 0 ${sweep1} ${midTurnX} ${y1 + radius * ySign}` + // First curve
+            ` L ${midTurnX} ${y2 - radius * ySign}` + // Vertical segment
+            ` A ${radius} ${radius} 0 0 ${sweep2} ${midTurnX + radius * direction} ${y2}` + // Second curve
+            ` L ${endX} ${y2}`; // Final straight segment to child
     }
 
     const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set<string>());
@@ -187,18 +143,9 @@ export function createRoundedConnector(svg: SVGSVGElement, parentData: any, chil
     emitConnector(svg, pathData, childData, commonKeys, startX, y1, endX, y2, keyToPaletteMap, containerId);
 }
 
+
 /**
  * Low-level function to create the SVG connector elements (base and highlight paths).
- * @param svg The parent SVG element.
- * @param pathData The SVG path data string.
- * @param childData The data for the child node (for ID generation).
- * @param commonKeys The keys shared between the parent and child.
- * @param startX The starting X coordinate of the connector.
- * @param startY The starting Y coordinate of the connector.
- * @param endX The ending X coordinate of the connector.
- * @param endY The ending Y coordinate of the connector.
- * @param keyToPaletteMap A map from key to its color palette.
- * @param containerId The ID of the parent container for unique gradient IDs.
  */
 function emitConnector(svg: SVGSVGElement, pathData: string, childData: AdjacencyNode, commonKeys: string[], startX: number, startY: number, endX: number, endY: number, keyToPaletteMap: Map<string, DeterministicPalette>, containerId: string): void {
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -222,7 +169,7 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
 
             const createGradient = (id: string, colorProp: 'hex' | 'hexSat') => {
                 const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                gradient.setAttribute('id', id);
+                gradient.id = id;
                 gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
                 gradient.setAttribute('x1', `${startX}`);
                 gradient.setAttribute('y1', `${startY}`);
@@ -232,6 +179,7 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
                 return gradient;
             };
 
+            // Avoid creating duplicate gradients
             if (!defs.querySelector(`#${baseGradientId}`)) {
                 defs.appendChild(createGradient(baseGradientId, 'hex'));
             }
@@ -244,28 +192,21 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
         }
     }
 
-    group.appendChild(basePath);
-    group.appendChild(highlightPath);
+    group.append(basePath, highlightPath);
     svg.insertBefore(group, svg.firstChild); // Insert connectors behind nodes
 }
 
-
 /**
  * Recursively draws all nodes and their connectors for a given tree.
- * @param svg The parent SVG element.
- * @param nodes The array of nodes to draw.
- * @param parentData The data of the parent node.
- * @param direction The layout direction (-1 for preceding, 1 for following).
- * @param config The rendering configuration.
- * @param keyToPaletteMap A map from key to its color palette.
- * @param allKeys The complete set of keys for the entire tree.
- * @param containerId The ID of the parent container for unique IDs.
  */
 export function drawNodesAndConnectors(svg: SVGSVGElement, nodes: AdjacencyNode[], parentData: any, direction: number, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, allKeys: Set<string>, containerId: string): void {
     if (!nodes) return;
     for (const node of nodes) {
+        // Draw connector from parent to this node first (so it's in the background)
         createRoundedConnector(svg, parentData, node, direction, config, keyToPaletteMap, allKeys, containerId);
-        createNode(svg, node, node.layout.x, node.layout.y, true, config, keyToPaletteMap, containerId);
+        // Draw the node itself
+        createNode(svg, node, true, config, keyToPaletteMap, containerId);
+        // Recurse for children
         if (node.children) {
             drawNodesAndConnectors(svg, node.children, node, direction, config, keyToPaletteMap, allKeys, containerId);
         }

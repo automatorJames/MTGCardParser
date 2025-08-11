@@ -5,17 +5,7 @@
  */
 export interface DeterministicPalette {
     hex: string;
-    hexLight: string;
-    hexDark: string;
     hexSat: string;
-}
-
-/**
- * A single, non-divisible segment within a consolidated AdjacencyNode.
- */
-export interface NodeSegment {
-    text: string;
-    palette: DeterministicPalette;
 }
 
 /**
@@ -25,17 +15,12 @@ export interface NodeSegment {
 export interface AdjacencyNode {
     // --- Properties from Server ---
     id: string;
-    segments: NodeSegment[];
+    text: string;
     sourceOccurrenceKeys: string[];
     children: AdjacencyNode[];
-    text: string;
 
     // --- Properties added by Client ---
-
-    // Added ONCE during initial processing for renderer efficiency
-    sourceKeysSet?: Set<string>;
-
-    // Added during layout calculation
+    sourceKeysSet?: Set<string>; // For efficient lookups
     dynamicHeight: number;
     wrappedLines: string[];
     lineHeight: number;
@@ -45,14 +30,11 @@ export interface AdjacencyNode {
 
 /**
  * This interface matches the raw JSON payload from the C# server (the DTO).
- * It uses plain objects and arrays that are easily serializable.
  */
 export interface AnalyzedSpan {
     text: string;
     precedingAdjacencies: AdjacencyNode[];
     followingAdjacencies: AdjacencyNode[];
-    cardPalettes: { [cardName: string]: DeterministicPalette };
-    containingCards: string[];
     keyToPaletteMap: { [key: string]: DeterministicPalette };
     allKeys: string[];
     cardNameToKeysMap: { [cardName: string]: string[] };
@@ -60,8 +42,7 @@ export interface AnalyzedSpan {
 
 /**
  * This interface represents the fully processed, in-memory data structure
- * optimized for rendering. It uses Map and Set for efficient lookups and is
- * generated once when the data is received.
+ * optimized for rendering. It uses Map and Set for efficient lookups.
  */
 export interface ProcessedAnalyzedSpan extends Omit<AnalyzedSpan, 'keyToPaletteMap' | 'allKeys'> {
     keyToPaletteMap: Map<string, DeterministicPalette>;
@@ -69,8 +50,8 @@ export interface ProcessedAnalyzedSpan extends Omit<AnalyzedSpan, 'keyToPaletteM
 }
 
 /**
-* A custom HTMLElement type for the main card, allowing for data attachment.
-*/
+ * A custom HTMLElement type for the main card, allowing for data attachment.
+ */
 export type CardElement = HTMLElement & { __data?: ProcessedAnalyzedSpan };
 
 /**
@@ -79,4 +60,29 @@ export type CardElement = HTMLElement & { __data?: ProcessedAnalyzedSpan };
 export interface WordTreeObserver {
     observer: ResizeObserver;
     animationFrameId: number | null;
+}
+
+/**
+ * An interface for an object that can manage an animation frame,
+ * allowing animations to be started and stopped.
+ */
+export interface AnimationController {
+    animationFrameId: number | null;
+}
+
+/**
+ * Defines the configuration for node and tree rendering.
+ */
+export interface NodeConfig {
+    nodeWidth: number;
+    nodePadding: number;
+    nodeHeight: number;
+    hGap: number; // Horizontal gap between node edges
+    vGap: number; // Vertical gap between node edges
+    cornerRadius: number;
+    mainSpanFill: string;
+    mainSpanColor: string;
+    horizontalPadding: number; // Padding at the far left/right of the SVG
+    gradientTransitionRatio: number;
+    fanGap: number; // Additional horizontal distance for each fanned-out connector
 }

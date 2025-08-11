@@ -4,13 +4,32 @@ import { CardElement, WordTreeObserver } from "./models.js";
 import { WordTree } from "./word-tree-animator.js";
 import { createGradientStops } from "./word-tree-svg-drawer.js";
 
-const wordTreeObservers = new Map<string, WordTreeObserver>();
-const globalEventSetup = { initialized: false };
+// This state is managed here but used by the span-tree-manager.
+export const wordTreeObservers = new Map<string, WordTreeObserver>();
+
+const globalEventState = {
+    initialized: false,
+    // Keep track of the last hovered element to avoid redundant animations
+    lastHovered: {
+        card: null as CardElement | null,
+        keys: new Set<string>()
+    }
+};
+
+/**
+ * A utility to check for deep equality between two Sets of strings.
+ */
+function areSetsEqual(setA: Set<string>, setB: Set<string>): boolean {
+    if (setA.size !== setB.size) return false;
+    for (const item of setA) {
+        if (!setB.has(item)) return false;
+    }
+    return true;
+}
+
 
 /**
  * Finds the unique container ID for a given card element.
- * @param card The card element to search within.
- * @returns The container ID, or null if not found.
  */
 function findContainerIdForCard(card: CardElement): string | null {
     const container = card.querySelector<HTMLElement>('.word-tree-body [id^="word-tree-container-"]');
@@ -18,40 +37,13 @@ function findContainerIdForCard(card: CardElement): string | null {
 }
 
 /**
- * Resets a card's visual state to the default, removing all highlights.
- * @param containerId The ID of the SVG container.
- * @param card The card element to reset.
- */
-function animateResetState(containerId: string, card: CardElement): void {
-    const svg = document.getElementById(containerId)?.querySelector('svg');
-    const animationController = wordTreeObservers.get(containerId);
-    const processedData = card.__data;
-    if (!svg || !animationController || !processedData) return;
-
-    const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
-    svg.querySelectorAll<HTMLElement>('.base-layer, .node-text, .highlight-overlay').forEach(element => {
-        const isHighlight = element.classList.contains('highlight-overlay');
-        elementsToAnimate.set(element, { start: parseFloat(getComputedStyle(element).opacity), end: isHighlight ? 0 : 1 });
-    });
-    WordTree.Animator.animateOpacity(elementsToAnimate, animationController);
-
-    card.classList.remove('highlight-active');
-    card.querySelectorAll<HTMLElement>('[data-card-name]').forEach(item => {
-        item.classList.remove('highlight', 'lowlight');
-    });
-}
-
-/**
  * Highlights parts of the tree based on a set of filter keys.
- * @param containerId The ID of the SVG container.
- * @param card The parent card element.
- * @param filterKeys The set of source keys to highlight.
  */
 function animateHighlightState(containerId: string, card: CardElement, filterKeys: Set<string>): void {
     const svg = document.getElementById(containerId)?.querySelector('svg');
     const animationController = wordTreeObservers.get(containerId);
     const processedData = card.__data;
-    if (!svg || !animationController || !processedData) return;
+    if (!svg || !animationController || !processedData || filterKeys.size === 0) return;
 
     const defs = svg.querySelector('defs');
     if (!defs) return;
@@ -73,10 +65,11 @@ function animateHighlightState(containerId: string, card: CardElement, filterKey
         if (highlightOverlay) elementsToAnimate.set(highlightOverlay, { start: parseFloat(getComputedStyle(highlightOverlay).opacity), end: isHighlighted ? 1 : 0 });
         if (nodeText) elementsToAnimate.set(nodeText, { start: parseFloat(getComputedStyle(nodeText).opacity), end: targetOpacity });
 
+        // Dynamically update the gradient definition for the highlight overlay
         const idParts = element.id.split('-');
         const elementType = idParts[1];
         const elementId = idParts[idParts.length - 1];
-        const keysForGradient = isHighlighted ? elementKeys.filter((key: string) => filterKeys.has(key)) : [];
+        const keysForGradient = elementKeys.filter((key: string) => filterKeys.has(key));
 
         const highlightGradId = `grad-${elementType}-highlight-${containerId}-${elementId}`;
         const highlightGrad = defs.querySelector(`#${highlightGradId}`);
@@ -89,63 +82,93 @@ function animateHighlightState(containerId: string, card: CardElement, filterKey
 
     card.classList.add('highlight-active');
     const relevantCardNames = new Set<string>();
-    filterKeys.forEach(key => {
-        relevantCardNames.add(key.substring(0, key.indexOf('[')));
-    });
+    filterKeys.forEach(key => relevantCardNames.add(key.substring(0, key.indexOf('['))));
 
     card.querySelectorAll<HTMLElement>('[data-card-name]').forEach(item => {
-        const isRelevant = relevantCardNames.has(item.dataset.cardName || '');
+        const cardName = item.dataset.cardName || '';
+        const isRelevant = relevantCardNames.has(cardName);
         item.classList.toggle('highlight', isRelevant);
         item.classList.toggle('lowlight', !isRelevant);
     });
 }
 
 /**
- * Sets up global event listeners for hover interactions on all word trees.
- * This is initialized only once.
+ * Resets a card's visual state to the default, removing all highlights.
+ */
+function animateResetState(containerId: string, card: CardElement): void {
+    const svg = document.getElementById(containerId)?.querySelector('svg');
+    const animationController = wordTreeObservers.get(containerId);
+    if (!svg || !animationController) return;
+
+    const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
+    svg.querySelectorAll<HTMLElement>('.base-layer, .node-text, .highlight-overlay').forEach(element => {
+        const isHighlight = element.classList.contains('highlight-overlay');
+        elementsToAnimate.set(element, { start: parseFloat(getComputedStyle(element).opacity), end: isHighlight ? 0 : 1 });
+    });
+    WordTree.Animator.animateOpacity(elementsToAnimate, animationController);
+
+    card.classList.remove('highlight-active');
+    card.querySelectorAll<HTMLElement>('[data-card-name]').forEach(item => {
+        item.classList.remove('highlight', 'lowlight');
+    });
+}
+
+/**
+ * Sets up a single, intelligent global event listener for hover interactions.
+ * This handler manages state to determine when to highlight or reset the view.
  */
 export function setupGlobalEventHandlers(): void {
-    if (globalEventSetup.initialized) return;
+    if (globalEventState.initialized) return;
 
     document.addEventListener('mouseover', (event: MouseEvent) => {
-        if (!(event.target instanceof Element)) return;
-        const target: Element = event.target;
+        const target = event.target as Element;
+        const card = target.closest<CardElement>('.span-trees-card');
 
-        const hoveredSvgGroup = target.closest<HTMLElement>('[data-source-keys]');
-        if (hoveredSvgGroup) {
-            const card = hoveredSvgGroup.closest<CardElement>('.span-trees-card');
-            if (card) {
-                const containerId = findContainerIdForCard(card);
-                const keys = JSON.parse(hoveredSvgGroup.dataset.sourceKeys || '[]') as string[];
-                if (containerId) animateHighlightState(containerId, card, new Set(keys));
+        // Case 1: Mouse is not over any card.
+        // If we were previously hovering a card, reset it and clear the state.
+        if (!card) {
+            if (globalEventState.lastHovered.card) {
+                const oldContainerId = findContainerIdForCard(globalEventState.lastHovered.card);
+                if (oldContainerId) {
+                    animateResetState(oldContainerId, globalEventState.lastHovered.card);
+                }
+                globalEventState.lastHovered = { card: null, keys: new Set() };
             }
             return;
         }
 
-        const hoveredCardName = target.closest<HTMLElement>('[data-card-name]');
-        if (hoveredCardName) {
-            const card = hoveredCardName.closest<CardElement>('.span-trees-card');
-            const processedData = card?.__data;
-            const cardName = hoveredCardName.dataset.cardName;
-            if (card && processedData && cardName) {
-                const containerId = findContainerIdForCard(card);
-                const keysForCard = processedData.cardNameToKeysMap[cardName] || [];
-                if (containerId) animateHighlightState(containerId, card, new Set(keysForCard));
+        // We are inside a card. Find its container.
+        const containerId = findContainerIdForCard(card);
+        if (!containerId) return;
+
+        // Determine if the mouse is over an interactive element and get its keys.
+        const interactiveEl = target.closest<HTMLElement>('[data-source-keys], [data-card-name]');
+        let currentKeys = new Set<string>();
+        if (interactiveEl) {
+            if (interactiveEl.dataset.sourceKeys) {
+                currentKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys));
+            } else if (interactiveEl.dataset.cardName) {
+                const cardName = interactiveEl.dataset.cardName;
+                const processedData = card.__data;
+                if (processedData && cardName) {
+                    currentKeys = new Set(processedData.cardNameToKeysMap[cardName] || []);
+                }
+            }
+        }
+
+        // Case 2: The hover state has changed (different card or different keys).
+        if (card !== globalEventState.lastHovered.card || !areSetsEqual(currentKeys, globalEventState.lastHovered.keys)) {
+            globalEventState.lastHovered = { card, keys: currentKeys };
+
+            if (currentKeys.size > 0) {
+                // If we have keys, highlight them.
+                animateHighlightState(containerId, card, currentKeys);
+            } else {
+                // Otherwise, we are on a non-interactive part of the card; reset it.
+                animateResetState(containerId, card);
             }
         }
     });
 
-    document.addEventListener('mouseleave', (event: MouseEvent) => {
-        if (!(event.target instanceof Element)) return;
-        const card = event.target.closest<CardElement>('.span-trees-card');
-        if (card) {
-            const containerId = findContainerIdForCard(card);
-            if (containerId) animateResetState(containerId, card);
-        }
-    }, true);
-
-    globalEventSetup.initialized = true;
+    globalEventState.initialized = true;
 }
-
-// Re-export the observer map for use by the manager.
-export { wordTreeObservers };

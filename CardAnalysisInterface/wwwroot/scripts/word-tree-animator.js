@@ -40,10 +40,8 @@ export var WordTree;
                 const elapsed = now - startTime;
                 const progress = Math.min(elapsed / Animator.config.duration, 1);
                 elementsToAnimate.forEach((targets, element) => {
-                    if (element) {
-                        const currentOpacity = lerp(targets.start, targets.end, progress);
-                        element.style.opacity = currentOpacity.toString();
-                    }
+                    const currentOpacity = lerp(targets.start, targets.end, progress);
+                    element.style.opacity = currentOpacity.toString();
                 });
                 if (progress < 1) {
                     animationController.animationFrameId = requestAnimationFrame(animationStep);
@@ -51,9 +49,7 @@ export var WordTree;
                 else {
                     // Ensure final state is set perfectly
                     elementsToAnimate.forEach((targets, element) => {
-                        if (element) {
-                            element.style.opacity = targets.end.toString();
-                        }
+                        element.style.opacity = targets.end.toString();
                     });
                     animationController.animationFrameId = null;
                 }

@@ -27,33 +27,34 @@ function processSpanForClient(rawSpan) {
 // === Blazor Interop Functions ===
 /**
  * Clears all rendered word trees and displays loading spinners.
- * Also cleans up observers for any trees that are being removed.
+ * Also cleans up observers for any trees that are being removed from the display.
  * @param count The number of word tree containers to prepare.
  */
 export function clearAllTreesAndShowSpinners(count) {
     setupGlobalEventHandlers();
-    // Disconnect observers for trees that no longer exist
+    // Disconnect observers for trees that are no longer present in the new layout
     for (const id of wordTreeObservers.keys()) {
         const index = parseInt(id.split('-').pop() || '-1');
         if (index >= count) {
             const observerData = wordTreeObservers.get(id);
             if (observerData) {
                 observerData.observer.disconnect();
-                if (observerData.animationFrameId)
+                if (observerData.animationFrameId) {
                     cancelAnimationFrame(observerData.animationFrameId);
+                }
                 wordTreeObservers.delete(id);
             }
         }
     }
-    // Reset containers and show spinners
+    // Reset the state of the remaining containers and show their spinners
     for (let i = 0; i < count; i++) {
         const containerId = `word-tree-container-${i}`;
         const spinnerId = `spinner-${i}`;
         const container = document.getElementById(containerId);
         const spinner = document.getElementById(spinnerId);
         if (container) {
-            container.innerHTML = '';
-            container.style.height = '';
+            container.innerHTML = ''; // Clear any previous SVG
+            container.style.height = ''; // Reset height
         }
         if (spinner) {
             spinner.style.display = 'block';
@@ -61,7 +62,8 @@ export function clearAllTreesAndShowSpinners(count) {
     }
 }
 /**
- * Renders a word tree for each provided span object.
+ * Renders a word tree for each provided span object from the server.
+ * This is the main entry point for drawing the visualization.
  * @param spans An array of raw span data from the server.
  */
 export function renderAllTrees(spans) {
@@ -70,12 +72,16 @@ export function renderAllTrees(spans) {
         const spinnerId = `spinner-${index}`;
         const container = document.getElementById(containerId);
         const spinner = document.getElementById(spinnerId);
-        if (!container)
+        if (!container) {
+            console.error(`Container with id "${containerId}" not found.`);
             return;
+        }
         const card = container.closest('.span-trees-card');
         if (card) {
+            // Process and attach the data to the card element for easy access by event handlers
             card.__data = processSpanForClient(rawSpan);
         }
+        // Set up a ResizeObserver for this container if it doesn't already have one
         if (!wordTreeObservers.has(containerId)) {
             const resizeObserver = new ResizeObserver(() => orchestrateWordTreeRender(container));
             resizeObserver.observe(container);
@@ -83,13 +89,14 @@ export function renderAllTrees(spans) {
         }
         const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
         container.appendChild(svg);
+        // Kick off the full rendering process
         orchestrateWordTreeRender(container);
         if (spinner) {
             spinner.style.display = 'none';
         }
     });
 }
-// Expose the Blazor interop functions to the global scope for easy access.
+// Expose the Blazor interop functions to the global window object for easy access.
 window.clearAllTreesAndShowSpinners = clearAllTreesAndShowSpinners;
 window.renderAllTrees = renderAllTrees;
 //# sourceMappingURL=span-tree-manager.js.map

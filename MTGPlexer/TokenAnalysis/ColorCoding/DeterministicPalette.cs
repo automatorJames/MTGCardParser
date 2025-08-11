@@ -224,24 +224,20 @@ public record DeterministicPalette
         return HslToHex(h, s, newLightness);
     }
 
-    /// <summary>
-    /// REFACTORED: This method now calculates an array of equidistant hues using the golden angle
-    /// for good perceptual distribution. It no longer deals with colors directly.
-    /// </summary>
     private static double[] GetRainbowHues(int numberOfItems)
     {
         if (numberOfItems <= 0) return [];
 
         var hues = new double[numberOfItems];
-        // Use golden angle approximation for perceptually distinct colors.
-        // A starting offset avoids starting at pure red.
-        const double startingOffset = 0.5;
-        const double goldenAngle = 137.5;
+
+        const double startDeg = 280.0;  // violet-ish
+        const double endDeg = 0.0;    // red
+        double steps = Math.Max(1, numberOfItems - 1);
+        double stepDeg = (startDeg - endDeg) / steps;
 
         for (int i = 0; i < numberOfItems; i++)
-        {
-            hues[i] = (startingOffset + (i * goldenAngle / 360.0)) % 1.0;
-        }
+            hues[i] = ((startDeg - i * stepDeg) / 360.0 + 1.0) % 1.0;
+
         return hues;
     }
 
