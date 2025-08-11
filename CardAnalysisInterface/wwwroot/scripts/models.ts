@@ -67,3 +67,16 @@ export interface ProcessedAnalyzedSpan extends Omit<AnalyzedSpan, 'keyToPaletteM
     keyToPaletteMap: Map<string, DeterministicPalette>;
     allKeys: Set<string>;
 }
+
+/**
+* A custom HTMLElement type for the main card, allowing for data attachment.
+*/
+export type CardElement = HTMLElement & { __data?: ProcessedAnalyzedSpan };
+
+/**
+ * Manages the state for a ResizeObserver instance tied to a word tree container.
+ */
+export interface WordTreeObserver {
+    observer: ResizeObserver;
+    animationFrameId: number | null;
+}

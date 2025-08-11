@@ -1,22 +1,50 @@
 ﻿// word-tree-animator.ts
 
+/**
+ * The Animator namespace provides utility functions for visual animations,
+ * such as smoothly transitioning opacity.
+ */
 export namespace WordTree.Animator {
-    export interface AnimationManager {
+    /**
+     * Defines the configuration for animations.
+     */
+    export const config = {
+        duration: 100, // Animation duration in milliseconds
+        lowlightOpacity: 0.15 // Target opacity for non-highlighted elements
+    };
+
+    /**
+     * An interface for an object that can manage an animation frame,
+     * allowing animations to be started and stopped.
+     */
+    export interface AnimationController {
         animationFrameId: number | null;
     }
 
-    export const config = {
-        duration: 100, // in milliseconds
-        lowlightOpacity: 0.15
-    };
-
-    function lerp(start: number, end: number, amount: number): number {
-        return start * (1 - amount) + end * amount;
+    /**
+     * Performs linear interpolation between two values.
+     * @param start The starting value.
+     * @param end The ending value.
+     * @param progress The interpolation progress (a value from 0 to 1).
+     * @returns The interpolated value.
+     */
+    function lerp(start: number, end: number, progress: number): number {
+        return start * (1 - progress) + end * progress;
     }
 
-    export function animateOpacity(elementsToAnimate: Map<HTMLElement, { start: number; end: number }>, animationManager: AnimationManager): void {
-        if (animationManager.animationFrameId) {
-            cancelAnimationFrame(animationManager.animationFrameId);
+    /**
+     * Animates the opacity of a collection of HTML elements over a set duration.
+     * @param elementsToAnimate A map where keys are the elements to animate and
+     *   values are objects containing the start and end opacity values.
+     * @param animationController An object to manage the animation frame ID,
+     *   ensuring only one animation runs at a time for the given controller.
+     */
+    export function animateOpacity(
+        elementsToAnimate: Map<HTMLElement, { start: number; end: number }>,
+        animationController: AnimationController
+    ): void {
+        if (animationController.animationFrameId) {
+            cancelAnimationFrame(animationController.animationFrameId);
         }
 
         const startTime = performance.now();
@@ -33,17 +61,18 @@ export namespace WordTree.Animator {
             });
 
             if (progress < 1) {
-                animationManager.animationFrameId = requestAnimationFrame(animationStep);
+                animationController.animationFrameId = requestAnimationFrame(animationStep);
             } else {
+                // Ensure final state is set perfectly
                 elementsToAnimate.forEach((targets, element) => {
                     if (element) {
                         element.style.opacity = targets.end.toString();
                     }
                 });
-                animationManager.animationFrameId = null;
+                animationController.animationFrameId = null;
             }
         };
 
-        animationManager.animationFrameId = requestAnimationFrame(animationStep);
+        animationController.animationFrameId = requestAnimationFrame(animationStep);
     }
 }
