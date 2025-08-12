@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 public record DigestedSpanCorpus
 {

@@ -1,7 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using MTGPlexer.TokenAnalysis.ColorCoding;
-
-namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// Enriched analysis of a single unique span of text.

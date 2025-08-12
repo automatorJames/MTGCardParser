@@ -1,4 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿using MTGPlexer.TokenAnalysis.SpanDTOs;
 
 namespace MTGPlexer.DTOs;
 

@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// Represents a single, non-divisible segment within a consolidated AdjacencyNode.

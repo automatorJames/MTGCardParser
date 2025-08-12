@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// A data transfer object representing the entire span visualization for JS.

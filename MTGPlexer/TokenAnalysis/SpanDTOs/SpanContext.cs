@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 public record SpanContext
 {

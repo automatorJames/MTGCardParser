@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// Represents a node in an adjacency tree, now capable of holding consolidated segments.

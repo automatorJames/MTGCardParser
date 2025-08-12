@@ -17,7 +17,7 @@ global using Superpower.Tokenizers;
 global using System.Reflection;
 global using System.Text.RegularExpressions;
 global using System.Diagnostics;
-global using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+global using MTGPlexer.TokenAnalysis.SpanDTOs;
 global using MTGPlexer.TokenAnalysis.MatchDTOs;
 global using MTGPlexer.TokenAnalysis.ColorCoding;
 global using System.Text.Json.Serialization;

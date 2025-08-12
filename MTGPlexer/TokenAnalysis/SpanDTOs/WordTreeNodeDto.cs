@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// A data transfer object representing a single node in the word tree for JS visualization.

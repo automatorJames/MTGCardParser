@@ -8,5 +8,5 @@ global using Microsoft.AspNetCore.Components.Web;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.JSInterop;
 global using MTGPlexer.TokenAnalysis.MatchDTOs;
-global using MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+global using MTGPlexer.TokenAnalysis.SpanDTOs;
 global using MTGPlexer;

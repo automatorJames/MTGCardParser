@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.UnmatchedSpanDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// Represents a single, specific occurrence of an unmatched span of text from one line of a card.
