@@ -1,21 +1,26 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject RuntimeSettings RuntimeSettings
 @inject NavigationManager Navigation
 
 <div class="page">
     <nav class="top-row px-4">
         <a class="navbar-brand" href="">MTG Analysis</a>
-        
-        @if (Navigation.ToBaseRelativePath(Navigation.Uri) == "" || Navigation.ToBaseRelativePath(Navigation.Uri) == "card-analysis")
+
+        @* Only render the settings controls after they have been loaded to prevent flicker *@
+        @if (RuntimeSettings.IsLoaded)
         {
-            <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
-        }
-        else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "span-trees")
-        {
-            <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
-            <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
-            <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
-            <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
+            if (Navigation.ToBaseRelativePath(Navigation.Uri) == "" || Navigation.ToBaseRelativePath(Navigation.Uri) == "card-analysis")
+            {
+                <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
+            }
+            else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "span-trees")
+            {
+                <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
+                <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
+                <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
+                <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
+            }
         }
 
         &nbsp;
@@ -32,3 +37,32 @@
         </article>
     </main>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Subscribe to changes so the layout can re-render when settings are loaded.
+        RuntimeSettings.OnChanged += OnSettingsChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Trigger the one-time load of persisted settings.
+            await RuntimeSettings.EnsureLoadedAsync();
+        }
+    }
+
+    private async void OnSettingsChanged()
+    {
+        // When settings change (e.g., after loading), re-render the component.
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe to prevent memory leaks.
+        RuntimeSettings.OnChanged -= OnSettingsChanged;
+    }
+}

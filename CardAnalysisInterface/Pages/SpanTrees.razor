@@ -4,43 +4,53 @@
 @inject CorpusAnalyzer CorpusAnalyzer
 @implements IAsyncDisposable
 
-@if (GetFilteredSpans() is var filteredSpans && !filteredSpans.Any())
+@* Only render the body of the page after settings are loaded to avoid incorrect filtering *@
+@if (RuntimeSettings.IsLoaded)
 {
-    <p>No spans found that meet criteria.</p>
+    var filteredSpans = GetFilteredSpans().ToList();
+    if (!filteredSpans.Any())
+    {
+        <p>No spans found that meet criteria.</p>
+    }
+    else
+    {
+        <div class="span-trees-container">
+            @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
+            {
+                <div class="span-trees-card">
+                    <div class="card-header">
+                        <div class="header-main-info">
+                            <span class="header-span-text" title="@span.Text">@span.Text</span>
+                            <span class="header-stat">Occurrences: @span.MaximalSpanOccurrenceCount</span>
+                            <span class="header-stat">Word Count: @span.WordCount</span>
+                        </div>
+                        <div class="header-card-names">
+                            @for (int i = 0; i < span.ContainingCards.Length; i++)
+                            {
+                                var cardName = span.ContainingCards[i];
+                                var cardPalette = span.CardPalettes[cardName];
+                                <span class="card-name-item"
+                                      data-card-name=@cardName
+                                      style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight}; --sat-color: {cardPalette.HexSat};")>
+                                    @cardName
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="word-tree-body">
+                        <div id="@($"spinner-{index}")" class="spinner"></div>
+                        <div id="@($"word-tree-container-{index}")"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 }
 else
 {
-    <div class="span-trees-container">
-        @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
-        {
-            <div class="span-trees-card">
-                <div class="card-header">
-                    <div class="header-main-info">
-                        <span class="header-span-text" title="@span.Text">@span.Text</span>
-                        <span class="header-stat">Occurrences: @span.MaximalSpanOccurrenceCount</span>
-                        <span class="header-stat">Word Count: @span.WordCount</span>
-                    </div>
-                    <div class="header-card-names">
-                        @for (int i = 0; i < span.ContainingCards.Length; i++)
-                        {
-                            var cardName = span.ContainingCards[i];
-                            var cardPalette = span.CardPalettes[cardName];
-                            <span class="card-name-item"
-                                  data-card-name=@cardName
-                                  style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight}; --sat-color: {cardPalette.HexSat};")>
-                                @cardName
-                            </span>
-                        }
-                    </div>
-                </div>
-                <div class="word-tree-body">
-                    <div id="@($"spinner-{index}")" class="spinner"></div>
-                    <div id="@($"word-tree-container-{index}")"></div>
-                </div>
-            </div>
-        }
-    </div>
+    <p><em>Loading settings...</em></p>
 }
+
 
 @code {
     private List<AnalyzedSpan> _currentSpans = new();
@@ -57,6 +67,15 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // The call to RuntimeSettings.EnsureLoadedAsync() has been removed from here
+        // as it is now handled globally and correctly by MainLayout.razor.
+
+        // Only proceed with JS interop if the settings are loaded and the UI is ready.
+        if (!RuntimeSettings.IsLoaded)
+        {
+            return;
+        }
+
         var spansToRender = GetFilteredSpans().ToList();
 
         if (!firstRender && _currentSpans.SequenceEqual(spansToRender))
@@ -64,15 +83,9 @@ else
 
         _currentSpans = spansToRender;
 
-        // 1. Call the fast JS function to clear old SVGs and show spinners.
-        //    This also cleans up any observers for cards that no longer exist.
         await JSRuntime.InvokeVoidAsync("clearAllTreesAndShowSpinners", spansToRender.Count);
-
-        // 2. Yield control to Blazor's renderer. This is the key step.
-        //    It allows the browser to process the DOM changes from the previous call and paint the spinners.
         await Task.Yield();
 
-        // 3. If there's anything to render, call the function that does the heavy lifting.
         if (spansToRender.Any())
         {
             await JSRuntime.InvokeVoidAsync("renderAllTrees", spansToRender);
@@ -100,8 +113,6 @@ else
         RuntimeSettings.OnChanged -= OnSettingsChanged;
         try
         {
-            // Clean up everything by telling JS to clear 0 trees, which will
-            // trigger the cleanup logic for all existing observers.
             await JSRuntime.InvokeVoidAsync("clearAllTreesAndShowSpinners", 0);
         }
         catch (JSDisconnectedException)

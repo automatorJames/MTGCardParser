@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MTGPlexer.Data;
 
 namespace CardAnalysisInterface;
@@ -10,6 +11,7 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
+        builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
 
         CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 1);
