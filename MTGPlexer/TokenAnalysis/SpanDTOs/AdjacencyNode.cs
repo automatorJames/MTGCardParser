@@ -9,7 +9,6 @@ public record AdjacencyNode
     /// A list of sequential segments that make up this node's text.
     /// A non-consolidated node will have a single segment.
     /// </summary>
-    [JsonPropertyName("segments")]
     public List<NodeSegment> Segments { get; init; }
 
     public List<CardSpanKey> SourceOccurrences { get; init; }
@@ -18,20 +17,17 @@ public record AdjacencyNode
 
     // --- Properties for JS Visualization ---
 
-    [JsonPropertyName("id")]
     public string Id { get; set; }
-
-    [JsonPropertyName("sourceOccurrenceKeys")]
     public List<string> SourceOccurrenceKeys => SourceOccurrences.Select(k => k.Key).ToList();
-
-    // This helper property joins the text for display logic in JS.
-    [JsonPropertyName("text")]
-    public string Text => string.Join(" ", Segments.Select(s => s.Text));
+    public string Text { get; init; }
+    public DeterministicPalette SpanPalette { get; init; }
 
     public AdjacencyNode(List<NodeSegment> segments, List<CardSpanKey> sourceOccurrences, List<AdjacencyNode> children)
     {
         Segments = segments;
         SourceOccurrences = sourceOccurrences;
         Children = children;
+        Text = string.Join(" ", Segments.Select(s => s.Text));
+
     }
 }
