@@ -31,7 +31,7 @@ function findContainerIdForCard(card) {
     return container?.id || null;
 }
 /**
- * Highlights parts of the tree based on a set of filter keys.
+ * Highlights parts of the tree based on a set of filter keys (card names).
  */
 function animateHighlightState(containerId, card, filterKeys) {
     const svg = document.getElementById(containerId)?.querySelector('svg');
@@ -42,7 +42,7 @@ function animateHighlightState(containerId, card, filterKeys) {
     const defs = svg.querySelector('defs');
     if (!defs)
         return;
-    const { keyToPaletteMap } = processedData;
+    const { cardPalettes } = processedData;
     const gradientTransitionRatio = 0.1;
     const elementsToAnimate = new Map();
     svg.querySelectorAll('[data-source-keys]').forEach(element => {
@@ -65,13 +65,13 @@ function animateHighlightState(containerId, card, filterKeys) {
         const highlightGradId = `grad-${elementType}-highlight-${containerId}-${elementId}`;
         const highlightGrad = defs.querySelector(`#${highlightGradId}`);
         if (highlightGrad) {
-            highlightGrad.innerHTML = createGradientStops(keysForGradient, keyToPaletteMap, 'hexSat', gradientTransitionRatio);
+            highlightGrad.innerHTML = createGradientStops(keysForGradient, cardPalettes, 'hexSat', gradientTransitionRatio);
         }
     });
     WordTree.Animator.animateOpacity(elementsToAnimate, animationController);
     card.classList.add('highlight-active');
-    const relevantCardNames = new Set();
-    filterKeys.forEach(key => relevantCardNames.add(key.substring(0, key.indexOf('['))));
+    // `filterKeys` is now the set of relevant card names. No parsing needed.
+    const relevantCardNames = filterKeys;
     card.querySelectorAll('[data-card-name]').forEach(item => {
         const cardName = item.dataset.cardName || '';
         const isRelevant = relevantCardNames.has(cardName);
@@ -124,18 +124,19 @@ export function setupGlobalEventHandlers() {
         const containerId = findContainerIdForCard(card);
         if (!containerId)
             return;
-        // Determine if the mouse is over an interactive element and get its keys.
+        // Determine if the mouse is over an interactive element and get its keys (card names).
         const interactiveEl = target.closest('[data-source-keys], [data-card-name]');
         let currentKeys = new Set();
         if (interactiveEl) {
             if (interactiveEl.dataset.sourceKeys) {
+                // `sourceKeys` now directly contains the card names.
                 currentKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys));
             }
             else if (interactiveEl.dataset.cardName) {
+                // If hovering a legend item, the key is simply the card name itself.
                 const cardName = interactiveEl.dataset.cardName;
-                const processedData = card.__data;
-                if (processedData && cardName) {
-                    currentKeys = new Set(processedData.cardNameToKeysMap[cardName] || []);
+                if (cardName) {
+                    currentKeys = new Set([cardName]);
                 }
             }
         }

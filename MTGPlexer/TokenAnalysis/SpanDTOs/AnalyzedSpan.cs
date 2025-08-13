@@ -28,28 +28,9 @@ public record AnalyzedSpan
     [JsonPropertyName("containingCards")]
     public string[] ContainingCards { get; init; }
 
-    // --- NEW: Pre-calculated Lookups for JavaScript ---
-
-    /// <summary>
-    /// A flat map that directly associates a unique source occurrence key (e.g., "CardName[0:5]")
-    /// with its corresponding color palette. This prevents the client from needing to derive this.
-    /// </summary>
-    [JsonPropertyName("keyToPaletteMap")]
-    public Dictionary<string, DeterministicPalette> KeyToPaletteMap { get; init; }
-
-    /// <summary>
-    /// A simple array of all unique source occurrence keys found in the entire tree structure.
-    /// This is used by the client for certain join operations.
-    /// </summary>
-    [JsonPropertyName("allKeys")]
-    public List<string> AllKeys { get; init; }
-
-    /// <summary>
-    /// Maps a card name (e.g., "Sol Ring") to a list of all its specific occurrence keys
-    /// (e.g., "Sol Ring[3:4]", "Sol Ring[10:11]"). This enables fast client-side highlighting.
-    /// </summary>
-    [JsonPropertyName("cardNameToKeysMap")]
-    public Dictionary<string, List<string>> CardNameToKeysMap { get; init; }
+    // --- REMOVED: Pre-calculated Lookups for JavaScript ---
+    // These are no longer needed as the simplified key (CardName) makes
+    // them redundant with CardPalettes and ContainingCards.
 
     // --- Ignored Properties (Server-Side Only) ---
 
@@ -93,45 +74,19 @@ public record AnalyzedSpan
         for (int i = 0; i < ContainingCards.Length; i++)
             CardPalettes[ContainingCards[i]] = positionalPalette[i];
 
-        // --- HYDRATION & PRE-CALCULATION STEP ---
-        var keyToPaletteMapBuilder = new Dictionary<string, DeterministicPalette>();
-        var allKeysBuilder = new HashSet<string>();
-        var cardNameToKeysMapBuilder = new Dictionary<string, List<string>>();
+        // --- HYDRATION STEP ---
         int nodeIdCounter = 0;
-
-        void TraverseAndBuildLookups(IEnumerable<AdjacencyNode> nodes)
+        void TraverseAndHydrateIds(IEnumerable<AdjacencyNode> nodes)
         {
             foreach (var node in nodes)
             {
                 node.Id = $"n{nodeIdCounter++}"; // Hydrate with unique ID
-
-                foreach (var key in node.SourceOccurrenceKeys)
-                {
-                    allKeysBuilder.Add(key);
-                    var cardName = key[..key.IndexOf('[')];
-
-                    if (CardPalettes.TryGetValue(cardName, out var palette))
-                    {
-                        keyToPaletteMapBuilder[key] = palette;
-                    }
-
-                    if (!cardNameToKeysMapBuilder.ContainsKey(cardName))
-                    {
-                        cardNameToKeysMapBuilder[cardName] = new List<string>();
-                    }
-                    cardNameToKeysMapBuilder[cardName].Add(key);
-                }
-                TraverseAndBuildLookups(node.Children);
+                TraverseAndHydrateIds(node.Children);
             }
         }
 
-        TraverseAndBuildLookups(PrecedingAdjacencies);
-        TraverseAndBuildLookups(FollowingAdjacencies);
-
-        // Finalize the public properties
-        KeyToPaletteMap = keyToPaletteMapBuilder;
-        AllKeys = allKeysBuilder.ToList();
-        CardNameToKeysMap = cardNameToKeysMapBuilder;
+        TraverseAndHydrateIds(PrecedingAdjacencies);
+        TraverseAndHydrateIds(FollowingAdjacencies);
     }
 
     public override string ToString() => $"'{Text}' (Total: {TotalOccurrenceCount} | Maximal: {MaximalSpanOccurrenceCount})";

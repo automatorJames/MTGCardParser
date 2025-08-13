@@ -23,6 +23,7 @@ let scrollListenerAttached = false;
 function processSpanForClient(rawSpan) {
     const traverseAndAugmentNodes = (nodes) => {
         for (const node of nodes) {
+            // `sourceOccurrenceKeys` is now an array of card names.
             node.sourceKeysSet = new Set(node.sourceOccurrenceKeys);
             if (node.children) {
                 traverseAndAugmentNodes(node.children);
@@ -33,8 +34,8 @@ function processSpanForClient(rawSpan) {
     traverseAndAugmentNodes(rawSpan.followingAdjacencies);
     return {
         ...rawSpan,
-        keyToPaletteMap: new Map(Object.entries(rawSpan.keyToPaletteMap)),
-        allKeys: new Set(rawSpan.allKeys),
+        cardPalettes: new Map(Object.entries(rawSpan.cardPalettes)),
+        allCardsSet: new Set(rawSpan.containingCards),
     };
 }
 /**

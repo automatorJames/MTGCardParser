@@ -32,7 +32,7 @@ export function orchestrateWordTreeRender(container) {
         cornerRadius: 10, mainSpanFill: '#e0e0e0', mainSpanColor: "#e0e0e0",
         horizontalPadding: 20, gradientTransitionRatio: 0.1, fanGap: 24
     };
-    const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;
+    const { cardPalettes, allCardsSet, text, precedingAdjacencies, followingAdjacencies } = processedData;
     const { width: availableWidth } = container.getBoundingClientRect();
     if (availableWidth <= 0)
         return;
@@ -82,8 +82,8 @@ export function orchestrateWordTreeRender(container) {
         svg.setAttribute('viewBox', `${minX - margin} 0 ${availableWidth} ${totalHeight}`);
     }
     // 7. Draw the final SVG elements
-    Drawer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, -1, config, keyToPaletteMap, allKeys, container.id);
-    Drawer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 1, config, keyToPaletteMap, allKeys, container.id);
-    Drawer.createNode(svg, mainSpanObject, false, config, keyToPaletteMap, container.id);
+    Drawer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, -1, config, cardPalettes, allCardsSet, container.id);
+    Drawer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 1, config, cardPalettes, allCardsSet, container.id);
+    Drawer.createNode(svg, mainSpanObject, false, config, cardPalettes, container.id);
 }
 //# sourceMappingURL=span-tree-orchestrator.js.map

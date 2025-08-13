@@ -16,11 +16,11 @@ export interface AdjacencyNode {
     // --- Properties from Server ---
     id: string;
     text: string;
-    sourceOccurrenceKeys: string[];
+    sourceOccurrenceKeys: string[]; // Now contains CardNames
     children: AdjacencyNode[];
 
     // --- Properties added by Client ---
-    sourceKeysSet?: Set<string>; // For efficient lookups
+    sourceKeysSet?: Set<string>; // For efficient lookups (Set of CardNames)
     dynamicHeight: number;
     wrappedLines: string[];
     lineHeight: number;
@@ -35,18 +35,17 @@ export interface AnalyzedSpan {
     text: string;
     precedingAdjacencies: AdjacencyNode[];
     followingAdjacencies: AdjacencyNode[];
-    keyToPaletteMap: { [key: string]: DeterministicPalette };
-    allKeys: string[];
-    cardNameToKeysMap: { [cardName: string]: string[] };
+    cardPalettes: { [cardName: string]: DeterministicPalette };
+    containingCards: string[];
 }
 
 /**
  * This interface represents the fully processed, in-memory data structure
  * optimized for rendering. It uses Map and Set for efficient lookups.
  */
-export interface ProcessedAnalyzedSpan extends Omit<AnalyzedSpan, 'keyToPaletteMap' | 'allKeys'> {
-    keyToPaletteMap: Map<string, DeterministicPalette>;
-    allKeys: Set<string>;
+export interface ProcessedAnalyzedSpan extends Omit<AnalyzedSpan, 'cardPalettes'> {
+    cardPalettes: Map<string, DeterministicPalette>;
+    allCardsSet: Set<string>;
 }
 
 /**

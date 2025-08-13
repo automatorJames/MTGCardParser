@@ -20,7 +20,6 @@ public record CardSpanKey
         CardName = cardName;
         SpanStartIndex = spanStartIndex;
         SpanEndIndex = spanEndIndex;
-        Key = cardName + "[" + SpanStartIndex + ".." + SpanEndIndex + "]";
+        Key = cardName; // The Key is now simplified to just the CardName.
     }
 }
-

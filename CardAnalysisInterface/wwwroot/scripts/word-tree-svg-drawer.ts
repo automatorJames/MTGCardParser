@@ -6,11 +6,11 @@ import { getFanDelta } from './word-tree-layout-calculator.js';
 /**
  * Generates the SVG <stop> elements for a gradient.
  */
-export function createGradientStops(sourceKeys: string[], keyToPaletteMap: Map<string, DeterministicPalette>, colorProperty: 'hex' | 'hexSat', transitionRatio: number): string {
-    const numKeys = sourceKeys.length;
+export function createGradientStops(sourceCardNames: string[], paletteMap: Map<string, DeterministicPalette>, colorProperty: 'hex' | 'hexSat', transitionRatio: number): string {
+    const numKeys = sourceCardNames.length;
     if (numKeys === 0) return '';
     if (numKeys === 1) {
-        const color = keyToPaletteMap.get(sourceKeys[0])?.[colorProperty] ?? '#ccc';
+        const color = paletteMap.get(sourceCardNames[0])?.[colorProperty] ?? '#ccc';
         return `<stop offset="0%" stop-color="${color}" /><stop offset="100%" stop-color="${color}" />`;
     }
 
@@ -19,8 +19,8 @@ export function createGradientStops(sourceKeys: string[], keyToPaletteMap: Map<s
     const halfTransition = (step * clampedRatio) / 2;
     let stopsHtml = '';
 
-    sourceKeys.forEach((key, index) => {
-        const color = keyToPaletteMap.get(key)?.[colorProperty] ?? '#ccc';
+    sourceCardNames.forEach((key, index) => {
+        const color = paletteMap.get(key)?.[colorProperty] ?? '#ccc';
         const bandStart = index * step;
         const bandEnd = bandStart + step;
         const solidStartOffset = (index === 0) ? bandStart : bandStart + halfTransition;
@@ -34,7 +34,7 @@ export function createGradientStops(sourceKeys: string[], keyToPaletteMap: Map<s
 /**
  * Creates and appends a styled SVG group representing a single node.
  */
-export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: boolean, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, containerId: string): void {
+export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: boolean, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, containerId: string): void {
     const { dynamicHeight, wrappedLines, lineHeight, layout } = nodeData;
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.setAttribute('class', 'node-group');
@@ -55,22 +55,22 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
 
     if (isAdjacencyNode) {
         group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceKeys || []);
-        const sourceKeys = nodeData.sourceOccurrenceKeys || [];
-        if (sourceKeys.length > 0) {
+        const sourceCardNames = nodeData.sourceOccurrenceKeys || [];
+        if (sourceCardNames.length > 0) {
             const defs = svg.querySelector('defs');
             if (defs) {
                 // Define and apply base gradient for the border
                 const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                 const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 baseGradient.id = baseGradientId;
-                baseGradient.innerHTML = createGradientStops(sourceKeys, keyToPaletteMap, 'hex', config.gradientTransitionRatio);
+                baseGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'hex', config.gradientTransitionRatio);
                 defs.appendChild(baseGradient);
                 baseShape.style.stroke = `url(#${baseGradientId})`;
                 // Define and apply highlight gradient for the border
                 const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                 const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 highlightGradient.id = highlightGradientId;
-                highlightGradient.innerHTML = createGradientStops(sourceKeys, keyToPaletteMap, 'hexSat', config.gradientTransitionRatio);
+                highlightGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'hexSat', config.gradientTransitionRatio);
                 defs.appendChild(highlightGradient);
                 highlightShape.style.stroke = `url(#${highlightGradientId})`;
             }
@@ -103,7 +103,7 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
  * Creates and appends a rounded SVG path to connect a parent and child node.
  * This version uses a simplified "takeoff" logic for fanning.
  */
-export function createRoundedConnector(svg: SVGSVGElement, parentData: any, childData: AdjacencyNode, direction: number, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, allKeys: Set<string>, containerId: string): void {
+export function createRoundedConnector(svg: SVGSVGElement, parentData: any, childData: AdjacencyNode, direction: number, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, allCards: Set<string>, containerId: string): void {
     const { x: x1, y: y1 } = parentData.layout;
     const { x: x2, y: y2 } = childData.layout;
 
@@ -136,20 +136,20 @@ export function createRoundedConnector(svg: SVGSVGElement, parentData: any, chil
             ` L ${endX} ${y2}`; // Final straight segment to child
     }
 
-    const parentKeys = parentData.id === 'main-anchor' ? allKeys : (parentData.sourceKeysSet || new Set<string>());
+    const parentKeys = parentData.id === 'main-anchor' ? allCards : (parentData.sourceKeysSet || new Set<string>());
     const childKeys = childData.sourceKeysSet || new Set<string>();
     const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
 
-    emitConnector(svg, pathData, childData, commonKeys, startX, y1, endX, y2, keyToPaletteMap, containerId);
+    emitConnector(svg, pathData, childData, commonKeys, startX, y1, endX, y2, paletteMap, containerId);
 }
 
 
 /**
  * Low-level function to create the SVG connector elements (base and highlight paths).
  */
-function emitConnector(svg: SVGSVGElement, pathData: string, childData: AdjacencyNode, commonKeys: string[], startX: number, startY: number, endX: number, endY: number, keyToPaletteMap: Map<string, DeterministicPalette>, containerId: string): void {
+function emitConnector(svg: SVGSVGElement, pathData: string, childData: AdjacencyNode, commonCardNames: string[], startX: number, startY: number, endX: number, endY: number, paletteMap: Map<string, DeterministicPalette>, containerId: string): void {
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    group.dataset.sourceKeys = JSON.stringify(commonKeys);
+    group.dataset.sourceKeys = JSON.stringify(commonCardNames);
     group.id = `group-conn-${containerId}-${childData.id}`;
 
     const basePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -160,7 +160,7 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
     highlightPath.classList.remove('base-layer');
     highlightPath.setAttribute('class', 'highlight-overlay');
 
-    if (commonKeys.length > 0) {
+    if (commonCardNames.length > 0) {
         const defs = svg.querySelector('defs');
         if (defs) {
             const idSuffix = `${containerId}-${childData.id}`;
@@ -175,7 +175,7 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
                 gradient.setAttribute('y1', `${startY}`);
                 gradient.setAttribute('x2', `${endX}`);
                 gradient.setAttribute('y2', `${endY}`);
-                gradient.innerHTML = createGradientStops(commonKeys, keyToPaletteMap, colorProp, 0.1);
+                gradient.innerHTML = createGradientStops(commonCardNames, paletteMap, colorProp, 0.1);
                 return gradient;
             };
 
@@ -199,16 +199,16 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
 /**
  * Recursively draws all nodes and their connectors for a given tree.
  */
-export function drawNodesAndConnectors(svg: SVGSVGElement, nodes: AdjacencyNode[], parentData: any, direction: number, config: NodeConfig, keyToPaletteMap: Map<string, DeterministicPalette>, allKeys: Set<string>, containerId: string): void {
+export function drawNodesAndConnectors(svg: SVGSVGElement, nodes: AdjacencyNode[], parentData: any, direction: number, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, allCards: Set<string>, containerId: string): void {
     if (!nodes) return;
     for (const node of nodes) {
         // Draw connector from parent to this node first (so it's in the background)
-        createRoundedConnector(svg, parentData, node, direction, config, keyToPaletteMap, allKeys, containerId);
+        createRoundedConnector(svg, parentData, node, direction, config, paletteMap, allCards, containerId);
         // Draw the node itself
-        createNode(svg, node, true, config, keyToPaletteMap, containerId);
+        createNode(svg, node, true, config, paletteMap, containerId);
         // Recurse for children
         if (node.children) {
-            drawNodesAndConnectors(svg, node.children, node, direction, config, keyToPaletteMap, allKeys, containerId);
+            drawNodesAndConnectors(svg, node.children, node, direction, config, paletteMap, allCards, containerId);
         }
     }
 }

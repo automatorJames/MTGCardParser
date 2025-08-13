@@ -38,7 +38,7 @@ export function orchestrateWordTreeRender(container: HTMLElement): void {
         horizontalPadding: 20, gradientTransitionRatio: 0.1, fanGap: 24
     };
 
-    const { keyToPaletteMap, allKeys, text, precedingAdjacencies, followingAdjacencies } = processedData;
+    const { cardPalettes, allCardsSet, text, precedingAdjacencies, followingAdjacencies } = processedData;
     const { width: availableWidth } = container.getBoundingClientRect();
     if (availableWidth <= 0) return;
 
@@ -96,7 +96,7 @@ export function orchestrateWordTreeRender(container: HTMLElement): void {
     }
 
     // 7. Draw the final SVG elements
-    Drawer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, -1, config, keyToPaletteMap, allKeys, container.id);
-    Drawer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 1, config, keyToPaletteMap, allKeys, container.id);
-    Drawer.createNode(svg, mainSpanObject, false, config, keyToPaletteMap, container.id);
+    Drawer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, -1, config, cardPalettes, allCardsSet, container.id);
+    Drawer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 1, config, cardPalettes, allCardsSet, container.id);
+    Drawer.createNode(svg, mainSpanObject, false, config, cardPalettes, container.id);
 }
