@@ -1,15 +1,16 @@
-﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
+﻿using MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
-/// Represents a node in an adjacency tree, now capable of holding consolidated segments.
+/// Represents a node in an adjacency tree. Each node corresponds to a single logical segment,
+/// which may be a combination of several collapsed raw tokens.
 /// </summary>
 public record AdjacencyNode
 {
     /// <summary>
-    /// A list of sequential segments that make up this node's text.
-    /// A non-consolidated node will have a single segment.
+    /// The segment of text this node represents. For collapsed "DefaultUnmatchedString" nodes,
+    /// this contains the combined text, and its Palette will be null.
     /// </summary>
-    public List<NodeSegment> Segments { get; init; }
+    public NodeSegment Segment { get; init; }
 
     public List<CardSpanKey> SourceOccurrences { get; init; }
 
@@ -19,15 +20,27 @@ public record AdjacencyNode
 
     public string Id { get; set; }
     public List<string> SourceOccurrenceKeys => SourceOccurrences.Select(k => k.Key).ToList();
-    public string Text { get; init; }
-    public DeterministicPalette SpanPalette { get; init; }
 
-    public AdjacencyNode(List<NodeSegment> segments, List<CardSpanKey> sourceOccurrences, List<AdjacencyNode> children)
+    /// <summary>
+    /// The text for this node, derived directly from its segment.
+    /// </summary>
+    public string Text { get; init; }
+
+    /// <summary>
+    /// The palette for this node, derived directly from its segment.
+    /// </summary>
+    public DeterministicPalette SpanPalette => Segment.Palette;
+
+    /// <summary>
+    /// The simplified constructor that was a primary goal of this refactoring.
+    /// </summary>
+    public AdjacencyNode(NodeSegment segment, List<CardSpanKey> sourceOccurrences, List<AdjacencyNode> children)
     {
-        Segments = segments;
+        Segment = segment;
         SourceOccurrences = sourceOccurrences;
         Children = children;
-        Text = string.Join(" ", Segments.Select(s => s.Text));
-
+        Text = Segment.Text;
     }
+
+    public override string ToString() => Text;
 }

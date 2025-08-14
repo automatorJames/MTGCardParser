@@ -123,37 +123,85 @@ public record DigestedSpanCorpus
             var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys.Select(s => { s.Sequence.Reverse(); return s; }).ToList());
             var followingAdjacencyTree = BuildAdjacencyTree(followingSequencesWithKeys);
 
-            // Reintroduce the consolidation step
-            var collapsedPrecedingTree = CollapseAdjacencyNodes(precedingAdjacencyTree, isReversed: true);
-            var collapsedFollowingTree = CollapseAdjacencyNodes(followingAdjacencyTree, isReversed: false);
-
             result.Add(new AnalyzedSpan(
                 text: spanText,
                 maximalSpanOccurrenceCount: count,
                 occurrences: subSpanContexts,
-                precedingAdjacencies: collapsedPrecedingTree,
-                followingAdjacencies: collapsedFollowingTree
+                precedingAdjacencies: precedingAdjacencyTree,
+                followingAdjacencies: followingAdjacencyTree
             ));
         }
         return result;
     }
 
+    /// <summary>
+    /// Builds an adjacency tree from token sequences. It correctly identifies any non-branching
+    /// path and collapses it into a single AdjacencyNode in one pass to prevent deep recursion issues.
+    /// </summary>
     private List<AdjacencyNode> BuildAdjacencyTree(List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)> sequencesWithKeys)
     {
-        if (sequencesWithKeys == null || !sequencesWithKeys.Any(x => x.Sequence.Any())) return new List<AdjacencyNode>();
+        if (sequencesWithKeys == null || !sequencesWithKeys.Any(x => x.Sequence.Any()))
+        {
+            return new List<AdjacencyNode>();
+        }
+
         var nodeGroups = sequencesWithKeys.Where(x => x.Sequence.Any()).GroupBy(x => x.Sequence.First());
         var nodes = new List<AdjacencyNode>();
+
         foreach (var group in nodeGroups)
         {
-            var (text, tokenType) = group.Key;
-            var sourceOccurrences = group.Select(g => g.Key).Distinct().ToList(); // Use Distinct for safety
-            var childSequencesWithKeys = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).Where(x => x.Sequence.Any()).ToList();
-            var children = BuildAdjacencyTree(childSequencesWithKeys);
-            DeterministicPalette palette = tokenType is null ? null : TokenTypeRegistry.Palettes[tokenType];
+            var (initialText, initialTokenType) = group.Key;
+            var sourceOccurrences = group.Select(g => g.Key).Distinct().ToList();
 
-            // Create a node with a single segment, ready for potential consolidation
+            // This list will temporarily hold the segments we intend to collapse.
+            var segmentsToCollapse = new List<NodeSegment>
+            {
+                new(initialText, initialTokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialTokenType))
+            };
+
+            var remainingSequences = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
+
+            // --- Corrected Collapsing Logic ---
+            // We will keep collapsing as long as the path forward is linear and non-branching.
+            while (true)
+            {
+                var continuations = remainingSequences.Where(x => x.Sequence.Any()).ToList();
+
+                // Stop if there are no more tokens or if the number of continuations doesn't match
+                // our current group size (which signifies that a path terminated early or branched).
+                if (!continuations.Any() || continuations.Count != group.Count())
+                {
+                    break;
+                }
+
+                var nextToken = continuations.First().Sequence.First();
+
+                // Stop if the other sequences diverge and don't all start with the exact same next token.
+                if (!continuations.All(c => c.Sequence.First().Equals(nextToken)))
+                {
+                    break;
+                }
+
+                // Condition met: The path is linear. Collapse this token.
+                var (text, tokenType) = nextToken;
+                segmentsToCollapse.Add(new NodeSegment(text, tokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(tokenType)));
+
+                // Consume the token from all sequences for the next loop iteration.
+                remainingSequences = remainingSequences.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
+            }
+
+            // Recurse using the sequences that remain *after* the collapse loop is finished.
+            var children = BuildAdjacencyTree(remainingSequences);
+
+            // Create the single, final segment. The palette is from the *first* segment in the chain.
+            var finalSegment = new NodeSegment(
+                Text: string.Join(" ", segmentsToCollapse.Select(s => s.Text)),
+                Palette: segmentsToCollapse.First().Palette
+            );
+
+            // Construct the AdjacencyNode with the single, combined segment.
             nodes.Add(new AdjacencyNode(
-                segments: new List<NodeSegment> { new(text, palette) },
+                segment: finalSegment,
                 sourceOccurrences: sourceOccurrences,
                 children: children
             ));
@@ -161,44 +209,7 @@ public record DigestedSpanCorpus
         return nodes;
     }
 
-    /// <summary>
-    /// Consolidates linear paths in the adjacency tree into single nodes with multiple segments.
-    /// </summary>
-    private List<AdjacencyNode> CollapseAdjacencyNodes(List<AdjacencyNode> nodes, bool isReversed)
-    {
-        if (nodes == null || !nodes.Any()) return new List<AdjacencyNode>();
-
-        var collapsedNodes = new List<AdjacencyNode>();
-        foreach (var node in nodes)
-        {
-            var currentNode = node;
-            var allSegments = new List<NodeSegment>(currentNode.Segments);
-
-            // Condition for collapsing: one child that shares the exact same set of source occurrences.
-            while (currentNode.Children.Count == 1 &&
-                   currentNode.Children[0].SourceOccurrences.Count == currentNode.SourceOccurrences.Count &&
-                   currentNode.Children[0].SourceOccurrences.All(currentNode.SourceOccurrences.Contains))
-            {
-                currentNode = currentNode.Children[0];
-                allSegments.AddRange(currentNode.Segments); // Add the child's segments
-            }
-
-            // Recurse on the children of the *last* node in the chain
-            var newChildren = CollapseAdjacencyNodes(currentNode.Children, isReversed);
-
-            if (isReversed)
-            {
-                allSegments.Reverse();
-            }
-
-            collapsedNodes.Add(new AdjacencyNode(
-                segments: allSegments,
-                sourceOccurrences: node.SourceOccurrences, // Use the original node's occurrences
-                children: newChildren
-            ));
-        }
-        return collapsedNodes;
-    }
+    /* AdjacencyNode remains the same as the last version */
 
     // FindAllOccurrences and AutomatonState are unchanged...
     private List<int> FindAllOccurrences(List<int> source, int[] pattern)
