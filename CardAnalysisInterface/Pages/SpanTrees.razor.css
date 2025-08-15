@@ -1,14 +1,6 @@
 ﻿/* SpanTrees.razor.css */
 
 /* =================================================================== */
-/* == CSS VARIABLES                                                 == */
-/* =================================================================== */
-
-:root {
-    --transition-duration: 0.15s;
-}
-
-/* =================================================================== */
 /* == CONTAINER & CARD STYLES                                       == */
 /* =================================================================== */
 
@@ -79,7 +71,7 @@
     border: 1px solid;
     border-radius: 4px;
     cursor: pointer;
-    transition: all var(--transition-duration) ease-in-out;
+    transition: all 0.15s ease-in-out;
 }
 
 .card-name-item {
@@ -109,7 +101,7 @@
 /* Additional styles for the new behavior where type items can be dimmed but keep borders */
 .type-name-item.lowlight {
     opacity: 0.2;
-    transition: all var(--transition-duration) ease-in-out;
+    transition: all 0.15s ease-in-out;
 }
 
     /* When a type-name-item is in the highlighted path but not directly hovered, 
@@ -133,14 +125,14 @@
     stroke-width: 2.5px;
     fill: #2d2d2d;
     cursor: pointer;
-    transition: opacity var(--transition-duration) ease-in-out;
+    transition: opacity 150ms ease-in-out;
 }
 
 ::deep .connector-path.base-layer {
     stroke: var(--node-border-color, #444);
     fill: none;
     stroke-width: 2.5px;
-    transition: opacity var(--transition-duration) ease-in-out;
+    transition: opacity 150ms ease-in-out;
 }
 
 ::deep .node-text {
@@ -151,7 +143,7 @@
 
 ::deep .node-text-content {
     fill: #e0e0e0;
-    transition: fill var(--transition-duration) ease-in-out, opacity var(--transition-duration) ease-in-out;
+    transition: fill 150ms ease-in-out, opacity 150ms ease-in-out;
 }
 
 ::deep .interactive-subspan {
@@ -164,14 +156,6 @@
 
 ::deep .main-anchor-span:hover .node-text-content {
     fill: #666;
-}
-
-::deep .highlight-overlay {
-    stroke-width: 2.5px;
-    fill: none;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-duration) ease-in-out;
 }
 
 .spinner {
