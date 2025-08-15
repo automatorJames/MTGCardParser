@@ -1,4 +1,3 @@
-// word-tree-animator.ts
 /**
  * The Animator namespace provides utility functions for visual animations,
  * such as smoothly transitioning opacity.
@@ -26,10 +25,10 @@ export var WordTree;
         }
         /**
          * Animates the opacity of a collection of HTML elements over a set duration.
-         * @param elementsToAnimate A map where keys are the elements to animate and
-         *   values are objects containing the start and end opacity values.
-         * @param animationController An object to manage the animation frame ID,
-         *   ensuring only one animation runs at a time for the given controller.
+            * @param elementsToAnimate A map where keys are the elements to animate and
+            *   values are objects containing the start and end opacity values.
+            * @param animationController An object to manage the animation frame ID,
+            *   ensuring only one animation runs at a time for the given controller.
          */
         function animateOpacity(elementsToAnimate, animationController) {
             if (animationController.animationFrameId) {

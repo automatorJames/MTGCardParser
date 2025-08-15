@@ -4,6 +4,8 @@
 export interface DeterministicPalette {
     hex: string;
     hexSat: string;
+    hexLight: string;
+    seed?: string;
 }
 
 /**

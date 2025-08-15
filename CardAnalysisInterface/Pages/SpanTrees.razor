@@ -25,17 +25,32 @@
                             <span class="header-stat">Word Count: @span.WordCount</span>
                         </div>
                         <div class="header-card-names">
-                            @for (int i = 0; i < span.ContainingCards.Length; i++)
+                            @foreach (var cardName in span.ContainingCards)
                             {
-                                var cardName = span.ContainingCards[i];
                                 var cardPalette = span.CardPalettes[cardName];
                                 <span class="card-name-item"
-                                      data-card-name=@cardName
-                                      style=@($"border-color: {cardPalette.Hex}; --highlight-color: {cardPalette.HexLight}; --sat-color: {cardPalette.HexSat};")>
+                                      data-card-name="@cardName"
+                                      style="border-color: @cardPalette.Hex; --highlight-color: @cardPalette.HexLight; --sat-color: @cardPalette.HexSat;">
                                     @cardName
                                 </span>
                             }
                         </div>
+                        @{
+                            var distinctTypes = span.DistinctSeedPalettes;
+                            if (distinctTypes.Any())
+                            {
+                                <div class="header-type-names">
+                                    @foreach (var typePalette in distinctTypes)
+                                    {
+                                        <span class="type-name-item"
+                                              data-type-seed="@typePalette.Seed"
+                                              style="color: @typePalette.HexLight; border-color: @typePalette.Hex; --highlight-color: @typePalette.Hex;">
+                                            @typePalette.Seed
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        }
                     </div>
                     <div class="word-tree-body">
                         <div id="@($"spinner-{index}")" class="spinner"></div>

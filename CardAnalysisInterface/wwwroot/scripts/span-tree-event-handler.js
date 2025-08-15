@@ -1,19 +1,14 @@
-// span-tree-event-handler.ts
 import { WordTree } from "./word-tree-animator.js";
-import { createGradientStops } from "./word-tree-svg-drawer.js";
-// This state is managed here but used by the span-tree-manager.
-export const wordTreeObservers = new Map();
 const globalEventState = {
     initialized: false,
-    // Keep track of the last hovered element to avoid redundant animations
     lastHovered: {
         card: null,
-        keys: new Set()
+        cardKeys: new Set(),
+        typeSeed: null,
+        // This new property is key to distinguishing between global and local text effects
+        textHighlightNodeContext: null
     }
 };
-/**
- * A utility to check for deep equality between two Sets of strings.
- */
 function areSetsEqual(setA, setB) {
     if (setA.size !== setB.size)
         return false;
@@ -24,135 +19,161 @@ function areSetsEqual(setA, setB) {
     return true;
 }
 /**
- * Finds the unique container ID for a given card element.
+ * Applies type-based highlighting. It ONLY affects text and type header items.
+ * Its behavior changes based on whether a specific node context is provided.
  */
-function findContainerIdForCard(card) {
-    const container = card.querySelector('.word-tree-body [id^="word-tree-container-"]');
-    return container?.id || null;
+function setTypeHighlight(card, activeSeed, contextNode) {
+    card.classList.toggle('type-highlight-active', !!activeSeed);
+    card.querySelectorAll('.type-name-item').forEach(item => {
+        const seed = item.dataset.typeSeed || '';
+        const isHighlighted = seed === activeSeed;
+        item.classList.toggle('highlight', isHighlighted);
+        item.classList.toggle('lowlight', !isHighlighted);
+        item.style.color = isHighlighted ? item.style.getPropertyValue('--highlight-color') : '';
+    });
+    const svg = card.querySelector('svg');
+    if (!svg)
+        return;
+    // If a specific node is the context (i.e., hovering a subspan), only dim text within it.
+    if (contextNode) {
+        // First, ensure all text OUTSIDE the context node is reset to full opacity.
+        svg.querySelectorAll('.node-group').forEach(node => {
+            if (node !== contextNode) {
+                node.querySelectorAll('.node-text-content').forEach(tspan => tspan.style.opacity = '1');
+            }
+        });
+        // Then, apply dimming/highlighting only INSIDE the context node.
+        contextNode.querySelectorAll('.node-text-content').forEach(tspan => {
+            const tspanSeed = tspan.dataset.typeSeed;
+            if (activeSeed && tspanSeed !== activeSeed) {
+                tspan.style.opacity = '0.2';
+            }
+            else {
+                tspan.style.opacity = '1';
+                if (tspanSeed === activeSeed)
+                    tspan.style.fill = tspan.dataset.hoverColor;
+                else if (tspan.dataset.baseColor)
+                    tspan.style.fill = tspan.dataset.baseColor;
+            }
+        });
+    }
+    else { // No specific context means a global type hover (from the header).
+        svg.querySelectorAll('.node-text-content').forEach(tspan => {
+            const tspanSeed = tspan.dataset.typeSeed;
+            if (activeSeed) {
+                if (tspanSeed === activeSeed) {
+                    tspan.style.fill = tspan.dataset.hoverColor;
+                    tspan.style.opacity = '1';
+                }
+                else {
+                    tspan.style.opacity = '0.2';
+                }
+            }
+            else { // Reset all text
+                tspan.style.opacity = '1';
+                if (tspan.dataset.baseColor)
+                    tspan.style.fill = tspan.dataset.baseColor;
+            }
+        });
+    }
 }
 /**
- * Highlights parts of the tree based on a set of filter keys (card names).
+ * Applies card-based highlighting. It ONLY affects node/connector structures and card header items.
+ * Smoothly animates the group (<g>) opacity via Animator to avoid snapping conflicts with overlay fades.
  */
-function animateHighlightState(containerId, card, filterKeys) {
-    const svg = document.getElementById(containerId)?.querySelector('svg');
-    const animationController = wordTreeObservers.get(containerId);
-    const processedData = card.__data;
-    if (!svg || !animationController || !processedData || filterKeys.size === 0)
-        return;
-    const defs = svg.querySelector('defs');
-    if (!defs)
-        return;
-    const { cardPalettes } = processedData;
-    const gradientTransitionRatio = 0.1;
-    const elementsToAnimate = new Map();
-    svg.querySelectorAll('[data-source-keys]').forEach(element => {
-        const elementKeys = JSON.parse(element.dataset.sourceKeys || '[]');
-        const isHighlighted = elementKeys.some((key) => filterKeys.has(key));
-        const baseLayer = element.querySelector('.base-layer') || element;
-        const highlightOverlay = element.querySelector('.highlight-overlay');
-        const nodeText = element.querySelector('.node-text');
-        const targetOpacity = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
-        elementsToAnimate.set(baseLayer, { start: parseFloat(getComputedStyle(baseLayer).opacity), end: targetOpacity });
-        if (highlightOverlay)
-            elementsToAnimate.set(highlightOverlay, { start: parseFloat(getComputedStyle(highlightOverlay).opacity), end: isHighlighted ? 1 : 0 });
-        if (nodeText)
-            elementsToAnimate.set(nodeText, { start: parseFloat(getComputedStyle(nodeText).opacity), end: targetOpacity });
-        // Dynamically update the gradient definition for the highlight overlay
-        const idParts = element.id.split('-');
-        const elementType = idParts[1];
-        const elementId = idParts[idParts.length - 1];
-        const keysForGradient = elementKeys.filter((key) => filterKeys.has(key));
-        const highlightGradId = `grad-${elementType}-highlight-${containerId}-${elementId}`;
-        const highlightGrad = defs.querySelector(`#${highlightGradId}`);
-        if (highlightGrad) {
-            highlightGrad.innerHTML = createGradientStops(keysForGradient, cardPalettes, 'hexSat', gradientTransitionRatio);
-        }
-    });
-    WordTree.Animator.animateOpacity(elementsToAnimate, animationController);
-    card.classList.add('highlight-active');
-    // `filterKeys` is now the set of relevant card names. No parsing needed.
-    const relevantCardNames = filterKeys;
+function setCardHighlight(card, activeKeys) {
+    const hasActiveKeys = activeKeys.size > 0;
+    card.classList.toggle('highlight-active', hasActiveKeys);
     card.querySelectorAll('[data-card-name]').forEach(item => {
         const cardName = item.dataset.cardName || '';
-        const isRelevant = relevantCardNames.has(cardName);
-        item.classList.toggle('highlight', isRelevant);
-        item.classList.toggle('lowlight', !isRelevant);
+        const isHighlighted = hasActiveKeys && activeKeys.has(cardName);
+        item.classList.toggle('highlight', isHighlighted);
+        item.classList.toggle('lowlight', hasActiveKeys && !isHighlighted);
     });
-}
-/**
- * Resets a card's visual state to the default, removing all highlights.
- */
-function animateResetState(containerId, card) {
-    const svg = document.getElementById(containerId)?.querySelector('svg');
-    const animationController = wordTreeObservers.get(containerId);
-    if (!svg || !animationController)
+    const svg = card.querySelector('svg');
+    if (!svg)
         return;
+    // Build a batch of opacity animations for all node/connector groups.
     const elementsToAnimate = new Map();
-    svg.querySelectorAll('.base-layer, .node-text, .highlight-overlay').forEach(element => {
-        const isHighlight = element.classList.contains('highlight-overlay');
-        elementsToAnimate.set(element, { start: parseFloat(getComputedStyle(element).opacity), end: isHighlight ? 0 : 1 });
+    svg.querySelectorAll('[data-source-keys]').forEach(element => {
+        const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
+        const isHighlighted = hasActiveKeys && sourceKeys.some((key) => activeKeys.has(key));
+        // Compute animation endpoints for the group (<g>) itself.
+        const computed = getComputedStyle(element);
+        const current = parseFloat(computed.opacity) || 1;
+        const end = hasActiveKeys ? (isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity) : 1;
+        if (Math.abs(current - end) > 0.001) {
+            elementsToAnimate.set(element, { start: current, end });
+        }
+        // Let the overlay handle its own CSS-driven fade; do NOT also fade the group immediately.
+        const highlightOverlay = element.querySelector('.highlight-overlay');
+        if (highlightOverlay) {
+            // The overlay rect has `transition: opacity 150ms ease-in-out` in CSS, so this fades smoothly.
+            highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
+        }
     });
-    WordTree.Animator.animateOpacity(elementsToAnimate, animationController);
-    card.classList.remove('highlight-active');
-    card.querySelectorAll('[data-card-name]').forEach(item => {
-        item.classList.remove('highlight', 'lowlight');
-    });
+    // One controller per card to prevent overlapping animations within the same tree.
+    const controller = card.__cardHighlightController ??
+        (card.__cardHighlightController = { animationFrameId: null });
+    if (elementsToAnimate.size > 0) {
+        WordTree.Animator.animateOpacity(elementsToAnimate, controller);
+    }
 }
 /**
- * Sets up a single, intelligent global event listener for hover interactions.
- * This handler manages state to determine when to highlight or reset the view.
+ * Resets all highlighting on a card by calling the specific reset logic for each type.
+ */
+function animateReset(card) {
+    setCardHighlight(card, new Set());
+    setTypeHighlight(card, null, null);
+}
+/**
+ * Sets up the single, comprehensive global event listener.
  */
 export function setupGlobalEventHandlers() {
-    if (globalEventState.initialized)
+    if (window.unifiedHighlighterInitialized)
         return;
+    window.unifiedHighlighterInitialized = true;
     document.addEventListener('mouseover', (event) => {
         const target = event.target;
         const card = target.closest('.span-trees-card');
-        // Case 1: Mouse is not over any card.
-        // If we were previously hovering a card, reset it and clear the state.
         if (!card) {
             if (globalEventState.lastHovered.card) {
-                const oldContainerId = findContainerIdForCard(globalEventState.lastHovered.card);
-                if (oldContainerId) {
-                    animateResetState(oldContainerId, globalEventState.lastHovered.card);
-                }
-                globalEventState.lastHovered = { card: null, keys: new Set() };
+                animateReset(globalEventState.lastHovered.card);
+                globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null };
             }
             return;
         }
-        // We are inside a card. Find its container.
-        const containerId = findContainerIdForCard(card);
-        if (!containerId)
-            return;
-        // Determine if the mouse is over an interactive element and get its keys (card names).
-        const interactiveEl = target.closest('[data-source-keys], [data-card-name]');
-        let currentKeys = new Set();
+        const interactiveEl = target.closest('[data-card-name], .type-name-item, .node-group, .interactive-subspan');
+        let newCardKeys = new Set();
+        let newTypeSeed = null;
+        let newTextHighlightNodeContext = null;
         if (interactiveEl) {
-            if (interactiveEl.dataset.sourceKeys) {
-                // `sourceKeys` now directly contains the card names.
-                currentKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys));
-            }
-            else if (interactiveEl.dataset.cardName) {
-                // If hovering a legend item, the key is simply the card name itself.
-                const cardName = interactiveEl.dataset.cardName;
-                if (cardName) {
-                    currentKeys = new Set([cardName]);
+            if (interactiveEl.matches('.interactive-subspan')) {
+                newTypeSeed = interactiveEl.dataset.typeSeed;
+                const parentNode = interactiveEl.closest('.node-group');
+                if (parentNode) {
+                    newCardKeys = new Set(JSON.parse(parentNode.dataset.sourceKeys || '[]'));
+                    newTextHighlightNodeContext = parentNode;
                 }
             }
-        }
-        // Case 2: The hover state has changed (different card or different keys).
-        if (card !== globalEventState.lastHovered.card || !areSetsEqual(currentKeys, globalEventState.lastHovered.keys)) {
-            globalEventState.lastHovered = { card, keys: currentKeys };
-            if (currentKeys.size > 0) {
-                // If we have keys, highlight them.
-                animateHighlightState(containerId, card, currentKeys);
+            else if (interactiveEl.matches('.type-name-item')) {
+                newTypeSeed = interactiveEl.dataset.typeSeed;
             }
-            else {
-                // Otherwise, we are on a non-interactive part of the card; reset it.
-                animateResetState(containerId, card);
+            else if (interactiveEl.matches('[data-card-name]')) {
+                newCardKeys = new Set([interactiveEl.dataset.cardName]);
+            }
+            else if (interactiveEl.matches('.node-group')) {
+                newCardKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys || '[]'));
             }
         }
+        const last = globalEventState.lastHovered;
+        if (card === last.card && newTypeSeed === last.typeSeed && areSetsEqual(newCardKeys, last.cardKeys)) {
+            return; // No change
+        }
+        // Apply new state without a full reset, allowing additive effects.
+        setCardHighlight(card, newCardKeys);
+        setTypeHighlight(card, newTypeSeed, newTextHighlightNodeContext);
+        globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext };
     });
-    globalEventState.initialized = true;
 }
 //# sourceMappingURL=span-tree-event-handler.js.map

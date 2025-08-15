@@ -17,7 +17,7 @@
     background-color: #252525;
     border-radius: 8px;
     border: 1px solid #333;
-    overflow: hidden; /* Ensures padding and children respect the border-radius */
+    overflow: hidden;
 }
 
 /* =================================================================== */
@@ -29,14 +29,14 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 12px 16px;
-    background-color: #2d2d2d; /* Slightly different background to distinguish header area */
+    background-color: #2d2d2d;
     border-bottom: 1px solid #333;
 }
 
 .header-main-info {
     display: flex;
     align-items: center;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
     font-size: 14px;
     color: #e0e0e0;
@@ -56,21 +56,26 @@
     white-space: nowrap;
 }
 
-.header-card-names {
+.header-card-names,
+.header-type-names {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
 }
 
-.card-name-item {
-    color: #e0e0e0; /* Static light text color */
+.card-name-item,
+.type-name-item {
     font-size: 11px;
     font-weight: 500;
     padding: 2px 8px;
-    border: 1px solid; /* Color is set via inline style from C# */
+    border: 1px solid;
     border-radius: 4px;
     cursor: pointer;
-    transition: opacity 0.3s ease, border-color 0.3s ease; /* Animate border and opacity */
+    transition: all 0.15s ease-in-out;
+}
+
+.card-name-item {
+    color: #e0e0e0;
 }
 
 .span-trees-card.highlight-active .card-name-item.lowlight {
@@ -83,8 +88,18 @@
     opacity: 1;
 }
 
+.span-trees-card.type-highlight-active .type-name-item.lowlight {
+    opacity: 0.2;
+}
+
+.span-trees-card.type-highlight-active .type-name-item.highlight {
+    color: var(--highlight-color);
+    opacity: 1;
+}
+
+
 /* =================================================================== */
-/* == SVG & TOOLTIP STYLES (UNCHANGED)                              == */
+/* == SVG & TOOLTIP STYLES                                          == */
 /* =================================================================== */
 
 .word-tree-body {
@@ -92,55 +107,52 @@
     overflow: visible;
 }
 
-::deep #word-tree-tooltip {
-    position: absolute;
-    background-color: rgba(20, 20, 20, 0.9);
-    color: #f0f0f0;
-    padding: 9px 14px;
-    border-radius: 6px;
-    border: 1px solid #555;
-    font-size: 13px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    pointer-events: none;
-    opacity: 0;
-    white-space: nowrap;
-    z-index: 1000;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    transform: translate(-50%, -120%);
-}
-
+/* FIX: Node background color restored */
 ::deep .node-shape.base-layer {
     stroke: var(--node-border-color, #666);
     stroke-width: 2.5px;
     fill: #2d2d2d;
     cursor: pointer;
+    transition: opacity 150ms ease-in-out;
 }
 
 ::deep .connector-path.base-layer {
     stroke: var(--node-border-color, #444);
     fill: none;
     stroke-width: 2.5px;
+    transition: opacity 150ms ease-in-out;
 }
 
 ::deep .node-text {
     font-size: 12px;
-    fill: #e0e0e0;
     text-anchor: middle;
-    pointer-events: none;
+    pointer-events: auto;
+}
+
+::deep .node-text-content {
+    fill: #e0e0e0;
+    transition: fill 150ms ease-in-out, opacity 150ms ease-in-out;
+}
+
+::deep .interactive-subspan {
+    cursor: pointer;
+}
+
+::deep .main-anchor-span .node-text-content {
+    fill: #000;
+}
+
+::deep .main-anchor-span:hover .node-text-content {
+    fill: #666;
 }
 
 ::deep .highlight-overlay {
-    stroke: #ffffff;
     stroke-width: 2.5px;
     fill: none;
     opacity: 0;
     pointer-events: none;
+    transition: opacity 150ms ease-in-out;
 }
-
-/* =================================================================== */
-/* == SPINNER FOR EACH CONTAINER                                    == */
-/* =================================================================== */
 
 .spinner {
     width: 32px;
@@ -156,23 +168,4 @@
     to {
         transform: rotate(360deg);
     }
-}
-
-/* smooth glow */
-::deep .main-anchor-span .node-shape.base-layer {
-    transition: filter 150ms ease;
-}
-
-::deep .main-anchor-span:hover .node-shape.base-layer {
-    filter: drop-shadow(0 0 4px rgba(224,224,224,0.3)) drop-shadow(0 0 8px rgba(224,224,224,0.15));
-}
-
-/* text color + smooth fade */
-::deep .main-anchor-span .node-text {
-    fill: #000; /* default black */
-    transition: fill 150ms ease;
-}
-
-::deep .main-anchor-span:hover .node-text {
-    fill: #666; /* lighten on hover */
 }

@@ -1,5 +1,4 @@
 ﻿// word-tree-animator.ts
-
 import { AnimationController } from "./models.js";
 
 /**
@@ -28,10 +27,10 @@ export namespace WordTree.Animator {
 
     /**
      * Animates the opacity of a collection of HTML elements over a set duration.
-     * @param elementsToAnimate A map where keys are the elements to animate and
-     *   values are objects containing the start and end opacity values.
-     * @param animationController An object to manage the animation frame ID,
-     *   ensuring only one animation runs at a time for the given controller.
+        * @param elementsToAnimate A map where keys are the elements to animate and
+        *   values are objects containing the start and end opacity values.
+        * @param animationController An object to manage the animation frame ID,
+        *   ensuring only one animation runs at a time for the given controller.
      */
     export function animateOpacity(
         elementsToAnimate: Map<HTMLElement, { start: number; end: number }>,

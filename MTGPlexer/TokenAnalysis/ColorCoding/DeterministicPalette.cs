@@ -14,6 +14,11 @@ public record DeterministicPalette
     public string HexDark { get; private set; }
     public string HexSat { get; private set; }
 
+    /// <summary>
+    /// The string used to generate this palette, typically a token Type name.
+    /// </summary>
+    public string Seed { get; private set; }
+
     // --- Core Color Generation Constants ---
     private const double BaseSaturation = 0.66;
     private const double FullSaturation = 1.0;
@@ -27,6 +32,7 @@ public record DeterministicPalette
 
     public DeterministicPalette(Type type, double? baseSaturation = null, double? baseLightness = null)
     {
+        Seed = type.Name;
         var colorAttribute = type.GetCustomAttribute<ColorAttribute>();
         if (colorAttribute != null)
             InitializeFromColor(colorAttribute.Color);
@@ -36,6 +42,7 @@ public record DeterministicPalette
 
     public DeterministicPalette(string seed)
     {
+        Seed = seed;
         InitializeFromHue(GetHueFromSeed(seed));
     }
 

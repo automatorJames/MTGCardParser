@@ -1,7 +1,6 @@
 ﻿// span-tree-manager.ts
-
-import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement } from "./models.js";
-import { setupGlobalEventHandlers, wordTreeObservers } from "./span-tree-event-handler.js";
+import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement, WordTreeObserver } from "./models.js";
+import { setupGlobalEventHandlers } from "./span-tree-event-handler.js";
 import { orchestrateWordTreeRender } from "./span-tree-orchestrator.js";
 
 // --- Virtualization Configuration ---
@@ -15,12 +14,14 @@ const virtualizationConfig = {
     scrollThreshold: 800
 };
 
-// --- Module-level State for Virtualization ---
+// --- Module-level State ---
 let fullDataset: AnalyzedSpan[] = [];
 let nextItemToRender = 0;
 let isLoadingMore = false;
 let scrollListenerAttached = false;
 
+/** Manages ResizeObserver instances for each tree container. */
+export const wordTreeObservers = new Map<string, WordTreeObserver>();
 
 /**
  * Processes raw span data from the server, augmenting it for efficient client-side use.
@@ -29,8 +30,19 @@ let scrollListenerAttached = false;
 function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
     const traverseAndAugmentNodes = (nodes: AdjacencyNode[]): void => {
         for (const node of nodes) {
-            // `sourceOccurrenceKeys` is now an array of card names.
             node.sourceKeysSet = new Set(node.sourceOccurrenceKeys);
+
+            // Collect all unique type seeds from this node's palettes
+            const typeSeeds = new Set<string>();
+            if (node.spanPalettes) {
+                for (const palette of Object.values(node.spanPalettes)) {
+                    if ((palette as any).seed) {
+                        typeSeeds.add((palette as any).seed as string);
+                    }
+                }
+            }
+            (node as any).typeSeedsSet = typeSeeds;
+
             if (node.children) {
                 traverseAndAugmentNodes(node.children);
             }
