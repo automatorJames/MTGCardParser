@@ -32,7 +32,7 @@ public record DeterministicPalette
 
     public DeterministicPalette(Type type, double? baseSaturation = null, double? baseLightness = null)
     {
-        Seed = type.Name;
+        Seed = type.Name.ToFriendlyCase(TitleDisplayOption.Title);
         var colorAttribute = type.GetCustomAttribute<ColorAttribute>();
         if (colorAttribute != null)
             InitializeFromColor(colorAttribute.Color);

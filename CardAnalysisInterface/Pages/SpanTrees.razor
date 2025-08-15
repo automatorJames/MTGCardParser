@@ -24,6 +24,7 @@
                             <span class="header-stat">Occurrences: @span.MaximalSpanOccurrenceCount</span>
                             <span class="header-stat">Word Count: @span.WordCount</span>
                         </div>
+                        <span style="width: 100px;">Card Names:</span>
                         <div class="header-card-names">
                             @foreach (var cardName in span.ContainingCards)
                             {
@@ -39,6 +40,7 @@
                             var distinctTypes = span.DistinctSeedPalettes;
                             if (distinctTypes.Any())
                             {
+                                <span style="width: 100px;">Capture Types:</span>
                                 <div class="header-type-names">
                                     @foreach (var typePalette in distinctTypes)
                                     {

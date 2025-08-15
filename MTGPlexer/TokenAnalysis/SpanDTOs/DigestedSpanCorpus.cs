@@ -280,7 +280,7 @@ public record DigestedSpanCorpus
             var palettes = new Dictionary<int, DeterministicPalette>();
 
             var segmentIter = reverseCollapsedText
-                ? ((IEnumerable<(string Text, DeterministicPalette Palette)>)segmentsToCollapse).AsEnumerable().Reverse()
+                ? segmentsToCollapse.AsEnumerable().Reverse()
                 : segmentsToCollapse;
 
             foreach (var (segmentText, segmentPalette) in segmentIter)
