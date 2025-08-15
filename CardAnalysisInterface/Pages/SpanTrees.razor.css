@@ -88,6 +88,7 @@
     opacity: 1;
 }
 
+/* Updated type-name-item highlighting styles */
 .span-trees-card.type-highlight-active .type-name-item.lowlight {
     opacity: 0.2;
 }
@@ -97,6 +98,17 @@
     opacity: 1;
 }
 
+/* Additional styles for the new behavior where type items can be dimmed but keep borders */
+.type-name-item.lowlight {
+    opacity: 0.2;
+    transition: all 0.15s ease-in-out;
+}
+
+    /* When a type-name-item is in the highlighted path but not directly hovered, 
+   it should retain its border color but have dimmed text */
+    .type-name-item.lowlight.keep-border {
+        border-color: inherit; /* Keep the original border color */
+    }
 
 /* =================================================================== */
 /* == SVG & TOOLTIP STYLES                                          == */
