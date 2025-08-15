@@ -120,7 +120,7 @@ public record DigestedSpanCorpus
                 if (followingSequence.Any()) { followingSequencesWithKeys.Add((followingSequence, originalOccurrence.Key)); }
             }
 
-            var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys.Select(s => { s.Sequence.Reverse(); return s; }).ToList());
+            var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys, reverse: true);
             var followingAdjacencyTree = BuildAdjacencyTree(followingSequencesWithKeys);
 
             result.Add(new AnalyzedSpan(
@@ -138,12 +138,13 @@ public record DigestedSpanCorpus
     /// Builds an adjacency tree from token sequences. It correctly identifies any non-branching
     /// path and collapses it into a single AdjacencyNode in one pass to prevent deep recursion issues.
     /// </summary>
-    private List<AdjacencyNode> BuildAdjacencyTree(List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)> sequencesWithKeys)
+    private List<AdjacencyNode> BuildAdjacencyTree(List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)> sequencesWithKeys, bool reverse = false)
     {
         if (sequencesWithKeys == null || !sequencesWithKeys.Any(x => x.Sequence.Any()))
-        {
-            return new List<AdjacencyNode>();
-        }
+            return [];
+
+        if (reverse)
+            sequencesWithKeys = sequencesWithKeys.Select(x => { x.Sequence.Reverse(); return x; }).ToList();
 
         var nodeGroups = sequencesWithKeys.Where(x => x.Sequence.Any()).GroupBy(x => x.Sequence.First());
         var nodes = new List<AdjacencyNode>();
@@ -161,7 +162,6 @@ public record DigestedSpanCorpus
 
             var remainingSequences = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
 
-            // --- Corrected Collapsing Logic ---
             // We will keep collapsing as long as the path forward is linear and non-branching.
             while (true)
             {
@@ -170,17 +170,13 @@ public record DigestedSpanCorpus
                 // Stop if there are no more tokens or if the number of continuations doesn't match
                 // our current group size (which signifies that a path terminated early or branched).
                 if (!continuations.Any() || continuations.Count != group.Count())
-                {
                     break;
-                }
 
                 var nextToken = continuations.First().Sequence.First();
 
                 // Stop if the other sequences diverge and don't all start with the exact same next token.
                 if (!continuations.All(c => c.Sequence.First().Equals(nextToken)))
-                {
                     break;
-                }
 
                 // Condition met: The path is linear. Collapse this token.
                 var (text, tokenType) = nextToken;
