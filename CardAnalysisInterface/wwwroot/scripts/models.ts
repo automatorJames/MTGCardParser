@@ -1,6 +1,4 @@
-﻿// models.ts
-
-/**
+﻿/**
  * A standard, deterministic color palette.
  */
 export interface DeterministicPalette {
@@ -16,6 +14,7 @@ export interface AdjacencyNode {
     // --- Properties from Server ---
     id: string;
     text: string;
+    spanPalettes: { [startIndex: number]: DeterministicPalette } | null;
     sourceOccurrenceKeys: string[]; // Now contains CardNames
     children: AdjacencyNode[];
 

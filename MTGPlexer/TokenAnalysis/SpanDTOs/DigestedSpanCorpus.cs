@@ -91,8 +91,8 @@ public record DigestedSpanCorpus
         foreach (var (spanText, count) in allMaximalSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
         {
             var subSpanContexts = new List<SubSpanContext>();
-            var precedingSequencesWithKeys = new List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)>();
-            var followingSequencesWithKeys = new List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)>();
+            var precedingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
+            var followingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
             var spanTextWords = spanText.Split(' ');
             var allOccurrenceIndices = FindAllOccurrences(flattenedWordSequenceIdList, spanTextWords.Select(w => wordToId[w]).ToArray());
 
@@ -107,16 +107,16 @@ public record DigestedSpanCorpus
                 if (wordStartIndexInSource == -1) continue;
                 subSpanContexts.Add(new SubSpanContext(originalOccurrence, wordStartIndexInSource, spanTextWords.Length));
 
-                var precedingSequence = new List<(string Text, Type TokenType)>();
-                var followingSequence = new List<(string Text, Type TokenType)>();
+                var precedingSequence = new List<TokenInfo>();
+                var followingSequence = new List<TokenInfo>();
 
-                if (originalOccurrence.PrecedingToken is { } pt) { precedingSequence.Add((pt.ToStringValue(), pt.Kind)); }
-                for (int i = 0; i < wordStartIndexInSource; i++) { precedingSequence.Add((originalOccurrence.Words[i], null)); }
+                if (originalOccurrence.PrecedingToken is { } pt) { precedingSequence.Add(new(pt.ToStringValue(), pt.Kind)); }
+                for (int i = 0; i < wordStartIndexInSource; i++) { precedingSequence.Add(new(originalOccurrence.Words[i], null)); }
                 if (precedingSequence.Any()) { precedingSequencesWithKeys.Add((precedingSequence, originalOccurrence.Key)); }
 
                 int followingWordIndex = wordStartIndexInSource + spanTextWords.Length;
-                for (int i = followingWordIndex; i < originalOccurrence.Words.Length; i++) { followingSequence.Add((originalOccurrence.Words[i], null)); }
-                if (originalOccurrence.FollowingToken is { } ft) { followingSequence.Add((ft.ToStringValue(), ft.Kind)); }
+                for (int i = followingWordIndex; i < originalOccurrence.Words.Length; i++) { followingSequence.Add(new(originalOccurrence.Words[i], null)); }
+                if (originalOccurrence.FollowingToken is { } ft) { followingSequence.Add(new(ft.ToStringValue(), ft.Kind)); }
                 if (followingSequence.Any()) { followingSequencesWithKeys.Add((followingSequence, originalOccurrence.Key)); }
             }
 
@@ -138,7 +138,7 @@ public record DigestedSpanCorpus
     /// Builds an adjacency tree from token sequences. It correctly identifies any non-branching
     /// path and collapses it into a single AdjacencyNode in one pass to prevent deep recursion issues.
     /// </summary>
-    private List<AdjacencyNode> BuildAdjacencyTree(List<(List<(string Text, Type TokenType)> Sequence, CardSpanKey Key)> sequencesWithKeys, bool reverse = false)
+    private List<AdjacencyNode> BuildAdjacencyTree(List<(List<TokenInfo> Sequence, CardSpanKey Key)> sequencesWithKeys, bool reverse = false)
     {
         if (sequencesWithKeys == null || !sequencesWithKeys.Any(x => x.Sequence.Any()))
             return [];
@@ -151,13 +151,13 @@ public record DigestedSpanCorpus
 
         foreach (var group in nodeGroups)
         {
-            var (initialText, initialTokenType) = group.Key;
+            var initialToken = group.Key;
             var sourceOccurrences = group.Select(g => g.Key).Distinct().ToList();
 
             // This list will temporarily hold the segments we intend to collapse.
-            var segmentsToCollapse = new List<NodeSegment>
+            var segmentsToCollapse = new List<(string Text, DeterministicPalette Palette)>
             {
-                new(initialText, initialTokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialTokenType))
+                (initialToken.Text, initialToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialToken.TokenType))
             };
 
             var remainingSequences = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
@@ -179,8 +179,7 @@ public record DigestedSpanCorpus
                     break;
 
                 // Condition met: The path is linear. Collapse this token.
-                var (text, tokenType) = nextToken;
-                segmentsToCollapse.Add(new NodeSegment(text, tokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(tokenType)));
+                segmentsToCollapse.Add((nextToken.Text, nextToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(nextToken.TokenType)));
 
                 // Consume the token from all sequences for the next loop iteration.
                 remainingSequences = remainingSequences.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
@@ -189,10 +188,26 @@ public record DigestedSpanCorpus
             // Recurse using the sequences that remain *after* the collapse loop is finished.
             var children = BuildAdjacencyTree(remainingSequences);
 
-            // Create the single, final segment. The palette is from the *first* segment in the chain.
+            // Build the final combined text and palette map.
+            var finalTextBuilder = new System.Text.StringBuilder();
+            var palettes = new Dictionary<int, DeterministicPalette>();
+            foreach (var (segmentText, segmentPalette) in segmentsToCollapse)
+            {
+                if (finalTextBuilder.Length > 0)
+                {
+                    finalTextBuilder.Append(' ');
+                }
+                int startIndex = finalTextBuilder.Length;
+                if (segmentPalette != null)
+                {
+                    palettes[startIndex] = segmentPalette;
+                }
+                finalTextBuilder.Append(segmentText);
+            }
+
             var finalSegment = new NodeSegment(
-                Text: string.Join(" ", segmentsToCollapse.Select(s => s.Text)),
-                Palette: segmentsToCollapse.First().Palette
+                Text: finalTextBuilder.ToString(),
+                Palettes: palettes.Count > 0 ? palettes : null
             );
 
             // Construct the AdjacencyNode with the single, combined segment.

@@ -8,7 +8,7 @@ public record AdjacencyNode
 {
     /// <summary>
     /// The segment of text this node represents. For collapsed "DefaultUnmatchedString" nodes,
-    /// this contains the combined text, and its Palette will be null.
+    /// this contains the combined text, and its Palettes dictionary will be null.
     /// </summary>
     public NodeSegment Segment { get; init; }
 
@@ -27,9 +27,10 @@ public record AdjacencyNode
     public string Text { get; init; }
 
     /// <summary>
-    /// The palette for this node, derived directly from its segment.
+    /// The map of palettes for this node, derived directly from its segment.
+    /// The keys are character start indices within the Text property.
     /// </summary>
-    public DeterministicPalette SpanPalette => Segment.Palette;
+    public Dictionary<int, DeterministicPalette> SpanPalettes => Segment.Palettes;
 
     /// <summary>
     /// The simplified constructor that was a primary goal of this refactoring.

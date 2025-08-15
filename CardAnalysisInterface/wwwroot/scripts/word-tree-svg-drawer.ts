@@ -1,6 +1,4 @@
-﻿// word-tree-svg-drawer.ts
-
-import { AdjacencyNode, DeterministicPalette, NodeConfig } from './models.js';
+﻿import { AdjacencyNode, DeterministicPalette, NodeConfig } from './models.js';
 import { getFanDelta } from './word-tree-layout-calculator.js';
 
 /**
@@ -35,7 +33,7 @@ export function createGradientStops(sourceCardNames: string[], paletteMap: Map<s
  * Creates and appends a styled SVG group representing a single node.
  */
 export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: boolean, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, containerId: string): void {
-    const { dynamicHeight, wrappedLines, lineHeight, layout } = nodeData;
+    const { dynamicHeight, layout } = nodeData;
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.setAttribute('class', 'node-group');
     group.id = isAdjacencyNode ? `group-node-${containerId}-${nodeData.id}` : `group-node-${containerId}-main-anchor`;
@@ -83,15 +81,79 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
 
     const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
     textElement.setAttribute('class', 'node-text');
+
+    const { text, spanPalettes, wrappedLines, lineHeight } = nodeData;
     const totalTextHeight = wrappedLines.length * lineHeight;
     const startY = -totalTextHeight / 2 + lineHeight * 0.8; // Vertical centering adjustment
-    wrappedLines.forEach((line: string, index: number) => {
-        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        tspan.setAttribute('x', '0');
-        tspan.setAttribute('dy', index === 0 ? `${startY}` : `${lineHeight}`);
-        tspan.textContent = line;
-        textElement.appendChild(tspan);
-    });
+
+    const paletteEntries = spanPalettes ? Object.entries(spanPalettes) : [];
+
+    if (paletteEntries.length === 0) {
+        // If no palettes are provided, render all text as white.
+        wrappedLines.forEach((line: string, index: number) => {
+            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            tspan.setAttribute('x', '0');
+            tspan.setAttribute('dy', index === 0 ? `${startY}` : `${lineHeight}`);
+            tspan.textContent = line;
+            tspan.style.fill = 'white';
+            textElement.appendChild(tspan);
+        });
+    } else {
+        // If palettes are provided, render text with specific colors.
+        const colorStops = paletteEntries
+            .map(([index, palette]) => ({ index: parseInt(index, 10), color: (palette as DeterministicPalette).hex }))
+            .sort((a, b) => a.index - b.index);
+
+        let charCursor = 0; // The current position in the full, unwrapped text
+        wrappedLines.forEach((lineText: string, lineIndex: number) => {
+            const lineTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            lineTspan.setAttribute('x', '0');
+            lineTspan.setAttribute('dy', lineIndex === 0 ? `${startY}` : `${lineHeight}`);
+
+            // Find the start index of the current line within the full text.
+            const lineStartIndex = text.indexOf(lineText, charCursor);
+            charCursor = lineStartIndex;
+
+            const lineEndIndex = lineStartIndex + lineText.length;
+            let lineCursor = 0; // cursor within the current lineText
+
+            while (lineCursor < lineText.length) {
+                const absoluteCursor = lineStartIndex + lineCursor;
+
+                // Determine the active color at the current text position.
+                let activeColor = 'white'; // Default to white for any text before the first palette.
+                for (const stop of colorStops) {
+                    if (stop.index <= absoluteCursor) {
+                        activeColor = stop.color;
+                    } else {
+                        break; // Since stops are sorted, no more relevant stops can be found.
+                    }
+                }
+
+                // Find where the next color change occurs.
+                let nextStopAbsoluteIndex = lineEndIndex;
+                for (const stop of colorStops) {
+                    if (stop.index > absoluteCursor) {
+                        nextStopAbsoluteIndex = stop.index;
+                        break;
+                    }
+                }
+
+                // The current colored chunk ends either at the next color stop or the end of the line.
+                const chunkEndIndexInLine = Math.min(lineText.length, nextStopAbsoluteIndex - lineStartIndex);
+                const chunkText = lineText.substring(lineCursor, chunkEndIndexInLine);
+
+                const subTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                subTspan.textContent = chunkText;
+                subTspan.style.fill = activeColor;
+                lineTspan.appendChild(subTspan);
+
+                lineCursor = chunkEndIndexInLine;
+            }
+            textElement.appendChild(lineTspan);
+            charCursor += lineText.length;
+        });
+    }
 
     group.appendChild(textElement);
     group.setAttribute('transform', `translate(${layout.x}, ${layout.y})`);
