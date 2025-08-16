@@ -36,7 +36,7 @@ function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
             const typeSeeds = new Set<string>();
             if (node.spanPalettes) {
                 for (const palette of Object.values(node.spanPalettes)) {
-                    if ((palette as any).seed) {
+                    if (palette?.seed) {
                         typeSeeds.add((palette as any).seed as string);
                     }
                 }

@@ -141,15 +141,14 @@ public record DigestedSpanCorpus
         var wholeCounts = allOccurrences
             .GroupBy(s => s.Text)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+
         foreach (var (text, count) in wholeCounts)
         {
             if (!allMaximalSpans.ContainsKey(text))
                 allMaximalSpans.Add(text, count);
         }
 
-        foreach (var (spanText, count) in allMaximalSpans
-                     .OrderByDescending(kv => kv.Value)
-                     .ThenBy(kv => kv.Key))
+        foreach (var (spanText, count) in allMaximalSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
         {
             var subSpanContexts = new List<SubSpanContext>();
             var precedingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
@@ -162,55 +161,56 @@ public record DigestedSpanCorpus
 
             foreach (int startIndexInFlatList in allOccurrenceIndices)
             {
-                var originalOccurrence = indexToOccurrenceMap[startIndexInFlatList];
-
+                var originalSpanOccurrence = indexToOccurrenceMap[startIndexInFlatList];
                 int wordStartIndexInSource = -1;
-                for (int i = 0; i <= originalOccurrence.Words.Length - spanTextWords.Length; i++)
+
+                for (int i = 0; i <= originalSpanOccurrence.Words.Length - spanTextWords.Length; i++)
                 {
-                    if (originalOccurrence.Words.Skip(i).Take(spanTextWords.Length)
-                        .SequenceEqual(spanTextWords, StringComparer.Ordinal))
+                    if (originalSpanOccurrence.Words.Skip(i).Take(spanTextWords.Length).SequenceEqual(spanTextWords, StringComparer.Ordinal))
                     {
                         wordStartIndexInSource = i; break;
                     }
                 }
+
                 if (wordStartIndexInSource == -1) continue;
 
-                subSpanContexts.Add(new SubSpanContext(originalOccurrence, wordStartIndexInSource, spanTextWords.Length));
+                subSpanContexts.Add(new SubSpanContext(originalSpanOccurrence, wordStartIndexInSource, spanTextWords.Length));
 
                 var precedingSequence = new List<TokenInfo>();
                 var followingSequence = new List<TokenInfo>();
 
-                // Build PRECEDING sequences: nearest → farthest
+                // Process PRECEDING sequences: nearest → farthest
                 for (int i = wordStartIndexInSource - 1; i >= 0; i--)
+                    precedingSequence.Add(new(originalSpanOccurrence.Words[i], null));
+
+                for (int i = originalSpanOccurrence.AnchorTokenIndex - 1; i >= 0; i--)
                 {
-                    precedingSequence.Add(new(originalOccurrence.Words[i], null));
-                }
-                if (originalOccurrence.PrecedingToken is { } pt)
-                {
-                    precedingSequence.Add(new(pt.ToStringValue(), pt.Kind));
-                }
-                if (precedingSequence.Any())
-                {
-                    precedingSequencesWithKeys.Add((precedingSequence, originalOccurrence.Key));
+                    var token = originalSpanOccurrence.LineTokens[i];
+                    Type type = token.Kind == typeof(DefaultUnmatchedString) ? null : token.Kind;
+                    precedingSequence.Add(new(token.ToStringValue(), type));
                 }
 
+                if (precedingSequence.Any())
+                    precedingSequencesWithKeys.Add((precedingSequence, originalSpanOccurrence.Key));
+                
                 // Build FOLLOWING sequences: nearest → farthest
                 int followingWordIndex = wordStartIndexInSource + spanTextWords.Length;
-                for (int i = followingWordIndex; i < originalOccurrence.Words.Length; i++)
+                for (int i = followingWordIndex; i < originalSpanOccurrence.Words.Length; i++)
+                    followingSequence.Add(new(originalSpanOccurrence.Words[i], null));
+
+                // Process FOLLOWING tokens nearest → farthest
+                for (int i = originalSpanOccurrence.AnchorTokenIndex + 1; i < originalSpanOccurrence.LineTokens.Length; i++)
                 {
-                    followingSequence.Add(new(originalOccurrence.Words[i], null));
+                    var token = originalSpanOccurrence.LineTokens[i];
+                    Type type = token.Kind == typeof(DefaultUnmatchedString) ? null : token.Kind;
+                    followingSequence.Add(new(token.ToStringValue(), type));
                 }
-                if (originalOccurrence.FollowingToken is { } ft)
-                {
-                    followingSequence.Add(new(ft.ToStringValue(), ft.Kind));
-                }
+
                 if (followingSequence.Any())
-                {
-                    followingSequencesWithKeys.Add((followingSequence, originalOccurrence.Key));
-                }
+                    followingSequencesWithKeys.Add((followingSequence, originalSpanOccurrence.Key));
             }
 
-            // IMPORTANT: Reverse collapsed text for PRECEDING so phrases read left→right (farthest→nearest)
+            //Reverse collapsed text for PRECEDING so phrases read left→right (farthest→nearest)
             var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys, reverseCollapsedText: true);
             var followingAdjacencyTree = BuildAdjacencyTree(followingSequencesWithKeys, reverseCollapsedText: false);
 
@@ -246,9 +246,9 @@ public record DigestedSpanCorpus
 
             // Collect the collapsed linear segment
             var segmentsToCollapse = new List<(string Text, DeterministicPalette Palette)>
-                {
-                    (initialToken.Text, initialToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialToken.TokenType))
-                };
+            {
+                (initialToken.Text, initialToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialToken.TokenType))
+            };
 
             var remainingSequences = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
 
@@ -287,7 +287,7 @@ public record DigestedSpanCorpus
             {
                 if (finalTextBuilder.Length > 0) finalTextBuilder.Append(' ');
                 int startIndex = finalTextBuilder.Length;
-                if (segmentPalette != null) palettes[startIndex] = segmentPalette;
+                palettes[startIndex] = segmentPalette;
                 finalTextBuilder.Append(segmentText);
             }
 
@@ -305,7 +305,6 @@ public record DigestedSpanCorpus
         return nodes;
     }
 
-    // FindAllOccurrences and AutomatonState are unchanged...
     private List<int> FindAllOccurrences(List<int> source, int[] pattern)
     {
         var indices = new List<int>();
@@ -314,10 +313,10 @@ public record DigestedSpanCorpus
         {
             if (source[i] < 0) continue; // boundary
             bool match = true;
+
             for (int j = 0; j < pattern.Length; j++)
-            {
                 if (source[i + j] != pattern[j]) { match = false; break; }
-            }
+
             if (match) indices.Add(i);
         }
         return indices;

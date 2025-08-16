@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
-/// Represents a single, specific occurrence of an unmatched span of text from one line of a card.
+/// Represents a single, specific occurrence of a  span of text from one line of a card.
 /// This record is the "ground truth" and holds the complete context of the line it appeared in.
 /// </summary>
 public record SpanOccurrence
@@ -10,43 +10,32 @@ public record SpanOccurrence
     public int LineIndex { get; }
 
     /// <summary>
-    /// The complete list of tokens from the line where this unmatched span occurred.
+    /// The complete array of tokens from the line where this unmatched span occurred.
     /// </summary>
-    public List<Token<Type>> LineTokens { get; }
+    public Token<Type>[] LineTokens { get; }
 
     /// <summary>
-    /// The index of this specific UnmatchedToken within the LineTokens list.
+    /// The index of the specific token of interest within the LineTokens list.
     /// </summary>
-    public int UnmatchedTokenIndex { get; }
-
-    // --- Derived Properties for Convenience ---
+    public int AnchorTokenIndex { get; }
 
     /// <summary>
     /// The full, original unmatched span token.
     /// </summary>
-    public Token<Type> UnmatchedToken => LineTokens[UnmatchedTokenIndex];
-
-    /// <summary>
-    /// The token immediately preceding the UnmatchedToken on its line. Can be null.
-    /// </summary>
-    public Token<Type>? PrecedingToken => UnmatchedTokenIndex > 0 ? LineTokens[UnmatchedTokenIndex - 1] : null;
-
-    /// <summary>
-    /// The token immediately following the UnmatchedToken on its line. Can be null.
-    /// </summary>
-    public Token<Type>? FollowingToken => UnmatchedTokenIndex < LineTokens.Count - 1 ? LineTokens[UnmatchedTokenIndex + 1] : null;
+    public Token<Type> AnchorToken { get; }
 
     public string Text { get; }
     public TextSpan Span { get; }
     public string[] Words { get; }
 
-    public SpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int unmatchedTokenIndex)
+    public SpanOccurrence(string cardName, int lineIndex, List<Token<Type>> lineTokens, int anchorTokenIndex)
     {
         LineIndex = lineIndex;
-        LineTokens = lineTokens;
-        UnmatchedTokenIndex = unmatchedTokenIndex;
-        Text = UnmatchedToken.ToStringValue();
-        Span = UnmatchedToken.Span;
+        LineTokens = lineTokens.ToArray();
+        AnchorTokenIndex = anchorTokenIndex;
+        AnchorToken = LineTokens[AnchorTokenIndex];
+        Text = AnchorToken.ToStringValue();
+        Span = AnchorToken.Span;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         Key = new(cardName, Span);
     }

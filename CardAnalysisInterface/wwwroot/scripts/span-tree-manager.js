@@ -29,7 +29,7 @@ function processSpanForClient(rawSpan) {
             const typeSeeds = new Set();
             if (node.spanPalettes) {
                 for (const palette of Object.values(node.spanPalettes)) {
-                    if (palette.seed) {
+                    if (palette?.seed) {
                         typeSeeds.add(palette.seed);
                     }
                 }
