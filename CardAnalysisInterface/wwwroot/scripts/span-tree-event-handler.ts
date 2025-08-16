@@ -1,6 +1,7 @@
 ﻿// span-tree-event-handler.ts
 import { CardElement } from "./models.js";
 import { WordTree } from "./word-tree-animator.js";
+import { createGradientStops } from "./word-tree-svg-drawer.js";
 
 const globalEventState = {
     initialized: false,
@@ -166,11 +167,14 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
     });
 
     const svg = card.querySelector('svg');
-    if (!svg) return;
+    const processedData = card.__data;
+    if (!svg || !processedData) return;
+
     const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
+    const defs = svg.querySelector('defs');
 
     svg.querySelectorAll<SVGGElement>('[data-source-keys]').forEach(element => {
-        const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
+        const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]') as string[];
         let isHighlighted = hasActiveKeys && sourceKeys.some((key: string) => activeKeys.has(key));
         if (activeSeed && !hasActiveKeys) {
             isHighlighted = !!element.querySelector(`[data-type-seed="${activeSeed}"]`);
@@ -189,6 +193,22 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
         const highlightOverlay = element.querySelector<HTMLElement>('.highlight-overlay');
         if (highlightOverlay) {
             highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
+        }
+
+        if (isHighlighted && hasActiveKeys && defs) {
+            const idParts = element.id.split('-');
+            if (idParts.length >= 4) {
+                const elementType = idParts[1];
+                const elementIdSuffix = idParts.slice(2).join('-');
+                const highlightGradId = `grad-${elementType}-highlight-${elementIdSuffix}`;
+                const highlightGrad = defs.querySelector(`#${highlightGradId}`);
+
+                if (highlightGrad) {
+                    const keysForGradient = sourceKeys.filter((key: string) => activeKeys.has(key));
+                    const gradientTransitionRatio = 0.1;
+                    highlightGrad.innerHTML = createGradientStops(keysForGradient, processedData.cardPalettes, 'hexSat', gradientTransitionRatio);
+                }
+            }
         }
     });
 
@@ -273,4 +293,4 @@ export function setupGlobalEventHandlers(): void {
 
         globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
     });
-}
+} 

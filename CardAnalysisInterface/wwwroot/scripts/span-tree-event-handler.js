@@ -1,4 +1,5 @@
 import { WordTree } from "./word-tree-animator.js";
+import { createGradientStops } from "./word-tree-svg-drawer.js";
 const globalEventState = {
     initialized: false,
     lastHovered: {
@@ -157,9 +158,11 @@ function setCardHighlight(card, activeKeys, activeSeed) {
         item.classList.toggle('lowlight', hasActiveKeys && !isHighlighted);
     });
     const svg = card.querySelector('svg');
-    if (!svg)
+    const processedData = card.__data;
+    if (!svg || !processedData)
         return;
     const elementsToAnimate = new Map();
+    const defs = svg.querySelector('defs');
     svg.querySelectorAll('[data-source-keys]').forEach(element => {
         const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
         let isHighlighted = hasActiveKeys && sourceKeys.some((key) => activeKeys.has(key));
@@ -178,6 +181,20 @@ function setCardHighlight(card, activeKeys, activeSeed) {
         const highlightOverlay = element.querySelector('.highlight-overlay');
         if (highlightOverlay) {
             highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
+        }
+        if (isHighlighted && hasActiveKeys && defs) {
+            const idParts = element.id.split('-');
+            if (idParts.length >= 4) {
+                const elementType = idParts[1];
+                const elementIdSuffix = idParts.slice(2).join('-');
+                const highlightGradId = `grad-${elementType}-highlight-${elementIdSuffix}`;
+                const highlightGrad = defs.querySelector(`#${highlightGradId}`);
+                if (highlightGrad) {
+                    const keysForGradient = sourceKeys.filter((key) => activeKeys.has(key));
+                    const gradientTransitionRatio = 0.1;
+                    highlightGrad.innerHTML = createGradientStops(keysForGradient, processedData.cardPalettes, 'hexSat', gradientTransitionRatio);
+                }
+            }
         }
     });
     if (activeSeed && !hasActiveKeys) {
