@@ -86,7 +86,6 @@ function setTypeHighlight(card: CardElement, activeSeed: string | null, contextN
                     // Keep border color if this type is represented in the highlighted path
                     if (isInHighlightedPath) {
                         // Keep the HexLight border (no dimming)
-                        item.style.borderColor = '';
                         item.style.opacity = '1';
                     }
                 }
