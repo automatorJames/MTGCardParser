@@ -69,7 +69,7 @@ export function createNode(svg, nodeData, isAdjacencyNode, config, paletteMap, c
     }
     else {
         group.classList.add('main-anchor-span');
-        baseShape.style.fill = config.mainSpanFill;
+        // REMOVED: baseShape.style.fill = config.mainSpanFill;
         baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
     }
     const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");

@@ -1,4 +1,3 @@
-// word-tree-layout-calculator.ts
 const columnIndexMap = new WeakMap();
 const fanDeltaMap = new WeakMap();
 /**
@@ -14,28 +13,75 @@ export function getFanDelta(node) {
     return fanDeltaMap.get(node) || 0;
 }
 /**
- * Calculates display metrics for a single node based on its text content.
+ * Populates an SVG <text> element with styled <tspan> children for measurement.
+ * This is a helper function to determine the rendered width of text that may contain bold sections.
  */
-export function getNodeMetrics(text, config, svg) {
+function populateTspansForMeasurement(textEl, lineStr, fullText, lineStartIndex, colorStops) {
+    textEl.innerHTML = ''; // Clear previous content
+    let lineCursor = 0;
+    while (lineCursor < lineStr.length) {
+        const absoluteCursor = lineStartIndex + lineCursor;
+        let activePalette = null;
+        for (const stop of colorStops) {
+            if (stop.index <= absoluteCursor)
+                activePalette = stop.palette;
+            else
+                break;
+        }
+        let nextStopAbsoluteIndex = lineStartIndex + lineStr.length;
+        for (const stop of colorStops) {
+            if (stop.index > absoluteCursor) {
+                nextStopAbsoluteIndex = stop.index;
+                break;
+            }
+        }
+        const chunkEndIndexInLine = Math.min(lineStr.length, nextStopAbsoluteIndex - lineStartIndex);
+        const chunkText = lineStr.substring(lineCursor, chunkEndIndexInLine);
+        const subTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        subTspan.textContent = chunkText;
+        if (activePalette) {
+            subTspan.style.fontWeight = 'bold';
+        }
+        textEl.appendChild(subTspan);
+        lineCursor = chunkEndIndexInLine;
+    }
+}
+/**
+ * Calculates display metrics for a single node based on its text content,
+ * accounting for bold styling which affects text width.
+ */
+export function getNodeMetrics(node, config, svg) {
     const tempText = document.createElementNS("http://www.w3.org/2000/svg", "text");
     tempText.setAttribute('class', 'node-text');
-    // Temporarily append to DOM for measurement
     svg.appendChild(tempText);
-    const words = String(text || '').split(' ');
+    const text = String(node.text || '');
+    const { spanPalettes } = node;
+    const colorStops = (spanPalettes && Object.keys(spanPalettes).length > 0)
+        ? Object.entries(spanPalettes)
+            .map(([index, palette]) => ({ index: parseInt(index, 10), palette: palette }))
+            .sort((a, b) => a.index - b.index)
+        : [];
+    const words = text.split(' ');
     const availableWidth = config.nodeWidth - config.nodePadding * 2;
     const lineHeight = 14;
     let currentLine = '';
     const wrappedLines = [];
+    let lineStartIndex = 0;
+    let currentWordAbsoluteIndex = 0;
     for (const word of words) {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
-        tempText.textContent = testLine;
+        // Use the helper to populate the tempText with styled tspans for accurate measurement
+        populateTspansForMeasurement(tempText, testLine, text, lineStartIndex, colorStops);
         if (tempText.getComputedTextLength() > availableWidth && currentLine) {
             wrappedLines.push(currentLine);
+            lineStartIndex = currentWordAbsoluteIndex;
             currentLine = word;
         }
         else {
             currentLine = testLine;
         }
+        // Advance the absolute index by word length plus a space
+        currentWordAbsoluteIndex += word.length + 1;
     }
     wrappedLines.push(currentLine);
     svg.removeChild(tempText); // Clean up
@@ -49,7 +95,8 @@ export function getNodeMetrics(text, config, svg) {
 export function preCalculateAllNodeMetrics(node, config, svg) {
     if (!node)
         return;
-    const metrics = getNodeMetrics(node.text, config, svg);
+    // MODIFIED: Pass the entire node object to getNodeMetrics
+    const metrics = getNodeMetrics(node, config, svg);
     Object.assign(node, metrics); // Assign metrics to the node
     if (node.children) {
         node.children.forEach((child) => preCalculateAllNodeMetrics(child, config, svg));

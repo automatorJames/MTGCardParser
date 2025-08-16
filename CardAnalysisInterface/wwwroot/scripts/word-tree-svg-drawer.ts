@@ -76,7 +76,7 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
         }
     } else {
         group.classList.add('main-anchor-span');
-        baseShape.style.fill = config.mainSpanFill;
+        // REMOVED: baseShape.style.fill = config.mainSpanFill;
         baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
     }
 

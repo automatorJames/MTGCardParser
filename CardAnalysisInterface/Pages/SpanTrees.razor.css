@@ -24,7 +24,6 @@
 /* == HEADER STYLES                                                 == */
 /* =================================================================== */
 
-/* CHANGED: make header a 2-col grid: [label 100px | list 1fr] */
 .card-header {
     display: grid;
     grid-template-columns: 100px 1fr; /* label | list */
@@ -118,10 +117,8 @@
     transition: all 0.15s ease-in-out;
 }
 
-    /* When a type-name-item is in the highlighted path but not directly hovered,
-   it should retain its border color but have dimmed text */
     .type-name-item.lowlight.keep-border {
-        border-color: inherit; /* Keep the original border color */
+        border-color: inherit;
     }
 
 /* =================================================================== */
@@ -133,26 +130,47 @@
     overflow: visible;
 }
 
-/* FIX: Node background color restored */
+/* ADDED: Set cursor on the entire node group */
+::deep .node-group {
+    cursor: pointer;
+}
+
 ::deep .node-shape.base-layer {
     stroke: var(--node-border-color, #666);
     stroke-width: 2.5px;
     fill: #2d2d2d;
-    cursor: pointer;
-    transition: opacity 150ms ease-in-out;
+    /* REMOVED: cursor: pointer; (moved to .node-group) */
+    transition: opacity 150ms ease-in-out, fill 150ms ease-in-out;
 }
 
 ::deep .connector-path.base-layer {
     stroke: var(--node-border-color, #444);
     fill: none;
     stroke-width: 2.5px;
-    transition: opacity 150ms ease-in-out;
+    transition: opacity 150ms ease-in-out, stroke 150ms ease-in-out;
+}
+
+.span-trees-card.main-anchor-hover ::deep .connector-path.base-layer {
+    stroke: #ffffff;
+}
+
+::deep .main-anchor-span > .node-shape.base-layer {
+    fill: #e0e0e0;
+}
+
+/* MODIFIED: Changed fill color to be darker than the base #2d2d2d */
+::deep .node-group:not(.main-anchor-span):hover > .node-shape.base-layer {
+    fill: #202020;
+}
+
+::deep .main-anchor-span:hover > .node-shape.base-layer {
+    fill: #cccccc;
 }
 
 ::deep .node-text {
     font-size: 12px;
     text-anchor: middle;
-    pointer-events: auto;
+    pointer-events: none; /* Make text non-interactive so group cursor is used */
 }
 
 ::deep .node-text-content {
@@ -161,7 +179,8 @@
 }
 
 ::deep .interactive-subspan {
-    cursor: pointer;
+    /* Allow pointer events only for the interactive parts of the text */
+    pointer-events: auto;
 }
 
 ::deep .main-anchor-span .node-text-content {

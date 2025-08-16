@@ -8,8 +8,8 @@ const globalEventState = {
         card: null as CardElement | null,
         cardKeys: new Set<string>(),
         typeSeed: null as string | null,
-        // This new property is key to distinguishing between global and local text effects
-        textHighlightNodeContext: null as SVGGElement | null
+        textHighlightNodeContext: null as SVGGElement | null,
+        mainAnchorHover: false // ADDED: Track main anchor hover state
     }
 };
 
@@ -271,8 +271,10 @@ export function setupGlobalEventHandlers(): void {
 
         if (!card) {
             if (globalEventState.lastHovered.card) {
+                // ADDED: remove class on card leave
+                globalEventState.lastHovered.card.classList.remove('main-anchor-hover');
                 animateReset(globalEventState.lastHovered.card);
-                globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null };
+                globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
             }
             return;
         }
@@ -281,9 +283,12 @@ export function setupGlobalEventHandlers(): void {
         let newCardKeys = new Set<string>();
         let newTypeSeed: string | null = null;
         let newTextHighlightNodeContext: SVGGElement | null = null;
+        let newMainAnchorHover = false; // ADDED
 
         if (interactiveEl) {
-            if (interactiveEl.matches('.interactive-subspan')) {
+            if (interactiveEl.matches('.main-anchor-span')) { // ADDED: check for main anchor
+                newMainAnchorHover = true;
+            } else if (interactiveEl.matches('.interactive-subspan')) {
                 newTypeSeed = interactiveEl.dataset.typeSeed!;
                 const parentNode = interactiveEl.closest<SVGGElement>('.node-group');
                 if (parentNode) {
@@ -300,14 +305,17 @@ export function setupGlobalEventHandlers(): void {
         }
 
         const last = globalEventState.lastHovered;
-        if (card === last.card && newTypeSeed === last.typeSeed && areSetsEqual(newCardKeys, last.cardKeys)) {
+        // MODIFIED: check main anchor state
+        if (card === last.card && newTypeSeed === last.typeSeed && areSetsEqual(newCardKeys, last.cardKeys) && newMainAnchorHover === last.mainAnchorHover) {
             return; // No change
         }
 
         // Apply new state without a full reset, allowing additive effects.
+        card.classList.toggle('main-anchor-hover', newMainAnchorHover); // ADDED
         setCardHighlight(card, newCardKeys, newTypeSeed);
         setTypeHighlight(card, newTypeSeed, newTextHighlightNodeContext, newCardKeys);
 
-        globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext };
+        // MODIFIED: update state object
+        globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
     });
 }
