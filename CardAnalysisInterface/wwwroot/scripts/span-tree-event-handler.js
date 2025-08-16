@@ -6,7 +6,7 @@ const globalEventState = {
         cardKeys: new Set(),
         typeSeed: null,
         textHighlightNodeContext: null,
-        mainAnchorHover: false // ADDED: Track main anchor hover state
+        mainAnchorHover: false
     }
 };
 function areSetsEqual(setA, setB) {
@@ -26,12 +26,10 @@ function getHighlightedPathTypeSeeds(card, activeKeys) {
     const svg = card.querySelector('svg');
     if (!svg)
         return highlightedSeeds;
-    // Find all nodes that are part of the highlighted path
     svg.querySelectorAll('[data-source-keys]').forEach(element => {
         const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
         const isHighlighted = activeKeys.size > 0 && sourceKeys.some((key) => activeKeys.has(key));
         if (isHighlighted) {
-            // Collect all type seeds from this highlighted node
             element.querySelectorAll('.node-text-content').forEach(tspan => {
                 const tspanSeed = tspan.dataset.typeSeed;
                 if (tspanSeed) {
@@ -44,70 +42,50 @@ function getHighlightedPathTypeSeeds(card, activeKeys) {
 }
 /**
  * Applies type-based highlighting. It ONLY affects text and type header items.
- * Its behavior changes based on whether a specific node context is provided.
  */
 function setTypeHighlight(card, activeSeed, contextNode, activeKeys) {
     card.classList.toggle('type-highlight-active', !!activeSeed);
-    // Get the type seeds that are represented in the highlighted path
     const highlightedPathSeeds = getHighlightedPathTypeSeeds(card, activeKeys);
     card.querySelectorAll('.type-name-item').forEach(item => {
         const seed = item.dataset.typeSeed || '';
         const isDirectlyHighlighted = seed === activeSeed;
         const isInHighlightedPath = highlightedPathSeeds.has(seed);
         if (activeSeed) {
-            // Case 1: Type-name-item hover - dim all except the hovered one
             if (contextNode === null) {
                 item.classList.toggle('highlight', isDirectlyHighlighted);
                 item.classList.toggle('lowlight', !isDirectlyHighlighted);
                 item.style.color = isDirectlyHighlighted ? item.style.getPropertyValue('--highlight-color') : '';
             }
-            // Case 3: Data-type-seed span hover - special handling
             else {
                 if (isDirectlyHighlighted) {
-                    // The directly hovered type transitions from white to Palette.Hex
                     item.classList.add('highlight');
                     item.classList.remove('lowlight');
                     item.style.color = item.style.getPropertyValue('--highlight-color');
                 }
                 else {
-                    // Other type-name-items are dimmed, but keep borders if they're in highlighted path
                     item.classList.remove('highlight');
                     item.classList.add('lowlight');
                     item.style.color = '';
-                    // Keep border color if this type is represented in the highlighted path
                     if (isInHighlightedPath) {
-                        // Keep the HexLight border (no dimming)
                         item.style.opacity = '1';
                     }
                 }
             }
         }
-        // Case 2: Node hover (but not a specific span) - dim types not in highlighted path
         else if (activeKeys.size > 0) {
-            if (isInHighlightedPath) {
-                item.classList.remove('lowlight');
-                item.classList.remove('highlight');
-                item.style.color = '';
-            }
-            else {
-                item.classList.add('lowlight');
-                item.classList.remove('highlight');
-                item.style.color = '';
-            }
-        }
-        // Reset case
-        else {
+            item.classList.toggle('lowlight', !isInHighlightedPath);
             item.classList.remove('highlight');
-            item.classList.remove('lowlight');
+            item.style.color = '';
+        }
+        else {
+            item.classList.remove('highlight', 'lowlight');
             item.style.color = '';
         }
     });
     const svg = card.querySelector('svg');
     if (!svg)
         return;
-    // Handle SVG text content
     if (contextNode) {
-        // Case 3: Hovering a data-type-seed span - only affect text within the context node
         svg.querySelectorAll('.node-group').forEach(node => {
             if (node !== contextNode) {
                 node.querySelectorAll('.node-text-content').forEach(tspan => tspan.style.opacity = '1');
@@ -115,22 +93,16 @@ function setTypeHighlight(card, activeSeed, contextNode, activeKeys) {
         });
         contextNode.querySelectorAll('.node-text-content').forEach(tspan => {
             const tspanSeed = tspan.dataset.typeSeed;
-            if (activeSeed && tspanSeed !== activeSeed) {
-                tspan.style.opacity = '0.2';
+            tspan.style.opacity = (activeSeed && tspanSeed !== activeSeed) ? '0.2' : '1';
+            if (tspanSeed === activeSeed) {
+                tspan.style.fill = tspan.dataset.hoverColor;
             }
-            else {
-                tspan.style.opacity = '1';
-                if (tspanSeed === activeSeed) {
-                    tspan.style.fill = tspan.dataset.hoverColor;
-                }
-                else if (tspan.dataset.baseColor) {
-                    tspan.style.fill = tspan.dataset.baseColor;
-                }
+            else if (tspan.dataset.baseColor) {
+                tspan.style.fill = tspan.dataset.baseColor;
             }
         });
     }
     else if (activeSeed) {
-        // Case 1: Type-name-item hover - global text effects
         svg.querySelectorAll('.node-text-content').forEach(tspan => {
             const tspanSeed = tspan.dataset.typeSeed;
             if (tspanSeed === activeSeed) {
@@ -143,7 +115,6 @@ function setTypeHighlight(card, activeSeed, contextNode, activeKeys) {
         });
     }
     else {
-        // Reset all text or leave as-is for node hover case
         svg.querySelectorAll('.node-text-content').forEach(tspan => {
             tspan.style.opacity = '1';
             if (tspan.dataset.baseColor)
@@ -152,8 +123,29 @@ function setTypeHighlight(card, activeSeed, contextNode, activeKeys) {
     }
 }
 /**
- * Applies card-based highlighting. It ONLY affects node/connector structures and card header items.
- * Smoothly animates the group (<g>) opacity via Animator to avoid snapping conflicts with overlay fades.
+ * Smoothly animates the white overlay for node borders and connectors on anchor hover.
+ */
+function setAnchorHoverEffect(card, isHovering) {
+    const svg = card.querySelector('svg');
+    if (!svg)
+        return;
+    const elementsToAnimate = new Map();
+    const overlays = svg.querySelectorAll('.anchor-hover-overlay');
+    overlays.forEach(overlay => {
+        const current = parseFloat(getComputedStyle(overlay).opacity) || 0;
+        const end = isHovering ? 1 : 0;
+        if (Math.abs(current - end) > 0.001) {
+            elementsToAnimate.set(overlay, { start: current, end });
+        }
+    });
+    const controller = card.__anchorHoverController ??
+        (card.__anchorHoverController = { animationFrameId: null });
+    if (elementsToAnimate.size > 0) {
+        WordTree.Animator.animateOpacity(elementsToAnimate, controller);
+    }
+}
+/**
+ * Applies card-based highlighting. Affects node/connector structures and card header items.
  */
 function setCardHighlight(card, activeKeys, activeSeed) {
     const hasActiveKeys = activeKeys.size > 0;
@@ -167,44 +159,27 @@ function setCardHighlight(card, activeKeys, activeSeed) {
     const svg = card.querySelector('svg');
     if (!svg)
         return;
-    // Build a batch of opacity animations for all node/connector groups.
     const elementsToAnimate = new Map();
     svg.querySelectorAll('[data-source-keys]').forEach(element => {
         const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
         let isHighlighted = hasActiveKeys && sourceKeys.some((key) => activeKeys.has(key));
-        // Case 1: Type-name-item hover - additional logic for dimming nodes
         if (activeSeed && !hasActiveKeys) {
-            // Check if this node contains any instances of the hovered type seed
-            const nodeHasTypeSeed = element.querySelector(`[data-type-seed="${activeSeed}"]`) !== null;
-            isHighlighted = nodeHasTypeSeed;
+            isHighlighted = !!element.querySelector(`[data-type-seed="${activeSeed}"]`);
         }
-        // Compute animation endpoints for the group (<g>) itself.
         const computed = getComputedStyle(element);
         const current = parseFloat(computed.opacity) || 1;
-        let end;
-        if (activeSeed && !hasActiveKeys) {
-            // Case 1: Type hover - dim nodes that don't contain the type
+        let end = 1;
+        if ((activeSeed && !hasActiveKeys) || hasActiveKeys) {
             end = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
-        }
-        else if (hasActiveKeys) {
-            // Case 2 & 3: Normal card highlighting
-            end = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
-        }
-        else {
-            // Reset case
-            end = 1;
         }
         if (Math.abs(current - end) > 0.001) {
             elementsToAnimate.set(element, { start: current, end });
         }
-        // Let the overlay handle its own CSS-driven fade; do NOT also fade the group immediately.
         const highlightOverlay = element.querySelector('.highlight-overlay');
         if (highlightOverlay) {
-            // The overlay rect has `transition: opacity 150ms ease-in-out` in CSS, so this fades smoothly.
             highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
         }
     });
-    // Handle lines (connectors) - Case 1: dim all lines when hovering type-name-item
     if (activeSeed && !hasActiveKeys) {
         svg.querySelectorAll('.connector-path.base-layer').forEach(path => {
             const computed = getComputedStyle(path);
@@ -215,30 +190,18 @@ function setCardHighlight(card, activeKeys, activeSeed) {
             }
         });
     }
-    else {
-        // Reset lines to full opacity for other cases
-        svg.querySelectorAll('.connector-path.base-layer').forEach(path => {
-            const computed = getComputedStyle(path);
-            const current = parseFloat(computed.opacity) || 1;
-            const end = 1;
-            if (Math.abs(current - end) > 0.001) {
-                elementsToAnimate.set(path, { start: current, end });
-            }
-        });
-    }
-    // One controller per card to prevent overlapping animations within the same tree.
-    const controller = card.__cardHighlightController ??
-        (card.__cardHighlightController = { animationFrameId: null });
+    const controller = card.__cardHighlightController ?? (card.__cardHighlightController = { animationFrameId: null });
     if (elementsToAnimate.size > 0) {
         WordTree.Animator.animateOpacity(elementsToAnimate, controller);
     }
 }
 /**
- * Resets all highlighting on a card by calling the specific reset logic for each type.
+ * Resets all highlighting on a card.
  */
 function animateReset(card) {
     setCardHighlight(card, new Set(), null);
     setTypeHighlight(card, null, null, new Set());
+    setAnchorHoverEffect(card, false); // Add this call to ensure reset
 }
 /**
  * Sets up the single, comprehensive global event listener.
@@ -252,8 +215,6 @@ export function setupGlobalEventHandlers() {
         const card = target.closest('.span-trees-card');
         if (!card) {
             if (globalEventState.lastHovered.card) {
-                // ADDED: remove class on card leave
-                globalEventState.lastHovered.card.classList.remove('main-anchor-hover');
                 animateReset(globalEventState.lastHovered.card);
                 globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
             }
@@ -263,9 +224,9 @@ export function setupGlobalEventHandlers() {
         let newCardKeys = new Set();
         let newTypeSeed = null;
         let newTextHighlightNodeContext = null;
-        let newMainAnchorHover = false; // ADDED
+        let newMainAnchorHover = false;
         if (interactiveEl) {
-            if (interactiveEl.matches('.main-anchor-span')) { // ADDED: check for main anchor
+            if (interactiveEl.matches('.main-anchor-span')) {
                 newMainAnchorHover = true;
             }
             else if (interactiveEl.matches('.interactive-subspan')) {
@@ -287,15 +248,12 @@ export function setupGlobalEventHandlers() {
             }
         }
         const last = globalEventState.lastHovered;
-        // MODIFIED: check main anchor state
         if (card === last.card && newTypeSeed === last.typeSeed && areSetsEqual(newCardKeys, last.cardKeys) && newMainAnchorHover === last.mainAnchorHover) {
-            return; // No change
+            return;
         }
-        // Apply new state without a full reset, allowing additive effects.
-        card.classList.toggle('main-anchor-hover', newMainAnchorHover); // ADDED
         setCardHighlight(card, newCardKeys, newTypeSeed);
         setTypeHighlight(card, newTypeSeed, newTextHighlightNodeContext, newCardKeys);
-        // MODIFIED: update state object
+        setAnchorHoverEffect(card, newMainAnchorHover); // Call the new animation function
         globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
     });
 }

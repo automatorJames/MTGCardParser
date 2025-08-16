@@ -52,7 +52,13 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
     const highlightShape = baseShape.cloneNode() as SVGRectElement;
     highlightShape.classList.remove('base-layer');
     highlightShape.setAttribute('class', 'highlight-overlay');
-    group.append(baseShape, highlightShape);
+
+    // ADDED: Create a third layer specifically for the white anchor-hover effect
+    const anchorHoverShape = baseShape.cloneNode() as SVGRectElement;
+    anchorHoverShape.classList.remove('base-layer');
+    anchorHoverShape.setAttribute('class', 'anchor-hover-overlay');
+
+    group.append(baseShape, highlightShape, anchorHoverShape);
 
     if (isAdjacencyNode) {
         const sourceCardNames = nodeData.sourceOccurrenceKeys || [];
@@ -76,7 +82,6 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
         }
     } else {
         group.classList.add('main-anchor-span');
-        // REMOVED: baseShape.style.fill = config.mainSpanFill;
         baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
     }
 
@@ -174,6 +179,11 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
     highlightPath.classList.remove('base-layer');
     highlightPath.setAttribute('class', 'highlight-overlay');
 
+    // ADDED: Create a third layer specifically for the white anchor-hover effect
+    const anchorHoverPath = basePath.cloneNode() as SVGPathElement;
+    anchorHoverPath.classList.remove('base-layer');
+    anchorHoverPath.setAttribute('class', 'anchor-hover-overlay');
+
     if (commonCardNames.length > 0) {
         const defs = svg.querySelector('defs');
         if (defs) {
@@ -205,7 +215,7 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
         }
     }
 
-    group.append(basePath, highlightPath);
+    group.append(basePath, highlightPath, anchorHoverPath);
     svg.insertBefore(group, svg.firstChild);
 }
 

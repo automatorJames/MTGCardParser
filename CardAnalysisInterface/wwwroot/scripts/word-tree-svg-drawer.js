@@ -46,7 +46,11 @@ export function createNode(svg, nodeData, isAdjacencyNode, config, paletteMap, c
     const highlightShape = baseShape.cloneNode();
     highlightShape.classList.remove('base-layer');
     highlightShape.setAttribute('class', 'highlight-overlay');
-    group.append(baseShape, highlightShape);
+    // ADDED: Create a third layer specifically for the white anchor-hover effect
+    const anchorHoverShape = baseShape.cloneNode();
+    anchorHoverShape.classList.remove('base-layer');
+    anchorHoverShape.setAttribute('class', 'anchor-hover-overlay');
+    group.append(baseShape, highlightShape, anchorHoverShape);
     if (isAdjacencyNode) {
         const sourceCardNames = nodeData.sourceOccurrenceKeys || [];
         if (sourceCardNames.length > 0) {
@@ -69,7 +73,6 @@ export function createNode(svg, nodeData, isAdjacencyNode, config, paletteMap, c
     }
     else {
         group.classList.add('main-anchor-span');
-        // REMOVED: baseShape.style.fill = config.mainSpanFill;
         baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
     }
     const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -153,6 +156,10 @@ function emitConnector(svg, pathData, childData, commonCardNames, startX, startY
     const highlightPath = basePath.cloneNode();
     highlightPath.classList.remove('base-layer');
     highlightPath.setAttribute('class', 'highlight-overlay');
+    // ADDED: Create a third layer specifically for the white anchor-hover effect
+    const anchorHoverPath = basePath.cloneNode();
+    anchorHoverPath.classList.remove('base-layer');
+    anchorHoverPath.setAttribute('class', 'anchor-hover-overlay');
     if (commonCardNames.length > 0) {
         const defs = svg.querySelector('defs');
         if (defs) {
@@ -180,7 +187,7 @@ function emitConnector(svg, pathData, childData, commonCardNames, startX, startY
             highlightPath.style.stroke = `url(#${highlightGradientId})`;
         }
     }
-    group.append(basePath, highlightPath);
+    group.append(basePath, highlightPath, anchorHoverPath);
     svg.insertBefore(group, svg.firstChild);
 }
 /**

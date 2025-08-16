@@ -285,7 +285,9 @@ public record DigestedSpanCorpus
 
             foreach (var (segmentText, segmentPalette) in segmentIter)
             {
-                if (finalTextBuilder.Length > 0) finalTextBuilder.Append(' ');
+                if (finalTextBuilder.Length > 0)
+                    finalTextBuilder.Append(' ');
+
                 int startIndex = finalTextBuilder.Length;
                 palettes[startIndex] = segmentPalette;
                 finalTextBuilder.Append(segmentText);

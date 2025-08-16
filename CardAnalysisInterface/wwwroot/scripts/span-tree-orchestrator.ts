@@ -23,6 +23,31 @@ function buildCumulativeOffsets(rawPushMap: Map<number, number>, maxColumn: numb
 }
 
 /**
+ * Creates SVG filter definitions, such as for a glow effect.
+ */
+function createSvgDefs(svg: SVGSVGElement): void {
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+    // Create the glow filter
+    const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    filter.id = "glow";
+    filter.setAttribute("x", "-50%");
+    filter.setAttribute("y", "-50%");
+    filter.setAttribute("width", "200%");
+    filter.setAttribute("height", "200%");
+    filter.innerHTML = `
+        <feGaussianBlur stdDeviation="3.5" result="coloredBlur"></feGaussianBlur>
+        <feMerge>
+            <feMergeNode in="coloredBlur"></feMergeNode>
+            <feMergeNode in="SourceGraphic"></feMergeNode>
+        </feMerge>
+    `;
+
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+}
+
+/**
  * Orchestrates the entire process of calculating layout and drawing a word tree SVG.
  */
 export function orchestrateWordTreeRender(container: HTMLElement): void {
@@ -31,7 +56,9 @@ export function orchestrateWordTreeRender(container: HTMLElement): void {
     const svg = container.querySelector('svg');
     if (!processedData || !svg) return;
 
-    svg.innerHTML = '<defs></defs>'; // Clear previous render
+    svg.innerHTML = ''; // Clear previous render
+    createSvgDefs(svg); // ADDED: Create filters and other definitions
+
     const config: NodeConfig = {
         nodeWidth: 200, nodePadding: 8, nodeHeight: 40, hGap: 40, vGap: 20,
         cornerRadius: 10, mainSpanFill: '#e0e0e0', mainSpanColor: "#e0e0e0",
