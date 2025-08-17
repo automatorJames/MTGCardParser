@@ -176,6 +176,7 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
     svg.querySelectorAll<SVGGElement>('[data-source-keys]').forEach(element => {
         const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]') as string[];
         let isHighlighted = hasActiveKeys && sourceKeys.some((key: string) => activeKeys.has(key));
+
         if (activeSeed && !hasActiveKeys) {
             isHighlighted = !!element.querySelector(`[data-type-seed="${activeSeed}"]`);
         }
@@ -183,6 +184,7 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
         const computed = getComputedStyle(element);
         const current = parseFloat(computed.opacity) || 1;
         let end = 1;
+
         if ((activeSeed && !hasActiveKeys) || hasActiveKeys) {
             end = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
         }
@@ -190,6 +192,7 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
         if (Math.abs(current - end) > 0.001) {
             elementsToAnimate.set(element as unknown as HTMLElement, { start: current, end });
         }
+
         const highlightOverlay = element.querySelector<HTMLElement>('.highlight-overlay');
         if (highlightOverlay) {
             highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
@@ -212,17 +215,6 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
         }
     });
 
-    if (activeSeed && !hasActiveKeys) {
-        svg.querySelectorAll<SVGPathElement>('.connector-path.base-layer').forEach(path => {
-            const computed = getComputedStyle(path);
-            const current = parseFloat(computed.opacity) || 1;
-            const end = WordTree.Animator.config.lowlightOpacity;
-            if (Math.abs(current - end) > 0.001) {
-                elementsToAnimate.set(path as unknown as HTMLElement, { start: current, end });
-            }
-        });
-    }
-
     const controller = (card as any).__cardHighlightController ?? ((card as any).__cardHighlightController = { animationFrameId: null });
     if (elementsToAnimate.size > 0) {
         WordTree.Animator.animateOpacity(elementsToAnimate, controller);
@@ -235,7 +227,7 @@ function setCardHighlight(card: CardElement, activeKeys: Set<string>, activeSeed
 function animateReset(card: CardElement) {
     setCardHighlight(card, new Set(), null);
     setTypeHighlight(card, null, null, new Set());
-    setAnchorHoverEffect(card, false); // Add this call to ensure reset
+    setAnchorHoverEffect(card, false);
 }
 
 /**
@@ -248,15 +240,21 @@ export function setupGlobalEventHandlers(): void {
     document.addEventListener('mouseover', (event: MouseEvent) => {
         const target = event.target as Element;
         const card = target.closest<CardElement>('.span-trees-card');
+        const last = globalEventState.lastHovered;
 
+        // *** FIX: Explicitly reset the last card if we have moved to a different card or off all cards. ***
+        if (last.card && last.card !== card) {
+            animateReset(last.card);
+            // Clear the state entirely now that we've left the old card's context.
+            globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
+        }
+
+        // If we are not on a card, our work is done.
         if (!card) {
-            if (globalEventState.lastHovered.card) {
-                animateReset(globalEventState.lastHovered.card);
-                globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
-            }
             return;
         }
 
+        // --- We are on a card. Determine the new state. ---
         const interactiveEl = target.closest<HTMLElement>('[data-card-name], .type-name-item, .node-group, .interactive-subspan');
         let newCardKeys = new Set<string>();
         let newTypeSeed: string | null = null;
@@ -282,15 +280,20 @@ export function setupGlobalEventHandlers(): void {
             }
         }
 
-        const last = globalEventState.lastHovered;
-        if (card === last.card && newTypeSeed === last.typeSeed && areSetsEqual(newCardKeys, last.cardKeys) && newMainAnchorHover === last.mainAnchorHover) {
+        // Re-read the state as it may have been cleared above.
+        const currentLastState = globalEventState.lastHovered;
+        if (card === currentLastState.card &&
+            newTypeSeed === currentLastState.typeSeed &&
+            areSetsEqual(newCardKeys, currentLastState.cardKeys) &&
+            newMainAnchorHover === currentLastState.mainAnchorHover) {
             return;
         }
 
+        // Apply new state and update the global tracker.
         setCardHighlight(card, newCardKeys, newTypeSeed);
         setTypeHighlight(card, newTypeSeed, newTextHighlightNodeContext, newCardKeys);
-        setAnchorHoverEffect(card, newMainAnchorHover); // Call the new animation function
+        setAnchorHoverEffect(card, newMainAnchorHover);
 
         globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
     });
-} 
+}

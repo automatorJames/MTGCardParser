@@ -197,16 +197,6 @@ function setCardHighlight(card, activeKeys, activeSeed) {
             }
         }
     });
-    if (activeSeed && !hasActiveKeys) {
-        svg.querySelectorAll('.connector-path.base-layer').forEach(path => {
-            const computed = getComputedStyle(path);
-            const current = parseFloat(computed.opacity) || 1;
-            const end = WordTree.Animator.config.lowlightOpacity;
-            if (Math.abs(current - end) > 0.001) {
-                elementsToAnimate.set(path, { start: current, end });
-            }
-        });
-    }
     const controller = card.__cardHighlightController ?? (card.__cardHighlightController = { animationFrameId: null });
     if (elementsToAnimate.size > 0) {
         WordTree.Animator.animateOpacity(elementsToAnimate, controller);
@@ -218,7 +208,7 @@ function setCardHighlight(card, activeKeys, activeSeed) {
 function animateReset(card) {
     setCardHighlight(card, new Set(), null);
     setTypeHighlight(card, null, null, new Set());
-    setAnchorHoverEffect(card, false); // Add this call to ensure reset
+    setAnchorHoverEffect(card, false);
 }
 /**
  * Sets up the single, comprehensive global event listener.
@@ -230,13 +220,18 @@ export function setupGlobalEventHandlers() {
     document.addEventListener('mouseover', (event) => {
         const target = event.target;
         const card = target.closest('.span-trees-card');
+        const last = globalEventState.lastHovered;
+        // *** FIX: Explicitly reset the last card if we have moved to a different card or off all cards. ***
+        if (last.card && last.card !== card) {
+            animateReset(last.card);
+            // Clear the state entirely now that we've left the old card's context.
+            globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
+        }
+        // If we are not on a card, our work is done.
         if (!card) {
-            if (globalEventState.lastHovered.card) {
-                animateReset(globalEventState.lastHovered.card);
-                globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
-            }
             return;
         }
+        // --- We are on a card. Determine the new state. ---
         const interactiveEl = target.closest('[data-card-name], .type-name-item, .node-group, .interactive-subspan');
         let newCardKeys = new Set();
         let newTypeSeed = null;
@@ -264,13 +259,18 @@ export function setupGlobalEventHandlers() {
                 newCardKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys || '[]'));
             }
         }
-        const last = globalEventState.lastHovered;
-        if (card === last.card && newTypeSeed === last.typeSeed && areSetsEqual(newCardKeys, last.cardKeys) && newMainAnchorHover === last.mainAnchorHover) {
+        // Re-read the state as it may have been cleared above.
+        const currentLastState = globalEventState.lastHovered;
+        if (card === currentLastState.card &&
+            newTypeSeed === currentLastState.typeSeed &&
+            areSetsEqual(newCardKeys, currentLastState.cardKeys) &&
+            newMainAnchorHover === currentLastState.mainAnchorHover) {
             return;
         }
+        // Apply new state and update the global tracker.
         setCardHighlight(card, newCardKeys, newTypeSeed);
         setTypeHighlight(card, newTypeSeed, newTextHighlightNodeContext, newCardKeys);
-        setAnchorHoverEffect(card, newMainAnchorHover); // Call the new animation function
+        setAnchorHoverEffect(card, newMainAnchorHover);
         globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
     });
 }

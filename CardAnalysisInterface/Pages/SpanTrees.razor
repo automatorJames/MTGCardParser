@@ -2,7 +2,6 @@
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
-@implements IAsyncDisposable
 
 @* Only render the body of the page after settings are loaded to avoid incorrect filtering *@
 @if (RuntimeSettings.IsLoaded)
@@ -125,16 +124,4 @@ else
             : items.OrderByDescending(x => x.MaximalSpanOccurrenceCount);
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        RuntimeSettings.OnChanged -= OnSettingsChanged;
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("clearAllTreesAndShowSpinners", 0);
-        }
-        catch (JSDisconnectedException)
-        {
-            // ignore if nav away
-        }
-    }
 }
