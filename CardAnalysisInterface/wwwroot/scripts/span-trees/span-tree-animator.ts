@@ -1,5 +1,5 @@
 ﻿// word-tree-animator.ts
-import { AnimationController } from "./models.js";
+import { AnimationController } from "./span-tree-models.js";
 
 /**
  * The Animator namespace provides utility functions for visual animations,

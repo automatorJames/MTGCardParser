@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.SpanDTOs;
-
-/// <summary>
+﻿/// <summary>
 /// Represents a node in an adjacency tree. Each node corresponds to a single logical segment,
 /// which may be a combination of several collapsed raw tokens.
 /// </summary>

@@ -1,5 +1,5 @@
 ﻿// span-tree-manager.ts
-import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement, WordTreeObserver } from "./models.js";
+import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement, WordTreeObserver } from "./span-tree-models.js";
 import { setupGlobalEventHandlers } from "./span-tree-event-handler.js";
 import { orchestrateWordTreeRender } from "./span-tree-orchestrator.js";
 

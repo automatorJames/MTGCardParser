@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.ColorCoding;
-
-namespace MTGPlexer.TokenAnalysis.MatchDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.TokenCaptureDTOs;
 
 public abstract record SpanTerminal
 (

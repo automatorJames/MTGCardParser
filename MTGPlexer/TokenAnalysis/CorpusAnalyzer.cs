@@ -7,12 +7,25 @@
 public class CorpusAnalyzer
 {
     /// <summary>
-    /// A structured list of all processed cards, containing the hierarchical
+    /// Structured list of all processed cards, containing the hierarchical
     /// SpanRoot analysis for each line. This is the output for your matched-token logic.
     /// </summary>
     public List<ProcessedCard> ProcessedCards { get; }
-    public DigestedSpanCorpus UnmatchedDigestedCorpus { get; }
-    public DigestedSpanCorpus OriginalDigestedCorpus { get; }
+
+    /// <summary>
+    /// Word trees build around all maximal repeated spans across the corpus
+    /// including TokenUnit class captures. Useful for analyzing which spans
+    /// of text have not yet been captured by any TokenUnit.
+    /// </summary>
+    public DigestedSpanCorpus DigestedCorpusWithCaptureTokens { get; }
+
+    /// <summary>
+    /// Word trees build around all maximal repeated spans across the corpus
+    /// without TokenUnit class captures. Useful for analyzing the original
+    /// unaltered spans of a body of text to plan how to create ideal TokenUnits
+    /// for maximally effective capture.
+    /// </summary>
+    public DigestedSpanCorpus DigestedCorpusOriginalText { get; }
 
     /// <summary>
     /// A global count of all token types across the entire corpus.
@@ -24,7 +37,7 @@ public class CorpusAnalyzer
         // Make a single pass through all cards and lines, performing all
         // initial processing (tokenization, SpanRoot generation, UnmatchedOccurrence collection).
         ProcessedCards = ProcessAllCards(cards, originalTextOnly: false);
-        UnmatchedDigestedCorpus = GetDigestedSpanCorpus(ProcessedCards);
+        DigestedCorpusWithCaptureTokens = GetDigestedSpanCorpus(ProcessedCards);
 
         // Count identified tokens
         foreach (var processedCard in ProcessedCards)
@@ -33,7 +46,7 @@ public class CorpusAnalyzer
 
         // Similarly initialize digested original corpus (no class tokens applied)
         var processedOriginalCards = ProcessAllCards(cards, originalTextOnly: true);
-        OriginalDigestedCorpus = GetDigestedSpanCorpus(processedOriginalCards);
+        DigestedCorpusOriginalText = GetDigestedSpanCorpus(processedOriginalCards);
     }
 
     List<ProcessedCard> ProcessAllCards(List<Card> cards, bool originalTextOnly)

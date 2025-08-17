@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.ColorCoding;
-
-namespace MTGPlexer.TokenAnalysis.MatchDTOs; // Or your preferred namespace
+﻿namespace MTGPlexer.TokenAnalysis.TokenCaptureDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index

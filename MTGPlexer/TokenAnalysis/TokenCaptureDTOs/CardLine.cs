@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.TokenCaptureDTOs;
 
 public record class CardLine
 {

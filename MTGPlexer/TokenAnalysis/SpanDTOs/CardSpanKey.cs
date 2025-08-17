@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.DTOs;
+﻿namespace MTGPlexer.TokenAnalysis.SpanDTOs;
 
 /// <summary>
 /// Uniquely identifies a span of text within a corpus of card texts.

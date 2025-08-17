@@ -1,4 +1,4 @@
-import { getFanDelta } from './word-tree-layout-calculator.js';
+import { getFanDelta } from './span-tree-layout-calculator.js';
 /**
  * Generates the SVG <stop> elements for a gradient.
  */
@@ -240,4 +240,4 @@ export function drawNodesAndConnectors(svg, nodes, parentData, direction, config
         }
     }
 }
-//# sourceMappingURL=word-tree-svg-drawer.js.map
+//# sourceMappingURL=span-tree-svg-drawer.js.map

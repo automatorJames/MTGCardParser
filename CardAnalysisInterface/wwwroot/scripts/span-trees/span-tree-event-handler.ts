@@ -1,7 +1,7 @@
 ﻿// span-tree-event-handler.ts
-import { CardElement } from "./models.js";
-import { WordTree } from "./word-tree-animator.js";
-import { createGradientStops } from "./word-tree-svg-drawer.js";
+import { CardElement } from "./span-tree-models.js";
+import { WordTree } from "./span-tree-animator.js";
+import { createGradientStops } from "./span-tree-svg-drawer.js";
 
 const globalEventState = {
     initialized: false,

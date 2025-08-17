@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.MatchDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.TokenCaptureDTOs;
 
 public record SpanLeaf
 (

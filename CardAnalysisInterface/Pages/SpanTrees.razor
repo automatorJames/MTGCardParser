@@ -111,8 +111,8 @@ else
     private IEnumerable<AnalyzedSpan> GetFilteredSpans()
     {
         DigestedSpanCorpus corpus = RuntimeSettings.ShowOriginalText
-            ? CorpusAnalyzer.OriginalDigestedCorpus
-            : CorpusAnalyzer.UnmatchedDigestedCorpus;
+            ? CorpusAnalyzer.DigestedCorpusOriginalText
+            : CorpusAnalyzer.DigestedCorpusWithCaptureTokens;
 
         var items = corpus.Spans
             .Where(x =>

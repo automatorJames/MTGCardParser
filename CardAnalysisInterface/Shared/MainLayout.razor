@@ -5,7 +5,9 @@
 
 <div class="page">
     <nav class="top-row px-4">
-        <a class="navbar-brand" href="">MTG Analysis</a>
+        <a class="navbar-brand" href="">
+            @GetPageTitle()
+        </a>
 
         @* Only render the settings controls after they have been loaded to prevent flicker *@
         @if (RuntimeSettings.IsLoaded)
@@ -58,6 +60,20 @@
     {
         // When settings change (e.g., after loading), re-render the component.
         await InvokeAsync(StateHasChanged);
+    }
+
+    string GetPageTitle()
+    {
+        var currentPage = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        return currentPage switch
+        {
+            "" => "Variable Captures",
+            "card-analysis" => "Variable Captures",
+            "span-trees" => "Word Trees",
+            "type-expressions" => "Type Captures",
+            _ => "MTG Analysis"
+        };
     }
 
     public void Dispose()
