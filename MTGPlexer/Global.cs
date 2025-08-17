@@ -8,7 +8,7 @@ global using MTGPlexer.RegexSegmentDTOs;
 global using MTGPlexer.Static;
 global using MTGPlexer.TokenAnalysis.ColorCoding;
 global using MTGPlexer.TokenAnalysis.SpanDTOs;
-global using MTGPlexer.TokenAnalysis.TokenCaptureDTOs;
+global using MTGPlexer.TokenAnalysis.CardCaptureDTOs;
 global using MTGPlexer.TokenUnits;
 global using Superpower;
 global using Superpower.Model;

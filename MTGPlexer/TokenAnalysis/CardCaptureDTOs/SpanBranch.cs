@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.TokenCaptureDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
 
 public record SpanBranch : NestedSpan
 {
