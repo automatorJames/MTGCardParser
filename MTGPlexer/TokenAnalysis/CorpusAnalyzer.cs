@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysis;
+﻿using MTGPlexer.TokenAnalysis.RegexDTOs;
+
+namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// A consolidated processor that tokenizes a corpus of cards and produces a complete
@@ -6,6 +8,8 @@
 /// </summary>
 public class CorpusAnalyzer
 {
+    List<TokenUnit> _hydratedTokenUnits = [];
+
     /// <summary>
     /// Structured list of all processed cards, containing the hierarchical
     /// SpanRoot analysis for each line. This is the output for your matched-token logic.
@@ -32,6 +36,8 @@ public class CorpusAnalyzer
     /// </summary>
     public Dictionary<Type, int> GlobalTokenCounts { get; } = [];
 
+    public TokenUnitCaptureSummary TokenUnitCaptureSummary { get; }
+
     public CorpusAnalyzer(List<Card> cards)
     {
         // Make a single pass through all cards and lines, performing all
@@ -47,6 +53,8 @@ public class CorpusAnalyzer
         // Similarly initialize digested original corpus (no class tokens applied)
         var processedOriginalCards = ProcessAllCards(cards, originalTextOnly: true);
         DigestedCorpusOriginalText = GetDigestedSpanCorpus(processedOriginalCards);
+
+        TokenUnitCaptureSummary = new(_hydratedTokenUnits);
     }
 
     List<ProcessedCard> ProcessAllCards(List<Card> cards, bool originalTextOnly)
@@ -75,6 +83,8 @@ public class CorpusAnalyzer
                     SpanRoots = spanRoots,
                     SpanOccurrences = spanOccurrences
                 });
+
+
             }
             processedCards.Add(new ProcessedCard { Card = card, Lines = processedLines });
         }
@@ -93,26 +103,28 @@ public class CorpusAnalyzer
     }
 
     /// <summary>
-    /// Process a list of tokens for a single line to produce both the SpanRoot hierarchy and the list of UnmatchedSpanOccurrence records.
+    /// Process a list of tokens for a single line to derive SpanRoot hierarchies and SpanOccurrence records.
     /// </summary>
     (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) HydrateAndAnalyzeLine(string cardName, List<Token<Type>> tokens, int lineIndex)
     {
         var roots = new List<SpanRoot>();
         var occurrences = new List<SpanOccurrence>();
+        var tokenUnitCaptureSummaries = new List<TokenUnitCaptureSummary>();
         string textToPrecedeNext = null;
         var enclosingTokenCountPerType = new Dictionary<Type, int>();
 
         for (int i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
+            var hydratedTokenUnit = TokenTypeRegistry.HydrateFromToken(token);
+            _hydratedTokenUnits.Add(hydratedTokenUnit);
 
             // --- Analysis #1: Check for and record unmatched tokens ---
             // Create a new occurrence, giving it the context of the entire line's tokens.
             if (token.Kind == typeof(DefaultUnmatchedString))
                 occurrences.Add(new SpanOccurrence(cardName, lineIndex, tokens, i));
 
-            // --- Analysis #2: Hydrate and build the SpanRoot hierarchy ---
-            var hydratedTokenUnit = TokenTypeRegistry.HydrateFromToken(token);
+            // --- Analysis #2: Build the SpanRoot hierarchy from the hydrated token ---
             var root = new SpanRoot(hydratedTokenUnit, cardName, textToPrecedeNext);
             textToPrecedeNext = null;
 
@@ -128,14 +140,12 @@ public class CorpusAnalyzer
                 AttachRootTextToPreviousOrNext(root, isNext: isNext);
             }
             else
-            {
                 roots.Add(root);
-            }
         }
 
         return (roots, occurrences);
 
-        // Local helper for attaching text, as in your original code.
+        // Local helper for attaching text
         void AttachRootTextToPreviousOrNext(SpanBranch spanWithTextToAttach, bool isNext)
         {
             if (!isNext && !roots.Any())

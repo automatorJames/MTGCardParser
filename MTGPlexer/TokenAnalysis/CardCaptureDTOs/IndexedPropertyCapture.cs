@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index
@@ -8,7 +10,6 @@ public record IndexedPropertyCapture
 {
     public RegexPropInfo RegexPropInfo { get; set; }
     public TextSpan Span { get; }
-    public int Index { get; }
     public int Start { get; }
     public int End { get; }
     public int Length { get; }
@@ -17,7 +18,6 @@ public record IndexedPropertyCapture
     public int CapturePosition { get; }
     public DeterministicPalette Palette { get; }
     public bool IgnoreInAnalysis { get; }
-    public bool IsDistilledValue { get; set; }
 
     public IndexedPropertyCapture(RegexPropInfo regexPropInfo, TextSpan span, object value, int capturePosition)
     {

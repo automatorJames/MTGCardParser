@@ -87,39 +87,4 @@ public class RegexTemplate
              || x.PropertyType.IsAssignableTo(typeof(TokenUnit)))
         .Select(x => new RegexPropInfo(x))
         .ToList();
-
-    //void SetDistilledProps()
-    //{
-    //    var placeholderCaptureProps = _parentType
-    //        .GetProperties().Where(x => x.PropertyType == typeof(PlaceholderCapture))
-    //        .ToList();
-    //
-    //    var isSinglePlaceholder = placeholderCaptureProps.Count == 1;
-    //
-    //    var distilledProps = _parentType
-    //        .GetProperties()
-    //        .Where(x => x.IsDefined(typeof(DistilledValueAttribute)));
-    //
-    //    foreach (var prop in distilledProps)
-    //    {
-    //        PropertyInfo distilledFromProp = null;
-    //        var attr = prop.GetCustomAttribute<DistilledValueAttribute>();
-    //
-    //        if (attr.DistilledFromPropName != null)
-    //            distilledFromProp = _parentType.GetProperty(attr.DistilledFromPropName);
-    //        else if (isSinglePlaceholder)
-    //            distilledFromProp = placeholderCaptureProps[0];
-    //
-    //        if (distilledFromProp is null)
-    //            throw new Exception($"Distilled values must either declare a distilled-from property, or be a property of a type with exactly one PlaceholderCapture property");
-    //
-    //        if (!DistilledProps.TryGetValue(distilledFromProp, out var list))
-    //        {
-    //            list = [];
-    //            DistilledProps[distilledFromProp] = list;
-    //        }
-    //
-    //        list.Add(prop);
-    //    }
-    //}
 }

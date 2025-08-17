@@ -26,7 +26,7 @@ public abstract class TokenUnitDistilled : TokenUnit
     protected virtual void RegisterDistilledPropVals()
     {
         foreach (var placeholderPropItem in TokenTypeRegistry.DistilledProperties[Type])
-            foreach (var distilledProp in (List<PropertyInfo>)placeholderPropItem.Value)
+            foreach (var distilledProp in placeholderPropItem.Value)
             {
                 var val = distilledProp.GetValue(this);
 

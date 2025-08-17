@@ -1,4 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.ColorCoding;
+﻿using MTGPlexer.TokenAnalysis.Common;
 
 namespace CardAnalysisInterface;
 

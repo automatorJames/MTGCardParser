@@ -118,6 +118,7 @@ public static class Extensions
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
+    public static string Colon(this string parentPath, string nextPathPart) => parentPath + ":" + nextPathPart;
     public static string ToIndexString(this TextSpan textSpan) => $"idx[{textSpan.Position.Absolute}]";
 
     public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();

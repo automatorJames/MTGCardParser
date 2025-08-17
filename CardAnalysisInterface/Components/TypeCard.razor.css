@@ -1,5 +1,6 @@
 ﻿.type-card {
-    width: 50%;
+    width: 80%;
+    max-width: 1800px;
     background-color: #252525;
     border-radius: 8px;
     border: 1px solid #333;

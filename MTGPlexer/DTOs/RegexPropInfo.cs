@@ -62,6 +62,4 @@ public record RegexPropInfo
 
         return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
-
 }
-

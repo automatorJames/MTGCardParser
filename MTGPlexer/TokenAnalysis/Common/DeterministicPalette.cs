@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Globalization;
 
-namespace MTGPlexer.TokenAnalysis.ColorCoding;
+namespace MTGPlexer.TokenAnalysis.Common;
 
 public record DeterministicPalette
 {

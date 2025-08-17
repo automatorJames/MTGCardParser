@@ -71,24 +71,6 @@ public abstract class TokenUnit
         Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
     }
 
-    //Dictionary<PropertyInfo, object> GetDistilledValues(bool ignoreDefaultVals = true)
-    //{
-    //    Dictionary<PropertyInfo, object> dict = new();
-    //    var distilledProps = Type.GetProperties().Where(x => x.GetCustomAttribute<DistilledValueAttribute>() is not null);
-    //
-    //    foreach (var distilledProp in distilledProps)
-    //    {
-    //        var val = distilledProp.GetValue(this);
-    //
-    //        if (distilledProp.PropertyType.IsValueType && val.Equals(Activator.CreateInstance(distilledProp.PropertyType)))
-    //            continue;
-    //
-    //        dict[distilledProp] = val;
-    //    }
-    //
-    //    return dict;
-    //}
-
     public int GetDeepestChildLevel()
     {
         IEnumerable<TokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;

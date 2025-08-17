@@ -1,4 +1,6 @@
-﻿// --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
+﻿// card-analysis.js
+
+// --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
 
 // These variables will hold our event handlers so they can be removed later,
 // crucial for preventing memory leaks in a Single Page Application (SPA).
