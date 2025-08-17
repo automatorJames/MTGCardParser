@@ -71,20 +71,6 @@ public abstract class TokenUnit
         Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
     }
 
-    public int GetDeepestChildLevel()
-    {
-        IEnumerable<TokenUnit> childrenAtCurrentRecursiveLevel = ChildTokens;
-        var deepestDepth = 0;
-
-        while (childrenAtCurrentRecursiveLevel.Any(x => x is not TokenUnitOneOf))
-        {
-            deepestDepth++;
-            childrenAtCurrentRecursiveLevel = childrenAtCurrentRecursiveLevel.SelectMany(x => x.ChildTokens);
-        }
-
-        return deepestDepth;
-    }
-
     public void AddPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)
     {
         var capturePosition = IndexedPropertyCaptures.Count;

@@ -36,7 +36,8 @@ public class CorpusAnalyzer
     /// </summary>
     public Dictionary<Type, int> GlobalTokenCounts { get; } = [];
 
-    public TokenUnitCaptureSummary TokenUnitCaptureSummary { get; }
+    public TokenUnitCaptureSummary TopLevelTokenUnitCaptureSummary { get; }
+    public TokenUnitCaptureSummary GlobalTokenUnitCaptureSummary { get; }
 
     public CorpusAnalyzer(List<Card> cards)
     {
@@ -54,7 +55,7 @@ public class CorpusAnalyzer
         var processedOriginalCards = ProcessAllCards(cards, originalTextOnly: true);
         DigestedCorpusOriginalText = GetDigestedSpanCorpus(processedOriginalCards);
 
-        TokenUnitCaptureSummary = new(_hydratedTokenUnits);
+        (TopLevelTokenUnitCaptureSummary, GlobalTokenUnitCaptureSummary) = TokenUnitCaptureSummary.CreateSummaries(_hydratedTokenUnits);
     }
 
     List<ProcessedCard> ProcessAllCards(List<Card> cards, bool originalTextOnly)
