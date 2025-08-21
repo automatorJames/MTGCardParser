@@ -7,5 +7,7 @@
 public record RegexPropValueSet
 (
     string PropPathNameFormatted,
-    List<StringValueCaptureCount> ValueCaptureCounts
+    int CaptureGroupPositionStart,
+    int CaptureGroupPositionEnd,
+    List<ValueCaptureVariantSet> ValueCaptureCounts
 );

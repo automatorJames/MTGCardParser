@@ -31,11 +31,6 @@ public class CorpusAnalyzer
     /// </summary>
     public DigestedSpanCorpus DigestedCorpusOriginalText { get; }
 
-    /// <summary>
-    /// A global count of all token types across the entire corpus.
-    /// </summary>
-    public Dictionary<Type, int> GlobalTokenCounts { get; } = [];
-
     public TokenUnitCaptureSummary TopLevelTokenUnitCaptureSummary { get; }
     public TokenUnitCaptureSummary GlobalTokenUnitCaptureSummary { get; }
 
@@ -45,11 +40,6 @@ public class CorpusAnalyzer
         // initial processing (tokenization, SpanRoot generation, UnmatchedOccurrence collection).
         ProcessedCards = ProcessAllCards(cards, originalTextOnly: false);
         DigestedCorpusWithCaptureTokens = GetDigestedSpanCorpus(ProcessedCards);
-
-        // Count identified tokens
-        foreach (var processedCard in ProcessedCards)
-            foreach (var line in processedCard.Lines)
-                CountTokenTypes(line.SourceTokens);
 
         // Similarly initialize digested original corpus (no class tokens applied)
         var processedOriginalCards = ProcessAllCards(cards, originalTextOnly: true);
@@ -159,15 +149,6 @@ public class CorpusAnalyzer
                 var appendedText = (roots[^1].AttachedFollowingText ?? "") + spanWithTextToAttach.Text;
                 roots[^1] = roots[^1] with { AttachedFollowingText = appendedText };
             }
-        }
-    }
-
-    void CountTokenTypes(List<Token<Type>> tokens)
-    {
-        foreach (var token in tokens)
-        {
-            GlobalTokenCounts.TryGetValue(token.Kind, out var currentCount);
-            GlobalTokenCounts[token.Kind] = currentCount + 1;
         }
     }
 }

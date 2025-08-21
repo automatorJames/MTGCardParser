@@ -2,20 +2,16 @@
 @inject CorpusAnalyzer CorpusAnalyzer
 
 <div class="type-card-container">
-    @foreach (var item in _appliedOrderTypeCounts)
+    @foreach (var tokenUnitCapture in CorpusAnalyzer.GlobalTokenUnitCaptureSummary.TokenUnitCaptures)
     {
-        <TypeCard TokenType=@item.Key Count=@item.Value />
+        <div class="type-card">
+            <div class="card-header">
+                <TokenTypeName TokenType=@tokenUnitCapture.Type />
+                <span class="match-count @(tokenUnitCapture.OccurrenceCount == 0 ? "zero" : "")">
+                    <i class="matches-label">matches:</i> @tokenUnitCapture.OccurrenceCount
+                </span>
+            </div>
+            <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.RegexString</code></pre>
+        </div>
     }
 </div>
-
-@code{
-
-    Dictionary<Type, int> _appliedOrderTypeCounts = [];
-
-    protected override void OnInitialized()
-    {
-        foreach (var type in TokenTypeRegistry.AppliedOrderTypes)
-            _appliedOrderTypeCounts[type] = CorpusAnalyzer.GlobalTokenCounts.TryGetValue(type, out int count) ? count : 0;
-    }
-
-}
