@@ -2,21 +2,48 @@
 
 public abstract class TokenUnitOneOf: TokenUnit
 {
-    protected TokenUnitOneOf(params string[] templateSnippets) : base(templateSnippets) { }
+    List<PropertyInfo> _tokenUnitChildren;
+
+    protected TokenUnitOneOf(params string[] templateSnippets) : base(templateSnippets)
+    {
+        _tokenUnitChildren = GetType().GetPublicDeclaredProps().ToList();
+    }
+
+    /// <summary>
+    /// Returns a single non-null child TokenUnit which represents the "one" property with a value among 
+    /// this instance's canddiate values. As an analytical precaution, an exception is thrown if no
+    /// non-null TokenUnit is found.
+    /// </summary>
+    public TokenUnit GetSingleNonNullChildToken()
+    {
+        foreach (var prop in GetType().GetPublicDeclaredProps())
+        {
+            var propVal = prop.GetValue(this);
+
+            if (propVal is TokenUnit tokenUnit)
+                return tokenUnit;
+        }
+
+        throw new Exception("Expected a non-null TokenUnit child property, but found none");
+    }
 
     public override bool ValidateStructure()
     {
-        // There should be only TokenUnit props, and there should be more than 1
+        // There should be only TokenUnit props, and more than one
 
-        var props = GetType().GetPublicDeclaredProps();
-
-        if (props.Any(x => !x.PropertyType.IsAssignableTo(typeof(TokenUnit))))
+        if (_tokenUnitChildren.Any(x => !x.PropertyType.IsAssignableTo(typeof(TokenUnit))))
             return false;
 
-        if (props.Count() < 2) 
+        if (_tokenUnitChildren.Count() < 2) 
             return false;
 
         return true;
+    }
+
+    public static string GetTokenUnitOneOfRegexHeaderComment(Type tokenUnitOneOfType)
+    {
+        var tokenUnitChildPropNames = tokenUnitOneOfType.GetPublicDeclaredProps().Select(x => x.Name);
+        return $"(?# {tokenUnitOneOfType.Name}: {string.Join(" | ", tokenUnitChildPropNames)})";
     }
 }
 

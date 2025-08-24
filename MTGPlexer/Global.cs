@@ -18,4 +18,5 @@ global using Superpower.Tokenizers;
 global using System.Reflection;
 global using System.Text.Json.Serialization;
 global using System.Text.RegularExpressions;
+global using System.Text;
 global using static MTGPlexer.Extensions;

@@ -2,7 +2,7 @@
 
 public abstract class TokenUnitDistilled : TokenUnit
 {
-    public Dictionary<PropertyInfo, Dictionary<PropertyInfo, object>> DistilledValues { get; } = [];
+    public Dictionary<RegexPropInfo, Dictionary<RegexPropInfo, object>> DistilledValues { get; } = [];
     protected TokenUnitDistilled(params string[] templateSnippets) : base(templateSnippets) { }
 
     public abstract void SetComplexValuesFromMatch();
@@ -28,15 +28,15 @@ public abstract class TokenUnitDistilled : TokenUnit
         foreach (var placeholderPropItem in TokenTypeRegistry.DistilledProperties[Type])
             foreach (var distilledProp in placeholderPropItem.Value)
             {
-                var val = distilledProp.GetValue(this);
+                var val = distilledProp.Prop.GetValue(this);
 
                 if (val is null)
                     continue;
 
                 if (
-                       distilledProp.PropertyType.IsValueType
-                       && !distilledProp.UnderlyingType().IsEnum
-                       && val.Equals(Activator.CreateInstance(distilledProp.PropertyType))
+                       distilledProp.Prop.PropertyType.IsValueType
+                       && !distilledProp.UnderlyingType.IsEnum
+                       && val.Equals(Activator.CreateInstance(distilledProp.Prop.PropertyType))
                    ) continue;
 
                 if (!DistilledValues.ContainsKey(placeholderPropItem.Key))
@@ -49,37 +49,44 @@ public abstract class TokenUnitDistilled : TokenUnit
     public List<PropertyInfo> GetPlaceholderCaptureProps() =>
         Type.GetProperties().Where(x => x.PropertyType == typeof(PlaceholderCapture)).ToList();
 
-    public List<PropertyInfo> GetDistilledProps() =>
-        Type.GetProperties().Where(x => x.IsDefined(typeof(DistilledValueAttribute))).ToList();
+    public List<RegexPropInfo> GetDistilledProps() =>
+        Type.GetProperties()    
+        .Where(x => x.IsDefined(typeof(DistilledValueAttribute)))
+        .Select(x => new RegexPropInfo(x))
+        .ToList();
 
-    public Dictionary<PropertyInfo, List<PropertyInfo>> GetDistilledPropAssociations()
+    public Dictionary<RegexPropInfo, List<RegexPropInfo>> GetDistilledPropAssociations()
     {
-        Dictionary<PropertyInfo, List<PropertyInfo>> dict = [];
+        Dictionary<RegexPropInfo, List<RegexPropInfo>> dict = [];
         var distilledProps = GetDistilledProps();
         var placeholderCaptureProps = GetPlaceholderCaptureProps();
         var isSinglePlaceholder = placeholderCaptureProps.Count == 1;
 
-        foreach (var prop in distilledProps)
+        foreach (var distilledProp in distilledProps)
         {
             PropertyInfo distilledFromProp = null;
-            var propName = prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
+            var distilledFromPropName = distilledProp.Prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
 
-            if (propName is not null)
-                distilledFromProp = Type.GetProperty(propName);
+            // If the distilled prop has a DistilledValueAttribute with a defined DistilledFromPropName, get that prop
+            if (distilledFromPropName is not null)
+                distilledFromProp = Type.GetProperty(distilledFromPropName);
 
-            if (distilledFromProp is null && placeholderCaptureProps.Count > 0)
+            // If not attribute is defined, we expect to find exactly one placeholder capture prop, so get that one
+            if (distilledFromProp is null && placeholderCaptureProps.Count == 1)
                 distilledFromProp = placeholderCaptureProps[0];
 
             if (distilledFromProp is null)
                 throw new Exception($"Distilled values must either declare a distilled-from property, or be a property of a type with exactly one PlaceholderCapture property");
 
-            if (!dict.TryGetValue(distilledFromProp, out var list))
+            var distilledFromPropRegexInfo = new RegexPropInfo(distilledFromProp);
+
+            if (!dict.TryGetValue(distilledFromPropRegexInfo, out var list))
             {
                 list = [];
-                dict[distilledFromProp] = list;
+                dict[distilledFromPropRegexInfo] = list;
             }
 
-            list.Add(prop);
+            list.Add(distilledProp);
         }
 
         return dict;
@@ -102,7 +109,7 @@ public abstract class TokenUnitDistilled : TokenUnit
 
         foreach (var prop in distilledProps)
         {
-            var propName = prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
+            var propName = prop.Prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
 
             if (propName is null)
                 return false;

@@ -6,7 +6,7 @@
 /// </summary>
 public record RegexPropValueSet
 (
-    string PropPathNameFormatted,
+    TerminalRegexPropPath TerminalRegexPropPath,
     int CaptureGroupPositionStart,
     int CaptureGroupPositionEnd,
     List<ValueCaptureVariantSet> ValueCaptureCounts

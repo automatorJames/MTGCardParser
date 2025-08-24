@@ -2,13 +2,14 @@
 
 [FollowsToken]
 [IgnoreInAnalysis]
+[NoWordBoundary]
 [Color("#999999")]
 public class PunctuationTerminal : TokenUnit
 {
     public PunctuationCharacter PunctuationCharacter { get; set; }
 }
 
-[RegexEnum(WrapInWordBoundaries = false, OptionalPlural = false)]
+[RegexEnum]
 public enum PunctuationCharacter
 {
     [RegexPattern(@"\.")] 

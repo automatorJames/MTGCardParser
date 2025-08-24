@@ -17,6 +17,7 @@ public abstract class TokenUnit
     }
 
     public TokenUnit ParentToken { get; set; }
+    public RegexPropInfo ParentTokenProp { get; set; }
     public List<TokenUnit> ChildTokens { get; set; } = [];
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
@@ -48,13 +49,14 @@ public abstract class TokenUnit
             Template = new(Type, templateSnippets);
     }
 
-    public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null)
+    public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null, RegexPropInfo parentTokenProp = null)
     {
         if (!type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
 
         var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
         tokenInstance.ParentToken = parentToken;
+        tokenInstance.ParentTokenProp = parentTokenProp;
         tokenInstance.MatchSpan = matchSpan;
         tokenInstance.SetPropertiesFromMatch();
 

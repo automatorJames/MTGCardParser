@@ -21,11 +21,13 @@ public abstract record RegexPropBase : RegexSegmentBase
     {
         // Default implementation
 
-        var items = captureProp.AttributePatterns.OrderByDescending(s => s.Length).ToList();
+        var items = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
+            .OrderByDescending(s => s.Length).ToList();
+
         var combinedItems = string.Join('|', items);
 
         if (this is BoolRegexProp boolRegexProp)
-            RegexString = $@"(?<{captureProp.Name}>\s?{combinedItems}\s?)?";
+            RegexString = $@"(?<{captureProp.Name}>[ ]?{combinedItems}[ ]?)?";
         else
             RegexString = $"(?<{captureProp.Name}>{combinedItems})";
 
@@ -69,7 +71,7 @@ public abstract record RegexPropBase : RegexSegmentBase
         if (subMatchSpan is null)
             return false;
 
-        var propInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken);
+        var propInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken, RegexPropInfo);
 
         if (propInstance is null)
             throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");

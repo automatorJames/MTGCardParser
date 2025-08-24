@@ -11,8 +11,6 @@ public record RegexPropInfo
     public RegexPropType RegexPropType { get; }
     public Type UnderlyingType { get; }
     public string Name { get; }
-    public string[] AttributePatterns { get; }
-    public PropertyInfo UndistilledProp { get; }
     public string FriendlyTypeName { get; }
     public string FriendlyPropName { get; }
 
@@ -22,7 +20,6 @@ public record RegexPropInfo
         RegexPropType = GetCapturePropType(prop);
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
         Name = prop.Name;
-        AttributePatterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [prop.Name];
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName(UnderlyingType);
     }
@@ -52,13 +49,16 @@ public record RegexPropInfo
         bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
 
         if (type.IsEnum || isNullableEnum)
-            return "enumerable";
+            return "enum";
 
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             return $"{type.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
 
         if (type == typeof(int))
-            return "integer";
+            return "int";
+
+        if (type == typeof(PlaceholderCapture))
+            return "placeholder";
 
         return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }

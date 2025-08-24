@@ -16,7 +16,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
-    public static Dictionary<Type, Dictionary<PropertyInfo, List<PropertyInfo>>> DistilledProperties { get; set; } = [];
+    public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
@@ -70,11 +70,11 @@ public static partial class TokenTypeRegistry
 
         Palettes[type] = new(type);
 
-        if (instance is TokenUnitDistilled tokenUnitComplex)
+        if (instance is TokenUnitDistilled tokenUnitDistilled)
         {
             DistilledProperties[type] = new();
 
-            foreach (var item in tokenUnitComplex.GetDistilledPropAssociations())
+            foreach (var item in tokenUnitDistilled.GetDistilledPropAssociations())
                 DistilledProperties[type][item.Key] = item.Value;
         }
     }
@@ -84,7 +84,6 @@ public static partial class TokenTypeRegistry
         List<Token<Type>> coallescedTokens = [];
         List<Token<Type>> unmatchedBuffer = [];
         var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
-
         foreach (var token in tokens)
         {
             if (token.Kind == typeof(DefaultUnmatchedString))

@@ -6,13 +6,12 @@ public class RegexTemplate
     public static HashSet<string> TerminalPunctuation = [".", ",", ";"];
 
     bool _noSpaces;
-    Type _parentType;
+    Type _containingType;
 
     public string RenderedRegexString { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
-    //public Dictionary<PropertyInfo, List<PropertyInfo>> DistilledProps { get; private set; } = [];
     public List<RegexPropBase> PropCaptureSegments => RegexSegments.OfType<RegexPropBase>().ToList();
 
     public RegexTemplate(Type type, params string[] templateSnippets)
@@ -20,8 +19,8 @@ public class RegexTemplate
         if (templateSnippets is null || templateSnippets.Length == 0)
             return;
 
-        _parentType = type;
-        _noSpaces = _parentType.GetCustomAttribute<NoSpacesAttribute>() is not null;
+        _containingType = type;
+        _noSpaces = _containingType.GetCustomAttribute<NoSpacesAttribute>() is not null;
 
         RegexPropInfos = GetRegexProps();
 
@@ -34,8 +33,12 @@ public class RegexTemplate
 
     void SetRegex()
     {
-        if (_parentType.IsAssignableTo(typeof(TokenUnitOneOf)))
-            RenderedRegexString = $"({string.Join('|', RegexSegments.Select(x => x.RegexString))})";
+        if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
+        {
+            var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(_containingType);
+            RenderedRegexString = $"({headerComment}{string.Join('|', RegexSegments.Select(x => x.RegexString))})";
+        }
+            
         else
         {
             for (int i = 0; i < RegexSegments.Count; i++)
@@ -53,6 +56,9 @@ public class RegexTemplate
                     RenderedRegexString += " ";
             }
         }
+
+        if (_containingType.GetCustomAttribute<NoWordBoundaryAttribute>() == null)
+            RenderedRegexString = $@"\b{RenderedRegexString}\b";
 
         Regex = new Regex(RenderedRegexString, RegexOptions.Compiled);
     }
@@ -78,7 +84,7 @@ public class RegexTemplate
     }
 
     List<RegexPropInfo> GetRegexProps() =>
-         _parentType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+         _containingType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
         .Where(p => !p.GetMethod.IsVirtual)
         .Where(x =>
             (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum

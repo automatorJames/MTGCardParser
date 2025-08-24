@@ -28,7 +28,7 @@ public record TokenUnitCaptureSummary
             .ForEach(x => tokenOccurrenceCounts[x] = 0);
 
         // Structure: Type -> PropertyPath -> ValueCaptureVariantSet -> Canonical string (as key) -> ValueCaptureVariantCollector
-        var summaryCounts = new Dictionary<Type, Dictionary<string, Dictionary<string, ValueCaptureVariantCollector>>>();
+        var summaryCounts = new Dictionary<Type, Dictionary<TerminalRegexPropPath, Dictionary<string, ValueCaptureVariantCollector>>>();
 
         // 1. AGGREGATE COUNTS
         foreach (var unit in tokenUnits)
@@ -42,9 +42,10 @@ public record TokenUnitCaptureSummary
             foreach (var indexedCapture in unit.IndexedPropertyCaptures)
             {
                 FlattenAndCountRecursive(
-                    indexedCapture.RegexPropInfo.FriendlyPropName,
+                    [indexedCapture.RegexPropInfo.Name],
                     indexedCapture.Span.ToStringValue(),
                     indexedCapture.Value,
+                    indexedCapture.RegexPropInfo,
                     typeCounts
                 );
             }
@@ -95,51 +96,39 @@ public record TokenUnitCaptureSummary
             CollectAllTokensRecursive(childToken, collection);
     }
 
-    /// <summary>
-    /// Instance helper that recursively traverses an object's properties for the constructor.
-    /// </summary>
-    private void FlattenAndCountRecursive(string currentPropPath, string originalCaptureString, object currentValue, Dictionary<string, Dictionary<string, ValueCaptureVariantCollector>> propValCounts)
+    private void FlattenAndCountRecursive(List<string> currentPropPath, string originalCaptureString, object currentValue, RegexPropInfo currentPropInfo, Dictionary<TerminalRegexPropPath, Dictionary<string, ValueCaptureVariantCollector>> propValCounts)
     {
         if (currentValue == null) return;
 
         switch (currentValue)
         {
             case TokenUnitOneOf tokenUnitOneOf:
-                var oneOfProp = tokenUnitOneOf.GetType()
-                    .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                    .FirstOrDefault(p => p.GetValue(tokenUnitOneOf) != null);
-
-                if (oneOfProp?.GetValue(tokenUnitOneOf) is { } childVal)
-                {
-                    // Continue with the existing path, as the OneOf is just a container.
-                    FlattenAndCountRecursive(currentPropPath, originalCaptureString, childVal, propValCounts);
-                }
+                var tokenUnitOneOfOnlyChild = tokenUnitOneOf.GetSingleNonNullChildToken();
+                currentPropPath.Add(tokenUnitOneOfOnlyChild.ParentTokenProp.Name);
+                FlattenAndCountRecursive(currentPropPath, originalCaptureString, tokenUnitOneOfOnlyChild, tokenUnitOneOfOnlyChild.ParentTokenProp, propValCounts);
                 break;
 
             case TokenUnitDistilled tokenUnitDistilled:
                 foreach (var placeholderPropItem in tokenUnitDistilled.DistilledValues)
                 {
+                    var terminalPropPath = currentPropPath.Concat([placeholderPropItem.Key.Name]).ToList();
+
                     foreach (var distilledItem in placeholderPropItem.Value)
-                    {
-                        var childPropPath = $"{currentPropPath}:{distilledItem.Key.Name.ToFriendlyCase()}";
-                        IncrementValueCount(propValCounts, childPropPath, originalCaptureString, distilledItem.Value.ToString());
-                    } 
+                        IncrementValueCount(propValCounts, terminalPropPath, distilledItem.Key, originalCaptureString, distilledItem.Value.ToString().ToFriendlyCase());
                 }
                 break;
 
             case TokenUnit childTokenUnit:
-                // When we encounter another TokenUnit, we must NOT reflect over its properties.
-                // Instead, we continue the same safe pattern of iterating only its captures.
                 foreach (var indexedCapture in childTokenUnit.IndexedPropertyCaptures)
                 {
-                    var childPropPath = $"{currentPropPath}:{indexedCapture.RegexPropInfo.FriendlyPropName}";
-                    FlattenAndCountRecursive(childPropPath, originalCaptureString, indexedCapture.Value, propValCounts);
+                    var childPropPath = currentPropPath.Concat([indexedCapture.RegexPropInfo.Name]).ToList();
+                    FlattenAndCountRecursive(childPropPath, originalCaptureString, indexedCapture.Value, indexedCapture.RegexPropInfo, propValCounts);
                 }
                 break;
 
             default:
                 // Base case: The value is a primitive or string, so we count it.
-                IncrementValueCount(propValCounts, currentPropPath, originalCaptureString, currentValue.ToString());
+                IncrementValueCount(propValCounts, currentPropPath, currentPropInfo, originalCaptureString, currentValue.ToString().ToFriendlyCase());
                 break;
         }
     }
@@ -147,12 +136,14 @@ public record TokenUnitCaptureSummary
     /// <summary>
     /// Instance helper that safely increments the count for a given property path and value.
     /// </summary>
-    private void IncrementValueCount(Dictionary<string, Dictionary<string, ValueCaptureVariantCollector>> propValCounts, string propPath, string originalCaptureString, string canonicalValueAsString)
+    private void IncrementValueCount(Dictionary<TerminalRegexPropPath, Dictionary<string, ValueCaptureVariantCollector>> propValCounts, List<string> propPath, RegexPropInfo terminalPropInfo, string originalCaptureString, string canonicalValueAsString)
     {
-        if (!propValCounts.TryGetValue(propPath, out var valueCaptureVariantCollectors))
+        var terminalRegexPropPath = new TerminalRegexPropPath(terminalPropInfo, propPath);
+
+        if (!propValCounts.TryGetValue(terminalRegexPropPath, out var valueCaptureVariantCollectors))
         {
             valueCaptureVariantCollectors = [];
-            propValCounts[propPath] = valueCaptureVariantCollectors;
+            propValCounts[terminalRegexPropPath] = valueCaptureVariantCollectors;
         }
 
         if (!valueCaptureVariantCollectors.TryGetValue(canonicalValueAsString, out var valueCaptureVariantCollector))

@@ -1,5 +1,6 @@
 ﻿@page "/type-expressions"
 @inject CorpusAnalyzer CorpusAnalyzer
+@inject IJSRuntime JSRuntime
 
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in CorpusAnalyzer.GlobalTokenUnitCaptureSummary.TokenUnitCaptures)
@@ -12,6 +13,64 @@
                 </span>
             </div>
             <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.RegexString</code></pre>
+
+
+            @if (tokenUnitCapture.RegexPropValueSets.Any())
+            {
+                <div class="properties-container">
+                    @foreach (var propSet in tokenUnitCapture.RegexPropValueSets)
+                    {
+                        <div class="property-capture-card"
+                             data-start="@propSet.CaptureGroupPositionStart"
+                             data-end="@propSet.CaptureGroupPositionEnd">
+                            <div class="prop-card-header">
+                                @propSet.TerminalRegexPropPath.PropPathFriendly<br />
+                                Type: @propSet.TerminalRegexPropPath.RegexPropTypeNameFriendly
+                            </div>
+                            <div class="prop-card-body">
+                                @foreach (var valueSet in propSet.ValueCaptureCounts.OrderByDescending(x => x.TotalCount))
+                                {
+                                    var validVariants = valueSet.VariantCounts.Keys.Where(x => x.Start >= 0).ToList();
+                                    var variantRangeStart = validVariants.Any() ? validVariants.Min(x => x.Start) : -1;
+                                    var variantRangeEnd = validVariants.Any() ? validVariants.Max(x => x.End) : -1;
+
+                                    <div class="canonical-representation"
+                                         data-start="@variantRangeStart"
+                                         data-end="@variantRangeEnd">
+                                        <span class="canonical-value">@valueSet.CanonicalRepresentation</span>
+                                        <span class="total-count">@valueSet.TotalCount</span>
+                                    </div>
+
+                                    @if (valueSet.VariantCounts.Count > 1)
+                                    {
+                                        <div class="variants-sub-table">
+                                            @foreach (var variant in valueSet.VariantCounts.OrderByDescending(x => x.Value))
+                                            {
+                                                <div class="capture-variant"
+                                                     data-start="@variant.Key.Start"
+                                                     data-end="@variant.Key.End">
+                                                    <span class="variant-value">@variant.Key.Capture</span>
+                                                    <span class="variant-count">@variant.Value</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
         </div>
     }
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // We call the init function on every render to ensure that if the
+        // data changes and Blazor re-renders the component, the event listeners
+        // are correctly attached to any new elements. The JS is written to handle this.
+        await JSRuntime.InvokeVoidAsync("initTypeExpressionHover");
+    }
+}

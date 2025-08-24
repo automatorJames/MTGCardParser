@@ -16,6 +16,10 @@ public record TokenRegexProp : RegexPropBase
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
         RegexString = template.RenderedRegexString;
+
+        // Strip word boundaries since the paent of this TokenUnit child will add its own to the fully composited regex string
+        RegexString = RegexString.TrimStartAndEnd(@"\b");
+
         Regex = template.Regex;
     }
 

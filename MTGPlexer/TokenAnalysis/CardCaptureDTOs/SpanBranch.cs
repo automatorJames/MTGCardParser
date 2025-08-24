@@ -101,12 +101,11 @@ public record SpanBranch : NestedSpan
             List<SpanLeaf> distilledLeaves = [];
             foreach (var leaf in Leaves)
             {
-                var distilledPropVals = tokenUnitDistilled.DistilledValues[leaf.PropertyCapture.RegexPropInfo.Prop];
+                var distilledPropVals = tokenUnitDistilled.DistilledValues[leaf.PropertyCapture.RegexPropInfo];
 
-                foreach (var propVal in distilledPropVals)
+                foreach (var distilledPropVal in distilledPropVals)
                 {
-                    var newRegexPropInfo = new RegexPropInfo(propVal.Key);
-                    var newPropCapture = leaf.PropertyCapture with { RegexPropInfo = newRegexPropInfo, Value = propVal.Value };
+                    var newPropCapture = leaf.PropertyCapture with { RegexPropInfo = distilledPropVal.Key, Value = distilledPropVal.Value };
                     var distilledLeaf = leaf with { PropertyCapture = newPropCapture };
                     LeavesOrDistilled.Add(distilledLeaf);
                 }
