@@ -12,24 +12,24 @@ public record PrettifiedRegexLine
 )
 {
     public string DisplayText { get; init; } = "";
+    public int IndentLevel { get; init; } = 0; // Crucial for hierarchical formatting
 
-    private readonly Regex _regex = new(RegexMatchPattern ?? "", RegexOptions.Compiled);
+    // Regex compilation is now handled more safely.
+    private readonly Regex _regex = CreateRegex(RegexMatchPattern);
 
-    public bool CheckIfMatch(string stringToCheck)
+    private static Regex CreateRegex(string pattern)
     {
-        if (Role < PrettifiedRegexLineRole.FirstEnumValueInGroup || RegexMatchPattern == null)
-        {
-            return false;
-        }
-
-        return _regex.IsMatch(stringToCheck);
+        try { return !string.IsNullOrEmpty(pattern) ? new Regex(pattern, RegexOptions.Compiled) : null; }
+        catch { return null; } // Failsafe against invalid patterns
     }
 
+    public bool CheckIfMatch(string stringToCheck) => _regex?.IsMatch(stringToCheck) ?? false;
     public override string ToString() => DisplayText;
 }
 
 public enum PrettifiedRegexLineRole
 {
+    Error, // For displaying parsing errors
     Empty,
     WordBoundary,
     CaptureGroupStart,
@@ -38,5 +38,10 @@ public enum PrettifiedRegexLineRole
     ConnectiveMatch,
     FirstEnumValueInGroup,
     NonFirstEnumValueInGroup,
-    PatternValue
+    PatternValue,
+    GenericGroupStart,
+    GenericGroupEnd,
+    TokenUnitOneOfHeader,
+    Quantifier,
+    CharacterClass
 }
