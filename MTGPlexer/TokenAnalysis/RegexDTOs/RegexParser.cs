@@ -25,6 +25,7 @@ public static class RegexParser
         var children = ParseChildrenUntil((char)0); // Parse until the end of the string
         var root = new RegexGroupFragment(RegexGroupType.Root, "", "", children);
         SetParents(root);
+        CoalesceOptionalSuffixes(root); // Post-processing step to merge items like "lose(s)?"
         return root;
     }
 
@@ -40,6 +41,53 @@ public static class RegexParser
         }
     }
 
+    /// <summary>
+    /// Post-processes the tree to merge simple optional groups (e.g., "(s)?")
+    /// with their preceding text fragment within enum-like capture groups.
+    /// </summary>
+    private static void CoalesceOptionalSuffixes(RegexGroupFragment group)
+    {
+        // Recurse first to process from the inside out.
+        foreach (var child in group.Children.OfType<RegexGroupFragment>())
+        {
+            CoalesceOptionalSuffixes(child);
+        }
+
+        // An "enum group" is a named capture that contains alternation pipes.
+        bool isEnum = group.Type == RegexGroupType.NamedCapture &&
+                      group.Children.Any(c => c is RegexTextFragment { Text: "|" });
+
+        if (!isEnum) return;
+
+        var newChildren = new List<RegexFragment>();
+        for (int i = 0; i < group.Children.Count; i++)
+        {
+            // Pattern: TextFragment followed by a simple, optional, anonymous Group.
+            if (i + 1 < group.Children.Count &&
+                group.Children[i] is RegexTextFragment currentText &&
+                group.Children[i + 1] is RegexGroupFragment nextGroup &&
+                nextGroup.Type == RegexGroupType.AnonymousCapture &&
+                nextGroup.Quantifier == "?" &&
+                nextGroup.Children.Count == 1 &&
+                nextGroup.Children[0] is RegexTextFragment { Text.Length: <= 2 }) // Heuristic for "s", "es", etc.
+            {
+                // Coalesce them into a single new text fragment.
+                var combinedText = currentText.Text + nextGroup.ToString();
+                newChildren.Add(new RegexTextFragment(combinedText) { Parent = group });
+                i++; // Skip the next element, as it has been consumed.
+            }
+            else
+            {
+                // If the pattern doesn't match, just add the current child.
+                newChildren.Add(group.Children[i]);
+            }
+        }
+
+        // Replace the old children list with the new, coalesced list.
+        group.Children.Clear();
+        group.Children.AddRange(newChildren);
+    }
+
     private static List<RegexFragment> ParseChildrenUntil(char terminator)
     {
         var children = new List<RegexFragment>();
@@ -47,17 +95,28 @@ public static class RegexParser
 
         while (_position < _regex.Length && _regex[_position] != terminator)
         {
-            char c = _regex[_position];
-
-            if (c == '\\' && _position + 1 < _regex.Length)
+            // Specifically handle \b as its own token.
+            if (_position + 1 < _regex.Length && _regex[_position] == '\\' && _regex[_position + 1] == 'b')
             {
-                textBuffer.Append(c);
+                if (textBuffer.Length > 0)
+                {
+                    children.Add(new RegexTextFragment(textBuffer.ToString()));
+                    textBuffer.Clear();
+                }
+                children.Add(new RegexTextFragment(@"\b"));
+                _position += 2;
+                continue;
+            }
+
+            if (_position < _regex.Length && _regex[_position] == '\\' && _position + 1 < _regex.Length)
+            {
+                textBuffer.Append(_regex[_position]);
                 textBuffer.Append(_regex[_position + 1]);
                 _position += 2;
                 continue;
             }
 
-            // If we hit a special character, first flush any accumulated text.
+            char c = _regex[_position];
             if ("()[]|".Contains(c))
             {
                 if (textBuffer.Length > 0)
@@ -68,18 +127,10 @@ public static class RegexParser
 
                 switch (c)
                 {
-                    case '(':
-                        children.Add(ParseGroup());
-                        break;
-                    case '[':
-                        children.Add(ParseCharClass());
-                        break;
-                    case '|':
-                        children.Add(new RegexTextFragment("|"));
-                        _position++;
-                        break;
-                    case ')': // Should only be hit if it's the terminator
-                        return children;
+                    case '(': children.Add(ParseGroup()); break;
+                    case '[': children.Add(ParseCharClass()); break;
+                    case '|': children.Add(new RegexTextFragment("|")); _position++; break;
+                    case ')': return children; // End of current group
                 }
             }
             else
@@ -109,25 +160,22 @@ public static class RegexParser
 
         if (_position < _regex.Length && _regex[_position] == '?')
         {
-            int tagStart = _position - 1;
-            if (_position + 1 < _regex.Length && _regex[_position + 1] == '<') // Named Capture
+            int tagStart = groupStartPos;
+            if (_position + 2 < _regex.Length && _regex.Substring(_position, 2) == "?<") // Named Capture
             {
                 type = RegexGroupType.NamedCapture;
-                int nameStart = _position + 2;
-                int nameEnd = _regex.IndexOf('>', nameStart);
-                name = _regex.Substring(nameStart, nameEnd - nameStart);
+                int nameEnd = _regex.IndexOf('>', _position);
+                name = _regex.Substring(_position + 2, nameEnd - (_position + 2));
                 _position = nameEnd + 1;
                 openingDelimiter = _regex.Substring(tagStart, _position - tagStart);
             }
-            else if (_position + 1 < _regex.Length && _regex[_position + 1] == '#') // Comment
+            else if (_position + 2 < _regex.Length && _regex.Substring(_position, 2) == "?#") // Comment
             {
                 type = RegexGroupType.Comment;
-                int commentStart = _position + 2;
-                int commentEnd = _regex.IndexOf(')', commentStart);
-                comment = _regex.Substring(commentStart, commentEnd - commentStart);
-                _position = commentEnd + 1; // Consume comment and ')'
+                int commentEnd = _regex.IndexOf(')', _position);
+                comment = _regex.Substring(_position + 2, commentEnd - (_position + 2));
+                _position = commentEnd + 1;
                 openingDelimiter = _regex.Substring(tagStart, _position - tagStart);
-                // Comment groups have no children and are self-closing in the parser's view.
                 return new RegexGroupFragment(type, openingDelimiter, "", [], Comment: comment);
             }
         }
@@ -154,7 +202,6 @@ public static class RegexParser
         int endPos = _regex.IndexOf(']', startPos + 1);
         if (endPos == -1) endPos = _regex.Length - 1;
 
-        // Ensure we don't read past the end of the string if ']' is missing
         endPos = System.Math.Min(endPos, _regex.Length - 1);
 
         string content = _regex.Substring(startPos + 1, endPos - startPos - 1);

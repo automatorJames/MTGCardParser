@@ -14,7 +14,6 @@ public record PrettifiedRegexLine
     public string DisplayText { get; init; } = "";
     public int IndentLevel { get; init; } = 0; // Crucial for hierarchical formatting
 
-    // Regex compilation is now handled more safely.
     private readonly Regex _regex = CreateRegex(RegexMatchPattern);
 
     private static Regex CreateRegex(string pattern)
@@ -29,8 +28,8 @@ public record PrettifiedRegexLine
 
 public enum PrettifiedRegexLineRole
 {
-    Error, // For displaying parsing errors
-    Empty,
+    Error,
+    Separator, // For "----" lines
     WordBoundary,
     CaptureGroupStart,
     CaptureGroupEnd,
@@ -38,7 +37,6 @@ public enum PrettifiedRegexLineRole
     ConnectiveMatch,
     FirstEnumValueInGroup,
     NonFirstEnumValueInGroup,
-    Alternation,
     PatternValue,
     GenericGroupStart,
     GenericGroupEnd,
