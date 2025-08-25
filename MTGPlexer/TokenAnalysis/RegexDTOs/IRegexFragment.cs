@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs;
+﻿/*namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
 using System.Collections.Generic;
 
@@ -49,4 +49,4 @@ public enum RegexGroupType
     TokenUnitOneOf,
     CharacterClass,
     QuantifierBraces // For future use, e.g., {1,3}
-}
+}*/

@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
+using Internal; // Using the internal namespace for the parser components
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,47 +15,37 @@ public record PrettifiedRegex
     public int HashColumnIndex { get; }
     public int TypeColumnIndex { get; }
 
-    // Static factory method as requested.
-    public static PrettifiedRegex Create(string originalRegex)
-    {
-        return new PrettifiedRegex(originalRegex);
-    }
-
-    private PrettifiedRegex(string originalRegex)
+    public PrettifiedRegex(string originalRegex)
     {
         OriginalRegex = originalRegex;
         try
         {
-            // GOAL 1: Create an intermediate form (hierarchical tree).
             var rootFragment = RegexParser.Parse(OriginalRegex);
-
-            // GOAL 2 & 3 (partially): Traverse the tree to generate a flat list of semantic lines.
             var initialLines = LineGenerator.GenerateLines(rootFragment);
-
-            // GOAL 3 & 4: Format the lines, calculate column indices, and produce the final text.
             var formatResult = BuildFormattedLines(initialLines);
             Lines = formatResult.FormattedLines;
             HashColumnIndex = formatResult.HashIndex;
             TypeColumnIndex = formatResult.TypeIndex;
             DisplayText = string.Join(Environment.NewLine, Lines.Select(l => l.DisplayText));
         }
-        catch (Exception ex) // Failsafe for any parsing/formatting error.
+        catch (Exception ex)
         {
-            // Log the exception if a logger is available.
-            Lines = [new PrettifiedRegexLine(0, null, $"// Failed to prettify: {ex.Message}", null, PrettifiedRegexLineRole.Error),
-                     new PrettifiedRegexLine(1, null, originalRegex, null, PrettifiedRegexLineRole.LiteralMatch)];
+            Lines =
+            [
+                new PrettifiedRegexLine(0, null, $"// Failed to prettify: {ex.Message}", null, PrettifiedRegexLineRole.Error),
+                new PrettifiedRegexLine(1, null, originalRegex, null, PrettifiedRegexLineRole.LiteralMatch)
+            ];
             DisplayText = string.Join(Environment.NewLine, Lines.Select(l => l.Text));
             HashColumnIndex = -1;
             TypeColumnIndex = -1;
         }
     }
 
+    // This formatting logic remains as you designed it, adapted for the new line generation model.
     private static (List<PrettifiedRegexLine> FormattedLines, int HashIndex, int TypeIndex) BuildFormattedLines(List<PrettifiedRegexLine> initialLines)
     {
         if (initialLines.Count == 0) return ([], -1, -1);
 
-        // This function remains largely the same as your well-designed version,
-        // but is adapted to use the IndentLevel from the new LineGenerator.
         static string PrettifyInternalText(string fragment) => Regex.Replace(fragment, @"(?<!\[) (?!\])", "[ ]").Replace(@"\s", "[ ]");
 
         var groupTypes = new Dictionary<string, string>();
@@ -67,12 +58,12 @@ public record PrettifiedRegex
         var lineParts = new List<(string Left, string Comment, string Type, bool IsInGroup)>();
         foreach (var line in initialLines)
         {
-            var indent = new string(' ', line.IndentLevel * 4); // Use spaces for consistent alignment
+            var indent = new string(' ', line.IndentLevel * 4);
             switch (line.Role)
             {
                 case PrettifiedRegexLineRole.WordBoundary: lineParts.Add((line.Text, "Word Boundary", "", false)); break;
                 case PrettifiedRegexLineRole.Empty: lineParts.Add(("", "---", "", false)); break;
-                case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add((PrettifyInternalText(line.Text), "connective match", "", false)); break;
+                case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add((indent + PrettifyInternalText(line.Text), "connective match", "", false)); break;
                 case PrettifiedRegexLineRole.CaptureGroupStart: lineParts.Add(($"{indent}{line.Text}", line.CaptureGroupName, groupTypes.GetValueOrDefault(line.CaptureGroupName, ""), false)); break;
                 case PrettifiedRegexLineRole.LiteralMatch: lineParts.Add(($"{indent}{PrettifyInternalText(line.Text)}", "literal match", "", true)); break;
                 case PrettifiedRegexLineRole.FirstEnumValueInGroup: lineParts.Add(($"{indent}{PrettifyInternalText(line.Text)}", "enum member", "", true)); break;
@@ -93,10 +84,8 @@ public record PrettifiedRegex
 
         int maxLeftWidth = lineParts.Select(p => p.Left.Length).DefaultIfEmpty(0).Max();
         int maxGroupNameWidth = lineParts.Where(p => !string.IsNullOrEmpty(p.Type)).Select(p => p.Comment.Length).DefaultIfEmpty(0).Max();
-
         int hashIndex = maxLeftWidth + 4;
         int typeIndex = hashIndex + 1 + globalCommentIndent + maxGroupNameWidth + typeColumnPrefix.IndexOf(':');
-
         int maxTypeLength = groupTypes.Values.Select(v => v.Length).DefaultIfEmpty(0).Max();
         int totalCommentWidth = maxGroupNameWidth + typeColumnPrefix.Length + maxTypeLength;
         string hr = new('-', totalCommentWidth + globalCommentIndent);

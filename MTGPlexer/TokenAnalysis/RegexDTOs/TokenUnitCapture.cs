@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -10,7 +11,7 @@ public record TokenUnitCapture
     public Type Type { get; }
     public int OccurrenceCount { get; }
     public string RegexString { get; }
-    public PrettifiedRegex PrettifiedRegex { get; } // Changed from string to the new record type
+    public PrettifiedRegex PrettifiedRegex { get; }
     public List<RegexPropValueSet> RegexPropValueSets { get; } = [];
     public DeterministicPalette Palette { get; }
 
@@ -34,16 +35,18 @@ public record TokenUnitCapture
             }
         }
 
-        // The only responsibility now is to call the factory method.
-        PrettifiedRegex = PrettifiedRegex.Create(RegexString);
+        //if (type.Name == "OptionalPayCost") Debugger.Break();
+        // Construct the PrettifiedRegex instance directly. All logic is now self-contained within that system.
+        PrettifiedRegex = new PrettifiedRegex(RegexString);
     }
 
-    // This method remains as it's a useful utility for your other logic.
     (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)
     {
+        // This regex is simplified for correctness in finding the span of a balanced group.
         var regex = new Regex(
-            $@"\(\?\<{Regex.Escape(name)}\>.*?\)",
-            RegexOptions.Singleline);
+            $@"\(\?<{Regex.Escape(name)}>(?:[^()]+|\((?<DEPTH>)|\)(?<-DEPTH>))*(?(DEPTH)(?!))\)",
+            RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);
+
         var match = regex.Match(RegexString);
         return match.Success ? (match.Index, match.Index + match.Length) : (-1, -1);
     }
