@@ -38,6 +38,7 @@ public enum PrettifiedRegexLineRole
     ConnectiveMatch,
     FirstEnumValueInGroup,
     NonFirstEnumValueInGroup,
+    Alternation,
     PatternValue,
     GenericGroupStart,
     GenericGroupEnd,

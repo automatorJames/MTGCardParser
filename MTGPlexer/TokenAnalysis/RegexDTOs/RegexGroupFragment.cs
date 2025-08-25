@@ -1,5 +1,8 @@
 namespace MTGPlexer.TokenAnalysis.RegexDTOs.Internal;
 
+using System.Collections.Generic;
+using System.Text;
+
 /// <summary>
 /// Represents a container like (...), [...], or a named group.
 /// </summary>
@@ -15,14 +18,15 @@ public record RegexGroupFragment(
 {
     public override string ToString()
     {
-        var str = OpeningDelimiter;
-
+        var sb = new StringBuilder();
+        sb.Append(OpeningDelimiter);
         foreach (var child in Children)
-            str += child.ToString();
-
-        str += ClosingDelimiter;
-
-        return str;
+        {
+            sb.Append(child.ToString());
+        }
+        sb.Append(ClosingDelimiter);
+        sb.Append(Quantifier);
+        return sb.ToString();
     }
 }
 
@@ -31,6 +35,6 @@ public enum RegexGroupType
     Root,
     NamedCapture,
     AnonymousCapture,
-    TokenUnitOneOf,
+    Comment,
     CharacterClass
 }

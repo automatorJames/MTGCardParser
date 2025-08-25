@@ -1,8 +1,12 @@
-namespace MTGPlexer.TokenAnalysis.RegexDTOs;
+using MTGPlexer.TokenAnalysis.RegexDTOs.Internal;
 
-using System.Collections.Generic;
+namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
 /// <summary>
 /// Base record for the composite pattern representing a piece of a regex.
 /// </summary>
-public abstract record RegexFragment;
+public abstract record RegexFragment
+{
+    // A reference to the parent can be useful for upward traversal if needed later.
+    public RegexGroupFragment Parent { get; internal set; }
+}

@@ -1,121 +1,173 @@
 ﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs.Internal;
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Static factory class to digest a raw regex string into a hierarchical tree of fragments.
+/// Digests a raw regex string into a hierarchical tree of fragments using a recursive descent parser.
 /// </summary>
 public static class RegexParser
 {
+    private static string _regex;
+    private static int _position;
+
     public static RegexGroupFragment Parse(string regex)
     {
         if (string.IsNullOrEmpty(regex))
-            return new RegexGroupFragment(RegexGroupType.Root, "", "", []);
-
-        var root = new RegexGroupFragment(RegexGroupType.Root, "", "", []);
-        var stack = new Stack<RegexGroupFragment>();
-        stack.Push(root);
-
-        int i = 0;
-        while (i < regex.Length)
         {
-            var currentGroup = stack.Peek();
-            char c = regex[i];
-
-            if (c == '(')
-            {
-                var (newGroup, consumedLength) = CreateGroup(regex, i);
-                i += consumedLength;
-                currentGroup.Children.Add(newGroup);
-                stack.Push(newGroup);
-            }
-            else if (c == ')')
-            {
-                if (stack.Count > 1) // Don't pop the root
-                {
-                    var finishedGroup = stack.Pop();
-                    i++; // Consume ')'
-
-                    if (i < regex.Length && "?*+".Contains(regex[i]))
-                    {
-                        // Use `with` expression to create a new, updated record
-                        var updatedGroup = finishedGroup with { Quantifier = regex[i].ToString() };
-                        // Replace the old group in the parent's children list
-                        var parent = stack.Peek();
-                        int index = parent.Children.IndexOf(finishedGroup);
-                        parent.Children[index] = updatedGroup;
-                        i++;
-                    }
-                }
-                else i++; // Unmatched closing paren
-            }
-            else if (c == '[')
-            {
-                var (charClass, consumed) = CreateCharClass(regex, i);
-                i += consumed;
-                currentGroup.Children.Add(charClass);
-            }
-            else
-            {
-                var (textFragment, consumed) = ReadText(regex, i);
-                if (!string.IsNullOrEmpty(textFragment.Text))
-                    currentGroup.Children.Add(textFragment);
-                i += consumed;
-            }
+            return new RegexGroupFragment(RegexGroupType.Root, "", "", []);
         }
+
+        _regex = regex;
+        _position = 0;
+
+        var children = ParseChildrenUntil((char)0); // Parse until the end of the string
+        var root = new RegexGroupFragment(RegexGroupType.Root, "", "", children);
+        SetParents(root);
         return root;
     }
 
-    private static (RegexGroupFragment group, int consumed) CreateGroup(string regex, int start)
+    private static void SetParents(RegexGroupFragment group)
     {
-        int i = start + 1; // Consume '('
-        if (regex.Length > i + 2 && regex.Substring(i, 2) == "?<") // Named Capture Group
+        foreach (var child in group.Children)
         {
-            i += 2;
-            int nameEnd = regex.IndexOf('>', i);
-            string name = regex.Substring(i, nameEnd - i);
-            return (new RegexGroupFragment(RegexGroupType.NamedCapture, $"(?<{name}>", ")", [], Name: name), nameEnd + 1 - start);
-        }
-        if (regex.Length > i + 2 && regex.Substring(i, 2) == "?#") // Comment Group (for TokenUnitOneOf)
-        {
-            i += 2;
-            int commentEnd = regex.IndexOf(')', i);
-            string comment = regex.Substring(i, commentEnd - i);
-            i = commentEnd + 1;
-            if (i < regex.Length && regex[i] == '(') i++;
-            return (new RegexGroupFragment(RegexGroupType.TokenUnitOneOf, "((?#...)", "))", [], Comment: comment), i - start);
-        }
-        return (new RegexGroupFragment(RegexGroupType.AnonymousCapture, "(", ")", []), 1);
-    }
-
-    private static (RegexFragment fragment, int consumed) CreateCharClass(string regex, int start)
-    {
-        int i = start + 1; // consume '['
-        int end = regex.IndexOf(']', i);
-        if (end == -1) end = regex.Length;
-        var children = new List<RegexFragment> { new RegexTextFragment(regex.Substring(i, end - i)) };
-        var group = new RegexGroupFragment(RegexGroupType.CharacterClass, "[", "]", children);
-        return (group, end + 1 - start);
-    }
-
-    private static (RegexTextFragment fragment, int consumed) ReadText(string regex, int start)
-    {
-        var sb = new StringBuilder();
-        int i = start;
-        while (i < regex.Length && !"()[]".Contains(regex[i]))
-        {
-            if (regex[i] == '\\' && i + 1 < regex.Length)
+            child.Parent = group;
+            if (child is RegexGroupFragment childGroup)
             {
-                sb.Append(regex, i, 2);
-                i += 2;
+                SetParents(childGroup);
+            }
+        }
+    }
+
+    private static List<RegexFragment> ParseChildrenUntil(char terminator)
+    {
+        var children = new List<RegexFragment>();
+        var textBuffer = new StringBuilder();
+
+        while (_position < _regex.Length && _regex[_position] != terminator)
+        {
+            char c = _regex[_position];
+
+            if (c == '\\' && _position + 1 < _regex.Length)
+            {
+                textBuffer.Append(c);
+                textBuffer.Append(_regex[_position + 1]);
+                _position += 2;
+                continue;
+            }
+
+            // If we hit a special character, first flush any accumulated text.
+            if ("()[]|".Contains(c))
+            {
+                if (textBuffer.Length > 0)
+                {
+                    children.Add(new RegexTextFragment(textBuffer.ToString()));
+                    textBuffer.Clear();
+                }
+
+                switch (c)
+                {
+                    case '(':
+                        children.Add(ParseGroup());
+                        break;
+                    case '[':
+                        children.Add(ParseCharClass());
+                        break;
+                    case '|':
+                        children.Add(new RegexTextFragment("|"));
+                        _position++;
+                        break;
+                    case ')': // Should only be hit if it's the terminator
+                        return children;
+                }
             }
             else
             {
-                sb.Append(regex[i]);
-                i++;
+                textBuffer.Append(c);
+                _position++;
             }
         }
-        return (new RegexTextFragment(sb.ToString()), i - start);
+
+        if (textBuffer.Length > 0)
+        {
+            children.Add(new RegexTextFragment(textBuffer.ToString()));
+        }
+
+        return children;
+    }
+
+    private static RegexGroupFragment ParseGroup()
+    {
+        int groupStartPos = _position;
+        _position++; // Consume '('
+
+        string name = null;
+        string comment = null;
+        var type = RegexGroupType.AnonymousCapture;
+        string openingDelimiter = "(";
+
+        if (_position < _regex.Length && _regex[_position] == '?')
+        {
+            int tagStart = _position - 1;
+            if (_position + 1 < _regex.Length && _regex[_position + 1] == '<') // Named Capture
+            {
+                type = RegexGroupType.NamedCapture;
+                int nameStart = _position + 2;
+                int nameEnd = _regex.IndexOf('>', nameStart);
+                name = _regex.Substring(nameStart, nameEnd - nameStart);
+                _position = nameEnd + 1;
+                openingDelimiter = _regex.Substring(tagStart, _position - tagStart);
+            }
+            else if (_position + 1 < _regex.Length && _regex[_position + 1] == '#') // Comment
+            {
+                type = RegexGroupType.Comment;
+                int commentStart = _position + 2;
+                int commentEnd = _regex.IndexOf(')', commentStart);
+                comment = _regex.Substring(commentStart, commentEnd - commentStart);
+                _position = commentEnd + 1; // Consume comment and ')'
+                openingDelimiter = _regex.Substring(tagStart, _position - tagStart);
+                // Comment groups have no children and are self-closing in the parser's view.
+                return new RegexGroupFragment(type, openingDelimiter, "", [], Comment: comment);
+            }
+        }
+
+        var children = ParseChildrenUntil(')');
+        if (_position < _regex.Length && _regex[_position] == ')')
+        {
+            _position++; // Consume ')'
+        }
+
+        string quantifier = null;
+        if (_position < _regex.Length && "?*+".Contains(_regex[_position]))
+        {
+            quantifier = _regex[_position].ToString();
+            _position++;
+        }
+
+        return new RegexGroupFragment(type, openingDelimiter, ")", children, name, comment, quantifier);
+    }
+
+    private static RegexGroupFragment ParseCharClass()
+    {
+        int startPos = _position;
+        int endPos = _regex.IndexOf(']', startPos + 1);
+        if (endPos == -1) endPos = _regex.Length - 1;
+
+        // Ensure we don't read past the end of the string if ']' is missing
+        endPos = System.Math.Min(endPos, _regex.Length - 1);
+
+        string content = _regex.Substring(startPos + 1, endPos - startPos - 1);
+        _position = endPos + 1;
+
+        string quantifier = null;
+        if (_position < _regex.Length && "?*+".Contains(_regex[_position]))
+        {
+            quantifier = _regex[_position].ToString();
+            _position++;
+        }
+
+        var children = new List<RegexFragment> { new RegexTextFragment(content) };
+        return new RegexGroupFragment(RegexGroupType.CharacterClass, "[", "]", children, Quantifier: quantifier);
     }
 }

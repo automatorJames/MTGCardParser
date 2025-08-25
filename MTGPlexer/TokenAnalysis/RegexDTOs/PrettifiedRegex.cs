@@ -61,13 +61,14 @@ public record PrettifiedRegex
             var indent = new string(' ', line.IndentLevel * 4);
             switch (line.Role)
             {
-                case PrettifiedRegexLineRole.WordBoundary: lineParts.Add((line.Text, "Word Boundary", "", false)); break;
+                case PrettifiedRegexLineRole.WordBoundary: lineParts.Add((line.Text, "Start (word boundary)", "", false)); break;
                 case PrettifiedRegexLineRole.Empty: lineParts.Add(("", "---", "", false)); break;
                 case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add((indent + PrettifyInternalText(line.Text), "connective match", "", false)); break;
                 case PrettifiedRegexLineRole.CaptureGroupStart: lineParts.Add(($"{indent}{line.Text}", line.CaptureGroupName, groupTypes.GetValueOrDefault(line.CaptureGroupName, ""), false)); break;
                 case PrettifiedRegexLineRole.LiteralMatch: lineParts.Add(($"{indent}{PrettifyInternalText(line.Text)}", "literal match", "", true)); break;
                 case PrettifiedRegexLineRole.FirstEnumValueInGroup: lineParts.Add(($"{indent}{PrettifyInternalText(line.Text)}", "enum member", "", true)); break;
-                case PrettifiedRegexLineRole.NonFirstEnumValueInGroup: lineParts.Add(($"{indent}| {PrettifyInternalText(line.Text)}", "enum member", "", true)); break;
+                case PrettifiedRegexLineRole.NonFirstEnumValueInGroup: lineParts.Add(($"{indent.Substring(2)}| {PrettifyInternalText(line.Text)}", "enum member", "", true)); break;
+                case PrettifiedRegexLineRole.Alternation: lineParts.Add(($"{indent}{line.Text}", "OR", "", false)); break;
                 case PrettifiedRegexLineRole.GenericGroupStart:
                 case PrettifiedRegexLineRole.GenericGroupEnd:
                 case PrettifiedRegexLineRole.Quantifier:
