@@ -33,7 +33,7 @@ public record PrettifiedRegex
             Lines =
             [
                 new PrettifiedRegexLine(0, null, $"// Failed to prettify: {ex.Message}", null, PrettifiedRegexLineRole.Error),
-                new PrettifiedRegexLine(1, null, originalRegex, null, PrettifiedRegexLineRole.LiteralMatch)
+                new PrettifiedRegexLine(1, null, originalRegex, null, PrettifiedRegexLineRole.EnumValue)
             ];
             DisplayText = string.Join(Environment.NewLine, Lines.Select(l => l.Text));
             HashColumnIndex = -1;
@@ -50,56 +50,54 @@ public record PrettifiedRegex
         // --- Step 1: Determine Group Types ---
         var groupTypes = new Dictionary<string, string>();
         var allGroupNames = new HashSet<string>(initialLines.Where(l => !string.IsNullOrEmpty(l.CaptureGroupName)).Select(l => l.CaptureGroupName));
-
-        foreach (var line in initialLines.Where(l => l.Role == PrettifiedRegexLineRole.FirstEnumValueInGroup && !string.IsNullOrEmpty(l.CaptureGroupName)))
+        foreach (var line in initialLines.Where(l => l.Role == PrettifiedRegexLineRole.EnumValue && !string.IsNullOrEmpty(l.CaptureGroupName)))
         {
             groupTypes[line.CaptureGroupName] = "enum";
         }
         foreach (var name in allGroupNames.Where(n => !groupTypes.ContainsKey(n)))
         {
-            groupTypes[name] = "placeholder"; // Default type for non-enum groups
+            groupTypes[name] = "placeholder"; // Default type
         }
 
         // --- Step 2: Pre-process lines to generate parts for formatting ---
         var lineParts = new List<(string Left, string Comment, string Type, bool IsInGroup, PrettifiedRegexLine OriginalLine)>();
-        bool isFirstInAlternation = true;
-        for (int i = 0; i < initialLines.Count; i++)
+        var alternationQueue = new Queue<PrettifiedRegexLine>(initialLines.Where(l => l.Role == PrettifiedRegexLineRole.Alternation));
+
+        foreach (var line in initialLines.Where(l => l.Role != PrettifiedRegexLineRole.Alternation))
         {
-            var line = initialLines[i];
             var indent = new string(' ', line.IndentLevel * 4);
             var groupName = line.CaptureGroupName;
-
-            // Reset alternation tracking when exiting a group
-            if (line.Role is PrettifiedRegexLineRole.CaptureGroupEnd or PrettifiedRegexLineRole.GenericGroupEnd)
-            {
-                isFirstInAlternation = true;
-            }
 
             switch (line.Role)
             {
                 case PrettifiedRegexLineRole.Separator: lineParts.Add(("", "---", "", false, line)); break;
                 case PrettifiedRegexLineRole.WordBoundary: lineParts.Add((line.Text, "(word boundary)", "", false, line)); break;
                 case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add((indent + PrettifyInternalText(line.Text), "connective match", "", true, line)); break;
-                case PrettifiedRegexLineRole.CaptureGroupStart:
-                    lineParts.Add(($"{indent}{line.Text}", groupName, groupTypes.GetValueOrDefault(groupName, ""), false, line));
-                    isFirstInAlternation = true; // The next item inside is the first
-                    break;
+                case PrettifiedRegexLineRole.CharacterRange: lineParts.Add((indent + PrettifyInternalText(line.Text), "match range", "", true, line)); break;
+                case PrettifiedRegexLineRole.CaptureGroupStart: lineParts.Add(($"{indent}{line.Text}", groupName, groupTypes.GetValueOrDefault(groupName, ""), false, line)); break;
                 case PrettifiedRegexLineRole.CaptureGroupEnd:
                     var endComment = string.IsNullOrEmpty(groupName) ? "" : $"____END {groupName}____";
                     lineParts.Add(($"{indent}{line.Text}", endComment, "", false, line)); break;
-                case PrettifiedRegexLineRole.FirstEnumValueInGroup:
-                    string text = PrettifyInternalText(line.Text);
-                    string leftPart = isFirstInAlternation ? $"{indent}{text}" : $"{indent.Substring(2)}| {text}";
-                    lineParts.Add((leftPart, "enum member", "", true, line));
-                    isFirstInAlternation = false;
+                case PrettifiedRegexLineRole.EnumValue:
+                    lineParts.Add((indent + PrettifyInternalText(line.Text), "enum member", "", true, line));
                     break;
-                case PrettifiedRegexLineRole.Alternation:
-                    // This is handled by the logic in FirstEnumValueInGroup now, so we can skip adding a separate line for the symbol.
-                    continue;
-                case PrettifiedRegexLineRole.Comment:
-                    lineParts.Add(($"{indent}{line.Text}", "", "", false, line)); break;
+                case PrettifiedRegexLineRole.TokenUnitOneOfHeader:
+                    // The line's "Text" is the extracted comment
+                    lineParts.Add((indent + "((?#...))", line.Text, "", false, line)); break;
                 default:
                     lineParts.Add(($"{indent}{line.Text}", "", "", false, line)); break;
+            }
+        }
+
+        // Post-process to inject alternation symbols
+        for (int i = 1; i < lineParts.Count; i++)
+        {
+            var current = lineParts[i];
+            var prev = lineParts[i - 1];
+            if (current.OriginalLine.Role == PrettifiedRegexLineRole.EnumValue && prev.OriginalLine.Role == PrettifiedRegexLineRole.EnumValue && current.OriginalLine.IndentLevel == prev.OriginalLine.IndentLevel)
+            {
+                var indent = new string(' ', current.OriginalLine.IndentLevel * 4);
+                lineParts[i] = ($"{indent.Substring(2)}| {current.Left.Trim()}", current.Comment, current.Type, current.IsInGroup, current.OriginalLine);
             }
         }
 
@@ -108,29 +106,42 @@ public record PrettifiedRegex
         const int globalCommentIndent = 4;
         const int childCommentIndent = 4;
 
-        // Apply Start/End comments
         var firstLineIndex = lineParts.FindIndex(p => !string.IsNullOrWhiteSpace(p.Left) || p.Comment == "---");
         if (firstLineIndex != -1) { var p = lineParts[firstLineIndex]; lineParts[firstLineIndex] = (p.Left, "Start" + (p.Comment.Contains("word boundary") ? " (word boundary)" : ""), p.Type, p.IsInGroup, p.OriginalLine); }
         var lastLineIndex = lineParts.FindLastIndex(p => !string.IsNullOrWhiteSpace(p.Left) || p.Comment.StartsWith("____END") || p.Comment.Contains("word boundary"));
         if (lastLineIndex != -1) { var p = lineParts[lastLineIndex]; if (string.IsNullOrWhiteSpace(p.Comment) || p.Comment.Contains("word boundary")) lineParts[lastLineIndex] = (p.Left, "End" + (p.Comment.Contains("word boundary") ? " (word boundary)" : ""), p.Type, p.IsInGroup, p.OriginalLine); }
 
-        // Calculate dynamic widths for alignment
+        // --- Width Calculation ---
         int maxLeftWidth = lineParts.Select(p => p.Left.Length).DefaultIfEmpty(0).Max();
         int hashIndex = maxLeftWidth > 0 ? maxLeftWidth + 4 : 21;
         int maxGroupNameWidth = lineParts.Select(p => p.Comment).Where(c => groupTypes.ContainsKey(c)).Select(c => c.Length).DefaultIfEmpty(0).Max();
 
-        int maxCommentSectionWidth = 0;
+        var commentStrings = new List<string>();
         foreach (var p in lineParts)
         {
             if (string.IsNullOrEmpty(p.Comment) || p.Comment == "---") continue;
-            int currentCommentWidth = p.Comment.StartsWith("____END") ? p.Comment.Length : globalCommentIndent + (p.IsInGroup ? childCommentIndent : 0) + p.Comment.Length;
-            if (!string.IsNullOrEmpty(p.Type)) currentCommentWidth += typeColumnPrefix.Length + p.Type.Length;
-            maxCommentSectionWidth = Math.Max(maxCommentSectionWidth, currentCommentWidth);
+            var sb = new StringBuilder();
+            if (p.Comment.StartsWith("____END")) { sb.Append(p.Comment); }
+            else
+            {
+                sb.Append("".PadRight(globalCommentIndent));
+                if (!string.IsNullOrEmpty(p.Type))
+                {
+                    sb.Append(p.Comment.PadRight(maxGroupNameWidth));
+                    sb.Append($"{typeColumnPrefix}{p.Type}");
+                }
+                else
+                {
+                    if (p.IsInGroup) sb.Append("".PadRight(childCommentIndent));
+                    sb.Append(p.Comment);
+                }
+            }
+            commentStrings.Add(sb.ToString());
         }
+        int maxCommentWidth = commentStrings.Select(s => s.Length).DefaultIfEmpty(0).Max();
+        string hr = new('-', maxCommentWidth);
 
-        string hr = new('-', maxCommentSectionWidth);
-
-        // Build final display strings
+        // --- Final Rendering ---
         var finalLines = new List<PrettifiedRegexLine>();
         foreach (var p in lineParts)
         {
@@ -145,17 +156,19 @@ public record PrettifiedRegex
                 else if (p.Comment.StartsWith("____END")) { sb.Append(p.Comment.PadRight(hr.Length, '_')); }
                 else
                 {
-                    sb.Append("".PadRight(globalCommentIndent));
+                    var commentContent = new StringBuilder();
+                    commentContent.Append("".PadRight(globalCommentIndent));
                     if (!string.IsNullOrEmpty(p.Type))
                     {
-                        sb.Append(p.Comment.PadRight(maxGroupNameWidth));
-                        sb.Append($"{typeColumnPrefix}{p.Type}");
+                        commentContent.Append(p.Comment.PadRight(maxGroupNameWidth));
+                        commentContent.Append($"{typeColumnPrefix}{p.Type}");
                     }
                     else
                     {
-                        if (p.IsInGroup) sb.Append("".PadRight(childCommentIndent));
-                        sb.Append(p.Comment);
+                        if (p.IsInGroup) commentContent.Append("".PadRight(childCommentIndent));
+                        commentContent.Append(p.Comment);
                     }
+                    sb.Append(commentContent.ToString());
                 }
             }
             finalLines.Add(p.OriginalLine with { DisplayText = sb.ToString().TrimEnd() });

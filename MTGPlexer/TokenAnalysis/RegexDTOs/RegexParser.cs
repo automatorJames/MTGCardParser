@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 /// <summary>
 /// Digests a raw regex string into a hierarchical tree of fragments using a recursive descent parser.
@@ -25,7 +26,7 @@ public static class RegexParser
         var children = ParseChildrenUntil((char)0); // Parse until the end of the string
         var root = new RegexGroupFragment(RegexGroupType.Root, "", "", children);
         SetParents(root);
-        CoalesceOptionalSuffixes(root); // Post-processing step to merge items like "lose(s)?"
+        CoalesceOptionalSuffixes(root); // Post-processing step
         return root;
     }
 
@@ -41,19 +42,13 @@ public static class RegexParser
         }
     }
 
-    /// <summary>
-    /// Post-processes the tree to merge simple optional groups (e.g., "(s)?")
-    /// with their preceding text fragment within enum-like capture groups.
-    /// </summary>
     private static void CoalesceOptionalSuffixes(RegexGroupFragment group)
     {
-        // Recurse first to process from the inside out.
         foreach (var child in group.Children.OfType<RegexGroupFragment>())
         {
             CoalesceOptionalSuffixes(child);
         }
 
-        // An "enum group" is a named capture that contains alternation pipes.
         bool isEnum = group.Type == RegexGroupType.NamedCapture &&
                       group.Children.Any(c => c is RegexTextFragment { Text: "|" });
 
@@ -62,28 +57,23 @@ public static class RegexParser
         var newChildren = new List<RegexFragment>();
         for (int i = 0; i < group.Children.Count; i++)
         {
-            // Pattern: TextFragment followed by a simple, optional, anonymous Group.
             if (i + 1 < group.Children.Count &&
                 group.Children[i] is RegexTextFragment currentText &&
                 group.Children[i + 1] is RegexGroupFragment nextGroup &&
                 nextGroup.Type == RegexGroupType.AnonymousCapture &&
                 nextGroup.Quantifier == "?" &&
                 nextGroup.Children.Count == 1 &&
-                nextGroup.Children[0] is RegexTextFragment { Text.Length: <= 2 }) // Heuristic for "s", "es", etc.
+                nextGroup.Children[0] is RegexTextFragment { Text.Length: <= 2 })
             {
-                // Coalesce them into a single new text fragment.
                 var combinedText = currentText.Text + nextGroup.ToString();
                 newChildren.Add(new RegexTextFragment(combinedText) { Parent = group });
-                i++; // Skip the next element, as it has been consumed.
+                i++;
             }
             else
             {
-                // If the pattern doesn't match, just add the current child.
                 newChildren.Add(group.Children[i]);
             }
         }
-
-        // Replace the old children list with the new, coalesced list.
         group.Children.Clear();
         group.Children.AddRange(newChildren);
     }
@@ -95,14 +85,9 @@ public static class RegexParser
 
         while (_position < _regex.Length && _regex[_position] != terminator)
         {
-            // Specifically handle \b as its own token.
             if (_position + 1 < _regex.Length && _regex[_position] == '\\' && _regex[_position + 1] == 'b')
             {
-                if (textBuffer.Length > 0)
-                {
-                    children.Add(new RegexTextFragment(textBuffer.ToString()));
-                    textBuffer.Clear();
-                }
+                if (textBuffer.Length > 0) { children.Add(new RegexTextFragment(textBuffer.ToString())); textBuffer.Clear(); }
                 children.Add(new RegexTextFragment(@"\b"));
                 _position += 2;
                 continue;
@@ -110,8 +95,7 @@ public static class RegexParser
 
             if (_position < _regex.Length && _regex[_position] == '\\' && _position + 1 < _regex.Length)
             {
-                textBuffer.Append(_regex[_position]);
-                textBuffer.Append(_regex[_position + 1]);
+                textBuffer.Append(_regex, _position, 2);
                 _position += 2;
                 continue;
             }
@@ -119,18 +103,14 @@ public static class RegexParser
             char c = _regex[_position];
             if ("()[]|".Contains(c))
             {
-                if (textBuffer.Length > 0)
-                {
-                    children.Add(new RegexTextFragment(textBuffer.ToString()));
-                    textBuffer.Clear();
-                }
+                if (textBuffer.Length > 0) { children.Add(new RegexTextFragment(textBuffer.ToString())); textBuffer.Clear(); }
 
                 switch (c)
                 {
                     case '(': children.Add(ParseGroup()); break;
-                    case '[': children.Add(ParseCharClass()); break;
+                    case '[': children.Add(ParseCharClass()); break; // Changed behavior
                     case '|': children.Add(new RegexTextFragment("|")); _position++; break;
-                    case ')': return children; // End of current group
+                    case ')': return children;
                 }
             }
             else
@@ -139,12 +119,7 @@ public static class RegexParser
                 _position++;
             }
         }
-
-        if (textBuffer.Length > 0)
-        {
-            children.Add(new RegexTextFragment(textBuffer.ToString()));
-        }
-
+        if (textBuffer.Length > 0) { children.Add(new RegexTextFragment(textBuffer.ToString())); }
         return children;
     }
 
@@ -153,15 +128,13 @@ public static class RegexParser
         int groupStartPos = _position;
         _position++; // Consume '('
 
-        string name = null;
-        string comment = null;
+        string name = null, comment = null, openingDelimiter = "(";
         var type = RegexGroupType.AnonymousCapture;
-        string openingDelimiter = "(";
 
         if (_position < _regex.Length && _regex[_position] == '?')
         {
             int tagStart = groupStartPos;
-            if (_position + 2 < _regex.Length && _regex.Substring(_position, 2) == "?<") // Named Capture
+            if (_position + 2 < _regex.Length && _regex.Substring(_position, 2) == "?<")
             {
                 type = RegexGroupType.NamedCapture;
                 int nameEnd = _regex.IndexOf('>', _position);
@@ -169,7 +142,7 @@ public static class RegexParser
                 _position = nameEnd + 1;
                 openingDelimiter = _regex.Substring(tagStart, _position - tagStart);
             }
-            else if (_position + 2 < _regex.Length && _regex.Substring(_position, 2) == "?#") // Comment
+            else if (_position + 2 < _regex.Length && _regex.Substring(_position, 2) == "?#")
             {
                 type = RegexGroupType.Comment;
                 int commentEnd = _regex.IndexOf(')', _position);
@@ -181,40 +154,43 @@ public static class RegexParser
         }
 
         var children = ParseChildrenUntil(')');
-        if (_position < _regex.Length && _regex[_position] == ')')
-        {
-            _position++; // Consume ')'
-        }
+        if (_position < _regex.Length && _regex[_position] == ')') _position++;
 
         string quantifier = null;
         if (_position < _regex.Length && "?*+".Contains(_regex[_position]))
         {
             quantifier = _regex[_position].ToString();
             _position++;
+        }
+        else if (_position < _regex.Length && _regex[_position] == '{')
+        {
+            int quantEnd = _regex.IndexOf('}', _position);
+            if (quantEnd != -1)
+            {
+                quantifier = _regex.Substring(_position, quantEnd - _position + 1);
+                _position = quantEnd + 1;
+            }
         }
 
         return new RegexGroupFragment(type, openingDelimiter, ")", children, name, comment, quantifier);
     }
 
-    private static RegexGroupFragment ParseCharClass()
+    /// <summary>
+    /// Parses a character class as an atomic text fragment, including its quantifier.
+    /// </summary>
+    private static RegexTextFragment ParseCharClass()
     {
         int startPos = _position;
         int endPos = _regex.IndexOf(']', startPos + 1);
         if (endPos == -1) endPos = _regex.Length - 1;
-
-        endPos = System.Math.Min(endPos, _regex.Length - 1);
-
-        string content = _regex.Substring(startPos + 1, endPos - startPos - 1);
         _position = endPos + 1;
 
-        string quantifier = null;
+        // Check for a quantifier immediately after the character class
         if (_position < _regex.Length && "?*+".Contains(_regex[_position]))
         {
-            quantifier = _regex[_position].ToString();
             _position++;
         }
 
-        var children = new List<RegexFragment> { new RegexTextFragment(content) };
-        return new RegexGroupFragment(RegexGroupType.CharacterClass, "[", "]", children, Quantifier: quantifier);
+        return new RegexTextFragment(_regex.Substring(startPos, _position - startPos));
     }
 }

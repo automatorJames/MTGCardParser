@@ -12,14 +12,14 @@ public record PrettifiedRegexLine
 )
 {
     public string DisplayText { get; init; } = "";
-    public int IndentLevel { get; init; } = 0; // Crucial for hierarchical formatting
+    public int IndentLevel { get; init; } = 0;
 
     private readonly Regex _regex = CreateRegex(RegexMatchPattern);
 
     private static Regex CreateRegex(string pattern)
     {
         try { return !string.IsNullOrEmpty(pattern) ? new Regex(pattern, RegexOptions.Compiled) : null; }
-        catch { return null; } // Failsafe against invalid patterns
+        catch { return null; }
     }
 
     public bool CheckIfMatch(string stringToCheck) => _regex?.IsMatch(stringToCheck) ?? false;
@@ -33,16 +33,12 @@ public enum PrettifiedRegexLineRole
     WordBoundary,
     CaptureGroupStart,
     CaptureGroupEnd,
-    LiteralMatch,
     ConnectiveMatch,
-    FirstEnumValueInGroup,
-    NonFirstEnumValueInGroup, // This role is now unused but kept for potential future logic
-    Alternation, // Explicitly for '|'
-    PatternValue,
+    EnumValue,
+    Alternation,
     GenericGroupStart,
     GenericGroupEnd,
     TokenUnitOneOfHeader,
-    Quantifier,
-    CharacterClass,
-    Comment
+    Comment,
+    CharacterRange // For items like [0-9]+
 }
