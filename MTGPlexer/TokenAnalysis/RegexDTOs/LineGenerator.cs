@@ -42,25 +42,18 @@ public static class LineGenerator
             return;
         }
 
+        // Handle comments as a single, atomic line.
+        if (group.Type == RegexGroupType.Comment)
+        {
+            // The OpeningDelimiter is the full "(?#...)", and the Comment property has the inner text.
+            AddLine(state, group.Parent?.Name, group.OpeningDelimiter, null, indent, PrettifiedRegexLineRole.Comment, group.Comment);
+            return;
+        }
+
         // Add a separator before any non-root group
         if (indent > 0)
         {
             AddLine(state, null, "", null, indent, PrettifiedRegexLineRole.Separator);
-        }
-
-        // Special handling for the Token Unit structure: ((?#...)...)
-        var firstChild = group.Children.FirstOrDefault();
-        if (group.Type == RegexGroupType.AnonymousCapture && firstChild is RegexGroupFragment commentGroup && commentGroup.Type == RegexGroupType.Comment)
-        {
-            string fullHeaderText = group.OpeningDelimiter + commentGroup.OpeningDelimiter;
-            AddLine(state, group.Parent?.Name, fullHeaderText, null, indent, PrettifiedRegexLineRole.TokenUnitOneOfHeader, commentGroup.Comment);
-
-            // Process all children EXCEPT the comment group itself.
-            var childrenToProcess = group.Children.Skip(1).ToList();
-            ProcessChildren(state, group, indent + 1, false, childrenToProcess);
-
-            AddLine(state, group.Parent?.Name, group.ClosingDelimiter + group.Quantifier, null, indent, PrettifiedRegexLineRole.GenericGroupEnd);
-            return;
         }
 
         AddLine(state, group.Name ?? group.Parent?.Name, group.OpeningDelimiter, null, indent, GetRole(group, true));
@@ -97,8 +90,19 @@ public static class LineGenerator
                 }
                 else
                 {
-                    // It's an enum value ONLY if its direct parent contains alternations.
-                    bool isEnumContext = text.Parent?.Children.Any(c => c is RegexTextFragment { Text: "|" }) ?? false;
+                    // It's an enum value if it's part of an alternation sequence.
+                    bool isEnumContext = false;
+                    if (text.Parent != null)
+                    {
+                        var siblings = text.Parent.Children;
+                        int myIndex = siblings.IndexOf(text);
+
+                        bool prevIsAlternation = myIndex > 0 && siblings[myIndex - 1] is RegexTextFragment { Text: "|" };
+                        bool nextIsAlternation = myIndex < siblings.Count - 1 && siblings[myIndex + 1] is RegexTextFragment { Text: "|" };
+                        bool isFirstInAlternation = myIndex == 0 && siblings.Count > 1 && siblings[1] is RegexTextFragment { Text: "|" };
+
+                        isEnumContext = prevIsAlternation || nextIsAlternation || isFirstInAlternation;
+                    }
                     role = isEnumContext ? PrettifiedRegexLineRole.EnumValue : PrettifiedRegexLineRole.ConnectiveMatch;
                 }
                 break;
@@ -118,8 +122,12 @@ public static class LineGenerator
 
     private static void AddLine(TraversalState state, string groupName, string text, string matchPattern, int indent, PrettifiedRegexLineRole role, string comment = null)
     {
-        // Use the explicit comment if provided, otherwise the text itself serves as the base for the line's content.
-        var line = new PrettifiedRegexLine(state.LineNumber++, groupName, comment ?? text, matchPattern, role) { IndentLevel = indent };
+        // CORRECTED: Create the line with distinct Text and Comment properties.
+        var line = new PrettifiedRegexLine(state.LineNumber++, groupName, text, matchPattern, role)
+        {
+            IndentLevel = indent,
+            Comment = comment
+        };
         state.Lines.Add(line);
     }
 }

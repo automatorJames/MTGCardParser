@@ -61,7 +61,6 @@ public record PrettifiedRegex
 
         // --- Step 2: Pre-process lines to generate parts for formatting ---
         var lineParts = new List<(string Left, string Comment, string Type, bool IsInGroup, PrettifiedRegexLine OriginalLine)>();
-        var alternationQueue = new Queue<PrettifiedRegexLine>(initialLines.Where(l => l.Role == PrettifiedRegexLineRole.Alternation));
 
         foreach (var line in initialLines.Where(l => l.Role != PrettifiedRegexLineRole.Alternation))
         {
@@ -72,7 +71,7 @@ public record PrettifiedRegex
             {
                 case PrettifiedRegexLineRole.Separator: lineParts.Add(("", "---", "", false, line)); break;
                 case PrettifiedRegexLineRole.WordBoundary: lineParts.Add((line.Text, "(word boundary)", "", false, line)); break;
-                case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add((indent + PrettifyInternalText(line.Text), "connective match", "", true, line)); break;
+                case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add((indent + PrettifyInternalText(line.Text), "connective match", "", false, line)); break;
                 case PrettifiedRegexLineRole.CharacterRange: lineParts.Add((indent + PrettifyInternalText(line.Text), "match range", "", true, line)); break;
                 case PrettifiedRegexLineRole.CaptureGroupStart: lineParts.Add(($"{indent}{line.Text}", groupName, groupTypes.GetValueOrDefault(groupName, ""), false, line)); break;
                 case PrettifiedRegexLineRole.CaptureGroupEnd:
@@ -81,9 +80,9 @@ public record PrettifiedRegex
                 case PrettifiedRegexLineRole.EnumValue:
                     lineParts.Add((indent + PrettifyInternalText(line.Text), "enum member", "", true, line));
                     break;
-                case PrettifiedRegexLineRole.TokenUnitOneOfHeader:
-                    // The line's "Text" is the extracted comment
-                    lineParts.Add((indent + "((?#...))", line.Text, "", false, line)); break;
+                case PrettifiedRegexLineRole.Comment:
+                    // FIXED: Use line.Text for the regex part and line.Comment for the semantic part.
+                    lineParts.Add((indent + line.Text, line.Comment, "", false, line)); break;
                 default:
                     lineParts.Add(($"{indent}{line.Text}", "", "", false, line)); break;
             }
@@ -94,7 +93,11 @@ public record PrettifiedRegex
         {
             var current = lineParts[i];
             var prev = lineParts[i - 1];
-            if (current.OriginalLine.Role == PrettifiedRegexLineRole.EnumValue && prev.OriginalLine.Role == PrettifiedRegexLineRole.EnumValue && current.OriginalLine.IndentLevel == prev.OriginalLine.IndentLevel)
+            // FIXED: Broaden the roles that are considered part of an alternation sequence
+            var alternationRoles = new[] { PrettifiedRegexLineRole.EnumValue, PrettifiedRegexLineRole.CharacterRange };
+            if (alternationRoles.Contains(current.OriginalLine.Role) &&
+                alternationRoles.Contains(prev.OriginalLine.Role) &&
+                current.OriginalLine.IndentLevel == prev.OriginalLine.IndentLevel)
             {
                 var indent = new string(' ', current.OriginalLine.IndentLevel * 4);
                 lineParts[i] = ($"{indent.Substring(2)}| {current.Left.Trim()}", current.Comment, current.Type, current.IsInGroup, current.OriginalLine);
