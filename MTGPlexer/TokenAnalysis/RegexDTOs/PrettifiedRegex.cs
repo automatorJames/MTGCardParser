@@ -59,7 +59,10 @@ public record PrettifiedRegex
         const int paddingAfterCommentDivider = 1;
         const int commentIndentBaseline = 2;
 
+        // --- Helper Methods ---
         static string PrettifyInternalText(string fragment) => Regex.Replace(fragment, @"(?<!\[) (?!\])", "[ ]").Replace(@"\s", "[ ]");
+        // Simulates the user's extension method, e.g., "ManaSymbols" -> "Mana Symbols"
+        static string ToFriendlyCase(string s) => string.IsNullOrEmpty(s) ? s : Regex.Replace(s, "(\\B[A-Z])", " $1");
 
         // --- Step 1: Determine Group Types ---
         var groupTypes = new Dictionary<string, string>();
@@ -82,7 +85,6 @@ public record PrettifiedRegex
             var indent = new string(' ', line.IndentLevel * indentSpaces);
             var groupName = line.CaptureGroupName;
 
-            // Skip inline alternation markers; they are handled by the line that follows them.
             if (line.Role == PrettifiedRegexLineRole.Alternation) continue;
 
             switch (line.Role)
@@ -94,7 +96,6 @@ public record PrettifiedRegex
                     }
                     break;
                 case PrettifiedRegexLineRole.GroupAlternation:
-                    // Add separators around the group alternator for spacing.
                     lineParts.Add(new() { Left = "", Comment = "", Type = "", OriginalLine = line with { Role = PrettifiedRegexLineRole.Separator } });
                     lineParts.Add(new() { Left = indent + "|", Comment = "", Type = "", OriginalLine = line });
                     lineParts.Add(new() { Left = "", Comment = "", Type = "", OriginalLine = line with { Role = PrettifiedRegexLineRole.Separator } });
@@ -103,7 +104,7 @@ public record PrettifiedRegex
                 case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add(new() { Left = indent + PrettifyInternalText(line.Text), Comment = "connective match", Type = "", OriginalLine = line }); break;
                 case PrettifiedRegexLineRole.CaptureGroupStart: lineParts.Add(new() { Left = $"{indent}{line.Text}", Comment = groupName, Type = groupTypes.GetValueOrDefault(groupName, ""), OriginalLine = line }); break;
                 case PrettifiedRegexLineRole.CaptureGroupEnd: lineParts.Add(new() { Left = $"{indent}{line.Text}", Comment = groupName, Type = "", OriginalLine = line }); break;
-                case PrettifiedRegexLineRole.Comment: lineParts.Add(new() { Left = indent + line.Text, Comment = line.Comment, Type = "", OriginalLine = line }); break;
+                case PrettifiedRegexLineRole.Comment: lineParts.Add(new() { Left = indent + line.Text, Comment = line.Comment.Trim(), Type = "", OriginalLine = line }); break;
                 case PrettifiedRegexLineRole.EnumValue:
                 case PrettifiedRegexLineRole.CharacterRange:
                     string leftText = indent + PrettifyInternalText(line.Text);
@@ -127,22 +128,19 @@ public record PrettifiedRegex
 
             if (p.OriginalLine.Role == PrettifiedRegexLineRole.CaptureGroupStart && !string.IsNullOrEmpty(p.Comment))
             {
-                string headerText = $" {p.Comment} ";
+                string headerText = $" {ToFriendlyCase(p.Comment)} ";
                 string typeText = $" : {p.Type} ";
                 currentContent = headerText + "─" + typeText;
                 groupStackForWidthCalc.Push(p);
             }
             else if (p.OriginalLine.Role == PrettifiedRegexLineRole.CaptureGroupEnd && currentGroup?.Comment == p.Comment)
             {
-                currentContent = $" {p.Comment} ";
+                currentContent = $" {ToFriendlyCase(p.Comment)} ";
                 groupStackForWidthCalc.Pop();
             }
             else if (!string.IsNullOrWhiteSpace(p.Comment))
             {
-                int indentLevel = (currentGroup != null)
-                    ? commentIndentBaseline + (p.OriginalLine.IndentLevel - currentGroup.OriginalLine.IndentLevel - 1) * indentSpaces
-                    : commentIndentBaseline;
-                currentContent = $"{new string(' ', indentLevel)}{p.Comment}";
+                currentContent = $"{new string(' ', commentIndentBaseline)}{p.Comment}";
             }
 
             int currentFullWidth = currentContent.Length > 0 ? currentContent.Length + 2 : 0; // +2 for side padding
@@ -182,27 +180,24 @@ public record PrettifiedRegex
 
             if (isHeader)
             {
-                string textPart = $" {p.Comment} ";
+                string textPart = $" {ToFriendlyCase(p.Comment)} ";
                 string typePart = $" : {p.Type} ";
-                int dashCount = Math.Max(0, maxCommentWidth - textPart.Length - typePart.Length - 2); // -2 for corners
+                int dashCount = Math.Max(0, maxCommentWidth - textPart.Length - typePart.Length - 2);
                 string dashes = new string('─', dashCount);
                 sb.Append($"┌{textPart}{dashes}{typePart}┐");
             }
             else if (isFooter)
             {
-                string footerText = $" {p.Comment} ";
-                int dashCount = Math.Max(0, maxCommentWidth - footerText.Length - 2); // -2 for corners
+                string footerText = $" {ToFriendlyCase(p.Comment)} ";
+                int dashCount = Math.Max(0, maxCommentWidth - footerText.Length - 2);
                 string dashes = new string('─', dashCount);
                 sb.Append($"└{dashes}{footerText}┘");
             }
             else if (isInsideBox)
             {
-                var groupStartLine = lineParts.First(lp => lp.Comment == currentBoxName && lp.OriginalLine.Role == PrettifiedRegexLineRole.CaptureGroupStart);
-                var parentIndent = groupStartLine.OriginalLine.IndentLevel;
-                var relativeIndent = (p.OriginalLine.IndentLevel - parentIndent - 1) * indentSpaces;
-                string content = $"{new string(' ', commentIndentBaseline + relativeIndent)}{p.Comment}";
-                string paddedContent = $" {content}".PadRight(maxCommentWidth - 2); // Corrected padding
-                sb.Append($"│{paddedContent}│"); // Corrected wall alignment
+                string content = $"{new string(' ', commentIndentBaseline)}{p.Comment}";
+                string paddedContent = $" {content}".PadRight(maxCommentWidth - 2);
+                sb.Append($"│{paddedContent}│");
             }
             else if (!string.IsNullOrWhiteSpace(p.Comment) || p.OriginalLine.Role == PrettifiedRegexLineRole.GroupAlternation)
             {
