@@ -29,18 +29,20 @@ public record PrettifiedRegexLine
 public enum PrettifiedRegexLineRole
 {
     Error,
-    Separator, // For "----" lines
+    Separator,
     WordBoundary,
     CaptureGroupStart,
     CaptureGroupEnd,
     LiteralMatch,
     ConnectiveMatch,
     FirstEnumValueInGroup,
-    NonFirstEnumValueInGroup,
+    NonFirstEnumValueInGroup, // This role is now unused but kept for potential future logic
+    Alternation, // Explicitly for '|'
     PatternValue,
     GenericGroupStart,
     GenericGroupEnd,
     TokenUnitOneOfHeader,
     Quantifier,
-    CharacterClass
+    CharacterClass,
+    Comment
 }

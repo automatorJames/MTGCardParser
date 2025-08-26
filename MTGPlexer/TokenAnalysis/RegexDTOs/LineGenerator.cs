@@ -17,16 +17,15 @@ public static class LineGenerator
     public static List<PrettifiedRegexLine> GenerateLines(RegexGroupFragment root)
     {
         var state = new TraversalState();
-        bool isFirstTopLevelElement = true;
+        bool isFirstElement = true;
         foreach (var child in root.Children)
         {
-            if (!isFirstTopLevelElement)
+            if (!isFirstElement)
             {
-                // Add a separator between each top-level element.
                 AddLine(state, null, "", null, 0, PrettifiedRegexLineRole.Separator);
             }
             Traverse(state, child, 0);
-            isFirstTopLevelElement = false;
+            isFirstElement = false;
         }
         return state.Lines;
     }
@@ -46,54 +45,68 @@ public static class LineGenerator
 
     private static void HandleGroup(TraversalState state, RegexGroupFragment group, int indent)
     {
-        if (group.Type == RegexGroupType.CharacterClass)
+        // Add a separator before nested named capture groups.
+        if (group.Type == RegexGroupType.NamedCapture && indent > 0)
         {
-            var content = string.Concat(group.Children.OfType<RegexTextFragment>().Select(c => c.Text));
-            AddLine(state, group.Parent?.Name, $"[{content}]{group.Quantifier}", $"[{content}]{group.Quantifier}", indent, PrettifiedRegexLineRole.CharacterClass);
+            AddLine(state, null, "", null, indent, PrettifiedRegexLineRole.Separator);
+        }
+
+        // Handle the special ((?#...)...) structure
+        var firstChild = group.Children.FirstOrDefault();
+        if (group.Type == RegexGroupType.AnonymousCapture && firstChild is RegexGroupFragment commentGroup && commentGroup.Type == RegexGroupType.Comment)
+        {
+            AddLine(state, group.Parent?.Name, group.OpeningDelimiter + commentGroup.OpeningDelimiter, null, indent, PrettifiedRegexLineRole.TokenUnitOneOfHeader);
+            ProcessChildren(state, group, indent + 1);
+            AddLine(state, group.Parent?.Name, group.ClosingDelimiter + group.Quantifier, null, indent, PrettifiedRegexLineRole.GenericGroupEnd);
             return;
         }
 
         AddLine(state, group.Name ?? group.Parent?.Name, group.OpeningDelimiter, null, indent, GetRole(group, true));
+        ProcessChildren(state, group, indent + 1);
+        AddLine(state, group.Name ?? group.Parent?.Name, group.ClosingDelimiter + group.Quantifier, null, indent, GetRole(group, false));
+    }
 
-        // Process children
-        bool isFirstInAlternation = true;
+    private static void ProcessChildren(TraversalState state, RegexGroupFragment group, int indent)
+    {
         bool hasAlternations = group.Children.Any(c => c is RegexTextFragment { Text: "|" });
 
         foreach (var child in group.Children)
         {
-            if (child is RegexTextFragment tf && tf.Text == "|")
-            {
-                isFirstInAlternation = true;
-                continue;
-            }
-
-            if (child is RegexTextFragment childText && hasAlternations)
-            {
-                var role = isFirstInAlternation ? PrettifiedRegexLineRole.FirstEnumValueInGroup : PrettifiedRegexLineRole.NonFirstEnumValueInGroup;
-                AddLine(state, group.Name, childText.Text, childText.Text, indent + 1, role);
-            }
-            else
-            {
-                Traverse(state, child, indent + 1);
-            }
-            isFirstInAlternation = false;
+            // The formatter will now handle prepending "|", so we just pass fragments through.
+            Traverse(state, child, indent);
         }
-
-        AddLine(state, group.Name ?? group.Parent?.Name, group.ClosingDelimiter + group.Quantifier, null, indent, GetRole(group, false));
     }
 
     private static void HandleText(TraversalState state, RegexTextFragment text, int indent)
     {
-        var role = text.Text == @"\b" ? PrettifiedRegexLineRole.WordBoundary : PrettifiedRegexLineRole.ConnectiveMatch;
-        AddLine(state, text.Parent?.Name, text.Text, text.Text, indent, role);
+        string parentName = text.Parent?.Name;
+        PrettifiedRegexLineRole role;
+
+        switch (text.Text)
+        {
+            case @"\b":
+                role = PrettifiedRegexLineRole.WordBoundary;
+                break;
+            case "|":
+                role = PrettifiedRegexLineRole.Alternation;
+                break;
+            default:
+                // If the parent group has alternations, its text children are enum members.
+                bool parentHasAlternations = text.Parent?.Children.Any(c => c is RegexTextFragment { Text: "|" }) ?? false;
+                role = parentHasAlternations ? PrettifiedRegexLineRole.FirstEnumValueInGroup : PrettifiedRegexLineRole.ConnectiveMatch;
+                break;
+        }
+
+        AddLine(state, parentName, text.Text, text.Text, indent, role);
     }
 
     private static PrettifiedRegexLineRole GetRole(RegexGroupFragment group, bool isOpening)
     {
         return group.Type switch
         {
+            RegexGroupType.Comment => PrettifiedRegexLineRole.Comment,
             RegexGroupType.NamedCapture => isOpening ? PrettifiedRegexLineRole.CaptureGroupStart : PrettifiedRegexLineRole.CaptureGroupEnd,
-            _ => isOpening ? PrettifiedRegexLineRole.GenericGroupStart : PrettifiedRegexLineRole.GenericGroupEnd
+            _ => isOpening ? PrettifiedRegexLineRole.GenericGroupStart : PrettifiedRegexLineRole.GenericGroupEnd,
         };
     }
 
