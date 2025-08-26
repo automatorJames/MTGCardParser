@@ -13,7 +13,7 @@ public record PrettifiedRegexLine
 {
     public string DisplayText { get; init; } = "";
     public int IndentLevel { get; init; } = 0;
-    public string Comment { get; init; } // ADDED: This property will hold extracted comment text.
+    public string Comment { get; init; }
 
     private readonly Regex _regex = CreateRegex(RegexMatchPattern);
 
@@ -37,6 +37,7 @@ public enum PrettifiedRegexLineRole
     ConnectiveMatch,
     EnumValue,
     Alternation,
+    GroupAlternation,
     GenericGroupStart,
     GenericGroupEnd,
     TokenUnitOneOfHeader,

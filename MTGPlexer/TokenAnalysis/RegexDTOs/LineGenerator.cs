@@ -50,12 +50,6 @@ public static class LineGenerator
             return;
         }
 
-        // Add a separator before any non-root group
-        if (indent > 0)
-        {
-            AddLine(state, null, "", null, indent, PrettifiedRegexLineRole.Separator);
-        }
-
         AddLine(state, group.Name ?? group.Parent?.Name, group.OpeningDelimiter, null, indent, GetRole(group, true));
         ProcessChildren(state, group, indent + 1, false);
         AddLine(state, group.Name ?? group.Parent?.Name, group.ClosingDelimiter + group.Quantifier, null, indent, GetRole(group, false));
@@ -68,7 +62,12 @@ public static class LineGenerator
         {
             if (isTopLevel && i > 0)
             {
-                AddLine(state, null, "", null, indent, PrettifiedRegexLineRole.Separator);
+                // Add a separator between top-level elements, but not if the element is a group-level alternation,
+                // as that alternation will render its own separators.
+                if (children[i] is not RegexTextFragment { Text: "|" } || children[i].Parent?.Children.Any(c => c is RegexGroupFragment) == false)
+                {
+                    AddLine(state, null, "", null, indent, PrettifiedRegexLineRole.Separator);
+                }
             }
             Traverse(state, children[i], indent);
         }
@@ -82,7 +81,18 @@ public static class LineGenerator
         switch (text.Text)
         {
             case @"\b": role = PrettifiedRegexLineRole.WordBoundary; break;
-            case "|": role = PrettifiedRegexLineRole.Alternation; break;
+            case "|":
+                var siblings = text.Parent.Children;
+                int myIndex = siblings.IndexOf(text);
+
+                // An alternation is a "GroupAlternation" if it sits directly between two other groups (typically named captures).
+                bool prevIsGroup = myIndex > 0 && siblings[myIndex - 1] is RegexGroupFragment;
+                bool nextIsGroup = myIndex < siblings.Count - 1 && siblings[myIndex + 1] is RegexGroupFragment;
+
+                role = (prevIsGroup && nextIsGroup)
+                    ? PrettifiedRegexLineRole.GroupAlternation
+                    : PrettifiedRegexLineRole.Alternation;
+                break;
             default:
                 if (text.Text.StartsWith("["))
                 {
@@ -94,14 +104,14 @@ public static class LineGenerator
                     bool isEnumContext = false;
                     if (text.Parent != null)
                     {
-                        var siblings = text.Parent.Children;
-                        int myIndex = siblings.IndexOf(text);
+                        var parentSiblings = text.Parent.Children;
+                        int myIdx = parentSiblings.IndexOf(text);
 
-                        bool prevIsAlternation = myIndex > 0 && siblings[myIndex - 1] is RegexTextFragment { Text: "|" };
-                        bool nextIsAlternation = myIndex < siblings.Count - 1 && siblings[myIndex + 1] is RegexTextFragment { Text: "|" };
-                        bool isFirstInAlternation = myIndex == 0 && siblings.Count > 1 && siblings[1] is RegexTextFragment { Text: "|" };
+                        bool prevIsAlt = myIdx > 0 && parentSiblings[myIdx - 1] is RegexTextFragment { Text: "|" };
+                        bool nextIsAlt = myIdx < parentSiblings.Count - 1 && parentSiblings[myIdx + 1] is RegexTextFragment { Text: "|" };
+                        bool isFirstInAlt = myIdx == 0 && parentSiblings.Count > 1 && parentSiblings[1] is RegexTextFragment { Text: "|" };
 
-                        isEnumContext = prevIsAlternation || nextIsAlternation || isFirstInAlternation;
+                        isEnumContext = prevIsAlt || nextIsAlt || isFirstInAlt;
                     }
                     role = isEnumContext ? PrettifiedRegexLineRole.EnumValue : PrettifiedRegexLineRole.ConnectiveMatch;
                 }
@@ -122,7 +132,6 @@ public static class LineGenerator
 
     private static void AddLine(TraversalState state, string groupName, string text, string matchPattern, int indent, PrettifiedRegexLineRole role, string comment = null)
     {
-        // CORRECTED: Create the line with distinct Text and Comment properties.
         var line = new PrettifiedRegexLine(state.LineNumber++, groupName, text, matchPattern, role)
         {
             IndentLevel = indent,
