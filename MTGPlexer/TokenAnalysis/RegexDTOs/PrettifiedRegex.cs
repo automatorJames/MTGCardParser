@@ -13,7 +13,6 @@ public record PrettifiedRegex
     public List<PrettifiedRegexLine> Lines { get; }
     public string DisplayText { get; }
     public int HashColumnIndex { get; }
-    public int TypeColumnIndex { get; }
 
     public PrettifiedRegex(string originalRegex)
     {
@@ -25,7 +24,6 @@ public record PrettifiedRegex
             var formatResult = BuildFormattedLines(initialLines);
             Lines = formatResult.FormattedLines;
             HashColumnIndex = formatResult.HashIndex;
-            TypeColumnIndex = formatResult.TypeIndex;
             DisplayText = string.Join(Environment.NewLine, Lines.Select(l => l.DisplayText));
         }
         catch (Exception ex)
@@ -37,16 +35,7 @@ public record PrettifiedRegex
             ];
             DisplayText = string.Join(Environment.NewLine, Lines.Select(l => l.Text));
             HashColumnIndex = -1;
-            TypeColumnIndex = -1;
         }
-    }
-
-    private class LineFormattingInfo
-    {
-        internal string Left { get; set; }
-        internal string Comment { get; init; }
-        internal string Type { get; init; }
-        internal PrettifiedRegexLine OriginalLine { get; init; }
     }
 
     private static (List<PrettifiedRegexLine> FormattedLines, int HashIndex, int TypeIndex) BuildFormattedLines(List<PrettifiedRegexLine> initialLines)
@@ -55,8 +44,8 @@ public record PrettifiedRegex
 
         // --- Configuration Constants ---
         const int indentSpaces = 4;
-        const int paddingBeforeCommentDivider = 2;
-        const int paddingAfterCommentDivider = 1;
+        const int paddingBeforeCommentDivider = 4;
+        const int paddingAfterCommentDivider = 4;
         const int commentIndentBaseline = 2;
 
         // --- Helper Methods ---
@@ -66,10 +55,10 @@ public record PrettifiedRegex
 
         // --- Step 1: Determine Group Types ---
         var groupTypes = new Dictionary<string, string>();
-        var allGroupNames = new HashSet<string>(initialLines.Where(l => !string.IsNullOrEmpty(l.CaptureGroupName)).Select(l => l.CaptureGroupName));
-        foreach (var line in initialLines.Where(l => l.Role == PrettifiedRegexLineRole.EnumValue && !string.IsNullOrEmpty(l.CaptureGroupName)))
+        var allGroupNames = new HashSet<string>(initialLines.Where(l => !string.IsNullOrEmpty(l.PropertyCaptureGroup)).Select(l => l.PropertyCaptureGroup));
+        foreach (var line in initialLines.Where(l => l.Role == PrettifiedRegexLineRole.EnumValue && !string.IsNullOrEmpty(l.PropertyCaptureGroup)))
         {
-            groupTypes[line.CaptureGroupName] = "enum";
+            groupTypes[line.PropertyCaptureGroup] = "enum";
         }
         foreach (var name in allGroupNames.Where(n => !groupTypes.ContainsKey(n)))
         {
@@ -83,7 +72,7 @@ public record PrettifiedRegex
             var line = initialLines[i];
             var prevLine = i > 0 ? initialLines[i - 1] : null;
             var indent = new string(' ', line.IndentLevel * indentSpaces);
-            var groupName = line.CaptureGroupName;
+            var groupName = line.PropertyCaptureGroup;
 
             if (line.Role == PrettifiedRegexLineRole.Alternation) continue;
 
@@ -208,5 +197,13 @@ public record PrettifiedRegex
             finalLines.Add(p.OriginalLine with { DisplayText = sb.ToString().TrimEnd() });
         }
         return (finalLines, hashIndex, -1);
+    }
+
+    private class LineFormattingInfo
+    {
+        internal string Left { get; set; }
+        internal string Comment { get; init; }
+        internal string Type { get; init; }
+        internal PrettifiedRegexLine OriginalLine { get; init; }
     }
 }

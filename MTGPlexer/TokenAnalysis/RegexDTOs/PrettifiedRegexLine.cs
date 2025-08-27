@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 public record PrettifiedRegexLine
 (
     int LineNumber,
-    string CaptureGroupName,
+    string PropertyCaptureGroup,
     string Text,
     string RegexMatchPattern,
     PrettifiedRegexLineRole Role
@@ -42,5 +42,5 @@ public enum PrettifiedRegexLineRole
     GenericGroupEnd,
     TokenUnitOneOfHeader,
     Comment,
-    CharacterRange // For items like [0-9]+
+    CharacterRange
 }
