@@ -1,10 +1,5 @@
 ﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs.Internal;
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-
 /// <summary>
 /// Digests a raw regex string into a hierarchical tree of fragments using a recursive descent parser.
 /// </summary>
@@ -13,18 +8,18 @@ public static class RegexParser
     private static string _regex;
     private static int _position;
 
-    public static RegexGroupFragment Parse(string regex)
+    public static RegexRoot Parse(string regex)
     {
         if (string.IsNullOrEmpty(regex))
         {
-            return new RegexGroupFragment(RegexGroupType.Root, "", "", []);
+            return new RegexRoot([]);
         }
 
         _regex = regex;
         _position = 0;
 
         var children = ParseChildrenUntil((char)0); // Parse until the end of the string
-        var root = new RegexGroupFragment(RegexGroupType.Root, "", "", children);
+        var root = new RegexRoot(children);
         SetParents(root);
         CoalesceOptionalSuffixes(root); // Post-processing step
         return root;
@@ -108,7 +103,7 @@ public static class RegexParser
                 switch (c)
                 {
                     case '(': children.Add(ParseGroup()); break;
-                    case '[': children.Add(ParseCharClass()); break; // Changed behavior
+                    case '[': children.Add(ParseCharClass()); break;
                     case '|': children.Add(new RegexTextFragment("|")); _position++; break;
                     case ')': return children;
                 }

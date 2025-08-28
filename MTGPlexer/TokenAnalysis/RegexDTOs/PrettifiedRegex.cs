@@ -1,11 +1,6 @@
 ﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
 using Internal;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 
 public record PrettifiedRegex
 {
@@ -14,17 +9,25 @@ public record PrettifiedRegex
     public string DisplayText { get; }
     public int HashColumnIndex { get; }
 
-    public PrettifiedRegex(string originalRegex)
+    public PrettifiedRegex(string originalRegex, Type tokenUnitType)
     {
         OriginalRegex = originalRegex;
         try
         {
-            var rootFragment = RegexParser.Parse(OriginalRegex);
-            var initialLines = LineGenerator.GenerateLines(rootFragment);
+            var regexRoot = RegexParser.Parse(OriginalRegex);
+            var initialLines = LineGenerator.GenerateLines(regexRoot);
             var formatResult = BuildFormattedLines(initialLines);
             Lines = formatResult.FormattedLines;
             HashColumnIndex = formatResult.HashIndex;
             DisplayText = string.Join(Environment.NewLine, Lines.Select(l => l.DisplayText));
+
+            // Set positional palettes
+            var paletteDict = regexRoot.CaptureGroupNames
+                .Select((name, idx) => (name, idx))
+                .ToDictionary(x => x.name, x => new DeterministicPalette(x.idx));
+
+            foreach (var line in Lines.Where(x => x.PropertyCaptureGroup != null))
+                line.Palette = paletteDict[line.PropertyCaptureGroup];
         }
         catch (Exception ex)
         {
@@ -50,8 +53,6 @@ public record PrettifiedRegex
 
         // --- Helper Methods ---
         static string PrettifyInternalText(string fragment) => Regex.Replace(fragment, @"(?<!\[) (?!\])", "[ ]").Replace(@"\s", "[ ]");
-        // Simulates the user's extension method, e.g., "ManaSymbols" -> "Mana Symbols"
-        static string ToFriendlyCase(string s) => string.IsNullOrEmpty(s) ? s : Regex.Replace(s, "(\\B[A-Z])", " $1");
 
         // --- Step 1: Determine Group Types ---
         var groupTypes = new Dictionary<string, string>();
@@ -117,14 +118,14 @@ public record PrettifiedRegex
 
             if (p.OriginalLine.Role == PrettifiedRegexLineRole.CaptureGroupStart && !string.IsNullOrEmpty(p.Comment))
             {
-                string headerText = $" {ToFriendlyCase(p.Comment)} ";
+                string headerText = $" {p.Comment.ToFriendlyCase(TitleDisplayOption.Title)} ";
                 string typeText = $" : {p.Type} ";
                 currentContent = headerText + "─" + typeText;
                 groupStackForWidthCalc.Push(p);
             }
             else if (p.OriginalLine.Role == PrettifiedRegexLineRole.CaptureGroupEnd && currentGroup?.Comment == p.Comment)
             {
-                currentContent = $" {ToFriendlyCase(p.Comment)} ";
+                currentContent = $" {p.Comment.ToFriendlyCase(TitleDisplayOption.Title)} ";
                 groupStackForWidthCalc.Pop();
             }
             else if (!string.IsNullOrWhiteSpace(p.Comment))
@@ -169,7 +170,7 @@ public record PrettifiedRegex
 
             if (isHeader)
             {
-                string textPart = $" {ToFriendlyCase(p.Comment)} ";
+                string textPart = $" {p.Comment.ToFriendlyCase(TitleDisplayOption.Title)} ";
                 string typePart = $" : {p.Type} ";
                 int dashCount = Math.Max(0, maxCommentWidth - textPart.Length - typePart.Length - 2);
                 string dashes = new string('─', dashCount);
@@ -177,7 +178,7 @@ public record PrettifiedRegex
             }
             else if (isFooter)
             {
-                string footerText = $" {ToFriendlyCase(p.Comment)} ";
+                string footerText = $" {p.Comment.ToFriendlyCase(TitleDisplayOption.Title)} ";
                 int dashCount = Math.Max(0, maxCommentWidth - footerText.Length - 2);
                 string dashes = new string('─', dashCount);
                 sb.Append($"└{dashes}{footerText}┘");

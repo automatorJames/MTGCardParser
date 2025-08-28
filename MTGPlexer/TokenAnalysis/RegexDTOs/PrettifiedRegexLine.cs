@@ -1,7 +1,5 @@
 ﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
-using System.Text.RegularExpressions;
-
 public record PrettifiedRegexLine
 (
     int LineNumber,
@@ -14,6 +12,7 @@ public record PrettifiedRegexLine
     public string DisplayText { get; init; } = "";
     public int IndentLevel { get; init; } = 0;
     public string Comment { get; init; }
+    public DeterministicPalette Palette { get; set; }
 
     private readonly Regex _regex = CreateRegex(RegexMatchPattern);
 

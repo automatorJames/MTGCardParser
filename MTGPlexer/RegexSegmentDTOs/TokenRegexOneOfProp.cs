@@ -12,7 +12,7 @@ public record TokenRegexOneOfProp : RegexPropBase
     public TokenRegexOneOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
         _alternativeTokenProps = captureProp.UnderlyingType
-            .GetPublicDeclaredProps()
+            .GetProps()
             .Select(x => new RegexPropInfo(x))
             .Select(y => new TokenRegexProp(y))
             .ToList();

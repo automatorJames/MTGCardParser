@@ -1,11 +1,5 @@
 ﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text.RegularExpressions;
-
 public record TokenUnitCapture
 {
     public Type Type { get; }
@@ -35,9 +29,7 @@ public record TokenUnitCapture
             }
         }
 
-        //if (type.Name == "OptionalPayCost") Debugger.Break();
-        // Construct the PrettifiedRegex instance directly. All logic is now self-contained within that system.
-        PrettifiedRegex = new PrettifiedRegex(RegexString);
+        PrettifiedRegex = new PrettifiedRegex(RegexString, type);
     }
 
     (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)

@@ -114,7 +114,7 @@ public static class Extensions
         return char.ToUpper(input[0]) + input.Substring(1);
     }
 
-    public static PropertyInfo[] GetPublicDeclaredProps(this Type type) => 
+    public static PropertyInfo[] GetProps(this Type type) => 
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;

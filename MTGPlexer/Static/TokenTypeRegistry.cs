@@ -208,7 +208,6 @@ public static partial class TokenTypeRegistry
         OriginalTextTokenizer = tokenizerBuilder.Build();
     }
 
-
     static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
         if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsAssignableTo(typeof(TokenUnitProperty)))

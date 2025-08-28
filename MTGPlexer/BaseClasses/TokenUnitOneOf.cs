@@ -6,7 +6,7 @@ public abstract class TokenUnitOneOf: TokenUnit
 
     protected TokenUnitOneOf(params string[] templateSnippets) : base(templateSnippets)
     {
-        _tokenUnitChildren = GetType().GetPublicDeclaredProps().ToList();
+        _tokenUnitChildren = GetType().GetProps().ToList();
     }
 
     /// <summary>
@@ -16,7 +16,7 @@ public abstract class TokenUnitOneOf: TokenUnit
     /// </summary>
     public TokenUnit GetSingleNonNullChildToken()
     {
-        foreach (var prop in GetType().GetPublicDeclaredProps())
+        foreach (var prop in GetType().GetProps())
         {
             var propVal = prop.GetValue(this);
 
@@ -42,8 +42,7 @@ public abstract class TokenUnitOneOf: TokenUnit
 
     public static string GetTokenUnitOneOfRegexHeaderComment(Type tokenUnitOneOfType)
     {
-        var tokenUnitChildPropNames = tokenUnitOneOfType.GetPublicDeclaredProps().Select(x => x.Name);
+        var tokenUnitChildPropNames = tokenUnitOneOfType.GetProps().Select(x => x.Name);
         return $"(?# {tokenUnitOneOfType.Name}: {string.Join(" | ", tokenUnitChildPropNames)})";
     }
 }
-

@@ -1,4 +1,6 @@
-﻿@page "/type-expressions"
+﻿<!-- TypeExpressions.razor -->
+
+@page "/type-expressions"
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JSRuntime
 
@@ -67,11 +69,5 @@
 </div>
 
 @code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // We call the init function on every render to ensure that if the
-        // data changes and Blazor re-renders the component, the event listeners
-        // are correctly attached to any new elements. The JS is written to handle this.
-        await JSRuntime.InvokeVoidAsync("initTypeExpressionHover");
-    }
+
 }

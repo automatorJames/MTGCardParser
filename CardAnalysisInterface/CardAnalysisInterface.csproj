@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <Folder Include="SampleImages\" />
+    <Folder Include="wwwroot\scripts\type-expressions\" />
   </ItemGroup>
 
 </Project>
