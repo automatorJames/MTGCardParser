@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.BaseClasses;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {

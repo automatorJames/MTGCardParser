@@ -42,6 +42,15 @@ public static partial class TokenTypeRegistry
 
     public static void SetTypeTemplate(Type type)
     {
+        Palettes[type] = new(type);
+        NameToType[type.Name] = type;
+
+        if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
+        {
+            Templates[type] = new(type);
+            return;
+        }
+
         var instance = (TokenUnit)Activator.CreateInstance(type);
 
         if (!instance.ValidateStructure())
@@ -51,7 +60,6 @@ public static partial class TokenTypeRegistry
         }
 
         Templates[type] = instance.Template;
-        NameToType[type.Name] = type;
         var propCaptureSegments = instance.Template.PropCaptureSegments;
 
         var unregisteredEnums = propCaptureSegments
@@ -67,8 +75,6 @@ public static partial class TokenTypeRegistry
             Palettes[enumType] = new(enumType, baseSaturation: .4, baseLightness: .4);
             NameToType[enumType.Name] = enumType;
         }
-
-        Palettes[type] = new(type);
 
         if (instance is TokenUnitDistilled tokenUnitDistilled)
         {

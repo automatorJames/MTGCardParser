@@ -33,12 +33,6 @@ public abstract class TokenUnitDistilled : TokenUnit
                 if (val is null)
                     continue;
 
-                if (
-                       distilledProp.Prop.PropertyType.IsValueType
-                       && !distilledProp.UnderlyingType.IsEnum
-                       && val.Equals(Activator.CreateInstance(distilledProp.Prop.PropertyType))
-                   ) continue;
-
                 if (!DistilledValues.ContainsKey(placeholderPropItem.Key))
                     DistilledValues[placeholderPropItem.Key] = [];
 

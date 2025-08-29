@@ -31,12 +31,45 @@ public class RegexTemplate
         SetRegex();
     }
 
+    public RegexTemplate(Type tokenUnitOneOfType)
+    {
+        if (!tokenUnitOneOfType.IsAssignableTo(typeof(TokenUnitOneOf)))
+            throw new Exception($"{tokenUnitOneOfType.Name} isn't derived from {nameof(TokenUnitOneOf)}");
+
+        _containingType = tokenUnitOneOfType;
+        RegexPropInfos = GetRegexProps();
+        List<string> captureSections = [];
+
+        var tokenUnitChildProps = tokenUnitOneOfType
+            .GetProps()
+            .Where(x => x.PropertyType.IsAssignableTo(typeof(TokenUnit)));
+
+        tokenUnitChildProps
+            .Select(x => x.Name)
+            .ToList()
+            .ForEach(x => RegexSegments.Add(ResolveSnippetToPropOrTextSegment(x)));
+
+        var tokenUnitChildPropTypes = tokenUnitChildProps
+            .Select(x => Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType);
+
+        foreach (var childType in tokenUnitChildPropTypes)
+        {
+            var template = TokenTypeRegistry.GetTypeTemplate(childType);
+            captureSections.Add(template.RenderedRegexString);
+        }
+
+        var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(tokenUnitOneOfType);
+        RenderedRegexString = $"({headerComment}{string.Join('|', captureSections)})";
+        Regex = new Regex(RenderedRegexString);
+    }
+
     void SetRegex()
     {
         if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
         {
-            var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(_containingType);
-            RenderedRegexString = $"({headerComment}{string.Join('|', RegexSegments.Select(x => x.RegexString))})";
+            var template = TokenTypeRegistry.GetTypeTemplate(_containingType);
+            RenderedRegexString = template.RenderedRegexString;
+            Regex = template.Regex;
         }
             
         else

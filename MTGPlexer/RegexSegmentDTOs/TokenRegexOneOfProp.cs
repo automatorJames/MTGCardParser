@@ -11,6 +11,8 @@ public record TokenRegexOneOfProp : RegexPropBase
 
     public TokenRegexOneOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
+        TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+
         _alternativeTokenProps = captureProp.UnderlyingType
             .GetProps()
             .Select(x => new RegexPropInfo(x))
