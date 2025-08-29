@@ -58,13 +58,10 @@ public record PrettifiedRegex
         var groupTypes = new Dictionary<string, string>();
         var allGroupNames = new HashSet<string>(initialLines.Where(l => !string.IsNullOrEmpty(l.PropertyCaptureGroup)).Select(l => l.PropertyCaptureGroup));
         foreach (var line in initialLines.Where(l => l.Role == PrettifiedRegexLineRole.EnumValue && !string.IsNullOrEmpty(l.PropertyCaptureGroup)))
-        {
             groupTypes[line.PropertyCaptureGroup] = "enum";
-        }
+
         foreach (var name in allGroupNames.Where(n => !groupTypes.ContainsKey(n)))
-        {
             groupTypes[name] = "placeholder"; // Default type
-        }
 
         // --- Step 2: Pre-process lines to generate intermediate parts for formatting ---
         var lineParts = new List<LineFormattingInfo>();

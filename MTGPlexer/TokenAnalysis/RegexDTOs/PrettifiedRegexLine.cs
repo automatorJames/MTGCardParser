@@ -23,6 +23,7 @@ public record PrettifiedRegexLine
     }
 
     public bool CheckIfMatch(string stringToCheck) => _regex?.IsMatch(stringToCheck) ?? false;
+
     public override string ToString() => DisplayText;
 }
 

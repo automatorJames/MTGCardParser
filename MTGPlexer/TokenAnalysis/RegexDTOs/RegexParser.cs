@@ -27,12 +27,23 @@ public static class RegexParser
 
     private static void SetParents(RegexGroupFragment group)
     {
-        foreach (var child in group.Children)
+        for (int i = 0; i < group.Children.Count; i++)
         {
+            var child = group.Children[i];
             child.Parent = group;
+
             if (child is RegexGroupFragment childGroup)
             {
-                SetParents(childGroup);
+                // If the child is unnamed but the parent is named, clone with the parent's name.
+                var effective = (group.Name != null && childGroup.Name == null)
+                    ? childGroup with { Name = group.Name }
+                    : childGroup;
+
+                // Make sure the list holds the (possibly) new instance
+                group.Children[i] = effective;
+
+                // Recurse on the same instance that's now in the list
+                SetParents(effective);
             }
         }
     }

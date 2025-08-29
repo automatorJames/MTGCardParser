@@ -1,8 +1,10 @@
-﻿<!-- TypeExpressions.razor -->
-
-@page "/type-expressions"
+﻿@page "/type-expressions"
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JSRuntime
+@using System.Text
+@using Microsoft.AspNetCore.Components
+@using MTGPlexer.TokenAnalysis.RegexDTOs
+@using MTGPlexer.TokenAnalysis.Common
 
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in CorpusAnalyzer.GlobalTokenUnitCaptureSummary.TokenUnitCaptures)
@@ -15,7 +17,7 @@
                 </span>
             </div>
             <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.RegexString</code></pre>
-            <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.PrettifiedRegex.DisplayText</code></pre>
+            <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@RenderPrettifiedRegex(tokenUnitCapture.PrettifiedRegex)</code></pre>
 
 
             @if (tokenUnitCapture.RegexPropValueSets.Any())
@@ -69,5 +71,113 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Renders the entire PrettifiedRegex object by processing each line individually.
+    /// </summary>
+    private MarkupString RenderPrettifiedRegex(PrettifiedRegex prettifiedRegex)
+    {
+        var sb = new StringBuilder();
+        foreach (var line in prettifiedRegex.Lines)
+        {
+            sb.AppendLine(RenderPrettifiedLine(line, prettifiedRegex.HashColumnIndex));
+        }
+        // Return the complete HTML content as a MarkupString to be rendered.
+        return new MarkupString(sb.ToString().TrimEnd());
+    }
 
+    /// <summary>
+    /// Renders a single PrettifiedRegexLine into an HTML string with colored spans
+    /// based on the specified formatting rules.
+    /// </summary>
+    private string RenderPrettifiedLine(PrettifiedRegexLine line, int hashColumnIndex)
+    {
+        const string darkGrey = "#666666";
+        const string midGrey = "#AAAAAA";
+        var text = line.DisplayText;
+
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
+        var sb = new StringBuilder();
+
+        // Rule 2: If Palette is null, the line is mid-grey.
+        if (line.Palette == null)
+        {
+            // Rule 1 (Override): The hash column character is always dark grey.
+            if (hashColumnIndex >= 0 && hashColumnIndex < text.Length && text[hashColumnIndex] == '#')
+            {
+                string left = System.Net.WebUtility.HtmlEncode(text.Substring(0, hashColumnIndex));
+                string right = System.Net.WebUtility.HtmlEncode(text.Substring(hashColumnIndex + 1));
+                sb.Append($"<span style=\"color:{midGrey};\">{left}</span>");
+                sb.Append($"<span style=\"color:{darkGrey};\">#</span>");
+                sb.Append($"<span style=\"color:{midGrey};\">{right}</span>");
+            }
+            else
+            {
+                sb.Append($"<span style=\"color:{midGrey};\">{System.Net.WebUtility.HtmlEncode(text)}</span>");
+            }
+            return sb.ToString();
+        }
+
+        // Rules 1 & 3: Palette is present, apply granular coloring.
+        var palette = line.Palette;
+        var currentSegment = new StringBuilder();
+        string currentColor = null;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            string nextColor;
+
+            // Rule 1: All '#' chars on the HashColumnIndex are dark grey, overriding other rules.
+            if (i == hashColumnIndex && c == '#')
+            {
+                nextColor = darkGrey;
+            }
+            else // Rule 3: Apply palette-based colors.
+            {
+                bool isLineChar = "─┐│┌└┘".Contains(c);
+                if (isLineChar)
+                {
+                    // Unicode "line" chars are colored Palette.HexDark.
+                    nextColor = palette.HexDark;
+                }
+                else if (line.Role == PrettifiedRegexLineRole.CaptureGroupStart || line.Role == PrettifiedRegexLineRole.CaptureGroupEnd)
+                {
+                    // Non-line text on start/end lines is colored Palette.Hex.
+                    nextColor = palette.Hex;
+                }
+                else
+                {
+                    // All other text within the property group is colored Palette.HexLight.
+                    nextColor = palette.HexLight;
+                }
+            }
+
+            if (currentColor == null)
+            {
+                currentColor = nextColor;
+            }
+
+            // If the color changes, flush the current segment into a span and start a new one.
+            if (nextColor != currentColor)
+            {
+                if (currentSegment.Length > 0)
+                {
+                    sb.Append($"<span style=\"color:{currentColor};\">{System.Net.WebUtility.HtmlEncode(currentSegment.ToString())}</span>");
+                    currentSegment.Clear();
+                }
+                currentColor = nextColor;
+            }
+
+            currentSegment.Append(c);
+        }
+
+        // Flush the final segment after the loop.
+        if (currentSegment.Length > 0)
+        {
+            sb.Append($"<span style=\"color:{currentColor};\">{System.Net.WebUtility.HtmlEncode(currentSegment.ToString())}</span>");
+        }
+
+        return sb.ToString();
+    }
 }
