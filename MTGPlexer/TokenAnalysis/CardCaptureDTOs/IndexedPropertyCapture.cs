@@ -29,7 +29,7 @@ public record IndexedPropertyCapture
         IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit;
         Value = value;
         CapturePosition = capturePosition;
-        Palette = new(CapturePosition);
+        Palette = DeterministicPalette.GetFixedRainbowPalette(CapturePosition);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
     }
 

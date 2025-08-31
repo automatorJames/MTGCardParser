@@ -7,6 +7,7 @@ public record DeterministicPalette
 {
     // --- Static Cache ---
     private static readonly Dictionary<int, Dictionary<int, DeterministicPalette>> _positionalPalettes = [];
+    private static readonly Dictionary<int, DeterministicPalette> _fixedRainbowPalettes = [];
 
     // --- Public Color Properties ---
     public string Hex { get; private set; }
@@ -64,6 +65,20 @@ public record DeterministicPalette
     }
 
     // --- Static Factory ---
+
+    public static DeterministicPalette GetFixedRainbowPalette(int rainbowIndex)
+    {
+        var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
+
+        if (_fixedRainbowPalettes.TryGetValue((int)rainbowMember, out var palette))
+            return palette;
+
+        var newPalette = new DeterministicPalette(rainbowIndex);
+        _fixedRainbowPalettes[(int)rainbowMember] = newPalette;
+
+        return newPalette;
+    }
+
     public static Dictionary<int, DeterministicPalette> GetPositionalPalette(int totalItemCount)
     {
         if (_positionalPalettes.TryGetValue(totalItemCount, out var positionalPalette))

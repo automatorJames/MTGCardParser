@@ -34,7 +34,6 @@ public record TokenUnitCapture
 
     (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)
     {
-        // This regex is simplified for correctness in finding the span of a balanced group.
         var regex = new Regex(
             $@"\(\?<{Regex.Escape(name)}>(?:[^()]+|\((?<DEPTH>)|\)(?<-DEPTH>))*(?(DEPTH)(?!))\)",
             RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);

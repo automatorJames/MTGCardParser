@@ -38,6 +38,40 @@
     font-weight: normal;
 }
 
+/* --- Container for <pre> to position the copy prompt --- */
+.pre-container {
+    position: relative;
+    margin: 0 12px;
+    cursor: copy; /* Change cursor for the whole area */
+}
+
+.copy-prompt {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(90, 90, 90, 0.90); /* Slightly transparent */
+    color: #eee;
+    border: 1px solid #777;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    z-index: 1;
+    pointer-events: none; /* Allows clicks to pass through to the parent */
+    opacity: 0; /* Hide the prompt by default */
+    transition: opacity 0.1s ease, background-color 0.1s ease;
+}
+
+/* Show prompt on container hover */
+.pre-container:hover .copy-prompt {
+    opacity: 1;
+}
+
+.copy-prompt.copied {
+    background-color: #2a9d8f; /* Greenish success color */
+    border-color: #238378;
+    opacity: 1; /* Ensure "Copied!" is visible even if not hovering */
+}
+
 pre {
     background-color: var(--dark-grey);
     padding: 1rem;
@@ -45,11 +79,16 @@ pre {
     border: 1px solid var(--lowlight-color, var(--outline-grey));
     white-space: pre-wrap;
     word-wrap: break-word;
-    margin-left: 12px;
-    margin-right: 12px;
     font-family: 'Courier New', Courier, monospace;
     font-size: 14px;
     line-height: 1.5;
+    margin: 0;
+    transition: background-color 0.1s ease-in-out; /* Add transition for hover effect */
+}
+
+/* Lighten <pre> on container hover */
+.pre-container:hover pre {
+    background-color: #313131; /* A slightly lighter grey */
 }
 
 /* Style for the injected highlight element */
@@ -64,36 +103,37 @@ code .regex-highlight {
 
 .properties-container {
     display: flex;
-    flex-wrap: wrap; /* Allows cards to wrap to the next line if space runs out */
+    flex-wrap: wrap;
     gap: 1rem;
     padding: 0 12px;
     margin-top: 1rem;
-    align-items: flex-start; /* Align cards to the top of the row */
+    justify-content: center;
 }
 
 .property-capture-card {
     background-color: #2d2d2d;
-    border: 1px solid #444;
+    border-width: 1px;
+    border-style: solid;
     border-radius: 6px;
-    /* Let the card size based on its content, not grow to fill all empty space */
-    flex: 0 1 auto;
-    max-width: 600px; /* Prevent cards from becoming excessively wide */
+    flex: 1 1 300px; /* Grow/shrink from a 300px basis */
+    max-width: 400px; /* Lowered max-width */
+    min-width: 280px;
     font-size: 13px;
     cursor: pointer;
     transition: border-color 0.2s ease;
     color: #c5c5c5;
+    display: flex;
+    flex-direction: column;
 }
 
     .property-capture-card:hover {
-        border-color: #888;
+        border-color: #888 !important;
     }
 
 .prop-card-header {
     background-color: #3a3a3a;
     padding: 6px 10px;
     font-weight: bold;
-    /* New color for the header text */
-    color: #a9cce3; /* A muted, light blue */
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
     border-bottom: 1px solid #444;
@@ -106,12 +146,11 @@ code .regex-highlight {
     gap: 4px;
 }
 
-/* Use grid for a clean, tabular layout */
 .canonical-representation,
 .capture-variant {
     display: grid;
-    grid-template-columns: 1fr auto; /* Value column | Count column */
-    gap: 1rem; /* Space between value and count */
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
     align-items: center;
     padding: 4px 6px;
     border-radius: 4px;
@@ -148,10 +187,8 @@ code .regex-highlight {
 
 .canonical-value,
 .variant-value {
-    /* Allow long unbreakable strings (like regex parts) to wrap */
     word-break: break-all;
 }
-
 
 .total-count, .variant-count {
     font-family: monospace;

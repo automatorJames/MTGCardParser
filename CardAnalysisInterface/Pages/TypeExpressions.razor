@@ -1,6 +1,7 @@
 ﻿@page "/type-expressions"
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JSRuntime
+@inject RuntimeSettings RuntimeSettings
 @using System.Text
 @using Microsoft.AspNetCore.Components
 @using MTGPlexer.TokenAnalysis.RegexDTOs
@@ -16,21 +17,44 @@
                     <i class="matches-label">matches:</i> @tokenUnitCapture.OccurrenceCount
                 </span>
             </div>
-            <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.RegexString</code></pre>
-            <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@RenderPrettifiedRegex(tokenUnitCapture.PrettifiedRegex)</code></pre>
+
+            @if (RuntimeSettings.ShowMinifiedRegex)
+            {
+                var textToCopy = tokenUnitCapture.RegexString;
+                var isCopied = _recentlyCopiedText.Contains(textToCopy);
+                <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
+                    <div class="copy-prompt @(isCopied ? "copied" : "")">
+                        @(isCopied ? "Copied!" : "Click to copy")
+                    </div>
+                    <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.RegexString</code></pre>
+                </div>
+            }
+            else
+            {
+                var textToCopy = string.Join("\n", tokenUnitCapture.PrettifiedRegex.Lines.Select(l => l.DisplayText));
+                var isCopied = _recentlyCopiedText.Contains(textToCopy);
+                <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
+                    <div class="copy-prompt @(isCopied ? "copied" : "")">
+                        @(isCopied ? "Copied!" : "Click to copy")
+                    </div>
+                    <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@RenderPrettifiedRegex(tokenUnitCapture.PrettifiedRegex)</code></pre>
+                </div>
+            }
 
 
             @if (tokenUnitCapture.RegexPropValueSets.Any())
             {
                 <div class="properties-container">
-                    @foreach (var propSet in tokenUnitCapture.RegexPropValueSets)
+                    @for (int i = 0; i < tokenUnitCapture.RegexPropValueSets.Count; i++)
                     {
+                        var propSet = tokenUnitCapture.RegexPropValueSets[i];
+                        var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(i);
                         <div class="property-capture-card"
+                             style="border-color: @propSetPalette.HexDark;"
                              data-start="@propSet.CaptureGroupPositionStart"
                              data-end="@propSet.CaptureGroupPositionEnd">
-                            <div class="prop-card-header">
+                            <div class="prop-card-header" style="color: @propSetPalette.Hex;">
                                 @propSet.TerminalRegexPropPath.PropPathFriendly<br />
-                                Type: @propSet.TerminalRegexPropPath.RegexPropTypeNameFriendly
                             </div>
                             <div class="prop-card-body">
                                 @foreach (var valueSet in propSet.ValueCaptureCounts.OrderByDescending(x => x.TotalCount))
@@ -71,6 +95,37 @@
 </div>
 
 @code {
+    private HashSet<string> _recentlyCopiedText = new();
+
+    protected override void OnInitialized()
+    {
+        RuntimeSettings.OnChanged += OnSettingsChanged;
+    }
+
+    private async void OnSettingsChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CopyToClipboardAsync(string text)
+    {
+        if (_recentlyCopiedText.Contains(text)) return;
+
+        // Add to set to trigger UI change to "Copied!"
+        _recentlyCopiedText.Add(text);
+        await InvokeAsync(StateHasChanged);
+
+        // Perform the copy action via JavaScript
+        await JSRuntime.InvokeVoidAsync("copyTextToClipboard", text);
+
+        // Wait for 2 seconds
+        await Task.Delay(2000);
+
+        // Remove from set and update UI to revert back to "Click to copy"
+        _recentlyCopiedText.Remove(text);
+        await InvokeAsync(StateHasChanged);
+    }
+
     /// <summary>
     /// Renders the entire PrettifiedRegex object by processing each line individually.
     /// </summary>

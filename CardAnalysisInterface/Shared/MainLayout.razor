@@ -12,11 +12,16 @@
         @* Only render the settings controls after they have been loaded to prevent flicker *@
         @if (RuntimeSettings.IsLoaded)
         {
-            if (Navigation.ToBaseRelativePath(Navigation.Uri) == "" || Navigation.ToBaseRelativePath(Navigation.Uri) == "card-analysis")
+            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+            if (relativePath == "" || relativePath == "card-analysis")
             {
                 <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
             }
-            else if (Navigation.ToBaseRelativePath(Navigation.Uri) == "span-trees")
+            else if (relativePath == "type-expressions")
+            {
+                <Switch @bind-Value=@RuntimeSettings.ShowMinifiedRegex Label="Show minified" />
+            }
+            else if (relativePath == "span-trees")
             {
                 <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
                 <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />

@@ -99,6 +99,21 @@ namespace CardAnalysisInterface
             }
         }
 
+        private bool _showMinifiedRegex;
+        public bool ShowMinifiedRegex
+        {
+            get => _showMinifiedRegex;
+            set
+            {
+                if (_showMinifiedRegex != value)
+                {
+                    _showMinifiedRegex = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         /// <summary>
         /// Loads settings from ProtectedLocalStorage. Should only be called once.
         /// </summary>

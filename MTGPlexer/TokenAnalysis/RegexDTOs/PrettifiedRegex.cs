@@ -24,7 +24,7 @@ public record PrettifiedRegex
             // Set positional palettes
             var paletteDict = regexRoot.CaptureGroupNames
                 .Select((name, idx) => (name, idx))
-                .ToDictionary(x => x.name, x => new DeterministicPalette(x.idx));
+                .ToDictionary(x => x.name, x => DeterministicPalette.GetFixedRainbowPalette(x.idx));
 
             foreach (var line in Lines.Where(x => x.PropertyCaptureGroup != null))
                 line.Palette = paletteDict[line.PropertyCaptureGroup];
