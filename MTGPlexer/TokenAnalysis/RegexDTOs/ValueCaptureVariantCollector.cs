@@ -19,4 +19,3 @@ public class ValueCaptureVariantCollector
             VariantCounts[variant]++;
     }
 }
-

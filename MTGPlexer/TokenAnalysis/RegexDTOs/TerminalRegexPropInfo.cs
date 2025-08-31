@@ -4,14 +4,14 @@ public record TerminalRegexPropPath
 {
     public string TerminalPropName { get; }
     public string PropPathFriendly { get; }
-    public RegexPropType RegexPropType { get; }
+    public RegexPropInfo Prop { get; }
     public string RegexPropTypeNameFriendly { get; }
 
     public TerminalRegexPropPath(RegexPropInfo terminalPropInfo, IEnumerable<string> pathToTerminal)
     {
         TerminalPropName = pathToTerminal.Last();
         PropPathFriendly = string.Join(": ", pathToTerminal.Select(x => x.ToFriendlyCase(TitleDisplayOption.Title)));
-        RegexPropType = terminalPropInfo.RegexPropType;
+        Prop = terminalPropInfo;
         RegexPropTypeNameFriendly = terminalPropInfo.FriendlyTypeName;
     }
 }

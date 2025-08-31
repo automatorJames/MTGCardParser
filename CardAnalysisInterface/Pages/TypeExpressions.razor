@@ -50,24 +50,22 @@
                         var propSet = tokenUnitCapture.RegexPropValueSets[i];
                         var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(i);
                         <div class="property-capture-card"
-                             style="border-color: @propSetPalette.HexDark;"
-                             data-start="@propSet.CaptureGroupPositionStart"
-                             data-end="@propSet.CaptureGroupPositionEnd">
+                        style=@($"border-color: {propSetPalette.HexDark};")
+                        data-start="@propSet.CaptureGroupPositionStart"
+                        data-end="@propSet.CaptureGroupPositionEnd">
                             <div class="prop-card-header" style="color: @propSetPalette.Hex;">
                                 @propSet.TerminalRegexPropPath.PropPathFriendly<br />
                             </div>
                             <div class="prop-card-body">
                                 @foreach (var valueSet in propSet.ValueCaptureCounts.OrderByDescending(x => x.TotalCount))
                                 {
-                                    var validVariants = valueSet.VariantCounts.Keys.Where(x => x.Start >= 0).ToList();
-                                    var variantRangeStart = validVariants.Any() ? validVariants.Min(x => x.Start) : -1;
-                                    var variantRangeEnd = validVariants.Any() ? validVariants.Max(x => x.End) : -1;
-
-                                    <div class="canonical-representation"
-                                         data-start="@variantRangeStart"
-                                         data-end="@variantRangeEnd">
+                                    if (!RuntimeSettings.ShowZeroMatchEnumPropertyCaptures && valueSet.TotalCount == 0)
+                                    {
+                                        continue;
+                                    }
+                                    <div class="canonical-representation">
                                         <span class="canonical-value">@valueSet.CanonicalRepresentation</span>
-                                        <span class="total-count">@valueSet.TotalCount</span>
+                                        <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
                                     </div>
 
                                     @if (valueSet.VariantCounts.Count > 1)
@@ -75,10 +73,8 @@
                                         <div class="variants-sub-table">
                                             @foreach (var variant in valueSet.VariantCounts.OrderByDescending(x => x.Value))
                                             {
-                                                <div class="capture-variant"
-                                                     data-start="@variant.Key.Start"
-                                                     data-end="@variant.Key.End">
-                                                    <span class="variant-value">@variant.Key.Capture</span>
+                                                <div class="capture-variant">
+                                                    <span class="variant-value">@variant.Key</span>
                                                     <span class="variant-count">@variant.Value</span>
                                                 </div>
                                             }

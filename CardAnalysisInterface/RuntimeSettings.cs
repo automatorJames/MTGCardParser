@@ -114,6 +114,21 @@ namespace CardAnalysisInterface
             }
         }
 
+        private bool _showZeroMatchEnumPropertyCaptures;
+        public bool ShowZeroMatchEnumPropertyCaptures
+        {
+            get => _showZeroMatchEnumPropertyCaptures;
+            set
+            {
+                if (_showZeroMatchEnumPropertyCaptures != value)
+                {
+                    _showZeroMatchEnumPropertyCaptures = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         /// <summary>
         /// Loads settings from ProtectedLocalStorage. Should only be called once.
         /// </summary>

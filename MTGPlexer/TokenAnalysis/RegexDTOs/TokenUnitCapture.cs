@@ -24,8 +24,26 @@ public record TokenUnitCapture
                     .Select(x => new ValueCaptureVariantSet(x, RegexString, propPathValSetCollector.Key.TerminalPropName))
                     .ToList();
 
+                // If enum, populate any missing zero-match members
+                if (propPathValSetCollector.Key.Prop.RegexPropType == RegexPropType.Enum)
+                {
+                    var valuesWithCounts = propPathValSetCollector.Value.Keys.ToList();
+
+                    var missingZeroCountEnumValStrings = Enum.GetValues(propPathValSetCollector.Key.Prop.UnderlyingType)
+                        .Cast<object>()
+                        .Select(x => x.ToString().ToFriendlyCase(TitleDisplayOption.Lower))
+                        .Except(valuesWithCounts)
+                        .ToList();
+
+                    foreach (var missingItem in missingZeroCountEnumValStrings)
+                        variantSets.Add(new ValueCaptureVariantSet(missingItem));
+                }
+
                 var (captureGroupStart, captureGroupEnd) = FindNamedCaptureGroupSpan(propPathValSetCollector.Key.TerminalPropName);
-                RegexPropValueSets.Add(new RegexPropValueSet(propPathValSetCollector.Key, captureGroupStart, captureGroupEnd, variantSets));
+                var regexPropValueSet = new RegexPropValueSet(propPathValSetCollector.Key, captureGroupStart, captureGroupEnd, variantSets);
+                RegexPropValueSets.Add(regexPropValueSet);
+
+
             }
         }
 
