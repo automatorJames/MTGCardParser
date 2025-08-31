@@ -87,7 +87,7 @@ public abstract class TokenUnit
     /// </summary>
     public virtual bool ValidateStructure()
     {
-        if (string.IsNullOrEmpty(Template.RenderedRegexString))
+        if (string.IsNullOrEmpty(Template.RegexString))
             return false;
 
         return true;

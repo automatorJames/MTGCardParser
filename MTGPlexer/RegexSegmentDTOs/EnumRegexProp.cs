@@ -22,11 +22,6 @@ public record EnumRegexProp : RegexPropBase
 
         var alternations = GetAlternations();
         RegexString = $@"(?<{regexPropInfo.Name}>{alternations})";
-
-        if (Options.WrapInWordBoundaries)
-            RegexString = $@"\b{RegexString}\b";
-
-        Regex = new Regex(RegexString);
     }
 
     string GetAlternations()
@@ -53,9 +48,6 @@ public record EnumRegexProp : RegexPropBase
                     memberAlternatives[i] = memberAlternatives[i].AddOptionalPluralization();
 
             var memberRenderedString = $@"{string.Join('|', memberAlternatives.OrderByDescending(s => s.Length))}";
-
-            if (Options.WrapInWordBoundaries)
-                memberRenderedString = $@"\b{memberRenderedString}\b";
 
             EnumMemberRegexes[enumValue] = new Regex(memberRenderedString);
             allMemberAlternatives.AddRange(memberAlternatives);

@@ -18,6 +18,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
+    public static Dictionary<Type, bool> TypeShouldWrapInWordBoundaries { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer<Type> ClassTokenizer { get; set; }
@@ -195,7 +196,7 @@ public static partial class TokenTypeRegistry
         // order by descending length, which is a rough approximate of complexity/match length (not exact)
         var unorderedRemainingTypes = allTokenTypes
             .Except(AppliedOrderTypes)
-            .OrderByDescending(x => Templates[x].RenderedRegexString.Length);
+            .OrderByDescending(x => Templates[x].RegexString.Length);
         
         foreach (var type in unorderedRemainingTypes)
             tokenizerBuilder.Match(type);
@@ -210,7 +211,7 @@ public static partial class TokenTypeRegistry
     {
         var tokenizerBuilder = new TokenizerBuilder<Type>();
         tokenizerBuilder.Ignore(Span.Regex(_tokenizerIgnorePattern));
-        tokenizerBuilder.Match(Span.Regex(Templates[typeof(DefaultUnmatchedString)].RenderedRegexString), typeof(DefaultUnmatchedString));
+        tokenizerBuilder.Match(Span.Regex(Templates[typeof(DefaultUnmatchedString)].RegexString), typeof(DefaultUnmatchedString));
         OriginalTextTokenizer = tokenizerBuilder.Build();
     }
 
@@ -219,7 +220,7 @@ public static partial class TokenTypeRegistry
         if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsAssignableTo(typeof(TokenUnitProperty)))
             return tokenizerBuilder;
 
-        tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RenderedRegexString), tokenCaptureType);
+        tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RegexString), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);
 
         return tokenizerBuilder;

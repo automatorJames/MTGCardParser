@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer;
 
 public class RegexTemplate
 {
@@ -8,7 +10,8 @@ public class RegexTemplate
     bool _noSpaces;
     Type _containingType;
 
-    public string RenderedRegexString { get; private set; }
+    public string RegexString { get; private set; }
+    public string RegexStringNoWordBoundaries { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
@@ -55,12 +58,17 @@ public class RegexTemplate
         foreach (var childType in tokenUnitChildPropTypes)
         {
             var template = TokenTypeRegistry.GetTypeTemplate(childType);
-            captureSections.Add(template.RenderedRegexString);
+
+            var groupRegexToAdd = childType.IsDefined(typeof(NoWordBoundaryAttribute)) ? 
+                template.RegexStringNoWordBoundaries 
+                : $@"\b{template.RegexStringNoWordBoundaries}\b";
+
+            captureSections.Add(groupRegexToAdd);
         }
 
         var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(tokenUnitOneOfType);
-        RenderedRegexString = $"({headerComment}{string.Join('|', captureSections)})";
-        Regex = new Regex(RenderedRegexString);
+        RegexString = $"({headerComment}{string.Join('|', captureSections)})";
+        Regex = new Regex(RegexString);
     }
 
     void SetRegex()
@@ -68,7 +76,7 @@ public class RegexTemplate
         if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
         {
             var template = TokenTypeRegistry.GetTypeTemplate(_containingType);
-            RenderedRegexString = template.RenderedRegexString;
+            RegexString = template.RegexString;
             Regex = template.Regex;
         }
             
@@ -77,7 +85,7 @@ public class RegexTemplate
             for (int i = 0; i < RegexSegments.Count; i++)
             {
                 var segment = RegexSegments[i];
-                RenderedRegexString += segment.RegexString;
+                RegexString += segment.RegexString;
 
                 var shouldAddSpace =
                     !_noSpaces
@@ -86,14 +94,24 @@ public class RegexTemplate
                     && !TerminalPunctuation.Contains(segment.RegexString);
 
                 if (shouldAddSpace)
-                    RenderedRegexString += " ";
+                    RegexString += " ";
             }
         }
 
-        if (_containingType.GetCustomAttribute<NoWordBoundaryAttribute>() == null)
-            RenderedRegexString = $@"\b{RenderedRegexString}\b";
+        RegexStringNoWordBoundaries = RegexString;
 
-        Regex = new Regex(RenderedRegexString, RegexOptions.Compiled);
+        if (_containingType.GetCustomAttribute<NoWordBoundaryAttribute>() == null)
+        {
+            // TokenRegexOneOfProps are avoided, because they handle their own boundaries internally
+
+            if (RegexSegments.First() is not TokenRegexOneOfProp)
+                RegexString = $@"\b{RegexString}";
+
+            if (RegexSegments.Last() is not TokenRegexOneOfProp)
+                RegexString = $@"{RegexString}\b";
+        }
+
+        Regex = new Regex(RegexString, RegexOptions.Compiled);
     }
 
     RegexSegmentBase ResolveSnippetToPropOrTextSegment(string templateSnippet)

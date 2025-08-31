@@ -31,7 +31,7 @@ public record DynamicTokenType
                 _referencedTypeNames.Add(type.Name);
 
                 if (type.IsAssignableTo(typeof(TokenUnit)) && TokenTypeRegistry.Templates.TryGetValue(type, out var template))
-                    return template.RenderedRegexString;
+                    return template.RegexString;
 
                 else if (type.IsEnum && TokenTypeRegistry.EnumRegexStrings.TryGetValue(type, out var renderedRegex))
                     return renderedRegex;

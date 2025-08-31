@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
-/// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
+/// Represents a property on a TokenUnit whose property type is also a TokenUnit (i.e. a child TokenUnit). During
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
@@ -15,12 +15,7 @@ public record TokenRegexProp : RegexPropBase
     protected override void SetRegex(RegexPropInfo captureProp)
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-        RegexString = template.RenderedRegexString;
-
-        // Strip word boundaries since the paent of this TokenUnit child will add its own to the fully composited regex string
-        RegexString = RegexString.TrimStartAndEnd(@"\b");
-
-        Regex = template.Regex;
+        RegexString = template.RegexStringNoWordBoundaries;
     }
 
     public override string ToString() => base.ToString();

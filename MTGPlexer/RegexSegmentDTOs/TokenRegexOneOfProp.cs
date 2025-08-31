@@ -7,22 +7,9 @@
 /// </summary>
 public record TokenRegexOneOfProp : RegexPropBase
 {
-    List<TokenRegexProp> _alternativeTokenProps;
-
     public TokenRegexOneOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-
-        _alternativeTokenProps = captureProp.UnderlyingType
-            .GetProps()
-            .Select(x => new RegexPropInfo(x))
-            .Select(y => new TokenRegexProp(y))
-            .ToList();
-
-        var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(captureProp.UnderlyingType);
-
-        RegexString = $"({headerComment}{string.Join('|', _alternativeTokenProps.Select(x => x.RegexString))})";
-        Regex = new Regex(RegexString);
+        RegexString = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType).RegexString;
     }
 
     protected override void SetRegex(RegexPropInfo captureProp)

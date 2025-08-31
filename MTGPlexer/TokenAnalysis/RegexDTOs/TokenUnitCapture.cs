@@ -14,7 +14,7 @@ public record TokenUnitCapture
         Type = type;
         OccurrenceCount = occurrenceCount;
         Palette = TokenTypeRegistry.Palettes[type];
-        RegexString = TokenTypeRegistry.Templates[type].RenderedRegexString;
+        RegexString = TokenTypeRegistry.Templates[type].RegexString;
 
         if (collectors != null)
         {

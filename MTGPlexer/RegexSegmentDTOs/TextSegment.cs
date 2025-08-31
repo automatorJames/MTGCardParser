@@ -11,7 +11,6 @@ public record TextSegment : RegexSegmentBase
     public TextSegment(string pattern)
     {
         RegexString = pattern;
-        Regex = new Regex(RegexString);
     }
 }
 

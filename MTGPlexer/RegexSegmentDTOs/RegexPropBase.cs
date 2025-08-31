@@ -30,8 +30,6 @@ public abstract record RegexPropBase : RegexSegmentBase
             RegexString = $@"(?<{captureProp.Name}>[ ]?{combinedItems}[ ]?)?";
         else
             RegexString = $"(?<{captureProp.Name}>{combinedItems})";
-
-        Regex = new Regex(RegexString);
     }
 
     public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
@@ -97,7 +95,7 @@ public abstract record RegexPropBase : RegexSegmentBase
     TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
-        var regex = TokenTypeRegistry.Templates[parentToken.GetType()].RenderedRegexString;
+        var regex = TokenTypeRegistry.Templates[parentToken.GetType()].RegexString;
         var match = Regex.Match(matchText, regex);
         var matchPropGroup = match.Groups[RegexPropInfo.Name];
 
