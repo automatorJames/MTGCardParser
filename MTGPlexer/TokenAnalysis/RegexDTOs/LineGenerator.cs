@@ -58,13 +58,22 @@ public static class LineGenerator
     private static void ProcessChildren(TraversalState state, RegexGroupFragment group, int indent, bool isTopLevel, List<RegexFragment> childrenOverride = null)
     {
         var children = childrenOverride ?? group.Children;
+
+        // A group's children should have separators if it's the root container,
+        // OR if it's the direct, anonymous container for the whole pattern.
+        bool useSeparators = isTopLevel ||
+                             (group.Type == RegexGroupType.AnonymousCapture && group.Parent.Type == RegexGroupType.Root);
+
         for (int i = 0; i < children.Count; i++)
         {
-            if (isTopLevel && i > 0)
+            if (useSeparators && i > 0)
             {
-                // Add a separator between top-level elements, but not if the element is a group-level alternation,
-                // as that alternation will render its own separators.
-                if (children[i] is not RegexTextFragment { Text: "|" } || children[i].Parent?.Children.Any(c => c is RegexGroupFragment) == false)
+                var prevChild = children[i - 1];
+                var currentChild = children[i];
+
+                // Defer to the GroupAlternation role to provide its own padding around a pipe character.
+                // This prevents adding duplicate separators.
+                if (prevChild is not RegexTextFragment { Text: "|" } && currentChild is not RegexTextFragment { Text: "|" })
                 {
                     AddLine(state, null, "", null, indent, PrettifiedRegexLineRole.Separator);
                 }
@@ -85,11 +94,12 @@ public static class LineGenerator
                 var siblings = text.Parent.Children;
                 int myIndex = siblings.IndexOf(text);
 
-                // An alternation is a "GroupAlternation" if it sits directly between two other groups (typically named captures).
+                // An alternation is a "GroupAlternation" if it sits next to at least one other group.
+                // This distinguishes structural separators from simple enum lists.
                 bool prevIsGroup = myIndex > 0 && siblings[myIndex - 1] is RegexGroupFragment;
                 bool nextIsGroup = myIndex < siblings.Count - 1 && siblings[myIndex + 1] is RegexGroupFragment;
 
-                role = (prevIsGroup && nextIsGroup)
+                role = (prevIsGroup || nextIsGroup)
                     ? PrettifiedRegexLineRole.GroupAlternation
                     : PrettifiedRegexLineRole.Alternation;
                 break;

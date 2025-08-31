@@ -87,7 +87,7 @@ public record PrettifiedRegex
                     lineParts.Add(new() { Left = indent + "|", Comment = "", Type = "", OriginalLine = line });
                     lineParts.Add(new() { Left = "", Comment = "", Type = "", OriginalLine = line with { Role = PrettifiedRegexLineRole.Separator } });
                     break;
-                case PrettifiedRegexLineRole.WordBoundary: lineParts.Add(new() { Left = line.Text, Comment = "word boundary", Type = "", OriginalLine = line }); break;
+                case PrettifiedRegexLineRole.WordBoundary: lineParts.Add(new() { Left = indent + line.Text, Comment = "word boundary", Type = "", OriginalLine = line }); break;
                 case PrettifiedRegexLineRole.ConnectiveMatch: lineParts.Add(new() { Left = indent + PrettifyInternalText(line.Text), Comment = "connective match", Type = "", OriginalLine = line }); break;
                 case PrettifiedRegexLineRole.CaptureGroupStart: lineParts.Add(new() { Left = $"{indent}{line.Text}", Comment = groupName, Type = groupTypes.GetValueOrDefault(groupName, ""), OriginalLine = line }); break;
                 case PrettifiedRegexLineRole.CaptureGroupEnd: lineParts.Add(new() { Left = $"{indent}{line.Text}", Comment = groupName, Type = "", OriginalLine = line }); break;
