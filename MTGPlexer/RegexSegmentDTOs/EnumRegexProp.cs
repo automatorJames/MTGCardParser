@@ -49,7 +49,7 @@ public record EnumRegexProp : RegexPropBase
 
             var memberRenderedString = $@"{string.Join('|', memberAlternatives.OrderByDescending(s => s.Length))}";
 
-            EnumMemberRegexes[enumValue] = new Regex(memberRenderedString);
+            EnumMemberRegexes[enumValue] = new Regex("^" + memberRenderedString + "$");
             allMemberAlternatives.AddRange(memberAlternatives);
         }
 
