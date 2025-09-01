@@ -10,4 +10,7 @@ public record RegexPropValueSet
     int CaptureGroupPositionStart,
     int CaptureGroupPositionEnd,
     List<ValueCaptureVariantSet> ValueCaptureCounts
-);
+)
+{
+    public void SetPrettyRegexCaptureLineAll(PrettifiedRegex prettifiedRegex) => ValueCaptureCounts.ForEach(x => x.SetPrettyRegexCaptureLine(prettifiedRegex));
+}

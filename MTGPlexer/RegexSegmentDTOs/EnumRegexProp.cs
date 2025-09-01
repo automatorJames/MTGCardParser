@@ -37,10 +37,8 @@ public record EnumRegexProp : RegexPropBase
             var regexPatternAttribute = RegexPropInfo.UnderlyingType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
             if (regexPatternAttribute != null)
-                // Add the enum member's specified string[] of patterns
                 memberAlternatives.AddRange(regexPatternAttribute.Patterns);
             else
-                // Otherwise add the normalized enum iteself
                 memberAlternatives.Add(enumAsString.ToFriendlyCase());
 
             if (Options.OptionalPlural)

@@ -37,33 +37,14 @@ public enum Whose
 
 public enum Phase
 {
-    [RegexPattern("upkeep")]
     Upkeep,
-
-    [RegexPattern("draw step")]
     DrawStep,
-
-    [RegexPattern("main phase")]
     MainPhase,
-
-    [RegexPattern("combat phase")]
     CombatPhase,
-
-    [RegexPattern("combat step")]
     CombatStep,
-
-    [RegexPattern("declare attackers step")]
     DeclareAttackersStep,
-
-    [RegexPattern("declare blockers step")]
     DeclareBlockersStep,
-
-    [RegexPattern("damage step")]
     DamageStep,
-
-    [RegexPattern("end step")]
     EndStep,
-
-    [RegexPattern("end of turn")]
     EndOfTurn
 }

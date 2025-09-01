@@ -77,7 +77,7 @@ pre {
     padding: 1rem;
     border-radius: 4px;
     border: 1px solid var(--lowlight-color, var(--outline-grey));
-    white-space: pre-wrap;
+    white-space: pre; /* Use 'pre' instead of 'pre-wrap' to prevent wrapping of the inner spans */
     word-wrap: break-word;
     font-family: 'Courier New', Courier, monospace;
     font-size: 14px;
@@ -86,17 +86,28 @@ pre {
     transition: background-color 0.1s ease-in-out; /* Add transition for hover effect */
 }
 
+/* Each line of regex is a span, to allow for stable transition targets */
+code > .regex-line {
+    display: block;
+    border-radius: 2px;
+}
+
 /* Lighten <pre> on container hover */
 .pre-container:hover pre {
     background-color: #313131; /* A slightly lighter grey */
 }
 
-/* Style for the injected highlight element */
-code .regex-highlight {
-    background-color: #fceb9a;
-    color: #333;
-    border-radius: 3px;
-    padding: 1px 0;
+/* Highlight for hovering a specific value */
+.regex-line.value-highlight {
+    color: var(--dark-grey) !important;
+    /* The background-color is set via an inline style */
+    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+}
+
+/* Highlight for hovering a property card (affects the start/end group lines) */
+.regex-line.group-boundary-highlight {
+    color: white !important;
+    transition: color 0.1s ease-in-out;
 }
 
 /* --- Layout & Style Tweaks --- */

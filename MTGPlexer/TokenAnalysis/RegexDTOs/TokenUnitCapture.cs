@@ -21,7 +21,7 @@ public record TokenUnitCapture
             foreach (var propPathValSetCollector in collectors)
             {
                 var variantSets = propPathValSetCollector.Value.Values
-                    .Select(x => new ValueCaptureVariantSet(x, RegexString, propPathValSetCollector.Key.TerminalPropName))
+                    .Select(x => new ValueCaptureVariantSet(x, propPathValSetCollector.Key.TerminalPropName))
                     .OrderByDescending(x => x.TotalCount)
                     .ToList();
 
@@ -37,7 +37,7 @@ public record TokenUnitCapture
                         .ToList();
 
                     foreach (var missingItem in missingZeroCountEnumValStrings)
-                        variantSets.Add(new ValueCaptureVariantSet(missingItem));
+                        variantSets.Add(new ValueCaptureVariantSet(missingItem, propPathValSetCollector.Key.TerminalPropName));
                 }
 
                 var (captureGroupStart, captureGroupEnd) = FindNamedCaptureGroupSpan(propPathValSetCollector.Key.TerminalPropName);
@@ -47,6 +47,7 @@ public record TokenUnitCapture
         }
 
         PrettifiedRegex = new PrettifiedRegex(RegexString, type);
+        RegexPropValueSets.ForEach(x => x.SetPrettyRegexCaptureLineAll(PrettifiedRegex));
     }
 
     (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)

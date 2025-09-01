@@ -114,7 +114,7 @@ namespace CardAnalysisInterface
             }
         }
 
-        private bool _showZeroMatchEnumPropertyCaptures;
+        private bool _showZeroMatchEnumPropertyCaptures = true;
         public bool ShowZeroMatchEnumPropertyCaptures
         {
             get => _showZeroMatchEnumPropertyCaptures;

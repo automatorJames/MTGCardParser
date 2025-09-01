@@ -18,11 +18,23 @@ public record PrettifiedRegexLine
 
     private static Regex CreateRegex(string pattern)
     {
-        try { return !string.IsNullOrEmpty(pattern) ? new Regex(pattern, RegexOptions.Compiled) : null; }
+        try { return !string.IsNullOrEmpty(pattern) ? new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase) : null; }
         catch { return null; }
     }
 
-    public bool CheckIfMatch(string stringToCheck) => _regex?.IsMatch(stringToCheck) ?? false;
+    public bool CheckIfMatch(string stringToCheck, string propertyCaptureGroup)
+    {
+        var shouldSkip =
+            PropertyCaptureGroup == null
+            || propertyCaptureGroup != PropertyCaptureGroup
+            || Role < PrettifiedRegexLineRole.EnumValue
+            || RegexMatchPattern == "[ ]?"; // This pattern is automatically added to bool TokenUnitTypes
+
+        if (shouldSkip)
+            return false;
+
+        return _regex?.IsMatch(stringToCheck) ?? false;
+    }
 
     public override string ToString() => DisplayText;
 }
@@ -35,12 +47,12 @@ public enum PrettifiedRegexLineRole
     CaptureGroupStart,
     CaptureGroupEnd,
     ConnectiveMatch,
-    EnumValue,
     Alternation,
     GroupAlternation,
     GenericGroupStart,
     GenericGroupEnd,
     TokenUnitOneOfHeader,
     Comment,
+    EnumValue,
     CharacterRange
 }
