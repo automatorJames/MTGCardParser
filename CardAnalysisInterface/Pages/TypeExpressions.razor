@@ -79,8 +79,8 @@
 
                         <span class="regex-line @cssClass" style="@style">@content</span>
                             }
-                                        </code>
-                                    </pre>
+                                                </code>
+                                            </pre>
                 </div>
             }
 
@@ -226,8 +226,9 @@
             {
                 string left = System.Net.WebUtility.HtmlEncode(text.Substring(0, hashColumnIndex));
                 string right = System.Net.WebUtility.HtmlEncode(text.Substring(hashColumnIndex + 1));
+                var hashColor = isInsideHoveredGroup ? "white" : darkGrey;
                 sb.Append($"<span style=\"color:{midGrey};\">{left}</span>");
-                sb.Append($"<span style=\"color:{darkGrey};\">#</span>");
+                sb.Append($"<span style=\"color:{hashColor};\">#</span>");
                 sb.Append($"<span style=\"color:{midGrey};\">{right}</span>");
             }
             else
@@ -247,7 +248,7 @@
 
             if (i == hashColumnIndex && c == '#')
             {
-                nextColor = darkGrey;
+                nextColor = isInsideHoveredGroup ? "white" : darkGrey;
             }
             else
             {

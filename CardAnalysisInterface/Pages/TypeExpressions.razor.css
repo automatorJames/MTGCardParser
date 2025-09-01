@@ -88,7 +88,7 @@ pre {
 
 /* Each line of regex is a span, to allow for stable transition targets */
 code > .regex-line {
-    display: block;
+    display: table; /* Changed from 'block' to make width fit content */
     border-radius: 2px;
 }
 
