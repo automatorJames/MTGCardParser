@@ -22,6 +22,7 @@ public record TokenUnitCapture
             {
                 var variantSets = propPathValSetCollector.Value.Values
                     .Select(x => new ValueCaptureVariantSet(x, RegexString, propPathValSetCollector.Key.TerminalPropName))
+                    .OrderByDescending(x => x.TotalCount)
                     .ToList();
 
                 // If enum, populate any missing zero-match members
@@ -42,8 +43,6 @@ public record TokenUnitCapture
                 var (captureGroupStart, captureGroupEnd) = FindNamedCaptureGroupSpan(propPathValSetCollector.Key.TerminalPropName);
                 var regexPropValueSet = new RegexPropValueSet(propPathValSetCollector.Key, captureGroupStart, captureGroupEnd, variantSets);
                 RegexPropValueSets.Add(regexPropValueSet);
-
-
             }
         }
 

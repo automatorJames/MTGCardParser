@@ -1,4 +1,7 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.DTOs;
+using System.Diagnostics;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// The base class for all TokenUnit properties associated with some Regex pattern, including child TokenUnit properties.
@@ -53,7 +56,6 @@ public abstract record RegexPropBase : RegexSegmentBase
         {
             RegexPropType.Enum => GetEnumMatchValue(subMatchText),
             RegexPropType.Placeholder => new PlaceholderCapture(subMatchText),
-            RegexPropType.Bool => !string.IsNullOrEmpty(subMatchText),
         };
 
         RegexPropInfo.Prop.SetValue(parentToken, valueToSet);
@@ -92,7 +94,7 @@ public abstract record RegexPropBase : RegexSegmentBase
         return null;
     }
 
-    TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
+    protected TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
     {
         var matchText = matchSpanToCheck.ToStringValue();
         var regex = TokenTypeRegistry.Templates[parentToken.GetType()].RegexString;

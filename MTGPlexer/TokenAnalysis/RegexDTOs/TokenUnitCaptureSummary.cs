@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysis.RegexDTOs;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.TokenAnalysis.RegexDTOs;
 
 /// <summary>
 /// A summary of all property values captured for a given set of TokenUnits,
@@ -106,16 +108,6 @@ public record TokenUnitCaptureSummary
                 var tokenUnitOneOfOnlyChild = tokenUnitOneOf.GetSingleNonNullChildToken();
                 currentPropPath.Add(tokenUnitOneOfOnlyChild.ParentTokenProp.Name);
                 FlattenAndCountRecursive(currentPropPath, originalCaptureString, tokenUnitOneOfOnlyChild, tokenUnitOneOfOnlyChild.ParentTokenProp, propValCounts);
-                break;
-
-            case TokenUnitDistilled tokenUnitDistilled:
-                foreach (var placeholderPropItem in tokenUnitDistilled.DistilledValues)
-                {
-                    var terminalPropPath = currentPropPath.Concat([placeholderPropItem.Key.Name]).ToList();
-
-                    foreach (var distilledItem in placeholderPropItem.Value)
-                        IncrementValueCount(propValCounts, terminalPropPath, distilledItem.Key, originalCaptureString, distilledItem.Value.ToString().ToFriendlyCase());
-                }
                 break;
 
             case TokenUnit childTokenUnit:

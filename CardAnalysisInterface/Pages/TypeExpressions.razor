@@ -57,7 +57,7 @@
                                 @propSet.TerminalRegexPropPath.PropPathFriendly<br />
                             </div>
                             <div class="prop-card-body">
-                                @foreach (var valueSet in propSet.ValueCaptureCounts.OrderByDescending(x => x.TotalCount))
+                                @foreach (var valueSet in propSet.ValueCaptureCounts)
                                 {
                                     if (!RuntimeSettings.ShowZeroMatchEnumPropertyCaptures && valueSet.TotalCount == 0)
                                     {

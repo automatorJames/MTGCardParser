@@ -115,9 +115,11 @@ code .regex-highlight {
     border-width: 1px;
     border-style: solid;
     border-radius: 6px;
-    flex: 1 1 300px; /* Grow/shrink from a 300px basis */
-    max-width: 400px; /* Lowered max-width */
-    min-width: 280px;
+    box-sizing: border-box;
+    /* Exactly five cards per row before wrapping */
+    flex: 0 0 calc((100% - (4 * 1rem)) / 5);
+    max-width: none;
+    min-width: 0;
     font-size: 13px;
     cursor: pointer;
     transition: border-color 0.2s ease;
