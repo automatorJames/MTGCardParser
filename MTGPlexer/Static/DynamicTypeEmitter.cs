@@ -228,6 +228,8 @@ public static class DynamicTypeEmitter
                     return _module.ResolveMethod(ReadInt32());
                 case OperandType.InlineField:
                     return _module.ResolveField(ReadInt32());
+                case OperandType.InlineType:
+                    return _module.ResolveType(ReadInt32());
                 case OperandType.ShortInlineI:
                     return (sbyte)_ilBytes[_position++];
                 case OperandType.InlineI:
@@ -287,6 +289,9 @@ public static class DynamicTypeEmitter
                     break;
                 case FieldInfo fi:
                     il.Emit(OpCode, fi);
+                    break;
+                case Type t:
+                    il.Emit(OpCode, t);
                     break;
                 case int i:
                     il.Emit(OpCode, i);

@@ -2,9 +2,9 @@
 
 [NoSpaces]
 [NoWordBoundary]
-public class PowerToughnessModification : TokenUnit
+public class PowerToughnessMod : TokenUnit
 {
-    public PowerToughnessModification() : base(nameof(PowerSign), nameof(PowerValue), "/", nameof(ToughnessSign), nameof(ToughnessValue)) { }
+    public PowerToughnessMod() : base(nameof(PowerSign), nameof(PowerValue), "/", nameof(ToughnessSign), nameof(ToughnessValue)) { }
 
     public PlusMinus PowerSign { get; set; }
     public Quantity PowerValue { get; set; }

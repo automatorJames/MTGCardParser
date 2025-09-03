@@ -7,7 +7,7 @@
 }
 else
 {
-    <TokenTypeName TokenType=@Span.TokenType DataPath=@Span.Path />
+    <TokenTypeName TokenType=@Span.TokenType DataPath=@Span.Path ManyIndex=@(Span.ManyIndex) />
 
     @if (Span.LeavesOrDistilled.Any())
     {

@@ -12,11 +12,17 @@ style=@_palette.ToColorStyle()>
     public Type TokenType { get; set; }
 
     [Parameter]
-    public string DataPath { get; set; } = null;
+    public string DataPath { get; set; }
+
+    [Parameter]
+    public int? ManyIndex { get; set; }
 
     protected override void OnInitialized()
     {
         _palette = TokenTypeRegistry.Palettes[TokenType];
-        _displayName = TokenType.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
+        _displayName = TokenType.Name.Replace("_Many", " (many)").ToFriendlyCase(TitleDisplayOption.Sentence);
+
+        if (ManyIndex.HasValue)
+            _displayName += $" #{ManyIndex.Value + 1}";
     }
 }

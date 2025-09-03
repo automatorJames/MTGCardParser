@@ -8,7 +8,7 @@ public enum Quantity
     [RegexPattern("none", "zero", "0")]
     Zero = 0,
 
-    [RegexPattern("one", "1")]
+    [RegexPattern("one", "a", "1")]
     One = 1,
 
     [RegexPattern("two", "2")]

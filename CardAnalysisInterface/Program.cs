@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MTGPlexer.Data;
+using MTGPlexer.TokenUnits;
 
 namespace CardAnalysisInterface;
 public class Program

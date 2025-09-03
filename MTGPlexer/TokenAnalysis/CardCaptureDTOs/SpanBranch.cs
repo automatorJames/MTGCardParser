@@ -14,9 +14,10 @@ public record SpanBranch : NestedSpan
     public Type TokenType { get; }
     public bool CollapseInAnalysis { get; }
     public string OriginalLineText { get; }
+    public int? ManyIndex { get; }
     public string Text => TokenSpan.ToStringValue().Trim();
 
-    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth, string originalLineText)
+    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth, string originalLineText, int? manyIndex = null)
         : base(
             Path: parentPath.Dot(token.MatchSpan.ToIndexString()).Dot(token.Type.Name),
             NestedDepth: parentDepth + 1,
@@ -32,6 +33,7 @@ public record SpanBranch : NestedSpan
         SetLeavesOrDistilled(token);
         TokenSpan = token.MatchSpan;
         TokenType = token.Type;
+        ManyIndex = manyIndex;
         CollapseInAnalysis = token is TokenUnitOneOf;
     }
 
@@ -68,8 +70,10 @@ public record SpanBranch : NestedSpan
                 var items = ((IEnumerable)dynamicManyToken.Items).Cast<TokenUnit>().ToList();
                 var innerCursor = indexedProp.Start;
 
-                foreach (var itemToken in items)
+                for (int i = 0; i < items.Count; i++)
                 {
+                    TokenUnit itemToken = items[i];
+
                     // Text between items
                     if (itemToken.MatchSpan.Position.Absolute > innerCursor)
                     {
@@ -82,7 +86,7 @@ public record SpanBranch : NestedSpan
                     }
 
                     // The item itself
-                    children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth, OriginalLineText));
+                    children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth, OriginalLineText, i));
                     innerCursor = itemToken.MatchSpan.Position.Absolute + itemToken.MatchSpan.Length;
                 }
 
