@@ -1,7 +1,8 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [NoWordBoundary]
-public class This : TokenUnitProperty
+[TokenUnitProperty]
+public class This : TokenUnit
 {
     public This() : base(@"\{this\}") { }
 }

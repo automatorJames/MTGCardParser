@@ -13,12 +13,12 @@ public static partial class TokenTypeRegistry
     static string _tokenizerIgnorePattern = @"\s+";
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
+    public static Dictionary<Type, string> TokenUnitManyRegexStrings { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
-    public static Dictionary<Type, bool> TypeShouldWrapInWordBoundaries { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer<Type> ClassTokenizer { get; set; }
@@ -41,7 +41,19 @@ public static partial class TokenTypeRegistry
         return Templates[type];
     }
 
-    public static void SetTypeTemplate(Type type)
+    public static string GetTokenUnitManyRegex(Type type)
+    {
+        if (TokenUnitManyRegexStrings.TryGetValue(type, out var result))
+            return result;
+
+        var baseRegex = GetTypeTemplate(type).RegexStringNoCaptureGroups;
+        var manyRegex = $"(?<{type.Name}_Item>{baseRegex})(?:,? (?<{type.Name}_Item>{baseRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{type.Name}_Item>{baseRegex})";
+        TokenUnitManyRegexStrings[type] = manyRegex;
+
+        return manyRegex;
+    }
+
+    static void SetTypeTemplate(Type type)
     {
         Palettes[type] = new(type);
         NameToType[type.Name] = type;
@@ -61,6 +73,7 @@ public static partial class TokenTypeRegistry
         }
 
         Templates[type] = instance.Template;
+        var baseRegex = instance.Template.RegexStringNoWordBoundaries;
         var propCaptureSegments = instance.Template.PropCaptureSegments;
 
         var unregisteredEnums = propCaptureSegments
@@ -217,7 +230,7 @@ public static partial class TokenTypeRegistry
 
     static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
-        if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsAssignableTo(typeof(TokenUnitProperty)))
+        if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsDefined(typeof(TokenUnitPropertyAttribute)))
             return tokenizerBuilder;
 
         tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RegexString), tokenCaptureType);

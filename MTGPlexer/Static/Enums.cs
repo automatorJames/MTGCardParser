@@ -510,3 +510,12 @@ public enum CardPlace
     Graveyard,
     Hand,
 }
+
+public enum PlusMinus
+{
+    [RegexPattern(@"\+")]
+    Plus,
+
+    [RegexPattern("-")]
+    Minus,
+}

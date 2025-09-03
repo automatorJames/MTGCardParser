@@ -4,6 +4,7 @@ public static partial class TokenTypeRegistry
 {
     static List<Type> TypeOrderList =
     [
+        typeof(GainOrLoseBuffs),
         typeof(AtOrUntilPlayerPhase),
         typeof(This),
         typeof(ActivatedAbility),

@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer;
+﻿namespace MTGPlexer;
 
 public class RegexTemplate
 {
@@ -12,6 +10,7 @@ public class RegexTemplate
 
     public string RegexString { get; private set; }
     public string RegexStringNoWordBoundaries { get; private set; }
+    public string RegexStringNoCaptureGroups { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
@@ -68,6 +67,8 @@ public class RegexTemplate
 
         var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(tokenUnitOneOfType);
         RegexString = $"({headerComment}{string.Join('|', captureSections)})";
+        RegexStringNoWordBoundaries = RegexString;
+        RegexStringNoCaptureGroups = StripNamedCaptureGroups(RegexString);
         Regex = new Regex(RegexString);
     }
 
@@ -99,6 +100,7 @@ public class RegexTemplate
         }
 
         RegexStringNoWordBoundaries = RegexString;
+        RegexStringNoCaptureGroups = StripNamedCaptureGroups(RegexString);
 
         if (_containingType.GetCustomAttribute<NoWordBoundaryAttribute>() == null)
         {
@@ -120,6 +122,9 @@ public class RegexTemplate
 
         if (matchingProp is not null)
         {
+            if (matchingProp.IsTokenUnitMany)
+                return new TokenRegexManyProp(matchingProp);
+
             return matchingProp.RegexPropType switch
             {
                 RegexPropType.TokenUnit => new TokenRegexProp(matchingProp),
@@ -134,14 +139,129 @@ public class RegexTemplate
             return new TextSegment(templateSnippet);
     }
 
-    List<RegexPropInfo> GetRegexProps() =>
-         _containingType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-        .Where(p => !p.GetMethod.IsVirtual)
-        .Where(x =>
-            (Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum
-             || x.PropertyType == typeof(bool)
-             || x.PropertyType == typeof(PlaceholderCapture)
-             || x.PropertyType.IsAssignableTo(typeof(TokenUnit)))
-        .Select(x => new RegexPropInfo(x))
-        .ToList();
+    List<RegexPropInfo> GetRegexProps()
+    {
+        static bool IsTarget(Type t)
+        {
+            var u = Nullable.GetUnderlyingType(t) ?? t;
+
+            if (u.IsGenericType && u.GetGenericTypeDefinition() == typeof(TokenUnitMany<>))
+                u = u.GetGenericArguments()[0];
+
+            return u.IsEnum
+                || u == typeof(bool)
+                || u == typeof(PlaceholderCapture)
+                || typeof(TokenUnit).IsAssignableFrom(u);
+        }
+
+        return _containingType
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(p => p.GetMethod is { IsVirtual: false })
+            .Where(p =>
+                IsTarget(p.PropertyType)
+                || (p.PropertyType.IsArray && IsTarget(p.PropertyType.GetElementType()!)))
+            .Select(p => new RegexPropInfo(p))
+            .ToList();
+    }
+
+
+    /// <summary>
+    /// Strips all named capture groups from a regex pattern,
+    /// leaving the inner pattern within a non-named capture group.
+    /// </summary>
+    /// <param name="pattern">The input regex pattern.</param>
+    /// <returns>A new regex pattern with named capture groups removed.</returns>
+    static string StripNamedCaptureGroups(string pattern)
+    {
+        if (string.IsNullOrEmpty(pattern))
+        {
+            return pattern;
+        }
+
+        var result = new StringBuilder();
+        int length = pattern.Length;
+        int index = 0;
+
+        while (index < length)
+        {
+            if (pattern[index] == '(')
+            {
+                // Potential start of a group
+                if (index + 2 < length && pattern[index + 1] == '?' && pattern[index + 2] == '<')
+                {
+                    // This is a named capture group
+                    int groupStartIndex = index;
+                    index += 3; // Move past '(?<'
+
+                    // Find the closing '>' of the name
+                    int nameEndIndex = pattern.IndexOf('>', index);
+                    if (nameEndIndex == -1)
+                    {
+                        // Invalid pattern, append as is and break
+                        result.Append(pattern.Substring(groupStartIndex));
+                        break;
+                    }
+
+                    index = nameEndIndex + 1;
+                    int parenCount = 1;
+                    int contentStartIndex = index;
+
+                    // Find the matching closing parenthesis for the named group
+                    while (index < length && parenCount > 0)
+                    {
+                        if (pattern[index] == '\\' && index + 1 < length)
+                        {
+                            index += 2; // Skip escaped character
+                            continue;
+                        }
+
+                        if (pattern[index] == '(')
+                        {
+                            parenCount++;
+                        }
+                        else if (pattern[index] == ')')
+                        {
+                            parenCount--;
+                        }
+                        index++;
+                    }
+
+                    if (parenCount == 0)
+                    {
+                        // Successfully found the closing parenthesis
+                        string content = pattern.Substring(contentStartIndex, index - 1 - contentStartIndex);
+                        result.Append('(').Append(content).Append(')');
+                    }
+                    else
+                    {
+                        // Unterminated named group, append the original substring and stop
+                        result.Append(pattern.Substring(groupStartIndex));
+                        break;
+                    }
+                }
+                else
+                {
+                    // Not a named capture group, append the parenthesis and continue
+                    result.Append(pattern[index]);
+                    index++;
+                }
+            }
+            else if (pattern[index] == '\\' && index + 1 < length)
+            {
+                // Handle escaped characters
+                result.Append(pattern[index]);
+                result.Append(pattern[index + 1]);
+                index += 2;
+            }
+            else
+            {
+                // Any other character
+                result.Append(pattern[index]);
+                index++;
+            }
+        }
+
+        return result.ToString();
+    }
+
 }

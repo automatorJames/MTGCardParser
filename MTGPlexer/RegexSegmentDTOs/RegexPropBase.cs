@@ -1,7 +1,4 @@
-﻿using MTGPlexer.DTOs;
-using System.Diagnostics;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// The base class for all TokenUnit properties associated with some Regex pattern, including child TokenUnit properties.
@@ -13,6 +10,7 @@ public abstract record RegexPropBase : RegexSegmentBase
     public bool IsBool => RegexPropInfo.RegexPropType == RegexPropType.Bool;
     public bool IsChildTokenUnit => RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
     public bool IsChildTokenUnitOneOf => RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
+    public bool IsChildTokenUnitMany => RegexPropInfo.IsTokenUnitMany;
     
     public RegexPropBase(RegexPropInfo captureProp)
     {
@@ -43,7 +41,6 @@ public abstract record RegexPropBase : RegexSegmentBase
             return SetScalarPropValue(parentToken, matchSpan);       
     }
 
-
     public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
     {
         var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
@@ -66,7 +63,7 @@ public abstract record RegexPropBase : RegexSegmentBase
 
     public bool SetChildTokenUnitValue(TokenUnit parentToken, TextSpan matchSpan)
     {
-        var subMatchSpan = GetPropTypeSubMatch(matchSpan);
+        var subMatchSpan = GetPropSubMatch(matchSpan);
 
         if (subMatchSpan is null)
             return false;
@@ -109,22 +106,32 @@ public abstract record RegexPropBase : RegexSegmentBase
         return new TextSpan(matchSpanToCheck.Source, newPosition, matchPropGroup.Length);
     }
 
-    protected TextSpan? GetPropTypeSubMatch(TextSpan matchSpanToCheck)
+    protected TextSpan? GetPropSubMatch(TextSpan matchSpanToCheck)
     {
         var regex = TokenTypeRegistry.Templates[RegexPropInfo.UnderlyingType].Regex;
         var match = regex.Match(matchSpanToCheck.ToStringValue());
         return GetTextSubSpan(matchSpanToCheck, match);
     }
 
-    TextSpan? GetTextSubSpan(TextSpan originalSpan, Match match)
+    /// <summary>
+    /// Creates a new TextSpan that represents a sub-span within an original span,
+    /// based on the location of a regex capture.
+    /// </summary>
+    /// <param name="originalSpan">The original, larger TextSpan.</param>
+    /// <param name="capture">
+    /// The Capture, Group, or Match object defining the sub-span. 
+    /// If a Match is provided, it must be successful.
+    /// </param>
+    /// <returns>A new TextSpan for the captured substring, or null if the capture is invalid.</returns>
+    protected TextSpan? GetTextSubSpan(TextSpan originalSpan, Capture capture)
     {
-        if (match is null || !match.Success) 
+        if (capture is null || capture is Match match && !match.Success)
             return null;
 
-        var combinedMatchIndex = originalSpan.Position.Absolute + match.Index;
+        var combinedMatchIndex = originalSpan.Position.Absolute + capture.Index;
         var newPosition = new Position(combinedMatchIndex, originalSpan.Position.Line, combinedMatchIndex + 1);
 
-        return new TextSpan(originalSpan.Source, newPosition, match.Length);
+        return new TextSpan(originalSpan.Source, newPosition, capture.Length);
     }
 
     public override string ToString() => base.ToString();

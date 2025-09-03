@@ -3,10 +3,7 @@
 [TokenizationOrder(0)]
 public class AtOrUntilPlayerPhase : TokenUnit
 {
-    public AtOrUntilPlayerPhase() : base (nameof(ActivateOnly), nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase)) { }
-
-    [RegexPattern("activate only")]
-    public bool ActivateOnly { get; set; }
+    public AtOrUntilPlayerPhase() : base (nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase)) { }
 
     public TemporalDisposition TemporalDisposition { get; set; }
     public PhasePart PhasePart { get; set; }
@@ -31,8 +28,12 @@ public enum Whose
 {
     [RegexPattern("your opponent's")]
     YourOpponents,
+
+    [RegexPattern("each player's")]
+    EachPlayers,
+
     Your,
-    Each
+    TheNext
 }
 
 public enum Phase

@@ -1,6 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [NoSpaces]
+[NoWordBoundary]
 [Color("#666666")]
 public class Parenthetical : TokenUnit
 {

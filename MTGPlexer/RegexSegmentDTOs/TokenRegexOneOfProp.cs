@@ -9,18 +9,16 @@ public record TokenRegexOneOfProp : RegexPropBase
 {
     public TokenRegexOneOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        RegexString = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType).RegexString;
     }
 
     protected override void SetRegex(RegexPropInfo captureProp)
     {
-        // Regex already set in constructor
-        // This override prevents the base class overwriting it
+        RegexString = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType).RegexString;
     }
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
-        var subMatchSpan = GetPropTypeSubMatch(matchSpan);
+        var subMatchSpan = GetPropSubMatch(matchSpan);
 
         if (subMatchSpan is null)
             throw new Exception($"No alternative for {nameof(TokenUnitOneOf)} type '{RegexPropInfo.UnderlyingType.Name}' matched '{matchSpan.ToStringValue()}'");
