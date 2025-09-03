@@ -2,7 +2,7 @@
 
 namespace MTGPlexer.BaseClasses;
 
-public class TokenUnitMany<T>
+public class TokenUnitMany<T> : ITokenUnitMany
 {
     public T[] Items { get; set; }
     public Conjunction Conjunction { get; set; }
@@ -20,3 +20,4 @@ public enum Conjunction
     Or
 }
 
+public interface ITokenUnitMany;

@@ -33,16 +33,16 @@ public class RegexTemplate
         SetRegex();
     }
 
-    public RegexTemplate(Type tokenUnitOneOfType)
+    public RegexTemplate(Type type)
     {
-        if (!tokenUnitOneOfType.IsAssignableTo(typeof(TokenUnitOneOf)))
-            throw new Exception($"{tokenUnitOneOfType.Name} isn't derived from {nameof(TokenUnitOneOf)}");
+        if (!type.IsAssignableTo(typeof(TokenUnitOneOf)) && !type.IsAssignableTo(typeof(ITokenUnitMany)))
+            throw new Exception($"{type.Name} must derive from {nameof(TokenUnitOneOf)} or {nameof(TokenUnitMany<object>)}");
 
-        _containingType = tokenUnitOneOfType;
+        _containingType = type;
         RegexPropInfos = GetRegexProps();
         List<string> captureSections = [];
 
-        var tokenUnitChildProps = tokenUnitOneOfType
+        var tokenUnitChildProps = type
             .GetProps()
             .Where(x => x.PropertyType.IsAssignableTo(typeof(TokenUnit)));
 
@@ -54,23 +54,34 @@ public class RegexTemplate
         var tokenUnitChildPropTypes = tokenUnitChildProps
             .Select(x => Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType);
 
-        foreach (var childType in tokenUnitChildPropTypes)
+        if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
         {
-            var template = TokenTypeRegistry.GetTypeTemplate(childType);
+            foreach (var childType in tokenUnitChildPropTypes)
+            {
+                var template = TokenTypeRegistry.GetTypeTemplate(childType);
 
-            var groupRegexToAdd = childType.IsDefined(typeof(NoWordBoundaryAttribute)) ? 
-                template.RegexStringNoWordBoundaries 
-                : $@"\b{template.RegexStringNoWordBoundaries}\b";
+                var groupRegexToAdd = childType.IsDefined(typeof(NoWordBoundaryAttribute)) ? 
+                    template.RegexStringNoWordBoundaries 
+                    : $@"\b{template.RegexStringNoWordBoundaries}\b";
 
-            captureSections.Add(groupRegexToAdd);
+                captureSections.Add(groupRegexToAdd);
+            }
+
+            var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(type);
+            RegexString = $"({headerComment}{string.Join('|', captureSections)})";
+        }
+        else
+        {
+            var genericType = type.GenericTypeArguments[0];
+            var singleRegex = TokenTypeRegistry.GetTypeTemplate(genericType).RegexStringNoCaptureGroups;
+            RegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex})";
         }
 
-        var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(tokenUnitOneOfType);
-        RegexString = $"({headerComment}{string.Join('|', captureSections)})";
         RegexStringNoWordBoundaries = RegexString;
         RegexStringNoCaptureGroups = StripNamedCaptureGroups(RegexString);
         Regex = new Regex(RegexString);
     }
+
 
     void SetRegex()
     {

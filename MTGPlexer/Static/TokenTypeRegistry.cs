@@ -13,7 +13,6 @@ public static partial class TokenTypeRegistry
     static string _tokenizerIgnorePattern = @"\s+";
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
-    public static Dictionary<Type, string> TokenUnitManyRegexStrings { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
@@ -41,29 +40,17 @@ public static partial class TokenTypeRegistry
         return Templates[type];
     }
 
-    public static string GetTokenUnitManyRegex(Type type)
-    {
-        if (TokenUnitManyRegexStrings.TryGetValue(type, out var result))
-            return result;
-
-        var baseRegex = GetTypeTemplate(type).RegexStringNoCaptureGroups;
-        var manyRegex = $"(?<{type.Name}_Item>{baseRegex})(?:,? (?<{type.Name}_Item>{baseRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{type.Name}_Item>{baseRegex})";
-        TokenUnitManyRegexStrings[type] = manyRegex;
-
-        return manyRegex;
-    }
-
     static void SetTypeTemplate(Type type)
     {
         Palettes[type] = new(type);
         NameToType[type.Name] = type;
 
-        if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
+        if (type.IsAssignableTo(typeof(TokenUnitOneOf)) || type.IsAssignableTo(typeof(ITokenUnitMany)))
         {
             Templates[type] = new(type);
             return;
         }
-
+        
         var instance = (TokenUnit)Activator.CreateInstance(type);
 
         if (!instance.ValidateStructure())

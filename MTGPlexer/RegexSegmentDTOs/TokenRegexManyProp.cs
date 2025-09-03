@@ -39,9 +39,9 @@ public record TokenRegexManyProp : RegexPropBase
 
     protected override void SetRegex(RegexPropInfo captureProp)
     {
-        var multiRegexString = TokenTypeRegistry.GetTokenUnitManyRegex(captureProp.BaseType);
-        _multiRegex = new(multiRegexString);
-        RegexString = $"((?# {captureProp.Name}){multiRegexString})";
+        var multiTemplate = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+        _multiRegex = multiTemplate.Regex;
+        RegexString = $"((?# {captureProp.Name}){multiTemplate.RegexStringNoCaptureGroups})";
     }
 
     public override string ToString() => base.ToString();
