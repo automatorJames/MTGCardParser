@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Diagnostics;
-
-namespace MTGPlexer.BaseClasses;
+﻿namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {

@@ -6,7 +6,7 @@ public class GainOrLoseBuffs : TokenUnit
     {
     }
 
-    public TokenUnitMany<GainedOrLostBuff> GainedOrLostBuffs { get; set; }
+    public TokenUnitMany<Buff> GainedOrLostBuffs { get; set; }
 }
 
  

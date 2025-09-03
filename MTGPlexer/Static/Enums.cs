@@ -2,6 +2,9 @@
 
 public enum Quantity
 {
+    [RegexPattern("x")]
+    X = -1,
+
     [RegexPattern("none", "zero", "0")]
     Zero = 0,
 
@@ -33,7 +36,13 @@ public enum Quantity
     Nine = 9,
 
     [RegexPattern("ten", "10")]
-    Ten = 10
+    Ten = 10,
+
+    [RegexPattern("eleven", "11")]
+    Eleven = 11,
+
+    [RegexPattern("twelve", "12")]
+    Twelve = 12
 }
 
 public enum CardType

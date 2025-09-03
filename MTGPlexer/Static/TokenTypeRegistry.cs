@@ -18,6 +18,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
+    public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer<Type> ClassTokenizer { get; set; }
@@ -25,6 +26,8 @@ public static partial class TokenTypeRegistry
 
     static TokenTypeRegistry()
     {
+        InitializeEmitedManyTypes();
+
         foreach (var type in GetAllTokenTypes())
             SetTypeTemplate(type);
 
@@ -154,6 +157,24 @@ public static partial class TokenTypeRegistry
         .Concat(_dynamicAssemblyTypes)
         .ToList();
 
+    static void InitializeEmitedManyTypes()
+    {
+        //var typesContainingOptionalManyProps = GetAllTokenTypes()
+        //    .Select(x => new { type = x, manyProps = x.GetProps().Where(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))) })
+        //    .Where(x => x.manyProps.Any())
+        //    .ToDictionary(x => x.type, x => x.manyProps);
+
+        var typesContainingManyProps = GetAllTokenTypes()
+            .Where(x => x.GetProps().Any(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))));
+
+        foreach (var type in typesContainingManyProps)
+        {
+            var emittedType = DynamicTypeEmitter.EmitManyType(type);
+            EmitedOptionalManyTypes[type] = emittedType;
+            SetTypeTemplate(emittedType);
+        }
+    }
+
     static void InitializeClassTokenizer()
     {
         // Reset applied orders, since the order may change during runtime
@@ -166,40 +187,42 @@ public static partial class TokenTypeRegistry
         tokenizerBuilder.Ignore(Span.Regex(_tokenizerIgnorePattern));
 
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
-        // Each dictionary entry is a List, though each List should normally only have one item.
-        Dictionary<int, List<Type>> _definedOrderTypes =
+        // each dictionary entry is a List, though each List should ideally only have one item.
+        // An entry List may have multiple items if they each profess the same position.
+        Dictionary<int, List<Type>> orderedTypes =
             allTokenTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
             .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
             .ToDictionary(x => x.Key, x => x.ToList());
         
         // Ensure types aren't represented twice, once in the static list, and once in the attribute-having list
-        var typeOrderedItems = TypeOrderList.Except(_definedOrderTypes.SelectMany(x => x.Value)).ToList();
-        
-        // Ensure our range spans the entirety of both ordered sources
-        var minPosition = Math.Min(0, _definedOrderTypes.Keys.Min());
-        var maxPosition = Math.Max(typeOrderedItems.Count - 1, _definedOrderTypes.Keys.Max());
-        
-        // Ensure we handle (in order) all attribute defined order types, listed ordered types, and all other types
-        for (int i = minPosition; i <= maxPosition; i++)
-        {
-            // handle defined attribute order first
-            // since any key can have N items defined, process all N
-            if (_definedOrderTypes.ContainsKey(i))
-                _definedOrderTypes[i].ForEach(x => tokenizerBuilder.Match(x));
-        
-            // handle static listed types next (might be at the same index
-            if (i >= 0 && i < typeOrderedItems.Count)
-                tokenizerBuilder.Match(typeOrderedItems[i]);
-        }
-        
-        // handle all remaining types (i.e. those the user didn't bother to define anywhere)
-        // order by descending length, which is a rough approximate of complexity/match length (not exact)
+        var typeOrderedItems = TypeOrderList
+            .Except(orderedTypes
+            .SelectMany(x => x.Value))
+            .Select((type, idx) => (type, idx))
+            .ToList();
+
+        // Add types defined in the static TypeOrderList next.
+        // Here, "idx" refers to the 0-based order of appearance in TypeOrderList,
+        // which of course might be the same value as a defined order type above.
+        // This means defined order type position takes precedence over TypeOrderList position.
+        typeOrderedItems.ForEach(x => { if (!orderedTypes.TryAdd(x.idx, [x.type])) orderedTypes[x.idx].Add(x.type); });
+
+        // Add all remaining types (i.e. those the user didn't bother to define anywhere).
+        // Order by descending length, which is a rough approximate of complexity/match length (not exact)
         var unorderedRemainingTypes = allTokenTypes
             .Except(AppliedOrderTypes)
-            .OrderByDescending(x => Templates[x].RegexString.Length);
-        
-        foreach (var type in unorderedRemainingTypes)
-            tokenizerBuilder.Match(type);
+            .OrderByDescending(x => Templates[x].RegexString.Length)
+            .ToList();
+
+        var nextKey = orderedTypes.Keys.Max() + 1;
+        orderedTypes[nextKey] = unorderedRemainingTypes;
+
+        List<Type> flattenedOrderedTypes = orderedTypes
+            .OrderBy(x => x.Key)
+            .SelectMany(x => x.Value)
+            .ToList();
+
+        flattenedOrderedTypes.ForEach(x => tokenizerBuilder.Match(x));
 
         // Catch anything else with the default string pattern
         tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
@@ -219,6 +242,14 @@ public static partial class TokenTypeRegistry
     {
         if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsDefined(typeof(TokenUnitPropertyAttribute)))
             return tokenizerBuilder;
+
+        if (EmitedOptionalManyTypes.TryGetValue(tokenCaptureType, out Type multiVersionType))
+        {
+            // If the tokenCaptureType emitted an optional many type version of itself, add that one first.
+            // We do this so that the more specific many-item version of the token is not preempted by the
+            // less-specific single version during tokenization.
+            tokenizerBuilder.Match(multiVersionType);
+        }
 
         tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RegexString), tokenCaptureType);
         AppliedOrderTypes.Add(tokenCaptureType);

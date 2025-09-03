@@ -75,6 +75,8 @@ public class RegexTemplate
             var genericType = type.GenericTypeArguments[0];
             var singleRegex = TokenTypeRegistry.GetTypeTemplate(genericType).RegexStringNoCaptureGroups;
             RegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex})";
+
+            var altRegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex}))?";
         }
 
         RegexStringNoWordBoundaries = RegexString;
