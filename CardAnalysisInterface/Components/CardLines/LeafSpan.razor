@@ -1,17 +1,13 @@
 ﻿<span class=@_class
 style=@_style
 data-path=@_dataPath>
-    @FormatText(Leaf.Text)
+    @Leaf.Text
 </span>
-
 
 @code {
 
     [Parameter, EditorRequired]
     public SpanLeaf Leaf { get; set; } = default!;
-
-    [Parameter]
-    public bool Capitalize { get; set; }
 
     string _class => 
         Leaf.IgnoreInAnalysis ? "" 
@@ -19,14 +15,6 @@ data-path=@_dataPath>
 
     string _style => GetStyle();
     string _dataPath => Leaf.IgnoreInAnalysis ? "" : Leaf.Path;
-
-    string FormatText(string text)
-    {
-        if (Capitalize)
-            return text.CapitalizeFirstWord();
-
-        return text;
-    }
 
     string GetStyle()
     {

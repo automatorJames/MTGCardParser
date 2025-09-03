@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-public class CounterOnCard :TokenUnit
+public class CounterOnCard : TokenUnit
 {
     public CounterOnCard() : base(nameof(CounterType), "counter") { }
 

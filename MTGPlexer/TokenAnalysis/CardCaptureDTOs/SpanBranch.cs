@@ -1,6 +1,4 @@
-﻿using MTGPlexer.BaseClasses;
-using System.Collections;
-using System.Reflection;
+﻿using System.Collections;
 
 namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
 
@@ -15,15 +13,17 @@ public record SpanBranch : NestedSpan
     public TextSpan TokenSpan { get; }
     public Type TokenType { get; }
     public bool CollapseInAnalysis { get; }
+    public string OriginalLineText { get; }
     public string Text => TokenSpan.ToStringValue().Trim();
 
-    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth)
+    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth, string originalLineText)
         : base(
             Path: parentPath.Dot(token.MatchSpan.ToIndexString()).Dot(token.Type.Name),
             NestedDepth: parentDepth + 1,
             Palette: TokenTypeRegistry.Palettes[token.Type],
             IgnoreInAnalysis: token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
     {
+        OriginalLineText = originalLineText;
         CardName = cardName;
         DisplayName = token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         Children = DigestChildren(token);
@@ -41,7 +41,7 @@ public record SpanBranch : NestedSpan
         var parentSpanEnd = parentSpan.Position.Absolute + parentSpan.Length;
 
         if (!token.IndexedPropertyCaptures.Any())
-            return [new SpanTwig(token, Path, NestedDepth, token.MatchSpan.ToStringValue().Trim())];
+            return [new SpanTwig(token, Path, NestedDepth, OriginalLineText.Substring(token.MatchSpan.Position.Absolute, token.MatchSpan.Length).Replace(Card.ThisToken, CardName))];
 
         List<NestedSpan> children = [];
         int cursor = parentSpan.Position.Absolute;
@@ -53,7 +53,9 @@ public record SpanBranch : NestedSpan
             {
                 var snippetStart = cursor - parentSpan.Position.Absolute;
                 var snippetLength = indexedProp.Start - cursor;
-                var precedingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+                var precedingText = OriginalLineText.Substring(snippetStart + parentSpan.Position.Absolute, snippetLength);
+                var precedingTextOrig = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+
                 if (!string.IsNullOrWhiteSpace(precedingText))
                     children.Add(new SpanTwig(token, Path, NestedDepth, precedingText.Trim()));
             }
@@ -73,15 +75,14 @@ public record SpanBranch : NestedSpan
                     {
                         var snippetStart = innerCursor - parentSpan.Position.Absolute;
                         var snippetLength = itemToken.MatchSpan.Position.Absolute - innerCursor;
-                        var textBetween = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+                        var textBetween = OriginalLineText.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
+
                         if (!string.IsNullOrWhiteSpace(textBetween))
-                        {
                             children.Add(new SpanTwig(token, Path, NestedDepth, textBetween.Trim()));
-                        }
                     }
 
                     // The item itself
-                    children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth));
+                    children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth, OriginalLineText));
                     innerCursor = itemToken.MatchSpan.Position.Absolute + itemToken.MatchSpan.Length;
                 }
 
@@ -90,21 +91,16 @@ public record SpanBranch : NestedSpan
                 {
                     var snippetStart = innerCursor - parentSpan.Position.Absolute;
                     var snippetLength = indexedProp.End - innerCursor;
-                    var textAfter = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+                    var textAfter = OriginalLineText.Substring(snippetStart, snippetLength);
+
                     if (!string.IsNullOrWhiteSpace(textAfter))
-                    {
                         children.Add(new SpanTwig(token, Path, NestedDepth, textAfter.Trim()));
-                    }
                 }
             }
             else if (indexedProp.Value is TokenUnit childToken)
-            {
-                children.Add(new SpanBranch(childToken, CardName, Path.Dot(childToken.Type.Name), NestedDepth));
-            }
+                children.Add(new SpanBranch(childToken, CardName, Path.Dot(childToken.Type.Name), NestedDepth, OriginalLineText));
             else
-            {
-                children.Add(new SpanLeaf(indexedProp, Path.Dot(indexedProp.RegexPropInfo.Name), NestedDepth));
-            }
+                children.Add(new SpanLeaf(indexedProp, Path.Dot(indexedProp.RegexPropInfo.Name), NestedDepth, OriginalLineText, CardName));
 
             // 3. Advance cursor to the end of the current capture.
             cursor = indexedProp.End;
@@ -115,7 +111,7 @@ public record SpanBranch : NestedSpan
         {
             var snippetStart = cursor - parentSpan.Position.Absolute;
             var snippetLength = parentSpanEnd - cursor;
-            var trailingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+            var trailingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
             if (!string.IsNullOrWhiteSpace(trailingText))
             {
                 children.Add(new SpanTwig(token, Path, NestedDepth, trailingText.Trim()));
@@ -151,8 +147,10 @@ public record SpanBranch : NestedSpan
 
                 generatedLeaves.Add(new SpanLeaf(
                     PropertyCapture: conjunctionCapture,
-                    Path: Path.Dot(indexedProp.RegexPropInfo.Name).Dot("Conjunction"),
-                    NestedDepth: NestedDepth + 1
+                    Path: Path.Dot(indexedProp.RegexPropInfo.Name).Dot(nameof(Conjunction)),
+                    NestedDepth: NestedDepth + 1,
+                    OriginalLineText,
+                    CardName
                 ));
             }
             else
@@ -161,7 +159,9 @@ public record SpanBranch : NestedSpan
                 generatedLeaves.Add(new SpanLeaf(
                     PropertyCapture: indexedProp,
                     Path: Path.Dot(indexedProp.RegexPropInfo.Name),
-                    NestedDepth: NestedDepth + 1
+                    NestedDepth: NestedDepth + 1,
+                    OriginalLineText,
+                    CardName
                 ));
             }
         }

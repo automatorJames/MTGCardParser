@@ -8,31 +8,13 @@
 
     @foreach (var line in Card.Lines)
     {
-        _capitalizeNextSpan = true;
         <div class="line-capture-block match-boundary">
             <div class="line-label dashed-border">Line #@(line.LineIndex + 1)</div>
 
             <pre class="nested-underline-container" @onclick=@(() => OpenRegexEditorDialog(line))>
                 @foreach (var root in line.SpanRoots)
                 {
-                    @if (root.AttachedPrecedingText != null)
-                    {
-                        <precedingtext>@root.AttachedPrecedingText</precedingtext>
-                    }
-
-                    <NestedSpanRecursive Span=@root Capitalize=@_capitalizeNextSpan />
-                    _capitalizeNextSpan = false;
-
-                    @if (root.AttachedFollowingText != null)
-                    {
-                        <followingtext>@root.AttachedFollowingText</followingtext>
-
-                        if (_terminals.Contains(root.AttachedFollowingText))
-                        {
-                            <br />
-                            _capitalizeNextSpan = true;
-                        }
-                    }
+                    <NestedSpanRecursive Span=@root />
                 }
             </pre>
 
@@ -50,7 +32,6 @@
 }
 
 @code {
-    bool _capitalizeNextSpan;
     bool _showOriginalText = false;
     bool _isDialogOpen = false;
     ProcessedLine _selectedLine;

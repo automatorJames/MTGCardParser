@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[FollowsToken]
 [IgnoreInAnalysis]
 [NoWordBoundary]
 [Color("#999999")]

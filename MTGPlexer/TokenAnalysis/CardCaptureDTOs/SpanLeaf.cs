@@ -4,9 +4,17 @@ public record SpanLeaf
 (
     IndexedPropertyCapture PropertyCapture,
     string Path,
-    int NestedDepth
+    int NestedDepth,
+    string OriginalLineText,
+    string CardName
 ) 
-: SpanTerminal(Path, NestedDepth, PropertyCapture.Span.ToStringValue().Trim(), PropertyCapture.Palette, PropertyCapture.IgnoreInAnalysis)
+: SpanTerminal(
+    Path, 
+    NestedDepth, 
+    OriginalLineText.Substring(PropertyCapture.Start, PropertyCapture.Length).Replace(Card.ThisToken, CardName), 
+    PropertyCapture.Palette, 
+    PropertyCapture.IgnoreInAnalysis
+)
 {
     public override string ToString() => PropertyCapture.Span.ToStringValue();
 }

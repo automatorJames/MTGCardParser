@@ -18,13 +18,12 @@ else
             {
                 if (terminal is SpanLeaf leaf)
                 {
-                    <LeafSpan Leaf=@leaf Capitalize=@Capitalize />
-                    Capitalize = false;
+                    <LeafSpan Leaf=@leaf />
                 }
                 else if (terminal is SpanTwig twig)
                 {
                     <span class=@_twigClass>
-                        @FormatText(twig.Text)
+                        @twig.Text
                     </span>
                 }
             }
@@ -38,24 +37,8 @@ else
     [Parameter, EditorRequired]
     public SpanBranch Span { get; set; } = default!;
 
-    [Parameter]
-    public bool Capitalize { get; set; }
-
     string _class => Span.IgnoreInAnalysis ? "analysis-ignored-span" : "nested-underline";
     string _twigClass => Span.IgnoreInAnalysis ? "" : "twig";
     string _style => Span.IgnoreInAnalysis ? "" : Span.Palette.ToColorStyle();
     string _dataPath => Span.IgnoreInAnalysis ? "" : Span.Path;
-
-    string FormatText(string text)
-    {
-        text = text.Replace("{this}", Span.CardName);
-
-        if (Capitalize)
-        {
-            Capitalize = false;
-            return text.CapitalizeFirstWord();
-        }
-
-        return text;
-    }
 }

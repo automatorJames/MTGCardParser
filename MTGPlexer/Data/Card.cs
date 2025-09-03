@@ -18,30 +18,42 @@ public class Card
     public string SetCode { get; set; }
     public int SetSequence { get; set; }
 
-    string[] _cleanedLines; 
-    public string[] CleanedLines
+    string[] _formattedLines;
+    public string[] FormattedLines
     {
         get
         {
-            if (_cleanedLines is null)
-                _cleanedLines = GetCleanedLines();
+            if (_formattedLines is null)
+                _formattedLines = GetFormattedLines();
 
-            return _cleanedLines;
+            return _formattedLines;
         }
     }
 
-    string[] GetCleanedLines()
+    string[] _formattedLinesLower;
+    public string[] FormattedLinesLower
+    {
+        get
+        {
+            if (_formattedLinesLower is null)
+                _formattedLinesLower = FormattedLines.Select(x => x.ToLower()).ToArray();
+
+            return _formattedLinesLower;
+        }
+    }
+
+    string[] GetFormattedLines()
     {
         if (Text is null)
             return [];
 
         var text = Text;
         text = text.Replace(Name, ThisToken);
-        text = text.ToLower();
-        var lines = text.Split('\n');
+        var lines = text.Split('\n').Select(x => x.Trim()).ToArray();
 
         return lines;
     }
+
 
     public override string ToString() => Name;
 }

@@ -19,14 +19,14 @@
                         {
                             if (match.Index > cursor)
                             {
-                                @Line.SourceText.Substring(cursor, match.Index - cursor)
+                                @Line.EvaluatedText.Substring(cursor, match.Index - cursor)
                             }
                             <span class="highlight-token">@match.Value</span>
                             cursor = match.Index + match.Length;
                         }
-                        if (cursor < Line.SourceText.Length)
+                        if (cursor < Line.EvaluatedText.Length)
                         {
-                            @Line.SourceText.Substring(cursor)
+                            @Line.EvaluatedText.Substring(cursor)
                         }
                     }
                     <div class="text-layer-front">
@@ -36,16 +36,16 @@
                             {
                                 if (token.Span.Position.Absolute > cursor)
                                 {
-                                    @Line.SourceText.Substring(cursor, token.Span.Position.Absolute - cursor)
+                                    @Line.EvaluatedText.Substring(cursor, token.Span.Position.Absolute - cursor)
                                 }
-                                var tokenText = Line.SourceText.Substring(token.Span.Position.Absolute, token.Span.Length);
+                                var tokenText = Line.EvaluatedText.Substring(token.Span.Position.Absolute, token.Span.Length);
                                 var color = token.Kind == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.Palettes[token.Kind].HexLight;
                                 <span style=@($"color: {color}")>@tokenText</span>
                                 cursor = token.Span.Position.Absolute + token.Span.Length;
                             }
-                            if (cursor < Line.SourceText.Length)
+                            if (cursor < Line.EvaluatedText.Length)
                             {
-                                @Line.SourceText.Substring(cursor)
+                                @Line.EvaluatedText.Substring(cursor)
                             }
                         }
                     </div>

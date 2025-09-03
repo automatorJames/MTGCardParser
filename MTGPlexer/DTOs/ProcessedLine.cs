@@ -9,12 +9,11 @@ public record ProcessedLine
 {
     public Card Card { get; init; }
     public int LineIndex { get; init; }
-    public string SourceText { get; init; }
+    public string EvaluatedText { get; init; }
     public List<Token<Type>> SourceTokens { get; init; }
 
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.
-    /// This is the property you need for your other downstream code.
     /// </summary>
     public List<SpanRoot> SpanRoots { get; init; }
 

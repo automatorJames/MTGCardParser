@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.RegexDTOs;
-
-namespace MTGPlexer.TokenAnalysis;
+﻿namespace MTGPlexer.TokenAnalysis;
 
 /// <summary>
 /// A consolidated processor that tokenizes a corpus of cards and produces a complete
@@ -55,21 +53,21 @@ public class CorpusAnalyzer
         foreach (var card in cards)
         {
             var processedLines = new List<ProcessedLine>();
-            for (int i = 0; i < card.CleanedLines.Length; i++)
+            for (int i = 0; i < card.FormattedLinesLower.Length; i++)
             {
-                var lineText = card.CleanedLines[i];
+                var lineText = card.FormattedLinesLower[i];
                 if (string.IsNullOrWhiteSpace(lineText)) continue;
 
                 var tokens = TokenTypeRegistry.TokenizeAndCoallesceUnmatched(lineText, originalTextOnly);
 
                 // This single method call performs both analyses for the line.
-                (var spanRoots, var spanOccurrences) = HydrateAndAnalyzeLine(card.Name, tokens, i);
+                (var spanRoots, var spanOccurrences) = HydrateAndAnalyzeLine(card, tokens, i);
 
                 processedLines.Add(new ProcessedLine
                 {
                     Card = card,
                     LineIndex = i,
-                    SourceText = lineText,
+                    EvaluatedText = lineText,
                     SourceTokens = tokens,
                     SpanRoots = spanRoots,
                     SpanOccurrences = spanOccurrences
@@ -96,7 +94,7 @@ public class CorpusAnalyzer
     /// <summary>
     /// Process a list of tokens for a single line to derive SpanRoot hierarchies and SpanOccurrence records.
     /// </summary>
-    (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) HydrateAndAnalyzeLine(string cardName, List<Token<Type>> tokens, int lineIndex)
+    (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) HydrateAndAnalyzeLine(Card card, List<Token<Type>> tokens, int lineIndex)
     {
         var roots = new List<SpanRoot>();
         var occurrences = new List<SpanOccurrence>();
@@ -113,42 +111,14 @@ public class CorpusAnalyzer
             // --- Analysis #1: Check for and record unmatched tokens ---
             // Create a new occurrence, giving it the context of the entire line's tokens.
             if (token.Kind == typeof(DefaultUnmatchedString))
-                occurrences.Add(new SpanOccurrence(cardName, lineIndex, tokens, i));
+                occurrences.Add(new SpanOccurrence(card.Name, lineIndex, tokens, i));
 
             // --- Analysis #2: Build the SpanRoot hierarchy from the hydrated token ---
-            var root = new SpanRoot(hydratedTokenUnit, cardName, textToPrecedeNext);
+            var root = new SpanRoot(hydratedTokenUnit, card.Name, card.FormattedLines[lineIndex]);
             textToPrecedeNext = null;
-
-            if (root.Placement == TokenPlacement.FollowsPrevious)
-                AttachRootTextToPreviousOrNext(root, isNext: false);
-            else if (root.Placement == TokenPlacement.PrecedesNext)
-                AttachRootTextToPreviousOrNext(root, isNext: true);
-            else if (root.Placement == TokenPlacement.AlternatesFollowingAndPreceding)
-            {
-                enclosingTokenCountPerType.TryGetValue(hydratedTokenUnit.Type, out var currentCount);
-                enclosingTokenCountPerType[hydratedTokenUnit.Type] = currentCount + 1;
-                var isNext = (currentCount + 1) % 2 != 0;
-                AttachRootTextToPreviousOrNext(root, isNext: isNext);
-            }
-            else
-                roots.Add(root);
+            roots.Add(root);
         }
 
         return (roots, occurrences);
-
-        // Local helper for attaching text
-        void AttachRootTextToPreviousOrNext(SpanBranch spanWithTextToAttach, bool isNext)
-        {
-            if (!isNext && !roots.Any())
-                return;
-
-            if (isNext)
-                textToPrecedeNext = (textToPrecedeNext ?? "") + spanWithTextToAttach.Text;
-            else
-            {
-                var appendedText = (roots[^1].AttachedFollowingText ?? "") + spanWithTextToAttach.Text;
-                roots[^1] = roots[^1] with { AttachedFollowingText = appendedText };
-            }
-        }
     }
 }
