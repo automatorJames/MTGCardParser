@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
-public record SpanRoot: SpanBranch
+
+public record SpanRoot : SpanBranch
 {
     public TokenUnit RootToken { get; }
     public TokenPlacement Placement { get; }

@@ -35,8 +35,8 @@ public class RegexTemplate
 
     public RegexTemplate(Type type)
     {
-        if (!type.IsAssignableTo(typeof(TokenUnitOneOf)) && !type.IsAssignableTo(typeof(ITokenUnitMany)))
-            throw new Exception($"{type.Name} must derive from {nameof(TokenUnitOneOf)} or {nameof(TokenUnitMany<object>)}");
+        if (!type.IsAssignableTo(typeof(TokenUnitOneOf)) && !type.IsAssignableTo(typeof(ManyToken)))
+            throw new Exception($"{type.Name} must derive from {nameof(TokenUnitOneOf)} or ManyToken");
 
         _containingType = type;
         RegexPropInfos = GetRegexProps();
@@ -135,7 +135,7 @@ public class RegexTemplate
 
         if (matchingProp is not null)
         {
-            if (matchingProp.IsTokenUnitMany)
+            if (matchingProp.IsManyItem)
                 return new TokenRegexManyProp(matchingProp);
 
             return matchingProp.RegexPropType switch
@@ -158,7 +158,7 @@ public class RegexTemplate
         {
             var u = Nullable.GetUnderlyingType(t) ?? t;
 
-            if (u.IsGenericType && u.GetGenericTypeDefinition() == typeof(TokenUnitMany<>))
+            if (u.IsGenericType && u.GetGenericTypeDefinition() == typeof(ManyToken<>))
                 u = u.GetGenericArguments()[0];
 
             return u.IsEnum

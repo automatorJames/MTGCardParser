@@ -1,4 +1,8 @@
-﻿namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
+﻿using MTGPlexer.BaseClasses;
+using System.Collections;
+using System.Reflection;
+
+namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
 
 public record SpanBranch : NestedSpan
 {
@@ -13,11 +17,11 @@ public record SpanBranch : NestedSpan
     public bool CollapseInAnalysis { get; }
     public string Text => TokenSpan.ToStringValue().Trim();
 
-    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth) 
+    public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth)
         : base(
             Path: parentPath.Dot(token.MatchSpan.ToIndexString()).Dot(token.Type.Name),
-            NestedDepth: parentDepth + 1, 
-            Palette: TokenTypeRegistry.Palettes[token.Type], 
+            NestedDepth: parentDepth + 1,
+            Palette: TokenTypeRegistry.Palettes[token.Type],
             IgnoreInAnalysis: token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
     {
         CardName = cardName;
@@ -31,88 +35,165 @@ public record SpanBranch : NestedSpan
         CollapseInAnalysis = token is TokenUnitOneOf;
     }
 
-    List<NestedSpan> DigestChildren(TokenUnit token)
+    private List<NestedSpan> DigestChildren(TokenUnit token)
     {
         var parentSpan = token.MatchSpan;
         var parentSpanEnd = parentSpan.Position.Absolute + parentSpan.Length;
 
-        // If there are no children, this is a leaf node.
-        // We treat its entire content as a single TextUnit.
         if (!token.IndexedPropertyCaptures.Any())
             return [new SpanTwig(token, Path, NestedDepth, token.MatchSpan.ToStringValue().Trim())];
 
-        // If there are children, dissect the parent's text.
         List<NestedSpan> children = [];
-
-        // Cursor to follow current absolute position within parent span
         int cursor = parentSpan.Position.Absolute;
 
         foreach (var indexedProp in token.IndexedPropertyCaptures)
         {
-            // Create a preceding snippet for any text between the cursor and the start of this child (i.e.
-            // plain text from the parent that will display occur preceding this child)
+            // 1. Add a twig for any text between the last capture and this one.
             if (indexedProp.Start > cursor)
             {
                 var snippetStart = cursor - parentSpan.Position.Absolute;
                 var snippetLength = indexedProp.Start - cursor;
                 var precedingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
-
-                if (precedingText != " ")
+                if (!string.IsNullOrWhiteSpace(precedingText))
                     children.Add(new SpanTwig(token, Path, NestedDepth, precedingText.Trim()));
-
-                cursor += precedingText.Length;
             }
 
-            // Child TokenUnits get digested recursively
-            if (indexedProp.Value is TokenUnit childToken)
+            // 2. Process the actual property capture.
+            if (indexedProp.Value is ManyToken manyToken)
             {
-                SpanBranch branch = new SpanBranch(childToken, CardName, Path.Dot(childToken.Type.Name), NestedDepth);
-                children.Add(branch);
-                cursor += childToken.MatchSpan.Length;
-            }
+                // Use dynamic to access the 'Items' property, which only exists on the generic subclass.
+                dynamic dynamicManyToken = manyToken;
+                var items = ((IEnumerable)dynamicManyToken.Items).Cast<TokenUnit>().ToList();
+                var innerCursor = indexedProp.Start;
 
-            // Other types of prop captures are rendered into leaves
+                foreach (var itemToken in items)
+                {
+                    // Text between items
+                    if (itemToken.MatchSpan.Position.Absolute > innerCursor)
+                    {
+                        var snippetStart = innerCursor - parentSpan.Position.Absolute;
+                        var snippetLength = itemToken.MatchSpan.Position.Absolute - innerCursor;
+                        var textBetween = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+                        if (!string.IsNullOrWhiteSpace(textBetween))
+                        {
+                            children.Add(new SpanTwig(token, Path, NestedDepth, textBetween.Trim()));
+                        }
+                    }
+
+                    // The item itself
+                    children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth));
+                    innerCursor = itemToken.MatchSpan.Position.Absolute + itemToken.MatchSpan.Length;
+                }
+
+                // There might be text after the last item but before the end of the ManyToken span
+                if (indexedProp.End > innerCursor)
+                {
+                    var snippetStart = innerCursor - parentSpan.Position.Absolute;
+                    var snippetLength = indexedProp.End - innerCursor;
+                    var textAfter = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+                    if (!string.IsNullOrWhiteSpace(textAfter))
+                    {
+                        children.Add(new SpanTwig(token, Path, NestedDepth, textAfter.Trim()));
+                    }
+                }
+            }
+            else if (indexedProp.Value is TokenUnit childToken)
+            {
+                children.Add(new SpanBranch(childToken, CardName, Path.Dot(childToken.Type.Name), NestedDepth));
+            }
             else
             {
-                var leaf = new SpanLeaf(indexedProp, Path.Dot(indexedProp.RegexPropInfo.Name), NestedDepth);
-                children.Add(leaf);
-                cursor += indexedProp.Length;
+                children.Add(new SpanLeaf(indexedProp, Path.Dot(indexedProp.RegexPropInfo.Name), NestedDepth));
             }
+
+            // 3. Advance cursor to the end of the current capture.
+            cursor = indexedProp.End;
         }
 
-        // Create a final span for any trailing text after the last child.
+        // 4. Add a final twig for any trailing text after the last capture.
         if (cursor < parentSpanEnd)
         {
             var snippetStart = cursor - parentSpan.Position.Absolute;
             var snippetLength = parentSpanEnd - cursor;
-            var followingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
-            var followingTwig = new SpanTwig(token, Path, NestedDepth, followingText.Trim());
-            children.Add(followingTwig);
+            var trailingText = parentSpan.ToStringValue().Substring(snippetStart, snippetLength);
+            if (!string.IsNullOrWhiteSpace(trailingText))
+            {
+                children.Add(new SpanTwig(token, Path, NestedDepth, trailingText.Trim()));
+            }
         }
 
-        //if (token.MatchSpan.ToStringValue() == "({t}: add {b} or {r}.)") Debugger.Break();
         return children;
     }
 
     void SetLeavesOrDistilled(TokenUnit token)
     {
-        if (token is TokenUnitDistilled tokenUnitDistilled)
-        {
-            List<SpanLeaf> distilledLeaves = [];
-            foreach (var leaf in Leaves)
-            {
-                var distilledPropVals = tokenUnitDistilled.DistilledValues[leaf.PropertyCapture.RegexPropInfo];
+        var generatedLeaves = new List<SpanLeaf>();
 
-                foreach (var distilledPropVal in distilledPropVals)
-                {
-                    var newPropCapture = leaf.PropertyCapture with { RegexPropInfo = distilledPropVal.Key, Value = distilledPropVal.Value };
-                    var distilledLeaf = leaf with { PropertyCapture = newPropCapture };
-                    LeavesOrDistilled.Add(distilledLeaf);
-                }
+        // Iterate over the source properties of the token to generate leaves for the property table.
+        foreach (var indexedProp in token.IndexedPropertyCaptures)
+        {
+            if (indexedProp.Value is TokenUnit)
+            {
+                // This is a branch (nested table), not a leaf for the current table. Skip it.
+                continue;
+            }
+
+            if (indexedProp.Value is ManyToken manyToken)
+            {
+                // For a ManyToken, create a synthetic leaf for its Conjunction property to display in the parent's table.
+                var conjunctionPropInfo = new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)));
+                var conjunctionCapture = new IndexedPropertyCapture(
+                    regexPropInfo: conjunctionPropInfo,
+                    span: indexedProp.Span, // Use the span of the whole ManyToken capture
+                    value: manyToken.Conjunction,
+                    capturePosition: indexedProp.CapturePosition // Use the same position for color coding
+                );
+
+                generatedLeaves.Add(new SpanLeaf(
+                    PropertyCapture: conjunctionCapture,
+                    Path: Path.Dot(indexedProp.RegexPropInfo.Name).Dot("Conjunction"),
+                    NestedDepth: NestedDepth + 1
+                ));
+            }
+            else
+            {
+                // This is a regular scalar property. Create a leaf for it.
+                generatedLeaves.Add(new SpanLeaf(
+                    PropertyCapture: indexedProp,
+                    Path: Path.Dot(indexedProp.RegexPropInfo.Name),
+                    NestedDepth: NestedDepth + 1
+                ));
             }
         }
+
+        // Now handle the distillation logic, which replaces placeholder leaves with their distilled values.
+        if (token is TokenUnitDistilled tokenUnitDistilled)
+        {
+            var distilledLeaves = new List<SpanLeaf>();
+            foreach (var leaf in generatedLeaves)
+            {
+                // Check if this leaf's property is a placeholder that needs to be replaced.
+                if (tokenUnitDistilled.DistilledValues.TryGetValue(leaf.PropertyCapture.RegexPropInfo, out var distilledPropVals))
+                {
+                    // It is a placeholder. Replace it with its distilled children.
+                    foreach (var distilledPropVal in distilledPropVals)
+                    {
+                        var newPropCapture = leaf.PropertyCapture with { RegexPropInfo = distilledPropVal.Key, Value = distilledPropVal.Value };
+                        distilledLeaves.Add(leaf with { PropertyCapture = newPropCapture });
+                    }
+                }
+                else
+                {
+                    // It's not a placeholder, so keep it.
+                    distilledLeaves.Add(leaf);
+                }
+            }
+            LeavesOrDistilled = distilledLeaves;
+        }
         else
-            LeavesOrDistilled = Leaves;
+        {
+            LeavesOrDistilled = generatedLeaves;
+        }
     }
 
     public override string ToString() => TokenSpan.ToStringValue();

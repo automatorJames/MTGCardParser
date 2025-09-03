@@ -6,11 +6,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-// Assumed definitions from your project:
-// public class OptionalManyAttribute : Attribute { }
-// public class TokenUnit { ... }
-// public class TokenUnitMany<T> { ... }
-
 /// <summary>
 /// A static class responsible for emitting new C# types at runtime based on a template type.
 /// The emitted types will have "_Many" appended to their names and to specified properties,
@@ -84,8 +79,8 @@ public static class DynamicTypeEmitter
                 // This is an OptionalMany property.
                 // 3. Append "_Many" to the property name.
                 string newPropName = $"{prop.Name}_Many";
-                // 4. Substitute the type T with TokenUnitMany<T>.
-                Type newPropType = typeof(TokenUnitMany<>).MakeGenericType(prop.PropertyType);
+                // 4. Substitute the type T with ManyToken<T>.
+                Type newPropType = typeof(ManyToken<>).MakeGenericType(prop.PropertyType);
                 CreateProperty(typeBuilder, newPropName, newPropType);
             }
             else

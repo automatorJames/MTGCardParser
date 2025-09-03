@@ -14,9 +14,10 @@ public record TokenRegexManyProp : RegexPropBase
     
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
-        var match = _multiRegex.Match(matchSpan.ToStringValue());
+        var manyMatch = _multiRegex.Match(matchSpan.ToStringValue());
+        var manyMatchSubSpan = GetTextSubSpan(matchSpan, manyMatch);
 
-        var itemCaptures = match.Groups[$"{RegexPropInfo.BaseType.Name}_Item"]
+        var itemCaptures = manyMatch.Groups[$"{RegexPropInfo.BaseType.Name}_Item"]
                 .Captures
                 .ToList();
 
@@ -24,15 +25,15 @@ public record TokenRegexManyProp : RegexPropBase
 
         foreach (var itemCapture in itemCaptures)
         {
-            var subSpan = GetTextSubSpan(matchSpan, itemCapture);
-            var hydratedItemInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.BaseType, subSpan.Value, parentToken, RegexPropInfo);
+            var itemSubSpan = GetTextSubSpan(matchSpan, itemCapture);
+            var hydratedItemInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.BaseType, itemSubSpan.Value, parentToken, RegexPropInfo);
             hydratedItems.Add(hydratedItemInstance);
         }
 
-        var conjunctionString = match.Groups[nameof(Conjunction)].Value;
+        var conjunctionString = manyMatch.Groups[nameof(Conjunction)].Value;
         var conjunctionValue = Enum.GetValues<Conjunction>().FirstOrDefault(x => x.ToString().Equals(conjunctionString, StringComparison.OrdinalIgnoreCase));
         var propVal = Activator.CreateInstance(RegexPropInfo.UnderlyingType, hydratedItems, conjunctionValue);
-        RegexPropInfo.Prop.SetValue(parentToken, propVal);
+        parentToken.SetPropertyCapture(RegexPropInfo, manyMatchSubSpan.Value, propVal);
 
         return true;
     }

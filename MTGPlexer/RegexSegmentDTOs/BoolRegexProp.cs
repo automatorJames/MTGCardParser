@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a bool property on a TokenUnit. Bool property Regexes typically check for the optional presence
@@ -17,9 +15,8 @@ public record BoolRegexProp : RegexPropBase
     {
         var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
         var valueToSet = subMatchSpan != null;
-        RegexPropInfo.Prop.SetValue(parentToken, valueToSet);
         TextSpan span = subMatchSpan ?? new TextSpan("");
-        parentToken.AddPropertyCapture(RegexPropInfo, span, valueToSet);
+        parentToken.SetPropertyCapture(RegexPropInfo, span, valueToSet);
         return true;
     }
 

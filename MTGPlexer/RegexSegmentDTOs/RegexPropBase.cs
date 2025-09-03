@@ -7,10 +7,7 @@
 public abstract record RegexPropBase : RegexSegmentBase
 {
     public RegexPropInfo RegexPropInfo { get; init; }
-    public bool IsBool => RegexPropInfo.RegexPropType == RegexPropType.Bool;
     public bool IsChildTokenUnit => RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
-    public bool IsChildTokenUnitOneOf => RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
-    public bool IsChildTokenUnitMany => RegexPropInfo.IsTokenUnitMany;
     
     public RegexPropBase(RegexPropInfo captureProp)
     {
@@ -55,8 +52,7 @@ public abstract record RegexPropBase : RegexSegmentBase
             RegexPropType.Placeholder => new PlaceholderCapture(subMatchText),
         };
 
-        RegexPropInfo.Prop.SetValue(parentToken, valueToSet);
-        parentToken.AddPropertyCapture(RegexPropInfo, subMatchSpan.Value, valueToSet);
+        parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, valueToSet);
 
         return true;
     }
@@ -73,9 +69,7 @@ public abstract record RegexPropBase : RegexSegmentBase
         if (propInstance is null)
             throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
 
-        RegexPropInfo.Prop.SetValue(parentToken, propInstance);
-        parentToken.AddPropertyCapture(RegexPropInfo, subMatchSpan.Value, propInstance);
-        parentToken.ChildTokens.Add(propInstance);
+        parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, propInstance);
         return true;
     }
 

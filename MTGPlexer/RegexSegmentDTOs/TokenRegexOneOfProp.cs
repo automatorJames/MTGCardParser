@@ -24,9 +24,7 @@ public record TokenRegexOneOfProp : RegexPropBase
             throw new Exception($"No alternative for {nameof(TokenUnitOneOf)} type '{RegexPropInfo.UnderlyingType.Name}' matched '{matchSpan.ToStringValue()}'");
 
         var oneOfPropInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken, RegexPropInfo);
-        RegexPropInfo.Prop.SetValue(parentToken, oneOfPropInstance);
-        parentToken.AddPropertyCapture(RegexPropInfo, subMatchSpan.Value, oneOfPropInstance);
-        parentToken.ChildTokens.Add(oneOfPropInstance);
+        parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, oneOfPropInstance);
         return true;
     }
 

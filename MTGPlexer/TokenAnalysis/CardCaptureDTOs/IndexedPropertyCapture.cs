@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
+﻿namespace MTGPlexer.TokenAnalysis.CardCaptureDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index
@@ -26,7 +24,7 @@ public record IndexedPropertyCapture
         Start = Span.Position.Absolute;
         End = Span.Position.Absolute + Span.Length;
         Length = Span.Length;
-        IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit;
+        IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit || regexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
         Value = value;
         CapturePosition = capturePosition;
         Palette = DeterministicPalette.GetFixedRainbowPalette(CapturePosition);

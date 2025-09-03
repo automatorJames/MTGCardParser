@@ -2,12 +2,12 @@
 
 namespace MTGPlexer.BaseClasses;
 
-public class TokenUnitMany<T> : ITokenUnitMany
+public class ManyToken<T> : ManyToken where T : TokenUnit
 {
     public T[] Items { get; set; }
-    public Conjunction Conjunction { get; set; }
+    
 
-    public TokenUnitMany(IEnumerable items, Conjunction conjunction)
+    public ManyToken(IEnumerable items, Conjunction conjunction)
     {
         Items = items.Cast<T>().ToArray();
         Conjunction = conjunction;
@@ -20,4 +20,7 @@ public enum Conjunction
     Or
 }
 
-public interface ITokenUnitMany;
+public class ManyToken
+{
+    public Conjunction Conjunction { get; set; }
+}

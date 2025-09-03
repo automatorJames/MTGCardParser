@@ -94,7 +94,7 @@ public record TokenUnitCaptureSummary
     {
         collection.Add(currentUnit);
 
-        foreach (var childToken in currentUnit.ChildTokens)
+        foreach (var childToken in currentUnit.GetChildTokens())
             CollectAllTokensRecursive(childToken, collection);
     }
 

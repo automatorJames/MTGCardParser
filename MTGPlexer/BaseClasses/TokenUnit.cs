@@ -18,7 +18,6 @@ public abstract class TokenUnit
 
     public TokenUnit ParentToken { get; set; }
     public RegexPropInfo ParentTokenProp { get; set; }
-    public List<TokenUnit> ChildTokens { get; set; } = [];
     public int RecursiveDepth { get; set; }
     public TextSpan MatchSpan { get; set; }
 
@@ -68,13 +67,20 @@ public abstract class TokenUnit
         return tokenInstance;
     }
 
+    public List<TokenUnit> GetChildTokens() => IndexedPropertyCaptures
+        .Where(x => x.IsChildToken)
+        .Select(x => x.Value)
+        .OfType<TokenUnit>()
+        .ToList();
+
     public virtual void SetPropertiesFromMatch()
     {
         Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
     }
 
-    public void AddPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)
+    public void SetPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)
     {
+        regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
         IndexedPropertyCaptures.Add(new(regexPropInfo, textSpan, propVal, capturePosition));
     }

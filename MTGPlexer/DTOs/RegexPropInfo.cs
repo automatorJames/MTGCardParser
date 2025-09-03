@@ -4,7 +4,7 @@
     {
         public PropertyInfo Prop { get; }
         public RegexPropType RegexPropType { get; }
-        public bool IsTokenUnitMany { get; }
+        public bool IsManyItem { get; }
         public Type BaseType { get; }
         public Type UnderlyingType { get; }
         public string Name { get; }
@@ -14,7 +14,7 @@
         public RegexPropInfo(PropertyInfo prop)
         {
             Prop = prop;
-            (RegexPropType, IsTokenUnitMany, BaseType) = GetCapturePropType(prop);
+            (RegexPropType, IsManyItem, BaseType) = GetCapturePropType(prop);
             UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
             Name = prop.Name;
             FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
@@ -31,7 +31,7 @@
                 isArray = true;
                 type = type.GetElementType()!;
             }
-            else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(TokenUnitMany<>))
+            else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ManyToken<>))
             {
                 isArray = true;
                 type = type.GetGenericArguments()[0];

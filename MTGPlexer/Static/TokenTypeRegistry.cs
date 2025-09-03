@@ -48,7 +48,7 @@ public static partial class TokenTypeRegistry
         Palettes[type] = new(type);
         NameToType[type.Name] = type;
 
-        if (type.IsAssignableTo(typeof(TokenUnitOneOf)) || type.IsAssignableTo(typeof(ITokenUnitMany)))
+        if (type.IsAssignableTo(typeof(TokenUnitOneOf)) || type.IsAssignableTo(typeof(ManyToken)))
         {
             Templates[type] = new(type);
             return;
@@ -188,7 +188,7 @@ public static partial class TokenTypeRegistry
 
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
         // each dictionary entry is a List, though each List should ideally only have one item.
-        // An entry List may have multiple items if they each profess the same position.
+        // An entry List may have multiple items if they each declare the same position.
         Dictionary<int, List<Type>> orderedTypes =
             allTokenTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
             .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
