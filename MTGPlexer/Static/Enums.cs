@@ -528,3 +528,9 @@ public enum PlusMinus
     [RegexPattern("-")]
     Minus,
 }
+
+public enum VariableName
+{
+    X,
+    Y
+}

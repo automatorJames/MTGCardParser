@@ -1,4 +1,4 @@
-﻿using MTGPlexer.DTOs;
+﻿using MTGPlexer.GeneralDTOs;
 
 namespace CardAnalysisInterface.Dialogs;
 

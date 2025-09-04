@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace MTGPlexer.TokenAnalysis;
+namespace MTGPlexer.TokenAnalysisDTOs;
 
 public class UnmatchedSpanComparer : IEqualityComparer<SpanContext>
 {

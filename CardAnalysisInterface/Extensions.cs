@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.Common;
-
-namespace CardAnalysisInterface;
+﻿namespace CardAnalysisInterface;
 
 public static class Extensions
 {

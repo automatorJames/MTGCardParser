@@ -93,7 +93,7 @@ public static partial class TokenTypeRegistry
     {
         List<Token<Type>> coallescedTokens = [];
         List<Token<Type>> unmatchedBuffer = [];
-        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
+        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text).ToList() : ClassTokenizer.Tokenize(text).ToList();
         foreach (var token in tokens)
         {
             if (token.Kind == typeof(DefaultUnmatchedString))
@@ -159,11 +159,6 @@ public static partial class TokenTypeRegistry
 
     static void InitializeEmitedManyTypes()
     {
-        //var typesContainingOptionalManyProps = GetAllTokenTypes()
-        //    .Select(x => new { type = x, manyProps = x.GetProps().Where(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))) })
-        //    .Where(x => x.manyProps.Any())
-        //    .ToDictionary(x => x.type, x => x.manyProps);
-
         var typesContainingManyProps = GetAllTokenTypes()
             .Where(x => x.GetProps().Any(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))));
 
@@ -194,10 +189,7 @@ public static partial class TokenTypeRegistry
             .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
             .ToDictionary(x => x.Key, x => x.ToList());
         
-        // Ensure types aren't represented twice, once in the static list, and once in the attribute-having list
         var typeOrderedItems = TypeOrderList
-            .Except(orderedTypes
-            .SelectMany(x => x.Value))
             .Select((type, idx) => (type, idx))
             .ToList();
 
@@ -210,16 +202,21 @@ public static partial class TokenTypeRegistry
         // Add all remaining types (i.e. those the user didn't bother to define anywhere).
         // Order by descending length, which is a rough approximate of complexity/match length (not exact)
         var unorderedRemainingTypes = allTokenTypes
-            .Except(AppliedOrderTypes)
+            .Except(orderedTypes.SelectMany(x => x.Value))
             .OrderByDescending(x => Templates[x].RegexString.Length)
             .ToList();
 
-        var nextKey = orderedTypes.Keys.Max() + 1;
+        var nextKey = orderedTypes.Keys.Any() ? orderedTypes.Keys.Max() + 1 : 0;
         orderedTypes[nextKey] = unorderedRemainingTypes;
 
         List<Type> flattenedOrderedTypes = orderedTypes
+            .Where(x => x.Key >= 0)
             .OrderBy(x => x.Key)
             .SelectMany(x => x.Value)
+            .Concat(orderedTypes
+                .Where(x => x.Key < 0)
+                .SelectMany(x => x.Value))
+            .Distinct()
             .ToList();
 
         flattenedOrderedTypes.ForEach(x => tokenizerBuilder.Match(x));

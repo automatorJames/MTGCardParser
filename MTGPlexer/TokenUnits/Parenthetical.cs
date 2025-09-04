@@ -2,6 +2,7 @@
 
 [NoSpaces]
 [NoWordBoundary]
+[TokenizationOrder(9999)]
 [Color("#666666")]
 public class Parenthetical : TokenUnit
 {

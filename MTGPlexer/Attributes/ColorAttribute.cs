@@ -1,4 +1,4 @@
-﻿using MTGPlexer.TokenAnalysis.Common;
+﻿using MTGPlexer.TokenAnalysisDTOs.Common;
 
 namespace MTGPlexer.Attributes;
 

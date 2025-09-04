@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// This record is used for strings defined in RegexTemplate expression bodies. These strings aren't associated
