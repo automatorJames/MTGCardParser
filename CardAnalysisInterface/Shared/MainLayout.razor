@@ -5,38 +5,41 @@
 
 <div class="page">
     <nav class="top-row px-4">
-        <a class="navbar-brand" href="">
+        <div class="navbar-brand">
             @GetPageTitle()
-        </a>
+        </div>
 
-        @* Only render the settings controls after they have been loaded to prevent flicker *@
-        @if (RuntimeSettings.IsLoaded)
-        {
-            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
-            if (relativePath == "" || relativePath == "card-analysis")
-            {
-                <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
-            }
-            else if (relativePath == "type-expressions")
-            {
-                <Switch @bind-Value=@RuntimeSettings.ShowMinifiedRegex Label="Show minified" />
-                <Switch @bind-Value=@RuntimeSettings.ShowZeroMatchEnumPropertyCaptures Label="Show zero-match" />
-            }
-            else if (relativePath == "span-trees")
-            {
-                <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
-                <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
-                <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
-                <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
-            }
-        }
+        <div class="top-row-right-items">
+            <SearchBar />
 
-        &nbsp;
-        &nbsp;
+            @* Only render the settings controls after they have been loaded to prevent flicker *@
+            @if (RuntimeSettings.IsLoaded)
+            {
+                var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+                if (relativePath == "" || relativePath == "card-analysis")
+                {
+                    <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
+                }
+                else if (relativePath == "type-expressions")
+                {
+                    <Switch @bind-Value=@RuntimeSettings.ShowMinifiedRegex Label="Show minified" />
+                    <Switch @bind-Value=@RuntimeSettings.ShowZeroMatchEnumPropertyCaptures Label="Show zero-match" />
+                }
+                else if (relativePath == "span-trees")
+                {
+                    <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
+                    <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
+                    <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
+                    <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
+                }
+            }
 
-        <NavLink href="/">Card Analysis</NavLink>
-        <NavLink href="type-expressions">Type Expressions</NavLink>
-        <NavLink href="span-trees">Span Trees</NavLink>
+            <div class="nav-links">
+                <a href="/">Card Analysis</a>
+                <a href="type-expressions">Type Expressions</a>
+                <a href="span-trees">Span Trees</a>
+            </div>
+        </div>
     </nav>
 
     <main>

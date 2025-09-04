@@ -3,6 +3,8 @@
 public record TokenUnitCapture
 {
     public Type Type { get; }
+    public string TypeName { get; }
+    public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
     public string RegexString { get; }
     public PrettifiedRegex PrettifiedRegex { get; }
@@ -12,6 +14,8 @@ public record TokenUnitCapture
     public TokenUnitCapture(Type type, int occurrenceCount, Dictionary<TerminalRegexPropPath, Dictionary<string, ValueCaptureVariantCollector>> collectors = null)
     {
         Type = type;
+        TypeName = type.Name;
+        TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
         OccurrenceCount = occurrenceCount;
         Palette = TokenTypeRegistry.Palettes[type];
         RegexString = TokenTypeRegistry.Templates[type].RegexString;

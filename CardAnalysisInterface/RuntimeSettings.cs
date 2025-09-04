@@ -129,6 +129,21 @@ namespace CardAnalysisInterface
             }
         }
 
+        private string _searchTerm = string.Empty;
+        public string SearchTerm
+        {
+            get => _searchTerm;
+            set
+            {
+                var newTerm = value ?? string.Empty;
+                if (_searchTerm != newTerm)
+                {
+                    _searchTerm = newTerm;
+                    OnChanged?.Invoke();
+                }
+            }
+        }
+
         /// <summary>
         /// Loads settings from ProtectedLocalStorage. Should only be called once.
         /// </summary>

@@ -5,8 +5,12 @@
 @using System.Text
 @using Microsoft.AspNetCore.Components
 
+@{
+    var filteredCaptures = GetFilteredTokenUnitCaptures();
+}
+
 <div class="type-card-container">
-    @foreach (var tokenUnitCapture in CorpusAnalyzer.GlobalTokenUnitCaptureSummary.TokenUnitCaptures)
+    @foreach (var tokenUnitCapture in filteredCaptures)
     {
         <div class="type-card">
             <div class="card-header">
@@ -77,8 +81,8 @@
 
                         <span class="regex-line @cssClass" style="@style">@content</span>
                             }
-                                                </code>
-                                            </pre>
+                                                        </code>
+                                                    </pre>
                 </div>
             }
 
@@ -151,6 +155,26 @@
     private async void OnSettingsChanged()
     {
         await InvokeAsync(StateHasChanged);
+    }
+
+    private IEnumerable<TokenUnitCapture> GetFilteredTokenUnitCaptures()
+    {
+        var allCaptures = CorpusAnalyzer.GlobalTokenUnitCaptureSummary.TokenUnitCaptures;
+        var searchTerm = RuntimeSettings.SearchTerm;
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return allCaptures;
+        }
+
+        var term = searchTerm.Trim();
+
+        // Assuming a ToFriendlyCase() extension method exists in the project
+        return allCaptures.Where(tuc =>
+            tuc.Type.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            tuc.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            tuc.RegexString.Contains(term, StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     private void StartValueHighlight(ValueCaptureVariantSet valueSet, TokenUnitCapture tokenUnitCapture)

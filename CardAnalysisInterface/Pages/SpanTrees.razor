@@ -83,10 +83,6 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // The call to RuntimeSettings.EnsureLoadedAsync() has been removed from here
-        // as it is now handled globally and correctly by MainLayout.razor.
-
-        // Only proceed with JS interop if the settings are loaded and the UI is ready.
         if (!RuntimeSettings.IsLoaded)
         {
             return;
@@ -118,6 +114,13 @@ else
             .Where(x =>
                 x.MaximalSpanOccurrenceCount >= RuntimeSettings.MinSpanOccurences &&
                 x.WordCount >= RuntimeSettings.MinSpanWords);
+
+        var searchTerm = RuntimeSettings.SearchTerm;
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            items = items.Where(span => span.Text.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
 
         return RuntimeSettings.OrderByWordCount
             ? items.OrderByDescending(x => x.WordCount)

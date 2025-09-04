@@ -1,0 +1,60 @@
+﻿@inject RuntimeSettings RuntimeSettings
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="search-container">
+    <input @ref="_searchInput"
+           type="text"
+           class="search-input"
+           placeholder="Search... (Ctrl+F)"
+           value="@RuntimeSettings.SearchTerm" />
+    @if (!string.IsNullOrEmpty(RuntimeSettings.SearchTerm))
+    {
+        <button class="clear-button" @onclick="ClearSearch" title="Clear search">&times;</button>
+    }
+</div>
+
+@code {
+    private ElementReference _searchInput;
+    private DotNetObjectReference<SearchBar>? _dotNetObjectReference;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetObjectReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("initializeSearchBar", _searchInput, _dotNetObjectReference);
+        }
+    }
+
+    [JSInvokable]
+    public void UpdateSearchTerm(string term)
+    {
+        // This method is called from JavaScript after the debounce timer completes.
+        // We use InvokeAsync to ensure the state update happens on Blazor's synchronization context.
+        InvokeAsync(() =>
+        {
+            RuntimeSettings.SearchTerm = term;
+        });
+    }
+
+    private async Task ClearSearch()
+    {
+        RuntimeSettings.SearchTerm = string.Empty;
+        await _searchInput.FocusAsync();
+    }
+
+    public void Dispose()
+    {
+        _dotNetObjectReference?.Dispose();
+        // Call the corresponding JS cleanup function to prevent memory leaks
+        try
+        {
+            JSRuntime.InvokeVoidAsync("disposeSearchBar");
+        }
+        catch (JSDisconnectedException)
+        {
+            // This can happen during rapid navigation and is safe to ignore.
+        }
+    }
+}

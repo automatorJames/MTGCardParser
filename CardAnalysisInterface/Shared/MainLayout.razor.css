@@ -1,30 +1,41 @@
 .page {
     display: flex;
     flex-direction: column;
-    min-height: 100vh; /* Ensure the page always fills the viewport height */
+    min-height: 100vh;
 }
 
 /* --- The Top Bar: Stickiness and Layout --- */
 .top-row {
-    /* Stickiness */
     position: sticky;
     top: 0;
-    z-index: 100; /* Ensure it stays on top of page content when scrolling */
-    /* Flexbox Layout */
+    z-index: 100;
     display: flex;
-    flex-wrap: nowrap; /* Prevent items from wrapping to the next line */
-    align-items: center; /* Vertically align all items in the center */
-    justify-content: center; /* Horizontally center the items */
-    gap: 1.5rem; /* Space between items */
-    /* Appearance */
+    flex-wrap: nowrap;
+    align-items: center;
     height: 3.5rem;
     background-color: var(--light-grey);
     border-bottom: 1px solid var(--outline-grey);
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
 }
+
+.top-row-right-items {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: 1rem;
+}
+
 
 /* --- Main Content Area --- */
 main {
-    flex-grow: 1; /* This makes the main content area take up all remaining vertical space */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     background-color: var(--dark-grey);
@@ -32,42 +43,46 @@ main {
 
 .content {
     flex-grow: 1;
-    overflow-y: auto; /* Allow the content itself to scroll if it's too long */
+    overflow-y: auto;
 }
 
-/* --- Link and Brand Styling (from previous version, still good) --- */
-.top-row ::deep a {
-    text-decoration: none;
-    white-space: nowrap; /* CRITICAL: This prevents text inside links from wrapping */
-}
-
-.top-row .navbar-brand {
+/* --- Link and Brand Styling --- */
+/* Style for the page title (now a div) */
+.navbar-brand {
     font-size: 1.2rem;
     font-weight: 500;
-    color: grey;
-    margin-right: auto; /* Pushes all other items to the center/right */
+    color: #a0a0a0;
+    margin-right: auto; /* Pushes everything else to the right */
+    white-space: nowrap;
 }
 
-.top-row .nav-link {
+/* --- FINAL FIX: HIGHLY SPECIFIC SELECTOR WITH !important --- */
+/* This rule is now strong enough to override any global 'a' styles */
+nav.top-row .nav-links a {
+    background-color: #3a3a3a !important;
+    border: 1px solid #555 !important;
+    color: #d4d4d4 !important; /* Light grey text */
     font-size: 0.9rem;
-    color: #9cdcfe;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    transition: background-color 0.1s linear, color 0.1s linear;
-    display: flex; /* Make the link a flex container itself */
-    align-items: center; /* This aligns the icon and text within the link */
+    text-decoration: none !important; /* Explicitly remove underline */
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.1s linear, color 0.1s linear, border-color 0.1s linear;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
-    .top-row .nav-link:hover {
-        background-color: #3e3e42;
-        color: #ffffff;
+    /* Style for the hover state */
+    nav.top-row .nav-links a:hover {
+        background-color: #4a4a4a !important;
+        border-color: #777 !important;
+        color: #ffffff !important;
     }
 
-    .top-row .nav-link.active {
-        background-color: #007acc;
-        color: white;
-    }
-
-    .top-row .nav-link .oi {
-        margin-right: 8px;
+    /* Style for the active link */
+    nav.top-row .nav-links a.active {
+        background-color: #007acc !important;
+        border-color: #007acc !important;
+        color: white !important;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
     }

@@ -27,14 +27,39 @@
 
     IEnumerable<ProcessedCard> GetFilteredCards()
     {
-        if (RuntimeSettings.HideFullyMatchedCards)
-            return CorpusAnalyzer.ProcessedCards.Where(x => !x.IsFullyMatched);
+        IEnumerable<ProcessedCard> cards = CorpusAnalyzer.ProcessedCards;
 
-        return CorpusAnalyzer.ProcessedCards;
+        if (RuntimeSettings.HideFullyMatchedCards)
+        {
+            cards = cards.Where(x => !x.IsFullyMatched);
+        }
+
+        var searchTerm = RuntimeSettings.SearchTerm;
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return cards;
+        }
+
+        var term = searchTerm.Trim();
+
+        Func<ProcessedCard, bool> containsPredicate = card =>
+            card.Card.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            card.Lines.Any(line => line.SpanRoots.Any(sr => sr.OriginalLineText.Contains(term, StringComparison.OrdinalIgnoreCase)));
+
+        Func<ProcessedCard, bool> startsWithPredicate = card =>
+            card.Card.Name.StartsWith(term, StringComparison.OrdinalIgnoreCase) ||
+            card.Lines.Any(line => line.SpanRoots.Any(sr => sr.OriginalLineText.StartsWith(term, StringComparison.OrdinalIgnoreCase)));
+
+        return cards
+            .Where(containsPredicate)
+            .OrderByDescending(startsWithPredicate)
+            .ThenBy(c => c.Card.Name);
     }
 
     public void Dispose()
     {
         RuntimeSettings.OnChanged -= StateHasChanged;
+        // Also call the JS cleanup function on disposal
+        JSRuntime.InvokeVoidAsync("disposeCardCaptureHover").AsTask();
     }
 }
