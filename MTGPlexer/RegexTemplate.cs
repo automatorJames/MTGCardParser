@@ -3,18 +3,19 @@
 public class RegexTemplate
 {
     public static HashSet<string> Punctuation = [".", ",", ";", "\""];
-    public static HashSet<string> TerminalPunctuation = [".", ",", ";"];
+    public static HashSet<char> TerminalPunctuation = ['.', ',', ';'];
 
     bool _noSpaces;
     Type _containingType;
+    RegexTemplateType _templateType;
 
     public string RegexString { get; private set; }
     public string RegexStringNoWordBoundaries { get; private set; }
     public string RegexStringNoCaptureGroups { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
-    public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
-    public List<RegexPropBase> PropCaptureSegments => RegexSegments.OfType<RegexPropBase>().ToList();
+    public List<RegexSegmentBase> _resolvedConstructedElements = [];
+    public List<CaptureGroupPropBase> CaptureGroupProps => _resolvedConstructedElements.OfType<CaptureGroupPropBase>().ToList();
 
     public RegexTemplate(Type type, params string[] templateSnippets)
     {
@@ -22,95 +23,141 @@ public class RegexTemplate
             return;
 
         _containingType = type;
+
+        _templateType =
+            type.IsAssignableTo(typeof(TokenUnitOneOf)) ? RegexTemplateType.OneOf
+            : type.IsAssignableTo(typeof(ManyToken)) ? RegexTemplateType.Many
+            : RegexTemplateType.TokenUnit;
+
         _noSpaces = _containingType.GetCustomAttribute<NoSpacesAttribute>() is not null;
 
         RegexPropInfos = GetRegexProps();
 
         templateSnippets
             .ToList()
-            .ForEach(x => RegexSegments.Add(ResolveSnippetToPropOrTextSegment(x)));
+            .ForEach(x => _resolvedConstructedElements.Add(ResolveSnippetToSegment(x)));
 
-        SetRegex();
+        ComposeRegex();
     }
 
-    public RegexTemplate(Type type)
+    void ComposeRegex()
     {
-        if (!type.IsAssignableTo(typeof(TokenUnitOneOf)) && !type.IsAssignableTo(typeof(ManyToken)))
-            throw new Exception($"{type.Name} must derive from {nameof(TokenUnitOneOf)} or ManyToken");
+        if (_templateType == RegexTemplateType.TokenUnit)
+            ComposeRegexStringForTokenUnit();
+        else if (_templateType == RegexTemplateType.OneOf)
+            ComposeRegexStringForOneOf();
+        else if (_templateType == RegexTemplateType.Many)
+            ComposeRegexStringForManyOf();
 
-        _containingType = type;
-        RegexPropInfos = GetRegexProps();
-        List<string> captureSections = [];
 
-        var tokenUnitChildProps = type
-            .GetProps()
-            .Where(x => x.PropertyType.IsAssignableTo(typeof(TokenUnit)));
-
-        tokenUnitChildProps
-            .Select(x => x.Name)
-            .ToList()
-            .ForEach(x => RegexSegments.Add(ResolveSnippetToPropOrTextSegment(x)));
-
-        var tokenUnitChildPropTypes = tokenUnitChildProps
-            .Select(x => Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType);
-
-        if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
-        {
-            foreach (var childType in tokenUnitChildPropTypes)
-            {
-                var template = TokenTypeRegistry.GetTypeTemplate(childType);
-
-                var groupRegexToAdd = childType.IsDefined(typeof(NoWordBoundaryAttribute)) ? 
-                    template.RegexStringNoWordBoundaries 
-                    : $@"\b{template.RegexStringNoWordBoundaries}\b";
-
-                captureSections.Add(groupRegexToAdd);
-            }
-
-            var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(type);
-            RegexString = $"({headerComment}{string.Join('|', captureSections)})";
-        }
-        else
-        {
-            var genericType = type.GenericTypeArguments[0];
-            var singleRegex = TokenTypeRegistry.GetTypeTemplate(genericType).RegexStringNoCaptureGroups;
-            RegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex})";
-
-            var altRegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex}))?";
-        }
-
-        RegexStringNoWordBoundaries = RegexString;
-        RegexStringNoCaptureGroups = StripNamedCaptureGroups(RegexString);
-        Regex = new Regex(RegexString);
     }
+
+    void ComposeRegexStringForTokenUnit()
+    {
+        for (int i = 0; i < _resolvedConstructedElements.Count; i++)
+        {
+            var segment = _resolvedConstructedElements[i];
+            RegexString += segment.RegexString;
+
+            var shouldAddSpace =
+                !_noSpaces
+                && i < _resolvedConstructedElements.Count - 1
+                && !(segment is BoolRegexProp) // these set their own spaces already
+                && !TerminalPunctuation.Contains(segment.RegexString.LastOrDefault());
+
+            if (shouldAddSpace)
+                RegexString += " ";
+        }
+    }
+
+    void ComposeRegexStringForOneOf()
+    {
+
+    }
+
+    void ComposeRegexStringForManyOf()
+    {
+
+    }
+
+    //public RegexTemplate(Type type)
+    //{
+    //    if (!type.IsAssignableTo(typeof(TokenUnitOneOf)) && !type.IsAssignableTo(typeof(ManyToken)))
+    //        throw new Exception($"{type.Name} must derive from {nameof(TokenUnitOneOf)} or ManyToken");
+    //
+    //    _containingType = type;
+    //    RegexPropInfos = GetRegexProps();
+    //    List<string> captureSections = [];
+    //
+    //    var tokenUnitChildProps = type
+    //        .GetProps()
+    //        .Where(x => x.PropertyType.IsAssignableTo(typeof(TokenUnit)));
+    //
+    //    tokenUnitChildProps
+    //        .Select(x => x.Name)
+    //        .ToList()
+    //        .ForEach(x => RegexSegments.Add(ResolveSnippetToPropOrTextSegment(x)));
+    //
+    //    var tokenUnitChildPropTypes = tokenUnitChildProps
+    //        .Select(x => Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType);
+    //
+    //    if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
+    //    {
+    //        foreach (var childType in tokenUnitChildPropTypes)
+    //        {
+    //            var template = TokenTypeRegistry.GetTypeTemplate(childType);
+    //
+    //            var groupRegexToAdd = childType.IsDefined(typeof(NoWordBoundaryAttribute)) ? 
+    //                template.RegexStringNoWordBoundaries 
+    //                : $@"\b{template.RegexStringNoWordBoundaries}\b";
+    //
+    //            captureSections.Add(groupRegexToAdd);
+    //        }
+    //
+    //        var headerComment = TokenUnitOneOf.GetTokenUnitOneOfRegexHeaderComment(type);
+    //        RegexString = $"({headerComment}{string.Join('|', captureSections)})";
+    //    }
+    //    else
+    //    {
+    //        var genericType = type.GenericTypeArguments[0];
+    //        var singleRegex = TokenTypeRegistry.GetTypeTemplate(genericType).RegexStringNoCaptureGroups;
+    //        RegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex})";
+    //
+    //        var altRegexString = $"(?<{genericType.Name}_Item>{singleRegex})(?:(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>//{singleRegex}))?";
+    //    }
+    //
+    //    RegexStringNoWordBoundaries = RegexString;
+    //    RegexStringNoCaptureGroups = StripNamedCaptureGroups(RegexString);
+    //    Regex = new Regex(RegexString);
+    //}
 
 
     void SetRegex()
     {
-        if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
-        {
-            var template = TokenTypeRegistry.GetTypeTemplate(_containingType);
-            RegexString = template.RegexString;
-            Regex = template.Regex;
-        }
+        //if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
+        //{
+        //    var template = TokenTypeRegistry.GetTypeTemplate(_containingType);
+        //    RegexString = template.RegexString;
+        //    Regex = template.Regex;
+        //}
             
-        else
-        {
-            for (int i = 0; i < RegexSegments.Count; i++)
+        //else
+        //{
+            for (int i = 0; i < OrderedRegexSegments.Count; i++)
             {
-                var segment = RegexSegments[i];
+                var segment = OrderedRegexSegments[i];
                 RegexString += segment.RegexString;
 
                 var shouldAddSpace =
                     !_noSpaces
-                    && i < RegexSegments.Count - 1
+                    && i < OrderedRegexSegments.Count - 1
                     && !(segment is BoolRegexProp)
                     && !TerminalPunctuation.Contains(segment.RegexString);
 
                 if (shouldAddSpace)
                     RegexString += " ";
             }
-        }
+        //}
 
         RegexStringNoWordBoundaries = RegexString;
         RegexStringNoCaptureGroups = StripNamedCaptureGroups(RegexString);
@@ -119,35 +166,22 @@ public class RegexTemplate
         {
             // TokenRegexOneOfProps are avoided, because they handle their own boundaries internally
 
-            if (RegexSegments.First() is not TokenRegexOneOfProp)
+            if (OrderedRegexSegments.First() is not TokenRegexOneOfProp)
                 RegexString = $@"\b{RegexString}";
 
-            if (RegexSegments.Last() is not TokenRegexOneOfProp)
+            if (OrderedRegexSegments.Last() is not TokenRegexOneOfProp)
                 RegexString = $@"{RegexString}\b";
         }
 
         Regex = new Regex(RegexString, RegexOptions.Compiled);
     }
 
-    RegexSegmentBase ResolveSnippetToPropOrTextSegment(string templateSnippet)
+    RegexSegmentBase ResolveSnippetToSegment(string templateSnippet)
     {
         var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Name == templateSnippet);
 
-        if (matchingProp is not null)
-        {
-            if (matchingProp.IsManyItem)
-                return new TokenRegexManyProp(matchingProp);
-
-            return matchingProp.RegexPropType switch
-            {
-                RegexPropType.TokenUnit => new TokenRegexProp(matchingProp),
-                RegexPropType.TokenUnitOneOf => new TokenRegexOneOfProp(matchingProp),
-                RegexPropType.Enum => new EnumRegexProp(matchingProp),
-                RegexPropType.Bool => new BoolRegexProp(matchingProp),
-                RegexPropType.Placeholder => new PlaceholderRegexProp(matchingProp),
-                _ => throw new Exception($"Prop type '{matchingProp.Prop.PropertyType.Name}' is not a valid RegexProp type")
-            };
-        }
+        if (matchingProp != null)
+            return matchingProp.GetCaptureGroupPropBase();
         else
             return new TextSegment(templateSnippet);
     }
@@ -277,4 +311,11 @@ public class RegexTemplate
         return result.ToString();
     }
 
+}
+
+public enum RegexTemplateType
+{
+    TokenUnit,
+    OneOf,
+    Many
 }

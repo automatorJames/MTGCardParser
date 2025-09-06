@@ -5,7 +5,7 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public record EnumRegexProp : RegexPropBase
+public record EnumRegexProp : CaptureGroupPropBase
 {
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
     public RegexEnumAttribute Options { get; private set; }
@@ -19,12 +19,12 @@ public record EnumRegexProp : RegexPropBase
     protected override void SetRegex(RegexPropInfo regexPropInfo)
     {
         Options = regexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-
-        var alternations = GetAlternations();
-        RegexString = $@"(?<{regexPropInfo.Name}>{alternations})";
+        CaptureAlternatives = GetAlternations();
+        CaptureAlternativesString = string.Join("|", CaptureAlternatives);
+        RegexString = $@"(?<{regexPropInfo.Name}>{CaptureAlternativesString})";
     }
 
-    string GetAlternations()
+    List<string> GetAlternations()
     {
         List<string> allMemberAlternatives = new();
         var enumRegOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
@@ -51,7 +51,7 @@ public record EnumRegexProp : RegexPropBase
             allMemberAlternatives.AddRange(memberAlternatives);
         }
 
-        return string.Join("|", allMemberAlternatives.OrderByDescending(s => s.Length));
+        return allMemberAlternatives.OrderByDescending(s => s.Length).ToList();
     }
 }
 

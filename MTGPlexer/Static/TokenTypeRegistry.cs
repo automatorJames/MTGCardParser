@@ -48,11 +48,11 @@ public static partial class TokenTypeRegistry
         Palettes[type] = new(type);
         NameToType[type.Name] = type;
 
-        if (type.IsAssignableTo(typeof(TokenUnitOneOf)) || type.IsAssignableTo(typeof(ManyToken)))
-        {
-            Templates[type] = new(type);
-            return;
-        }
+        //if (type.IsAssignableTo(typeof(TokenUnitOneOf)) || type.IsAssignableTo(typeof(ManyToken)))
+        //{
+        //    Templates[type] = new(type);
+        //    return;
+        //}
         
         var instance = (TokenUnit)Activator.CreateInstance(type);
 
@@ -64,7 +64,7 @@ public static partial class TokenTypeRegistry
 
         Templates[type] = instance.Template;
         var baseRegex = instance.Template.RegexStringNoWordBoundaries;
-        var propCaptureSegments = instance.Template.PropCaptureSegments;
+        var propCaptureSegments = instance.Template.CaptureGroupProps;
 
         var unregisteredEnums = propCaptureSegments
             .OfType<EnumRegexProp>()
@@ -149,13 +149,19 @@ public static partial class TokenTypeRegistry
     /// <summary>
     /// Return all TokenUnit derived types except for DefaultUnmatchedString
     /// </summary>
-    static List<Type> GetAllTokenTypes() =>
-        _staticAssemblyTypes
+    static List<Type> GetAllTokenTypes()
+    {
+        var allTypes = _staticAssemblyTypes
         .Where(x =>
             x.IsClass && !x.IsAbstract
             && typeof(TokenUnit).IsAssignableFrom(x))
-        .Concat(_dynamicAssemblyTypes)
-        .ToList();
+        .Concat(_dynamicAssemblyTypes);
+
+        if (allTypes.Any(x => x.IsDefined(typeof(IsolateForTestingAttribute))))
+            allTypes = allTypes.Where(x => x.IsDefined(typeof(IsolateForTestingAttribute)) || x == typeof(DefaultUnmatchedString));
+
+        return allTypes.ToList();
+    }
 
     static void InitializeEmitedManyTypes()
     {

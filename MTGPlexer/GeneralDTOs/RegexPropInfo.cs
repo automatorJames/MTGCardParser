@@ -1,73 +1,88 @@
-﻿namespace MTGPlexer.GeneralDTOs
+﻿namespace MTGPlexer.GeneralDTOs;
+
+public record RegexPropInfo
 {
-    public record RegexPropInfo
+    public PropertyInfo Prop { get; }
+    public RegexPropType RegexPropType { get; }
+    public bool IsManyItem { get; }
+    public Type BaseType { get; }
+    public Type UnderlyingType { get; }
+    public string Name { get; }
+    public string FriendlyTypeName { get; }
+    public string FriendlyPropName { get; }
+
+    public RegexPropInfo(PropertyInfo prop)
     {
-        public PropertyInfo Prop { get; }
-        public RegexPropType RegexPropType { get; }
-        public bool IsManyItem { get; }
-        public Type BaseType { get; }
-        public Type UnderlyingType { get; }
-        public string Name { get; }
-        public string FriendlyTypeName { get; }
-        public string FriendlyPropName { get; }
+        Prop = prop;
+        (RegexPropType, IsManyItem, BaseType) = GetCapturePropType(prop);
+        UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        Name = prop.Name;
+        FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
+        FriendlyTypeName = GetFriendlyTypeName(BaseType);
+    }
 
-        public RegexPropInfo(PropertyInfo prop)
+    private static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
+    {
+        Type type = prop.PropertyType;
+        bool isArray = false;
+
+        if (type.IsArray)
         {
-            Prop = prop;
-            (RegexPropType, IsManyItem, BaseType) = GetCapturePropType(prop);
-            UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            Name = prop.Name;
-            FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
-            FriendlyTypeName = GetFriendlyTypeName(BaseType);
+            isArray = true;
+            type = type.GetElementType()!;
+        }
+        else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ManyToken<>))
+        {
+            isArray = true;
+            type = type.GetGenericArguments()[0];
         }
 
-        private static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
+        type = Nullable.GetUnderlyingType(type) ?? type;
+
+        RegexPropType regexPropType =
+            type.IsEnum ? RegexPropType.Enum :
+            type == typeof(PlaceholderCapture) ? RegexPropType.Placeholder :
+            type == typeof(bool) ? RegexPropType.Bool :
+            typeof(TokenUnitOneOf).IsAssignableFrom(type) ? RegexPropType.TokenUnitOneOf :
+            typeof(TokenUnit).IsAssignableFrom(type) ? RegexPropType.TokenUnit :
+            prop.GetCustomAttribute<DistilledValueAttribute>() != null ? RegexPropType.DistilledValue :
+            throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(RegexPropType)} type");
+
+        return (regexPropType, isArray, type);
+    }
+
+    private static string GetFriendlyTypeName(Type type)
+    {
+        bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
+
+        if (type.IsEnum || isNullableEnum)
+            return "enum";
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            return $"{type.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
+
+        if (type == typeof(int))
+            return "int";
+
+        if (type == typeof(PlaceholderCapture))
+            return "placeholder";
+
+        return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
+    }
+
+    public CaptureGroupPropBase GetCaptureGroupPropBase()
+    {
+        if (IsManyItem)
+            return new TokenRegexManyProp(this);
+
+        return RegexPropType switch
         {
-            Type type = prop.PropertyType;
-            bool isArray = false;
-
-            if (type.IsArray)
-            {
-                isArray = true;
-                type = type.GetElementType()!;
-            }
-            else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ManyToken<>))
-            {
-                isArray = true;
-                type = type.GetGenericArguments()[0];
-            }
-
-            type = Nullable.GetUnderlyingType(type) ?? type;
-
-            RegexPropType regexPropType =
-                type.IsEnum ? RegexPropType.Enum :
-                type == typeof(PlaceholderCapture) ? RegexPropType.Placeholder :
-                type == typeof(bool) ? RegexPropType.Bool :
-                typeof(TokenUnitOneOf).IsAssignableFrom(type) ? RegexPropType.TokenUnitOneOf :
-                typeof(TokenUnit).IsAssignableFrom(type) ? RegexPropType.TokenUnit :
-                prop.GetCustomAttribute<DistilledValueAttribute>() != null ? RegexPropType.DistilledValue :
-                throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(RegexPropType)} type");
-
-            return (regexPropType, isArray, type);
-        }
-
-        private static string GetFriendlyTypeName(Type type)
-        {
-            bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
-
-            if (type.IsEnum || isNullableEnum)
-                return "enum";
-
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-                return $"{type.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
-
-            if (type == typeof(int))
-                return "int";
-
-            if (type == typeof(PlaceholderCapture))
-                return "placeholder";
-
-            return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
-        }
+            RegexPropType.TokenUnit => new TokenRegexProp(this),
+            RegexPropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
+            RegexPropType.Enum => new EnumRegexProp(this),
+            RegexPropType.Bool => new BoolRegexProp(this),
+            RegexPropType.Placeholder => new PlaceholderRegexProp(this),
+            _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
+        };
     }
 }

@@ -75,7 +75,7 @@ public abstract class TokenUnit
 
     public virtual void SetPropertiesFromMatch()
     {
-        Template.PropCaptureSegments.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
+        Template.CaptureGroupProps.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
     }
 
     public void SetPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)

@@ -1,17 +1,25 @@
 ﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
-/// The base class for all TokenUnit properties associated with some Regex pattern, including child TokenUnit properties.
-/// Includes mechanisms for setting values for properties of all relevant types.
+/// The base class for all TokenUnit properties with a name Regex capture group whose pattern, is 
+/// associated with some property, including child TokenUnit properties. Includes mechanisms for 
+/// setting values for properties of all relevant types.
 /// </summary>
-public abstract record RegexPropBase : RegexSegmentBase
+public abstract record CaptureGroupPropBase : RegexSegmentBase
 {
+    public string Name { get; init; }
     public RegexPropInfo RegexPropInfo { get; init; }
-    public bool IsChildTokenUnit => RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
+    public bool IsOptional { get; init; }
+    public bool IsChildTokenUnit { get; init; }
+    public List<AlternateValue> CaptureAlternatives { get; protected set; }
+    public string CaptureAlternativesString { get; protected set; }
     
-    public RegexPropBase(RegexPropInfo captureProp)
+    public CaptureGroupPropBase(RegexPropInfo captureProp)
     {
+        Name = captureProp.Name;
         RegexPropInfo = captureProp;
+        IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.Bool;
+        IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
         SetRegex(captureProp);
     }
 
@@ -19,15 +27,13 @@ public abstract record RegexPropBase : RegexSegmentBase
     {
         // Default implementation
 
-        var items = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
-            .OrderByDescending(s => s.Length).ToList();
+        CaptureAlternatives = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
+            .OrderByDescending(s => s.Length)
+            .Select(x => new AlternateValue(x))
+            .ToList();
 
-        var combinedItems = string.Join('|', items);
-
-        if (this is BoolRegexProp boolRegexProp)
-            RegexString = $@"(?<{captureProp.Name}>[ ]?{combinedItems}[ ]?)?";
-        else
-            RegexString = $"(?<{captureProp.Name}>{combinedItems})";
+        CaptureAlternativesString = string.Join('|', CaptureAlternatives);
+        RegexString = $"(?<{captureProp.Name}>{CaptureAlternativesString})";
     }
 
     public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)

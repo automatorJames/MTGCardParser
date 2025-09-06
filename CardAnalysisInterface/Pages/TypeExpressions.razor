@@ -12,7 +12,7 @@
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in filteredCaptures)
     {
-        <div class="type-card">
+        <div class="type-card" @key=tokenUnitCapture.Type.Name>
             <div class="card-header">
                 <TokenTypeName TokenType=@tokenUnitCapture.Type />
                 <span class="match-count @(tokenUnitCapture.OccurrenceCount == 0 ? "zero" : "")">
@@ -169,11 +169,9 @@
 
         var term = searchTerm.Trim();
 
-        // Assuming a ToFriendlyCase() extension method exists in the project
         return allCaptures.Where(tuc =>
             tuc.Type.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-            tuc.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase) ||
-            tuc.RegexString.Contains(term, StringComparison.OrdinalIgnoreCase)
+            tuc.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase)
         );
     }
 

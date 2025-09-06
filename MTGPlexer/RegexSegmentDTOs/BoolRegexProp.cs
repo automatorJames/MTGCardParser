@@ -5,10 +5,21 @@
 /// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
 /// its pattern(s), but in the absence of this the normalized property name is matched.
 /// </summary>
-public record BoolRegexProp : RegexPropBase
+public record BoolRegexProp : CaptureGroupPropBase
 {
     public BoolRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
+    }
+
+    protected override void SetRegex(RegexPropInfo captureProp)
+    {
+        // Default implementation
+
+        CaptureAlternatives = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
+            .OrderByDescending(s => s.Length).ToList();
+
+        CaptureAlternativesString = string.Join('|', CaptureAlternatives);
+        RegexString = $@"(?<{captureProp.Name}>[ ]?{CaptureAlternativesString}[ ]?)?";
     }
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
@@ -19,6 +30,5 @@ public record BoolRegexProp : RegexPropBase
         parentToken.SetPropertyCapture(RegexPropInfo, span, valueToSet);
         return true;
     }
-
 }
 

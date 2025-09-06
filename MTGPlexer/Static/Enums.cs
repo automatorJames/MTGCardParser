@@ -231,7 +231,7 @@ public enum CounterType
 
     // Keyword counters
     Deathtouch,
-     DoubleStrike,
+    DoubleStrike,
     FirstStrike,
     Flying,
     Haste,
@@ -533,4 +533,22 @@ public enum VariableName
 {
     X,
     Y
+}
+
+public enum LandType
+{
+    [RegexPattern("forest(s)?")]
+    Forest,
+
+    [RegexPattern("island(s)?")]
+    Island,
+
+    [RegexPattern("mountains(s)?")]
+    Mountain,
+
+    [RegexPattern("plains")]
+    Plains,
+
+    [RegexPattern("swamp(s)?")]
+    Swamp
 }

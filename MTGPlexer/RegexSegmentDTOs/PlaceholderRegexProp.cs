@@ -8,7 +8,7 @@
 /// know how to decompose it yet, or the containing TokenUnit overrides SetPropertiesFromMatch and needs a property
 /// to store an interim text value.
 /// </summary>
-public record PlaceholderRegexProp : RegexPropBase
+public record PlaceholderRegexProp : CaptureGroupPropBase
 {
     public PlaceholderRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {

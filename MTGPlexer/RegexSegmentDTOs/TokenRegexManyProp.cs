@@ -5,13 +5,20 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record TokenRegexManyProp : RegexPropBase
+public record TokenRegexManyProp : CaptureGroupPropBase
 {
     Regex _multiRegex;
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
     }
-    
+
+    protected override void SetRegex(RegexPropInfo captureProp)
+    {
+        var multiTemplate = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+        _multiRegex = multiTemplate.Regex;
+        RegexString = $"((?# {captureProp.Name}){multiTemplate.RegexStringNoCaptureGroups})";
+    }
+
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
         var manyMatch = _multiRegex.Match(matchSpan.ToStringValue());
@@ -36,13 +43,6 @@ public record TokenRegexManyProp : RegexPropBase
         parentToken.SetPropertyCapture(RegexPropInfo, manyMatchSubSpan.Value, propVal);
 
         return true;
-    }
-
-    protected override void SetRegex(RegexPropInfo captureProp)
-    {
-        var multiTemplate = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-        _multiRegex = multiTemplate.Regex;
-        RegexString = $"((?# {captureProp.Name}){multiTemplate.RegexStringNoCaptureGroups})";
     }
 
     public override string ToString() => base.ToString();
