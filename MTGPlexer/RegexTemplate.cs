@@ -14,8 +14,8 @@ public class RegexTemplate
     public string RegexStringNoCaptureGroups { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
-    public List<RegexSegmentBase> _resolvedConstructedElements = [];
-    public List<CaptureGroupPropBase> CaptureGroupProps => _resolvedConstructedElements.OfType<CaptureGroupPropBase>().ToList();
+    public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
+    public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
 
     public RegexTemplate(Type type, params string[] templateSnippets)
     {
@@ -35,13 +35,15 @@ public class RegexTemplate
 
         templateSnippets
             .ToList()
-            .ForEach(x => _resolvedConstructedElements.Add(ResolveSnippetToSegment(x)));
+            .ForEach(x => RegexSegments.Add(ResolveSnippetToSegment(x)));
 
         ComposeRegex();
     }
 
     void ComposeRegex()
     {
+        RegexString = @"(?<!\w)"; // Negative lookbehind to ensure no matches starting in the middle of words
+
         if (_templateType == RegexTemplateType.TokenUnit)
             ComposeRegexStringForTokenUnit();
         else if (_templateType == RegexTemplateType.OneOf)
@@ -49,19 +51,20 @@ public class RegexTemplate
         else if (_templateType == RegexTemplateType.Many)
             ComposeRegexStringForManyOf();
 
+        RegexString = @"(?!\w)"; // Negative lookahead to ensure no matches ending in the middle of words
 
     }
 
     void ComposeRegexStringForTokenUnit()
     {
-        for (int i = 0; i < _resolvedConstructedElements.Count; i++)
+        for (int i = 0; i < RegexSegments.Count; i++)
         {
-            var segment = _resolvedConstructedElements[i];
+            var segment = RegexSegments[i];
             RegexString += segment.RegexString;
 
             var shouldAddSpace =
                 !_noSpaces
-                && i < _resolvedConstructedElements.Count - 1
+                && i < RegexSegments.Count - 1
                 && !(segment is BoolRegexProp) // these set their own spaces already
                 && !TerminalPunctuation.Contains(segment.RegexString.LastOrDefault());
 

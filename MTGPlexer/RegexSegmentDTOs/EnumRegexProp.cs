@@ -5,7 +5,7 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public record EnumRegexProp : CaptureGroupPropBase
+public class EnumRegexProp : CaptureGroupPropBase
 {
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
     public RegexEnumAttribute Options { get; private set; }

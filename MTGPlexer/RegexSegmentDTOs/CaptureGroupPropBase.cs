@@ -5,9 +5,10 @@
 /// associated with some property, including child TokenUnit properties. Includes mechanisms for 
 /// setting values for properties of all relevant types.
 /// </summary>
-public abstract record CaptureGroupPropBase : RegexSegmentBase
+public abstract class CaptureGroupPropBase : RegexSegmentBase
 {
     public string Name { get; init; }
+    public string[] ParentNamePath { get; init; }
     public RegexPropInfo RegexPropInfo { get; init; }
     public bool IsOptional { get; init; }
     public bool IsChildTokenUnit { get; init; }
@@ -22,6 +23,8 @@ public abstract record CaptureGroupPropBase : RegexSegmentBase
         IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
         SetRegex(captureProp);
     }
+
+    public abstract string ComposeRegexString(List<string> currentNamePath = null);
 
     protected virtual void SetRegex(RegexPropInfo captureProp)
     {

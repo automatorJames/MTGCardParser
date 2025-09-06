@@ -5,7 +5,7 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record TokenRegexManyProp : CaptureGroupPropBase
+public class TokenRegexManyProp : TokenRegexProp
 {
     Regex _multiRegex;
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)

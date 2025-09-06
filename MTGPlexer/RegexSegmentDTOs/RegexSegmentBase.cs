@@ -6,9 +6,11 @@
 /// this is a segment of Regex within a broader RegexTemplate which combines with other segments into a finished
 /// rendered Regex string & Regex object.
 /// </summary>
-public abstract record RegexSegmentBase
+public abstract class RegexSegmentBase
 {
     public string RegexString { get; protected set; }
+
+    public abstract string ComposeRegexString();
 
     public override string ToString() => RegexString;
 }
