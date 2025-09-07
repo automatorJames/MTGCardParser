@@ -47,13 +47,6 @@ public static partial class TokenTypeRegistry
     {
         Palettes[type] = new(type);
         NameToType[type.Name] = type;
-
-        //if (type.IsAssignableTo(typeof(TokenUnitOneOf)) || type.IsAssignableTo(typeof(ManyToken)))
-        //{
-        //    Templates[type] = new(type);
-        //    return;
-        //}
-        
         var instance = (TokenUnit)Activator.CreateInstance(type);
 
         if (!instance.ValidateStructure())

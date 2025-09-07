@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// The base of all regex segment types, including regex patterns not associated with any TokenUnit property,
@@ -10,7 +12,7 @@ public abstract class RegexSegmentBase
 {
     public string RegexString { get; protected set; }
 
-    public abstract void ComposeRegexLines(List<string> lines = null, List<string> currentNamePath = null);
+    public abstract void ComposeRegexLines(List<RegexTemplateLine> lines = null, List<string> namePath = null, int indentation = 0);
 
     public override string ToString() => RegexString;
 }

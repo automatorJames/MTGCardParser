@@ -24,8 +24,6 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
         SetRegex(captureProp);
     }
 
-    public abstract string ComposeRegexString(List<string> currentNamePath = null);
-
     protected virtual void SetRegex(RegexPropInfo captureProp)
     {
         // Default implementation

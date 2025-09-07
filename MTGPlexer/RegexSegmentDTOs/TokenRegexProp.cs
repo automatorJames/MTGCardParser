@@ -18,7 +18,6 @@ public class TokenRegexProp : CaptureGroupPropBase
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
         ChildSegments = template.RegexSegments;
-        _noSpaces = RegexPropInfo.BaseType.GetCustomAttribute<NoSpacesAttribute>() is not null;
     }
 
     protected override void SetRegex(RegexPropInfo captureProp)
@@ -34,33 +33,8 @@ public class TokenRegexProp : CaptureGroupPropBase
         lines ??= [];
         lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
 
-        for (int i = 0; i < ChildSegments.Count; i++)
-        {
-            var segment = ChildSegments[i];
+        foreach (var segment in ChildSegments)
             segment.ComposeRegexLines(lines, namePath, indentation + 1);
-
-            var shouldAddSpace =
-                !_noSpaces
-                && i < ChildSegments.Count - 1 // this is not the last segment
-                && !(segment is BoolRegexProp) // these set their own spaces already
-                && !_terminalPunctuation.Contains(segmentString.LastOrDefault()); // last char of segment isn't terminal punctation
-
-            if (shouldAddSpace)
-                regexString += " ";
-        }
-
-
-    }
-
-    string WrapAndIndent(string namePath, string content)
-    {
-        
-    }
-
-    string Indent(string input, int depth)
-    {
-        const int spacesPerIndent = 4;
-        return input.PadLeft(spacesPerIndent * depth);
     }
 
     public override string ToString() => base.ToString();

@@ -2,11 +2,8 @@
 
 public abstract class TokenUnitOneOf: TokenUnit
 {
-    List<PropertyInfo> _tokenUnitChildren;
-
     protected TokenUnitOneOf(params string[] templateSnippets) : base(templateSnippets)
     {
-        _tokenUnitChildren = GetType().GetProps().ToList();
     }
 
     /// <summary>
@@ -29,13 +26,31 @@ public abstract class TokenUnitOneOf: TokenUnit
 
     public override bool ValidateStructure()
     {
-        // There should be only TokenUnit props, and more than one
+        var props = GetType().GetProps();
 
-        if (_tokenUnitChildren.Any(x => !x.PropertyType.IsAssignableTo(typeof(TokenUnit))))
+        // There should be at least two properties
+        if (props.Count() < 2) 
             return false;
 
-        if (_tokenUnitChildren.Count() < 2) 
-            return false;
+        // The poperties as referenced in the constructor should be contiguous
+        // (i.e. not separated by text segments)
+        bool textSegmentEncountered = false;
+        bool capturePropEncountered = false;
+        foreach (var segment in Template.RegexSegments)
+        {
+            // Ignore leading text segments
+            if (!capturePropEncountered && segment is TextSegment)
+                continue;
+
+            if (capturePropEncountered && textSegmentEncountered && segment is CaptureGroupPropBase)
+                // We've already encountered both captures & non-leading text, so this capture is non-contiguous
+                return false;
+
+            if (segment is CaptureGroupPropBase)
+                capturePropEncountered = true;
+            else if (segment is TextSegment)
+                textSegmentEncountered = true;
+        }
 
         return true;
     }
