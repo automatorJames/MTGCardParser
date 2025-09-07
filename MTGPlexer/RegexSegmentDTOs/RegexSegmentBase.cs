@@ -10,8 +10,7 @@ public abstract class RegexSegmentBase
 {
     public string RegexString { get; protected set; }
 
-    public abstract string ComposeRegexString();
+    public abstract void ComposeRegexLines(List<string> lines = null, List<string> currentNamePath = null);
 
     public override string ToString() => RegexString;
 }
-

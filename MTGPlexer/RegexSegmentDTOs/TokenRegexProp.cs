@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also a TokenUnit (i.e. a child TokenUnit). During
@@ -25,17 +27,17 @@ public class TokenRegexProp : CaptureGroupPropBase
         RegexString = template.RegexStringNoWordBoundaries;
     }
 
-    public override string ComposeRegexString(List<string> currentNamePath = null)
+    public override void ComposeRegexLines(List<RegexTemplateLine> lines = null, List<string> namePath = null, int indentation = 0)
     {
-        currentNamePath ??= [];
-        currentNamePath.Add(RegexPropInfo.Name);
-        string regexString = "";
+        namePath ??= [];
+        namePath.Add(RegexPropInfo.Name);
+        lines ??= [];
+        lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
 
         for (int i = 0; i < ChildSegments.Count; i++)
         {
             var segment = ChildSegments[i];
-            var segmentString = segment.ComposeRegexString();
-            regexString += segmentString;
+            segment.ComposeRegexLines(lines, namePath, indentation + 1);
 
             var shouldAddSpace =
                 !_noSpaces
