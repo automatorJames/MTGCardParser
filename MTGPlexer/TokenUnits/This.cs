@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[NoWordBoundary]
+[NoBoundary]
 [TokenUnitProperty]
 public class This : TokenUnit
 {

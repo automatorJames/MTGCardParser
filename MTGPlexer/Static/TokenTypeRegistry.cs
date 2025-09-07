@@ -56,7 +56,6 @@ public static partial class TokenTypeRegistry
         }
 
         Templates[type] = instance.Template;
-        var baseRegex = instance.Template.RegexStringNoWordBoundaries;
         var propCaptureSegments = instance.Template.CaptureGroupProps;
 
         var unregisteredEnums = propCaptureSegments

@@ -20,21 +20,21 @@ public class TokenRegexProp : CaptureGroupPropBase
         ChildSegments = template.RegexSegments;
     }
 
-    protected override void SetRegex(RegexPropInfo captureProp)
-    {
-        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-        RegexString = template.RegexStringNoWordBoundaries;
-    }
+    //protected override void SetRegex(RegexPropInfo captureProp)
+    //{
+    //    var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+    //    RegexString = template.RegexStringNoWordBoundaries;
+    //}
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines = null, List<string> namePath = null, int indentation = 0)
+    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
     {
-        namePath ??= [];
         namePath.Add(RegexPropInfo.Name);
-        lines ??= [];
         lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
 
         foreach (var segment in ChildSegments)
             segment.ComposeRegexLines(lines, namePath, indentation + 1);
+
+        lines.Add(new GroupClose(string.Join('.', namePath), indentation));
     }
 
     public override string ToString() => base.ToString();

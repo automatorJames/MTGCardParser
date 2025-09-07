@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [NoSpaces]
-[NoWordBoundary]
+[NoBoundary]
 public class PowerToughnessMod : TokenUnit
 {
     public PowerToughnessMod() : base(nameof(PowerSign), nameof(PowerValue), "/", nameof(ToughnessSign), nameof(ToughnessValue)) { }

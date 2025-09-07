@@ -15,10 +15,10 @@ public class TokenRegexOneOfProp : TokenRegexProp
         ChildSegments = template.RegexSegments;
     }
 
-    protected override void SetRegex(RegexPropInfo captureProp)
-    {
-        RegexString = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType).RegexString;
-    }
+    //protected override void SetRegex(RegexPropInfo captureProp)
+    //{
+    //    RegexString = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType).RegexString;
+    //}
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
@@ -32,11 +32,9 @@ public class TokenRegexOneOfProp : TokenRegexProp
         return true;
     }
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines = null, List<string> namePath = null, int indentation = 0)
+    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
     {
-        namePath ??= [];
         namePath.Add(RegexPropInfo.Name);
-        lines ??= [];
         lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
 
         // If there are no text segments, the named group parentheses are a sufficient wrapper to isolate

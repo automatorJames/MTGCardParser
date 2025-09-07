@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the
@@ -12,16 +14,36 @@ public class EnumRegexProp : CaptureGroupPropBase
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
+        Options = captureProp.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
+
         if (captureProp.RegexPropType != RegexPropType.Enum)
             throw new ArgumentException($"Type '{captureProp.Name}' isn't an enum");
     }
 
-    protected override void SetRegex(RegexPropInfo regexPropInfo)
+    //protected override void SetRegex(RegexPropInfo regexPropInfo)
+    //{
+    //    Options = regexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
+    //    CaptureAlternatives = GetAlternations();
+    //    CaptureAlternativesString = string.Join("|", CaptureAlternatives);
+    //    RegexString = $@"(?<{regexPropInfo.Name}>{CaptureAlternativesString})";
+    //}
+
+    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
     {
-        Options = regexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-        CaptureAlternatives = GetAlternations();
-        CaptureAlternativesString = string.Join("|", CaptureAlternatives);
-        RegexString = $@"(?<{regexPropInfo.Name}>{CaptureAlternativesString})";
+        var path = string.Join('.', namePath);
+        lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
+
+        bool isFirstAlternation = true;
+        var alternations = GetAlternations();
+
+        foreach (var alternation in alternations)
+        {
+            var alternateValue = new AlternateValue(alternation, path.Dot(alternation), indentation + 1, isFirstAlternation);
+            lines.Add(alternateValue);
+            isFirstAlternation = false;
+        } 
+
+        lines.Add(new GroupClose(string.Join('.', namePath), indentation));
     }
 
     List<string> GetAlternations()

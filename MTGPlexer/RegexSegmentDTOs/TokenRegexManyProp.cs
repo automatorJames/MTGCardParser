@@ -12,16 +12,16 @@ public class TokenRegexManyProp : TokenRegexProp
     Regex _multiRegex;
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         ChildSegments = template.RegexSegments;
     }
 
-    protected override void SetRegex(RegexPropInfo captureProp)
-    {
-        var multiTemplate = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-        _multiRegex = multiTemplate.Regex;
-        RegexString = $"((?# {captureProp.Name}){multiTemplate.RegexStringNoCaptureGroups})";
-    }
+    //protected override void SetRegex(RegexPropInfo captureProp)
+    //{
+    //    var multiTemplate = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+    //    _multiRegex = multiTemplate.Regex;
+    //    RegexString = $"((?# {captureProp.Name}){multiTemplate.RegexStringNoCaptureGroups})";
+    //}
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
@@ -49,63 +49,24 @@ public class TokenRegexManyProp : TokenRegexProp
         return true;
     }
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines = null, List<string> namePath = null, int indentation = 0)
+    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
     {
-        namePath ??= [];
-        namePath.Add(RegexPropInfo.Name);
-        lines ??= [];
-        lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
-
-        // If there are no text segments, the named group parentheses are a sufficient wrapper to isolate
-        // the alterantive properties. If not, we must render the alternate properties within supplemental
-        // parentheses to isolate them from the text segments on either side.
-        bool shouldWrapAlternatives = ChildSegments.Any(x => x is TextSegment);
-
-        // bool props only relevant if shouldWrapAlternatives is true
-
-        // Flag to track whether we're currently within the set of contiguous alternative properties
-        bool haveBegunAlternations = false;
-
-        // Flag to track whether we've completed the contiguous alternative properties
-        bool haveFinishedAlternations = false;
-
-
-        foreach (var segment in ChildSegments)
-        {
-            if (segment is TextSegment)
-            {
-                if (haveBegunAlternations)
-                {
-                    // Close the alternations group before the trailing text segments
-                    indentation--;
-                    lines.Add(new GroupClose(string.Join('.', namePath), indentation));
-                    haveFinishedAlternations = true;
-                }
-
-                segment.ComposeRegexLines(lines, namePath, indentation);
-
-            }
-            else if (segment is CaptureGroupPropBase)
-            {
-                if (!haveBegunAlternations && shouldWrapAlternatives)
-                {
-                    indentation++;
-                    lines.Add(new GroupOpen(string.Join('.', namePath), indentation));
-                    haveBegunAlternations = true;
-                }
-
-                segment.ComposeRegexLines(lines, namePath, indentation);
-
-            }
-        }
-
-        if (haveBegunAlternations)
-        {
-            // Close the alternations group because we're done
-            indentation--;
-            lines.Add(new GroupClose(string.Join('.', namePath), indentation));
-            haveFinishedAlternations = true;
-        }
+        //namePath ??= [];
+        //namePath.Add(RegexPropInfo.Name);
+        //lines ??= [];
+        //
+        //// Get the lines for a single iteration of this multi capture prop's base type
+        //List<RegexTemplateLine> linesForSingle = [];
+        //base.ComposeRegexLines(linesForSingle, namePath, indentation);
+        //
+        //lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
+        //
+        ////var itemName = RegexPropInfo.Name + "_Item";
+        //
+        //
+        //
+        //xxx(, xxx*(, (?<{nameof(Conjunction)}>and|or)) xxx
+        //(?<{genericType.Name}_Item>{singleRegex})(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex})
     }
 
     public override string ToString() => base.ToString();
