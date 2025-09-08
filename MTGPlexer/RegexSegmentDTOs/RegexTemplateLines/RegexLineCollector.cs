@@ -1,42 +1,59 @@
+using System.ComponentModel;
+using System.Security.AccessControl;
+
 namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
 
 public class RegexLineCollector
 {
     Type _topLevelType;
-    bool _addTopLevelSpaces;
-    List<RegexTemplateLine> _provisionalTrailingBuffer = [];
-    List<RegexTemplateLine> _lines { get; set; } = [];
-    Stack<RegexPropInfo> _captureGroupStack { get; set; } = [];
-    int _indentation { get; set; }
+    int _nextUnnamedCaptureGroupId;
+    List<RegexTemplateLine> _lines = [];
+    Stack<object> _captureGroupStack = [];
+    int _indentation;
+
+    // The key "-1" represents the top level (i.e. the class, not within a capture group)
+    Dictionary<object, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
 
     public RegexLineCollector(Type topLevelType)
     {
         _topLevelType = topLevelType;
-        _addTopLevelSpaces = !topLevelType.IsDefined(typeof(NoSpacesAttribute));
+        var topLevelSpaceDiposition = topLevelType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.NeverAddSpace : SpaceDisposition.DontAddSpaceBeforeNextItem;
+        _spaceIsRequiredBeforeNextElementAtLevel = new Dictionary<object, SpaceDisposition> { [-1] = topLevelSpaceDiposition };
     }
 
-    public void OpenGroup(RegexPropInfo captureGroup = null)
+    public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false)
     {
-        // Push the group name (or null if unnamed parentheses group)
-        _captureGroupStack.Push(captureGroup);
+        AddPrecedingSpaceAndBlankIfApplicable();
+        var groupKey = (object)captureGroup ?? (object)_nextUnnamedCaptureGroupId++;
+        _captureGroupStack.Push(groupKey);
+
+        if (groupKey is RegexPropInfo prop && prop.BaseType.IsDefined(typeof(NoSpacesAttribute)))
+            neverAddSpacesToGroupMembers = true;
+
+        _spaceIsRequiredBeforeNextElementAtLevel[groupKey] = neverAddSpacesToGroupMembers ? SpaceDisposition.NeverAddSpace : SpaceDisposition.DontAddSpaceBeforeNextItem;
+
+        if (captureGroup != null)
+            _lines.Add(new NamedGroupOpen(captureGroup.Name, GetFlatNamePath(), _indentation));
+        else
+            _lines.Add(new GroupOpen(GetFlatNamePath(), _indentation));
+         
         _indentation++;
-        AddLine(new NamedGroupOpen(captureGroup.Name, GetFlatNamePath(), _indentation));
     }
 
-    public void CloseGroup(bool groupIsOptional = false)
+    public void CloseGroup(GroupQuantifier? quantifier = null)
     {
-        AddLine(new GroupClose(GetFlatNamePath(), _indentation, groupIsOptional));
+        _indentation--;
+        _lines.Add(new GroupClose(GetFlatNamePath(), _indentation, quantifier));
 
         // Pop the current group name (or null placeholder)
         _captureGroupStack.Pop();
-        _indentation--;
-        AddProvisionalSpaceAndBlankIfApplicable();
     }
+
 
     public void AddTextLine(string text)
     {
-        AddLine(new TextLine(text, GetFlatNamePath(), _indentation));
-        AddProvisionalSpaceAndBlankIfApplicable();
+        AddPrecedingSpaceAndBlankIfApplicable();
+        _lines.Add(new TextLine(text, GetFlatNamePath(), _indentation));
     }
 
     public void AddAlternateValues(IEnumerable<string> alternatives)
@@ -46,43 +63,48 @@ public class RegexLineCollector
         foreach (var alternative in alternatives)
         {
             var alternateValue = new AlternateValue(alternative, GetFlatNamePath(), _indentation, isFirstAlternation);
-            AddLine(alternateValue);
+            _lines.Add(alternateValue);
             isFirstAlternation = false;
         }
     }
 
-    public void AddProvisionalSpaceAndBlankIfApplicable()
+    public void AddGroupAlternativePipe() => _lines.Add(new GroupAlternativePipe(GetFlatNamePath(), _indentation));
+
+    void AddPrecedingSpaceAndBlankIfApplicable()
     {
-        var lastNamedCaptureGroup = _captureGroupStack.LastOrDefault(x => x != null);
+        var lastNamedCaptureGroup = _captureGroupStack.OfType<RegexPropInfo>().LastOrDefault();
 
         if (lastNamedCaptureGroup != null)
         {
-            if (!lastNamedCaptureGroup.BaseType.IsDefined(typeof(NoSpacesAttribute)))
-                AddProvisionalSpaceAndBlank();
-        }
-        else if (_addTopLevelSpaces)
-            AddProvisionalSpaceAndBlank();
+            var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[lastNamedCaptureGroup];
 
-        // private helper
-        void AddProvisionalSpaceAndBlank()
+            if (groupSpaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
+                AddPrecedingSpaceAndBlank();
+            else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpace)
+                _spaceIsRequiredBeforeNextElementAtLevel[lastNamedCaptureGroup] = SpaceDisposition.AddSpaceBeforeNextItem;
+
+        }
+        else
         {
-            _provisionalTrailingBuffer.Add(new SpaceLine(GetFlatNamePath(), _indentation));
-            _provisionalTrailingBuffer.Add(new BlankLine(GetFlatNamePath()));
-        }
-    }
+            // -1 represents the top level
+            var topLevelDisposition = _spaceIsRequiredBeforeNextElementAtLevel[-1];
 
-    void AddLine(RegexTemplateLine line)
-    {
-        _lines.AddRange(_provisionalTrailingBuffer);
-        _provisionalTrailingBuffer.Clear();
-        _lines.Add(line);
+             if (topLevelDisposition == SpaceDisposition.AddSpaceBeforeNextItem) 
+                AddPrecedingSpaceAndBlank();
+            else if (topLevelDisposition != SpaceDisposition.NeverAddSpace)
+                _spaceIsRequiredBeforeNextElementAtLevel[-1] = SpaceDisposition.AddSpaceBeforeNextItem;
+        } 
+        
+        // private helper
+        void AddPrecedingSpaceAndBlank()
+        {
+            _lines.Add(new SpaceLine(GetFlatNamePath(), _indentation));
+            //_lines.Add(new BlankLine(GetFlatNamePath()));
+        }
     }
 
     public List<RegexTemplateLine> Finalize()
     {
-        _lines.AddRange(_provisionalTrailingBuffer);
-        _provisionalTrailingBuffer.Clear();
-
         if (!_topLevelType.IsDefined(typeof(NoBoundaryAttribute)))
         {
             _lines.Insert(0, new NegativeLookbehindBoundary());
@@ -95,5 +117,12 @@ public class RegexLineCollector
     /// <summary>
     /// Get the current dot-navigaiton name path, which exclude any null name parts (representing unnamed parentheses groups).
     /// </summary>
-    string GetFlatNamePath() => string.Join(".", _captureGroupStack.Where(x => x != null).Select(x => x.Name));
+    string GetFlatNamePath() => string.Join(".", _captureGroupStack.OfType<RegexPropInfo>().Where(x => x != null).Select(x => x.Name));
+}
+
+public enum SpaceDisposition
+{
+    NeverAddSpace,
+    DontAddSpaceBeforeNextItem,
+    AddSpaceBeforeNextItem,
 }

@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
-namespace MTGPlexer;
+﻿namespace MTGPlexer;
 
 public class RegexTemplate
 {
@@ -39,12 +37,60 @@ public class RegexTemplate
     {
         RegexLineCollector collector = new(_containingType);
 
-        foreach (var segment in RegexSegments)
-            segment.ComposeRegexLines(collector);
+        if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
+            ComposeTokenUnitOneOfLines(collector, RegexSegments);
+        else
+            ComposeTokenUnitLines(collector, RegexSegments);
 
         Lines = collector.Finalize();
         SetRegex();
     }
+
+    public static void ComposeTokenUnitLines(RegexLineCollector collector, List<RegexSegmentBase> segments)
+    {
+        foreach (var segment in segments)
+            segment.ComposeRegexLines(collector);
+    }
+
+    public static void ComposeTokenUnitOneOfLines(RegexLineCollector collector, List<RegexSegmentBase> segments)
+    {
+        // If there are no text segments, the named group parentheses are a sufficient wrapper to isolate
+        // the alterantive properties. If not, we must render the alternate properties within supplemental
+        // parentheses to isolate them from the text segments on either side.
+        bool shouldWrapAlternatives = segments.Any(x => x is TextSegment);
+
+        // Tracks the number of alternatives that have been rendered to open/close groups and render "|" pipes
+        int renderedAlternatives = 0;
+
+        foreach (var segment in segments)
+        {
+            if (segment is TextSegment)
+            {
+                if (renderedAlternatives > 0)
+                    // Close the alternations group before the trailing text segments
+                    collector.CloseGroup();
+
+                segment.ComposeRegexLines(collector);
+
+            }
+            else if (segment is CaptureGroupPropBase captureProp)
+            {
+                if (renderedAlternatives == 0 && shouldWrapAlternatives)
+                    collector.OpenGroup(neverAddSpacesToGroupMembers: true);
+
+                if (renderedAlternatives > 0)
+                    collector.AddGroupAlternativePipe();
+
+                segment.ComposeRegexLines(collector);
+                renderedAlternatives++;
+            }
+        }
+
+        if (shouldWrapAlternatives && renderedAlternatives > 0)
+            // Close the alternations group because we're done
+            collector.CloseGroup();
+    }
+
 
     void SetRegex()
     {
@@ -94,10 +140,3 @@ public class RegexTemplate
             .ToList();
     }
 }
-
-//public enum RegexTemplateType
-//{
-//    TokenUnit,
-//    OneOf,
-//    Many
-//}

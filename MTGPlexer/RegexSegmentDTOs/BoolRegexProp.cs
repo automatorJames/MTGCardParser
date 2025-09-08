@@ -19,7 +19,7 @@ public class BoolRegexProp : CaptureGroupPropBase
             .OrderByDescending(s => s.Length).ToList();
 
         collector.AddAlternateValues(captureAlternatives);
-        collector.CloseGroup(groupIsOptional: true);
+        collector.CloseGroup(GroupQuantifier.Optional);
     }
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)

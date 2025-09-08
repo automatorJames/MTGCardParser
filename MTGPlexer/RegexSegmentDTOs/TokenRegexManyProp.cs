@@ -5,13 +5,16 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public class TokenRegexManyProp : TokenRegexProp
+public class TokenRegexManyProp : CaptureGroupPropBase
 {
     Regex _multiRegex;
+    List<RegexSegmentBase> _singleIterationSegments;
+    static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)))).GetCaptureGroupPropBase();
+
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
-        ChildSegments = template.RegexSegments;
+        _singleIterationSegments = template.RegexSegments;
     }
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
@@ -42,22 +45,21 @@ public class TokenRegexManyProp : TokenRegexProp
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        //namePath ??= [];
-        //namePath.Add(RegexPropInfo.Name);
-        //lines ??= [];
-        //
-        //// Get the lines for a single iteration of this multi capture prop's base type
-        //List<RegexTemplateLine> linesForSingle = [];
-        //base.ComposeRegexLines(linesForSingle, namePath, indentation);
-        //
-        //lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
-        //
-        ////var itemName = RegexPropInfo.Name + "_Item";
-        //
-        //
-        //
-        //xxx(, xxx*(, (?<{nameof(Conjunction)}>and|or)) xxx
-        //(?<{genericType.Name}_Item>{singleRegex})(?:,? (?<{genericType.Name}_Item>{singleRegex}))*(?:,? (?<{nameof(Conjunction)}>and|or)) (?<{genericType.Name}_Item>{singleRegex})
+        collector.OpenGroup(RegexPropInfo, neverAddSpacesToGroupMembers: true);
+        RegexTemplate.ComposeTokenUnitLines(collector, _singleIterationSegments);
+        collector.OpenGroup();
+        collector.AddTextLine(", ");
+        RegexTemplate.ComposeTokenUnitLines(collector, _singleIterationSegments);
+        collector.CloseGroup(GroupQuantifier.AnyNumber);
+        collector.OpenGroup();
+        collector.AddTextLine(", ");
+        collector.OpenGroup();
+        _conjunctionProp.ComposeRegexLines(collector);
+        collector.AddTextLine(" ");
+        collector.CloseGroup(GroupQuantifier.Optional);
+        RegexTemplate.ComposeTokenUnitLines(collector, _singleIterationSegments);
+        collector.CloseGroup();
+        collector.CloseGroup();
     }
 
     public override string ToString() => base.ToString();

@@ -40,7 +40,8 @@
                         @(isCopied ? "Copied!" : "Click to copy")
                     </div>
                     <pre style=@tokenUnitCapture.Palette.ToColorStyle()>
-                    <code>
+                        @tokenUnitCapture.RegexString
+@*                     <code>
                             @{
                                 // Get highlight state for this specific token unit capture
                                 bool isValueHighlightActive = _valueHighlightState.TryGetValue(tokenUnitCapture.Type.Name, out var valueHighlightInfo);
@@ -81,7 +82,7 @@
 
                         <span class="regex-line @cssClass" style="@style">@content</span>
                             }
-                                                        </code>
+                                                        </code> *@
                                                     </pre>
                 </div>
             }

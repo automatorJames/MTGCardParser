@@ -13,14 +13,14 @@ public class ManyToken<T> : ManyToken
         Conjunction = conjunction;
     }
 
-    public override bool ValidateStructure()
-    {
-        bool typeIsValidManyType =
-            typeof(T).IsAssignableTo(typeof(TokenUnit))
-            || typeof(T).IsEnum;
-
-        return typeIsValidManyType;
-    }
+    //public override bool ValidateStructure()
+    //{
+    //    bool typeIsValidManyType =
+    //        typeof(T).IsAssignableTo(typeof(TokenUnit))
+    //        || typeof(T).IsEnum;
+    //
+    //    return typeIsValidManyType;
+    //}
 }
 
 public enum Conjunction
@@ -29,7 +29,7 @@ public enum Conjunction
     Or
 }
 
-public class ManyToken : TokenUnit 
+public class ManyToken 
 {
     public Conjunction Conjunction { get; set; }
 }

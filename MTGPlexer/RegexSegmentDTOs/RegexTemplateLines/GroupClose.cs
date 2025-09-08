@@ -1,4 +1,18 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+﻿using System.ComponentModel;
 
-public record GroupClose(string Path, int Indentation, bool GroupIsOptional = false) 
-    : RegexTemplateLine($"){(GroupIsOptional ? "?" : "")}", Path, Indentation);
+namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+
+public record GroupClose(string Path, int Indentation, GroupQuantifier? Quantifier = null) 
+    : RegexTemplateLine($"){(Quantifier.HasValue ?  Quantifier.Value.Description() : "")}", Path, Indentation);
+
+public enum GroupQuantifier
+{
+    [Description("*")]
+    AnyNumber,
+
+    [Description("+")]
+    OneOrMore,
+
+    [Description("?")]
+    Optional
+}

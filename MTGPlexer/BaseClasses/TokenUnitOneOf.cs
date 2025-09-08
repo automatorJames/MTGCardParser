@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.BaseClasses;
 
-public abstract class TokenUnitOneOf: TokenUnit
+public abstract class TokenUnitOneOf : TokenUnit
 {
     protected TokenUnitOneOf(params string[] templateSnippets) : base(templateSnippets)
     {

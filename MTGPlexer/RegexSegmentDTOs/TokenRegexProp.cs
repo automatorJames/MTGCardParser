@@ -21,10 +21,7 @@ public class TokenRegexProp : CaptureGroupPropBase
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo);
-
-        foreach (var segment in ChildSegments)
-            segment.ComposeRegexLines(collector);
-
+        RegexTemplate.ComposeTokenUnitLines(collector, ChildSegments);
         collector.CloseGroup();
     }
 

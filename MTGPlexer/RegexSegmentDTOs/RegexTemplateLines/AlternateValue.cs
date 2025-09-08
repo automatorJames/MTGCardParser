@@ -7,7 +7,9 @@ public record AlternateValue(string Value, string Path, int Indentation, bool Is
 
     static string GetFormattedValue(string value, bool isFirstAlternate)
     {
+        var formattedValue = value.Replace(" ", "[ ]");
         var firstChar = isFirstAlternate ? " " : "|";
-        return firstChar + " " + value;
+        formattedValue = firstChar + " " + value;
+        return formattedValue;
     }
 }
