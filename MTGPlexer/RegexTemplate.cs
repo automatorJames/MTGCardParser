@@ -43,7 +43,7 @@ public class RegexTemplate
             ComposeTokenUnitLines(collector, RegexSegments);
 
         Lines = collector.Finalize();
-        SetRegex();
+        SetFormattedRegex();
     }
 
     public static void ComposeTokenUnitLines(RegexLineCollector collector, List<RegexSegmentBase> segments)
@@ -92,7 +92,7 @@ public class RegexTemplate
     }
 
 
-    void SetRegex()
+    void SetFormattedRegex()
     {
         const int spacesPerIndent = 4;
         string regexString = "";
