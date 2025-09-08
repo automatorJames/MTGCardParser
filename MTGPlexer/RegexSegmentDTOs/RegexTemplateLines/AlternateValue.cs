@@ -9,7 +9,7 @@ public record AlternateValue(string Value, string Path, int Indentation, bool Is
     {
         var formattedValue = value.Replace(" ", "[ ]");
         var firstChar = isFirstAlternate ? " " : "|";
-        formattedValue = firstChar + " " + value;
+        formattedValue = firstChar + " " + formattedValue;
         return formattedValue;
     }
 }

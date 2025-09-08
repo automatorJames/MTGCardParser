@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have
@@ -12,13 +10,18 @@ namespace MTGPlexer.RegexSegmentDTOs;
 /// </summary>
 public class PlaceholderRegexProp : CaptureGroupPropBase
 {
+    List<string> _alternations;
     public PlaceholderRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
+        _alternations = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
+            .OrderByDescending(s => s.Length).ToList();
     }
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        collector.AddTextLine(RegexString);
+        collector.OpenGroup(RegexPropInfo);
+        collector.AddAlternateValues(_alternations);
+        collector.CloseGroup();
     }
 }
 
