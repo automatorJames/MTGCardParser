@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -15,11 +13,6 @@ public class TokenRegexOneOfProp : TokenRegexProp
         ChildSegments = template.RegexSegments;
     }
 
-    //protected override void SetRegex(RegexPropInfo captureProp)
-    //{
-    //    RegexString = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType).RegexString;
-    //}
-
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
         var subMatchSpan = GetPropSubMatch(matchSpan);
@@ -32,61 +25,46 @@ public class TokenRegexOneOfProp : TokenRegexProp
         return true;
     }
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
+    public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        namePath.Add(RegexPropInfo.Name);
-        lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
+        collector.OpenGroup(RegexPropInfo);
 
         // If there are no text segments, the named group parentheses are a sufficient wrapper to isolate
         // the alterantive properties. If not, we must render the alternate properties within supplemental
         // parentheses to isolate them from the text segments on either side.
         bool shouldWrapAlternatives = ChildSegments.Any(x => x is TextSegment);
 
-        // bool props only relevant if shouldWrapAlternatives is true
 
         // Flag to track whether we're currently within the set of contiguous alternative properties
+        // (only relevant if shouldWrapAlternatives is true)
         bool haveBegunAlternations = false;
-
-        // Flag to track whether we've completed the contiguous alternative properties
-        bool haveFinishedAlternations = false;
-
 
         foreach (var segment in ChildSegments)
         {
             if (segment is TextSegment)
             {
                 if (haveBegunAlternations)
-                {
                     // Close the alternations group before the trailing text segments
-                    indentation--;
-                    lines.Add(new GroupClose(string.Join('.', namePath), indentation));
-                    haveFinishedAlternations = true;
-                }
+                    collector.CloseGroup();
 
-                segment.ComposeRegexLines(lines, namePath, indentation);
+                segment.ComposeRegexLines(collector);
 
             }
-            else if (segment is CaptureGroupPropBase)
+            else if (segment is CaptureGroupPropBase captureProp)
             {
                 if (!haveBegunAlternations && shouldWrapAlternatives)
                 {
-                    indentation++;
-                    lines.Add(new GroupOpen(string.Join('.', namePath), indentation));
+                    collector.OpenGroup();
                     haveBegunAlternations = true;
                 }
 
-                segment.ComposeRegexLines(lines, namePath, indentation);
-
+                segment.ComposeRegexLines(collector);
             }
         }
 
         if (haveBegunAlternations)
-        {
             // Close the alternations group because we're done
-            indentation--;
-            lines.Add(new GroupClose(string.Join('.', namePath), indentation));
-            haveFinishedAlternations = true;
-        }   
+            collector.CloseGroup();
     }
 
     public override string ToString() => base.ToString();

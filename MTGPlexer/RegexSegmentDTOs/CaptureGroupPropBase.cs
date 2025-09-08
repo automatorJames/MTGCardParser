@@ -8,12 +8,8 @@
 public abstract class CaptureGroupPropBase : RegexSegmentBase
 {
     public string Name { get; init; }
-    public string[] ParentNamePath { get; init; }
     public RegexPropInfo RegexPropInfo { get; init; }
-    public bool IsOptional { get; init; }
     public bool IsChildTokenUnit { get; init; }
-    //public List<AlternateValue> CaptureAlternatives { get; protected set; }
-    public string CaptureAlternativesString { get; protected set; }
     
     public CaptureGroupPropBase(RegexPropInfo captureProp)
     {
@@ -21,21 +17,7 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
         RegexPropInfo = captureProp;
         IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.Bool;
         IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
-        //SetRegex(captureProp);
     }
-
-    //protected virtual void SetRegex(RegexPropInfo captureProp)
-    //{
-    //    // Default implementation
-    //
-    //    CaptureAlternatives = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
-    //        .OrderByDescending(s => s.Length)
-    //        .Select(x => new AlternateValue(x))
-    //        .ToList();
-    //
-    //    CaptureAlternativesString = string.Join('|', CaptureAlternatives);
-    //    RegexString = $"(?<{captureProp.Name}>{CaptureAlternativesString})";
-    //}
 
     public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {

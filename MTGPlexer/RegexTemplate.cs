@@ -22,35 +22,27 @@ public class RegexTemplate
             return;
 
         _containingType = type;
-
-        //_templateType =
-        //    type.IsAssignableTo(typeof(TokenUnitOneOf)) ? RegexTemplateType.OneOf
-        //    : type.IsAssignableTo(typeof(ManyToken)) ? RegexTemplateType.Many
-        //    : RegexTemplateType.TokenUnit;
-
         RegexPropInfos = GetRegexProps();
 
-        templateSnippets
-            .ToList()
-            .ForEach(x => RegexSegments.Add(ResolveSnippetToSegment(x)));
+        for (int i = 0; i < templateSnippets.Length; i++)
+        {
+            var snippet = templateSnippets[i];
+            var isLastSnippet = i == templateSnippets.Length - 1;
+            var segment = ResolveSnippetToSegment(snippet);
+            RegexSegments.Add(segment);
+        }
 
         ComposeRegexLines();
     }
 
     void ComposeRegexLines()
     {
-        List<RegexTemplateLine> lines = [];
+        RegexLineCollector collector = new(_containingType);
 
         foreach (var segment in RegexSegments)
-            segment.ComposeRegexLines(lines, [], 0);
+            segment.ComposeRegexLines(collector);
 
-        if (!_containingType.IsDefined(typeof(NoBoundaryAttribute)))
-        {
-            lines.Insert(0, new NegativeLookbehindBoundary());
-            lines.Add(new NegativeLookaheadBoundary());
-        }
-
-        Lines = lines;
+        Lines = collector.Finalize();
         SetRegex();
     }
 

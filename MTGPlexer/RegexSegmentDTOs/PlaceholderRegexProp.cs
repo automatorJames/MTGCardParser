@@ -16,9 +16,9 @@ public class PlaceholderRegexProp : CaptureGroupPropBase
     {
     }
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
+    public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        lines.Add(new TextLine(RegexString, string.Join(".", namePath), indentation));
+        collector.AddTextLine(RegexString);
     }
 }
 

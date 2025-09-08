@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// This record is used for strings defined in RegexTemplate expression bodies. These strings aren't associated
@@ -13,9 +11,8 @@ public class TextSegment : RegexSegmentBase
         RegexString = pattern;
     }
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
+    public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        lines.Add(new TextLine(RegexString, string.Join(".", namePath), indentation));
+        collector.AddTextLine(RegexString);
     }
 }
-

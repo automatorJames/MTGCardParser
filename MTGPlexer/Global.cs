@@ -19,4 +19,6 @@ global using System.Reflection;
 global using System.Text.Json.Serialization;
 global using System.Text.RegularExpressions;
 global using System.Text;
+global using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+
 global using static MTGPlexer.Extensions;

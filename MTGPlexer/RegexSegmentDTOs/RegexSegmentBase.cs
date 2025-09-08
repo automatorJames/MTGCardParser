@@ -1,5 +1,4 @@
 ﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
 namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
@@ -11,8 +10,6 @@ namespace MTGPlexer.RegexSegmentDTOs;
 public abstract class RegexSegmentBase
 {
     public string RegexString { get; protected set; }
-
-    public abstract void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation);
-
+    public abstract void ComposeRegexLines(RegexLineCollector collector);
     public override string ToString() => RegexString;
 }

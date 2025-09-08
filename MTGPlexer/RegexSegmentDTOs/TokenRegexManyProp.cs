@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -15,13 +13,6 @@ public class TokenRegexManyProp : TokenRegexProp
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         ChildSegments = template.RegexSegments;
     }
-
-    //protected override void SetRegex(RegexPropInfo captureProp)
-    //{
-    //    var multiTemplate = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-    //    _multiRegex = multiTemplate.Regex;
-    //    RegexString = $"((?# {captureProp.Name}){multiTemplate.RegexStringNoCaptureGroups})";
-    //}
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
     {
@@ -49,7 +40,7 @@ public class TokenRegexManyProp : TokenRegexProp
         return true;
     }
 
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
+    public override void ComposeRegexLines(RegexLineCollector collector)
     {
         //namePath ??= [];
         //namePath.Add(RegexPropInfo.Name);

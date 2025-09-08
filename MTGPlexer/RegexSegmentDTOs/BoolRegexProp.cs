@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a bool property on a TokenUnit. Bool property Regexes typically check for the optional presence
@@ -13,32 +11,15 @@ public class BoolRegexProp : CaptureGroupPropBase
     {
     }
 
-    //protected override void SetRegex(RegexPropInfo captureProp)
-    //{
-    //    // Default implementation
-    //
-    //    CaptureAlternatives = (captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [captureProp.Name])
-    //        .OrderByDescending(s => s.Length).ToList();
-    //
-    //    CaptureAlternativesString = string.Join('|', CaptureAlternatives);
-    //    RegexString = $@"(?<{captureProp.Name}>[ ]?{CaptureAlternativesString}[ ]?)?";
-    //}
-
-    public override void ComposeRegexLines(List<RegexTemplateLine> lines, List<string> namePath, int indentation)
+    public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        lines.Add(new NamedGroupOpen(RegexPropInfo.Name, string.Join('.', namePath), indentation));
+        collector.OpenGroup(RegexPropInfo);
 
         var captureAlternatives = (RegexPropInfo.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [RegexPropInfo.Name])
             .OrderByDescending(s => s.Length).ToList();
 
-        bool isFirstAlternation = true;
-        foreach (var alternation in captureAlternatives)
-        {
-            var value = new AlternateValue(alternation, string.Join('.', namePath).Dot(alternation), indentation + 1, isFirstAlternation);
-            isFirstAlternation = false;
-        }
-
-        lines.Add(new GroupClose(string.Join('.', namePath), indentation));
+        collector.AddAlternateValues(captureAlternatives);
+        collector.CloseGroup(groupIsOptional: true);
     }
 
     public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
