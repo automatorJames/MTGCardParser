@@ -43,7 +43,7 @@ public class RegexTemplate
             ComposeTokenUnitLines(collector, RegexSegments);
 
         Lines = collector.Finalize();
-        SetRegex();
+        SetFormattedRegex();
     }
 
     public static void ComposeTokenUnitLines(RegexLineCollector collector, List<RegexSegmentBase> segments)

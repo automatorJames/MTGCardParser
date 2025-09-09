@@ -116,7 +116,7 @@ public class RegexLineCollector
     /// <summary>
     /// Get the current dot-navigaiton name path, which exclude any null name parts (representing unnamed parentheses groups).
     /// </summary>
-    string GetFlatNamePath() => string.Join(".", _captureGroupStack.OfType<RegexPropInfo>().Where(x => x != null).Select(x => x.Name));
+    string GetFlatNamePath() => string.Join("_", _captureGroupStack.OfType<RegexPropInfo>().Where(x => x != null).Select(x => x.Name));
 }
 
 public enum SpaceDisposition

@@ -15,7 +15,7 @@ public class Program
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
 
-        CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 10);
+        CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 1);
         var cards = cardDataGetter.GetCardsAsync().Result;
         builder.Services.AddSingleton(cards);
         builder.Services.AddSingleton<CorpusAnalyzer>();
