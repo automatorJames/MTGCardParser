@@ -18,7 +18,7 @@ public record TokenUnitCapture
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
         OccurrenceCount = occurrenceCount;
         Palette = TokenTypeRegistry.Palettes[type];
-        RegexString = TokenTypeRegistry.Templates[type].RegexString;
+        RegexString = TokenTypeRegistry.Templates[type].FormattedRegexString;
 
         if (collectors != null)
         {

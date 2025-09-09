@@ -89,32 +89,32 @@ public abstract class TokenUnitDistilled : TokenUnit
     /// <summary>
     /// Only intended to be called by TokenClassRegistry upon startup.
     /// </summary>
-    public override bool ValidateStructure()
+    public override string ValidateStructure()
     {
         var placeholderCaptureProps = GetPlaceholderCaptureProps();
         var isSinglePlaceholder = placeholderCaptureProps.Count == 1;
         var distilledProps = GetDistilledProps();
 
         if (!distilledProps.Any())
-            return false;
+            return $"{nameof(TokenUnitDistilled)} must be at least one distilled prop";
 
         if (isSinglePlaceholder)
-            return true;
+            return null;
 
         foreach (var prop in distilledProps)
         {
             var propName = prop.Prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
 
             if (propName is null)
-                return false;
+                return $"Prop '{prop.Prop.Name}' isn't associated with any {nameof(DistilledValueAttribute.DistilledFromPropName)}";
 
             var distilledFromProp = Type.GetProperty(propName);
 
             if (distilledFromProp is null)
-                return false;
+                return $"Prop '{propName}' isn't defined on type '{Type.Name}'";
         }
 
-        return true;
+        return null;
     }
 }
 

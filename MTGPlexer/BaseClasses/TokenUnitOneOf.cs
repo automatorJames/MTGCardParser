@@ -24,13 +24,12 @@ public abstract class TokenUnitOneOf : TokenUnit
         throw new Exception("Expected a non-null TokenUnit child property, but found none");
     }
 
-    public override bool ValidateStructure()
+    public override string ValidateStructure()
     {
         var props = GetType().GetProps();
 
-        // There should be at least two properties
         if (props.Count() < 2) 
-            return false;
+            return $"{nameof(TokenUnitOneOf)} must be at least two properties";
 
         // The poperties as referenced in the constructor should be contiguous
         // (i.e. not separated by text segments)
@@ -44,7 +43,7 @@ public abstract class TokenUnitOneOf : TokenUnit
 
             if (capturePropEncountered && textSegmentEncountered && segment is CaptureGroupPropBase)
                 // We've already encountered both captures & non-leading text, so this capture is non-contiguous
-                return false;
+                return $"{nameof(TokenUnitOneOf)} properties appear contiguously in base constructor";
 
             if (segment is CaptureGroupPropBase)
                 capturePropEncountered = true;
@@ -52,7 +51,7 @@ public abstract class TokenUnitOneOf : TokenUnit
                 textSegmentEncountered = true;
         }
 
-        return true;
+        return null;
     }
 
     public static string GetTokenUnitOneOfRegexHeaderComment(Type tokenUnitOneOfType)

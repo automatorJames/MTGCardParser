@@ -7,11 +7,12 @@ public class RegexTemplate
 
     Type _containingType;
 
+    public string FormattedRegexString { get; private set; }
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
-    public List<RegexTemplateLine> Lines { get; private set; } = [];
+    public GeneratedRegex GeneratedRegex { get; private set; }
     public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
 
     public RegexTemplate(Type type, params string[] templateSnippets)
@@ -30,10 +31,10 @@ public class RegexTemplate
             RegexSegments.Add(segment);
         }
 
-        ComposeRegexLines();
+        ComposeRegex();
     }
 
-    void ComposeRegexLines()
+    void ComposeRegex()
     {
         RegexLineCollector collector = new(_containingType);
 
@@ -42,8 +43,10 @@ public class RegexTemplate
         else
             ComposeTokenUnitLines(collector, RegexSegments);
 
-        Lines = collector.Finalize();
-        SetFormattedRegex();
+        GeneratedRegex = collector.Finalize();
+        RegexString = GeneratedRegex.MinifiedRegex;
+        FormattedRegexString = GeneratedRegex.FormattedRegex;
+        Regex = new Regex(GeneratedRegex.MinifiedRegex, RegexOptions.Compiled);
     }
 
     public static void ComposeTokenUnitLines(RegexLineCollector collector, List<RegexSegmentBase> segments)
@@ -89,19 +92,6 @@ public class RegexTemplate
         if (shouldWrapAlternatives && renderedAlternatives > 0)
             // Close the alternations group because we're done
             collector.CloseGroup();
-    }
-
-    void SetRegex()
-    {
-        const int spacesPerIndent = 4;
-        string regexString = "";
-
-        foreach (var line in Lines)
-            regexString += string.Empty.PadLeft(spacesPerIndent * line.Indentation) + line.Value + Environment.NewLine;
-
-        regexString = regexString.Trim();
-        RegexString = regexString;
-        Regex = new Regex(regexString, RegexOptions.Compiled);
     }
 
     RegexSegmentBase ResolveSnippetToSegment(string templateSnippet)

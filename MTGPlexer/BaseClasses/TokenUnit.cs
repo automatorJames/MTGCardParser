@@ -89,12 +89,12 @@ public abstract class TokenUnit
     /// Only intended to be called by TokenTypeRegistry once upon startup. May be overridden by
     /// inheriting abstract classes who want to specify their own validation requirements.
     /// </summary>
-    public virtual bool ValidateStructure()
+    public virtual string ValidateStructure()
     {
         if (string.IsNullOrEmpty(Template.RegexString))
-            return false;
+            return $"{nameof(Template.RegexString)} is null or empty";
 
-        return true;
+        return null;
     }
 
     /// <summary>

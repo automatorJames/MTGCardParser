@@ -12,15 +12,6 @@ public class ManyToken<T> : ManyToken
         Items = items.Cast<T>().ToArray();
         Conjunction = conjunction;
     }
-
-    //public override bool ValidateStructure()
-    //{
-    //    bool typeIsValidManyType =
-    //        typeof(T).IsAssignableTo(typeof(TokenUnit))
-    //        || typeof(T).IsEnum;
-    //
-    //    return typeIsValidManyType;
-    //}
 }
 
 public enum Conjunction

@@ -28,7 +28,6 @@ public record DeterministicPalette
     private const double LightLightness = 0.8;
     private const double DarkLightness = 0.3;
 
-
     // --- Constructors (Public Signatures Unchanged) ---
 
     public DeterministicPalette(Type type, double? baseSaturation = null, double? baseLightness = null)

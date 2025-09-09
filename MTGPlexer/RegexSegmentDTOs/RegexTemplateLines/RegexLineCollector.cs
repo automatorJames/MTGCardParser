@@ -6,6 +6,7 @@ public class RegexLineCollector
     int _nextUnnamedCaptureGroupId;
     List<RegexTemplateLine> _lines = [];
     Stack<object> _captureGroupStack = [];
+    Dictionary<RegexPropInfo, DeterministicPalette> _terminalGroupPalettes = [];
     int _indentation;
 
     // The key "-1" represents the top level (i.e. the class, not within a capture group)
@@ -30,7 +31,13 @@ public class RegexLineCollector
         _spaceIsRequiredBeforeNextElementAtLevel[groupKey] = neverAddSpacesToGroupMembers ? SpaceDisposition.NeverAddSpace : SpaceDisposition.DontAddSpaceBeforeNextItem;
 
         if (captureGroup != null)
-            _lines.Add(new NamedGroupOpen(captureGroup.Name, GetFlatNamePath(), _indentation));
+        {
+            if (captureGroup.IsTerminal)
+                _terminalGroupPalettes.TryAdd(captureGroup, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
+
+            _terminalGroupPalettes.TryGetValue(captureGroup, out DeterministicPalette palette);
+            _lines.Add(new NamedGroupOpen(captureGroup.Name, GetFlatNamePath(), _indentation, captureGroup.FriendlyTypeName, palette));
+        }
         else
             _lines.Add(new GroupOpen(GetFlatNamePath(), _indentation));
          
@@ -40,12 +47,12 @@ public class RegexLineCollector
     public void CloseGroup(GroupQuantifier? quantifier = null)
     {
         _indentation--;
-        _lines.Add(new GroupClose(GetFlatNamePath(), _indentation, quantifier));
+        var groupName = GetCurrentNamedGroupOrNull()?.Name;
+        _lines.Add(new GroupClose(GetFlatNamePath(), _indentation, GetCurrentPaletteOrNull(), groupName, quantifier));
 
         // Pop the current group name (or null placeholder)
         _captureGroupStack.Pop();
     }
-
 
     public void AddTextLine(string text)
     {
@@ -56,10 +63,19 @@ public class RegexLineCollector
     public void AddAlternateValues(IEnumerable<string> alternatives)
     {
         bool isFirstAlternation = true;
+        bool isOnlyAlternation = alternatives.Count() == 1;
 
         foreach (var alternative in alternatives)
         {
-            var alternateValue = new AlternateValue(alternative, GetFlatNamePath(), _indentation, isFirstAlternation);
+            var alternateValue = new AlternateValue(
+                alternative, 
+                GetFlatNamePath(), 
+                _indentation, 
+                GetCurrentPaletteOrNull(),
+                GetCurrentNamedGroupOrNull(), 
+                isFirstAlternation, 
+                isOnlyAlternation);
+
             _lines.Add(alternateValue);
             isFirstAlternation = false;
         }
@@ -117,6 +133,25 @@ public class RegexLineCollector
     /// Get the current dot-navigaiton name path, which exclude any null name parts (representing unnamed parentheses groups).
     /// </summary>
     string GetFlatNamePath() => string.Join("_", _captureGroupStack.OfType<RegexPropInfo>().Where(x => x != null).Select(x => x.Name));
+
+    DeterministicPalette GetCurrentPaletteOrNull()
+    {
+        var namedGroupOrNull = GetCurrentNamedGroupOrNull();
+
+        if (namedGroupOrNull == null)
+            return null;
+
+        _terminalGroupPalettes.TryGetValue(namedGroupOrNull, out DeterministicPalette palette);
+
+        return palette;
+    }
+
+    RegexPropInfo GetCurrentNamedGroupOrNull()
+    {
+        var group = _captureGroupStack.Last();
+        RegexPropInfo namedGroupOrNull = group is RegexPropInfo prop ? prop : null;
+        return namedGroupOrNull;
+    }
 }
 
 public enum SpaceDisposition

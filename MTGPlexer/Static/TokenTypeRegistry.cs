@@ -4,7 +4,6 @@ namespace MTGPlexer.Static;
 
 public static partial class TokenTypeRegistry
 {
-    static HashSet<Type> _invalidTypes = [];
     static AssemblyBuilder _asmBuilder =AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("DynamicTokenUnits"), AssemblyBuilderAccess.Run);
     static ModuleBuilder _moduleBuilder =_asmBuilder.DefineDynamicModule("MainModule");
     static Type[] _staticAssemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
@@ -49,11 +48,8 @@ public static partial class TokenTypeRegistry
         NameToType[type.Name] = type;
         var instance = (TokenUnit)Activator.CreateInstance(type);
 
-        if (!instance.ValidateStructure())
-        {
-            _invalidTypes.Add(type);
-            return;
-        }
+        if (instance.ValidateStructure() is string errorString)
+            throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
 
         Templates[type] = instance.Template;
         var propCaptureSegments = instance.Template.CaptureGroupProps;
@@ -235,7 +231,7 @@ public static partial class TokenTypeRegistry
 
     static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
     {
-        if (AppliedOrderTypes.Contains(tokenCaptureType) || _invalidTypes.Contains(tokenCaptureType) || tokenCaptureType.IsDefined(typeof(TokenUnitPropertyAttribute)))
+        if (AppliedOrderTypes.Contains(tokenCaptureType) || tokenCaptureType.IsDefined(typeof(TokenUnitPropertyAttribute)))
             return tokenizerBuilder;
 
         if (EmitedOptionalManyTypes.TryGetValue(tokenCaptureType, out Type multiVersionType))

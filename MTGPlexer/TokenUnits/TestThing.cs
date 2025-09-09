@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-//[IsolateForTesting]
+[IsolateForTesting]
 //public class TestThing : TokenUnitOneOf
 public class TestThing : TokenUnit
 {

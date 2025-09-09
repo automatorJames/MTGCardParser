@@ -1,7 +1,16 @@
 ﻿namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
 
-public record AlternateValue(string Value, string Path, int Indentation, bool IsFirstAlternate = false) 
-    : RegexTemplateLine(GetFormattedValue(Value, IsFirstAlternate), Path, Indentation)
+public record AlternateValue
+(
+    string Value, 
+    string Path, 
+    int Indentation, 
+    DeterministicPalette Palette,
+    RegexPropInfo Group,
+    bool IsFirst, 
+    bool IsOnly
+) 
+    : RegexTemplateLine(GetFormattedValue(Value, IsFirst), Path, Indentation, Palette, GetComment(IsOnly))
 {
     public Regex Regex { get; } = new Regex(Value, RegexOptions.Compiled);
 
@@ -12,4 +21,7 @@ public record AlternateValue(string Value, string Path, int Indentation, bool Is
         formattedValue = firstChar + " " + formattedValue;
         return formattedValue;
     }
+
+    static string GetComment(bool isOnlyAlternate) => isOnlyAlternate ? "match" : "alternate";
+
 }

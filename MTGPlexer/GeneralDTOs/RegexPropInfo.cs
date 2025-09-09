@@ -10,6 +10,7 @@ public record RegexPropInfo
     public string Name { get; }
     public string FriendlyTypeName { get; }
     public string FriendlyPropName { get; }
+    public bool IsTerminal { get; }
 
     public RegexPropInfo(PropertyInfo prop)
     {
@@ -19,6 +20,7 @@ public record RegexPropInfo
         Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName(BaseType);
+        IsTerminal = CheckIsTerminal();
     }
 
     private static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
@@ -84,5 +86,18 @@ public record RegexPropInfo
             RegexPropType.Placeholder => new PlaceholderRegexProp(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
+    }
+
+    bool CheckIsTerminal()
+    {
+        List<RegexPropType> terminalTypes = 
+        [
+            RegexPropType.Enum, 
+            RegexPropType.Bool, 
+            RegexPropType.Placeholder, 
+            RegexPropType.DistilledValue
+        ];
+
+        return terminalTypes.Contains(RegexPropType);
     }
 }
