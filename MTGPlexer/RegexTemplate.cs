@@ -91,7 +91,6 @@ public class RegexTemplate
             collector.CloseGroup();
     }
 
-
     void SetRegex()
     {
         const int spacesPerIndent = 4;

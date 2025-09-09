@@ -1,6 +1,3 @@
-using System.ComponentModel;
-using System.Security.AccessControl;
-
 namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
 
 public class RegexLineCollector
@@ -103,15 +100,17 @@ public class RegexLineCollector
         }
     }
 
-    public List<RegexTemplateLine> Finalize()
+    public GeneratedRegex Finalize()
     {
+        var wrappedLines = _lines.ToList();
+
         if (!_topLevelType.IsDefined(typeof(NoBoundaryAttribute)))
         {
-            _lines.Insert(0, new NegativeLookbehindBoundary());
-            _lines.Add(new NegativeLookaheadBoundary());
+            wrappedLines.Insert(0, new NegativeLookbehindBoundary());
+            wrappedLines.Add(new NegativeLookaheadBoundary());
         }
 
-        return _lines;
+        return new(_lines);
     }
 
     /// <summary>
