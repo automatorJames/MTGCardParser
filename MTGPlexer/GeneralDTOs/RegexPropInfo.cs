@@ -19,7 +19,7 @@ public record RegexPropInfo
         UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
         Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
-        FriendlyTypeName = GetFriendlyTypeName(BaseType);
+        FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
     }
 
@@ -53,32 +53,32 @@ public record RegexPropInfo
         return (regexPropType, isArray, type);
     }
 
-    private static string GetFriendlyTypeName(Type type)
+    string GetFriendlyTypeName()
     {
-        bool isNullableEnum = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && type.GetGenericArguments()[0].IsEnum;
-
-        if (type.IsEnum || isNullableEnum)
-            return "enum";
-
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-            return $"{type.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
-
-        if (type == typeof(int))
-            return "int";
-
-        if (type == typeof(PlaceholderCapture))
-            return "placeholder";
-
-        if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
-            return "one of";
-
-        if (type.IsAssignableTo(typeof(ManyToken)))
+        if (IsManyItem)
             return "many of";
 
-        if (type.IsAssignableTo(typeof(TokenUnit)))
+        bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
+
+        if (BaseType.IsEnum || isNullableEnum)
+            return "enum";
+
+        if (BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            return $"{BaseType.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
+
+        if (BaseType == typeof(int))
+            return "int";
+
+        if (BaseType == typeof(PlaceholderCapture))
+            return "placeholder";
+
+        if (BaseType.IsAssignableTo(typeof(TokenUnitOneOf)))
+            return "one of";
+
+        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
             return "token unit";
 
-        return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
+        return BaseType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
     public CaptureGroupPropBase GetCaptureGroupPropBase()

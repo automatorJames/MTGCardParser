@@ -104,6 +104,35 @@ public class RegexLineCollector
             _spaceIsRequiredBeforeNextElementAtLevel[currentScopeKey] = SpaceDisposition.AddSpaceBeforeNextItem;
     }
 
+    /// <summary>
+    /// Get the current dot-navigaiton name path, which exclude any null name parts (representing unnamed parentheses groups).
+    /// </summary>
+    string GetFlatNamePath() => string.Join("_", _captureGroupStack
+        .OfType<RegexPropInfo>()
+        .Where(x => x != null)
+        .Reverse()
+        .Select(x => x.Name));
+
+    DeterministicPalette GetCurrentPaletteOrNull()
+    {
+        var namedGroupOrNull = GetCurrentNamedGroupOrNull();
+
+        if (namedGroupOrNull == null)
+            return null;
+
+        _terminalGroupPalettes.TryGetValue(namedGroupOrNull, out DeterministicPalette palette);
+
+        return palette;
+    }
+
+    RegexPropInfo GetCurrentNamedGroupOrNull()
+    {
+        if (!_captureGroupStack.Any()) return null;
+        var group = _captureGroupStack.Peek();
+        RegexPropInfo namedGroupOrNull = group is RegexPropInfo prop ? prop : null;
+        return namedGroupOrNull;
+    }
+
     public GeneratedRegex Finalize()
     {
         if (!_lines.Any())
@@ -144,35 +173,6 @@ public class RegexLineCollector
 
         // Create the final GeneratedRegex object using the fully processed list.
         return new(finalizedLines);
-    }
-
-    /// <summary>
-    /// Get the current dot-navigaiton name path, which exclude any null name parts (representing unnamed parentheses groups).
-    /// </summary>
-    string GetFlatNamePath() => string.Join("_", _captureGroupStack
-        .OfType<RegexPropInfo>()
-        .Where(x => x != null)
-        .Reverse()
-        .Select(x => x.Name));
-
-    DeterministicPalette GetCurrentPaletteOrNull()
-    {
-        var namedGroupOrNull = GetCurrentNamedGroupOrNull();
-
-        if (namedGroupOrNull == null)
-            return null;
-
-        _terminalGroupPalettes.TryGetValue(namedGroupOrNull, out DeterministicPalette palette);
-
-        return palette;
-    }
-
-    RegexPropInfo GetCurrentNamedGroupOrNull()
-    {
-        if (!_captureGroupStack.Any()) return null;
-        var group = _captureGroupStack.Peek();
-        RegexPropInfo namedGroupOrNull = group is RegexPropInfo prop ? prop : null;
-        return namedGroupOrNull;
     }
 }
 

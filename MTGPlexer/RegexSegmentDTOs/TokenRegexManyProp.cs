@@ -50,13 +50,13 @@ public class TokenRegexManyProp : CaptureGroupPropBase
     {
         collector.OpenGroup(RegexPropInfo, neverAddSpacesToGroupMembers: true);
         ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
-        collector.OpenGroup();
+        collector.OpenGroup(neverAddSpacesToGroupMembers: true);
         collector.AddTextLine(", ");
         ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
         collector.CloseGroup(GroupQuantifier.AnyNumber);
-        collector.OpenGroup();
+        collector.OpenGroup(neverAddSpacesToGroupMembers: true);
         collector.AddTextLine(", ");
-        collector.OpenGroup();
+        collector.OpenGroup(neverAddSpacesToGroupMembers: true);
         _conjunctionProp.ComposeRegexLines(collector);
         collector.AddTextLine(" ");
         collector.CloseGroup(GroupQuantifier.Optional);

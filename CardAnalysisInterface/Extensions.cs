@@ -5,19 +5,18 @@ public static class Extensions
     public static string ToInlineStyle(this Dictionary<string, string> cssProperties) 
         => string.Join("; ", cssProperties.Select(x => x.Key + ": " + x.Value));
 
-    public static string ToColorStyle(this DeterministicPalette palette, int shift = 0)
+    public static string ToColorStyle(this DeterministicPalette palette, string additionalStyles = null, int shift = 0)
     {
-        var defaultValues = $"--color: {palette.Hex}; --highlight-color: {palette.HexLight}; --lowlight-color: {palette.HexDark};";
+        string style = shift switch
+        {
+            0 => $"--color: {palette.Hex}; --highlight-color: {palette.HexLight}; --lowlight-color: {palette.HexDark};",
+            >= 1 => $"--color: {palette.HexLight}; --highlight-color: {palette.HexLight}; --lowlight-color: {palette.Hex};",
+            <= 1 => $"--color: {palette.HexDark}; --highlight-color: {palette.Hex}; --lowlight-color: {palette.HexDark};"
+        };
 
-        if (shift == 0)
-            return defaultValues;
+        if (!string.IsNullOrEmpty(additionalStyles))
+            style += " " + additionalStyles;
 
-        if (shift >= 1)
-            return $"--color: {palette.HexLight}; --highlight-color: {palette.HexLight}; --lowlight-color: {palette.Hex};";
-
-        if (shift <= 1)
-            return $"--color: {palette.HexDark}; --highlight-color: {palette.Hex}; --lowlight-color: {palette.HexDark};";
-
-        return defaultValues;
+        return style;
     }
 }
