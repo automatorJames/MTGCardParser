@@ -143,21 +143,47 @@ public record GeneratedRegex
         return parentPrefix.ToString() + coreContent + parentSuffix.ToString();
     }
 
+    /// <summary>
+    /// Calculates the required width for all comment boxes. The width is determined by the
+    /// named group that requires the most horizontal space, considering both its title length
+    /// and its nesting depth.
+    /// </summary>
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
     {
         HashSeparatorColumn = lines.Max(x => x.End) + _hashSeparatorPadding;
         CommentColumn = HashSeparatorColumn + _hashSeparatorPadding;
 
-        var longestGroupNamePlusTypeWithPadding = lines
-            .OfType<NamedGroupOpen>()
-            .Select(x => x.CommentOneLength + x.CommentTwoLength)
-            .DefaultIfEmpty()
-            .Max()
-            + 2 // top left corner and top right corner
-            + 1 // at least one '─' char between name and type
-            + 4; // spacing for both sides of both comment parts
+        if (!lines.OfType<NamedGroupOpen>().Any())
+        {
+            CommentBoxLength = 0;
+            return;
+        }
 
-        CommentBoxLength = longestGroupNamePlusTypeWithPadding;
+        int maxRequiredWidth = 0;
+
+        foreach (var line in lines.OfType<NamedGroupOpen>())
+        {
+            // The nesting depth is equivalent to the number of named group ancestors.
+            // The Path property (e.g., "Parent_Child_Grandchild") reliably tracks this.
+            int nestingDepth = line.Path.Count(c => c == '_');
+
+            // Calculate the base width required for the header content itself.
+            int headerContentWidth = line.CommentOneLength + line.CommentTwoLength
+                + 2 // for ┌ and ┐
+                + 1 // for at least one '─' filler character
+                + 4; // for " {comment1} " and " {comment2} " spacing
+
+            // Calculate the total visual width needed at its specific depth.
+            // Each level of nesting adds 4 characters for the "│ " prefix and " │" suffix.
+            int totalVisualWidth = headerContentWidth + (nestingDepth * 4);
+
+            if (totalVisualWidth > maxRequiredWidth)
+            {
+                maxRequiredWidth = totalVisualWidth;
+            }
+        }
+
+        CommentBoxLength = maxRequiredWidth;
     }
 
     /// <summary>
