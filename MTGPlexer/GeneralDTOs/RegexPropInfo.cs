@@ -69,6 +69,15 @@ public record RegexPropInfo
         if (type == typeof(PlaceholderCapture))
             return "placeholder";
 
+        if (type.IsAssignableTo(typeof(TokenUnitOneOf)))
+            return "one of";
+
+        if (type.IsAssignableTo(typeof(ManyToken)))
+            return "many of";
+
+        if (type.IsAssignableTo(typeof(TokenUnit)))
+            return "token unit";
+
         return type.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 

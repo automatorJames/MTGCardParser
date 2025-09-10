@@ -1,11 +1,12 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
 
 public record GeneratedRegex
 {
     const int _hashSeparatorPadding = 2;
-    const int _alternateIndent = 3;
+    const int _boxContentLeftPadding = 1; // Padding for left-aligned text inside a box wall.
 
     public List<RegexCommentedLine> CommentedLines { get; private set; } = [];
     public string FormattedRegex { get; set; }
@@ -27,80 +28,119 @@ public record GeneratedRegex
     }
 
     /// <summary>
-    /// Builds the final formatted string for each line, aligning the regex, hash separator, and comments into columns.
+    /// Builds the final formatted string for each line, managing a stack of active named groups
+    /// to correctly render nested Unicode boxes.
     /// </summary>
     void FormatCommentedLines(List<RegexTemplateLine> templateLines)
     {
+        var activeNamedGroups = new Stack<NamedGroupOpen>();
+
         foreach (var line in templateLines)
         {
-            // Pad the regex part so its total length reaches the column where the '#' and comment will start.
+            // For a closing line, its comment is rendered in the context of its parent,
+            // so we pop the group from the stack before generating the comment.
+            if (line is GroupClose close && activeNamedGroups.Any() && close.Name == activeNamedGroups.Peek().Name)
+            {
+                activeNamedGroups.Pop();
+            }
+
             var regex = line.IndentedValue.PadRight(CommentColumn);
-
-            // The comment string starts with a '#' followed by padding.
             var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
-
-            // Generate the main body of the comment (which could be a plain comment or a unicode box).
-            var commentBody = GetCommentBodyForLine(line);
+            var commentBody = GetFormattedComment(line, activeNamedGroups);
 
             CommentedLines.Add(new(regex, commentPrefix + commentBody, line.Palette));
+
+            // For an opening line, its comment is rendered, and THEN it's pushed to the stack
+            // to become the parent for subsequent lines.
+            if (line is NamedGroupOpen open)
+            {
+                activeNamedGroups.Push(open);
+            }
         }
     }
 
     /// <summary>
-    // Determines the appropriate comment body string for a given template line.
+    /// Generates the appropriate comment string for a line, including parent box walls for nesting.
     /// </summary>
-    private string GetCommentBodyForLine(RegexTemplateLine line)
+    /// <param name="line">The RegexTemplateLine to process.</param>
+    /// <param name="parentGroups">The current stack of active parent groups.</param>
+    /// <returns>A formatted comment string.</returns>
+    private string GetFormattedComment(RegexTemplateLine line, Stack<NamedGroupOpen> parentGroups)
     {
-        return line switch
+        // Handle lines that are never boxed (like boundaries).
+        if (line is NegativeLookaheadBoundary or NegativeLookbehindBoundary)
         {
-            NamedGroupOpen namedGroupOpen => FormatNamedGroupOpenComment(namedGroupOpen),
-            AlternateValue alternateValue => FormatAlternateValueComment(alternateValue),
-            GroupClose groupClose when !string.IsNullOrEmpty(groupClose.CommentTwo) => FormatGroupCloseComment(groupClose),
-            _ => line.CommentOne ?? string.Empty,
-        };
-    }
+            return line.CommentOne ?? string.Empty;
+        }
 
-    /// <summary>
-    /// Formats a comment for a named group opening, like: ┌ Group Name : Type ┐
-    /// </summary>
-    private string FormatNamedGroupOpenComment(NamedGroupOpen namedGroupOpen)
-    {
-        string leftContent = $" {namedGroupOpen.CommentOne} ";
-        string rightContent = $" {namedGroupOpen.CommentTwo} ";
+        var parentPrefix = new StringBuilder();
+        var parentSuffix = new StringBuilder();
+        int nestingDepth = parentGroups.Count;
 
-        // Calculate filler needed to span the full box width, accounting for Unicode box chars (┌, ┐) and content.
-        int fillerLength = CommentBoxLength - 2 - leftContent.Length - rightContent.Length;
-        string filler = new string('─', Math.Max(0, fillerLength));
+        // 1. Build the parent wall prefixes and suffixes based on the current nesting depth.
+        for (int i = 0; i < nestingDepth; i++)
+        {
+            parentPrefix.Append("│ ");
+            parentSuffix.Insert(0, " │");
+        }
 
-        return $"┌{leftContent}{filler}{rightContent}┐";
-    }
+        // 2. Calculate the width available for the content at the current nesting level.
+        int currentContentWidth = CommentBoxLength - (nestingDepth * 4);
+        string coreContent;
 
-    /// <summary>
-    /// Formats a comment for an alternate value, like: │   match         │
-    /// </summary>
-    private string FormatAlternateValueComment(AlternateValue alternateValue)
-    {
-        string content = $"{new string(' ', _alternateIndent)}{alternateValue.CommentOne}";
+        // 3. Generate the core content based on the line type.
+        switch (line)
+        {
+            case NamedGroupOpen ngo:
+                string left = $" {ngo.CommentOne} ";
+                string right = $" {ngo.CommentTwo} ";
+                int fillerLenOpen = currentContentWidth - 2 - left.Length - right.Length;
+                string fillerOpen = new string('─', Math.Max(0, fillerLenOpen));
+                coreContent = $"┌{left}{fillerOpen}{right}┐";
+                break;
 
-        // Calculate filler needed to span the full box width, accounting for Unicode box chars (│, │) and content.
-        int fillerLength = CommentBoxLength - 2 - content.Length;
-        string filler = new string(' ', Math.Max(0, fillerLength));
+            case GroupClose gc when !string.IsNullOrEmpty(gc.Name):
+                string contentClose = $" {gc.CommentTwo} ";
+                int fillerLenClose = currentContentWidth - 2 - contentClose.Length;
+                string fillerClose = new string('─', Math.Max(0, fillerLenClose));
+                coreContent = $"└{fillerClose}{contentClose}┘";
+                break;
 
-        return $"│{content}{filler}│";
-    }
+            // Center-align AlternateValue comments.
+            case AlternateValue av:
+                string centeredText = av.CommentOne ?? "";
+                int availableWidthCenter = Math.Max(0, currentContentWidth);
+                int textWidthCenter = centeredText.Length;
+                int totalPaddingCenter = Math.Max(0, availableWidthCenter - textWidthCenter);
+                int leftPaddingCenter = totalPaddingCenter / 2;
+                int rightPaddingCenter = totalPaddingCenter - leftPaddingCenter;
+                coreContent = $"{new string(' ', leftPaddingCenter)}{centeredText}{new string(' ', rightPaddingCenter)}";
+                break;
 
-    /// <summary>
-    /// Formats a comment for a group closing, like: └──────── Group Name ┘
-    /// </summary>
-    private string FormatGroupCloseComment(GroupClose groupClose)
-    {
-        string content = $" {groupClose.CommentTwo} ";
+            // Left-align other content lines like pipes and blank lines inside boxes.
+            case GroupAlternativePipe or BlankLine:
+                string leftAlignedText = line.CommentOne ?? "";
+                int availableWidthLeft = Math.Max(0, currentContentWidth);
+                if (string.IsNullOrEmpty(leftAlignedText))
+                {
+                    coreContent = new string(' ', availableWidthLeft);
+                }
+                else
+                {
+                    string paddedText = (new string(' ', _boxContentLeftPadding) + leftAlignedText).PadRight(availableWidthLeft);
+                    coreContent = paddedText;
+                }
+                break;
 
-        // Calculate filler needed to span the full box width, accounting for Unicode box chars (└, ┘) and content.
-        int fillerLength = CommentBoxLength - 2 - content.Length;
-        string filler = new string('─', Math.Max(0, fillerLength));
+            default:
+                var plainComment = line.CommentOne ?? string.Empty;
+                var fillerTxt = new string(' ', Math.Max(0, currentContentWidth - plainComment.Length));
+                coreContent = parentGroups.Any() ? $"{plainComment}{fillerTxt}" : plainComment;
+                break;
+        }
 
-        return $"└{filler}{content}┘";
+        // 4. Combine parent walls with the generated core content.
+        return parentPrefix.ToString() + coreContent + parentSuffix.ToString();
     }
 
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
@@ -127,18 +167,12 @@ public record GeneratedRegex
     {
         if (string.IsNullOrEmpty(pattern)) return string.Empty;
 
-        // This regex matches one of two things:
-        // 1. (\\[ \\]): The literal sequence "[ ]", captured in Group 1. This is the token we want to preserve.
-        // 2. (\\s+): Any sequence of one or more whitespace characters, captured in Group 2. This is the whitespace we want to remove.
         return Regex.Replace(pattern, @"(\[\ \])|(\s+)", match =>
         {
-            // If Group 1 succeeded, we matched "[ ]". Replace it with a single literal space.
             if (match.Groups[1].Success)
             {
                 return " ";
             }
-
-            // Otherwise, Group 2 must have succeeded. We matched disposable whitespace, so replace it with nothing.
             return string.Empty;
         });
     }

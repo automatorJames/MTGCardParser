@@ -12,7 +12,7 @@ public class WrapperClass : TokenUnit
     //public CardKeyword CardKeyword { get; set; }
     //public EnchantCard EnchantCard { get; set; }
 
-    public AlternatingClass AlternatingProp { get; set; }
+    //public AlternatingClass AlternatingProp { get; set; }
 
     public Buffalo BuffaloProp { get; set; }
 }
