@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.GeneralDTOs;
+﻿using MTGPlexer.RegexGeneration.RegexSegments;
+
+namespace MTGPlexer.GeneralDTOs;
 
 public record RegexPropInfo
 {

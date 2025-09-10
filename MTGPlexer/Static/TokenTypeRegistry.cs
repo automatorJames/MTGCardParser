@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using MTGPlexer.RegexGeneration.RegexSegments;
+using System.Reflection.Emit;
 
 namespace MTGPlexer.Static;
 

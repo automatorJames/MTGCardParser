@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
 /// Placed at the start of composed regex patterns to ensure no matches begin in the middle of words.

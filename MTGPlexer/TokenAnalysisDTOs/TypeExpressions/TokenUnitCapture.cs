@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿using MTGPlexer.RegexGeneration.RegexSegments;
+
+namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 public record TokenUnitCapture
 {

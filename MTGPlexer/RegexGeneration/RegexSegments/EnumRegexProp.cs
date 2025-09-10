@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the

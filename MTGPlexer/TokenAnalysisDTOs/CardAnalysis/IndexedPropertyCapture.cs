@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
+﻿using MTGPlexer.RegexGeneration.RegexSegments;
+
+namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index

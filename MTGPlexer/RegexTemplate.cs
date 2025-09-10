@@ -1,6 +1,6 @@
-﻿using MTGPlexer.RegexSegmentDTOs;
-using MTGPlexer.RegexSegmentDTOs.Composers;
-using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+﻿using MTGPlexer.RegexGeneration.Composers;
+using MTGPlexer.RegexGeneration.RegexSegments;
+using MTGPlexer.RegexGeneration.RegexTemplateLines;
 using System.Reflection;
 using System.Text.RegularExpressions;
 

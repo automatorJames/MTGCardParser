@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public record GroupClose(string Path, int Indentation, DeterministicPalette Palette, string Name, GroupQuantifier? Quantifier = null) 
     : RegexTemplateLine

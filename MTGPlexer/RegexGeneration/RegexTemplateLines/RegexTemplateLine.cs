@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public record RegexTemplateLine
 (

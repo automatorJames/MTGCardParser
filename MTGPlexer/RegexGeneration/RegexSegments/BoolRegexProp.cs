@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a bool property on a TokenUnit. Bool property Regexes typically check for the optional presence
@@ -31,4 +31,3 @@ public class BoolRegexProp : CaptureGroupPropBase
         return true;
     }
 }
-

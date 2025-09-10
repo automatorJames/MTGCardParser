@@ -1,7 +1,7 @@
-﻿using MTGPlexer.RegexSegmentDTOs.Composers;
-using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+﻿using MTGPlexer.RegexGeneration.Composers;
+using MTGPlexer.RegexGeneration.RegexTemplateLines;
 
-namespace MTGPlexer.RegexSegmentDTOs;
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During

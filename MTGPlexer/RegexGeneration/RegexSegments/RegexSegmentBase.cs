@@ -1,5 +1,5 @@
-﻿using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
-namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.RegexGeneration.RegexTemplateLines;
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// The base of all regex segment types, including regex patterns not associated with any TokenUnit property,

@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
 
-namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public record GeneratedRegex
 {

@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs.Composers;
+﻿using MTGPlexer.RegexGeneration.RegexSegments;
+
+namespace MTGPlexer.RegexGeneration.Composers;
 
 public class AlternatingComposer : ISegmentComposer
 {

@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public record NamedGroupOpen(string Name, string Path, int Indentation, string CaptureType, DeterministicPalette Palette) 
     : RegexTemplateLine($"(?<{Path}>", Path, Indentation, Palette, Name.ToFriendlyCase(TitleDisplayOption.Title), $": {CaptureType}");

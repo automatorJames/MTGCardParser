@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.BaseClasses;
+﻿using MTGPlexer.RegexGeneration.RegexSegments;
+
+namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnitOneOf : TokenUnit
 {
