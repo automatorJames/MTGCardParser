@@ -8,12 +8,12 @@ public class TestThing : TokenUnit
     //public TestThing() : base("buh", nameof(GainedOrLostBuffs)) { }
 
     //public ManyToken<GainedOrLostBuff> GainedOrLostBuffs { get; set; }
-    public ManyToken<TestItemWrapper> TestItems { get; set; }
+    //public ManyToken<TestItemWrapper> TestItems { get; set; }
     //public CardKeyword CardKeyword { get; set; }
     //public EnchantCard EnchantCard { get; set; }
 
-    //public LandType LandType { get; set; }
-    //public WildCard WildCard { get; set; }
+    public LandType LandType { get; set; }
+    public WildCard WildCard { get; set; }
 }
 
 public enum WildCard

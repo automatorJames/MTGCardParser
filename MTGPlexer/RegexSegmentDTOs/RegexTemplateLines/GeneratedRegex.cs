@@ -30,6 +30,7 @@ public record GeneratedRegex
         foreach (var line in templateLines)
         {
             var regex = line.IndentedValue;
+            regex += string.Empty.PadLeft(CommentColumn - regex.Length);
             var comment = "#" + string.Empty.PadLeft(_hashSeparatorPadding);
 
             if (line is NamedGroupOpen namedGroupOpen)
@@ -37,16 +38,16 @@ public record GeneratedRegex
                 var firstPart = "┌" + " " + namedGroupOpen.CommentOne + " ";
                 var secondPart = " " + namedGroupOpen.CommentTwo + " " + "┐";
                 var spacesToFill = CommentBoxLength - firstPart.Length - secondPart.Length;
-                comment += firstPart + string.Empty.PadLeft(spacesToFill, '─');
+                comment += firstPart + string.Empty.PadLeft(spacesToFill, '─') + secondPart;
             }
             else if (line is AlternateValue alternateValue)
             {
-                var formattedLine = "│" + string.Empty.PadLeft(_alternateIndent) + alternateValue.CommentOne;
-                comment += formattedLine.PadRight(CommentBoxLength - formattedLine.Length, ' ') + "│";
+                var formattedLine = "│" + string.Empty.PadLeft(_alternateIndent) + alternateValue.CommentOne; 
+                comment += formattedLine + string.Empty.PadLeft(CommentBoxLength - formattedLine.Length - 1)  + "│";
             }
             else if (line is GroupClose groupClose && groupClose.CommentTwo is string closeComment)
             {
-                var spacesToFill = CommentBoxLength - closeComment.Length + 4; // spacing for both sides of comment plus corners
+                var spacesToFill = CommentBoxLength - closeComment.Length - 4;
                 comment += "└" + string.Empty.PadLeft(spacesToFill, '─') + " " + closeComment + " " + "┘";
 
             }
