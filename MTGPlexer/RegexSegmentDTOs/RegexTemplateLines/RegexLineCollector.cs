@@ -22,7 +22,7 @@ public class RegexLineCollector
     public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false)
     {
         AddPrecedingSpaceAndBlankIfApplicable();
-        var groupKey = (object)captureGroup ?? (object)_nextUnnamedCaptureGroupId++;
+        var groupKey = (object)captureGroup ?? _nextUnnamedCaptureGroupId++;
         _captureGroupStack.Push(groupKey);
 
         if (groupKey is RegexPropInfo prop && prop.BaseType.IsDefined(typeof(NoSpacesAttribute)))

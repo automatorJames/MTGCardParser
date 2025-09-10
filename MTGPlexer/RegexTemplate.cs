@@ -8,6 +8,7 @@ public class RegexTemplate
     Type _containingType;
 
     public string FormattedRegexString { get; private set; }
+    public string MinifiedRegexString { get; private set; }
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
@@ -46,6 +47,7 @@ public class RegexTemplate
         GeneratedRegex = collector.Finalize();
         RegexString = GeneratedRegex.MinifiedRegex;
         FormattedRegexString = GeneratedRegex.FormattedRegex;
+        MinifiedRegexString = GeneratedRegex.MinifiedRegex;
         Regex = new Regex(GeneratedRegex.MinifiedRegex, RegexOptions.Compiled);
     }
 

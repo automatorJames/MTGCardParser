@@ -7,6 +7,7 @@ public record TokenUnitCapture
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
     public string RegexString { get; }
+    public string MinifiedRegexString { get; }
     public PrettifiedRegex PrettifiedRegex { get; }
     public List<RegexPropValueSet> RegexPropValueSets { get; } = [];
     public DeterministicPalette Palette { get; }
@@ -19,6 +20,7 @@ public record TokenUnitCapture
         OccurrenceCount = occurrenceCount;
         Palette = TokenTypeRegistry.Palettes[type];
         RegexString = TokenTypeRegistry.Templates[type].FormattedRegexString;
+        MinifiedRegexString = TokenTypeRegistry.Templates[type].MinifiedRegexString;
 
         if (collectors != null)
         {

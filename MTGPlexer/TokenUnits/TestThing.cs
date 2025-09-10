@@ -1,8 +1,8 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [IsolateForTesting]
-//public class TestThing : TokenUnitOneOf
-public class TestThing : TokenUnit
+public class TestThing : TokenUnitOneOf
+//public class TestThing : TokenUnit
 {
     //public TestThing() : base("the number of", nameof(CardKeyword), nameof(EnchantCard)) { }
     //public TestThing() : base("buh", nameof(GainedOrLostBuffs)) { }
