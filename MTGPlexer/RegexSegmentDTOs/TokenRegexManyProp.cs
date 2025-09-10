@@ -1,4 +1,7 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.RegexSegmentDTOs.Composers;
+using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -46,10 +49,10 @@ public class TokenRegexManyProp : CaptureGroupPropBase
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo, neverAddSpacesToGroupMembers: true);
-        RegexTemplate.ComposeTokenUnitLines(collector, _singleIterationSegments);
+        ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
         collector.OpenGroup();
         collector.AddTextLine(", ");
-        RegexTemplate.ComposeTokenUnitLines(collector, _singleIterationSegments);
+        ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
         collector.CloseGroup(GroupQuantifier.AnyNumber);
         collector.OpenGroup();
         collector.AddTextLine(", ");
@@ -57,7 +60,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         _conjunctionProp.ComposeRegexLines(collector);
         collector.AddTextLine(" ");
         collector.CloseGroup(GroupQuantifier.Optional);
-        RegexTemplate.ComposeTokenUnitLines(collector, _singleIterationSegments);
+        ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
         collector.CloseGroup();
         collector.CloseGroup();
     }

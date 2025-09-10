@@ -1,4 +1,14 @@
-﻿namespace MTGPlexer;
+﻿using MTGPlexer.RegexSegmentDTOs;
+using MTGPlexer.RegexSegmentDTOs.Composers;
+using MTGPlexer.RegexSegmentDTOs.RegexTemplateLines;
+using System.Reflection;
+using System.Text.RegularExpressions;
+
+namespace MTGPlexer;
+
+// NOTE: The ISegmentComposer, ConcatenatingComposer, and AlternatingComposer
+// classes previously shown are now assumed to be in this namespace or another
+// accessible location. For brevity, they are not repeated here.
 
 public class RegexTemplate
 {
@@ -37,63 +47,29 @@ public class RegexTemplate
 
     void ComposeRegex()
     {
-        RegexLineCollector collector = new(_containingType);
+        bool neverAddSpacesAtTopLevel = false;
+        ISegmentComposer composer;
 
         if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
-            ComposeTokenUnitOneOfLines(collector, RegexSegments);
+        {
+            // This is the CRITICAL check for the top-level entity.
+            neverAddSpacesAtTopLevel = !RegexSegments.Any(x => x is TextSegment);
+            composer = AlternatingComposer.Instance;
+        }
         else
-            ComposeTokenUnitLines(collector, RegexSegments);
+        {
+            composer = ConcatenatingComposer.Instance;
+        }
+
+        // The result of the check is now passed to the collector.
+        RegexLineCollector collector = new(_containingType, neverAddSpacesAtTopLevel);
+        composer.Compose(collector, RegexSegments);
 
         GeneratedRegex = collector.Finalize();
         RegexString = GeneratedRegex.MinifiedRegex;
         FormattedRegexString = GeneratedRegex.FormattedRegex;
         MinifiedRegexString = GeneratedRegex.MinifiedRegex;
         Regex = new Regex(GeneratedRegex.MinifiedRegex, RegexOptions.Compiled);
-    }
-
-    public static void ComposeTokenUnitLines(RegexLineCollector collector, List<RegexSegmentBase> segments)
-    {
-        foreach (var segment in segments)
-            segment.ComposeRegexLines(collector);
-    }
-
-    public static void ComposeTokenUnitOneOfLines(RegexLineCollector collector, List<RegexSegmentBase> segments)
-    {
-        // If there are no text segments, the named group parentheses are a sufficient wrapper to isolate
-        // the alterantive properties. If not, we must render the alternate properties within supplemental
-        // parentheses to isolate them from the text segments on either side.
-        bool shouldWrapAlternatives = segments.Any(x => x is TextSegment);
-
-        // Tracks the number of alternatives that have been rendered to open/close groups and render "|" pipes
-        int renderedAlternatives = 0;
-
-        foreach (var segment in segments)
-        {
-            if (segment is TextSegment)
-            {
-                if (renderedAlternatives > 0)
-                    // Close the alternations group before the trailing text segments
-                    collector.CloseGroup();
-
-                segment.ComposeRegexLines(collector);
-
-            }
-            else if (segment is CaptureGroupPropBase captureProp)
-            {
-                if (renderedAlternatives == 0 && shouldWrapAlternatives)
-                    collector.OpenGroup(neverAddSpacesToGroupMembers: true);
-
-                if (renderedAlternatives > 0)
-                    collector.AddGroupAlternativePipe();
-
-                segment.ComposeRegexLines(collector);
-                renderedAlternatives++;
-            }
-        }
-
-        if (shouldWrapAlternatives && renderedAlternatives > 0)
-            // Close the alternations group because we're done
-            collector.CloseGroup();
     }
 
     RegexSegmentBase ResolveSnippetToSegment(string templateSnippet)

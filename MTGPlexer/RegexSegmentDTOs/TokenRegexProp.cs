@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexSegmentDTOs;
+﻿using MTGPlexer.RegexSegmentDTOs.Composers;
+
+namespace MTGPlexer.RegexSegmentDTOs;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also a TokenUnit (i.e. a child TokenUnit). During
@@ -21,10 +23,9 @@ public class TokenRegexProp : CaptureGroupPropBase
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo);
-        RegexTemplate.ComposeTokenUnitLines(collector, ChildSegments);
+        ConcatenatingComposer.Instance.Compose(collector, ChildSegments);
         collector.CloseGroup();
     }
 
     public override string ToString() => base.ToString();
 }
-
