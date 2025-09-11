@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a bool property on a TokenUnit. Bool property Regexes typically check for the optional presence
@@ -18,20 +19,14 @@ public class BoolRegexProp : ScalarCapturePropBase
         collector.CloseGroup(GroupQuantifier.Optional);
     }
 
-    //public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
-    //{
-    //    var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
-    //    var valueToSet = subMatchSpan != null;
-    //    TextSpan span = subMatchSpan ?? new TextSpan("");
-    //    parentToken.SetPropertyCapture(RegexPropInfo, span, valueToSet);
-    //    return true;
-    //}
-
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
     {
-        var capture = match.Groups[Name].Captures.FirstOrDefault();
-        var valueToSet = match.Groups[Name].Success;
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
+        var childMatch = parentMatch.GetChildMatch(this);
+
+        if (childMatch == null)
+            return false;
+
+        token.SetPropertyFromMatch(RegexPropInfo, childMatch, true);
         return true;
     }
 }

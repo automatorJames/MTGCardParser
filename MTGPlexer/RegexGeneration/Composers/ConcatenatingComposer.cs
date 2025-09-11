@@ -10,8 +10,6 @@ public class ConcatenatingComposer : ISegmentComposer
     public void Compose(RegexLineCollector collector, List<RegexSegmentBase> segments)
     {
         foreach (var segment in segments)
-        {
             segment.ComposeRegexLines(collector);
-        }
     }
 }

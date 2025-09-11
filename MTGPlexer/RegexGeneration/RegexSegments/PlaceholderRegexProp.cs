@@ -21,16 +21,11 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
     {
-        var group = match.Groups[Name];
-
-        if (!group.Success)
-            return false;
-
-        var capture = match.Groups[Name].Captures.First();
-        var valueToSet = new PlaceholderCapture(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
+        var childMatch = parentMatch.GetChildMatch(this);
+        var valueToSet = new PlaceholderCapture(childMatch.Value);
+        token.SetPropertyFromMatch(RegexPropInfo, childMatch, valueToSet);
         return true;
     }
 }

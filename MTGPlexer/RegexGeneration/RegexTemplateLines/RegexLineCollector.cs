@@ -9,6 +9,15 @@ public class RegexLineCollector
     Dictionary<RegexPropInfo, DeterministicPalette> _terminalGroupPalettes = [];
     int _indentation;
 
+    string _currentNameFlatPath => string.Join("_", _captureGroupStack
+        .OfType<RegexPropInfo>()
+        .Where(x => x != null)
+        .Reverse()
+        .Select(x => x.Name));
+
+    RegexPropInfo _currentNamedGroup => GetCurrentNamedGroupOrNull(ignoreUnnamedGroups: true);
+    DeterministicPalette _currentPalette => GetCurrentPaletteOrNull();
+
     // The key "-1" represents the top level (i.e. the class, not within a capture group)
     Dictionary<object, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
 
@@ -40,10 +49,10 @@ public class RegexLineCollector
                 _terminalGroupPalettes.TryAdd(captureGroup, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
 
             _terminalGroupPalettes.TryGetValue(captureGroup, out DeterministicPalette palette);
-            _lines.Add(new NamedGroupOpen(captureGroup.Name, GetFlatNamePath(), _indentation, captureGroup.FriendlyTypeName, palette));
+            _lines.Add(new NamedGroupOpen(captureGroup.Name, _currentNameFlatPath, _indentation, captureGroup.FriendlyTypeName, palette, _currentNamedGroup));
         }
         else
-            _lines.Add(new GroupOpen(GetFlatNamePath(), _indentation));
+            _lines.Add(new GroupOpen(_currentNameFlatPath, _indentation, _currentNamedGroup));
 
         _indentation++;
     }
@@ -51,9 +60,8 @@ public class RegexLineCollector
     public void CloseGroup(GroupQuantifier? quantifier = null)
     {
         _indentation--;
-        var path = GetFlatNamePath();
         var groupName = GetCurrentNamedGroupOrNull()?.Name;
-        _lines.Add(new GroupClose(path, _indentation, GetCurrentPaletteOrNull(), groupName, quantifier));
+        _lines.Add(new GroupClose(_currentNameFlatPath, _indentation, _currentPalette, groupName, _currentNamedGroup, quantifier));
 
         // Pop the current group name (or null placeholder)
         _captureGroupStack.Pop();
@@ -62,7 +70,7 @@ public class RegexLineCollector
     public void AddTextLine(string text)
     {
         AddPrecedingSpaceIfApplicable();
-        _lines.Add(new TextLine(text, GetFlatNamePath(), _indentation));
+        _lines.Add(new TextLine(text, _currentNameFlatPath, _indentation, _currentNamedGroup));
     }
 
     public void AddAlternatiingValues(IEnumerable<string> alternatives)
@@ -74,7 +82,7 @@ public class RegexLineCollector
         {
             var alternateValue = new AlternateValue(
                 alternative,
-                GetFlatNamePath(),
+                _currentNameFlatPath,
                 _indentation,
                 GetCurrentPaletteOrNull(),
                 GetCurrentNamedGroupOrNull(),
@@ -88,8 +96,8 @@ public class RegexLineCollector
 
     public void AddGroupAlternativePipe()
     {
-        var path = GetFlatNamePath();
-        _lines.Add(new GroupAlternativePipe(path, _indentation));
+        var path = _currentNameFlatPath;
+        _lines.Add(new GroupAlternativePipe(path, _indentation, _currentNamedGroup));
     }
 
     void AddPrecedingSpaceIfApplicable()
@@ -99,19 +107,10 @@ public class RegexLineCollector
         var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[currentScopeKey];
 
         if (groupSpaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
-            _lines.Add(new SpaceLine(GetFlatNamePath(), _indentation));
+            _lines.Add(new SpaceLine(_currentNameFlatPath, _indentation, _currentNamedGroup));
         else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpace)
             _spaceIsRequiredBeforeNextElementAtLevel[currentScopeKey] = SpaceDisposition.AddSpaceBeforeNextItem;
     }
-
-    /// <summary>
-    /// Get the current dot-navigaiton name path, which exclude any null name parts (representing unnamed parentheses groups).
-    /// </summary>
-    string GetFlatNamePath() => string.Join("_", _captureGroupStack
-        .OfType<RegexPropInfo>()
-        .Where(x => x != null)
-        .Reverse()
-        .Select(x => x.Name));
 
     DeterministicPalette GetCurrentPaletteOrNull()
     {
@@ -125,12 +124,40 @@ public class RegexLineCollector
         return palette;
     }
 
-    RegexPropInfo GetCurrentNamedGroupOrNull()
+    RegexPropInfo GetCurrentNamedGroupOrNull(bool ignoreUnnamedGroups = false)
     {
         if (!_captureGroupStack.Any()) return null;
-        var group = _captureGroupStack.Peek();
+
+        IEnumerable<object> groupsToCheck = ignoreUnnamedGroups ?
+            _captureGroupStack.Where(x => x is RegexPropInfo)
+            : _captureGroupStack;
+
+        var group = groupsToCheck.LastOrDefault();
         RegexPropInfo namedGroupOrNull = group is RegexPropInfo prop ? prop : null;
         return namedGroupOrNull;
+    }
+
+    public Regex ExtractGroupRegex(RegexPropInfo group, bool includeCaptureGroupName = false)
+    {
+        var firstGroupLine = _lines.FirstOrDefault(x => x.Group == group);
+        var lastGroupLine = _lines.LastOrDefault(x => x.Group == group);
+
+        if (firstGroupLine == null || lastGroupLine == null)
+            return null;
+
+        var firstLineIndex = _lines.IndexOf(firstGroupLine);
+        var lastLineIndex = _lines.IndexOf(lastGroupLine);
+
+        if (!includeCaptureGroupName)
+        {
+            firstLineIndex++;
+            lastLineIndex--;
+        }
+
+        var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex);
+        var regexString = string.Join("", groupLines.Select(x => x.EvaluableRegex));
+
+        return new (regexString, RegexOptions.Compiled);
     }
 
     public GeneratedRegex Finalize()

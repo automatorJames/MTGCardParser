@@ -2,7 +2,7 @@
 
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
-public record GroupClose(string Path, int Indentation, DeterministicPalette Palette, string Name, GroupQuantifier? Quantifier = null) 
+public record GroupClose(string Path, int Indentation, DeterministicPalette Palette, string Name, RegexPropInfo Group, GroupQuantifier? Quantifier = null) 
     : RegexTemplateLine
     (
         $"){(Quantifier.HasValue ?  Quantifier.Value.Description() : "")}", 
@@ -10,7 +10,8 @@ public record GroupClose(string Path, int Indentation, DeterministicPalette Pale
         Indentation, 
         Palette, 
         GetCommentOne(Quantifier),
-        GetCommentTwo(Name)
+        GetCommentTwo(Name),
+        Group
     )
 {
     static string GetCommentOne(GroupQuantifier? quantifier)

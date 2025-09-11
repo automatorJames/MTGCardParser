@@ -10,41 +10,23 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public class TokenRegexManyProp : CaptureGroupPropBase
 {
-    Regex _multiRegex;
+    Type _baseType;
     List<RegexSegmentBase> _singleIterationSegments;
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)))).GetCaptureGroupPropBase();
 
+    public override Regex MatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
+
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
+        _baseType = captureProp.BaseType;
+
+        if (!_baseType.IsAssignableTo(typeof(TokenUnit)) && !_baseType.IsEnum)
+            throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
+
+        // todo: handle the case where base type is enum instead of token type
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         _singleIterationSegments = template.RegexSegments;
     }
-
-    //public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
-    //{
-    //    var manyMatch = _multiRegex.Match(matchSpan.ToStringValue());
-    //    var manyMatchSubSpan = GetTextSubSpan(matchSpan, manyMatch);
-    //
-    //    var itemCaptures = manyMatch.Groups[$"{RegexPropInfo.BaseType.Name}_Item"]
-    //            .Captures
-    //            .ToList();
-    //
-    //    List<object> hydratedItems = [];
-    //
-    //    foreach (var itemCapture in itemCaptures)
-    //    {
-    //        var itemSubSpan = GetTextSubSpan(matchSpan, itemCapture);
-    //        var hydratedItemInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.BaseType, itemSubSpan.Value, parentToken, RegexPropInfo);
-    //        hydratedItems.Add(hydratedItemInstance);
-    //    }
-    //
-    //    var conjunctionString = manyMatch.Groups[nameof(Conjunction)].Value;
-    //    var conjunctionValue = Enum.GetValues<Conjunction>().FirstOrDefault(x => x.ToString().Equals(conjunctionString, StringComparison.OrdinalIgnoreCase));
-    //    var propVal = Activator.CreateInstance(RegexPropInfo.UnderlyingType, hydratedItems, conjunctionValue);
-    //    parentToken.SetPropertyCapture(RegexPropInfo, manyMatchSubSpan.Value, propVal);
-    //
-    //    return true;
-    //}
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
@@ -65,30 +47,28 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
     {
-        var captureBlock = match.Groups[Name];
-
-        var itemCaptures = match.Groups[$"{RegexPropInfo.BaseType.Name}"]
+        var childMatch = parentMatch.GetChildMatch(this);
+        
+        var itemCaptures = parentMatch.Match.Groups[$"{RegexPropInfo.BaseType.Name}"]
                 .Captures
                 .ToList();
 
         List<object> hydratedItems = [];
         var baseTypeRegex = TokenTypeRegistry.Templates[RegexPropInfo.BaseType].Regex;
+        CaptureGroupPropBase singleBaseProp = RegexPropInfo.GetCaptureGroupPropBase(forceGetUnderlyingPropType: true);
 
         foreach (var itemCapture in itemCaptures)
         {
-            // todo: handle the cases where base type is enum instead of a token type
-
-            var itemMatch = baseTypeRegex.Match(itemCapture.Value);
-            var hydratedItemInstance = TokenTypeRegistry.HydrateFromMatch(RegexPropInfo.BaseType, itemMatch);
-            hydratedItems.Add(hydratedItemInstance);
+            var childItem = parentMatch.GetChildSubCapture(singleBaseProp, itemCapture);
+            hydratedItems.Add(childItem);
         }
 
-        var conjunctionString = match.Groups[nameof(Conjunction)].Value;
+        var conjunctionString = parentMatch.Match.Groups[nameof(Conjunction)].Value;
         var conjunctionValue = Enum.GetValues<Conjunction>().FirstOrDefault(x => x.ToString().Equals(conjunctionString, StringComparison.OrdinalIgnoreCase));
-        var propVal = Activator.CreateInstance(RegexPropInfo.UnderlyingType, hydratedItems, conjunctionValue);
-        token.SetPropertyFromCapture(RegexPropInfo, captureBlock, propVal);
+        var manyPropVal = Activator.CreateInstance(RegexPropInfo.UnderlyingType, hydratedItems, conjunctionValue);
+        token.SetPropertyFromMatch(RegexPropInfo, parentMatch, manyPropVal);
 
         return true;
     }

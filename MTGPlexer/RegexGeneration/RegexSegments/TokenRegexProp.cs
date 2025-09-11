@@ -12,6 +12,8 @@ public class TokenRegexProp : CaptureGroupPropBase
     static HashSet<char> _terminalPunctuation = ['.', ',', ';'];
     bool _noSpaces;
 
+    public override Regex MatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.UnderlyingType].Regex;
+
     public List<RegexSegmentBase> ChildSegments { get; set; }
 
     public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
@@ -27,11 +29,11 @@ public class TokenRegexProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
     {
-        var oneOfPropInstance = TokenTypeRegistry.HydrateFromMatch(RegexPropInfo.UnderlyingType, match);
-        var capture = match.Groups[Name];
-        token.SetPropertyFromCapture(RegexPropInfo, capture, oneOfPropInstance);
+        var childMatch = parentMatch.GetChildMatch(this);
+        var tokenUnitOneOfInstance = TokenTypeRegistry.HydrateFromStructuredMatch(childMatch);
+        token.SetPropertyFromMatch(RegexPropInfo, childMatch, tokenUnitOneOfInstance);
         return true;
     }
 

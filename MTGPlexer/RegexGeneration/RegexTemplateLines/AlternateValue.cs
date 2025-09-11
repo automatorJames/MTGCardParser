@@ -10,7 +10,7 @@ public record AlternateValue
     bool IsFirst, 
     bool IsOnly
 ) 
-    : RegexTemplateLine(GetFormattedValue(Value, IsFirst), Path, Indentation, Palette, GetComment(IsOnly))
+    : RegexTemplateLine(GetFormattedValue(Value, IsFirst), Path, Indentation, Palette, GetComment(IsOnly), Group: Group)
 {
     public Regex Regex { get; } = new Regex(Value, RegexOptions.Compiled);
 

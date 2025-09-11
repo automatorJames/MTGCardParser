@@ -7,11 +7,14 @@
 /// </summary>
 public class EnumRegexProp : ScalarCapturePropBase
 {
+    Type _enumType;
+
+    public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[_enumType].Regex;
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        
+        _enumType = captureProp.UnderlyingType;
     }
 
     public override void ComposeRegexLines(RegexLineCollector collector)
@@ -68,29 +71,30 @@ public class EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = new(alternatives);
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
     {
-        var group = match.Groups[Name];
+        var childMatch = parentMatch.GetChildMatch(this);
 
-        if (!group.Success) 
+        if (childMatch == null)
+        {
+            if (!RegexPropInfo.MayBeNull)
+                throw new Exception($"{RegexPropInfo.Name} is not a nullable enum, but no match was found");
+
             return false;
+        }
 
-        var capture = match.Groups[Name].Captures.First();
-        var valueToSet = GetEnumMatchValue(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
+        var valueToSet = GetEnumMatchValue(childMatch.Value);
+        token.SetPropertyFromMatch(RegexPropInfo, childMatch, valueToSet);
         return true;
     }
 
     object GetEnumMatchValue(string matchString)
     {
-        if (!TokenTypeRegistry.EnumMemberRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
-            throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenTypeRegistry)}");
-
         foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[RegexPropInfo.UnderlyingType])
             if (enumMemberRegex.Value.IsMatch(matchString))
                 return enumMemberRegex.Key;
 
-        return null;
+        throw new Exception($"Found no matching values for enum '{_enumType.Name}' from match string '{matchString}'");
     }
 }
 

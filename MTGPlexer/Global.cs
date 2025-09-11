@@ -4,7 +4,7 @@ global using MTGPlexer.Attributes;
 global using MTGPlexer.BaseClasses;
 global using MTGPlexer.Data;
 global using MTGPlexer.GeneralDTOs;
-global using MTGPlexer.RegexGeneration;
+global using MTGPlexer.RegexGeneration.RegexSegments;
 global using MTGPlexer.Static;
 global using MTGPlexer.TokenAnalysisDTOs.Common;
 global using MTGPlexer.TokenAnalysisDTOs.WordTrees;

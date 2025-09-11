@@ -13,16 +13,19 @@ public record RegexPropInfo
     public string FriendlyTypeName { get; }
     public string FriendlyPropName { get; }
     public bool IsTerminal { get; }
+    public bool MayBeNull { get; }
 
     public RegexPropInfo(PropertyInfo prop)
     {
+        var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
         (RegexPropType, IsManyItem, BaseType) = GetCapturePropType(prop);
-        UnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        UnderlyingType = nullableType ?? prop.PropertyType;
         Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
+        MayBeNull = nullableType != null;
     }
 
     private static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
@@ -83,9 +86,9 @@ public record RegexPropInfo
         return BaseType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
-    public CaptureGroupPropBase GetCaptureGroupPropBase()
+    public CaptureGroupPropBase GetCaptureGroupPropBase(bool forceGetUnderlyingPropType = false)
     {
-        if (IsManyItem)
+        if (IsManyItem && !forceGetUnderlyingPropType)
             return new TokenRegexManyProp(this);
 
         return RegexPropType switch

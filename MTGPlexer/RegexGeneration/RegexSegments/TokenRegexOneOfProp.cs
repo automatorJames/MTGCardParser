@@ -15,18 +15,6 @@ public class TokenRegexOneOfProp : TokenRegexProp
         ChildSegments = template.RegexSegments;
     }
 
-    //public override bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
-    //{
-    //    var subMatchSpan = GetPropSubMatch(matchSpan);
-    //
-    //    if (subMatchSpan is null)
-    //        throw new Exception($"No alternative for {nameof(TokenUnitOneOf)} type '{RegexPropInfo.UnderlyingType.Name}' matched '{matchSpan.ToStringValue()}'");
-    //
-    //    var oneOfPropInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken, RegexPropInfo);
-    //    parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, oneOfPropInstance);
-    //    return true;
-    //}
-
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         // If there are no text sgements to render, the OneOf container itself doesn't need spaces between its alternating members
@@ -35,14 +23,6 @@ public class TokenRegexOneOfProp : TokenRegexProp
         collector.OpenGroup(RegexPropInfo, neverAddSpacesToGroupMembers);
         AlternatingComposer.Instance.Compose(collector, ChildSegments);
         collector.CloseGroup();
-    }
-
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
-    {
-        var oneOfPropInstance = TokenTypeRegistry.HydrateFromMatch(RegexPropInfo.UnderlyingType, match);
-        var capture = match.Groups[Name];
-        token.SetPropertyFromCapture(RegexPropInfo, capture, oneOfPropInstance);
-        return true;
     }
 
     public override string ToString() => base.ToString();

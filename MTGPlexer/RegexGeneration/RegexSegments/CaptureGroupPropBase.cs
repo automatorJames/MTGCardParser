@@ -9,14 +9,12 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
 {
     public string Name { get; init; }
     public RegexPropInfo RegexPropInfo { get; init; }
-    public bool IsChildTokenUnit { get; init; }
+    public abstract Regex MatchRegex { get; }
     
     public CaptureGroupPropBase(RegexPropInfo captureProp)
     {
         Name = captureProp.Name;
         RegexPropInfo = captureProp;
-        IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.Bool;
-        IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
     }
 
     //public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
@@ -27,7 +25,7 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
     //        return SetScalarPropValue(parentToken, matchSpan);       
     //}
 
-    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, Match match);
+    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, StructuredMatch parentMatch);
 
     //public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
     //{

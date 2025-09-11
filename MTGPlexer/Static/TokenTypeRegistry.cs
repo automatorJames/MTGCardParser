@@ -11,6 +11,7 @@ public static partial class TokenTypeRegistry
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
     static string _tokenizerIgnorePattern = @"\s+";
+    static Regex _matchAll = new(".*", RegexOptions.Compiled);
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
@@ -18,6 +19,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, ScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
     public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
+    public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
@@ -71,6 +73,12 @@ public static partial class TokenTypeRegistry
             .Where(x => x.RegexPropInfo.RegexPropType != RegexPropType.Enum)
             .ToList()
             .ForEach(x => PropScalarAlternativeSets.TryAdd(x.RegexPropInfo, x.ScalarAlternativeSet));
+
+        // Register all newly encountered ManyProps (we use BaseType as the key, not UnderlyingType which is List<T>)
+        propCaptureSegments
+            .OfType<TokenRegexManyProp>()
+            .ToList()
+            .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, instance.Template.Collector.ExtractGroupRegex(x.RegexPropInfo)));
 
         if (instance is TokenUnitDistilled tokenUnitDistilled)
         {
@@ -151,17 +159,22 @@ public static partial class TokenTypeRegistry
 
     public static TokenUnit HydrateFromToken(Token<Type> token)
     {
-        var match = Templates[token.Kind].Regex.Match(token.Span.ToStringValue());
-        return HydrateFromMatch(token.Kind, match);
+        var match = token.Kind == typeof(DefaultUnmatchedString) ?
+            _matchAll.Match(token.Span.ToStringValue())
+            : Templates[token.Kind].Regex.Match(token.Span.ToStringValue());
+
+        StructuredMatch tokenMatch = new(token.Kind, match);
+
+        return HydrateFromStructuredMatch(tokenMatch);
     }
 
-    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match)
+    public static TokenUnit HydrateFromStructuredMatch(StructuredMatch tokenMatch)
     {
-        var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
-        tokenUnit.Match = match;
+        var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenMatch.Type);
+        tokenUnit.TokenMatch = tokenMatch;
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
-            captureProp.SetValueFromMatch(tokenUnit, match);
+            captureProp.SetValueFromMatch(tokenUnit, tokenMatch);
 
         return tokenUnit;
     }

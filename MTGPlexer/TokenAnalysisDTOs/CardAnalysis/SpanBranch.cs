@@ -19,7 +19,7 @@ public record SpanBranch : NestedSpan
 
     public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth, string originalLineText, int? manyIndex = null)
         : base(
-            Path: parentPath.Dot(token.Match.ToIndexString()).Dot(token.Type.Name),
+            Path: parentPath.Dot(token.TokenMatch.ToIndexString()).Dot(token.Type.Name),
             NestedDepth: parentDepth + 1,
             Palette: TokenTypeRegistry.Palettes[token.Type],
             IgnoreInAnalysis: token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
@@ -31,7 +31,7 @@ public record SpanBranch : NestedSpan
         Branches = Children.OfType<SpanBranch>().ToList();
         Leaves = Children.OfType<SpanLeaf>().ToList();
         SetLeavesOrDistilled(token);
-        Match = token.Match;
+        Match = token.TokenMatch.Match;
         TokenType = token.Type;
         ManyIndex = manyIndex;
         CollapseInAnalysis = token is TokenUnitOneOf;
@@ -39,7 +39,7 @@ public record SpanBranch : NestedSpan
 
     private List<NestedSpan> DigestChildren(TokenUnit token)
     {
-        var match = token.Match;
+        var match = token.TokenMatch;
         var matchEnd = match.Index + match.Length;
 
         if (!token.IndexedPropertyCaptures.Any())
@@ -75,10 +75,10 @@ public record SpanBranch : NestedSpan
                     TokenUnit itemToken = items[i];
 
                     // Text between items
-                    if (itemToken.Match.Index > innerCursor)
+                    if (itemToken.TokenMatch.Index > innerCursor)
                     {
                         var snippetStart = innerCursor - match.Index;
-                        var snippetLength = itemToken.Match.Index - innerCursor;
+                        var snippetLength = itemToken.TokenMatch.Index - innerCursor;
                         var textBetween = OriginalLineText.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
 
                         if (!string.IsNullOrWhiteSpace(textBetween))
@@ -87,7 +87,7 @@ public record SpanBranch : NestedSpan
 
                     // The item itself
                     children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth, OriginalLineText, i));
-                    innerCursor = itemToken.Match.Index + itemToken.Match.Length;
+                    innerCursor = itemToken.TokenMatch.Index + itemToken.TokenMatch.Length;
                 }
 
                 // There might be text after the last item but before the end of the ManyToken span
@@ -144,8 +144,7 @@ public record SpanBranch : NestedSpan
                 var conjunctionPropInfo = new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)));
                 var conjunctionCapture = new IndexedPropertyCapture(
                     regexPropInfo: conjunctionPropInfo,
-                    //span: indexedProp.Span, // Use the span of the whole ManyToken capture
-                    capture: indexedProp.Capture, // Use the span of the whole ManyToken capture
+                    match: indexedProp.Match, // Use the span of the whole ManyToken capture
                     value: manyToken.Conjunction,
                     capturePosition: indexedProp.CapturePosition // Use the same position for color coding
                 );
