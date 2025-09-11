@@ -19,7 +19,8 @@ public abstract class TokenUnit
     public TokenUnit ParentToken { get; set; }
     public RegexPropInfo ParentTokenProp { get; set; }
     public int RecursiveDepth { get; set; }
-    public TextSpan MatchSpan { get; set; }
+    //public TextSpan MatchSpan { get; set; }
+    public Match Match { get; set; }
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -48,24 +49,24 @@ public abstract class TokenUnit
             Template = new(Type, templateSnippets);
     }
 
-    public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null, RegexPropInfo parentTokenProp = null)
-    {
-        if (!type.IsAssignableTo(typeof(TokenUnit)))
-            throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
-
-        var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
-        tokenInstance.ParentToken = parentToken;
-        tokenInstance.ParentTokenProp = parentTokenProp;
-        tokenInstance.MatchSpan = matchSpan;
-        tokenInstance.SetPropertiesFromMatch();
-
-        tokenInstance.RecursiveDepth = 
-            parentToken is null ? 0 
-            : parentToken is TokenUnitOneOf ? parentToken.RecursiveDepth
-            : parentToken.RecursiveDepth + 1;
-
-        return tokenInstance;
-    }
+    //public static TokenUnit InstantiateFromMatchString(Type type, TextSpan matchSpan, TokenUnit parentToken = null, RegexPropInfo parentTokenProp = null)
+    //{
+    //    if (!type.IsAssignableTo(typeof(TokenUnit)))
+    //        throw new Exception($"{type.Name} does not implement {nameof(TokenUnit)}");
+    //
+    //    var tokenInstance = (TokenUnit)Activator.CreateInstance(type);
+    //    tokenInstance.ParentToken = parentToken;
+    //    tokenInstance.ParentTokenProp = parentTokenProp;
+    //    tokenInstance.MatchSpan = matchSpan;
+    //    tokenInstance.SetPropertiesFromMatch();
+    //
+    //    tokenInstance.RecursiveDepth = 
+    //        parentToken is null ? 0 
+    //        : parentToken is TokenUnitOneOf ? parentToken.RecursiveDepth
+    //        : parentToken.RecursiveDepth + 1;
+    //
+    //    return tokenInstance;
+    //}
 
     public List<TokenUnit> GetChildTokens() => IndexedPropertyCaptures
         .Where(x => x.IsChildToken)
@@ -73,17 +74,25 @@ public abstract class TokenUnit
         .OfType<TokenUnit>()
         .ToList();
 
-    public virtual void SetPropertiesFromMatch()
-    {
-        Template.CaptureGroupProps.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
-    }
+    //public virtual void SetPropertiesFromMatch()
+    //{
+    //    Template.CaptureGroupProps.ForEach(x => x.SetValueFromMatchSpan(this, MatchSpan));
+    //}
 
-    public void SetPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)
+    //public void SetPropertyCapture(RegexPropInfo regexPropInfo, TextSpan textSpan, object propVal)
+    //{
+    //    regexPropInfo.Prop.SetValue(this, propVal);
+    //    var capturePosition = IndexedPropertyCaptures.Count;
+    //    IndexedPropertyCaptures.Add(new(regexPropInfo, textSpan, propVal, capturePosition));
+    //}
+
+    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCaptures.Add(new(regexPropInfo, textSpan, propVal, capturePosition));
+        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition));
     }
+
 
     /// <summary>
     /// Only intended to be called by TokenTypeRegistry once upon startup. May be overridden by
@@ -108,5 +117,6 @@ public abstract class TokenUnit
     }
 
 
-    public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
+    //public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
+    public override string ToString() => $"{Type.Name}{(Match == null ? "" : $": {Match.Value}")}";
 }

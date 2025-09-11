@@ -1,14 +1,7 @@
 ﻿using MTGPlexer.RegexGeneration.Composers;
 using MTGPlexer.RegexGeneration.RegexSegments;
-using MTGPlexer.RegexGeneration.RegexTemplateLines;
-using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace MTGPlexer;
-
-// NOTE: The ISegmentComposer, ConcatenatingComposer, and AlternatingComposer
-// classes previously shown are now assumed to be in this namespace or another
-// accessible location. For brevity, they are not repeated here.
 
 public class RegexTemplate
 {

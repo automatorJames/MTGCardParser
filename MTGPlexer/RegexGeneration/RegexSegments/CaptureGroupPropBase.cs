@@ -19,75 +19,77 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
         IsChildTokenUnit = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit;
     }
 
-    public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
-    {
-        if (IsChildTokenUnit)
-            return SetChildTokenUnitValue(parentToken, matchSpan);
-        else
-            return SetScalarPropValue(parentToken, matchSpan);       
-    }
+    //public virtual bool SetValueFromMatchSpan(TokenUnit parentToken, TextSpan matchSpan)
+    //{
+    //    if (IsChildTokenUnit)
+    //        return SetChildTokenUnitValue(parentToken, matchSpan);
+    //    else
+    //        return SetScalarPropValue(parentToken, matchSpan);       
+    //}
 
-    public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
-    {
-        var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
+    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, Match match);
 
-        if (subMatchSpan is null)
-            return false;
+    //public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
+    //{
+    //    var subMatchSpan = GetGroupSubMatch(parentToken, matchSpan);
+    //
+    //    if (subMatchSpan is null)
+    //        return false;
+    //
+    //    var subMatchText = subMatchSpan.Value.ToStringValue();
+    //    var valueToSet = RegexPropInfo.RegexPropType switch
+    //    {
+    //        RegexPropType.Enum => GetEnumMatchValue(subMatchText),
+    //        RegexPropType.Placeholder => new PlaceholderCapture(subMatchText),
+    //    };
+    //
+    //    parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, valueToSet);
+    //
+    //    return true;
+    //}
 
-        var subMatchText = subMatchSpan.Value.ToStringValue();
-        var valueToSet = RegexPropInfo.RegexPropType switch
-        {
-            RegexPropType.Enum => GetEnumMatchValue(subMatchText),
-            RegexPropType.Placeholder => new PlaceholderCapture(subMatchText),
-        };
-
-        parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, valueToSet);
-
-        return true;
-    }
-
-    public bool SetChildTokenUnitValue(TokenUnit parentToken, TextSpan matchSpan)
-    {
-        var subMatchSpan = GetPropSubMatch(matchSpan);
-
-        if (subMatchSpan is null)
-            return false;
-
-        var propInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken, RegexPropInfo);
-
-        if (propInstance is null)
-            throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
-
-        parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, propInstance);
-        return true;
-    }
-
-    object GetEnumMatchValue(string matchString)
-    {
-        if (!TokenTypeRegistry.EnumMemberRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
-            throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenTypeRegistry)}");
-
-        foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[RegexPropInfo.UnderlyingType])
-            if (enumMemberRegex.Value.IsMatch(matchString))
-                return enumMemberRegex.Key;
-
-        return null;
-    }
-
-    protected TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
-    {
-        var matchText = matchSpanToCheck.ToStringValue();
-        var regex = TokenTypeRegistry.Templates[parentToken.GetType()].RegexString;
-        var match = Regex.Match(matchText, regex);
-        var matchPropGroup = match.Groups[RegexPropInfo.Name];
-
-        if (!matchPropGroup.Success)
-            return null;
-
-        var newCombinedIndex = matchSpanToCheck.Position.Absolute + matchPropGroup.Index;
-        var newPosition = new Position(newCombinedIndex, matchSpanToCheck.Position.Line, newCombinedIndex + 1);
-        return new TextSpan(matchSpanToCheck.Source, newPosition, matchPropGroup.Length);
-    }
+    //public bool SetChildTokenUnitValue(TokenUnit parentToken, TextSpan matchSpan)
+    //{
+    //    var subMatchSpan = GetPropSubMatch(matchSpan);
+    //
+    //    if (subMatchSpan is null)
+    //        return false;
+    //
+    //    var propInstance = TokenUnit.InstantiateFromMatchString(RegexPropInfo.UnderlyingType, subMatchSpan.Value, parentToken, RegexPropInfo);
+    //
+    //    if (propInstance is null)
+    //        throw new Exception($"Failed to instantiate {RegexPropInfo.UnderlyingType.Name} from match string {matchSpan.ToStringValue()}");
+    //
+    //    parentToken.SetPropertyCapture(RegexPropInfo, subMatchSpan.Value, propInstance);
+    //    return true;
+    //}
+    //
+    //object GetEnumMatchValue(string matchString)
+    //{
+    //    if (!TokenTypeRegistry.EnumMemberRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
+    //        throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenTypeRegistry)}");
+    //
+    //    foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[RegexPropInfo.UnderlyingType])
+    //        if (enumMemberRegex.Value.IsMatch(matchString))
+    //            return enumMemberRegex.Key;
+    //
+    //    return null;
+    //}
+    //
+    //protected TextSpan? GetGroupSubMatch(TokenUnit parentToken, TextSpan matchSpanToCheck)
+    //{
+    //    var matchText = matchSpanToCheck.ToStringValue();
+    //    var regex = TokenTypeRegistry.Templates[parentToken.GetType()].RegexString;
+    //    var match = Regex.Match(matchText, regex);
+    //    var matchPropGroup = match.Groups[RegexPropInfo.Name];
+    //
+    //    if (!matchPropGroup.Success)
+    //        return null;
+    //
+    //    var newCombinedIndex = matchSpanToCheck.Position.Absolute + matchPropGroup.Index;
+    //    var newPosition = new Position(newCombinedIndex, matchSpanToCheck.Position.Line, newCombinedIndex + 1);
+    //    return new TextSpan(matchSpanToCheck.Source, newPosition, matchPropGroup.Length);
+    //}
 
     protected TextSpan? GetPropSubMatch(TextSpan matchSpanToCheck)
     {

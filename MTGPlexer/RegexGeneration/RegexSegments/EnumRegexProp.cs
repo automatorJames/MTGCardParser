@@ -5,53 +5,56 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public class EnumRegexProp : CaptureGroupPropBase
+public class EnumRegexProp : ScalarCapturePropBase
 {
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
-    public RegexEnumAttribute Options { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        Options = captureProp.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-
-        if (captureProp.RegexPropType != RegexPropType.Enum)
-            throw new ArgumentException($"Type '{captureProp.Name}' isn't an enum");
+        
     }
-
-    //protected override void SetRegex(RegexPropInfo regexPropInfo)
-    //{
-    //    Options = regexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-    //    CaptureAlternatives = GetAlternations();
-    //    CaptureAlternativesString = string.Join("|", CaptureAlternatives);
-    //    RegexString = $@"(?<{regexPropInfo.Name}>{CaptureAlternativesString})";
-    //}
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo);
-        var alternations = GetAlternations();
-        collector.AddAlternateValues(alternations);
+        collector.AddAlternatiingValues(ScalarAlternativeSet.Alternatives);
         collector.CloseGroup();
     }
 
-    List<string> GetAlternations()
+    protected override void SetScalarAlternativeSet() => SetAlternativesAndMemberRegexes();
+
+    void SetAlternativesAndMemberRegexes()
     {
+        var enumType = RegexPropInfo.UnderlyingType;
+
+        if (TokenTypeRegistry.EnumMemberRegexes.TryGetValue(enumType, out var enumMemberRegexes))
+        {
+            EnumMemberRegexes = enumMemberRegexes;
+            
+            // if the registry has the enum's member regexes, it should have its scalar alternatives too
+            ScalarAlternativeSet = TokenTypeRegistry.EnumScalarAlternativeSets[enumType];
+
+            return;
+        }
+
+        // if not already registered: 
+        var enumOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
         List<string> allMemberAlternatives = new();
-        var enumRegOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-        var enumValues = Enum.GetValues(RegexPropInfo.UnderlyingType).Cast<object>();
+        var enumRegOptions = enumType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
+        var enumValues = Enum.GetValues(enumType).Cast<object>();
 
         foreach (var enumValue in enumValues)
         {
             List<string> memberAlternatives = new();
             var enumAsString = enumValue.ToString();
-            var regexPatternAttribute = RegexPropInfo.UnderlyingType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
+            var regexPatternAttribute = enumType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
             if (regexPatternAttribute != null)
                 memberAlternatives.AddRange(regexPatternAttribute.Patterns);
             else
                 memberAlternatives.Add(enumAsString.ToFriendlyCase());
 
-            if (Options.OptionalPlural)
+            if (enumOptions.OptionalPlural)
                 for (int i = 0; i < memberAlternatives.Count; i++)
                     memberAlternatives[i] = memberAlternatives[i].AddOptionalPluralization();
 
@@ -61,7 +64,33 @@ public class EnumRegexProp : CaptureGroupPropBase
             allMemberAlternatives.AddRange(memberAlternatives);
         }
 
-        return allMemberAlternatives.OrderByDescending(s => s.Length).ToList();
+        var alternatives = allMemberAlternatives.OrderByDescending(s => s.Length).ToList();
+        ScalarAlternativeSet = new(alternatives);
+    }
+
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    {
+        var group = match.Groups[Name];
+
+        if (!group.Success) 
+            return false;
+
+        var capture = match.Groups[Name].Captures.First();
+        var valueToSet = GetEnumMatchValue(capture.Value);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
+        return true;
+    }
+
+    object GetEnumMatchValue(string matchString)
+    {
+        if (!TokenTypeRegistry.EnumMemberRegexes.ContainsKey(RegexPropInfo.UnderlyingType))
+            throw new Exception($"Enum type {RegexPropInfo.UnderlyingType.Name} is not registered in {nameof(TokenTypeRegistry)}");
+
+        foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[RegexPropInfo.UnderlyingType])
+            if (enumMemberRegex.Value.IsMatch(matchString))
+                return enumMemberRegex.Key;
+
+        return null;
     }
 }
 

@@ -65,7 +65,7 @@ public class RegexLineCollector
         _lines.Add(new TextLine(text, GetFlatNamePath(), _indentation));
     }
 
-    public void AddAlternateValues(IEnumerable<string> alternatives)
+    public void AddAlternatiingValues(IEnumerable<string> alternatives)
     {
         bool isFirstAlternation = true;
         bool isOnlyAlternation = alternatives.Count() == 1;

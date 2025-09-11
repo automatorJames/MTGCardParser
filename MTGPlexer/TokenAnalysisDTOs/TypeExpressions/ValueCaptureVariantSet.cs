@@ -27,14 +27,6 @@ public record ValueCaptureVariantSet
         VariantCounts.Add(CanonicalRepresentation, 0);
     }
 
-    public void SetPrettyRegexCaptureLine(PrettifiedRegex prettifiedRegex)
-    {
-        var matchedByLine = prettifiedRegex.Lines.FirstOrDefault(x => x.CheckIfMatch(CanonicalRepresentation, TerminalPropCaptureGroupName));
-
-        if (matchedByLine != null)
-            CapturedByPrettyRegexLine = matchedByLine.LineNumber;
-    }
-
     public override string ToString()
     {
         var mainString = $"{CanonicalRepresentation}: {TotalCount}";

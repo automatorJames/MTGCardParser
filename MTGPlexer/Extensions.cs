@@ -120,6 +120,7 @@ public static class Extensions
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
     public static string Colon(this string parentPath, string nextPathPart) => parentPath + ":" + nextPathPart;
     public static string ToIndexString(this TextSpan textSpan) => $"idx[{textSpan.Position.Absolute}]";
+    public static string ToIndexString(this Match match) => $"idx[{match.Index}]";
 
     public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();
     public static Type UnderlyingType(this Type type) => Nullable.GetUnderlyingType(type) ?? type;

@@ -34,6 +34,9 @@ public class CardDataGetter
         using var conn = new SqlConnection(_sqlConnString);
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
+        //result = new List<Card> { new Card { Name = "baaz", Text = "ABC 123" } };
+        result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "Some fecking intelligible text" } };
+
         return result.ToList();
     }
 }

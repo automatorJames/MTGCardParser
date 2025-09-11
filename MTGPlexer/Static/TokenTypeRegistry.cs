@@ -16,6 +16,8 @@ public static partial class TokenTypeRegistry
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
+    public static Dictionary<Type, ScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
+    public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
     public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
@@ -55,19 +57,20 @@ public static partial class TokenTypeRegistry
         Templates[type] = instance.Template;
         var propCaptureSegments = instance.Template.CaptureGroupProps;
 
-        var unregisteredEnums = propCaptureSegments
+        // Register all newly encountered enums (we use the EnumRegexProp instance for this,
+        // but steps taken during registration only care about the enum type itself)
+        propCaptureSegments
             .OfType<EnumRegexProp>()
-            .Where(x => !EnumMemberRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType));
+            .Where(x => !EnumMemberRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType))
+            .ToList()
+            .ForEach(RegisterEnum);
 
-        foreach (var enumEntry in unregisteredEnums)
-        {
-            var enumType = enumEntry.RegexPropInfo.UnderlyingType;
-            EnumMemberRegexes[enumType] = enumEntry.EnumMemberRegexes;
-            EnumRegexStrings[enumType] = enumEntry.RegexString;
-            ReferencedEnumTypes.Add(enumType);
-            Palettes[enumType] = new(enumType, baseSaturation: .4, baseLightness: .4);
-            NameToType[enumType.Name] = enumType;
-        }
+        // Register all newly encountered scalar capture props that aren't enums (i.e. bools & placeholders)
+        propCaptureSegments
+            .OfType<ScalarCapturePropBase>()
+            .Where(x => x.RegexPropInfo.RegexPropType != RegexPropType.Enum)
+            .ToList()
+            .ForEach(x => PropScalarAlternativeSets.TryAdd(x.RegexPropInfo, x.ScalarAlternativeSet));
 
         if (instance is TokenUnitDistilled tokenUnitDistilled)
         {
@@ -76,6 +79,17 @@ public static partial class TokenTypeRegistry
             foreach (var item in tokenUnitDistilled.GetDistilledPropAssociations())
                 DistilledProperties[type][item.Key] = item.Value;
         }
+    }
+
+    static void RegisterEnum(EnumRegexProp newEnumType)
+    {
+        var enumType = newEnumType.RegexPropInfo.UnderlyingType;
+        EnumMemberRegexes[enumType] = newEnumType.EnumMemberRegexes;
+        EnumRegexStrings[enumType] = newEnumType.RegexString;
+        ReferencedEnumTypes.Add(enumType);
+        Palettes[enumType] = new(enumType, baseSaturation: .4, baseLightness: .4);
+        NameToType[enumType.Name] = enumType;
+        EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
     }
 
     public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text, bool originalTextOnly)
@@ -132,8 +146,25 @@ public static partial class TokenTypeRegistry
         return token;
     }
 
-    public static TokenUnit HydrateFromToken(Token<Type> token) 
-        => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
+    //public static TokenUnit HydrateFromToken(Token<Type> token) 
+    //    => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
+
+    public static TokenUnit HydrateFromToken(Token<Type> token)
+    {
+        var match = Templates[token.Kind].Regex.Match(token.Span.ToStringValue());
+        return HydrateFromMatch(token.Kind, match);
+    }
+
+    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match)
+    {
+        var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
+        tokenUnit.Match = match;
+
+        foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
+            captureProp.SetValueFromMatch(tokenUnit, match);
+
+        return tokenUnit;
+    }
 
     /// <summary>
     /// Return all TokenUnit derived types except for DefaultUnmatchedString

@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 //public class AlternatingClass : TokenUnitOneOf
 public class TestThing : TokenUnit
 {
@@ -23,12 +22,7 @@ public enum WildCard
     CardsIn
 }
 
-public enum Alphabet
-{
-    A,
-    B,
-    C
-}
+
 
 public class AlphaBetWrapper : TokenUnit
 {
@@ -36,7 +30,6 @@ public class AlphaBetWrapper : TokenUnit
 }
 
 
-[IsolateForTesting]
 public class TestLevelA : TokenUnit
 {
     public Alphabet Alphabet { get; set; }
@@ -51,4 +44,42 @@ public class TestLevelB : TokenUnit
     }
 
     public Alphabet Alphabet { get; set; }
+}
+
+public class Parent : TokenUnit
+{
+    public Alphabet Alphabet { get; set; }
+    public Child Child { get; set; }
+}
+
+public class Child : TokenUnit
+{
+    public Numbers Numbers { get; set; }
+}
+
+public class TokenUnitWithBool : TokenUnit
+{
+    public bool YouMay { get; set; }
+    public Numbers Numbers { get; set; }
+}
+
+[IsolateForTesting]
+public class SimpleAlphabet : TokenUnit
+{
+    public Alphabet Alphabet { get; set; }
+}
+
+public enum Alphabet
+{
+    [RegexPattern("abc")]
+    ABC,
+    DEF,
+    GHI
+}
+
+public enum Numbers
+{
+    One,
+    Two,
+    Three
 }

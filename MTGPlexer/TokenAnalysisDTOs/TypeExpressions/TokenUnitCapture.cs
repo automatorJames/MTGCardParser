@@ -10,7 +10,6 @@ public record TokenUnitCapture
     public int OccurrenceCount { get; }
     public string RegexString { get; }
     public string MinifiedRegexString { get; }
-    public PrettifiedRegex PrettifiedRegex { get; }
     public List<RegexPropValueSet> RegexPropValueSets { get; } = [];
     public DeterministicPalette Palette { get; }
 
@@ -54,8 +53,8 @@ public record TokenUnitCapture
             }
         }
 
-        PrettifiedRegex = new PrettifiedRegex(RegexString, type);
-        RegexPropValueSets.ForEach(x => x.SetPrettyRegexCaptureLineAll(PrettifiedRegex));
+        //PrettifiedRegex = new PrettifiedRegex(RegexString, type);
+        //RegexPropValueSets.ForEach(x => x.SetPrettyRegexCaptureLineAll(PrettifiedRegex));
     }
 
     (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)

@@ -27,5 +27,13 @@ public class TokenRegexProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    {
+        var oneOfPropInstance = TokenTypeRegistry.HydrateFromMatch(RegexPropInfo.UnderlyingType, match);
+        var capture = match.Groups[Name];
+        token.SetPropertyFromCapture(RegexPropInfo, capture, oneOfPropInstance);
+        return true;
+    }
+
     public override string ToString() => base.ToString();
 }

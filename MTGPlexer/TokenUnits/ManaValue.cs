@@ -12,7 +12,8 @@ public class ManaValue : TokenUnitDistilled
     {
         static int? Increment(int? v, int by = 1) => (v ?? 0) + by;
 
-        var matches = Template.Regex.Matches(MatchSpan.ToStringValue());
+        //var matches = Template.Regex.Matches(MatchSpan.ToStringValue());
+        var matches = Template.Regex.Matches(Match.Value);
 
         foreach (Match match in matches)
         {

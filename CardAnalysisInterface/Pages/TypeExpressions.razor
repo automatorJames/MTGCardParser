@@ -34,7 +34,7 @@
             }
             else
             {
-                var textToCopy = string.Join("\n", tokenUnitCapture.PrettifiedRegex.Lines.Select(l => l.DisplayText));
+                var textToCopy = string.Join("\n", tokenUnitCapture.RegexString);
                 var isCopied = _recentlyCopiedText.Contains(textToCopy);
                 <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
                     <div class="copy-prompt @(isCopied ? "copied" : "")">
@@ -101,9 +101,7 @@
                              style=@($"border-color: {propSetPalette.HexDark};")
                              data-start="@propSet.CaptureGroupPositionStart"
                              data-end="@propSet.CaptureGroupPositionEnd"
-                             data-name="@propSet.TerminalRegexPropPath.Prop.Name"
-                             @onmouseenter="() => StartPropertyGroupHighlight(tokenUnitCapture, propSet)"
-                             @onmouseleave="() => ClearPropertyGroupHighlight(tokenUnitCapture)">
+                             data-name="@propSet.TerminalRegexPropPath.Prop.Name">
                             <div class="prop-card-header" style="color: @propSetPalette.Hex;">
                                 @propSet.TerminalRegexPropPath.PropPathFriendly<br />
                             </div>
@@ -114,9 +112,7 @@
                                     {
                                         continue;
                                     }
-                                    <div class="canonical-representation"
-                                         @onmouseenter="() => StartValueHighlight(valueSet, tokenUnitCapture)"
-                                         @onmouseleave="() => ClearValueHighlight(tokenUnitCapture)">
+                                    <div class="canonical-representation">
                                         <span class="canonical-value">@valueSet.CanonicalRepresentation</span>
                                         <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
                                     </div>
@@ -126,9 +122,7 @@
                                         <div class="variants-sub-table">
                                             @foreach (var variant in valueSet.VariantCounts.OrderByDescending(x => x.Value))
                                             {
-                                                <div class="capture-variant"
-                                                     @onmouseenter="() => StartValueHighlight(valueSet, tokenUnitCapture)"
-                                                     @onmouseleave="() => ClearValueHighlight(tokenUnitCapture)">
+                                                <div class="capture-variant">
                                                     <span class="variant-value">@variant.Key</span>
                                                     <span class="variant-count">@variant.Value</span>
                                                 </div>
@@ -178,38 +172,10 @@
         );
     }
 
-    private void StartValueHighlight(ValueCaptureVariantSet valueSet, TokenUnitCapture tokenUnitCapture)
-    {
-        if (valueSet.CapturedByPrettyRegexLine >= 0)
-        {
-            var line = tokenUnitCapture.PrettifiedRegex.Lines.FirstOrDefault(l => l.LineNumber == valueSet.CapturedByPrettyRegexLine);
-            if (line?.Palette != null)
-            {
-                _valueHighlightState[tokenUnitCapture.Type.Name] = (line.LineNumber, line.Palette.HexSat);
-                StateHasChanged();
-            }
-        }
-    }
-
     private void ClearValueHighlight(TokenUnitCapture tokenUnitCapture)
     {
         if (_valueHighlightState.Remove(tokenUnitCapture.Type.Name))
         {
-            StateHasChanged();
-        }
-    }
-
-    private void StartPropertyGroupHighlight(TokenUnitCapture tuc, RegexPropValueSet propSet)
-    {
-        var propName = propSet.TerminalRegexPropPath.Prop.Name;
-        var lines = tuc.PrettifiedRegex.Lines;
-
-        var startLine = lines.FirstOrDefault(l => l.PropertyCaptureGroup == propName && l.Role == PrettifiedRegexLineRole.CaptureGroupStart);
-        var endLine = lines.FirstOrDefault(l => l.PropertyCaptureGroup == propName && l.Role == PrettifiedRegexLineRole.CaptureGroupEnd);
-
-        if (startLine != null && endLine != null)
-        {
-            _hoveredPropertyGroupState[tuc.Type.Name] = (propName, startLine.LineNumber, endLine.LineNumber);
             StateHasChanged();
         }
     }
@@ -231,89 +197,5 @@
         await Task.Delay(2000);
         _recentlyCopiedText.Remove(text);
         await InvokeAsync(StateHasChanged);
-    }
-
-    private string RenderPrettifiedLine(PrettifiedRegexLine line, int hashColumnIndex, bool isInsideHoveredGroup)
-    {
-        const string darkGrey = "#666666";
-        const string midGrey = "#AAAAAA";
-        var text = line.DisplayText;
-
-        if (string.IsNullOrEmpty(text)) return string.Empty;
-
-        var sb = new StringBuilder();
-
-        if (line.Palette == null)
-        {
-            if (hashColumnIndex >= 0 && hashColumnIndex < text.Length && text[hashColumnIndex] == '#')
-            {
-                string left = System.Net.WebUtility.HtmlEncode(text.Substring(0, hashColumnIndex));
-                string right = System.Net.WebUtility.HtmlEncode(text.Substring(hashColumnIndex + 1));
-                var hashColor = isInsideHoveredGroup ? "white" : darkGrey;
-                sb.Append($"<span style=\"color:{midGrey};\">{left}</span>");
-                sb.Append($"<span style=\"color:{hashColor};\">#</span>");
-                sb.Append($"<span style=\"color:{midGrey};\">{right}</span>");
-            }
-            else
-                sb.Append($"<span style=\"color:{midGrey};\">{System.Net.WebUtility.HtmlEncode(text)}</span>");
-
-            return sb.ToString();
-        }
-
-        var palette = line.Palette;
-        var currentSegment = new StringBuilder();
-        string currentColor = null;
-
-        for (int i = 0; i < text.Length; i++)
-        {
-            char c = text[i];
-            string nextColor;
-
-            if (i == hashColumnIndex && c == '#')
-            {
-                nextColor = isInsideHoveredGroup ? "white" : darkGrey;
-            }
-            else
-            {
-                bool isLineChar = "─┐│┌└┘".Contains(c);
-                if (isLineChar)
-                {
-                    // If inside a hovered group, and the character is a pipe, make it white.
-                    nextColor = (isInsideHoveredGroup && c == '│') ? "white" : palette.HexDark;
-                }
-                else if (line.Role == PrettifiedRegexLineRole.CaptureGroupStart || line.Role == PrettifiedRegexLineRole.CaptureGroupEnd)
-                {
-                    nextColor = palette.Hex;
-                }
-                else
-                {
-                    nextColor = palette.HexLight;
-                }
-            }
-
-            if (currentColor == null)
-            {
-                currentColor = nextColor;
-            }
-
-            if (nextColor != currentColor)
-            {
-                if (currentSegment.Length > 0)
-                {
-                    sb.Append($"<span style=\"color:{currentColor};\">{System.Net.WebUtility.HtmlEncode(currentSegment.ToString())}</span>");
-                    currentSegment.Clear();
-                }
-                currentColor = nextColor;
-            }
-
-            currentSegment.Append(c);
-        }
-
-        if (currentSegment.Length > 0)
-        {
-            sb.Append($"<span style=\"color:{currentColor};\">{System.Net.WebUtility.HtmlEncode(currentSegment.ToString())}</span>");
-        }
-
-        return sb.ToString();
     }
 }

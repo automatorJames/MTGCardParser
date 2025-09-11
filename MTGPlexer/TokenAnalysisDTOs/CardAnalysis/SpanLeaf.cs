@@ -16,5 +16,6 @@ public record SpanLeaf
     PropertyCapture.IgnoreInAnalysis
 )
 {
-    public override string ToString() => PropertyCapture.Span.ToStringValue();
+    public override string ToString() => PropertyCapture.Capture.Value;
+    //public override string ToString() => PropertyCapture.Span.ToStringValue();
 }
