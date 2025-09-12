@@ -114,7 +114,6 @@ public static class Extensions
 
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
     public static string Colon(this string parentPath, string nextPathPart) => parentPath + ":" + nextPathPart;
-    public static string ToIndexString(this TextSpan textSpan) => $"idx[{textSpan.Position.Absolute}]";
     public static string ToIndexString(this Match match) => $"idx[{match.Index}]";
     public static string ToIndexString(this StructuredMatchBase match) => $"idx[{match.AbsoluteStartInSource}]";
 

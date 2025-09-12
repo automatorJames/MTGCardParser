@@ -102,75 +102,8 @@ public static partial class TokenTypeRegistry
         EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
     }
 
-    //public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text, bool originalTextOnly)
-    //{
-    //    List<Token<Type>> coallescedTokens = [];
-    //    List<Token<Type>> unmatchedBuffer = [];
-    //    var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text).ToList() : ClassTokenizer.Tokenize(text).ToList();
-    //    foreach (var token in tokens)
-    //    {
-    //        if (token.Kind == typeof(DefaultUnmatchedString))
-    //            unmatchedBuffer.Add(token);
-    //        else
-    //        {
-    //            // flush the buffer and append
-    //            FlushBuffer();
-    //            coallescedTokens.Add(token);
-    //        }
-    //    }
-    //
-    //    FlushBuffer();
-    //
-    //    // local helper
-    //    void FlushBuffer()
-    //    {
-    //        if (unmatchedBuffer.Count > 0)
-    //        {
-    //            Token<Type> combinedUnmatchedStringToken = default;
-    //
-    //            if (unmatchedBuffer.Count > 1)
-    //                combinedUnmatchedStringToken = CoallesceUnmatchedStringTokens(unmatchedBuffer);
-    //            else if (unmatchedBuffer.Count == 1)
-    //                combinedUnmatchedStringToken = unmatchedBuffer[0];
-    //
-    //            coallescedTokens.Add(combinedUnmatchedStringToken);
-    //        }
-    //
-    //        unmatchedBuffer = [];
-    //    }
-    //
-    //    return coallescedTokens;
-    //}
-    //
-    //static Token<Type> CoallesceUnmatchedStringTokens(List<Token<Type>> unmatchedStringTokens)
-    //{
-    //    var originalSource = unmatchedStringTokens[0].Span;
-    //    var firstItem = unmatchedStringTokens[0];
-    //    var lastItem = unmatchedStringTokens[^1];
-    //    var start = firstItem.Span.Position.Absolute;
-    //    var combinedLength = lastItem.Span.Position.Absolute + lastItem.Span.Length - start;
-    //    var position = new Position(firstItem.Span.Position.Absolute, firstItem.Span.Position.Line, firstItem.Span.Position.Line);
-    //    var combinedTextSpan = new TextSpan(originalSource.Source, position, combinedLength);
-    //    var token = new Token<Type>(typeof(DefaultUnmatchedString), combinedTextSpan);
-    //
-    //    return token;
-    //}
-    //
-    //public static TokenUnit HydrateFromToken(Token<Type> token) 
-    //    => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
-
-    //public static TokenUnit HydrateFromToken(Token<Type> token)
-    //{
-    //    var absoluteStartInSource = token.Span.Position.Absolute;
-    //    var absoluteEndInSource = absoluteStartInSource + token.Span.Length;
-    //    StructuredTokenRoot root = new(token.Kind, token.Span.Source, absoluteStartInSource, absoluteEndInSource);
-    //    return HydrateFromStructuredMatch(root);
-    //}
-
     public static List<StructuredTokenRoot> Tokenize(string text, bool originalTextOnly)
     {
-        List<Token<Type>> coallescedTokens = [];
-        List<Token<Type>> unmatchedBuffer = [];
         var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
         return tokens;
     }
@@ -228,9 +161,6 @@ public static partial class TokenTypeRegistry
 
         // Get all tokens except default unmatched string, which will be added last
         var allTokenTypes = GetAllTokenTypes().Where(x => x != typeof(DefaultUnmatchedString));
-
-        var tokenizerBuilder = new TokenizerBuilder<Type>();
-        tokenizerBuilder.Ignore(Span.Regex(_tokenizerIgnorePattern));
 
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
         // each dictionary entry is a List, though each List should ideally only have one item.
