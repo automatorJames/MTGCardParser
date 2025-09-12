@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have
@@ -21,7 +23,7 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
     {
         var childMatch = parentMatch.GetChildMatch(this);
         var valueToSet = new PlaceholderCapture(childMatch.Value);

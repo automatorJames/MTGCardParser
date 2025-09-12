@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.GeneralDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a single card and all its processed lines of text.

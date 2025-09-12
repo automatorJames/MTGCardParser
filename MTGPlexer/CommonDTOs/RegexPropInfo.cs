@@ -1,6 +1,6 @@
 ﻿using MTGPlexer.RegexGeneration.RegexSegments;
 
-namespace MTGPlexer.GeneralDTOs;
+namespace MTGPlexer.CommonDTOs;
 
 public record RegexPropInfo
 {

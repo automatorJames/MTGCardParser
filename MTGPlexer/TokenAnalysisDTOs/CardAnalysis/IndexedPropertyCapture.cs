@@ -1,4 +1,5 @@
-﻿using MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+using MTGPlexer.RegexGeneration.RegexSegments;
 
 namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 
@@ -9,7 +10,7 @@ namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 public record IndexedPropertyCapture
 {
     public RegexPropInfo RegexPropInfo { get; set; }
-    public StructuredMatch Match { get; set; }
+    public StructuredMatchBase Match { get; set; }
     public int Start { get; }
     public int End { get; }
     public int Length { get; }
@@ -19,12 +20,12 @@ public record IndexedPropertyCapture
     public DeterministicPalette Palette { get; }
     public bool IgnoreInAnalysis { get; }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, StructuredMatch match, object value, int capturePosition)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, StructuredMatchBase match, object value, int capturePosition)
     {
         RegexPropInfo = regexPropInfo;
         Match = match;
-        Start = match.Index;
-        End = match.End;
+        Start = match.AbsoluteStartInSource;
+        End = match.AbsoluteEndInSource;
         Length = match.Length;
         IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit || regexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
         Value = value;

@@ -1,4 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
 using System.Reflection.Emit;
 
 namespace MTGPlexer.Static;
@@ -11,7 +11,6 @@ public static partial class TokenTypeRegistry
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
     static string _tokenizerIgnorePattern = @"\s+";
-    static Regex _matchAll = new(".*", RegexOptions.Compiled);
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
@@ -25,8 +24,8 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
-    public static Tokenizer<Type> ClassTokenizer { get; set; }
-    public static Tokenizer<Type> OriginalTextTokenizer { get; set; }
+    public static CustomTokenizer ClassTokenizer { get; set; }
+    public static CustomTokenizer OriginalTextTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
@@ -37,6 +36,9 @@ public static partial class TokenTypeRegistry
 
         InitializeClassTokenizer();
         InitializeOriginalTextTokenizer();
+
+        var toke = new CustomTokenizer(AppliedOrderTypes);
+        var match = toke.Tokenize("abc muddafuckah");
     }
 
     public static RegexTemplate GetTypeTemplate(Type type)
@@ -100,77 +102,87 @@ public static partial class TokenTypeRegistry
         EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
     }
 
-    public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text, bool originalTextOnly)
-    {
-        List<Token<Type>> coallescedTokens = [];
-        List<Token<Type>> unmatchedBuffer = [];
-        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text).ToList() : ClassTokenizer.Tokenize(text).ToList();
-        foreach (var token in tokens)
-        {
-            if (token.Kind == typeof(DefaultUnmatchedString))
-                unmatchedBuffer.Add(token);
-            else
-            {
-                // flush the buffer and append
-                FlushBuffer();
-                coallescedTokens.Add(token);
-            }
-        }
-
-        FlushBuffer();
-
-        // local helper
-        void FlushBuffer()
-        {
-            if (unmatchedBuffer.Count > 0)
-            {
-                Token<Type> combinedUnmatchedStringToken = default;
-
-                if (unmatchedBuffer.Count > 1)
-                    combinedUnmatchedStringToken = CoallesceUnmatchedStringTokens(unmatchedBuffer);
-                else if (unmatchedBuffer.Count == 1)
-                    combinedUnmatchedStringToken = unmatchedBuffer[0];
-
-                coallescedTokens.Add(combinedUnmatchedStringToken);
-            }
-
-            unmatchedBuffer = [];
-        }
-
-        return coallescedTokens;
-    }
-
-    static Token<Type> CoallesceUnmatchedStringTokens(List<Token<Type>> unmatchedStringTokens)
-    {
-        var originalSource = unmatchedStringTokens[0].Span;
-        var firstItem = unmatchedStringTokens[0];
-        var lastItem = unmatchedStringTokens[^1];
-        var start = firstItem.Span.Position.Absolute;
-        var combinedLength = lastItem.Span.Position.Absolute + lastItem.Span.Length - start;
-        var position = new Position(firstItem.Span.Position.Absolute, firstItem.Span.Position.Line, firstItem.Span.Position.Line);
-        var combinedTextSpan = new TextSpan(originalSource.Source, position, combinedLength);
-        var token = new Token<Type>(typeof(DefaultUnmatchedString), combinedTextSpan);
-
-        return token;
-    }
-
+    //public static List<Token<Type>> TokenizeAndCoallesceUnmatched(string text, bool originalTextOnly)
+    //{
+    //    List<Token<Type>> coallescedTokens = [];
+    //    List<Token<Type>> unmatchedBuffer = [];
+    //    var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text).ToList() : ClassTokenizer.Tokenize(text).ToList();
+    //    foreach (var token in tokens)
+    //    {
+    //        if (token.Kind == typeof(DefaultUnmatchedString))
+    //            unmatchedBuffer.Add(token);
+    //        else
+    //        {
+    //            // flush the buffer and append
+    //            FlushBuffer();
+    //            coallescedTokens.Add(token);
+    //        }
+    //    }
+    //
+    //    FlushBuffer();
+    //
+    //    // local helper
+    //    void FlushBuffer()
+    //    {
+    //        if (unmatchedBuffer.Count > 0)
+    //        {
+    //            Token<Type> combinedUnmatchedStringToken = default;
+    //
+    //            if (unmatchedBuffer.Count > 1)
+    //                combinedUnmatchedStringToken = CoallesceUnmatchedStringTokens(unmatchedBuffer);
+    //            else if (unmatchedBuffer.Count == 1)
+    //                combinedUnmatchedStringToken = unmatchedBuffer[0];
+    //
+    //            coallescedTokens.Add(combinedUnmatchedStringToken);
+    //        }
+    //
+    //        unmatchedBuffer = [];
+    //    }
+    //
+    //    return coallescedTokens;
+    //}
+    //
+    //static Token<Type> CoallesceUnmatchedStringTokens(List<Token<Type>> unmatchedStringTokens)
+    //{
+    //    var originalSource = unmatchedStringTokens[0].Span;
+    //    var firstItem = unmatchedStringTokens[0];
+    //    var lastItem = unmatchedStringTokens[^1];
+    //    var start = firstItem.Span.Position.Absolute;
+    //    var combinedLength = lastItem.Span.Position.Absolute + lastItem.Span.Length - start;
+    //    var position = new Position(firstItem.Span.Position.Absolute, firstItem.Span.Position.Line, firstItem.Span.Position.Line);
+    //    var combinedTextSpan = new TextSpan(originalSource.Source, position, combinedLength);
+    //    var token = new Token<Type>(typeof(DefaultUnmatchedString), combinedTextSpan);
+    //
+    //    return token;
+    //}
+    //
     //public static TokenUnit HydrateFromToken(Token<Type> token) 
     //    => TokenUnit.InstantiateFromMatchString(token.Kind, token.Span);
 
-    public static TokenUnit HydrateFromToken(Token<Type> token)
+    //public static TokenUnit HydrateFromToken(Token<Type> token)
+    //{
+    //    var absoluteStartInSource = token.Span.Position.Absolute;
+    //    var absoluteEndInSource = absoluteStartInSource + token.Span.Length;
+    //    StructuredTokenRoot root = new(token.Kind, token.Span.Source, absoluteStartInSource, absoluteEndInSource);
+    //    return HydrateFromStructuredMatch(root);
+    //}
+
+    public static List<StructuredTokenRoot> Tokenize(string text, bool originalTextOnly)
     {
-        var match = token.Kind == typeof(DefaultUnmatchedString) ?
-            _matchAll.Match(token.Span.ToStringValue())
-            : Templates[token.Kind].Regex.Match(token.Span.ToStringValue());
-
-        StructuredMatch tokenMatch = new(token.Kind, match);
-
-        return HydrateFromStructuredMatch(tokenMatch);
+        List<Token<Type>> coallescedTokens = [];
+        List<Token<Type>> unmatchedBuffer = [];
+        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
+        return tokens;
     }
 
-    public static TokenUnit HydrateFromStructuredMatch(StructuredMatch tokenMatch)
+    public static TokenUnit HydrateFromStructuredMatch(StructuredMatchBase tokenMatch)
     {
-        var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenMatch.Type);
+        var type =
+            tokenMatch is StructuredTokenRoot root ? root.TokenType
+            : tokenMatch is StructuredPropMatch capture ? capture.RegexPropInfo.UnderlyingType
+            : throw new Exception($"Cannot hydrate TokenUnit from match of type '{tokenMatch.GetType().Name}'");
+
+        var tokenUnit = (TokenUnit)Activator.CreateInstance(type);
         tokenUnit.TokenMatch = tokenMatch;
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
@@ -258,39 +270,25 @@ public static partial class TokenTypeRegistry
             .Distinct()
             .ToList();
 
-        flattenedOrderedTypes.ForEach(x => tokenizerBuilder.Match(x));
-
-        // Catch anything else with the default string pattern
-        tokenizerBuilder.Match(typeof(DefaultUnmatchedString));
-
-        ClassTokenizer = tokenizerBuilder.Build();
+        ClassTokenizer = new(flattenedOrderedTypes);
     }
 
-    static void InitializeOriginalTextTokenizer()
-    {
-        var tokenizerBuilder = new TokenizerBuilder<Type>();
-        tokenizerBuilder.Ignore(Span.Regex(_tokenizerIgnorePattern));
-        tokenizerBuilder.Match(Span.Regex(Templates[typeof(DefaultUnmatchedString)].RegexString), typeof(DefaultUnmatchedString));
-        OriginalTextTokenizer = tokenizerBuilder.Build();
-    }
+    static void InitializeOriginalTextTokenizer() => OriginalTextTokenizer = new([]);
 
-    static TokenizerBuilder<Type> Match(this TokenizerBuilder<Type> tokenizerBuilder, Type tokenCaptureType)
+    static void AddTokenType(Type tokenUnitType)
     {
-        if (AppliedOrderTypes.Contains(tokenCaptureType) || tokenCaptureType.IsDefined(typeof(TokenUnitPropertyAttribute)))
-            return tokenizerBuilder;
+        if (AppliedOrderTypes.Contains(tokenUnitType) || tokenUnitType.IsDefined(typeof(TokenUnitPropertyAttribute)))
+            return;
 
-        if (EmitedOptionalManyTypes.TryGetValue(tokenCaptureType, out Type multiVersionType))
+        if (EmitedOptionalManyTypes.TryGetValue(tokenUnitType, out Type multiVersionType))
         {
             // If the tokenCaptureType emitted an optional many type version of itself, add that one first.
             // We do this so that the more specific many-item version of the token is not preempted by the
             // less-specific single version during tokenization.
-            tokenizerBuilder.Match(multiVersionType);
+            AppliedOrderTypes.Add(multiVersionType);
         }
 
-        tokenizerBuilder.Match(Span.Regex(Templates[tokenCaptureType].RegexString), tokenCaptureType);
-        AppliedOrderTypes.Add(tokenCaptureType);
-
-        return tokenizerBuilder;
+        AppliedOrderTypes.Add(tokenUnitType);
     }
 
     public static void AddNewTypeAndSaveToDisk(DynamicTokenType dynamicTokenType)

@@ -1,4 +1,5 @@
-﻿using MTGPlexer.RegexGeneration.Composers;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+using MTGPlexer.RegexGeneration.Composers;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
@@ -29,7 +30,7 @@ public class TokenRegexProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
     {
         var childMatch = parentMatch.GetChildMatch(this);
         var tokenUnitOneOfInstance = TokenTypeRegistry.HydrateFromStructuredMatch(childMatch);

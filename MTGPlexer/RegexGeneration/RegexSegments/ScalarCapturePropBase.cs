@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// The base class for all TokenUnit properties with a name Regex capture group whose pattern, is 

@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.GeneralDTOs;
+﻿namespace MTGPlexer.CommonDTOs.StructuredMatches;
 
 public record ScalarAlternativeSet
 (

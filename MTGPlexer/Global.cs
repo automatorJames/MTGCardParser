@@ -3,7 +3,7 @@
 global using MTGPlexer.Attributes;
 global using MTGPlexer.BaseClasses;
 global using MTGPlexer.Data;
-global using MTGPlexer.GeneralDTOs;
+global using MTGPlexer.CommonDTOs;
 global using MTGPlexer.RegexGeneration.RegexSegments;
 global using MTGPlexer.Static;
 global using MTGPlexer.TokenAnalysisDTOs.Common;
@@ -18,6 +18,7 @@ global using Superpower.Tokenizers;
 global using System.Reflection;
 global using System.Text.Json.Serialization;
 global using System.Text.RegularExpressions;
+global using MTGPlexer.CommonDTOs.StructuredMatches;
 global using System.Text;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines;
 

@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the
@@ -71,7 +73,7 @@ public class EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = new(alternatives);
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
     {
         var childMatch = parentMatch.GetChildMatch(this);
 

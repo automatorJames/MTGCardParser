@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+using System.Collections;
 
 namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 
@@ -10,7 +11,7 @@ public record SpanBranch : NestedSpan
     public List<SpanBranch> Branches { get; }
     public List<SpanLeaf> Leaves { get; }
     public List<SpanLeaf> LeavesOrDistilled { get; private set; } = [];
-    public Match Match { get; }
+    public StructuredMatchBase Match { get; }
     public Type TokenType { get; }
     public bool CollapseInAnalysis { get; }
     public string OriginalLineText { get; }
@@ -31,7 +32,7 @@ public record SpanBranch : NestedSpan
         Branches = Children.OfType<SpanBranch>().ToList();
         Leaves = Children.OfType<SpanLeaf>().ToList();
         SetLeavesOrDistilled(token);
-        Match = token.TokenMatch.Match;
+        Match = token.TokenMatch;
         TokenType = token.Type;
         ManyIndex = manyIndex;
         CollapseInAnalysis = token is TokenUnitOneOf;
@@ -40,22 +41,22 @@ public record SpanBranch : NestedSpan
     private List<NestedSpan> DigestChildren(TokenUnit token)
     {
         var match = token.TokenMatch;
-        var matchEnd = match.Index + match.Length;
+        var matchEnd = match.AbsoluteStartInSource + match.Length;
 
         if (!token.IndexedPropertyCaptures.Any())
-            return [new SpanTwig(token, Path, NestedDepth, OriginalLineText.Substring(match.Index, match.Length).Replace(Card.ThisToken, CardName))];
+            return [new SpanTwig(token, Path, NestedDepth, OriginalLineText.Substring(match.AbsoluteStartInSource, match.Length).Replace(Card.ThisToken, CardName))];
 
         List<NestedSpan> children = [];
-        int cursor = match.Index;
+        int cursor = match.AbsoluteStartInSource;
 
         foreach (var indexedProp in token.IndexedPropertyCaptures)
         {
             // 1. Add a twig for any text between the last capture and this one.
             if (indexedProp.Start > cursor)
             {
-                var snippetStart = cursor - match.Index;
+                var snippetStart = cursor - match.AbsoluteStartInSource;
                 var snippetLength = indexedProp.Start - cursor;
-                var precedingText = OriginalLineText.Substring(snippetStart + match.Index, snippetLength);
+                var precedingText = OriginalLineText.Substring(snippetStart + match.AbsoluteStartInSource, snippetLength);
                 var precedingTextOrig = match.Value.Substring(snippetStart, snippetLength);
 
                 if (!string.IsNullOrWhiteSpace(precedingText))
@@ -75,10 +76,10 @@ public record SpanBranch : NestedSpan
                     TokenUnit itemToken = items[i];
 
                     // Text between items
-                    if (itemToken.TokenMatch.Index > innerCursor)
+                    if (itemToken.TokenMatch.AbsoluteStartInSource > innerCursor)
                     {
-                        var snippetStart = innerCursor - match.Index;
-                        var snippetLength = itemToken.TokenMatch.Index - innerCursor;
+                        var snippetStart = innerCursor - match.AbsoluteStartInSource;
+                        var snippetLength = itemToken.TokenMatch.AbsoluteStartInSource - innerCursor;
                         var textBetween = OriginalLineText.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
 
                         if (!string.IsNullOrWhiteSpace(textBetween))
@@ -87,13 +88,13 @@ public record SpanBranch : NestedSpan
 
                     // The item itself
                     children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth, OriginalLineText, i));
-                    innerCursor = itemToken.TokenMatch.Index + itemToken.TokenMatch.Length;
+                    innerCursor = itemToken.TokenMatch.AbsoluteStartInSource + itemToken.TokenMatch.Length;
                 }
 
                 // There might be text after the last item but before the end of the ManyToken span
                 if (indexedProp.End > innerCursor)
                 {
-                    var snippetStart = innerCursor - match.Index;
+                    var snippetStart = innerCursor - match.AbsoluteStartInSource;
                     var snippetLength = indexedProp.End - innerCursor;
                     var textAfter = OriginalLineText.Substring(snippetStart, snippetLength);
 
@@ -113,7 +114,7 @@ public record SpanBranch : NestedSpan
         // 4. Add a final twig for any trailing text after the last capture.
         if (cursor < matchEnd)
         {
-            var snippetStart = cursor - match.Index;
+            var snippetStart = cursor - match.AbsoluteStartInSource;
             var snippetLength = matchEnd - cursor;
             var trailingText = match.Value.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
             if (!string.IsNullOrWhiteSpace(trailingText))

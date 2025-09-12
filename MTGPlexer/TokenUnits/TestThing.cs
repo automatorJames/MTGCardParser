@@ -71,7 +71,6 @@ public class SimpleAlphabet : TokenUnit
 
 public enum Alphabet
 {
-    [RegexPattern("abc")]
     ABC,
     DEF,
     GHI

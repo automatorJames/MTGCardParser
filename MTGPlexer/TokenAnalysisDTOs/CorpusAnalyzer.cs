@@ -58,7 +58,7 @@ public class CorpusAnalyzer
                 var lineText = card.FormattedLinesLower[i];
                 if (string.IsNullOrWhiteSpace(lineText)) continue;
 
-                var tokens = TokenTypeRegistry.TokenizeAndCoallesceUnmatched(lineText, originalTextOnly);
+                var tokens = TokenTypeRegistry.Tokenize(lineText, originalTextOnly);
 
                 // This single method call performs both analyses for the line.
                 (var spanRoots, var spanOccurrences) = HydrateAndAnalyzeLine(card, tokens, i);
@@ -94,7 +94,7 @@ public class CorpusAnalyzer
     /// <summary>
     /// Process a list of tokens for a single line to derive SpanRoot hierarchies and SpanOccurrence records.
     /// </summary>
-    (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) HydrateAndAnalyzeLine(Card card, List<Token<Type>> tokens, int lineIndex)
+    (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) HydrateAndAnalyzeLine(Card card, List<StructuredTokenRoot> tokens, int lineIndex)
     {
         var roots = new List<SpanRoot>();
         var occurrences = new List<SpanOccurrence>();
@@ -105,12 +105,12 @@ public class CorpusAnalyzer
         for (int i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
-            var hydratedTokenUnit = TokenTypeRegistry.HydrateFromToken(token);
+            var hydratedTokenUnit = TokenTypeRegistry.HydrateFromStructuredMatch(token);
             _hydratedTokenUnits.Add(hydratedTokenUnit);
 
             // --- Analysis #1: Check for and record unmatched tokens ---
             // Create a new occurrence, giving it the context of the entire line's tokens.
-            if (token.Kind == typeof(DefaultUnmatchedString))
+            if (token.TokenType == typeof(DefaultUnmatchedString))
                 occurrences.Add(new SpanOccurrence(card.Name, lineIndex, tokens, i));
 
             // --- Analysis #2: Build the SpanRoot hierarchy from the hydrated token ---

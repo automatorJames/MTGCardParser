@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer;
+﻿namespace MTGPlexer.CommonDTOs;
 
 public record DynamicTokenType
 {

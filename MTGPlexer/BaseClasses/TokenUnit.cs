@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.BaseClasses;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+
+namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {
@@ -20,7 +22,7 @@ public abstract class TokenUnit
     public RegexPropInfo ParentTokenProp { get; set; }
     public int RecursiveDepth { get; set; }
     //public TextSpan MatchSpan { get; set; }
-    public StructuredMatch TokenMatch { get; set; }
+    public StructuredMatchBase TokenMatch { get; set; }
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -86,7 +88,7 @@ public abstract class TokenUnit
     //    IndexedPropertyCaptures.Add(new(regexPropInfo, textSpan, propVal, capturePosition));
     //}
 
-    public void SetPropertyFromMatch(RegexPropInfo regexPropInfo, StructuredMatch match, object propVal)
+    public void SetPropertyFromMatch(RegexPropInfo regexPropInfo, StructuredMatchBase match, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;

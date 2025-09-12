@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.GeneralDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a single, fully processed line from a card, containing both the
@@ -10,7 +10,7 @@ public record ProcessedLine
     public Card Card { get; init; }
     public int LineIndex { get; init; }
     public string EvaluatedText { get; init; }
-    public List<Token<Type>> SourceTokens { get; init; }
+    public List<StructuredTokenRoot> SourceTokens { get; init; }
 
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.

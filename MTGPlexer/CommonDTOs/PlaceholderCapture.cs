@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.GeneralDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// A wrapper that represents a property whose value is a simple string of captured text.

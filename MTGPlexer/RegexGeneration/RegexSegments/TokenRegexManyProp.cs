@@ -1,4 +1,5 @@
-﻿using MTGPlexer.RegexGeneration.Composers;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+using MTGPlexer.RegexGeneration.Composers;
 using MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
@@ -47,11 +48,11 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatch parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
     {
         var childMatch = parentMatch.GetChildMatch(this);
         
-        var itemCaptures = parentMatch.Match.Groups[$"{RegexPropInfo.BaseType.Name}"]
+        var itemCaptures = childMatch.Match.Groups[$"{RegexPropInfo.BaseType.Name}"]
                 .Captures
                 .ToList();
 
@@ -61,14 +62,14 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
         foreach (var itemCapture in itemCaptures)
         {
-            var childItem = parentMatch.GetChildSubCapture(singleBaseProp, itemCapture);
+            var childItem = childMatch.GetChildSubCapture(singleBaseProp, itemCapture);
             hydratedItems.Add(childItem);
         }
 
-        var conjunctionString = parentMatch.Match.Groups[nameof(Conjunction)].Value;
+        var conjunctionString = childMatch.Match.Groups[nameof(Conjunction)].Value;
         var conjunctionValue = Enum.GetValues<Conjunction>().FirstOrDefault(x => x.ToString().Equals(conjunctionString, StringComparison.OrdinalIgnoreCase));
         var manyPropVal = Activator.CreateInstance(RegexPropInfo.UnderlyingType, hydratedItems, conjunctionValue);
-        token.SetPropertyFromMatch(RegexPropInfo, parentMatch, manyPropVal);
+        token.SetPropertyFromMatch(RegexPropInfo, childMatch, manyPropVal);
 
         return true;
     }

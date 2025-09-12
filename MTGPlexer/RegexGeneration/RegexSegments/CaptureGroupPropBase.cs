@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.CommonDTOs.StructuredMatches;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// The base class for all TokenUnit properties with a name Regex capture group whose pattern, is 
@@ -25,7 +27,7 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
     //        return SetScalarPropValue(parentToken, matchSpan);       
     //}
 
-    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, StructuredMatch parentMatch);
+    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, StructuredMatchBase parentMatch);
 
     //public bool SetScalarPropValue(TokenUnit parentToken, TextSpan matchSpan)
     //{
