@@ -155,7 +155,7 @@ public record DigestedSpanCorpus
             var spanTextWords = spanText.Split(' ');
             var allOccurrenceIndices = FindAllOccurrences(
                 flattenedWordSequenceIdList,
-                spanTextWords.Select(w => wordToId[w]).ToArray());
+                spanTextWords.Select(w =>   wordToId[w]).ToArray());
 
             foreach (int startIndexInFlatList in allOccurrenceIndices)
             {

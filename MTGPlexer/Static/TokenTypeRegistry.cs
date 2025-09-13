@@ -1,5 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-using System.Reflection.Emit;
+﻿using System.Reflection.Emit;
 
 namespace MTGPlexer.Static;
 
@@ -37,8 +36,6 @@ public static partial class TokenTypeRegistry
         InitializeClassTokenizer();
         InitializeOriginalTextTokenizer();
 
-        var toke = new CustomTokenizer(AppliedOrderTypes);
-        var match = toke.Tokenize("abc muddafuckah");
     }
 
     public static RegexTemplate GetTypeTemplate(Type type)

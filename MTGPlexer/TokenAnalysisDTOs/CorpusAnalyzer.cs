@@ -99,7 +99,6 @@ public class CorpusAnalyzer
         var roots = new List<SpanRoot>();
         var occurrences = new List<SpanOccurrence>();
         var tokenUnitCaptureSummaries = new List<TokenUnitCaptureSummary>();
-        string textToPrecedeNext = null;
         var enclosingTokenCountPerType = new Dictionary<Type, int>();
 
         for (int i = 0; i < tokens.Count; i++)
@@ -115,7 +114,6 @@ public class CorpusAnalyzer
 
             // --- Analysis #2: Build the SpanRoot hierarchy from the hydrated token ---
             var root = new SpanRoot(hydratedTokenUnit, card.Name, card.FormattedLines[lineIndex]);
-            textToPrecedeNext = null;
             roots.Add(root);
         }
 
