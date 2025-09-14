@@ -137,7 +137,7 @@ public class RegexLineCollector
         return namedGroupOrNull;
     }
 
-    public Regex ExtractGroupRegex(RegexPropInfo group, bool includeCaptureGroupName = false)
+    public Regex ExtractGroupRegex(RegexPropInfo group)
     {
         var firstGroupLine = _lines.FirstOrDefault(x => x.Group == group);
         var lastGroupLine = _lines.LastOrDefault(x => x.Group == group);
@@ -148,13 +148,7 @@ public class RegexLineCollector
         var firstLineIndex = _lines.IndexOf(firstGroupLine);
         var lastLineIndex = _lines.IndexOf(lastGroupLine);
 
-        if (!includeCaptureGroupName)
-        {
-            firstLineIndex++;
-            lastLineIndex--;
-        }
-
-        var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex);
+        var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1);
         var regexString = string.Join("", groupLines.Select(x => x.EvaluableRegex));
 
         return new (regexString, RegexOptions.Compiled);

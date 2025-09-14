@@ -21,7 +21,7 @@ public record StructuredTokenRoot : StructuredMatchBase
     //        _matchAll.Match(sourceText)
     //        : TokenTypeRegistry.Templates[tokenType].Regex.Match(sourceText);
 
-    static Match GetMatch(Type tokenType, string sourceText, int absoluteStartInSource, int absoluteEndInSource) => tokenType == typeof(DefaultUnmatchedString) ?
-        Regex.Match(sourceText, sourceText.Substring(absoluteStartInSource, absoluteEndInSource - absoluteStartInSource))
+    static Match GetMatch(Type tokenType, string sourceText, int absoluteStartInSource, int absoluteEndInSource) => 
+        tokenType == typeof(DefaultUnmatchedString) ? Regex.Match(sourceText, Regex.Escape(sourceText.Substring(absoluteStartInSource, absoluteEndInSource - absoluteStartInSource)))
         : TokenTypeRegistry.Templates[tokenType].Regex.Match(sourceText);
 }

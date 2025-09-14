@@ -27,7 +27,7 @@ public abstract record StructuredMatchBase
         if (!match.Success) 
             return null;
 
-        StructuredPropMatch child = new(this, match);
+        StructuredPropMatch child = new(this, match, captureGroup.RegexPropInfo);
 
         return child;
     }
@@ -39,7 +39,7 @@ public abstract record StructuredMatchBase
         if (!subMatch.Success)
             throw new Exception("When a subMatch is provided, it must be found in the captureGroup");
 
-        StructuredSubMatch child = new(subMatch, this);
+        StructuredSubMatch child = new(subMatch, this, captureGroup.RegexPropInfo);
 
         return child;
     }

@@ -10,7 +10,7 @@ public record StructuredPropMatch : StructuredMatchBase
     public StructuredMatchBase[] Ancestors { get; } = [];
     public StructuredTokenRoot Root { get; }
 
-    public StructuredPropMatch(StructuredMatchBase parent, Match match) : base(match)
+    public StructuredPropMatch(StructuredMatchBase parent, Match match, RegexPropInfo regexPropInfo) : base(match)
     {
         if (parent is StructuredTokenRoot)
             Ancestors = [parent];
@@ -22,6 +22,7 @@ public record StructuredPropMatch : StructuredMatchBase
         AbsoluteStartInSource = parent.AbsoluteStartInSource + match.Index;
         AbsoluteEndInSource = AbsoluteStartInSource + match.Length;
         SourceText = Root.SourceText;
+        RegexPropInfo = regexPropInfo;
     }
 }
 

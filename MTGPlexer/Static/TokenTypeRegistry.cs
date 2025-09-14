@@ -34,7 +34,7 @@ public static partial class TokenTypeRegistry
             SetTypeTemplate(type);
 
         InitializeClassTokenizer();
-        InitializeOriginalTextTokenizer();
+        OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
 
     }
 
@@ -187,7 +187,7 @@ public static partial class TokenTypeRegistry
         var nextKey = orderedTypes.Keys.Any() ? orderedTypes.Keys.Max() + 1 : 0;
         orderedTypes[nextKey] = unorderedRemainingTypes;
 
-        List<Type> flattenedOrderedTypes = orderedTypes
+        orderedTypes
             .Where(x => x.Key >= 0)
             .OrderBy(x => x.Key)
             .SelectMany(x => x.Value)
@@ -195,14 +195,13 @@ public static partial class TokenTypeRegistry
                 .Where(x => x.Key < 0)
                 .SelectMany(x => x.Value))
             .Distinct()
-            .ToList();
+            .ToList()
+            .ForEach(AddClassTokenType);
 
-        ClassTokenizer = new(flattenedOrderedTypes);
+        ClassTokenizer = new(AppliedOrderTypes);
     }
 
-    static void InitializeOriginalTextTokenizer() => OriginalTextTokenizer = new([]);
-
-    static void AddTokenType(Type tokenUnitType)
+    static void AddClassTokenType(Type tokenUnitType)
     {
         if (AppliedOrderTypes.Contains(tokenUnitType) || tokenUnitType.IsDefined(typeof(TokenUnitPropertyAttribute)))
             return;

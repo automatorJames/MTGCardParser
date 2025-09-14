@@ -33,6 +33,10 @@ public class TokenRegexProp : CaptureGroupPropBase
     public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
     {
         var childMatch = parentMatch.GetChildMatch(this);
+
+        if (childMatch == null)
+            return false;
+
         var tokenUnitOneOfInstance = TokenTypeRegistry.HydrateFromStructuredMatch(childMatch);
         token.SetPropertyFromMatch(RegexPropInfo, childMatch, tokenUnitOneOfInstance);
         return true;
