@@ -5,8 +5,12 @@
 
 <div class="page">
     <nav class="top-row px-4">
-        <div class="navbar-brand">
-            @GetPageTitle()
+        @* 1. The three page links have been moved to the left, replacing the brand title *@
+        <div class="nav-links">
+            @* The links are now NavLink components to handle active state styling *@
+            <NavLink href="/" Match="NavLinkMatch.All">Card Analysis</NavLink>
+            <NavLink href="type-expressions">Type Expressions</NavLink>
+            <NavLink href="span-trees">Span Trees</NavLink>
         </div>
 
         <div class="top-row-right-items">
@@ -33,12 +37,6 @@
                     <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
                 }
             }
-
-            <div class="nav-links">
-                <a href="/">Card Analysis</a>
-                <a href="type-expressions">Type Expressions</a>
-                <a href="span-trees">Span Trees</a>
-            </div>
         </div>
     </nav>
 
@@ -71,19 +69,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    string GetPageTitle()
-    {
-        var currentPage = Navigation.ToBaseRelativePath(Navigation.Uri);
-
-        return currentPage switch
-        {
-            "" => "Variable Captures",
-            "card-analysis" => "Variable Captures",
-            "span-trees" => "Word Trees",
-            "type-expressions" => "Type Captures",
-            _ => "MTG Analysis"
-        };
-    }
+    // The GetPageTitle() method is no longer needed and has been removed.
 
     public void Dispose()
     {

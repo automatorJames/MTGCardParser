@@ -4,7 +4,6 @@
     min-height: 100vh;
 }
 
-/* --- The Top Bar: Stickiness and Layout --- */
 .top-row {
     position: sticky;
     top: 0;
@@ -12,6 +11,7 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
+    justify-content: space-between;
     height: 3.5rem;
     background-color: var(--light-grey);
     border-bottom: 1px solid var(--outline-grey);
@@ -29,11 +29,8 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-left: 1rem;
 }
 
-
-/* --- Main Content Area --- */
 main {
     flex-grow: 1;
     display: flex;
@@ -46,24 +43,14 @@ main {
     overflow-y: auto;
 }
 
-/* --- Link and Brand Styling --- */
-/* Style for the page title (now a div) */
-.navbar-brand {
-    font-size: 1.2rem;
-    font-weight: 500;
-    color: #a0a0a0;
-    margin-right: auto; /* Pushes everything else to the right */
-    white-space: nowrap;
-}
-
-/* --- FINAL FIX: HIGHLY SPECIFIC SELECTOR WITH !important --- */
-/* This rule is now strong enough to override any global 'a' styles */
-nav.top-row .nav-links a {
+/* --- CORRECTED LINK STYLING --- */
+/* Using ::deep to ensure styles are applied to the NavLink's rendered <a> tag */
+.nav-links ::deep a {
     background-color: #3a3a3a !important;
     border: 1px solid #555 !important;
-    color: #d4d4d4 !important; /* Light grey text */
+    color: #d4d4d4 !important;
     font-size: 0.9rem;
-    text-decoration: none !important; /* Explicitly remove underline */
+    text-decoration: none !important;
     border-radius: 5px;
     padding: 0.5rem 1rem;
     transition: background-color 0.1s linear, color 0.1s linear, border-color 0.1s linear;
@@ -73,14 +60,14 @@ nav.top-row .nav-links a {
 }
 
     /* Style for the hover state */
-    nav.top-row .nav-links a:hover {
+    .nav-links ::deep a:hover {
         background-color: #4a4a4a !important;
         border-color: #777 !important;
         color: #ffffff !important;
     }
 
     /* Style for the active link */
-    nav.top-row .nav-links a.active {
+    .nav-links ::deep a.active {
         background-color: #007acc !important;
         border-color: #007acc !important;
         color: white !important;
