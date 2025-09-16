@@ -80,12 +80,12 @@
 //    public Alphabet Alphabet { get; set; }
 //}
 ////
-//public enum Alphabet
-//{
-//    ABC,
-//    DEF,
-//    GHI
-//}
+public enum Alphabet
+{
+    ABC,
+    DEF,
+    GHI
+}
 //
 //public enum Numbers
 //{

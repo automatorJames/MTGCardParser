@@ -8,6 +8,7 @@ public class RegexLineCollector
     Stack<object> _captureGroupStack = [];
     Dictionary<RegexPropInfo, DeterministicPalette> _terminalGroupPalettes = [];
     int _indentation;
+    BoundaryOption _boundaryOption;
 
     string _currentNameFlatPath => string.Join("_", _captureGroupStack
         .OfType<RegexPropInfo>()
@@ -23,6 +24,7 @@ public class RegexLineCollector
 
     public RegexLineCollector(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {
+        _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
         _topLevelType = topLevelType;
         var topLevelSpaceDiposition = SpaceDisposition.DontAddSpaceBeforeNextItem;
         if (topLevelType.IsDefined(typeof(NoSpacesAttribute)) || neverAddSpacesAtTopLevel)
@@ -149,7 +151,8 @@ public class RegexLineCollector
         var firstLineIndex = _lines.IndexOf(firstGroupLine);
         var lastLineIndex = _lines.IndexOf(lastGroupLine);
 
-        var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1);
+        var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
+        AddBoundaryLines(groupLines);
         var regexString = string.Join("", groupLines.Select(x => x.EvaluableRegex));
         regexString = MinifyRegex(regexString);
 
@@ -186,16 +189,24 @@ public class RegexLineCollector
         }
 
         // Add word boundaries to the start and end of the entire pattern unless opted out.
-        if (!_topLevelType.IsDefined(typeof(NoBoundaryAttribute)))
-        {
-            finalizedLines.Insert(0, new NegativeLookbehindBoundary());
-            finalizedLines.Insert(1, new BlankLine(""));
-            finalizedLines.Add(new BlankLine(""));
-            finalizedLines.Add(new NegativeLookaheadBoundary());
-        }
+        AddBoundaryLines(finalizedLines);
 
         // Create the final GeneratedRegex object using the fully processed list.
         return new(finalizedLines);
+    }
+
+    void AddBoundaryLines(List<RegexTemplateLine> lines)
+    {
+        if (_boundaryOption == BoundaryOption.Omit)
+            return;
+
+        RegexTemplateLine startBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookbehindBoundary() : new StartOfLineBoundary();
+        RegexTemplateLine endBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary();
+
+        lines.Insert(0, startBoundary);
+        lines.Insert(1, new BlankLine(""));
+        lines.Add(new BlankLine(""));
+        lines.Add(endBoundary);
     }
 }
 

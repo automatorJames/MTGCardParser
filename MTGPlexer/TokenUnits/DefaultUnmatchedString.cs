@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [IgnoreInAnalysis]
-[NoBoundary]
+[RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
 public class DefaultUnmatchedString : TokenUnit
 {
     public DefaultUnmatchedString() : base(@"[^\s]+") { }

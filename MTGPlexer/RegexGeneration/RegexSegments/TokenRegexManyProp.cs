@@ -14,7 +14,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
     Type _baseType;
     string _itemName;
     List<RegexSegmentBase> _singleIterationSegments;
-    static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)))).GetCaptureGroupPropBase();
+    static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public override Regex MatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
 
@@ -52,7 +52,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
         collector.CloseGroup(GroupQuantifier.AnyNumber);
         collector.OpenGroup(neverAddSpacesToGroupMembers: true);
-        collector.AddTextLine(", ");
+        collector.AddTextLine(",? ");
         collector.OpenGroup(neverAddSpacesToGroupMembers: true);
         _conjunctionProp.ComposeRegexLines(collector);
         collector.AddTextLine(" ");
@@ -64,9 +64,14 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var manyOfMatch = TokenTypeRegistry.ManyOfRegexes[_baseType].Match(match.Groups[Name].Value);
+        //var manyOfMatch = TokenTypeRegistry.ManyOfRegexes[_baseType].Match(match.Groups[Name].Value);
+        //
+        //var itemCaptures = manyOfMatch.Groups[_itemName]
+        //        .Captures
+        //        .ToList();
 
-        var itemCaptures = manyOfMatch.Groups[_itemName]
+
+        var itemCaptures = match.Groups[_itemName]
                 .Captures
                 .ToList();
 
@@ -105,14 +110,14 @@ public class TokenRegexManyProp : CaptureGroupPropBase
             hydratedItems.Add(hydratedItem);
         }
 
-        var conjunctionCapture = manyOfMatch.Groups[nameof(Conjunction)];
+        var conjunctionCapture = match.Groups[nameof(Conjunction)];
         Conjunction? conjunctionValue = Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) ? parsed : null;
 
         // Dynamically create the generic type for ManyToken<T>
-        var manyTokenType = typeof(ManyToken<>).MakeGenericType(_baseType);
+        var manyTokenType = typeof(ManyOf<>).MakeGenericType(_baseType);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
 
-        token.SetPropertyFromCapture(RegexPropInfo, manyOfMatch, manyPropVal);
+        token.SetPropertyFromCapture(RegexPropInfo, match, manyPropVal);
 
         return true;
     }

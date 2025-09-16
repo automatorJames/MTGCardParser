@@ -83,7 +83,7 @@ public class RegexTemplate
         {
             var u = Nullable.GetUnderlyingType(t) ?? t;
 
-            if (u.IsGenericType && u.GetGenericTypeDefinition() == typeof(ManyToken<>))
+            if (u.IsGenericType && u.GetGenericTypeDefinition() == typeof(ManyOf<>))
                 u = u.GetGenericArguments()[0];
 
             return u.IsEnum

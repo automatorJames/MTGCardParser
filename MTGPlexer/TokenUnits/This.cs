@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[NoBoundary]
+[RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
 [TokenUnitProperty]
 public class This : TokenUnit
 {

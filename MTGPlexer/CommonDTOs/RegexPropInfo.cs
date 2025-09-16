@@ -38,7 +38,7 @@ public record RegexPropInfo
             isArray = true;
             type = type.GetElementType()!;
         }
-        else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ManyToken<>))
+        else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ManyOf<>))
         {
             isArray = true;
             type = type.GetGenericArguments()[0];

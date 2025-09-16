@@ -66,7 +66,7 @@ public record SpanBranch : NestedSpan
             }
 
             // 2. Process the actual property capture.
-            if (indexedProp.Value is ManyToken manyToken)
+            if (indexedProp.Value is ManyOf manyToken)
             {
                 var items = manyToken.ItemObjects;
                 var allCaptures = new List<Capture>();
@@ -102,7 +102,7 @@ public record SpanBranch : NestedSpan
                     // Check if the current capture is the conjunction.
                     if (manyToken.Conjunction.HasValue && currentCapture.Index == manyToken.ConjunctionCapture.Index)
                     {
-                        var prop = manyToken.GetType().GetProperty(nameof(ManyToken.Conjunction));
+                        var prop = manyToken.GetType().GetProperty(nameof(ManyOf.Conjunction));
                         RegexPropInfo propInfo = new(prop);
                         IndexedPropertyCapture derivedIndexProp = new(propInfo, manyToken.ConjunctionCapture, manyToken.Conjunction, i);
                         var path = Path.Dot(indexedProp.RegexPropInfo.Name).Dot(prop.Name);
@@ -174,12 +174,12 @@ public record SpanBranch : NestedSpan
                 continue;
             }
 
-            if (indexedProp.Value is ManyToken manyToken)
+            if (indexedProp.Value is ManyOf manyToken)
             {
                 // For a ManyToken, create a synthetic leaf for its Conjunction property to display in the parent's table (if not null)
                 if (manyToken.Conjunction != null)
                 {
-                    var conjunctionPropInfo = new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)));
+                    var conjunctionPropInfo = new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)));
 
                     var conjunctionCapture = new IndexedPropertyCapture(
                         regexPropInfo: conjunctionPropInfo,

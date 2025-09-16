@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[NoBoundary]
+[RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
 public class WhereVariableIs : TokenUnit
 {
     public WhereVariableIs() : base(", where", nameof(VariableName), "is ") { }

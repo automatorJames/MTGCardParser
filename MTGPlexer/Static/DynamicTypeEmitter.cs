@@ -80,7 +80,7 @@ public static class DynamicTypeEmitter
                 // 3. Append "_Many" to the property name.
                 string newPropName = $"{prop.Name}_Many";
                 // 4. Substitute the type T with ManyToken<T>.
-                Type newPropType = typeof(ManyToken<>).MakeGenericType(prop.PropertyType);
+                Type newPropType = typeof(ManyOf<>).MakeGenericType(prop.PropertyType);
                 CreateProperty(typeBuilder, newPropName, newPropType);
             }
             else

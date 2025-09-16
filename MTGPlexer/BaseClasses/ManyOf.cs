@@ -1,11 +1,11 @@
 ﻿namespace MTGPlexer.BaseClasses;
 
-public class ManyToken<T> : ManyToken
+public class ManyOf<T> : ManyOf
 {
     public ManyItemCapture<T>[] Items { get; set; }
     
 
-    public ManyToken(IEnumerable<ManyItemCapture<T>> items, Conjunction? conjunction, Capture conjunctionCapture)
+    public ManyOf(IEnumerable<ManyItemCapture<T>> items, Conjunction? conjunction, Capture conjunctionCapture)
     {
         Items = items.ToArray();
         ItemObjects = Items.Cast<ManyItemCapture>().ToList();
@@ -15,7 +15,7 @@ public class ManyToken<T> : ManyToken
         ManyItemType = 
             typeof(T).IsAssignableTo(typeof(TokenUnit)) ? ManyItemType.TokenUnit
             : typeof(T).IsEnum ? ManyItemType.Enum
-            : throw new Exception($"{nameof(ManyToken)} item type must either be TokenUnit or Enum");
+            : throw new Exception($"{nameof(ManyOf)} item type must either be TokenUnit or Enum");
     }
 }
 
@@ -25,7 +25,7 @@ public enum Conjunction
     Or
 }
 
-public class ManyToken 
+public class ManyOf 
 {
     public List<ManyItemCapture> ItemObjects { get; set; }
     public ManyItemType ManyItemType { get; set; }
