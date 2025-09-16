@@ -2,7 +2,7 @@
 
 public class GainOrLoseBuffs : TokenUnit
 {
-    public GainOrLoseBuffs() : base("buh", nameof(GainedOrLostBuffs))
+    public GainOrLoseBuffs() : base(nameof(GainedOrLostBuffs))
     {
     }
 

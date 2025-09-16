@@ -14,7 +14,6 @@ global using MTGPlexer.TokenUnits;
 global using System.Reflection;
 global using System.Text.Json.Serialization;
 global using System.Text.RegularExpressions;
-global using MTGPlexer.CommonDTOs.StructuredMatches;
 global using System.Text;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines;
 

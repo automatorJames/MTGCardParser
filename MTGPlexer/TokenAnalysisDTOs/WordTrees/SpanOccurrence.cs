@@ -12,7 +12,7 @@ public record SpanOccurrence
     /// <summary>
     /// The complete array of tokens from the line where this unmatched span occurred.
     /// </summary>
-    public StructuredTokenRoot[] LineTokens { get; }
+    public TokenUnit[] LineTokens { get; }
 
     /// <summary>
     /// The index of the specific token of interest within the LineTokens list.
@@ -22,18 +22,18 @@ public record SpanOccurrence
     /// <summary>
     /// The full, original unmatched span token.
     /// </summary>
-    public StructuredTokenRoot AnchorToken { get; }
+    public TokenUnit AnchorToken { get; }
 
     public string Text { get; }
     public string[] Words { get; }
 
-    public SpanOccurrence(string cardName, int lineIndex, List<StructuredTokenRoot> lineTokens, int anchorTokenIndex)
+    public SpanOccurrence(string cardName, int lineIndex, List<TokenUnit> lineTokens, int anchorTokenIndex)
     {
         LineIndex = lineIndex;
         LineTokens = lineTokens.ToArray();
         AnchorTokenIndex = anchorTokenIndex;
         AnchorToken = LineTokens[AnchorTokenIndex];
-        Text = AnchorToken.Value;
+        Text =  AnchorToken.Capture.Value;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         Key = new(cardName, AnchorToken);
     }

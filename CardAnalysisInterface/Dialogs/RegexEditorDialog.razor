@@ -32,16 +32,16 @@
                     <div class="text-layer-front">
                         @{
                             cursor = 0;
-                            foreach (var token in Line.SourceTokens.OrderBy(t => t.AbsoluteStartInSource))
+                            foreach (var token in Line.SourceTokens.OrderBy(t => t.Capture.Index))
                             {
-                                if (token.AbsoluteStartInSource > cursor)
+                                if (token.Capture.Index > cursor)
                                 {
-                                    @Line.EvaluatedText.Substring(cursor, token.AbsoluteStartInSource - cursor)
+                                    @Line.EvaluatedText.Substring(cursor, token.Capture.Index - cursor)
                                 }
-                                var tokenText = Line.EvaluatedText.Substring(token.AbsoluteStartInSource, token.AbsoluteStartInSource);
-                                var color = token.TokenType == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.Palettes[token.TokenType].HexLight;
+                                var tokenText = Line.EvaluatedText.Substring(token.Capture.Index, token.Capture.Index);
+                                var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.Palettes[token.Type].HexLight;
                                 <span style=@($"color: {color}")>@tokenText</span>
-                                cursor = token.AbsoluteStartInSource + token.Length;
+                                cursor = token.Capture.Index + token.Capture.Length;
                             }
                             if (cursor < Line.EvaluatedText.Length)
                             {

@@ -184,8 +184,8 @@ public record DigestedSpanCorpus
                 for (int i = originalSpanOccurrence.AnchorTokenIndex - 1; i >= 0; i--)
                 {
                     var token = originalSpanOccurrence.LineTokens[i];
-                    Type type = token.TokenType == typeof(DefaultUnmatchedString) ? null : token.TokenType;
-                    precedingSequence.Add(new(token.Value, type));
+                    Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
+                    precedingSequence.Add(new(token.Capture.Value, type));
                 }
 
                 if (precedingSequence.Any())
@@ -200,8 +200,8 @@ public record DigestedSpanCorpus
                 for (int i = originalSpanOccurrence.AnchorTokenIndex + 1; i < originalSpanOccurrence.LineTokens.Length; i++)
                 {
                     var token = originalSpanOccurrence.LineTokens[i];
-                    Type type = token.TokenType == typeof(DefaultUnmatchedString) ? null : token.TokenType;
-                    followingSequence.Add(new(token.Value, type));
+                    Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
+                    followingSequence.Add(new(token.Capture.Value, type));
                 }
 
                 if (followingSequence.Any())

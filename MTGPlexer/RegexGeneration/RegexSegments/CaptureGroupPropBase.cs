@@ -1,6 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// The base class for all TokenUnit properties with a name Regex capture group whose pattern, is 
@@ -13,13 +11,13 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
     public RegexPropInfo RegexPropInfo { get; init; }
     public abstract Regex MatchRegex { get; }
     
-    public CaptureGroupPropBase(RegexPropInfo captureProp)
+    public CaptureGroupPropBase(RegexPropInfo captureProp, string nameOverride = null)
     {
-        Name = captureProp.Name;
+        Name = nameOverride ?? captureProp.Name;
         RegexPropInfo = captureProp;
     }
 
-    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, StructuredMatchBase parentMatch);
+    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, Match match);
 
     public override string ToString() => base.ToString();
 

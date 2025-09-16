@@ -182,21 +182,4 @@ public record GeneratedRegex
 
         CommentBoxLength = maxRequiredWidth;
     }
-
-    /// <summary>
-    /// Removes all non-essential whitespace from a regex pattern, preserving literal spaces indicated by "[ ]".
-    /// </summary>
-    string MinifyRegex(string pattern)
-    {
-        if (string.IsNullOrEmpty(pattern)) return string.Empty;
-
-        return Regex.Replace(pattern, @"(\[\ \])|(\s+)", match =>
-        {
-            if (match.Groups[1].Success)
-            {
-                return " ";
-            }
-            return string.Empty;
-        });
-    }
 }

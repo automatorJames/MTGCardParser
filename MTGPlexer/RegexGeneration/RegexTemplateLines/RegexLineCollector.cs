@@ -32,7 +32,7 @@ public class RegexLineCollector
         _spaceIsRequiredBeforeNextElementAtLevel = new Dictionary<object, SpaceDisposition> { [-1] = topLevelSpaceDiposition };
     }
 
-    public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false)
+    public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false, string nameOverride = null)
     {
         AddPrecedingSpaceIfApplicable();
         var groupKey = (object)captureGroup ?? _nextUnnamedCaptureGroupId++;
@@ -49,7 +49,8 @@ public class RegexLineCollector
                 _terminalGroupPalettes.TryAdd(captureGroup, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
 
             _terminalGroupPalettes.TryGetValue(captureGroup, out DeterministicPalette palette);
-            _lines.Add(new NamedGroupOpen(captureGroup.Name, _currentNameFlatPath, _indentation, captureGroup.FriendlyTypeName, palette, _currentNamedGroup));
+            var name = nameOverride ?? captureGroup.Name;
+            _lines.Add(new NamedGroupOpen(name, _currentNameFlatPath, _indentation, captureGroup.FriendlyTypeName, palette, _currentNamedGroup));
         }
         else
             _lines.Add(new GroupOpen(_currentNameFlatPath, _indentation, _currentNamedGroup));
@@ -150,6 +151,7 @@ public class RegexLineCollector
 
         var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1);
         var regexString = string.Join("", groupLines.Select(x => x.EvaluableRegex));
+        regexString = MinifyRegex(regexString);
 
         return new (regexString, RegexOptions.Compiled);
     }

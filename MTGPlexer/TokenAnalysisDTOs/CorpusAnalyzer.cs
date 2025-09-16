@@ -58,17 +58,19 @@ public class CorpusAnalyzer
                 var lineText = card.FormattedLinesLower[i];
                 if (string.IsNullOrWhiteSpace(lineText)) continue;
 
-                var tokens = TokenTypeRegistry.Tokenize(lineText, originalTextOnly);
+                var lineTokens = TokenTypeRegistry.Tokenize(lineText, originalTextOnly);
+
+                _hydratedTokenUnits.AddRange(lineTokens);
 
                 // This single method call performs both analyses for the line.
-                (var spanRoots, var spanOccurrences) = HydrateAndAnalyzeLine(card, tokens, i);
+                (var spanRoots, var spanOccurrences) = AnalyzeLine(card, lineTokens, i);
 
                 processedLines.Add(new ProcessedLine
                 {
                     Card = card,
                     LineIndex = i,
                     EvaluatedText = lineText,
-                    SourceTokens = tokens,
+                    SourceTokens = lineTokens,
                     SpanRoots = spanRoots,
                     SpanOccurrences = spanOccurrences
                 });
@@ -94,26 +96,24 @@ public class CorpusAnalyzer
     /// <summary>
     /// Process a list of tokens for a single line to derive SpanRoot hierarchies and SpanOccurrence records.
     /// </summary>
-    (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) HydrateAndAnalyzeLine(Card card, List<StructuredTokenRoot> tokens, int lineIndex)
+    (List<SpanRoot> spanRoots, List<SpanOccurrence> occurrences) AnalyzeLine(Card card, List<TokenUnit> lineTokens, int lineIndex)
     {
         var roots = new List<SpanRoot>();
         var occurrences = new List<SpanOccurrence>();
         var tokenUnitCaptureSummaries = new List<TokenUnitCaptureSummary>();
         var enclosingTokenCountPerType = new Dictionary<Type, int>();
 
-        for (int i = 0; i < tokens.Count; i++)
+        for (int i = 0; i < lineTokens.Count; i++)
         {
-            var token = tokens[i];
-            var hydratedTokenUnit = TokenTypeRegistry.HydrateFromStructuredMatch(token);
-            _hydratedTokenUnits.Add(hydratedTokenUnit);
+            var token = lineTokens[i];
 
             // --- Analysis #1: Check for and record unmatched tokens ---
             // Create a new occurrence, giving it the context of the entire line's tokens.
-            if (token.TokenType == typeof(DefaultUnmatchedString))
-                occurrences.Add(new SpanOccurrence(card.Name, lineIndex, tokens, i));
+            if (token.Type == typeof(DefaultUnmatchedString))
+                occurrences.Add(new SpanOccurrence(card.Name, lineIndex, lineTokens, i));
 
             // --- Analysis #2: Build the SpanRoot hierarchy from the hydrated token ---
-            var root = new SpanRoot(hydratedTokenUnit, card.Name, card.FormattedLines[lineIndex]);
+            var root = new SpanRoot(token, card.Name, card.FormattedLines[lineIndex]);
             roots.Add(root);
         }
 

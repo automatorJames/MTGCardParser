@@ -10,8 +10,8 @@ public record CardSpanKey
     public int SpanStartIndex { get; }
     public int SpanEndIndex { get; }
 
-    public CardSpanKey(string cardName, StructuredTokenRoot anchorToken)
-        : this(cardName, anchorToken.AbsoluteStartInSource, anchorToken.AbsoluteEndInSource)
+    public CardSpanKey(string cardName, TokenUnit anchorToken)
+        : this(cardName, anchorToken.Capture.Index, anchorToken.Capture.Length + anchorToken.Capture.Index)
     {
     }
 

@@ -1,6 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-
-namespace MTGPlexer.BaseClasses;
+﻿namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {
@@ -20,7 +18,8 @@ public abstract class TokenUnit
 
     public TokenUnit ParentToken { get; set; }
     public RegexPropInfo ParentTokenProp { get; set; }
-    public StructuredMatchBase TokenMatch { get; set; }
+    public Match TopLevelMatch { get; set; }
+    public Capture Capture { get; set; }
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -55,11 +54,24 @@ public abstract class TokenUnit
         .OfType<TokenUnit>()
         .ToList();
 
-    public void SetPropertyFromMatch(RegexPropInfo regexPropInfo, StructuredMatchBase match, object propVal)
+    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, Capture childCapture = null)
+    {
+        var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
+        tokenUnit.TopLevelMatch = match;
+        tokenUnit.Capture = childCapture ?? match;
+
+        foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
+            if (match.Groups[captureProp.Name].Success)
+                captureProp.SetValueFromMatch(tokenUnit, match);
+    
+        return tokenUnit;
+    }
+
+    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCaptures.Add(new(regexPropInfo, match, propVal, capturePosition));
+        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition));
 
         if (propVal is TokenUnit childTokenUnit)
         {
@@ -92,5 +104,5 @@ public abstract class TokenUnit
 
 
     //public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
-    public override string ToString() => $"{Type.Name}{(TokenMatch == null ? "" : $": {TokenMatch.Value}")}";
+    public override string ToString() => $"{Type.Name}{(Capture == null ? "" : $": {Capture.Value}")}";
 }

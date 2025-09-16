@@ -1,6 +1,4 @@
 ﻿
-using MTGPlexer.CommonDTOs.StructuredMatches;
-
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
@@ -21,14 +19,14 @@ public class BoolRegexProp : ScalarCapturePropBase
         collector.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var childMatch = parentMatch.GetChildMatch(this);
+        var capture = match.Groups[Name];
 
-        if (childMatch == null)
+        if (!capture.Success)
             return false;
 
-        token.SetPropertyFromMatch(RegexPropInfo, childMatch, true);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, true);
         return true;
     }
 }

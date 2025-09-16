@@ -1,6 +1,5 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-using MTGPlexer.RegexGeneration.Composers;
-using MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿using MTGPlexer.RegexGeneration.Composers;
+using System.Collections;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
@@ -11,7 +10,9 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public class TokenRegexManyProp : CaptureGroupPropBase
 {
+    ManyItemType _manyItemType;
     Type _baseType;
+    string _itemName;
     List<RegexSegmentBase> _singleIterationSegments;
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)))).GetCaptureGroupPropBase();
 
@@ -20,13 +21,26 @@ public class TokenRegexManyProp : CaptureGroupPropBase
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
         _baseType = captureProp.BaseType;
+        _itemName = $"{captureProp.Name}_item";
 
         if (!_baseType.IsAssignableTo(typeof(TokenUnit)) && !_baseType.IsEnum)
             throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
 
-        // todo: handle the case where base type is enum instead of token type
-        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
-        _singleIterationSegments = template.RegexSegments;
+        if (_baseType.IsAssignableTo(typeof(TokenUnit)))
+        {
+            _manyItemType = ManyItemType.TokenUnit;
+            var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
+            _singleIterationSegments = template.RegexSegments;
+        }
+        else if (_baseType.IsEnum)
+        {
+            _manyItemType = ManyItemType.Enum;
+            EnumRegexProp proxyEnumRegexProp = new(captureProp, nameOverride: _itemName);
+            _singleIterationSegments = [proxyEnumRegexProp];
+        }
+        else
+            throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
+
     }
 
     public override void ComposeRegexLines(RegexLineCollector collector)
@@ -48,28 +62,57 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var childMatch = parentMatch.GetChildMatch(this);
-        
-        var itemCaptures = childMatch.Match.Groups[$"{RegexPropInfo.BaseType.Name}"]
+        var manyOfMatch = TokenTypeRegistry.ManyOfRegexes[_baseType].Match(match.Groups[Name].Value);
+
+        var itemCaptures = manyOfMatch.Groups[_itemName]
                 .Captures
                 .ToList();
 
-        List<object> hydratedItems = [];
-        var baseTypeRegex = TokenTypeRegistry.Templates[RegexPropInfo.BaseType].Regex;
-        CaptureGroupPropBase singleBaseProp = RegexPropInfo.GetCaptureGroupPropBase(forceGetUnderlyingPropType: true);
+        // Dynamically create the generic type for List<ManyItemCapture<T>>
+        var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(_baseType);
+        var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
+        var hydratedItems = (IList)Activator.CreateInstance(listType);
 
         foreach (var itemCapture in itemCaptures)
         {
-            var childItem = childMatch.GetChildSubCapture(singleBaseProp, itemCapture);
-            hydratedItems.Add(childItem);
+            object childItem = null;
+
+            if (_manyItemType == ManyItemType.TokenUnit)
+            {
+                childItem = TokenUnit.HydrateFromMatch(_baseType, match, itemCapture);
+            }
+            else if (_manyItemType == ManyItemType.Enum)
+            {
+                foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[_baseType])
+                {
+                    if (enumMemberRegex.Value.IsMatch(itemCapture.Value))
+                    {
+                        childItem = enumMemberRegex.Key;
+                        break;
+                    }
+                }
+
+                if (childItem == null)
+                {
+                    throw new Exception($"Found no matching values for enum type '{_baseType.Name}' from capture '{itemCapture.Value}'");
+                }
+            }
+
+            // Create an instance of ManyItemCapture<T> and add it to the list
+            var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture);
+            hydratedItems.Add(hydratedItem);
         }
 
-        var conjunctionString = childMatch.Match.Groups[nameof(Conjunction)].Value;
-        var conjunctionValue = Enum.GetValues<Conjunction>().FirstOrDefault(x => x.ToString().Equals(conjunctionString, StringComparison.OrdinalIgnoreCase));
-        var manyPropVal = Activator.CreateInstance(RegexPropInfo.UnderlyingType, hydratedItems, conjunctionValue);
-        token.SetPropertyFromMatch(RegexPropInfo, childMatch, manyPropVal);
+        var conjunctionCapture = manyOfMatch.Groups[nameof(Conjunction)];
+        Conjunction? conjunctionValue = Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) ? parsed : null;
+
+        // Dynamically create the generic type for ManyToken<T>
+        var manyTokenType = typeof(ManyToken<>).MakeGenericType(_baseType);
+        var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
+
+        token.SetPropertyFromCapture(RegexPropInfo, manyOfMatch, manyPropVal);
 
         return true;
     }

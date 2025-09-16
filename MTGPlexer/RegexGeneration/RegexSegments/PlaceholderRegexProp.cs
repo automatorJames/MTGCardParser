@@ -1,6 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have
@@ -23,11 +21,11 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var childMatch = parentMatch.GetChildMatch(this);
-        var valueToSet = new PlaceholderCapture(childMatch.Value);
-        token.SetPropertyFromMatch(RegexPropInfo, childMatch, valueToSet);
+        var capture = match.Groups[Name];
+        var valueToSet = new PlaceholderCapture(capture.Value);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
         return true;
     }
 }

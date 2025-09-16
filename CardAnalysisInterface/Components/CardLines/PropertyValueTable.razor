@@ -7,7 +7,7 @@
 }
 else
 {
-    <TokenTypeName TokenType=@Span.TokenType DataPath=@Span.Path ManyIndex=@(Span.ManyIndex) />
+    <TokenTypeName TokenType=@Span.TokenType DataPath=@Span.Path ManyIndex=@(Span.ManyIndex) DisplayName=@Span.DisplayName />
 
     @if (Span.LeavesOrDistilled.Any())
     {
@@ -60,6 +60,9 @@ else
 
     string FormatValue(object value)
     {
+        if (value == null)
+            return "";
+
         var strVal = value.ToString();
         return strVal.ToFriendlyCase(TitleDisplayOption.Lower);
     }

@@ -1,5 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-using MTGPlexer.RegexGeneration.Composers;
+﻿using MTGPlexer.RegexGeneration.Composers;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
@@ -10,9 +9,6 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public class TokenRegexProp : CaptureGroupPropBase
 {
-    static HashSet<char> _terminalPunctuation = ['.', ',', ';'];
-    bool _noSpaces;
-
     public override Regex MatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.UnderlyingType].Regex;
 
     public List<RegexSegmentBase> ChildSegments { get; set; }
@@ -30,15 +26,16 @@ public class TokenRegexProp : CaptureGroupPropBase
         collector.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var childMatch = parentMatch.GetChildMatch(this);
+        var capture = match.Groups[Name];
 
-        if (childMatch == null)
+        if (capture == null)
             return false;
 
-        var tokenUnitOneOfInstance = TokenTypeRegistry.HydrateFromStructuredMatch(childMatch);
-        token.SetPropertyFromMatch(RegexPropInfo, childMatch, tokenUnitOneOfInstance);
+        var tokenUnitInstance = TokenUnit.HydrateFromMatch(RegexPropInfo.BaseType, match, capture);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
+
         return true;
     }
 

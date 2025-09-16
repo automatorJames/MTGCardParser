@@ -1,6 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the
@@ -9,28 +7,23 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public class EnumRegexProp : ScalarCapturePropBase
 {
-    Type _enumType;
-
-    public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[_enumType].Regex;
+    public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].Regex;
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
 
-    public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
+    public EnumRegexProp(RegexPropInfo captureProp, string nameOverride = null) : base(captureProp, nameOverride)
     {
-        _enumType = captureProp.UnderlyingType;
     }
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        collector.OpenGroup(RegexPropInfo);
+        collector.OpenGroup(RegexPropInfo, nameOverride: Name);
         collector.AddAlternatiingValues(ScalarAlternativeSet.Alternatives);
         collector.CloseGroup();
     }
 
-    protected override void SetScalarAlternativeSet() => SetAlternativesAndMemberRegexes();
-
-    void SetAlternativesAndMemberRegexes()
+    protected override void SetScalarAlternativeSet(RegexPropInfo captureProp)
     {
-        var enumType = RegexPropInfo.UnderlyingType;
+        var enumType = captureProp.BaseType;
 
         if (TokenTypeRegistry.EnumMemberRegexes.TryGetValue(enumType, out var enumMemberRegexes))
         {
@@ -43,7 +36,7 @@ public class EnumRegexProp : ScalarCapturePropBase
         }
 
         // if not already registered: 
-        var enumOptions = RegexPropInfo.UnderlyingType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
+        var enumOptions = captureProp.BaseType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
         List<string> allMemberAlternatives = new();
         var enumRegOptions = enumType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
         var enumValues = Enum.GetValues(enumType).Cast<object>();
@@ -73,11 +66,11 @@ public class EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = new(alternatives);
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, StructuredMatchBase parentMatch)
+    public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var childMatch = parentMatch.GetChildMatch(this);
+        var capture = match.Groups[Name];
 
-        if (childMatch == null)
+        if (!capture.Success)
         {
             if (!RegexPropInfo.MayBeNull)
                 throw new Exception($"{RegexPropInfo.Name} is not a nullable enum, but no match was found");
@@ -85,8 +78,8 @@ public class EnumRegexProp : ScalarCapturePropBase
             return false;
         }
 
-        var valueToSet = GetEnumMatchValue(childMatch.Value);
-        token.SetPropertyFromMatch(RegexPropInfo, childMatch, valueToSet);
+        var valueToSet = GetEnumMatchValue(capture.Value);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
         return true;
     }
 
@@ -96,7 +89,7 @@ public class EnumRegexProp : ScalarCapturePropBase
             if (enumMemberRegex.Value.IsMatch(matchString))
                 return enumMemberRegex.Key;
 
-        throw new Exception($"Found no matching values for enum '{_enumType.Name}' from match string '{matchString}'");
+        throw new Exception($"Found no matching values for enum '{RegexPropInfo.Name}' from match string '{matchString}'");
     }
 }
 

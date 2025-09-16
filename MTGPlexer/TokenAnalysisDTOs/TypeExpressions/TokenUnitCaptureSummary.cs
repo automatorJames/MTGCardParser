@@ -43,7 +43,7 @@ public record TokenUnitCaptureSummary
             {
                 FlattenAndCountRecursive(
                     [indexedCapture.RegexPropInfo.Name],
-                    indexedCapture.Match.Value,
+                    indexedCapture.Capture.Value,
                     indexedCapture.Value,
                     indexedCapture.RegexPropInfo,
                     typeCounts

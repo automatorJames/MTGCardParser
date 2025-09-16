@@ -1,5 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-using System.Collections;
+﻿using System.Collections;
 
 namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 
@@ -11,53 +10,56 @@ public record SpanBranch : NestedSpan
     public List<SpanBranch> Branches { get; }
     public List<SpanLeaf> Leaves { get; }
     public List<SpanLeaf> LeavesOrDistilled { get; private set; } = [];
-    public StructuredMatchBase Match { get; }
+    public Capture Capture { get; }
     public Type TokenType { get; }
     public bool CollapseInAnalysis { get; }
     public string OriginalLineText { get; }
     public int? ManyIndex { get; }
-    public string Text => Match.Value.Trim();
+    public string Text => Capture.Value.Trim();
 
     public SpanBranch(TokenUnit token, string cardName, string parentPath, int parentDepth, string originalLineText, int? manyIndex = null)
         : base(
-            Path: parentPath.Dot(token.TokenMatch.ToIndexString()).Dot(token.Type.Name),
+            Path: parentPath.Dot(token.Capture.ToIndexString()).Dot(token.Type.Name),
             NestedDepth: parentDepth + 1,
             Palette: TokenTypeRegistry.Palettes[token.Type],
             IgnoreInAnalysis: token.Type.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null)
     {
         OriginalLineText = originalLineText;
         CardName = cardName;
-        DisplayName = token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         Children = DigestChildren(token);
         Branches = Children.OfType<SpanBranch>().ToList();
         Leaves = Children.OfType<SpanLeaf>().ToList();
         SetLeavesOrDistilled(token);
-        Match = token.TokenMatch;
+        Capture = token.Capture;
         TokenType = token.Type;
         ManyIndex = manyIndex;
+        DisplayName = token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         CollapseInAnalysis = token is TokenUnitOneOf;
+
+        if (token.ParentToken is TokenUnitOneOf parentTokenUnitOneOf)
+            DisplayName = $"{parentTokenUnitOneOf.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)}: {DisplayName}";
     }
 
     private List<NestedSpan> DigestChildren(TokenUnit token)
     {
-        var match = token.TokenMatch;
-        var matchEnd = match.AbsoluteStartInSource + match.Length;
+        var capture = token.Capture;
+        var matchEnd = capture.Index + capture.Length;
 
         if (!token.IndexedPropertyCaptures.Any())
-            return [new SpanTwig(token, Path, NestedDepth, OriginalLineText.Substring(match.AbsoluteStartInSource, match.Length).Replace(Card.ThisToken, CardName))];
+            return [new SpanTwig(token, Path, NestedDepth, OriginalLineText.Substring(capture.Index, capture.Length).Replace(Card.ThisToken, CardName))];
 
         List<NestedSpan> children = [];
-        int cursor = match.AbsoluteStartInSource;
+        int cursor = capture.Index;
 
         foreach (var indexedProp in token.IndexedPropertyCaptures)
         {
             // 1. Add a twig for any text between the last capture and this one.
             if (indexedProp.Start > cursor)
             {
-                var snippetStart = cursor - match.AbsoluteStartInSource;
+                var snippetStart = cursor - capture.Index;
                 var snippetLength = indexedProp.Start - cursor;
-                var precedingText = OriginalLineText.Substring(snippetStart + match.AbsoluteStartInSource, snippetLength);
-                var precedingTextOrig = match.Value.Substring(snippetStart, snippetLength);
+                var precedingText = OriginalLineText.Substring(snippetStart + capture.Index, snippetLength);
+                var precedingTextOrig = capture.Value.Substring(snippetStart, snippetLength);
 
                 if (!string.IsNullOrWhiteSpace(precedingText))
                     children.Add(new SpanTwig(token, Path, NestedDepth, precedingText.Trim()));
@@ -66,35 +68,68 @@ public record SpanBranch : NestedSpan
             // 2. Process the actual property capture.
             if (indexedProp.Value is ManyToken manyToken)
             {
-                // Use dynamic to access the 'Items' property, which only exists on the generic subclass.
-                dynamic dynamicManyToken = manyToken;
-                var items = ((IEnumerable)dynamicManyToken.Items).Cast<TokenUnit>().ToList();
+                var items = manyToken.ItemObjects;
+                var allCaptures = new List<Capture>();
+
+                // Create a unified list of all items and the conjunction to process them in order.
+                allCaptures.AddRange(items.Select(i => i.Capture));
+
+                if (manyToken.Conjunction.HasValue)
+                    allCaptures.Add(manyToken.ConjunctionCapture);
+
+                // Sort all captures by their starting index to process them in the order they appear.
+                var sortedCaptures = allCaptures.OrderBy(c => c.Index).ToList();
+
+                // Keep track of how many many items we've encountered so we can set their data path properly
+                int manyItemCurrentIndex = 0;
+
                 var innerCursor = indexedProp.Start;
 
-                for (int i = 0; i < items.Count; i++)
+                for (int i = 0; i < sortedCaptures.Count; i++)
                 {
-                    TokenUnit itemToken = items[i];
-
-                    // Text between items
-                    if (itemToken.TokenMatch.AbsoluteStartInSource > innerCursor)
+                    Capture currentCapture = sortedCaptures[i];
+                    // Text between the last capture and the current one.
+                    if (currentCapture.Index > innerCursor)
                     {
-                        var snippetStart = innerCursor - match.AbsoluteStartInSource;
-                        var snippetLength = itemToken.TokenMatch.AbsoluteStartInSource - innerCursor;
+                        var snippetStart = innerCursor - capture.Index;
+                        var snippetLength = currentCapture.Index - innerCursor;
                         var textBetween = OriginalLineText.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
 
                         if (!string.IsNullOrWhiteSpace(textBetween))
                             children.Add(new SpanTwig(token, Path, NestedDepth, textBetween.Trim()));
                     }
 
-                    // The item itself
-                    children.Add(new SpanBranch(itemToken, CardName, Path.Dot(itemToken.Type.Name), NestedDepth, OriginalLineText, i));
-                    innerCursor = itemToken.TokenMatch.AbsoluteStartInSource + itemToken.TokenMatch.Length;
+                    // Check if the current capture is the conjunction.
+                    if (manyToken.Conjunction.HasValue && currentCapture.Index == manyToken.ConjunctionCapture.Index)
+                    {
+                        var prop = manyToken.GetType().GetProperty(nameof(ManyToken.Conjunction));
+                        RegexPropInfo propInfo = new(prop);
+                        IndexedPropertyCapture derivedIndexProp = new(propInfo, manyToken.ConjunctionCapture, manyToken.Conjunction, i);
+                        var path = Path.Dot(indexedProp.RegexPropInfo.Name).Dot(prop.Name);
+                        children.Add(new SpanLeaf(derivedIndexProp, path, NestedDepth, OriginalLineText, CardName));
+                    }
+                    else // Otherwise, it's a regular many-item.
+                    {
+                        var manyItem = items.First(i => i.Capture.Index == currentCapture.Index);
+                        int itemIndex = items.IndexOf(manyItem);
+                        var path = Path.Dot(indexedProp.RegexPropInfo.Name) + $"_item{++manyItemCurrentIndex}";
+
+                        if (manyToken.ManyItemType == ManyItemType.TokenUnit && manyItem.ItemAsObject is TokenUnit itemToken)
+                            children.Add(new SpanBranch(itemToken, CardName, path, NestedDepth, OriginalLineText, itemIndex));
+                        else if (manyToken.ManyItemType == ManyItemType.Enum)
+                        {
+                            IndexedPropertyCapture derivedIndexProp = new(indexedProp.RegexPropInfo, manyItem.Capture, manyItem.Capture.Value, i);
+                            children.Add(new SpanLeaf(derivedIndexProp, path, NestedDepth, OriginalLineText, CardName));
+                        }
+                    }
+
+                    innerCursor = currentCapture.Index + currentCapture.Length;
                 }
 
                 // There might be text after the last item but before the end of the ManyToken span
                 if (indexedProp.End > innerCursor)
                 {
-                    var snippetStart = innerCursor - match.AbsoluteStartInSource;
+                    var snippetStart = innerCursor - capture.Index;
                     var snippetLength = indexedProp.End - innerCursor;
                     var textAfter = OriginalLineText.Substring(snippetStart, snippetLength);
 
@@ -114,9 +149,9 @@ public record SpanBranch : NestedSpan
         // 4. Add a final twig for any trailing text after the last capture.
         if (cursor < matchEnd)
         {
-            var snippetStart = cursor - match.AbsoluteStartInSource;
+            var snippetStart = cursor - capture.Index;
             var snippetLength = matchEnd - cursor;
-            var trailingText = match.Value.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
+            var trailingText = capture.Value.Substring(snippetStart, snippetLength).Replace(Card.ThisToken, CardName);
             if (!string.IsNullOrWhiteSpace(trailingText))
             {
                 children.Add(new SpanTwig(token, Path, NestedDepth, trailingText.Trim()));
@@ -141,22 +176,40 @@ public record SpanBranch : NestedSpan
 
             if (indexedProp.Value is ManyToken manyToken)
             {
-                // For a ManyToken, create a synthetic leaf for its Conjunction property to display in the parent's table.
-                var conjunctionPropInfo = new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)));
-                var conjunctionCapture = new IndexedPropertyCapture(
-                    regexPropInfo: conjunctionPropInfo,
-                    match: indexedProp.Match, // Use the span of the whole ManyToken capture
-                    value: manyToken.Conjunction,
-                    capturePosition: indexedProp.CapturePosition // Use the same position for color coding
-                );
+                // For a ManyToken, create a synthetic leaf for its Conjunction property to display in the parent's table (if not null)
+                if (manyToken.Conjunction != null)
+                {
+                    var conjunctionPropInfo = new RegexPropInfo(typeof(ManyToken).GetProperty(nameof(ManyToken.Conjunction)));
 
-                generatedLeaves.Add(new SpanLeaf(
-                    PropertyCapture: conjunctionCapture,
-                    Path: Path.Dot(indexedProp.RegexPropInfo.Name).Dot(nameof(Conjunction)),
-                    NestedDepth: NestedDepth + 1,
-                    OriginalLineText,
-                    CardName
-                ));
+                    var conjunctionCapture = new IndexedPropertyCapture(
+                        regexPropInfo: conjunctionPropInfo,
+                        capture: manyToken.ConjunctionCapture,
+                        value: manyToken.Conjunction,
+                        capturePosition: 0
+                    );
+
+                    generatedLeaves.Add(new SpanLeaf(
+                        PropertyCapture: conjunctionCapture,
+                        Path: Path.Dot(indexedProp.RegexPropInfo.Name).Dot(nameof(Conjunction)),
+                        NestedDepth: NestedDepth + 1,
+                        OriginalLineText: OriginalLineText,
+                        CardName: CardName
+                    ));
+                }
+
+                for (int i = 0; i < manyToken.ItemObjects.Count; i++)
+                {
+                    var item = manyToken.ItemObjects[i];
+                    IndexedPropertyCapture itemIndexPropertyCapture = new(indexedProp.RegexPropInfo, item.Capture, item.ItemAsObject, i + 1);
+
+                    generatedLeaves.Add(new SpanLeaf(
+                        itemIndexPropertyCapture,
+                        Path.Dot($"{indexedProp.RegexPropInfo.Name}_item{i + 1}"),
+                        NestedDepth + 1,
+                        OriginalLineText,
+                        CardName
+                        ));
+                }
             }
             else
             {
@@ -165,8 +218,8 @@ public record SpanBranch : NestedSpan
                     PropertyCapture: indexedProp,
                     Path: Path.Dot(indexedProp.RegexPropInfo.Name),
                     NestedDepth: NestedDepth + 1,
-                    OriginalLineText,
-                    CardName
+                    OriginalLineText: OriginalLineText,
+                    CardName: CardName
                 ));
             }
         }
@@ -201,5 +254,5 @@ public record SpanBranch : NestedSpan
         }
     }
 
-    public override string ToString() => Match.Value;
+    public override string ToString() => Capture.Value;
 }

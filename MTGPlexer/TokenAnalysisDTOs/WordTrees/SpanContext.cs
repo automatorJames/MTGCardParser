@@ -3,21 +3,21 @@
 public record SpanContext
 {
     public string CardName { get; }
-    public StructuredTokenRoot PrecedingToken { get; }
-    public StructuredTokenRoot SpanToken { get; }
-    public StructuredTokenRoot FollowingToken { get; }
+    public TokenUnit PrecedingToken { get; }
+    public TokenUnit SpanToken { get; }
+    public TokenUnit FollowingToken { get; }
     public string SpanText { get; }
     public string[] SpanWords { get; }
     public int SpanWordCount { get; }
 
 
-    public SpanContext(string cardName, StructuredTokenRoot precedingToken, StructuredTokenRoot spanToken, StructuredTokenRoot followingToken)
+    public SpanContext(string cardName, TokenUnit precedingToken, TokenUnit spanToken, TokenUnit followingToken)
     {
         CardName = cardName;
         PrecedingToken = precedingToken;
         SpanToken = spanToken;
         FollowingToken = followingToken;
-        SpanText = spanToken.Value;
+        SpanText = spanToken.Capture.Value;
         SpanWords = SpanText.Split(' ');
         SpanWordCount = SpanWords.Length;
     }

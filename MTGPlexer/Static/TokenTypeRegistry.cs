@@ -23,8 +23,8 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
-    public static CustomTokenizer ClassTokenizer { get; set; }
-    public static CustomTokenizer OriginalTextTokenizer { get; set; }
+    public static Tokenizer ClassTokenizer { get; set; }
+    public static Tokenizer OriginalTextTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
@@ -99,27 +99,27 @@ public static partial class TokenTypeRegistry
         EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
     }
 
-    public static List<StructuredTokenRoot> Tokenize(string text, bool originalTextOnly)
+    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly)
     {
         var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
         return tokens;
     }
 
-    public static TokenUnit HydrateFromStructuredMatch(StructuredMatchBase tokenMatch)
-    {
-        var type =
-            tokenMatch is StructuredTokenRoot root ? root.TokenType
-            : tokenMatch is StructuredPropMatch capture ? capture.RegexPropInfo.UnderlyingType
-            : throw new Exception($"Cannot hydrate TokenUnit from match of type '{tokenMatch.GetType().Name}'");
-
-        var tokenUnit = (TokenUnit)Activator.CreateInstance(type);
-        tokenUnit.TokenMatch = tokenMatch;
-
-        foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
-            captureProp.SetValueFromMatch(tokenUnit, tokenMatch);
-
-        return tokenUnit;
-    }
+    //public static TokenUnit HydrateFromStructuredMatch(StructuredMatchBase tokenMatch)
+    //{
+    //    var type =
+    //        tokenMatch is StructuredTokenRoot root ? root.TokenType
+    //        : tokenMatch is StructuredPropMatch capture ? capture.RegexPropInfo.UnderlyingType
+    //        : throw new Exception($"Cannot hydrate TokenUnit from match of type '{tokenMatch.GetType().Name}'");
+    //
+    //    var tokenUnit = (TokenUnit)Activator.CreateInstance(type);
+    //    tokenUnit.TokenMatch = tokenMatch;
+    //
+    //    foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
+    //        captureProp.SetValueFromMatch(tokenUnit, tokenMatch);
+    //
+    //    return tokenUnit;
+    //}
 
     /// <summary>
     /// Return all TokenUnit derived types except for DefaultUnmatchedString
@@ -129,7 +129,8 @@ public static partial class TokenTypeRegistry
         var allTypes = _staticAssemblyTypes
         .Where(x =>
             x.IsClass && !x.IsAbstract
-            && typeof(TokenUnit).IsAssignableFrom(x))
+            && typeof(TokenUnit).IsAssignableFrom(x)
+            && !x.IsDefined(typeof(TokenUnitPropertyAttribute)))
         .Concat(_dynamicAssemblyTypes);
 
         if (allTypes.Any(x => x.IsDefined(typeof(IsolateForTestingAttribute))))

@@ -34,8 +34,10 @@ public class CardDataGetter
         using var conn = new SqlConnection(_sqlConnString);
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
-        //result = new List<Card> { new Card { Name = "baaz", Text = "ABC 123" } };
+        //result = result.Where(x => x.Name == "Air Elemental");
+        //result = new List<Card> { new Card { Name = "baaz", Text = "ABC, DEF, and GHI" } };
         //result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "abc Some fecking intelligible text" } };
+        //result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "target player draws three cards or something" } };
 
         return result.ToList();
     }

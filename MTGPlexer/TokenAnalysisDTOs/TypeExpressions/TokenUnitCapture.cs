@@ -37,7 +37,7 @@ public record TokenUnitCapture
                 {
                     var valuesWithCounts = propPathValSetCollector.Value.Keys.ToList();
 
-                    var missingZeroCountEnumValStrings = Enum.GetValues(propPathValSetCollector.Key.Prop.UnderlyingType)
+                    var missingZeroCountEnumValStrings = Enum.GetValues(propPathValSetCollector.Key.Prop.BaseType)
                         .Cast<object>()
                         .Select(x => x.ToString().ToFriendlyCase(TitleDisplayOption.Lower))
                         .Except(valuesWithCounts)

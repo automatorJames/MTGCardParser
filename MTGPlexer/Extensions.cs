@@ -1,6 +1,4 @@
-﻿using MTGPlexer.CommonDTOs.StructuredMatches;
-using System.ComponentModel;
-using System.Text;
+﻿using System.ComponentModel;
 
 namespace MTGPlexer;
 
@@ -114,8 +112,7 @@ public static class Extensions
 
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
     public static string Colon(this string parentPath, string nextPathPart) => parentPath + ":" + nextPathPart;
-    public static string ToIndexString(this Match match) => $"idx[{match.Index}]";
-    public static string ToIndexString(this StructuredMatchBase match) => $"idx[{match.AbsoluteStartInSource}]";
+    public static string ToIndexString(this Capture capture) => $"idx[{capture.Index}]";
 
     public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();
     public static Type UnderlyingType(this Type type) => Nullable.GetUnderlyingType(type) ?? type;
@@ -129,6 +126,23 @@ public static class Extensions
 
             dictToAddTo[key] += dictToAddFrom[key];
         }
+    }
+
+    /// <summary>
+    /// Removes all non-essential whitespace from a regex pattern, preserving literal spaces indicated by "[ ]".
+    /// </summary>
+    public static string MinifyRegex(string pattern)
+    {
+        if (string.IsNullOrEmpty(pattern)) return string.Empty;
+
+        return Regex.Replace(pattern, @"(\[\ \])|(\s+)", match =>
+        {
+            if (match.Groups[1].Success)
+            {
+                return " ";
+            }
+            return string.Empty;
+        });
     }
 
     public static string TrimStartAndEnd(this string target, string trimString)
