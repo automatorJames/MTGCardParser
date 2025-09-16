@@ -2,12 +2,11 @@
 @implements IDisposable
 @inject RuntimeSettings RuntimeSettings
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 
 <div class="page">
     <nav class="top-row px-4">
-        @* 1. The three page links have been moved to the left, replacing the brand title *@
         <div class="nav-links">
-            @* The links are now NavLink components to handle active state styling *@
             <NavLink href="/" Match="NavLinkMatch.All">Card Analysis</NavLink>
             <NavLink href="type-expressions">Type Expressions</NavLink>
             <NavLink href="span-trees">Span Trees</NavLink>
@@ -16,7 +15,6 @@
         <div class="top-row-right-items">
             <SearchBar />
 
-            @* Only render the settings controls after they have been loaded to prevent flicker *@
             @if (RuntimeSettings.IsLoaded)
             {
                 var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
@@ -48,9 +46,18 @@
 </div>
 
 @code {
+    private DotNetObjectReference<MainLayout>? _dotNetObjectReference;
+
+    // Define the ordered list of page routes
+    private readonly List<string> _pageRoutes = new()
+    {
+        "/",
+        "type-expressions",
+        "span-trees"
+    };
+
     protected override void OnInitialized()
     {
-        // Subscribe to changes so the layout can re-render when settings are loaded.
         RuntimeSettings.OnChanged += OnSettingsChanged;
     }
 
@@ -58,22 +65,63 @@
     {
         if (firstRender)
         {
-            // Trigger the one-time load of persisted settings.
             await RuntimeSettings.EnsureLoadedAsync();
+
+            // Set up the JS interop for keyboard shortcuts
+            _dotNetObjectReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("initializeLayoutListener", _dotNetObjectReference);
         }
+    }
+
+    [JSInvokable]
+    public void CyclePage(string direction)
+    {
+        // Get the current page's relative path
+        var currentRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        // The root path "/" is returned as an empty string, so normalize it
+        if (string.IsNullOrEmpty(currentRelativePath))
+        {
+            currentRelativePath = "/";
+        }
+
+        var currentIndex = _pageRoutes.IndexOf(currentRelativePath);
+        if (currentIndex == -1) return; // Current page not in our list, do nothing
+
+        int nextIndex;
+
+        if (direction == "forward")
+        {
+            // Move to the next index, wrapping around to the start if at the end
+            nextIndex = (currentIndex + 1) % _pageRoutes.Count;
+        }
+        else // "backward"
+        {
+            // Move to the previous index, wrapping around to the end if at the start
+            nextIndex = (currentIndex - 1 + _pageRoutes.Count) % _pageRoutes.Count;
+        }
+
+        Navigation.NavigateTo(_pageRoutes[nextIndex]);
     }
 
     private async void OnSettingsChanged()
     {
-        // When settings change (e.g., after loading), re-render the component.
         await InvokeAsync(StateHasChanged);
     }
 
-    // The GetPageTitle() method is no longer needed and has been removed.
-
     public void Dispose()
     {
-        // Unsubscribe to prevent memory leaks.
         RuntimeSettings.OnChanged -= OnSettingsChanged;
+
+        // Clean up the JS listener and DotNet reference to prevent memory leaks
+        if (_dotNetObjectReference != null)
+        {
+            _dotNetObjectReference.Dispose();
+            try
+            {
+                JSRuntime.InvokeVoidAsync("disposeLayoutListener");
+            }
+            catch (JSDisconnectedException) { /* ignored */ }
+        }
     }
 }
