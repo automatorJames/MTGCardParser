@@ -1,47 +1,55 @@
 ﻿// wwwroot/js/search.js
 
-let searchInput;
-let keydownHandler;
-let inputHandler;
-let debounceTimeout;
+// Store a reference to the global keydown handler to allow for its removal.
+let globalKeydownHandler;
 
 function initializeSearchBar(element, dotNetObjectReference) {
-    searchInput = element;
-
-    // --- Ctrl+F Handler ---
-    keydownHandler = (e) => {
-        if (e.ctrlKey && e.key === 'f' || e.ctrlKey && e.key === ',') {
-            e.preventDefault();
-            searchInput.focus();
-            searchInput.select();
-        }
-    };
-    document.addEventListener('keydown', keydownHandler);
-
     // --- Debounced Input Handler ---
-    inputHandler = (e) => {
-        // Clear any existing timer on each keystroke
+    let debounceTimeout;
+    const inputHandler = (e) => {
         clearTimeout(debounceTimeout);
-
-        // Set a new timer to call back to C# after 300ms of inactivity
         debounceTimeout = setTimeout(() => {
             dotNetObjectReference.invokeMethodAsync('UpdateSearchTerm', e.target.value);
         }, 300); // 300ms debounce interval
     };
-    searchInput.addEventListener('input', inputHandler);
+    element.addEventListener('input', inputHandler);
+
+    // Store the handler on the element for later removal during disposal.
+    element.inputHandler = inputHandler;
+    element.debounceTimeout = debounceTimeout;
+
+
+    // --- Global Keydown Handler for Shortcuts ---
+    globalKeydownHandler = (e) => {
+        // Ctrl+F to focus the search bar
+        if ((e.ctrlKey && e.key === 'f') || (e.ctrlKey && e.key === ',')) {
+            e.preventDefault();
+            element.focus();
+            element.select();
+        }
+        // 3. Escape key to clear the search
+        else if (e.key === 'Escape') {
+            e.preventDefault();
+            dotNetObjectReference.invokeMethodAsync('ClearSearch');
+        }
+    };
+    document.addEventListener('keydown', globalKeydownHandler);
 }
 
-function disposeSearchBar() {
+function disposeSearchBar(element) {
     // Remove the global keydown listener
-    if (keydownHandler) {
-        document.removeEventListener('keydown', keydownHandler);
+    if (globalKeydownHandler) {
+        document.removeEventListener('keydown', globalKeydownHandler);
+        globalKeydownHandler = null; // Clear reference
     }
-    // Remove the input listener from the search bar
-    if (searchInput && inputHandler) {
-        searchInput.removeEventListener('input', inputHandler);
+
+    // Remove the specific input listener from the search bar element
+    if (element && element.inputHandler) {
+        element.removeEventListener('input', element.inputHandler);
     }
-    // IMPORTANT: Clear any pending debounce timers to prevent memory leaks on dispose
-    if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
+
+    // Clear any pending debounce timers to prevent memory leaks
+    if (element && element.debounceTimeout) {
+        clearTimeout(element.debounceTimeout);
     }
 }

@@ -1,5 +1,6 @@
 ﻿@inject RuntimeSettings RuntimeSettings
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
 @implements IDisposable
 
 <div class="search-container">
@@ -8,15 +9,23 @@
            class="search-input"
            placeholder="Search... (Ctrl+F)"
            value="@RuntimeSettings.SearchTerm" />
+
+    @* This button is displayed only when there's a search term *@
     @if (!string.IsNullOrEmpty(RuntimeSettings.SearchTerm))
     {
-        <button class="clear-button" @onclick="ClearSearch" title="Clear search">&times;</button>
+        <button class="clear-button" @onclick="ClearSearch" title="Clear search (Esc)">&times;</button>
     }
 </div>
 
 @code {
     private ElementReference _searchInput;
     private DotNetObjectReference<SearchBar>? _dotNetObjectReference;
+
+    protected override void OnInitialized()
+    {
+        // 1. Subscribe to the location changed event to clear search on navigation
+        NavigationManager.LocationChanged += HandleLocationChanged;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -31,26 +40,48 @@
     public void UpdateSearchTerm(string term)
     {
         // This method is called from JavaScript after the debounce timer completes.
-        // We use InvokeAsync to ensure the state update happens on Blazor's synchronization context.
         InvokeAsync(() =>
         {
             RuntimeSettings.SearchTerm = term;
+            StateHasChanged(); // Ensure the UI updates for the clear button
         });
     }
 
-    private async Task ClearSearch()
+    /// <summary>
+    /// Clears the search term and refocuses the input.
+    /// It's now public and invokable from JavaScript to handle the 'Escape' key.
+    /// </summary>
+    [JSInvokable]
+    public async Task ClearSearch()
     {
-        RuntimeSettings.SearchTerm = string.Empty;
-        await _searchInput.FocusAsync();
+        if (!string.IsNullOrEmpty(RuntimeSettings.SearchTerm))
+        {
+            RuntimeSettings.SearchTerm = string.Empty;
+            // Notify Blazor about the state change to hide the clear button
+            await InvokeAsync(StateHasChanged);
+            await _searchInput.FocusAsync();
+        }
+    }
+
+    /// <summary>
+    /// Event handler for page navigation.
+    /// </summary>
+    private async void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        await ClearSearch();
     }
 
     public void Dispose()
     {
+        // Unsubscribe from the event to prevent memory leaks
+        NavigationManager.LocationChanged -= HandleLocationChanged;
+
         _dotNetObjectReference?.Dispose();
-        // Call the corresponding JS cleanup function to prevent memory leaks
+
         try
         {
-            JSRuntime.InvokeVoidAsync("disposeSearchBar");
+            // Call the corresponding JS cleanup function to prevent memory leaks
+            JSRuntime.InvokeVoidAsync("disposeSearchBar", _searchInput);
         }
         catch (JSDisconnectedException)
         {
