@@ -7,18 +7,6 @@ public abstract class TokenUnitDistilled : TokenUnit
 
     public abstract void SetComplexValuesFromMatch();
 
-    //public override void SetPropertiesFromMatch()
-    //{
-    //    // First, allow the base class to set all properties normally
-    //    base.SetPropertiesFromMatch();
-    //
-    //    // Second, apply whatever class-specific decomposition is necessary
-    //    SetComplexValuesFromMatch();
-    //
-    //    // Third, register all the non-default distilled prop values for lookup reference
-    //    RegisterDistilledPropVals();
-    //}
-
     /// <summary>
     /// For each distilled value property associated with each placeholder property for this type,
     /// set the value on this object to the DistilledValues dictionary to ease external lookup.

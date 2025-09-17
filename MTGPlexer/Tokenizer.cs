@@ -23,6 +23,17 @@
 
         while (currentIndex < sourceText.Length)
         {
+            // First, skip any leading whitespace. This simplifies the main loop
+            // by ensuring the "cursor" is always at a non-whitespace char or the EOS.
+            var spaceMatch = _whitespaceRegex.Match(sourceText, currentIndex);
+            if (spaceMatch.Success)
+            {
+                // If we are not in the middle of an unmatched run, then this whitespace
+                // can simply be skipped.
+                if (unmatchedStartIndex == -1)
+                    currentIndex += spaceMatch.Length;
+            }
+
             bool matched = false;
 
             // **Step 1: Prioritize matching a known token.**
@@ -34,25 +45,11 @@
                     // A token was found. Flush any preceding unmatched text.
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
-                    // Now, we must skip any ignorable whitespace that follows the flushed text
-                    // and precedes the token we just found.
-                    var spaceMatch = _whitespaceRegex.Match(sourceText, currentIndex);
-                    if (spaceMatch.Success)
-                    {
-                        currentIndex += spaceMatch.Length;
-                        // Re-run the match at the new position
-                        match = regex.Match(sourceText, currentIndex);
-                    }
-
-                    // Check if the match is still valid after skipping whitespace
-                    if (match.Success && match.Length > 0)
-                    {
-                        var token = TokenUnit.HydrateFromMatch(type, match);
-                        tokens.Add(token);
-                        currentIndex += match.Length;
-                        matched = true;
-                        break; // Exit foreach and continue the main while loop
-                    }
+                    var token = TokenUnit.HydrateFromMatch(type, match);
+                    tokens.Add(token);
+                    currentIndex += match.Length;
+                    matched = true;
+                    break; // Exit foreach and continue the main while loop
                 }
             }
 
@@ -105,24 +102,13 @@
     {
         if (unmatchedStartIndex == -1) return;
 
-        // Find the actual start by skipping leading whitespace from the unmatched buffer
-        var spaceMatch = _whitespaceRegex.Match(sourceText, unmatchedStartIndex);
-
-        if (spaceMatch.Success)
-            unmatchedStartIndex += spaceMatch.Length;
-
-        // Find the actual end by trimming trailing whitespace
-        string tempSubstring = sourceText.Substring(unmatchedStartIndex, currentIndex - unmatchedStartIndex);
-        int finalLength = tempSubstring.TrimEnd().Length;
-
-        if (finalLength > 0)
+        int length = currentIndex - unmatchedStartIndex;
+        if (length > 0)
         {
-            int finalEndIndex = unmatchedStartIndex + finalLength;
-
-            if (!_unmatchedRegexCache.TryGetValue(finalLength, out var regex))
+            if (!_unmatchedRegexCache.TryGetValue(length, out var regex))
             {
-                regex = new Regex($".{{{finalLength}}}", RegexOptions.Singleline | RegexOptions.Compiled);
-                _unmatchedRegexCache[finalLength] = regex;
+                regex = new Regex($".{{{length}}}", RegexOptions.Singleline | RegexOptions.Compiled);
+                _unmatchedRegexCache[length] = regex;
             }
 
             Match unmatchedMatch = regex.Match(sourceText, unmatchedStartIndex);

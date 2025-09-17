@@ -1,6 +1,4 @@
-﻿using System.Collections;
-
-namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 
 public record SpanBranch : NestedSpan
 {

@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexSegments;
-
-namespace MTGPlexer.CommonDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 public record RegexPropInfo
 {
@@ -114,6 +112,7 @@ public record RegexPropInfo
             RegexPropType.Enum, 
             RegexPropType.Bool, 
             RegexPropType.Placeholder, 
+            RegexPropType.Dynamic, 
             RegexPropType.DistilledValue
         ];
 
