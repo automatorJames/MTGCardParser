@@ -16,8 +16,9 @@ public record IndexedPropertyCapture
     public int CapturePosition { get; }
     public DeterministicPalette Palette { get; }
     public bool IgnoreInAnalysis { get; }
+    public string Path { get; set; }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentPath)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;
@@ -29,6 +30,7 @@ public record IndexedPropertyCapture
         CapturePosition = capturePosition;
         Palette = DeterministicPalette.GetFixedRainbowPalette(CapturePosition);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
+        Path = parentPath.Dot(regexPropInfo.Name);
     }
 
 

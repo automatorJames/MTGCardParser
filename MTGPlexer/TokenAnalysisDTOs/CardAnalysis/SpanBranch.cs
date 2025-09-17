@@ -65,16 +65,16 @@ public record SpanBranch : NestedSpan
             }
 
             // 2. Process the actual property capture.
-            if (indexedProp.Value is ManyOf manyToken)
+            if (indexedProp.Value is ManyOf many)
             {
-                var items = manyToken.ItemObjects;
+                var items = many.ItemObjects;
                 var allCaptures = new List<Capture>();
 
                 // Create a unified list of all items and the conjunction to process them in order.
                 allCaptures.AddRange(items.Select(i => i.Capture));
 
-                if (manyToken.Conjunction.HasValue)
-                    allCaptures.Add(manyToken.ConjunctionCapture);
+                if (many.Conjunction.HasValue)
+                    allCaptures.Add(many.ConjunctionCapture);
 
                 // Sort all captures by their starting index to process them in the order they appear.
                 var sortedCaptures = allCaptures.OrderBy(c => c.Index).ToList();
@@ -99,11 +99,11 @@ public record SpanBranch : NestedSpan
                     }
 
                     // Check if the current capture is the conjunction.
-                    if (manyToken.Conjunction.HasValue && currentCapture.Index == manyToken.ConjunctionCapture.Index)
+                    if (many.Conjunction.HasValue && currentCapture.Index == many.ConjunctionCapture.Index)
                     {
-                        var prop = manyToken.GetType().GetProperty(nameof(ManyOf.Conjunction));
+                        var prop = many.GetType().GetProperty(nameof(ManyOf.Conjunction));
                         RegexPropInfo propInfo = new(prop);
-                        IndexedPropertyCapture derivedIndexProp = new(propInfo, manyToken.ConjunctionCapture, manyToken.Conjunction, i);
+                        IndexedPropertyCapture derivedIndexProp = new(propInfo, many.ConjunctionCapture, many.Conjunction, i, indexedProp.Path);
                         var path = Path.Dot(indexedProp.RegexPropInfo.Name).Dot(prop.Name);
                         children.Add(new SpanLeaf(derivedIndexProp, path, NestedDepth, OriginalLineText, CardName));
                     }
@@ -113,11 +113,11 @@ public record SpanBranch : NestedSpan
                         int itemIndex = items.IndexOf(manyItem);
                         var path = Path.Dot(indexedProp.RegexPropInfo.Name) + $"_item{++manyItemCurrentIndex}";
 
-                        if (manyToken.ManyItemType == ManyItemType.TokenUnit && manyItem.ItemAsObject is TokenUnit itemToken)
+                        if (many.ManyItemType == ManyItemType.TokenUnit && manyItem.ItemAsObject is TokenUnit itemToken)
                             children.Add(new SpanBranch(itemToken, CardName, path, NestedDepth, OriginalLineText, itemIndex));
-                        else if (manyToken.ManyItemType == ManyItemType.Enum)
+                        else if (many.ManyItemType == ManyItemType.Enum)
                         {
-                            IndexedPropertyCapture derivedIndexProp = new(indexedProp.RegexPropInfo, manyItem.Capture, manyItem.Capture.Value, i);
+                            IndexedPropertyCapture derivedIndexProp = new(indexedProp.RegexPropInfo, manyItem.Capture, manyItem.Capture.Value, i, indexedProp.Path);
                             children.Add(new SpanLeaf(derivedIndexProp, path, NestedDepth, OriginalLineText, CardName));
                         }
                     }
@@ -184,7 +184,8 @@ public record SpanBranch : NestedSpan
                         regexPropInfo: conjunctionPropInfo,
                         capture: manyToken.ConjunctionCapture,
                         value: manyToken.Conjunction,
-                        capturePosition: 0
+                        capturePosition: 0,
+                        token.Path
                     );
 
                     generatedLeaves.Add(new SpanLeaf(
@@ -199,7 +200,7 @@ public record SpanBranch : NestedSpan
                 for (int i = 0; i < manyToken.ItemObjects.Count; i++)
                 {
                     var item = manyToken.ItemObjects[i];
-                    IndexedPropertyCapture itemIndexPropertyCapture = new(indexedProp.RegexPropInfo, item.Capture, item.ItemAsObject, i + 1);
+                    IndexedPropertyCapture itemIndexPropertyCapture = new(indexedProp.RegexPropInfo, item.Capture, item.ItemAsObject, i + 1, indexedProp.Path);
 
                     generatedLeaves.Add(new SpanLeaf(
                         itemIndexPropertyCapture,

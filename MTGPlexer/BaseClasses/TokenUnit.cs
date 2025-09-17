@@ -20,6 +20,7 @@ public abstract class TokenUnit
     public RegexPropInfo ParentTokenProp { get; set; }
     public Match TopLevelMatch { get; set; }
     public Capture Capture { get; set; }
+    public string Path { get; set; }
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -59,6 +60,7 @@ public abstract class TokenUnit
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
         tokenUnit.TopLevelMatch = match;
         tokenUnit.Capture = childCapture ?? match;
+        tokenUnit.Path = tokenUnitType.Name; // Start as type name (may child later if assigned as child)
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
             if (match.Groups[captureProp.Name].Success)
@@ -71,12 +73,13 @@ public abstract class TokenUnit
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition));
+        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, Path));
 
         if (propVal is TokenUnit childTokenUnit)
         {
             childTokenUnit.ParentTokenProp = regexPropInfo;
             childTokenUnit.ParentToken = this;
+            childTokenUnit.Path = this.Path.Dot(childTokenUnit.Path); // update child name
         }
     }
 

@@ -11,12 +11,8 @@
         _orderedAnchoredTypeRegexes = orderedTypes.ToDictionary(x => x, x => new Regex($"\\G({TokenTypeRegistry.Templates[x].Regex})"));
     }
 
-    public List<TokenUnit> Tokenize(string sourceText, Type constrainToType = null)
+    public List<TokenUnit> Tokenize(string sourceText)
     {
-        Dictionary<Type, Regex> filteredOrderedTypeRegexes =
-            constrainToType == null ? _orderedAnchoredTypeRegexes
-            : _orderedAnchoredTypeRegexes.Where(x => x.Key.IsAssignableTo(constrainToType)).ToDictionary(x => x.Key, x => x.Value);
-
         var tokens = new List<TokenUnit>();
         int currentIndex = 0;
         int unmatchedStartIndex = -1;
@@ -37,7 +33,7 @@
             bool matched = false;
 
             // **Step 1: Prioritize matching a known token.**
-            foreach (var (type, regex) in filteredOrderedTypeRegexes)
+            foreach (var (type, regex) in _orderedAnchoredTypeRegexes)
             {
                 var match = regex.Match(sourceText, currentIndex);
                 if (match.Success && match.Length > 0)

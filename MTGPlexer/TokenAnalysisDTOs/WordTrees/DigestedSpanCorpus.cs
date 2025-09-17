@@ -12,7 +12,7 @@ public record DigestedSpanCorpus
     private List<AnalyzedSpan> RunDigestionAutomaton(List<SpanOccurrence> allOccurrences)
     {
         // =================================================================================
-        // == STEPS 1 & 2: Suffix Automaton construction (Unchanged)                      ==
+        // == STEPS 1 & 2: Suffix Automaton construction                   ==
         // =================================================================================
         var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
         var idToWord = new List<string>();
@@ -152,10 +152,10 @@ public record DigestedSpanCorpus
             var precedingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
             var followingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
 
-            var spanTextWords = spanText.Split(' ');
+            var spanTextWords = spanText.Trim().Split(' ');
             var allOccurrenceIndices = FindAllOccurrences(
                 flattenedWordSequenceIdList,
-                spanTextWords.Select(w =>   wordToId[w]).ToArray());
+                spanTextWords.Select(w =>  wordToId[w]).ToArray());
 
             foreach (int startIndexInFlatList in allOccurrenceIndices)
             {

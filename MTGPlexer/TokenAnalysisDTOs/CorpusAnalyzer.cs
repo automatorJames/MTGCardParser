@@ -56,7 +56,9 @@ public class CorpusAnalyzer
             for (int i = 0; i < card.FormattedLinesLower.Length; i++)
             {
                 var lineText = card.FormattedLinesLower[i];
-                if (string.IsNullOrWhiteSpace(lineText)) continue;
+
+                if (string.IsNullOrWhiteSpace(lineText)) 
+                    continue;
 
                 var lineTokens = TokenTypeRegistry.Tokenize(lineText, originalTextOnly);
 
