@@ -34,7 +34,8 @@ public record SpanBranch : NestedSpan
         TokenType = token.Type;
         ManyIndex = manyIndex;
         DisplayName = token.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
-        CollapseInAnalysis = token is TokenUnitOneOf;
+
+        CollapseInAnalysis = token is TokenUnitOneOf tokenUnitOneOf && tokenUnitOneOf.GetChildTokens().Any(x => x.Type.IsAssignableTo(typeof(TokenUnit)));
 
         if (token.ParentToken is TokenUnitOneOf parentTokenUnitOneOf)
             DisplayName = $"{parentTokenUnitOneOf.Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence)}: {DisplayName}";

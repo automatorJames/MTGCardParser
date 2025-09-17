@@ -49,6 +49,7 @@ public record RegexPropInfo
         RegexPropType regexPropType =
             type.IsEnum ? RegexPropType.Enum :
             type == typeof(PlaceholderCapture) ? RegexPropType.Placeholder :
+            type.IsAssignableTo(typeof(DynamicCapture)) ? RegexPropType.Dynamic :
             type == typeof(bool) ? RegexPropType.Bool :
             typeof(TokenUnitOneOf).IsAssignableFrom(type) ? RegexPropType.TokenUnitOneOf :
             typeof(TokenUnit).IsAssignableFrom(type) ? RegexPropType.TokenUnit :
@@ -77,6 +78,9 @@ public record RegexPropInfo
         if (BaseType == typeof(PlaceholderCapture))
             return "placeholder";
 
+        if (BaseType.IsAssignableTo(typeof(DynamicCapture)))
+            return "dynamic";
+
         if (BaseType.IsAssignableTo(typeof(TokenUnitOneOf)))
             return "one of";
 
@@ -98,6 +102,7 @@ public record RegexPropInfo
             RegexPropType.Enum => new EnumRegexProp(this),
             RegexPropType.Bool => new BoolRegexProp(this),
             RegexPropType.Placeholder => new PlaceholderRegexProp(this),
+            RegexPropType.Dynamic => new DynamicRegexProp(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
     }

@@ -89,6 +89,7 @@ public class RegexTemplate
             return u.IsEnum
                 || u == typeof(bool)
                 || u == typeof(PlaceholderCapture)
+                || u.IsAssignableTo(typeof(DynamicCapture))
                 || typeof(TokenUnit).IsAssignableFrom(u);
         }
 

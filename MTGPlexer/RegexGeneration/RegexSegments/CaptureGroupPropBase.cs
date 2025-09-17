@@ -27,6 +27,7 @@ public enum RegexPropType
 {
     Enum,
     Placeholder,
+    Dynamic,
     Bool,
     DistilledValue,
     TokenUnit,

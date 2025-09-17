@@ -2,7 +2,6 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public class RegexLineCollector
 {
-    Type _topLevelType;
     int _nextUnnamedCaptureGroupId;
     List<RegexTemplateLine> _lines = [];
     Stack<object> _captureGroupStack = [];
@@ -25,7 +24,6 @@ public class RegexLineCollector
     public RegexLineCollector(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {
         _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
-        _topLevelType = topLevelType;
         var topLevelSpaceDiposition = SpaceDisposition.DontAddSpaceBeforeNextItem;
         if (topLevelType.IsDefined(typeof(NoSpacesAttribute)) || neverAddSpacesAtTopLevel)
         {

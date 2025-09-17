@@ -12,6 +12,7 @@ public static partial class TokenTypeRegistry
     static string _tokenizerIgnorePattern = @"\s+";
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
+    public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
@@ -34,6 +35,7 @@ public static partial class TokenTypeRegistry
             SetTypeTemplate(type);
 
         InitializeClassTokenizer();
+        //OriginalTextTokenizer = new(new Dictionary<Type, Regex> { [typeof(DefaultUnmatchedString)] = Templates[typeof(DefaultUnmatchedString)].Regex });
         OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
 
     }
@@ -99,27 +101,16 @@ public static partial class TokenTypeRegistry
         EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
     }
 
-    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly)
+    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly, Type constrainToType = null)
     {
+        // TokenUnit is the default base type, so don't force downstream logic to filter by AssignableToTokeUnit()
+        if (constrainToType == typeof(TokenUnit))
+            constrainToType = null;
+
+        //var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text, constrainToType);
         var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
         return tokens;
     }
-
-    //public static TokenUnit HydrateFromStructuredMatch(StructuredMatchBase tokenMatch)
-    //{
-    //    var type =
-    //        tokenMatch is StructuredTokenRoot root ? root.TokenType
-    //        : tokenMatch is StructuredPropMatch capture ? capture.RegexPropInfo.UnderlyingType
-    //        : throw new Exception($"Cannot hydrate TokenUnit from match of type '{tokenMatch.GetType().Name}'");
-    //
-    //    var tokenUnit = (TokenUnit)Activator.CreateInstance(type);
-    //    tokenUnit.TokenMatch = tokenMatch;
-    //
-    //    foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
-    //        captureProp.SetValueFromMatch(tokenUnit, tokenMatch);
-    //
-    //    return tokenUnit;
-    //}
 
     /// <summary>
     /// Return all TokenUnit derived types except for DefaultUnmatchedString
@@ -199,6 +190,8 @@ public static partial class TokenTypeRegistry
             .ToList()
             .ForEach(AddClassTokenType);
 
+        TypeRegexes = Templates.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.Regex);
+        //ClassTokenizer = new(TypeRegexes);
         ClassTokenizer = new(AppliedOrderTypes);
     }
 
