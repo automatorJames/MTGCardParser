@@ -4,12 +4,12 @@ public record DigestedSpanCorpus
 {
     public List<AnalyzedSpan> Spans { get; }
 
-    public DigestedSpanCorpus(List<SpanOccurrence> allOccurrences)
+    public DigestedSpanCorpus(List<UnmatchedSpanOccurrence> allOccurrences)
     {
         Spans = RunDigestionAutomaton(allOccurrences);
     }
 
-    private List<AnalyzedSpan> RunDigestionAutomaton(List<SpanOccurrence> allOccurrences)
+    private List<AnalyzedSpan> RunDigestionAutomaton(List<UnmatchedSpanOccurrence> allOccurrences)
     {
         // =================================================================================
         // == STEPS 1 & 2: Suffix Automaton construction                   ==
@@ -17,7 +17,7 @@ public record DigestedSpanCorpus
         var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
         var idToWord = new List<string>();
         var flattenedWordSequenceIdList = new List<int>();
-        var indexToOccurrenceMap = new List<SpanOccurrence>();
+        var indexToOccurrenceMap = new List<UnmatchedSpanOccurrence>();
         int nextWordId = 0;
         int nextCorrelationId = -1;
 

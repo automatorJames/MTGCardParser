@@ -6,12 +6,12 @@
 /// </summary>
 public record SubSpanContext
 {
-    public SpanOccurrence OriginalOccurrence { get; }
+    public UnmatchedSpanOccurrence OriginalOccurrence { get; }
     public int WordStartIndex { get; }
     public int WordCount { get; }
     public string Text { get; }
 
-    public SubSpanContext(SpanOccurrence originalOccurrence, int wordStartIndex, int wordCount)
+    public SubSpanContext(UnmatchedSpanOccurrence originalOccurrence, int wordStartIndex, int wordCount)
     {
         OriginalOccurrence = originalOccurrence;
         WordStartIndex = wordStartIndex;

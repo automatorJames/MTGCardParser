@@ -89,24 +89,6 @@ pre.full-original-text {
     word-wrap: break-word;
 }
 
-/* 1) “Nested” spans (any span inside another span): */
-/*    give every nested <span> a left‑margin… */
-pre.nested-underline-container span span {
-    margin-left: 0.5em;
-}
-    /*    …but remove it on the first child of each parent: */
-    pre.nested-underline-container span span:first-child {
-        margin-left: 0;
-    }
-
-
-/* 2) “Sibling” spans (any span immediately following another): */
-/*    give any <span> that comes right after a sibling span a left‑margin */
-pre.nested-underline-container span + span,
-pre.nested-underline-container followingtext + span,
-pre.nested-underline-container span + precedingtext {
-    margin-left: 0.5em;
-}
 /*
   Target a span that immediately follows a sibling span
   which HAS a <br> tag somewhere inside it.

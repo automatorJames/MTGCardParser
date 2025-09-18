@@ -44,11 +44,11 @@
 
         Func<ProcessedCard, bool> containsPredicate = card =>
             card.Card.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-            card.Lines.Any(line => line.SpanRoots.Any(sr => sr.OriginalLineText.Contains(term, StringComparison.OrdinalIgnoreCase)));
+            card.Lines.Any(line => line.TokenCaptureSummaries.Any(tcs => tcs.OriginalFullText.Contains(term, StringComparison.OrdinalIgnoreCase)));
 
         Func<ProcessedCard, bool> startsWithPredicate = card =>
             card.Card.Name.StartsWith(term, StringComparison.OrdinalIgnoreCase) ||
-            card.Lines.Any(line => line.SpanRoots.Any(sr => sr.OriginalLineText.StartsWith(term, StringComparison.OrdinalIgnoreCase)));
+            card.Lines.Any(line => line.TokenCaptureSummaries.Any(tcs => tcs.OriginalFullText.StartsWith(term, StringComparison.OrdinalIgnoreCase)));
 
         return cards
             .Where(containsPredicate)

@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.WordTrees;
 
 /// <summary>
-/// Represents a single, specific occurrence of a  span of text from one line of a card.
+/// Represents a single, specific occurrence of an unmatched span of text from one line of a card.
 /// This record is the "ground truth" and holds the complete context of the line it appeared in.
 /// </summary>
-public record SpanOccurrence
+public record UnmatchedSpanOccurrence
 {
     public CardSpanKey Key { get; }
     public int LineIndex { get; }
@@ -22,20 +22,20 @@ public record SpanOccurrence
     /// <summary>
     /// The full, original unmatched span token.
     /// </summary>
-    public TokenUnit AnchorToken { get; }
+    public DefaultUnmatchedString AnchorSpan { get; }
 
     public string Text { get; }
     public string[] Words { get; }
 
-    public SpanOccurrence(string cardName, int lineIndex, List<TokenUnit> lineTokens, int anchorTokenIndex)
+    public UnmatchedSpanOccurrence(string cardName, int lineIndex, List<TokenUnit> lineTokens, int anchorTokenIndex)
     {
         LineIndex = lineIndex;
         LineTokens = lineTokens.ToArray();
         AnchorTokenIndex = anchorTokenIndex;
-        AnchorToken = LineTokens[AnchorTokenIndex];
-        Text =  AnchorToken.Capture.Value;
+        AnchorSpan = (DefaultUnmatchedString)LineTokens[AnchorTokenIndex];
+        Text =  AnchorSpan.Capture.Value;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        Key = new(cardName, AnchorToken);
+        Key = new(cardName, AnchorSpan);
     }
 
     public override string ToString() => Text;

@@ -1,0 +1,23 @@
+﻿.nested-underline {
+    border-bottom-width: var(--underline-width);
+    border-bottom-style: solid;
+    padding-bottom: 2px; /* Base padding */
+}
+
+.prop-capture-inline {
+    border-top: 2px solid var(--overline-color);
+    margin-top: -2px;
+}
+
+.twig {
+    /* Styles for text that is part of a parent capture but not a child capture */
+    color: #bdbdbd;
+}
+
+.nested-underline.highlight-active {
+    border-bottom-color: var(--highlight-color);
+}
+
+.nested-underline.mute-active {
+    border-bottom-color: var(--lowlight-color);
+}

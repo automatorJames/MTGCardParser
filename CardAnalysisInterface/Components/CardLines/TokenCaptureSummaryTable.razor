@@ -1,0 +1,79 @@
+﻿@if (Summary != null && IsBranch(Summary))
+{
+    <div class="token-summary-branch" data-path=@Summary.Path>
+        <div class="token-summary-header" style=@(Summary.UnderlinePalette?.ToColorStyle(shift: -1))>
+            <span class="token-type-name">@Summary.RootTokenType?.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
+        </div>
+
+        @if (Summary.Children.Any())
+        {
+            <div class="property-table-wrapper">
+                <div class="content-box" style=@(Summary.UnderlinePalette?.ToColorStyle(shift: -1))>
+                    
+                    @{
+                        var leaves = Summary.Children.Where(IsLeaf).ToList();
+                        if (leaves.Any())
+                        {
+                            <table class="property-capture-table">
+                                <thead>
+                                    <tr><th>Property</th><th>Type</th><th>Value</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var leaf in leaves)
+                                    {
+                                        <tr data-path="@leaf.Path">
+                                            <td class="prop-capture-table-cell first-column" style=@(leaf.OverlinePalette?.ToColorStyle())>
+                                                @leaf.Name
+                                            </td>
+                                            <td class="prop-capture-table-cell type-column" style=@(leaf.OverlinePalette?.ToColorStyle())>
+                                                @leaf.TerminalType
+                                            </td>
+                                            <td class="prop-capture-table-cell value-column" style=@(leaf.OverlinePalette?.ToColorStyle())>
+                                                @leaf.TerminalValString
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    }
+
+                    @* Recursively render tables for children that are also branches *@
+                    @foreach (var child in Summary.Children.Where(IsBranch))
+                    {
+                        <TokenCaptureSummaryTable Summary="@child" />
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TokenCaptureSummary Summary { get; set; }
+
+    private bool IsBranch(TokenCaptureSummary summary)
+    {
+        return summary.ElementType switch
+        {
+            TokenAnalysisElementType.TokenUnitRoot => true,
+            TokenAnalysisElementType.UnmatchedTokenUnitRoot => true,
+            TokenAnalysisElementType.TokenUnitBranch => true,
+            TokenAnalysisElementType.TokenUnitOneOfBranch => true,
+            TokenAnalysisElementType.TokenUnitDistilledBranch => true,
+            TokenAnalysisElementType.OneOfItemBranch => true,
+            TokenAnalysisElementType.ManyOfBranch => true,
+            TokenAnalysisElementType.ManyOfItemBranch => true,
+            TokenAnalysisElementType.DynamicCaptureBranch => true,
+            TokenAnalysisElementType.DynamicCaptureItemBranch => true,
+            TokenAnalysisElementType.PlaceholderPrecursorBranch => true,
+            _ => false
+        };
+    }
+
+    private bool IsLeaf(TokenCaptureSummary summary)
+    {
+        return !IsBranch(summary);
+    }
+}

@@ -2,7 +2,7 @@
 
 /// <summary>
 /// Represents a single, fully processed line from a card, containing both the
-/// hierarchical analysis of matched tokens (SpanRoots) and a list of any
+/// hierarchical analysis of matched tokens (TokenCaptureSummaries) and a list of any
 /// unmatched occurrences.
 /// </summary>
 public record ProcessedLine
@@ -15,11 +15,10 @@ public record ProcessedLine
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.
     /// </summary>
-    public List<SpanRoot> SpanRoots { get; init; }
+    public List<TokenCaptureSummary> TokenCaptureSummaries { get; init; }
 
     /// <summary>
     /// A list of all full spans found on this specific line.
     /// </summary>
-    public List<SpanOccurrence> SpanOccurrences { get; init; }
+    public List<UnmatchedSpanOccurrence> SpanOccurrences { get; init; }
 }
-
