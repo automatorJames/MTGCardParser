@@ -5,7 +5,7 @@ public record RegexTemplateLine
     string EvaluableRegex, 
     string Path, 
     int Indentation,
-    DeterministicPalette Palette = null,
+    Palette Palette = null,
     string CommentOne = null,
     string CommentTwo = null,
     RegexPropInfo Group = null

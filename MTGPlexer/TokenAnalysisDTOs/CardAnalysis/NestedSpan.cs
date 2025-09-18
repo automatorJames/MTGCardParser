@@ -4,7 +4,7 @@ public abstract record NestedSpan
 (
     string Path,
     int NestedDepth,
-    DeterministicPalette Palette,
+    Palette Palette,
     bool IgnoreInAnalysis
 );
 

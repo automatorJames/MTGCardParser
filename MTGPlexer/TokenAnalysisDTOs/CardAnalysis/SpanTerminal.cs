@@ -5,7 +5,7 @@ public abstract record SpanTerminal
     string Path,
     int NestedDepth,
     string Text,
-    DeterministicPalette Palette,
+    Palette Palette,
     bool IgnoreInAnalysis
 ) 
 : NestedSpan(Path, NestedDepth, Palette, IgnoreInAnalysis);

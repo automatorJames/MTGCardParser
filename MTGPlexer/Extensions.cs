@@ -117,6 +117,18 @@ public static class Extensions
     public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();
     public static Type UnderlyingType(this Type type) => Nullable.GetUnderlyingType(type) ?? type;
 
+    public static RegexPropType GetRegexPropType(this Type type) =>
+        type switch
+        {
+            { IsEnum: true } => RegexPropType.Enum,
+            { } t when t == typeof(PlaceholderCapture) => RegexPropType.Placeholder,
+            { } t when t.IsAssignableTo(typeof(DynamicCapture)) => RegexPropType.Dynamic,
+            { } t when t == typeof(bool) => RegexPropType.Bool,
+            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => RegexPropType.TokenUnitOneOf,
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => RegexPropType.TokenUnit,
+            _ => throw new Exception($"{type.Name} is not a valid {nameof(RegexPropType)} type")
+        };
+
     public static void CombineDictionaryCounts<T>(this Dictionary<T, int> dictToAddTo, Dictionary<T, int> dictToAddFrom)
     {
         foreach (var key in dictToAddFrom.Keys)

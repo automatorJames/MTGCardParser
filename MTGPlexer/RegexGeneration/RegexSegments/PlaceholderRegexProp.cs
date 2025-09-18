@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have

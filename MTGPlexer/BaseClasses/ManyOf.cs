@@ -11,10 +11,11 @@ public class ManyOf<T> : ManyOf
         ItemObjects = Items.Cast<ManyItemCapture>().ToList();
         Conjunction = conjunction;
         ConjunctionCapture = conjunctionCapture;
+        ItemType = typeof(T);
 
-        ManyItemType = 
-            typeof(T).IsAssignableTo(typeof(TokenUnit)) ? ManyItemType.TokenUnit
-            : typeof(T).IsEnum ? ManyItemType.Enum
+        ManyItemVariant = 
+            typeof(T).IsAssignableTo(typeof(TokenUnit)) ? ManyItemVariant.TokenUnit
+            : typeof(T).IsEnum ? ManyItemVariant.Enum
             : throw new Exception($"{nameof(ManyOf)} item type must either be TokenUnit or Enum");
     }
 }
@@ -25,15 +26,17 @@ public enum Conjunction
     Or
 }
 
+[Color("#696969")]
 public class ManyOf 
 {
     public List<ManyItemCapture> ItemObjects { get; set; }
-    public ManyItemType ManyItemType { get; set; }
+    public ManyItemVariant ManyItemVariant { get; set; }
+    public Type ItemType { get; set; }
     public Conjunction? Conjunction { get; set; }
     public Capture ConjunctionCapture { get; set; }
 }
 
-public enum ManyItemType
+public enum ManyItemVariant
 {
     TokenUnit,
     Enum

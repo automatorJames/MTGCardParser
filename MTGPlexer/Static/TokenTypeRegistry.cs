@@ -19,13 +19,13 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, ScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
     public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
-    public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> DistilledProperties { get; set; } = [];
-    public static Dictionary<Type, DeterministicPalette> Palettes { get; set; } = [];
+    public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
+    public static Dictionary<Type, Palette> Palettes { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
-    public static Tokenizer ClassTokenizer { get; set; }
     public static Tokenizer OriginalTextTokenizer { get; set; }
+    public static CardTokenizer CardTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
@@ -34,10 +34,8 @@ public static partial class TokenTypeRegistry
         foreach (var type in GetAllTokenTypes())
             SetTypeTemplate(type);
 
-        InitializeClassTokenizer();
-        //OriginalTextTokenizer = new(new Dictionary<Type, Regex> { [typeof(DefaultUnmatchedString)] = Templates[typeof(DefaultUnmatchedString)].Regex });
+        InitializeCardTokenizer();
         OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
-
     }
 
     public static RegexTemplate GetTypeTemplate(Type type)
@@ -50,7 +48,7 @@ public static partial class TokenTypeRegistry
 
     static void SetTypeTemplate(Type type)
     {
-        Palettes[type] = new(type);
+        Palettes[type] = new DeterministicPalette(type).Palette;
         NameToType[type.Name] = type;
         var instance = (TokenUnit)Activator.CreateInstance(type);
 
@@ -80,14 +78,6 @@ public static partial class TokenTypeRegistry
             .OfType<TokenRegexManyProp>()
             .ToList()
             .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, instance.Template.Collector.ExtractGroupRegex(x.RegexPropInfo)));
-
-        if (instance is TokenUnitDistilled tokenUnitDistilled)
-        {
-            DistilledProperties[type] = new();
-
-            foreach (var item in tokenUnitDistilled.GetDistilledPropAssociations())
-                DistilledProperties[type][item.Key] = item.Value;
-        }
     }
 
     static void RegisterEnum(EnumRegexProp newEnumType)
@@ -96,19 +86,14 @@ public static partial class TokenTypeRegistry
         EnumMemberRegexes[enumType] = newEnumType.EnumMemberRegexes;
         EnumRegexStrings[enumType] = newEnumType.RegexString;
         ReferencedEnumTypes.Add(enumType);
-        Palettes[enumType] = new(enumType, baseSaturation: .4, baseLightness: .4);
+        Palettes[enumType] = new DeterministicPalette(enumType, baseSaturation: .4, baseLightness: .4).Palette;
         NameToType[enumType.Name] = enumType;
         EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
     }
 
-    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly, Type constrainToType = null)
+    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly)
     {
-        // TokenUnit is the default base type, so don't force downstream logic to filter by AssignableToTokeUnit()
-        if (constrainToType == typeof(TokenUnit))
-            constrainToType = null;
-
-        //var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text, constrainToType);
-        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
+        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : CardTokenizer.Tokenize(text);
         return tokens;
     }
 
@@ -143,7 +128,7 @@ public static partial class TokenTypeRegistry
         }
     }
 
-    static void InitializeClassTokenizer()
+    static void InitializeCardTokenizer()
     {
         // Reset applied orders, since the order may change during runtime
         AppliedOrderTypes = [];
@@ -191,8 +176,7 @@ public static partial class TokenTypeRegistry
             .ForEach(AddClassTokenType);
 
         TypeRegexes = Templates.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.Regex);
-        //ClassTokenizer = new(TypeRegexes);
-        ClassTokenizer = new(AppliedOrderTypes);
+        CardTokenizer = new(AppliedOrderTypes);
     }
 
     static void AddClassTokenType(Type tokenUnitType)
@@ -299,7 +283,7 @@ public static partial class TokenTypeRegistry
         var type = tb.CreateType()!;
         SetTypeTemplate(type);
         _dynamicAssemblyTypes.Add(type);
-        InitializeClassTokenizer();
+        InitializeCardTokenizer();
 
         return type;
     }

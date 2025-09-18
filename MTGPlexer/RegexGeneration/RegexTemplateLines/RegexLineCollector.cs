@@ -5,7 +5,7 @@ public class RegexLineCollector
     int _nextUnnamedCaptureGroupId;
     List<RegexTemplateLine> _lines = [];
     Stack<object> _captureGroupStack = [];
-    Dictionary<RegexPropInfo, DeterministicPalette> _terminalGroupPalettes = [];
+    Dictionary<RegexPropInfo, Palette> _terminalGroupPalettes = [];
     int _indentation;
     BoundaryOption _boundaryOption;
 
@@ -16,7 +16,7 @@ public class RegexLineCollector
         .Select(x => x.Name));
 
     RegexPropInfo _currentNamedGroup => GetCurrentNamedGroupOrNull(ignoreUnnamedGroups: true);
-    DeterministicPalette _currentPalette => GetCurrentPaletteOrNull();
+    Palette _currentPalette => GetCurrentPaletteOrNull();
 
     // The key "-1" represents the top level (i.e. the class, not within a capture group)
     Dictionary<object, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
@@ -48,7 +48,7 @@ public class RegexLineCollector
             if (captureGroup.IsTerminal)
                 _terminalGroupPalettes.TryAdd(captureGroup, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
 
-            _terminalGroupPalettes.TryGetValue(captureGroup, out DeterministicPalette palette);
+            _terminalGroupPalettes.TryGetValue(captureGroup, out var palette);
             var name = nameOverride ?? captureGroup.Name;
             _lines.Add(new NamedGroupOpen(name, _currentNameFlatPath, _indentation, captureGroup.FriendlyTypeName, palette, _currentNamedGroup));
         }
@@ -113,14 +113,14 @@ public class RegexLineCollector
             _spaceIsRequiredBeforeNextElementAtLevel[currentScopeKey] = SpaceDisposition.AddSpaceBeforeNextItem;
     }
 
-    DeterministicPalette GetCurrentPaletteOrNull()
+    Palette GetCurrentPaletteOrNull()
     {
         var namedGroupOrNull = GetCurrentNamedGroupOrNull();
 
         if (namedGroupOrNull == null)
             return null;
 
-        _terminalGroupPalettes.TryGetValue(namedGroupOrNull, out DeterministicPalette palette);
+        _terminalGroupPalettes.TryGetValue(namedGroupOrNull, out var palette);
 
         return palette;
     }

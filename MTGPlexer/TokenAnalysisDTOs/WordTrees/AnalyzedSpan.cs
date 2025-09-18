@@ -22,7 +22,7 @@ public record AnalyzedSpan
 
     /// <summary>Maps a card name to its assigned color palette.</summary>
     [JsonPropertyName("cardPalettes")]
-    public Dictionary<string, DeterministicPalette> CardPalettes { get; init; }
+    public Dictionary<string, Palette> CardPalettes { get; init; }
 
     /// <summary>An array of all card names that contain this span, ordered for the UI.</summary>
     [JsonPropertyName("containingCards")]
@@ -48,11 +48,11 @@ public record AnalyzedSpan
     /// frontend to render the list of token types found in the tree.
     /// </summary>
     [JsonIgnore]
-    public List<DeterministicPalette> DistinctSeedPalettes
+    public List<Palette> DistinctSeedPalettes
     {
         get
         {
-            var palettes = new Dictionary<string, DeterministicPalette>();
+            var palettes = new Dictionary<string, Palette>();
 
             void Traverse(IEnumerable<AdjacencyNode> nodes)
             {
@@ -106,7 +106,7 @@ public record AnalyzedSpan
         ContainingCards = OccurrencesPerCard.Keys.ToArray();
         var positionalPalette = DeterministicPalette.GetPositionalPalette(ContainingCards.Length);
 
-        CardPalettes = new Dictionary<string, DeterministicPalette>();
+        CardPalettes = new Dictionary<string, Palette>();
         for (int i = 0; i < ContainingCards.Length; i++)
             CardPalettes[ContainingCards[i]] = positionalPalette[i];
 

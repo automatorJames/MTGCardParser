@@ -113,9 +113,9 @@ public record SpanBranch : NestedSpan
                         int itemIndex = items.IndexOf(manyItem);
                         var path = Path.Dot(indexedProp.RegexPropInfo.Name) + $"_item{++manyItemCurrentIndex}";
 
-                        if (many.ManyItemType == ManyItemType.TokenUnit && manyItem.ItemAsObject is TokenUnit itemToken)
+                        if (many.ManyItemVariant == ManyItemVariant.TokenUnit && manyItem.ItemObject is TokenUnit itemToken)
                             children.Add(new SpanBranch(itemToken, CardName, path, NestedDepth, OriginalLineText, itemIndex));
-                        else if (many.ManyItemType == ManyItemType.Enum)
+                        else if (many.ManyItemVariant == ManyItemVariant.Enum)
                         {
                             IndexedPropertyCapture derivedIndexProp = new(indexedProp.RegexPropInfo, manyItem.Capture, manyItem.Capture.Value, i, indexedProp.Path);
                             children.Add(new SpanLeaf(derivedIndexProp, path, NestedDepth, OriginalLineText, CardName));
@@ -200,7 +200,7 @@ public record SpanBranch : NestedSpan
                 for (int i = 0; i < manyToken.ItemObjects.Count; i++)
                 {
                     var item = manyToken.ItemObjects[i];
-                    IndexedPropertyCapture itemIndexPropertyCapture = new(indexedProp.RegexPropInfo, item.Capture, item.ItemAsObject, i + 1, indexedProp.Path);
+                    IndexedPropertyCapture itemIndexPropertyCapture = new(indexedProp.RegexPropInfo, item.Capture, item.ItemObject, i + 1, indexedProp.Path);
 
                     generatedLeaves.Add(new SpanLeaf(
                         itemIndexPropertyCapture,
@@ -231,7 +231,7 @@ public record SpanBranch : NestedSpan
             foreach (var leaf in generatedLeaves)
             {
                 // Check if this leaf's property is a placeholder that needs to be replaced.
-                if (tokenUnitDistilled.DistilledValues.TryGetValue(leaf.PropertyCapture.RegexPropInfo, out var distilledPropVals))
+                if (tokenUnitDistilled.DistilledVals.TryGetValue(leaf.PropertyCapture, out var distilledPropVals))
                 {
                     // It is a placeholder. Replace it with its distilled children.
                     foreach (var distilledPropVal in distilledPropVals)

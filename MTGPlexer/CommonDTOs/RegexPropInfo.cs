@@ -44,15 +44,12 @@ public record RegexPropInfo
 
         type = Nullable.GetUnderlyingType(type) ?? type;
 
-        RegexPropType regexPropType =
-            type.IsEnum ? RegexPropType.Enum :
-            type == typeof(PlaceholderCapture) ? RegexPropType.Placeholder :
-            type.IsAssignableTo(typeof(DynamicCapture)) ? RegexPropType.Dynamic :
-            type == typeof(bool) ? RegexPropType.Bool :
-            typeof(TokenUnitOneOf).IsAssignableFrom(type) ? RegexPropType.TokenUnitOneOf :
-            typeof(TokenUnit).IsAssignableFrom(type) ? RegexPropType.TokenUnit :
-            prop.GetCustomAttribute<DistilledValueAttribute>() != null ? RegexPropType.DistilledValue :
-            throw new Exception($"{prop.PropertyType.Name} is not a valid {nameof(RegexPropType)} type");
+        RegexPropType regexPropType;
+
+        if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
+            regexPropType = RegexPropType.DistilledValue;
+        else
+            regexPropType = type.GetRegexPropType();
 
         return (regexPropType, isArray, type);
     }

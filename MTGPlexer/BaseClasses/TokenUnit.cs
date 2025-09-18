@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.BaseClasses;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.BaseClasses;
 
 public abstract class TokenUnit
 {
@@ -47,6 +49,18 @@ public abstract class TokenUnit
             Template = TokenTypeRegistry.Templates[Type];
         else
             Template = new(Type, templateSnippets);
+
+        OnInitialized();
+    }
+
+    protected virtual void OnInitialized()
+    {
+        // Base implementation requires no initialization
+    }
+
+    protected virtual void OnAfterHydrated()
+    {
+        // Base implementation requires no actions post-hydration
     }
 
     public List<TokenUnit> GetChildTokens() => IndexedPropertyCaptures
@@ -60,12 +74,14 @@ public abstract class TokenUnit
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
         tokenUnit.TopLevelMatch = match;
         tokenUnit.Capture = childCapture ?? match;
-        tokenUnit.Path = tokenUnitType.Name; // Start as type name (may child later if assigned as child)
+        tokenUnit.Path = $"{match.Index}-{tokenUnitType.Name}"; // Start as root index + type name (may child later if assigned as child)
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
             if (match.Groups[captureProp.Name].Success)
                 captureProp.SetValueFromMatch(tokenUnit, match);
-    
+
+        tokenUnit.OnAfterHydrated();
+
         return tokenUnit;
     }
 
@@ -79,7 +95,7 @@ public abstract class TokenUnit
         {
             childTokenUnit.ParentTokenProp = regexPropInfo;
             childTokenUnit.ParentToken = this;
-            childTokenUnit.Path = this.Path.Dot(childTokenUnit.Path); // update child name
+            childTokenUnit.Path = this.Path.Dot(regexPropInfo.Name); // update child name
         }
     }
 
@@ -103,6 +119,14 @@ public abstract class TokenUnit
     public virtual bool ValidateHydratedToken()
     {
         return true;
+    }
+
+    public void PrependCardPathAllLevels(string cardName, int clauseIndex)
+    {
+        var prependValue = $"{cardName}-{clauseIndex}";
+        GetChildTokens().ForEach(x => x.PrependCardPathAllLevels(cardName, clauseIndex));
+        Path = $"{prependValue}-{Path}";
+        IndexedPropertyCaptures.ForEach(x => x.Path = $"{prependValue}-{x.Path}");
     }
 
 

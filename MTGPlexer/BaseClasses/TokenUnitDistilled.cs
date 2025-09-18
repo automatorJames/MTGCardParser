@@ -2,42 +2,87 @@
 
 public abstract class TokenUnitDistilled : TokenUnit
 {
-    public Dictionary<RegexPropInfo, Dictionary<RegexPropInfo, object>> DistilledValues { get; } = [];
+    /// <summary>
+    /// Dictionary to aid in capture analysis. Allows external callers to quickly associate each
+    /// PlaceholderCapture property with its distilled properties.
+    /// </summary>
+    public Dictionary<RegexPropInfo, List<RegexPropInfo>> PropDistillationMap{ get; private set; } = [];
+
+    /// <summary>
+    /// Dictionary to aid in capture analysis. Similar to the PropDistillationMap dictionary, except 
+    /// holds concrete distilled values for each PlaceholderCapture on this instance.
+    /// </summary>
+    public Dictionary<IndexedPropertyCapture, Dictionary<RegexPropInfo, object>> DistilledVals{ get; private set; } = [];
+
     protected TokenUnitDistilled(params string[] templateSnippets) : base(templateSnippets) { }
 
-    public abstract void SetComplexValuesFromMatch();
+    public abstract void DistillValuesFromPlaceholders();
+
+    protected override void OnInitialized()
+    {
+        RegisterDistilledProps();
+    }
+
+    protected override void OnAfterHydrated()
+    {
+        DistillValuesFromPlaceholders();
+        RegisterDistilledPropVals();
+    }
 
     /// <summary>
     /// For each distilled value property associated with each placeholder property for this type,
     /// set the value on this object to the DistilledValues dictionary to ease external lookup.
+    /// If this type has already been constructed, the dictionary is globally cached for performance.
     /// </summary>
-    protected virtual void RegisterDistilledPropVals()
+    void RegisterDistilledProps()
     {
-        foreach (var placeholderPropItem in TokenTypeRegistry.DistilledProperties[Type])
-            foreach (var distilledProp in placeholderPropItem.Value)
-            {
-                var val = distilledProp.Prop.GetValue(this);
+        if (TokenTypeRegistry.PropDistillationMaps.TryGetValue(Type, out var cachedMap))
+        {
+            PropDistillationMap = cachedMap;
+            return;
+        }
 
-                if (val is null)
-                    continue;
-
-                if (!DistilledValues.ContainsKey(placeholderPropItem.Key))
-                    DistilledValues[placeholderPropItem.Key] = [];
-
-                DistilledValues[placeholderPropItem.Key][distilledProp] = val;
-            }
+        PropDistillationMap = GetDistilledPropAssociations();
+        TokenTypeRegistry.PropDistillationMaps[Type] = PropDistillationMap;
     }
 
-    public List<PropertyInfo> GetPlaceholderCaptureProps() =>
+    /// <summary>
+    /// Populates the DistilledVals dictionary so callers can easily map PlaceholderProp -> DistilledProps -> non-null values.
+    /// Only really useful for analytics. Not strictly necessary for using the TokenUnitDistilled instance in a game engine.
+    /// </summary>
+    public void RegisterDistilledPropVals()
+    {
+        foreach (var (placeholderProp, distilledPropList) in PropDistillationMap)
+        {
+            var associatedIndexedPropCapture = IndexedPropertyCaptures.FirstOrDefault(x => x.RegexPropInfo == placeholderProp);
+
+            // If this Placeholder prop has no capture, there's no need to register it (expected to be uncommon, but not impossible)
+            if (associatedIndexedPropCapture == null)
+                continue;
+
+            foreach (var distilledProp in distilledPropList)
+            {
+                var distilledVal = distilledProp.Prop.GetValue(this);
+
+                if (distilledVal is null)
+                    continue;
+
+                DistilledVals.TryAdd(associatedIndexedPropCapture, []);
+                DistilledVals[associatedIndexedPropCapture][distilledProp] = distilledVal;
+            }
+        }
+    }
+
+    List<PropertyInfo> GetPlaceholderCaptureProps() =>
         Type.GetProperties().Where(x => x.PropertyType == typeof(PlaceholderCapture)).ToList();
 
-    public List<RegexPropInfo> GetDistilledProps() =>
+    List<RegexPropInfo> GetDistilledProps() =>
         Type.GetProperties()    
         .Where(x => x.IsDefined(typeof(DistilledValueAttribute)))
         .Select(x => new RegexPropInfo(x))
         .ToList();
 
-    public Dictionary<RegexPropInfo, List<RegexPropInfo>> GetDistilledPropAssociations()
+    Dictionary<RegexPropInfo, List<RegexPropInfo>> GetDistilledPropAssociations()
     {
         Dictionary<RegexPropInfo, List<RegexPropInfo>> dict = [];
         var distilledProps = GetDistilledProps();

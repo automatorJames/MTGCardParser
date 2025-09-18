@@ -5,7 +5,7 @@ public record AlternateValue
     string Value, 
     string Path, 
     int Indentation, 
-    DeterministicPalette Palette,
+    Palette Palette,
     RegexPropInfo Group,
     bool IsFirst, 
     bool IsOnly

@@ -35,7 +35,7 @@ public class CardDataGetter
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
         //result = result.Where(x => x.Name == "Animate Dead");
-        result = result.Where(x => x.Name == "Vesuvan Doppelganger");
+        //result = result.Where(x => x.Name == "Vesuvan Doppelganger");
         //result = new List<Card> { new Card { Name = "baaz", Text = "ABC, DEF, and GHI" } };
         //result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "abc Some fecking intelligible text" } };
         //result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "target player draws three cards or something" } };

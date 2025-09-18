@@ -21,7 +21,7 @@ public class DynamicRegexProp : ScalarCapturePropBase
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
         var capture = match.Groups[Name];
-        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeSingleNonDefault(capture, match);
+        var dynamicTokenValue = TokenTypeRegistry.CardTokenizer.TokenizeSingleNonDefault(capture, match);
 
         if (dynamicTokenValue == null)
             return false;

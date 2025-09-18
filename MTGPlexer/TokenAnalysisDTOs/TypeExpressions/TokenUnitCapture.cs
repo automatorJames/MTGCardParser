@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexSegments;
-
-namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 public record TokenUnitCapture
 {
@@ -11,7 +9,7 @@ public record TokenUnitCapture
     public string RegexString { get; }
     public string MinifiedRegexString { get; }
     public List<RegexPropValueSet> RegexPropValueSets { get; } = [];
-    public DeterministicPalette Palette { get; }
+    public Palette Palette { get; }
 
     public TokenUnitCapture(Type type, int occurrenceCount, Dictionary<TerminalRegexPropPath, Dictionary<string, ValueCaptureVariantCollector>> collectors = null)
     {

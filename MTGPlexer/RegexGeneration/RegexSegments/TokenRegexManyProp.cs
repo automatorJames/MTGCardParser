@@ -10,7 +10,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public class TokenRegexManyProp : CaptureGroupPropBase
 {
-    ManyItemType _manyItemType;
+    ManyItemVariant _manyItemType;
     Type _baseType;
     string _itemName;
     List<RegexSegmentBase> _singleIterationSegments;
@@ -28,13 +28,13 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
         if (_baseType.IsAssignableTo(typeof(TokenUnit)))
         {
-            _manyItemType = ManyItemType.TokenUnit;
+            _manyItemType = ManyItemVariant.TokenUnit;
             var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
             _singleIterationSegments = template.RegexSegments;
         }
         else if (_baseType.IsEnum)
         {
-            _manyItemType = ManyItemType.Enum;
+            _manyItemType = ManyItemVariant.Enum;
             EnumRegexProp proxyEnumRegexProp = new(captureProp, nameOverride: _itemName);
             _singleIterationSegments = [proxyEnumRegexProp];
         }
@@ -64,13 +64,6 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        //var manyOfMatch = TokenTypeRegistry.ManyOfRegexes[_baseType].Match(match.Groups[Name].Value);
-        //
-        //var itemCaptures = manyOfMatch.Groups[_itemName]
-        //        .Captures
-        //        .ToList();
-
-
         var itemCaptures = match.Groups[_itemName]
                 .Captures
                 .ToList();
@@ -80,15 +73,16 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
         var hydratedItems = (IList)Activator.CreateInstance(listType);
 
-        foreach (var itemCapture in itemCaptures)
+        for (int i = 0; i < itemCaptures.Count; i++)
         {
+            Capture itemCapture = itemCaptures[i];
             object childItem = null;
 
-            if (_manyItemType == ManyItemType.TokenUnit)
+            if (_manyItemType == ManyItemVariant.TokenUnit)
             {
                 childItem = TokenUnit.HydrateFromMatch(_baseType, match, itemCapture);
             }
-            else if (_manyItemType == ManyItemType.Enum)
+            else if (_manyItemType == ManyItemVariant.Enum)
             {
                 foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[_baseType])
                 {
@@ -106,7 +100,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
             }
 
             // Create an instance of ManyItemCapture<T> and add it to the list
-            var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture);
+            var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, i, RegexPropInfo);
             hydratedItems.Add(hydratedItem);
         }
 

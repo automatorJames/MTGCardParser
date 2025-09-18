@@ -8,6 +8,7 @@
 /// SetPropertiesFromMatch(), and need a place to store captured text during instantiation to be 
 /// processed later.
 /// </summary>
+[Color("#696969")]
 public record PlaceholderCapture
 (
     string Text

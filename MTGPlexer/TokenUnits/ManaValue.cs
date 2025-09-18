@@ -8,7 +8,7 @@ public class ManaValue : TokenUnitDistilled
     [RegexPattern(@"(\{([0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)\})+")]
     public PlaceholderCapture ManaSymbols { get; set; }
 
-    public override void SetComplexValuesFromMatch()
+    public override void DistillValuesFromPlaceholders()
     {
         static int? Increment(int? v, int by = 1) => (v ?? 0) + by;
 

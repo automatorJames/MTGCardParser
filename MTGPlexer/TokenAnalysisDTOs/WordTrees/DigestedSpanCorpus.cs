@@ -243,7 +243,7 @@ public record DigestedSpanCorpus
             var sourceOccurrences = group.Select(g => g.Key).Distinct().ToList();
 
             // Collect the collapsed linear segment
-            var segmentsToCollapse = new List<(string Text, DeterministicPalette Palette)>
+            var segmentsToCollapse = new List<(string Text, Palette Palette)>
             {
                 (initialToken.Text, initialToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialToken.TokenType))
             };
@@ -275,7 +275,7 @@ public record DigestedSpanCorpus
             // Build the final combined text and palette map.
             // For PRECEDING trees we reverse the collapsed segment order so the phrase reads farthest→nearest.
             var finalTextBuilder = new StringBuilder();
-            var palettes = new Dictionary<int, DeterministicPalette>();
+            var palettes = new Dictionary<int, Palette>();
 
             var segmentIter = reverseCollapsedText
                 ? segmentsToCollapse.AsEnumerable().Reverse()

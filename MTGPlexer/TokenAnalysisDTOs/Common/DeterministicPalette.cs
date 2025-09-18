@@ -6,14 +6,12 @@ namespace MTGPlexer.TokenAnalysisDTOs.Common;
 public record DeterministicPalette
 {
     // --- Static Cache ---
-    private static readonly Dictionary<int, Dictionary<int, DeterministicPalette>> _positionalPalettes = [];
-    private static readonly Dictionary<int, DeterministicPalette> _fixedRainbowPalettes = [];
+    private static readonly Dictionary<int, Dictionary<int, Palette>> _positionalPalettes = [];
+    private static readonly Dictionary<int, Palette> _fixedRainbowPalettes = [];
+    private static readonly Dictionary<HexColor, Palette> _staticColorPalettes = [];
 
     // --- Public Color Properties ---
-    public string Hex { get; private set; }
-    public string HexLight { get; private set; }
-    public string HexDark { get; private set; }
-    public string HexSat { get; private set; }
+    public Palette Palette { get; private set; }
 
     /// <summary>
     /// The string used to generate this palette, typically a token Type name.
@@ -65,20 +63,20 @@ public record DeterministicPalette
 
     // --- Static Factory ---
 
-    public static DeterministicPalette GetFixedRainbowPalette(int rainbowIndex)
+    public static Palette GetFixedRainbowPalette(int rainbowIndex)
     {
         var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
 
         if (_fixedRainbowPalettes.TryGetValue((int)rainbowMember, out var palette))
             return palette;
 
-        var newPalette = new DeterministicPalette(rainbowIndex);
+        var newPalette = new DeterministicPalette(rainbowIndex).Palette;
         _fixedRainbowPalettes[(int)rainbowMember] = newPalette;
 
         return newPalette;
     }
 
-    public static Dictionary<int, DeterministicPalette> GetPositionalPalette(int totalItemCount)
+    public static Dictionary<int, Palette> GetPositionalPalette(int totalItemCount)
     {
         if (_positionalPalettes.TryGetValue(totalItemCount, out var positionalPalette))
         {
@@ -92,11 +90,22 @@ public record DeterministicPalette
         for (int i = 0; i < totalItemCount; i++)
         {
             // Use the private constructor to create palettes directly and consistently from hues.
-            positionalPalette[i] = new DeterministicPalette(hues[i]);
+            positionalPalette[i] = new DeterministicPalette(hues[i]).Palette;
         }
 
         _positionalPalettes[totalItemCount] = positionalPalette;
         return positionalPalette;
+    }
+
+    public static Palette GetStaticPalette(HexColor color)
+    {
+        if (_staticColorPalettes.TryGetValue(color, out var palette))
+            return palette;
+
+        var newPalette = new DeterministicPalette(color).Palette;
+        _staticColorPalettes[color] = newPalette;
+
+        return newPalette;
     }
 
 
@@ -111,14 +120,16 @@ public record DeterministicPalette
         double lightness = baseLightness ?? BaseLightness;
 
         // Create the base Hex color with the standard, slightly reduced saturation.
-        Hex = HslToHex(hue, saturation, lightness);
-
-        // Create the saturated version with full saturation for highlighting.
-        HexSat = HslToHex(hue, FullSaturation, lightness);
+        var hex = HslToHex(hue, saturation, lightness);
 
         // Create light and dark variants based on the standard saturation.
-        HexLight = HslToHex(hue, saturation, LightLightness);
-        HexDark = HslToHex(hue, DarkSaturation, DarkLightness);
+        var light = HslToHex(hue, saturation, LightLightness);
+        var dark = HslToHex(hue, DarkSaturation, DarkLightness);
+
+        // Create the saturated version with full saturation for highlighting.
+        var sat = HslToHex(hue, FullSaturation, lightness);
+
+        Palette = new(hex, light, dark, sat);
     }
 
     /// <summary>
@@ -126,18 +137,20 @@ public record DeterministicPalette
     /// </summary>
     private void InitializeFromColor(HexColor color)
     {
-        Hex = color.Value;
+        var hex = color.Value;
 
-        if (IsGrayscale(Hex))
+        if (IsGrayscale(hex))
         {
-            HexLight = AdjustLightness(Hex, LightLightness);
-            HexDark = AdjustLightness(Hex, DarkLightness);
-            HexSat = Hex; // No change for grayscale
+            var light = AdjustLightness(hex, LightLightness);
+            var dark = AdjustLightness(hex, DarkLightness);
+            var sat = hex; // No change for grayscale
+
+            Palette = new(hex, light, dark, sat);
         }
         else
         {
             // Deconstruct the given color to get its core components.
-            var (h, _, l) = HexToHsl(Hex);
+            var (h, _, l) = HexToHsl(hex);
             // Regenerate all variants from this hue to ensure consistency.
             InitializeFromHue(h, baseLightness: l);
         }

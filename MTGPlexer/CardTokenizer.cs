@@ -1,37 +1,37 @@
-﻿/*using MTGPlexer.Data;
-
-public class CardTokenizer : Tokenizer
+﻿public class CardTokenizer : Tokenizer
 {
     public CardTokenizer(List<Type> orderedTypes) : base(orderedTypes) { }
 
-    public ProcessedCard TokenizeCard(Card card)
+    public TokenizedCard TokenizeCard(Card card)
     {
-        var processedLines = new List<ProcessedLine>();
+        var processedClauses = new List<TokenizedClause>();
+
         for (int i = 0; i < card.FormattedLinesLower.Length; i++)
         {
-            var lineText = card.FormattedLinesLower[i];
+            var lineTextLower = card.FormattedLinesLower[i];
+            var lineTextOriginal = card.FormattedLines[i];
 
-            if (string.IsNullOrWhiteSpace(lineText))
+            if (string.IsNullOrWhiteSpace(lineTextLower))
                 continue;
 
-            var lineTokens = TokenTypeRegistry.Tokenize(lineText, originalTextOnly);
-
-            _hydratedTokenUnits.AddRange(lineTokens);
-
-            // This single method call performs both analyses for the line.
-            (var spanRoots, var spanOccurrences) = AnalyzeLine(card, lineTokens, i);
-
-            processedLines.Add(new ProcessedLine
-            {
-                Card = card,
-                LineIndex = i,
-                EvaluatedText = lineText,
-                SourceTokens = lineTokens,
-                SpanRoots = spanRoots,
-                SpanOccurrences = spanOccurrences
-            });
-
-
+            var rootTokens = Tokenize(lineTextLower);
+            rootTokens.ForEach(x => x.PrependCardPathAllLevels(card.Name, i));
+            processedClauses.Add(new(rootTokens, i, lineTextOriginal));
         }
+
+        return new(card, processedClauses);
     }
-}*/
+
+    public List<TokenCaptureSummary> GetCardTokenAnalysis(Card card)
+    {
+        List<TokenCaptureSummary> list = [];
+        TokenizedCard tokenizeCard = TokenizeCard(card);
+
+        foreach (var clause in tokenizeCard.Clauses)
+            foreach (var token in clause.Tokens)
+                list.Add(new(token, clause.OriginalText));
+
+        return list;
+    }
+
+}
