@@ -15,6 +15,7 @@ public class TokenCaptureSummary
     public TokenAnalysisElementType ElementType { get; private set; }
     public Palette UnderlinePalette { get; private set; }
     public Palette OverlinePalette { get; private set; }
+    public Type RootTokenType { get; private set; }
     public TokenCaptureSummary Parent { get; private set; }
     public List<TokenCaptureSummary> Children { get; private set; } = [];
 
@@ -27,6 +28,7 @@ public class TokenCaptureSummary
     {
         var rootSummary = new TokenCaptureSummary(root.Capture, originalFullText)
         {
+            RootTokenType = root.Type,
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
             Path = root.Path,
             UnderlinePalette = TokenTypeRegistry.Palettes[root.Type],
