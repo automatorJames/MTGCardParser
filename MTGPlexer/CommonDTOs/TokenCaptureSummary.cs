@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.CommonDTOs;
+﻿namespace MTGPlexer;
 
 public class TokenCaptureSummary
 {
@@ -18,331 +18,396 @@ public class TokenCaptureSummary
     public TokenCaptureSummary Parent { get; private set; }
     public List<TokenCaptureSummary> Children { get; private set; } = [];
 
-    /// <summary>
-    /// Single entry point public constructor for top-level TokenUnit roots.
-    /// </summary>
-    public TokenCaptureSummary(TokenUnit token, string originalFullText)
-    {
-        SetCaptureInfo(token.Capture, originalFullText);
-        OriginalFullText = originalFullText;
-        Name = token.Type.Name.ToFriendlyCase(TitleDisplayOption.Title);
-        Path = token.Path;
-        UnderlinePalette = TokenTypeRegistry.Palettes[token.Type];
-        token.IndexedPropertyCaptures.ForEach(x => Children.Add(new(this, x)));
+    // --- Public Entry Point ---
 
-        ElementType = token is DefaultUnmatchedString ?
-            TokenAnalysisElementType.UnmatchedTokenUnitRoot
-            : TokenAnalysisElementType.TokenUnitRoot;
+    /// <summary>
+    /// Single public entry point to create a summary tree from a root TokenUnit.
+    /// </summary>
+    public static TokenCaptureSummary CreateFrom(TokenUnit root, string originalFullText)
+    {
+        var rootSummary = new TokenCaptureSummary(root.Capture, originalFullText)
+        {
+            Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
+            Path = root.Path,
+            UnderlinePalette = TokenTypeRegistry.Palettes[root.Type],
+            ElementType = root is DefaultUnmatchedString
+                ? TokenAnalysisElementType.UnmatchedTokenUnitRoot
+                : TokenAnalysisElementType.TokenUnitRoot
+        };
+
+        foreach (var propCapture in root.IndexedPropertyCaptures)
+            rootSummary.Children.Add(CreateSummaryFor(rootSummary, propCapture));
+
+        return rootSummary;
+    }
+
+    // --- Private Constructors ---
+
+    /// <summary>
+    /// Private base constructor for all nodes. Sets common capture-related properties.
+    /// </summary>
+    private TokenCaptureSummary(Capture capture, string originalFullText)
+    {
+        OriginalFullText = originalFullText;
+        if (capture != null)
+        {
+            Start = capture.Index;
+            Length = capture.Length;
+            End = Start + Length;
+            CaptureTextLower = capture.Value;
+            CaptureTextOriginal = originalFullText.Substring(Start, Length);
+        }
     }
 
     /// <summary>
-    /// Private constructor for IndexedPropertyCapture props. These represent either branches that 
-    /// contain child TokenCaptureSummaries (TokenUnit, TokenUnitOneOf, TokenUnitDistilled, ManyOf, 
-    /// and DynamicCapture), or leaves which represent scalar values in their parent TokenCaptureSummary 
-    /// (Enum, Bool, PlaceholderCapture). Note that PlaceholderCapture are technically leaf values,
-    /// since they represent the final level of text digestion "visible" to the TokenUnit hierarchy,
-    /// although they can be digested further ("distilled") into the actual scalar values that we care
-    /// about. 
+    /// Private constructor for nodes that inherit capture info from their parent (e.g., DistilledValue).
     /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, IndexedPropertyCapture propCapture)
+    private TokenCaptureSummary(TokenCaptureSummary parent) : this(null, parent.OriginalFullText)
     {
-        SetCommonChildInfo(parentSummary, propCapture.Capture);
-        Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
-        Path = propCapture.Path;
+        Parent = parent;
+        // Copy capture info from parent
+        Start = parent.Start;
+        Length = parent.Length;
+        End = parent.End;
+        CaptureTextLower = parent.CaptureTextLower;
+        CaptureTextOriginal = parent.CaptureTextOriginal;
+    }
+
+
+    // --- Core Logic: Dispatcher ---
+
+    /// <summary>
+    /// Acts as a router, dispatching to the correct factory method based on the property's value type.
+    /// </summary>
+    private static TokenCaptureSummary CreateSummaryFor(TokenCaptureSummary parent, IndexedPropertyCapture propCapture)
+    {
         var val = propCapture.Value;
 
-        // ----------------------------------------------------------------------------------
-        // Branches (parents to further children)
-        // ----------------------------------------------------------------------------------
+        // Branches (Parents to further children)
+        if (val is TokenUnitOneOf tuOneOf) return CreateForTokenUnitOneOf(parent, propCapture, tuOneOf);
+        if (val is TokenUnitDistilled tuDistilled) return CreateForTokenUnitDistilled(parent, propCapture, tuDistilled);
+        if (val is TokenUnit tokenUnit) return CreateForTokenUnit(parent, propCapture, tokenUnit);
+        if (val is ManyOf manyOf) return CreateForManyOf(parent, propCapture, manyOf);
+        if (val is DynamicCapture dynamicCapture) return CreateForDynamicCapture(parent, propCapture, dynamicCapture);
 
-        if (val is TokenUnitOneOf tokenUnitOneOf)
-        {
-            ElementType = TokenAnalysisElementType.TokenUnitOneOfBranch;
-            Children.Add(new(this, tokenUnitOneOf, propCapture));
-            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnitOneOf.Type];
-        }
+        // Leaves (Scalar values within parent summaries)
+        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum) return CreateForEnum(parent, propCapture);
+        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Bool) return CreateForBool(parent, propCapture);
+        if (val is PlaceholderCapture placeholder) return CreateForPlaceholder(parent, propCapture, placeholder);
 
-        else if (val is TokenUnitDistilled tokenUnitDistilled)
-        {
-            ElementType = TokenAnalysisElementType.TokenUnitDistilledBranch;
-
-            // The TokenUnitDistilled instance may have prop captures not associated with distilled values,
-            // and those should be added as children in the normal manner (recursively calling the current method
-            // w/ an IndexedPropertyCapture).
-            tokenUnitDistilled.IndexedPropertyCaptures
-                .Where(x => !tokenUnitDistilled.DistilledVals.ContainsKey(x))
-                .ToList()
-                .ForEach(x => Children.Add(new(this, x)));
-
-            // Handle placeholder captures with distilled values separately
-            foreach (var (placeholderPropCapture, distilledPropVals) in tokenUnitDistilled.DistilledVals)
-                Children.Add(new(this, placeholderPropCapture, distilledPropVals));
-
-            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnitDistilled.Type];
-        }
-
-        // base type for the types above, so handled last
-        // note: TokenUnitDistilled instances are handled here too b/c they don't need special treatment at this level
-        else if (val is TokenUnit tokenUnit) 
-        {
-            ElementType = TokenAnalysisElementType.TokenUnitBranch;
-            tokenUnit.IndexedPropertyCaptures.ForEach(x => Children.Add(new(this, x)));
-            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-        }
-
-        else if (val is ManyOf manyOf)
-        {
-            ElementType = TokenAnalysisElementType.ManyOfBranch;
-
-            for (int i = 0; i < manyOf.ItemObjects.Count; i++)
-                Children.Add(new(this, manyOf.ItemObjects[i], manyOf, propCapture, i));
-
-            if (manyOf.Conjunction != null)
-                Children.Add(new(this, manyOf));
-
-            // If ManyOf.ItemType is a TokenUnit, its palette will be in the TokenTypeRegistry
-            // If it's an enum we use the default ManyOf color (grey)
-            UnderlinePalette =
-                TokenTypeRegistry.Palettes.TryGetValue(manyOf.ItemType, out var palette) ? palette
-                : DeterministicPalette.GetStaticPalette(typeof(ManyOf).GetCustomAttribute<ColorAttribute>().Color);
-        }
-
-        else if (val is DynamicCapture dynamicCapture)
-        {
-            ElementType = TokenAnalysisElementType.DynamicCaptureBranch;
-            Children.Add(new(this, dynamicCapture, propCapture));
-            UnderlinePalette = DeterministicPalette.GetStaticPalette(typeof(DynamicCapture).GetCustomAttribute<ColorAttribute>().Color);
-        }
-
-        // ----------------------------------------------------------------------------------
-        // Leaves (scalar values within parent summaries)
-        // ----------------------------------------------------------------------------------
-
-        else if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum)
-        {
-            ElementType = TokenAnalysisElementType.EnumLeaf;
-            SetEnumScalar(val);
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
-        }
-
-        else if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Bool)
-        {
-            ElementType = TokenAnalysisElementType.BoolLeaf;
-            SetBoolScalar((bool)val);
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
-        }
-
-        // This is only expected to be reached for placeholders not associated with a TokenUnitDistilled instance
-        else if (val is PlaceholderCapture placeholderCapture)
-        {
-            ElementType = TokenAnalysisElementType.PlaceholderLeaf;
-            SetPlaceholderScalar(placeholderCapture.Text);
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
-        }
-
+        throw new ArgumentException($"Unsupported TokenUnit property type: {val?.GetType().Name}");
     }
 
-    /// <summary>
-    /// Private constructor for TokenUnit child items.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, TokenUnit tokenUnit, IndexedPropertyCapture propertyCapture)
+
+    // --- Private Factory Methods for Each Type ---
+
+    private static TokenCaptureSummary CreateForTokenUnit(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, TokenUnit tokenUnit)
     {
-        ElementType = TokenAnalysisElementType.TokenUnitBranch;
-        SetCommonChildInfo(parentSummary, propertyCapture.Capture);
-        Name = propertyCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Title);
-        Path = propertyCapture.Path;
-        UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-        tokenUnit.IndexedPropertyCaptures.ForEach(x => Children.Add(new(this, x)));
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            ElementType = TokenAnalysisElementType.TokenUnitBranch,
+            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type],
+        };
+
+        foreach (var x in tokenUnit.IndexedPropertyCaptures)
+            summary.Children.Add(CreateSummaryFor(summary, x));
+
+        return summary;
     }
 
-    /// <summary>
-    /// Private constructor for a single PlaceholderCapture property on a TokenUnitDistilled instance. Distilled values are added as children to the placeholder.
-    /// Note that although this placeholder has children, it's treated as a scalar value because it represents the final level of text digestion "visible" 
-    /// to the TokenUnit hierarchy. Its children are "silent", their info only visible to downstream analytic consumers that care about this granularity.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, IndexedPropertyCapture placeholderPropertyCapture, Dictionary<RegexPropInfo, object> nonNullDistilledVals)
+    private static TokenCaptureSummary CreateForTokenUnitOneOf(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, TokenUnitOneOf tokenUnitOneOf)
     {
-        ElementType = TokenAnalysisElementType.PlaceholderPrecursorBranch;
-        SetCommonChildInfo(parentSummary, placeholderPropertyCapture.Capture);
-        SetPlaceholderScalar((string)placeholderPropertyCapture.Value);
-        Name = placeholderPropertyCapture.RegexPropInfo.Name;
-        Path = placeholderPropertyCapture.Path;
-        OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(placeholderPropertyCapture.Ordinal);
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnitOneOf.Type],
+        };
 
-        foreach (var (distilledProp, value) in nonNullDistilledVals)
-            Children.Add(new(this, distilledProp, value));
-    }
-
-    /// <summary>
-    /// Private constructor for a single DistilledValue associated with a PlaceholderCapture parent.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, RegexPropInfo distilledProp, object distilledPropVal)
-    {
-        ElementType = TokenAnalysisElementType.DistilledValueSubLeaf;
-
-        // We must reuse the parent PlaceholderCapture's info to set this child's capture info, b/c the
-        // distilled child prop has no direct (or determinable) relationship with the text capture that spawned it.
-        // This means all sibling children of a given PlaceholderCapture share the same capture info.
-
-        CopyInfoFromParentSummary(parentSummary);
-        SetDistilledScalar(distilledPropVal);
-        Name = distilledProp.Name;
-        Path = parentSummary.Path.Dot(Name);
-    }
-
-    /// <summary>
-    /// Private constructor for OneOf child item.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, TokenUnitOneOf tokenUnitOneOf, IndexedPropertyCapture propCapture)
-    {
-        // Note: ElementType must be set after we determine whether this OneOf item branches or terminates
-
-        SetCommonChildInfo(parentSummary, propCapture.Capture);
         var singleTokenCapture = tokenUnitOneOf.IndexedPropertyCaptures.Single();
         var populatedChild = singleTokenCapture.Value;
-        Name = propCapture.RegexPropInfo.Name;
 
         if (populatedChild is TokenUnitOneOf)
             throw new NotImplementedException($"Nested {nameof(TokenUnitOneOf)} children not supported");
-        else if (populatedChild is TokenUnit tokenUnit)
+
+        if (populatedChild is TokenUnit tokenUnit)
         {
-            ElementType = TokenAnalysisElementType.OneOfItemBranch;
-            Children.Add(new(this, tokenUnit, singleTokenCapture));
+            summary.ElementType = TokenAnalysisElementType.OneOfItemBranch;
+            summary.Children.Add(CreateForTokenUnit(summary, singleTokenCapture, tokenUnit));
         }
-        else if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum)
+        else if (singleTokenCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum)
         {
-            ElementType = TokenAnalysisElementType.OneOfItemLeaf;
-            SetEnumScalar(populatedChild);
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
+            summary.ElementType = TokenAnalysisElementType.OneOfItemLeaf;
+            summary.SetEnumScalar(populatedChild);
+            summary.OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
         }
         else
             throw new NotImplementedException($"{nameof(TokenUnitOneOf)} only supports {nameof(TokenUnit)} and enum children");
+
+        return summary;
     }
 
-    /// <summary>
-    /// Private constructor for a single ManyOf child item.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, ManyItemCapture itemCapture, ManyOf manyOfParent, IndexedPropertyCapture propCapture, int itemNumber)
+    private static TokenCaptureSummary CreateForDynamicCapture(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, DynamicCapture dynamicCapture)
     {
-        // Note: ElementType must be set after we determine whether this ManyOf item branches or terminates
-
-        SetCommonChildInfo(parentSummary, itemCapture.Capture);
-        Name = propCapture.RegexPropInfo.Name + " #" + (itemNumber + 1);
-        Path = propCapture.Path + $"[{itemNumber}]";
-
-        if (manyOfParent.ManyItemVariant == ManyItemVariant.TokenUnit && itemCapture.ItemObject is TokenUnit tokenUnit)
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
         {
-            ElementType = TokenAnalysisElementType.ManyOfItemBranch;
-            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-            IndexedPropertyCapture synthesizedIndexedPropertyCapture = new(itemCapture, Path);
-            Children.Add(new(this, synthesizedIndexedPropertyCapture));
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            UnderlinePalette = DeterministicPalette.GetStaticPalette(typeof(DynamicCapture).GetCustomAttribute<ColorAttribute>().Color),
+        };
+
+        var valueObject = dynamicCapture.ValueObject;
+        if (valueObject is TokenUnitOneOf tokenUnitOneOf)
+        {
+            summary.ElementType = TokenAnalysisElementType.DynamicCaptureItemBranch;
+            summary.Children.Add(CreateForTokenUnitOneOf(summary, propCapture, tokenUnitOneOf));
         }
-        else if (manyOfParent.ManyItemVariant == ManyItemVariant.Enum)
+        else if (valueObject is TokenUnit tokenUnit)
         {
-            ElementType = TokenAnalysisElementType.ManyOfItemLeaf;
-            SetEnumScalar(itemCapture.ItemObject);
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(itemNumber);
-        }
-        else
-            throw new NotImplementedException($"{nameof(ManyItemVariant)} '{manyOfParent.ManyItemVariant}' not supported");
-    }
-
-    /// <summary>
-    /// Private constructor for the Conjunction property in a ManyOf item.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, ManyOf manyOfParent)
-    {
-        ElementType = TokenAnalysisElementType.ConjunctionLeaf;
-        SetCommonChildInfo(parentSummary, manyOfParent.ConjunctionCapture);
-        SetEnumScalar(manyOfParent.Conjunction.Value);
-        Name = nameof(ManyOf.Conjunction);
-        Path = parentSummary.Path.Dot(Name);
-        OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(manyOfParent.ItemObjects.Count + 1);
-    }
-
-    /// <summary>
-    /// Private constructor for DynamicCapture child item.
-    /// </summary>
-    TokenCaptureSummary(TokenCaptureSummary parentSummary, DynamicCapture dynamicCapture, IndexedPropertyCapture propCapture)
-    {
-        // Note: ElementType must be set after we determine whether this Dynamic item branches or terminates
-
-        SetCommonChildInfo(parentSummary, propCapture.Capture);
-
-        if (dynamicCapture.ValueObject is TokenUnitOneOf tokenUnitOneOf)
-        {
-            ElementType = TokenAnalysisElementType.DynamicCaptureItemBranch;
-            Children.Add(new(this, tokenUnitOneOf, propCapture));
-        }
-        else if (dynamicCapture.ValueObject is TokenUnit tokenUnit)
-        {
-            ElementType = TokenAnalysisElementType.DynamicCaptureItemBranch;
-            Children.Add(new(this, tokenUnit, propCapture));
+            summary.ElementType = TokenAnalysisElementType.DynamicCaptureItemBranch;
+            summary.Children.Add(CreateForTokenUnit(summary, propCapture, tokenUnit));
         }
         else if (dynamicCapture.RegexPropType == RegexPropType.Enum)
         {
-            ElementType = TokenAnalysisElementType.DynamicCaptureItemLeaf;
-            SetEnumScalar(propCapture.Value);
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
+            summary.ElementType = TokenAnalysisElementType.DynamicCaptureItemLeaf;
+            summary.SetEnumScalar(propCapture.Value);
+            summary.OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
         }
         else
-            throw new NotImplementedException($"{nameof(TokenUnitOneOf)} only supports {nameof(TokenUnit)}, {nameof(TokenUnit)}, and enum children");
+            throw new NotImplementedException($"{nameof(DynamicCapture)} only supports {nameof(TokenUnitOneOf)}, {nameof(TokenUnit)}, and enum children");
+
+        return summary;
     }
 
-    void SetCommonChildInfo(TokenCaptureSummary parentSummary, Capture capture)
+    private static TokenCaptureSummary CreateForTokenUnitDistilled(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, TokenUnitDistilled distilled)
     {
-        Parent = parentSummary;
-        OriginalFullText = parentSummary.OriginalFullText;
-        SetCaptureInfo(capture, OriginalFullText);
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            ElementType = TokenAnalysisElementType.TokenUnitDistilledBranch,
+            UnderlinePalette = TokenTypeRegistry.Palettes[distilled.Type],
+        };
+
+        var nonDistilledProps = distilled.IndexedPropertyCaptures.Where(x => !distilled.DistilledVals.ContainsKey(x));
+        foreach (var x in nonDistilledProps)
+            summary.Children.Add(CreateSummaryFor(summary, x));
+
+        foreach (var (placeholderCap, distilledVals) in distilled.DistilledVals)
+            summary.Children.Add(CreateForDistilledPlaceholder(summary, placeholderCap, distilledVals));
+
+        return summary;
     }
 
-    void SetCaptureInfo(Capture capture, string originalFullText)
+    private static TokenCaptureSummary CreateForManyOf(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, ManyOf manyOf)
     {
-        Start = capture.Index;
-        Length = capture.Length;
-        End = Start + Length;
-        CaptureTextLower = capture.Value;
-        CaptureTextOriginal = originalFullText.Substring(Start, Length);
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            ElementType = TokenAnalysisElementType.ManyOfBranch,
+            UnderlinePalette = TokenTypeRegistry.Palettes.TryGetValue(manyOf.ItemType, out var p) ? p
+                : DeterministicPalette.GetStaticPalette(typeof(ManyOf).GetCustomAttribute<ColorAttribute>().Color)
+        };
+
+        for (int i = 0; i < manyOf.ItemObjects.Count; i++)
+        {
+            var itemCapture = manyOf.ItemObjects[i];
+            var itemSummary = new TokenCaptureSummary(itemCapture.Capture, parent.OriginalFullText)
+            {
+                Parent = summary,
+                Name = propCapture.RegexPropInfo.Name + " #" + (i + 1),
+                Path = propCapture.Path + $"[{i}]",
+            };
+
+            if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && itemCapture.ItemObject is TokenUnit tokenUnit)
+            {
+                itemSummary.ElementType = TokenAnalysisElementType.ManyOfItemBranch;
+                itemSummary.UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type];
+                var synthesized = new IndexedPropertyCapture(itemCapture, itemSummary.Path);
+                itemSummary.Children.Add(CreateSummaryFor(itemSummary, synthesized));
+            }
+            else if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
+            {
+                itemSummary.ElementType = TokenAnalysisElementType.ManyOfItemLeaf;
+                itemSummary.SetEnumScalar(itemCapture.ItemObject);
+                itemSummary.OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(i);
+            }
+            else
+                throw new NotImplementedException($"{nameof(ManyItemVariant)} '{manyOf.ManyItemVariant}' not supported");
+
+            summary.Children.Add(itemSummary);
+        }
+
+        if (manyOf.Conjunction != null)
+        {
+            var conjunctionSummary = new TokenCaptureSummary(manyOf.ConjunctionCapture, parent.OriginalFullText)
+            {
+                Parent = summary,
+                Name = nameof(ManyOf.Conjunction),
+                Path = summary.Path.Dot(nameof(ManyOf.Conjunction)),
+                ElementType = TokenAnalysisElementType.ConjunctionLeaf,
+                OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(manyOf.ItemObjects.Count + 1),
+            };
+            conjunctionSummary.SetEnumScalar(manyOf.Conjunction.Value);
+            summary.Children.Add(conjunctionSummary);
+        }
+        return summary;
     }
 
-    void CopyInfoFromParentSummary(TokenCaptureSummary parentSummary)
+    private static TokenCaptureSummary CreateForDistilledPlaceholder(TokenCaptureSummary parent, IndexedPropertyCapture placeholder, Dictionary<RegexPropInfo, object> distilledVals)
     {
-        Parent = parentSummary;
-        OriginalFullText = parentSummary.OriginalFullText;
-        Start = parentSummary.Start;
-        Length = parentSummary.Length;
-        End = parentSummary.End;
-        CaptureTextLower = parentSummary.CaptureTextLower;
-        CaptureTextOriginal = parentSummary.CaptureTextOriginal;
+        var summary = new TokenCaptureSummary(placeholder.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = placeholder.RegexPropInfo.Name,
+            Path = placeholder.Path,
+            ElementType = TokenAnalysisElementType.PlaceholderPrecursorBranch,
+            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(placeholder.Ordinal),
+        };
+        summary.SetPlaceholderScalar(placeholder.Text);
+
+        foreach (var (distilledProp, value) in distilledVals)
+        {
+            var distilledSummary = new TokenCaptureSummary(summary)
+            {
+                Name = distilledProp.Name,
+                Path = summary.Path.Dot(distilledProp.Name),
+                ElementType = TokenAnalysisElementType.DistilledValueSubLeaf,
+            };
+            distilledSummary.SetDistilledScalar(value);
+            summary.Children.Add(distilledSummary);
+        }
+        return summary;
     }
 
-    void SetEnumScalar(object enumVal)
+    // --- Leaf Node Factories ---
+
+    private static TokenCaptureSummary CreateForEnum(TokenCaptureSummary parent, IndexedPropertyCapture propCapture)
+    {
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            ElementType = TokenAnalysisElementType.EnumLeaf,
+            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal),
+        };
+        summary.SetEnumScalar(propCapture.Value);
+        return summary;
+    }
+
+    private static TokenCaptureSummary CreateForBool(TokenCaptureSummary parent, IndexedPropertyCapture propCapture)
+    {
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            ElementType = TokenAnalysisElementType.BoolLeaf,
+            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal),
+        };
+        summary.SetBoolScalar((bool)propCapture.Value);
+        return summary;
+    }
+
+    private static TokenCaptureSummary CreateForPlaceholder(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, PlaceholderCapture placeholder)
+    {
+        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        {
+            Parent = parent,
+            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            Path = propCapture.Path,
+            ElementType = TokenAnalysisElementType.PlaceholderLeaf,
+            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal),
+        };
+        summary.SetPlaceholderScalar(placeholder.Text);
+        return summary;
+    }
+
+    // --- Helper Methods for Setting Scalar Values ---
+
+    private void SetEnumScalar(object enumVal)
     {
         TerminalValString = enumVal.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
         TerminalType = "enum";
     }
 
-    void SetBoolScalar(bool boolVal)
+    private void SetBoolScalar(bool boolVal)
     {
         TerminalValString = boolVal.ToString().ToLower();
         TerminalType = "bool";
     }
 
-    void SetPlaceholderScalar(string placeholderVal)
+    private void SetPlaceholderScalar(string placeholderVal)
     {
         TerminalValString = placeholderVal;
         TerminalType = "placeholder";
     }
 
-    void SetDistilledScalar(object distilledVal)
+    private void SetDistilledScalar(object distilledVal)
     {
         TerminalValString = distilledVal.ToString().ToLower();
-
         var type = distilledVal.GetType();
-        TerminalType = "distilled ";
-        TerminalType += type == typeof(int) ? "int" : type.Name.ToFriendlyCase(TitleDisplayOption.Lower);
+        TerminalType = "distilled " + (type == typeof(int) ? "int" : type.Name.ToFriendlyCase(TitleDisplayOption.Lower));
     }
- }
+
+    /// <summary>
+    /// Recursively builds a string that shows the nesting of captures within the current summary's text.
+    /// Example: "The ((dog) runs fast)"
+    /// </summary>
+    public string GetNestedCaptureString()
+    {
+        if (Children.Count == 0 || string.IsNullOrEmpty(CaptureTextOriginal))
+            return CaptureTextOriginal;
+
+        var builder = new StringBuilder(CaptureTextOriginal);
+
+        // Process children from last to first to avoid invalidating indices.
+        foreach (var child in Children.OrderByDescending(c => c.Start))
+        {
+            // Only process children that have a distinct sub-capture within this parent.
+            if (child.Start < this.Start || child.End > this.End || child.Length == 0)
+                continue;
+
+            string childNestedString = child.GetNestedCaptureString();
+            string replacement = $"({childNestedString})";
+
+            int relativeStart = child.Start - this.Start;
+
+            builder.Remove(relativeStart, child.Length);
+            builder.Insert(relativeStart, replacement);
+        }
+
+        return builder.ToString();
+    }
+
+    // --- ToString() Override ---
+
+    /// <summary>
+    /// Provides an enriched, single-line summary of the node, including its nested capture text.
+    /// Omits character indices for the root node for clarity.
+    /// </summary>
+    public override string ToString()
+    {
+        string nestedCapture = GetNestedCaptureString();
+        string friendlyElementType = ElementType.ToString().ToFriendlyCase();
+
+        // Conditionally format the capture part based on whether it's a root node
+        string captureDisplay = (Parent == null)
+            ? $"\"{nestedCapture}\""
+            : $"[{Start}] \"{nestedCapture}\" [{End}]";
+
+        return $"{Path} | {captureDisplay} | {friendlyElementType} | Children: {Children.Count}";
+    }
+}
 
 public enum TokenAnalysisElementType
 {

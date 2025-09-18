@@ -1,4 +1,6 @@
-﻿public class CardTokenizer : Tokenizer
+﻿namespace MTGPlexer;
+
+public class CardTokenizer : Tokenizer
 {
     public CardTokenizer(List<Type> orderedTypes) : base(orderedTypes) { }
 
@@ -15,7 +17,7 @@
                 continue;
 
             var rootTokens = Tokenize(lineTextLower);
-            rootTokens.ForEach(x => x.PrependCardPathAllLevels(card.Name, i));
+            rootTokens.ForEach(x => x.PrependCardPathAllLevels(card.Name.Replace(' ', '_'), i));
             processedClauses.Add(new(rootTokens, i, lineTextOriginal));
         }
 
@@ -29,7 +31,7 @@
 
         foreach (var clause in tokenizeCard.Clauses)
             foreach (var token in clause.Tokens)
-                list.Add(new(token, clause.OriginalText));
+                list.Add(TokenCaptureSummary.CreateFrom(token, clause.OriginalText));
 
         return list;
     }

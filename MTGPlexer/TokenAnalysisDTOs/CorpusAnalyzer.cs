@@ -34,8 +34,13 @@ public class CorpusAnalyzer
 
     public CorpusAnalyzer(List<Card> cards)
     {
-        var card = cards[0];
-        var analysis = TokenTypeRegistry.CardTokenizer.GetCardTokenAnalysis(card);
+        foreach (var card in cards)
+        {
+            var analysis = TokenTypeRegistry.CardTokenizer.GetCardTokenAnalysis(card);
+
+            foreach (var item in analysis)
+                Console.WriteLine(item);
+        }
 
         // Make a single pass through all cards and lines, performing all
         // initial processing (tokenization, SpanRoot generation, UnmatchedOccurrence collection).
