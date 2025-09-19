@@ -1,0 +1,86 @@
+﻿@* This component now accepts any DTO that inherits from TokenAnalysisBase *@
+@if (Node != null)
+{
+    <span class=@GetClass(Node) style=@GetStyle(Node) data-path="@Node.Path">
+        @{
+            // The cursor is now relative to the start of this Summary's own pre-chopped text.
+            var cursor = 0;
+
+            // Render children in the order they appear in the text
+            foreach (var child in Node.Children.OrderBy(c => c.Start))
+            {
+                if (child is TokenAnalysisSubLeaf)
+                    continue;
+
+                // Calculate the child's start position relative to the parent's text.
+                var relativeChildStart = child.Start - Node.Start;
+
+                // Render any text ("twig") that comes before this child
+                if (relativeChildStart > cursor)
+                {
+                    <text>@Node.CaptureTextOriginal.Substring(cursor, relativeChildStart - cursor)</text>
+                }
+
+                // Recursively render the child node, passing down the increased depth
+                <TokenAnalysisNodeView Node="@child" Depth="@(Depth + (child is TokenAnalysisBranch branch && branch.IsCollapsed ? 0 : 1))" />
+
+                // Move the cursor to the end of the child's capture, relative to the parent's text.
+                cursor = child.End - Node.Start;
+            }
+
+            // Render any remaining text after the last child
+            if (cursor < Node.Length)
+            {
+                <text>@Node.CaptureTextOriginal.Substring(cursor, Node.Length - cursor)</text>
+            }
+        }
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TokenAnalysisBase Node { get; set; }
+
+    /// <summary>
+    /// The nesting depth of this node, passed down from its parent.
+    /// </summary>
+    [Parameter]
+    public int Depth { get; set; } = 0;
+
+    string GetClass(TokenAnalysisBase node)
+    {
+        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
+            return "";
+
+        var classes = new List<string>();
+
+        // Underlines are for branches
+        if (node is TokenAnalysisBranch branch && !branch.IsCollapsed)
+            classes.Add("nested-underline");
+
+        // Overlines are for leaves and sub-leaves (terminal nodes)
+        if (node is TokenAnalysisLeaf)
+            classes.Add("prop-capture-inline");
+
+        return string.Join(" ", classes);
+    }
+
+    string GetStyle(TokenAnalysisBase node)
+    {
+        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
+            return "";
+
+        var style = new System.Text.StringBuilder();
+
+        if (node is TokenAnalysisBranch branch && !branch.IsCollapsed)
+            style.Append(branch.Palette.ToColorStyle());
+
+        else if (node is TokenAnalysisLeaf leaf)
+            style.Append($" --overline-color: {leaf.Palette.Hex};");
+
+        var paddingBottom = 2 + (Depth * 6);
+        style.Append($" padding-bottom: {paddingBottom}px;");
+
+        return style.ToString();
+    }
+}

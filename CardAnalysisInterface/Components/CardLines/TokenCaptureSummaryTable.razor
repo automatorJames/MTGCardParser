@@ -1,17 +1,25 @@
-﻿@if (Summary != null && IsBranch(Summary))
+﻿@if (Branch.IsCollapsed)
 {
-    <div class="token-summary-branch" data-path=@Summary.Path>
-        <div class="token-summary-header" style=@(Summary.UnderlinePalette?.ToColorStyle(shift: -1))>
-            <span class="token-type-name">@Summary.RootTokenType?.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
+    @* Directly render branch children of the collapsed parent branch*@
+    @foreach (var branch in Branch.Children.OfType<TokenAnalysisBranch>())
+    {
+        <TokenCaptureSummaryTable Branch="@branch" />
+    }
+}
+else
+{
+    <div class="token-summary-branch" data-path=@Branch.Path>
+        <div class="token-summary-header" style=@(Branch.Palette?.ToColorStyle())>
+            <span class="token-type-name">@Branch.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
         </div>
 
-        @if (Summary.Children.Any())
+        @if (Branch.Children.Any())
         {
             <div class="property-table-wrapper">
-                <div class="content-box" style=@(Summary.UnderlinePalette?.ToColorStyle(shift: -1))>
-                    
+                <div class="content-box" style=@(Branch.Palette?.ToColorStyle(shift: -1))>
+
                     @{
-                        var leaves = Summary.Children.Where(IsLeaf).ToList();
+                        var leaves = Branch.Children.OfType<TokenAnalysisLeaf>().ToList();
                         if (leaves.Any())
                         {
                             <table class="property-capture-table">
@@ -21,17 +29,23 @@
                                 <tbody>
                                     @foreach (var leaf in leaves)
                                     {
-                                        <tr data-path="@leaf.Path">
-                                            <td class="prop-capture-table-cell first-column" style=@(leaf.OverlinePalette?.ToColorStyle())>
-                                                @leaf.Name
-                                            </td>
-                                            <td class="prop-capture-table-cell type-column" style=@(leaf.OverlinePalette?.ToColorStyle())>
-                                                @leaf.TerminalType
-                                            </td>
-                                            <td class="prop-capture-table-cell value-column" style=@(leaf.OverlinePalette?.ToColorStyle())>
-                                                @leaf.TerminalValString
-                                            </td>
-                                        </tr>
+                                        var subLeafChildren = leaf.Children.OfType<TokenAnalysisSubLeaf>();
+                                        IEnumerable<TokenAnalysisLeaf> leafOrSubleaves = subLeafChildren.Any() ? subLeafChildren : [leaf];
+
+                                        foreach (var leafOrSubleaf in leafOrSubleaves)
+                                        {
+                                            <tr data-path="@leafOrSubleaf.Path">
+                                                <td class="prop-capture-table-cell first-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
+                                                    @leafOrSubleaf.Name
+                                                </td>
+                                                <td class="prop-capture-table-cell type-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
+                                                    @leafOrSubleaf.TerminalType
+                                                </td>
+                                                <td class="prop-capture-table-cell value-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
+                                                    @leafOrSubleaf.TerminalValString
+                                                </td>
+                                            </tr>
+                                        }
                                     }
                                 </tbody>
                             </table>
@@ -39,9 +53,9 @@
                     }
 
                     @* Recursively render tables for children that are also branches *@
-                    @foreach (var child in Summary.Children.Where(IsBranch))
+                    @foreach (var branch in Branch.Children.OfType<TokenAnalysisBranch>())
                     {
-                        <TokenCaptureSummaryTable Summary="@child" />
+                        <TokenCaptureSummaryTable Branch="@branch" />
                     }
                 </div>
             </div>
@@ -49,31 +63,9 @@
     </div>
 }
 
+
+
 @code {
     [Parameter, EditorRequired]
-    public TokenCaptureSummary Summary { get; set; }
-
-    private bool IsBranch(TokenCaptureSummary summary)
-    {
-        return summary.ElementType switch
-        {
-            TokenAnalysisElementType.TokenUnitRoot => true,
-            TokenAnalysisElementType.UnmatchedTokenUnitRoot => true,
-            TokenAnalysisElementType.TokenUnitBranch => true,
-            TokenAnalysisElementType.TokenUnitOneOfBranch => true,
-            TokenAnalysisElementType.TokenUnitDistilledBranch => true,
-            TokenAnalysisElementType.OneOfItemBranch => true,
-            TokenAnalysisElementType.ManyOfBranch => true,
-            TokenAnalysisElementType.ManyOfItemBranch => true,
-            TokenAnalysisElementType.DynamicCaptureBranch => true,
-            TokenAnalysisElementType.DynamicCaptureItemBranch => true,
-            TokenAnalysisElementType.PlaceholderPrecursorBranch => true,
-            _ => false
-        };
-    }
-
-    private bool IsLeaf(TokenCaptureSummary summary)
-    {
-        return !IsBranch(summary);
-    }
+    public TokenAnalysisBranch Branch { get; set; }
 }

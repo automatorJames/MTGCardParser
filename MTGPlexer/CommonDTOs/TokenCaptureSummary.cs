@@ -1,415 +1,454 @@
-﻿namespace MTGPlexer;
+﻿
+using System.Diagnostics;
 
-public class TokenCaptureSummary
+namespace MTGPlexer.TokenAnalysisDTOs.TokenAnalysis;
+
+/// <summary>
+/// A static factory class that analyzes a root TokenUnit and produces a tree of immutable DTOs.
+/// </summary>
+public static class TokenCaptureSummary
 {
-    public string Name { get; private set; }
-    public string Path { get; private set; }
-    public string OriginalFullText { get; private set; }
-    public string CaptureTextLower { get; private set; }
-    public string CaptureTextOriginal { get; private set; }
-    public int Start { get; private set; }
-    public int End { get; private set; }
-    public int Length { get; private set; }
-    public string TerminalValString { get; private set; }
-    public string TerminalType { get; private set; }
-    public TokenAnalysisElementType ElementType { get; private set; }
-    public Palette UnderlinePalette { get; private set; }
-    public Palette OverlinePalette { get; private set; }
-    public Type RootTokenType { get; private set; }
-    public TokenCaptureSummary Parent { get; private set; }
-    public List<TokenCaptureSummary> Children { get; private set; } = [];
+    /// <summary>
+    /// Internal mutable class for building the tree structure before converting to immutable DTOs.
+    /// </summary>
+    private class PrecursorNode
+    {
+        public string Name { get; set; }
+        public string Path { get; set; }
+        public string OriginalFullText { get; set; }
+        public string CaptureTextOriginal { get; set; }
+        public int Start { get; set; }
+        public int End { get; set; }
+        public int Length { get; set; }
+        public string TerminalValString { get; set; }
+        public string TerminalType { get; set; }
+        public TokenAnalysisElementType ElementType { get; set; }
+        public Palette Palette { get; set; }
+        public Type RootTokenType { get; set; }
+        public List<PrecursorNode> Children { get; } = new();
+    }
 
     // --- Public Entry Point ---
 
     /// <summary>
-    /// Single public entry point to create a summary tree from a root TokenUnit.
+    /// Single public entry point to create a DTO summary tree from a root TokenUnit.
+    /// It now accepts card and clause context to apply to the final DTO tree.
     /// </summary>
-    public static TokenCaptureSummary CreateFrom(TokenUnit root, string originalFullText)
+    public static TokenAnalysisRoot CreateFrom(TokenUnit root, string originalFullText, string cardName, int clauseIndex)
     {
-        var rootSummary = new TokenCaptureSummary(root.Capture, originalFullText)
+        // Stage 1: Build the mutable precursor tree with local, non-prepended paths.
+        var precursorRoot = CreatePrecursorForRoot(root, originalFullText);
+
+        // Stage 2: Post-process the precursor tree to prepend global paths to every node.
+        var pathPrefix = $"{cardName.Replace(' ', '_')}-{clauseIndex}-";
+        PrependPathsToPrecursorTree(precursorRoot, pathPrefix);
+
+        // Stage 3: Convert the precursor tree into the final, immutable DTO tree.
+        var rootDtoBase = ConvertToDto(precursorRoot, []);
+
+        // Stage 4: Add the final card-specific properties to the root DTO.
+        if (rootDtoBase is TokenAnalysisRoot finalRootDto)
         {
+            return finalRootDto with { CardName = cardName, ClauseIndex = clauseIndex };
+        }
+
+        // This should not happen if the logic is correct.
+        throw new InvalidOperationException("The root of the DTO tree was not a TokenAnalysisRoot.");
+    }
+
+    /// <summary>
+    /// Recursively traverses the precursor tree and prepends the given prefix to every node's Path.
+    /// </summary>
+    static void PrependPathsToPrecursorTree(PrecursorNode node, string prefix)
+    {
+        node.Path = prefix + node.Path;
+        foreach (var child in node.Children)
+        {
+            PrependPathsToPrecursorTree(child, prefix);
+        }
+    }
+
+    // --- Stage 1: Core Logic for Building the Precursor Tree ---
+
+    static PrecursorNode CreatePrecursorFor(IndexedPropertyCapture propCapture, string originalFullText)
+    {
+        var val = propCapture.Value;
+
+        if (val is TokenUnitOneOf tuOneOf) 
+            return CreatePrecursorForTokenUnitOneOf(propCapture, tuOneOf, originalFullText);
+
+        if (val is TokenUnitDistilled tuDistilled) 
+            return CreatePrecursorForTokenUnitDistilled(propCapture, tuDistilled, originalFullText);
+
+        if (val is TokenUnit tokenUnit) 
+            return CreatePrecursorForTokenUnit(propCapture, tokenUnit, originalFullText);
+
+        if (val is ManyOf manyOf) 
+            return CreatePrecursorForManyOf(propCapture, manyOf, originalFullText);
+
+        if (val is DynamicCapture dynamicCapture) 
+            return CreatePrecursorForDynamicCapture(propCapture, dynamicCapture, originalFullText);
+
+        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum) 
+            return CreatePrecursorForEnum(propCapture, originalFullText);
+
+        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Bool) 
+            return CreatePrecursorForBool(propCapture, originalFullText);
+
+        if (val is PlaceholderCapture placeholder) 
+            return CreatePrecursorForPlaceholder(propCapture, placeholder, originalFullText);
+
+        throw new ArgumentException($"Unsupported TokenUnit property type for precursor creation: {val?.GetType().Name}");
+    }
+
+    static PrecursorNode CreatePrecursorForRoot(TokenUnit root, string originalFullText)
+    {
+        var precursor = new PrecursorNode
+        {
+            OriginalFullText = originalFullText,
+            CaptureTextOriginal = originalFullText.Substring(root.Capture.Index, root.Capture.Length),
+            Start = root.Capture.Index,
+            Length = root.Capture.Length,
+            End = root.Capture.Index + root.Capture.Length,
             RootTokenType = root.Type,
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
             Path = root.Path,
-            UnderlinePalette = TokenTypeRegistry.Palettes[root.Type],
+            Palette = TokenTypeRegistry.Palettes[root.Type],
             ElementType = root is DefaultUnmatchedString
                 ? TokenAnalysisElementType.UnmatchedTokenUnitRoot
                 : TokenAnalysisElementType.TokenUnitRoot
         };
 
         foreach (var propCapture in root.IndexedPropertyCaptures)
-            rootSummary.Children.Add(CreateSummaryFor(rootSummary, propCapture));
+            precursor.Children.Add(CreatePrecursorFor(propCapture, originalFullText));
 
-        return rootSummary;
+        return precursor;
     }
 
-    // --- Private Constructors ---
-
-    /// <summary>
-    /// Private base constructor for all nodes. Sets common capture-related properties.
-    /// </summary>
-    private TokenCaptureSummary(Capture capture, string originalFullText)
+    static PrecursorNode CreatePrecursorForTokenUnit(IndexedPropertyCapture propCapture, TokenUnit tokenUnit, string originalFullText)
     {
-        OriginalFullText = originalFullText;
-        if (capture != null)
-        {
-            Start = capture.Index;
-            Length = capture.Length;
-            End = Start + Length;
-            CaptureTextLower = capture.Value;
-            CaptureTextOriginal = originalFullText.Substring(Start, Length);
-        }
-    }
-
-    /// <summary>
-    /// Private constructor for nodes that inherit capture info from their parent (e.g., DistilledValue).
-    /// </summary>
-    private TokenCaptureSummary(TokenCaptureSummary parent) : this(null, parent.OriginalFullText)
-    {
-        Parent = parent;
-        // Copy capture info from parent
-        Start = parent.Start;
-        Length = parent.Length;
-        End = parent.End;
-        CaptureTextLower = parent.CaptureTextLower;
-        CaptureTextOriginal = parent.CaptureTextOriginal;
-    }
-
-
-    // --- Core Logic: Dispatcher ---
-
-    /// <summary>
-    /// Acts as a router, dispatching to the correct factory method based on the property's value type.
-    /// </summary>
-    private static TokenCaptureSummary CreateSummaryFor(TokenCaptureSummary parent, IndexedPropertyCapture propCapture)
-    {
-        var val = propCapture.Value;
-
-        // Branches (Parents to further children)
-        if (val is TokenUnitOneOf tuOneOf) return CreateForTokenUnitOneOf(parent, propCapture, tuOneOf);
-        if (val is TokenUnitDistilled tuDistilled) return CreateForTokenUnitDistilled(parent, propCapture, tuDistilled);
-        if (val is TokenUnit tokenUnit) return CreateForTokenUnit(parent, propCapture, tokenUnit);
-        if (val is ManyOf manyOf) return CreateForManyOf(parent, propCapture, manyOf);
-        if (val is DynamicCapture dynamicCapture) return CreateForDynamicCapture(parent, propCapture, dynamicCapture);
-
-        // Leaves (Scalar values within parent summaries)
-        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum) return CreateForEnum(parent, propCapture);
-        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Bool) return CreateForBool(parent, propCapture);
-        if (val is PlaceholderCapture placeholder) return CreateForPlaceholder(parent, propCapture, placeholder);
-
-        throw new ArgumentException($"Unsupported TokenUnit property type: {val?.GetType().Name}");
-    }
-
-
-    // --- Private Factory Methods for Each Type ---
-
-    private static TokenCaptureSummary CreateForTokenUnit(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, TokenUnit tokenUnit)
-    {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
-        {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            ElementType = TokenAnalysisElementType.TokenUnitBranch,
-            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type],
-        };
+        var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.TokenUnitBranch);
+        precursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
 
         foreach (var x in tokenUnit.IndexedPropertyCaptures)
-            summary.Children.Add(CreateSummaryFor(summary, x));
+            precursor.Children.Add(CreatePrecursorFor(x, originalFullText));
 
-        return summary;
+        return precursor;
     }
 
-    private static TokenCaptureSummary CreateForTokenUnitOneOf(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, TokenUnitOneOf tokenUnitOneOf)
+    static PrecursorNode CreatePrecursorForTokenUnitOneOf(IndexedPropertyCapture propCapture, TokenUnitOneOf tokenUnitOneOf, string originalFullText)
     {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
-        {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnitOneOf.Type],
-        };
-
         var singleTokenCapture = tokenUnitOneOf.IndexedPropertyCaptures.Single();
         var populatedChild = singleTokenCapture.Value;
 
-        if (populatedChild is TokenUnitOneOf)
-            throw new NotImplementedException($"Nested {nameof(TokenUnitOneOf)} children not supported");
+        if (populatedChild is TokenUnitOneOf) throw new NotImplementedException($"Nested {nameof(TokenUnitOneOf)} children not supported");
+
+        if (populatedChild is TokenUnitDistilled tokenUnitDistilled)
+        {
+            var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.OneOfItemBranch);
+            precursor.Palette = TokenTypeRegistry.Palettes[tokenUnitOneOf.Type];
+            precursor.Children.Add(CreatePrecursorForTokenUnitDistilled(singleTokenCapture, tokenUnitDistilled, originalFullText));
+            return precursor;
+        }
 
         if (populatedChild is TokenUnit tokenUnit)
         {
-            summary.ElementType = TokenAnalysisElementType.OneOfItemBranch;
-            summary.Children.Add(CreateForTokenUnit(summary, singleTokenCapture, tokenUnit));
+            var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.OneOfItemBranch);
+            precursor.Palette = TokenTypeRegistry.Palettes[tokenUnitOneOf.Type];
+            precursor.Children.Add(CreatePrecursorForTokenUnit(singleTokenCapture, tokenUnit, originalFullText));
+            return precursor;
         }
-        else if (singleTokenCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum)
-        {
-            summary.ElementType = TokenAnalysisElementType.OneOfItemLeaf;
-            summary.SetEnumScalar(populatedChild);
-            summary.OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
-        }
-        else
-            throw new NotImplementedException($"{nameof(TokenUnitOneOf)} only supports {nameof(TokenUnit)} and enum children");
 
-        return summary;
+        if (singleTokenCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum)
+        {
+            var precursor = CreatePrecursorLeaf(propCapture, originalFullText, TokenAnalysisElementType.OneOfItemLeaf);
+            SetEnumScalar(precursor, populatedChild);
+            return precursor;
+        }
+
+        throw new NotImplementedException($"{nameof(TokenUnitOneOf)} only supports {nameof(TokenUnit)} and enum children");
     }
 
-    private static TokenCaptureSummary CreateForDynamicCapture(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, DynamicCapture dynamicCapture)
+    static PrecursorNode CreatePrecursorForDynamicCapture(IndexedPropertyCapture propCapture, DynamicCapture dynamicCapture, string originalFullText)
     {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
-        {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            UnderlinePalette = DeterministicPalette.GetStaticPalette(typeof(DynamicCapture).GetCustomAttribute<ColorAttribute>().Color),
-        };
-
         var valueObject = dynamicCapture.ValueObject;
-        if (valueObject is TokenUnitOneOf tokenUnitOneOf)
-        {
-            summary.ElementType = TokenAnalysisElementType.DynamicCaptureItemBranch;
-            summary.Children.Add(CreateForTokenUnitOneOf(summary, propCapture, tokenUnitOneOf));
-        }
-        else if (valueObject is TokenUnit tokenUnit)
-        {
-            summary.ElementType = TokenAnalysisElementType.DynamicCaptureItemBranch;
-            summary.Children.Add(CreateForTokenUnit(summary, propCapture, tokenUnit));
-        }
+        var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.DynamicCaptureItemBranch);
+        precursor.Palette = DeterministicPalette.GetStaticPalette(typeof(DynamicCapture).GetCustomAttribute<ColorAttribute>().Color);
+
+        if (valueObject is TokenUnitOneOf tokenUnitOneOf) 
+            precursor.Children.Add(CreatePrecursorForTokenUnitOneOf(propCapture, tokenUnitOneOf, originalFullText));
+
+        else if (valueObject is TokenUnitDistilled tokenUnitDistilled)
+            precursor.Children.Add(CreatePrecursorForTokenUnitDistilled(propCapture, tokenUnitDistilled, originalFullText));
+
+        else if (valueObject is TokenUnit tokenUnit) 
+            precursor.Children.Add(CreatePrecursorForTokenUnit(propCapture, tokenUnit, originalFullText));
+
         else if (dynamicCapture.RegexPropType == RegexPropType.Enum)
         {
-            summary.ElementType = TokenAnalysisElementType.DynamicCaptureItemLeaf;
-            summary.SetEnumScalar(propCapture.Value);
-            summary.OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal);
+            var leafPrecursor = CreatePrecursorLeaf(propCapture, originalFullText, TokenAnalysisElementType.DynamicCaptureItemLeaf);
+            SetEnumScalar(leafPrecursor, propCapture.Value);
+            return leafPrecursor;
         }
-        else
+
+        else 
             throw new NotImplementedException($"{nameof(DynamicCapture)} only supports {nameof(TokenUnitOneOf)}, {nameof(TokenUnit)}, and enum children");
 
-        return summary;
+        return precursor;
     }
 
-    private static TokenCaptureSummary CreateForTokenUnitDistilled(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, TokenUnitDistilled distilled)
+    static PrecursorNode CreatePrecursorForTokenUnitDistilled(IndexedPropertyCapture propCapture, TokenUnitDistilled distilled, string originalFullText)
     {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
-        {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            ElementType = TokenAnalysisElementType.TokenUnitDistilledBranch,
-            UnderlinePalette = TokenTypeRegistry.Palettes[distilled.Type],
-        };
-
+        var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.TokenUnitDistilledBranch);
+        precursor.Palette = TokenTypeRegistry.Palettes[distilled.Type];
         var nonDistilledProps = distilled.IndexedPropertyCaptures.Where(x => !distilled.DistilledVals.ContainsKey(x));
-        foreach (var x in nonDistilledProps)
-            summary.Children.Add(CreateSummaryFor(summary, x));
 
-        foreach (var (placeholderCap, distilledVals) in distilled.DistilledVals)
-            summary.Children.Add(CreateForDistilledPlaceholder(summary, placeholderCap, distilledVals));
+        foreach (var x in nonDistilledProps) 
+            precursor.Children.Add(CreatePrecursorFor(x, originalFullText));
 
-        return summary;
+        foreach (var (placeholderCap, distilledVals) in distilled.DistilledVals) 
+            precursor.Children.Add(CreatePrecursorForDistilledPlaceholder(placeholderCap, distilledVals, originalFullText));
+
+        return precursor;
     }
 
-    private static TokenCaptureSummary CreateForManyOf(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, ManyOf manyOf)
+    static PrecursorNode CreatePrecursorForManyOf(IndexedPropertyCapture propCapture, ManyOf manyOf, string originalFullText)
     {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
-        {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            ElementType = TokenAnalysisElementType.ManyOfBranch,
-            UnderlinePalette = TokenTypeRegistry.Palettes.TryGetValue(manyOf.ItemType, out var p) ? p
-                : DeterministicPalette.GetStaticPalette(typeof(ManyOf).GetCustomAttribute<ColorAttribute>().Color)
-        };
+        var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.ManyOfBranch);
+        precursor.Palette = TokenTypeRegistry.Palettes.TryGetValue(manyOf.ItemType, out var p) ? p : DeterministicPalette.GetStaticPalette(typeof(ManyOf).GetCustomAttribute<ColorAttribute>().Color);
 
         for (int i = 0; i < manyOf.ItemObjects.Count; i++)
         {
             var itemCapture = manyOf.ItemObjects[i];
-            var itemSummary = new TokenCaptureSummary(itemCapture.Capture, parent.OriginalFullText)
-            {
-                Parent = summary,
-                Name = propCapture.RegexPropInfo.Name + " #" + (i + 1),
-                Path = propCapture.Path + $"[{i}]",
-            };
+            var itemPath = propCapture.Path + $"[{i}]";
 
             if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && itemCapture.ItemObject is TokenUnit tokenUnit)
             {
-                itemSummary.ElementType = TokenAnalysisElementType.ManyOfItemBranch;
-                itemSummary.UnderlinePalette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-                var synthesized = new IndexedPropertyCapture(itemCapture, itemSummary.Path);
-                itemSummary.Children.Add(CreateSummaryFor(itemSummary, synthesized));
+                var itemPrecursor = CreatePrecursorBase(itemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
+                itemPrecursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
+                var synthesized = new IndexedPropertyCapture(itemCapture, itemPath);
+                itemPrecursor.Children.Add(CreatePrecursorFor(synthesized, originalFullText));
+                precursor.Children.Add(itemPrecursor);
             }
             else if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
             {
-                itemSummary.ElementType = TokenAnalysisElementType.ManyOfItemLeaf;
-                itemSummary.SetEnumScalar(itemCapture.ItemObject);
-                itemSummary.OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(i);
+                var itemPrecursor = CreatePrecursorLeaf(itemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, i, originalFullText, TokenAnalysisElementType.ManyOfItemLeaf);
+                SetEnumScalar(itemPrecursor, itemCapture.ItemObject);
+                precursor.Children.Add(itemPrecursor);
             }
-            else
-                throw new NotImplementedException($"{nameof(ManyItemVariant)} '{manyOf.ManyItemVariant}' not supported");
-
-            summary.Children.Add(itemSummary);
+            else throw new NotImplementedException($"{nameof(ManyItemVariant)} '{manyOf.ManyItemVariant}' not supported");
         }
 
         if (manyOf.Conjunction != null)
         {
-            var conjunctionSummary = new TokenCaptureSummary(manyOf.ConjunctionCapture, parent.OriginalFullText)
-            {
-                Parent = summary,
-                Name = nameof(ManyOf.Conjunction),
-                Path = summary.Path.Dot(nameof(ManyOf.Conjunction)),
-                ElementType = TokenAnalysisElementType.ConjunctionLeaf,
-                OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(manyOf.ItemObjects.Count + 1),
-            };
-            conjunctionSummary.SetEnumScalar(manyOf.Conjunction.Value);
-            summary.Children.Add(conjunctionSummary);
+            var conjunctionPrecursor = CreatePrecursorLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), precursor.Path.Dot(nameof(ManyOf.Conjunction)), manyOf.ItemObjects.Count, originalFullText, TokenAnalysisElementType.ConjunctionLeaf);
+            SetEnumScalar(conjunctionPrecursor, manyOf.Conjunction.Value);
+            precursor.Children.Add(conjunctionPrecursor);
         }
-        return summary;
+        return precursor;
     }
 
-    private static TokenCaptureSummary CreateForDistilledPlaceholder(TokenCaptureSummary parent, IndexedPropertyCapture placeholder, Dictionary<RegexPropInfo, object> distilledVals)
+    static PrecursorNode CreatePrecursorForDistilledPlaceholder(IndexedPropertyCapture placeholder, Dictionary<RegexPropInfo, object> distilledVals, string originalFullText)
     {
-        var summary = new TokenCaptureSummary(placeholder.Capture, parent.OriginalFullText)
-        {
-            Parent = parent,
-            Name = placeholder.RegexPropInfo.Name,
-            Path = placeholder.Path,
-            ElementType = TokenAnalysisElementType.PlaceholderPrecursorBranch,
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(placeholder.Ordinal),
-        };
-        summary.SetPlaceholderScalar(placeholder.Text);
+        var precursor = CreatePrecursorBase(placeholder, originalFullText, TokenAnalysisElementType.PlaceholderPrecursorLeaf);
+        precursor.Palette = DeterministicPalette.GetFixedRainbowPalette(placeholder.Ordinal);
 
         foreach (var (distilledProp, value) in distilledVals)
         {
-            var distilledSummary = new TokenCaptureSummary(summary)
-            {
-                Name = distilledProp.Name,
-                Path = summary.Path.Dot(distilledProp.Name),
-                ElementType = TokenAnalysisElementType.DistilledValueSubLeaf,
-            };
-            distilledSummary.SetDistilledScalar(value);
-            summary.Children.Add(distilledSummary);
+            var distilledPrecursor = CreatePrecursorFromParent(precursor, distilledProp.Name, precursor.Path.Dot(distilledProp.Name), TokenAnalysisElementType.DistilledValueSubLeaf);
+            SetDistilledScalar(distilledPrecursor, value);
+            precursor.Children.Add(distilledPrecursor);
         }
-        return summary;
+        return precursor;
     }
 
-    // --- Leaf Node Factories ---
-
-    private static TokenCaptureSummary CreateForEnum(TokenCaptureSummary parent, IndexedPropertyCapture propCapture)
+    static PrecursorNode CreatePrecursorForEnum(IndexedPropertyCapture propCapture, string originalFullText)
     {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        var precursor = CreatePrecursorLeaf(propCapture, originalFullText, TokenAnalysisElementType.EnumLeaf);
+        SetEnumScalar(precursor, propCapture.Value);
+        return precursor;
+    }
+
+    static PrecursorNode CreatePrecursorForBool(IndexedPropertyCapture propCapture, string originalFullText)
+    {
+        var precursor = CreatePrecursorLeaf(propCapture, originalFullText, TokenAnalysisElementType.BoolLeaf);
+        SetBoolScalar(precursor, (bool)propCapture.Value);
+        return precursor;
+    }
+
+    static PrecursorNode CreatePrecursorForPlaceholder(IndexedPropertyCapture propCapture, PlaceholderCapture placeholder, string originalFullText)
+    {
+        var precursor = CreatePrecursorLeaf(propCapture, originalFullText, TokenAnalysisElementType.PlaceholderLeaf);
+        SetPlaceholderScalar(precursor, placeholder.Text);
+        return precursor;
+    }
+
+    private static PrecursorNode CreatePrecursorBase(IndexedPropertyCapture propCapture, string originalFullText, TokenAnalysisElementType elementType) =>
+            CreatePrecursorBase(
+                propCapture.Capture,
+                propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+                propCapture.Path,
+                originalFullText,
+                elementType
+            );
+
+    private static PrecursorNode CreatePrecursorBase(Capture capture, string name, string path, string originalFullText, TokenAnalysisElementType elementType) =>
+        new()
         {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            ElementType = TokenAnalysisElementType.EnumLeaf,
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal),
+            Name = name,
+            Path = path,
+            OriginalFullText = originalFullText,
+            ElementType = elementType,
+            Start = capture.Index,
+            Length = capture.Length,
+            End = capture.Index + capture.Length,
+            CaptureTextOriginal = originalFullText.Substring(capture.Index, capture.Length),
         };
-        summary.SetEnumScalar(propCapture.Value);
-        return summary;
+
+    private static PrecursorNode CreatePrecursorLeaf(IndexedPropertyCapture propCapture, string originalFullText, TokenAnalysisElementType elementType) =>
+        CreatePrecursorLeaf(
+            propCapture.Capture,
+            propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
+            propCapture.Path,
+            propCapture.Ordinal,
+            originalFullText,
+            elementType
+        );
+
+    private static PrecursorNode CreatePrecursorLeaf(Capture capture, string name, string path, int ordinal, string originalFullText, TokenAnalysisElementType elementType)
+    {
+        var precursor = CreatePrecursorBase(capture, name, path, originalFullText, elementType);
+        precursor.Palette = DeterministicPalette.GetFixedRainbowPalette(ordinal);
+        return precursor;
     }
 
-    private static TokenCaptureSummary CreateForBool(TokenCaptureSummary parent, IndexedPropertyCapture propCapture)
-    {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+    private static PrecursorNode CreatePrecursorFromParent(PrecursorNode parent, string name, string path, TokenAnalysisElementType elementType) =>
+        new()
         {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            ElementType = TokenAnalysisElementType.BoolLeaf,
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal),
+            Name = name,
+            Path = path,
+            ElementType = elementType,
+            OriginalFullText = parent.OriginalFullText,
+            Start = parent.Start,
+            Length = parent.Length,
+            End = parent.End,
+            Palette = parent.Palette,
+            CaptureTextOriginal = parent.CaptureTextOriginal,
         };
-        summary.SetBoolScalar((bool)propCapture.Value);
-        return summary;
-    }
 
-    private static TokenCaptureSummary CreateForPlaceholder(TokenCaptureSummary parent, IndexedPropertyCapture propCapture, PlaceholderCapture placeholder)
+    static void SetEnumScalar(PrecursorNode n, object v)
+    { n.TerminalValString = v.ToString().ToFriendlyCase(TitleDisplayOption.Lower); n.TerminalType = "enum"; }
+
+    static void SetBoolScalar(PrecursorNode n, bool v)
+    { n.TerminalValString = v.ToString().ToLower(); n.TerminalType = "bool"; }
+
+    static void SetPlaceholderScalar(PrecursorNode n, string v)
+    { n.TerminalValString = v; n.TerminalType = "placeholder"; }
+
+    static void SetDistilledScalar(PrecursorNode n, object v)
+    { n.TerminalValString = v.ToString().ToLower(); var t = v.GetType(); n.TerminalType = "distilled " + (t == typeof(int) ? "int" : t.Name.ToFriendlyCase(TitleDisplayOption.Lower)); }
+
+    // --- Stage 3: Precursor-to-DTO Conversion ---
+
+    private static TokenAnalysisBase ConvertToDto(PrecursorNode precursor, IReadOnlyList<string> collapsedNameChain)
     {
-        var summary = new TokenCaptureSummary(propCapture.Capture, parent.OriginalFullText)
+        bool isBranchType = precursor.ElementType.ToString().Contains("Branch") || precursor.ElementType.ToString().Contains("Root");
+        bool isCollapsed = isBranchType && precursor.Children.Any() && precursor.Children.All(c => c.ElementType.ToString().Contains("Branch"));
+        string finalName = precursor.Name;
+        if (isBranchType && collapsedNameChain.Any())
         {
-            Parent = parent,
-            Name = propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            Path = propCapture.Path,
-            ElementType = TokenAnalysisElementType.PlaceholderLeaf,
-            OverlinePalette = DeterministicPalette.GetFixedRainbowPalette(propCapture.Ordinal),
-        };
-        summary.SetPlaceholderScalar(placeholder.Text);
-        return summary;
-    }
-
-    // --- Helper Methods for Setting Scalar Values ---
-
-    private void SetEnumScalar(object enumVal)
-    {
-        TerminalValString = enumVal.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
-        TerminalType = "enum";
-    }
-
-    private void SetBoolScalar(bool boolVal)
-    {
-        TerminalValString = boolVal.ToString().ToLower();
-        TerminalType = "bool";
-    }
-
-    private void SetPlaceholderScalar(string placeholderVal)
-    {
-        TerminalValString = placeholderVal;
-        TerminalType = "placeholder";
-    }
-
-    private void SetDistilledScalar(object distilledVal)
-    {
-        TerminalValString = distilledVal.ToString().ToLower();
-        var type = distilledVal.GetType();
-        TerminalType = "distilled " + (type == typeof(int) ? "int" : type.Name.ToFriendlyCase(TitleDisplayOption.Lower));
-    }
-
-    /// <summary>
-    /// Recursively builds a string that shows the nesting of captures within the current summary's text.
-    /// Example: "The ((dog) runs fast)"
-    /// </summary>
-    public string GetNestedCaptureString()
-    {
-        if (Children.Count == 0 || string.IsNullOrEmpty(CaptureTextOriginal))
-            return CaptureTextOriginal;
-
-        var builder = new StringBuilder(CaptureTextOriginal);
-
-        // Process children from last to first to avoid invalidating indices.
-        foreach (var child in Children.OrderByDescending(c => c.Start))
-        {
-            // Only process children that have a distinct sub-capture within this parent.
-            if (child.Start < this.Start || child.End > this.End || child.Length == 0)
-                continue;
-
-            string childNestedString = child.GetNestedCaptureString();
-            string replacement = $"({childNestedString})";
-
-            int relativeStart = child.Start - this.Start;
-
-            builder.Remove(relativeStart, child.Length);
-            builder.Insert(relativeStart, replacement);
+            finalName = $"{string.Join(": ", collapsedNameChain)}: {precursor.Name}";
         }
+        List<string> nextNameChain = isCollapsed ? new List<string>(collapsedNameChain) { precursor.Name } : [];
+        var dtoChildren = precursor.Children.Select(child => ConvertToDto(child, nextNameChain)).ToList();
 
-        return builder.ToString();
-    }
+        switch (precursor.ElementType)
+        {
+            case TokenAnalysisElementType.UnmatchedTokenUnitRoot:
+            case TokenAnalysisElementType.TokenUnitRoot:
+                return new TokenAnalysisRoot
+                {
+                    // Base Properties
+                    Name = finalName,
+                    Path = precursor.Path,
+                    CaptureTextOriginal = precursor.CaptureTextOriginal,
+                    Start = precursor.Start,
+                    End = precursor.End,
+                    Length = precursor.Length,
+                    ElementType = precursor.ElementType,
+                    Children = dtoChildren,
 
-    // --- ToString() Override ---
+                    // Branch Properties
+                    Palette = precursor.Palette,
+                    IsCollapsed = isCollapsed,
 
-    /// <summary>
-    /// Provides an enriched, single-line summary of the node, including its nested capture text.
-    /// Omits character indices for the root node for clarity.
-    /// </summary>
-    public override string ToString()
-    {
-        string nestedCapture = GetNestedCaptureString();
-        string friendlyElementType = ElementType.ToString().ToFriendlyCase();
+                    // Root Properties
+                    OriginalFullText = precursor.OriginalFullText,
+                    RootTokenType = precursor.RootTokenType,
+                };
 
-        // Conditionally format the capture part based on whether it's a root node
-        string captureDisplay = (Parent == null)
-            ? $"\"{nestedCapture}\""
-            : $"[{Start}] \"{nestedCapture}\" [{End}]";
+            case var e when e.ToString().Contains("Branch"):
+                return new TokenAnalysisBranch
+                {
+                    // Base Properties
+                    Name = finalName,
+                    Path = precursor.Path,
+                    CaptureTextOriginal = precursor.CaptureTextOriginal,
+                    Start = precursor.Start,
+                    End = precursor.End,
+                    Length = precursor.Length,
+                    ElementType = precursor.ElementType,
+                    Children = dtoChildren,
 
-        return $"{Path} | {captureDisplay} | {friendlyElementType} | Children: {Children.Count}";
+                    // Branch Properties
+                    Palette = precursor.Palette,
+                    IsCollapsed = isCollapsed,
+                };
+
+            case var e when e.ToString().Contains("SubLeaf"):
+                return new TokenAnalysisSubLeaf
+                {
+                    // Base Properties
+                    Name = precursor.Name, // Sub-leaves do not get prepended names
+                    Path = precursor.Path,
+                    CaptureTextOriginal = precursor.CaptureTextOriginal,
+                    Start = precursor.Start,
+                    End = precursor.End,
+                    Length = precursor.Length,
+                    ElementType = precursor.ElementType,
+                    Children = dtoChildren,
+
+                    // Leaf Properties
+                    Palette = precursor.Palette,
+                    TerminalValString = precursor.TerminalValString,
+                    TerminalType = precursor.TerminalType,
+                };
+
+            case var e when e.ToString().Contains("Leaf"):
+                return new TokenAnalysisLeaf
+                {
+                    // Base Properties
+                    Name = precursor.Name, // Leaves do not get prepended names
+                    Path = precursor.Path,
+                    CaptureTextOriginal = precursor.CaptureTextOriginal,
+                    Start = precursor.Start,
+                    End = precursor.End,
+                    Length = precursor.Length,
+                    ElementType = precursor.ElementType,
+                    Children = dtoChildren,
+
+                    // Leaf Properties
+                    Palette = precursor.Palette,
+                    TerminalValString = precursor.TerminalValString,
+                    TerminalType = precursor.TerminalType,
+                };
+
+            default:
+                throw new InvalidOperationException($"Unsupported ElementType for DTO conversion: {precursor.ElementType}");
+        }
     }
 }
+
 
 public enum TokenAnalysisElementType
 {
@@ -424,13 +463,13 @@ public enum TokenAnalysisElementType
     ManyOfItemBranch,
     DynamicCaptureBranch,
     DynamicCaptureItemBranch,
-    PlaceholderPrecursorBranch,
 
     EnumLeaf,
     BoolLeaf,
     OneOfItemLeaf,
     ManyOfItemLeaf,
     PlaceholderLeaf,
+    PlaceholderPrecursorLeaf,
     DynamicCaptureItemLeaf,
     ConjunctionLeaf,
 

@@ -1,4 +1,6 @@
-﻿public class Tokenizer
+﻿using System.Text.RegularExpressions;
+
+public class Tokenizer
 {
     private readonly Dictionary<Type, Regex> _orderedAnchoredTypeRegexes;
     private readonly Regex _whitespaceRegex = new(@"\G\s+", RegexOptions.Compiled);
@@ -19,17 +21,6 @@
 
         while (currentIndex < sourceText.Length)
         {
-            // First, skip any leading whitespace. This simplifies the main loop
-            // by ensuring the "cursor" is always at a non-whitespace char or the EOS.
-            var spaceMatch = _whitespaceRegex.Match(sourceText, currentIndex);
-            if (spaceMatch.Success)
-            {
-                // If we are not in the middle of an unmatched run, then this whitespace
-                // can simply be skipped.
-                if (unmatchedStartIndex == -1)
-                    currentIndex += spaceMatch.Length;
-            }
-
             bool matched = false;
 
             // **Step 1: Prioritize matching a known token.**

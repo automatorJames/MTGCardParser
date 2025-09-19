@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.TokenAnalysisDTOs;
 
 /// <summary>
 /// A consolidated processor that tokenizes a corpus of cards and produces a complete
@@ -52,6 +54,9 @@ public class CorpusAnalyzer
 
         foreach (var card in cards)
         {
+
+            var analyzedCard = TokenTypeRegistry.CardTokenizer.GetCardTokenAnalysis(card);
+
             var processedLines = new List<ProcessedLine>();
             for (int i = 0; i < card.FormattedLinesLower.Length; i++)
             {
@@ -65,8 +70,8 @@ public class CorpusAnalyzer
 
                 _hydratedTokenUnits.AddRange(lineTokens);
 
-                // This single method call performs both analyses for the line.
-                (var tokenCaptureSummaries, var spanOccurrences) = AnalyzeLine(card, lineTokens, i, originalLineText);
+                var unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, lineTokens, i, originalLineText);
+                var analysisRoots = analyzedCard.Where(x => x.ClauseIndex == i).ToList();
 
                 processedLines.Add(new ProcessedLine
                 {
@@ -74,8 +79,8 @@ public class CorpusAnalyzer
                     LineIndex = i,
                     EvaluatedText = lineText,
                     SourceTokens = lineTokens,
-                    TokenCaptureSummaries = tokenCaptureSummaries,
-                    SpanOccurrences = spanOccurrences
+                    TokenAnalysisRoots = analysisRoots,
+                    SpanOccurrences = unmatchedStringOccurrences
                 });
 
 
@@ -96,12 +101,8 @@ public class CorpusAnalyzer
         return new(allUnmatchedOccurrences);
     }
 
-    /// <summary>
-    /// Process a list of tokens for a single line to derive TokenCaptureSummary hierarchies and SpanOccurrence records.
-    /// </summary>
-    (List<TokenCaptureSummary> tokenCaptureSummaries, List<UnmatchedSpanOccurrence> occurrences) AnalyzeLine(Card card, List<TokenUnit> lineTokens, int lineIndex, string originalLineText)
+    List<UnmatchedSpanOccurrence> GetUnmatchedStringOccurrences(Card card, List<TokenUnit> lineTokens, int lineIndex, string originalLineText)
     {
-        var summaries = new List<TokenCaptureSummary>();
         var occurrences = new List<UnmatchedSpanOccurrence>();
 
         for (int i = 0; i < lineTokens.Count; i++)
@@ -112,12 +113,8 @@ public class CorpusAnalyzer
             // Create a new occurrence, giving it the context of the entire line's tokens.
             if (token.Type == typeof(DefaultUnmatchedString))
                 occurrences.Add(new UnmatchedSpanOccurrence(card.Name, lineIndex, lineTokens, i));
-
-            // --- Analysis #2: Build the TokenCaptureSummary hierarchy from the hydrated token ---
-            var summary = TokenCaptureSummary.CreateFrom(token, originalLineText);
-            summaries.Add(summary);
         }
 
-        return (summaries, occurrences);
+        return occurrences;
     }
 }

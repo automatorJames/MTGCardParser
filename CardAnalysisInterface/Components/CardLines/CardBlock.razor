@@ -12,15 +12,15 @@
             <div class="line-label dashed-border">Line #@(line.LineIndex + 1)</div>
 
             <pre class="nested-underline-container" @onclick=@(() => OpenRegexEditorDialog(line))>
-                @foreach (var summary in line.TokenCaptureSummaries)
+                @foreach (var rootNode in line.TokenAnalysisRoots)
                 {
-                    <TokenCaptureSummaryView Summary=@summary />
+                    <TokenAnalysisNodeView Node=@rootNode />
                 }
             </pre>
 
-            @foreach (var summary in line.TokenCaptureSummaries)
+            @foreach (var summary in line.TokenAnalysisRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
             {
-                <TokenCaptureSummaryTable Summary=@summary />
+                <TokenCaptureSummaryTable Branch=@summary />
             }
         </div>
     }

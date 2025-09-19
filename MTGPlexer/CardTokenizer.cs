@@ -7,6 +7,7 @@ public class CardTokenizer : Tokenizer
     public TokenizedCard TokenizeCard(Card card)
     {
         var processedClauses = new List<TokenizedClause>();
+        var cardNamePath = card.Name.Replace(' ', '_');
 
         for (int i = 0; i < card.FormattedLinesLower.Length; i++)
         {
@@ -16,24 +17,32 @@ public class CardTokenizer : Tokenizer
             if (string.IsNullOrWhiteSpace(lineTextLower))
                 continue;
 
+            // Tokenize the line. The resulting tokens have local paths.
             var rootTokens = Tokenize(lineTextLower);
-            rootTokens.ForEach(x => x.PrependCardPathAllLevels(card.Name.Replace(' ', '_'), i));
-            processedClauses.Add(new(rootTokens, i, lineTextOriginal));
+
+            var pathPrefix = $"{cardNamePath}[{i}]";
+            processedClauses.Add(new TokenizedClause(rootTokens, i, lineTextOriginal, pathPrefix));
         }
 
-        return new(card, processedClauses);
+        return new TokenizedCard(card, processedClauses);
     }
 
-    public List<TokenCaptureSummary> GetCardTokenAnalysis(Card card)
+    // This method still works, but the paths in the resulting DTOs will now be correctly prepended
+    // because it calls the updated TokenCaptureSummary.CreateFrom method internally.
+    public List<TokenAnalysisRoot> GetCardTokenAnalysis(Card card)
     {
-        List<TokenCaptureSummary> list = [];
-        TokenizedCard tokenizeCard = TokenizeCard(card);
+        var list = new List<TokenAnalysisRoot>();
+        var tokenizedCard = TokenizeCard(card);
 
-        foreach (var clause in tokenizeCard.Clauses)
+        foreach (var clause in tokenizedCard.Clauses)
+        {
             foreach (var token in clause.Tokens)
-                list.Add(TokenCaptureSummary.CreateFrom(token, clause.OriginalText));
+            {
+                // Pass the new context parameters to the factory.
+                list.Add(TokenCaptureSummary.CreateFrom(token, clause.OriginalText, card.Name, clause.ClauseIndex));
+            }
+        }
 
         return list;
     }
-
 }

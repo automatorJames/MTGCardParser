@@ -15,7 +15,7 @@ public record ProcessedLine
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.
     /// </summary>
-    public List<TokenCaptureSummary> TokenCaptureSummaries { get; init; }
+    public List<TokenAnalysisRoot> TokenAnalysisRoots { get; init; }
 
     /// <summary>
     /// A list of all full spans found on this specific line.

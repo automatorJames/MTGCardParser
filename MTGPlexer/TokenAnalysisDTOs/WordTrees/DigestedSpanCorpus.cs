@@ -148,6 +148,9 @@ public record DigestedSpanCorpus
 
         foreach (var (spanText, count) in allMaximalSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
         {
+            if (string.IsNullOrWhiteSpace(spanText))
+                continue;
+
             var subSpanContexts = new List<SubSpanContext>();
             var precedingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
             var followingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardSpanKey Key)>();
