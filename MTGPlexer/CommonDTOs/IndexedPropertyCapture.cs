@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
+﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index

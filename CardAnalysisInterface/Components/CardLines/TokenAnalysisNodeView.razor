@@ -4,8 +4,6 @@
     <span class=@GetClass(Node) style=@GetStyle(Node) data-path="@Node.Path">
         @{
             var cursor = 0;
-            bool drawsUnderline = Node is TokenAnalysisBranch b && !b.IsCollapsed && !IsParentUnderlined;
-            bool passDownUnderlineState = IsParentUnderlined || drawsUnderline;
 
             foreach (var child in Node.Children.OrderBy(c => c.Start))
             {
@@ -20,8 +18,7 @@
                 }
 
                 <TokenAnalysisNodeView Node="@child"
-                                     Depth="@(Depth + (child is TokenAnalysisBranch branch && branch.IsCollapsed ? 0 : 1))"
-                                     IsParentUnderlined="passDownUnderlineState" />
+                                       Depth="@(Depth + (child is TokenAnalysisBranch branch && branch.IsCollapsed ? 0 : 1))" />
 
                 cursor = child.End - Node.Start;
             }
@@ -41,28 +38,33 @@
     [Parameter]
     public int Depth { get; set; } = 0;
 
-    [Parameter]
-    public bool IsParentUnderlined { get; set; } = false;
-
     string GetClass(TokenAnalysisBase node)
     {
-        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot) return "";
+        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
+            return "";
+
         var classes = new List<string>();
-        if (node is TokenAnalysisBranch branch && !branch.IsCollapsed && !IsParentUnderlined) classes.Add("nested-underline");
-        if (node is TokenAnalysisLeaf) classes.Add("prop-capture-inline");
+
+        if (node is TokenAnalysisBranch branch && !branch.IsCollapsed)
+            classes.Add("nested-underline");
+
+        if (node is TokenAnalysisLeaf)
+            classes.Add("prop-capture-inline");
+
         return string.Join(" ", classes);
     }
 
     string GetStyle(TokenAnalysisBase node)
     {
-        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot) return "";
+        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
+            return "";
 
         var style = new System.Text.StringBuilder();
 
         if (node is TokenAnalysisBranch branch && !branch.IsCollapsed)
-            style.Append(branch.Palette.ToColorStyle(useSaturatedHighlight: false));
+            style.Append(branch.Palette.ToColorStyle());
         else if (node is TokenAnalysisLeaf leaf)
-            style.Append(leaf.Palette.ToColorStyle(useSaturatedHighlight: false));
+            style.Append(leaf.Palette.ToColorStyle());
 
         var paddingBottom = 2 + (Depth * 6);
         style.Append($" padding-bottom: {paddingBottom}px;");

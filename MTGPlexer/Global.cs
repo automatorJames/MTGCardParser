@@ -9,7 +9,6 @@ global using MTGPlexer.Static;
 global using MTGPlexer.TokenAnalysisDTOs.Common;
 global using MTGPlexer.TokenAnalysisDTOs.WordTrees;
 global using MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
-global using MTGPlexer.TokenAnalysisDTOs.CardAnalysis;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.Boundaries;
 global using MTGPlexer.TokenUnits;
 global using System.Reflection;
