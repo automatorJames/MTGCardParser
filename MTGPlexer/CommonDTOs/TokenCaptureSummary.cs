@@ -1,7 +1,7 @@
 ﻿
 using System.Diagnostics;
 
-namespace MTGPlexer.TokenAnalysisDTOs.TokenAnalysis;
+namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
 /// A static factory class that analyzes a root TokenUnit and produces a tree of immutable DTOs.
@@ -34,7 +34,7 @@ public static class TokenCaptureSummary
     /// Single public entry point to create a DTO summary tree from a root TokenUnit.
     /// It now accepts card and clause context to apply to the final DTO tree.
     /// </summary>
-    public static TokenAnalysisRoot CreateFrom(TokenUnit root, string originalFullText, string cardName, int clauseIndex)
+    public static SpanRoot CreateFrom(TokenUnit root, string originalFullText, string cardName, int clauseIndex)
     {
         // Stage 1: Build the mutable precursor tree with local, non-prepended paths.
         var precursorRoot = CreatePrecursorForRoot(root, originalFullText);
@@ -47,7 +47,7 @@ public static class TokenCaptureSummary
         var rootDtoBase = ConvertToDto(precursorRoot, []);
 
         // Stage 4: Add the final card-specific properties to the root DTO.
-        if (rootDtoBase is TokenAnalysisRoot finalRootDto)
+        if (rootDtoBase is SpanRoot finalRootDto)
         {
             return finalRootDto with { CardName = cardName, ClauseIndex = clauseIndex };
         }
@@ -350,7 +350,7 @@ public static class TokenCaptureSummary
 
     // --- Stage 3: Precursor-to-DTO Conversion ---
 
-    private static TokenAnalysisBase ConvertToDto(PrecursorNode precursor, IReadOnlyList<string> collapsedNameChain)
+    private static SpanAnalysisBase ConvertToDto(PrecursorNode precursor, IReadOnlyList<string> collapsedNameChain)
     {
         bool isBranchType = precursor.ElementType.ToString().Contains("Branch") || precursor.ElementType.ToString().Contains("Root");
         bool isCollapsed = isBranchType && precursor.Children.Any() && precursor.Children.All(c => c.ElementType.ToString().Contains("Branch"));
@@ -366,7 +366,7 @@ public static class TokenCaptureSummary
         {
             case TokenAnalysisElementType.UnmatchedTokenUnitRoot:
             case TokenAnalysisElementType.TokenUnitRoot:
-                return new TokenAnalysisRoot
+                return new SpanRoot
                 {
                     // Base Properties
                     Name = finalName,
@@ -388,7 +388,7 @@ public static class TokenCaptureSummary
                 };
 
             case var e when e.ToString().Contains("Branch"):
-                return new TokenAnalysisBranch
+                return new SpanBranch
                 {
                     // Base Properties
                     Name = finalName,
@@ -406,7 +406,7 @@ public static class TokenCaptureSummary
                 };
 
             case var e when e.ToString().Contains("SubLeaf"):
-                return new TokenAnalysisSubLeaf
+                return new SpanSubLeaf
                 {
                     // Base Properties
                     Name = precursor.Name, // Sub-leaves do not get prepended names
@@ -425,7 +425,7 @@ public static class TokenCaptureSummary
                 };
 
             case var e when e.ToString().Contains("Leaf"):
-                return new TokenAnalysisLeaf
+                return new SpanLeaf
                 {
                     // Base Properties
                     Name = precursor.Name, // Leaves do not get prepended names

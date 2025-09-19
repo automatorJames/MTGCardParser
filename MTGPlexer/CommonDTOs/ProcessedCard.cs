@@ -9,7 +9,7 @@ public record ProcessedCard
     public Card Card { get; init; }
     public List<ProcessedLine> Lines { get; init; }
 
-    public List<UnmatchedSpanOccurrence> UnmatchedSpans =>
+    public List<UnmatchedTextOccurrence> UnmatchedSpans =>
         Lines
         .SelectMany(x => x.SpanOccurrences)
         .ToList();

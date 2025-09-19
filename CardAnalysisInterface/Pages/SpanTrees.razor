@@ -69,7 +69,7 @@ else
 
 
 @code {
-    private List<AnalyzedSpan> _currentSpans = new();
+    private List<AnalyzedText> _currentSpans = new();
 
     protected override void OnInitialized()
     {
@@ -104,9 +104,9 @@ else
         }
     }
 
-    private IEnumerable<AnalyzedSpan> GetFilteredSpans()
+    private IEnumerable<AnalyzedText> GetFilteredSpans()
     {
-        DigestedSpanCorpus corpus = RuntimeSettings.ShowOriginalText
+        DigestedTextCorpus corpus = RuntimeSettings.ShowOriginalText
             ? CorpusAnalyzer.DigestedCorpusOriginalText
             : CorpusAnalyzer.DigestedCorpusWithCaptureTokens;
 

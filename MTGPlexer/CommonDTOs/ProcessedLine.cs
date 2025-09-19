@@ -15,10 +15,10 @@ public record ProcessedLine
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.
     /// </summary>
-    public List<TokenAnalysisRoot> TokenAnalysisRoots { get; init; }
+    public List<SpanRoot> TokenAnalysisRoots { get; init; }
 
     /// <summary>
     /// A list of all full spans found on this specific line.
     /// </summary>
-    public List<UnmatchedSpanOccurrence> SpanOccurrences { get; init; }
+    public List<UnmatchedTextOccurrence> SpanOccurrences { get; init; }
 }

@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenAnalysisDTOs.Common;
-
-namespace MTGPlexer.Attributes;
+﻿namespace MTGPlexer.Attributes;
 
 public class ColorAttribute(string hexValue) : Attribute
 {

@@ -21,7 +21,7 @@ public class CorpusAnalyzer
     /// including TokenUnit class captures. Useful for analyzing which spans
     /// of text have not yet been captured by any TokenUnit.
     /// </summary>
-    public DigestedSpanCorpus DigestedCorpusWithCaptureTokens { get; }
+    public DigestedTextCorpus DigestedCorpusWithCaptureTokens { get; }
 
     /// <summary>
     /// Word trees build around all maximal repeated spans across the corpus
@@ -29,7 +29,7 @@ public class CorpusAnalyzer
     /// unaltered spans of a body of text to plan how to create ideal TokenUnits
     /// for maximally effective capture.
     /// </summary>
-    public DigestedSpanCorpus DigestedCorpusOriginalText { get; }
+    public DigestedTextCorpus DigestedCorpusOriginalText { get; }
 
     public TokenUnitCaptureSummary TopLevelTokenUnitCaptureSummary { get; }
     public TokenUnitCaptureSummary GlobalTokenUnitCaptureSummary { get; }
@@ -55,8 +55,6 @@ public class CorpusAnalyzer
         foreach (var card in cards)
         {
 
-            var analyzedCard = TokenTypeRegistry.CardTokenizer.GetCardTokenAnalysis(card);
-
             var processedLines = new List<ProcessedLine>();
             for (int i = 0; i < card.FormattedLinesLower.Length; i++)
             {
@@ -71,6 +69,7 @@ public class CorpusAnalyzer
                 _hydratedTokenUnits.AddRange(lineTokens);
 
                 var unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, lineTokens, i, originalLineText);
+                var analyzedCard = TokenTypeRegistry.CardTokenizer.GetCardTokenAnalysis(card);
                 var analysisRoots = analyzedCard.Where(x => x.ClauseIndex == i).ToList();
 
                 processedLines.Add(new ProcessedLine
@@ -82,8 +81,6 @@ public class CorpusAnalyzer
                     TokenAnalysisRoots = analysisRoots,
                     SpanOccurrences = unmatchedStringOccurrences
                 });
-
-
             }
             processedCards.Add(new ProcessedCard { Card = card, Lines = processedLines });
         }
@@ -91,7 +88,7 @@ public class CorpusAnalyzer
         return processedCards;
     }
 
-    DigestedSpanCorpus GetDigestedSpanCorpus(List<ProcessedCard> processedCards)
+    DigestedTextCorpus GetDigestedSpanCorpus(List<ProcessedCard> processedCards)
     {
         var allUnmatchedOccurrences = processedCards
             .SelectMany(card => card.Lines)
@@ -101,9 +98,9 @@ public class CorpusAnalyzer
         return new(allUnmatchedOccurrences);
     }
 
-    List<UnmatchedSpanOccurrence> GetUnmatchedStringOccurrences(Card card, List<TokenUnit> lineTokens, int lineIndex, string originalLineText)
+    List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(Card card, List<TokenUnit> lineTokens, int lineIndex, string originalLineText)
     {
-        var occurrences = new List<UnmatchedSpanOccurrence>();
+        var occurrences = new List<UnmatchedTextOccurrence>();
 
         for (int i = 0; i < lineTokens.Count; i++)
         {
@@ -112,7 +109,7 @@ public class CorpusAnalyzer
             // --- Analysis #1: Check for and record unmatched tokens ---
             // Create a new occurrence, giving it the context of the entire line's tokens.
             if (token.Type == typeof(DefaultUnmatchedString))
-                occurrences.Add(new UnmatchedSpanOccurrence(card.Name, lineIndex, lineTokens, i));
+                occurrences.Add(new UnmatchedTextOccurrence(card.Name, lineIndex, lineTokens, i));
         }
 
         return occurrences;

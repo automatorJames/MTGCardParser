@@ -12,7 +12,7 @@ public record AdjacencyNode
     /// </summary>
     public NodeSegment Segment { get; init; }
 
-    public List<CardSpanKey> SourceOccurrences { get; init; }
+    public List<CardTextKey> SourceOccurrences { get; init; }
 
     public List<AdjacencyNode> Children { get; init; }
 
@@ -35,7 +35,7 @@ public record AdjacencyNode
     /// <summary>
     /// The simplified constructor that was a primary goal of this refactoring.
     /// </summary>
-    public AdjacencyNode(NodeSegment segment, List<CardSpanKey> sourceOccurrences, List<AdjacencyNode> children)
+    public AdjacencyNode(NodeSegment segment, List<CardTextKey> sourceOccurrences, List<AdjacencyNode> children)
     {
         Segment = segment;
         SourceOccurrences = sourceOccurrences;

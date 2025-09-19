@@ -14,13 +14,13 @@
             <pre class="nested-underline-container" @onclick=@(() => OpenRegexEditorDialog(line))>
                 @foreach (var rootNode in line.TokenAnalysisRoots)
                 {
-                    <TokenAnalysisNodeView Node=@rootNode />
+                    <SpanView Node=@rootNode />
                 }
             </pre>
 
             @foreach (var summary in line.TokenAnalysisRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
             {
-                <TokenCaptureSummaryTable Branch=@summary />
+                <PropertyTable Branch=@summary />
             }
         </div>
     }
