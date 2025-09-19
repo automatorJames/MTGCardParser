@@ -89,10 +89,6 @@ pre.full-original-text {
     word-wrap: break-word;
 }
 
-/*
-  Target a span that immediately follows a sibling span
-  which HAS a <br> tag somewhere inside it.
-*/
 pre.nested-underline-container span:has(br) + span {
     margin-left: 0;
 }
@@ -116,6 +112,7 @@ pre.nested-underline-container span:has(br) + span {
     font-weight: 500;
     color: var(--color);
     padding-left: 24px;
+    transition: color var(--fade-time) var(--highlight-easing);
 }
 
     .token-type-name + .token-type-name {
@@ -123,17 +120,11 @@ pre.nested-underline-container span:has(br) + span {
         margin-top: 24px;
     }
 
-/*
- * 2. DEFINE the new "L" bracket style for the content-box.
- */
 .content-box {
-    /* The "L" shape, using the color from its inline style */
     border-top: 1px solid var(--color);
     border-left: 1px solid var(--color);
-    /* Creates a small gap between the h5 title and the top of the "L" */
     margin-top: 5px;
     margin-bottom: 24px;
-    /* Pushes the content (table, child wrappers) away from the vertical line */
     padding-left: 12px;
 }
 
@@ -144,6 +135,10 @@ pre.nested-underline-container span:has(br) + span {
     border-bottom: 1px solid var(--outline-grey);
     cursor: default;
     min-width: 225px;
+}
+
+.property-capture-table td {
+    transition: color var(--fade-time) var(--highlight-easing), box-shadow var(--fade-time) var(--highlight-easing);
 }
 
 .prop-capture-table-cell.type-column {
@@ -157,14 +152,16 @@ pre.nested-underline-container span:has(br) + span {
 }
 
 /* --- HIGHLIGHT ACTIVE STATES --- */
-/* These rules define *what* an element should look like when highlighted. */
 
+[data-path].highlight-active {
+    color: var(--highlight-color);
+}
 
 .prop-capture-inline.highlight-active {
     border-top-color: var(--highlight-color);
 }
 
-.token-type-name.highlight-active {
+.token-summary-header.highlight-active .token-type-name {
     color: var(--highlight-color);
 }
 
@@ -173,50 +170,76 @@ pre.nested-underline-container span:has(br) + span {
     border-left: 1px solid var(--highlight-color);
 }
 
-/* All cells get a bottom stroke */
-.prop-capture-table-cell.highlight-active {
+tr.highlight-active .prop-capture-table-cell {
     box-shadow: inset 0 -1px 0 0 var(--highlight-color);
 }
 
-.prop-capture-table-cell.first-column.highlight-active {
-    box-shadow: inset var(--underline-width) -1px 0 0 var(--highlight-color);
-}
+    tr.highlight-active .prop-capture-table-cell.first-column {
+        box-shadow: inset var(--underline-width) -1px 0 0 var(--highlight-color);
+        color: var(--highlight-color);
+    }
 
 /* --- MUTE ACTIVE STATES --- */
-/* These rules define what an element should look like when muted. */
-
 
 .prop-capture-inline.mute-active {
     border-top-color: var(--lowlight-color);
 }
 
-.token-type-name.mute-active {
+.token-summary-header.mute-active .token-type-name {
     color: var(--lowlight-color);
 }
 
-/* All cells get a bottom stroke */
-.prop-capture-table-cell.first-column.highlight-active {
-    color: var(--highlight-color);
-}
-
-.prop-capture-table-cell.first-column.mute-active {
+/* Default Mute Styles for Table Rows */
+tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--lowlight-color);
 }
 
-.prop-capture-table-cell.type-column.mute-active {
+tr.mute-active .prop-capture-table-cell.type-column {
     color: dimgrey;
 }
 
-.prop-capture-table-cell.value-column.mute-active {
+tr.mute-active .prop-capture-table-cell.value-column {
     color: gray;
 }
+
+/* --- OVERRIDE RULES FOR INTERACTION STATES --- */
+
+/* 1. When a table's parent branch is highlighted (but no specific row), 
+      muted rows should appear NEUTRAL, not dimmed. */
+.token-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.first-column {
+    color: var(--color);
+}
+
+.token-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.type-column {
+    color: grey;
+}
+
+.token-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.value-column {
+    color: white;
+}
+
+/* 2. NEW: When a specific row IS highlighted within that table,
+      re-apply the dimming to its muted siblings. This is more specific
+      than the rule above and will take precedence. */
+.token-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.first-column {
+    color: var(--lowlight-color);
+}
+
+.token-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.type-column {
+    color: dimgrey;
+}
+
+.token-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.value-column {
+    color: gray;
+}
+
 
 /* Regex Dialog */
 
 .preview-highlight {
-    background-color: #FFECB3; /* A nice, light yellow */
+    background-color: #FFECB3;
     border-radius: 3px;
-    box-shadow: 0 0 0 1px #FFD54F; /* A slightly darker yellow border */
+    box-shadow: 0 0 0 1px #FFD54F;
 }
 
 precedingtext, followingtext {

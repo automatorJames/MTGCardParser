@@ -44,14 +44,7 @@ function initCardCaptureHover() {
         const boundary = hoveredElement.closest('.' + boundaryClass);
         if (!boundary) return;
 
-
-        // --- EFFICIENT HIGHLIGHTING & MUTING ALGORITHM ---
-        // This solution avoids performance issues by splitting the work into two phases:
-        // 1. A fast, targeted "Collect" phase that traverses UP the DOM tree.
-        // 2. A single "Distribute" phase that scans only within the boundary for matches.
-        // This is vastly more performant than doing complex comparisons on every element in the DOM.
-
-        // --- PHASE 1: COLLECT ---
+        // --- PHASE 1: COLLECT (Corrected) ---
         // We travel up from the hovered element, collecting the `data-path` of all valid
         // ancestors into a Set. A Set provides highly efficient, near-instant lookups.
         const pathsToHighlight = new Set();
@@ -60,20 +53,17 @@ function initCardCaptureHover() {
         while (currentElement && currentElement !== boundary.parentElement) {
             const currentPath = currentElement.dataset.path;
 
-            // An ancestor is valid if its path is a prefix of the hovered path.
-            // This elegantly identifies all hierarchical parents.
-            if (currentPath && hoveredPath.startsWith(currentPath)) {
+            // An element is a valid ancestor if it's in the DOM hierarchy. The 'startsWith'
+            // check was too restrictive and has been removed.
+            if (currentPath) {
                 pathsToHighlight.add(currentPath);
             }
 
             currentElement = currentElement.parentElement;
         }
 
-
         // --- PHASE 2: DISTRIBUTE ---
-        // Now, with a small and efficient Set of paths to find, we do one single
-        // scan of all elements with a `data-path` *within the boundary*.
-        // For each element, we check if its path exists in our Set.
+        // This phase remains unchanged. It efficiently applies classes based on the collected set.
         if (pathsToHighlight.size > 0) {
             const allPathElementsInBoundary = boundary.querySelectorAll(dataPathSelector);
             allPathElementsInBoundary.forEach(el => {

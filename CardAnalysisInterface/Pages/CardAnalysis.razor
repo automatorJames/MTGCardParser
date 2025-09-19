@@ -3,7 +3,6 @@
 @inject IJSRuntime JSRuntime
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
-@implements IDisposable
 
 <div class="analyzed-card-container" id="card-analysis">
     @foreach (var card in GetFilteredCards())
@@ -50,12 +49,5 @@
             .Where(containsPredicate)
             .OrderByDescending(startsWithPredicate)
             .ThenBy(c => c.Card.Name);
-    }
-
-    public void Dispose()
-    {
-        RuntimeSettings.OnChanged -= StateHasChanged;
-        // Also call the JS cleanup function on disposal
-        JSRuntime.InvokeVoidAsync("disposeCardCaptureHover").AsTask();
     }
 }
