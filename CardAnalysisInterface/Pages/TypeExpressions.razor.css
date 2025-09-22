@@ -1,4 +1,30 @@
-﻿.type-card-container {
+﻿.formatted-regex-fira {
+    font-family: 'Fira Code', monospace;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre;
+}
+
+/* --- 2. JetBrains Mono --- */
+.formatted-regex-jetbrains {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.7; /* A slightly taller line height suits this font */
+    white-space: pre;
+}
+
+/* --- 3. IBM Plex Mono --- */
+.formatted-regex-ibm {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre;
+}
+
+.type-card-container {
     display: flex;
     flex-direction: column;
     align-items: center;

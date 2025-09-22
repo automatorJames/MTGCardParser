@@ -1,4 +1,5 @@
 ﻿using MTGPlexer.RegexGeneration.Composers;
+using MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 using System.Collections;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
@@ -35,7 +36,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         else if (_baseType.IsEnum)
         {
             _manyItemType = ManyItemVariant.Enum;
-            EnumRegexProp proxyEnumRegexProp = new(captureProp, nameOverride: _itemName);
+            EnumRegexProp proxyEnumRegexProp = new(captureProp.DerviveForManyOfItem());
             _singleIterationSegments = [proxyEnumRegexProp];
         }
         else

@@ -1,4 +1,6 @@
 ﻿
+using MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
@@ -15,7 +17,7 @@ public class BoolRegexProp : ScalarCapturePropBase
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo);
-        collector.AddAlternatiingValues(ScalarAlternativeSet.Alternatives);
+        collector.AddAlternatingValues(ScalarAlternativeSet.Alternatives);
         collector.CloseGroup(GroupQuantifier.Optional);
     }
 

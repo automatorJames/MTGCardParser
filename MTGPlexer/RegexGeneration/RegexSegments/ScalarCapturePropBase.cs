@@ -10,7 +10,7 @@ public abstract class ScalarCapturePropBase : CaptureGroupPropBase
 
     public ScalarAlternativeSet ScalarAlternativeSet { get; protected set; }
 
-    public ScalarCapturePropBase(RegexPropInfo captureProp, string nameOverride = null) : base(captureProp, nameOverride)
+    public ScalarCapturePropBase(RegexPropInfo captureProp) : base(captureProp)
     {
         SetScalarAlternativeSet(captureProp);
     }

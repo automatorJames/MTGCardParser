@@ -2,79 +2,86 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public class RegexLineCollector
 {
-    int _nextUnnamedCaptureGroupId;
     List<RegexTemplateLine> _lines = [];
-    Stack<object> _captureGroupStack = [];
-    Dictionary<RegexPropInfo, Palette> _terminalGroupPalettes = [];
-    int _indentation;
+    int _nextEnclosureOrdinal;
+    Stack<Enclosure> _enclosureStack = [];
+    Dictionary<Enclosure, Palette> _terminalGroupPalettes = [];
     BoundaryOption _boundaryOption;
+    
+    Dictionary<Enclosure, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
 
-    string _currentNameFlatPath => string.Join("_", _captureGroupStack
-        .OfType<RegexPropInfo>()
-        .Where(x => x != null)
-        .Reverse()
-        .Select(x => x.Name));
+    Enclosure[] _orderedEnclosureStack =>
+        _enclosureStack
+            .Where(x => x is not RootEnclosure)
+            .Reverse()
+            .ToArray();
 
-    RegexPropInfo _currentNamedGroup => GetCurrentNamedGroupOrNull(ignoreUnnamedGroups: true);
     Palette _currentPalette => GetCurrentPaletteOrNull();
-
-    // The key "-1" represents the top level (i.e. the class, not within a capture group)
-    Dictionary<object, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
 
     public RegexLineCollector(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {
+        // an invisible top level enclosure;
+        RootEnclosure rootEnclosure = new(); 
+
+        // always track the root enclosure (makes space disposition tracking cleaner)
+        _enclosureStack.Push(rootEnclosure); 
+
         _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
-        var topLevelSpaceDiposition = SpaceDisposition.DontAddSpaceBeforeNextItem;
-        if (topLevelType.IsDefined(typeof(NoSpacesAttribute)) || neverAddSpacesAtTopLevel)
-        {
-            topLevelSpaceDiposition = SpaceDisposition.NeverAddSpace;
-        }
-        _spaceIsRequiredBeforeNextElementAtLevel = new Dictionary<object, SpaceDisposition> { [-1] = topLevelSpaceDiposition };
+
+        var topLevelSpaceDiposition = (topLevelType.IsDefined(typeof(NoSpacesAttribute)) || neverAddSpacesAtTopLevel)
+            ? SpaceDisposition.NeverAddSpace
+            : SpaceDisposition.DontAddSpaceBeforeNextItem;
+
+        _spaceIsRequiredBeforeNextElementAtLevel = new Dictionary<Enclosure, SpaceDisposition> { [rootEnclosure] = topLevelSpaceDiposition };
     }
 
     public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false, string nameOverride = null)
     {
         AddPrecedingSpaceIfApplicable();
-        var groupKey = (object)captureGroup ?? _nextUnnamedCaptureGroupId++;
-        _captureGroupStack.Push(groupKey);
 
-        if (groupKey is RegexPropInfo prop && prop.BaseType.IsDefined(typeof(NoSpacesAttribute)))
+        Enclosure enclosure = captureGroup == null 
+            ? new Enclosure(_nextEnclosureOrdinal++) 
+            : new NamedEnclosure(_nextEnclosureOrdinal++, captureGroup, nameOverride);
+
+        _enclosureStack.Push(enclosure);
+
+        if (captureGroup?.BaseType.IsDefined(typeof(NoSpacesAttribute)) ?? false)
             neverAddSpacesToGroupMembers = true;
 
-        _spaceIsRequiredBeforeNextElementAtLevel[groupKey] = neverAddSpacesToGroupMembers ? SpaceDisposition.NeverAddSpace : SpaceDisposition.DontAddSpaceBeforeNextItem;
+        _spaceIsRequiredBeforeNextElementAtLevel[enclosure] = neverAddSpacesToGroupMembers 
+            ? SpaceDisposition.NeverAddSpace 
+            : SpaceDisposition.DontAddSpaceBeforeNextItem;
 
         if (captureGroup != null)
         {
             if (captureGroup.IsTerminal)
-                _terminalGroupPalettes.TryAdd(captureGroup, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
+                _terminalGroupPalettes.TryAdd(enclosure, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
 
-            _terminalGroupPalettes.TryGetValue(captureGroup, out var palette);
+            _terminalGroupPalettes.TryGetValue(enclosure, out var palette);
             var name = nameOverride ?? captureGroup.Name;
-            _lines.Add(new NamedGroupOpen(name, _currentNameFlatPath, _indentation, captureGroup.FriendlyTypeName, palette, _currentNamedGroup));
+            _lines.Add(new NamedGroupOpen(_orderedEnclosureStack, name, captureGroup, captureGroup.FriendlyTypeName, palette));
         }
         else
-            _lines.Add(new GroupOpen(_currentNameFlatPath, _indentation, _currentNamedGroup));
-
-        _indentation++;
+            _lines.Add(new GroupOpen(_orderedEnclosureStack));
     }
 
     public void CloseGroup(GroupQuantifier? quantifier = null)
     {
-        _indentation--;
-        var groupName = GetCurrentNamedGroupOrNull()?.Name;
-        _lines.Add(new GroupClose(_currentNameFlatPath, _indentation, _currentPalette, groupName, _currentNamedGroup, quantifier));
+        if (_enclosureStack.Peek() is NamedEnclosure namedEnclosure)
+            _lines.Add(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, _currentPalette, quantifier));
+        else
+            _lines.Add(new GroupClose(_orderedEnclosureStack, _currentPalette, quantifier));
 
-        // Pop the current group name (or null placeholder)
-        _captureGroupStack.Pop();
+        _enclosureStack.Pop();
     }
 
     public void AddTextLine(string text)
     {
         AddPrecedingSpaceIfApplicable();
-        _lines.Add(new TextLine(text, _currentNameFlatPath, _indentation, _currentNamedGroup));
+        _lines.Add(new TextLine(_orderedEnclosureStack, text));
     }
 
-    public void AddAlternatiingValues(IEnumerable<string> alternatives)
+    public void AddAlternatingValues(IEnumerable<string> alternatives)
     {
         bool isFirstAlternation = true;
         bool isOnlyAlternation = alternatives.Count() == 1;
@@ -82,11 +89,9 @@ public class RegexLineCollector
         foreach (var alternative in alternatives)
         {
             var alternateValue = new AlternateValue(
+                _orderedEnclosureStack,
                 alternative,
-                _currentNameFlatPath,
-                _indentation,
                 GetCurrentPaletteOrNull(),
-                GetCurrentNamedGroupOrNull(),
                 isFirstAlternation,
                 isOnlyAlternation);
 
@@ -97,51 +102,31 @@ public class RegexLineCollector
 
     public void AddGroupAlternativePipe()
     {
-        var path = _currentNameFlatPath;
-        _lines.Add(new GroupAlternativePipe(path, _indentation, _currentNamedGroup));
+        var path = _orderedEnclosureStack;
+        _lines.Add(new GroupAlternativePipe(_orderedEnclosureStack));
     }
 
     void AddPrecedingSpaceIfApplicable()
     {
-        var currentScopeKey = _captureGroupStack.Any() ? _captureGroupStack.Peek() : -1;
-
-        var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[currentScopeKey];
+        var currentScope = _enclosureStack.Peek();
+        var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[currentScope];
 
         if (groupSpaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
-            _lines.Add(new SpaceLine(_currentNameFlatPath, _indentation, _currentNamedGroup));
+            _lines.Add(new SpaceLine(_orderedEnclosureStack));
         else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpace)
-            _spaceIsRequiredBeforeNextElementAtLevel[currentScopeKey] = SpaceDisposition.AddSpaceBeforeNextItem;
+            _spaceIsRequiredBeforeNextElementAtLevel[currentScope] = SpaceDisposition.AddSpaceBeforeNextItem;
     }
 
     Palette GetCurrentPaletteOrNull()
     {
-        var namedGroupOrNull = GetCurrentNamedGroupOrNull();
-
-        if (namedGroupOrNull == null)
-            return null;
-
-        _terminalGroupPalettes.TryGetValue(namedGroupOrNull, out var palette);
-
+        _terminalGroupPalettes.TryGetValue(_enclosureStack.Peek(), out var palette);
         return palette;
-    }
-
-    RegexPropInfo GetCurrentNamedGroupOrNull(bool ignoreUnnamedGroups = false)
-    {
-        if (!_captureGroupStack.Any()) return null;
-
-        IEnumerable<object> groupsToCheck = ignoreUnnamedGroups ?
-            _captureGroupStack.Where(x => x is RegexPropInfo)
-            : _captureGroupStack;
-
-        var group = groupsToCheck.LastOrDefault();
-        RegexPropInfo namedGroupOrNull = group is RegexPropInfo prop ? prop : null;
-        return namedGroupOrNull;
     }
 
     public Regex ExtractGroupRegex(RegexPropInfo group)
     {
-        var firstGroupLine = _lines.FirstOrDefault(x => x.Group == group);
-        var lastGroupLine = _lines.LastOrDefault(x => x.Group == group);
+        var firstGroupLine = _lines.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
+        var lastGroupLine = _lines.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
 
         if (firstGroupLine == null || lastGroupLine == null)
             return null;
@@ -151,7 +136,7 @@ public class RegexLineCollector
 
         var groupLines = _lines.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
         AddBoundaryLines(groupLines);
-        var regexString = string.Join("", groupLines.Select(x => x.EvaluableRegex));
+        var regexString = string.Join("", groupLines.Select(x => x.Regex));
         regexString = MinifyRegex(regexString);
 
         return new (regexString, RegexOptions.Compiled);
@@ -162,35 +147,53 @@ public class RegexLineCollector
         if (!_lines.Any())
             return new GeneratedRegex([]);
 
-        // This new list will hold the original lines plus the new blank lines.
         var finalizedLines = new List<RegexTemplateLine>();
-
-        // Initialize currentPath with the first line's path to avoid adding a blank line at the start.
-        var currentPath = _lines[0].Path;
         finalizedLines.Add(_lines[0]);
 
-        // Iterate through the rest of the lines to check for path changes.
         for (int i = 1; i < _lines.Count; i++)
         {
-            var line = _lines[i];
+            var previousLine = _lines[i - 1];
+            var currentLine = _lines[i];
 
-            // If the path of the current line is different from the last line's path
-            if (line.Path != currentPath)
+            bool pathChanged = currentLine.Path != previousLine.Path;
+
+            if (pathChanged)
             {
-                // insert a blank line and update the current path
-                finalizedLines.Add(new BlankLine(line.Path));
-                currentPath = line.Path;
+                // Helper to classify lines into "Enter", "Exit", or "Content" events.
+                // 0 = Content, 1 = Enter, 2 = Exit
+                int GetEnclosureEventType(RegexTemplateLine line)
+                {
+                    if (line is GroupOpen or NamedGroupOpen) return 1;
+                    if (line is GroupClose or NamedGroupClose) return 2;
+                    return 0;
+                }
+
+                var prevEventType = GetEnclosureEventType(previousLine);
+                var currentEventType = GetEnclosureEventType(currentLine);
+
+                // Add a blank line for a path change, UNLESS it's between two consecutive
+                // enclosure 'Enter' events or two consecutive 'Exit' events.
+                if (prevEventType != currentEventType || prevEventType == 0)
+                {
+                    // Find the common parent scope for the blank line to live in.
+                    int commonDepth = 0;
+                    while (commonDepth < previousLine.Enclosures.Length &&
+                           commonDepth < currentLine.Enclosures.Length &&
+                           previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
+                    {
+                        commonDepth++;
+                    }
+
+                    var blankLineEnclosures = previousLine.Enclosures.Take(commonDepth).ToArray();
+                    finalizedLines.Add(new BlankLine(blankLineEnclosures));
+                }
             }
 
-            // Add the current line itself.
-            finalizedLines.Add(line);
+            finalizedLines.Add(currentLine);
         }
 
-        // Add word boundaries to the start and end of the entire pattern unless opted out.
         AddBoundaryLines(finalizedLines);
-
-        // Create the final GeneratedRegex object using the fully processed list.
-        return new(finalizedLines);
+        return new GeneratedRegex(finalizedLines);
     }
 
     void AddBoundaryLines(List<RegexTemplateLine> lines)
@@ -202,8 +205,8 @@ public class RegexLineCollector
         RegexTemplateLine endBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary();
 
         lines.Insert(0, startBoundary);
-        lines.Insert(1, new BlankLine(""));
-        lines.Add(new BlankLine(""));
+        lines.Insert(1, new BlankLine([]));
+        lines.Add(new BlankLine([]));
         lines.Add(endBoundary);
     }
 }

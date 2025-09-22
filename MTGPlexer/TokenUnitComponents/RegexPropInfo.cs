@@ -2,28 +2,52 @@
 
 public record RegexPropInfo
 {
-    public PropertyInfo Prop { get; }
-    public RegexPropType RegexPropType { get; }
-    public bool IsManyItem { get; }
-    public Type BaseType { get; }
-    public Type UnderlyingType { get; }
-    public string Name { get; }
-    public string FriendlyTypeName { get; }
-    public string FriendlyPropName { get; }
-    public bool IsTerminal { get; }
-    public bool MayBeNull { get; }
+    public PropertyInfo Prop { get; init; }
+    public RegexPropType RegexPropType { get; init; }
+    public bool IsManyOf { get; init; }
+    public Type BaseType { get; init; }
+    public Type UnderlyingType { get; init; }
+    public string Name { get; init; }
+    public string FriendlyTypeName { get; init; }
+    public string FriendlyPropName { get; init; }
+    public bool IsTerminal { get; init; }
+    public bool MayBeNull { get; init; }
+
+    private RegexPropInfo()
+    {
+    }
 
     public RegexPropInfo(PropertyInfo prop)
     {
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
-        (RegexPropType, IsManyItem, BaseType) = GetCapturePropType(prop);
+        (RegexPropType, IsManyOf, BaseType) = GetCapturePropType(prop);
         UnderlyingType = nullableType ?? prop.PropertyType;
         Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
         MayBeNull = nullableType != null;
+    }
+
+    public RegexPropInfo DerviveForManyOfItem()
+    {
+        if (!IsManyOf)
+            throw new Exception($"May only derive a {nameof(RegexPropInfo)} many-of-item instance if {nameof(IsManyOf)} is true");
+
+        return new RegexPropInfo
+        {
+            Prop = Prop,
+            RegexPropType = RegexPropType,
+            BaseType = BaseType,
+            UnderlyingType = UnderlyingType,
+            FriendlyTypeName = FriendlyTypeName,
+            FriendlyPropName = FriendlyPropName,
+            IsTerminal = IsTerminal,
+            MayBeNull = MayBeNull,
+            IsManyOf = false,       // toggle this off to represent the item level
+            Name = Name + "_item"   // append "_item" to the original name
+        };
     }
 
     private static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
@@ -56,7 +80,7 @@ public record RegexPropInfo
 
     string GetFriendlyTypeName()
     {
-        if (IsManyItem)
+        if (IsManyOf)
             return "many of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
@@ -87,7 +111,7 @@ public record RegexPropInfo
 
     public CaptureGroupPropBase GetCaptureGroupPropBase(bool forceGetUnderlyingPropType = false)
     {
-        if (IsManyItem && !forceGetUnderlyingPropType)
+        if (IsManyOf && !forceGetUnderlyingPropType)
             return new TokenRegexManyProp(this);
 
         return RegexPropType switch

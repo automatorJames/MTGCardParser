@@ -11,9 +11,9 @@ public abstract class CaptureGroupPropBase : RegexSegmentBase
     public RegexPropInfo RegexPropInfo { get; init; }
     public abstract Regex MatchRegex { get; }
     
-    public CaptureGroupPropBase(RegexPropInfo captureProp, string nameOverride = null)
+    public CaptureGroupPropBase(RegexPropInfo captureProp)
     {
-        Name = nameOverride ?? captureProp.Name;
+        Name = captureProp.Name;
         RegexPropInfo = captureProp;
     }
 

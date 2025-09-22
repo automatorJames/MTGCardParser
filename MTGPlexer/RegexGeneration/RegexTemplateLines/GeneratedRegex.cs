@@ -1,9 +1,15 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+using MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public record GeneratedRegex
 {
     const int _hashSeparatorPadding = 2;
-    const int _boxContentLeftPadding = 1; // Padding for left-aligned text inside a box wall.
+    const int _boxContentLeftPadding = 1;
+    const int _spacesPerIndent = 4;
 
     public List<RegexCommentedLine> CommentedLines { get; private set; } = [];
     public string FormattedRegex { get; set; }
@@ -20,166 +26,186 @@ public record GeneratedRegex
         CalculateColumnWidths(lines);
         FormatCommentedLines(lines);
         FormattedRegex = string.Join(Environment.NewLine, CommentedLines.Select(x => x.FormattedText));
-        var regexWithoutComments = string.Join("", CommentedLines.Select(x => x.Regex));
-        MinifiedRegex = MinifyRegex(regexWithoutComments);
+        MinifiedRegex = MinifyRegex(string.Join("", lines.Select(x => x.Regex)));
     }
 
-    /// <summary>
-    /// Builds the final formatted string for each line, managing a stack of active named groups
-    /// to correctly render nested Unicode boxes.
-    /// </summary>
     void FormatCommentedLines(List<RegexTemplateLine> templateLines)
     {
-        var activeNamedGroups = new Stack<NamedGroupOpen>();
-
         foreach (var line in templateLines)
         {
-            // For a closing line, its comment is rendered in the context of its parent,
-            // so we pop the group from the stack before generating the comment.
-            if (line is GroupClose close && activeNamedGroups.Any() && close.Name == activeNamedGroups.Peek().Name)
-            {
-                activeNamedGroups.Pop();
-            }
-
-            var regex = line.IndentedValue.PadRight(CommentColumn);
+            int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
+            var indentedRegex = new string(' ', indentSpaces) + line.Regex;
+            var paddedRegex = indentedRegex.PadRight(CommentColumn);
             var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
-            var commentBody = GetFormattedComment(line, activeNamedGroups);
+            var commentBody = GetFormattedComment(line);
 
-            CommentedLines.Add(new(regex, commentPrefix + commentBody, line.Palette));
+            CommentedLines.Add(new(paddedRegex, commentPrefix + commentBody, line.Palette));
+        }
+    }
 
-            // For an opening line, its comment is rendered, and THEN it's pushed to the stack
-            // to become the parent for subsequent lines.
-            if (line is NamedGroupOpen open)
+    private string GetFormattedComment(RegexTemplateLine line)
+    {
+        if (line.Enclosures.Length == 0) return line.Comment ?? string.Empty;
+
+        var parentEnclosures = line.Enclosures.Take(line.Enclosures.Length - 1);
+        var prefix = new StringBuilder();
+        var suffix = new StringBuilder();
+        foreach (var parent in parentEnclosures)
+        {
+            char wall = BoxChars.Get(parent.Treatment).Wall;
+            prefix.Append($"{wall} ");
+            suffix.Insert(0, $" {wall}");
+        }
+
+        int parentDepth = parentEnclosures.Count();
+        int currentLevelWidth = CommentBoxLength - (parentDepth * 4);
+        string coreContent;
+        var currentEnclosure = line.Enclosures.Last();
+        var chars = BoxChars.Get(currentEnclosure.Treatment);
+        bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
+
+        if (isBookend)
+        {
+            int availableWidth = currentLevelWidth - 2;
+            switch (line)
             {
-                activeNamedGroups.Push(open);
+                case NamedGroupOpen ngo:
+                    string openComment = $" {ngo.Comment} ";
+                    string fillerOpen = new string(chars.Top, Math.Max(0, availableWidth - openComment.Length));
+                    coreContent = $"{chars.TopLeft}{openComment}{fillerOpen}{chars.TopRight}";
+                    break;
+                case GroupOpen:
+                    coreContent = $"{chars.TopLeft}{new string(chars.Top, availableWidth)}{chars.TopRight}";
+                    break;
+                case NamedGroupClose ngc:
+                    string closeComment = $" {ngc.Comment} ";
+                    string fillerClose = new string(chars.Bottom, Math.Max(0, availableWidth - closeComment.Length));
+                    coreContent = $"{chars.BottomLeft}{fillerClose}{closeComment}{chars.BottomRight}";
+                    break;
+                case GroupClose gc:
+                    string quantComment = gc.Comment != null ? $" {gc.Comment} " : "";
+                    string fillerQuant = new string(chars.Bottom, Math.Max(0, availableWidth - quantComment.Length));
+                    coreContent = $"{chars.BottomLeft}{fillerQuant}{quantComment}{chars.BottomRight}";
+                    break;
+                default:
+                    coreContent = new string(' ', currentLevelWidth);
+                    break;
             }
         }
+        else
+        {
+            int innerWidth = currentLevelWidth - 4;
+            string textContent;
+            switch (line)
+            {
+                case AlternateValue av:
+                    string altComment = $" {av.Comment} ";
+                    int totalPad = Math.Max(0, innerWidth - altComment.Length);
+                    textContent = $"{new string(' ', totalPad / 2)}{altComment}{new string(' ', totalPad - (totalPad / 2))}";
+                    break;
+                default:
+                    if (string.IsNullOrEmpty(line.Comment))
+                    {
+                        textContent = new string(' ', innerWidth);
+                    }
+                    else
+                    {
+                        textContent = (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
+                    }
+                    break;
+            }
+            coreContent = $"{chars.Wall} {textContent} {chars.Wall}";
+        }
+        return prefix + coreContent + suffix;
     }
 
-    /// <summary>
-    /// Generates the appropriate comment string for a line, including parent box walls for nesting.
-    /// </summary>
-    /// <param name="line">The RegexTemplateLine to process.</param>
-    /// <param name="parentGroups">The current stack of active parent groups.</param>
-    /// <returns>A formatted comment string.</returns>
-    private string GetFormattedComment(RegexTemplateLine line, Stack<NamedGroupOpen> parentGroups)
-    {
-        // Handle lines that are never boxed (like boundaries).
-        if (line is NegativeLookaheadBoundary or NegativeLookbehindBoundary)
-        {
-            return line.CommentOne ?? string.Empty;
-        }
-
-        var parentPrefix = new StringBuilder();
-        var parentSuffix = new StringBuilder();
-        int nestingDepth = parentGroups.Count;
-
-        // 1. Build the parent wall prefixes and suffixes based on the current nesting depth.
-        for (int i = 0; i < nestingDepth; i++)
-        {
-            parentPrefix.Append("│ ");
-            parentSuffix.Insert(0, " │");
-        }
-
-        // 2. Calculate the width available for the content at the current nesting level.
-        int currentContentWidth = CommentBoxLength - (nestingDepth * 4);
-        string coreContent;
-
-        // 3. Generate the core content based on the line type.
-        switch (line)
-        {
-            case NamedGroupOpen ngo:
-                string left = $" {ngo.CommentOne} ";
-                string right = $" {ngo.CommentTwo} ";
-                int fillerLenOpen = currentContentWidth - 2 - left.Length - right.Length;
-                string fillerOpen = new string('─', Math.Max(0, fillerLenOpen));
-                coreContent = $"┌{left}{fillerOpen}{right}┐";
-                break;
-
-            case GroupClose gc when !string.IsNullOrEmpty(gc.Name):
-                string contentClose = $" {gc.CommentTwo} ";
-                int fillerLenClose = currentContentWidth - 2 - contentClose.Length;
-                string fillerClose = new string('─', Math.Max(0, fillerLenClose));
-                coreContent = $"└{fillerClose}{contentClose}┘";
-                break;
-
-            // Center-align AlternateValue comments.
-            case AlternateValue av:
-                string centeredText = av.CommentOne ?? "";
-                int availableWidthCenter = Math.Max(0, currentContentWidth);
-                int textWidthCenter = centeredText.Length;
-                int totalPaddingCenter = Math.Max(0, availableWidthCenter - textWidthCenter);
-                int leftPaddingCenter = totalPaddingCenter / 2;
-                int rightPaddingCenter = totalPaddingCenter - leftPaddingCenter;
-                coreContent = $"{new string(' ', leftPaddingCenter)}{centeredText}{new string(' ', rightPaddingCenter)}";
-                break;
-
-            // Left-align other content lines like pipes and blank lines inside boxes.
-            case GroupAlternativePipe or BlankLine:
-                string leftAlignedText = line.CommentOne ?? "";
-                int availableWidthLeft = Math.Max(0, currentContentWidth);
-                if (string.IsNullOrEmpty(leftAlignedText))
-                {
-                    coreContent = new string(' ', availableWidthLeft);
-                }
-                else
-                {
-                    string paddedText = (new string(' ', _boxContentLeftPadding) + leftAlignedText).PadRight(availableWidthLeft);
-                    coreContent = paddedText;
-                }
-                break;
-
-            default:
-                var plainComment = line.CommentOne ?? string.Empty;
-                var fillerTxt = new string(' ', Math.Max(0, currentContentWidth - plainComment.Length));
-                coreContent = parentGroups.Any() ? $"{plainComment}{fillerTxt}" : plainComment;
-                break;
-        }
-
-        // 4. Combine parent walls with the generated core content.
-        return parentPrefix.ToString() + coreContent + parentSuffix.ToString();
-    }
-
-    /// <summary>
-    /// Calculates the required width for all comment boxes. The width is determined by the
-    /// named group that requires the most horizontal space, considering both its title length
-    /// and its nesting depth.
-    /// </summary>
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
     {
-        HashSeparatorColumn = lines.Max(x => x.End) + _hashSeparatorPadding;
+        int maxRegexLen = lines.Any() ? lines.Max(l => GetIndentDepth(l) * _spacesPerIndent + l.Regex.Length) : 0;
+        HashSeparatorColumn = maxRegexLen + _hashSeparatorPadding;
         CommentColumn = HashSeparatorColumn + _hashSeparatorPadding;
 
-        if (!lines.OfType<NamedGroupOpen>().Any())
+        var uniquePaths = lines
+            .SelectMany(l => l.Enclosures.Select((e, i) => l.Enclosures.Take(i + 1)))
+            .GroupBy(p => string.Join(",", p.Select(e => e.Ordinal)))
+            .Select(g => g.First())
+            .Where(p => p.Any())
+            .ToList();
+
+        var boxWidths = uniquePaths.ToDictionary(p => string.Join(",", p.Select(e => e.Ordinal)), p => 0);
+
+        // Pass 1: Determine the minimum content width required by each box for its own lines.
+        foreach (var line in lines.Where(l => l.Enclosures.Any()))
         {
-            CommentBoxLength = 0;
-            return;
-        }
+            string pathKey = string.Join(",", line.Enclosures.Select(e => e.Ordinal));
+            int requiredWidth = 0;
+            string comment = line.Comment;
 
-        int maxRequiredWidth = 0;
-
-        foreach (var line in lines.OfType<NamedGroupOpen>())
-        {
-            // The nesting depth is equivalent to the number of named group ancestors.
-            // The Path property (e.g., "Parent_Child_Grandchild") reliably tracks this.
-            int nestingDepth = line.Path.Count(c => c == '_');
-
-            // Calculate the base width required for the header content itself.
-            int headerContentWidth = line.CommentOneLength + line.CommentTwoLength
-                + 2 // for ┌ and ┐
-                + 1 // for at least one '─' filler character
-                + 4; // for " {comment1} " and " {comment2} " spacing
-
-            // Calculate the total visual width needed at its specific depth.
-            // Each level of nesting adds 4 characters for the "│ " prefix and " │" suffix.
-            int totalVisualWidth = headerContentWidth + (nestingDepth * 4);
-
-            if (totalVisualWidth > maxRequiredWidth)
+            if (!string.IsNullOrEmpty(comment))
             {
-                maxRequiredWidth = totalVisualWidth;
+                bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
+                int textWidth;
+
+                switch (line)
+                {
+                    case AlternateValue or NamedGroupOpen or NamedGroupClose or GroupClose:
+                        textWidth = comment.Length + 2; // For " comment "
+                        break;
+                    default:
+                        textWidth = _boxContentLeftPadding + comment.Length; // For " comment"
+                        break;
+                }
+
+                requiredWidth = isBookend ? textWidth + 2 : textWidth + 4;
             }
+            boxWidths[pathKey] = Math.Max(boxWidths[pathKey], requiredWidth);
         }
 
-        CommentBoxLength = maxRequiredWidth;
+        // Pass 2: Propagate widths upwards. A parent must be wide enough to contain its children's boxes.
+        var sortedPaths = uniquePaths.OrderByDescending(p => p.Count());
+        foreach (var path in sortedPaths)
+        {
+            if (path.Count() <= 1) continue;
+            string childPathKey = string.Join(",", path.Select(e => e.Ordinal));
+            string parentPathKey = string.Join(",", path.Take(path.Count() - 1).Select(e => e.Ordinal));
+            int childFootprint = boxWidths[childPathKey] + 4; // Child's box width + parent's walls
+            boxWidths[parentPathKey] = Math.Max(boxWidths[parentPathKey], childFootprint);
+        }
+
+        // Pass 3: Find the maximum width among all root-level boxes.
+        var rootPaths = uniquePaths.Where(p => p.Count() == 1);
+        CommentBoxLength = rootPaths.Any() ? rootPaths.Max(p => boxWidths[string.Join(",", p.Select(e => e.Ordinal))]) : 0;
+    }
+
+    private int GetIndentDepth(RegexTemplateLine line)
+    {
+        if (line.Enclosures.Length == 0) return 0;
+        bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
+        return isBookend ? line.Enclosures.Length - 1 : line.Enclosures.Length;
+    }
+
+    private string MinifyRegex(string pattern)
+    {
+        string placeholder = Guid.NewGuid().ToString();
+        string protectedPattern = pattern.Replace("[ ]", placeholder);
+        string strippedPattern = Regex.Replace(protectedPattern, @"\s", "");
+        return strippedPattern.Replace(placeholder, " ");
+    }
+
+    private record BoxCharSet(char TopLeft, char TopRight, char BottomLeft, char BottomRight, char Top, char Bottom, char Wall);
+
+    private static class BoxChars
+    {
+        private static readonly BoxCharSet Closed = new('┌', '┐', '└', '┘', '─', '─', '│');
+        private static readonly BoxCharSet Dashed = new('┌', '┐', '└', '┘', '─', '─', '╎');
+        private static readonly BoxCharSet Brace = new('╭', '╮', '╰', '╯', ' ', ' ', '┊');
+
+        public static BoxCharSet Get(GroupBorderTreatment treatment) => treatment switch
+        {
+            GroupBorderTreatment.ClosedBox => Closed,
+            GroupBorderTreatment.DashedBox => Dashed,
+            GroupBorderTreatment.Brace => Brace,
+            _ => Closed,
+        };
     }
 }

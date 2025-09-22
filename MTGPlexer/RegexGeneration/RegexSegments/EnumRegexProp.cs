@@ -10,14 +10,14 @@ public class EnumRegexProp : ScalarCapturePropBase
     public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].Regex;
     public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
 
-    public EnumRegexProp(RegexPropInfo captureProp, string nameOverride = null) : base(captureProp, nameOverride)
+    public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
     }
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo, nameOverride: Name);
-        collector.AddAlternatiingValues(ScalarAlternativeSet.Alternatives);
+        collector.AddAlternatingValues(ScalarAlternativeSet.Alternatives);
         collector.CloseGroup();
     }
 

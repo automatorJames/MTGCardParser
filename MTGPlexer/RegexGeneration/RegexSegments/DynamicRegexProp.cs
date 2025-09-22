@@ -9,7 +9,7 @@ public class DynamicRegexProp : ScalarCapturePropBase
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo);
-        collector.AddAlternatiingValues(ScalarAlternativeSet.Alternatives);
+        collector.AddAlternatingValues(ScalarAlternativeSet.Alternatives);
         collector.CloseGroup();
     }
 

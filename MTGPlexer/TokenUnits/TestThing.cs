@@ -8,7 +8,7 @@
 //    //public TestThing() : base("buh", nameof(GainedOrLostBuffs)) { }
 //
 //    //public ManyToken<SimpleAlphabet> Alphabets { get; set; }
-//    public ManyToken<Alphabet> Alphabets { get; set; }
+//    public ManyOf<Alphabet> Alphabets { get; set; }
 //
 //    //public ManyToken<GainedOrLostBuff> GainedOrLostBuffs { get; set; }
 //    //public ManyToken<OneOfEnum> Letters { get; set; }

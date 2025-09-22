@@ -42,9 +42,12 @@
                     <div class="copy-prompt @(isCopied ? "copied" : "")">
                         @(isCopied ? "Copied!" : "Click to copy")
                     </div>
-                    <pre style=@tokenUnitCapture.Palette.ToColorStyle()>
+                    <pre class="formatted-regex-fira" style=@tokenUnitCapture.Palette.ToColorStyle()>
                         @tokenUnitCapture.RegexString
-                    <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")><code>@tokenUnitCapture.MinifiedRegexString</code></pre>
+                    </pre>
+                    <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
+                        <code>@tokenUnitCapture.MinifiedRegexString</code>
+                    </pre>
 @*                     <code>
                             @{
                                 // Get highlight state for this specific token unit capture
@@ -87,7 +90,6 @@
                         <span class="regex-line @cssClass" style="@style">@content</span>
                             }
                                                         </code> *@
-                                                    </pre>
                 </div>
             }
 

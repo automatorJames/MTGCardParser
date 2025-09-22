@@ -110,6 +110,7 @@ public static class Extensions
     public static PropertyInfo[] GetProps(this Type type) => 
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
+    public static T[] Add<T>(this T[] arrayItems, T additionalItem) => arrayItems.Concat([additionalItem]).ToArray();
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
     public static string Colon(this string parentPath, string nextPathPart) => parentPath + ":" + nextPathPart;
     public static string ToIndexString(this Capture capture) => $"idx[{capture.Index}]";

@@ -2,23 +2,19 @@
 
 public record RegexTemplateLine
 (
-    string EvaluableRegex, 
-    string Path, 
-    int Indentation,
+    Enclosure[] Enclosures, 
+    string Regex, 
     Palette Palette = null,
-    string CommentOne = null,
-    string CommentTwo = null,
-    RegexPropInfo Group = null
+    string Comment = null
 )
 {
-    const int _spacesPerIndent = 4;
+    public string Path { get; } = string.Join('_', Enclosures.Select(x => x.Ordinal));
+    public string NamedPath { get; } = string.Join('_', Enclosures.OfType<NamedEnclosure>().Select(x => x.Name));
+    public int CommentLength { get; } = Comment?.Length ?? 0;
 
-    public string IndentedValue { get; } = string.Empty.PadLeft(Indentation * _spacesPerIndent) + EvaluableRegex;
+    public override string ToString() =>
+        Regex
+        + (Comment == null ? "" : $" # {Comment}");
 
-    public int Start { get; } = Indentation * _spacesPerIndent;
-    public int End { get; } = Indentation * _spacesPerIndent + EvaluableRegex.Length;
-
-    public int CommentOneLength { get; } = CommentOne?.Length ?? 0;
-    public int CommentTwoLength { get; } = CommentTwo?.Length ?? 0;
-
+    
 }
