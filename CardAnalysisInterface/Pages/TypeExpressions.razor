@@ -25,29 +25,50 @@
 
             @if (RuntimeSettings.ShowMinifiedRegex)
             {
-                var textToCopy = tokenUnitCapture.RegexString;
+                var textToCopy = tokenUnitCapture.MinifiedRegexString;
                 var isCopied = _recentlyCopiedText.Contains(textToCopy);
                 <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
                     <div class="copy-prompt @(isCopied ? "copied" : "")">
                         @(isCopied ? "Copied!" : "Click to copy")
                     </div>
-                    <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.RegexString</code></pre>
+                    <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.MinifiedRegexString</code></pre>
                 </div>
             }
             else
             {
-                var textToCopy = string.Join("\n", tokenUnitCapture.RegexString);
+                var textToCopy = tokenUnitCapture.FormattedRegex;
                 var isCopied = _recentlyCopiedText.Contains(textToCopy);
                 <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
                     <div class="copy-prompt @(isCopied ? "copied" : "")">
                         @(isCopied ? "Copied!" : "Click to copy")
                     </div>
                     <pre class="formatted-regex-fira" style=@tokenUnitCapture.Palette.ToColorStyle()>
-                        @tokenUnitCapture.RegexString
-                    </pre>
+                    <code>
+        @for (int lineIndex = 0; lineIndex < tokenUnitCapture.CommentedLines.Count; lineIndex++)
+        {
+                var line = tokenUnitCapture.CommentedLines[lineIndex];
+                var sortedSpans = line.ColorSpans.OrderBy(kvp => kvp.Key).ToList();
+                for (int i = 0; i < sortedSpans.Count; i++)
+                {
+                        var start = sortedSpans[i].Key;
+                        var color = sortedSpans[i].Value;
+                        var end = (i + 1 < sortedSpans.Count) ? sortedSpans[i + 1].Key : line.FormattedText.Length;
+                        if (start >= line.FormattedText.Length) continue;
+                        var length = Math.Min(end, line.FormattedText.Length) - start;
+                        if (length <= 0) continue;
+                        var text = line.FormattedText.Substring(start, length);
+                            <span style="color: @color;">@text</span>
+                }
+                if (lineIndex < tokenUnitCapture.CommentedLines.Count - 1)
+                {
+                        @("\n")
+                }
+        }
+                                </code>
+                            </pre>
                     <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
-                        <code>@tokenUnitCapture.MinifiedRegexString</code>
-                    </pre>
+                    <code>@tokenUnitCapture.MinifiedRegexString</code>
+                            </pre>
                 </div>
             }
 

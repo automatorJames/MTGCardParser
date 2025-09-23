@@ -6,7 +6,8 @@ public record TokenUnitCapture
     public string TypeName { get; }
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
-    public string RegexString { get; }
+    public List<RegexCommentedLine> CommentedLines { get; }
+    public string FormattedRegex { get; }
     public string MinifiedRegexString { get; }
     public List<RegexPropValueSet> RegexPropValueSets { get; } = [];
     public Palette Palette { get; }
@@ -18,8 +19,12 @@ public record TokenUnitCapture
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
         OccurrenceCount = occurrenceCount;
         Palette = TokenTypeRegistry.Palettes[type];
-        RegexString = TokenTypeRegistry.Templates[type].FormattedRegexString;
-        MinifiedRegexString = TokenTypeRegistry.Templates[type].MinifiedRegexString;
+
+        var template = TokenTypeRegistry.Templates[type];
+        var generatedRegex = TokenTypeRegistry.Templates[type].GeneratedRegex;
+        FormattedRegex = generatedRegex.FormattedRegex;
+        CommentedLines = generatedRegex.CommentedLines;
+        MinifiedRegexString = generatedRegex.MinifiedRegex;
 
         if (collectors != null)
         {
@@ -58,7 +63,7 @@ public record TokenUnitCapture
             $@"\(\?<{Regex.Escape(name)}>(?:[^()]+|\((?<DEPTH>)|\)(?<-DEPTH>))*(?(DEPTH)(?!))\)",
             RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);
 
-        var match = regex.Match(RegexString);
+        var match = regex.Match(FormattedRegex);
         return match.Success ? (match.Index, match.Index + match.Length) : (-1, -1);
     }
 }

@@ -2,7 +2,7 @@
     font-family: 'Fira Code', monospace;
     font-weight: 400;
     font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.25;
     white-space: pre;
 }
 
@@ -120,7 +120,7 @@ code > .regex-line {
 
 /* Lighten <pre> on container hover */
 .pre-container:hover pre {
-    background-color: #313131; /* A slightly lighter grey */
+    background-color: #181818; /* A slightly lighter grey */
 }
 
 /* Highlight for hovering a specific value */

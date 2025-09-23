@@ -1,6 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [NoSpaces]
+[IsolateForTesting]
 public class OptionalPayCost : TokenUnit
 {
     public OptionalPayCost() : base(nameof(PayOptionType), " pay ", nameof(Cost)) { }

@@ -5,6 +5,11 @@ public record GeneratedRegex
     const int _hashSeparatorPadding = 6;
     const int _boxContentLeftPadding = 1;
     const int _spacesPerIndent = 4;
+    const string DarkerGrey = "#505050";
+    const string DarkGrey = "#808080";
+    const string Grey = "#BEBEBE";
+    const string LightGrey = "#A9A9A9";
+    const string White = "#DCDCDC";
 
     public List<RegexCommentedLine> CommentedLines { get; private set; } = [];
     public string FormattedRegex { get; set; }
@@ -28,34 +33,80 @@ public record GeneratedRegex
     {
         foreach (var line in templateLines)
         {
+            var colorSpans = new Dictionary<int, string> { [0] = White };
+
             int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
             var indentedRegex = new string(' ', indentSpaces) + line.Regex;
             var paddedRegex = indentedRegex.PadRight(CommentColumn);
             var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
-            var commentBody = GetFormattedComment(line);
-            CommentedLines.Add(new(paddedRegex, commentPrefix + commentBody, line.Palette));
+
+            // Rule: The position of the hash separator "#" should be a darker grey for all lines.
+            colorSpans[CommentColumn] = DarkerGrey;
+
+            var (commentBody, commentSpans) = GetFormattedCommentAndColorSpans(line);
+
+            int commentOffset = paddedRegex.Length + commentPrefix.Length;
+            foreach (var span in commentSpans)
+            {
+                colorSpans[commentOffset + span.Key] = span.Value;
+            }
+            CommentedLines.Add(new(paddedRegex, commentPrefix + commentBody, colorSpans));
         }
     }
 
-    private string GetFormattedComment(RegexTemplateLine line)
+    /// <summary>
+    /// Gets the consistent color for all border elements of an enclosure based on its treatment type.
+    /// </summary>
+    private string GetBorderColor(GroupBorderTreatment treatment, Palette palette) => treatment switch
     {
-        if (line.Enclosures.Length == 0) return line.Comment ?? string.Empty;
+        GroupBorderTreatment.ClosedBox => palette.Hex,
+        GroupBorderTreatment.DashedBox => palette.HexDark,
+        GroupBorderTreatment.Brace => DarkGrey,
+        _ => DarkGrey
+    };
+
+    private (string, Dictionary<int, string>) GetFormattedCommentAndColorSpans(RegexTemplateLine line)
+    {
+        var sb = new StringBuilder();
+        var spans = new Dictionary<int, string>();
+
+        Action<string, string> append = (text, color) => {
+            if (string.IsNullOrEmpty(text)) return;
+            // Only add a new span if the color is different from the last one
+            if (!spans.Any() || spans[spans.Keys.Last()] != color)
+            {
+                spans[sb.Length] = color;
+            }
+            sb.Append(text);
+        };
+
+        // Rule: TextLine comments should be white.
+        // Rule: Boundary comments should be dark grey.
+        if (line.Enclosures.Length == 0)
+        {
+            string color = line is TextLine ? White : DarkGrey;
+            append(line.Comment ?? string.Empty, color);
+            return (sb.ToString(), spans);
+        }
 
         var parentEnclosures = line.Enclosures.Take(line.Enclosures.Length - 1);
-        var prefix = new StringBuilder();
-        var suffix = new StringBuilder();
+        var currentEnclosure = line.Enclosures.Last();
+        var chars = BoxChars.Get(currentEnclosure.Treatment);
+        var palette = currentEnclosure.Palette;
+        string currentBorderColor = GetBorderColor(currentEnclosure.Treatment, palette);
+
+        // 1. Build Prefix (Walls from inner to outer)
         foreach (var parent in parentEnclosures)
         {
             char wall = BoxChars.Get(parent.Treatment).Wall;
-            prefix.Append($"{wall} ");
-            suffix.Insert(0, $" {wall}");
+            string parentBorderColor = GetBorderColor(parent.Treatment, parent.Palette);
+            append(wall.ToString(), parentBorderColor);
+            append(" ", White);
         }
 
+        // 2. Build Core Content
         int parentDepth = parentEnclosures.Count();
         int currentLevelWidth = CommentBoxLength - (parentDepth * 4);
-        string coreContent;
-        var currentEnclosure = line.Enclosures.Last();
-        var chars = BoxChars.Get(currentEnclosure.Treatment);
         bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
 
         if (isBookend)
@@ -66,51 +117,85 @@ public record GeneratedRegex
                 case NamedGroupOpen ngo:
                     string openComment = $" {ngo.Comment} ";
                     string fillerOpen = new string(chars.Top, Math.Max(0, availableWidth - openComment.Length));
-                    coreContent = $"{chars.TopLeft}{openComment}{fillerOpen}{chars.TopRight}";
+                    append(chars.TopLeft.ToString(), currentBorderColor);
+                    append(openComment, palette.HexSat); // Rule: NamedGroupOpen comments are HexSat
+                    append(fillerOpen, currentBorderColor);
+                    append(chars.TopRight.ToString(), currentBorderColor);
                     break;
                 case GroupOpen:
-                    coreContent = $"{chars.TopLeft}{new string(chars.Top, availableWidth)}{chars.TopRight}";
+                    append(chars.TopLeft.ToString(), currentBorderColor);
+                    append(new string(chars.Top, availableWidth), currentBorderColor);
+                    append(chars.TopRight.ToString(), currentBorderColor);
                     break;
                 case NamedGroupClose ngc:
                     string closeComment = $" {ngc.Comment} ";
                     string fillerClose = new string(chars.Bottom, Math.Max(0, availableWidth - closeComment.Length));
-                    coreContent = $"{chars.BottomLeft}{fillerClose}{closeComment}{chars.BottomRight}";
+                    append(chars.BottomLeft.ToString(), currentBorderColor);
+                    append(fillerClose, currentBorderColor);
+                    append(closeComment, palette.HexSat); // Rule: NamedGroupClose comments are HexSat
+                    append(chars.BottomRight.ToString(), currentBorderColor);
                     break;
                 case GroupClose gc:
                     string quantComment = gc.Comment != null ? $" {gc.Comment} " : "";
                     string fillerQuant = new string(chars.Bottom, Math.Max(0, availableWidth - quantComment.Length));
-                    coreContent = $"{chars.BottomLeft}{fillerQuant}{quantComment}{chars.BottomRight}";
+                    append(chars.BottomLeft.ToString(), currentBorderColor);
+                    append(fillerQuant, currentBorderColor);
+                    append(quantComment, DarkGrey); // Rule: GroupClose comments are dark grey
+                    append(chars.BottomRight.ToString(), currentBorderColor);
                     break;
                 default:
-                    coreContent = new string(' ', currentLevelWidth);
+                    append(new string(' ', currentLevelWidth), White);
                     break;
             }
         }
-        else
+        else // Not a bookend line (e.g., TextLine, AlternateValue)
         {
             int innerWidth = currentLevelWidth - 4;
-            string textContent;
+            append(chars.Wall.ToString(), currentBorderColor);
+            append(" ", White);
+
             switch (line)
             {
                 case AlternateValue av:
                     string altComment = $" {av.Comment} ";
                     int totalPad = Math.Max(0, innerWidth - altComment.Length);
-                    textContent = $"{new string(' ', totalPad / 2)}{altComment}{new string(' ', totalPad - (totalPad / 2))}";
+                    append(new string(' ', totalPad / 2), White);
+                    append(altComment, palette.HexLight); // Rule: AlternateValue comments are HexLight
+                    append(new string(' ', totalPad - (totalPad / 2)), White);
                     break;
                 default:
-                    if (string.IsNullOrEmpty(line.Comment))
+                    string textColor = White; // Default to white
+                    // Rule: if a TextLine or SpaceLine has a NamedEnclosure parent, color its comment
+                    if (line is TextLine or SpaceLine or GroupAlternativePipe)
                     {
-                        textContent = new string(' ', innerWidth);
+                        var nearestNamedEnclosure = line.Enclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
+                        if (nearestNamedEnclosure != null)
+                        {
+                            textColor = nearestNamedEnclosure.Palette.HexLight;
+                        }
                     }
-                    else
-                    {
-                        textContent = (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
-                    }
+
+                    var content = string.IsNullOrEmpty(line.Comment)
+                        ? new string(' ', innerWidth)
+                        : (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
+                    append(content, textColor);
                     break;
             }
-            coreContent = $"{chars.Wall} {textContent} {chars.Wall}";
+
+            append(" ", White);
+            append(chars.Wall.ToString(), currentBorderColor);
         }
-        return prefix + coreContent + suffix;
+
+        // 3. Build Suffix (Walls from outer to inner)
+        foreach (var parent in parentEnclosures.Reverse())
+        {
+            char wall = BoxChars.Get(parent.Treatment).Wall;
+            string parentBorderColor = GetBorderColor(parent.Treatment, parent.Palette);
+            append(" ", White);
+            append(wall.ToString(), parentBorderColor);
+        }
+
+        return (sb.ToString(), spans);
     }
 
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
@@ -191,7 +276,7 @@ public record GeneratedRegex
     private static class BoxChars
     {
         private static readonly BoxCharSet Closed = new('┌', '┐', '└', '┘', '─', '─', '│');
-        private static readonly BoxCharSet Dashed = new('┌', '┐', '└', '┘', '─', '─', '╎');
+        private static readonly BoxCharSet Dashed = new('┌', '┐', '└', '┘', '─', '─', '┆');
         private static readonly BoxCharSet Brace = new('╭', '╮', '╰', '╯', ' ', ' ', '┊');
 
         public static BoxCharSet Get(GroupBorderTreatment treatment) => treatment switch
