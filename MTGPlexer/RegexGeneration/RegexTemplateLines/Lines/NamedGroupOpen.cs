@@ -6,14 +6,12 @@ public record NamedGroupOpen
     string Name,
     RegexPropInfo Prop,
     string CaptureType, 
-    Palette Palette,
     string NameOverride = null
 ) 
     : RegexTemplateLine
     (
         Enclosures: Enclosures,
         Regex: RenderCaptureGroup(Prop, NameOverride),
-        Palette: Palette, 
         Comment: CaptureType
     )
 {

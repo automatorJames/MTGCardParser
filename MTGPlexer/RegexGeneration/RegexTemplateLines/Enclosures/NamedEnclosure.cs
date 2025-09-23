@@ -8,11 +8,13 @@ public record NamedEnclosure : Enclosure
     public NamedEnclosure
         (
             int ordinal,
+            Palette palette,
             RegexPropInfo regexPropInfo, 
             string nameOverride = null
         ) : base
         (
             ordinal,
+            palette,
             EnclosureType.RegexProp,
             GetTreatment(regexPropInfo)
         )

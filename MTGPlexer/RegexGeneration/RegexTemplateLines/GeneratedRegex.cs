@@ -1,13 +1,8 @@
-﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
-using MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
-using System.Text;
-using System.Text.RegularExpressions;
-
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public record GeneratedRegex
 {
-    const int _hashSeparatorPadding = 2;
+    const int _hashSeparatorPadding = 6;
     const int _boxContentLeftPadding = 1;
     const int _spacesPerIndent = 4;
 
@@ -38,7 +33,6 @@ public record GeneratedRegex
             var paddedRegex = indentedRegex.PadRight(CommentColumn);
             var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
             var commentBody = GetFormattedComment(line);
-
             CommentedLines.Add(new(paddedRegex, commentPrefix + commentBody, line.Palette));
         }
     }

@@ -5,14 +5,12 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 public record GroupClose
 (
     Enclosure[] Enclosures,
-    Palette Palette, 
     GroupQuantifier? Quantifier = null
 ) 
     : RegexTemplateLine
     (
         Enclosures: Enclosures,
         Regex: $"){(Quantifier.HasValue ?  Quantifier.Value.Description() : "")}",
-        Palette: Palette, 
         Comment: GetComment(Quantifier)
     )
 {

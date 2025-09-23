@@ -4,29 +4,27 @@ public record AlternateValue
 (
     Enclosure[] Enclosures,
     string Value, 
-    Palette Palette,
-    bool IsFirst, 
-    bool IsOnly
+    int Ordinal, 
+    int TotalOptions
 ) 
     : RegexTemplateLine
     (
         Enclosures: Enclosures,
-        GetFormattedValue(Value, IsFirst), 
-        Palette: Palette,
-        Comment: GetComment(IsOnly)
+        GetFormattedValue(Value, Ordinal), 
+        Comment: GetComment(Ordinal, TotalOptions)
     )
 {
     public Regex MatchRegex { get; } = new Regex(Value, RegexOptions.Compiled);
 
-    static string GetFormattedValue(string value, bool isFirstAlternate)
+    static string GetFormattedValue(string value, int ordinal)
     {
         var formattedValue = value.Replace(" ", "[ ]");
-        var firstChar = isFirstAlternate ? " " : "|";
+        var firstChar = ordinal == 0 ? " " : "|";
         formattedValue = firstChar + " " + formattedValue;
         return formattedValue;
     }
 
-    static string GetComment(bool isOnlyAlternate) => isOnlyAlternate ? "match" : "alternate";
+    static string GetComment(int ordinal, int totalOptions) => $"{ordinal + 1}/{totalOptions}";
 
     public override string ToString() => base.ToString();
 }

@@ -48,51 +48,8 @@
                     <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
                         <code>@tokenUnitCapture.MinifiedRegexString</code>
                     </pre>
-@*                     <code>
-                            @{
-                                // Get highlight state for this specific token unit capture
-                                bool isValueHighlightActive = _valueHighlightState.TryGetValue(tokenUnitCapture.Type.Name, out var valueHighlightInfo);
-                                bool isGroupHighlightActive = _hoveredPropertyGroupState.TryGetValue(tokenUnitCapture.Type.Name, out var groupHighlightInfo);
-                            }
-                            @foreach (var line in tokenUnitCapture.PrettifiedRegex.Lines)
-                            {
-                                var isValueHighlighted = isValueHighlightActive && valueHighlightInfo.LineNumber == line.LineNumber;
-
-                                var isGroupBoundary = isGroupHighlightActive &&
-                                                      line.PropertyCaptureGroup == groupHighlightInfo.GroupName &&
-                                                      (line.Role == PrettifiedRegexLineRole.CaptureGroupStart || line.Role == PrettifiedRegexLineRole.CaptureGroupEnd);
-
-                                var isInsideHoveredGroup = isGroupHighlightActive &&
-                                                           line.PropertyCaptureGroup == groupHighlightInfo.GroupName &&
-                                                           line.LineNumber > groupHighlightInfo.StartLine &&
-                                                           line.LineNumber < groupHighlightInfo.EndLine;
-
-                                // Build CSS class string
-                                var cssClass = "";
-                                if (isValueHighlighted) cssClass = "value-highlight";
-                                else if (isGroupBoundary) cssClass = "group-boundary-highlight";
-
-                                // Determine content and style
-                                var style = isValueHighlighted ? $"background-color: {valueHighlightInfo.HighlightColor};" : "";
-                                MarkupString content;
-
-                                if (isValueHighlighted || isGroupBoundary)
-                                {
-                                    // For full-line highlights, render plain text so the wrapper's color style takes over.
-                                    content = new MarkupString(System.Net.WebUtility.HtmlEncode(line.DisplayText));
-                                }
-                                else
-                                {
-                                    // Otherwise, render the complex colored line, potentially with white pipe characters.
-                                    content = (MarkupString)RenderPrettifiedLine(line, tokenUnitCapture.PrettifiedRegex.HashColumnIndex, isInsideHoveredGroup);
-                                }
-
-                        <span class="regex-line @cssClass" style="@style">@content</span>
-                            }
-                                                        </code> *@
                 </div>
             }
-
 
             @if (tokenUnitCapture.RegexPropValueSets.Any())
             {
@@ -174,22 +131,6 @@
             tuc.Type.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             tuc.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase)
         );
-    }
-
-    private void ClearValueHighlight(TokenUnitCapture tokenUnitCapture)
-    {
-        if (_valueHighlightState.Remove(tokenUnitCapture.Type.Name))
-        {
-            StateHasChanged();
-        }
-    }
-
-    private void ClearPropertyGroupHighlight(TokenUnitCapture tuc)
-    {
-        if (_hoveredPropertyGroupState.Remove(tuc.Type.Name))
-        {
-            StateHasChanged();
-        }
     }
 
     private async Task CopyToClipboardAsync(string text)

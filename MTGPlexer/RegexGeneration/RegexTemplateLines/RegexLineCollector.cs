@@ -5,7 +5,7 @@ public class RegexLineCollector
     List<RegexTemplateLine> _lines = [];
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
-    Dictionary<Enclosure, Palette> _terminalGroupPalettes = [];
+    Dictionary<Enclosure, int> _enclosureTerminalPropCount = [];
     BoundaryOption _boundaryOption;
     
     Dictionary<Enclosure, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
@@ -15,8 +15,6 @@ public class RegexLineCollector
             .Where(x => x is not RootEnclosure)
             .Reverse()
             .ToArray();
-
-    Palette _currentPalette => GetCurrentPaletteOrNull();
 
     public RegexLineCollector(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {
@@ -38,10 +36,27 @@ public class RegexLineCollector
     public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false, string nameOverride = null)
     {
         AddPrecedingSpaceIfApplicable();
+        Enclosure enclosure = null;
 
-        Enclosure enclosure = captureGroup == null 
-            ? new Enclosure(_nextEnclosureOrdinal++) 
-            : new NamedEnclosure(_nextEnclosureOrdinal++, captureGroup, nameOverride);
+        if (captureGroup != null)
+        {
+            Palette palette = null;
+
+            if (captureGroup.IsTerminal)
+            {
+                var currentEnclosure = _enclosureStack.Peek();
+                _enclosureTerminalPropCount.TryAdd(currentEnclosure, 0);
+                palette = DeterministicPalette.GetFixedRainbowPalette(_enclosureTerminalPropCount[currentEnclosure]++);
+            }
+            else if (TokenTypeRegistry.Palettes.TryGetValue(captureGroup.UnderlyingType, out var typePalette))
+                palette = typePalette;
+            else
+                palette = DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
+
+            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, palette, captureGroup, nameOverride);
+        }
+        else
+            enclosure = new Enclosure(_nextEnclosureOrdinal++);
 
         _enclosureStack.Push(enclosure);
 
@@ -54,12 +69,8 @@ public class RegexLineCollector
 
         if (captureGroup != null)
         {
-            if (captureGroup.IsTerminal)
-                _terminalGroupPalettes.TryAdd(enclosure, DeterministicPalette.GetFixedRainbowPalette(_terminalGroupPalettes.Count));
-
-            _terminalGroupPalettes.TryGetValue(enclosure, out var palette);
             var name = nameOverride ?? captureGroup.Name;
-            _lines.Add(new NamedGroupOpen(_orderedEnclosureStack, name, captureGroup, captureGroup.FriendlyTypeName, palette));
+            _lines.Add(new NamedGroupOpen(_orderedEnclosureStack, name, captureGroup, captureGroup.FriendlyTypeName));
         }
         else
             _lines.Add(new GroupOpen(_orderedEnclosureStack));
@@ -67,10 +78,13 @@ public class RegexLineCollector
 
     public void CloseGroup(GroupQuantifier? quantifier = null)
     {
+        if (_enclosureStack.Peek() is RootEnclosure)
+            throw new Exception($"No groups are available to close");
+
         if (_enclosureStack.Peek() is NamedEnclosure namedEnclosure)
-            _lines.Add(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, _currentPalette, quantifier));
+            _lines.Add(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
         else
-            _lines.Add(new GroupClose(_orderedEnclosureStack, _currentPalette, quantifier));
+            _lines.Add(new GroupClose(_orderedEnclosureStack, quantifier));
 
         _enclosureStack.Pop();
     }
@@ -83,20 +97,19 @@ public class RegexLineCollector
 
     public void AddAlternatingValues(IEnumerable<string> alternatives)
     {
-        bool isFirstAlternation = true;
-        bool isOnlyAlternation = alternatives.Count() == 1;
+        var alternativeList = alternatives.ToList();
 
-        foreach (var alternative in alternatives)
+        for (int i = 0; i < alternativeList.Count; i++)
         {
+            var alternative = alternativeList[i];
+
             var alternateValue = new AlternateValue(
                 _orderedEnclosureStack,
                 alternative,
-                GetCurrentPaletteOrNull(),
-                isFirstAlternation,
-                isOnlyAlternation);
+                i,
+                alternativeList.Count);
 
             _lines.Add(alternateValue);
-            isFirstAlternation = false;
         }
     }
 
@@ -115,12 +128,6 @@ public class RegexLineCollector
             _lines.Add(new SpaceLine(_orderedEnclosureStack));
         else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpace)
             _spaceIsRequiredBeforeNextElementAtLevel[currentScope] = SpaceDisposition.AddSpaceBeforeNextItem;
-    }
-
-    Palette GetCurrentPaletteOrNull()
-    {
-        _terminalGroupPalettes.TryGetValue(_enclosureStack.Peek(), out var palette);
-        return palette;
     }
 
     public Regex ExtractGroupRegex(RegexPropInfo group)

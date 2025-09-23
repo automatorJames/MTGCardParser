@@ -50,9 +50,6 @@ public record TokenUnitCapture
                 RegexPropValueSets.Add(regexPropValueSet);
             }
         }
-
-        //PrettifiedRegex = new PrettifiedRegex(RegexString, type);
-        //RegexPropValueSets.ForEach(x => x.SetPrettyRegexCaptureLineAll(PrettifiedRegex));
     }
 
     (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)

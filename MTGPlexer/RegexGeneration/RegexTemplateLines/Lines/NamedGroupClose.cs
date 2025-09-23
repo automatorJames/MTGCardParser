@@ -4,14 +4,12 @@ public record NamedGroupClose
 (
     Enclosure[] Enclosures,
     string Name, 
-    Palette Palette, 
     GroupQuantifier? Quantifier = null
 ) 
     : RegexTemplateLine
     (
         Enclosures: Enclosures,
         Regex: $"){(Quantifier.HasValue ?  Quantifier.Value.Description() : "")}", 
-        Palette: Palette, 
         Comment: GetComment(Name, Quantifier)
     )
 {

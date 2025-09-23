@@ -2,5 +2,5 @@
 
 public record RootEnclosure : Enclosure
 {
-    public RootEnclosure() : base(-1, EnclosureType.Root, GroupBorderTreatment.None) { }
+    public RootEnclosure() : base(-1, null, EnclosureType.Root, GroupBorderTreatment.None) { }
 }
