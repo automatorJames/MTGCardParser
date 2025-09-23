@@ -94,11 +94,11 @@ public enum Alphabet
 //    Three
 //}
 
-[IsolateForTesting]
-public class WeepBeep : TokenUnit
-{
-    public WeepyBeepy WeepyBeepy { get; set; }
-}
+//[IsolateForTesting]
+//public class WeepBeep : TokenUnit
+//{
+//    public WeepyBeepy WeepyBeepy { get; set; }
+//}
 
 public enum WeepyBeepy
 {

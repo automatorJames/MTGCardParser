@@ -2,20 +2,69 @@
 
 public record GeneratedRegex
 {
-    const int _hashSeparatorPadding = 6;
-    const int _boxContentLeftPadding = 1;
-    const int _spacesPerIndent = 4;
-    const string DarkerGrey = "#505050";
-    const string DarkGrey = "#808080";
-    const string Grey = "#BEBEBE";
-    const string LightGrey = "#A9A9A9";
-    const string White = "#DCDCDC";
+    // --- START OF CENTRALIZED CONFIGURATION ---
+
+    // 1. Base color palette
+    const string Black = "#000000"; // 0% white
+    const string Grey10 = "#1A1A1A"; // 10% white
+    const string Grey20 = "#333333"; // 20% white
+    const string Grey30 = "#4D4D4D"; // 30% white
+    const string Grey40 = "#666666"; // 40% white
+    const string Grey50 = "#808080"; // 50% white (true mid-grey)
+    const string Grey60 = "#999999"; // 60% white
+    const string Grey70 = "#B3B3B3"; // 70% white
+    const string Grey80 = "#CCCCCC"; // 80% white
+    const string Grey90 = "#E6E6E6"; // 90% white (almost white)
+    const string White = "#FFFFFF"; // 100% white
+
+    /// <summary>
+    /// A centralized record to hold all the coloring rules for the generated regex.
+    /// It references the base color consts above for easy tweaking.
+    /// </summary>
+    private record ColoringRules
+    {
+        // General Element Coloring Rules
+        // Note: DefaultRegexTextColor is now mostly a fallback, as primary content color is dynamically picked.
+        public string DefaultRegexTextColor { get; } = Grey80;
+        public string HashSeparatorColor { get; } = Grey20;
+        public string UnenclosedTextLineCommentColor { get; } = White;
+        public string UnenclosedSpaceLineCommentColor { get; } = Grey50;
+        public string BoundaryCommentColor { get; } = Grey30;
+        public string GroupCloseQuantifierColor { get; } = Grey40;
+        public string DefaultFallbackColor { get; } = Black;
+
+        // Palette-Dependent Coloring Rules
+        public Func<Palette, string> AlternateValueCommentColor { get; } = p => p.HexLight;
+        public Func<Palette, string> NamedGroupBookendCommentColor { get; } = p => p.HexSat;
+        public Func<Palette, string> EnclosedTextColor { get; } = p => p.Hex;
+
+        // Border Coloring Rules based on Treatment
+        private Func<Palette, string> ClosedBoxBorderColor { get; } = p => p.Hex;
+        private Func<Palette, string> DashedBoxBorderColor { get; } = p => p.HexDark;
+        private string BraceBorderColor { get; } = Grey60;
+
+        public string GetBorderColor(GroupBorderTreatment treatment, Palette palette) => treatment switch
+        {
+            GroupBorderTreatment.ClosedBox => ClosedBoxBorderColor(palette),
+            GroupBorderTreatment.DashedBox => DashedBoxBorderColor(palette),
+            GroupBorderTreatment.Brace => BraceBorderColor,
+            _ => DefaultFallbackColor // Default for unknown treatment
+        };
+    }
+
+    private readonly ColoringRules _colors = new();
+
+    // 3. Formatting constants
+    private const int _hashSeparatorPadding = 6;
+    private const int _boxContentLeftPadding = 1;
+    private const int _spacesPerIndent = 4;
+
+    // --- END OF CENTRALIZED CONFIGURATION ---
 
     public List<RegexCommentedLine> CommentedLines { get; private set; } = [];
     public string FormattedRegex { get; set; }
     public string MinifiedRegex { get; set; }
     public int HashSeparatorColumn { get; private set; }
-    public int CommentColumn { get; private set; }
     public int CommentBoxLength { get; private set; }
 
     public GeneratedRegex(List<RegexTemplateLine> lines)
@@ -33,17 +82,19 @@ public record GeneratedRegex
     {
         foreach (var line in templateLines)
         {
-            var colorSpans = new Dictionary<int, string> { [0] = White };
+            // Calculate comment body, its spans, AND the primary color for the regex text
+            var (commentBody, commentSpans, regexPrimaryColor) = GetFormattedCommentAndColorSpans(line);
+
+            // Initialize colorSpans with the dynamically determined primary color for the regex text
+            var colorSpans = new Dictionary<int, string> { [0] = regexPrimaryColor };
 
             int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
             var indentedRegex = new string(' ', indentSpaces) + line.Regex;
-            var paddedRegex = indentedRegex.PadRight(CommentColumn);
+            var paddedRegex = indentedRegex.PadRight(HashSeparatorColumn);
             var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
 
-            // Rule: The position of the hash separator "#" should be a darker grey for all lines.
-            colorSpans[CommentColumn] = DarkerGrey;
-
-            var (commentBody, commentSpans) = GetFormattedCommentAndColorSpans(line);
+            // Set the hash separator color
+            colorSpans[HashSeparatorColumn] = _colors.HashSeparatorColor;
 
             int commentOffset = paddedRegex.Length + commentPrefix.Length;
             foreach (var span in commentSpans)
@@ -55,56 +106,52 @@ public record GeneratedRegex
     }
 
     /// <summary>
-    /// Gets the consistent color for all border elements of an enclosure based on its treatment type.
+    /// Gets the formatted comment body, its color spans, and the primary content color
+    /// that should be used for the regex text itself on the left.
     /// </summary>
-    private string GetBorderColor(GroupBorderTreatment treatment, Palette palette) => treatment switch
-    {
-        GroupBorderTreatment.ClosedBox => palette.Hex,
-        GroupBorderTreatment.DashedBox => palette.HexDark,
-        GroupBorderTreatment.Brace => DarkGrey,
-        _ => DarkGrey
-    };
-
-    private (string, Dictionary<int, string>) GetFormattedCommentAndColorSpans(RegexTemplateLine line)
+    private (string commentBody, Dictionary<int, string> commentSpans, string primaryContentColor) GetFormattedCommentAndColorSpans(RegexTemplateLine line)
     {
         var sb = new StringBuilder();
         var spans = new Dictionary<int, string>();
+        string currentPrimaryContentColor = _colors.DefaultRegexTextColor; // Default if no specific comment color found
 
         Action<string, string> append = (text, color) => {
             if (string.IsNullOrEmpty(text)) return;
-            // Only add a new span if the color is different from the last one
-            if (!spans.Any() || spans[spans.Keys.Last()] != color)
+            if (!spans.Any() || spans.Last().Value != color)
             {
                 spans[sb.Length] = color;
             }
             sb.Append(text);
         };
 
-        // Rule: TextLine comments should be white.
-        // Rule: Boundary comments should be dark grey.
         if (line.Enclosures.Length == 0)
         {
-            string color = line is TextLine ? White : DarkGrey;
-            append(line.Comment ?? string.Empty, color);
-            return (sb.ToString(), spans);
+            // Determine primary content color for unenclosed lines
+            currentPrimaryContentColor = line switch
+            {
+                TextLine => _colors.UnenclosedTextLineCommentColor,
+                SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
+                BoundaryBase => _colors.BoundaryCommentColor,
+                _ => _colors.DefaultFallbackColor
+            };
+            append(line.Comment ?? string.Empty, currentPrimaryContentColor);
+            return (sb.ToString(), spans, currentPrimaryContentColor);
         }
 
         var parentEnclosures = line.Enclosures.Take(line.Enclosures.Length - 1);
         var currentEnclosure = line.Enclosures.Last();
         var chars = BoxChars.Get(currentEnclosure.Treatment);
         var palette = currentEnclosure.Palette;
-        string currentBorderColor = GetBorderColor(currentEnclosure.Treatment, palette);
+        string currentBorderColor = _colors.GetBorderColor(currentEnclosure.Treatment, palette);
 
-        // 1. Build Prefix (Walls from inner to outer)
         foreach (var parent in parentEnclosures)
         {
             char wall = BoxChars.Get(parent.Treatment).Wall;
-            string parentBorderColor = GetBorderColor(parent.Treatment, parent.Palette);
+            string parentBorderColor = _colors.GetBorderColor(parent.Treatment, parent.Palette);
             append(wall.ToString(), parentBorderColor);
-            append(" ", White);
+            append(" ", White); // Padding spaces between walls are white
         }
 
-        // 2. Build Core Content
         int parentDepth = parentEnclosures.Count();
         int currentLevelWidth = CommentBoxLength - (parentDepth * 4);
         bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
@@ -115,74 +162,84 @@ public record GeneratedRegex
             switch (line)
             {
                 case NamedGroupOpen ngo:
+                    currentPrimaryContentColor = _colors.NamedGroupBookendCommentColor(palette);
                     string openComment = $" {ngo.Comment} ";
                     string fillerOpen = new string(chars.Top, Math.Max(0, availableWidth - openComment.Length));
                     append(chars.TopLeft.ToString(), currentBorderColor);
-                    append(openComment, palette.HexSat); // Rule: NamedGroupOpen comments are HexSat
+                    append(openComment, currentPrimaryContentColor);
                     append(fillerOpen, currentBorderColor);
                     append(chars.TopRight.ToString(), currentBorderColor);
                     break;
                 case GroupOpen:
+                    // GroupOpen has no "inner content" comment text. Its comment section is purely structural.
+                    // We'll treat the padding/default content as white for the regex text side.
+                    currentPrimaryContentColor = White;
                     append(chars.TopLeft.ToString(), currentBorderColor);
                     append(new string(chars.Top, availableWidth), currentBorderColor);
                     append(chars.TopRight.ToString(), currentBorderColor);
                     break;
                 case NamedGroupClose ngc:
+                    currentPrimaryContentColor = _colors.NamedGroupBookendCommentColor(palette);
                     string closeComment = $" {ngc.Comment} ";
                     string fillerClose = new string(chars.Bottom, Math.Max(0, availableWidth - closeComment.Length));
                     append(chars.BottomLeft.ToString(), currentBorderColor);
                     append(fillerClose, currentBorderColor);
-                    append(closeComment, palette.HexSat); // Rule: NamedGroupClose comments are HexSat
+                    append(closeComment, currentPrimaryContentColor);
                     append(chars.BottomRight.ToString(), currentBorderColor);
                     break;
                 case GroupClose gc:
+                    currentPrimaryContentColor = _colors.GroupCloseQuantifierColor;
                     string quantComment = gc.Comment != null ? $" {gc.Comment} " : "";
                     string fillerQuant = new string(chars.Bottom, Math.Max(0, availableWidth - quantComment.Length));
                     append(chars.BottomLeft.ToString(), currentBorderColor);
                     append(fillerQuant, currentBorderColor);
-                    append(quantComment, DarkGrey); // Rule: GroupClose comments are dark grey
+                    append(quantComment, currentPrimaryContentColor);
                     append(chars.BottomRight.ToString(), currentBorderColor);
                     break;
                 default:
+                    currentPrimaryContentColor = White; // Default for other bookends with no specific comment
                     append(new string(' ', currentLevelWidth), White);
                     break;
             }
         }
-        else // Not a bookend line (e.g., TextLine, AlternateValue)
+        else // Not a bookend line (e.g., TextLine, AlternateValue, etc. inside an enclosure)
         {
             int innerWidth = currentLevelWidth - 4;
             append(chars.Wall.ToString(), currentBorderColor);
-            append(" ", White);
+            append(" ", White); // Space between wall and inner content is white
 
             switch (line)
             {
                 case AlternateValue av:
+                    currentPrimaryContentColor = _colors.AlternateValueCommentColor(palette);
                     string altComment = $" {av.Comment} ";
                     int totalPad = Math.Max(0, innerWidth - altComment.Length);
                     append(new string(' ', totalPad / 2), White);
-                    append(altComment, palette.HexLight); // Rule: AlternateValue comments are HexLight
+                    append(altComment, currentPrimaryContentColor);
                     append(new string(' ', totalPad - (totalPad / 2)), White);
                     break;
                 default:
-                    string textColor = White; // Default to white
-                    // Rule: if a TextLine or SpaceLine has a NamedEnclosure parent, color its comment
+                    // Rule: if a TextLine or SpaceLine or GroupAlternativePipe has a NamedEnclosure parent, 
+                    // color its comment, otherwise default to White.
+                    string commentContentColor = White;
                     if (line is TextLine or SpaceLine or GroupAlternativePipe)
                     {
                         var nearestNamedEnclosure = line.Enclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
                         if (nearestNamedEnclosure != null)
                         {
-                            textColor = nearestNamedEnclosure.Palette.HexLight;
+                            commentContentColor = _colors.EnclosedTextColor(nearestNamedEnclosure.Palette);
                         }
                     }
+                    currentPrimaryContentColor = commentContentColor; // This is the inner content color
 
                     var content = string.IsNullOrEmpty(line.Comment)
                         ? new string(' ', innerWidth)
                         : (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
-                    append(content, textColor);
+                    append(content, currentPrimaryContentColor);
                     break;
             }
 
-            append(" ", White);
+            append(" ", White); // Space between inner content and wall is white
             append(chars.Wall.ToString(), currentBorderColor);
         }
 
@@ -190,19 +247,19 @@ public record GeneratedRegex
         foreach (var parent in parentEnclosures.Reverse())
         {
             char wall = BoxChars.Get(parent.Treatment).Wall;
-            string parentBorderColor = GetBorderColor(parent.Treatment, parent.Palette);
-            append(" ", White);
+            string parentBorderColor = _colors.GetBorderColor(parent.Treatment, parent.Palette);
+            append(" ", White); // Padding space is white
             append(wall.ToString(), parentBorderColor);
         }
 
-        return (sb.ToString(), spans);
+        return (sb.ToString(), spans, currentPrimaryContentColor);
     }
 
+    // Unchanged methods below...
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
     {
-        int maxRegexLen = lines.Any() ? lines.Max(l => GetIndentDepth(l) * _spacesPerIndent + l.Regex.Length) : 0;
+        int maxRegexLen = lines.Any() ? lines.Max(x => (GetIndentDepth(x) * _spacesPerIndent) + x.Regex.Length) : 0;
         HashSeparatorColumn = maxRegexLen + _hashSeparatorPadding;
-        CommentColumn = HashSeparatorColumn + _hashSeparatorPadding;
 
         var uniquePaths = lines
             .SelectMany(l => l.Enclosures.Select((e, i) => l.Enclosures.Take(i + 1)))
@@ -258,9 +315,10 @@ public record GeneratedRegex
 
     private int GetIndentDepth(RegexTemplateLine line)
     {
-        if (line.Enclosures.Length == 0) return 0;
-        bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
-        return isBookend ? line.Enclosures.Length - 1 : line.Enclosures.Length;
+        if (line.Enclosures.Length == 0) 
+            return 0;
+
+        return line is EncloureBookend ? line.Enclosures.Length - 1 : line.Enclosures.Length;
     }
 
     private string MinifyRegex(string pattern)

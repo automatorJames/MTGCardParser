@@ -7,21 +7,16 @@ public abstract class TokenUnitOneOf : TokenUnit
     }
 
     /// <summary>
-    /// Returns a single non-null child TokenUnit which represents the "one" property with a value among 
-    /// this instance's canddiate values. As an analytical precaution, an exception is thrown if no
-    /// non-null TokenUnit is found.
+    /// Returns a single non-null child value which represents the "one" property with a value among 
+    /// this instance's canddiate values. As an analytical precaution, an exception is thrown if not exactly
+    /// one non-null IndexedPropertyCapture is found.
     /// </summary>
-    public TokenUnit GetSingleNonNullChildToken()
+    public IndexedPropertyCapture GetIndexedPropertyCaptureSingle()
     {
-        foreach (var prop in GetType().GetProps())
-        {
-            var propVal = prop.GetValue(this);
+        if (IndexedPropertyCaptures.Count != 1)
+            throw new Exception($"Expected a single {nameof(IndexedPropertyCapture)}, but found {IndexedPropertyCaptures.Count}");
 
-            if (propVal is TokenUnit tokenUnit)
-                return tokenUnit;
-        }
-
-        throw new Exception("Expected a non-null TokenUnit child property, but found none");
+        return IndexedPropertyCaptures.First();
     }
 
     public override string ValidateStructure()

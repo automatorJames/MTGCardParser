@@ -103,9 +103,9 @@ public record TokenUnitCaptureSummary
         switch (currentValue)
         {
             case TokenUnitOneOf tokenUnitOneOf:
-                var tokenUnitOneOfOnlyChild = tokenUnitOneOf.GetSingleNonNullChildToken();
-                currentPropPath.Add(tokenUnitOneOfOnlyChild.ParentTokenProp.Name);
-                FlattenAndCountRecursive(currentPropPath, originalCaptureString, tokenUnitOneOfOnlyChild, tokenUnitOneOfOnlyChild.ParentTokenProp, propValCounts);
+                var singleIndexedCapture = tokenUnitOneOf.GetIndexedPropertyCaptureSingle();
+                currentPropPath.Add(singleIndexedCapture.RegexPropInfo.Name);
+                FlattenAndCountRecursive(currentPropPath, originalCaptureString, singleIndexedCapture.Value, singleIndexedCapture.RegexPropInfo, propValCounts);
                 break;
 
             case TokenUnit childTokenUnit:

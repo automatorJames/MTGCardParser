@@ -7,7 +7,7 @@ public record GroupClose
     Enclosure[] Enclosures,
     GroupQuantifier? Quantifier = null
 ) 
-    : RegexTemplateLine
+    : EncloureBookend
     (
         Enclosures: Enclosures,
         Regex: $"){(Quantifier.HasValue ?  Quantifier.Value.Description() : "")}",

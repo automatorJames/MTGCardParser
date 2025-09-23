@@ -4,7 +4,7 @@ public record GroupOpen
 (
     Enclosure[] Enclosures
 ) 
-    : RegexTemplateLine
+    : EncloureBookend
     (
         Enclosures: Enclosures,
         Regex: $"("

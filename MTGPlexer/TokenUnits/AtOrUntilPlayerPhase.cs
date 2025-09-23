@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 [TokenizationOrder(0)]
 public class AtOrUntilPlayerPhase : TokenUnit
 {

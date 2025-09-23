@@ -7,8 +7,8 @@ public record NamedGroupOpen
     RegexPropInfo Prop,
     string CaptureType, 
     string NameOverride = null
-) 
-    : RegexTemplateLine
+)
+    : EncloureBookend
     (
         Enclosures: Enclosures,
         Regex: RenderCaptureGroup(Prop, NameOverride),
