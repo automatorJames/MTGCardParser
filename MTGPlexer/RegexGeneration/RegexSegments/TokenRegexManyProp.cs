@@ -85,11 +85,11 @@ public class TokenRegexManyProp : CaptureGroupPropBase
             }
             else if (_manyItemType == ManyItemVariant.Enum)
             {
-                foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[_baseType])
+                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternatives)
                 {
-                    if (enumMemberRegex.Value.IsMatch(itemCapture.Value))
+                    if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
                     {
-                        childItem = enumMemberRegex.Key;
+                        childItem = enumAlternative.EnumValue;
                         break;
                     }
                 }

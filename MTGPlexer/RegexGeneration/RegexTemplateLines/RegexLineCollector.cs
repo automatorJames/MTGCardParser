@@ -112,6 +112,20 @@ public class RegexLineCollector
         }
     }
 
+    public void AddAlternatingEnumValues(EnumScalarAlternativeSet enumSet)
+    {
+        foreach (var enumAlternative in enumSet.EnumAlternatives)
+        {
+            var alternateValueEnum = new AlternateValueEnum(
+                _orderedEnclosureStack,
+                enumSet.ItemCount,
+                enumAlternative,
+                enumSet.LongestChildName);
+
+            _lines.Add(alternateValueEnum);
+        }
+    }
+
     public void AddGroupAlternativePipe()
     {
         var path = _orderedEnclosureStack;
@@ -157,8 +171,7 @@ public class RegexLineCollector
         if (!_lines.Any())
             return new GeneratedRegex([]);
 
-        var finalizedLines = new List<RegexTemplateLine>();
-        finalizedLines.Add(_lines[0]);
+        List<RegexTemplateLine> finalizedLines = [_lines[0]];
 
         for (int i = 1; i < _lines.Count; i++)
         {

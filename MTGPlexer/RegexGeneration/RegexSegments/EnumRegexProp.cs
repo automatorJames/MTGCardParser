@@ -7,8 +7,8 @@
 /// </summary>
 public class EnumRegexProp : ScalarCapturePropBase
 {
-    public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].Regex;
-    public Dictionary<object, Regex> EnumMemberRegexes { get; private set; } = new();
+    public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
+    public EnumScalarAlternativeSet EnumSet { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
@@ -17,7 +17,7 @@ public class EnumRegexProp : ScalarCapturePropBase
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         collector.OpenGroup(RegexPropInfo, nameOverride: Name);
-        collector.AddAlternatingValues(ScalarAlternativeSet.Alternatives);
+        collector.AddAlternatingEnumValues(EnumSet);
         collector.CloseGroup();
     }
 
@@ -25,45 +25,51 @@ public class EnumRegexProp : ScalarCapturePropBase
     {
         var enumType = captureProp.BaseType;
 
-        if (TokenTypeRegistry.EnumMemberRegexes.TryGetValue(enumType, out var enumMemberRegexes))
+        if (TokenTypeRegistry.EnumScalarAlternativeSets.TryGetValue(enumType, out var enumSet))
         {
-            EnumMemberRegexes = enumMemberRegexes;
-            
-            // if the registry has the enum's member regexes, it should have its scalar alternatives too
-            ScalarAlternativeSet = TokenTypeRegistry.EnumScalarAlternativeSets[enumType];
-
+            EnumSet = enumSet;
+            ScalarAlternativeSet = EnumSet;
             return;
         }
 
         // if not already registered: 
-        var enumOptions = captureProp.BaseType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-        List<string> allMemberAlternatives = new();
-        var enumRegOptions = enumType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-        var enumValues = Enum.GetValues(enumType).Cast<object>();
+        var enumOptions = enumType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
+        List<EnumScalarAlternative> enumAlternatives = new();
 
-        foreach (var enumValue in enumValues)
+        // get enum values in declared order
+        var enumValues = enumType
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .OrderBy(x => x.MetadataToken)
+            .Select(x => x.GetValue(null)!)
+            .ToList();
+
+        for (int i = 0; i < enumValues.Count; i++)
         {
-            List<string> memberAlternatives = new();
+            var enumValue = enumValues[i];
+            string memberAlternativeStringOrSynonymSet = null;
             var enumAsString = enumValue.ToString();
             var regexPatternAttribute = enumType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
             if (regexPatternAttribute != null)
-                memberAlternatives.AddRange(regexPatternAttribute.Patterns);
+            {
+                var spaceEscapedPatterns = regexPatternAttribute.Patterns.Select(x => x.Replace(" ", "[ ]")).ToList();
+
+                if (spaceEscapedPatterns.Count == 1)
+                    memberAlternativeStringOrSynonymSet = spaceEscapedPatterns[0];
+                else
+                    memberAlternativeStringOrSynonymSet = string.Join(" | ", spaceEscapedPatterns);
+            }
             else
-                memberAlternatives.Add(enumAsString.ToFriendlyCase());
+                memberAlternativeStringOrSynonymSet = enumAsString.ToFriendlyCase().Replace(" ", "[ ]");
 
             if (enumOptions.OptionalPlural)
-                for (int i = 0; i < memberAlternatives.Count; i++)
-                    memberAlternatives[i] = memberAlternatives[i].AddOptionalPluralization();
+                memberAlternativeStringOrSynonymSet = memberAlternativeStringOrSynonymSet.AddOptionalPluralization();
 
-            var memberRenderedString = $@"{string.Join('|', memberAlternatives.OrderByDescending(s => s.Length))}";
-
-            EnumMemberRegexes[enumValue] = new Regex("^" + memberRenderedString + "$");
-            allMemberAlternatives.AddRange(memberAlternatives);
+            enumAlternatives.Add(new(enumType, enumValue, memberAlternativeStringOrSynonymSet, i));
         }
 
-        var alternatives = allMemberAlternatives.OrderByDescending(s => s.Length).ToList();
-        ScalarAlternativeSet = new(alternatives);
+        EnumSet = new(enumAlternatives);
+        ScalarAlternativeSet = EnumSet;
     }
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)
@@ -85,11 +91,10 @@ public class EnumRegexProp : ScalarCapturePropBase
 
     object GetEnumMatchValue(string matchString)
     {
-        foreach (var enumMemberRegex in TokenTypeRegistry.EnumMemberRegexes[RegexPropInfo.UnderlyingType])
-            if (enumMemberRegex.Value.IsMatch(matchString))
-                return enumMemberRegex.Key;
+        foreach (var enumAlternative in EnumSet.EnumAlternatives)
+            if (enumAlternative.ItemRegex.IsMatch(matchString))
+                return enumAlternative.EnumValue;
 
         throw new Exception($"Found no matching values for enum '{RegexPropInfo.Name}' from match string '{matchString}'");
     }
 }
-

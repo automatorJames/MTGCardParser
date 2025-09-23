@@ -97,11 +97,12 @@ public record GeneratedRegex
             colorSpans[HashSeparatorColumn] = _colors.HashSeparatorColor;
 
             int commentOffset = paddedRegex.Length + commentPrefix.Length;
+
             foreach (var span in commentSpans)
-            {
                 colorSpans[commentOffset + span.Key] = span.Value;
-            }
-            CommentedLines.Add(new(paddedRegex, commentPrefix + commentBody, colorSpans));
+
+            var regex = line is AlternateValueEnum altEnum ? altEnum.EnumScalar.ItemRegex : new Regex($"^{line.Regex}$", RegexOptions.Compiled);
+            CommentedLines.Add(new(paddedRegex, commentPrefix + commentBody, line.NamedPath, colorSpans, regex));
         }
     }
 
@@ -154,9 +155,8 @@ public record GeneratedRegex
 
         int parentDepth = parentEnclosures.Count();
         int currentLevelWidth = CommentBoxLength - (parentDepth * 4);
-        bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
 
-        if (isBookend)
+        if (line is EncloureBookend)
         {
             int availableWidth = currentLevelWidth - 2;
             switch (line)
@@ -255,7 +255,6 @@ public record GeneratedRegex
         return (sb.ToString(), spans, currentPrimaryContentColor);
     }
 
-    // Unchanged methods below...
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
     {
         int maxRegexLen = lines.Any() ? lines.Max(x => (GetIndentDepth(x) * _spacesPerIndent) + x.Regex.Length) : 0;
@@ -279,7 +278,6 @@ public record GeneratedRegex
 
             if (!string.IsNullOrEmpty(comment))
             {
-                bool isBookend = line is GroupOpen or GroupClose or NamedGroupOpen or NamedGroupClose;
                 int textWidth;
 
                 switch (line)
@@ -292,7 +290,7 @@ public record GeneratedRegex
                         break;
                 }
 
-                requiredWidth = isBookend ? textWidth + 2 : textWidth + 4;
+                requiredWidth = line is EncloureBookend ? textWidth + 2 : textWidth + 4;
             }
             boxWidths[pathKey] = Math.Max(boxWidths[pathKey], requiredWidth);
         }

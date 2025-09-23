@@ -14,7 +14,5 @@ public record RegexTemplateLine
 
     public override string ToString() =>
         Regex
-        + (Comment == null ? "" : $" # {Comment}");
-
-    
+        + (Comment == null ? "" : $" # {Comment}");   
 }

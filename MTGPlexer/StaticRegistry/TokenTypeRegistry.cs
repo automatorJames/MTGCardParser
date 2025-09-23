@@ -9,14 +9,12 @@ public static partial class TokenTypeRegistry
     static Type[] _staticAssemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
-    static string _tokenizerIgnorePattern = @"\s+";
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
-    public static Dictionary<Type, Dictionary<object, Regex>> EnumMemberRegexes { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
-    public static Dictionary<Type, ScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
+    public static Dictionary<Type, EnumScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
     public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
@@ -62,7 +60,7 @@ public static partial class TokenTypeRegistry
         // but steps taken during registration only care about the enum type itself)
         propCaptureSegments
             .OfType<EnumRegexProp>()
-            .Where(x => !EnumMemberRegexes.ContainsKey(x.RegexPropInfo.UnderlyingType))
+            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.RegexPropInfo.UnderlyingType))
             .ToList()
             .ForEach(RegisterEnum);
 
@@ -83,12 +81,11 @@ public static partial class TokenTypeRegistry
     static void RegisterEnum(EnumRegexProp newEnumType)
     {
         var enumType = newEnumType.RegexPropInfo.UnderlyingType;
-        EnumMemberRegexes[enumType] = newEnumType.EnumMemberRegexes;
         EnumRegexStrings[enumType] = newEnumType.RegexString;
         ReferencedEnumTypes.Add(enumType);
         Palettes[enumType] = new DeterministicPalette(enumType, baseSaturation: .4, baseLightness: .4).Palette;
         NameToType[enumType.Name] = enumType;
-        EnumScalarAlternativeSets[enumType] = newEnumType.ScalarAlternativeSet;
+        EnumScalarAlternativeSets[enumType] = newEnumType.EnumSet;
     }
 
     public static List<TokenUnit> Tokenize(string text, bool originalTextOnly)

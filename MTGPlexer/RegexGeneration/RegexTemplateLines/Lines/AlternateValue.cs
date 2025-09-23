@@ -3,28 +3,33 @@
 public record AlternateValue
 (
     Enclosure[] Enclosures,
-    string Value, 
-    int Ordinal, 
-    int TotalOptions
-) 
+    string Value,
+    int Ordinal,
+    int TotalOptions,
+    string CommentPrefix = null
+)
     : RegexTemplateLine
     (
         Enclosures: Enclosures,
-        GetFormattedValue(Value, Ordinal), 
-        Comment: GetComment(Ordinal, TotalOptions)
+        GetFormattedValue(Value, Ordinal),
+        Comment: GetComment(Ordinal, TotalOptions, CommentPrefix)
     )
 {
-    public Regex MatchRegex { get; } = new Regex(Value, RegexOptions.Compiled);
-
     static string GetFormattedValue(string value, int ordinal)
     {
-        var formattedValue = value.Replace(" ", "[ ]");
         var firstChar = ordinal == 0 ? " " : "|";
-        formattedValue = firstChar + " " + formattedValue;
-        return formattedValue;
+        return firstChar + " " + value;
     }
 
-    static string GetComment(int ordinal, int totalOptions) => $"{ordinal + 1}/{totalOptions}";
+    static string GetComment(int ordinal, int totalOptions, string commentPrefix = null)
+    {
+        var commentPostfix = $"{ordinal + 1}/{totalOptions}";
+
+        if (string.IsNullOrEmpty(commentPrefix))
+            return commentPostfix;
+        else
+            return $"{commentPrefix} : {commentPostfix}";
+    }
 
     public override string ToString() => base.ToString();
 }
