@@ -46,15 +46,15 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
-        collector.OpenGroup(RegexPropInfo, neverAddSpacesToGroupMembers: true);
+        collector.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
-        collector.OpenGroup(neverAddSpacesToGroupMembers: true);
+        collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         collector.AddTextLine(", ");
         ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
         collector.CloseGroup(GroupQuantifier.AnyNumber);
-        collector.OpenGroup(neverAddSpacesToGroupMembers: true);
+        collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         collector.AddTextLine(",? ");
-        collector.OpenGroup(neverAddSpacesToGroupMembers: true);
+        collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         _conjunctionProp.ComposeRegexLines(collector);
         collector.AddTextLine(" ");
         collector.CloseGroup(GroupQuantifier.Optional);

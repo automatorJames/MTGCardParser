@@ -18,9 +18,9 @@ public class TokenRegexOneOfProp : TokenRegexProp
     public override void ComposeRegexLines(RegexLineCollector collector)
     {
         // If there are no text sgements to render, the OneOf container itself doesn't need spaces between its alternating members
-        var neverAddSpacesToGroupMembers = !ChildSegments.Any(x => x is TextSegment);
+        SpaceDisposition? spaceDisposition = !ChildSegments.Any(x => x is TextSegment) ? SpaceDisposition.NeverAddSpaceLocal : null;
 
-        collector.OpenGroup(RegexPropInfo, neverAddSpacesToGroupMembers);
+        collector.OpenGroup(RegexPropInfo, spaceDisposition: spaceDisposition);
         AlternatingComposer.Instance.Compose(collector, ChildSegments);
         collector.CloseGroup();
     }

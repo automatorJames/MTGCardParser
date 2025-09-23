@@ -93,3 +93,18 @@ public enum Alphabet
 //    Two,
 //    Three
 //}
+
+[IsolateForTesting]
+public class WeepBeep : TokenUnit
+{
+    public WeepyBeepy WeepyBeepy { get; set; }
+}
+
+public enum WeepyBeepy
+{
+    [RegexPattern("wee", "weep", "weepy")]
+    Weep,
+
+    [RegexPattern("beepy", "beep", "bee")]
+    Beep,
+}

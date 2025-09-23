@@ -27,13 +27,13 @@ public class RegexLineCollector
         _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
 
         var topLevelSpaceDiposition = (topLevelType.IsDefined(typeof(NoSpacesAttribute)) || neverAddSpacesAtTopLevel)
-            ? SpaceDisposition.NeverAddSpace
+            ? SpaceDisposition.NeverAddSpaceLocal
             : SpaceDisposition.DontAddSpaceBeforeNextItem;
 
         _spaceIsRequiredBeforeNextElementAtLevel = new Dictionary<Enclosure, SpaceDisposition> { [rootEnclosure] = topLevelSpaceDiposition };
     }
 
-    public void OpenGroup(RegexPropInfo captureGroup = null, bool neverAddSpacesToGroupMembers = false, string nameOverride = null)
+    public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, string nameOverride = null)
     {
         AddPrecedingSpaceIfApplicable();
         Enclosure enclosure = null;
@@ -60,12 +60,11 @@ public class RegexLineCollector
 
         _enclosureStack.Push(enclosure);
 
-        if (captureGroup?.BaseType.IsDefined(typeof(NoSpacesAttribute)) ?? false)
-            neverAddSpacesToGroupMembers = true;
-
-        _spaceIsRequiredBeforeNextElementAtLevel[enclosure] = neverAddSpacesToGroupMembers 
-            ? SpaceDisposition.NeverAddSpace 
+        spaceDisposition ??= (captureGroup?.BaseType.IsDefined(typeof(NoSpacesAttribute)) ?? false) 
+            ? SpaceDisposition.NeverAddSpaceLocal
             : SpaceDisposition.DontAddSpaceBeforeNextItem;
+
+        _spaceIsRequiredBeforeNextElementAtLevel[enclosure] = spaceDisposition.Value;
 
         if (captureGroup != null)
         {
@@ -121,12 +120,16 @@ public class RegexLineCollector
 
     void AddPrecedingSpaceIfApplicable()
     {
+        // If any parent disallows spaces globally, don't add any spaces
+        if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceGlobal))
+            return;
+
         var currentScope = _enclosureStack.Peek();
         var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[currentScope];
 
         if (groupSpaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
             _lines.Add(new SpaceLine(_orderedEnclosureStack));
-        else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpace)
+        else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpaceLocal)
             _spaceIsRequiredBeforeNextElementAtLevel[currentScope] = SpaceDisposition.AddSpaceBeforeNextItem;
     }
 
@@ -220,7 +223,8 @@ public class RegexLineCollector
 
 public enum SpaceDisposition
 {
-    NeverAddSpace,
+    NeverAddSpaceLocal,
+    NeverAddSpaceGlobal,
     DontAddSpaceBeforeNextItem,
     AddSpaceBeforeNextItem,
 }
