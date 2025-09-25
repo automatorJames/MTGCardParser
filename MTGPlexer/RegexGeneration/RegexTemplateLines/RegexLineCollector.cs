@@ -1,3 +1,5 @@
+using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
+
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public class RegexLineCollector
@@ -12,14 +14,13 @@ public class RegexLineCollector
 
     Enclosure[] _orderedEnclosureStack =>
         _enclosureStack
-            .Where(x => x is not RootEnclosure)
             .Reverse()
             .ToArray();
 
     public RegexLineCollector(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {
         // an invisible top level enclosure;
-        RootEnclosure rootEnclosure = new(); 
+        RootEnclosure rootEnclosure = new(topLevelType.Name);
 
         // always track the root enclosure (makes space disposition tracking cleaner)
         _enclosureStack.Push(rootEnclosure); 
@@ -69,7 +70,7 @@ public class RegexLineCollector
         if (captureGroup != null)
         {
             var name = nameOverride ?? captureGroup.Name;
-            _lines.Add(new NamedGroupOpen(_orderedEnclosureStack, name, captureGroup, captureGroup.FriendlyTypeName));
+            _lines.Add(new NamedGroupOpen(_orderedEnclosureStack, name, captureGroup));
         }
         else
             _lines.Add(new GroupOpen(_orderedEnclosureStack));
@@ -166,10 +167,10 @@ public class RegexLineCollector
         return new (regexString, RegexOptions.Compiled);
     }
 
-    public GeneratedRegex Finalize()
+    public FormattedRegex Finalize()
     {
         if (!_lines.Any())
-            return new GeneratedRegex([]);
+            return new FormattedRegex([]);
 
         List<RegexTemplateLine> finalizedLines = [_lines[0]];
 
@@ -178,7 +179,7 @@ public class RegexLineCollector
             var previousLine = _lines[i - 1];
             var currentLine = _lines[i];
 
-            bool pathChanged = currentLine.Path != previousLine.Path;
+            bool pathChanged = currentLine.UniquePath != previousLine.UniquePath;
 
             if (pathChanged)
             {
@@ -216,7 +217,7 @@ public class RegexLineCollector
         }
 
         AddBoundaryLines(finalizedLines);
-        return new GeneratedRegex(finalizedLines);
+        return new FormattedRegex(finalizedLines);
     }
 
     void AddBoundaryLines(List<RegexTemplateLine> lines)

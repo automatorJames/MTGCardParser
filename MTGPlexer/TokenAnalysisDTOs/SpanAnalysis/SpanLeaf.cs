@@ -20,6 +20,6 @@ public record SpanLeaf : SpanAnalysisBase
         string captureDisplay = $"[{Start}] \"{nestedCapture}\" [{End}]";
 
         // Display the captured terminal value and its type.
-        return $"{Path} | {captureDisplay} | {friendlyElementType} | Value: \"{TerminalValString}\" ({TerminalType})";
+        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Value: \"{TerminalValString}\" ({TerminalType})";
     }
 }

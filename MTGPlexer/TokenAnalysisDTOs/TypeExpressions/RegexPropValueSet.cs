@@ -9,5 +9,5 @@ public record RegexPropValueSet
     TerminalRegexPropPath TerminalRegexPropPath,
     int CaptureGroupPositionStart,
     int CaptureGroupPositionEnd,
-    List<ValueCaptureVariantSet> ValueCaptureCounts
+    List<CaptureValueVariantSet> ValueCaptureCounts
 );

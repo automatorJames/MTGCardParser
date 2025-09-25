@@ -33,7 +33,8 @@ public class TokenRegexProp : CaptureGroupPropBase
         if (capture == null)
             return false;
 
-        var tokenUnitInstance = TokenUnit.HydrateFromMatch(RegexPropInfo.BaseType, match, capture);
+        var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
+        var tokenUnitInstance = TokenUnit.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, capture, ancestorCapturePath);
         token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
 
         return true;

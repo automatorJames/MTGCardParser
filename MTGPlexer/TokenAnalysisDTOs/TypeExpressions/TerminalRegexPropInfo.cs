@@ -15,4 +15,3 @@ public record TerminalRegexPropPath
         RegexPropTypeNameFriendly = terminalPropInfo.FriendlyTypeName;
     }
 }
-

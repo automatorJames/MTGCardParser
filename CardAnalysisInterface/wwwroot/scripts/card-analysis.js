@@ -44,7 +44,6 @@ function initCardCaptureHover() {
         const boundary = hoveredElement.closest('.' + boundaryClass);
         if (!boundary) return;
 
-        // --- PHASE 1: COLLECT (Corrected) ---
         // We travel up from the hovered element, collecting the `data-path` of all valid
         // ancestors into a Set. A Set provides highly efficient, near-instant lookups.
         const pathsToHighlight = new Set();

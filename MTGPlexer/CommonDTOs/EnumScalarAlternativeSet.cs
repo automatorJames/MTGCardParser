@@ -9,6 +9,6 @@ public record EnumScalarAlternativeSet
     )
 {
     public int ItemCount { get; } = EnumAlternatives.Count;
-    public int LongestChildName { get; } = EnumAlternatives.Max(x => x.FriendlyName.Length);
+    public int LongestChildName { get; } = EnumAlternatives.Max(x => x.DisplayName.Length);
 }
 

@@ -31,8 +31,7 @@ public class CorpusAnalyzer
     /// </summary>
     public DigestedTextCorpus DigestedCorpusOriginalText { get; }
 
-    public TokenUnitCaptureSummary TopLevelTokenUnitCaptureSummary { get; }
-    public TokenUnitCaptureSummary GlobalTokenUnitCaptureSummary { get; }
+    public TokenUnitCaptureSummary TokenCaptureSummary { get; }
 
     public CorpusAnalyzer(List<Card> cards)
     {
@@ -45,7 +44,7 @@ public class CorpusAnalyzer
         var processedOriginalCards = ProcessAllCards(cards, originalTextOnly: true);
         DigestedCorpusOriginalText = GetDigestedSpanCorpus(processedOriginalCards);
 
-        (TopLevelTokenUnitCaptureSummary, GlobalTokenUnitCaptureSummary) = TokenUnitCaptureSummary.CreateSummaries(_hydratedTokenUnits);
+        TokenCaptureSummary = new TokenUnitCaptureSummary(_hydratedTokenUnits);
     }
 
     List<ProcessedCard> ProcessAllCards(List<Card> cards, bool originalTextOnly)

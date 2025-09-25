@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.TokenUnitComponents;
 
 public abstract class TokenUnit
 {
@@ -20,7 +22,7 @@ public abstract class TokenUnit
     public RegexPropInfo ParentTokenProp { get; set; }
     public Match TopLevelMatch { get; set; }
     public Capture Capture { get; set; }
-    public string Path { get; set; }
+    public string CapturePath { get; set; }
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -67,12 +69,12 @@ public abstract class TokenUnit
         .OfType<TokenUnit>()
         .ToList();
 
-    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, Capture childCapture = null)
+    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null)
     {
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
         tokenUnit.TopLevelMatch = match;
-        tokenUnit.Capture = childCapture ?? match;
-        tokenUnit.Path = $"{match.Index}-{tokenUnitType.Name}"; // Start as root index + type name (may child later if assigned as child)
+        tokenUnit.Capture = match;
+        tokenUnit.CapturePath = capturePath ?? tokenUnitType.Name;
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
             if (match.Groups[captureProp.Name].Success)
@@ -83,17 +85,27 @@ public abstract class TokenUnit
         return tokenUnit;
     }
 
+
+    public static TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, Match match, Capture childCapture, string ancestorCapturePath)
+    {
+        var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath);
+
+        // overwrite the child's Capture property
+        tokenUnitChild.Capture = childCapture;
+
+        return tokenUnitChild;
+    }
+
     public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, Path));
+        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, CapturePath));
 
         if (propVal is TokenUnit childTokenUnit)
         {
             childTokenUnit.ParentTokenProp = regexPropInfo;
             childTokenUnit.ParentToken = this;
-            childTokenUnit.Path = this.Path.Dot(regexPropInfo.Name); // update child name
         }
     }
 
@@ -117,14 +129,6 @@ public abstract class TokenUnit
     public virtual bool ValidateHydratedToken()
     {
         return true;
-    }
-
-    public void PrependCardPathAllLevels(string cardName, int clauseIndex)
-    {
-        var prependValue = $"{cardName}-{clauseIndex}";
-        GetChildTokens().ForEach(x => x.PrependCardPathAllLevels(cardName, clauseIndex));
-        Path = $"{prependValue}-{Path}";
-        IndexedPropertyCaptures.ForEach(x => x.Path = $"{prependValue}-{x.Path}");
     }
 
 

@@ -1,7 +1,4 @@
-﻿
-using System.Diagnostics;
-
-namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
 /// A static factory class that analyzes a root TokenUnit and produces a tree of immutable DTOs.
@@ -14,7 +11,7 @@ public static class TokenCaptureSummary
     private class PrecursorNode
     {
         public string Name { get; set; }
-        public string Path { get; set; }
+        public string CapturePath { get; set; }
         public string OriginalFullText { get; set; }
         public string CaptureTextOriginal { get; set; }
         public int Start { get; set; }
@@ -40,7 +37,7 @@ public static class TokenCaptureSummary
         var precursorRoot = CreatePrecursorForRoot(root, originalFullText);
 
         // Stage 2: Post-process the precursor tree to prepend global paths to every node.
-        var pathPrefix = $"{cardName.Replace(' ', '_')}-{clauseIndex}-";
+        var pathPrefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.TopLevelMatch.Index}]-";
         PrependPathsToPrecursorTree(precursorRoot, pathPrefix);
 
         // Stage 3: Convert the precursor tree into the final, immutable DTO tree.
@@ -61,11 +58,10 @@ public static class TokenCaptureSummary
     /// </summary>
     static void PrependPathsToPrecursorTree(PrecursorNode node, string prefix)
     {
-        node.Path = prefix + node.Path;
+        node.CapturePath = prefix + node.CapturePath;
+
         foreach (var child in node.Children)
-        {
             PrependPathsToPrecursorTree(child, prefix);
-        }
     }
 
     // --- Stage 1: Core Logic for Building the Precursor Tree ---
@@ -112,7 +108,7 @@ public static class TokenCaptureSummary
             End = root.Capture.Index + root.Capture.Length,
             RootTokenType = root.Type,
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
-            Path = root.Path,
+            CapturePath = root.CapturePath,
             Palette = TokenTypeRegistry.Palettes[root.Type],
             ElementType = root is DefaultUnmatchedString
                 ? TokenAnalysisElementType.UnmatchedTokenUnitRoot
@@ -241,7 +237,7 @@ public static class TokenCaptureSummary
 
         if (manyOf.Conjunction != null)
         {
-            var conjunctionPrecursor = CreatePrecursorLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), precursor.Path.Dot(nameof(ManyOf.Conjunction)), manyOf.ItemObjects.Count, originalFullText, TokenAnalysisElementType.ConjunctionLeaf);
+            var conjunctionPrecursor = CreatePrecursorLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), precursor.CapturePath.Dot(nameof(ManyOf.Conjunction)), manyOf.ItemObjects.Count, originalFullText, TokenAnalysisElementType.ConjunctionLeaf);
             SetEnumScalar(conjunctionPrecursor, manyOf.Conjunction.Value);
             precursor.Children.Add(conjunctionPrecursor);
         }
@@ -255,7 +251,7 @@ public static class TokenCaptureSummary
 
         foreach (var (distilledProp, value) in distilledVals)
         {
-            var distilledPrecursor = CreatePrecursorFromParent(precursor, distilledProp.Name, precursor.Path.Dot(distilledProp.Name), TokenAnalysisElementType.DistilledValueSubLeaf);
+            var distilledPrecursor = CreatePrecursorFromParent(precursor, distilledProp.Name, precursor.CapturePath.Dot(distilledProp.Name), TokenAnalysisElementType.DistilledValueSubLeaf);
             SetDistilledScalar(distilledPrecursor, value);
             precursor.Children.Add(distilledPrecursor);
         }
@@ -296,7 +292,7 @@ public static class TokenCaptureSummary
         new()
         {
             Name = name,
-            Path = path,
+            CapturePath = path,
             OriginalFullText = originalFullText,
             ElementType = elementType,
             Start = capture.Index,
@@ -326,7 +322,7 @@ public static class TokenCaptureSummary
         new()
         {
             Name = name,
-            Path = path,
+            CapturePath = path,
             ElementType = elementType,
             OriginalFullText = parent.OriginalFullText,
             Start = parent.Start,
@@ -370,7 +366,7 @@ public static class TokenCaptureSummary
                 {
                     // Base Properties
                     Name = finalName,
-                    Path = precursor.Path,
+                    CapturePath = precursor.CapturePath,
                     CaptureTextOriginal = precursor.CaptureTextOriginal,
                     Start = precursor.Start,
                     End = precursor.End,
@@ -392,7 +388,7 @@ public static class TokenCaptureSummary
                 {
                     // Base Properties
                     Name = finalName,
-                    Path = precursor.Path,
+                    CapturePath = precursor.CapturePath,
                     CaptureTextOriginal = precursor.CaptureTextOriginal,
                     Start = precursor.Start,
                     End = precursor.End,
@@ -410,7 +406,7 @@ public static class TokenCaptureSummary
                 {
                     // Base Properties
                     Name = precursor.Name, // Sub-leaves do not get prepended names
-                    Path = precursor.Path,
+                    CapturePath = precursor.CapturePath,
                     CaptureTextOriginal = precursor.CaptureTextOriginal,
                     Start = precursor.Start,
                     End = precursor.End,
@@ -429,7 +425,7 @@ public static class TokenCaptureSummary
                 {
                     // Base Properties
                     Name = precursor.Name, // Leaves do not get prepended names
-                    Path = precursor.Path,
+                    CapturePath = precursor.CapturePath,
                     CaptureTextOriginal = precursor.CaptureTextOriginal,
                     Start = precursor.Start,
                     End = precursor.End,

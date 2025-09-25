@@ -1,7 +1,7 @@
 ﻿@* This component now accepts any DTO that inherits from TokenAnalysisBase *@
 @if (Node != null)
 {
-    <span class=@GetClass(Node) style=@GetStyle(Node) data-path="@Node.Path">
+    <span class=@GetClass(Node) style=@GetStyle(Node) data-path="@Node.CapturePath">
         @{
             var cursor = 0;
 

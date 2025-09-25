@@ -16,6 +16,6 @@ public record SpanSubLeaf : SpanLeaf
         string captureDisplay = $"[{Start}] \"{nestedCapture}\" [{End}]";
 
         // Display the captured terminal value and its type, same as a regular leaf.
-        return $"{Path} | {captureDisplay} | {friendlyElementType} | Value: \"{TerminalValString}\" ({TerminalType})";
+        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Value: \"{TerminalValString}\" ({TerminalType})";
     }
 }

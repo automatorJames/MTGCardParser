@@ -99,36 +99,6 @@ namespace CardAnalysisInterface
             }
         }
 
-        private bool _showMinifiedRegex;
-        public bool ShowMinifiedRegex
-        {
-            get => _showMinifiedRegex;
-            set
-            {
-                if (_showMinifiedRegex != value)
-                {
-                    _showMinifiedRegex = value;
-                    OnChanged?.Invoke();
-                    _ = DebouncedSaveAsync(); // Persist the change
-                }
-            }
-        }
-
-        private bool _showZeroMatchEnumPropertyCaptures = true;
-        public bool ShowZeroMatchEnumPropertyCaptures
-        {
-            get => _showZeroMatchEnumPropertyCaptures;
-            set
-            {
-                if (_showZeroMatchEnumPropertyCaptures != value)
-                {
-                    _showZeroMatchEnumPropertyCaptures = value;
-                    OnChanged?.Invoke();
-                    _ = DebouncedSaveAsync(); // Persist the change
-                }
-            }
-        }
-
         private string _searchTerm = string.Empty;
         public string SearchTerm
         {

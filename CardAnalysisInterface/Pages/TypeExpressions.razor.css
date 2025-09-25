@@ -116,6 +116,7 @@ pre {
 code > .regex-line {
     display: table; /* Changed from 'block' to make width fit content */
     border-radius: 2px;
+    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
 }
 
 /* Lighten <pre> on container hover */
@@ -123,18 +124,29 @@ code > .regex-line {
     background-color: #181818; /* A slightly lighter grey */
 }
 
-/* Highlight for hovering a specific value */
-.regex-line.value-highlight {
-    color: var(--dark-grey) !important;
-    /* The background-color is set via an inline style */
-    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+/* --- Highlighting Styles --- */
+.regex-line.highlight-strong {
+    background-color: var(--highlight-bg, #555);
+    color: white !important;
 }
 
-/* Highlight for hovering a property card (affects the start/end group lines) */
-.regex-line.group-boundary-highlight {
+.regex-line.highlight-strong > span {
     color: white !important;
-    transition: color 0.1s ease-in-out;
 }
+
+.regex-line.highlight-soft {
+    outline: 1px solid white;
+}
+
+.property-capture-card.highlight-strong,
+.canonical-representation.highlight-strong {
+    border-color: #fff !important;
+}
+
+.property-capture-card.highlight-soft {
+    border-color: #aaa !important;
+}
+
 
 /* --- Layout & Style Tweaks --- */
 

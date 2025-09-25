@@ -2,68 +2,95 @@
 
 public record TokenUnitCapture
 {
+    int _orphanCaptureCount;
+
     public Type Type { get; }
     public string TypeName { get; }
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
-    public List<RegexCommentedLine> CommentedLines { get; }
-    public string FormattedRegex { get; }
-    public string MinifiedRegexString { get; }
-    public List<RegexPropValueSet> RegexPropValueSets { get; } = [];
+    public FormattedRegex FormattedRegex { get; }
     public Palette Palette { get; }
+    public HashSet<RegexCommentedAlternateLine> LinesWithMatches { get; } = [];
 
-    public TokenUnitCapture(Type type, int occurrenceCount, Dictionary<TerminalRegexPropPath, Dictionary<string, ValueCaptureVariantCollector>> collectors = null)
+    /// <summary>
+    /// Maps capture group prop path --> set of capture value variant counts (the string key is the canonical value)
+    /// </summary>
+    public Dictionary<CaptureGroupPropPath, Dictionary<object, CaptureValueVariantSet>> PropPathVariantSets { get; } = [];
+
+    public TokenUnitCapture(Type type, List<TokenUnit> rootTokensUnitsOfType)
     {
         Type = type;
         TypeName = type.Name;
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
-        OccurrenceCount = occurrenceCount;
         Palette = TokenTypeRegistry.Palettes[type];
+        FormattedRegex = TokenTypeRegistry.Templates[type].FormattedRegex;
+        OccurrenceCount = rootTokensUnitsOfType.Count;
 
-        var template = TokenTypeRegistry.Templates[type];
-        var generatedRegex = TokenTypeRegistry.Templates[type].GeneratedRegex;
-        FormattedRegex = generatedRegex.FormattedRegex;
-        CommentedLines = generatedRegex.CommentedLines;
-        MinifiedRegexString = generatedRegex.MinifiedRegex;
+        foreach (var tokenUnit in rootTokensUnitsOfType)
+            foreach (var indexedCapture in tokenUnit.IndexedPropertyCaptures)
+                FlattenAndCountRecursive([tokenUnit.Type.Name, indexedCapture.RegexPropInfo.Name], indexedCapture.Value);
+    }
 
-        if (collectors != null)
+    void FlattenAndCountRecursive(List<string> currentPropPath, object currentValue)
+    {
+        if (currentValue == null)
+            return;
+
+        // todo: handle dynamic token prop types in the switch below
+
+        switch (currentValue)
         {
-            foreach (var propPathValSetCollector in collectors)
-            {
-                var variantSets = propPathValSetCollector.Value.Values
-                    .Select(x => new ValueCaptureVariantSet(x, propPathValSetCollector.Key.TerminalPropName))
-                    .OrderByDescending(x => x.TotalCount)
-                    .ToList();
+            case TokenUnitOneOf tokenUnitOneOf:
+                var singleIndexedCapture = tokenUnitOneOf.GetIndexedPropertyCaptureSingle();
+                currentPropPath.Add(singleIndexedCapture.RegexPropInfo.Name);
+                FlattenAndCountRecursive(currentPropPath, singleIndexedCapture.Value);
+                break;
 
-                // If enum, populate any missing zero-match members
-                if (propPathValSetCollector.Key.Prop.RegexPropType == RegexPropType.Enum)
+            case TokenUnit childTokenUnit:
+                foreach (var indexedCapture in childTokenUnit.IndexedPropertyCaptures)
                 {
-                    var valuesWithCounts = propPathValSetCollector.Value.Keys.ToList();
-
-                    var missingZeroCountEnumValStrings = Enum.GetValues(propPathValSetCollector.Key.Prop.BaseType)
-                        .Cast<object>()
-                        .Select(x => x.ToString().ToFriendlyCase(TitleDisplayOption.Lower))
-                        .Except(valuesWithCounts)
-                        .ToList();
-
-                    foreach (var missingItem in missingZeroCountEnumValStrings)
-                        variantSets.Add(new ValueCaptureVariantSet(missingItem, propPathValSetCollector.Key.TerminalPropName));
+                    var childPropPath = currentPropPath.Concat([indexedCapture.RegexPropInfo.Name]).ToList();
+                    FlattenAndCountRecursive(childPropPath, indexedCapture.Value);
                 }
+                break;
 
-                var (captureGroupStart, captureGroupEnd) = FindNamedCaptureGroupSpan(propPathValSetCollector.Key.TerminalPropName);
-                var regexPropValueSet = new RegexPropValueSet(propPathValSetCollector.Key, captureGroupStart, captureGroupEnd, variantSets);
-                RegexPropValueSets.Add(regexPropValueSet);
-            }
+            default:
+                // Base case: The value is a primitive or string, so we count it.
+                IncrementValueCount(currentPropPath, currentValue);
+                break;
         }
     }
 
-    (int start, int endExclusive) FindNamedCaptureGroupSpan(string name)
+    void IncrementValueCount(List<string> propPath, object terminalValue)
     {
-        var regex = new Regex(
-            $@"\(\?<{Regex.Escape(name)}>(?:[^()]+|\((?<DEPTH>)|\)(?<-DEPTH>))*(?(DEPTH)(?!))\)",
-            RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);
+        CaptureGroupPropPath groupPropPath = new(propPath);
+        var matchingAltLine = FormattedRegex[groupPropPath.PropPath, terminalValue];
 
-        var match = regex.Match(FormattedRegex);
-        return match.Success ? (match.Index, match.Index + match.Length) : (-1, -1);
+        if (matchingAltLine == null)
+        {
+            _orphanCaptureCount++;
+            return;
+        }
+
+        LinesWithMatches.Add(matchingAltLine);
+        
+        var terminalCaptureAsFriendlyString = terminalValue.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+
+        // If no variantSetDict for this capture group path exists already, make one
+        if (!PropPathVariantSets.TryGetValue(groupPropPath, out var variantSetDict))
+        {
+            variantSetDict = new();
+            PropPathVariantSets[groupPropPath] = variantSetDict;
+        }
+
+        // If the variantSetDict already contains the line's canonical value, increment it,
+        // otherwise create a new CaptureValueVariantSet for the canonical value, and add it as an entry to the parent dict
+        if (variantSetDict.TryGetValue(matchingAltLine.CanonicalValue, out var variantSet))
+            variantSet.IncrementVariant(terminalCaptureAsFriendlyString);
+        else
+        {
+            variantSet = new(matchingAltLine, terminalCaptureAsFriendlyString);
+            variantSetDict[terminalValue] = variantSet;
+        }
     }
 }

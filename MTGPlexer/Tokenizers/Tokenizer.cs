@@ -59,7 +59,11 @@ public class Tokenizer
         return tokens;
     }
 
-    public TokenUnit TokenizeSingleNonDefault(Capture captureToTokenize, Match parentMatch, Type constrainToType = null)
+    /// <summary>
+    /// Intended for use by DynamicRegexProp instances to check for a sub-capture for a given match among all possible TokenUnit types.
+    /// </summary>
+    /// <returns></returns>
+    public TokenUnit TokenizeSingleNonDefaultChild(Capture captureToTokenize, Match parentMatch, string ancestorCapturePath, Type constrainToType = null)
     {
         // Filter the regexes to only include types that are assignable to the constraint type, or all types if no constraint is provided.
         Dictionary<Type, Regex> filteredOrderedTypeRegexes =
@@ -77,7 +81,7 @@ public class Tokenizer
             if (captureMatch.Success && captureMatch.Length == captureToTokenize.Length)
             {
                 // If a full match is found, hydrate the token and return it immediately.
-                return TokenUnit.HydrateFromMatch(type, parentMatch, captureMatch);
+                return TokenUnit.HydrateAsChildFromCapture(type, parentMatch, captureMatch, ancestorCapturePath);
             }
         }
 

@@ -14,7 +14,12 @@ public record AlternateValue
         GetFormattedValue(Value, Ordinal),
         Comment: GetComment(Ordinal, TotalOptions, CommentPrefix)
     )
+    , IMatchableAlternate
 {
+    public object CanonicalValue { get; } = Value;
+    public string CanonicalValueDisplay { get; } = Value;
+    public Regex AlternateRegex { get; } = new($"^{Value}$", RegexOptions.Compiled);
+
     static string GetFormattedValue(string value, int ordinal)
     {
         var firstChar = ordinal == 0 ? " " : "|";

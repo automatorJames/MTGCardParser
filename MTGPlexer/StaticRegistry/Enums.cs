@@ -490,7 +490,7 @@ public enum PermanentVerb
     [RegexPattern("get(s)?")]
     Get,
 
-    [RegexPattern("have|has")]
+    [RegexPattern("have", "has")]
     Have,
 
     [RegexPattern("deal(s)?")]

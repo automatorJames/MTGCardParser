@@ -13,6 +13,7 @@ global using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 global using MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 global using MTGPlexer.TokenAnalysisDTOs.WordTrees;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
+global using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
 global using MTGPlexer.Tokenizers;
 global using MTGPlexer.RegexGeneration.Composers;
 global using MTGPlexer.TokenUnitComponents;

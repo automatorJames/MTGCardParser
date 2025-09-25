@@ -100,6 +100,36 @@ public enum Alphabet
 //    public WeepyBeepy WeepyBeepy { get; set; }
 //}
 
+//public class A : TokenUnit
+//{
+//    public A() : base("all", nameof(B)) { }
+//    public B B { get; set; }
+//}
+//
+//public class B : TokenUnit
+//{
+//    public B() : base("combat", nameof(C)) { }
+//    public C C { get; set; }
+//    
+//}
+//
+//public class C : TokenUnit
+//{
+//    public C() : base("damage that", nameof(D)) { }
+//    public D D { get; set; }
+//}
+//
+//public class D : TokenUnit
+//{
+//    public D() : base("would be dealt this", nameof(DummyEnum)) { }
+//    public DummyEnum DummyEnum { get; set; }
+//}
+
+public enum DummyEnum
+{
+    Turn,
+}
+
 public enum WeepyBeepy
 {
     [RegexPattern("wee", "weep", "weepy")]
@@ -107,4 +137,8 @@ public enum WeepyBeepy
 
     [RegexPattern("beepy", "beep", "bee")]
     Beep,
+
+    Turn,
 }
+
+

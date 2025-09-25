@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿/*namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 public record ValueCaptureVariantSet
 {
@@ -39,3 +39,4 @@ public record ValueCaptureVariantSet
         return $"{mainString} ({subPartStr})";
     }
 }
+*/

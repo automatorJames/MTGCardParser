@@ -81,7 +81,8 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
             if (_manyItemType == ManyItemVariant.TokenUnit)
             {
-                childItem = TokenUnit.HydrateFromMatch(_baseType, match, itemCapture);
+                var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
+                childItem = TokenUnit.HydrateAsChildFromCapture(_baseType, match, itemCapture, ancestorCapturePath);
             }
             else if (_manyItemType == ManyItemVariant.Enum)
             {

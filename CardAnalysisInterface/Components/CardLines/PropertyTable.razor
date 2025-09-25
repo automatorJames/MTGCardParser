@@ -8,15 +8,15 @@
 }
 else
 {
-    <div class="token-summary-branch" data-path=@Branch.Path>
-        <div class="token-summary-header" data-path=@Branch.Path style=@(Branch.Palette?.ToColorStyle(useSaturatedHighlight: true))>
+    <div class="token-summary-branch" data-path=@Branch.CapturePath>
+        <div class="token-summary-header" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(useSaturatedHighlight: true))>
             <span class="token-type-name">@Branch.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
         </div>
 
         @if (Branch.Children.Any())
         {
             <div class="property-table-wrapper">
-                <div class="content-box" data-path=@Branch.Path style=@(Branch.Palette?.ToColorStyle(useSaturatedHighlight: true, shift: -1))>
+                <div class="content-box" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(useSaturatedHighlight: true, shift: -1))>
 
                     @{
                         var leaves = Branch.Children.OfType<SpanLeaf>().ToList();
@@ -34,7 +34,7 @@ else
 
                                         foreach (var leafOrSubleaf in leafOrSubleaves)
                                         {
-                                            <tr data-path="@leafOrSubleaf.Path">
+                                            <tr data-path="@leafOrSubleaf.CapturePath">
                                                 <td class="prop-capture-table-cell first-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
                                                     @leafOrSubleaf.Name
                                                 </td>

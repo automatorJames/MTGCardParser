@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
 
 namespace MTGPlexer;
 
@@ -110,13 +111,7 @@ public static class Extensions
     public static PropertyInfo[] GetProps(this Type type) => 
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
-    public static T[] Add<T>(this T[] arrayItems, T additionalItem) => arrayItems.Concat([additionalItem]).ToArray();
     public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
-    public static string Colon(this string parentPath, string nextPathPart) => parentPath + ":" + nextPathPart;
-    public static string ToIndexString(this Capture capture) => $"idx[{capture.Index}]";
-
-    public static Type UnderlyingType(this PropertyInfo prop) => prop.PropertyType.UnderlyingType();
-    public static Type UnderlyingType(this Type type) => Nullable.GetUnderlyingType(type) ?? type;
 
     public static RegexPropType GetRegexPropType(this Type type) =>
         type switch
@@ -192,6 +187,27 @@ public static class Extensions
         }
 
         return result;
+    }
+
+    public static string ToFriendlyStringOrPattern(object value)
+    {
+        if (value is null)
+            return string.Empty;
+
+        var type = value.GetType();
+
+        if (type.IsEnum)
+        {
+            var member = type.GetMember(value.ToString() ?? string.Empty);
+            if (member.Length > 0)
+            {
+                var attr = member[0].GetCustomAttribute<RegexPatternAttribute>();
+                if (attr != null && attr.Patterns.Length > 0)
+                    return attr.Patterns.First();
+            }
+        }
+
+        return value.ToString()?.ToFriendlyCase(TitleDisplayOption.Lower) ?? string.Empty;
     }
 }
 

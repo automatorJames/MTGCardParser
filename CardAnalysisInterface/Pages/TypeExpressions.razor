@@ -23,86 +23,78 @@
                 </span>
             </div>
 
-            @if (RuntimeSettings.ShowMinifiedRegex)
-            {
-                var textToCopy = tokenUnitCapture.MinifiedRegexString;
+            @{
+                var textToCopy = tokenUnitCapture.FormattedRegex.PrettifiedRegex;
                 var isCopied = _recentlyCopiedText.Contains(textToCopy);
-                <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
-                    <div class="copy-prompt @(isCopied ? "copied" : "")">
-                        @(isCopied ? "Copied!" : "Click to copy")
-                    </div>
-                    <pre style=@tokenUnitCapture.Palette.ToColorStyle()><code>@tokenUnitCapture.MinifiedRegexString</code></pre>
-                </div>
             }
-            else
-            {
-                var textToCopy = tokenUnitCapture.FormattedRegex;
-                var isCopied = _recentlyCopiedText.Contains(textToCopy);
-                <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
-                    <div class="copy-prompt @(isCopied ? "copied" : "")">
-                        @(isCopied ? "Copied!" : "Click to copy")
-                    </div>
-                    <pre class="formatted-regex-fira" style=@tokenUnitCapture.Palette.ToColorStyle()>
-                        <code>
-                            @for (int lineIndex = 0; lineIndex < tokenUnitCapture.CommentedLines.Count; lineIndex++)
+            <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
+                <div class="copy-prompt @(isCopied ? "copied" : "")">
+                    @(isCopied ? "Copied!" : "Click to copy")
+                </div>
+                <pre class="formatted-regex-fira" style=@tokenUnitCapture.Palette.ToColorStyle()>
+                    <code>
+                        @for (int lineIndex = 0; lineIndex < tokenUnitCapture.FormattedRegex.CommentedLines.Count; lineIndex++)
+                        {
+                            var line = tokenUnitCapture.FormattedRegex.CommentedLines[lineIndex];
+
+                            if (line is RegexCommentedAlternateLine altLine && !tokenUnitCapture.LinesWithMatches.Contains(altLine))
                             {
-                                var line = tokenUnitCapture.CommentedLines[lineIndex];
-                                var sortedSpans = line.ColorSpans.OrderBy(kvp => kvp.Key).ToList();
-                                for (int i = 0; i < sortedSpans.Count; i++)
+                                continue;
+                            }
+
+                            var sortedSpans = line.GetColorSpans().OrderBy(kvp => kvp.Key).ToList();
+                            <span data-path=@line.FullPath>
+                                @for (int i = 0; i < sortedSpans.Count; i++)
                                 {
                                     var start = sortedSpans[i].Key;
                                     var color = sortedSpans[i].Value;
                                     var end = (i + 1 < sortedSpans.Count) ? sortedSpans[i + 1].Key : line.FormattedText.Length;
 
                                     if (start >= line.FormattedText.Length)
-                                        continue;
+                                            continue;
 
                                     var length = Math.Min(end, line.FormattedText.Length) - start;
 
-                                    if (length <= 0) 
-                                        continue;
-                                    
+                                    if (length <= 0)
+                                            continue;
+                                
                                     var text = line.FormattedText.Substring(start, length);
                                     <span style=@($"color: {color};")>@text</span>
                                 }
-                                if (lineIndex < tokenUnitCapture.CommentedLines.Count - 1)
+                                @if (lineIndex < tokenUnitCapture.FormattedRegex.CommentedLines.Count - 1)
                                 {
-                                    @("\n")
+                                        @("\n")
                                 }
-                            }
-                        </code>
-                    </pre>
+                            </span>
+                        }
+                    </code>
+                </pre>
                     <br />
                     <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
-                        <code>@tokenUnitCapture.MinifiedRegexString</code>
-                    </pre>
-                </div>
-            }
+                    <code>@tokenUnitCapture.FormattedRegex.MinifiedRegex</code>
+                </pre>
+            </div>
 
-            @if (tokenUnitCapture.RegexPropValueSets.Any())
+            @if (tokenUnitCapture.PropPathVariantSets.Any())
             {
+                int propCount = 0;
                 <div class="properties-container">
-                    @for (int i = 0; i < tokenUnitCapture.RegexPropValueSets.Count; i++)
+                    @foreach (var(captureGroupPropPath, captureValueVariantSet) in tokenUnitCapture.PropPathVariantSets)
                     {
-                        var propSet = tokenUnitCapture.RegexPropValueSets[i];
-                        var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(i);
-                        <div class="property-capture-card"
-                             style=@($"border-color: {propSetPalette.HexDark};")
-                             data-start="@propSet.CaptureGroupPositionStart"
-                             data-end="@propSet.CaptureGroupPositionEnd"
-                             data-name="@propSet.TerminalRegexPropPath.Prop.Name">
+                        var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
+
+                        <div class="property-capture-card" style=@($"border-color: {propSetPalette.HexDark};") data-path=@captureGroupPropPath.PropPath>
                             <div class="prop-card-header" style="color: @propSetPalette.Hex;">
-                                @propSet.TerminalRegexPropPath.PropPathFriendly<br />
+                                @captureGroupPropPath.PropPathFriendly
+                                <br />
                             </div>
                             <div class="prop-card-body">
-                                @foreach (var valueSet in propSet.ValueCaptureCounts)
+                                @foreach (var valueSet in captureValueVariantSet.Values)
                                 {
-                                    if (!RuntimeSettings.ShowZeroMatchEnumPropertyCaptures && valueSet.TotalCount == 0)
-                                    {
-                                        continue;
-                                    }
-                                    <div class="canonical-representation">
-                                        <span class="canonical-value">@valueSet.CanonicalRepresentation</span>
+                                    var fullPath = captureGroupPropPath.PropPath.Dot(valueSet.CanonicalValue.ToString());
+
+                                    <div class="canonical-representation" data-path=@fullPath>
+                                        <span class="canonical-value">@valueSet.CanonicalValueDisplay</span>
                                         <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
                                     </div>
 
@@ -122,6 +114,8 @@
                             </div>
                         </div>
                     }
+
+
                 </div>
             }
         </div>
@@ -145,20 +139,18 @@
 
     private IEnumerable<TokenUnitCapture> GetFilteredTokenUnitCaptures()
     {
-        var allCaptures = CorpusAnalyzer.GlobalTokenUnitCaptureSummary.TokenUnitCaptures;
         var searchTerm = RuntimeSettings.SearchTerm;
 
         if (string.IsNullOrWhiteSpace(searchTerm))
-        {
-            return allCaptures;
-        }
+            return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values;
 
         var term = searchTerm.Trim();
 
-        return allCaptures.Where(tuc =>
-            tuc.Type.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-            tuc.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase)
-        );
+        return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures
+            .Where(x =>
+                x.Key.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                x.Key.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Value);
     }
 
     private async Task CopyToClipboardAsync(string text)

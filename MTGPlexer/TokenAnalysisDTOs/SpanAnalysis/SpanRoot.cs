@@ -18,6 +18,6 @@ public record SpanRoot : SpanBranch
         string nestedCapture = GetNestedCaptureString();
         string friendlyElementType = ElementType.ToString().ToFriendlyCase();
         string captureDisplay = $"\"{nestedCapture}\"";
-        return $"{Path} | {captureDisplay} | {friendlyElementType} | Children: {Children.Count}";
+        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Children: {Children.Count}";
     }
 }

@@ -13,8 +13,12 @@ public record AlternateValueEnum
         Value: EnumScalar.RegexString,
         Ordinal: EnumScalar.Ordinal,
         TotalOptions: TotalOptions,
-        CommentPrefix: EnumScalar.FriendlyName.PadLeft(LongestSiblingName)
+        CommentPrefix: EnumScalar.DisplayName.PadLeft(LongestSiblingName)
     )
+    , IMatchableAlternate
 {
+    new public object CanonicalValue { get; } = EnumScalar.EnumValue;
+    new public string CanonicalValueDisplay { get; } = ToFriendlyStringOrPattern(EnumScalar.EnumValue);
+    new public Regex AlternateRegex { get; } = EnumScalar.ItemRegex;
     public override string ToString() => base.ToString();
 }

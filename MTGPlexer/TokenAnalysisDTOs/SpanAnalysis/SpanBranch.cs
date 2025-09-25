@@ -20,6 +20,6 @@ public record SpanBranch : SpanAnalysisBase
         string captureDisplay = $"[{Start}] \"{nestedCapture}\" [{End}]";
 
         // Include the critical IsCollapsed status.
-        return $"{Path} | {captureDisplay} | {friendlyElementType} | Collapsed: {IsCollapsed} | Children: {Children.Count}";
+        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Collapsed: {IsCollapsed} | Children: {Children.Count}";
     }
 }

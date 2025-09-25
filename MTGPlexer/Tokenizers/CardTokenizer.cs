@@ -27,8 +27,6 @@ public class CardTokenizer : Tokenizer
         return new TokenizedCard(card, processedClauses);
     }
 
-    // This method still works, but the paths in the resulting DTOs will now be correctly prepended
-    // because it calls the updated TokenCaptureSummary.CreateFrom method internally.
     public List<SpanRoot> GetCardTokenAnalysis(Card card)
     {
         var list = new List<SpanRoot>();
