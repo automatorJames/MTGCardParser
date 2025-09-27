@@ -1,49 +1,130 @@
-﻿function initTypeCardHover() {
-    const cards = document.querySelectorAll('.type-card');
+﻿// /wwwroot/js/typeExpressions.js
 
-    cards.forEach(card => {
-        // Find all elements with a data-path attribute within the current card.
-        const pathElements = card.querySelectorAll('[data-path]');
+function initializeTypeExpressionsHover() {
+    const container = document.querySelector('.type-card-container');
+    if (!container) return;
 
-        // A handler to remove highlights from all related elements within the card.
-        const clearHighlights = () => {
-            pathElements.forEach(el => {
-                el.classList.remove('highlight-strong', 'highlight-soft');
-            });
-        };
+    container.addEventListener('mouseover', handleMouseOver);
+    container.addEventListener('mouseout', handleMouseOut);
+}
 
-        // Attach a mouseover listener to every element with a data-path.
-        pathElements.forEach(el => {
-            el.addEventListener('mouseover', (event) => {
-                // Stop the event from bubbling up to parent elements with data-paths.
-                event.stopPropagation();
+function handleMouseOver(event) {
+    const target = event.target.closest('[data-path]');
+    const card = event.target.closest('.type-card');
+    if (!card) return;
 
-                // Clear any existing highlights first.
-                clearHighlights();
+    const hoveredPath = (target && target.dataset.path) ? target.dataset.path : null;
+    const currentActivePath = card.dataset.activePath;
 
-                const hoveredElement = event.currentTarget;
-                const hoveredPath = hoveredElement.dataset.path;
+    if (hoveredPath === currentActivePath) {
+        return;
+    }
 
-                if (!hoveredPath) return;
+    if (hoveredPath) {
+        card.dataset.activePath = hoveredPath;
+    } else {
+        delete card.dataset.activePath;
+    }
 
-                // Iterate through all path elements in the card to check for relationships.
-                pathElements.forEach(otherEl => {
-                    const otherPath = otherEl.dataset.path;
-                    if (!otherPath) return;
+    const activePaths = getActivePaths(hoveredPath);
+    applyTreatments(card, activePaths);
+}
 
-                    // Apply 'highlight-strong' for an exact path match.
-                    if (otherPath === hoveredPath) {
-                        otherEl.classList.add('highlight-strong');
-                    }
-                    // Apply 'highlight-soft' if one path is an ancestor of the other.
-                    else if (otherPath.startsWith(hoveredPath + '.') || hoveredPath.startsWith(otherPath + '.')) {
-                        otherEl.classList.add('highlight-soft');
-                    }
-                });
-            });
-        });
+function handleMouseOut(event) {
+    const card = event.target.closest('.type-card');
 
-        // When the mouse leaves the boundary of the card, clear all highlights.
-        card.addEventListener('mouseleave', clearHighlights);
+    if (card && !card.contains(event.relatedTarget)) {
+        clearAllTreatments(card);
+        delete card.dataset.activePath;
+    }
+}
+
+function clearAllTreatments(card) {
+    card.querySelectorAll('[highlight-active]').forEach(el => el.removeAttribute('highlight-active'));
+    card.querySelectorAll('[lowlight-active]').forEach(el => el.removeAttribute('lowlight-active'));
+}
+
+function getActivePaths(hoveredPath) {
+    const paths = new Set();
+    if (hoveredPath) {
+        paths.add(hoveredPath);
+        const parts = hoveredPath.split('.');
+        for (let i = parts.length - 1; i > 0; i--) {
+            paths.add(parts.slice(0, i).join('.'));
+        }
+    }
+    return paths;
+}
+
+function applyTreatments(card, activePaths) {
+    let isAnyHighlighted = activePaths.size > 0;
+
+    // --- Regex Section ---
+    const regexSpans = card.querySelectorAll('pre.formatted-regex-fira code span');
+    regexSpans.forEach(span => {
+        const spanPath = span.dataset.path;
+        if (spanPath && activePaths.has(spanPath)) {
+            span.setAttribute('highlight-active', '');
+        } else {
+            span.removeAttribute('highlight-active');
+        }
     });
+
+    if (isAnyHighlighted) {
+        regexSpans.forEach(span => {
+            if (!span.hasAttribute('highlight-active') && span.dataset.lowlight !== 'None') {
+                span.setAttribute('lowlight-active', '');
+            } else {
+                span.removeAttribute('lowlight-active');
+            }
+        });
+    } else {
+        card.querySelectorAll('[lowlight-active]').forEach(el => el.removeAttribute('lowlight-active'));
+    }
+
+    // --- Properties Section ---
+    const allPropCards = card.querySelectorAll('.property-capture-card');
+
+    // Pass 1: Handle highlights on all property elements
+    card.querySelectorAll('.properties-container [data-path]').forEach(el => {
+        if (activePaths.has(el.dataset.path)) {
+            el.setAttribute('highlight-active', '');
+        } else {
+            el.removeAttribute('highlight-active');
+        }
+    });
+
+    // Pass 2: Handle lowlights if any highlight is active
+    if (isAnyHighlighted) {
+        allPropCards.forEach(propCard => {
+            const hasHighlightedChild = propCard.querySelector('[highlight-active]');
+            if (!propCard.hasAttribute('highlight-active') && !hasHighlightedChild) {
+                propCard.setAttribute('lowlight-active', '');
+            } else {
+                propCard.removeAttribute('lowlight-active');
+
+                // If a card is active, check its children for sibling lowlighting
+                const highlightedCanonical = propCard.querySelector('.canonical-representation[highlight-active]');
+                if (highlightedCanonical) {
+                    const allCanonicalsInCard = propCard.querySelectorAll('.canonical-representation');
+                    allCanonicalsInCard.forEach(c => {
+                        if (!c.hasAttribute('highlight-active')) {
+                            c.setAttribute('lowlight-active', '');
+                        } else {
+                            c.removeAttribute('lowlight-active');
+                        }
+                    });
+                } else {
+                    // If the card is highlighted but no specific child is, remove all child lowlights
+                    propCard.querySelectorAll('.canonical-representation[lowlight-active]').forEach(c => c.removeAttribute('lowlight-active'));
+                }
+            }
+        });
+    } else {
+        // If no highlights are active at all, just clear everything
+        allPropCards.forEach(propCard => {
+            propCard.removeAttribute('lowlight-active');
+            propCard.querySelectorAll('.canonical-representation').forEach(c => c.removeAttribute('lowlight-active'));
+        });
+    }
 }

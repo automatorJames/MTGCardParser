@@ -1,9 +1,8 @@
-﻿
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
 
 public record RegexCommentedLine
 {
-    Dictionary<int, string> _colorSpans;
+    public List<RegexCommentedLineSpan> Spans { get; }
 
     public string Regex { get; }
     public string Comment { get; }
@@ -12,7 +11,7 @@ public record RegexCommentedLine
     public int Ordinal { get; }
     public string FormattedText { get; }
 
-    public RegexCommentedLine(string regex, string comment, string enclosurePath, int ordinal, Dictionary<int, string> colorSpans)
+    public RegexCommentedLine(string regex, string comment, string enclosurePath, int ordinal, List<RegexCommentedLineSpan> spans)
     {
         Regex = regex;
         Comment = comment;
@@ -20,9 +19,17 @@ public record RegexCommentedLine
         FullPath = enclosurePath;
         Ordinal = ordinal;
         FormattedText = Regex + Comment;
-        _colorSpans = colorSpans;
+        Spans = spans;
     }
 
-    public Dictionary<int, string> GetColorSpans() => _colorSpans;
+    public static string GetRelativePath(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return null;
 
+        int dotIndex = input.IndexOf('.');
+        return dotIndex < 0 || dotIndex == input.Length - 1
+            ? null
+            : input[(dotIndex + 1)..];
+    }
 }

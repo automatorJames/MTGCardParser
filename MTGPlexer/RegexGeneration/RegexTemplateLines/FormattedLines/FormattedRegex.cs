@@ -1,8 +1,9 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
 
-public record FormattedRegex
+public class FormattedRegex
 {
     private readonly FormattedRegexColoringRules _colors = new();
+    private readonly FormattedRegexTreatmentRules _treatments = new();
 
     const string DefaultWhite = "#FFFFFF";
     private const int _hashSeparatorPadding = 6;
@@ -43,82 +44,166 @@ public record FormattedRegex
         for (int i = 0; i < templateLines.Count; i++)
         {
             RegexTemplateLine line = templateLines[i];
+            var spans = new List<RegexCommentedLineSpan>();
 
-            // Calculate comment body, its spans, AND the primary color for the regex text
-            var (commentBody, commentSpans, regexPrimaryColor) = GetFormattedCommentAndColorSpans(line);
-
-            // Initialize colorSpans with the dynamically determined primary color for the regex text
-            var colorSpans = new Dictionary<int, string> { [0] = regexPrimaryColor };
-
+            // 1. REGEX PART (Left of '#')
             int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
             var indentedRegex = new string(' ', indentSpaces) + line.Regex;
             var paddedRegex = indentedRegex.PadRight(HashSeparatorColumn);
+
+            var primaryContentColor = GetPrimaryContentColorForLine(line);
+            var primaryContentPalette = DeterministicPalette.GetStaticPalette(new HexColor(primaryContentColor));
+            var highlightTreatment = _treatments.GetRegexHighlightTreatment(line);
+
+            string pathForRegexSpan = line.NamedPath;
+            if (line is IMatchableAlternate alt)
+            {
+                pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
+            }
+            string relativePath = RegexCommentedLine.GetRelativePath(pathForRegexSpan);
+
+            if (relativePath == null)
+            {
+                highlightTreatment = SpanHighlightTreatment.None;
+            }
+
+            spans.Add(new RegexCommentedLineSpan(
+                SpanText: paddedRegex,
+                Palette: primaryContentPalette,
+                PathRelativeToRoot: relativePath,
+                HighlightTreatment: highlightTreatment,
+                // --- MODIFIED LOGIC: Apply the same lowlight rule to the left side ---
+                LowlightTreatment: _treatments.CommentLowlightTreatment
+            ));
+
+            // 2. COMMENT PART (Right of '#')
             var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
+            var hashPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.HashSeparatorColor));
 
-            // Set the hash separator color
-            colorSpans[HashSeparatorColumn] = _colors.HashSeparatorColor;
+            spans.Add(new RegexCommentedLineSpan(
+                SpanText: commentPrefix,
+                Palette: hashPalette,
+                PathRelativeToRoot: null,
+                HighlightTreatment: SpanHighlightTreatment.None,
+                LowlightTreatment: SpanLowlightTreatment.None
+            ));
 
-            int commentOffset = paddedRegex.Length + commentPrefix.Length;
+            var commentSpans = GenerateCommentSpans(line);
+            spans.AddRange(commentSpans);
 
-            foreach (var span in commentSpans)
-                colorSpans[commentOffset + span.Key] = span.Value;
+            string commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
 
             RegexCommentedLine commentedLine = line is IMatchableAlternate matchableAlt
-                ? new RegexCommentedAlternateLine(paddedRegex, commentPrefix + commentBody, line.NamedPath, i, colorSpans, matchableAlt)
-                : new RegexCommentedLine(paddedRegex, commentPrefix + commentBody, line.NamedPath, i, colorSpans);
+                ? new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, i, spans, matchableAlt)
+                : new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, i, spans);
 
             CommentedLines.Add(commentedLine);
         }
     }
 
-    /// <summary>
-    /// Gets the formatted comment body, its color spans, and the primary content color
-    /// that should be used for the regex text itself on the left.
-    /// </summary>
-    private (string commentBody, Dictionary<int, string> commentSpans, string primaryContentColor) GetFormattedCommentAndColorSpans(RegexTemplateLine line)
+    private string GetPrimaryContentColorForLine(RegexTemplateLine line)
     {
-        var sb = new StringBuilder();
-        var spans = new Dictionary<int, string>();
-        string currentPrimaryContentColor = _colors.DefaultRegexTextColor; // Default if no specific comment color found
-
-        Action<string, string> append = (text, color) => {
-            if (string.IsNullOrEmpty(text)) return;
-            if (!spans.Any() || spans.Last().Value != color)
-            {
-                spans[sb.Length] = color;
-            }
-            sb.Append(text);
-        };
-
         if (line.PropEnclosures.Length == 0)
         {
-            // Determine primary content color for unenclosed lines
-            currentPrimaryContentColor = line switch
+            return line switch
             {
                 TextLine => _colors.UnenclosedTextLineCommentColor,
                 SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
                 BoundaryBase => _colors.BoundaryCommentColor,
                 _ => _colors.DefaultFallbackColor
             };
-            append(line.Comment ?? string.Empty, currentPrimaryContentColor);
-            return (sb.ToString(), spans, currentPrimaryContentColor);
         }
 
-        var parentEnclosures = line.PropEnclosures.Take(line.PropEnclosures.Length - 1);
+        var currentEnclosure = line.PropEnclosures.Last();
+        var palette = currentEnclosure.Palette;
+
+        switch (line)
+        {
+            case NamedGroupOpen:
+            case NamedGroupClose:
+                return _colors.NamedGroupBookendCommentColor(palette);
+            case GroupOpen:
+                return DefaultWhite;
+            case GroupClose:
+                return _colors.GroupCloseQuantifierColor;
+            case AlternateValue:
+                return _colors.AlternateValueCommentColor(palette);
+            case TextLine or SpaceLine or GroupAlternativePipe:
+                var nearestNamedEnclosure = line.PropEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
+                if (nearestNamedEnclosure != null)
+                {
+                    return _colors.EnclosedTextColor(nearestNamedEnclosure.Palette);
+                }
+                return DefaultWhite;
+            default:
+                return DefaultWhite;
+        }
+    }
+
+    private List<RegexCommentedLineSpan> GenerateCommentSpans(RegexTemplateLine line)
+    {
+        var spans = new List<RegexCommentedLineSpan>();
+        var lowlight = _treatments.CommentLowlightTreatment;
+
+        Action<string, Palette, SpanHighlightTreatment, IEnumerable<Enclosure>> addSpanForEnclosurePath = (text, palette, highlight, enclosureScope) =>
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            string rootName = line.Enclosures.OfType<RootEnclosure>().FirstOrDefault()?.RootTypeName ?? "";
+            string namedPath = string.Join('.', enclosureScope.OfType<NamedEnclosure>().Select(x => x.Name));
+            string fullPath = string.IsNullOrEmpty(namedPath) ? rootName : $"{rootName}.{namedPath}";
+            string relativePath = RegexCommentedLine.GetRelativePath(fullPath);
+
+            var finalHighlight = (relativePath == null) ? SpanHighlightTreatment.None : highlight;
+
+            spans.Add(new RegexCommentedLineSpan(text, palette, relativePath, finalHighlight, lowlight));
+        };
+
+        Action<string, Palette, bool> addSpanForCurrentLine = (text, palette, isTextSpan) =>
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            string pathForSpan = line.NamedPath;
+            if (line is IMatchableAlternate alt)
+            {
+                pathForSpan = $"{pathForSpan}.{alt.CanonicalValue}";
+            }
+            string relativePath = RegexCommentedLine.GetRelativePath(pathForSpan);
+
+            var highlight = _treatments.GetCommentHighlightTreatment(line, isTextSpan);
+            var finalHighlight = (relativePath == null) ? SpanHighlightTreatment.None : highlight;
+
+            spans.Add(new RegexCommentedLineSpan(text, palette, relativePath, finalHighlight, lowlight));
+        };
+
+        var defaultWhitePalette = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+
+        if (line.PropEnclosures.Length == 0)
+        {
+            var color = GetPrimaryContentColorForLine(line);
+            var unenclosedPalette = DeterministicPalette.GetStaticPalette(new HexColor(color));
+
+            spans.Add(new RegexCommentedLineSpan(line.Comment ?? string.Empty, unenclosedPalette, null, SpanHighlightTreatment.None, lowlight));
+            return spans;
+        }
+
+        var parentEnclosures = line.PropEnclosures.Take(line.PropEnclosures.Length - 1).ToList();
         var currentEnclosure = line.PropEnclosures.Last();
         var chars = BoxChars.Get(currentEnclosure.Treatment);
         var palette = currentEnclosure.Palette;
-        string currentBorderColor = _colors.GetBorderColor(currentEnclosure.Treatment, palette);
+        var borderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(currentEnclosure.Treatment, palette)));
+        var borderHighlight = _treatments.GetCommentHighlightTreatment(line, isTextSpan: false);
 
+        var currentPathParts = new List<Enclosure>();
         foreach (var parent in parentEnclosures)
         {
+            currentPathParts.Add(parent);
             char wall = BoxChars.Get(parent.Treatment).Wall;
-            string parentBorderColor = _colors.GetBorderColor(parent.Treatment, parent.Palette);
-            append(wall.ToString(), parentBorderColor);
-            append(" ", DefaultWhite); // Padding spaces between walls are white
+            var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
+            addSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, currentPathParts);
+            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, currentPathParts);
         }
 
-        int parentDepth = parentEnclosures.Count();
+        int parentDepth = parentEnclosures.Count;
         int currentLevelWidth = CommentBoxLength - (parentDepth * 4);
 
         if (line is EncloureBookend)
@@ -127,97 +212,84 @@ public record FormattedRegex
             switch (line)
             {
                 case NamedGroupOpen ngo:
-                    currentPrimaryContentColor = _colors.NamedGroupBookendCommentColor(palette);
+                    var openBookendPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.NamedGroupBookendCommentColor(palette)));
                     string openComment = $" {ngo.Comment} ";
                     string fillerOpen = new string(chars.Top, Math.Max(0, availableWidth - openComment.Length));
-                    append(chars.TopLeft.ToString(), currentBorderColor);
-                    append(openComment, currentPrimaryContentColor);
-                    append(fillerOpen, currentBorderColor);
-                    append(chars.TopRight.ToString(), currentBorderColor);
+                    addSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
+                    addSpanForCurrentLine(openComment, openBookendPalette, true);
+                    addSpanForCurrentLine(fillerOpen, borderPalette, false);
+                    addSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
                     break;
                 case GroupOpen:
-                    // GroupOpen has no "inner content" comment text. Its comment section is purely structural.
-                    // We'll treat the padding/default content as white for the regex text side.
-                    currentPrimaryContentColor = DefaultWhite;
-                    append(chars.TopLeft.ToString(), currentBorderColor);
-                    append(new string(chars.Top, availableWidth), currentBorderColor);
-                    append(chars.TopRight.ToString(), currentBorderColor);
+                    addSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
+                    addSpanForCurrentLine(new string(chars.Top, availableWidth), borderPalette, false);
+                    addSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
                     break;
                 case NamedGroupClose ngc:
-                    currentPrimaryContentColor = _colors.NamedGroupBookendCommentColor(palette);
+                    var closeBookendPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.NamedGroupBookendCommentColor(palette)));
                     string closeComment = $" {ngc.Comment} ";
                     string fillerClose = new string(chars.Bottom, Math.Max(0, availableWidth - closeComment.Length));
-                    append(chars.BottomLeft.ToString(), currentBorderColor);
-                    append(fillerClose, currentBorderColor);
-                    append(closeComment, currentPrimaryContentColor);
-                    append(chars.BottomRight.ToString(), currentBorderColor);
+                    addSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
+                    addSpanForCurrentLine(fillerClose, borderPalette, false);
+                    addSpanForCurrentLine(closeComment, closeBookendPalette, true);
+                    addSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
                     break;
                 case GroupClose gc:
-                    currentPrimaryContentColor = _colors.GroupCloseQuantifierColor;
+                    var quantPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GroupCloseQuantifierColor));
                     string quantComment = gc.Comment != null ? $" {gc.Comment} " : "";
                     string fillerQuant = new string(chars.Bottom, Math.Max(0, availableWidth - quantComment.Length));
-                    append(chars.BottomLeft.ToString(), currentBorderColor);
-                    append(fillerQuant, currentBorderColor);
-                    append(quantComment, currentPrimaryContentColor);
-                    append(chars.BottomRight.ToString(), currentBorderColor);
-                    break;
-                default:
-                    currentPrimaryContentColor = DefaultWhite; // Default for other bookends with no specific comment
-                    append(new string(' ', currentLevelWidth), DefaultWhite);
+                    addSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
+                    addSpanForCurrentLine(fillerQuant, borderPalette, false);
+                    addSpanForCurrentLine(quantComment, quantPalette, true);
+                    addSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
                     break;
             }
         }
-        else // Not a bookend line (e.g., TextLine, AlternateValue, etc. inside an enclosure)
+        else
         {
             int innerWidth = currentLevelWidth - 4;
-            append(chars.Wall.ToString(), currentBorderColor);
-            append(" ", DefaultWhite); // Space between wall and inner content is white
+            addSpanForEnclosurePath(chars.Wall.ToString(), borderPalette, borderHighlight, line.PropEnclosures);
+            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, line.PropEnclosures);
 
             switch (line)
             {
                 case AlternateValue av:
-                    currentPrimaryContentColor = _colors.AlternateValueCommentColor(palette);
-                    string altComment = $" {av.Comment} ";
-                    int totalPad = Math.Max(0, innerWidth - altComment.Length);
-                    append(new string(' ', totalPad / 2), DefaultWhite);
-                    append(altComment, currentPrimaryContentColor);
-                    append(new string(' ', totalPad - (totalPad / 2)), DefaultWhite);
+                    var altPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
+                    string altCommentText = $" {av.Comment} ";
+                    int totalPad = Math.Max(0, innerWidth - altCommentText.Length);
+                    string leftPad = new string(' ', totalPad / 2);
+                    string rightPad = new string(' ', totalPad - (totalPad / 2));
+                    string fullContent = $"{leftPad}{altCommentText}{rightPad}";
+                    addSpanForCurrentLine(fullContent, altPalette, true);
                     break;
                 default:
-                    // Rule: if a TextLine or SpaceLine or GroupAlternativePipe has a NamedEnclosure parent, 
-                    // color its comment, otherwise default to White.
-                    string commentContentColor = DefaultWhite;
-                    if (line is TextLine or SpaceLine or GroupAlternativePipe)
-                    {
-                        var nearestNamedEnclosure = line.PropEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
-                        if (nearestNamedEnclosure != null)
-                        {
-                            commentContentColor = _colors.EnclosedTextColor(nearestNamedEnclosure.Palette);
-                        }
-                    }
-                    currentPrimaryContentColor = commentContentColor; // This is the inner content color
-
+                    var nearestNamedEnclosure = line.PropEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
+                    var contentPalette = (nearestNamedEnclosure != null)
+                        ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.EnclosedTextColor(nearestNamedEnclosure.Palette)))
+                        : defaultWhitePalette;
                     var content = string.IsNullOrEmpty(line.Comment)
                         ? new string(' ', innerWidth)
                         : (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
-                    append(content, currentPrimaryContentColor);
+                    addSpanForCurrentLine(content, contentPalette, true);
                     break;
             }
 
-            append(" ", DefaultWhite); // Space between inner content and wall is white
-            append(chars.Wall.ToString(), currentBorderColor);
+            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, line.PropEnclosures);
+            addSpanForEnclosurePath(chars.Wall.ToString(), borderPalette, borderHighlight, line.PropEnclosures);
         }
 
-        // 3. Build Suffix (Walls from outer to inner)
-        foreach (var parent in parentEnclosures.Reverse())
+        var reversedParents = parentEnclosures.AsEnumerable().Reverse().ToList();
+        for (int j = 0; j < reversedParents.Count(); j++)
         {
+            var parent = reversedParents[j];
+            var wallPathScope = parentEnclosures.Take(parentEnclosures.Count - j).ToList();
             char wall = BoxChars.Get(parent.Treatment).Wall;
-            string parentBorderColor = _colors.GetBorderColor(parent.Treatment, parent.Palette);
-            append(" ", DefaultWhite); // Padding space is white
-            append(wall.ToString(), parentBorderColor);
+            var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
+            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, wallPathScope);
+            addSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, wallPathScope);
         }
 
-        return (sb.ToString(), spans, currentPrimaryContentColor);
+        return spans;
     }
 
     void CalculateColumnWidths(List<RegexTemplateLine> lines)
@@ -234,7 +306,6 @@ public record FormattedRegex
 
         var boxWidths = uniquePaths.ToDictionary(p => string.Join(",", p.Select(e => e.Ordinal)), p => 0);
 
-        // Pass 1: Determine the minimum content width required by each box for its own lines.
         foreach (var line in lines.Where(l => l.PropEnclosures.Any()))
         {
             string pathKey = string.Join(",", line.PropEnclosures.Select(e => e.Ordinal));
@@ -244,41 +315,37 @@ public record FormattedRegex
             if (!string.IsNullOrEmpty(comment))
             {
                 int textWidth;
-
                 switch (line)
                 {
                     case AlternateValue or NamedGroupOpen or NamedGroupClose or GroupClose:
-                        textWidth = comment.Length + 2; // For " comment "
+                        textWidth = comment.Length + 2;
                         break;
                     default:
-                        textWidth = _boxContentLeftPadding + comment.Length; // For " comment"
+                        textWidth = _boxContentLeftPadding + comment.Length;
                         break;
                 }
-
                 requiredWidth = line is EncloureBookend ? textWidth + 2 : textWidth + 4;
             }
             boxWidths[pathKey] = Math.Max(boxWidths[pathKey], requiredWidth);
         }
 
-        // Pass 2: Propagate widths upwards. A parent must be wide enough to contain its children's boxes.
         var sortedPaths = uniquePaths.OrderByDescending(p => p.Count());
         foreach (var path in sortedPaths)
         {
             if (path.Count() <= 1) continue;
             string childPathKey = string.Join(",", path.Select(e => e.Ordinal));
             string parentPathKey = string.Join(",", path.Take(path.Count() - 1).Select(e => e.Ordinal));
-            int childFootprint = boxWidths[childPathKey] + 4; // Child's box width + parent's walls
+            int childFootprint = boxWidths[childPathKey] + 4;
             boxWidths[parentPathKey] = Math.Max(boxWidths[parentPathKey], childFootprint);
         }
 
-        // Pass 3: Find the maximum width among all root-level boxes.
         var rootPaths = uniquePaths.Where(p => p.Count() == 1);
         CommentBoxLength = rootPaths.Any() ? rootPaths.Max(p => boxWidths[string.Join(",", p.Select(e => e.Ordinal))]) : 0;
     }
 
     private int GetIndentDepth(RegexTemplateLine line)
     {
-        if (line.PropEnclosures.Length == 0) 
+        if (line.PropEnclosures.Length == 0)
             return 0;
 
         return line is EncloureBookend ? line.PropEnclosures.Length - 1 : line.PropEnclosures.Length;

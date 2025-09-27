@@ -7,8 +7,8 @@ public record RegexCommentedAlternateLine : RegexCommentedLine
     public Regex MatchRegex { get; }
     public override string FullPath { get; }
 
-    public RegexCommentedAlternateLine(string regex, string comment, string enclosurePath, int ordinal, Dictionary<int, string> colorSpans, IMatchableAlternate matchableAlt) 
-        : base(regex, comment, enclosurePath, ordinal, colorSpans)
+    public RegexCommentedAlternateLine(string regex, string comment, string enclosurePath, int ordinal, List<RegexCommentedLineSpan> spans, IMatchableAlternate matchableAlt)
+        : base(regex, comment, enclosurePath, ordinal, spans)
     {
         CanonicalValue = matchableAlt.CanonicalValue;
         CanonicalValueDisplay = matchableAlt.CanonicalValueDisplay;
