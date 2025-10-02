@@ -107,7 +107,7 @@ else
     private IEnumerable<AnalyzedText> GetFilteredSpans()
     {
         DigestedTextCorpus corpus = RuntimeSettings.ShowOriginalText
-            ? CorpusAnalyzer.DigestedCorpusOriginalText
+            ? throw new NotImplementedException("Support for showing word trees from original text has been temporarily paused")
             : CorpusAnalyzer.DigestedCorpusWithCaptureTokens;
 
         var items = corpus.Spans

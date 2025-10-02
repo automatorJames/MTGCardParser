@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿
+namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 /// <summary>
 /// A summary of all property values captured for a given set of TokenUnits,
@@ -8,14 +9,19 @@ public class TokenUnitCaptureSummary
 {
     public Dictionary<Type, TokenUnitCapture> TokenUnitCaptures { get; } = [];
 
-    public TokenUnitCaptureSummary(List<TokenUnit> tokenUnits)
+    public TokenUnitCaptureSummary(List<ProcessedCard> processedCards)
     {
+        var allTokenUnits = processedCards
+            .SelectMany(x => x.Lines)
+            .SelectMany(x => x.SpanRoots)
+            .Select(x => x.RootToken);
+
         var orderedRootTokenUnitTypes = TokenTypeRegistry.Templates.Keys
             .OrderBy(TokenTypeRegistry.AppliedOrderTypes.IndexOf);
 
         foreach (var rootType in orderedRootTokenUnitTypes)
         {
-            var rootTokensOfType = tokenUnits.Where(x => x.Type == rootType).ToList();
+            var rootTokensOfType = allTokenUnits.Where(x => x.Type == rootType).ToList();
 
             if (!rootTokensOfType.Any())
                 continue;

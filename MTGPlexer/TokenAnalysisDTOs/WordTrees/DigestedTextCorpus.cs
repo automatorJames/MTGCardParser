@@ -1,18 +1,23 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.WordTrees;
 
-public record DigestedTextCorpus
+public class DigestedTextCorpus
 {
     public List<AnalyzedText> Spans { get; }
 
-    public DigestedTextCorpus(List<UnmatchedTextOccurrence> allOccurrences)
+    public DigestedTextCorpus(List<ProcessedCard> processedCards)
     {
-        Spans = RunDigestionAutomaton(allOccurrences);
+        var allUnmatchedOccurrences = processedCards
+            .SelectMany(card => card.Lines)
+            .SelectMany(line => line.UnmatchedTextOccurrences)
+            .ToList();
+
+        Spans = RunDigestionAutomaton(allUnmatchedOccurrences);
     }
 
-    private List<AnalyzedText> RunDigestionAutomaton(List<UnmatchedTextOccurrence> allOccurrences)
+    private List<AnalyzedText> RunDigestionAutomaton(List<UnmatchedTextOccurrence> allUnmatchedOccurrences)
     {
         // =================================================================================
-        // == STEPS 1 & 2: Suffix Automaton construction                   ==
+        // Suffix Automaton Construction
         // =================================================================================
         var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
         var idToWord = new List<string>();
@@ -21,7 +26,7 @@ public record DigestedTextCorpus
         int nextWordId = 0;
         int nextCorrelationId = -1;
 
-        foreach (var occurrence in allOccurrences)
+        foreach (var occurrence in allUnmatchedOccurrences)
         {
             foreach (var word in occurrence.Words)
             {
@@ -104,7 +109,7 @@ public record DigestedTextCorpus
         }
 
         // =================================================================================
-        // == STEP 3: Extract Spans and Consolidate with Rich, Key-Based Contexts         ==
+        // Extract Spans and Consolidate with Rich, Key-Based Contexts
         // =================================================================================
         var result = new List<AnalyzedText>();
         var allMaximalSpans = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -136,7 +141,7 @@ public record DigestedTextCorpus
         }
 
         // include whole-span counts too
-        var wholeCounts = allOccurrences
+        var wholeCounts = allUnmatchedOccurrences
             .GroupBy(s => s.Text)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
 
@@ -186,7 +191,7 @@ public record DigestedTextCorpus
 
                 for (int i = originalSpanOccurrence.AnchorTokenIndex - 1; i >= 0; i--)
                 {
-                    var token = originalSpanOccurrence.LineTokens[i];
+                    var token = originalSpanOccurrence.LineSpanRoots[i].RootToken;
                     Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
                     precedingSequence.Add(new(token.Capture.Value, type));
                 }
@@ -200,9 +205,9 @@ public record DigestedTextCorpus
                     followingSequence.Add(new(originalSpanOccurrence.Words[i], null));
 
                 // Process FOLLOWING tokens nearest → farthest
-                for (int i = originalSpanOccurrence.AnchorTokenIndex + 1; i < originalSpanOccurrence.LineTokens.Length; i++)
+                for (int i = originalSpanOccurrence.AnchorTokenIndex + 1; i < originalSpanOccurrence.LineSpanRoots.Length; i++)
                 {
-                    var token = originalSpanOccurrence.LineTokens[i];
+                    var token = originalSpanOccurrence.LineSpanRoots[i].RootToken;
                     Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
                     followingSequence.Add(new(token.Capture.Value, type));
                 }

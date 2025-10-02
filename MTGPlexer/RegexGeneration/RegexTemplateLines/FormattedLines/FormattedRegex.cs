@@ -16,6 +16,17 @@ public class FormattedRegex
     public int HashSeparatorColumn { get; private set; }
     public int CommentBoxLength { get; private set; }
 
+    public FormattedRegex(List<RegexTemplateLine> lines)
+    {
+        if (lines == null || !lines.Any())
+            return;
+
+        CalculateColumnWidths(lines);
+        FormatCommentedLines(lines);
+        PrettifiedRegex = string.Join(Environment.NewLine, CommentedLines.Select(x => x.FormattedText));
+        MinifiedRegex = MinifyRegex(string.Join("", lines.Select(x => x.Regex)));
+    }
+
     public RegexCommentedAlternateLine this[string pathToTerminalProp, object terminalValue]
     {
         get
@@ -26,17 +37,6 @@ public class FormattedRegex
 
             return alternateLinesAtPath.FirstOrDefault(x => x.CanonicalValue.Equals(terminalValue));
         }
-    }
-
-    public FormattedRegex(List<RegexTemplateLine> lines)
-    {
-        if (lines == null || !lines.Any())
-            return;
-
-        CalculateColumnWidths(lines);
-        FormatCommentedLines(lines);
-        PrettifiedRegex = string.Join(Environment.NewLine, CommentedLines.Select(x => x.FormattedText));
-        MinifiedRegex = MinifyRegex(string.Join("", lines.Select(x => x.Regex)));
     }
 
     void FormatCommentedLines(List<RegexTemplateLine> templateLines)

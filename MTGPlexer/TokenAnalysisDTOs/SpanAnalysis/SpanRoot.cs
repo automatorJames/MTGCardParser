@@ -6,7 +6,7 @@
 public record SpanRoot : SpanBranch
 {
     public string OriginalFullText { get; init; }
-    public Type RootTokenType { get; init; }
+    public TokenUnit RootToken { get; init; }
     public string CardName { get; init; }
     public int ClauseIndex { get; init; }
 

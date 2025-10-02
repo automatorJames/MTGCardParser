@@ -134,11 +134,11 @@
         var searchTerm = RuntimeSettings.SearchTerm;
 
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values;
+            return CorpusAnalyzer.CaptureSummary.TokenUnitCaptures.Values;
 
         var term = searchTerm.Trim();
 
-        return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures
+        return CorpusAnalyzer.CaptureSummary.TokenUnitCaptures
             .Where(x =>
                 x.Key.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
                 x.Key.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase))

@@ -12,13 +12,13 @@
             <div class="line-label dashed-border">Line #@(line.LineIndex + 1)</div>
 
             <pre class="nested-underline-container" @onclick=@(() => OpenRegexEditorDialog(line))>
-                @foreach (var rootNode in line.TokenAnalysisRoots)
+                @foreach (var rootNode in line.SpanRoots)
                 {
                     <SpanView Node=@rootNode />
                 }
             </pre>
 
-            @foreach (var summary in line.TokenAnalysisRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
+            @foreach (var summary in line.SpanRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
             {
                 <PropertyTable Branch=@summary />
             }

@@ -100,6 +100,7 @@ public enum Alphabet
 //    public WeepyBeepy WeepyBeepy { get; set; }
 //}
 
+//[IsolateForTesting]
 //public class A : TokenUnit
 //{
 //    public A() : base("all", nameof(B)) { }
@@ -124,11 +125,11 @@ public enum Alphabet
 //    public D() : base("would be dealt this", nameof(DummyEnum)) { }
 //    public DummyEnum DummyEnum { get; set; }
 //}
-
-public enum DummyEnum
-{
-    Turn,
-}
+//
+//public enum DummyEnum
+//{
+//    Turn,
+//}
 
 public enum WeepyBeepy
 {

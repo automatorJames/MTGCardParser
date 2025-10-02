@@ -19,6 +19,7 @@ public record IndexedPropertyCapture
     public bool IgnoreInAnalysis { get; }
     public bool IsDerivedFromManyItem { get; }
     public string Path { get; set; }
+    public CaptureGroupPropPath CaptureGroupPropPath { get; set; }
 
     public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentPath)
     {
@@ -34,6 +35,7 @@ public record IndexedPropertyCapture
         Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
         Path = parentPath.Dot(regexPropInfo.Name);
+        CaptureGroupPropPath = regexPropInfo.IsTerminal ? new(parentPath.Dot(value.ToString())) : new(parentPath);
     }
 
     /// <summary>
@@ -43,6 +45,7 @@ public record IndexedPropertyCapture
     /// </summary>
     public IndexedPropertyCapture(ManyItemCapture capture, string fullPathToManyOfItem)
     {
+        IsDerivedFromManyItem = true;
         RegexPropInfo = capture.RegexPropInfo;
         Capture = capture.Capture;
         Start = capture.Capture.Index;
@@ -56,8 +59,6 @@ public record IndexedPropertyCapture
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
         Path = fullPathToManyOfItem;
     }
-
-
 
     public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {Ordinal} | Capture: \"{Capture.Value}\"";
 }

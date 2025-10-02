@@ -6,10 +6,20 @@ public record CaptureGroupPropPath
     public string PropPathRelativeToRoot { get; }
     public string PropPathFriendly { get; }
 
-    public CaptureGroupPropPath(List<string> propPathParts)
+
+    public CaptureGroupPropPath(string propPathIncludingRoot)
     {
-        PropPath = string.Join('.', propPathParts);
-        PropPathRelativeToRoot = string.Join(".", propPathParts.Skip(1)); // Skip the root type
-        PropPathFriendly = string.Join(": ", propPathParts.Skip(1).Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence))); // Skip the root type
+        PropPath = propPathIncludingRoot;
+
+        if (string.IsNullOrEmpty(propPathIncludingRoot))
+            return;
+
+        var splitPath = propPathIncludingRoot.Split('.');
+
+        if (PropPath.Length >= 1)
+        {
+            PropPathRelativeToRoot = string.Join('.', splitPath);
+            PropPathFriendly = string.Join('.', splitPath.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
+        }
     }
 }

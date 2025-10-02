@@ -32,7 +32,7 @@
                     <div class="text-layer-front">
                         @{
                             cursor = 0;
-                            foreach (var token in Line.SourceTokens.OrderBy(t => t.Capture.Index))
+                            foreach (var token in Line.SpanRoots.Select(x => x.RootToken).OrderBy(t => t.Capture.Index))
                             {
                                 if (token.Capture.Index > cursor)
                                 {

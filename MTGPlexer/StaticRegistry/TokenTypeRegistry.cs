@@ -14,6 +14,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
+    public static Dictionary<Type, Dictionary<CaptureGroupPropPath, Dictionary<object, CaptureValueVariantSet>>> CapturedTerminalValueVariants { get; set; } = [];
     public static Dictionary<Type, EnumScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
     public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
@@ -22,8 +23,8 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
+    public static Tokenizer ClassTokenizer { get; set; }
     public static Tokenizer OriginalTextTokenizer { get; set; }
-    public static CardTokenizer CardTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
@@ -32,7 +33,7 @@ public static partial class TokenTypeRegistry
         foreach (var type in GetAllTokenTypes())
             SetTypeTemplate(type);
 
-        InitializeCardTokenizer();
+        InitializeClassTokenizer();
         OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
     }
 
@@ -79,7 +80,7 @@ public static partial class TokenTypeRegistry
     }
 
     static void RegisterEnum(EnumRegexProp newEnumType)
-    {
+    {                                                       
         var enumType = newEnumType.RegexPropInfo.UnderlyingType;
         EnumRegexStrings[enumType] = newEnumType.RegexString;
         ReferencedEnumTypes.Add(enumType);
@@ -88,9 +89,9 @@ public static partial class TokenTypeRegistry
         EnumScalarAlternativeSets[enumType] = newEnumType.EnumSet;
     }
 
-    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly)
+    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly = false)
     {
-        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : CardTokenizer.Tokenize(text);
+        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
         return tokens;
     }
 
@@ -125,7 +126,7 @@ public static partial class TokenTypeRegistry
         }
     }
 
-    static void InitializeCardTokenizer()
+    static void InitializeClassTokenizer()
     {
         // Reset applied orders, since the order may change during runtime
         AppliedOrderTypes = [];
@@ -173,7 +174,35 @@ public static partial class TokenTypeRegistry
             .ForEach(AddClassTokenType);
 
         TypeRegexes = Templates.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.Regex);
-        CardTokenizer = new(AppliedOrderTypes);
+        ClassTokenizer = new(AppliedOrderTypes);
+    }
+
+    public static void RegisterTerminalCaptureValueVariant(string capturePath, object value, Capture capture)
+    {
+        var rootTokenTypeName = capturePath.Split('.').First();
+        var rootTokenType = NameToType[rootTokenTypeName];
+
+        if (!CapturedTerminalValueVariants.TryGetValue(rootTokenType, out var typeDict))
+        {
+            typeDict = [];
+            CapturedTerminalValueVariants[rootTokenType] = typeDict;
+        }
+
+        CaptureGroupPropPath captureGroupPropPath = new(capturePath);
+
+        if (!typeDict.TryGetValue(captureGroupPropPath, out var variantSetDict))
+        {
+            variantSetDict = [];
+            typeDict[captureGroupPropPath] = variantSetDict;
+        }
+
+        if (!variantSetDict.TryGetValue(value, out var captureValueVariantSet))
+        {
+            captureValueVariantSet = new(value, capture);
+            variantSetDict[value] = captureValueVariantSet;
+        }
+        else
+            captureValueVariantSet.IncrementVariantCapture(capture);
     }
 
     static void AddClassTokenType(Type tokenUnitType)
@@ -280,7 +309,7 @@ public static partial class TokenTypeRegistry
         var type = tb.CreateType()!;
         SetTypeTemplate(type);
         _dynamicAssemblyTypes.Add(type);
-        InitializeCardTokenizer();
+        InitializeClassTokenizer();
 
         return type;
     }

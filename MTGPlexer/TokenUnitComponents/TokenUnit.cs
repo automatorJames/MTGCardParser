@@ -18,8 +18,6 @@ public abstract class TokenUnit
         }
     }
 
-    public TokenUnit ParentToken { get; set; }
-    public RegexPropInfo ParentTokenProp { get; set; }
     public Match TopLevelMatch { get; set; }
     public Capture Capture { get; set; }
     public string CapturePath { get; set; }
@@ -63,12 +61,6 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public List<TokenUnit> GetChildTokens() => IndexedPropertyCaptures
-        .Where(x => x.IsChildToken)
-        .Select(x => x.Value)
-        .OfType<TokenUnit>()
-        .ToList();
-
     public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null)
     {
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
@@ -102,10 +94,10 @@ public abstract class TokenUnit
         var capturePosition = IndexedPropertyCaptures.Count;
         IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, CapturePath));
 
-        if (propVal is TokenUnit childTokenUnit)
+        if (regexPropInfo.IsTerminal)
         {
-            childTokenUnit.ParentTokenProp = regexPropInfo;
-            childTokenUnit.ParentToken = this;
+            var fullPath = CapturePath.Dot(propVal.ToString());
+            TokenTypeRegistry.RegisterTerminalCaptureValueVariant(fullPath, propVal, capture);
         }
     }
 

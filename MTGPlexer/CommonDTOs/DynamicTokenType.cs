@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.CommonDTOs;
 
-public record DynamicTokenType
+public class DynamicTokenType
 {
     protected List<string> _referencedTypeNames = [];
     protected List<string> _propertyParts = [];

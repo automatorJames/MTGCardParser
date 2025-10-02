@@ -21,7 +21,7 @@ public static class TokenCaptureSummary
         public string TerminalType { get; set; }
         public TokenAnalysisElementType ElementType { get; set; }
         public Palette Palette { get; set; }
-        public Type RootTokenType { get; set; }
+        public TokenUnit RootToken { get; set; }
         public List<PrecursorNode> Children { get; } = new();
     }
 
@@ -106,7 +106,7 @@ public static class TokenCaptureSummary
             Start = root.Capture.Index,
             Length = root.Capture.Length,
             End = root.Capture.Index + root.Capture.Length,
-            RootTokenType = root.Type,
+            RootToken = root,
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
             CapturePath = root.CapturePath,
             Palette = TokenTypeRegistry.Palettes[root.Type],
@@ -380,7 +380,7 @@ public static class TokenCaptureSummary
 
                     // Root Properties
                     OriginalFullText = precursor.OriginalFullText,
-                    RootTokenType = precursor.RootTokenType,
+                    RootToken = precursor.RootToken,
                 };
 
             case var e when e.ToString().Contains("Branch"):
