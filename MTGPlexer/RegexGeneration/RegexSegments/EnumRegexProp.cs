@@ -46,26 +46,16 @@ public class EnumRegexProp : ScalarCapturePropBase
         for (int i = 0; i < enumValues.Count; i++)
         {
             var enumValue = enumValues[i];
-            string memberAlternativeStringOrSynonymSet = null;
+            List<string> synonyms = [];
             var enumAsString = enumValue.ToString();
             var regexPatternAttribute = enumType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
             if (regexPatternAttribute != null)
-            {
-                var spaceEscapedPatterns = regexPatternAttribute.Patterns.Select(x => x.Replace(" ", "[ ]")).ToList();
-
-                if (spaceEscapedPatterns.Count == 1)
-                    memberAlternativeStringOrSynonymSet = spaceEscapedPatterns[0];
-                else
-                    memberAlternativeStringOrSynonymSet = string.Join(" | ", spaceEscapedPatterns);
-            }
+                synonyms.AddRange(regexPatternAttribute.Patterns.Select(x => x.Replace(" ", "[ ]")));
             else
-                memberAlternativeStringOrSynonymSet = enumAsString.ToFriendlyCase().Replace(" ", "[ ]");
+                synonyms.Add(enumAsString.ToFriendlyCase().Replace(" ", "[ ]"));
 
-            if (enumOptions.OptionalPlural)
-                memberAlternativeStringOrSynonymSet = memberAlternativeStringOrSynonymSet.AddOptionalPluralization();
-
-            enumAlternatives.Add(new(enumType, enumValue, memberAlternativeStringOrSynonymSet, i));
+            enumAlternatives.Add(new(enumType, enumValue, synonyms, i, enumOptions));
         }
 
         EnumSet = new(enumAlternatives);
