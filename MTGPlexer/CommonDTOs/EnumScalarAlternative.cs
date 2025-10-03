@@ -3,7 +3,7 @@
 public class EnumScalarAlternative
 {
     // Matches a single space that is NOT exactly the [ ] token (i.e., not preceded by '[' and not followed by ']').
-    static readonly Regex SpaceNotBracketToken = new Regex(@"(?<!\[) (?!\])", RegexOptions.Compiled);
+    static readonly Regex _spaceNotBracketToken = new Regex(@"(?<!\[) (?!\])", RegexOptions.Compiled);
 
     public Type EnumType { get; }
     public object EnumValue { get; }
@@ -30,7 +30,7 @@ public class EnumScalarAlternative
             Synonyms = synonyms;
         }
 
-        ItemRegex = new Regex("^" + SpaceNotBracketToken.Replace(RegexString, "") + "$", RegexOptions.Compiled);
+        ItemRegex = new Regex("^" + _spaceNotBracketToken.Replace(RegexString, "") + "$", RegexOptions.Compiled);
         DisplayName = EnumValue.ToString();
     }
 
