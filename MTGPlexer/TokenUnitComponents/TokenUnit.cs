@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitComponents;
 
 public abstract class TokenUnit
 {
@@ -21,6 +19,7 @@ public abstract class TokenUnit
     public Match TopLevelMatch { get; set; }
     public Capture Capture { get; set; }
     public string CapturePath { get; set; }
+    public List<TokenUnit> ChildTokenUnits { get; set; } = [];
 
     /// <summary>
     /// A pre-processed and ordered list of all property captures for this token.
@@ -78,12 +77,14 @@ public abstract class TokenUnit
     }
 
 
-    public static TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, Match match, Capture childCapture, string ancestorCapturePath)
+    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, Match match, Capture childCapture, string ancestorCapturePath)
     {
         var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath);
 
         // overwrite the child's Capture property
         tokenUnitChild.Capture = childCapture;
+
+        ChildTokenUnits.Add(tokenUnitChild);
 
         return tokenUnitChild;
     }
@@ -93,12 +94,21 @@ public abstract class TokenUnit
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
         IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, CapturePath));
+    }
 
-        if (regexPropInfo.IsTerminal)
-        {
-            var fullPath = CapturePath.Dot(propVal.ToString());
-            TokenTypeRegistry.RegisterTerminalCaptureValueVariant(fullPath, propVal, capture);
-        }
+    /// <summary>
+    /// Returns a list of this TokenUnit's IndexedPropertyCaptures where RegexPropInfo.IsTerminal, and
+    /// recursively gathers terminal captures from all TokenUnit children.
+    /// </summary>
+    public List<IndexedPropertyCapture> GetFlattenedTerminalCaptures()
+    {
+        var terminalCaptures = IndexedPropertyCaptures
+            .Where(x => x.RegexPropInfo.IsTerminal)
+            .ToList();
+
+        ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
+
+        return terminalCaptures;
     }
 
     /// <summary>
@@ -122,7 +132,6 @@ public abstract class TokenUnit
     {
         return true;
     }
-
 
     //public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
     public override string ToString() => $"{Type.Name}{(Capture == null ? "" : $": {Capture.Value}")}";

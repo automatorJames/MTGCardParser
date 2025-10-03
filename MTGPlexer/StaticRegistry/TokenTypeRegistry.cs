@@ -14,7 +14,6 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
-    public static Dictionary<Type, Dictionary<CaptureGroupPropPath, Dictionary<object, CaptureValueVariantSet>>> CapturedTerminalValueVariants { get; set; } = [];
     public static Dictionary<Type, EnumScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
     public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
@@ -175,34 +174,6 @@ public static partial class TokenTypeRegistry
 
         TypeRegexes = Templates.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.Regex);
         ClassTokenizer = new(AppliedOrderTypes);
-    }
-
-    public static void RegisterTerminalCaptureValueVariant(string capturePath, object value, Capture capture)
-    {
-        var rootTokenTypeName = capturePath.Split('.').First();
-        var rootTokenType = NameToType[rootTokenTypeName];
-
-        if (!CapturedTerminalValueVariants.TryGetValue(rootTokenType, out var typeDict))
-        {
-            typeDict = [];
-            CapturedTerminalValueVariants[rootTokenType] = typeDict;
-        }
-
-        CaptureGroupPropPath captureGroupPropPath = new(capturePath);
-
-        if (!typeDict.TryGetValue(captureGroupPropPath, out var variantSetDict))
-        {
-            variantSetDict = [];
-            typeDict[captureGroupPropPath] = variantSetDict;
-        }
-
-        if (!variantSetDict.TryGetValue(value, out var captureValueVariantSet))
-        {
-            captureValueVariantSet = new(value, capture);
-            variantSetDict[value] = captureValueVariantSet;
-        }
-        else
-            captureValueVariantSet.IncrementVariantCapture(capture);
     }
 
     static void AddClassTokenType(Type tokenUnitType)

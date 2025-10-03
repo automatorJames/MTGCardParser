@@ -13,7 +13,7 @@ public record TokenUnitCapture
     public HashSet<RegexCommentedAlternateLine> LinesWithMatches { get; } = [];
 
     /// <summary>
-    /// Maps capture group prop path --> set of capture value variant counts (the string key is the canonical value)
+    /// Maps path to terminal prop (not including value) --> set of capture value variant counts
     /// </summary>
     public Dictionary<CaptureGroupPropPath, Dictionary<object, CaptureValueVariantSet>> PropPathVariantSets { get; } = [];
 
@@ -26,71 +26,44 @@ public record TokenUnitCapture
         FormattedRegex = TokenTypeRegistry.Templates[type].FormattedRegex;
         OccurrenceCount = rootTokensUnitsOfType.Count;
 
-        //foreach (var tokenUnit in rootTokensUnitsOfType)
-        //    foreach (var indexedCapture in tokenUnit.IndexedPropertyCaptures)
-        //        FlattenAndCountRecursive([tokenUnit.Type.Name, indexedCapture.RegexPropInfo.Name], indexedCapture.Value);
-    }
+        var regexAlternateLines = FormattedRegex.CommentedLines.OfType<RegexCommentedAlternateLine>().ToList();
 
-    //void FlattenAndCountRecursive(List<string> currentPropPath, object currentValue)
-    //{
-    //    if (currentValue == null)
-    //        return;
-    //
-    //    // todo: handle dynamic token prop types in the switch below
-    //
-    //    switch (currentValue)
-    //    {
-    //        case TokenUnitOneOf tokenUnitOneOf:
-    //            var singleIndexedCapture = tokenUnitOneOf.GetIndexedPropertyCaptureSingle();
-    //            currentPropPath.Add(singleIndexedCapture.RegexPropInfo.Name);
-    //            FlattenAndCountRecursive(currentPropPath, singleIndexedCapture.Value);
-    //            break;
-    //
-    //        case TokenUnit childTokenUnit:
-    //            foreach (var indexedCapture in childTokenUnit.IndexedPropertyCaptures)
-    //            {
-    //                var childPropPath = currentPropPath.Concat([indexedCapture.RegexPropInfo.Name]).ToList();
-    //                FlattenAndCountRecursive(childPropPath, indexedCapture.Value);
-    //            }
-    //            break;
-    //
-    //        default:
-    //            // Base case: The value is a primitive or string, so we count it.
-    //            IncrementValueCount(currentPropPath, currentValue);
-    //            break;
-    //    }
-    //}
-    //
-    //void IncrementValueCount(List<string> propPath, object terminalValue)
-    //{
-    //    CaptureGroupPropPath groupPropPath = new(propPath);
-    //    var matchingAltLine = FormattedRegex[groupPropPath.PropPath, terminalValue];
-    //
-    //    if (matchingAltLine == null)
-    //    {
-    //        _orphanCaptureCount++;
-    //        return;
-    //    }
-    //
-    //    LinesWithMatches.Add(matchingAltLine);
-    //    
-    //    var terminalCaptureAsFriendlyString = terminalValue.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
-    //
-    //    // If no variantSetDict for this capture group path exists already, make one
-    //    if (!PropPathVariantSets.TryGetValue(groupPropPath, out var variantSetDict))
-    //    {
-    //        variantSetDict = new();
-    //        PropPathVariantSets[groupPropPath] = variantSetDict;
-    //    }
-    //
-    //    // If the variantSetDict already contains the line's canonical value, increment it,
-    //    // otherwise create a new CaptureValueVariantSet for the canonical value, and add it as an entry to the parent dict
-    //    if (variantSetDict.TryGetValue(matchingAltLine.CanonicalValue, out var variantSet))
-    //        variantSet.IncrementVariant(terminalCaptureAsFriendlyString);
-    //    else
-    //    {
-    //        variantSet = new(matchingAltLine, terminalCaptureAsFriendlyString);
-    //        variantSetDict[terminalValue] = variantSet;
-    //    }
-    //}
+        foreach (var tokenUnit in rootTokensUnitsOfType)
+            foreach (var flattenedTerminalCapture in tokenUnit.GetFlattenedTerminalCaptures())
+            {
+                var propPath = flattenedTerminalCapture.CaptureGroupPropPath.Parent;
+
+                if (propPath == null)
+                    throw new Exception($"The path {flattenedTerminalCapture.CaptureGroupPropPath?.PropPath} has no parent, but one was expected");
+
+                if (!PropPathVariantSets.TryGetValue(propPath, out var variantSetDict))
+                {
+                    variantSetDict = [];
+                    PropPathVariantSets[propPath] = variantSetDict;
+                }
+
+                if (!variantSetDict.TryGetValue(flattenedTerminalCapture.Value, out var captureValueVariantSet))
+                {
+                    captureValueVariantSet = new(flattenedTerminalCapture.Value, flattenedTerminalCapture.Capture);
+                    variantSetDict[flattenedTerminalCapture.Value] = captureValueVariantSet;
+                }
+                else
+                    captureValueVariantSet.IncrementVariantCapture(flattenedTerminalCapture.Capture);
+
+                var matchingRegexAlternateLine = regexAlternateLines.FirstOrDefault(x => x.CaptureGroupPropPath == flattenedTerminalCapture.CaptureGroupPropPath);
+
+                if (matchingRegexAlternateLine != null)
+                    LinesWithMatches.Add(matchingRegexAlternateLine);
+                else
+                    _orphanCaptureCount++;
+            }
+
+        PropPathVariantSets = PropPathVariantSets
+            .ToDictionary(
+                x => x.Key,
+                x => x.Value
+                    .OrderByDescending(inner => inner.Value.TotalCount)
+                    .ToDictionary(inner => inner.Key, inner => inner.Value)
+            );
+    }
 }

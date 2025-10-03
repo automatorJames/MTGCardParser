@@ -21,7 +21,7 @@ public record IndexedPropertyCapture
     public string Path { get; set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; set; }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentPath)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentTokenPath)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;
@@ -34,8 +34,8 @@ public record IndexedPropertyCapture
         Ordinal = capturePosition;
         Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
-        Path = parentPath.Dot(regexPropInfo.Name);
-        CaptureGroupPropPath = regexPropInfo.IsTerminal ? new(parentPath.Dot(value.ToString())) : new(parentPath);
+        Path = parentTokenPath.Dot(regexPropInfo.Name);
+        CaptureGroupPropPath = regexPropInfo.IsTerminal ? new(parentTokenPath.Dot(regexPropInfo.Name).Dot(value.ToString())) : new(parentTokenPath);
     }
 
     /// <summary>

@@ -14,7 +14,8 @@ public class TokenUnitCaptureSummary
         var allTokenUnits = processedCards
             .SelectMany(x => x.Lines)
             .SelectMany(x => x.SpanRoots)
-            .Select(x => x.RootToken);
+            .Select(x => x.RootToken)
+            .Where(x => x is not DefaultUnmatchedString);
 
         var orderedRootTokenUnitTypes = TokenTypeRegistry.Templates.Keys
             .OrderBy(TokenTypeRegistry.AppliedOrderTypes.IndexOf);
@@ -26,8 +27,7 @@ public class TokenUnitCaptureSummary
             if (!rootTokensOfType.Any())
                 continue;
 
-            TokenUnitCapture tokenUnitCapture = new(rootType, rootTokensOfType);
-            TokenUnitCaptures[rootType] = tokenUnitCapture;
+            TokenUnitCaptures[rootType] = new(rootType, rootTokensOfType);
         }
     }
 }

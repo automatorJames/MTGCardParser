@@ -5,7 +5,7 @@ public record CaptureGroupPropPath
     public string PropPath { get; }
     public string PropPathRelativeToRoot { get; }
     public string PropPathFriendly { get; }
-
+    public CaptureGroupPropPath Parent { get; }
 
     public CaptureGroupPropPath(string propPathIncludingRoot)
     {
@@ -16,10 +16,15 @@ public record CaptureGroupPropPath
 
         var splitPath = propPathIncludingRoot.Split('.');
 
-        if (PropPath.Length >= 1)
+        if (PropPath.Length > 1)
         {
-            PropPathRelativeToRoot = string.Join('.', splitPath);
-            PropPathFriendly = string.Join('.', splitPath.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
+            var pathPartsRelativeToRoot = splitPath.Skip(1);
+
+            PropPathRelativeToRoot = string.Join('.', pathPartsRelativeToRoot);
+            PropPathFriendly = string.Join(": ", pathPartsRelativeToRoot.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
+            Parent = new(string.Join('.', splitPath.Take(splitPath.Length - 1)));
         }
     }
+
+    public override string ToString() => PropPath;
 }

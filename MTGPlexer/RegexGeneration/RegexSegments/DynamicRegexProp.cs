@@ -22,7 +22,7 @@ public class DynamicRegexProp : ScalarCapturePropBase
 
         var capture = match.Groups[Name];
         var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
-        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeSingleNonDefaultChild(capture, match, ancestorCapturePath);
+        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeSingleNonDefaultChild(token, capture, match, ancestorCapturePath);
 
         if (dynamicTokenValue == null)
             return false;
