@@ -14,7 +14,7 @@ internal record FormattedRegexTreatmentRules
     /// <summary>
     /// Determines the highlight treatment for the regex portion of a line (left of the '#').
     /// </summary>
-    public SpanHighlightTreatment GetRegexHighlightTreatment(RegexTemplateLine line)
+    public SpanHighlightTreatment GetRegexHighlightTreatment(RegexElement line)
     {
         // Explicit Rule: AlternateValues on the regex side are ALWAYS TextToHexLight.
         if (line is AlternateValue)
@@ -31,7 +31,7 @@ internal record FormattedRegexTreatmentRules
     /// </summary>
     /// <param name="line">The context of the entire line being processed.</param>
     /// <param name="isTextSpan">True if the span is for comment text content; false for borders or fillers.</param>
-    public SpanHighlightTreatment GetCommentHighlightTreatment(RegexTemplateLine line, bool isTextSpan)
+    public SpanHighlightTreatment GetCommentHighlightTreatment(RegexElement line, bool isTextSpan)
     {
         if (isTextSpan)
         {

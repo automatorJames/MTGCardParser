@@ -1,39 +1,27 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public record AlternateValue
-(
-    Enclosure[] Enclosures,
-    string Value,
-    int Ordinal,
-    int TotalOptions,
-    string CommentPrefix = null
-)
-    : RegexTemplateLine
-    (
-        Enclosures: Enclosures,
-        GetFormattedValue(Value, Ordinal),
-        Comment: GetComment(Ordinal, TotalOptions, CommentPrefix)
-    )
-    , IMatchableAlternate
+public class AlternateValue : RegexElement, IMatchableAlternate
 {
-    public object CanonicalValue { get; } = Value;
-    public string CanonicalValueDisplay { get; } = Value;
-    public Regex AlternateRegex { get; } = new($"^{Value}$", RegexOptions.Compiled);
+    public object CanonicalValue { get; }
+    public string CanonicalValueDisplay { get; }
+    public Regex AlternateRegex { get; }
 
-    static string GetFormattedValue(string value, int ordinal)
+    public AlternateValue(Enclosure[] enclosures, string value, string comment, bool isFirst)
+        : base(
+            enclosures,
+            GetFormattedValue(value, isFirst),
+            comment: comment
+        )
     {
-        var firstChar = ordinal == 0 ? " " : "|";
-        return firstChar + " " + value;
+        CanonicalValue = value;
+        CanonicalValueDisplay = value;
+        AlternateRegex = new($"^{value}$", RegexOptions.Compiled);
     }
 
-    static string GetComment(int ordinal, int totalOptions, string commentPrefix = null)
+    static string GetFormattedValue(string value, bool isFirst)
     {
-        var commentPostfix = $"{ordinal + 1}/{totalOptions}";
-
-        if (string.IsNullOrEmpty(commentPrefix))
-            return commentPostfix;
-        else
-            return $"{commentPrefix} : {commentPostfix}";
+        var firstChar = isFirst ? "" : "|";
+        return firstChar + value;
     }
 
     public override string ToString() => base.ToString();

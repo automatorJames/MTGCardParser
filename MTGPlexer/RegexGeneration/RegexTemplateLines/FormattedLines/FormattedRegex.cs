@@ -16,15 +16,15 @@ public class FormattedRegex
     public int HashSeparatorColumn { get; private set; }
     public int CommentBoxLength { get; private set; }
 
-    public FormattedRegex(List<RegexTemplateLine> lines)
+    public FormattedRegex(List<RegexElement> elements)
     {
-        if (lines == null || !lines.Any())
+        if (elements == null || !elements.Any())
             return;
 
-        CalculateColumnWidths(lines);
-        FormatCommentedLines(lines);
+        CalculateColumnWidths(elements);
+        FormatCommentedLines(elements);
         PrettifiedRegex = string.Join(Environment.NewLine, CommentedLines.Select(x => x.FormattedText));
-        MinifiedRegex = MinifyRegex(string.Join("", lines.Select(x => x.Regex)));
+        MinifiedRegex = MinifyRegex(string.Join("", elements.Select(x => x.Regex)));
     }
 
     public RegexCommentedAlternateLine this[string pathToTerminalProp, object terminalValue]
@@ -39,11 +39,11 @@ public class FormattedRegex
         }
     }
 
-    void FormatCommentedLines(List<RegexTemplateLine> templateLines)
+    void FormatCommentedLines(List<RegexElement> templateLines)
     {
         for (int i = 0; i < templateLines.Count; i++)
         {
-            RegexTemplateLine line = templateLines[i];
+            RegexElement line = templateLines[i];
             var spans = new List<RegexCommentedLineSpan>();
 
             // 1. REGEX PART (Left of '#')
@@ -101,7 +101,7 @@ public class FormattedRegex
         }
     }
 
-    private string GetPrimaryContentColorForLine(RegexTemplateLine line)
+    private string GetPrimaryContentColorForLine(RegexElement line)
     {
         if (line.PropEnclosures.Length == 0)
         {
@@ -140,7 +140,7 @@ public class FormattedRegex
         }
     }
 
-    private List<RegexCommentedLineSpan> GenerateCommentSpans(RegexTemplateLine line)
+    private List<RegexCommentedLineSpan> GenerateCommentSpans(RegexElement line)
     {
         var spans = new List<RegexCommentedLineSpan>();
         var lowlight = _treatments.CommentLowlightTreatment;
@@ -292,7 +292,7 @@ public class FormattedRegex
         return spans;
     }
 
-    void CalculateColumnWidths(List<RegexTemplateLine> lines)
+    void CalculateColumnWidths(List<RegexElement> lines)
     {
         int maxRegexLen = lines.Any() ? lines.Max(x => (GetIndentDepth(x) * _spacesPerIndent) + x.Regex.Length) : 0;
         HashSeparatorColumn = maxRegexLen + _hashSeparatorPadding;
@@ -343,7 +343,7 @@ public class FormattedRegex
         CommentBoxLength = rootPaths.Any() ? rootPaths.Max(p => boxWidths[string.Join(",", p.Select(e => e.Ordinal))]) : 0;
     }
 
-    private int GetIndentDepth(RegexTemplateLine line)
+    private int GetIndentDepth(RegexElement line)
     {
         if (line.PropEnclosures.Length == 0)
             return 0;

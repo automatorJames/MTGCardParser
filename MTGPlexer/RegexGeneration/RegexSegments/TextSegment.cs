@@ -11,7 +11,7 @@ public class TextSegment : RegexSegmentBase
         RegexString = pattern;
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
         collector.AddTextLine(RegexString);
     }

@@ -15,7 +15,7 @@ public class TokenRegexOneOfProp : TokenRegexProp
         ChildSegments = template.RegexSegments;
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
         // If there are no text sgements to render, the OneOf container itself doesn't need spaces between its alternating members
         SpaceDisposition? spaceDisposition = !ChildSegments.Any(x => x is TextSegment) ? SpaceDisposition.NeverAddSpaceLocal : null;

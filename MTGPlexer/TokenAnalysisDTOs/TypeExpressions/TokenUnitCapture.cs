@@ -2,15 +2,14 @@
 
 public record TokenUnitCapture
 {
-    int _orphanCaptureCount;
-
     public Type Type { get; }
     public string TypeName { get; }
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
     public FormattedRegex FormattedRegex { get; }
+    public List<RegexCommentedLine> FilteredLines { get; }
     public Palette Palette { get; }
-    public HashSet<RegexCommentedAlternateLine> LinesWithMatches { get; } = [];
+    public HashSet<CaptureGroupPropPath> MatchedAlternatePaths { get; } = [];
 
     /// <summary>
     /// Maps path to terminal prop (not including value) --> set of capture value variant counts
@@ -23,10 +22,9 @@ public record TokenUnitCapture
         TypeName = type.Name;
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
         Palette = TokenTypeRegistry.Palettes[type];
-        FormattedRegex = TokenTypeRegistry.Templates[type].FormattedRegex;
+        var template = TokenTypeRegistry.Templates[type];
+        FormattedRegex = template.FormattedRegex;
         OccurrenceCount = rootTokensUnitsOfType.Count;
-
-        var regexAlternateLines = FormattedRegex.CommentedLines.OfType<RegexCommentedAlternateLine>().ToList();
 
         foreach (var tokenUnit in rootTokensUnitsOfType)
             foreach (var flattenedTerminalCapture in tokenUnit.GetFlattenedTerminalCaptures())
@@ -50,13 +48,10 @@ public record TokenUnitCapture
                 else
                     captureValueVariantSet.IncrementVariantCapture(flattenedTerminalCapture.Capture);
 
-                var matchingRegexAlternateLine = regexAlternateLines.FirstOrDefault(x => x.CaptureGroupPropPath == flattenedTerminalCapture.CaptureGroupPropPath);
-
-                if (matchingRegexAlternateLine != null)
-                    LinesWithMatches.Add(matchingRegexAlternateLine);
-                else
-                    _orphanCaptureCount++;
+                MatchedAlternatePaths.Add(flattenedTerminalCapture.CaptureGroupPropPath);
             }
+
+        FilteredLines = template.Collector.GetFormattedLines(MatchedAlternatePaths);
 
         PropPathVariantSets = PropPathVariantSets
             .ToDictionary(

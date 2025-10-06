@@ -1,24 +1,23 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public record AlternateValueEnum
-(
-    Enclosure[] Enclosures,
-    int TotalOptions,
-    EnumScalarAlternative EnumScalar,
-    int LongestSiblingName
-)
-    : AlternateValue
-    (
-        Enclosures: Enclosures,
-        Value: EnumScalar.RegexString,
-        Ordinal: EnumScalar.Ordinal,
-        TotalOptions: TotalOptions,
-        CommentPrefix: EnumScalar.DisplayName.PadLeft(LongestSiblingName)
-    )
-    , IMatchableAlternate
+public class AlternateValueEnum : AlternateValue, IMatchableAlternate
 {
-    new public object CanonicalValue { get; } = EnumScalar.EnumValue;
-    new public string CanonicalValueDisplay { get; } = ToFriendlyStringOrPattern(EnumScalar.EnumValue);
-    new public Regex AlternateRegex { get; } = EnumScalar.ItemRegex;
+    new public object CanonicalValue { get; }
+    new public string CanonicalValueDisplay { get; }
+    new public Regex AlternateRegex { get; }
+
+    public AlternateValueEnum(Enclosure[] enclosures, EnumScalarAlternate enumScalar)
+        : base(
+            enclosures,
+            enumScalar.RegexString,
+            enumScalar.DisplayName,
+            enumScalar.Ordinal == 0
+        )
+    {
+        CanonicalValue = enumScalar.EnumValue;
+        CanonicalValueDisplay = ToFriendlyStringOrPattern(enumScalar.EnumValue);
+        AlternateRegex = enumScalar.ItemRegex;
+    }
+
     public override string ToString() => base.ToString();
 }

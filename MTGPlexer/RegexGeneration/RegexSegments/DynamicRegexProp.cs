@@ -6,10 +6,10 @@ public class DynamicRegexProp : ScalarCapturePropBase
     {
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
         collector.OpenGroup(RegexPropInfo);
-        collector.AddAlternatingValues(ScalarAlternativeSet.Alternatives);
+        collector.AddAlternateValues(ScalarAlternativeSet.Alternates);
         collector.CloseGroup();
     }
 

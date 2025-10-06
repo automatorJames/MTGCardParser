@@ -1,15 +1,11 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public record GroupAlternativePipe
-(
-    Enclosure[] Enclosures
-) 
-    : RegexTemplateLine
-    (
-        Enclosures: Enclosures,
-        Regex: $"|",
-        Comment: "alternate divider"
-    )
+public class GroupAlternativePipe : RegexElement
 {
+    public GroupAlternativePipe(Enclosure[] enclosures)
+        : base(enclosures, "|", comment: "alternate divider")
+    {
+    }
+
     public override string ToString() => base.ToString();
 }

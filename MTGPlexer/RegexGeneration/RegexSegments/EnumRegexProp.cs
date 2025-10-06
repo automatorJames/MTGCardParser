@@ -8,16 +8,16 @@
 public class EnumRegexProp : ScalarCapturePropBase
 {
     public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
-    public EnumScalarAlternativeSet EnumSet { get; private set; }
+    public EnumScalarAlternateSet EnumSet { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
         collector.OpenGroup(RegexPropInfo, nameOverride: Name);
-        collector.AddAlternatingEnumValues(EnumSet);
+        collector.AddAlternateEnumValues(EnumSet);
         collector.CloseGroup();
     }
 
@@ -34,7 +34,7 @@ public class EnumRegexProp : ScalarCapturePropBase
 
         // if not already registered: 
         var enumOptions = enumType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
-        List<EnumScalarAlternative> enumAlternatives = new();
+        List<EnumScalarAlternate> enumAlternatives = new();
 
         // get enum values in declared order
         var enumValues = enumType
@@ -81,7 +81,7 @@ public class EnumRegexProp : ScalarCapturePropBase
 
     object GetEnumMatchValue(string matchString)
     {
-        foreach (var enumAlternative in EnumSet.EnumAlternatives)
+        foreach (var enumAlternative in EnumSet.EnumAlternates)
             if (enumAlternative.ItemRegex.IsMatch(matchString))
                 return enumAlternative.EnumValue;
 

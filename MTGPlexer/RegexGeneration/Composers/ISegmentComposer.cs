@@ -4,5 +4,5 @@ namespace MTGPlexer.RegexGeneration.Composers;
 
 public interface ISegmentComposer
 {
-    void Compose(RegexLineCollector collector, List<RegexSegmentBase> segments);
+    void Compose(RegexBuilder collector, List<RegexSegmentBase> segments);
 }

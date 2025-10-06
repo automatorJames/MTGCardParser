@@ -2,14 +2,14 @@
 
 public record RegexCommentedLine
 {
-    public List<RegexCommentedLineSpan> Spans { get; }
+    public List<RegexCommentedLineSpan> Spans { get; set; }
 
-    public string Regex { get; }
+    public string Regex { get; set; }
     public string Comment { get; }
     public string EnclosurePath { get; }
     public virtual string FullPath { get; }
     public int Ordinal { get; }
-    public string FormattedText { get; }
+    public string FormattedText { get; set; }
 
     public RegexCommentedLine(string regex, string comment, string enclosurePath, int ordinal, List<RegexCommentedLineSpan> spans)
     {

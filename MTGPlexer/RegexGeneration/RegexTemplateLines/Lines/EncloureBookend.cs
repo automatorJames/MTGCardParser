@@ -1,14 +1,9 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public abstract record EncloureBookend
-(
-    Enclosure[] Enclosures,
-    string Regex,
-    string Comment = null
-)
-    : RegexTemplateLine
-    (
-        Enclosures: Enclosures,
-        Regex: Regex,
-        Comment: Comment
-    );
+public abstract class EncloureBookend : RegexElement
+{
+    protected EncloureBookend(Enclosure[] enclosures, string regex, string comment = null)
+        : base(enclosures, regex, comment: comment)
+    {
+    }
+}

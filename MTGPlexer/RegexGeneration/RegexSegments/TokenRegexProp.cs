@@ -19,7 +19,7 @@ public class TokenRegexProp : CaptureGroupPropBase
         ChildSegments = template.RegexSegments;
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
         collector.OpenGroup(RegexPropInfo);
         ConcatenatingComposer.Instance.Compose(collector, ChildSegments);

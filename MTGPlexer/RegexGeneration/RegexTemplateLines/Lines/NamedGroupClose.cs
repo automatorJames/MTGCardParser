@@ -1,18 +1,16 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public record NamedGroupClose
-(
-    Enclosure[] Enclosures,
-    string Name, 
-    GroupQuantifier? Quantifier = null
-)
-    : EncloureBookend
-    (
-        Enclosures: Enclosures,
-        Regex: $"){(Quantifier.HasValue ?  Quantifier.Value.Description() : "")}", 
-        Comment: GetComment(Name, Quantifier)
-    )
+public class NamedGroupClose : EncloureBookend
 {
+    public NamedGroupClose(Enclosure[] enclosures, string name, GroupQuantifier? quantifier = null)
+        : base(
+            enclosures,
+            $"){(quantifier.HasValue ? quantifier.Value.Description() : "")}",
+            GetComment(name, quantifier)
+        )
+    {
+    }
+
     static string GetComment(string name, GroupQuantifier? quantifier)
     {
         var quantifierPart = quantifier.HasValue ? $" {quantifier.Value.ToString().ToFriendlyCase()}" : "";

@@ -1,14 +1,9 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines.Boundaries;
 
-public abstract record BoundaryBase
-(
-    Enclosure[] Enclosures,
-    string Regex,
-    string Comment
-)
-    : RegexTemplateLine
-    (
-        Enclosures: Enclosures,
-        Regex: Regex,
-        Comment: Comment
-    );
+public abstract class BoundaryBase : RegexElement
+{
+    protected BoundaryBase(Enclosure[] enclosures, string regex, string comment)
+        : base(enclosures, regex, comment: comment)
+    {
+    }
+}

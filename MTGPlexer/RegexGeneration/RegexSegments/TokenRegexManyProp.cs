@@ -44,7 +44,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
         collector.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
@@ -86,7 +86,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
             }
             else if (_manyItemType == ManyItemVariant.Enum)
             {
-                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternatives)
+                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternates)
                 {
                     if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
                     {

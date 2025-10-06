@@ -1,14 +1,11 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public record GroupOpen
-(
-    Enclosure[] Enclosures
-) 
-    : EncloureBookend
-    (
-        Enclosures: Enclosures,
-        Regex: $"("
-    )
+public class GroupOpen : EncloureBookend
 {
+    public GroupOpen(Enclosure[] enclosures)
+        : base(enclosures, "(")
+    {
+    }
+
     public override string ToString() => base.ToString();
 }

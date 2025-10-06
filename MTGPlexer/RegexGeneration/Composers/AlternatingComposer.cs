@@ -7,7 +7,7 @@ public class AlternatingComposer : ISegmentComposer
     public static readonly AlternatingComposer Instance = new();
     private AlternatingComposer() { }
 
-    public void Compose(RegexLineCollector collector, List<RegexSegmentBase> segments)
+    public void Compose(RegexBuilder collector, List<RegexSegmentBase> segments)
     {
         // If there are no text segments, the named group parentheses are a sufficient wrapper to isolate
         // the alterantive properties. If not, we must render the alternate properties within supplemental

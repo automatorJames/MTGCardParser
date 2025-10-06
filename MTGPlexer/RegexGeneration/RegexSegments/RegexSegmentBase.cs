@@ -10,6 +10,6 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 public abstract class RegexSegmentBase
 {
     public string RegexString { get; protected set; }
-    public abstract void ComposeRegexLines(RegexLineCollector collector);
+    public abstract void ComposeRegexLines(RegexBuilder collector);
     public override string ToString() => RegexString;
 }

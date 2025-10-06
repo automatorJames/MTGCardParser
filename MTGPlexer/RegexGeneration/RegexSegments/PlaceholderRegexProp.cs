@@ -20,9 +20,9 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
     {
     }
 
-    public override void ComposeRegexLines(RegexLineCollector collector)
+    public override void ComposeRegexLines(RegexBuilder collector)
     {
-        var regexString = ScalarAlternativeSet.Alternatives.Single();
+        var regexString = ScalarAlternativeSet.Alternates.Single();
 
         try
         {
@@ -47,7 +47,7 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
     /// <summary>
     /// Kicks off the parsing process for the entire regex string.
     /// </summary>
-    private List<Action<RegexLineCollector>> Parse(string regex)
+    private List<Action<RegexBuilder>> Parse(string regex)
     {
         int index = 0;
         var actions = ParseTopLevel(regex, ref index, regex.Length);
@@ -63,7 +63,7 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
     /// <summary>
     /// Parses a substring, determining if it's an alternation set or a sequence of items.
     /// </summary>
-    private List<Action<RegexLineCollector>> ParseTopLevel(string regex, ref int startIndex, int endIndex)
+    private List<Action<RegexBuilder>> ParseTopLevel(string regex, ref int startIndex, int endIndex)
     {
         var alternatives = SplitByTopLevelAlternator(regex, startIndex, endIndex);
 
@@ -71,7 +71,7 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
         {
             var altStrings = alternatives.Select(pair => regex.Substring(pair.Item1, pair.Item2 - pair.Item1)).ToList();
             startIndex = endIndex; // Consume the entire block for the caller.
-            return new List<Action<RegexLineCollector>> { c => c.AddAlternatingValues(altStrings) };
+            return new List<Action<RegexBuilder>> { c => c.AddAlternateValues(altStrings) };
         }
         else
         {
@@ -83,9 +83,9 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
     /// <summary>
     /// Parses a sequence of regex elements, such as literals and groups.
     /// </summary>
-    private List<Action<RegexLineCollector>> ParseSequence(string regex, ref int index, int end)
+    private List<Action<RegexBuilder>> ParseSequence(string regex, ref int index, int end)
     {
-        var actions = new List<Action<RegexLineCollector>>();
+        var actions = new List<Action<RegexBuilder>>();
         var literalBuffer = new StringBuilder();
 
         while (index < end)
@@ -145,7 +145,7 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
     /// <summary>
     /// If the literal buffer contains text, this method adds an action to create a TextLine.
     /// </summary>
-    private void FlushLiteralBufferToAction(StringBuilder buffer, List<Action<RegexLineCollector>> actions)
+    private void FlushLiteralBufferToAction(StringBuilder buffer, List<Action<RegexBuilder>> actions)
     {
         if (buffer.Length > 0)
         {

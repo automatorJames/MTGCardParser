@@ -14,8 +14,8 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
-    public static Dictionary<Type, EnumScalarAlternativeSet> EnumScalarAlternativeSets { get; set; } = [];
-    public static Dictionary<RegexPropInfo, ScalarAlternativeSet> PropScalarAlternativeSets { get; set; } = [];
+    public static Dictionary<Type, EnumScalarAlternateSet> EnumScalarAlternativeSets { get; set; } = [];
+    public static Dictionary<RegexPropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
     public static Dictionary<Type, Palette> Palettes { get; set; } = [];

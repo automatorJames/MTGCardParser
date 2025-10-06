@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.CommonDTOs;
 
-public class EnumScalarAlternative
+public class EnumScalarAlternate
 {
     // Matches a single space that is NOT exactly the [ ] token (i.e., not preceded by '[' and not followed by ']').
     static readonly Regex _spaceNotBracketToken = new Regex(@"(?<!\[) (?!\])", RegexOptions.Compiled);
@@ -13,7 +13,7 @@ public class EnumScalarAlternative
     public string RegexString { get; }
     public Regex ItemRegex { get; }
 
-    public EnumScalarAlternative(Type enumType, object enumValue, List<string> synonyms, int ordinal, RegexEnumAttribute options)
+    public EnumScalarAlternate(Type enumType, object enumValue, List<string> synonyms, int ordinal, RegexEnumAttribute options)
     {
         EnumType = enumType;
         EnumValue = enumValue;

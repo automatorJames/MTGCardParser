@@ -1,19 +1,16 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public record NamedGroupOpen
-(
-    Enclosure[] Enclosures,
-    string Name,
-    RegexPropInfo Prop,
-    string NameOverride = null
-)
-    : EncloureBookend
-    (
-        Enclosures: Enclosures,
-        Regex: RenderCaptureGroup(Prop, NameOverride),
-        Comment: GetComment(Prop)
-    )
+public class NamedGroupOpen : EncloureBookend
 {
+    public NamedGroupOpen(Enclosure[] enclosures, string name, RegexPropInfo prop, string nameOverride = null)
+        : base(
+            enclosures,
+            RenderCaptureGroup(prop, nameOverride),
+            GetComment(prop)
+        )
+    {
+    }
+
     static string RenderCaptureGroup(RegexPropInfo prop, string nameOverride)
         => $"(?<{prop?.Name ?? nameOverride ?? ""}>";
 
@@ -23,7 +20,7 @@ public record NamedGroupOpen
 
         // Disambiguate the role of enum properties named differently than their types
         if (prop.RegexPropType == RegexPropType.Enum && prop.Name != prop.UnderlyingType.Name)
-                comment += $": {prop.UnderlyingType.Name}";
+            comment += $": {prop.UnderlyingType.Name}";
 
         return comment;
     }

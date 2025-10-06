@@ -36,20 +36,15 @@
                 </div>
                 <pre class="formatted-regex-fira" style=@preStyle>
                 <code>
-                    @foreach (var line in tokenUnitCapture.FormattedRegex.CommentedLines)
+                    @foreach (var line in tokenUnitCapture.FilteredLines)
                     {
-                            if (line is RegexCommentedAlternateLine altLine && !tokenUnitCapture.LinesWithMatches.Contains(altLine))
-                            {
-                                continue;
-                            }
-
                             foreach (var span in line.Spans)
                             {
-                                    var style = $"--hex: {span.Palette.Hex}; --hex-light: {span.Palette.HexLight}; --hex-dark: {span.Palette.HexDark}; --hex-sat: {span.Palette.HexSat}; color: {span.Palette.Hex};";
-                        <span style="@style"
-                              data-path="@span.PathRelativeToRoot"
-                              data-highlight="@span.HighlightTreatment"
-                              data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
+                                var style = $"--hex: {span.Palette.Hex}; --hex-light: {span.Palette.HexLight}; --hex-dark: {span.Palette.HexDark}; --hex-sat: {span.Palette.HexSat}; color: {span.Palette.Hex};";
+                                <span style="@style"
+                                    data-path="@span.PathRelativeToRoot"
+                                    data-highlight="@span.HighlightTreatment"
+                                    data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
                             }
                             @("\n")
                     }

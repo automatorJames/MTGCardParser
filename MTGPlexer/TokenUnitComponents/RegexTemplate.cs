@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
-
-namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitComponents;
 
 public class RegexTemplate
 {
@@ -13,7 +11,7 @@ public class RegexTemplate
     public string MinifiedRegexString { get; private set; }
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
-    public RegexLineCollector Collector { get; private set; }
+    public RegexBuilder Collector { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
     public FormattedRegex FormattedRegex { get; private set; }
@@ -55,13 +53,13 @@ public class RegexTemplate
         }
 
         // The result of the check is now passed to the collector.
-        RegexLineCollector collector = new(_containingType, neverAddSpacesAtTopLevel);
+        RegexBuilder collector = new(_containingType, neverAddSpacesAtTopLevel);
         composer.Compose(collector, RegexSegments);
 
         FormattedRegex = collector.Finalize();
         RegexString = FormattedRegex.MinifiedRegex;
         FormattedRegexString = FormattedRegex.PrettifiedRegex;
-        MinifiedRegexString = FormattedRegex.MinifiedRegex;
+        MinifiedRegexString = collector.GetMinified();
         Regex = new Regex(FormattedRegex.MinifiedRegex, RegexOptions.Compiled);
         Collector = collector;
     }
