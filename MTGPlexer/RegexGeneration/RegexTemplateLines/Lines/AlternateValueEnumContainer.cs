@@ -9,6 +9,6 @@ public class AlternateValueEnumContainer : AlternateValueContainer
         : base(enclosures, enumScalarAlternateSet.Alternates)
     {
         EnumScalarAlternateSet = enumScalarAlternateSet;
-        AlternateValueEnums = enumScalarAlternateSet.EnumAlternates.Select(x => new AlternateValueEnum(enclosures, x)).ToList();
+        AlternateValueEnums = enumScalarAlternateSet.EnumAlternates.Select(x => new AlternateValueEnum(enclosures, x, enumScalarAlternateSet.ItemCount)).ToList();
     }
 }

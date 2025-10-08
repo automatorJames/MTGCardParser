@@ -8,16 +8,14 @@ public record RegexCommentedLine
     public string Comment { get; }
     public string EnclosurePath { get; }
     public virtual string FullPath { get; }
-    public int Ordinal { get; }
     public string FormattedText { get; set; }
 
-    public RegexCommentedLine(string regex, string comment, string enclosurePath, int ordinal, List<RegexCommentedLineSpan> spans)
+    public RegexCommentedLine(string regex, string comment, string enclosurePath, List<RegexCommentedLineSpan> spans)
     {
         Regex = regex;
         Comment = comment;
         EnclosurePath = enclosurePath;
         FullPath = enclosurePath;
-        Ordinal = ordinal;
         FormattedText = Regex + Comment;
         Spans = spans;
     }

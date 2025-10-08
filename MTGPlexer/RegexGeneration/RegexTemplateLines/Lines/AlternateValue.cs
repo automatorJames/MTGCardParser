@@ -3,13 +3,14 @@
 public class AlternateValue : RegexElement, IMatchableAlternate
 {
     public object CanonicalValue { get; }
+    public int Ordinal { get; }
     public string CanonicalValueDisplay { get; }
     public Regex AlternateRegex { get; }
 
-    public AlternateValue(Enclosure[] enclosures, string value, string comment, bool isFirst)
+    public AlternateValue(Enclosure[] enclosures, string value, string comment, int ordinal)
         : base(
             enclosures,
-            GetFormattedValue(value, isFirst),
+            GetFormattedValue(value, ordinal == 0),
             comment: comment
         )
     {

@@ -344,13 +344,9 @@ public class RegexBuilder
             string commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
 
             if (line is IMatchableAlternate matchableAlt)
-            {
-                list.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, i, spans, matchableAlt));
-            }
+                list.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, matchableAlt));
             else
-            {
-                list.Add(new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, i, spans));
-            }
+                list.Add(new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, spans));
         }
         _prebuiltLines = list;
     }
@@ -362,10 +358,9 @@ public class RegexBuilder
         var filteredLines = _prebuiltLines.Where(line =>
         {
             if (line is RegexCommentedAlternateLine altLine)
-            {
                 return whitelistFilter == null || whitelistFilter.Contains(altLine.CaptureGroupPropPath);
-            }
-            return true;
+            else
+                return true;
         }).ToList();
 
         List<RegexCommentedLine> finalResult = [];
@@ -385,7 +380,7 @@ public class RegexBuilder
                 string originalPaddedRegex = altLine.Regex;
                 string trimmedRegex = originalPaddedRegex.Trim();
                 int indentSpaces = originalPaddedRegex.Length - originalPaddedRegex.TrimStart().Length;
-                string prefix = isFirstInAlternateGroup ? "  " : " |";
+                string prefix = isFirstInAlternateGroup ? "   " : " | ";
 
                 string newIndentedRegex = new string(' ', indentSpaces) + prefix + trimmedRegex;
                 string newPaddedRegex = newIndentedRegex.PadRight(_hashSeparatorColumn);

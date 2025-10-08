@@ -94,8 +94,8 @@ public class FormattedRegex
             string commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
 
             RegexCommentedLine commentedLine = line is IMatchableAlternate matchableAlt
-                ? new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, i, spans, matchableAlt)
-                : new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, i, spans);
+                ? new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, matchableAlt)
+                : new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, spans);
 
             CommentedLines.Add(commentedLine);
         }

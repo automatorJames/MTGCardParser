@@ -4,5 +4,6 @@ public interface IMatchableAlternate
 {
     public object CanonicalValue { get; }
     public string CanonicalValueDisplay { get; }
+    public int Ordinal { get; }
     public Regex AlternateRegex { get; }
 }
