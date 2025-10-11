@@ -26,7 +26,7 @@
             </div>
 
             @{
-                var textToCopy = tokenUnitCapture.FormattedRegex.PrettifiedRegex;
+                var textToCopy = tokenUnitCapture.FormattedRegexString;
                 var isCopied = _recentlyCopiedText.Contains(textToCopy);
                 var preStyle = tokenUnitCapture.Palette.ToColorStyle();
             }
@@ -52,7 +52,7 @@
                 </pre>
                 <br />
                 <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
-                <code>@tokenUnitCapture.FormattedRegex.MinifiedRegex</code>
+                <code>@tokenUnitCapture.MinifiedRegexString</code>
                 </pre>
             </div>
 

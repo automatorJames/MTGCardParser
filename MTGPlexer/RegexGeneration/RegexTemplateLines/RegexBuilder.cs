@@ -151,59 +151,6 @@ public class RegexBuilder
         return new(regexString, RegexOptions.Compiled);
     }
 
-    public FormattedRegex Finalize()
-    {
-        if (!_regexElements.Any())
-            return new FormattedRegex([]);
-
-        List<RegexElement> finalizedLines = [_regexElements[0]];
-
-        for (int i = 1; i < _regexElements.Count; i++)
-        {
-            var previousLine = _regexElements[i - 1];
-            var currentLine = _regexElements[i];
-
-            bool pathChanged = currentLine.UniquePath != previousLine.UniquePath;
-
-            if (pathChanged)
-            {
-                // Helper to classify lines into "Enter", "Exit", or "Content" events.
-                // 0 = Content, 1 = Enter, 2 = Exit
-                int GetEnclosureEventType(RegexElement line)
-                {
-                    if (line is GroupOpen or NamedGroupOpen) return 1;
-                    if (line is GroupClose or NamedGroupClose) return 2;
-                    return 0;
-                }
-
-                var prevEventType = GetEnclosureEventType(previousLine);
-                var currentEventType = GetEnclosureEventType(currentLine);
-
-                // Add a blank line for a path change, UNLESS it's between two consecutive
-                // enclosure 'Enter' events or two consecutive 'Exit' events.
-                if (prevEventType != currentEventType || prevEventType == 0)
-                {
-                    // Find the common parent scope for the blank line to live in.
-                    int commonDepth = 0;
-                    while (commonDepth < previousLine.Enclosures.Length &&
-                           commonDepth < currentLine.Enclosures.Length &&
-                           previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
-                    {
-                        commonDepth++;
-                    }
-
-                    var blankLineEnclosures = previousLine.Enclosures.Take(commonDepth).ToArray();
-                    finalizedLines.Add(new BlankLine(blankLineEnclosures));
-                }
-            }
-
-            finalizedLines.Add(currentLine);
-        }
-
-        AddBoundaryLines(finalizedLines);
-        return new FormattedRegex(finalizedLines);
-    }
-
     private void PrebuildCommentedLines()
     {
         if (_prebuiltLines != null) return;
@@ -285,17 +232,11 @@ public class RegexBuilder
 
             string regexText;
             if (line is AlternateValueEnum ave)
-            {
                 regexText = ((AlternateValue)ave).CanonicalValue as string;
-            }
             else if (line is IMatchableAlternate matchable)
-            {
                 regexText = matchable.CanonicalValue.ToString();
-            }
             else
-            {
                 regexText = line.Regex;
-            }
 
             var spans = new List<RegexCommentedLineSpan>();
 
@@ -308,16 +249,14 @@ public class RegexBuilder
             var highlightTreatment = _treatments.GetRegexHighlightTreatment(line);
 
             string pathForRegexSpan = line.NamedPath;
+
             if (line is IMatchableAlternate alt)
-            {
                 pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
-            }
+
             string relativePath = RegexCommentedLine.GetRelativePath(pathForRegexSpan);
 
             if (relativePath == null)
-            {
                 highlightTreatment = SpanHighlightTreatment.None;
-            }
 
             spans.Add(new RegexCommentedLineSpan(
                 SpanText: paddedRegex,

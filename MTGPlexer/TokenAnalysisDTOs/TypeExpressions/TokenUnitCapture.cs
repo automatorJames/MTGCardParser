@@ -6,10 +6,12 @@ public record TokenUnitCapture
     public string TypeName { get; }
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
-    public FormattedRegex FormattedRegex { get; }
+    //public FormattedRegex FormattedRegex { get; }
     public List<RegexCommentedLine> FilteredLines { get; }
     public Palette Palette { get; }
     public HashSet<CaptureGroupPropPath> MatchedAlternatePaths { get; } = [];
+    public string MinifiedRegexString { get; }
+    public string FormattedRegexString { get; }
 
     /// <summary>
     /// Maps path to terminal prop (not including value) --> set of capture value variant counts
@@ -23,7 +25,7 @@ public record TokenUnitCapture
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
         Palette = TokenTypeRegistry.Palettes[type];
         var template = TokenTypeRegistry.Templates[type];
-        FormattedRegex = template.FormattedRegex;
+        //FormattedRegex = template.FormattedRegex;
         OccurrenceCount = rootTokensUnitsOfType.Count;
 
         foreach (var tokenUnit in rootTokensUnitsOfType)
@@ -52,6 +54,10 @@ public record TokenUnitCapture
             }
 
         FilteredLines = template.Collector.GetFormattedLines(MatchedAlternatePaths);
+
+        // Todo: the formatting here isn't exactly right for either of these
+        FormattedRegexString = string.Join("\r\n", FilteredLines.Select(x => x.FormattedText));
+        MinifiedRegexString = string.Join("", FilteredLines.Select(x => x.Regex.Trim()));
 
         PropPathVariantSets = PropPathVariantSets
             .ToDictionary(

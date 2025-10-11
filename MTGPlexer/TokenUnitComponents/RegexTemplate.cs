@@ -7,14 +7,12 @@ public class RegexTemplate
 
     Type _containingType;
 
-    public string FormattedRegexString { get; private set; }
     public string MinifiedRegexString { get; private set; }
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
     public RegexBuilder Collector { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
-    public FormattedRegex FormattedRegex { get; private set; }
     public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
 
     public RegexTemplate(Type type, params string[] templateSnippets)
@@ -43,7 +41,6 @@ public class RegexTemplate
 
         if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
         {
-            // This is the CRITICAL check for the top-level entity.
             neverAddSpacesAtTopLevel = !RegexSegments.Any(x => x is TextSegment);
             composer = AlternatingComposer.Instance;
         }
@@ -52,15 +49,12 @@ public class RegexTemplate
             composer = ConcatenatingComposer.Instance;
         }
 
-        // The result of the check is now passed to the collector.
         RegexBuilder collector = new(_containingType, neverAddSpacesAtTopLevel);
         composer.Compose(collector, RegexSegments);
 
-        FormattedRegex = collector.Finalize();
-        RegexString = FormattedRegex.MinifiedRegex;
-        FormattedRegexString = FormattedRegex.PrettifiedRegex;
-        MinifiedRegexString = collector.GetMinified();
-        Regex = new Regex(FormattedRegex.MinifiedRegex, RegexOptions.Compiled);
+        RegexString = collector.GetMinified();
+        MinifiedRegexString = RegexString;
+        Regex = new Regex(MinifiedRegexString, RegexOptions.Compiled);
         Collector = collector;
     }
 
