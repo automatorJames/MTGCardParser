@@ -15,14 +15,14 @@ public class TokenRegexOneOfProp : TokenRegexProp
         ChildSegments = template.RegexSegments;
     }
 
-    public override void ComposeRegexLines(RegexBuilder collector)
+    public override void ComposeRegexLines(RegexBuilder builder)
     {
         // If there are no text sgements to render, the OneOf container itself doesn't need spaces between its alternating members
         SpaceDisposition? spaceDisposition = !ChildSegments.Any(x => x is TextSegment) ? SpaceDisposition.NeverAddSpaceLocal : null;
 
-        collector.OpenGroup(RegexPropInfo, spaceDisposition: spaceDisposition);
-        AlternatingComposer.Instance.Compose(collector, ChildSegments);
-        collector.CloseGroup();
+        builder.OpenGroup(RegexPropInfo, spaceDisposition: spaceDisposition);
+        AlternatingComposer.Instance.Compose(builder, ChildSegments);
+        builder.CloseGroup();
     }
 
     public override string ToString() => base.ToString();

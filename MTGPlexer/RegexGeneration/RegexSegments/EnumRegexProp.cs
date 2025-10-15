@@ -14,11 +14,11 @@ public class EnumRegexProp : ScalarCapturePropBase
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder collector)
+    public override void ComposeRegexLines(RegexBuilder builder)
     {
-        collector.OpenGroup(RegexPropInfo, nameOverride: Name);
-        collector.AddAlternateEnumValues(EnumSet);
-        collector.CloseGroup();
+        builder.OpenGroup(RegexPropInfo, nameOverride: Name);
+        builder.AddAlternateEnumValues(EnumSet);
+        builder.CloseGroup();
     }
 
     protected override void SetScalarAlternativeSet(RegexPropInfo captureProp)

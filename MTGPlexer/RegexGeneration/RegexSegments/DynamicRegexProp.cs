@@ -6,11 +6,11 @@ public class DynamicRegexProp : ScalarCapturePropBase
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder collector)
+    public override void ComposeRegexLines(RegexBuilder builder)
     {
-        collector.OpenGroup(RegexPropInfo);
-        collector.AddAlternateValues(ScalarAlternativeSet.Alternates);
-        collector.CloseGroup();
+        builder.OpenGroup(RegexPropInfo);
+        builder.AddAlternateValues(ScalarAlternativeSet.Alternates);
+        builder.CloseGroup();
     }
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)

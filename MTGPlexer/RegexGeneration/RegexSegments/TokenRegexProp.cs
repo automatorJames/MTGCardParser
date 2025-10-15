@@ -19,11 +19,11 @@ public class TokenRegexProp : CaptureGroupPropBase
         ChildSegments = template.RegexSegments;
     }
 
-    public override void ComposeRegexLines(RegexBuilder collector)
+    public override void ComposeRegexLines(RegexBuilder builder)
     {
-        collector.OpenGroup(RegexPropInfo);
-        ConcatenatingComposer.Instance.Compose(collector, ChildSegments);
-        collector.CloseGroup();
+        builder.OpenGroup(RegexPropInfo);
+        ConcatenatingComposer.Instance.Compose(builder, ChildSegments);
+        builder.CloseGroup();
     }
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)

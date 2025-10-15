@@ -20,7 +20,7 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder collector)
+    public override void ComposeRegexLines(RegexBuilder builder)
     {
         var regexString = ScalarAlternativeSet.Alternates.Single();
 
@@ -30,17 +30,17 @@ public class PlaceholderRegexProp : ScalarCapturePropBase
             var actions = Parse(regexString);
 
             // If parsing succeeds without error, we can confidently modify the collector.
-            collector.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceGlobal);
-            actions.ForEach(action => action(collector));
-            collector.CloseGroup();
+            builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceGlobal);
+            actions.ForEach(action => action(builder));
+            builder.CloseGroup();
         }
         catch (Exception)
         {
             // If parsing fails for any reason (e.g., complexity, malformed pattern),
             // fall back to the original behavior of rendering the regex as a single literal line.
-            collector.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceGlobal);
-            collector.AddTextLine(regexString);
-            collector.CloseGroup();
+            builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceGlobal);
+            builder.AddTextLine(regexString);
+            builder.CloseGroup();
         }
     }
 

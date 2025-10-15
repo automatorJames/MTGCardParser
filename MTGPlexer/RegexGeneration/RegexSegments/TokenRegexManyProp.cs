@@ -44,23 +44,23 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
     }
 
-    public override void ComposeRegexLines(RegexBuilder collector)
+    public override void ComposeRegexLines(RegexBuilder builder)
     {
-        collector.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
-        ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
-        collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
-        collector.AddTextLine(", ");
-        ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
-        collector.CloseGroup(GroupQuantifier.AnyNumber);
-        collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
-        collector.AddTextLine(",? ");
-        collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
-        _conjunctionProp.ComposeRegexLines(collector);
-        collector.AddTextLine(" ");
-        collector.CloseGroup(GroupQuantifier.Optional);
-        ConcatenatingComposer.Instance.Compose(collector, _singleIterationSegments);
-        collector.CloseGroup();
-        collector.CloseGroup();
+        builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        ConcatenatingComposer.Instance.Compose(builder, _singleIterationSegments);
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        builder.AddTextLine(", ");
+        ConcatenatingComposer.Instance.Compose(builder, _singleIterationSegments);
+        builder.CloseGroup(GroupQuantifier.AnyNumber);
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        builder.AddTextLine(",? ");
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        _conjunctionProp.ComposeRegexLines(builder);
+        builder.AddTextLine(" ");
+        builder.CloseGroup(GroupQuantifier.Optional);
+        ConcatenatingComposer.Instance.Compose(builder, _singleIterationSegments);
+        builder.CloseGroup();
+        builder.CloseGroup();
     }
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)
