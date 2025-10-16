@@ -51,12 +51,12 @@ public record TokenUnitCapture
                 MatchedAlternatePaths.Add(flattenedTerminalCapture.CaptureGroupPropPath);
             }
 
-        FilteredLines = template.Builder.GetFormattedLines(MatchedAlternatePaths);
+        PropPathVariantSetWrappers.Values.ToList().ForEach(x => x.OrderByOccurrenceCount());
+
+        FilteredLines = template.Builder.GetFormattedLines(PropPathVariantSetWrappers.Values.ToList());
 
         // Todo: the formatting here isn't exactly right for either of these
         FormattedRegexString = string.Join("\r\n", FilteredLines.Select(x => x.FormattedText));
         MinifiedRegexString = string.Join("", FilteredLines.Select(x => x.Regex.Trim()));
-
-        PropPathVariantSetWrappers.ToList().ForEach(x => x.Value.OrderByOccurrenceCount());
     }
 }

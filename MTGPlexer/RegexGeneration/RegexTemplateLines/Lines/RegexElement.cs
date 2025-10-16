@@ -5,7 +5,7 @@ public class RegexElement
     public Enclosure[] Enclosures { get; }
     public string Regex { get; }
     public Palette Palette { get; }
-    public string Comment { get; }
+    public string Comment { get; init; }
 
     public string UniquePath { get; }
     public string NamedPath { get; }
