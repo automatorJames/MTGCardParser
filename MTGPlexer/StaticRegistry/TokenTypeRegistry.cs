@@ -75,7 +75,7 @@ public static partial class TokenTypeRegistry
         propCaptureSegments
             .OfType<TokenRegexManyProp>()
             .ToList()
-            .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, instance.Template.Collector.ExtractGroupRegex(x.RegexPropInfo)));
+            .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, instance.Template.Builder.ExtractGroupRegex(x.RegexPropInfo)));
     }
 
     static void RegisterEnum(EnumRegexProp newEnumType)

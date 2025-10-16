@@ -10,7 +10,7 @@ public class RegexTemplate
     public string MinifiedRegexString { get; private set; }
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
-    public RegexBuilder Collector { get; private set; }
+    public RegexBuilder Builder { get; private set; }
     public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
     public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
@@ -55,7 +55,7 @@ public class RegexTemplate
         RegexString = collector.GetMinified();
         MinifiedRegexString = RegexString;
         Regex = new Regex(MinifiedRegexString, RegexOptions.Compiled);
-        Collector = collector;
+        Builder = collector;
     }
 
     RegexSegmentBase ResolveSnippetToSegment(string templateSnippet)

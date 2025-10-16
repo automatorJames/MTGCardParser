@@ -56,11 +56,11 @@
                 </pre>
             </div>
 
-            @if (tokenUnitCapture.PropPathVariantSets.Any())
+            @if (tokenUnitCapture.PropPathVariantSetWrappers.Any())
             {
                 int propCount = 0;
                 <div class="properties-container">
-                    @foreach ((var captureGroupPropPath, var captureValueVariantSet) in tokenUnitCapture.PropPathVariantSets)
+                    @foreach ((var captureGroupPropPath, var captureValueVariantSetWrapper) in tokenUnitCapture.PropPathVariantSetWrappers)
                     {
                         var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
                         var propCardStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat}; border-color: {propSetPalette.HexDark};";
@@ -71,7 +71,7 @@
                                 <br />
                             </div>
                             <div class="prop-card-body">
-                                @foreach (var valueSet in captureValueVariantSet.Values)
+                                @foreach (var valueSet in captureValueVariantSetWrapper.VariantSets.Values)
                                 {
                                     var canonicalStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat};";
                                     var dataPath = captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());

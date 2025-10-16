@@ -28,7 +28,6 @@ public class RegexBuilder
 
     public RegexBuilder(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {
-
         // an invisible top level enclosure;
         RootEnclosure rootEnclosure = new(topLevelType.Name);
 
