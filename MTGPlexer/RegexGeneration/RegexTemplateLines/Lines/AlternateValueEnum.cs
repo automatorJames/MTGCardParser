@@ -1,11 +1,9 @@
 ﻿
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public class AlternateValueEnum : AlternateValue, IMatchableAlternateEnum
+public class AlternateValueEnum : AlternateValue, IMatchableAlternate
 {
     new public object CanonicalValue { get; }
-    public Type EnumType { get; }
-    public int EnumMemberCount { get; }
     public EnumScalarAlternate EnumScalar { get; }
 
 
@@ -18,8 +16,6 @@ public class AlternateValueEnum : AlternateValue, IMatchableAlternateEnum
         )
     {
         CanonicalValue = enumScalar.EnumValue;
-        EnumType = enumScalar.EnumType;
-        EnumMemberCount = enumMemberCount;
         EnumScalar = enumScalar;
     }
 
