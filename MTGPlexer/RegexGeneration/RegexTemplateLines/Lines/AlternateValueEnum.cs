@@ -7,7 +7,7 @@ public class AlternateValueEnum : AlternateValue
     public EnumScalarAlternate EnumScalar { get; }
 
 
-    public AlternateValueEnum(Enclosure[] enclosures, EnumScalarAlternate enumScalar, int enumMemberCount)
+    public AlternateValueEnum(Enclosure[] enclosures, EnumScalarAlternate enumScalar)
         : base(
             enclosures,
             enumScalar.RegexString,

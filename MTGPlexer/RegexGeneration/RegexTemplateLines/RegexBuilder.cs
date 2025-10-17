@@ -156,9 +156,9 @@ public class RegexBuilder
         return new(regexString, RegexOptions.Compiled);
     }
 
-    public List<RegexCommentedLine> GetFormattedLines(List<PropPathVariantSetWrapper> variantData)
+    public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetWrapper> synonymData)
     {
-        var variantDataLookup = variantData.ToDictionary(d => d.ParentPath.PropPath);
+        var synonymDataLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
         var alternateCounts = new Dictionary<AlternateValueEnum, int>();
 
         // 1. Expand containers and enrich with variant data
@@ -167,26 +167,37 @@ public class RegexBuilder
         {
             if (element is AlternateValueEnumContainer enumContainer)
             {
-                if (variantDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
+                if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {
-                    foreach (var variantSet in wrapper.VariantSets.Values)
+                    foreach (var synonymSet in wrapper.SynonymSets.Values)
                     {
-                        var enumElement = enumContainer.AlternateValueEnums.First(e => e.CanonicalValue.Equals(variantSet.CanonicalValue));
+                        var enumElement = enumContainer.AlternateValueEnums.Single(e => e.CanonicalValue.Equals(synonymSet.CanonicalValue));
 
-                        if (variantSet.SynonymCounts.Count > 1)
+                        if (synonymSet.SynonymCounts.Count > 1)
                         {
+                            // If more than one synonym variant was captured for the current enum,
+                            // add a header followed by each synonym
 
+                            var header = new SynonymSetHeader(enumElement);
+                            alternateCounts[header] = synonymSet.TotalCount;
+                            expandedAndFilteredElements.Add(header);
+
+                            foreach (var synonym in synonymSet.SynonymCounts)
+                            {
+                                var synonymElement = new SynonymValueEnum(enumElement, synonymSet.TotalCount, synonym.Key);
+                                alternateCounts[synonymElement] = synonym.Value;
+                                expandedAndFilteredElements.Add(synonymElement);
+                            }
                         }
                         else
                         {
-
+                            // Otherwise add a single line to represent the alternate value
+                            expandedAndFilteredElements.Add(enumElement);
+                            alternateCounts[enumElement] = synonymSet.TotalCount;
                         }
-
-                        expandedAndFilteredElements.Add(enumElement);
-                        alternateCounts[enumElement] = variantSet.TotalCount;
                     }
 
-                    int omittedCount = wrapper.AlternateCount - wrapper.VariantSets.Count;
+                    int omittedCount = wrapper.AlternateCount - wrapper.SynonymSets.Count;
                     if (omittedCount > 0)
                     {
                         expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures)
@@ -253,7 +264,11 @@ public class RegexBuilder
         for (int i = 0; i < finalizedLines.Count; i++)
         {
             RegexElement line = finalizedLines[i];
-            string regexText = line.Regex;
+            string regexText = 
+                line is SynonymSetHeader ? ""
+                : line is SynonymValueEnum synonymValueEnum ? synonymValueEnum.CanonicalValue.ToString()
+                : line is AlternateValueEnum alternateValueEnum ? alternateValueEnum.CanonicalValue.ToString()
+                : line.Regex;
 
             var spans = new List<RegexCommentedLineSpan>();
             int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
@@ -293,7 +308,7 @@ public class RegexBuilder
             spans.AddRange(commentSpans);
             string commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
 
-            if (line is AlternateValue alternateValue)
+            if (line is AlternateValue alternateValue && line is not SynonymSetHeader)
                 commentedLines.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, alternateValue));
             else
                 commentedLines.Add(new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, spans));
@@ -605,8 +620,9 @@ public class RegexBuilder
             {
                 case AlternateValueEnum ave when alternateCounts.TryGetValue(ave, out int count) && _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics):
                     var altPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
-                    string valuePart = ave.Comment.PadLeft(metrics.MaxValueLength);
-                    string lineText = $"{valuePart} : {count}";
+                    string valuePart = ave is SynonymValueEnum ? "" : ave.Comment;
+                    string valuePadded = valuePart.PadLeft(metrics.MaxValueLength);
+                    string lineText = $"{valuePadded} : {count}";
 
                     int contentBlockWidth = metrics.MaxValueLength + 3 + metrics.MaxCountLength;
                     int totalPad = Math.Max(0, innerWidth - contentBlockWidth);

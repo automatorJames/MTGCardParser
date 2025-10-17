@@ -1,21 +1,21 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
-public class CaptureValueVariantSet
+public class CaptureValueSynonymSet
 {
     public object CanonicalValue { get; }
     public string CanonicalValueDisplay { get; }
     public Dictionary<string, int> SynonymCounts { get; }
     public int TotalCount => SynonymCounts.Sum(x => x.Value);
 
-    public CaptureValueVariantSet(object canonicalValue, Capture variantCapture)
+    public CaptureValueSynonymSet(object canonicalValue, Capture synonymCapture)
     {
         CanonicalValue = canonicalValue;
         CanonicalValueDisplay = ToFriendlyStringOrPattern(canonicalValue);
         SynonymCounts = [];
-        IncrementVariantCapture(variantCapture);
+        IncrementSynonymCapture(synonymCapture);
     }
 
-    public void IncrementVariantCapture(Capture variantCapture)
+    public void IncrementSynonymCapture(Capture variantCapture)
     {
         var stringValue = variantCapture.Value;
         SynonymCounts.TryAdd(stringValue, 0);

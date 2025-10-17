@@ -71,7 +71,7 @@
                                 <br />
                             </div>
                             <div class="prop-card-body">
-                                @foreach (var valueSet in captureValueVariantSetWrapper.VariantSets.Values)
+                                @foreach (var valueSet in captureValueVariantSetWrapper.SynonymSets.Values)
                                 {
                                     var canonicalStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat};";
                                     var dataPath = captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());

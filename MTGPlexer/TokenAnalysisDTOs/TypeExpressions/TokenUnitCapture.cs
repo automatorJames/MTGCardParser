@@ -15,7 +15,7 @@ public record TokenUnitCapture
     /// <summary>
     /// Maps path to terminal prop (not including value) --> set of capture value variant counts
     /// </summary>
-    public Dictionary<CaptureGroupPropPath, PropPathVariantSetWrapper> PropPathVariantSetWrappers { get; } = [];
+    public Dictionary<CaptureGroupPropPath, PropPathSynonymSetWrapper> PropPathVariantSetWrappers { get; } = [];
 
     public TokenUnitCapture(Type type, List<TokenUnit> rootTokensUnitsOfType)
     {
@@ -40,13 +40,13 @@ public record TokenUnitCapture
                     PropPathVariantSetWrappers[propPath] = propPathVariantSetWrapper;
                 }
 
-                if (!propPathVariantSetWrapper.VariantSets.TryGetValue(flattenedTerminalCapture.Value, out var captureValueVariantSet))
+                if (!propPathVariantSetWrapper.SynonymSets.TryGetValue(flattenedTerminalCapture.Value, out var captureValueVariantSet))
                 {
                     captureValueVariantSet = new(flattenedTerminalCapture.Value, flattenedTerminalCapture.Capture);
-                    propPathVariantSetWrapper.VariantSets[flattenedTerminalCapture.Value] = captureValueVariantSet;
+                    propPathVariantSetWrapper.SynonymSets[flattenedTerminalCapture.Value] = captureValueVariantSet;
                 }
                 else
-                    captureValueVariantSet.IncrementVariantCapture(flattenedTerminalCapture.Capture);
+                    captureValueVariantSet.IncrementSynonymCapture(flattenedTerminalCapture.Capture);
 
                 MatchedAlternatePaths.Add(flattenedTerminalCapture.CaptureGroupPropPath);
             }
