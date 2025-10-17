@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 public class DrawOrDiscardCards : TokenUnit
 {
     public DrawOrDiscardCards() : base(nameof(CardVerb), nameof(Quantity), "cards?") { }

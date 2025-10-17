@@ -278,7 +278,7 @@ public class RegexBuilder
         for (int i = 0; i < finalizedLines.Count; i++)
         {
             RegexElement line = finalizedLines[i];
-            string regexText = 
+            string regexText =
                 line is SynonymSetHeader or SynonymTrailingSpacer ? ""
                 : line is SynonymValueEnum synonymValueEnum ? synonymValueEnum.CanonicalValue.ToString()
                 : line is AlternateValueEnum alternateValueEnum ? alternateValueEnum.DisplayOverrideName ?? alternateValueEnum.Regex
@@ -300,9 +300,9 @@ public class RegexBuilder
 
             if (line is SynonymValueEnum syn)
                 pathForRegexSpan = $"{pathForRegexSpan}.{syn.CanonicalValue}";
-            else if (line is AlternateValueEnum altValEnum) 
+            else if (line is AlternateValueEnum altValEnum)
                 pathForRegexSpan = $"{pathForRegexSpan}.{altValEnum.CanonicalValue}";
-            else if (line is AlternateValue alt) 
+            else if (line is AlternateValue alt)
                 pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
 
             string relativePath = RegexCommentedLine.GetRelativePath(pathForRegexSpan);
@@ -643,28 +643,31 @@ public class RegexBuilder
 
             switch (line)
             {
-                case SynonymTrailingSpacer spacer when _enumBoxMetrics.TryGetValue(spacer.NamedPath, out var metrics):
-                    string lineSpacer = new string('-', metrics.MaxValueLength + 5 + metrics.MaxCountLength);
-                    AddSpanForCurrentLine(lineSpacer, palette, true);
-                    break;
+                case SynonymTrailingSpacer:
+                    {
+                        string lineSpacer = new string('-', innerWidth);
+                        AddSpanForCurrentLine(lineSpacer, palette, true);
+                        break;
+                    }
 
                 case AlternateValueEnum ave when alternateCounts.TryGetValue(ave, out int count) && _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics):
-                    var altPalette = ave is SynonymValueEnum
-                        ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.SynonymValueCommentColor(palette)))
-                        : DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
+                    {
+                        var altPalette = ave is SynonymValueEnum
+                            ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.SynonymValueCommentColor(palette)))
+                            : DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
 
-                    string valuePart = ave.Comment;
-                    string valuePadded = valuePart.PadLeft(metrics.MaxValueLength);
-                    string lineText = $"{valuePadded} : {count}";
-
-                    int contentBlockWidth = metrics.MaxValueLength + 3 + metrics.MaxCountLength;
-                    int totalPad = Math.Max(0, innerWidth - contentBlockWidth);
-                    string leftPad = new string(' ', totalPad / 2);
-                    string rightPad = new string(' ', totalPad - (totalPad / 2));
-                    string rightAlignPad = new string(' ', contentBlockWidth - lineText.Length);
-                    string fullContent = $"{leftPad}{lineText}{rightAlignPad}{rightPad}";
-                    AddSpanForCurrentLine(fullContent, altPalette, true);
-                    break;
+                        string valuePart = ave.Comment;
+                        string valuePadded = valuePart.PadLeft(metrics.MaxValueLength);
+                        string lineText = $"{valuePadded} : {count}";
+                        int contentBlockWidth = metrics.MaxValueLength + 3 + metrics.MaxCountLength;
+                        int totalPad = Math.Max(0, innerWidth - contentBlockWidth);
+                        string leftPad = new string(' ', totalPad / 2);
+                        string rightPad = new string(' ', totalPad - (totalPad / 2));
+                        string rightAlignPad = new string(' ', contentBlockWidth - lineText.Length);
+                        string fullContent = $"{leftPad}{lineText}{rightAlignPad}{rightPad}";
+                        AddSpanForCurrentLine(fullContent, altPalette, true);
+                        break;
+                    }
 
                 case BlankLine bl when !string.IsNullOrEmpty(bl.Comment) && bl.Comment.EndsWith("omitted"):
                     var omitPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.OmittedEnumCountColor));
