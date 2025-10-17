@@ -4,10 +4,10 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 public class AlternateValueEnum : AlternateValue, IMatchableAlternateEnum
 {
     new public object CanonicalValue { get; }
-    new public string CanonicalValueDisplay { get; }
-    new public Regex AlternateRegex { get; }
     public Type EnumType { get; }
     public int EnumMemberCount { get; }
+    public EnumScalarAlternate EnumScalar { get; }
+
 
     public AlternateValueEnum(Enclosure[] enclosures, EnumScalarAlternate enumScalar, int enumMemberCount)
         : base(
@@ -18,10 +18,9 @@ public class AlternateValueEnum : AlternateValue, IMatchableAlternateEnum
         )
     {
         CanonicalValue = enumScalar.EnumValue;
-        CanonicalValueDisplay = ToFriendlyStringOrPattern(enumScalar.EnumValue);
-        AlternateRegex = enumScalar.ItemRegex;
         EnumType = enumScalar.EnumType;
         EnumMemberCount = enumMemberCount;
+        EnumScalar = enumScalar;
     }
 
     public override string ToString() => base.ToString();

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public class RegexBuilder
@@ -169,14 +171,19 @@ public class RegexBuilder
                 {
                     foreach (var variantSet in wrapper.VariantSets.Values)
                     {
-                        var enumElement = enumContainer.AlternateValueEnums
-                            .FirstOrDefault(e => e.CanonicalValue.Equals(variantSet.CanonicalValue));
+                        var enumElement = enumContainer.AlternateValueEnums.First(e => e.CanonicalValue.Equals(variantSet.CanonicalValue));
 
-                        if (enumElement != null)
+                        if (variantSet.SynonymCounts.Count > 1)
                         {
-                            expandedAndFilteredElements.Add(enumElement);
-                            alternateCounts[enumElement] = variantSet.TotalCount;
+
                         }
+                        else
+                        {
+
+                        }
+
+                        expandedAndFilteredElements.Add(enumElement);
+                        alternateCounts[enumElement] = variantSet.TotalCount;
                     }
 
                     int omittedCount = wrapper.AlternateCount - wrapper.VariantSets.Count;
@@ -190,13 +197,9 @@ public class RegexBuilder
                 }
             }
             else if (element is AlternateValueContainer container)
-            {
                 expandedAndFilteredElements.AddRange(container.AlternateValues);
-            }
             else
-            {
                 expandedAndFilteredElements.Add(element);
-            }
         }
 
         if (!expandedAndFilteredElements.Any()) return [];

@@ -5,22 +5,38 @@ namespace MTGPlexer;
 
 public static class Extensions
 {
-    public static string AddOptionalPluralization(this string word)
+    public static string AddPluralization(this string word, bool makeOptional)
     {
         if (string.IsNullOrWhiteSpace(word))
             throw new ArgumentNullException(nameof(word));
 
-        if (word.EndsWith("y", StringComparison.OrdinalIgnoreCase) && word.Length > 1 && !"aeiou".Contains(char.ToLower(word[word.Length - 2])))
-            word = word.Substring(0, word.Length - 1) + "(ies)";
-        else if (word.EndsWith("s", StringComparison.OrdinalIgnoreCase) ||
-            word.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
-            word.EndsWith("z", StringComparison.OrdinalIgnoreCase) ||
-            word.EndsWith("ch", StringComparison.OrdinalIgnoreCase) ||
-            word.EndsWith("sh", StringComparison.OrdinalIgnoreCase))
-            word += "(es)";
-        else word += "(s)";
+        string root = word;
+        string suffix;
 
-        return word + "?";
+        if (word.EndsWith("y", StringComparison.OrdinalIgnoreCase) &&
+            word.Length > 1 &&
+            !"aeiou".Contains(char.ToLower(word[^2])))
+        {
+            root = word[..^1];  // drop the 'y'
+            suffix = "ies";
+        }
+        else if (word.EndsWith("s", StringComparison.OrdinalIgnoreCase) ||
+                 word.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
+                 word.EndsWith("z", StringComparison.OrdinalIgnoreCase) ||
+                 word.EndsWith("ch", StringComparison.OrdinalIgnoreCase) ||
+                 word.EndsWith("sh", StringComparison.OrdinalIgnoreCase))
+        {
+            suffix = "es";
+        }
+        else
+        {
+            suffix = "s";
+        }
+
+        if (makeOptional)
+            suffix = $"({suffix})?";
+
+        return root + suffix;
     }
 
     public static string Description(this Enum value)
@@ -29,7 +45,6 @@ public static class Extensions
         var attr = field?.GetCustomAttribute<DescriptionAttribute>();
         return attr?.Description ?? value.ToString();
     }
-
 
     public static string ToFriendlyCase(this string input, TitleDisplayOption option = TitleDisplayOption.Lower)
     {
