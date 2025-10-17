@@ -84,11 +84,12 @@
                                     @if (valueSet.SynonymCounts.Count > 1)
                                     {
                                         <div class="variants-sub-table">
-                                            @foreach (var variant in valueSet.SynonymCounts.OrderByDescending(x => x.Value))
+                                            @foreach (var synonym in valueSet.SynonymCounts.OrderByDescending(x => x.Value))
                                             {
-                                                <div class="capture-variant" data-path=@dataPath>
-                                                    <span class="variant-value">@variant.Key</span>
-                                                    <span class="variant-count">@variant.Value</span>
+                                                var synonymPath = dataPath.Dot(synonym.Key);
+                                                <div class="capture-variant" data-path=@synonymPath>
+                                                    <span class="variant-value">@synonym.Key</span>
+                                                    <span class="variant-count">@synonym.Value</span>
                                                 </div>
                                             }
                                         </div>

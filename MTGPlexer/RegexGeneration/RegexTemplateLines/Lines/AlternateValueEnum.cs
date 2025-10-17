@@ -5,6 +5,7 @@ public class AlternateValueEnum : AlternateValue
 {
     new public object CanonicalValue { get; }
     public EnumScalarAlternate EnumScalar { get; }
+    public string DisplayOverrideName { get; set; }
 
 
     public AlternateValueEnum(Enclosure[] enclosures, EnumScalarAlternate enumScalar)

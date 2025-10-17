@@ -7,7 +7,6 @@ public class RegexTemplate
 
     Type _containingType;
 
-    public string MinifiedRegexString { get; private set; }
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
     public RegexBuilder Builder { get; private set; }
@@ -53,8 +52,7 @@ public class RegexTemplate
         composer.Compose(collector, RegexSegments);
 
         RegexString = collector.GetMinified();
-        MinifiedRegexString = RegexString;
-        Regex = new Regex(MinifiedRegexString, RegexOptions.Compiled);
+        Regex = new Regex(RegexString, RegexOptions.Compiled);
         Builder = collector;
     }
 

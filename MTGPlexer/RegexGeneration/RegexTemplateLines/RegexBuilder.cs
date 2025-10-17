@@ -1,4 +1,6 @@
+using Microsoft.Identity.Client;
 using System.Diagnostics;
+using System.Runtime.Intrinsics.X86;
 
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
@@ -23,7 +25,7 @@ public class RegexBuilder
     private int _hashSeparatorColumn;
     private int _commentBoxLength;
     private const string DefaultWhite = "#FFFFFF";
-    private const int _hashSeparatorPadding = 6;
+    private const int _hashSeparatorPadding = 4;
     private const int _boxContentLeftPadding = 1;
     private const int _spacesPerIndent = 4;
 
@@ -151,7 +153,6 @@ public class RegexBuilder
         var groupLines = _regexElements.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
         AddBoundaryLines(groupLines);
         var regexString = string.Join("", groupLines.Select(x => x.Regex));
-        regexString = MinifyRegex(regexString);
 
         return new(regexString, RegexOptions.Compiled);
     }
@@ -167,10 +168,20 @@ public class RegexBuilder
         {
             if (element is AlternateValueEnumContainer enumContainer)
             {
+                // After finishing a set of synonyms, we should add a spacer before the next alternate;
+                // This buffer holds that spacer if it's necessary to use.
+                SynonymTrailingSpacer spacerBuffer = null;
+
                 if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {
                     foreach (var synonymSet in wrapper.SynonymSets.Values)
                     {
+                        if (spacerBuffer != null)
+                        {
+                            expandedAndFilteredElements.Add(spacerBuffer);
+                            spacerBuffer = null;
+                        }
+
                         var enumElement = enumContainer.AlternateValueEnums.Single(e => e.CanonicalValue.Equals(synonymSet.CanonicalValue));
 
                         if (synonymSet.SynonymCounts.Count > 1)
@@ -188,10 +199,13 @@ public class RegexBuilder
                                 alternateCounts[synonymElement] = synonym.Value;
                                 expandedAndFilteredElements.Add(synonymElement);
                             }
+
+                            spacerBuffer = new SynonymTrailingSpacer(enumElement);
                         }
                         else
                         {
-                            // Otherwise add a single line to represent the alternate value
+                            // Otherwise add a single line to represent the alternate value with the matched synonym as the display name
+                            enumElement.DisplayOverrideName = synonymSet.SynonymCounts.First().Key;
                             expandedAndFilteredElements.Add(enumElement);
                             alternateCounts[enumElement] = synonymSet.TotalCount;
                         }
@@ -202,7 +216,7 @@ public class RegexBuilder
                     {
                         expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures)
                         {
-                            Comment = $"{omittedCount} omitted"
+                            Comment = $"{omittedCount} omitted",
                         });
                     }
                 }
@@ -265,10 +279,13 @@ public class RegexBuilder
         {
             RegexElement line = finalizedLines[i];
             string regexText = 
-                line is SynonymSetHeader ? ""
+                line is SynonymSetHeader or SynonymTrailingSpacer ? ""
                 : line is SynonymValueEnum synonymValueEnum ? synonymValueEnum.CanonicalValue.ToString()
-                : line is AlternateValueEnum alternateValueEnum ? alternateValueEnum.CanonicalValue.ToString()
+                : line is AlternateValueEnum alternateValueEnum ? alternateValueEnum.DisplayOverrideName ?? alternateValueEnum.Regex
                 : line.Regex;
+
+            if (line is AlternateValue)
+                regexText = regexText.Replace(" ", "[ ]");
 
             var spans = new List<RegexCommentedLineSpan>();
             int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
@@ -280,7 +297,13 @@ public class RegexBuilder
             var highlightTreatment = _treatments.GetRegexHighlightTreatment(line);
 
             string pathForRegexSpan = line.NamedPath;
-            if (line is AlternateValue alt) pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
+
+            if (line is SynonymValueEnum syn)
+                pathForRegexSpan = $"{pathForRegexSpan}.{syn.CanonicalValue}";
+            else if (line is AlternateValueEnum altValEnum) 
+                pathForRegexSpan = $"{pathForRegexSpan}.{altValEnum.CanonicalValue}";
+            else if (line is AlternateValue alt) 
+                pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
 
             string relativePath = RegexCommentedLine.GetRelativePath(pathForRegexSpan);
             if (relativePath == null) highlightTreatment = SpanHighlightTreatment.None;
@@ -308,7 +331,7 @@ public class RegexBuilder
             spans.AddRange(commentSpans);
             string commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
 
-            if (line is AlternateValue alternateValue && line is not SynonymSetHeader)
+            if (line is AlternateValue alternateValue && line is not SynonymSetHeader && line is not SynonymTrailingSpacer)
                 commentedLines.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, alternateValue));
             else
                 commentedLines.Add(new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, spans));
@@ -360,7 +383,6 @@ public class RegexBuilder
         return finalResult;
     }
 
-
     public string GetMinified()
     {
         if (!_regexElements.Any())
@@ -369,9 +391,8 @@ public class RegexBuilder
         var finalizedElements = _regexElements.ToList();
         AddBoundaryLines(finalizedElements);
 
-        return MinifyRegex(string.Join("", finalizedElements.Select(x => x.Regex)));
+        return string.Join("", finalizedElements.Select(x => x.Regex)).Replace("[ ]", " ");
     }
-
 
     void AddBoundaryLines(List<RegexElement> lines)
     {
@@ -386,8 +407,6 @@ public class RegexBuilder
         lines.Add(new BlankLine([]));
         lines.Add(endBoundary);
     }
-
-    #region Formatting Helpers (Adapted from FormattedRegex)
 
     private void CalculateColumnWidths(List<RegexElement> lines, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
@@ -510,7 +529,8 @@ public class RegexBuilder
         var spans = new List<RegexCommentedLineSpan>();
         var lowlight = _treatments.CommentLowlightTreatment;
 
-        Action<string, Palette, SpanHighlightTreatment, IEnumerable<Enclosure>> addSpanForEnclosurePath = (text, palette, highlight, enclosureScope) =>
+        // local helper
+        void AddSpanForEnclosurePath(string text, Palette palette, SpanHighlightTreatment highlight, IEnumerable<Enclosure> enclosureScope)
         {
             if (string.IsNullOrEmpty(text)) return;
             string rootName = line.Enclosures.OfType<RootEnclosure>().FirstOrDefault()?.RootTypeName ?? "";
@@ -521,15 +541,20 @@ public class RegexBuilder
             var finalHighlight = (relativePath == null) ? SpanHighlightTreatment.None : highlight;
 
             spans.Add(new RegexCommentedLineSpan(text, palette, relativePath, finalHighlight, lowlight));
-        };
+        }
 
-        Action<string, Palette, bool> addSpanForCurrentLine = (text, palette, isTextSpan) =>
+        // local helper
+        void AddSpanForCurrentLine(string text, Palette palette, bool isTextSpan)
         {
             if (string.IsNullOrEmpty(text)) return;
 
             string pathForSpan = line.NamedPath;
 
-            if (line is AlternateValue alt)
+            if (line is SynonymValueEnum synEnum)
+                pathForSpan = $"{pathForSpan}.{synEnum.CanonicalParent.CanonicalValue}.{synEnum.CanonicalValue}";
+            else if (line is AlternateValueEnum altEnum)
+                pathForSpan = $"{pathForSpan}.{altEnum.CanonicalValue}";
+            else if (line is AlternateValue alt)
                 pathForSpan = $"{pathForSpan}.{alt.CanonicalValue}";
 
             string relativePath = RegexCommentedLine.GetRelativePath(pathForSpan);
@@ -538,7 +563,7 @@ public class RegexBuilder
             var finalHighlight = (relativePath == null) ? SpanHighlightTreatment.None : highlight;
 
             spans.Add(new RegexCommentedLineSpan(text, palette, relativePath, finalHighlight, lowlight));
-        };
+        }
 
         var defaultWhitePalette = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
 
@@ -564,8 +589,8 @@ public class RegexBuilder
             currentPathParts.Add(parent);
             char wall = BoxChars.Get(parent.Treatment).Wall;
             var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
-            addSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, currentPathParts);
-            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, currentPathParts);
+            AddSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, currentPathParts);
+            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, currentPathParts);
         }
 
         int parentDepth = parentEnclosures.Count;
@@ -580,47 +605,55 @@ public class RegexBuilder
                     var openBookendPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.NamedGroupBookendCommentColor(palette)));
                     string openComment = $" {ngo.Comment} ";
                     string fillerOpen = new string(chars.Top, Math.Max(0, availableWidth - openComment.Length));
-                    addSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
-                    addSpanForCurrentLine(openComment, openBookendPalette, true);
-                    addSpanForCurrentLine(fillerOpen, borderPalette, false);
-                    addSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(openComment, openBookendPalette, true);
+                    AddSpanForCurrentLine(fillerOpen, borderPalette, false);
+                    AddSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
                     break;
                 case GroupOpen:
-                    addSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
-                    addSpanForCurrentLine(new string(chars.Top, availableWidth), borderPalette, false);
-                    addSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(new string(chars.Top, availableWidth), borderPalette, false);
+                    AddSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
                     break;
                 case NamedGroupClose ngc:
                     var closeBookendPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.NamedGroupBookendCommentColor(palette)));
                     string closeComment = $" {ngc.Comment} ";
                     string fillerClose = new string(chars.Bottom, Math.Max(0, availableWidth - closeComment.Length));
-                    addSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
-                    addSpanForCurrentLine(fillerClose, borderPalette, false);
-                    addSpanForCurrentLine(closeComment, closeBookendPalette, true);
-                    addSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(fillerClose, borderPalette, false);
+                    AddSpanForCurrentLine(closeComment, closeBookendPalette, true);
+                    AddSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
                     break;
                 case GroupClose gc:
                     var quantPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GroupCloseQuantifierColor));
                     string quantComment = gc.Comment != null ? $" {gc.Comment} " : "";
                     string fillerQuant = new string(chars.Bottom, Math.Max(0, availableWidth - quantComment.Length));
-                    addSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
-                    addSpanForCurrentLine(fillerQuant, borderPalette, false);
-                    addSpanForCurrentLine(quantComment, quantPalette, true);
-                    addSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
+                    AddSpanForCurrentLine(fillerQuant, borderPalette, false);
+                    AddSpanForCurrentLine(quantComment, quantPalette, true);
+                    AddSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
                     break;
             }
         }
         else
         {
             int innerWidth = currentLevelWidth - 4;
-            addSpanForEnclosurePath(chars.Wall.ToString(), borderPalette, borderHighlight, line.PropEnclosures);
-            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, line.PropEnclosures);
+            AddSpanForEnclosurePath(chars.Wall.ToString(), borderPalette, borderHighlight, line.PropEnclosures);
+            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, line.PropEnclosures);
 
             switch (line)
             {
+                case SynonymTrailingSpacer spacer when _enumBoxMetrics.TryGetValue(spacer.NamedPath, out var metrics):
+                    string lineSpacer = new string('-', metrics.MaxValueLength + 5 + metrics.MaxCountLength);
+                    AddSpanForCurrentLine(lineSpacer, palette, true);
+                    break;
+
                 case AlternateValueEnum ave when alternateCounts.TryGetValue(ave, out int count) && _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics):
-                    var altPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
-                    string valuePart = ave is SynonymValueEnum ? "" : ave.Comment;
+                    var altPalette = ave is SynonymValueEnum
+                        ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.SynonymValueCommentColor(palette)))
+                        : DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
+
+                    string valuePart = ave.Comment;
                     string valuePadded = valuePart.PadLeft(metrics.MaxValueLength);
                     string lineText = $"{valuePadded} : {count}";
 
@@ -628,19 +661,17 @@ public class RegexBuilder
                     int totalPad = Math.Max(0, innerWidth - contentBlockWidth);
                     string leftPad = new string(' ', totalPad / 2);
                     string rightPad = new string(' ', totalPad - (totalPad / 2));
-
                     string rightAlignPad = new string(' ', contentBlockWidth - lineText.Length);
-
                     string fullContent = $"{leftPad}{lineText}{rightAlignPad}{rightPad}";
-                    addSpanForCurrentLine(fullContent, altPalette, true);
+                    AddSpanForCurrentLine(fullContent, altPalette, true);
                     break;
 
                 case BlankLine bl when !string.IsNullOrEmpty(bl.Comment) && bl.Comment.EndsWith("omitted"):
-                    var omitPalette = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+                    var omitPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.OmittedEnumCountColor));
                     int omitPad = Math.Max(0, innerWidth - bl.Comment.Length);
                     string omitLeftPad = new string(' ', omitPad / 2);
                     string omitRightPad = new string(' ', omitPad - (omitPad / 2));
-                    addSpanForCurrentLine($"{omitLeftPad}{bl.Comment}{omitRightPad}", omitPalette, true);
+                    AddSpanForCurrentLine($"{omitLeftPad}{bl.Comment}{omitRightPad}", omitPalette, true);
                     break;
 
                 case AlternateValue av:
@@ -650,7 +681,7 @@ public class RegexBuilder
                     string genericLeftPad = new string(' ', genericTotalPad / 2);
                     string genericRightPad = new string(' ', genericTotalPad - (genericTotalPad / 2));
                     string genericFullContent = $"{genericLeftPad}{altCommentText}{genericRightPad}";
-                    addSpanForCurrentLine(genericFullContent, genericAltPalette, true);
+                    AddSpanForCurrentLine(genericFullContent, genericAltPalette, true);
                     break;
 
                 default:
@@ -661,12 +692,12 @@ public class RegexBuilder
                     var content = string.IsNullOrEmpty(line.Comment)
                         ? new string(' ', innerWidth)
                         : (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
-                    addSpanForCurrentLine(content, contentPalette, true);
+                    AddSpanForCurrentLine(content, contentPalette, true);
                     break;
             }
 
-            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, line.PropEnclosures);
-            addSpanForEnclosurePath(chars.Wall.ToString(), borderPalette, borderHighlight, line.PropEnclosures);
+            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, line.PropEnclosures);
+            AddSpanForEnclosurePath(chars.Wall.ToString(), borderPalette, borderHighlight, line.PropEnclosures);
         }
 
         var reversedParents = parentEnclosures.AsEnumerable().Reverse().ToList();
@@ -676,19 +707,11 @@ public class RegexBuilder
             var wallPathScope = parentEnclosures.Take(parentEnclosures.Count - j).ToList();
             char wall = BoxChars.Get(parent.Treatment).Wall;
             var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
-            addSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, wallPathScope);
-            addSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, wallPathScope);
+            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, wallPathScope);
+            AddSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, wallPathScope);
         }
 
         return spans;
-    }
-
-    private string MinifyRegex(string pattern)
-    {
-        string placeholder = Guid.NewGuid().ToString();
-        string protectedPattern = pattern.Replace("[ ]", placeholder);
-        string strippedPattern = Regex.Replace(protectedPattern, @"\s", "");
-        return strippedPattern.Replace(placeholder, " ");
     }
 
     private record BoxCharSet(char TopLeft, char TopRight, char BottomLeft, char BottomRight, char Top, char Bottom, char Wall);
@@ -735,8 +758,6 @@ public class RegexBuilder
             _ => Closed,
         };
     }
-
-    #endregion
 }
 
 public enum SpaceDisposition

@@ -11,12 +11,4 @@ public class AlternateValueContainer : RegexElement
             .Select((x, idx) => new AlternateValue(enclosures, x, x))
             .ToList();
     } 
-
-    public AlternateValueContainer(Enclosure[] enclosures, EnumScalarAlternateSet enumScalarAlternateSet) 
-        : base(enclosures, string.Join('|', enumScalarAlternateSet.EnumAlternates.Select(x => x.RegexString)))
-    {
-        AlternateValues = enumScalarAlternateSet.EnumAlternates
-            .Select((x, idx) => new AlternateValue(enclosures, x.RegexString, x.EnumValue.ToString()))
-            .ToList();
-    }
 }

@@ -27,9 +27,11 @@ record FormattedRegexColoringRules
     public string BoundaryCommentColor { get; } = Grey30;
     public string GroupCloseQuantifierColor { get; } = Grey40;
     public string DefaultFallbackColor { get; } = Black;
+    public string OmittedEnumCountColor { get; } = Grey30;
 
     // Palette-Dependent Coloring Rules
     public Func<Palette, string> AlternateValueCommentColor { get; } = p => p.HexLight;
+    public Func<Palette, string> SynonymValueCommentColor { get; } = p => p.HexDark;
     public Func<Palette, string> NamedGroupBookendCommentColor { get; } = p => p.HexSat;
     public Func<Palette, string> EnclosedTextColor { get; } = p => p.Hex;
 

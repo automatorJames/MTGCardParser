@@ -1,10 +1,9 @@
-﻿namespace MTGPlexer.CommonDTOs;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.CommonDTOs;
 
 public class EnumScalarAlternate
 {
-    // Matches a single space that is NOT exactly the [ ] token (i.e., not preceded by '[' and not followed by ']').
-    static readonly Regex _spaceNotBracketToken = new Regex(@"(?<!\[) (?!\])", RegexOptions.Compiled);
-
     public object EnumValue { get; }
     public List<string> Synonyms { get; } = [];
     public List<string> SpaceEscapedSynonyms { get; } = [];
@@ -31,11 +30,11 @@ public class EnumScalarAlternate
             synonyms = [synonyms[0], synonyms[0].AddPluralization(makeOptional: false)];
         }
         else
-            RegexString = string.Join(" | ", synonyms);
+            RegexString = string.Join("|", synonyms);
 
         Synonyms = synonyms;
         SpaceEscapedSynonyms = synonyms.Select(x => x.Replace(" ", "[ ]")).ToList();
-        ItemRegex = new Regex("^" + _spaceNotBracketToken.Replace(RegexString, "") + "$", RegexOptions.Compiled);
+        ItemRegex = new Regex("^" + RegexString + "$", RegexOptions.Compiled);
         DisplayName = EnumValue.ToString();
     }
 
