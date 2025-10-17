@@ -278,14 +278,7 @@ public class RegexBuilder
         for (int i = 0; i < finalizedLines.Count; i++)
         {
             RegexElement line = finalizedLines[i];
-            string regexText =
-                line is SynonymSetHeader or SynonymTrailingSpacer ? ""
-                : line is SynonymValueEnum synonymValueEnum ? synonymValueEnum.CanonicalValue.ToString()
-                : line is AlternateValueEnum alternateValueEnum ? alternateValueEnum.DisplayOverrideName ?? alternateValueEnum.Regex
-                : line.Regex;
-
-            if (line is AlternateValue)
-                regexText = regexText.Replace(" ", "[ ]");
+            string regexText = GetFinalRegexString(line);
 
             var spans = new List<RegexCommentedLineSpan>();
             int indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
@@ -408,9 +401,53 @@ public class RegexBuilder
         lines.Add(endBoundary);
     }
 
+    /// <summary>
+    /// Gets the final, display-ready regex string for a given line. This method is the single source of truth
+    /// for the text that appears on the left side of the '#' separator. It handles special synonym display
+    /// logic and the substitution of spaces with '[ ]' for AlternateValue lines.
+    /// </summary>
+    private string GetFinalRegexString(RegexElement line)
+    {
+        // Determine the base string from the line type
+        string regexText =
+            line is SynonymSetHeader or SynonymTrailingSpacer ? ""
+            : line is SynonymValueEnum synonymValueEnum ? synonymValueEnum.CanonicalValue.ToString()
+            : line is AlternateValueEnum alternateValueEnum ? alternateValueEnum.DisplayOverrideName ?? alternateValueEnum.Regex
+            : line.Regex;
+
+        // The 'TextLine' constructor already replaces spaces, so we only need to handle 'AlternateValue' here.
+        if (line is AlternateValue)
+        {
+            return regexText.Replace(" ", "[ ]");
+        }
+
+        return regexText;
+    }
+
     private void CalculateColumnWidths(List<RegexElement> lines, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
-        int maxRegexLen = lines.Any() ? lines.Max(x => (GetIndentDepth(x) * _spacesPerIndent) + x.Regex.Length) : 0;
+        // Local function to determine the final rendered length of the regex part of a line,
+        // including indent and any prefixes that will be added during formatting. This is crucial
+        // for correctly positioning the '#' separator column.
+        int getRenderedLineLength(RegexElement line)
+        {
+            // Start with the indent depth.
+            int length = GetIndentDepth(line) * _spacesPerIndent;
+
+            // Add the length of the final regex string content.
+            length += GetFinalRegexString(line).Length;
+
+            // For AlternateValue lines, a 3-character prefix (" | " or "   ") is added
+            // during the final formatting step. We must account for it here.
+            if (line is AlternateValue)
+            {
+                length += 3;
+            }
+            return length;
+        }
+
+        // To find the position for the '#', we find the longest rendered regex line and add padding.
+        int maxRegexLen = lines.Any() ? lines.Max(getRenderedLineLength) : 0;
         _hashSeparatorColumn = maxRegexLen + _hashSeparatorPadding;
 
         _enumBoxMetrics = new Dictionary<string, EnumBoxLayoutMetrics>();
