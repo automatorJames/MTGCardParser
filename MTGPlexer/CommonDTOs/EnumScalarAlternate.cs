@@ -13,13 +13,13 @@ public class EnumScalarAlternate
     public string RegexString { get; }
     public Regex ItemRegex { get; }
 
-    public EnumScalarAlternate(Type enumType, object enumValue, List<string> synonyms, int ordinal, RegexEnumAttribute options)
+    public EnumScalarAlternate(Type enumType, object enumValue, List<string> synonyms, int ordinal)
     {
         EnumType = enumType;
         EnumValue = enumValue;
         Ordinal = ordinal;
 
-        if (synonyms.Count == 1 && options.OptionalPlural)
+        if (synonyms.Count == 1 && enumType.IsDefined(typeof(OptionalPluralAttribute)))
         {
             RegexString = synonyms[0].AddOptionalPluralization();
             Synonyms = [synonyms[0], synonyms[0].AddOptionalPluralization()];

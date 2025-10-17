@@ -33,7 +33,6 @@ public class EnumRegexProp : ScalarCapturePropBase
         }
 
         // if not already registered: 
-        var enumOptions = enumType.GetCustomAttribute<RegexEnumAttribute>() ?? new();
         List<EnumScalarAlternate> enumAlternatives = new();
 
         // get enum values in declared order
@@ -55,7 +54,7 @@ public class EnumRegexProp : ScalarCapturePropBase
             else
                 synonyms.Add(enumAsString.ToFriendlyCase().Replace(" ", "[ ]"));
 
-            enumAlternatives.Add(new(enumType, enumValue, synonyms, i, enumOptions));
+            enumAlternatives.Add(new(enumType, enumValue, synonyms, i));
         }
 
         EnumSet = new(enumAlternatives);

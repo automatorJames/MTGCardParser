@@ -58,7 +58,6 @@ public enum CardType
     Tribal
 }
 
-[RegexEnum]
 public enum Keyword
 {
     // Evergreen
@@ -478,7 +477,7 @@ public enum CounterType
     Token
 }
 
-[RegexEnum(OptionalPlural = true)]
+[OptionalPlural]
 public enum GainOrLose
 {
     Lose,
