@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public class AlternateValue : RegexElement, IMatchableAlternate
+public class AlternateValue : RegexElement
 {
     public object CanonicalValue { get; }
 

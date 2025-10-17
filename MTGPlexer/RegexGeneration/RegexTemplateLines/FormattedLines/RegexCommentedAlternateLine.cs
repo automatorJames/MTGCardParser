@@ -6,11 +6,11 @@ public record RegexCommentedAlternateLine : RegexCommentedLine
     public override string FullPath { get; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; }
 
-    public RegexCommentedAlternateLine(string regex, string comment, string enclosurePath, List<RegexCommentedLineSpan> spans, IMatchableAlternate matchableAlt)
+    public RegexCommentedAlternateLine(string regex, string comment, string enclosurePath, List<RegexCommentedLineSpan> spans, AlternateValue alternateValue)
         : base(regex, comment, enclosurePath, spans)
     {
-        CanonicalValue = matchableAlt.CanonicalValue;
+        CanonicalValue = alternateValue.CanonicalValue;
         FullPath = EnclosurePath.Dot(CanonicalValue.ToString());
-        CaptureGroupPropPath = new(enclosurePath.Dot(matchableAlt.CanonicalValue.ToString()));
+        CaptureGroupPropPath = new(enclosurePath.Dot(alternateValue.CanonicalValue.ToString()));
     }
 }

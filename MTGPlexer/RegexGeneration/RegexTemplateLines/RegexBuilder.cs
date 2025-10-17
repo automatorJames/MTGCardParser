@@ -265,7 +265,7 @@ public class RegexBuilder
             var highlightTreatment = _treatments.GetRegexHighlightTreatment(line);
 
             string pathForRegexSpan = line.NamedPath;
-            if (line is IMatchableAlternate alt) pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
+            if (line is AlternateValue alt) pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
 
             string relativePath = RegexCommentedLine.GetRelativePath(pathForRegexSpan);
             if (relativePath == null) highlightTreatment = SpanHighlightTreatment.None;
@@ -293,8 +293,8 @@ public class RegexBuilder
             spans.AddRange(commentSpans);
             string commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
 
-            if (line is IMatchableAlternate matchableAlt)
-                commentedLines.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, matchableAlt));
+            if (line is AlternateValue alternateValue)
+                commentedLines.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, alternateValue));
             else
                 commentedLines.Add(new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, spans));
         }
@@ -513,10 +513,10 @@ public class RegexBuilder
             if (string.IsNullOrEmpty(text)) return;
 
             string pathForSpan = line.NamedPath;
-            if (line is IMatchableAlternate alt)
-            {
+
+            if (line is AlternateValue alt)
                 pathForSpan = $"{pathForSpan}.{alt.CanonicalValue}";
-            }
+
             string relativePath = RegexCommentedLine.GetRelativePath(pathForSpan);
 
             var highlight = _treatments.GetCommentHighlightTreatment(line, isTextSpan);

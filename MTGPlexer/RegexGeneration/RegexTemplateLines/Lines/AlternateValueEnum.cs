@@ -1,7 +1,7 @@
 ﻿
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
 
-public class AlternateValueEnum : AlternateValue, IMatchableAlternate
+public class AlternateValueEnum : AlternateValue
 {
     new public object CanonicalValue { get; }
     public EnumScalarAlternate EnumScalar { get; }
