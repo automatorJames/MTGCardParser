@@ -5,7 +5,6 @@ public class EnumScalarAlternate
     // Matches a single space that is NOT exactly the [ ] token (i.e., not preceded by '[' and not followed by ']').
     static readonly Regex _spaceNotBracketToken = new Regex(@"(?<!\[) (?!\])", RegexOptions.Compiled);
 
-    public Type EnumType { get; }
     public object EnumValue { get; }
     public List<string> Synonyms { get; } = [];
     public List<string> SpaceEscapedSynonyms { get; } = [];
@@ -15,27 +14,27 @@ public class EnumScalarAlternate
 
     public EnumScalarAlternate(Type enumType, object enumValue)
     {
-        EnumType = enumType;
         EnumValue = enumValue;
+        List<string> synonyms = [];
 
         var enumAsString = enumValue.ToString();
         var regexPatternAttribute = enumType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
 
         if (regexPatternAttribute != null)
-            Synonyms.AddRange(regexPatternAttribute.Patterns);
+            synonyms.AddRange(regexPatternAttribute.Patterns);
         else
-            Synonyms.Add(enumAsString.ToFriendlyCase());
+            synonyms.Add(enumAsString.ToFriendlyCase());
 
-        if (Synonyms.Count == 1 && enumType.IsDefined(typeof(OptionalPluralAttribute)))
+        if (synonyms.Count == 1 && enumType.IsDefined(typeof(OptionalPluralAttribute)))
         {
-            RegexString = Synonyms[0].AddPluralization(makeOptional: true);
-            Synonyms = [Synonyms[0], Synonyms[0].AddPluralization(makeOptional: false)];
+            RegexString = synonyms[0].AddPluralization(makeOptional: true);
+            synonyms = [synonyms[0], synonyms[0].AddPluralization(makeOptional: false)];
         }
         else
-            RegexString = string.Join(" | ", Synonyms);
+            RegexString = string.Join(" | ", synonyms);
 
-        SpaceEscapedSynonyms = Synonyms.Select(x => x.Replace(" ", "[ ]")).ToList();
-
+        Synonyms = synonyms;
+        SpaceEscapedSynonyms = synonyms.Select(x => x.Replace(" ", "[ ]")).ToList();
         ItemRegex = new Regex("^" + _spaceNotBracketToken.Replace(RegexString, "") + "$", RegexOptions.Compiled);
         DisplayName = EnumValue.ToString();
     }
