@@ -42,11 +42,8 @@ public class EnumRegexProp : ScalarCapturePropBase
             .Select(x => x.GetValue(null)!)
             .ToList();
 
-        for (int i = 0; i < enumValues.Count; i++)
-        {
-            var enumValue = enumValues[i];
-            enumAlternates.Add(new(enumType, enumValue, i));
-        }
+        foreach (var enumValue in enumValues)
+            enumAlternates.Add(new(enumType, enumValue));
 
         EnumSet = new(enumAlternates);
         ScalarAlternativeSet = EnumSet;

@@ -3,11 +3,10 @@
 public class AlternateValue : RegexElement, IMatchableAlternate
 {
     public object CanonicalValue { get; }
-    public int Ordinal { get; }
     public string CanonicalValueDisplay { get; }
     public Regex AlternateRegex { get; }
 
-    public AlternateValue(Enclosure[] enclosures, string value, string comment, int ordinal)
+    public AlternateValue(Enclosure[] enclosures, string value, string comment)
         : base(
             enclosures,
             value,
@@ -17,7 +16,6 @@ public class AlternateValue : RegexElement, IMatchableAlternate
         CanonicalValue = value;
         CanonicalValueDisplay = value;
         AlternateRegex = new($"^{value}$", RegexOptions.Compiled);
-        Ordinal = ordinal;
     }
 
     public override string ToString() => base.ToString();

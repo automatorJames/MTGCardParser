@@ -3,7 +3,6 @@
 public record RegexCommentedAlternateLine : RegexCommentedLine
 {
     public object CanonicalValue { get; }
-    public int Ordinal { get; }
     public override string FullPath { get; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; }
 
@@ -11,7 +10,6 @@ public record RegexCommentedAlternateLine : RegexCommentedLine
         : base(regex, comment, enclosurePath, spans)
     {
         CanonicalValue = matchableAlt.CanonicalValue;
-        Ordinal = matchableAlt.Ordinal;
         FullPath = EnclosurePath.Dot(CanonicalValue.ToString());
         CaptureGroupPropPath = new(enclosurePath.Dot(matchableAlt.CanonicalValue.ToString()));
     }

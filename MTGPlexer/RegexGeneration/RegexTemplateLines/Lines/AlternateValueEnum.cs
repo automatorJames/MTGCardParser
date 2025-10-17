@@ -11,8 +11,7 @@ public class AlternateValueEnum : AlternateValue, IMatchableAlternate
         : base(
             enclosures,
             enumScalar.RegexString,
-            enumScalar.DisplayName,
-            enumScalar.Ordinal
+            enumScalar.DisplayName
         )
     {
         CanonicalValue = enumScalar.EnumValue;

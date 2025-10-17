@@ -8,7 +8,7 @@ public class AlternateValueContainer : RegexElement
         : base(enclosures, string.Join('|', alternateValueRegexes))
     {
         AlternateValues = alternateValueRegexes
-            .Select((x, idx) => new AlternateValue(enclosures, x, x, idx))
+            .Select((x, idx) => new AlternateValue(enclosures, x, x))
             .ToList();
     } 
 
@@ -16,7 +16,7 @@ public class AlternateValueContainer : RegexElement
         : base(enclosures, string.Join('|', enumScalarAlternateSet.EnumAlternates.Select(x => x.RegexString)))
     {
         AlternateValues = enumScalarAlternateSet.EnumAlternates
-            .Select((x, idx) => new AlternateValue(enclosures, x.RegexString, x.EnumValue.ToString(), idx))
+            .Select((x, idx) => new AlternateValue(enclosures, x.RegexString, x.EnumValue.ToString()))
             .ToList();
     }
 }

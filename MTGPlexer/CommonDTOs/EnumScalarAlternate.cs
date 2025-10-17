@@ -9,16 +9,14 @@ public class EnumScalarAlternate
     public object EnumValue { get; }
     public List<string> Synonyms { get; } = [];
     public List<string> SpaceEscapedSynonyms { get; } = [];
-    public int Ordinal { get; }
     public string DisplayName { get; }
     public string RegexString { get; }
     public Regex ItemRegex { get; }
 
-    public EnumScalarAlternate(Type enumType, object enumValue, int ordinal)
+    public EnumScalarAlternate(Type enumType, object enumValue)
     {
         EnumType = enumType;
         EnumValue = enumValue;
-        Ordinal = ordinal;
 
         var enumAsString = enumValue.ToString();
         var regexPatternAttribute = enumType.GetField(enumAsString).GetCustomAttribute<RegexPatternAttribute>();
