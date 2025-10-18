@@ -1,5 +1,3 @@
-using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Alternates;
-
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public class RegexBuilder
@@ -17,20 +15,17 @@ public class RegexBuilder
             .Reverse()
             .ToArray();
 
-    // Fields to support formatting, adapted from FormattedRegex
-    private FormattedRegexColoringRules _colors;
-    private FormattedRegexTreatmentRules _treatments;
-    private int _hashSeparatorColumn;
-    private int _commentBoxLength;
-    private const string DefaultWhite = "#FFFFFF";
-    private const int _hashSeparatorPadding = 4;
-    private const int _boxContentLeftPadding = 1;
-    private const int _spacesPerIndent = 4;
+    FormattedRegexColoringRules _colors;
+    FormattedRegexTreatmentRules _treatments;
+    int _hashSeparatorColumn;
+    int _commentBoxLength;
+    const string DefaultWhite = "#FFFFFF";
+    const int _hashSeparatorPadding = 4;
+    const int _boxContentLeftPadding = 1;
+    const int _spacesPerIndent = 4;
 
-    // New field to hold layout metrics for enum comment boxes
-    private record EnumBoxLayoutMetrics(int MaxValueLength, int MaxCountLength);
-    private Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics;
-
+    // field to hold layout metrics for enum comment boxes
+    Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics;
 
     public RegexBuilder(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
     {

@@ -14,7 +14,7 @@ global using MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 global using MTGPlexer.TokenAnalysisDTOs.WordTrees;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
-global using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
+global using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Alternates;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Helpers;
 global using MTGPlexer.Tokenizers;
 global using MTGPlexer.RegexGeneration.Composers;
