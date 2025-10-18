@@ -1,4 +1,8 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿using System.Drawing;
+using System.Reflection;
+using System.Text.RegularExpressions;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
 /// Handles the formatting and presentation of a sequence of regular expression elements.
@@ -13,6 +17,7 @@ public class RegexFormatter
     const int _hashSeparatorPadding = 4;
     const int _boxContentLeftPadding = 1;
     const int _spacesPerIndent = 4;
+    const int _spacesPerAlternateIndent = 2;
 
     // field to hold layout metrics for enum comment boxes
     Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics;
@@ -136,7 +141,19 @@ public class RegexFormatter
             var regexText = GetFinalRegexString(line);
 
             var spans = new List<RegexCommentedLineSpan>();
-            var indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
+
+            int indentSpaces;
+            if (line is AlternateValue)
+            {
+                var parentDepth = line.PropEnclosures.Any() ? line.PropEnclosures.Length - 1 : 0;
+                const int alternatePrefixWidth = _spacesPerAlternateIndent + 2; // for "  | "
+                indentSpaces = (parentDepth * _spacesPerIndent) + alternatePrefixWidth;
+            }
+            else
+            {
+                indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
+            }
+
             var indentedRegex = new string(' ', indentSpaces) + regexText;
             var paddedRegex = indentedRegex.PadRight(_hashSeparatorColumn);
 
@@ -191,9 +208,22 @@ public class RegexFormatter
 
                 var originalPaddedRegex = altLine.Regex;
                 var trimmedRegex = originalPaddedRegex.Trim();
-                var indentSpaces = originalPaddedRegex.Length - originalPaddedRegex.TrimStart().Length;
-                var prefix = isFirstInAlternateGroup ? "   " : " | ";
-                var newIndentedRegex = new string(' ', indentSpaces) + prefix + trimmedRegex;
+                var textStartColumn = originalPaddedRegex.Length - originalPaddedRegex.TrimStart().Length;
+
+                string newIndentedRegex;
+                if (isFirstInAlternateGroup)
+                {
+                    newIndentedRegex = new string(' ', textStartColumn) + trimmedRegex;
+                }
+                else
+                {
+                    var prefix = $"{new string(' ', _spacesPerAlternateIndent)}| ";
+                    var prefixStartColumn = textStartColumn - prefix.Length;
+                    if (prefixStartColumn < 0) prefixStartColumn = 0;
+
+                    newIndentedRegex = new string(' ', prefixStartColumn) + prefix + trimmedRegex;
+                }
+
                 var newPaddedRegex = newIndentedRegex.PadRight(_hashSeparatorColumn);
                 var newSpans = altLine.Spans.ToList();
                 newSpans[0] = newSpans[0] with { SpanText = newPaddedRegex };
@@ -259,10 +289,20 @@ public class RegexFormatter
     {
         int GetRenderedLineLength(RegexElement line)
         {
-            var length = GetIndentDepth(line) * _spacesPerIndent;
-            length += GetFinalRegexString(line).Length;
+            int indentSpaces;
             if (line is AlternateValue)
-                length += 3;
+            {
+                var parentDepth = line.PropEnclosures.Any() ? line.PropEnclosures.Length - 1 : 0;
+                const int alternatePrefixWidth = _spacesPerAlternateIndent + 2; // for "  | "
+                indentSpaces = (parentDepth * _spacesPerIndent) + alternatePrefixWidth;
+            }
+            else
+            {
+                indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
+            }
+
+            var length = indentSpaces;
+            length += GetFinalRegexString(line).Length;
             return length;
         }
 
