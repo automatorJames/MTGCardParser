@@ -20,7 +20,7 @@ public class NamedGroupOpen : EncloureBookend
 
         // Disambiguate the role of enum properties named differently than their types
         if (prop.RegexPropType == RegexPropType.Enum && prop.Name != prop.UnderlyingType.Name)
-            comment += $": {prop.UnderlyingType.Name}";
+            comment += $": {prop.BaseType.Name}";
 
         return comment;
     }

@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexSegments;
-
-namespace MTGPlexer.RegexGeneration.Composers;
+﻿namespace MTGPlexer.RegexGeneration.Composers;
 
 public class ConcatenatingComposer : ISegmentComposer
 {
