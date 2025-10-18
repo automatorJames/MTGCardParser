@@ -502,6 +502,17 @@ public class RegexFormatter
             AddSpanForEnclosurePath(" " + chars.Wall, borderPalette, borderHighlight, line.PropEnclosures);
         }
 
+        var parentsReversed = parentEnclosures.AsEnumerable().Reverse().ToList();
+        for (int i = 0; i < parentsReversed.Count(); i++)
+        {
+            var parent = parentsReversed[i];
+            var pathForParent = line.PropEnclosures.Take(parentEnclosures.Count - i).ToList();
+            var wall = BoxChars.Get(parent.Treatment).Wall;
+            var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
+            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, pathForParent);
+            AddSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, pathForParent);
+        }
+
         return spans;
     }
 }
