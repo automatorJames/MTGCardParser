@@ -1,5 +1,5 @@
 ﻿
-using MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 

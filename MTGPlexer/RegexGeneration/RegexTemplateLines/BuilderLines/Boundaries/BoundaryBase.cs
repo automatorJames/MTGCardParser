@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines.Boundaries;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Boundaries;
 
 public abstract class BoundaryBase : RegexElement
 {

@@ -1,5 +1,4 @@
-﻿
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Alternates;
 
 public class AlternateValueEnum : AlternateValue
 {

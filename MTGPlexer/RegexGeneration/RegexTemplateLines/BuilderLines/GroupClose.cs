@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
 public class GroupClose : EncloureBookend
 {

@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
+﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Alternates;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
 
 public record RegexCommentedAlternateLine : RegexCommentedLine
 {

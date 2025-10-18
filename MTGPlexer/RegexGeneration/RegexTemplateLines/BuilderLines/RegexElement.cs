@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
 public class RegexElement
 {

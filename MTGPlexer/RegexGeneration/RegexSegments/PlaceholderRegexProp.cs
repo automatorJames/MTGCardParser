@@ -1,4 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.Lines;
+﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 using System;
 using System.Collections.Generic;
 using System.Linq;
