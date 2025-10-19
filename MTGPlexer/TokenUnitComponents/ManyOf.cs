@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿using System.ComponentModel;
+
+namespace MTGPlexer.TokenUnitComponents;
 
 public class ManyOf<T> : ManyOf
 {

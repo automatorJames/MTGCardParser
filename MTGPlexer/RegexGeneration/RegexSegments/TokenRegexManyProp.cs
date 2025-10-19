@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.Composers;
-using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
-using System.Collections;
+﻿using System.Collections;
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
@@ -13,8 +11,14 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 {
     ManyItemVariant _manyItemType;
     Type _baseType;
-    string _itemName;
-    List<RegexSegmentBase> _singleIterationSegments;
+
+    string[] _manyItemNames;
+    Dictionary<string, ManyItemOrdinal> _manyItemNamesToOrdinals;
+
+    // todo: this is for when we implement ManyOf<TokenUnit> support
+    //List<RegexSegmentBase> _singleIterationSegments;
+
+    EnumRegexProp[] _ordinalEnumRegexProps = new EnumRegexProp[3];
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public override Regex MatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
@@ -22,22 +26,36 @@ public class TokenRegexManyProp : CaptureGroupPropBase
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
         _baseType = captureProp.BaseType;
-        _itemName = $"{captureProp.Name}_item";
+        _manyItemNames = Enum.GetValues<ManyItemOrdinal>().Select(x => $"{captureProp.Name}{x.Description()}").ToArray();
+
+        _manyItemNamesToOrdinals = new Dictionary<string, ManyItemOrdinal>
+        {
+            [_manyItemNames[0]] = ManyItemOrdinal.First,
+            [_manyItemNames[1]] = ManyItemOrdinal.SecondPlus,
+            [_manyItemNames[2]] = ManyItemOrdinal.Last,
+        };
 
         if (!_baseType.IsAssignableTo(typeof(TokenUnit)) && !_baseType.IsEnum)
             throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
 
         if (_baseType.IsAssignableTo(typeof(TokenUnit)))
         {
-            _manyItemType = ManyItemVariant.TokenUnit;
-            var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
-            _singleIterationSegments = template.RegexSegments;
+            // todo: we can implement this, but let's focus on the enum path for now
+            //_manyItemType = ManyItemVariant.TokenUnit;
+            //var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
+            //_singleIterationSegments = template.RegexSegments;
+            throw new NotImplementedException("Support for ManyOf<TokenUnit> not yet implemented, stick to enums for now");
         }
         else if (_baseType.IsEnum)
         {
             _manyItemType = ManyItemVariant.Enum;
-            EnumRegexProp proxyEnumRegexProp = new(captureProp.DerviveForManyOfItem());
-            _singleIterationSegments = [proxyEnumRegexProp];
+
+            _ordinalEnumRegexProps =
+            [
+                new(captureProp.DerviveForManyOfItem(ManyItemOrdinal.First)),
+                new(captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus)),
+                new(captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last)),
+            ];
         }
         else
             throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
@@ -47,10 +65,10 @@ public class TokenRegexManyProp : CaptureGroupPropBase
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
-        ConcatenatingComposer.Instance.Compose(builder, _singleIterationSegments);
+        ConcatenatingComposer.Instance.Compose(builder, [_ordinalEnumRegexProps[0]]);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         builder.AddTextLine(", ");
-        ConcatenatingComposer.Instance.Compose(builder, _singleIterationSegments);
+        ConcatenatingComposer.Instance.Compose(builder, [_ordinalEnumRegexProps[1]]);
         builder.CloseGroup(GroupQuantifier.AnyNumber);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         builder.AddTextLine(",? ");
@@ -58,52 +76,61 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         _conjunctionProp.ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);
-        ConcatenatingComposer.Instance.Compose(builder, _singleIterationSegments);
+        ConcatenatingComposer.Instance.Compose(builder, [_ordinalEnumRegexProps[2]]);
         builder.CloseGroup();
         builder.CloseGroup();
     }
 
     public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
-        var itemCaptures = match.Groups[_itemName]
-                .Captures
-                .ToList();
+        Group[] ordinalGroups =
+        [
+            match.Groups[_manyItemNames[0]],
+            match.Groups[_manyItemNames[1]],
+            match.Groups[_manyItemNames[2]],
+        ];
 
         // Dynamically create the generic type for List<ManyItemCapture<T>>
         var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(_baseType);
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
         var hydratedItems = (IList)Activator.CreateInstance(listType);
 
-        for (int i = 0; i < itemCaptures.Count; i++)
+        for (int i = 0; i < ordinalGroups.Length; i++)
         {
-            Capture itemCapture = itemCaptures[i];
-            object childItem = null;
+            var ordinal = _manyItemNamesToOrdinals[_manyItemNames[i]];
+            var ordinalGroup = ordinalGroups[i];
 
-            if (_manyItemType == ManyItemVariant.TokenUnit)
+            foreach (Capture itemCapture in ordinalGroup.Captures)
             {
-                var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
-                childItem = token.HydrateAsChildFromCapture(_baseType, match, itemCapture, ancestorCapturePath);
-            }
-            else if (_manyItemType == ManyItemVariant.Enum)
-            {
-                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternates)
+                object childItem = null;
+
+                if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
+                    //todo: re-enable this after implementing for TokenUnits
+                    //var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
+                    //childItem = token.HydrateAsChildFromCapture(_baseType, match, itemCapture, ancestorCapturePath);
+                }
+                else if (_manyItemType == ManyItemVariant.Enum)
+                {
+                    foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternates)
                     {
-                        childItem = enumAlternative.EnumValue;
-                        break;
+                        if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
+                        {
+                            childItem = enumAlternative.EnumValue;
+                            break;
+                        }
+                    }
+
+                    if (childItem == null)
+                    {
+                        throw new Exception($"Found no matching values for enum type '{_baseType.Name}' from capture '{itemCapture.Value}'");
                     }
                 }
 
-                if (childItem == null)
-                {
-                    throw new Exception($"Found no matching values for enum type '{_baseType.Name}' from capture '{itemCapture.Value}'");
-                }
+                // Create an instance of ManyItemCapture<T> and add it to the list
+                var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, ordinal, RegexPropInfo);
+                hydratedItems.Add(hydratedItem);
             }
-
-            // Create an instance of ManyItemCapture<T> and add it to the list
-            var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, i, RegexPropInfo);
-            hydratedItems.Add(hydratedItem);
         }
 
         var conjunctionCapture = match.Groups[nameof(Conjunction)];

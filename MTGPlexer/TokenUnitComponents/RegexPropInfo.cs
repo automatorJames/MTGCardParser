@@ -30,7 +30,7 @@ public record RegexPropInfo
         MayBeNull = nullableType != null;
     }
 
-    public RegexPropInfo DerviveForManyOfItem()
+    public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
     {
         if (!IsManyOf)
             throw new Exception($"May only derive a {nameof(RegexPropInfo)} many-of-item instance if {nameof(IsManyOf)} is true");
@@ -46,7 +46,7 @@ public record RegexPropInfo
             IsTerminal = IsTerminal,
             MayBeNull = MayBeNull,
             IsManyOf = false,       // toggle this off to represent the item level
-            Name = Name + "_item"   // append "_item" to the original name
+            Name = Name + manyItemOrdinal.Description()   // append "_first", "_2plus", or "_last" to the original name
         };
     }
 

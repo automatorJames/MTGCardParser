@@ -56,7 +56,7 @@ public record IndexedPropertyCapture
         IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
         Text = capture.Capture.Value;
         Value = capture.ItemObject;
-        Ordinal = capture.Oridinal;
+        Ordinal = (int)capture.Oridinal;
         Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
         Path = fullPathToManyOfItem;

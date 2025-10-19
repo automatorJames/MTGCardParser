@@ -1,10 +1,12 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿using System.ComponentModel;
+
+namespace MTGPlexer.TokenUnitComponents;
 
 public record ManyItemCapture<T> : ManyItemCapture
 {
     public T Item { get; set; }
 
-    public ManyItemCapture(T item, Capture capture, int ordinal, RegexPropInfo propInfo) : base(capture, typeof(T), item, ordinal, propInfo)
+    public ManyItemCapture(T item, Capture capture, ManyItemOrdinal ordinal, RegexPropInfo propInfo) : base(capture, typeof(T), item, ordinal, propInfo)
     {
         Item = item;
     }
@@ -13,12 +15,12 @@ public record ManyItemCapture<T> : ManyItemCapture
 public record ManyItemCapture
 {
     public Capture Capture { get; }
-    public int Oridinal { get; }
+    public ManyItemOrdinal Oridinal { get; }
     public RegexPropInfo RegexPropInfo { get; }
     public Type ItemType { get; }
     public object ItemObject { get; }
 
-    public ManyItemCapture(Capture capture, Type type, object itemAsObject, int ordinal, RegexPropInfo propInfo)
+    public ManyItemCapture(Capture capture, Type type, object itemAsObject, ManyItemOrdinal ordinal, RegexPropInfo propInfo)
     {
         Capture = capture;
         Oridinal = ordinal;
@@ -26,4 +28,16 @@ public record ManyItemCapture
         ItemType = type;
         ItemObject = itemAsObject;
     }
+}
+
+public enum ManyItemOrdinal
+{
+    [Description("_first")]
+    First,
+
+    [Description("_2plus")]
+    SecondPlus,
+
+    [Description("_last")]
+    Last
 }
