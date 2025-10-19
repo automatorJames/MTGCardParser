@@ -56,7 +56,7 @@ public class EnumRegexProp : ScalarCapturePropBase
         if (!capture.Success)
         {
             if (!RegexPropInfo.MayBeNull)
-                throw new Exception($"{RegexPropInfo.Name} is not a nullable enum, but no match was found");
+                throw new Exception($"{RegexPropInfo.Name} a non-nullable enum, but no match was found");
 
             return false;
         }

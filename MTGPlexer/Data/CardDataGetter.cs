@@ -48,6 +48,7 @@ public class CardDataGetter
         //    new Card { Name = "Type3", Text = "Draws fecking shite cards" },
         //    //new Card { Name = "Type3", Text = "Draws holy hell cards" } 
         //];
+        result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "Draws 3 cards" } };
         return result.ToList();
     }
 }

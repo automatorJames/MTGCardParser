@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.Composers;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also a TokenUnit (i.e. a child TokenUnit). During

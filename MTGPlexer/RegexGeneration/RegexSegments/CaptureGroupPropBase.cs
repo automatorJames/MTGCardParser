@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
-/// The base class for all TokenUnit properties with a name Regex capture group whose pattern, is 
+/// The base class for all TokenUnit properties with a name Regex capture group whose pattern is 
 /// associated with some property, including child TokenUnit properties. Includes mechanisms for 
 /// setting values for properties of all relevant types.
 /// </summary>

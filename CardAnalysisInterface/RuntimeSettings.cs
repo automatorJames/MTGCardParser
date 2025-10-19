@@ -38,7 +38,7 @@ namespace CardAnalysisInterface
                 }
             }
         }
-
+        
         private bool _orderByWordCount;
         public bool OrderByWordCount
         {
@@ -63,6 +63,21 @@ namespace CardAnalysisInterface
                 if (_showOriginalText != value)
                 {
                     _showOriginalText = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
+        private bool _showMinified;
+        public bool ShowMinified
+        {
+            get => _showMinified;
+            set
+            {
+                if (_showMinified != value)
+                {
+                    _showMinified = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }

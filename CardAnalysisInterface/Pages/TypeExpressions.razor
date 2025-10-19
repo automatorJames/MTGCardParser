@@ -34,26 +34,32 @@
                 <div class="copy-prompt @(isCopied ? "copied" : "")">
                     @(isCopied ? "Copied!" : "Click to copy")
                 </div>
-                <pre class="formatted-regex-fira" style=@preStyle>
-                <code>
-                    @foreach (var line in tokenUnitCapture.FilteredLines)
-                    {
-                            foreach (var span in line.Spans)
+
+                @if (RuntimeSettings.ShowMinified)
+                {
+                    <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
+                        <code>@tokenUnitCapture.MinifiedRegexString</code>
+                    </pre>
+                }
+                else
+                {
+                    <pre class="formatted-regex-fira" style=@preStyle>
+                        <code>
+                            @foreach (var line in tokenUnitCapture.FilteredLines)
                             {
-                                var style = $"--hex: {span.Palette.Hex}; --hex-light: {span.Palette.HexLight}; --hex-dark: {span.Palette.HexDark}; --hex-sat: {span.Palette.HexSat}; color: {span.Palette.Hex};";
-                                <span style="@style"
-                                    data-path="@span.PathRelativeToRoot"
-                                    data-highlight="@span.HighlightTreatment"
-                                    data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
+                                foreach (var span in line.Spans)
+                                {
+                                    var style = $"--hex: {span.Palette.Hex}; --hex-light: {span.Palette.HexLight}; --hex-dark: {span.Palette.HexDark}; --hex-sat: {span.Palette.HexSat}; color: {span.Palette.Hex};";
+                                    <span style="@style"
+                                        data-path="@span.PathRelativeToRoot"
+                                        data-highlight="@span.HighlightTreatment"
+                                        data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
+                                }
+                                @("\n")
                             }
-                            @("\n")
-                    }
-                    </code>
-                </pre>
-                <br />
-                <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
-                <code>@tokenUnitCapture.MinifiedRegexString</code>
-                </pre>
+                        </code>
+                    </pre>
+                }
             </div>
 
             @if (tokenUnitCapture.PropPathVariantSetWrappers.Any())

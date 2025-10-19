@@ -1,8 +1,4 @@
-﻿using System.Drawing;
-using System.Reflection;
-using System.Text.RegularExpressions;
-
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
 /// Handles the formatting and presentation of a sequence of regular expression elements.
@@ -44,6 +40,7 @@ public class RegexFormatter
             if (element is AlternateValueEnumContainer enumContainer)
             {
                 SynonymTrailingSpacer spacerBuffer = null;
+
                 if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {
                     foreach (var synonymSet in wrapper.SynonymSets.Values)

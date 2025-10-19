@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.CommonDTOs;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index
