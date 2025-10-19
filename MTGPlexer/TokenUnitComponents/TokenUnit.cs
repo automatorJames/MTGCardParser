@@ -98,7 +98,8 @@ public abstract class TokenUnit
 
     /// <summary>
     /// Returns a list of this TokenUnit's IndexedPropertyCaptures where RegexPropInfo.IsTerminal, and
-    /// recursively gathers terminal captures from all TokenUnit children.
+    /// recursively gathers terminal captures from all TokenUnit children. Also recurses through ManyOf props,
+    /// including ManyOf.Conjunction.
     /// </summary>
     public List<IndexedPropertyCapture> GetFlattenedTerminalCaptures()
     {
@@ -107,6 +108,28 @@ public abstract class TokenUnit
             .ToList();
 
         ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
+
+        var manyOfPropCaps = IndexedPropertyCaptures
+            .Where(x => x.Value is ManyOf)
+            .ToList();
+
+        foreach (var manyOfPropCap in manyOfPropCaps)
+        {
+            var manyOf = (ManyOf)manyOfPropCap.Value;
+
+            for (int i = 0; i < manyOf.ItemObjects.Count; i++)
+            {
+                var manyItem = manyOf.ItemObjects[i];
+                var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyItem);
+                terminalCaptures.Add(derivedPropCapture);
+            }
+
+            if (manyOf.Conjunction != null)
+            {
+                var derivedPropCapture = manyOfPropCap.DeriveForManyOfConjunction(manyOf);
+                terminalCaptures.Add(derivedPropCapture);
+            }
+        }
 
         return terminalCaptures;
     }

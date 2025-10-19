@@ -80,6 +80,8 @@ public class RegexFormatter
                         expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"{omittedCount} omitted" });
                     }
                 }
+                else
+                    throw new Exception($"NamedPath {enumContainer.NamedPath} not found among synonym paths {string.Join(", ", synonymDataLookup.Keys)}");
             }
             else if (element is AlternateValueContainer container)
                 expandedAndFilteredElements.AddRange(container.AlternateValues);

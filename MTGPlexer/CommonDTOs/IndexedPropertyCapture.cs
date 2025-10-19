@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using MTGPlexer.TokenUnitComponents;
+using System.Diagnostics;
 
 namespace MTGPlexer.CommonDTOs;
 
@@ -8,20 +9,24 @@ namespace MTGPlexer.CommonDTOs;
 /// </summary>
 public record IndexedPropertyCapture
 {
-    public RegexPropInfo RegexPropInfo { get; set; }
-    public Capture Capture { get; set; }
-    public int Start { get; }
-    public int End { get; }
-    public int Length { get; }
-    public bool IsChildToken { get; }
-    public string Text { get; set; }
-    public object Value { get; set; }
-    public int Ordinal { get; }
-    public Palette Palette { get; }
-    public bool IgnoreInAnalysis { get; }
-    public bool IsDerivedFromManyItem { get; }
-    public string Path { get; set; }
-    public CaptureGroupPropPath CaptureGroupPropPath { get; set; }
+    public RegexPropInfo RegexPropInfo { get; private set; }
+    public Capture Capture { get; private set; }
+    public int Start { get; private set; }
+    public int End { get; private set; }
+    public int Length { get; private set; }
+    public bool IsChildToken { get; private set; }
+    public string Text { get; private set; }
+    public object Value { get; private set; }
+    public int Ordinal { get; private set; }
+    public Palette Palette { get; private set; }
+    public bool IgnoreInAnalysis { get; private set; }
+    public bool IsDerivedFromManyItem { get; private set; }
+    public string Path { get; private set; }
+    public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }
+
+    public IndexedPropertyCapture()
+    {
+    }
 
     public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentTokenPath)
     {
@@ -40,26 +45,55 @@ public record IndexedPropertyCapture
         CaptureGroupPropPath = regexPropInfo.IsTerminal ? new(parentTokenPath.Dot(regexPropInfo.Name).Dot(value.ToString())) : new(parentTokenPath);
     }
 
+
     /// <summary>
-    /// Constructor used for synthesizing IndexedPropertyCaptures from ManyItemCaptures. This is necessary in flows that require
+    /// Esed for synthesizing IndexedPropertyCaptures from ManyItemCaptures. This is necessary in flows that require
     /// an IndexedPropertyCapture but one does not exist because the capture was delegated to a ManyOf item, which performs a
-    /// second-pass match to derive its items. The RegexPropInfoelement doesn't represent a ManyOf item directly, but rather its parent property.
+    /// second-pass match to derive its items. The RegexPropInf oelement doesn't represent a ManyOf item directly, but rather its parent property.
     /// </summary>
-    public IndexedPropertyCapture(ManyItemCapture capture, string fullPathToManyOfItem)
+    public IndexedPropertyCapture DeriveForManyOfItem(ManyItemCapture capture)
     {
-        IsDerivedFromManyItem = true;
-        RegexPropInfo = capture.RegexPropInfo;
-        Capture = capture.Capture;
-        Start = capture.Capture.Index;
-        Length = capture.Capture.Length;
-        End = Start + Length;
-        IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
-        Text = capture.Capture.Value;
-        Value = capture.ItemObject;
-        Ordinal = (int)capture.Oridinal;
-        Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
-        IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
-        Path = fullPathToManyOfItem;
+        return new IndexedPropertyCapture
+        {
+            IsDerivedFromManyItem = true,
+            RegexPropInfo = capture.RegexPropInfo,
+            Capture = capture.Capture,
+            Start = capture.Capture.Index,
+            Length = capture.Capture.Length,
+            End = capture.Capture.Index + capture.Capture.Length,
+            IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf,
+            Text = capture.Capture.Value,
+            Value = capture.ItemObject,
+            Ordinal = (int)capture.Oridinal,
+            Palette = DeterministicPalette.GetFixedRainbowPalette((int)capture.Oridinal),
+            IgnoreInAnalysis = false,
+            //Path = Path.Dot(capture.Oridinal.ToString()),
+            CaptureGroupPropPath = new((Path.Dot(RegexPropInfo.Name) + capture.Oridinal.Description()).Dot(capture.ItemObject.ToString()))
+        };
+    }
+
+    public IndexedPropertyCapture DeriveForManyOfConjunction(ManyOf manyOf)
+    {
+        if (manyOf.Conjunction == null)
+            return null;
+
+        return new IndexedPropertyCapture
+        {
+            IsDerivedFromManyItem = true,
+            RegexPropInfo = RegexPropInfo,
+            Capture = manyOf.ConjunctionCapture,
+            Start = manyOf.ConjunctionCapture.Index,
+            Length = manyOf.ConjunctionCapture.Length,
+            End = manyOf.ConjunctionCapture.Index + manyOf.ConjunctionCapture.Length,
+            IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf,
+            Text = manyOf.ConjunctionCapture.Value,
+            Value = manyOf.Conjunction,
+            Ordinal = 0,
+            Palette = DeterministicPalette.GetFixedRainbowPalette(0),
+            IgnoreInAnalysis = false,
+            //Path = Path.Dot(capture.Oridinal.ToString()),
+            CaptureGroupPropPath = new(Path.Dot(nameof(ManyOf.Conjunction)).Dot(manyOf.Conjunction.ToString()))
+        };
     }
 
     public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {Ordinal} | Capture: \"{Capture.Value}\"";

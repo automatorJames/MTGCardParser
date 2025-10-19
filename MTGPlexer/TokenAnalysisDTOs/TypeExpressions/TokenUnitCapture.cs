@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenUnitComponents;
-
-namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 public record TokenUnitCapture
 {
@@ -27,7 +25,6 @@ public record TokenUnitCapture
         Palette = TokenTypeRegistry.Palettes[type];
         var template = TokenTypeRegistry.Templates[type];
         OccurrenceCount = rootTokensUnitsOfType.Count;
-
 
         foreach (var tokenUnit in rootTokensUnitsOfType)
             foreach (var flattenedTerminalCapture in tokenUnit.GetFlattenedTerminalCaptures())

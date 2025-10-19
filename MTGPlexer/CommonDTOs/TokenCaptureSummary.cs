@@ -220,11 +220,13 @@ public static class TokenCaptureSummary
 
             if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && itemCapture.ItemObject is TokenUnit tokenUnit)
             {
-                var itemPrecursor = CreatePrecursorBase(itemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
-                itemPrecursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-                var synthesized = new IndexedPropertyCapture(itemCapture, itemPath);
-                itemPrecursor.Children.Add(CreatePrecursorFor(synthesized, originalFullText));
-                precursor.Children.Add(itemPrecursor);
+                //var itemPrecursor = CreatePrecursorBase(itemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
+                //itemPrecursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
+                //var synthesized = new IndexedPropertyCapture(itemCapture, itemPath);
+                //itemPrecursor.Children.Add(CreatePrecursorFor(synthesized, originalFullText));
+                //precursor.Children.Add(itemPrecursor);
+
+                throw new NotImplementedException("Support for ManyOf<TokenUnit> not yet implemented, stick to enums for now");
             }
             else if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
             {

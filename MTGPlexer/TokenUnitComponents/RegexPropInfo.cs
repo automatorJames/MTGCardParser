@@ -38,7 +38,7 @@ public record RegexPropInfo
         return new RegexPropInfo
         {
             Prop = Prop,
-            RegexPropType = RegexPropType,
+            RegexPropType = BaseType.GetRegexPropType(),
             BaseType = BaseType,
             UnderlyingType = UnderlyingType,
             FriendlyTypeName = FriendlyTypeName,
@@ -70,7 +70,9 @@ public record RegexPropInfo
 
         RegexPropType regexPropType;
 
-        if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
+        if (isArray)
+            regexPropType = RegexPropType.ManyOf;
+        else if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
             regexPropType = RegexPropType.DistilledValue;
         else
             regexPropType = type.GetRegexPropType();

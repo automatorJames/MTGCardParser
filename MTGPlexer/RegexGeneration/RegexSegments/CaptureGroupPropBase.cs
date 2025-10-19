@@ -31,6 +31,7 @@ public enum RegexPropType
     Bool,
     DistilledValue,
     TokenUnit,
-    TokenUnitOneOf
+    TokenUnitOneOf,
+    ManyOf
 }
 
