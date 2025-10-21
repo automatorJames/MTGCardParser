@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+﻿using MTGPlexer.TokenUnitComponents;
+
+namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
 /// A static factory class that analyzes a root TokenUnit and produces a tree of immutable DTOs.
@@ -215,14 +217,14 @@ public static class TokenCaptureSummary
 
         for (int i = 0; i < manyOf.ItemObjects.Count; i++)
         {
-            var itemCapture = manyOf.ItemObjects[i];
+            var manyItemCapture = manyOf.ItemObjects[i];
             var itemPath = propCapture.Path + $"[{i}]";
 
-            if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && itemCapture.ItemObject is TokenUnit tokenUnit)
+            if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && manyItemCapture.ItemObject is TokenUnit tokenUnit)
             {
-                //var itemPrecursor = CreatePrecursorBase(itemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
+                //var itemPrecursor = CreatePrecursorBase(manyItemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
                 //itemPrecursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-                //var synthesized = new IndexedPropertyCapture(itemCapture, itemPath);
+                //var synthesized = propCapture.DeriveForManyOfItem(manyOf, manyItemCapture);
                 //itemPrecursor.Children.Add(CreatePrecursorFor(synthesized, originalFullText));
                 //precursor.Children.Add(itemPrecursor);
 
@@ -230,8 +232,8 @@ public static class TokenCaptureSummary
             }
             else if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
             {
-                var itemPrecursor = CreatePrecursorLeaf(itemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, i, originalFullText, TokenAnalysisElementType.ManyOfItemLeaf);
-                SetEnumScalar(itemPrecursor, itemCapture.ItemObject);
+                var itemPrecursor = CreatePrecursorLeaf(manyItemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, i, originalFullText, TokenAnalysisElementType.ManyOfItemLeaf);
+                SetEnumScalar(itemPrecursor, manyItemCapture.ItemObject);
                 precursor.Children.Add(itemPrecursor);
             }
             else throw new NotImplementedException($"{nameof(ManyItemVariant)} '{manyOf.ManyItemVariant}' not supported");

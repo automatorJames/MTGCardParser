@@ -145,14 +145,15 @@ public class RegexFormatter
             int indentSpaces;
             if (line is AlternateValue)
             {
-                var parentDepth = line.PropEnclosures.Any() ? line.PropEnclosures.Length - 1 : 0;
+                var parentDepth = line.Enclosures.Count(e => e is not RootEnclosure) - 1;
+                if (parentDepth < 0)
+                    parentDepth = 0;
+
                 const int alternatePrefixWidth = _spacesPerAlternateIndent + 2; // for "  | "
                 indentSpaces = (parentDepth * _spacesPerIndent) + alternatePrefixWidth;
             }
             else
-            {
                 indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
-            }
 
             var indentedRegex = new string(' ', indentSpaces) + regexText;
             var paddedRegex = indentedRegex.PadRight(_hashSeparatorColumn);
@@ -292,14 +293,15 @@ public class RegexFormatter
             int indentSpaces;
             if (line is AlternateValue)
             {
-                var parentDepth = line.PropEnclosures.Any() ? line.PropEnclosures.Length - 1 : 0;
+                var parentDepth = line.Enclosures.Count(e => e is not RootEnclosure) - 1;
+                if (parentDepth < 0)
+                    parentDepth = 0;
+
                 const int alternatePrefixWidth = _spacesPerAlternateIndent + 2; // for "  | "
                 indentSpaces = (parentDepth * _spacesPerIndent) + alternatePrefixWidth;
             }
             else
-            {
                 indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
-            }
 
             var length = indentSpaces;
             length += GetFinalRegexString(line).Length;
@@ -318,12 +320,18 @@ public class RegexFormatter
             _enumBoxMetrics[group.Key] = new EnumBoxLayoutMetrics(maxValueLength, maxCountLength);
         }
 
-        var uniquePaths = lines.SelectMany(l => l.PropEnclosures.Select((e, i) => l.PropEnclosures.Take(i + 1))).GroupBy(p => string.Join(",", p.Select(e => e.Ordinal))).Select(g => g.First()).Where(p => p.Any()).ToList();
+        var uniquePaths = lines
+            .SelectMany(l => l.VisibleEnclosures.Select((e, i) => l.VisibleEnclosures.Take(i + 1)))
+            .GroupBy(p => string.Join(",", p.Select(e => e.Ordinal)))
+            .Select(g => g.First())
+            .Where(p => p.Any())
+            .ToList();
+
         var boxWidths = uniquePaths.ToDictionary(p => string.Join(",", p.Select(e => e.Ordinal)), p => 0);
 
-        foreach (var line in lines.Where(l => l.PropEnclosures.Any()))
+        foreach (var line in lines.Where(l => l.VisibleEnclosures.Any()))
         {
-            var pathKey = string.Join(",", line.PropEnclosures.Select(e => e.Ordinal));
+            var pathKey = string.Join(",", line.VisibleEnclosures.Select(e => e.Ordinal));
             var requiredWidth = 0;
             if (!string.IsNullOrEmpty(line.Comment))
             {
@@ -368,10 +376,12 @@ public class RegexFormatter
     /// <returns>The number of indent levels.</returns>
     int GetIndentDepth(RegexElement line)
     {
-        if (line.PropEnclosures.Length == 0)
+        var depth = line.Enclosures.Count(e => e is not RootEnclosure);
+
+        if (depth == 0)
             return 0;
-        else
-            return line is EncloureBookend ? line.PropEnclosures.Length - 1 : line.PropEnclosures.Length;
+
+        return line is EncloureBookend ? depth - 1 : depth;
     }
 
     /// <summary>
@@ -381,7 +391,7 @@ public class RegexFormatter
     /// <returns>A hex color string.</returns>
     string GetPrimaryContentColorForLine(RegexElement line)
     {
-        if (line.PropEnclosures.Length == 0)
+        if (!line.VisibleEnclosures.Any())
         {
             return line switch
             {
@@ -392,7 +402,7 @@ public class RegexFormatter
             };
         }
 
-        var currentEnclosure = line.PropEnclosures.Last();
+        var currentEnclosure = line.VisibleEnclosures.Last();
         var palette = currentEnclosure.Palette;
 
         switch (line)
@@ -402,7 +412,7 @@ public class RegexFormatter
             case GroupClose: return _colors.GroupCloseQuantifierColor;
             case AlternateValue: return _colors.AlternateValueCommentColor(palette);
             case TextLine or SpaceLine or GroupAlternativePipe:
-                var nearestNamedEnclosure = line.PropEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
+                var nearestNamedEnclosure = line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
                 return nearestNamedEnclosure != null ? _colors.EnclosedTextColor(nearestNamedEnclosure.Palette) : DefaultWhite;
             default: return DefaultWhite;
         }
@@ -450,16 +460,17 @@ public class RegexFormatter
         }
 
         var defaultWhitePalette = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+        var visibleEnclosures = line.VisibleEnclosures.ToArray();
 
-        if (line.PropEnclosures.Length == 0)
+        if (visibleEnclosures.Length == 0)
         {
             var color = GetPrimaryContentColorForLine(line);
             spans.Add(new(line.Comment ?? "", DeterministicPalette.GetStaticPalette(new HexColor(color)), null, SpanHighlightTreatment.None, lowlight));
             return spans;
         }
 
-        var parentEnclosures = line.PropEnclosures.Take(line.PropEnclosures.Length - 1).ToList();
-        var currentEnclosure = line.PropEnclosures.Last();
+        var parentEnclosures = visibleEnclosures.Take(visibleEnclosures.Length - 1).ToList();
+        var currentEnclosure = visibleEnclosures.Last();
         var chars = BoxChars.Get(currentEnclosure.Treatment);
         var palette = currentEnclosure.Palette;
         var borderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(currentEnclosure.Treatment, palette)));
@@ -511,7 +522,7 @@ public class RegexFormatter
         else
         {
             var innerWidth = currentLevelWidth - 4;
-            AddSpanForEnclosurePath(chars.Wall + " ", borderPalette, borderHighlight, line.PropEnclosures);
+            AddSpanForEnclosurePath(chars.Wall + " ", borderPalette, borderHighlight, visibleEnclosures);
 
             switch (line)
             {
@@ -551,21 +562,21 @@ public class RegexFormatter
                     AddSpanForCurrentLine($"{new string(' ', genericTotalPad / 2)}{altCommentText}{new string(' ', genericTotalPad - (genericTotalPad / 2))}", DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette))), true);
                     break;
                 default:
-                    var nearestNamed = line.PropEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
+                    var nearestNamed = visibleEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
                     var contentPalette = nearestNamed != null ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.EnclosedTextColor(nearestNamed.Palette))) : defaultWhitePalette;
                     var content = string.IsNullOrEmpty(line.Comment) ? new string(' ', innerWidth) : (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
                     AddSpanForCurrentLine(content, contentPalette, true);
                     break;
             }
 
-            AddSpanForEnclosurePath(" " + chars.Wall, borderPalette, borderHighlight, line.PropEnclosures);
+            AddSpanForEnclosurePath(" " + chars.Wall, borderPalette, borderHighlight, visibleEnclosures);
         }
 
         var parentsReversed = parentEnclosures.AsEnumerable().Reverse().ToList();
         for (int i = 0; i < parentsReversed.Count(); i++)
         {
             var parent = parentsReversed[i];
-            var pathForParent = line.PropEnclosures.Take(parentEnclosures.Count - i).ToList();
+            var pathForParent = visibleEnclosures.Take(parentEnclosures.Count - i).ToList();
             var wall = BoxChars.Get(parent.Treatment).Wall;
             var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
             AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, pathForParent);

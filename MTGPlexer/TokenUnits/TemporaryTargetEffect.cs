@@ -1,7 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [Color("#ff00ff")]
-[IsolateForTesting]
 public class TemporaryTargetEffect : TokenUnit
 {
     public TemporaryTargetEffect() : base("target", nameof(CardType), nameof(PermanentVerb), nameof(GainedOrLostBuffs), "until", nameof(Phase)) { }

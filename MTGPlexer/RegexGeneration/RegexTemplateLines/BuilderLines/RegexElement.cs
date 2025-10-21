@@ -26,6 +26,8 @@ public class RegexElement
 
 
     public Enclosure[] PropEnclosures => Enclosures.OfType<NamedEnclosure>().ToArray();
+    public IEnumerable<Enclosure> VisibleEnclosures => Enclosures.Where(e => e is not RootEnclosure);
+
 
     public override string ToString() =>
         Regex
