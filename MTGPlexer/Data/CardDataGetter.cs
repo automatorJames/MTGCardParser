@@ -48,7 +48,9 @@ public class CardDataGetter
         //    new Card { Name = "Type3", Text = "Draws fecking shite cards" },
         //    //new Card { Name = "Type3", Text = "Draws holy hell cards" } 
         //];
-        result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" } };
+        //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" } };
+        //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type1Twin", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" }, new Card { Name = "Other", Text = "at the beginning of your upkeep" } };
+        //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type1Twin", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" } };
         return result.ToList();
     }
 }

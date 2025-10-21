@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
 /// Handles the formatting and presentation of a sequence of regular expression elements.
@@ -28,7 +30,7 @@ public class RegexFormatter
     public List<RegexCommentedLine> Format(
         IReadOnlyList<RegexElement> regexElements,
         BoundaryOption boundaryOption,
-        List<PropPathSynonymSetWrapper> synonymData)
+        List<PropPathSynonymSetContainer> synonymData)
     {
         var synonymDataLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
         var alternateCounts = new Dictionary<AlternateValueEnum, int>();
@@ -81,7 +83,7 @@ public class RegexFormatter
                     }
                 }
                 else
-                    throw new Exception($"NamedPath {enumContainer.NamedPath} not found among synonym paths {string.Join(", ", synonymDataLookup.Keys)}");
+                    Debug.WriteLine($"Warning: namedPath {enumContainer.NamedPath} not found among synonym paths {string.Join(", ", synonymDataLookup.Keys)}");
             }
             else if (element is AlternateValueContainer container)
                 expandedAndFilteredElements.AddRange(container.AlternateValues);

@@ -7,19 +7,37 @@ public class CaptureValueSynonymSet
     public Dictionary<string, int> SynonymCounts { get; }
     public int TotalCount => SynonymCounts.Sum(x => x.Value);
 
-    public CaptureValueSynonymSet(object canonicalValue, Capture synonymCapture)
+    /// <summary>
+    /// Space-separated set of paths used for ManyOf values so that each terminal value (first, secondPlus, last, and conjunction) 
+    /// within the whole ManyOf value be related by data-path to its associated formatted Regex line.
+    /// </summary>
+    public string ManyOfRelatedPaths { get; set; }
+
+    public CaptureValueSynonymSet(object canonicalValue, Capture synonymCapture) : this(canonicalValue, synonymCapture.Value)
     {
-        CanonicalValue = canonicalValue;
-        CanonicalValueDisplay = ToFriendlyStringOrPattern(canonicalValue);
-        SynonymCounts = [];
-        IncrementSynonymCapture(synonymCapture);
     }
 
-    public void IncrementSynonymCapture(Capture variantCapture)
+    public CaptureValueSynonymSet(object canonicalValue, string stringValue = null, string manyOfRelatedPaths = null, int? count = null)
     {
-        var stringValue = variantCapture.Value;
+        stringValue ??= canonicalValue.ToString();
+        CanonicalValue = canonicalValue;
+        CanonicalValueDisplay = ToFriendlyStringOrPattern(canonicalValue);
+        ManyOfRelatedPaths = manyOfRelatedPaths;
+        SynonymCounts = [];
+        IncrementOrSetValueCount(stringValue, count);
+    }
+
+    public void IncrementSynonymCapture(Capture variantCapture) => IncrementOrSetValueCount(variantCapture.Value);
+
+    public void IncrementOrSetValueCount(string stringValue, int? count = null)
+    {
+        // Ensure value exists
         SynonymCounts.TryAdd(stringValue, 0);
-        SynonymCounts[stringValue]++;
+
+        if (count.HasValue)
+            SynonymCounts[stringValue] = count.Value;
+        else
+            SynonymCounts[stringValue]++;
     }
 
     public override string ToString()

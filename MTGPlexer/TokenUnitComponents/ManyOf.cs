@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitComponents;
 
 public class ManyOf<T> : ManyOf
 {
@@ -42,6 +40,7 @@ public enum Conjunction
 [Color("#696969")]
 public class ManyOf : IEquatable<ManyOf>
 {
+    public Guid DistinctId { get; } = Guid.NewGuid();
     public List<ManyItemCapture> ItemObjects { get; set; }
     public ManyItemVariant ManyItemVariant { get; set; }
     public Type ItemType { get; set; }
@@ -60,6 +59,33 @@ public class ManyOf : IEquatable<ManyOf>
         return string.Join(separator, ItemObjects.Select(x => x.ItemObject.ToString()));
     }
 
+    /// <summary>
+    /// Used for GUI display purposes. Returns a space-separated path to each terminal value
+    /// (first, secondPlus, last, and conjunction).
+    /// </summary>
+    public string GetJoinedPathForAllTerminals(CaptureGroupPropPath parentPath)
+    {
+        string stringPath = "";
+
+        stringPath += string.Join(' ', ItemObjects.Select(x =>
+            parentPath.PropPathRelativeToRoot
+            + "."
+            + parentPath.LeafName + x.Oridinal.Description()
+            + "."
+            + x.ItemObject.ToString()));
+
+        if (Conjunction.HasValue)
+            stringPath += 
+                " " 
+                + parentPath.PropPathRelativeToRoot 
+                + "." 
+                + nameof(Conjunction) 
+                + "." 
+                + Conjunction.ToString();
+
+        return stringPath;
+    }
+
     public override bool Equals(object obj)
     {
         if (obj is null) return false;
@@ -74,8 +100,9 @@ public class ManyOf : IEquatable<ManyOf>
 
         if (Conjunction != other.Conjunction) return false;
 
-        return ItemObjects.Select(i => i.ItemObject.ToString())
-                          .SequenceEqual(other.ItemObjects.Select(i => i.ItemObject.ToString()));
+        return ItemObjects
+            .Select(i => i.ItemObject.ToString())
+            .SequenceEqual(other.ItemObjects.Select(i => i.ItemObject.ToString()));
     }
 
     public override int GetHashCode()

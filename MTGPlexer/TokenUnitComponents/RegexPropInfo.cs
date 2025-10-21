@@ -141,4 +141,6 @@ public record RegexPropInfo
 
         return terminalTypes.Contains(RegexPropType);
     }
+
+    public override string ToString() => Name;
 }

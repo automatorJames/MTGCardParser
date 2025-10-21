@@ -187,7 +187,7 @@ public class RegexBuilder
     /// </summary>
     /// <param name="synonymData">Data about captured synonyms to enrich the comments.</param>
     /// <returns>A list of formatted regex lines.</returns>
-    public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetWrapper> synonymData)
+    public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData)
     {
         var formatter = new RegexFormatter();
         return formatter.Format(_regexElements, _boundaryOption, synonymData);

@@ -122,9 +122,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
                     }
 
                     if (childItem == null)
-                    {
                         throw new Exception($"Found no matching values for enum type '{_baseType.Name}' from capture '{itemCapture.Value}'");
-                    }
                 }
 
                 // Create an instance of ManyItemCapture<T> and add it to the list

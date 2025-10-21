@@ -2,6 +2,7 @@
 
 public record CaptureGroupPropPath
 {
+    public string LeafName { get; }
     public string PropPath { get; }
     public string PropPathRelativeToRoot { get; }
     public string PropPathFriendly { get; }
@@ -24,6 +25,8 @@ public record CaptureGroupPropPath
             PropPathFriendly = string.Join(": ", pathPartsRelativeToRoot.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
             Parent = new(string.Join('.', splitPath.Take(splitPath.Length - 1)));
         }
+
+        LeafName = splitPath.Last();
     }
 
     public override string ToString() => PropPath;

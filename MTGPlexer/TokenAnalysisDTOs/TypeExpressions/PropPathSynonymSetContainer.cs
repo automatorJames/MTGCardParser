@@ -1,15 +1,18 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
-public class PropPathSynonymSetWrapper
+public class PropPathSynonymSetContainer
 {
     public CaptureGroupPropPath ParentPath { get; }
     public int AlternateCount { get; }
     public Dictionary<object, CaptureValueSynonymSet> SynonymSets { get; private set; } = [];
 
-    public PropPathSynonymSetWrapper(CaptureGroupPropPath parentPath, RegexPropInfo prop)
+    public PropPathSynonymSetContainer(CaptureGroupPropPath parentPath, RegexPropInfo prop = null)
     {
         ParentPath = parentPath;
-        AlternateCount = prop.RegexPropType == RegexPropType.Enum ? Enum.GetValues(prop.BaseType).Length : 0;
+
+        AlternateCount = prop == null || prop.RegexPropType != RegexPropType.Enum
+            ? 0
+            : Enum.GetValues(prop.BaseType).Length;
     }
 
     public void OrderByOccurrenceCount()

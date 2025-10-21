@@ -17,6 +17,7 @@ public record IndexedPropertyCapture
     public bool IsChildToken { get; private set; }
     public string Text { get; private set; }
     public object Value { get; private set; }
+    public object ParentValue { get; private set; }
     public int Ordinal { get; private set; }
     public Palette Palette { get; private set; }
     public bool IgnoreInAnalysis { get; private set; }
@@ -51,7 +52,7 @@ public record IndexedPropertyCapture
     /// an IndexedPropertyCapture but one does not exist because the capture was delegated to a ManyOf item, which performs a
     /// second-pass match to derive its items. The RegexPropInf oelement doesn't represent a ManyOf item directly, but rather its parent property.
     /// </summary>
-    public IndexedPropertyCapture DeriveForManyOfItem(ManyItemCapture capture)
+    public IndexedPropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
         return new IndexedPropertyCapture
         {
@@ -64,6 +65,7 @@ public record IndexedPropertyCapture
             IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf,
             Text = capture.Capture.Value,
             Value = capture.ItemObject,
+            ParentValue = manyOf,
             Ordinal = (int)capture.Oridinal,
             Palette = DeterministicPalette.GetFixedRainbowPalette((int)capture.Oridinal),
             IgnoreInAnalysis = false,
@@ -88,6 +90,7 @@ public record IndexedPropertyCapture
             IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf,
             Text = manyOf.ConjunctionCapture.Value,
             Value = manyOf.Conjunction,
+            ParentValue = manyOf,
             Ordinal = 0,
             Palette = DeterministicPalette.GetFixedRainbowPalette(0),
             IgnoreInAnalysis = false,

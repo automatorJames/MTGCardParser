@@ -62,12 +62,13 @@
                 }
             </div>
 
-            @if (tokenUnitCapture.PropPathVariantSetWrappers.Any())
+            @if (tokenUnitCapture.PropPathVariantSetsForTable.Any())
             {
                 int propCount = 0;
                 <div class="properties-container">
-                    @foreach ((var captureGroupPropPath, var captureValueVariantSetWrapper) in tokenUnitCapture.PropPathVariantSetWrappers)
+                    @foreach (var captureValueVariantSetWrapper in tokenUnitCapture.PropPathVariantSetsForTable)
                     {
+                        var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
                         var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
                         var propCardStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat}; border-color: {propSetPalette.HexDark};";
 
@@ -77,10 +78,10 @@
                                 <br />
                             </div>
                             <div class="prop-card-body">
-                                @foreach (var valueSet in captureValueVariantSetWrapper.SynonymSets.Values)
+                                @foreach (var valueSet in captureValueVariantSetWrapper.Value.SynonymSets.Values)
                                 {
                                     var canonicalStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat};";
-                                    var dataPath = captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
+                                    var dataPath = valueSet.ManyOfRelatedPaths ?? captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
 
                                     <div class="canonical-representation" style="@canonicalStyle" data-path=@dataPath>
                                         <span class="canonical-value">@valueSet.CanonicalValueDisplay</span>

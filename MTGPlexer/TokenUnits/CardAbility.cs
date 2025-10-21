@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 [RegexBoundaryOptionAtrribute(BoundaryOption.FullLine)]
 public class CardAbility : TokenUnit
 {
