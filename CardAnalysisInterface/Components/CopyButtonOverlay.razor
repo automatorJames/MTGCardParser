@@ -1,0 +1,36 @@
+﻿@inject IJSRuntime JSRuntime
+
+@{
+    var isCopied = _recentlyCopiedText.Contains(TextToCopy);
+}
+<div class="pre-container" @onclick="() => CopyToClipboardAsync(TextToCopy)">
+    <div class="copy-prompt @(isCopied ? "copied" : "")">
+        @(isCopied ? "Copied!" : "Click to copy")
+    </div>
+
+    @ChildContent
+
+</div>
+
+@code {
+
+    HashSet<string> _recentlyCopiedText = [];
+
+	[Parameter]
+	public string TextToCopy { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+
+    async Task CopyToClipboardAsync(string text)
+    {
+        if (_recentlyCopiedText.Contains(text)) return;
+        _recentlyCopiedText.Add(text);
+        await InvokeAsync(StateHasChanged);
+        await JSRuntime.InvokeVoidAsync("copyTextToClipboard", text);
+        await Task.Delay(2000);
+        _recentlyCopiedText.Remove(text);
+        await InvokeAsync(StateHasChanged);
+    }
+}

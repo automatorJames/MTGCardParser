@@ -32,6 +32,7 @@ public class RegexFormatter
         BoundaryOption boundaryOption,
         List<PropPathSynonymSetContainer> synonymData)
     {
+        synonymData ??= [];
         var synonymDataLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
         var alternateCounts = new Dictionary<AlternateValueEnum, int>();
 
@@ -41,10 +42,10 @@ public class RegexFormatter
         {
             if (element is AlternateValueEnumContainer enumContainer)
             {
-                SynonymTrailingSpacer spacerBuffer = null;
-
                 if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {
+                    SynonymTrailingSpacer spacerBuffer = null;
+
                     foreach (var synonymSet in wrapper.SynonymSets.Values)
                     {
                         if (spacerBuffer != null)
@@ -83,7 +84,7 @@ public class RegexFormatter
                     }
                 }
                 else
-                    Debug.WriteLine($"Warning: namedPath {enumContainer.NamedPath} not found among synonym paths {string.Join(", ", synonymDataLookup.Keys)}");
+                    expandedAndFilteredElements.AddRange(enumContainer.AlternateValueEnums);
             }
             else if (element is AlternateValueContainer container)
                 expandedAndFilteredElements.AddRange(container.AlternateValues);
@@ -247,7 +248,7 @@ public class RegexFormatter
     /// </summary>
     /// <param name="lines">The list of elements to add boundaries to.</param>
     /// <param name="boundaryOption">The type of boundary to add.</param>
-    void AddBoundaryLines(List<RegexElement> lines, BoundaryOption boundaryOption)
+    public static void AddBoundaryLines(List<RegexElement> lines, BoundaryOption boundaryOption)
     {
         if (boundaryOption == BoundaryOption.Omit)
             return;

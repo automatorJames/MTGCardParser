@@ -13,7 +13,6 @@
         </div>
 
         <div class="top-row-right-items">
-            <SearchBar />
 
             @if (RuntimeSettings.IsLoaded)
             {
@@ -24,7 +23,8 @@
                 }
                 else if (relativePath == "type-expressions")
                 {
-                    <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Minified" />
+                    <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Show Minified" />
+                    <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Show 0 Captures" />
                 }
                 else if (relativePath == "span-trees")
                 {
@@ -34,6 +34,9 @@
                     <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
                 }
             }
+
+            <SearchBar />
+
         </div>
     </nav>
 

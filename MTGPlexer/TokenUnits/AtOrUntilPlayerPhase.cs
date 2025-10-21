@@ -1,6 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [TokenizationOrder(0)]
+[IsolateForTesting]
 public class AtOrUntilPlayerPhase : TokenUnit
 {
     public AtOrUntilPlayerPhase() : base (nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase)) { }

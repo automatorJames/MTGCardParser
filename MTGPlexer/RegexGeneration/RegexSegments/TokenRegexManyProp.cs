@@ -1,6 +1,4 @@
-﻿using System.Collections;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -11,14 +9,9 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 {
     ManyItemVariant _manyItemType;
     Type _baseType;
-
     string[] _manyItemNames;
     Dictionary<string, ManyItemOrdinal> _manyItemNamesToOrdinals;
-
-    // todo: this is for when we implement ManyOf<TokenUnit> support
-    //List<RegexSegmentBase> _singleIterationSegments;
-
-    EnumRegexProp[] _ordinalEnumRegexProps = new EnumRegexProp[3];
+    RegexSegmentBase[] _ordinalRegexProps = new RegexSegmentBase[3];
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public override Regex MatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
@@ -40,35 +33,37 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
         if (_baseType.IsAssignableTo(typeof(TokenUnit)))
         {
-            // todo: we can implement this, but let's focus on the enum path for now
-            //_manyItemType = ManyItemVariant.TokenUnit;
-            //var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
-            //_singleIterationSegments = template.RegexSegments;
-            throw new NotImplementedException("Support for ManyOf<TokenUnit> not yet implemented, stick to enums for now");
+            _manyItemType = ManyItemVariant.TokenUnit;
+
+            _ordinalRegexProps =
+            [
+                new TokenRegexProp(captureProp.DerviveForManyOfItem(ManyItemOrdinal.First)),
+                new TokenRegexProp(captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus)),
+                new TokenRegexProp(captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last)),
+            ];
         }
         else if (_baseType.IsEnum)
         {
             _manyItemType = ManyItemVariant.Enum;
 
-            _ordinalEnumRegexProps =
+            _ordinalRegexProps =
             [
-                new(captureProp.DerviveForManyOfItem(ManyItemOrdinal.First)),
-                new(captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus)),
-                new(captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last)),
+                new EnumRegexProp(captureProp.DerviveForManyOfItem(ManyItemOrdinal.First)),
+                new EnumRegexProp(captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus)),
+                new EnumRegexProp(captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last)),
             ];
         }
         else
             throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
-
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
-        ConcatenatingComposer.Instance.Compose(builder, [_ordinalEnumRegexProps[0]]);
+        ConcatenatingComposer.Instance.Compose(builder, [_ordinalRegexProps[0]]);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         builder.AddTextLine(", ");
-        ConcatenatingComposer.Instance.Compose(builder, [_ordinalEnumRegexProps[1]]);
+        ConcatenatingComposer.Instance.Compose(builder, [_ordinalRegexProps[1]]);
         builder.CloseGroup(GroupQuantifier.AnyNumber);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
         builder.AddTextLine(",? ");
@@ -76,7 +71,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         _conjunctionProp.ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);
-        ConcatenatingComposer.Instance.Compose(builder, [_ordinalEnumRegexProps[2]]);
+        ConcatenatingComposer.Instance.Compose(builder, [_ordinalRegexProps[2]]);
         builder.CloseGroup();
         builder.CloseGroup();
     }
@@ -93,7 +88,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
         // Dynamically create the generic type for List<ManyItemCapture<T>>
         var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(_baseType);
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
-        var hydratedItems = (IList)Activator.CreateInstance(listType);
+        var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
         for (int i = 0; i < ordinalGroups.Length; i++)
         {
@@ -106,9 +101,8 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
                 if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    //todo: re-enable this after implementing for TokenUnits
-                    //var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
-                    //childItem = token.HydrateAsChildFromCapture(_baseType, match, itemCapture, ancestorCapturePath);
+                    var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
+                    childItem = token.HydrateAsChildFromCapture(_baseType, match, itemCapture, ancestorCapturePath);
                 }
                 else if (_manyItemType == ManyItemVariant.Enum)
                 {

@@ -185,9 +185,9 @@ public class RegexBuilder
     /// <summary>
     /// Generates a fully formatted, commented, and colorized list of regex lines.
     /// </summary>
-    /// <param name="synonymData">Data about captured synonyms to enrich the comments.</param>
+    /// <param name="synonymData">Optional data about captured synonyms to enrich the comments.</param>
     /// <returns>A list of formatted regex lines.</returns>
-    public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData)
+    public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
         var formatter = new RegexFormatter();
         return formatter.Format(_regexElements, _boundaryOption, synonymData);

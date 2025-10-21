@@ -7,13 +7,13 @@
 /// </summary>
 public class TokenRegexProp : CaptureGroupPropBase
 {
-    public override Regex MatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.UnderlyingType].Regex;
+    public override Regex MatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.BaseType].Regex;
 
     public List<RegexSegmentBase> ChildSegments { get; set; }
 
     public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
+        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         ChildSegments = template.RegexSegments;
     }
 

@@ -1,0 +1,115 @@
+﻿.properties-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0 12px;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+/* --- Property Card Highlighting & Lowlighting --- */
+.property-capture-card, .canonical-representation {
+    transition: border-color 0.1s, background-color 0.1s, color 0.1s, opacity 0.1s;
+}
+
+    /* --- MODIFIED RULES --- */
+    /* Combine :hover and [highlight-active] to ensure consistent styling */
+    .property-capture-card[highlight-active],
+    .property-capture-card:not([lowlight-active]):hover {
+        border-color: var(--hex-light) !important;
+    }
+
+    .canonical-representation[highlight-active],
+    .property-capture-card:not([lowlight-active]) .canonical-representation:hover {
+        background-color: var(--hex-light);
+        color: var(--hex-dark);
+    }
+
+        /* Target the total-count span specifically to override its inline style */
+        .canonical-representation[highlight-active] .total-count,
+        .property-capture-card:not([lowlight-active]) .canonical-representation:hover .total-count {
+            color: var(--hex-dark);
+        }
+
+    .property-capture-card[lowlight-active],
+    .canonical-representation[lowlight-active] {
+        opacity: 0.5;
+    }
+
+
+.property-capture-card {
+    background-color: #2d2d2d;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 6px;
+    box-sizing: border-box;
+    flex: 0 0 calc((100% - (4 * 1rem)) / 5);
+    max-width: none;
+    min-width: 0;
+    font-size: 13px;
+    cursor: pointer;
+    color: #c5c5c5;
+    display: flex;
+    flex-direction: column;
+}
+
+
+.prop-card-header {
+    background-color: #3a3a3a;
+    padding: 6px 10px;
+    font-weight: bold;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom: 1px solid #444;
+}
+
+.prop-card-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.canonical-representation,
+.capture-variant {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.canonical-representation {
+    font-weight: 500;
+    background-color: #333333;
+}
+
+.variants-sub-table {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 20px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+}
+
+.capture-variant {
+    font-size: 12px;
+    background-color: #292929;
+}
+
+    .capture-variant:hover {
+        background-color: #444;
+    }
+
+.canonical-value,
+.variant-value {
+    word-break: break-all;
+}
+
+.total-count, .variant-count {
+    font-family: monospace;
+    color: #a0a0a0;
+}

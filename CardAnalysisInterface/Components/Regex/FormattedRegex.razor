@@ -1,0 +1,27 @@
+﻿<pre class="formatted-regex-fira" style=@BorderStyle>
+    <code>
+        @foreach (var line in Lines)
+        {
+            foreach (var span in line.Spans)
+            {
+                var style = $"--hex: {span.Palette.Hex}; --hex-light: {span.Palette.HexLight}; --hex-dark: {span.Palette.HexDark}; --hex-sat: {span.Palette.HexSat}; color: {span.Palette.Hex};";
+                <span style="@style"
+                    data-path="@span.PathRelativeToRoot"
+                    data-highlight="@span.HighlightTreatment"
+                    data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
+            }
+            @("\n")
+        }
+    </code>
+</pre>
+
+
+@code {
+
+	[Parameter]
+	public List<RegexCommentedLine> Lines { get; set; }
+
+    [Parameter]
+    public string BorderStyle { get; set; }
+
+}

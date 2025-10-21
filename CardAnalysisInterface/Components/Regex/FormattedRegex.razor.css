@@ -1,0 +1,32 @@
+﻿.formatted-regex-fira {
+    font-family: 'Fira Code', monospace;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.25;
+    white-space: pre;
+}
+
+/* --- Span Styling --- */
+pre.formatted-regex-fira code span {
+    transition: color 0.1s, background-color 0.1s;
+}
+
+/* Highlight Treatments */
+span[highlight-active][data-highlight="TextToHexLight"] {
+    color: var(--hex-light) !important;
+}
+
+span[highlight-active][data-highlight="TextToHexSat"] {
+    color: var(--hex-sat) !important;
+}
+
+span[highlight-active][data-highlight="BackgroundToHex"] {
+    background-color: var(--hex) !important;
+    color: #111 !important; /* High contrast dark text */
+    border-radius: 3px;
+}
+
+/* Lowlight Treatment */
+span[lowlight-active][data-lowlight="TextToHexDark"] {
+    color: var(--hex-dark) !important;
+}

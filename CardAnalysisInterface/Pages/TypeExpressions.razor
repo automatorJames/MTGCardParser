@@ -10,11 +10,7 @@
 @using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines
 @using MTGPlexer.Colors
 
-@{
-    var filteredCaptures = GetFilteredTokenUnitCaptures();
-}
-
-<div class="type-card-container">
+@* <div class="type-card-container">
     @foreach (var tokenUnitCapture in filteredCaptures)
     {
         <div class="type-card" @key=tokenUnitCapture.Type.Name>
@@ -43,76 +39,51 @@
                 }
                 else
                 {
-                    <pre class="formatted-regex-fira" style=@preStyle>
-                        <code>
-                            @foreach (var line in tokenUnitCapture.FilteredLines)
-                            {
-                                foreach (var span in line.Spans)
-                                {
-                                    var style = $"--hex: {span.Palette.Hex}; --hex-light: {span.Palette.HexLight}; --hex-dark: {span.Palette.HexDark}; --hex-sat: {span.Palette.HexSat}; color: {span.Palette.Hex};";
-                                    <span style="@style"
-                                        data-path="@span.PathRelativeToRoot"
-                                        data-highlight="@span.HighlightTreatment"
-                                        data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
-                                }
-                                @("\n")
-                            }
-                        </code>
-                    </pre>
+                    <FormattedRegex Lines=@tokenUnitCapture.FilteredLines BorderStyle=@tokenUnitCapture.Palette.ToColorStyle() />
                 }
             </div>
 
-            @if (tokenUnitCapture.PropPathVariantSetsForTable.Any())
-            {
-                int propCount = 0;
-                <div class="properties-container">
-                    @foreach (var captureValueVariantSetWrapper in tokenUnitCapture.PropPathVariantSetsForTable)
-                    {
-                        var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
-                        var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
-                        var propCardStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat}; border-color: {propSetPalette.HexDark};";
+        <PropCaptureCountSection TokenUnitCapture=@tokenUnitCapture />
 
-                        <div class="property-capture-card" style="@propCardStyle" data-path=@captureGroupPropPath.PropPathRelativeToRoot>
-                            <div class="prop-card-header" style="color: @propSetPalette.Hex;">
-                                @captureGroupPropPath.PropPathFriendly
-                                <br />
-                            </div>
-                            <div class="prop-card-body">
-                                @foreach (var valueSet in captureValueVariantSetWrapper.Value.SynonymSets.Values)
-                                {
-                                    var canonicalStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat};";
-                                    var dataPath = valueSet.ManyOfRelatedPaths ?? captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
-
-                                    <div class="canonical-representation" style="@canonicalStyle" data-path=@dataPath>
-                                        <span class="canonical-value">@valueSet.CanonicalValueDisplay</span>
-                                        <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
-                                    </div>
-
-                                    @if (valueSet.SynonymCounts.Count > 1)
-                                    {
-                                        <div class="variants-sub-table">
-                                            @foreach (var synonym in valueSet.SynonymCounts.OrderByDescending(x => x.Value))
-                                            {
-                                                var synonymPath = dataPath.Dot(synonym.Key);
-                                                <div class="capture-variant" data-path=@synonymPath>
-                                                    <span class="variant-value">@synonym.Key</span>
-                                                    <span class="variant-count">@synonym.Value</span>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
         </div>
+
+    }
+</div> *@
+
+<div class="type-card-container">
+    @foreach (var tokenUnitCapture in GetFilteredTokenUnitCaptures())
+    {
+        <div class="type-card" @key=tokenUnitCapture.Type.Name>
+            <div class="card-header">
+                <TokenTypeName TokenType=@tokenUnitCapture.Type />
+                <span class="match-count @(tokenUnitCapture.OccurrenceCount == 0 ? "zero" : "")">
+                    <i class="matches-label">matches:</i> @tokenUnitCapture.OccurrenceCount
+                </span>
+            </div>
+
+            <CopyButtonOverlay TextToCopy=@tokenUnitCapture.FormattedRegexString>
+                @if (RuntimeSettings.ShowMinified)
+                {
+                    <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
+                        <code>@tokenUnitCapture.MinifiedRegexString</code>
+                    </pre>
+                }
+                else
+                {
+                    <FormattedRegex Lines=@tokenUnitCapture.FilteredLines BorderStyle=@tokenUnitCapture.Palette.ToColorStyle() />
+                }
+            </CopyButtonOverlay>
+
+
+
+            <PropCaptureCountSection TokenUnitCapture=@tokenUnitCapture />
+
+        </div>
+
     }
 </div>
 
 @code {
-    private HashSet<string> _recentlyCopiedText = new();
 
     protected override void OnInitialized()
     {
@@ -137,25 +108,14 @@
         var searchTerm = RuntimeSettings.SearchTerm;
 
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return CorpusAnalyzer.CaptureSummary.TokenUnitCaptures.Values;
+            return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values;
 
         var term = searchTerm.Trim();
 
-        return CorpusAnalyzer.CaptureSummary.TokenUnitCaptures
+        return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures
             .Where(x =>
                 x.Key.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
                 x.Key.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value);
-    }
-
-    private async Task CopyToClipboardAsync(string text)
-    {
-        if (_recentlyCopiedText.Contains(text)) return;
-        _recentlyCopiedText.Add(text);
-        await InvokeAsync(StateHasChanged);
-        await JSRuntime.InvokeVoidAsync("copyTextToClipboard", text);
-        await Task.Delay(2000);
-        _recentlyCopiedText.Remove(text);
-        await InvokeAsync(StateHasChanged);
     }
 }

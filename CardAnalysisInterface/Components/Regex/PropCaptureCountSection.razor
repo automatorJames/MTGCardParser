@@ -1,0 +1,52 @@
+﻿@if (TokenUnitCapture.PropPathVariantSetsForTable.Any())
+{
+    int propCount = 0;
+    <div class="properties-container">
+        @foreach (var captureValueVariantSetWrapper in TokenUnitCapture.PropPathVariantSetsForTable)
+        {
+            var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
+            var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
+            var propCardStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat}; border-color: {propSetPalette.HexDark};";
+
+            <div class="property-capture-card" style="@propCardStyle" data-path=@captureGroupPropPath.PropPathRelativeToRoot>
+                <div class="prop-card-header" style="color: @propSetPalette.Hex;">
+                    @captureGroupPropPath.PropPathFriendly
+                    <br />
+                </div>
+                <div class="prop-card-body">
+                    @foreach (var valueSet in captureValueVariantSetWrapper.Value.SynonymSets.Values)
+                    {
+                        var canonicalStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat};";
+                        var dataPath = valueSet.ManyOfRelatedPaths ?? captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
+
+                        <div class="canonical-representation" style="@canonicalStyle" data-path=@dataPath>
+                            <span class="canonical-value">@valueSet.CanonicalValueDisplay</span>
+                            <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
+                        </div>
+
+                        @if (valueSet.SynonymCounts.Count > 1)
+                        {
+                            <div class="variants-sub-table">
+                                @foreach (var synonym in valueSet.SynonymCounts.OrderByDescending(x => x.Value))
+                                {
+                                    var synonymPath = dataPath.Dot(synonym.Key);
+                                    <div class="capture-variant" data-path=@synonymPath>
+                                        <span class="variant-value">@synonym.Key</span>
+                                        <span class="variant-count">@synonym.Value</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+
+    [Parameter]
+	public TokenUnitCapture TokenUnitCapture { get; set; }
+
+}

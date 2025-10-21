@@ -1,7 +1,4 @@
 ﻿using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace CardAnalysisInterface
 {
@@ -78,6 +75,21 @@ namespace CardAnalysisInterface
                 if (_showMinified != value)
                 {
                     _showMinified = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
+        private bool _showRegexesWithZeroCaptures;
+        public bool ShowRegexesWithZeroCaptures
+        {
+            get => _showRegexesWithZeroCaptures;
+            set
+            {
+                if (_showRegexesWithZeroCaptures != value)
+                {
+                    _showRegexesWithZeroCaptures = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }
