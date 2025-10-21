@@ -28,7 +28,7 @@
     right: 0;
     bottom: 0;
     background-color: #ccc;
-    transition: .2s;
+    transition: var(--transition-time);
     border-radius: 20px; /* Rounded corners */
 }
 
@@ -40,7 +40,7 @@
         left: 3px; /* Adjusted position */
         bottom: 3px; /* Adjusted position */
         background-color: white;
-        transition: .4s;
+        transition: var(--transition-time);
         border-radius: 50%;
     }
 

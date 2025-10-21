@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
 /// Handles the formatting and presentation of a sequence of regular expression elements.
@@ -331,7 +329,10 @@ public class RegexFormatter
             {
                 var textWidth = line switch
                 {
-                    AlternateValueEnum ave => _enumBoxMetrics[ave.NamedPath].MaxValueLength + 3 + _enumBoxMetrics[ave.NamedPath].MaxCountLength + 2,
+                    AlternateValueEnum ave =>
+                        _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics)
+                        ? metrics.MaxValueLength + (metrics.MaxCountLength > 0 ? 3 + metrics.MaxCountLength : 0) + 2
+                        : 0,
                     BlankLine bl when bl.Comment.EndsWith("omitted") => bl.Comment.Length + 2,
                     AlternateValue or NamedGroupOpen or NamedGroupClose or GroupClose => line.Comment.Length + 2,
                     _ => _boxContentLeftPadding + line.Comment.Length
@@ -517,13 +518,29 @@ public class RegexFormatter
                 case SynonymTrailingSpacer:
                     AddSpanForCurrentLine(new string('-', innerWidth), palette, true);
                     break;
-                case AlternateValueEnum ave when alternateCounts.TryGetValue(ave, out var count) && _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics):
-                    var altPalette = DeterministicPalette.GetStaticPalette(new HexColor(ave is SynonymValueEnum ? _colors.SynonymValueCommentColor(palette) : _colors.AlternateValueCommentColor(palette)));
-                    var lineText = $"{ave.Comment.PadLeft(metrics.MaxValueLength)} : {count}";
-                    var totalPad = Math.Max(0, innerWidth - (metrics.MaxValueLength + 3 + metrics.MaxCountLength));
-                    var fullContent = $"{new string(' ', totalPad / 2)}{lineText}{new string(' ', metrics.MaxValueLength + 3 + metrics.MaxCountLength - lineText.Length)}{new string(' ', totalPad - (totalPad / 2))}";
-                    AddSpanForCurrentLine(fullContent, altPalette, true);
-                    break;
+                case AlternateValueEnum ave when _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics):
+                    {
+                        string lineText;
+                        string fullContent;
+                        Palette altPalette;
+
+                        if (alternateCounts.TryGetValue(ave, out var count))
+                        {
+                            altPalette = DeterministicPalette.GetStaticPalette(new HexColor(ave is SynonymValueEnum ? _colors.SynonymValueCommentColor(palette) : _colors.AlternateValueCommentColor(palette)));
+                            lineText = $"{ave.Comment.PadLeft(metrics.MaxValueLength)} : {count}";
+                            var totalPad = Math.Max(0, innerWidth - (metrics.MaxValueLength + 3 + metrics.MaxCountLength));
+                            fullContent = $"{new string(' ', totalPad / 2)}{lineText}{new string(' ', metrics.MaxValueLength + 3 + metrics.MaxCountLength - lineText.Length)}{new string(' ', totalPad - (totalPad / 2))}";
+                        }
+                        else
+                        {
+                            altPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
+                            lineText = ave.Comment.PadLeft(metrics.MaxValueLength);
+                            var totalPad = Math.Max(0, innerWidth - metrics.MaxValueLength);
+                            fullContent = $"{new string(' ', totalPad / 2)}{lineText}{new string(' ', totalPad - (totalPad / 2))}";
+                        }
+                        AddSpanForCurrentLine(fullContent, altPalette, true);
+                        break;
+                    }
                 case BlankLine bl when !string.IsNullOrEmpty(bl.Comment) && bl.Comment.EndsWith("omitted"):
                     var omitPad = Math.Max(0, innerWidth - bl.Comment.Length);
                     AddSpanForCurrentLine($"{new string(' ', omitPad / 2)}{bl.Comment}{new string(' ', omitPad - (omitPad / 2))}", DeterministicPalette.GetStaticPalette(new HexColor(_colors.OmittedEnumCountColor)), true);

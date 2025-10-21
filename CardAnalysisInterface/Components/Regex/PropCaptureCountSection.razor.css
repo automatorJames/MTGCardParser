@@ -9,7 +9,7 @@
 
 /* --- Property Card Highlighting & Lowlighting --- */
 .property-capture-card, .canonical-representation {
-    transition: border-color 0.1s, background-color 0.1s, color 0.1s, opacity 0.1s;
+    transition: border-color var(--transition-time), background-color var(--transition-time), color var(--transition-time), opacity var(--transition-time);
 }
 
     /* --- MODIFIED RULES --- */

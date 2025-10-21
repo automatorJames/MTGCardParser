@@ -61,7 +61,7 @@
     justify-content: center;
     width: 20px;
     height: 14px;
-    transition: background-color 0.2s ease;
+    transition: background-color var(--transition-time);
 }
 
     /* CHANGED: SVG fill is now white */

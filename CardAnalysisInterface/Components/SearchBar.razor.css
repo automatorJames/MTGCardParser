@@ -14,7 +14,7 @@
     color: #f0f0f0;
     font-size: 14px;
     outline: none;
-    transition: border-color 0.2s, background-color 0.2s;
+    transition: border-color var(--transition-time), background-color var(--transition-time);
 }
 
     .search-input:focus {

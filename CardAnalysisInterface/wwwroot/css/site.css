@@ -1,6 +1,8 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
 :root {
+    --global-transition-duration: 0.1;
+    --transition-time: calc(var(--global-transition-duration) * 1s) ease-in-out;
     --dark-grey: #1e1e1e;
     --light-grey: #252526;
     --navy: #1a202c;

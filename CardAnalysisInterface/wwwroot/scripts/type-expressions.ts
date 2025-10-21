@@ -13,24 +13,36 @@ function initializeTypeExpressionsHover(): void {
 /**
  * Handles the mouseover event to apply highlighting and lowlighting treatments.
  * It determines the active data paths from the hovered element and updates the card's state.
+ * If the mouse moves to a neutral element without a data-path, it clears existing highlights.
  */
 function handleMouseOver(event: MouseEvent): void {
     const target = (event.target as HTMLElement).closest('[data-path], [data-paths]');
     const card = (event.target as HTMLElement).closest<HTMLElement>('.type-card');
-    if (!card || !target) return;
+    if (!card) return;
+
+    // If there's no target, we've moved to a neutral space.
+    // Clear any active highlights for this card and exit.
+    if (!target) {
+        if (card.dataset.activePath) {
+            clearAllTreatments(card);
+            delete card.dataset.activePath;
+        }
+        return;
+    }
 
     const htmlTarget = target as HTMLElement;
     const hoveredPathsString = htmlTarget.dataset.paths ?? htmlTarget.dataset.path ?? null;
     const currentActivePath = card.dataset.activePath;
 
+    // If we're still hovering over the same active path, do nothing.
     if (hoveredPathsString === currentActivePath) {
         return;
     }
 
+    // Update the card's active path state.
     if (hoveredPathsString) {
         card.dataset.activePath = hoveredPathsString;
-    }
-    else {
+    } else {
         delete card.dataset.activePath;
     }
 

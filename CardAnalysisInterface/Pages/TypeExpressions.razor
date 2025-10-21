@@ -10,50 +10,12 @@
 @using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines
 @using MTGPlexer.Colors
 
-@* <div class="type-card-container">
-    @foreach (var tokenUnitCapture in filteredCaptures)
-    {
-        <div class="type-card" @key=tokenUnitCapture.Type.Name>
-            <div class="card-header">
-                <TokenTypeName TokenType=@tokenUnitCapture.Type />
-                <span class="match-count @(tokenUnitCapture.OccurrenceCount == 0 ? "zero" : "")">
-                    <i class="matches-label">matches:</i> @tokenUnitCapture.OccurrenceCount
-                </span>
-            </div>
-
-            @{
-                var textToCopy = tokenUnitCapture.FormattedRegexString;
-                var isCopied = _recentlyCopiedText.Contains(textToCopy);
-                var preStyle = tokenUnitCapture.Palette.ToColorStyle();
-            }
-            <div class="pre-container" @onclick="() => CopyToClipboardAsync(textToCopy)">
-                <div class="copy-prompt @(isCopied ? "copied" : "")">
-                    @(isCopied ? "Copied!" : "Click to copy")
-                </div>
-
-                @if (RuntimeSettings.ShowMinified)
-                {
-                    <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
-                        <code>@tokenUnitCapture.MinifiedRegexString</code>
-                    </pre>
-                }
-                else
-                {
-                    <FormattedRegex Lines=@tokenUnitCapture.FilteredLines BorderStyle=@tokenUnitCapture.Palette.ToColorStyle() />
-                }
-            </div>
-
-        <PropCaptureCountSection TokenUnitCapture=@tokenUnitCapture />
-
-        </div>
-
-    }
-</div> *@
-
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in GetFilteredTokenUnitCaptures())
     {
-        <div class="type-card" @key=tokenUnitCapture.Type.Name>
+        var borderColorStyle = tokenUnitCapture.Palette.ToColorStyle();
+
+        <div class="type-card" style=@borderColorStyle @key=tokenUnitCapture.Type.Name>
             <div class="card-header">
                 <TokenTypeName TokenType=@tokenUnitCapture.Type />
                 <span class="match-count @(tokenUnitCapture.OccurrenceCount == 0 ? "zero" : "")">
@@ -64,20 +26,17 @@
             <CopyButtonOverlay TextToCopy=@tokenUnitCapture.FormattedRegexString>
                 @if (RuntimeSettings.ShowMinified)
                 {
-                    <pre style=@tokenUnitCapture.Palette.ToColorStyle("white-space: pre-wrap;")>
+                    <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
                         <code>@tokenUnitCapture.MinifiedRegexString</code>
                     </pre>
                 }
                 else
                 {
-                    <FormattedRegex Lines=@tokenUnitCapture.FilteredLines BorderStyle=@tokenUnitCapture.Palette.ToColorStyle() />
+                    <FormattedRegex Lines=@tokenUnitCapture.FilteredLines BorderStyle=@borderColorStyle />
                 }
             </CopyButtonOverlay>
 
-
-
             <PropCaptureCountSection TokenUnitCapture=@tokenUnitCapture />
-
         </div>
 
     }
@@ -103,19 +62,25 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private IEnumerable<TokenUnitCapture> GetFilteredTokenUnitCaptures()
+    List<TokenUnitCapture> GetFilteredTokenUnitCaptures()
     {
+        List<TokenUnitCapture> filteredTokenUnitCaptures = CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values.ToList();
+
+        if (RuntimeSettings.ShowRegexesWithZeroCaptures)
+            filteredTokenUnitCaptures.AddRange(CorpusAnalyzer.TokenCaptureSummary.UnmatchedTokenUnits.Values);
+
         var searchTerm = RuntimeSettings.SearchTerm;
 
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values;
+            return filteredTokenUnitCaptures;
 
         var term = searchTerm.Trim();
 
-        return CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures
+        return filteredTokenUnitCaptures
             .Where(x =>
-                x.Key.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                x.Key.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase))
-            .Select(x => x.Value);
+                x.Type.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || x.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase)
+                || x.MinifiedRegexString.Contains(term, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 }

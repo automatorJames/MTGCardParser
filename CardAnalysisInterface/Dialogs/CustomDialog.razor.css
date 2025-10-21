@@ -63,7 +63,7 @@
     cursor: pointer;
     border: none;
     /* Smooth transitions for a high-quality feel */
-    transition: all 0.2s ease-out;
+    transition: all var(--transition-time);
 }
 
 /* The Primary "Save" button */

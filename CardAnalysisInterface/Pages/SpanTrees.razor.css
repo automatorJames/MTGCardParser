@@ -110,7 +110,7 @@
 
 .type-name-item.lowlight {
     opacity: 0.2;
-    transition: all 0.15s ease-in-out;
+    transition: all var(--transition-time);
 }
 
     .type-name-item.lowlight.keep-border {
@@ -134,14 +134,14 @@
     stroke: var(--node-border-color, #666);
     stroke-width: 2.5px;
     fill: #2d2d2d;
-    transition: opacity 150ms ease-in-out, fill 150ms ease-in-out;
+    transition: opacity var(--transition-time), fill var(--transition-time);
 }
 
 ::deep .connector-path.base-layer {
     stroke: var(--node-border-color, #444);
     fill: none;
     stroke-width: 2.5px;
-    transition: opacity 150ms ease-in-out;
+    transition: opacity var(--transition-time);
 }
 
 /* ADDED: Style for the new anchor hover overlay layer */
@@ -174,7 +174,7 @@
 
 ::deep .node-text-content {
     fill: #e0e0e0;
-    transition: fill 150ms ease-in-out, opacity 150ms ease-in-out;
+    transition: fill var(--transition-time), opacity var(--transition-time);
 }
 
 ::deep .interactive-subspan {
@@ -186,7 +186,7 @@
 }
 
 ::deep .main-anchor-span {
-    transition: filter 0.2s ease-in-out;
+    transition: filter var(--transition-time);
     color: #ffffff;
 }
 

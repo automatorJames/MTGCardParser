@@ -27,16 +27,23 @@ public record TokenUnitCapture
     public Dictionary<(Guid distinguisher, ManyOf manyOf), CaptureGroupPropPath> DistinctManyOfValuePropPaths { get; private set; } = [];
     public Dictionary<CaptureGroupPropPath, Dictionary<ManyOf, int>> PropPathToManyOfValueCount { get; private set; } = [];
 
-    public TokenUnitCapture(Type type, List<TokenUnit> rootTokensUnitsOfType)
+    public TokenUnitCapture(Type type, List<TokenUnit> rootTokensUnitsOfType = null)
     {
         Type = type;
         TypeName = type.Name;
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
         Palette = TokenTypeRegistry.Palettes[type];
         var template = TokenTypeRegistry.Templates[type];
-        OccurrenceCount = rootTokensUnitsOfType.Count;
-        ProcessFlattenedTerminalCaptures(rootTokensUnitsOfType);
-        FilteredLines = template.Builder.GetFormattedLines(PropPathVariantSetsForRegex.Values.ToList());
+
+        if (rootTokensUnitsOfType != null)
+        {
+            ProcessFlattenedTerminalCaptures(rootTokensUnitsOfType);
+            FilteredLines = template.Builder.GetFormattedLines(PropPathVariantSetsForRegex.Values.ToList());
+            OccurrenceCount = rootTokensUnitsOfType.Count;
+        }
+        else
+            FilteredLines = template.Builder.GetFormattedLines(null);
+
         FormattedRegexString = string.Join("\r\n", FilteredLines.Select(x => x.FormattedText));
         MinifiedRegexString = template.Builder.GetMinified();
     }

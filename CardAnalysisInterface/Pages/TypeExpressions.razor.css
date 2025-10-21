@@ -11,7 +11,7 @@
     max-width: 1800px;
     background-color: #252525;
     border-radius: 8px;
-    border: 1px solid #333;
+    border: 1px solid var(--lowlight-color, var(--outline-grey));
     padding-bottom: 12px;
 }
 
@@ -45,13 +45,9 @@ pre {
     border: 1px solid var(--lowlight-color, var(--outline-grey));
     white-space: pre;
     word-wrap: break-word;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Fira Code', monospace;
     font-size: 14px;
     line-height: 1.5;
     margin: 0;
-    transition: background-color 0.1s ease-in-out;
-}
-
-.pre-container:hover pre {
-    background-color: #181818;
+    transition: background-color var(--transition-time);
 }

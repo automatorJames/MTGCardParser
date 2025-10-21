@@ -18,8 +18,8 @@
     background: #e0e0e0;
     outline: none;
     opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
+    -webkit-transition: var(--transition-time);
+    transition: opacity var(--transition-time);
     border-radius: 5px;
 }
 

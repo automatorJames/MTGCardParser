@@ -8,7 +8,7 @@ namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 public class TokenUnitCaptureSummary
 {
     public Dictionary<Type, TokenUnitCapture> TokenUnitCaptures { get; } = [];
-    public Dictionary<Type, List<RegexCommentedLine>> UnmatchedTokenFormattedRegex { get; } = [];
+    public Dictionary<Type, TokenUnitCapture> UnmatchedTokenUnits { get; } = [];
 
     public TokenUnitCaptureSummary(List<ProcessedCard> processedCards)
     {
@@ -31,7 +31,8 @@ public class TokenUnitCaptureSummary
             TokenUnitCaptures[rootType] = new(rootType, rootTokensOfType);
         }
 
+        // Make TokenUniCaptures for types that have no captures in case GUI callers want to see their regex patterns
         foreach (var type in orderedRootTokenUnitTypes.Except(TokenUnitCaptures.Keys).Where(x => x != typeof(DefaultUnmatchedString)))
-            UnmatchedTokenFormattedRegex[type] = TokenTypeRegistry.Templates[type].Builder.GetFormattedLines();
+            UnmatchedTokenUnits[type] = new TokenUnitCapture(type);
     }
 }
