@@ -66,6 +66,48 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         builder.CloseGroup();
     }
 
+    /// <summary>
+    /// Recursively hydrates a token's properties using a tree of suffixed property definitions (`TokenRegexProp`).
+    /// This method avoids re-matching on substrings by using the main `Match` object and looking up
+    /// capture groups by their suffixed names (e.g., "PermanentVerb_first").
+    /// </summary>
+    private void HydrateTokenFromSuffixedProps(TokenUnit tokenToHydrate, Match match, TokenRegexProp suffixedParentProp)
+    {
+        // Iterate through the children of the current token definition.
+        // Each 'suffixedChildProp' has a name that has been suffixed (e.g., "_first") during regex generation.
+        foreach (var suffixedChildProp in suffixedParentProp.ChildSegments.OfType<CaptureGroupPropBase>())
+        {
+            // Check if this suffixed group was successful in the main match.
+            if (!match.Groups[suffixedChildProp.Name].Success) continue;
+
+            // If the property is another TokenUnit, we need to instantiate it and recurse.
+            if (suffixedChildProp is TokenRegexProp nestedTokenProp)
+            {
+                var nestedCapture = match.Groups[suffixedChildProp.Name];
+
+                // Create the child TokenUnit instance.
+                var nestedToken = (TokenUnit)Activator.CreateInstance(nestedTokenProp.RegexPropInfo.BaseType);
+                nestedToken.TopLevelMatch = match;
+                nestedToken.Capture = nestedCapture; // Use the capture from the main match, which has the correct absolute index.
+                nestedToken.CapturePath = tokenToHydrate.CapturePath.Dot(nestedTokenProp.RegexPropInfo.Prop.Name); // Use original, unsuffixed prop name for path.
+                tokenToHydrate.ChildTokenUnits.Add(nestedToken);
+
+                // Set the property on the parent. This also creates the parent's IndexedPropertyCapture for the nested token.
+                tokenToHydrate.SetPropertyFromCapture(nestedTokenProp.RegexPropInfo, nestedCapture, nestedToken);
+
+                // Recurse to hydrate the children of this new nested token.
+                HydrateTokenFromSuffixedProps(nestedToken, match, nestedTokenProp);
+            }
+            else
+            {
+                // If the property is a terminal (Enum, Bool, Placeholder), its SetValueFromMatch is safe to call directly.
+                // It will look up the suffixed group name in the main match and create an IndexedPropertyCapture
+                // using the capture object that has the correct absolute index.
+                suffixedChildProp.SetValueFromMatch(tokenToHydrate, match);
+            }
+        }
+    }
+
     public override bool SetValueFromMatch(TokenUnit token, Match match)
     {
         Group[] ordinalGroups =
@@ -75,7 +117,6 @@ public record TokenRegexManyProp : CaptureGroupPropBase
             match.Groups[_manyItemNames[2]],
         ];
 
-        // Dynamically create the generic type for List<ManyItemCapture<T>>
         var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(_baseType);
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
@@ -91,12 +132,25 @@ public record TokenRegexManyProp : CaptureGroupPropBase
 
                 if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    var itemMatch = _itemMatchRegex.Match(itemCapture.Value);
-                    var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
-                    childItem = token.HydrateAsChildFromCapture(_baseType, itemMatch, itemCapture, ancestorCapturePath, addToChildTokenUnits: false);
+                    var tokenUnitChild = (TokenUnit)Activator.CreateInstance(_baseType);
+
+                    // Set the top-level properties for this child item.
+                    tokenUnitChild.TopLevelMatch = match;
+                    tokenUnitChild.Capture = itemCapture; // This capture has the correct absolute index.
+                    tokenUnitChild.CapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{hydratedItems.Count}]");
+                    token.ChildTokenUnits.Add(tokenUnitChild);
+
+                    // Get the 'TokenRegexProp' that contains the suffixed definitions for this ordinal.
+                    var ordinalTokenProp = _ordinalRegexProps[i] as TokenRegexProp;
+
+                    // Call our recursive helper to correctly hydrate the child and all its descendants.
+                    HydrateTokenFromSuffixedProps(tokenUnitChild, match, ordinalTokenProp);
+
+                    childItem = tokenUnitChild;
                 }
                 else if (_manyItemType == ManyItemVariant.Enum)
                 {
+                    // Enum logic remains the same as it does not involve nested structures or re-matching.
                     foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternates)
                     {
                         if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
@@ -110,7 +164,6 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                         throw new Exception($"Found no matching values for enum type '{_baseType.Name}' from capture '{itemCapture.Value}'");
                 }
 
-                // Create an instance of ManyItemCapture<T> and add it to the list
                 var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, ordinal, RegexPropInfo);
                 hydratedItems.Add(hydratedItem);
             }
@@ -119,15 +172,15 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         var conjunctionCapture = match.Groups[nameof(Conjunction)];
         Conjunction? conjunctionValue = Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) ? parsed : null;
 
-        // Dynamically create the generic type for ManyToken<T>
         var manyTokenType = typeof(ManyOf<>).MakeGenericType(_baseType);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
 
-        token.SetPropertyFromCapture(RegexPropInfo, match, manyPropVal);
+        // Use the capture for the entire ManyOf group.
+        var manyOfCapture = match.Groups[Name].Success ? match.Groups[Name] : match;
+        token.SetPropertyFromCapture(RegexPropInfo, manyOfCapture, manyPropVal);
 
         return true;
     }
-
 
     public override string ToString() => base.ToString();
 }

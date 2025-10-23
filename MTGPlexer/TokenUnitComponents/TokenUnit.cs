@@ -76,15 +76,13 @@ public abstract class TokenUnit
         return tokenUnit;
     }
 
-    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, Match match, Capture childCapture, string ancestorCapturePath, bool addToChildTokenUnits = true)
+    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, Match match, Capture childCapture, string ancestorCapturePath)
     {
         var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath);
 
         // overwrite the child's Capture property
         tokenUnitChild.Capture = childCapture;
-
-        if (addToChildTokenUnits)
-            ChildTokenUnits.Add(tokenUnitChild);
+        ChildTokenUnits.Add(tokenUnitChild);
 
         return tokenUnitChild;
     }
