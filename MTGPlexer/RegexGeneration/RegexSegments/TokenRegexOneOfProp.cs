@@ -1,18 +1,14 @@
-﻿using MTGPlexer.RegexGeneration.Composers;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public class TokenRegexOneOfProp : TokenRegexProp
+public record TokenRegexOneOfProp : TokenRegexProp
 {
     public TokenRegexOneOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
-        ChildSegments = template.RegexSegments;
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
@@ -21,7 +17,7 @@ public class TokenRegexOneOfProp : TokenRegexProp
         SpaceDisposition? spaceDisposition = !ChildSegments.Any(x => x is TextSegment) ? SpaceDisposition.NeverAddSpaceLocal : null;
 
         builder.OpenGroup(RegexPropInfo, spaceDisposition: spaceDisposition);
-        AlternatingComposer.Instance.Compose(builder, ChildSegments);
+        AlternatingComposer.Instance.Compose(builder, ChildSegments.ToList());
         builder.CloseGroup();
     }
 

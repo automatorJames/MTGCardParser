@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public class DynamicRegexProp : ScalarCapturePropBase
+public record DynamicRegexProp : ScalarCapturePropBase
 {
     public DynamicRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {

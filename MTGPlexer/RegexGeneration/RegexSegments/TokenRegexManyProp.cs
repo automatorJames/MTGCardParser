@@ -5,31 +5,21 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public class TokenRegexManyProp : CaptureGroupPropBase
+public record TokenRegexManyProp : CaptureGroupPropBase
 {
     ManyItemVariant _manyItemType;
     Type _baseType;
     string[] _manyItemNames;
-    Dictionary<string, ManyItemOrdinal> _manyItemNamesToOrdinals;
     RegexSegmentBase[] _ordinalRegexProps = new RegexSegmentBase[3];
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
-    public override Regex MatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
+    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
+    Regex _itemMatchRegex => TokenTypeRegistry.TypeRegexes[_baseType];
 
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
         _baseType = captureProp.BaseType;
         _manyItemNames = Enum.GetValues<ManyItemOrdinal>().Select(x => $"{captureProp.Name}{x.Description()}").ToArray();
-
-        _manyItemNamesToOrdinals = new Dictionary<string, ManyItemOrdinal>
-        {
-            [_manyItemNames[0]] = ManyItemOrdinal.First,
-            [_manyItemNames[1]] = ManyItemOrdinal.SecondPlus,
-            [_manyItemNames[2]] = ManyItemOrdinal.Last,
-        };
-
-        if (!_baseType.IsAssignableTo(typeof(TokenUnit)) && !_baseType.IsEnum)
-            throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
 
         if (_baseType.IsAssignableTo(typeof(TokenUnit)))
         {
@@ -92,7 +82,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
         for (int i = 0; i < ordinalGroups.Length; i++)
         {
-            var ordinal = _manyItemNamesToOrdinals[_manyItemNames[i]];
+            var ordinal = (ManyItemOrdinal)i;
             var ordinalGroup = ordinalGroups[i];
 
             foreach (Capture itemCapture in ordinalGroup.Captures)
@@ -101,8 +91,9 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
                 if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
+                    var itemMatch = _itemMatchRegex.Match(itemCapture.Value);
                     var ancestorCapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{i}]");
-                    childItem = token.HydrateAsChildFromCapture(_baseType, match, itemCapture, ancestorCapturePath);
+                    childItem = token.HydrateAsChildFromCapture(_baseType, itemMatch, itemCapture, ancestorCapturePath, addToChildTokenUnits: false);
                 }
                 else if (_manyItemType == ManyItemVariant.Enum)
                 {
@@ -136,6 +127,7 @@ public class TokenRegexManyProp : CaptureGroupPropBase
 
         return true;
     }
+
 
     public override string ToString() => base.ToString();
 }

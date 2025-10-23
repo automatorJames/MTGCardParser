@@ -41,7 +41,9 @@ public static partial class TokenTypeRegistry
         if (!Templates.ContainsKey(type))
             SetTypeTemplate(type);
 
-        return Templates[type];
+        var template = Templates[type];
+
+        return template;
     }
 
     static void SetTypeTemplate(Type type)

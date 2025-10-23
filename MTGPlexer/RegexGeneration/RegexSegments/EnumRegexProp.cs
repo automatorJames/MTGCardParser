@@ -5,9 +5,9 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public class EnumRegexProp : ScalarCapturePropBase
+public record EnumRegexProp : ScalarCapturePropBase
 {
-    public override Regex MatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)

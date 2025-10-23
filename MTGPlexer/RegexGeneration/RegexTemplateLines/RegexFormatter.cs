@@ -82,6 +82,7 @@ public class RegexFormatter
                     }
                 }
                 else
+                    // Add all as a fallback
                     expandedAndFilteredElements.AddRange(enumContainer.AlternateValueEnums);
             }
             else if (element is AlternateValueContainer container)

@@ -1,7 +1,4 @@
-﻿using MTGPlexer.TokenUnitComponents;
-using System.Diagnostics;
-
-namespace MTGPlexer.CommonDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index
@@ -69,7 +66,7 @@ public record IndexedPropertyCapture
             Ordinal = (int)capture.Oridinal,
             Palette = DeterministicPalette.GetFixedRainbowPalette((int)capture.Oridinal),
             IgnoreInAnalysis = false,
-            //Path = Path.Dot(capture.Oridinal.ToString()),
+            Path = Path.Dot(capture.Oridinal.ToString()),
             CaptureGroupPropPath = new((Path.Dot(RegexPropInfo.Name) + capture.Oridinal.Description()).Dot(capture.ItemObject.ToString()))
         };
     }

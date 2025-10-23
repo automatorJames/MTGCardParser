@@ -44,7 +44,7 @@ public class ProcessedLine
 
             List<SpanRoot> spanRoots =
                 TokenTypeRegistry.Tokenize(lineText)
-                .Select(x => TokenCaptureSummary.CreateFrom(x, originalLineText, card.Name, i))
+                .Select(x => TokenCaptureBuilder.CreateFrom(x, originalLineText, card.Name, i))
                 .ToList();
 
             List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalLineText);

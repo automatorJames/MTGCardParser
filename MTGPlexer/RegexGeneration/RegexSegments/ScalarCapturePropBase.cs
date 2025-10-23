@@ -4,9 +4,9 @@
 /// The base class for all TokenUnit properties with a name Regex capture group whose pattern, is 
 /// associated with some scalar property.
 /// </summary>
-public abstract class ScalarCapturePropBase : CaptureGroupPropBase
+public abstract record ScalarCapturePropBase : CaptureGroupPropBase
 {
-    public override Regex MatchRegex => TokenTypeRegistry.PropScalarAlternativeSets[RegexPropInfo].CollectiveRegex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.PropScalarAlternativeSets[RegexPropInfo].CollectiveRegex;
 
     public ScalarAlternateSet ScalarAlternativeSet { get; protected set; }
 

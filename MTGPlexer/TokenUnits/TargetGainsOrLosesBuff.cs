@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 public class TargetGainsOrLosesBuff : TokenUnit
 {
     public TargetGainsOrLosesBuff() : base(nameof(TagetCardType), nameof(GainedOrLostBuff), "until end of turn"){ }
@@ -8,4 +9,6 @@ public class TargetGainsOrLosesBuff : TokenUnit
 
     [OptionalMany]
     public GainedOrLostBuff GainedOrLostBuff { get; set; }
+
+    //public ManyOf<GainedOrLostBuff> GainedOrLostBuff_Many { get; set; }
 }

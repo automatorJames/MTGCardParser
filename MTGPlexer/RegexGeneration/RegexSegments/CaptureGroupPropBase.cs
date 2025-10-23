@@ -5,11 +5,11 @@
 /// associated with some property, including child TokenUnit properties. Includes mechanisms for 
 /// setting values for properties of all relevant types.
 /// </summary>
-public abstract class CaptureGroupPropBase : RegexSegmentBase
+public abstract record CaptureGroupPropBase : RegexSegmentBase
 {
-    public string Name { get; init; }
+    public string Name { get; }
     public RegexPropInfo RegexPropInfo { get; init; }
-    public abstract Regex MatchRegex { get; }
+    public abstract Regex ManyMatchRegex { get; }
     
     public CaptureGroupPropBase(RegexPropInfo captureProp)
     {

@@ -7,11 +7,18 @@ public record RegexPropInfo
     public bool IsManyOf { get; init; }
     public Type BaseType { get; init; }
     public Type UnderlyingType { get; init; }
-    public string Name { get; init; }
     public string FriendlyTypeName { get; init; }
     public string FriendlyPropName { get; init; }
     public bool IsTerminal { get; init; }
     public bool MayBeNull { get; init; }
+    public string Name { get; init; }
+
+    /// <summary>
+    /// If not null, any recursive descendants of this RegexPropInfo will inherit this
+    /// appendix, which may grow as the descendancy tree grows. Used for scenarios like
+    /// ManyOf items, which must pass their distinguishing ordinal name down to all children
+    /// </summary>
+    public string DistinguishingAppendix { get; init; }
 
     private RegexPropInfo()
     {
@@ -35,7 +42,7 @@ public record RegexPropInfo
         if (!IsManyOf)
             throw new Exception($"May only derive a {nameof(RegexPropInfo)} many-of-item instance if {nameof(IsManyOf)} is true");
 
-        return new RegexPropInfo
+        var derivedManyOfPropInfo = new RegexPropInfo
         {
             Prop = Prop,
             RegexPropType = BaseType.GetRegexPropType(),
@@ -45,12 +52,15 @@ public record RegexPropInfo
             FriendlyPropName = FriendlyPropName,
             IsTerminal = IsTerminal,
             MayBeNull = MayBeNull,
-            IsManyOf = false,       // toggle this off to represent the item level
-            Name = Name + manyItemOrdinal.Description()   // append "_first", "_2plus", or "_last" to the original name
+            IsManyOf = false, // "IsManyOf" only refers to the parent ManyOf, not the items it contains
+            Name = Name + manyItemOrdinal.Description(),
+            DistinguishingAppendix = manyItemOrdinal.Description()
         };
+
+        return derivedManyOfPropInfo;
     }
 
-    private static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
+    static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
     {
         Type type = prop.PropertyType;
         bool isArray = false;
@@ -130,17 +140,17 @@ public record RegexPropInfo
 
     bool CheckIsTerminal()
     {
-        List<RegexPropType> terminalTypes = 
+        List<RegexPropType> terminalTypes =
         [
-            RegexPropType.Enum, 
-            RegexPropType.Bool, 
-            RegexPropType.Placeholder, 
-            RegexPropType.Dynamic, 
+            RegexPropType.Enum,
+            RegexPropType.Bool,
+            RegexPropType.Placeholder,
+            RegexPropType.Dynamic,
             RegexPropType.DistilledValue
         ];
 
         return terminalTypes.Contains(RegexPropType);
     }
-
+    
     public override string ToString() => Name;
 }

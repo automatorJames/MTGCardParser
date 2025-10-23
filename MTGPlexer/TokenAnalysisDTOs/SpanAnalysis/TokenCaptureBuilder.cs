@@ -1,14 +1,12 @@
-﻿using MTGPlexer.TokenUnitComponents;
-
-namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
-/// A static factory class that analyzes a root TokenUnit and produces a tree of immutable DTOs.
+/// A static factory class that analyzes a root TokenUnit and produces a tree of DTOs.
 /// </summary>
-public static class TokenCaptureSummary
+public static class TokenCaptureBuilder
 {
     /// <summary>
-    /// Internal mutable class for building the tree structure before converting to immutable DTOs.
+    /// Internal mutable class for building the tree structure before converting to DTOs.
     /// </summary>
     private class PrecursorNode
     {
@@ -47,12 +45,10 @@ public static class TokenCaptureSummary
 
         // Stage 4: Add the final card-specific properties to the root DTO.
         if (rootDtoBase is SpanRoot finalRootDto)
-        {
             return finalRootDto with { CardName = cardName, ClauseIndex = clauseIndex };
-        }
 
-        // This should not happen if the logic is correct.
-        throw new InvalidOperationException("The root of the DTO tree was not a TokenAnalysisRoot.");
+        // This should not happen
+        throw new InvalidOperationException("The root of the DTO tree was not a SpanRoot.");
     }
 
     /// <summary>
@@ -81,7 +77,7 @@ public static class TokenCaptureSummary
         if (val is TokenUnit tokenUnit) 
             return CreatePrecursorForTokenUnit(propCapture, tokenUnit, originalFullText);
 
-        if (val is ManyOf manyOf) 
+        if (val is ManyOf manyOf)
             return CreatePrecursorForManyOf(propCapture, manyOf, originalFullText);
 
         if (val is DynamicCapture dynamicCapture) 
@@ -127,10 +123,10 @@ public static class TokenCaptureSummary
     {
         var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.TokenUnitBranch);
         precursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-
+    
         foreach (var x in tokenUnit.IndexedPropertyCaptures)
             precursor.Children.Add(CreatePrecursorFor(x, originalFullText));
-
+    
         return precursor;
     }
 
@@ -222,13 +218,11 @@ public static class TokenCaptureSummary
 
             if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && manyItemCapture.ItemObject is TokenUnit tokenUnit)
             {
-                //var itemPrecursor = CreatePrecursorBase(manyItemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
-                //itemPrecursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-                //var synthesized = propCapture.DeriveForManyOfItem(manyOf, manyItemCapture);
-                //itemPrecursor.Children.Add(CreatePrecursorFor(synthesized, originalFullText));
-                //precursor.Children.Add(itemPrecursor);
-
-                throw new NotImplementedException("Support for ManyOf<TokenUnit> not yet implemented, stick to enums for now");
+                var itemPrecursor = CreatePrecursorBase(manyItemCapture.Capture, propCapture.RegexPropInfo.Name + " #" + (i + 1), itemPath, originalFullText, TokenAnalysisElementType.ManyOfItemBranch);
+                itemPrecursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
+                var synthesized = propCapture.DeriveForManyOfItem(manyOf, manyItemCapture);
+                itemPrecursor.Children.Add(CreatePrecursorFor(synthesized, originalFullText));
+                precursor.Children.Add(itemPrecursor);
             }
             else if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
             {

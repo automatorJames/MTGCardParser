@@ -1,14 +1,11 @@
-﻿
-using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a bool property on a TokenUnit. Bool property Regexes typically check for the optional presence
 /// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
 /// its pattern(s), but in the absence of this the normalized property name is matched.
 /// </summary>
-public class BoolRegexProp : ScalarCapturePropBase
+public record BoolRegexProp : ScalarCapturePropBase
 {
     public BoolRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {

@@ -23,7 +23,7 @@
                 </span>
             </div>
 
-            <CopyButtonOverlay TextToCopy=@tokenUnitCapture.FormattedRegexString>
+            <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified ? tokenUnitCapture.MinifiedRegexString : tokenUnitCapture.FormattedRegexString)>
                 @if (RuntimeSettings.ShowMinified)
                 {
                     <pre style=@(borderColorStyle + " white-space: pre-wrap;")>

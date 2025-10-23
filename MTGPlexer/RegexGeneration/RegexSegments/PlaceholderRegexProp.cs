@@ -1,10 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have
@@ -14,7 +8,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// know how to decompose it yet, or the containing TokenUnit overrides SetPropertiesFromMatch and needs a property
 /// to store an interim text value.
 /// </summary>
-public class PlaceholderRegexProp : ScalarCapturePropBase
+public record PlaceholderRegexProp : ScalarCapturePropBase
 {
     public PlaceholderRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
