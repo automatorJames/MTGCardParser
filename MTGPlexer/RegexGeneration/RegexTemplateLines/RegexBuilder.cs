@@ -48,8 +48,7 @@ public class RegexBuilder
     /// </summary>
     /// <param name="captureGroup">The property info for the capture group, if it's a named group.</param>
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
-    /// <param name="nameOverride">An optional name to override the property name.</param>
-    public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, string nameOverride = null)
+    public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null)
     {
         AddPrecedingSpaceIfApplicable();
         Enclosure enclosure = null;
@@ -69,7 +68,7 @@ public class RegexBuilder
             else
                 palette = DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
 
-            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, palette, captureGroup, nameOverride);
+            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, palette, captureGroup);
         }
         else
             enclosure = new Enclosure(_nextEnclosureOrdinal++);
@@ -84,8 +83,7 @@ public class RegexBuilder
 
         if (captureGroup != null)
         {
-            var name = nameOverride ?? captureGroup.Name;
-            _regexElements.Add(new NamedGroupOpen(_orderedEnclosureStack, name, captureGroup));
+            _regexElements.Add(new NamedGroupOpen(_orderedEnclosureStack, captureGroup));
         }
         else
             _regexElements.Add(new GroupOpen(_orderedEnclosureStack));

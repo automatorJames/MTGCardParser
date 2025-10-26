@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
+﻿using System.Diagnostics;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
 
 public record NamedEnclosure : Enclosure
 {
@@ -24,7 +26,7 @@ public record NamedEnclosure : Enclosure
     }
 
     static GroupBorderTreatment GetTreatment(RegexPropInfo regexPropInfo) => 
-        regexPropInfo.RegexPropType == RegexPropType.Enum && !regexPropInfo.IsManyOf
+        regexPropInfo.RegexPropType == RegexPropType.Enum && !regexPropInfo.IsManyOfProp
             ? GroupBorderTreatment.ClosedBox
             : GroupBorderTreatment.DashedBox;
 }

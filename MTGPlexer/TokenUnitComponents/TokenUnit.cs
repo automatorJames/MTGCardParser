@@ -60,7 +60,7 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null)
+    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null, string distinguishingAppendix = null)
     {
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
         tokenUnit.TopLevelMatch = match;
@@ -68,30 +68,40 @@ public abstract class TokenUnit
         tokenUnit.CapturePath = capturePath ?? tokenUnitType.Name;
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
-            if (match.Groups[captureProp.Name].Success)
-                captureProp.SetValueFromMatch(tokenUnit, match);
+            if (match.Groups[captureProp.Name + distinguishingAppendix].Success)
+                captureProp.SetValueFromMatch(tokenUnit, match, distinguishingAppendix);
+            else if (tokenUnitType.IsAssignableTo(typeof(TokenUnitOneOf)))
+                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.Value}' contains no named capture group '{captureProp.Name + distinguishingAppendix}'");
+            else
+                throw new Exception($"No capture group named '{captureProp.Name}' exists for match '{match.Value}'");
 
         tokenUnit.OnAfterHydrated();
 
         return tokenUnit;
     }
 
-    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, Match match, Capture childCapture, string ancestorCapturePath)
+    public TokenUnit HydrateAsChildFromCapture(
+        Type tokenUnitType, 
+        Match match, 
+        Capture childCapture, 
+        string ancestorCapturePath, 
+        string distinguishingAppendix = null)
     {
-        var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath);
+        var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath, distinguishingAppendix);
 
-        // overwrite the child's Capture property
+        // overwrite the child's Capture property 	MTGPlexer.dll!MTGPlexer.RegexGeneration.RegexSegments.TokenRegexManyProp.SetValueFromMatch(MTGPlexer.TokenUnitComponents.TokenUnit token, System.Text.RegularExpressions.Match match, string distinguishingAppendix) Line 118	C#
+
         tokenUnitChild.Capture = childCapture;
         ChildTokenUnits.Add(tokenUnitChild);
 
         return tokenUnitChild;
     }
 
-    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
+    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal, string distinguishingAppendix = null)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, CapturePath));
+        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, CapturePath, distinguishingAppendix));
     }
 
     /// <summary>
@@ -105,36 +115,48 @@ public abstract class TokenUnit
             .ToList();
 
         ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
-        terminalCaptures.AddRange(GetManyOfTerminalCaptures());
+        terminalCaptures.AddRange(FlattenManyOfCaptures());
 
         return terminalCaptures;
     }
 
     /// <summary>
-    /// Recurses through ManyOf props, including ManyOf.Conjunction.
+    /// Recursively processes all ManyOf props into terminals (ManyItemVariant.Enum). Also returns 
+    /// the ManyOf.Conjunction value, if any, for both ManyItemVariant.Enum and ManyItemVariant.TokenUnit.
     /// </summary>
-    public List<IndexedPropertyCapture> GetManyOfTerminalCaptures()
+    public List<IndexedPropertyCapture> FlattenManyOfCaptures()
     {
         List<IndexedPropertyCapture> terminalCaptures = [];
 
         var manyOfPropCaps = IndexedPropertyCaptures
-            .Where(x => x.Value is ManyOf)
+            .Where(x => x.Value is ManyOf manyOf)
             .ToList();
 
-        foreach (var manyOfPropCap in manyOfPropCaps)
+        foreach (var manyOfTerminalPropCap in manyOfPropCaps)
         {
-            var manyOf = (ManyOf)manyOfPropCap.Value;
+            var manyOf = (ManyOf)manyOfTerminalPropCap.Value;
 
             for (int i = 0; i < manyOf.ItemObjects.Count; i++)
             {
                 var manyItem = manyOf.ItemObjects[i];
-                var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, manyItem);
-                terminalCaptures.Add(derivedPropCapture);
+
+                if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
+                {
+                    var derivedPropCapture = manyOfTerminalPropCap.DeriveForManyOfItem(manyOf, manyItem);
+                    terminalCaptures.Add(derivedPropCapture);
+                }
+                else if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit)
+                {
+                    var derivedPropCapture = manyOfTerminalPropCap.DeriveForManyOfItem(manyOf, manyItem);
+                    var manyOfTokenUnit = (TokenUnit)manyItem.ItemObject;
+                    terminalCaptures.AddRange(manyOfTokenUnit.GetFlattenedTerminalCaptures());
+                }
             }
 
+            // For both enums (terminals) and branches (TokenUnits), both of which may have a terminal Conjunction
             if (manyOf.Conjunction != null)
             {
-                var derivedPropCapture = manyOfPropCap.DeriveForManyOfConjunction(manyOf);
+                var derivedPropCapture = manyOfTerminalPropCap.DeriveForManyOfConjunction(manyOf);
                 terminalCaptures.Add(derivedPropCapture);
             }
         }

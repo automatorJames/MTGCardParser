@@ -16,7 +16,7 @@ public record EnumRegexProp : ScalarCapturePropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo, nameOverride: Name);
+        builder.OpenGroup(RegexPropInfo);
         builder.AddAlternateEnumValues(EnumSet);
         builder.CloseGroup();
     }
@@ -49,9 +49,9 @@ public record EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name];
+        var capture = match.Groups[Name + distinguishingAppendix];
 
         if (!capture.Success)
         {
@@ -62,7 +62,7 @@ public record EnumRegexProp : ScalarCapturePropBase
         }
 
         var valueToSet = GetEnumMatchValue(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet, distinguishingAppendix);
         return true;
     }
 

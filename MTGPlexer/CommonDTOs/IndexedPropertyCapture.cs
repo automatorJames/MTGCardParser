@@ -26,7 +26,7 @@ public record IndexedPropertyCapture
     {
     }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentTokenPath)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, string parentTokenPath, string distinguishingAppendix = null)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;
@@ -40,14 +40,19 @@ public record IndexedPropertyCapture
         Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
         Path = parentTokenPath.Dot(regexPropInfo.Name);
-        CaptureGroupPropPath = regexPropInfo.IsTerminal ? new(parentTokenPath.Dot(regexPropInfo.Name).Dot(value.ToString())) : new(parentTokenPath);
+
+        CaptureGroupPropPath = regexPropInfo.IsTerminal 
+            ? distinguishingAppendix is not null 
+                ? new(parentTokenPath + "." + parentTokenPath.LastPathPart() + distinguishingAppendix + "." + regexPropInfo.Name + distinguishingAppendix + "." + value.ToString())
+                : new(parentTokenPath.Dot(regexPropInfo.Name).Dot(value.ToString()))
+            : new(parentTokenPath);
+
     }
 
-
     /// <summary>
-    /// Esed for synthesizing IndexedPropertyCaptures from ManyItemCaptures. This is necessary in flows that require
+    /// Used for synthesizing IndexedPropertyCaptures from ManyItemCaptures. This is necessary in flows that require
     /// an IndexedPropertyCapture but one does not exist because the capture was delegated to a ManyOf item, which performs a
-    /// second-pass match to derive its items. The RegexPropInf oelement doesn't represent a ManyOf item directly, but rather its parent property.
+    /// second-pass match to derive its items. The RegexPropInfo element doesn't represent a ManyOf item directly, but rather its parent property.
     /// </summary>
     public IndexedPropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
@@ -59,7 +64,7 @@ public record IndexedPropertyCapture
             Start = capture.Capture.Index,
             Length = capture.Capture.Length,
             End = capture.Capture.Index + capture.Capture.Length,
-            IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf,
+            IsChildToken = IsChildToken,
             Text = capture.Capture.Value,
             Value = capture.ItemObject,
             ParentValue = manyOf,

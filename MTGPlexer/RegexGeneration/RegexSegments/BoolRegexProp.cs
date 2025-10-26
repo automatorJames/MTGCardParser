@@ -18,9 +18,9 @@ public record BoolRegexProp : ScalarCapturePropBase
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name];
+        var capture = match.Groups[Name + distinguishingAppendix];
 
         if (!capture.Success)
             return false;

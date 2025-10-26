@@ -2,17 +2,17 @@
 
 public class NamedGroupOpen : EncloureBookend
 {
-    public NamedGroupOpen(Enclosure[] enclosures, string name, RegexPropInfo prop, string nameOverride = null)
+    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop)
         : base(
             enclosures,
-            RenderCaptureGroup(prop, nameOverride),
+            RenderCaptureGroup(prop),
             GetComment(prop)
         )
     {
     }
 
-    static string RenderCaptureGroup(RegexPropInfo prop, string nameOverride)
-        => $"(?<{prop?.Name ?? nameOverride ?? ""}>";
+    static string RenderCaptureGroup(RegexPropInfo prop)
+        => $"(?<{prop?.Name ?? ""}>";
 
     static string GetComment(RegexPropInfo prop)
     {

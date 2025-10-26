@@ -4,7 +4,7 @@ public record RegexPropInfo
 {
     public PropertyInfo Prop { get; init; }
     public RegexPropType RegexPropType { get; init; }
-    public bool IsManyOf { get; init; }
+    public bool IsManyOfProp { get; init; }
     public Type BaseType { get; init; }
     public Type UnderlyingType { get; init; }
     public string FriendlyTypeName { get; init; }
@@ -12,13 +12,14 @@ public record RegexPropInfo
     public bool IsTerminal { get; init; }
     public bool MayBeNull { get; init; }
     public string Name { get; init; }
+    public ManyItemOrdinal? ManyItemOrdinal { get; init; }
 
     /// <summary>
     /// If not null, any recursive descendants of this RegexPropInfo will inherit this
     /// appendix, which may grow as the descendancy tree grows. Used for scenarios like
     /// ManyOf items, which must pass their distinguishing ordinal name down to all children
     /// </summary>
-    public string DistinguishingAppendix { get; init; }
+    public string ManyOfItemDistinguisher { get; init; }
 
     private RegexPropInfo()
     {
@@ -28,7 +29,7 @@ public record RegexPropInfo
     {
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
-        (RegexPropType, IsManyOf, BaseType) = GetCapturePropType(prop);
+        (RegexPropType, IsManyOfProp, BaseType) = GetCapturePropType(prop);
         UnderlyingType = nullableType ?? prop.PropertyType;
         Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
@@ -39,8 +40,8 @@ public record RegexPropInfo
 
     public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
     {
-        if (!IsManyOf)
-            throw new Exception($"May only derive a {nameof(RegexPropInfo)} many-of-item instance if {nameof(IsManyOf)} is true");
+        if (!IsManyOfProp)
+            throw new Exception($"May only derive a {nameof(RegexPropInfo)} many-of-item instance if {nameof(IsManyOfProp)} is true");
 
         var derivedManyOfPropInfo = new RegexPropInfo
         {
@@ -52,9 +53,10 @@ public record RegexPropInfo
             FriendlyPropName = FriendlyPropName,
             IsTerminal = IsTerminal,
             MayBeNull = MayBeNull,
-            IsManyOf = false, // "IsManyOf" only refers to the parent ManyOf, not the items it contains
+            IsManyOfProp = false, // "IsManyOfProp" only refers to the parent ManyOf, not the items it contains
             Name = Name + manyItemOrdinal.Description(),
-            DistinguishingAppendix = manyItemOrdinal.Description()
+            ManyOfItemDistinguisher = manyItemOrdinal.Description(),
+            ManyItemOrdinal = manyItemOrdinal
         };
 
         return derivedManyOfPropInfo;
@@ -92,7 +94,7 @@ public record RegexPropInfo
 
     string GetFriendlyTypeName()
     {
-        if (IsManyOf)
+        if (IsManyOfProp)
             return "many of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
@@ -123,7 +125,7 @@ public record RegexPropInfo
 
     public CaptureGroupPropBase GetCaptureGroupPropBase(bool forceGetUnderlyingPropType = false)
     {
-        if (IsManyOf && !forceGetUnderlyingPropType)
+        if (IsManyOfProp && !forceGetUnderlyingPropType)
             return new TokenRegexManyProp(this);
 
         return RegexPropType switch

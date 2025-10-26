@@ -1,6 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Diagnostics;
-
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
@@ -27,15 +25,15 @@ public record TokenRegexProp : CaptureGroupPropBase
         builder.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name];
+        var capture = match.Groups[Name + distinguishingAppendix];
 
         if (capture == null)
             return false;
 
         var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
-        var tokenUnitInstance = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, capture, ancestorCapturePath);
+        var tokenUnitInstance = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, capture, ancestorCapturePath, distinguishingAppendix);
         token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
 
         return true;
@@ -44,7 +42,7 @@ public record TokenRegexProp : CaptureGroupPropBase
     RegexSegmentBase ApplyDistinguishingAppendix(RegexPropInfo prop, RegexSegmentBase segment)
     {
         // Case 1: If there's no appendix to apply, we're done.
-        if (string.IsNullOrEmpty(prop.DistinguishingAppendix))
+        if (string.IsNullOrEmpty(prop.ManyOfItemDistinguisher))
             return segment;
 
         // Case 2: If the segment is not a CaptureGroupProp (e.g., a TextSegment),
@@ -56,9 +54,9 @@ public record TokenRegexProp : CaptureGroupPropBase
         // This happens for ALL CaptureGroupPropBase types.
         var distinguishedRegexPropInfo = captureGroupProp.RegexPropInfo with
         {
-            Name = captureGroupProp.RegexPropInfo.Name + prop.DistinguishingAppendix,
+            Name = captureGroupProp.RegexPropInfo.Name + prop.ManyOfItemDistinguisher,
             // Propagate the appendix for any potential grandchildren.
-            DistinguishingAppendix = prop.DistinguishingAppendix
+            ManyOfItemDistinguisher = prop.ManyOfItemDistinguisher
         };
 
         // --- Recursive Step: Check for containers and process their children ---

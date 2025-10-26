@@ -38,7 +38,7 @@ public class RegexFormatter
         var expandedAndFilteredElements = new List<RegexElement>();
         foreach (var element in regexElements)
         {
-            if (element is AlternateValueEnumContainer enumContainer)
+            if (element is AlternateValueEnumContainer enumContainer)   
             {
                 if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {

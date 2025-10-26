@@ -44,9 +44,7 @@ public class RegexTemplate
             composer = AlternatingComposer.Instance;
         }
         else
-        {
             composer = ConcatenatingComposer.Instance;
-        }
 
         RegexBuilder collector = new(_containingType, neverAddSpacesAtTopLevel);
         composer.Compose(collector, RegexSegments);
