@@ -32,6 +32,8 @@ public enum RegexPropType
     DistilledValue,
     TokenUnit,
     TokenUnitOneOf,
-    ManyOf
+    ManyOf,
+    ManyOfItem,
+    ManyOfConjunction,
 }
 

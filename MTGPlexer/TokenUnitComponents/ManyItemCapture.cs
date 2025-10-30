@@ -19,6 +19,7 @@ public record ManyItemCapture
     public RegexPropInfo RegexPropInfo { get; }
     public Type ItemType { get; }
     public object ItemObject { get; }
+    public ManyItemVariant ManyItemVariant { get; }
 
     public ManyItemCapture(Capture capture, Type type, object itemAsObject, ManyItemOrdinal ordinal, RegexPropInfo propInfo)
     {
@@ -27,6 +28,7 @@ public record ManyItemCapture
         RegexPropInfo = propInfo;
         ItemType = type;
         ItemObject = itemAsObject;
+        ManyItemVariant = ManyOf.GetManyItemVariant(type);
     }
 }
 

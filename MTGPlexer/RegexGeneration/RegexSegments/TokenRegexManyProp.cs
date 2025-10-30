@@ -9,25 +9,26 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public record TokenRegexManyProp : CaptureGroupPropBase
 {
+    public Type BaseType { get; set; }
+
     static string[] _ordinalNameAppendices = Enum.GetValues<ManyItemOrdinal>().Select(x => x.Description()).ToArray();
     ManyItemVariant _manyItemType;
-    Type _baseType;
     string[] _manyItemNames;
     RegexSegmentBase[] _ordinalRegexProps = new RegexSegmentBase[3];
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
-    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[_baseType];
+    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        _baseType = captureProp.BaseType;
+        BaseType = captureProp.BaseType;
         _manyItemNames = _ordinalNameAppendices.Select(x => $"{captureProp.Name}{x}").ToArray();
 
         var derivedPropFirst = captureProp.DerviveForManyOfItem(ManyItemOrdinal.First);
         var derivedPropSecond = captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus);
         var derivedPropLast = captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last);
 
-        if (_baseType.IsAssignableTo(typeof(TokenUnit)))
+        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {
             _manyItemType = ManyItemVariant.TokenUnit;
 
@@ -38,7 +39,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 new TokenRegexProp(derivedPropLast),
             ];
         }
-        else if (_baseType.IsEnum)
+        else if (BaseType.IsEnum)
         {
             _manyItemType = ManyItemVariant.Enum;
 
@@ -81,7 +82,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
             match.Groups[_manyItemNames[2] + distinguishingAppendix],
         ];
 
-        var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(_baseType);
+        var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(BaseType);
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
@@ -100,7 +101,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 if (_manyItemType == ManyItemVariant.Enum)
                 {
                     // Enum logic remains the same as it does not involve nested structures or re-matching.
-                    foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[_baseType].EnumAlternates)
+                    foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[BaseType].EnumAlternates)
                     {
                         if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
                         {
@@ -110,7 +111,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                     }
 
                     if (childItem == null)
-                        throw new Exception($"Found no matching values for enum type '{_baseType.Name}' from capture '{itemCapture.Value}'");
+                        throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{itemCapture.Value}'");
                 }
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
@@ -136,7 +137,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         var conjunctionCapture = match.Groups[nameof(Conjunction) + distinguishingAppendix];
         Conjunction? conjunctionValue = Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) ? parsed : null;
 
-        var manyTokenType = typeof(ManyOf<>).MakeGenericType(_baseType);
+        var manyTokenType = typeof(ManyOf<>).MakeGenericType(BaseType);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
 
         // Use the capture for the entire ManyOf group.

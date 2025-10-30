@@ -53,6 +53,7 @@ public class RegexFormatter
                         }
 
                         var enumElement = enumContainer.AlternateValueEnums.Single(e => e.CanonicalValue.Equals(synonymSet.CanonicalValue));
+
                         if (synonymSet.SynonymCounts.Count > 1)
                         {
                             var header = new SynonymSetHeader(enumElement);
@@ -75,15 +76,17 @@ public class RegexFormatter
                             alternateCounts[enumElement] = synonymSet.TotalCount;
                         }
                     }
-                    var omittedCount = wrapper.AlternateCount - wrapper.SynonymSets.Count;
-                    if (omittedCount > 0)
-                    {
-                        expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"{omittedCount} omitted" });
-                    }
+
+                    if (wrapper.UnrepresentedAlternateCount > 0)
+                        expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"{wrapper.UnrepresentedAlternateCount} omitted" });
                 }
                 else
+                {
+                    Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
+
                     // Add all as a fallback
                     expandedAndFilteredElements.AddRange(enumContainer.AlternateValueEnums);
+                }
             }
             else if (element is AlternateValueContainer container)
                 expandedAndFilteredElements.AddRange(container.AlternateValues);

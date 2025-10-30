@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 public class TargetGainsOrLosesBuff : TokenUnit
 {
     public TargetGainsOrLosesBuff() : base(nameof(TagetCardType), nameof(GainedOrLostBuff), "until end of turn"){ }

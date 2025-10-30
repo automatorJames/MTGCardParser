@@ -33,19 +33,7 @@ public record EnumRegexProp : ScalarCapturePropBase
         }
 
         // if not already registered: 
-        List<EnumScalarAlternate> enumAlternates = new();
-
-        // get enum values in declared order
-        var enumValues = enumType
-            .GetFields(BindingFlags.Public | BindingFlags.Static)
-            .OrderBy(x => x.MetadataToken)
-            .Select(x => x.GetValue(null)!)
-            .ToList();
-
-        foreach (var enumValue in enumValues)
-            enumAlternates.Add(new(enumType, enumValue));
-
-        EnumSet = new(enumAlternates);
+        EnumSet = EnumTypetoScalarSet(enumType);
         ScalarAlternativeSet = EnumSet;
     }
 
@@ -73,5 +61,25 @@ public record EnumRegexProp : ScalarCapturePropBase
                 return enumAlternative.EnumValue;
 
         throw new Exception($"Found no matching values for enum '{RegexPropInfo.Name}' from match string '{matchString}'");
+    }
+
+    public static EnumScalarAlternateSet EnumTypetoScalarSet(Type enumType)
+    {
+        if (!enumType.IsEnum)
+            throw new Exception($"'{enumType.Name}' is not an enum type");
+
+        List<EnumScalarAlternate> enumAlternates = new();
+
+        // get enum values in declared order
+        var enumValues = enumType
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .OrderBy(x => x.MetadataToken)
+            .Select(x => x.GetValue(null)!)
+            .ToList();
+
+        foreach (var enumValue in enumValues)
+            enumAlternates.Add(new(enumType, enumValue));
+
+        return new(enumAlternates);
     }
 }

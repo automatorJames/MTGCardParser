@@ -74,11 +74,19 @@
 ////}
 ////
 ////
-//[IsolateForTesting]
-//public class SimpleAlphabet : TokenUnit
-//{
-//    public Alphabet Alphabet { get; set; }
-//}
+[IsolateForTesting]
+public class McGuffin : TokenUnit
+{
+    public McGuffin() : base("creature has", nameof(KeywordLite_Many)) { }
+
+    //[OptionalMany]
+    //public ManyOf<Mini> Mini { get; set; }
+
+    //[OptionalMany]
+    //public FeckMe FeckMe { get; set; }
+
+    public ManyOf<KeywordLite> KeywordLite_Many { get; set; }
+}
 ////
 public enum Alphabet
 {
@@ -86,6 +94,17 @@ public enum Alphabet
     DEF,
     GHI
 }
+
+
+public enum KeywordLite
+{
+    Flying,
+    Reach,
+    Haste,
+    Trample,
+    Poopfling
+}
+
 //
 //public enum Numbers
 //{

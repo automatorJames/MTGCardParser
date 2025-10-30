@@ -64,7 +64,31 @@ public static partial class TokenTypeRegistry
             .OfType<EnumRegexProp>()
             .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.RegexPropInfo.UnderlyingType))
             .ToList()
-            .ForEach(RegisterEnum);
+            .ForEach(enumRegexPropWithNewEnumType =>
+            {
+                var enumType = enumRegexPropWithNewEnumType.RegexPropInfo.BaseType;
+                EnumRegexStrings[enumType] = enumRegexPropWithNewEnumType.RegexString;
+                ReferencedEnumTypes.Add(enumType);
+                Palettes[enumType] = new DeterministicPalette(enumType, baseSaturation: .4, baseLightness: .4).Palette;
+                NameToType[enumType.Name] = enumType;
+                EnumScalarAlternativeSets[enumType] = enumRegexPropWithNewEnumType.EnumSet;
+            });
+
+        // Register enums that only appear as the T types within ManyOf<T> properties
+        propCaptureSegments
+            .OfType<TokenRegexManyProp>()
+            .Where(x => x.BaseType.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x.BaseType))
+            .Select(x => x.BaseType)
+            .ToList()
+            .ForEach(newEnumType => 
+            {
+                var enumSet = EnumRegexProp.EnumTypetoScalarSet(newEnumType);
+                EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
+                ReferencedEnumTypes.Add(newEnumType);
+                Palettes[newEnumType] = new DeterministicPalette(newEnumType, baseSaturation: .4, baseLightness: .4).Palette;
+                NameToType[newEnumType.Name] = newEnumType;
+                EnumScalarAlternativeSets[newEnumType] = enumSet;
+            });
 
         // Register all newly encountered scalar capture props that aren't enums (i.e. bools & placeholders)
         propCaptureSegments
@@ -78,16 +102,6 @@ public static partial class TokenTypeRegistry
             .OfType<TokenRegexManyProp>()
             .ToList()
             .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, instance.Template.Builder.ExtractGroupRegex(x.RegexPropInfo)));
-    }
-
-    static void RegisterEnum(EnumRegexProp newEnumType)
-    {                                                       
-        var enumType = newEnumType.RegexPropInfo.UnderlyingType;
-        EnumRegexStrings[enumType] = newEnumType.RegexString;
-        ReferencedEnumTypes.Add(enumType);
-        Palettes[enumType] = new DeterministicPalette(enumType, baseSaturation: .4, baseLightness: .4).Palette;
-        NameToType[enumType.Name] = enumType;
-        EnumScalarAlternativeSets[enumType] = newEnumType.EnumSet;
     }
 
     public static List<TokenUnit> Tokenize(string text, bool originalTextOnly = false)

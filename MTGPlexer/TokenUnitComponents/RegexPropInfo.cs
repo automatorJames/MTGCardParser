@@ -41,7 +41,7 @@ public record RegexPropInfo
     public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
     {
         if (!IsManyOfProp)
-            throw new Exception($"May only derive a {nameof(RegexPropInfo)} many-of-item instance if {nameof(IsManyOfProp)} is true");
+            throw new Exception($"May only derive for a {nameof(RegexPropInfo)} ManyOf item instance if {nameof(IsManyOfProp)} is true");
 
         var derivedManyOfPropInfo = new RegexPropInfo
         {
@@ -61,6 +61,29 @@ public record RegexPropInfo
 
         return derivedManyOfPropInfo;
     }
+
+    public RegexPropInfo DerviveForManyOfConjunction()
+    {
+        if (!IsManyOfProp)
+            throw new Exception($"May only derive for a {nameof(RegexPropInfo)} ManyOf {nameof(ManyOf.Conjunction)} if {nameof(IsManyOfProp)} is true");
+
+        var derivedManyOfPropInfo = new RegexPropInfo
+        {
+            Prop = typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)),
+            RegexPropType = RegexPropType.ManyOfConjunction,
+            BaseType = typeof(Conjunction),
+            UnderlyingType = typeof(Conjunction),
+            FriendlyTypeName = nameof(Conjunction).ToFriendlyCase(),
+            FriendlyPropName = nameof(Conjunction).ToFriendlyCase(),
+            IsTerminal = true,
+            MayBeNull = true,
+            IsManyOfProp = false,
+            Name = nameof(Conjunction)
+        };
+
+        return derivedManyOfPropInfo;
+    }
+
 
     static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
     {

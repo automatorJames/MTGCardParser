@@ -132,9 +132,9 @@ public abstract class TokenUnit
             .Where(x => x.Value is ManyOf manyOf)
             .ToList();
 
-        foreach (var manyOfTerminalPropCap in manyOfPropCaps)
+        foreach (var manyOfPropCap in manyOfPropCaps)
         {
-            var manyOf = (ManyOf)manyOfTerminalPropCap.Value;
+            var manyOf = (ManyOf)manyOfPropCap.Value;
 
             for (int i = 0; i < manyOf.ItemObjects.Count; i++)
             {
@@ -142,12 +142,12 @@ public abstract class TokenUnit
 
                 if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
                 {
-                    var derivedPropCapture = manyOfTerminalPropCap.DeriveForManyOfItem(manyOf, manyItem);
+                    var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, manyItem);
                     terminalCaptures.Add(derivedPropCapture);
                 }
                 else if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit)
                 {
-                    var derivedPropCapture = manyOfTerminalPropCap.DeriveForManyOfItem(manyOf, manyItem);
+                    var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, manyItem);
                     var manyOfTokenUnit = (TokenUnit)manyItem.ItemObject;
                     terminalCaptures.AddRange(manyOfTokenUnit.GetFlattenedTerminalCaptures());
                 }
@@ -156,7 +156,7 @@ public abstract class TokenUnit
             // For both enums (terminals) and branches (TokenUnits), both of which may have a terminal Conjunction
             if (manyOf.Conjunction != null)
             {
-                var derivedPropCapture = manyOfTerminalPropCap.DeriveForManyOfConjunction(manyOf);
+                var derivedPropCapture = manyOfPropCap.DeriveForManyOfConjunction(manyOf);
                 terminalCaptures.Add(derivedPropCapture);
             }
         }

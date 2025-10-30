@@ -11,11 +11,7 @@ public class ManyOf<T> : ManyOf
         Conjunction = conjunction;
         ConjunctionCapture = conjunctionCapture;
         ItemType = typeof(T);
-
-        ManyItemVariant =
-            typeof(T).IsAssignableTo(typeof(TokenUnit)) ? ManyItemVariant.TokenUnit
-            : typeof(T).IsEnum ? ManyItemVariant.Enum
-            : throw new Exception($"{nameof(ManyOf)} item type must either be TokenUnit or Enum");
+        ManyItemVariant = GetManyItemVariant(typeof(T));
     }
 
     public override string ToString() => base.ToString();
@@ -114,6 +110,11 @@ public class ManyOf : IEquatable<ManyOf>
             return hashCode;
         }
     }
+
+    public static ManyItemVariant GetManyItemVariant(Type type) =>
+        type.IsAssignableTo(typeof(TokenUnit)) ? ManyItemVariant.TokenUnit
+        : type.IsEnum ? ManyItemVariant.Enum
+        : throw new Exception($"{nameof(ManyOf)} item type must either be TokenUnit or Enum");
 }
 
 public enum ManyItemVariant

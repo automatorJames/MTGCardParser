@@ -56,6 +56,14 @@ public record IndexedPropertyCapture
     /// </summary>
     public IndexedPropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
+        var newCaptureGroupPropPath =
+            Path
+            + "."
+            + RegexPropInfo.Name
+            + capture.Oridinal.Description()
+            + "."
+            + (capture.ManyItemVariant == ManyItemVariant.Enum ? capture.ItemObject.ToString() : "");
+
         return new IndexedPropertyCapture
         {
             IsDerivedFromManyItem = true,
@@ -72,7 +80,7 @@ public record IndexedPropertyCapture
             Palette = DeterministicPalette.GetFixedRainbowPalette((int)capture.Oridinal),
             IgnoreInAnalysis = false,
             Path = Path.Dot(capture.Oridinal.ToString()),
-            CaptureGroupPropPath = new((Path.Dot(RegexPropInfo.Name) + capture.Oridinal.Description()).Dot(capture.ItemObject.ToString()))
+            CaptureGroupPropPath = new(newCaptureGroupPropPath)
         };
     }
 
@@ -84,7 +92,7 @@ public record IndexedPropertyCapture
         return new IndexedPropertyCapture
         {
             IsDerivedFromManyItem = true,
-            RegexPropInfo = RegexPropInfo,
+            RegexPropInfo = RegexPropInfo.DerviveForManyOfConjunction(),
             Capture = manyOf.ConjunctionCapture,
             Start = manyOf.ConjunctionCapture.Index,
             Length = manyOf.ConjunctionCapture.Length,
