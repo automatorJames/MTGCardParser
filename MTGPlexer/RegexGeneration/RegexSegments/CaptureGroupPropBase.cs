@@ -17,7 +17,7 @@ public abstract record CaptureGroupPropBase : RegexSegmentBase
         RegexPropInfo = captureProp;
     }
 
-    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, Match match, string distinguishingAppendix = null);
+    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, Match match, int captureIndex, string distinguishingAppendix = null);
 
     public override string ToString() => base.ToString();
 

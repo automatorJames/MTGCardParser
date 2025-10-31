@@ -2,7 +2,7 @@
 @if (Node != null)
 {
     <span class=@GetClass(Node) style=@GetStyle(Node) data-path="@Node.CapturePath">
-        @{
+@*         @{
             var cursor = 0;
 
             foreach (var child in Node.Children.OrderBy(c => c.Start))
@@ -26,7 +26,7 @@
             {
                 <text>@Node.CaptureTextOriginal.Substring(cursor, Node.Length - cursor)</text>
             }
-        }
+        } *@
     </span>
 }
 

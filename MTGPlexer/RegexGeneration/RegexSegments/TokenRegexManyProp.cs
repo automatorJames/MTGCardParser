@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -73,9 +71,11 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         builder.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        Group[] ordinalGroups =
+        // todo: we're not yet using captureIndex, because it's unclear how we'd do so in the case of ManyOf
+
+        Group[] ordinalCaptureGroups =
         [
             match.Groups[_manyItemNames[0] + distinguishingAppendix],
             match.Groups[_manyItemNames[1] + distinguishingAppendix],
@@ -87,11 +87,11 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
         // For each of the three positions (_first, _secondPlus, _last)
-        for (int i = 0; i < ordinalGroups.Length; i++)
+        for (int i = 0; i < ordinalCaptureGroups.Length; i++)
         {
             var ordinalNameAppendix = _ordinalNameAppendices[i];
             var ordinal = (ManyItemOrdinal)i;
-            var ordinalGroup = ordinalGroups[i];
+            var ordinalGroup = ordinalCaptureGroups[i];
 
             // For each of the captures within each of the three positions (_secondPlus may have any number, including none)
             foreach (Capture itemCapture in ordinalGroup.Captures)
@@ -116,7 +116,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
                     var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
-                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, itemCapture, ancestorCapturePath, ordinalNameAppendix);
+                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, itemCapture, ancestorCapturePath, ordinalNameAppendix, addToTokenChildUnits: false);
 
                     // Set the top-level properties for this child item.
                     tokenUnitChild.TopLevelMatch = match;

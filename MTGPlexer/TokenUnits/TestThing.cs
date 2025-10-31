@@ -74,10 +74,25 @@
 ////}
 ////
 ////
+
+//[IsolateForTesting]
+//public class McGuffin : TokenUnit
+//{
+//    public McGuffin() : base("creature has", nameof(KeywordLite_Many)) { }
+//
+//    //[OptionalMany]
+//    //public ManyOf<Mini> Mini { get; set; }
+//
+//    //[OptionalMany]
+//    //public FeckMe FeckMe { get; set; }
+//
+//    public ManyOf<KeywordLite> KeywordLite_Many { get; set; }
+//}
+
 [IsolateForTesting]
 public class McGuffin : TokenUnit
 {
-    public McGuffin() : base("creature has", nameof(KeywordLite_Many)) { }
+    public McGuffin() : base("creature has", nameof(McStuffins)) { }
 
     //[OptionalMany]
     //public ManyOf<Mini> Mini { get; set; }
@@ -85,8 +100,15 @@ public class McGuffin : TokenUnit
     //[OptionalMany]
     //public FeckMe FeckMe { get; set; }
 
-    public ManyOf<KeywordLite> KeywordLite_Many { get; set; }
+    public ManyOf<McStuffin> McStuffins { get; set; }
 }
+
+[TokenUnitProperty]
+public class McStuffin : TokenUnit
+{
+    public KeywordLite KeywordLite { get; set; }
+}
+
 ////
 public enum Alphabet
 {

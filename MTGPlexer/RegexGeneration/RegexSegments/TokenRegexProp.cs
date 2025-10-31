@@ -25,9 +25,9 @@ public record TokenRegexProp : CaptureGroupPropBase
         builder.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name + distinguishingAppendix];
+        var capture = match.Groups[Name + distinguishingAppendix].Captures[captureIndex];
 
         if (capture == null)
             return false;

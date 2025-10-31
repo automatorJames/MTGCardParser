@@ -18,14 +18,16 @@ public record BoolRegexProp : ScalarCapturePropBase
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name + distinguishingAppendix];
+        var captureGroup = match.Groups[Name + distinguishingAppendix];
 
-        if (!capture.Success)
+        if (!captureGroup.Success || captureGroup.Captures.Count - 1 < captureIndex)
             return false;
 
+        var capture = captureGroup.Captures[captureIndex];
         token.SetPropertyFromCapture(RegexPropInfo, capture, true);
+
         return true;
     }
 }

@@ -37,11 +37,11 @@ public record EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name + distinguishingAppendix];
+        var captureGroup = match.Groups[Name + distinguishingAppendix];
 
-        if (!capture.Success)
+        if (!captureGroup.Success || captureGroup.Captures.Count - 1 < captureIndex)
         {
             if (!RegexPropInfo.MayBeNull)
                 throw new Exception($"{RegexPropInfo.Name} a non-nullable enum, but no match was found");
@@ -49,8 +49,9 @@ public record EnumRegexProp : ScalarCapturePropBase
             return false;
         }
 
-        var valueToSet = GetEnumMatchValue(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet, distinguishingAppendix);
+        var indexedCapture = captureGroup.Captures[captureIndex];
+        var valueToSet = GetEnumMatchValue(indexedCapture.Value);
+        token.SetPropertyFromCapture(RegexPropInfo, indexedCapture, valueToSet, distinguishingAppendix);
         return true;
     }
 

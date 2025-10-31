@@ -13,14 +13,14 @@ public record DynamicRegexProp : ScalarCapturePropBase
         builder.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, string distinguishingAppendix = null)
+    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
         var genericType = RegexPropInfo.Prop.PropertyType.GenericTypeArguments[0];
 
         if (!genericType.IsAssignableTo(typeof(TokenUnit)))
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
-        var capture = match.Groups[Name + distinguishingAppendix];
+        var capture = match.Groups[Name + distinguishingAppendix].Captures[captureIndex];
         var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
         var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeSingleNonDefaultChild(token, capture, match, ancestorCapturePath);
 
