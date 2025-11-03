@@ -92,7 +92,7 @@
 [IsolateForTesting]
 public class McGuffin : TokenUnit
 {
-    public McGuffin() : base("creature has", nameof(McStuffins)) { }
+    public McGuffin() : base("creature has", nameof(McBuffins)) { }
 
     //[OptionalMany]
     //public ManyOf<Mini> Mini { get; set; }
@@ -100,7 +100,7 @@ public class McGuffin : TokenUnit
     //[OptionalMany]
     //public FeckMe FeckMe { get; set; }
 
-    public ManyOf<McStuffin> McStuffins { get; set; }
+    public ManyOf<Buffin> McBuffins { get; set; }
 }
 
 [TokenUnitProperty]
@@ -123,8 +123,25 @@ public enum KeywordLite
     Flying,
     Reach,
     Haste,
-    Trample,
-    Poopfling
+    Trample
+}
+
+public enum DogStuffe
+{
+    PoopFling,
+    ButtPoop
+}
+
+[TokenUnitProperty]
+public class Buffin : TokenUnitOneOf
+{
+    public KeywordLite KeywordLite { get; set; }
+    public DogShite DogShite { get; set; }
+}
+
+public class DogShite : TokenUnit
+{
+    public DogStuffe DogStuffe { get; set; }
 }
 
 //

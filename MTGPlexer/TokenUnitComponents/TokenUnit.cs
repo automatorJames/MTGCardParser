@@ -60,7 +60,7 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null, string distinguishingAppendix = null)
+    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null, string distinguishingAppendix = null, int captureIndex = 0)
     {
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
         tokenUnit.TopLevelMatch = match;
@@ -68,15 +68,14 @@ public abstract class TokenUnit
         tokenUnit.CapturePath = capturePath ?? tokenUnitType.Name;
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
-            if (match.Groups[captureProp.Name + distinguishingAppendix].Success)
-            {
-                for (int captureIndex = 0; captureIndex < match.Groups[captureProp.Name + distinguishingAppendix].Captures.Count; captureIndex++)
-                    captureProp.SetValueFromMatch(tokenUnit, match, captureIndex, distinguishingAppendix);
-            }
+        {
+            if (match.Groups[captureProp.Name + distinguishingAppendix].Success && captureIndex <= match.Groups[captureProp.Name + distinguishingAppendix].Captures.Count - 1)
+                captureProp.SetValueFromMatch(tokenUnit, match, captureIndex, distinguishingAppendix);
             else if (tokenUnitType.IsAssignableTo(typeof(TokenUnitOneOf)))
                 Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.Value}' contains no named capture group '{captureProp.Name + distinguishingAppendix}'");
             else
-                throw new Exception($"No capture group named '{captureProp.Name}' exists for match '{match.Value}'");
+                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {captureIndex} exists for match '{match.Value}'");
+        }
 
         tokenUnit.OnAfterHydrated();
 
@@ -89,10 +88,11 @@ public abstract class TokenUnit
         Capture childCapture, 
         string ancestorCapturePath, 
         string distinguishingAppendix = null,
-        bool addToTokenChildUnits = true
+        bool addToTokenChildUnits = true,
+        int captureIndex = 0
         )
     {
-        var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath, distinguishingAppendix);
+        var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath, distinguishingAppendix, captureIndex);
 
         // overwrite the child's Capture property
         tokenUnitChild.Capture = childCapture;
@@ -163,23 +163,6 @@ public abstract class TokenUnit
                     terminalCaptures.AddRange(manyOfItemTokenUnit.GetFlattenedTerminalCaptures());
                 }
             }
-
-            //for (int i = 0; i < manyOf.ItemObjects.Count; i++)
-            //{
-            //    var manyItem = manyOf.ItemObjects[i];
-            //
-            //    if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
-            //    {
-            //        var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, manyItem);
-            //        terminalCaptures.Add(derivedPropCapture);
-            //    }
-            //    else if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit)
-            //    {
-            //        var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, manyItem);
-            //        var manyOfItemTokenUnit = (TokenUnit)manyItem.ItemObject;
-            //        terminalCaptures.AddRange(manyOfItemTokenUnit.GetFlattenedTerminalCaptures());
-            //    }
-            //}
 
             // For both enums (terminals) and branches (TokenUnits), both of which may have a terminal Conjunction
             if (manyOf.Conjunction != null)

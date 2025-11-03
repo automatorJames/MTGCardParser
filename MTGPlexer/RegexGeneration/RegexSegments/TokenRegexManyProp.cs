@@ -26,7 +26,18 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         var derivedPropSecond = captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus);
         var derivedPropLast = captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last);
 
-        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
+        if (BaseType.IsAssignableTo(typeof(TokenUnitOneOf)))
+        {
+            _manyItemType = ManyItemVariant.TokenUnit;
+
+            _ordinalRegexProps =
+            [
+                new TokenRegexOneOfProp(derivedPropFirst),
+                new TokenRegexOneOfProp(derivedPropSecond),
+                new TokenRegexOneOfProp(derivedPropLast),
+            ];
+        }
+        else if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {
             _manyItemType = ManyItemVariant.TokenUnit;
 
@@ -94,8 +105,9 @@ public record TokenRegexManyProp : CaptureGroupPropBase
             var ordinalGroup = ordinalCaptureGroups[i];
 
             // For each of the captures within each of the three positions (_secondPlus may have any number, including none)
-            foreach (Capture itemCapture in ordinalGroup.Captures)
+            for (int j = 0; j < ordinalGroup.Captures.Count; j++)
             {
+                Capture itemCapture = ordinalGroup.Captures[j];
                 object childItem = null;
 
                 if (_manyItemType == ManyItemVariant.Enum)
@@ -116,7 +128,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
                     var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
-                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, itemCapture, ancestorCapturePath, ordinalNameAppendix, addToTokenChildUnits: false);
+                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, itemCapture, ancestorCapturePath, ordinalNameAppendix, addToTokenChildUnits: false, captureIndex: j);
 
                     // Set the top-level properties for this child item.
                     tokenUnitChild.TopLevelMatch = match;
