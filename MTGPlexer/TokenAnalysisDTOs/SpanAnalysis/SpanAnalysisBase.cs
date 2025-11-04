@@ -6,7 +6,7 @@
 public abstract record SpanAnalysisBase
 {
     public string Name { get; init; }
-    public string CapturePath { get; init; }
+    public CaptureGroupPropPath CapturePath { get; init; }
     public string CaptureTextOriginal { get; init; }
     public int Start { get; init; }
     public int End { get; init; }

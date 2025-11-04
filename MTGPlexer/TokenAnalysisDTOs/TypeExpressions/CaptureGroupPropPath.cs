@@ -6,7 +6,7 @@ public record CaptureGroupPropPath
     public string PropPath { get; }
     public string PropPathRelativeToRoot { get; }
     public string PropPathFriendly { get; }
-    public CaptureGroupPropPath Parent { get; }
+    public CaptureGroupPropPath Parent { get; init; }
 
     public CaptureGroupPropPath(string propPathIncludingRoot)
     {
@@ -27,6 +27,14 @@ public record CaptureGroupPropPath
         }
 
         LeafName = splitPath.Last();
+    }
+
+    public CaptureGroupPropPath Append(string partToAppend)
+    {
+        return new(PropPath.Dot(partToAppend))
+        {
+            Parent = this
+        };
     }
 
     public override string ToString() => PropPath;

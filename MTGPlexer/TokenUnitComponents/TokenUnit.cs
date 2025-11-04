@@ -18,7 +18,7 @@ public abstract class TokenUnit
 
     public Match TopLevelMatch { get; set; }
     public Capture Capture { get; set; }
-    public string CapturePath { get; set; }
+    public CaptureGroupPropPath CapturePath { get; set; }
     public List<TokenUnit> ChildTokenUnits { get; set; } = [];
 
     /// <summary>
@@ -60,12 +60,12 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, string capturePath = null, string distinguishingAppendix = null, int captureIndex = 0)
+    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, CaptureGroupPropPath capturePath = null, string distinguishingAppendix = null, int captureIndex = 0)
     {
         var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
         tokenUnit.TopLevelMatch = match;
         tokenUnit.Capture = match;
-        tokenUnit.CapturePath = capturePath ?? tokenUnitType.Name;
+        tokenUnit.CapturePath = capturePath == null ? new(tokenUnitType.Name) : capturePath;
 
         foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
         {
@@ -85,8 +85,8 @@ public abstract class TokenUnit
     public TokenUnit HydrateAsChildFromCapture(
         Type tokenUnitType, 
         Match match, 
-        Capture childCapture, 
-        string ancestorCapturePath, 
+        Capture childCapture,
+        CaptureGroupPropPath ancestorCapturePath, 
         string distinguishingAppendix = null,
         bool addToTokenChildUnits = true,
         int captureIndex = 0

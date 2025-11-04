@@ -33,7 +33,7 @@ public record TokenRegexProp : CaptureGroupPropBase
         if (capture == null)
             return false;
 
-        var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
+        CaptureGroupPropPath ancestorCapturePath = new(token.CapturePath.PropPath.Dot(RegexPropInfo.Name));
         var tokenUnitInstance = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, capture, ancestorCapturePath, distinguishingAppendix, addToTokenChildUnits: true, captureIndex: captureIndex);
         token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
 

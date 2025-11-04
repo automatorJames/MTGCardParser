@@ -63,7 +63,7 @@ public class Tokenizer
     /// Intended for use by DynamicRegexProp instances to check for a sub-capture for a given match among all possible TokenUnit types.
     /// </summary>
     /// <returns></returns>
-    public TokenUnit TokenizeSingleNonDefaultChild(TokenUnit parentToken, Capture captureToTokenize, Match parentMatch, string ancestorCapturePath, Type constrainToType = null)
+    public TokenUnit TokenizeSingleNonDefaultChild(TokenUnit parentToken, Capture captureToTokenize, Match parentMatch, CaptureGroupPropPath ancestorCapturePath, Type constrainToType = null)
     {
         // Filter the regexes to only include types that are assignable to the constraint type, or all types if no constraint is provided.
         Dictionary<Type, Regex> filteredOrderedTypeRegexes =

@@ -11,7 +11,7 @@ public static class TokenCaptureBuilder
     private class PrecursorNode
     {
         public string Name { get; set; }
-        public string CapturePath { get; set; }
+        public CaptureGroupPropPath CapturePath { get; set; }
         public string OriginalFullText { get; set; }
         public string CaptureTextOriginal { get; set; }
         public int Start { get; set; }
@@ -56,7 +56,7 @@ public static class TokenCaptureBuilder
     /// </summary>
     static void PrependPathsToPrecursorTree(PrecursorNode node, string prefix)
     {
-        node.CapturePath = prefix + node.CapturePath;
+        node.CapturePath = new (prefix + node.CapturePath);
 
         foreach (var child in node.Children)
             PrependPathsToPrecursorTree(child, prefix);
@@ -214,7 +214,7 @@ public static class TokenCaptureBuilder
         for (int i = 0; i < manyOf.ItemObjects.Count; i++)
         {
             var manyItemCapture = manyOf.ItemObjects[i];
-            var itemPath = propCapture.Path + $"[{i}]";
+            CaptureGroupPropPath itemPath = new(propCapture.Path + $"[{i}]");
 
             if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && manyItemCapture.ItemObject is TokenUnit tokenUnit)
             {
@@ -235,7 +235,7 @@ public static class TokenCaptureBuilder
 
         if (manyOf.Conjunction != null)
         {
-            var conjunctionPrecursor = CreatePrecursorLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), precursor.CapturePath.Dot(nameof(ManyOf.Conjunction)), manyOf.ItemObjects.Count, originalFullText, TokenAnalysisElementType.ConjunctionLeaf);
+            var conjunctionPrecursor = CreatePrecursorLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), new(precursor.CapturePath.PropPath.Dot(nameof(ManyOf.Conjunction))), manyOf.ItemObjects.Count, originalFullText, TokenAnalysisElementType.ConjunctionLeaf);
             SetEnumScalar(conjunctionPrecursor, manyOf.Conjunction.Value);
             precursor.Children.Add(conjunctionPrecursor);
         }
@@ -249,7 +249,7 @@ public static class TokenCaptureBuilder
 
         foreach (var (distilledProp, value) in distilledVals)
         {
-            var distilledPrecursor = CreatePrecursorFromParent(precursor, distilledProp.Name, precursor.CapturePath.Dot(distilledProp.Name), TokenAnalysisElementType.DistilledValueSubLeaf);
+            var distilledPrecursor = CreatePrecursorFromParent(precursor, distilledProp.Name, new(precursor.CapturePath.PropPath.Dot(distilledProp.Name)), TokenAnalysisElementType.DistilledValueSubLeaf);
             SetDistilledScalar(distilledPrecursor, value);
             precursor.Children.Add(distilledPrecursor);
         }
@@ -281,12 +281,12 @@ public static class TokenCaptureBuilder
             CreatePrecursorBase(
                 propCapture.Capture,
                 propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-                propCapture.Path,
+                propCapture.CaptureGroupPropPath,
                 originalFullText,
                 elementType
             );
 
-    private static PrecursorNode CreatePrecursorBase(Capture capture, string name, string path, string originalFullText, TokenAnalysisElementType elementType) =>
+    private static PrecursorNode CreatePrecursorBase(Capture capture, string name, CaptureGroupPropPath path, string originalFullText, TokenAnalysisElementType elementType) =>
         new()
         {
             Name = name,
@@ -303,20 +303,20 @@ public static class TokenCaptureBuilder
         CreatePrecursorLeaf(
             propCapture.Capture,
             propCapture.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence),
-            propCapture.Path,
+            propCapture.CaptureGroupPropPath,
             propCapture.Ordinal,
             originalFullText,
             elementType
         );
 
-    private static PrecursorNode CreatePrecursorLeaf(Capture capture, string name, string path, int ordinal, string originalFullText, TokenAnalysisElementType elementType)
+    private static PrecursorNode CreatePrecursorLeaf(Capture capture, string name, CaptureGroupPropPath path, int ordinal, string originalFullText, TokenAnalysisElementType elementType)
     {
         var precursor = CreatePrecursorBase(capture, name, path, originalFullText, elementType);
         precursor.Palette = DeterministicPalette.GetFixedRainbowPalette(ordinal);
         return precursor;
     }
 
-    private static PrecursorNode CreatePrecursorFromParent(PrecursorNode parent, string name, string path, TokenAnalysisElementType elementType) =>
+    private static PrecursorNode CreatePrecursorFromParent(PrecursorNode parent, string name, CaptureGroupPropPath path, TokenAnalysisElementType elementType) =>
         new()
         {
             Name = name,

@@ -127,13 +127,13 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 }
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
+                    CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name));
                     var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, itemCapture, ancestorCapturePath, ordinalNameAppendix, addToTokenChildUnits: false, captureIndex: j);
 
                     // Set the top-level properties for this child item.
                     tokenUnitChild.TopLevelMatch = match;
                     tokenUnitChild.Capture = itemCapture; // This capture has the correct absolute index.
-                    tokenUnitChild.CapturePath = token.CapturePath.Dot($"{RegexPropInfo.Name}[{hydratedItems.Count}]");
+                    tokenUnitChild.CapturePath = new(token.CapturePath.PropPath.Dot($"{RegexPropInfo.Name}[{hydratedItems.Count}]"));
 
                     // Get the TokenRegexProp that contains the suffixed definitions for this ordinal.
                     var ordinalTokenProp = (TokenRegexProp)_ordinalRegexProps[i];
