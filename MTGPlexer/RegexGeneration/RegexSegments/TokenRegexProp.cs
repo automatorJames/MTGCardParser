@@ -27,13 +27,14 @@ public record TokenRegexProp : CaptureGroupPropBase
 
     public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name + distinguishingAppendix].Captures[captureIndex];
+        var group = match.Groups[Name + distinguishingAppendix];
+        var capture = group.Captures[captureIndex];
 
         if (capture == null)
             return false;
 
         var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
-        var tokenUnitInstance = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, capture, ancestorCapturePath, distinguishingAppendix);
+        var tokenUnitInstance = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, match, capture, ancestorCapturePath, distinguishingAppendix, addToTokenChildUnits: true, captureIndex: captureIndex);
         token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
 
         return true;

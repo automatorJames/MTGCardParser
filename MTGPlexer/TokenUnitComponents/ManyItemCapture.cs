@@ -6,7 +6,8 @@ public record ManyItemCapture<T> : ManyItemCapture
 {
     public T Item { get; set; }
 
-    public ManyItemCapture(T item, Capture capture, ManyItemOrdinal ordinal, RegexPropInfo propInfo) : base(capture, typeof(T), item, ordinal, propInfo)
+    public ManyItemCapture(T item, Capture capture, int captureIndex, ManyItemOrdinal ordinal, RegexPropInfo propInfo) 
+        : base(capture, captureIndex, typeof(T), item, ordinal, propInfo)
     {
         Item = item;
     }
@@ -21,9 +22,9 @@ public record ManyItemCapture
     public object ItemObject { get; }
     public ManyItemVariant ManyItemVariant { get; }
 
-    public ManyItemCapture(Capture capture, Type type, object itemAsObject, ManyItemOrdinal ordinal, RegexPropInfo propInfo)
+    public ManyItemCapture(Capture capture, int captureIndex, Type type, object itemAsObject, ManyItemOrdinal ordinal, RegexPropInfo propInfo)
     {
-        Capture = capture;
+        Capture = capture is Group group ? group.Captures[captureIndex] : capture;
         Oridinal = ordinal;
         RegexPropInfo = propInfo;
         ItemType = type;

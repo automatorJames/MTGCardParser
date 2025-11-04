@@ -217,7 +217,8 @@ public record PlaceholderRegexProp : ScalarCapturePropBase
 
     public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        var capture = match.Groups[Name + distinguishingAppendix].Captures[captureIndex];
+        var group = match.Groups[Name + distinguishingAppendix];
+        var capture = group.Captures[captureIndex];
         var valueToSet = new PlaceholderCapture(capture.Value);
         token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
         return true;

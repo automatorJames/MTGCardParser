@@ -128,6 +128,7 @@ public enum KeywordLite
 
 public enum DogStuffe
 {
+    MuhFirstShit,
     PoopFling,
     ButtPoop
 }
@@ -135,7 +136,7 @@ public enum DogStuffe
 [TokenUnitProperty]
 public class Buffin : TokenUnitOneOf
 {
-    public KeywordLite KeywordLite { get; set; }
+    public KeywordLite? KeywordLite { get; set; }
     public DogShite DogShite { get; set; }
 }
 

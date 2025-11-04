@@ -20,12 +20,12 @@ public record BoolRegexProp : ScalarCapturePropBase
 
     public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
-        var captureGroup = match.Groups[Name + distinguishingAppendix];
+        var group = match.Groups[Name + distinguishingAppendix];
 
-        if (!captureGroup.Success || captureGroup.Captures.Count - 1 < captureIndex)
+        if (!group.Success || group.Captures.Count - 1 < captureIndex)
             return false;
 
-        var capture = captureGroup.Captures[captureIndex];
+        var capture = group.Captures[captureIndex];
         token.SetPropertyFromCapture(RegexPropInfo, capture, true);
 
         return true;

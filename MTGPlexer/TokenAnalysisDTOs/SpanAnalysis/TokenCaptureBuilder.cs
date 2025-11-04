@@ -349,10 +349,10 @@ public static class TokenCaptureBuilder
         bool isBranchType = precursor.ElementType.ToString().Contains("Branch") || precursor.ElementType.ToString().Contains("Root");
         bool isCollapsed = isBranchType && precursor.Children.Any() && precursor.Children.All(c => c.ElementType.ToString().Contains("Branch"));
         string finalName = precursor.Name;
+
         if (isBranchType && collapsedNameChain.Any())
-        {
             finalName = $"{string.Join(": ", collapsedNameChain)}: {precursor.Name}";
-        }
+
         List<string> nextNameChain = isCollapsed ? new List<string>(collapsedNameChain) { precursor.Name } : [];
         var dtoChildren = precursor.Children.Select(child => ConvertToDto(child, nextNameChain)).ToList();
 

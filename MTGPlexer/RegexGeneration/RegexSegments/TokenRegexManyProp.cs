@@ -141,7 +141,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                     childItem = tokenUnitChild;
                 }
 
-                var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, ordinal, RegexPropInfo);
+                var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, j, ordinal, RegexPropInfo);
                 hydratedItems.Add(hydratedItem);
             }
         }

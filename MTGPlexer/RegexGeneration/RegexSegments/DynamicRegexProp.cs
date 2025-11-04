@@ -20,7 +20,8 @@ public record DynamicRegexProp : ScalarCapturePropBase
         if (!genericType.IsAssignableTo(typeof(TokenUnit)))
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
-        var capture = match.Groups[Name + distinguishingAppendix].Captures[captureIndex];
+        var group = match.Groups[Name + distinguishingAppendix];
+        var capture = group.Captures[captureIndex];
         var ancestorCapturePath = token.CapturePath.Dot(RegexPropInfo.Name);
         var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeSingleNonDefaultChild(token, capture, match, ancestorCapturePath);
 
