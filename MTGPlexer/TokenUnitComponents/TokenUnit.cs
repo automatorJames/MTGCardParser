@@ -2,7 +2,7 @@
 
 public abstract class TokenUnit
 {
-    public RegexTemplate Template { get; init; }
+    protected virtual string[] Snippets { get; } = [];
 
     Type _type;
     public Type Type
@@ -27,72 +27,50 @@ public abstract class TokenUnit
     /// </summary>
     public List<IndexedPropertyCapture> IndexedPropertyCaptures { get; set; } = [];
 
-    protected TokenUnit(params string[] templateSnippets)
+    public void HydrateFromMatch(TypeMatch typeMatch)
     {
-        if (templateSnippets.Length == 0 && !TokenTypeRegistry.Templates.ContainsKey(Type))
-        {
-            // If children pass no arguments or call the default parameterless base constructor,
-            // we assume they want to construct snippets from their ordered properties.
+        TopLevelMatch = typeMatch.Match;
+        Capture = typeMatch.Match;
+        CapturePath = typeMatch.CapturePath != null ? typeMatch.CapturePath : new(Type.Name);
 
-            templateSnippets = Type
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                .Select(x => x.Name)
-                .ToArray();
+        if (!TokenTypeRegistry.Templates.TryGetValue(Type, out var template))
+            return;
+
+        foreach (var captureProp in template.CaptureGroupProps)
+        {
+            if (typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Success && typeMatch.CaptureIndex <= typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
+                captureProp.SetValueFromMatch(this, typeMatch.Match, typeMatch.CaptureIndex, typeMatch.DistinguishingAppendix);
+            else if (Type.IsAssignableTo(typeof(TokenUnitOneOf)))
+                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{typeMatch.Match.Value}' contains no named capture group '{captureProp.Name + typeMatch.DistinguishingAppendix}'");
+            else
+                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {typeMatch.CaptureIndex} exists for match '{typeMatch.Match.Value}'");
         }
 
-        // Always check the static registry first, since constructing the template is somewhat heavy
-        // (not much, but it adds up over all instantiations across large bodies of text)
-        if (TokenTypeRegistry.Templates.ContainsKey(Type))
-            Template = TokenTypeRegistry.Templates[Type];
-        else
-            Template = new(Type, templateSnippets);
-
-        OnInitialized();
+        OnAfterHydrated();
     }
 
-    protected virtual void OnInitialized()
-    {
-        // Base implementation requires no initialization
-    }
+    public string[] GetSnippets() => Snippets;
 
     protected virtual void OnAfterHydrated()
     {
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit HydrateFromMatch(Type tokenUnitType, Match match, CaptureGroupPropPath capturePath = null, string distinguishingAppendix = null, int captureIndex = 0)
+    public static TokenUnit InstantiateFromMatch(Type tokenUnitType, TypeMatch typeMatch)
     {
-        var tokenUnit = (TokenUnit)Activator.CreateInstance(tokenUnitType);
-        tokenUnit.TopLevelMatch = match;
-        tokenUnit.Capture = match;
-        tokenUnit.CapturePath = capturePath == null ? new(tokenUnitType.Name) : capturePath;
+        var instance = Activator.CreateInstance(tokenUnitType);
 
-        foreach (var captureProp in tokenUnit.Template.CaptureGroupProps)
-        {
-            if (match.Groups[captureProp.Name + distinguishingAppendix].Success && captureIndex <= match.Groups[captureProp.Name + distinguishingAppendix].Captures.Count - 1)
-                captureProp.SetValueFromMatch(tokenUnit, match, captureIndex, distinguishingAppendix);
-            else if (tokenUnitType.IsAssignableTo(typeof(TokenUnitOneOf)))
-                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.Value}' contains no named capture group '{captureProp.Name + distinguishingAppendix}'");
-            else
-                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {captureIndex} exists for match '{match.Value}'");
-        }
+        if (instance is not TokenUnit tokenUnitInstance)
+            throw new Exception($"Type '{tokenUnitType}' isn't a {nameof(TokenUnit)} type");
 
-        tokenUnit.OnAfterHydrated();
+        tokenUnitInstance.HydrateFromMatch(typeMatch);
 
-        return tokenUnit;
+        return tokenUnitInstance;
     }
 
-    public TokenUnit HydrateAsChildFromCapture(
-        Type tokenUnitType, 
-        Match match, 
-        Capture childCapture,
-        CaptureGroupPropPath ancestorCapturePath, 
-        string distinguishingAppendix = null,
-        bool addToTokenChildUnits = true,
-        int captureIndex = 0
-        )
+    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, TypeMatch typeMatch, Capture childCapture, bool addToTokenChildUnits = true)
     {
-        var tokenUnitChild = HydrateFromMatch(tokenUnitType, match, ancestorCapturePath, distinguishingAppendix, captureIndex);
+        var tokenUnitChild = InstantiateFromMatch(tokenUnitType, typeMatch);
 
         // overwrite the child's Capture property
         tokenUnitChild.Capture = childCapture;
@@ -183,8 +161,10 @@ public abstract class TokenUnit
     /// </summary>
     public virtual string ValidateStructure()
     {
-        if (string.IsNullOrEmpty(Template.RegexString))
-            return $"{nameof(Template.RegexString)} is null or empty";
+        var template = TokenTypeRegistry.Templates[Type];
+
+        if (string.IsNullOrEmpty(template.RegexString))
+            return $"{nameof(template.RegexString)} is null or empty";
 
         return null;
     }

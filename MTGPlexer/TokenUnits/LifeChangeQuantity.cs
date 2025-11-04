@@ -2,7 +2,7 @@
 
 public class LifeChangeQuantity : TokenUnit
 {
-    public LifeChangeQuantity() : base(nameof(WhichPlayer), nameof(LifeVerb), nameof(Quantity), "life") { }
+    protected override string[] Snippets => [nameof(WhichPlayer), nameof(LifeVerb), nameof(Quantity), "life"];
 
     public WhichPlayer WhichPlayer { get; set; }
     public LifeVerb LifeVerb { get; set; }
@@ -14,4 +14,3 @@ public enum LifeVerb
     Gain,
     Lose
 }
-

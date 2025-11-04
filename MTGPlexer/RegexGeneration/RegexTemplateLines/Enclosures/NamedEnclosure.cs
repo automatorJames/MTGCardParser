@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
 
 public record NamedEnclosure : Enclosure
 {

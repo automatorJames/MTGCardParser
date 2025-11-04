@@ -2,10 +2,6 @@
 
 public abstract class TokenUnitOneOf : TokenUnit
 {
-    protected TokenUnitOneOf(params string[] templateSnippets) : base(templateSnippets)
-    {
-    }
-
     /// <summary>
     /// Returns a single non-null child value which represents the "one" property with a value among 
     /// this instance's canddiate values. As an analytical precaution, an exception is thrown if not exactly
@@ -21,6 +17,7 @@ public abstract class TokenUnitOneOf : TokenUnit
 
     public override string ValidateStructure()
     {
+        var template = TokenTypeRegistry.Templates[Type];
         var props = GetType().GetProps();
 
         if (props.Count() < 2) 
@@ -30,7 +27,7 @@ public abstract class TokenUnitOneOf : TokenUnit
         // (i.e. not separated by text segments)
         bool textSegmentEncountered = false;
         bool capturePropEncountered = false;
-        foreach (var segment in Template.RegexSegments)
+        foreach (var segment in template.RegexSegments)
         {
             // Ignore leading text segments
             if (!capturePropEncountered && segment is TextSegment)

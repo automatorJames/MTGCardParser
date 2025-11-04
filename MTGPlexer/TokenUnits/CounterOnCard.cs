@@ -2,7 +2,7 @@
 
 public class CounterOnCard : TokenUnit
 {
-    public CounterOnCard() : base(nameof(CounterType), "counter") { }
+    protected override string[] Snippets => [nameof(CounterType), "counter"];
 
     public CounterType CounterType { get; set; }
 }

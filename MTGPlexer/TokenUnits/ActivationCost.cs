@@ -3,7 +3,7 @@
 [NoSpaces]
 public class ActivationCost : TokenUnit
 {
-    public ActivationCost() : base("^", nameof(ActivationCostSegment), ":") { }
+    protected override string[] Snippets => ["^", nameof(ActivationCostSegment), ":"];
 
     [RegexPattern("[^:]+")]
     public PlaceholderCapture ActivationCostSegment { get; set; }

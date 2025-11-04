@@ -32,7 +32,8 @@ public class Tokenizer
                     // A token was found. Flush any preceding unmatched text.
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
-                    var token = TokenUnit.HydrateFromMatch(type, match);
+                    TypeMatch typeMatch = new(match);
+                    var token = TokenUnit.InstantiateFromMatch(type, typeMatch);
                     tokens.Add(token);
                     currentIndex += match.Length;
                     matched = true;
@@ -81,7 +82,8 @@ public class Tokenizer
             if (captureMatch.Success && captureMatch.Length == captureToTokenize.Length)
             {
                 // If a full match is found, hydrate the token and return it immediately.
-                return parentToken.HydrateAsChildFromCapture(type, parentMatch, captureMatch, ancestorCapturePath);
+                TypeMatch typeMatch = new(parentMatch, ancestorCapturePath);
+                return parentToken.HydrateAsChildFromCapture(type, typeMatch, captureMatch);
             }
         }
 
@@ -105,7 +107,8 @@ public class Tokenizer
             Match unmatchedMatch = regex.Match(sourceText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                var unmatchedTokenUnit = TokenUnit.HydrateFromMatch(typeof(DefaultUnmatchedString), unmatchedMatch);
+                TypeMatch typeMatch = new(unmatchedMatch);
+                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeof(DefaultUnmatchedString), typeMatch);
                 tokens.Add(unmatchedTokenUnit);
             }
         }

@@ -3,7 +3,7 @@
 [NoSpaces]
 public class GainOrLoseAbility : TokenUnit
 {
-    public GainOrLoseAbility() : base(nameof(LoseOrGain), " \"", nameof(Ability), "\"") { }
+    protected override string[] Snippets => [nameof(LoseOrGain), " \"", nameof(Ability), "\""];
 
     public GainOrLose LoseOrGain { get; set; }
 

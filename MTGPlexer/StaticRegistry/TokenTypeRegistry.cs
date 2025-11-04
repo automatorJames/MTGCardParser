@@ -50,13 +50,9 @@ public static partial class TokenTypeRegistry
     {
         Palettes[type] = new DeterministicPalette(type).Palette;
         NameToType[type.Name] = type;
-        var instance = (TokenUnit)Activator.CreateInstance(type);
-
-        if (instance.ValidateStructure() is string errorString)
-            throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
-
-        Templates[type] = instance.Template;
-        var propCaptureSegments = instance.Template.CaptureGroupProps;
+        RegexTemplate typeTemplate = new(type);
+        Templates[type] = typeTemplate;
+        var propCaptureSegments = typeTemplate.CaptureGroupProps;
 
         // Register all newly encountered enums (we use the EnumRegexProp instance for this,
         // but steps taken during registration only care about the enum type itself)
@@ -101,7 +97,10 @@ public static partial class TokenTypeRegistry
         propCaptureSegments
             .OfType<TokenRegexManyProp>()
             .ToList()
-            .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, instance.Template.Builder.ExtractGroupRegex(x.RegexPropInfo)));
+            .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.RegexPropInfo)));
+
+        if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
+            throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
     }
 
     public static List<TokenUnit> Tokenize(string text, bool originalTextOnly = false)

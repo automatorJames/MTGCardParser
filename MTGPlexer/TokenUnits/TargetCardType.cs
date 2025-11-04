@@ -2,7 +2,7 @@
 
 public class TagetCardType : TokenUnit
 {
-    public TagetCardType() : base("target", nameof(CardType)) { }
+    protected override string[] Snippets => ["target", nameof(CardType)];
 
     public CardType CardType { get; set; }
 }

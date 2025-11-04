@@ -14,18 +14,36 @@ public class RegexTemplate
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
     public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
 
-    public RegexTemplate(Type type, params string[] templateSnippets)
+    public RegexTemplate(Type type)
     {
-        if (templateSnippets is null || templateSnippets.Length == 0)
-            return;
+        var instance = Activator.CreateInstance(type);
+
+        if (instance is not TokenUnit tokenUnitInstance)
+            throw new Exception($"Type '{type.Name}' does not derive from type '{nameof(TokenUnit)}'");
+
+        var snippets = tokenUnitInstance.GetSnippets();
+
+        if (snippets.Length == 0)
+        {
+            // If children pass no arguments or call the default parameterless base constructor,
+            // we assume they want to construct snippets from their ordered properties.
+
+            snippets = type
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Select(x => x.Name)
+                .ToArray();
+
+            if (snippets.Length == 0)
+                throw new Exception($"Type '{type.Name}' has no snippets or valid properties");
+        }
 
         _containingType = type;
         RegexPropInfos = GetRegexProps();
 
-        for (int i = 0; i < templateSnippets.Length; i++)
+        for (int i = 0; i < snippets.Length; i++)
         {
-            var snippet = templateSnippets[i];
-            var isLastSnippet = i == templateSnippets.Length - 1;
+            var snippet = snippets[i];
+            var isLastSnippet = i == snippets.Length - 1;
             var segment = ResolveSnippetToSegment(snippet);
             RegexSegments.Add(segment);
         }

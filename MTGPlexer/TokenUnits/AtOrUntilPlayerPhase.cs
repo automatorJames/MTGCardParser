@@ -3,7 +3,7 @@
 [TokenizationOrder(0)]
 public class AtOrUntilPlayerPhase : TokenUnit
 {
-    public AtOrUntilPlayerPhase() : base (nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase)) { }
+    protected override string[] Snippets => [nameof(TemporalDisposition), "the", nameof(PhasePart), "of", nameof(Whose), nameof(Phase)];
 
     public TemporalDisposition TemporalDisposition { get; set; }
     public PhasePart PhasePart { get; set; }

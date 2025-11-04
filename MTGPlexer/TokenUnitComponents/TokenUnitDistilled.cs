@@ -14,17 +14,11 @@ public abstract class TokenUnitDistilled : TokenUnit
     /// </summary>
     public Dictionary<IndexedPropertyCapture, Dictionary<RegexPropInfo, object>> DistilledVals{ get; private set; } = [];
 
-    protected TokenUnitDistilled(params string[] templateSnippets) : base(templateSnippets) { }
-
     public abstract void DistillValuesFromPlaceholders();
-
-    protected override void OnInitialized()
-    {
-        RegisterDistilledProps();
-    }
 
     protected override void OnAfterHydrated()
     {
+        RegisterDistilledProps();
         DistillValuesFromPlaceholders();
         RegisterDistilledPropVals();
     }

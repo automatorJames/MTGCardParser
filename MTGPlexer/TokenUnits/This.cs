@@ -4,5 +4,6 @@
 [TokenUnitProperty]
 public class This : TokenUnit
 {
-    public This() : base(@"\{this\}") { }
+    protected override string[] Snippets => [@"{this}"];
+
 }

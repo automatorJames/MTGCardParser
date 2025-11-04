@@ -2,8 +2,7 @@
 
 public class LifeQuantity : TokenUnit
 {
-    public LifeQuantity() : base(nameof(Quantity), "life") { }
+    protected override string[] Snippets => [nameof(Quantity), "life"];
 
     public Quantity Quantity { get; set; }
 }
-

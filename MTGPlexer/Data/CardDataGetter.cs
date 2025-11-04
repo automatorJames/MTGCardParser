@@ -51,7 +51,7 @@ public class CardDataGetter
         //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" } };
         //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type1Twin", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" }, new Card { Name = "Other", Text = "at the beginning of your upkeep" } };
         //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type1Twin", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" } };
-        result = result.Where(x => x.Name == "Berserk"); 
+        //result = result.Where(x => x.Name == "Berserk"); 
         //result = new List<Card> { new Card { Name = "baaz", Text = "Target creature gains trample and gets +X/+0 until end of turn" } };
         //result = new List<Card> { new Card { Name = "Type1", Text = "creature has flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "creature has flying, reach, and butt poop" } };
         //result = new List<Card> { new Card { Name = "Type2", Text = "creature has flying, poop fling, butt poop, and haste" } };
