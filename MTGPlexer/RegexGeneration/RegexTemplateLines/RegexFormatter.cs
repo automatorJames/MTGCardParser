@@ -5,8 +5,8 @@
 /// </summary>
 public class RegexFormatter
 {
-    FormattedRegexColoringRules _colors;
-    FormattedRegexTreatmentRules _treatments;
+    FormattedRegexColoringRules _colors = new();
+    FormattedRegexTreatmentRules _treatments = new();
     int _hashSeparatorColumn;
     int _commentBoxLength;
     const string DefaultWhite = "#FFFFFF";
@@ -131,8 +131,6 @@ public class RegexFormatter
         AddBoundaryLines(finalizedLines, boundaryOption);
 
         // 3. Prepare for formatting
-        _colors = new();
-        _treatments = new();
         CalculateColumnWidths(finalizedLines, alternateCounts);
 
         // 4. Format the lines and create RegexCommentedLine objects

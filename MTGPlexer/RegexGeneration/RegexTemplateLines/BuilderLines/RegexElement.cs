@@ -3,8 +3,8 @@
 public class RegexElement
 {
     public Enclosure[] Enclosures { get; }
-    public string Regex { get; }
-    public Palette Palette { get; }
+    public string Regex { get; init; }
+    public Palette Palette { init; get; }
     public string Comment { get; init; }
 
     public string UniquePath { get; }

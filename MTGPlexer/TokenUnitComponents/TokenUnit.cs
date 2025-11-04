@@ -107,7 +107,8 @@ public abstract class TokenUnit
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCaptures.Add(new(regexPropInfo, capture, propVal, capturePosition, CapturePath, distinguishingAppendix));
+        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, capturePosition, CapturePath, distinguishingAppendix);
+        IndexedPropertyCaptures.Add(indexedPropertyCapture);
     }
 
     /// <summary>

@@ -89,7 +89,7 @@
 //    public ManyOf<KeywordLite> KeywordLite_Many { get; set; }
 //}
 
-[IsolateForTesting]
+/*[IsolateForTesting]
 public class McGuffin : TokenUnit
 {
     public McGuffin() : base("creature has", nameof(McBuffins)) { }
@@ -143,7 +143,7 @@ public class Buffin : TokenUnitOneOf
 public class DogShite : TokenUnit
 {
     public DogStuffe DogStuffe { get; set; }
-}
+}*/
 
 //
 //public enum Numbers

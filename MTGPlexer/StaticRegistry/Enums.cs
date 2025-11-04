@@ -5,43 +5,43 @@ public enum Quantity
     [RegexPattern("x")]
     X = -1,
 
-    [RegexPattern("none", "zero", "0")]
+    [RegexPattern("0", "zero", "none")]
     Zero = 0,
 
-    [RegexPattern("one", "a", "1")]
+    [RegexPattern("1", "one", "a")]
     One = 1,
 
-    [RegexPattern("two", "2")]
+    [RegexPattern("2", "two")]
     Two = 2,
 
-    [RegexPattern("three", "3")]
+    [RegexPattern("3", "three")]
     Three = 3,
 
-    [RegexPattern("four", "4")]
+    [RegexPattern("4", "four")]
     Four = 4,
 
-    [RegexPattern("five", "5")]
+    [RegexPattern("5", "five")]
     Five = 5,
 
-    [RegexPattern("six", "6")]
+    [RegexPattern("6", "six")]
     Six = 6,
 
-    [RegexPattern("seven", "7")]
+    [RegexPattern("7", "seven")]
     Seven = 7,
 
-    [RegexPattern("eight", "8")]
+    [RegexPattern("8", "eight")]
     Eight = 8,
 
-    [RegexPattern("nine", "9")]
+    [RegexPattern("9", "nine")]
     Nine = 9,
 
-    [RegexPattern("ten", "10")]
+    [RegexPattern("10", "ten")]
     Ten = 10,
 
-    [RegexPattern("eleven", "11")]
+    [RegexPattern("11", "eleven")]
     Eleven = 11,
 
-    [RegexPattern("twelve", "12")]
+    [RegexPattern("12", "twelve")]
     Twelve = 12
 }
 
