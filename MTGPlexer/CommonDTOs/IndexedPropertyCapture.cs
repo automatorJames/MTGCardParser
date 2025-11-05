@@ -43,10 +43,11 @@ public record IndexedPropertyCapture
 
         CaptureGroupPropPath = regexPropInfo.IsTerminal 
             ? distinguishingAppendix is not null 
-                ? new(parentTokenPath + "." + parentTokenPath.LeafName + distinguishingAppendix + "." + regexPropInfo.Name + distinguishingAppendix + "." + value.ToString())
+                ? new(parentTokenPath + "." + regexPropInfo.Name + distinguishingAppendix + "." + value.ToString())
                 : new(parentTokenPath.PropPath.Dot(regexPropInfo.Name).Dot(value.ToString()))
             : new(parentTokenPath.PropPath);
 
+        if (CaptureGroupPropPath.PropPath.Contains("TargetGainsOrLosesBuff_Many.GainedOrLostBuff_Many.GainedOrLostBuff_Many_last.Buff_last.PowerToughnessModification_last.PowerToughnessModification_last.ToughnessValue_last")) Debugger.Break();
     }
 
     /// <summary>

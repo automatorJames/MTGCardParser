@@ -82,8 +82,8 @@ public class Tokenizer
             if (captureMatch.Success && captureMatch.Length == captureToTokenize.Length)
             {
                 // If a full match is found, hydrate the token and return it immediately.
-                TypeMatch typeMatch = new(parentMatch, ancestorCapturePath);
-                return parentToken.HydrateAsChildFromCapture(type, typeMatch, captureMatch);
+                TypeMatch typeMatch = new(parentMatch, ancestorCapturePath, ChildCapture: captureMatch);
+                return parentToken.HydrateAsChildFromCapture(type, typeMatch);
             }
         }
 

@@ -127,9 +127,9 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 }
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-                    TypeMatch typeMatch = new(match, ancestorCapturePath, ordinalNameAppendix, j);
-                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, typeMatch, itemCapture, addToTokenChildUnits: false);
+                    CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
+                    TypeMatch typeMatch = new(match, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
+                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, typeMatch, addToTokenUnitChildren: false);
 
                     // Set the top-level properties for this child item.
                     tokenUnitChild.TopLevelMatch = match;

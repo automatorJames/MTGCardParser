@@ -30,7 +30,7 @@ public abstract class TokenUnit
     public void HydrateFromMatch(TypeMatch typeMatch)
     {
         TopLevelMatch = typeMatch.Match;
-        Capture = typeMatch.Match;
+        Capture = typeMatch.ChildCapture ?? typeMatch.Match;
         CapturePath = typeMatch.CapturePath != null ? typeMatch.CapturePath : new(Type.Name);
 
         if (!TokenTypeRegistry.Templates.TryGetValue(Type, out var template))
@@ -68,14 +68,11 @@ public abstract class TokenUnit
         return tokenUnitInstance;
     }
 
-    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, TypeMatch typeMatch, Capture childCapture, bool addToTokenChildUnits = true)
+    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, TypeMatch typeMatch, bool addToTokenUnitChildren = true)
     {
         var tokenUnitChild = InstantiateFromMatch(tokenUnitType, typeMatch);
 
-        // overwrite the child's Capture property
-        tokenUnitChild.Capture = childCapture;
-
-        if (addToTokenChildUnits)
+        if (addToTokenUnitChildren)
             ChildTokenUnits.Add(tokenUnitChild);
 
         return tokenUnitChild;

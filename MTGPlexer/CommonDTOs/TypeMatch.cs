@@ -5,5 +5,6 @@ public record TypeMatch
     Match Match = null, 
     CaptureGroupPropPath CapturePath = null, 
     string DistinguishingAppendix = null, 
-    int CaptureIndex = 0
+    int CaptureIndex = 0,
+    Capture ChildCapture = null
 );
