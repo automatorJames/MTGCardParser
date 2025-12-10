@@ -236,7 +236,7 @@ public enum WeepyBeepy
 
 public class PoopFromSomewhere : TokenUnit
 {
-    protected override string[] Snippets => ["poop from"];
+    protected override string[] Snippets => ["poop from", nameof(PoopOrigin)];
 
     public PoopOrigin PoopOrigin { get; set; }
 }

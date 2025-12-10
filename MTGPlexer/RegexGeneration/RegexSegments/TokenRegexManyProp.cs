@@ -129,7 +129,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 {
                     CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
                     TypeMatch typeMatch = new(match, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
-                    var tokenUnitChild = token.HydrateAsChildFromCapture(RegexPropInfo.BaseType, typeMatch, addToTokenUnitChildren: false);
+                    var tokenUnitChild = TokenUnit.InstantiateFromMatch(BaseType, typeMatch);
 
                     // Set the top-level properties for this child item.
                     tokenUnitChild.TopLevelMatch = match;

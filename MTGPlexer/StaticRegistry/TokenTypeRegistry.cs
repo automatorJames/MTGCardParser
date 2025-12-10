@@ -20,6 +20,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
     public static Dictionary<Type, Palette> Palettes { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
+    public static Dictionary<PropertyInfo, List<Type>> DynamicPropCapturedTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }

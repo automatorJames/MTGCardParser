@@ -38,7 +38,8 @@ public abstract class TokenUnit
 
         foreach (var captureProp in template.CaptureGroupProps)
         {
-            if (typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Success && typeMatch.CaptureIndex <= typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
+            //if (typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Success && typeMatch.CaptureIndex <= typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
+            if (typeMatch[captureProp.Name + typeMatch.DistinguishingAppendix] != null && typeMatch.CaptureIndex <= typeMatch[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
                 captureProp.SetValueFromMatch(this, typeMatch.Match, typeMatch.CaptureIndex, typeMatch.DistinguishingAppendix);
             else if (Type.IsAssignableTo(typeof(TokenUnitOneOf)))
                 Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{typeMatch.Match.Value}' contains no named capture group '{captureProp.Name + typeMatch.DistinguishingAppendix}'");
@@ -66,16 +67,6 @@ public abstract class TokenUnit
         tokenUnitInstance.HydrateFromMatch(typeMatch);
 
         return tokenUnitInstance;
-    }
-
-    public TokenUnit HydrateAsChildFromCapture(Type tokenUnitType, TypeMatch typeMatch, bool addToTokenUnitChildren = true)
-    {
-        var tokenUnitChild = InstantiateFromMatch(tokenUnitType, typeMatch);
-
-        if (addToTokenUnitChildren)
-            ChildTokenUnits.Add(tokenUnitChild);
-
-        return tokenUnitChild;
     }
 
     public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal, string distinguishingAppendix = null)

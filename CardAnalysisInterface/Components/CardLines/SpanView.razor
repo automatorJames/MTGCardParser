@@ -14,7 +14,14 @@
 
                 if (relativeChildStart > cursor)
                 {
-                    <text>@Node.CaptureTextOriginal.Substring(cursor, relativeChildStart - cursor)</text>
+                    try
+                    {
+                        <text>@Node.CaptureTextOriginal.Substring(cursor, relativeChildStart - cursor)</text>
+                    }
+                    catch (Exception ex)
+                    {
+                        var debugInfo = Node.Debug();
+                    }
                 }
 
                 <SpanView Node="@child" Depth="@(Depth + (child is SpanBranch branch && branch.IsCollapsed ? 0 : 1))" />
@@ -24,7 +31,14 @@
 
             if (cursor < Node.Length)
             {
-                <text>@Node.CaptureTextOriginal.Substring(cursor, Node.Length - cursor)</text>
+                try
+                {
+                    <text>@Node.CaptureTextOriginal.Substring(cursor, Node.Length - cursor)</text>
+                }
+                catch(Exception ex)
+                {
+                    var debugInfo = Node.Debug();
+                }
             }
         }
     </span>

@@ -282,53 +282,6 @@ public static class Extensions
         return sortedGroups.Select(g => g.Name).ToList();
     }
 
-    ///// <summary>
-    ///// Extracts a specific capture from a Group's CaptureCollection and returns it as a new,
-    ///// non-Group 'Capture' object. This is useful for preventing downstream code from treating
-    ///// the capture as a Group and attempting to process child nodes.
-    ///// </summary>
-    ///// <param name="group">The source group containing the captures.</param>
-    ///// <param name="captureIndex">The index of the capture to extract.</param>
-    ///// <returns>A new Capture object that is not a Group.</returns>
-    //public static Capture GetPlainCapture(this Group group, int captureIndex)
-    //{
-    //    if (group == null)
-    //        throw new ArgumentNullException(nameof(group));
-    //
-    //    if (captureIndex < 0 || captureIndex >= group.Captures.Count)
-    //        throw new ArgumentOutOfRangeException(nameof(captureIndex));
-    //
-    //    // Get the specific capture we want to clone. This object might actually be a Group.
-    //    Capture sourceCapture = group.Captures[captureIndex];
-    //
-    //    // The constructor for Capture is internal: internal Capture(string text, int index, int length)
-    //    // We must use Reflection to find and invoke it.
-    //    ConstructorInfo captureConstructor = typeof(Capture).GetConstructor(
-    //        BindingFlags.NonPublic | BindingFlags.Instance,
-    //        null,
-    //        new[] { typeof(string), typeof(int), typeof(int) },
-    //        null);
-    //
-    //    if (captureConstructor == null)
-    //    {
-    //        // This should never happen unless the .NET Regex implementation drastically changes.
-    //        throw new InvalidOperationException("Could not find the internal constructor for the Capture class.");
-    //    }
-    //
-    //    // We also need the internal 'Text' property from the source capture to pass to the constructor.
-    //    PropertyInfo textProperty = typeof(Capture).GetProperty("Text", BindingFlags.NonPublic | BindingFlags.Instance);
-    //    if (textProperty == null)
-    //    {
-    //        throw new InvalidOperationException("Could not find the internal 'Text' property on the Capture class.");
-    //    }
-    //
-    //    string sourceText = (string)textProperty.GetValue(sourceCapture);
-    //
-    //    // Create the new, "plain" Capture object by invoking its internal constructor.
-    //    object[] constructorArgs = { sourceText, sourceCapture.Index, sourceCapture.Length };
-    //    Capture plainCapture = (Capture)captureConstructor.Invoke(constructorArgs);
-    //
-    //    return plainCapture;
-    //}
+    public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
 }
 

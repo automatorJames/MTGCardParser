@@ -11,6 +11,7 @@ public class Tokenizer
     public Tokenizer(List<Type> orderedTypes)
     {
         _orderedAnchoredTypeRegexes = orderedTypes.ToDictionary(x => x, x => new Regex($"\\G({TokenTypeRegistry.Templates[x].Regex})"));
+        //_orderedAnchoredTypeRegexes = orderedTypes.ToDictionary(x => x, x => TokenTypeRegistry.Templates[x].Regex);
     }
 
     public List<TokenUnit> Tokenize(string sourceText)
@@ -64,7 +65,7 @@ public class Tokenizer
     /// Intended for use by DynamicRegexProp instances to check for a sub-capture for a given match among all possible TokenUnit types.
     /// </summary>
     /// <returns></returns>
-    public TokenUnit TokenizeSingleNonDefaultChild(TokenUnit parentToken, Capture captureToTokenize, Match parentMatch, CaptureGroupPropPath ancestorCapturePath, Type constrainToType = null)
+    public TokenUnit TokenizeDynamicSubContent(TokenUnit parentToken, Capture captureToTokenize, Match parentMatch, CaptureGroupPropPath ancestorCapturePath, Type constrainToType = null)
     {
         // Filter the regexes to only include types that are assignable to the constraint type, or all types if no constraint is provided.
         Dictionary<Type, Regex> filteredOrderedTypeRegexes =
@@ -74,7 +75,7 @@ public class Tokenizer
         // Iterate through the filtered regexes to find a match.
         foreach (var (type, regex) in filteredOrderedTypeRegexes)
         {
-            var captureMatch = regex.Match(captureToTokenize.Value, 0);
+            var captureMatch = regex.Match(captureToTokenize.Value);
 
             // A successful match must consume the entire sourceText.
             // The \G anchor in the regex ensures the match starts at the beginning (index 0).
@@ -82,8 +83,9 @@ public class Tokenizer
             if (captureMatch.Success && captureMatch.Length == captureToTokenize.Length)
             {
                 // If a full match is found, hydrate the token and return it immediately.
-                TypeMatch typeMatch = new(parentMatch, ancestorCapturePath, ChildCapture: captureMatch);
-                return parentToken.HydrateAsChildFromCapture(type, typeMatch);
+                TypeMatch typeMatch = new(captureMatch, ancestorCapturePath);
+
+                return TokenUnit.InstantiateFromMatch(type, typeMatch);
             }
         }
 

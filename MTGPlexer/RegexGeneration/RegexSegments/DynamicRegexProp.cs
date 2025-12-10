@@ -13,6 +13,15 @@ public record DynamicRegexProp : ScalarCapturePropBase
         builder.CloseGroup();
     }
 
+    protected override void SetScalarAlternativeSet(RegexPropInfo captureProp)
+    {
+        var captureAlternatives =
+            captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns // Respect RegexPattern override if present
+            ?? [".+"];                                                             // Otherwise default to "one or more characters"
+            
+        ScalarAlternativeSet = new(captureAlternatives.ToList());
+    }
+
     public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
     {
         var genericType = RegexPropInfo.Prop.PropertyType.GenericTypeArguments[0];
@@ -23,7 +32,7 @@ public record DynamicRegexProp : ScalarCapturePropBase
         var group = match.Groups[Name + distinguishingAppendix];
         var capture = group.Captures[captureIndex];
         CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeSingleNonDefaultChild(token, capture, match, ancestorCapturePath);
+        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeDynamicSubContent(token, capture, match, ancestorCapturePath);
 
         if (dynamicTokenValue == null)
             return false;

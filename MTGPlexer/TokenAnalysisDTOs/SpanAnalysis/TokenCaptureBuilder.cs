@@ -169,26 +169,61 @@ public static class TokenCaptureBuilder
         var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.DynamicCaptureItemBranch);
         precursor.Palette = DeterministicPalette.GetStaticPalette(typeof(DynamicCapture).GetCustomAttribute<ColorAttribute>().Color);
 
-        if (valueObject is TokenUnitOneOf tokenUnitOneOf) 
-            precursor.Children.Add(CreatePrecursorForTokenUnitOneOf(propCapture, tokenUnitOneOf, originalFullText));
+        // This offset is the absolute start index of the Dynamic Property (e.g., 21)
+        int offset = propCapture.Capture.Index;
+
+        PrecursorNode childNode = null;
+
+        if (valueObject is TokenUnitOneOf tokenUnitOneOf)
+            childNode = CreatePrecursorForTokenUnitOneOf(propCapture, tokenUnitOneOf, originalFullText);
 
         else if (valueObject is TokenUnitDistilled tokenUnitDistilled)
-            precursor.Children.Add(CreatePrecursorForTokenUnitDistilled(propCapture, tokenUnitDistilled, originalFullText));
+            childNode = CreatePrecursorForTokenUnitDistilled(propCapture, tokenUnitDistilled, originalFullText);
 
-        else if (valueObject is TokenUnit tokenUnit) 
-            precursor.Children.Add(CreatePrecursorForTokenUnit(propCapture, tokenUnit, originalFullText));
+        else if (valueObject is TokenUnit tokenUnit)
+            childNode = CreatePrecursorForTokenUnit(propCapture, tokenUnit, originalFullText);
 
         else if (dynamicCapture.RegexPropType == RegexPropType.Enum)
         {
+            // Enums use the propCapture directly and don't involve inner TokenUnits, 
+            // so they are already absolute. No shifting needed.
             var leafPrecursor = CreatePrecursorLeaf(propCapture, originalFullText, TokenAnalysisElementType.DynamicCaptureItemLeaf);
             SetEnumScalar(leafPrecursor, propCapture.Value);
             return leafPrecursor;
         }
-
-        else 
+        else
             throw new NotImplementedException($"{nameof(DynamicCapture)} only supports {nameof(TokenUnitOneOf)}, {nameof(TokenUnit)}, and enum children");
 
+        if (childNode != null)
+        {
+            // We only shift the children.
+            // todo: this is an ugly hack to fix what shouldn't have started out as broken in the first place
+            foreach (var child in childNode.Children)
+                ShiftNodeCoordinates(child, offset);
+
+            precursor.Children.Add(childNode);
+        }
+
         return precursor;
+    }
+
+    // todo: this is an ugly hack to fix what shouldn't have started out as broken in the first place
+    private static void ShiftNodeCoordinates(PrecursorNode node, int offset)
+    {
+        node.Start += offset;
+        node.End += offset;
+
+        // Recalculate the captured text based on the new absolute indices
+        // and the original full text source.
+        if (node.Start >= 0 && node.End <= node.OriginalFullText.Length)
+        {
+            node.CaptureTextOriginal = node.OriginalFullText.Substring(node.Start, node.Length);
+        }
+
+        foreach (var child in node.Children)
+        {
+            ShiftNodeCoordinates(child, offset);
+        }
     }
 
     static PrecursorNode CreatePrecursorForTokenUnitDistilled(IndexedPropertyCapture propCapture, TokenUnitDistilled distilled, string originalFullText)
