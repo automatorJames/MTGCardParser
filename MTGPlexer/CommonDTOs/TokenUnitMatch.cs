@@ -1,9 +1,9 @@
 ﻿namespace MTGPlexer.CommonDTOs;
 
-public record TypeMatch
+public record TokenUnitMatch
 {
     public Type Type { get; set; }
-    public Match Match { get; init; }
+    public Match RegexMatch { get; init; }
     public SourceTextDTO SourceText { get; set; }
     public CaptureGroupPropPath CapturePath { get; init; }
     public string DistinguishingAppendix { get; init; }
@@ -11,9 +11,9 @@ public record TypeMatch
     public Capture ChildCapture { get; init; }
     public string OverrideGroupName { get; init; }
 
-    public TypeMatch(
+    public TokenUnitMatch(
         Type type,
-        Match match,
+        Match regexMatch,
         SourceTextDTO sourceText = null,
         CaptureGroupPropPath capturePath = null,
         string distinguishingAppendix = null,
@@ -21,10 +21,10 @@ public record TypeMatch
         Capture childCapture = null,
         string overrideGroupName = null)
     {
-        ArgumentNullException.ThrowIfNull(match);
+        ArgumentNullException.ThrowIfNull(regexMatch);
 
         Type = type;
-        Match = match;
+        RegexMatch = regexMatch;
         SourceText = sourceText;
         CapturePath = capturePath;
         DistinguishingAppendix = distinguishingAppendix;
@@ -41,10 +41,10 @@ public record TypeMatch
                 throw new ArgumentNullException(nameof(groupName));
 
             if (OverrideGroupName == groupName)
-                return Match;
+                return RegexMatch;
 
-            if (Match.Groups[groupName].Success)
-                return Match.Groups[groupName];
+            if (RegexMatch.Groups[groupName].Success)
+                return RegexMatch.Groups[groupName];
 
             return null;
         }
@@ -52,7 +52,7 @@ public record TypeMatch
 
     public override string ToString()
     {
-        var str = $"Match: \"{Match.Value}\"";
+        var str = $"Match: \"{RegexMatch.Value}\"";
 
         if (CapturePath != null || DistinguishingAppendix != null || CaptureIndex != 0 || ChildCapture != null)
             str += " (contains add'l data)";

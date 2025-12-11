@@ -16,10 +16,8 @@ public abstract class TokenUnit
         }
     }
 
-    public TypeMatch TypeMatch { get; set; }
-    public Match TopLevelMatch { get; set; }
-    public Capture Capture { get; set; }
-    public CaptureGroupPropPath CapturePath { get; set; }
+    public Capture Capture => Match.ChildCapture ?? Match.RegexMatch;
+    public TokenUnitMatch Match { get; set; }
     public List<TokenUnit> ChildTokenUnits { get; set; } = [];
 
     /// <summary>
@@ -28,30 +26,6 @@ public abstract class TokenUnit
     /// </summary>
     public List<IndexedPropertyCapture> IndexedPropertyCaptures { get; set; } = [];
 
-
-
-    public void HydrateFromMatch(TypeMatch typeMatch)
-    {
-        TopLevelMatch = typeMatch.Match;
-        Capture = typeMatch.ChildCapture ?? typeMatch.Match;
-        CapturePath = typeMatch.CapturePath != null ? typeMatch.CapturePath : new(Type.Name);
-
-        if (!TokenTypeRegistry.Templates.TryGetValue(Type, out var template))
-            return;
-
-        foreach (var captureProp in template.CaptureGroupProps)
-        {
-            if (typeMatch[captureProp.Name + typeMatch.DistinguishingAppendix] != null && typeMatch.CaptureIndex <= typeMatch[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
-                captureProp.SetValueFromMatch(this, typeMatch.Match, typeMatch.CaptureIndex, typeMatch.DistinguishingAppendix);
-            else if (Type.IsAssignableTo(typeof(TokenUnitOneOf)))
-                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{typeMatch.Match.Value}' contains no named capture group '{captureProp.Name + typeMatch.DistinguishingAppendix}'");
-            else
-                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {typeMatch.CaptureIndex} exists for match '{typeMatch.Match.Value}'");
-        }
-
-        OnAfterHydrated();
-    }
-
     public string[] GetSnippets() => Snippets;
 
     protected virtual void OnAfterHydrated()
@@ -59,15 +33,29 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(TypeMatch typeMatch)
+    public static TokenUnit InstantiateFromMatch(TokenUnitMatch match)
     {
-        var instance = Activator.CreateInstance(typeMatch.Type);
+        var instance = Activator.CreateInstance(match.Type);
 
         if (instance is not TokenUnit tokenUnitInstance)
-            throw new Exception($"Type '{typeMatch.Type.Name}' isn't a {nameof(TokenUnit)} type");
+            throw new Exception($"Type '{match.Type.Name}' isn't a {nameof(TokenUnit)} type");
 
-        tokenUnitInstance.TypeMatch = typeMatch;
-        tokenUnitInstance.HydrateFromMatch(typeMatch);
+        tokenUnitInstance.Match = match;
+
+        if (!TokenTypeRegistry.Templates.TryGetValue(match.Type, out var template))
+            return tokenUnitInstance;
+
+        foreach (var captureProp in template.CaptureGroupProps)
+        {
+            if (match[captureProp.Name + match.DistinguishingAppendix] != null && match.CaptureIndex <= match[captureProp.Name + match.DistinguishingAppendix].Captures.Count - 1)
+                captureProp.SetValueFromNamedGroupInMatch(tokenUnitInstance);
+            else if (match.Type.IsAssignableTo(typeof(TokenUnitOneOf)))
+                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name + match.DistinguishingAppendix}'");
+            else
+                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureIndex} exists for match '{match.RegexMatch.Value}'");
+        }
+
+        tokenUnitInstance.OnAfterHydrated();
 
         return tokenUnitInstance;
     }
@@ -76,7 +64,7 @@ public abstract class TokenUnit
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, capturePosition, CapturePath, distinguishingAppendix);
+        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, capturePosition, Match.CapturePath, distinguishingAppendix);
         IndexedPropertyCaptures.Add(indexedPropertyCapture);
     }
 
@@ -171,5 +159,5 @@ public abstract class TokenUnit
     }
 
     //public override string ToString() => $"{Type.Name}{(MatchSpan.Source is null ? "" : $": {MatchSpan.ToStringValue()}")}";
-    public override string ToString() => $"{Type.Name}{(Capture == null ? "" : $": {Capture.Value}")}";
+    //public override string ToString() => $"{Type.Name}{(Match == null ? "" : $": {Ma.Value}")}";
 }

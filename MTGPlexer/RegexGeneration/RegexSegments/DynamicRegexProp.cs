@@ -22,17 +22,17 @@ public record DynamicRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = new(captureAlternatives.ToList());
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
+    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
         var genericType = RegexPropInfo.Prop.PropertyType.GenericTypeArguments[0];
 
         if (!genericType.IsAssignableTo(typeof(TokenUnit)))
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
-        var group = match.Groups[Name + distinguishingAppendix];
-        var capture = group.Captures[captureIndex];
-        CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeDynamicSubContent(token, capture, match, ancestorCapturePath);
+        var group = token.Match.RegexMatch.Groups[Name + token.Match.DistinguishingAppendix];
+        var capture = group.Captures[token.Match.CaptureIndex];
+        CaptureGroupPropPath ancestorCapturePath = new (token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
+        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeDynamicSubContent(token, capture, token.Match.RegexMatch, ancestorCapturePath);
 
         if (dynamicTokenValue == null)
             return false;

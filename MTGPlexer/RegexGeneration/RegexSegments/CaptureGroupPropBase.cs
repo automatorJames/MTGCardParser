@@ -7,17 +7,16 @@
 /// </summary>
 public abstract record CaptureGroupPropBase : RegexSegmentBase
 {
-    public string Name { get; }
+    public string Name => RegexPropInfo.Name;
     public RegexPropInfo RegexPropInfo { get; init; }
     public abstract Regex ManyMatchRegex { get; }
     
     public CaptureGroupPropBase(RegexPropInfo captureProp)
     {
-        Name = captureProp.Name;
         RegexPropInfo = captureProp;
     }
 
-    public abstract bool SetValueFromMatch(TokenUnit tokenUnit, Match match, int captureIndex, string distinguishingAppendix = null);
+    public abstract bool SetValueFromNamedGroupInMatch(TokenUnit tokenUnit);
 
     public override string ToString() => base.ToString();
 

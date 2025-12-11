@@ -82,9 +82,12 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         builder.CloseGroup();
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
+    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
         // todo: we're not yet using captureIndex, because it's unclear how we'd do so in the case of ManyOf
+
+        var match = token.Match.RegexMatch;
+        var distinguishingAppendix = token.Match.DistinguishingAppendix;
 
         Group[] ordinalCaptureGroups =
         [
@@ -127,8 +130,8 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 }
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
-                    TypeMatch typeMatch = new(BaseType, match, token.TypeMatch.SourceText, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
+                    CaptureGroupPropPath ancestorCapturePath = new (token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
+                    TokenUnitMatch typeMatch = new(BaseType, match, token.Match.SourceText, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
 
                     // Get the TokenRegexProp that contains the suffixed definitions for this ordinal.

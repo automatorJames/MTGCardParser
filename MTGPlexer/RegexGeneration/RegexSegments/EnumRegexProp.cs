@@ -37,21 +37,21 @@ public record EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override bool SetValueFromMatch(TokenUnit token, Match match, int captureIndex, string distinguishingAppendix = null)
+    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
-        var group = match.Groups[Name + distinguishingAppendix];
-        var capture = group.Captures[captureIndex];
+        var group = token.Match.RegexMatch.Groups[Name + token.Match.DistinguishingAppendix];
+        var  capture = group.Captures[token.Match.CaptureIndex];
 
-        if (!group.Success || group.Captures.Count - 1 < captureIndex)
+        if (!group.Success || group.Captures.Count - 1 < token.Match.CaptureIndex)
         {
             if (!RegexPropInfo.MayBeNull)
-                throw new Exception($"{RegexPropInfo.Name} a non-nullable enum, but no match was found");
+                throw new Exception($"{RegexPropInfo.Name} is a non-nullable enum, but no match was found");
 
             return false;
         }
 
         var valueToSet = GetEnumMatchValue(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet, distinguishingAppendix);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet, token.Match.DistinguishingAppendix);
         return true;
     }
 

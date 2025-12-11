@@ -33,7 +33,7 @@ public record UnmatchedTextOccurrence
         LineSpanRoots = lineSpanRoots.ToArray();
         AnchorTokenIndex = anchorTokenIndex;
         Anchor = (DefaultUnmatchedString)LineSpanRoots[AnchorTokenIndex].RootToken;
-        Text =  Anchor.Capture.Value;
+        Text =  Anchor.Match.RegexMatch.Value;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         Key = new(cardName, Anchor);
     }

@@ -37,7 +37,7 @@ public static class TokenCaptureBuilder
         var precursorRoot = CreatePrecursorForRoot(root, originalFullText);
 
         // Stage 2: Post-process the precursor tree to prepend global paths to every node.
-        var pathPrefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.TopLevelMatch.Index}]-";
+        var pathPrefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RegexMatch.Index}]-";
         PrependPathsToPrecursorTree(precursorRoot, pathPrefix);
 
         // Stage 3: Convert the precursor tree into the final, immutable DTO tree.
@@ -106,7 +106,7 @@ public static class TokenCaptureBuilder
             End = root.Capture.Index + root.Capture.Length,
             RootToken = root,
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
-            CapturePath = root.CapturePath,
+            CapturePath = root.Match.CapturePath,
             Palette = TokenTypeRegistry.Palettes[root.Type],
             ElementType = root is DefaultUnmatchedString
                 ? TokenAnalysisElementType.UnmatchedTokenUnitRoot
