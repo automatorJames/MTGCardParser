@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿using MTGPlexer.Analysis;
+
+namespace MTGPlexer.TokenUnitComponents;
 
 public abstract class TokenUnit
 {
@@ -27,6 +29,8 @@ public abstract class TokenUnit
     /// </summary>
     public List<IndexedPropertyCapture> IndexedPropertyCaptures { get; set; } = [];
 
+
+
     public void HydrateFromMatch(TypeMatch typeMatch)
     {
         TopLevelMatch = typeMatch.Match;
@@ -38,7 +42,6 @@ public abstract class TokenUnit
 
         foreach (var captureProp in template.CaptureGroupProps)
         {
-            //if (typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Success && typeMatch.CaptureIndex <= typeMatch.Match.Groups[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
             if (typeMatch[captureProp.Name + typeMatch.DistinguishingAppendix] != null && typeMatch.CaptureIndex <= typeMatch[captureProp.Name + typeMatch.DistinguishingAppendix].Captures.Count - 1)
                 captureProp.SetValueFromMatch(this, typeMatch.Match, typeMatch.CaptureIndex, typeMatch.DistinguishingAppendix);
             else if (Type.IsAssignableTo(typeof(TokenUnitOneOf)))

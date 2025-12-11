@@ -7,9 +7,7 @@
 /// </summary>
 public class ProcessedLine
 {
-    public Card Card { get; init; }
-    public int LineIndex { get; init; }
-    public string EvaluatedText { get; init; }
+    public SourceTextDTO SourceText { get; set; }
 
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.
@@ -21,11 +19,9 @@ public class ProcessedLine
     /// </summary>
     public List<UnmatchedTextOccurrence> UnmatchedTextOccurrences { get; init; }
 
-    public ProcessedLine(Card card, int lineIndex, string evaluatedText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences)
+    public ProcessedLine(SourceTextDTO sourceText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences)
     {
-        Card = card;
-        LineIndex = lineIndex;
-        EvaluatedText = evaluatedText;
+        SourceText = sourceText;
         SpanRoots = spanRoots;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
     }
@@ -36,19 +32,20 @@ public class ProcessedLine
 
         for (int i = 0; i < card.FormattedLinesLower.Length; i++)
         {
-            var lineText = card.FormattedLinesLower[i];
-            var originalLineText = card.FormattedLines[i];
+            var formattedText = card.FormattedLinesLower[i];
+            var originalText = card.FormattedLines[i];
 
-            if (string.IsNullOrWhiteSpace(lineText))
+            if (string.IsNullOrWhiteSpace(formattedText))
                 continue;
 
             List<SpanRoot> spanRoots =
-                TokenTypeRegistry.Tokenize(lineText)
-                .Select(x => TokenCaptureBuilder.CreateFrom(x, originalLineText, card.Name, i))
+                TokenTypeRegistry.Tokenize(formattedText)
+                .Select(x => TokenCaptureBuilder.CreateFrom(x, originalText, card.Name, i))
                 .ToList();
 
-            List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalLineText);
-            lines.Add(new ProcessedLine(card, i, lineText, spanRoots, unmatchedStringOccurrences));
+            List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalText);
+            SourceTextDTO sourceText = new(formattedText, originalText, card.Name, i);
+            lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences));
         }
 
 

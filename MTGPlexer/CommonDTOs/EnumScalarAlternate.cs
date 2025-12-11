@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace MTGPlexer.CommonDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 public class EnumScalarAlternate
 {

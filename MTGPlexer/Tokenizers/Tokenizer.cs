@@ -3,7 +3,6 @@
 public class Tokenizer
 {
     private readonly Dictionary<Type, Regex> _orderedAnchoredTypeRegexes;
-    private readonly Regex _whitespaceRegex = new(@"\G\s+", RegexOptions.Compiled);
 
     // A dictionary where each pattern simply matches int (Key) number of "." (any) chars (built as different lengths encountered)
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
@@ -11,7 +10,6 @@ public class Tokenizer
     public Tokenizer(List<Type> orderedTypes)
     {
         _orderedAnchoredTypeRegexes = orderedTypes.ToDictionary(x => x, x => new Regex($"\\G({TokenTypeRegistry.Templates[x].Regex})"));
-        //_orderedAnchoredTypeRegexes = orderedTypes.ToDictionary(x => x, x => TokenTypeRegistry.Templates[x].Regex);
     }
 
     public List<TokenUnit> Tokenize(string sourceText)

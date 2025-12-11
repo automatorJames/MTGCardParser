@@ -5,9 +5,9 @@
     <DialogContent>
         <div style="display:flex; align-items:baseline;">
             <span style="color: #A0AEC0; font-weight: 500; font-size: 28px; margin-bottom: 12px;">
-                @Line.Card.Name
+                @Line.SourceText.CorpusMemberName
             </span>
-            <span class="small-box-label">@($"Line #{Line.LineIndex + 1}")</span>
+            <span class="small-box-label">@($"Line #{Line.SourceText.LineIndex + 1}")</span>
         </div>
         <div style="display: flex; flex-direction: column; gap: 16px;">
 
@@ -19,14 +19,14 @@
                         {
                             if (match.Index > cursor)
                             {
-                                @Line.EvaluatedText.Substring(cursor, match.Index - cursor)
+                                @Line.SourceText.FormattedText.Substring(cursor, match.Index - cursor)
                             }
                             <span class="highlight-token">@match.Value</span>
                             cursor = match.Index + match.Length;
                         }
-                        if (cursor < Line.EvaluatedText.Length)
+                        if (cursor < Line.SourceText.FormattedText.Length)
                         {
-                            @Line.EvaluatedText.Substring(cursor)
+                            @Line.SourceText.FormattedText.Substring(cursor)
                         }
                     }
                     <div class="text-layer-front">
@@ -36,16 +36,16 @@
                             {
                                 if (token.Capture.Index > cursor)
                                 {
-                                    @Line.EvaluatedText.Substring(cursor, token.Capture.Index - cursor)
+                                    @Line.SourceText.FormattedText.Substring(cursor, token.Capture.Index - cursor)
                                 }
-                                var tokenText = Line.EvaluatedText.Substring(token.Capture.Index, token.Capture.Index);
+                                var tokenText = Line.SourceText.FormattedText.Substring(token.Capture.Index, token.Capture.Index);
                                 var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.Palettes[token.Type].HexLight;
                                 <span style=@($"color: {color}")>@tokenText</span>
                                 cursor = token.Capture.Index + token.Capture.Length;
                             }
-                            if (cursor < Line.EvaluatedText.Length)
+                            if (cursor < Line.SourceText.FormattedText.Length)
                             {
-                                @Line.EvaluatedText.Substring(cursor)
+                                @Line.SourceText.FormattedText.Substring(cursor)
                             }
                         }
                     </div>

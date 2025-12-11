@@ -152,7 +152,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
             _currentMatches = string.IsNullOrWhiteSpace(_renderedRegex)
                 ? new List<Match>()
-                : Regex.Matches(Line.EvaluatedText, _renderedRegex).Cast<Match>().ToList();
+                : Regex.Matches(Line.SourceText.FormattedText, _renderedRegex).Cast<Match>().ToList();
         }
         catch (Exception)
         {
