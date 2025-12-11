@@ -12,27 +12,28 @@ public class Tokenizer
         _orderedAnchoredTypeRegexes = orderedTypes.ToDictionary(x => x, x => new Regex($"\\G({TokenTypeRegistry.Templates[x].Regex})"));
     }
 
-    public List<TokenUnit> Tokenize(string sourceText)
+    public List<TokenUnit> Tokenize(SourceTextDTO sourceText)
     {
+        var formattedText = sourceText.FormattedText; 
         var tokens = new List<TokenUnit>();
         int currentIndex = 0;
         int unmatchedStartIndex = -1;
 
-        while (currentIndex < sourceText.Length)
+        while (currentIndex < formattedText.Length)
         {
             bool matched = false;
 
             // **Step 1: Prioritize matching a known token.**
             foreach (var (type, regex) in _orderedAnchoredTypeRegexes)
             {
-                var match = regex.Match(sourceText, currentIndex);
+                var match = regex.Match(formattedText, currentIndex);
                 if (match.Success && match.Length > 0)
                 {
                     // A token was found. Flush any preceding unmatched text.
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
-                    TypeMatch typeMatch = new(match);
-                    var token = TokenUnit.InstantiateFromMatch(type, typeMatch);
+                    TypeMatch typeMatch = new(type, match, sourceText);
+                    var token = TokenUnit.InstantiateFromMatch(typeMatch);
                     tokens.Add(token);
                     currentIndex += match.Length;
                     matched = true;
@@ -81,9 +82,9 @@ public class Tokenizer
             if (captureMatch.Success && captureMatch.Length == captureToTokenize.Length)
             {
                 // If a full match is found, hydrate the token and return it immediately.
-                TypeMatch typeMatch = new(captureMatch, ancestorCapturePath);
+                TypeMatch typeMatch = new(type, captureMatch, parentToken.TypeMatch.SourceText, ancestorCapturePath);
 
-                return TokenUnit.InstantiateFromMatch(type, typeMatch);
+                return TokenUnit.InstantiateFromMatch(typeMatch);
             }
         }
 
@@ -91,7 +92,7 @@ public class Tokenizer
         return null;
     }
 
-    private void FlushUnmatched(string sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int currentIndex)
+    private void FlushUnmatched(SourceTextDTO sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int currentIndex)
     {
         if (unmatchedStartIndex == -1) return;
 
@@ -104,11 +105,11 @@ public class Tokenizer
                 _unmatchedRegexCache[length] = regex;
             }
 
-            Match unmatchedMatch = regex.Match(sourceText, unmatchedStartIndex);
+            Match unmatchedMatch = regex.Match(sourceText.FormattedText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                TypeMatch typeMatch = new(unmatchedMatch);
-                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeof(DefaultUnmatchedString), typeMatch);
+                TypeMatch typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch, sourceText);
+                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch);
                 tokens.Add(unmatchedTokenUnit);
             }
         }

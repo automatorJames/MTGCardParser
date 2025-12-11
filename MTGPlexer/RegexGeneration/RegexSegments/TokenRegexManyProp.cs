@@ -128,8 +128,8 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
                     CaptureGroupPropPath ancestorCapturePath = new (token.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
-                    TypeMatch typeMatch = new(match, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
-                    var tokenUnitChild = TokenUnit.InstantiateFromMatch(BaseType, typeMatch);
+                    TypeMatch typeMatch = new(BaseType, match, token.TypeMatch.SourceText, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
+                    var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
 
                     // Set the top-level properties for this child item.
                     tokenUnitChild.TopLevelMatch = match;

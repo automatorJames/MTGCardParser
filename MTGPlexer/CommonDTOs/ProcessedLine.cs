@@ -34,17 +34,17 @@ public class ProcessedLine
         {
             var formattedText = card.FormattedLinesLower[i];
             var originalText = card.FormattedLines[i];
+            SourceTextDTO sourceText = new(formattedText, originalText, card.Name, i);
 
             if (string.IsNullOrWhiteSpace(formattedText))
                 continue;
 
             List<SpanRoot> spanRoots =
-                TokenTypeRegistry.Tokenize(formattedText)
+                TokenTypeRegistry.Tokenize(sourceText)
                 .Select(x => TokenCaptureBuilder.CreateFrom(x, originalText, card.Name, i))
                 .ToList();
 
             List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalText);
-            SourceTextDTO sourceText = new(formattedText, originalText, card.Name, i);
             lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences));
         }
 

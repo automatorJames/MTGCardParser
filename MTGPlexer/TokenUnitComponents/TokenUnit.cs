@@ -1,6 +1,4 @@
-﻿using MTGPlexer.Analysis;
-
-namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitComponents;
 
 public abstract class TokenUnit
 {
@@ -18,6 +16,7 @@ public abstract class TokenUnit
         }
     }
 
+    public TypeMatch TypeMatch { get; set; }
     public Match TopLevelMatch { get; set; }
     public Capture Capture { get; set; }
     public CaptureGroupPropPath CapturePath { get; set; }
@@ -60,13 +59,14 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(Type tokenUnitType, TypeMatch typeMatch)
+    public static TokenUnit InstantiateFromMatch(TypeMatch typeMatch)
     {
-        var instance = Activator.CreateInstance(tokenUnitType);
+        var instance = Activator.CreateInstance(typeMatch.Type);
 
         if (instance is not TokenUnit tokenUnitInstance)
-            throw new Exception($"Type '{tokenUnitType}' isn't a {nameof(TokenUnit)} type");
+            throw new Exception($"Type '{typeMatch.Type.Name}' isn't a {nameof(TokenUnit)} type");
 
+        tokenUnitInstance.TypeMatch = typeMatch;
         tokenUnitInstance.HydrateFromMatch(typeMatch);
 
         return tokenUnitInstance;

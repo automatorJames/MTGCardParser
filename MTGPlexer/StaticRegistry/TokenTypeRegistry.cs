@@ -104,9 +104,9 @@ public static partial class TokenTypeRegistry
             throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
     }
 
-    public static List<TokenUnit> Tokenize(string text, bool originalTextOnly = false)
+    public static List<TokenUnit> Tokenize(SourceTextDTO sourceText, bool originalTextOnly = false)
     {
-        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(text) : ClassTokenizer.Tokenize(text);
+        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(sourceText) : ClassTokenizer.Tokenize(sourceText);
         return tokens;
     }
 

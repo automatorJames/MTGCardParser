@@ -34,8 +34,8 @@ public record TokenRegexProp : CaptureGroupPropBase
             return false;
 
         CaptureGroupPropPath ancestorCapturePath = new(token.CapturePath.PropPath.Dot(RegexPropInfo.Name + distinguishingAppendix));
-        TypeMatch typeMatch = new(match, ancestorCapturePath, distinguishingAppendix, captureIndex, childCapture: capture);
-        var tokenUnitInstance = TokenUnit.InstantiateFromMatch(RegexPropInfo.BaseType, typeMatch);
+        TypeMatch typeMatch = new(RegexPropInfo.BaseType, match, token.TypeMatch.SourceText, ancestorCapturePath, distinguishingAppendix, captureIndex, childCapture: capture);
+        var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
         token.ChildTokenUnits.Add(tokenUnitInstance);
         token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
 

@@ -2,7 +2,9 @@
 
 public record TypeMatch
 {
+    public Type Type { get; set; }
     public Match Match { get; init; }
+    public SourceTextDTO SourceText { get; set; }
     public CaptureGroupPropPath CapturePath { get; init; }
     public string DistinguishingAppendix { get; init; }
     public int CaptureIndex { get; init; }
@@ -10,7 +12,9 @@ public record TypeMatch
     public string OverrideGroupName { get; init; }
 
     public TypeMatch(
+        Type type,
         Match match,
+        SourceTextDTO sourceText = null,
         CaptureGroupPropPath capturePath = null,
         string distinguishingAppendix = null,
         int captureIndex = 0,
@@ -19,7 +23,9 @@ public record TypeMatch
     {
         ArgumentNullException.ThrowIfNull(match);
 
+        Type = type;
         Match = match;
+        SourceText = sourceText;
         CapturePath = capturePath;
         DistinguishingAppendix = distinguishingAppendix;
         CaptureIndex = captureIndex;
