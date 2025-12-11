@@ -131,11 +131,6 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                     TypeMatch typeMatch = new(BaseType, match, token.TypeMatch.SourceText, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
 
-                    // Set the top-level properties for this child item.
-                    tokenUnitChild.TopLevelMatch = match;
-                    tokenUnitChild.Capture = itemCapture; // This capture has the correct absolute index.
-                    tokenUnitChild.CapturePath = new(token.CapturePath.PropPath.Dot($"{RegexPropInfo.Name}[{hydratedItems.Count}]"));
-
                     // Get the TokenRegexProp that contains the suffixed definitions for this ordinal.
                     var ordinalTokenProp = (TokenRegexProp)_ordinalRegexProps[i];
 
