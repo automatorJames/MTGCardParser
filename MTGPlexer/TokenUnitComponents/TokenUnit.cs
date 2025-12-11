@@ -16,7 +16,7 @@ public abstract class TokenUnit
         }
     }
 
-    public Capture Capture => Match.ChildCapture ?? Match.RegexMatch;
+    //public Capture Capture => Match.RegexMatch;
     public TokenUnitMatch Match { get; set; }
     public List<TokenUnit> ChildTokenUnits { get; set; } = [];
 

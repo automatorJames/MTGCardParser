@@ -8,7 +8,6 @@ public record TokenUnitMatch
     public CaptureGroupPropPath CapturePath { get; init; }
     public string DistinguishingAppendix { get; init; }
     public int CaptureIndex { get; init; }
-    public Capture ChildCapture { get; init; }
     public string OverrideGroupName { get; init; }
 
     public TokenUnitMatch(
@@ -18,7 +17,6 @@ public record TokenUnitMatch
         CaptureGroupPropPath capturePath = null,
         string distinguishingAppendix = null,
         int captureIndex = 0,
-        Capture childCapture = null,
         string overrideGroupName = null)
     {
         ArgumentNullException.ThrowIfNull(regexMatch);
@@ -29,7 +27,6 @@ public record TokenUnitMatch
         CapturePath = capturePath;
         DistinguishingAppendix = distinguishingAppendix;
         CaptureIndex = captureIndex;
-        ChildCapture = childCapture;
         OverrideGroupName = overrideGroupName;
     }
 
@@ -54,7 +51,7 @@ public record TokenUnitMatch
     {
         var str = $"Match: \"{RegexMatch.Value}\"";
 
-        if (CapturePath != null || DistinguishingAppendix != null || CaptureIndex != 0 || ChildCapture != null)
+        if (CapturePath != null || DistinguishingAppendix != null || CaptureIndex != 0)
             str += " (contains add'l data)";
 
         return str;

@@ -131,7 +131,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
                     CaptureGroupPropPath ancestorCapturePath = new (token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
-                    TokenUnitMatch typeMatch = new(BaseType, match, token.Match.SourceText, ancestorCapturePath, ordinalNameAppendix, j, itemCapture);
+                    TokenUnitMatch typeMatch = new(BaseType, match, token.Match.SourceText, ancestorCapturePath, ordinalNameAppendix, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
 
                     // Get the TokenRegexProp that contains the suffixed definitions for this ordinal.

@@ -193,7 +193,7 @@ public class DigestedTextCorpus
                 {
                     var token = originalSpanOccurrence.LineSpanRoots[i].RootToken;
                     Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
-                    precedingSequence.Add(new(token.Capture.Value, type));
+                    precedingSequence.Add(new(token.Match.RegexMatch.Value, type));
                 }
 
                 if (precedingSequence.Any())
@@ -209,7 +209,7 @@ public class DigestedTextCorpus
                 {
                     var token = originalSpanOccurrence.LineSpanRoots[i].RootToken;
                     Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
-                    followingSequence.Add(new(token.Capture.Value, type));
+                    followingSequence.Add(new(token.Match.RegexMatch.Value, type));
                 }
 
                 if (followingSequence.Any())

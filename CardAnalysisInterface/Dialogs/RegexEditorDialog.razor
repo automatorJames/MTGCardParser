@@ -32,16 +32,16 @@
                     <div class="text-layer-front">
                         @{
                             cursor = 0;
-                            foreach (var token in Line.SpanRoots.Select(x => x.RootToken).OrderBy(t => t.Capture.Index))
+                            foreach (var token in Line.SpanRoots.Select(x => x.RootToken).OrderBy(t => t.Match.RegexMatch.Index))
                             {
-                                if (token.Capture.Index > cursor)
+                                if (token.Match.RegexMatch.Index > cursor)
                                 {
-                                    @Line.SourceText.FormattedText.Substring(cursor, token.Capture.Index - cursor)
+                                    @Line.SourceText.FormattedText.Substring(cursor, token.Match.RegexMatch.Index - cursor)
                                 }
-                                var tokenText = Line.SourceText.FormattedText.Substring(token.Capture.Index, token.Capture.Index);
+                                var tokenText = Line.SourceText.FormattedText.Substring(token.Match.RegexMatch.Index, token.Match.RegexMatch.Index);
                                 var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.Palettes[token.Type].HexLight;
                                 <span style=@($"color: {color}")>@tokenText</span>
-                                cursor = token.Capture.Index + token.Capture.Length;
+                                cursor = token.Match.RegexMatch.Index + token.Match.RegexMatch.Length;
                             }
                             if (cursor < Line.SourceText.FormattedText.Length)
                             {

@@ -100,10 +100,10 @@ public static class TokenCaptureBuilder
         var precursor = new PrecursorNode
         {
             OriginalFullText = originalFullText,
-            CaptureTextOriginal = originalFullText.Substring(root.Capture.Index, root.Capture.Length),
-            Start = root.Capture.Index,
-            Length = root.Capture.Length,
-            End = root.Capture.Index + root.Capture.Length,
+            CaptureTextOriginal = originalFullText.Substring(root.Match.RegexMatch.Index, root.Match.RegexMatch.Length),
+            Start = root.Match.RegexMatch.Index,
+            Length = root.Match.RegexMatch.Length,
+            End = root.Match.RegexMatch.Index + root.Match.RegexMatch.Length,
             RootToken = root,
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
             CapturePath = root.Match.CapturePath,
