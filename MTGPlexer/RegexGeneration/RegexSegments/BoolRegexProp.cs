@@ -20,12 +20,11 @@ public record BoolRegexProp : ScalarCapturePropBase
 
     public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
-        var group = token.Match.RegexMatch.Groups[Name + token.Match.DistinguishingAppendix];
+        var capture = token.Match.GetCaptureAtRelativePath(this);
 
-        if (!group.Success || group.Captures.Count - 1 < token.Match.CaptureIndex)
+        if (capture == null)
             return false;
 
-        var capture = group.Captures[token.Match.CaptureIndex];
         token.SetPropertyFromCapture(RegexPropInfo, capture, true);
 
         return true;

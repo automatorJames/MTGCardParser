@@ -21,5 +21,21 @@ public record TokenRegexOneOfProp : TokenRegexProp
         builder.CloseGroup();
     }
 
+    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    {
+        var capture = token.Match.GetCaptureAtRelativePath(this);
+
+        if (capture == null)
+            return false;
+
+        CaptureGroupPropPath ancestorCapturePath = new(token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
+        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, token.Match.RegexMatch, token.Match.SourceText, ancestorCapturePath, token.Match.CaptureIndex);
+        var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
+        token.ChildTokenUnits.Add(tokenUnitInstance);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
+
+        return true;
+    }
+
     public override string ToString() => base.ToString();
 }

@@ -26,7 +26,7 @@ public record IndexedPropertyCapture
     {
     }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, CaptureGroupPropPath parentTokenPath, string distinguishingAppendix = null)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, CaptureGroupPropPath parentTokenPath)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;
@@ -41,10 +41,10 @@ public record IndexedPropertyCapture
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
         Path = parentTokenPath.PropPath.Dot(regexPropInfo.Name);
 
-        CaptureGroupPropPath = regexPropInfo.IsTerminal 
-            ? distinguishingAppendix is not null 
-                ? new(parentTokenPath + "." + regexPropInfo.Name + distinguishingAppendix + "." + value.ToString())
-                : new(parentTokenPath.PropPath.Dot(regexPropInfo.Name).Dot(value.ToString()))
+        CaptureGroupPropPath = regexPropInfo.IsTerminal
+            ? new(parentTokenPath.PropPath
+                .Dot(regexPropInfo.Name)
+                .Dot(value.ToString()))
             : new(parentTokenPath.PropPath);
     }
 

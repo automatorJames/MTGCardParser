@@ -35,11 +35,10 @@ public abstract class TokenUnit
 
     public static TokenUnit InstantiateFromMatch(TokenUnitMatch match)
     {
-        var instance = Activator.CreateInstance(match.Type);
-
-        if (instance is not TokenUnit tokenUnitInstance)
+        if (!match.Type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"Type '{match.Type.Name}' isn't a {nameof(TokenUnit)} type");
 
+        var tokenUnitInstance = (TokenUnit)Activator.CreateInstance(match.Type);
         tokenUnitInstance.Match = match;
 
         if (!TokenTypeRegistry.Templates.TryGetValue(match.Type, out var template))
@@ -47,10 +46,10 @@ public abstract class TokenUnit
 
         foreach (var captureProp in template.CaptureGroupProps)
         {
-            if (match[captureProp.Name + match.DistinguishingAppendix] != null && match.CaptureIndex <= match[captureProp.Name + match.DistinguishingAppendix].Captures.Count - 1)
+            if (match[captureProp.Name] != null && match.CaptureIndex <= match[captureProp.Name].Captures.Count - 1)
                 captureProp.SetValueFromNamedGroupInMatch(tokenUnitInstance);
             else if (match.Type.IsAssignableTo(typeof(TokenUnitOneOf)))
-                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name + match.DistinguishingAppendix}'");
+                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name}'");
             else
                 throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureIndex} exists for match '{match.RegexMatch.Value}'");
         }
@@ -60,11 +59,11 @@ public abstract class TokenUnit
         return tokenUnitInstance;
     }
 
-    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal, string distinguishingAppendix = null)
+    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, capturePosition, Match.CapturePath, distinguishingAppendix);
+        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, capturePosition, Match.CapturePath);
         IndexedPropertyCaptures.Add(indexedPropertyCapture);
     }
 

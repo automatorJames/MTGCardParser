@@ -35,12 +35,7 @@ public record ManyItemCapture
 
 public enum ManyItemOrdinal
 {
-    [Description("_first")]
     First,
-
-    [Description("_2plus")]
     SecondPlus,
-
-    [Description("_last")]
     Last
 }

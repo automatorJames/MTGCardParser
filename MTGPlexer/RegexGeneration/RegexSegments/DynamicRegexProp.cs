@@ -29,8 +29,7 @@ public record DynamicRegexProp : ScalarCapturePropBase
         if (!genericType.IsAssignableTo(typeof(TokenUnit)))
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
-        var group = token.Match.RegexMatch.Groups[Name + token.Match.DistinguishingAppendix];
-        var capture = group.Captures[token.Match.CaptureIndex];
+        var capture = token.Match.GetCaptureAtRelativePath(this);
         CaptureGroupPropPath ancestorCapturePath = new (token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
         var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeDynamicSubContent(token, capture, token.Match.RegexMatch, ancestorCapturePath);
 
@@ -40,6 +39,7 @@ public record DynamicRegexProp : ScalarCapturePropBase
         var closedType = typeof(DynamicCapture<>).MakeGenericType(genericType);
         var dynamicTokenInstance = Activator.CreateInstance(closedType, dynamicTokenValue, capture);
         token.SetPropertyFromCapture(RegexPropInfo, capture, dynamicTokenInstance);
+
         return true;
     }
 }

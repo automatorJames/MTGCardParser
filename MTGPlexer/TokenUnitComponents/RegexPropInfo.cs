@@ -54,8 +54,8 @@ public record RegexPropInfo
             IsTerminal = IsTerminal,
             MayBeNull = MayBeNull,
             IsManyOfProp = false, // "IsManyOfProp" only refers to the parent ManyOf, not the items it contains
-            Name = Name + manyItemOrdinal.Description(),
-            ManyOfItemDistinguisher = manyItemOrdinal.Description(),
+            Name = manyItemOrdinal.ToString(),
+            ManyOfItemDistinguisher = manyItemOrdinal.ToString(),
             ManyItemOrdinal = manyItemOrdinal
         };
 

@@ -14,7 +14,7 @@ public record TokenRegexProp : CaptureGroupPropBase
     public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
-        ChildSegments = template.RegexSegments.Select(x => ApplyDistinguishingAppendixRecursive(captureProp, x)).ToImmutableList();
+        ChildSegments = template.RegexSegments.ToImmutableList();
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
@@ -26,88 +26,18 @@ public record TokenRegexProp : CaptureGroupPropBase
 
     public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
-        var match = token.Match.RegexMatch;
-        var distinguishingAppendix = token.Match.DistinguishingAppendix;
-        var captureIndex = token.Match.CaptureIndex;
-
-        var group = match.Groups[Name + distinguishingAppendix];
-        var capture = group.Captures[captureIndex];
+        var capture = token.Match.GetCaptureAtRelativePath(this);
 
         if (capture == null)
             return false;
 
-        CaptureGroupPropPath ancestorCapturePath = new(token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name + distinguishingAppendix));
-        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, match, token.Match.SourceText, ancestorCapturePath, distinguishingAppendix, captureIndex);
+        CaptureGroupPropPath ancestorCapturePath = new(token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
+        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, token.Match.RegexMatch, token.Match.SourceText, ancestorCapturePath, token.Match.CaptureIndex);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
         token.ChildTokenUnits.Add(tokenUnitInstance);
         token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
 
         return true;
-    }
-
-    RegexSegmentBase ApplyDistinguishingAppendixRecursive(RegexPropInfo prop, RegexSegmentBase segment)
-    {
-        // Case 1: If there's no appendix to apply, we're done.
-        if (string.IsNullOrEmpty(prop.ManyOfItemDistinguisher))
-            return segment;
-
-        // Case 2: If the segment is not a CaptureGroupProp (e.g., a TextSegment),
-        // it can't have a distinguishing name, so we're done with this branch.
-        if (segment is not CaptureGroupPropBase captureGroupProp)
-            return segment;
-
-        // --- Processing Step: Modify the current node ---
-        // This happens for ALL CaptureGroupPropBase types.
-        var distinguishedRegexPropInfo = captureGroupProp.RegexPropInfo with
-        {
-            Name = captureGroupProp.RegexPropInfo.Name + prop.ManyOfItemDistinguisher,
-            // Propagate the appendix for any potential grandchildren.
-            ManyOfItemDistinguisher = prop.ManyOfItemDistinguisher
-        };
-
-        // --- Recursive Step: Check for containers and process their children ---
-        switch (captureGroupProp)
-        {
-            // This case handles both TokenRegexProp and its inheritor, TokenRegexOneOfProp.
-            case TokenRegexProp tokenProp:
-                {
-                    // 1. Recurse: Call this same function on every child segment.
-                    var newChildSegments = tokenProp.ChildSegments
-                        .Select(child => ApplyDistinguishingAppendixRecursive(distinguishedRegexPropInfo, child))
-                        .ToImmutableList();
-
-                    // 2. Reconstruct: Return a new TokenRegexProp containing the modified
-                    //    RegexPropInfo AND the new, recursively-modified child segments.
-                    return tokenProp with
-                    {
-                        RegexPropInfo = distinguishedRegexPropInfo,
-                        ChildSegments = newChildSegments
-                    };
-                }
-
-            //todo: implement this so we can handle nested ManyOfs
-            //case TokenRegexManyProp manyProp:
-            //    {
-            //        // This follows the same pattern as TokenRegexProp but for its specific children.
-            //        // Note: This assumes _ordinalRegexProps is exposed as a public property in the record.
-            //        var newOrdinalRegexProps = manyProp.OrdinalRegexProps
-            //            .Select(child => ApplyDistinguishingAppendix(distinguishedRegexPropInfo, child))
-            //            .ToImmutableList(); // Or .ToArray() depending on the property type
-            //
-            //        return manyProp with
-            //        {
-            //            RegexPropInfo = distinguishedRegexPropInfo,
-            //            OrdinalRegexProps = newOrdinalRegexProps
-            //        };
-            //    }
-
-            // Base Case 3: The segment is a CaptureGroupProp (like EnumRegexProp), but not a container.
-            // We just need to return a new version of it with its modified RegexPropInfo.
-            default:
-                {
-                    return captureGroupProp with { RegexPropInfo = distinguishedRegexPropInfo };
-                }
-        }
     }
 
     public override string ToString() => base.ToString();

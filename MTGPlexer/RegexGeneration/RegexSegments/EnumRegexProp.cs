@@ -39,19 +39,18 @@ public record EnumRegexProp : ScalarCapturePropBase
 
     public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
-        var group = token.Match.RegexMatch.Groups[Name + token.Match.DistinguishingAppendix];
-        var  capture = group.Captures[token.Match.CaptureIndex];
+        var capture = token.Match.GetCaptureAtRelativePath(this);
 
-        if (!group.Success || group.Captures.Count - 1 < token.Match.CaptureIndex)
-        {
+        if (capture == null)
             if (!RegexPropInfo.MayBeNull)
-                throw new Exception($"{RegexPropInfo.Name} is a non-nullable enum, but no match was found");
+                //throw new Exception($"{RegexPropInfo.Name} is a non-nullable enum, but no match was found");
+                return false;
+            else
 
-            return false;
-        }
+                return false;
 
         var valueToSet = GetEnumMatchValue(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet, token.Match.DistinguishingAppendix);
+        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
         return true;
     }
 

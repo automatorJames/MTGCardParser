@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using System.ComponentModel;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -12,13 +14,15 @@ public record TokenRegexManyProp : CaptureGroupPropBase
     static string[] _ordinalNameAppendices = Enum.GetValues<ManyItemOrdinal>().Select(x => x.Description()).ToArray();
     ManyItemVariant _manyItemType;
     string[] _manyItemNames;
-    RegexSegmentBase[] _ordinalRegexProps = new RegexSegmentBase[3];
+    CaptureGroupPropBase[] _ordinalRegexProps = new CaptureGroupPropBase[3];
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
     {
+        // RegexPropInfo capture prop is a ManyOf<T> prop here
+
         BaseType = captureProp.BaseType;
         _manyItemNames = _ordinalNameAppendices.Select(x => $"{captureProp.Name}{x}").ToArray();
 
@@ -84,41 +88,28 @@ public record TokenRegexManyProp : CaptureGroupPropBase
 
     public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
-        // todo: we're not yet using captureIndex, because it's unclear how we'd do so in the case of ManyOf
-
-        var match = token.Match.RegexMatch;
-        var distinguishingAppendix = token.Match.DistinguishingAppendix;
-
-        Group[] ordinalCaptureGroups =
-        [
-            match.Groups[_manyItemNames[0] + distinguishingAppendix],
-            match.Groups[_manyItemNames[1] + distinguishingAppendix],
-            match.Groups[_manyItemNames[2] + distinguishingAppendix],
-        ];
-
         var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(BaseType);
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
-        // For each of the three positions (_first, _secondPlus, _last)
-        for (int i = 0; i < ordinalCaptureGroups.Length; i++)
-        {
-            var ordinalNameAppendix = _ordinalNameAppendices[i];
-            var ordinal = (ManyItemOrdinal)i;
-            var ordinalGroup = ordinalCaptureGroups[i];
+        var parentManyOfGroup = token.Match.RegexMatch.Groups[Name];
 
-            // For each of the captures within each of the three positions (_secondPlus may have any number, including none)
-            for (int j = 0; j < ordinalGroup.Captures.Count; j++)
+        for (int i = 0; i < _ordinalRegexProps.Length; i++)
+        {
+            var ordinalProp = _ordinalRegexProps[i];
+            var manyItemOrdinal = (ManyItemOrdinal)i;
+            var ordinalCaptures = token.Match.GetCapturesAtRelativePath(ordinalProp).ToList();
+
+            for (int j = 0; j < ordinalCaptures.Count; j++)
             {
-                Capture itemCapture = ordinalGroup.Captures[j];
+                var ordinalCapture = ordinalCaptures[j];
                 object childItem = null;
 
                 if (_manyItemType == ManyItemVariant.Enum)
                 {
-                    // Enum logic remains the same as it does not involve nested structures or re-matching.
                     foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[BaseType].EnumAlternates)
                     {
-                        if (enumAlternative.ItemRegex.IsMatch(itemCapture.Value))
+                        if (enumAlternative.ItemRegex.IsMatch(ordinalCapture.Value))
                         {
                             childItem = enumAlternative.EnumValue;
                             break;
@@ -126,33 +117,34 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                     }
 
                     if (childItem == null)
-                        throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{itemCapture.Value}'");
+                        throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{ordinalCapture.Value}'");
                 }
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath ancestorCapturePath = new (token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name).Dot(RegexPropInfo.Name + ordinal.Description()));
-                    TokenUnitMatch typeMatch = new(BaseType, match, token.Match.SourceText, ancestorCapturePath, ordinalNameAppendix, j);
+                    CaptureGroupPropPath capturePath = token.Match.CapturePath.Append(ordinalProp.Name);
+                    TokenUnitMatch typeMatch = new(BaseType, token.Match.RegexMatch, token.Match.SourceText, capturePath, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;
                 }
 
-                var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, itemCapture, j, ordinal, RegexPropInfo);
+                var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, ordinalCapture, j, manyItemOrdinal, RegexPropInfo);
                 hydratedItems.Add(hydratedItem);
             }
         }
 
-        var conjunctionCapture = match.Groups[nameof(Conjunction) + distinguishingAppendix];
-        Conjunction? conjunctionValue = Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) ? parsed : null;
+        var conjunctionCapture = token.Match.GetCaptureAtRelativePath(nameof(Conjunction));
+
+        Conjunction? conjunctionValue = 
+            Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 
+            ? parsed : null;
 
         var manyTokenType = typeof(ManyOf<>).MakeGenericType(BaseType);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
-
-        // Use the capture for the entire ManyOf group.
-        var manyOfCapture = match.Groups[Name + distinguishingAppendix].Success ? match.Groups[Name] : match;
-        token.SetPropertyFromCapture(RegexPropInfo, manyOfCapture, manyPropVal);
+        token.SetPropertyFromCapture(RegexPropInfo, parentManyOfGroup, manyPropVal);
 
         return true;
     }
+
 
     public override string ToString() => base.ToString();
 }
