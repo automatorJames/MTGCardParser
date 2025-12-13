@@ -9,13 +9,12 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 public record TokenRegexProp : CaptureGroupPropBase
 {
     public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.BaseType].Regex;
-
     public ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
 
     public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
-        ChildSegments = template.RegexSegments.Select(x => ApplyDistinguishingAppendix(captureProp, x)).ToImmutableList();
+        ChildSegments = template.RegexSegments.Select(x => ApplyDistinguishingAppendixRecursive(captureProp, x)).ToImmutableList();
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
@@ -46,7 +45,7 @@ public record TokenRegexProp : CaptureGroupPropBase
         return true;
     }
 
-    RegexSegmentBase ApplyDistinguishingAppendix(RegexPropInfo prop, RegexSegmentBase segment)
+    RegexSegmentBase ApplyDistinguishingAppendixRecursive(RegexPropInfo prop, RegexSegmentBase segment)
     {
         // Case 1: If there's no appendix to apply, we're done.
         if (string.IsNullOrEmpty(prop.ManyOfItemDistinguisher))
@@ -74,7 +73,7 @@ public record TokenRegexProp : CaptureGroupPropBase
                 {
                     // 1. Recurse: Call this same function on every child segment.
                     var newChildSegments = tokenProp.ChildSegments
-                        .Select(child => ApplyDistinguishingAppendix(distinguishedRegexPropInfo, child))
+                        .Select(child => ApplyDistinguishingAppendixRecursive(distinguishedRegexPropInfo, child))
                         .ToImmutableList();
 
                     // 2. Reconstruct: Return a new TokenRegexProp containing the modified
