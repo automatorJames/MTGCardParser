@@ -249,7 +249,7 @@ public static class TokenCaptureBuilder
         for (int i = 0; i < manyOf.ItemObjects.Count; i++)
         {
             var manyItemCapture = manyOf.ItemObjects[i];
-            CaptureGroupPropPath itemPath = new(propCapture.Path + $"[{i}]");
+            CaptureGroupPropPath itemPath = new(propCapture.CaptureGroupPropPath + $"[{i}]");
 
             if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && manyItemCapture.ItemObject is TokenUnit tokenUnit)
             {

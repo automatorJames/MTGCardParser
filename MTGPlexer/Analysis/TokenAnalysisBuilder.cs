@@ -15,7 +15,6 @@ public static class TokenAnalysisBuilder
             Value = rootUnit,
             StartIndex = rootUnit.Match.RegexMatch.Index,
             Length = rootUnit.Match.RegexMatch.Length,
-            PropPath = rootUnit.Type.Name,
             RegexEnclosurePath = rootUnit.Type.Name,
             Palette = TokenTypeRegistry.Palettes[rootUnit.Type],
             IsTerminal = false,
@@ -41,23 +40,22 @@ public static class TokenAnalysisBuilder
         return rootNode;
     }
 
-    private static TokenAnalysisNode CreateNodeFromCapture(IndexedPropertyCapture ipc, TokenUnit parentUnit, string fullText)
+    private static TokenAnalysisNode CreateNodeFromCapture(IndexedPropertyCapture indexedPropertyCapture, TokenUnit parentUnit, string fullText)
     {
-        var val = ipc.Value;
+        var val = indexedPropertyCapture.Value;
         if (val == null) return null;
 
         var node = new TokenAnalysisNode
         {
-            Name = ipc.RegexPropInfo.FriendlyPropName,
-            Text = ipc.Capture.Value,
+            Name = indexedPropertyCapture.RegexPropInfo.FriendlyPropName,
+            Text = indexedPropertyCapture.Capture.Value,
             Value = val,
-            StartIndex = ipc.Capture.Index,
-            Length = ipc.Capture.Length,
-            PropPath = ipc.Path,
-            RegexEnclosurePath = ipc.CaptureGroupPropPath.PropPath, // Maps to regex builder
-            Palette = ipc.Palette ?? DeterministicPalette.GetFixedRainbowPalette(ipc.Ordinal),
-            ClrType = ipc.RegexPropInfo.UnderlyingType,
-            FriendlyTypeName = ipc.RegexPropInfo.FriendlyTypeName
+            StartIndex = indexedPropertyCapture.Capture.Index,
+            Length = indexedPropertyCapture.Capture.Length,
+            RegexEnclosurePath = indexedPropertyCapture.CaptureGroupPropPath.PropPath,
+            Palette = indexedPropertyCapture.Palette ?? DeterministicPalette.GetFixedRainbowPalette(indexedPropertyCapture.Ordinal),
+            ClrType = indexedPropertyCapture.RegexPropInfo.UnderlyingType,
+            FriendlyTypeName = indexedPropertyCapture.RegexPropInfo.FriendlyTypeName
         };
 
         // Determine Type and Recurse
@@ -100,7 +98,7 @@ public static class TokenAnalysisBuilder
             // ManyOf palette logic
             node.Palette = TokenTypeRegistry.Palettes.TryGetValue(manyOf.ItemType, out var mp) ? mp : node.Palette;
 
-            ProcessManyOfChildren(node, manyOf, ipc, fullText);
+            ProcessManyOfChildren(node, manyOf, indexedPropertyCapture, fullText);
         }
         else if (val is DynamicCapture dyn)
         {
@@ -137,7 +135,7 @@ public static class TokenAnalysisBuilder
         return node;
     }
 
-    private static void ProcessManyOfChildren(TokenAnalysisNode parentNode, ManyOf manyOf, IndexedPropertyCapture parentIpc, string fullText)
+    private static void ProcessManyOfChildren(TokenAnalysisNode parentNode, ManyOf manyOf, IndexedPropertyCapture parentPropertyCapture, string fullText)
     {
         // 1. Items
         for (int i = 0; i < manyOf.ItemObjects.Count; i++)
@@ -152,8 +150,7 @@ public static class TokenAnalysisBuilder
                 Value = itemObj.ItemObject,
                 StartIndex = itemObj.Capture.Index,
                 Length = itemObj.Capture.Length,
-                PropPath = parentNode.PropPath + $"[{i}]",
-                RegexEnclosurePath = parentNode.RegexEnclosurePath + $".{parentIpc.RegexPropInfo.Name}{itemObj.Oridinal.Description()}",
+                RegexEnclosurePath = parentNode.RegexEnclosurePath + $".{parentPropertyCapture.RegexPropInfo.Name}{itemObj.Oridinal.ToString()}",
                 NodeType = AnalysisNodeType.CollectionItem,
                 ClrType = manyOf.ItemType,
                 // Assign a distinct rainbow color based on position in list
@@ -187,7 +184,6 @@ public static class TokenAnalysisBuilder
                 Value = manyOf.Conjunction.Value,
                 StartIndex = manyOf.ConjunctionCapture.Index,
                 Length = manyOf.ConjunctionCapture.Length,
-                PropPath = parentNode.PropPath + ".Conjunction",
                 RegexEnclosurePath = parentNode.RegexEnclosurePath + ".Conjunction",
                 NodeType = AnalysisNodeType.Terminal,
                 IsTerminal = true,
@@ -221,7 +217,6 @@ public static class TokenAnalysisBuilder
                     Value = val,
                     StartIndex = placeholderNode.StartIndex, // Inherits location
                     Length = placeholderNode.Length,
-                    PropPath = parentNode.PropPath + "." + propInfo.Name,
                     // Distilled values don't have a specific Regex enclosure, they live inside the placeholder's enclosure
                     RegexEnclosurePath = placeholderNode.RegexEnclosurePath,
                     NodeType = AnalysisNodeType.Derived,

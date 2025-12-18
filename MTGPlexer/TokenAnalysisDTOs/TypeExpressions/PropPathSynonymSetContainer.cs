@@ -11,13 +11,6 @@ public class PropPathSynonymSetContainer
     {
         ParentPath = parentPath;
 
-        //if (prop == null)
-        //    AlternateCount = 0;
-        //else if (prop.RegexPropType == RegexPropType.Enum)
-        //    AlternateCount = Enum.GetValues(prop.BaseType).Length;
-        //else if (prop.RegexPropType == RegexPropType.ManyOf && prop.BaseType.IsEnum)
-        //    AlternateCount = Enum.GetValues(prop.BaseType).Length;
-
         AlternateCount = prop == null || !prop.BaseType.IsEnum
                 ? 0
                 : Enum.GetValues(prop.BaseType).Length;

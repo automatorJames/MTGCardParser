@@ -27,12 +27,6 @@ public class ManyOf<T> : ManyOf
     }
 }
 
-public enum Conjunction
-{
-    And,
-    Or
-}
-
 [Color("#696969")]
 public class ManyOf : IEquatable<ManyOf>
 {
@@ -52,7 +46,7 @@ public class ManyOf : IEquatable<ManyOf>
             _ => " & ",
         };
 
-        return string.Join(separator, ItemObjects.Select(x => x.ItemObject.ToString()));
+        return string.Join(separator, ItemObjects.Select(x => x.ToString()));
     }
 
     /// <summary>
@@ -117,8 +111,22 @@ public class ManyOf : IEquatable<ManyOf>
         : throw new Exception($"{nameof(ManyOf)} item type must either be TokenUnit or Enum");
 }
 
+public enum ManyItemOrdinal
+{
+    First,
+    SecondPlus,
+    Last
+}
+
+
 public enum ManyItemVariant
 {
     TokenUnit,
     Enum
+}
+
+public enum Conjunction
+{
+    And,
+    Or
 }

@@ -31,11 +31,8 @@ public record ManyItemCapture
         ItemObject = itemAsObject;
         ManyItemVariant = ManyOf.GetManyItemVariant(type);
     }
-}
 
-public enum ManyItemOrdinal
-{
-    First,
-    SecondPlus,
-    Last
+    public override string ToString() => ManyItemVariant == ManyItemVariant.Enum ?
+        ItemObject.ToString()
+        : ItemType.Name;
 }

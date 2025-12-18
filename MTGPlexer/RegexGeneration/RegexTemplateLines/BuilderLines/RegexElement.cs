@@ -9,6 +9,7 @@ public class RegexElement
 
     public string UniquePath { get; }
     public string NamedPath { get; }
+    public string NamedPathRelativeToRoot { get; }
 
     public RegexElement(Enclosure[] enclosures, string regex, Palette palette = null, string comment = null)
     {
@@ -16,12 +17,10 @@ public class RegexElement
         Regex = regex;
         Palette = palette;
         Comment = comment;
-
         UniquePath = string.Join('.', enclosures.Select(x => x.Ordinal));
-        NamedPath =
-            enclosures.Length == 0 ? string.Empty : // todo: Enclosures is sometimes empty b/c we're lazy when constructing boundaries; let's not do that
-            enclosures.OfType<RootEnclosure>().Single().RootTypeName
-            + (enclosures.Any(x => x is NamedEnclosure) ? "." + string.Join('.', enclosures.OfType<NamedEnclosure>().Select(x => x.Name)) : "");
+        var namedPathParts = enclosures.OfType<RootEnclosure>().Select(x => x.RootTypeName).Concat(enclosures.OfType<NamedEnclosure>().Select(x => x.Name));
+        NamedPath = string.Join('.', namedPathParts);
+        NamedPathRelativeToRoot = string.Join(".", namedPathParts.Skip(1));
     }
 
 

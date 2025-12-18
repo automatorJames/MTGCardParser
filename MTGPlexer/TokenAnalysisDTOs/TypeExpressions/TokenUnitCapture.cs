@@ -54,13 +54,13 @@ public record TokenUnitCapture
         {
             foreach (var capture in tokenUnit.GetFlattenedTerminalCaptures())
             {
-                var propPath = capture.CaptureGroupPropPath.Parent
+                var parentPropPath = capture.CaptureGroupPropPath.Parent
                     ?? throw new Exception($"The path {capture.CaptureGroupPropPath?.PropPath} has no parent, but one was expected");
 
-                if (!PropPathVariantSetsForRegex.TryGetValue(propPath, out var propPathVariantSetWrapper))
+                if (!PropPathVariantSetsForRegex.TryGetValue(parentPropPath, out var propPathVariantSetWrapper))
                 {
-                    propPathVariantSetWrapper = new(propPath, capture.RegexPropInfo);
-                    PropPathVariantSetsForRegex[propPath] = propPathVariantSetWrapper;
+                    propPathVariantSetWrapper = new(parentPropPath, capture.RegexPropInfo);
+                    PropPathVariantSetsForRegex[parentPropPath] = propPathVariantSetWrapper;
                 }
 
                 if (!propPathVariantSetWrapper.SynonymSets.TryGetValue(capture.Value, out var captureValueVariantSet))
@@ -75,8 +75,8 @@ public record TokenUnitCapture
                 // track this path so it's not added to the PropPathVariantSetsForTable dict later
                 if (capture.ParentValue is ManyOf manyOf)
                 {
-                    DistinctManyOfValuePropPaths.TryAdd((manyOf.DistinctId, manyOf), propPath.Parent);
-                    ManyOfItemPropPaths.Add(propPath);
+                    DistinctManyOfValuePropPaths.TryAdd((manyOf.DistinctId, manyOf), parentPropPath);
+                    ManyOfItemPropPaths.Add(capture.CaptureGroupPropPath);
                 }
             }
         }

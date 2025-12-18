@@ -22,12 +22,6 @@ public class TokenAnalysisNode
     public int Length { get; set; }
     public int EndIndex => StartIndex + Length;
 
-    // --- Hierarchical Paths (Crucial for TypeExpressions) ---
-    /// <summary>
-    /// The dot-notation path of properties (e.g., "CardAbility.Cost.ManaValue").
-    /// </summary>
-    public string PropPath { get; set; }
-
     /// <summary>
     /// The dot-notation path used to map back to specific RegexTemplate lines for highlighting.
     /// </summary>

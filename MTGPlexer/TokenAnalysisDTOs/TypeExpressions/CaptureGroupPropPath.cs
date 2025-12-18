@@ -6,7 +6,7 @@ public record CaptureGroupPropPath
     public string PropPath { get; }
     public string PropPathRelativeToRoot { get; }
     public string PropPathFriendly { get; }
-    public string[] PropPathPartsRelativeToRoot { get; }
+    public string[] PropPathPartsRelativeToRoot { get; } = [];
     public CaptureGroupPropPath Parent { get; init; }
 
     public CaptureGroupPropPath(string propPathIncludingRoot)
@@ -18,24 +18,18 @@ public record CaptureGroupPropPath
 
         var propPathPartsWithRoot = propPathIncludingRoot.Split('.');
 
-        if (PropPath.Length > 1)
+        if (propPathPartsWithRoot.Length > 1)
         {
             PropPathPartsRelativeToRoot = propPathPartsWithRoot.Skip(1).ToArray();
             PropPathRelativeToRoot = string.Join('.', PropPathPartsRelativeToRoot);
             PropPathFriendly = string.Join(": ", PropPathPartsRelativeToRoot.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
-            Parent = new(string.Join('.', PropPathPartsRelativeToRoot.Take(PropPathPartsRelativeToRoot.Length - 1)));
+            Parent = new(string.Join('.', propPathPartsWithRoot.Take(propPathPartsWithRoot.Length - 1)));
         }
 
         LeafName = propPathPartsWithRoot.Last();
     }
 
-    public CaptureGroupPropPath Append(string partToAppend)
-    {
-        return new(PropPath.Dot(partToAppend))
-        {
-            Parent = this
-        };
-    }
+    public CaptureGroupPropPath Append(params string[] partsToAppend) => new(PropPath.Dot(partsToAppend));
 
     public override string ToString() => PropPath;
 }

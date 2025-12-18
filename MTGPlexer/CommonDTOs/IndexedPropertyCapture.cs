@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.CommonDTOs;
+﻿using System.Text.RegularExpressions;
+
+namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index
@@ -19,7 +21,6 @@ public record IndexedPropertyCapture
     public Palette Palette { get; private set; }
     public bool IgnoreInAnalysis { get; private set; }
     public bool IsDerivedFromManyItem { get; private set; }
-    public string Path { get; private set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }
 
     public IndexedPropertyCapture()
@@ -39,7 +40,6 @@ public record IndexedPropertyCapture
         Ordinal = capturePosition;
         Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
         IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
-        Path = parentTokenPath.PropPath.Dot(regexPropInfo.Name);
 
         CaptureGroupPropPath = regexPropInfo.IsTerminal
             ? new(parentTokenPath.PropPath
@@ -55,13 +55,8 @@ public record IndexedPropertyCapture
     /// </summary>
     public IndexedPropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
-        var newCaptureGroupPropPath =
-            Path
-            + "."
-            + RegexPropInfo.Name
-            + capture.Oridinal.Description()
-            + "."
-            + (capture.ManyItemVariant == ManyItemVariant.Enum ? capture.ItemObject.ToString() : "");
+        var terminalValueOrTypeName = capture.ManyItemVariant == ManyItemVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, capture.Oridinal.ToString(), terminalValueOrTypeName);
 
         return new IndexedPropertyCapture
         {
@@ -78,8 +73,7 @@ public record IndexedPropertyCapture
             Ordinal = (int)capture.Oridinal,
             Palette = DeterministicPalette.GetFixedRainbowPalette((int)capture.Oridinal),
             IgnoreInAnalysis = false,
-            Path = Path.Dot(capture.Oridinal.ToString()),
-            CaptureGroupPropPath = new(newCaptureGroupPropPath)
+            CaptureGroupPropPath = newPath
         };
     }
 
@@ -103,8 +97,7 @@ public record IndexedPropertyCapture
             Ordinal = 0,
             Palette = DeterministicPalette.GetFixedRainbowPalette(0),
             IgnoreInAnalysis = false,
-            //Path = Path.Dot(capture.Oridinal.ToString()),
-            CaptureGroupPropPath = new(Path.Dot(nameof(ManyOf.Conjunction)).Dot(manyOf.Conjunction.ToString()))
+            CaptureGroupPropPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, nameof(ManyOf.Conjunction), manyOf.Conjunction.ToString())
         };
     }
 

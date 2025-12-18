@@ -126,7 +126,9 @@ public static class Extensions
     public static PropertyInfo[] GetProps(this Type type) => 
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
-    public static string Dot(this string parentPath, string nextPathPart) => parentPath + "." + nextPathPart;
+    public static string Dot(this string parentPath, params string[] nextPathParts) =>
+        nextPathParts == null || nextPathParts.Length == 0 ? parentPath
+        : parentPath + "." + string.Join('.', nextPathParts);
 
     public static string LastPathPart(this string dotPathString) =>
         dotPathString is null ? null
