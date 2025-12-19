@@ -121,7 +121,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 }
                 else if (_manyItemType == ManyItemVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath capturePath = token.Match.CapturePath.Append(ordinalProp.Name);
+                    CaptureGroupPropPath capturePath = token.Match.CapturePath.Append(RegexPropInfo.Name, ordinalProp.Name);
                     TokenUnitMatch typeMatch = new(BaseType, token.Match.RegexMatch, token.Match.SourceText, capturePath, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;

@@ -40,7 +40,7 @@ public class RegexFormatter
         {
             if (element is AlternateValueEnumContainer enumContainer)   
             {
-                if (synonymDataLookup.TryGetValue(enumContainer.NamedPathRelativeToRoot, out var wrapper))
+                if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {
                     SynonymTrailingSpacer spacerBuffer = null;
 
@@ -83,7 +83,7 @@ public class RegexFormatter
                 else
                 {
                     if (synonymDataLookup.Keys.Any())
-                        Debug.WriteLine($"Didn't find '{enumContainer.NamedPathRelativeToRoot}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
+                        Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
 
                     expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"All {enumContainer.AlternateValueEnums.Count} omitted" });
                 }
