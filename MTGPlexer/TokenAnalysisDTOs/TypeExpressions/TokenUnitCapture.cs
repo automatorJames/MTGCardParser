@@ -12,20 +12,9 @@ public record TokenUnitCapture
     public string FormattedRegexString { get; }
 
     /// <summary>
-    /// Maps prop path to parent of terminal --> set of capture value variant counts. Includes granualar detail for ManyOfs
-    /// so that each captured ManyOf terminal value is represented.
+    /// Maps prop path to parent of terminal --> set of capture value variant counts.
     /// </summary>
-    public Dictionary<CaptureGroupPropPath, PropPathSynonymSetContainer> PropPathVariantSetsForRegex { get; private set; } = [];
-
-    /// <summary>
-    /// Same as the PropPathVariantSetsForRegex dictionary, except flattens terminal values within each ManyOf so each ManyOf
-    /// is displayed as a single entity in the GUI.
-    /// </summary>
-    public Dictionary<CaptureGroupPropPath, PropPathSynonymSetContainer> PropPathVariantSetsForTable { get; private set; } = [];
-
-    public HashSet<CaptureGroupPropPath> ManyOfItemPropPaths { get; private set; } = [];
-    public Dictionary<(Guid distinguisher, ManyOf manyOf), CaptureGroupPropPath> DistinctManyOfValuePropPaths { get; private set; } = [];
-    public Dictionary<CaptureGroupPropPath, Dictionary<ManyOf, int>> PropPathToManyOfValueCount { get; private set; } = [];
+    public Dictionary<CaptureGroupPropPath, PropPathSynonymSetContainer> PropPathVariantSets { get; private set; } = [];
 
     public TokenUnitCapture(Type type, List<TokenUnit> rootTokensUnitsOfType = null)
     {
@@ -38,7 +27,7 @@ public record TokenUnitCapture
         if (rootTokensUnitsOfType != null)
         {
             ProcessFlattenedTerminalCaptures(rootTokensUnitsOfType);
-            FilteredLines = template.Builder.GetFormattedLines(PropPathVariantSetsForRegex.Values.ToList());
+            FilteredLines = template.Builder.GetFormattedLines(PropPathVariantSets.Values.ToList());
             OccurrenceCount = rootTokensUnitsOfType.Count;
         }
         else
@@ -57,10 +46,10 @@ public record TokenUnitCapture
                 var parentPropPath = capture.CaptureGroupPropPath.Parent
                     ?? throw new Exception($"The path {capture.CaptureGroupPropPath?.PropPath} has no parent, but one was expected");
 
-                if (!PropPathVariantSetsForRegex.TryGetValue(parentPropPath, out var propPathVariantSetWrapper))
+                if (!PropPathVariantSets.TryGetValue(parentPropPath, out var propPathVariantSetWrapper))
                 {
                     propPathVariantSetWrapper = new(parentPropPath, capture.RegexPropInfo);
-                    PropPathVariantSetsForRegex[parentPropPath] = propPathVariantSetWrapper;
+                    PropPathVariantSets[parentPropPath] = propPathVariantSetWrapper;
                 }
 
                 if (!propPathVariantSetWrapper.SynonymSets.TryGetValue(capture.Value, out var captureValueVariantSet))
@@ -70,50 +59,9 @@ public record TokenUnitCapture
                 }
                 else
                     captureValueVariantSet.IncrementSynonymCapture(capture.Capture);
-
-                // If the parent of this terminal is a ManyOf, save the parent off for later processing and
-                // track this path so it's not added to the PropPathVariantSetsForTable dict later
-                if (capture.ParentValue is ManyOf manyOf)
-                {
-                    DistinctManyOfValuePropPaths.TryAdd((manyOf.DistinctId, manyOf), parentPropPath);
-                    ManyOfItemPropPaths.Add(capture.CaptureGroupPropPath);
-                }
             }
         }
 
-        // Put all the non-ManyOf items from the regex dictionary into the table dictionary
-        PropPathVariantSetsForTable = PropPathVariantSetsForRegex
-            .Where(x => !ManyOfItemPropPaths.Contains(x.Key))
-            .ToDictionary();
-
-        List<(ManyOf manyOf, int count, CaptureGroupPropPath path)> manyOfCounts = DistinctManyOfValuePropPaths
-                .GroupBy(x => (x.Key.manyOf, x.Value))
-                .Select(x => (x.Key.manyOf, x.Count(), x.Key.Value))
-                .ToList();
-
-        PropPathToManyOfValueCount = DistinctManyOfValuePropPaths
-            .GroupBy(kvp => kvp.Value)
-            .ToDictionary(
-                x => x.Key,
-                x => x.GroupBy(y => y.Key.manyOf)
-                  .ToDictionary(
-                      z => z.Key,
-                      z => z.Count()
-                  )
-            );
-
-        // Synthesize wrappers for all ManyOf items and add them to the table dictionary
-        foreach ((var path, var manyOfCount) in PropPathToManyOfValueCount)
-        {
-            PropPathSynonymSetContainer wrapper = new(path);
-            PropPathVariantSetsForTable[path] = wrapper;
-
-            foreach ((ManyOf manyOf, int count) in manyOfCount)
-                wrapper.SynonymSets.Add(manyOf, new(manyOf, manyOfRelatedPaths: manyOf.GetJoinedPathForAllTerminals(path), count: count));
-        }
-
-        // Order values in both dictionaries by descending occurrence count
-        PropPathVariantSetsForRegex.Values.ToList().ForEach(x => x.OrderByOccurrenceCount());
-        PropPathVariantSetsForTable.Values.ToList().ForEach(x => x.OrderByOccurrenceCount());
+        PropPathVariantSets.Values.ToList().ForEach(x => x.OrderByOccurrenceCount());
     }
 }

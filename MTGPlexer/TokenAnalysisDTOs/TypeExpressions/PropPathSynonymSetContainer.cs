@@ -22,4 +22,6 @@ public class PropPathSynonymSetContainer
             .OrderByDescending(x => x.Value.TotalCount)
             .ToDictionary(x => x.Key, x => x.Value);
     }
+
+    public override string ToString() => $"{ParentPath}: {(SynonymSets.Count == 1 ? SynonymSets.First().Value.CanonicalValueDisplay : SynonymSets.Count + " synonym sets")}";
 }

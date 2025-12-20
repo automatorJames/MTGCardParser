@@ -1,8 +1,8 @@
-﻿@if (TokenUnitCapture.PropPathVariantSetsForTable.Any())
+﻿@if (TokenUnitCapture.PropPathVariantSets.Any())
 {
     int propCount = 0;
     <div class="properties-container">
-        @foreach (var captureValueVariantSetWrapper in TokenUnitCapture.PropPathVariantSetsForTable)
+        @foreach (var captureValueVariantSetWrapper in TokenUnitCapture.PropPathVariantSets)
         {
             var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
             var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);

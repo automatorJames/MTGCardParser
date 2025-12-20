@@ -56,7 +56,7 @@ public class CardDataGetter
         //result = new List<Card> { new Card { Name = "Type1", Text = "creature has flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "creature has flying, reach, and butt poop" } };
         //result = new List<Card> { new Card { Name = "Type2", Text = "creature has flying, poop fling, butt poop, and haste" } };
         //result = new List<Card> { new Card { Name = "Type2", Text = "target creature has \"poop from a butt\"" } };
-        result = result.Where(x => x.Name == "Berserk");
+        //result = result.Where(x => x.Name == "Berserk");
         return result.ToList();
     }
 }

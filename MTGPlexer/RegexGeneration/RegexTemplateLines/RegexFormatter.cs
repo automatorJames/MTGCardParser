@@ -82,8 +82,8 @@ public class RegexFormatter
                 }
                 else
                 {
-                    if (synonymDataLookup.Keys.Any())
-                        Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
+                    //if (synonymDataLookup.Keys.Any())
+                    //    Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
 
                     expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"All {enumContainer.AlternateValueEnums.Count} omitted" });
                 }
