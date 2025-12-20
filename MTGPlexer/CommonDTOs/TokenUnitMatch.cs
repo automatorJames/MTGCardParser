@@ -54,7 +54,8 @@ public record TokenUnitMatch
     /// </summary>
     public IEnumerable<Capture> GetCapturesAtRelativePath(params string[] relativePathParts)
     {
-        var absolutePathParts = CapturePath.PropPathPartsRelativeToRoot.Concat(relativePathParts);
+        var parentParts = CapturePath.PropPathRelativeToRoot?.Split('.') ?? [];
+        var absolutePathParts = parentParts.Concat(relativePathParts);
 
         // 1. Start with the match itself as the initial "allowed scope"
         IEnumerable<Capture> currentScopes = [RegexMatch];

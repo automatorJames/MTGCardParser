@@ -134,8 +134,8 @@ public record TokenRegexManyProp : CaptureGroupPropBase
 
         var conjunctionCapture = token.Match.GetCaptureAtRelativePath(nameof(Conjunction));
 
-        Conjunction? conjunctionValue = 
-            Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 
+        Conjunction? conjunctionValue = conjunctionCapture == null ? null
+            : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 
             ? parsed : null;
 
         var manyTokenType = typeof(ManyOf<>).MakeGenericType(BaseType);

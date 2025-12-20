@@ -6,7 +6,6 @@ public record CaptureGroupPropPath
     public string PropPath { get; }
     public string PropPathRelativeToRoot { get; }
     public string PropPathFriendly { get; }
-    public string[] PropPathPartsRelativeToRoot { get; } = [];
     public CaptureGroupPropPath Parent { get; init; }
 
     public CaptureGroupPropPath(string propPathIncludingRoot)
@@ -20,9 +19,9 @@ public record CaptureGroupPropPath
 
         if (propPathPartsWithRoot.Length > 1)
         {
-            PropPathPartsRelativeToRoot = propPathPartsWithRoot.Skip(1).ToArray();
-            PropPathRelativeToRoot = string.Join('.', PropPathPartsRelativeToRoot);
-            PropPathFriendly = string.Join(": ", PropPathPartsRelativeToRoot.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
+            var propPathPartsRelativeToRoot = propPathPartsWithRoot.Skip(1).ToArray();
+            PropPathRelativeToRoot = string.Join('.', propPathPartsRelativeToRoot);
+            PropPathFriendly = string.Join(": ", propPathPartsRelativeToRoot.Select(x => x.ToFriendlyCase(TitleDisplayOption.Sentence)));
             Parent = new(string.Join('.', propPathPartsWithRoot.Take(propPathPartsWithRoot.Length - 1)));
         }
 
