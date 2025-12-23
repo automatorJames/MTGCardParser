@@ -57,6 +57,8 @@ public class CardDataGetter
         //result = new List<Card> { new Card { Name = "Type2", Text = "creature has flying, poop fling, butt poop, and haste" } };
         //result = new List<Card> { new Card { Name = "Type2", Text = "target creature has \"poop from a butt\"" } };
         //result = result.Where(x => x.Name == "Berserk");
+        result = new List<Card> { new Card { Name = "baahzek", Text = "Target creature gains trample and gets +X/+0" } };
+        //result = new List<Card> { new Card { Name = "baahzek", Text = "{T}: Add one mana of any color." } };
         return result.ToList();
     }
 }
