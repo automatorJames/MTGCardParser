@@ -24,7 +24,7 @@ public static class TokenCaptureBuilder
         public TokenUnit RootToken { get; set; }
         public List<PrecursorNode> Children { get; } = new();
 
-        public override string ToString() => CapturePath.ToString() + " | \"" + CaptureTextOriginal + "\"";
+        public override string ToString() => ElementType.ToString() + ": " + CapturePath.ToString() + " | \"" + CaptureTextOriginal + "\"";
     }
 
     // --- Public Entry Point ---
@@ -383,7 +383,7 @@ public static class TokenCaptureBuilder
 
     private static SpanAnalysisBase ConvertToDto(PrecursorNode precursor, IReadOnlyList<string> collapsedNameChain)
     {
-        bool isBranchType = _nodeTypesToCollapse.Contains(precursor.ElementType);
+        bool isBranchType = _branchNodeTypes.Contains(precursor.ElementType);
         bool isCollapsed = isBranchType && precursor.Children.All(x => _branchNodeTypes.Contains(x.ElementType));
         string finalName = precursor.Name;
 
@@ -479,13 +479,12 @@ public static class TokenCaptureBuilder
         }
     }
 
-    static HashSet<TokenAnalysisElementType> _nodeTypesToCollapse = [TokenAnalysisElementType.TokenUnitBranch, TokenAnalysisElementType.ManyOfItemBranch];
-
     static HashSet<TokenAnalysisElementType> _branchNodeTypes = 
         [
             TokenAnalysisElementType.TokenUnitBranch, 
             TokenAnalysisElementType.TokenUnitOneOfBranch, 
             TokenAnalysisElementType.ManyOfBranch,
+            TokenAnalysisElementType.OneOfItemBranch,
             TokenAnalysisElementType.ManyOfItemBranch,
             TokenAnalysisElementType.DynamicCaptureBranch,
             TokenAnalysisElementType.DynamicCaptureItemBranch
