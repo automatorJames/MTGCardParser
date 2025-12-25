@@ -91,7 +91,7 @@ public static class SpanBuilder
         {
             var item = many.ItemObjects[i];
             var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
-            var itemLabel = $"{prop.RegexPropInfo.Name} #{i + 1}";
+            var itemLabel = $"#{i + 1}";
 
             if (many.ManyItemVariant == ManyItemVariant.TokenUnit && item.ItemObject is TokenUnit tu)
             {
