@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.CommonDTOs;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
 /// Represents a single, fully processed line from a card, containing both the

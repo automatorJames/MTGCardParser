@@ -1,5 +1,4 @@
-﻿
-namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 /// <summary>
 /// A summary of all property values captured for a given set of TokenUnits,

@@ -84,7 +84,6 @@ public record DeterministicPalette
         }
 
         positionalPalette = [];
-        // UPDATED: Get an array of HUE values, not pre-made colors.
         var hues = GetRainbowHues(totalItemCount);
 
         for (int i = 0; i < totalItemCount; i++)
@@ -256,19 +255,35 @@ public record DeterministicPalette
         return HslToHex(h, s, newLightness);
     }
 
-    private static double[] GetRainbowHues(int numberOfItems)
+    private static double[] GetRainbowHues(int numberOfItems, double startingDegree = 280.0, bool firstHueIsStartingDegree = true)
     {
         if (numberOfItems <= 0) return [];
 
         var hues = new double[numberOfItems];
 
-        const double startDeg = 280.0;  // violet-ish
-        const double endDeg = 0.0;    // red
-        double steps = Math.Max(1, numberOfItems - 1);
-        double stepDeg = (startDeg - endDeg) / steps;
+        // Divide the full 360-degree circle into N equidistant segments
+        double stepDeg = 360.0 / numberOfItems;
 
         for (int i = 0; i < numberOfItems; i++)
-            hues[i] = ((startDeg - i * stepDeg) / 360.0 + 1.0) % 1.0;
+        {
+            double currentDegree;
+
+            if (firstHueIsStartingDegree)
+            {
+                // Start exactly at the requested degree and move "backwards" through the rainbow
+                currentDegree = startingDegree - (i * stepDeg);
+            }
+            else
+            {
+                // Offset by half a step so the colors are distributed symmetrically 
+                // around the circle rather than starting at the exact boundary.
+                currentDegree = startingDegree - (i * stepDeg) - (stepDeg / 2.0);
+            }
+
+            // Normalize to [0, 1] range. 
+            // Adding 360 before modulo ensures the result is positive even when currentDegree is negative.
+            hues[i] = ((currentDegree % 360.0) + 360.0) % 360.0 / 360.0;
+        }
 
         return hues;
     }

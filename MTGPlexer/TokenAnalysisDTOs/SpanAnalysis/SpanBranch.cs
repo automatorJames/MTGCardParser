@@ -3,9 +3,9 @@
 /// <summary>
 /// A branch node that groups other nodes. Encapsulates palette and collapse logic.
 /// </summary>
-public record SpanBranch : SpanNode
+public record SpanBranch : SpanNode, IHasPalette
 {
-    public Palette Palette { get; init; } = null!;
+    public Palette Palette { get; set; }
     public bool IsCollapsed { get; init; }
 
     /// <summary>

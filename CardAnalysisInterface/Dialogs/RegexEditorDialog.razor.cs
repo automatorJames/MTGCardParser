@@ -1,4 +1,5 @@
 ﻿using MTGPlexer.CommonDTOs;
+using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 namespace CardAnalysisInterface.Dialogs;
 

@@ -59,6 +59,7 @@ public class CardDataGetter
         //result = result.Where(x => x.Name == "Berserk");
         //result = new List<Card> { new Card { Name = "baahzek", Text = "Target creature gains trample and gets +X/+0" } };
         //result = new List<Card> { new Card { Name = "baahzek", Text = "{T}: Add one mana of any color." } };
+        //result = result.Where(x => x.Name == "Animate Dead");
         return result.ToList();
     }
 }

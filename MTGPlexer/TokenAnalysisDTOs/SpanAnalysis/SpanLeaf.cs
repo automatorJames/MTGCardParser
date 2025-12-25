@@ -3,9 +3,9 @@
 /// <summary>
 /// A terminal node representing a specific value (enum, bool, string).
 /// </summary>
-public record SpanLeaf : SpanNode
+public record SpanLeaf : SpanNode, IHasPalette
 {
-    public Palette Palette { get; init; } = null!;
+    public Palette Palette { get; set; }
     public string TerminalValString { get; init; } = string.Empty;
     public string TerminalType { get; init; } = string.Empty;
 
