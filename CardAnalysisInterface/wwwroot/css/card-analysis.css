@@ -51,12 +51,19 @@ tbody tr:nth-of-type(even) {
 pre.nested-underline-container {
     background-color: var(--dark-grey);
     padding: 1rem;
-    border-radius: 4px;
-    border: 1px solid var(--lowlight-color, var(--outline-grey));
+    overflow: hidden; /* Keeps the container clean */
+    display: block;
     white-space: pre-wrap;
     word-wrap: break-word;
-    line-height: 36px;
 }
+
+    /* This "space-sucker" only exists at the top */
+    pre.nested-underline-container::before {
+        content: "";
+        display: block;
+        height: 0;
+        margin-top: var(--top-crop, 0);
+    }
 
 code {
     font-family: Consolas, "Courier New", monospace;

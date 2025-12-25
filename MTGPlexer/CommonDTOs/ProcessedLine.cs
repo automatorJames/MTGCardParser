@@ -68,4 +68,6 @@ public class ProcessedLine
 
         return occurrences;
     }
+
+    public int GetDeepestChildDepth() => SpanRoots.Max(x => x.GetRecursiveDepth());
 }
