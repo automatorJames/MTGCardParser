@@ -1,25 +1,16 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
-/// A leaf in the analysis tree, representing a primary terminal value.
+/// A terminal node representing a specific value (enum, bool, string).
 /// </summary>
-public record SpanLeaf : SpanAnalysisBase
+public record SpanLeaf : SpanNode
 {
-    public Palette Palette { get; init; }
-    public string TerminalValString { get; init; }
-    public string TerminalType { get; init; }
+    public Palette Palette { get; init; } = null!;
+    public string TerminalValString { get; init; } = string.Empty;
+    public string TerminalType { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Provides an enriched, single-line summary of the node.
-    /// </summary>
     public override string ToString()
     {
-        // For a leaf, GetNestedCaptureString() will simply be its own CaptureTextOriginal.
-        string nestedCapture = GetNestedCaptureString();
-        string friendlyElementType = ElementType.ToString().ToFriendlyCase();
-        string captureDisplay = $"[{Start}] \"{nestedCapture}\" [{End}]";
-
-        // Display the captured terminal value and its type.
-        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Value: \"{TerminalValString}\" ({TerminalType})";
+        return $"{CapturePath} | [{Start}] \"{CaptureTextOriginal}\" [{End}] | {ElementType} | Value: \"{TerminalValString}\" ({TerminalType})";
     }
 }

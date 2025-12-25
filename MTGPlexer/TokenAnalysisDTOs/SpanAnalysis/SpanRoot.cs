@@ -1,23 +1,17 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
-/// The root of the analysis tree.
+/// The specialized root of the analysis tree containing global context.
 /// </summary>
 public record SpanRoot : SpanBranch
 {
-    public string OriginalFullText { get; init; }
-    public TokenUnit RootToken { get; init; }
-    public string CardName { get; init; }
+    public string OriginalFullText { get; init; } = string.Empty;
+    public TokenUnit RootToken { get; init; } = null!;
+    public string CardName { get; init; } = string.Empty;
     public int ClauseIndex { get; init; }
 
-    /// <summary>
-    /// Provides an enriched, single-line summary of the node.
-    /// </summary>
     public override string ToString()
     {
-        string nestedCapture = GetNestedCaptureString();
-        string friendlyElementType = ElementType.ToString().ToFriendlyCase();
-        string captureDisplay = $"\"{nestedCapture}\"";
-        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Children: {Children.Count}";
+        return $"{CapturePath} | \"{GetNestedCaptureString()}\" | {ElementType} | Card: {CardName} | Children: {Children.Count}";
     }
 }

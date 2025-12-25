@@ -1,25 +1,26 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
-/// A branch in the analysis tree, which can contain other nodes.
+/// A branch node that groups other nodes. Encapsulates palette and collapse logic.
 /// </summary>
-public record SpanBranch : SpanAnalysisBase
+public record SpanBranch : SpanNode
 {
-    public Palette Palette { get; init; }
+    public Palette Palette { get; init; } = null!;
     public bool IsCollapsed { get; init; }
 
     /// <summary>
-    /// Provides an enriched, single-line summary of the node.
+    /// Determines if this node should be visually collapsed. 
+    /// A node is collapsed if all of its children are also branches.
     /// </summary>
+    public static bool CalculateIsCollapsed(IEnumerable<SpanNode> children)
+    {
+        var list = children.ToList();
+        return list.Count > 0 && list.All(c => c is SpanBranch);
+    }
+
     public override string ToString()
     {
-        string nestedCapture = GetNestedCaptureString();
-        string friendlyElementType = ElementType.ToString().ToFriendlyCase();
-
-        // For non-root nodes, showing the character indices is crucial for debugging.
-        string captureDisplay = $"[{Start}] \"{nestedCapture}\" [{End}]";
-
-        // Include the critical IsCollapsed status.
-        return $"{CapturePath} | {captureDisplay} | {friendlyElementType} | Collapsed: {IsCollapsed} | Children: {Children.Count}";
+        string nested = GetNestedCaptureString();
+        return $"{CapturePath} | [{Start}] \"{nested}\" [{End}] | {ElementType} | Collapsed: {IsCollapsed} | Children: {Children.Count}";
     }
 }
