@@ -1,4 +1,4 @@
-﻿@if (false)
+﻿@if (Branch.IsCollapsed)
 {
     @* Directly render branch children of the collapsed parent branch *@
     @foreach (var branch in Branch.Children.OfType<SpanBranch>())

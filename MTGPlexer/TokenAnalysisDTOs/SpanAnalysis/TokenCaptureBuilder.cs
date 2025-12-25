@@ -23,6 +23,8 @@ public static class TokenCaptureBuilder
         public Palette Palette { get; set; }
         public TokenUnit RootToken { get; set; }
         public List<PrecursorNode> Children { get; } = new();
+
+        public override string ToString() => CapturePath.ToString() + " | \"" + CaptureTextOriginal + "\"";
     }
 
     // --- Public Entry Point ---
@@ -56,7 +58,7 @@ public static class TokenCaptureBuilder
     /// </summary>
     static void PrependPathsToPrecursorTree(PrecursorNode node, string prefix)
     {
-        node.CapturePath = new (prefix + node.CapturePath);
+        node.CapturePath = new(prefix + node.CapturePath);
 
         foreach (var child in node.Children)
             PrependPathsToPrecursorTree(child, prefix);
@@ -68,28 +70,28 @@ public static class TokenCaptureBuilder
     {
         var val = propCapture.Value;
 
-        if (val is TokenUnitOneOf tuOneOf) 
+        if (val is TokenUnitOneOf tuOneOf)
             return CreatePrecursorForTokenUnitOneOf(propCapture, tuOneOf, originalFullText);
 
-        if (val is TokenUnitDistilled tuDistilled) 
+        if (val is TokenUnitDistilled tuDistilled)
             return CreatePrecursorForTokenUnitDistilled(propCapture, tuDistilled, originalFullText);
 
-        if (val is TokenUnit tokenUnit) 
+        if (val is TokenUnit tokenUnit)
             return CreatePrecursorForTokenUnit(propCapture, tokenUnit, originalFullText);
 
         if (val is ManyOf manyOf)
             return CreatePrecursorForManyOf(propCapture, manyOf, originalFullText);
 
-        if (val is DynamicCapture dynamicCapture) 
+        if (val is DynamicCapture dynamicCapture)
             return CreatePrecursorForDynamicCapture(propCapture, dynamicCapture, originalFullText);
 
-        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum) 
+        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Enum)
             return CreatePrecursorForEnum(propCapture, originalFullText);
 
-        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Bool) 
+        if (propCapture.RegexPropInfo.RegexPropType == RegexPropType.Bool)
             return CreatePrecursorForBool(propCapture, originalFullText);
 
-        if (val is PlaceholderCapture placeholder) 
+        if (val is PlaceholderCapture placeholder)
             return CreatePrecursorForPlaceholder(propCapture, placeholder, originalFullText);
 
         throw new ArgumentException($"Unsupported TokenUnit property type for precursor creation: {val?.GetType().Name}");
@@ -123,10 +125,10 @@ public static class TokenCaptureBuilder
     {
         var precursor = CreatePrecursorBase(propCapture, originalFullText, TokenAnalysisElementType.TokenUnitBranch);
         precursor.Palette = TokenTypeRegistry.Palettes[tokenUnit.Type];
-    
+
         foreach (var x in tokenUnit.IndexedPropertyCaptures)
             precursor.Children.Add(CreatePrecursorFor(x, originalFullText));
-    
+
         return precursor;
     }
 
@@ -232,10 +234,10 @@ public static class TokenCaptureBuilder
         precursor.Palette = TokenTypeRegistry.Palettes[distilled.Type];
         var nonDistilledProps = distilled.IndexedPropertyCaptures.Where(x => !distilled.DistilledVals.ContainsKey(x));
 
-        foreach (var x in nonDistilledProps) 
+        foreach (var x in nonDistilledProps)
             precursor.Children.Add(CreatePrecursorFor(x, originalFullText));
 
-        foreach (var (placeholderCap, distilledVals) in distilled.DistilledVals) 
+        foreach (var (placeholderCap, distilledVals) in distilled.DistilledVals)
             precursor.Children.Add(CreatePrecursorForDistilledPlaceholder(placeholderCap, distilledVals, originalFullText));
 
         return precursor;
@@ -381,8 +383,8 @@ public static class TokenCaptureBuilder
 
     private static SpanAnalysisBase ConvertToDto(PrecursorNode precursor, IReadOnlyList<string> collapsedNameChain)
     {
-        bool isBranchType = precursor.ElementType.ToString().Contains("Branch") || precursor.ElementType.ToString().Contains("Root");
-        bool isCollapsed = isBranchType && precursor.Children.Any() && precursor.Children.All(c => c.ElementType.ToString().Contains("Branch"));
+        bool isBranchType = _nodeTypesToCollapse.Contains(precursor.ElementType);
+        bool isCollapsed = isBranchType && precursor.Children.All(x => _branchNodeTypes.Contains(x.ElementType));
         string finalName = precursor.Name;
 
         if (isBranchType && collapsedNameChain.Any())
@@ -476,6 +478,18 @@ public static class TokenCaptureBuilder
                 throw new InvalidOperationException($"Unsupported ElementType for DTO conversion: {precursor.ElementType}");
         }
     }
+
+    static HashSet<TokenAnalysisElementType> _nodeTypesToCollapse = [TokenAnalysisElementType.TokenUnitBranch, TokenAnalysisElementType.ManyOfItemBranch];
+
+    static HashSet<TokenAnalysisElementType> _branchNodeTypes = 
+        [
+            TokenAnalysisElementType.TokenUnitBranch, 
+            TokenAnalysisElementType.TokenUnitOneOfBranch, 
+            TokenAnalysisElementType.ManyOfBranch,
+            TokenAnalysisElementType.ManyOfItemBranch,
+            TokenAnalysisElementType.DynamicCaptureBranch,
+            TokenAnalysisElementType.DynamicCaptureItemBranch
+        ];
 }
 
 
@@ -488,7 +502,7 @@ public enum TokenAnalysisElementType
     TokenUnitOneOfBranch,
     TokenUnitDistilledBranch,
     OneOfItemBranch,
-    ManyOfBranch,
+    ManyOfBranch, // Overall ManyOf container, parent to Conjunction & items
     ManyOfItemBranch,
     DynamicCaptureBranch,
     DynamicCaptureItemBranch,

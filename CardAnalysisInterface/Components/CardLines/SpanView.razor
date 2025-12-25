@@ -57,7 +57,7 @@
 
         var classes = new List<string>();
 
-        if (node is SpanBranch branch)
+        if (node is SpanBranch branch && !branch.IsCollapsed)
             classes.Add("nested-underline");
 
         if (node is SpanLeaf)
@@ -73,7 +73,7 @@
 
         var style = new System.Text.StringBuilder();
 
-        if (node is SpanBranch branch)
+        if (node is SpanBranch branch && !branch.IsCollapsed)
             style.Append(branch.Palette.ToColorStyle());
         else if (node is SpanLeaf leaf)
             style.Append(leaf.Palette.ToColorStyle());
