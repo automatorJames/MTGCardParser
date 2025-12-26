@@ -255,33 +255,27 @@ public record DeterministicPalette
         return HslToHex(h, s, newLightness);
     }
 
-    private static double[] GetRainbowHues(int numberOfItems, double startingDegree = 280.0, bool firstHueIsStartingDegree = true)
+    private static double[] GetRainbowHues(int numberOfItems, ColorWheelOptions options = null)
     {
         if (numberOfItems <= 0) return [];
 
+        options ??= new();
+
         var hues = new double[numberOfItems];
 
-        // Divide the full 360-degree circle into N equidistant segments
-        double stepDeg = 360.0 / numberOfItems;
+        // Calculate the step: the smaller of (full circle division) or (user-defined limit)
+        double stepDeg = Math.Min(360.0 / numberOfItems, options.MaxDegreesPerRotation);
+
+        // Reverse = false: Clockwise (decrementing degrees, e.g., 280 -> 270)
+        // Reverse = true: Counter-clockwise (incrementing degrees, e.g., 280 -> 290)
+        double directionMultiplier = options.Reverse ? 1.0 : -1.0;
 
         for (int i = 0; i < numberOfItems; i++)
         {
-            double currentDegree;
+            // Always starts exactly at StartingDegree for index 0
+            double currentDegree = options.StartingDegree + (i * stepDeg * directionMultiplier);
 
-            if (firstHueIsStartingDegree)
-            {
-                // Start exactly at the requested degree and move "backwards" through the rainbow
-                currentDegree = startingDegree - (i * stepDeg);
-            }
-            else
-            {
-                // Offset by half a step so the colors are distributed symmetrically 
-                // around the circle rather than starting at the exact boundary.
-                currentDegree = startingDegree - (i * stepDeg) - (stepDeg / 2.0);
-            }
-
-            // Normalize to [0, 1] range. 
-            // Adding 360 before modulo ensures the result is positive even when currentDegree is negative.
+            // Normalize to [0, 1] range.
             hues[i] = ((currentDegree % 360.0) + 360.0) % 360.0 / 360.0;
         }
 
