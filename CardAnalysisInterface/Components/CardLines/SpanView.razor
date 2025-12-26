@@ -60,8 +60,8 @@
         if (node is SpanBranch branch && !branch.IsCollapsed)
             classes.Add("nested-underline");
 
-        if (node is SpanLeaf)
-            classes.Add("prop-capture-inline");
+        if (node is SpanLeaf spanLeaf)
+            classes.Add("prop-capture-overline");
 
         return string.Join(" ", classes);
     }

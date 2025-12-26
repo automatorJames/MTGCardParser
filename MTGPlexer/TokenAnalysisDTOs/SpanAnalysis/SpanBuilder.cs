@@ -136,8 +136,16 @@ public static class SpanBuilder
                 CapturePath = new(ctx.PathPrefix + placeholder.CaptureGroupPropPath)
             }).Cast<SpanNode>().ToList();
 
-            children.Add(CreateBranch(placeholder.Capture, placeholder.RegexPropInfo.Name, placeholder.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch,
-                DeterministicPalette.GetFixedRainbowPalette(placeholder.Ordinal), subLeaves, ctx));
+            var childBranch = CreateBranch(
+                placeholder.Capture, 
+                placeholder.RegexPropInfo.Name, 
+                placeholder.CaptureGroupPropPath, 
+                TokenAnalysisElementType.TokenUnitDistilledBranch,
+                DeterministicPalette.GetFixedRainbowPalette(placeholder.Ordinal), 
+                subLeaves, 
+                ctx);
+
+            children.Add(childBranch);
         }
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch, TokenTypeRegistry.Palettes[dist.Type], children, ctx);

@@ -6,7 +6,7 @@
     padding-bottom: 2px; /* Base padding */
 }
 
-.prop-capture-inline {
+.prop-capture-overline {
     border-top: 2px solid;
     /* Use the standard --color variable, NOT --overline-color */
     border-top-color: var(--color);

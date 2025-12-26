@@ -102,13 +102,13 @@ pre.nested-underline-container span:has(br) + span {
     color: var(--color);
 }
 
-.prop-capture-inline {
+.prop-capture-overline {
     border-top-width: var(--underline-width);
     border-top-style: solid;
     padding-top: 1px;
 }
 
-    .prop-capture-inline.distilled {
+    .prop-capture-overline.distilled {
         border-top-style: dotted;
     }
 
@@ -162,7 +162,7 @@ pre.nested-underline-container span:has(br) + span {
     color: var(--highlight-color);
 }
 
-.prop-capture-inline.highlight-active {
+.prop-capture-overline.highlight-active {
     border-top-color: var(--highlight-color);
 }
 
@@ -186,7 +186,7 @@ tr.highlight-active .prop-capture-table-cell {
 
 /* --- MUTE ACTIVE STATES --- */
 
-.prop-capture-inline.mute-active {
+.prop-capture-overline.mute-active {
     border-top-color: var(--lowlight-color);
 }
 
