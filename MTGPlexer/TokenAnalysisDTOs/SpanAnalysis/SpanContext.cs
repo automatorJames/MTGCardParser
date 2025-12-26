@@ -8,7 +8,7 @@ internal record SpanContext(
     string FullText,
     string PathPrefix,
     int AbsoluteOffset = 0,
-    IReadOnlyList<string>? NameChain = null)
+    IReadOnlyList<string> NameChain = null)
 {
     public IReadOnlyList<string> CurrentNameChain => NameChain ?? Array.Empty<string>();
 
@@ -20,15 +20,4 @@ internal record SpanContext(
         this with { NameChain = new List<string>(CurrentNameChain) { name } };
 
     public SpanContext ClearNameChain() => this with { NameChain = null };
-
-    /// <summary>
-    /// Helper to resolve palettes for generic objects like ManyOf or DynamicCapture.
-    /// </summary>
-    public Palette GetPalette(object owner)
-    {
-        var colorAttr = owner.GetType().GetCustomAttribute<ColorAttribute>();
-        return colorAttr != null
-            ? DeterministicPalette.GetStaticPalette(colorAttr.Color)
-            : DeterministicPalette.GetFixedRainbowPalette(0);
-    }
 }

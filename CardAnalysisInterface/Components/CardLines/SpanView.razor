@@ -6,9 +6,6 @@
 
             foreach (var child in Node.Children.OrderBy(c => c.Start))
             {
-                if (child is SpanSubLeaf)
-                    continue;
-
                 var relativeChildStart = child.Start - Node.Start;
 
                 if (relativeChildStart > cursor)
@@ -63,6 +60,12 @@
         if (node is SpanLeaf spanLeaf)
             classes.Add("prop-capture-overline");
 
+        if (node is SpanSubLeaf spanSubLeaf)
+            classes.Add("dashed-line");
+
+        if (node.ElementType == TokenAnalysisElementType.PlaceholderLeaf)
+            classes.Add("dotted-line");
+
         return string.Join(" ", classes);
     }
 
@@ -71,12 +74,13 @@
         if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
             return "";
 
+        if (node is SpanBranch branch && branch.IsCollapsed)
+            return "";
+
         var style = new System.Text.StringBuilder();
 
-        if (node is SpanBranch branch && !branch.IsCollapsed)
-            style.Append(branch.Palette.ToColorStyle());
-        else if (node is SpanLeaf leaf)
-            style.Append(leaf.Palette.ToColorStyle());
+        if (node is IHasPalette hasPalette)
+            style.Append(hasPalette.Palette.ToColorStyle());
 
         var paddingBottom = 2 + (Depth * 6);
         style.Append($" padding-bottom: {paddingBottom}px;");

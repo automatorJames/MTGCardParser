@@ -1,17 +1,23 @@
 ﻿.nested-underline {
     border-bottom-width: var(--underline-width);
     border-bottom-style: solid;
-    /* Use the standard --color variable now */
     border-bottom-color: var(--color);
     padding-bottom: 2px; /* Base padding */
 }
 
 .prop-capture-overline {
     border-top: 2px solid;
-    /* Use the standard --color variable, NOT --overline-color */
     border-top-color: var(--color);
     margin-top: -2px;
 }
+
+    .prop-capture-overline.dashed-line {
+        border-top-style: dashed;
+    }
+
+    .prop-capture-overline.dotted-line {
+        border-top-style: dotted;
+    }
 
 .twig {
     /* Styles for text that is part of a parent capture but not a child capture */
