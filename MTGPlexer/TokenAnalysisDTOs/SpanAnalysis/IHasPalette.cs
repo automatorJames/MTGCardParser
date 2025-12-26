@@ -2,5 +2,5 @@
 
 public interface IHasPalette
 {
-    public Palette Palette { get; set; }
+    public HexPalette Palette { get; set; }
 }

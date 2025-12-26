@@ -3,6 +3,7 @@
 :root {
     --global-transition-duration: 0.1;
     --transition-time: calc(var(--global-transition-duration) * 1s) ease-in-out;
+    --near-black: #1a1a1a;
     --dark-grey: #1e1e1e;
     --light-grey: #252526;
     --navy: #1a202c;

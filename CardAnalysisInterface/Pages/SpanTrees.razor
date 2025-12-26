@@ -30,7 +30,7 @@
                                 var cardPalette = span.CardPalettes[cardName];
                                 <span class="card-name-item"
                                       data-card-name="@cardName"
-                                      style="border-color: @cardPalette.Hex; --highlight-color: @cardPalette.HexLight; --sat-color: @cardPalette.HexSat;">
+                                      style="border-color: @cardPalette.Normal; --highlight-color: @cardPalette.Light; --sat-color: @cardPalette.Sat;">
                                     @cardName
                                 </span>
                             }
@@ -45,7 +45,7 @@
                                     {
                                         <span class="type-name-item"
                                               data-type-seed="@typePalette.Seed"
-                                              style="border-color: @typePalette.Hex; --highlight-color: @typePalette.Hex;">
+                                              style="border-color: @typePalette.Normal; --highlight-color: @typePalette.Normal;">
                                             @typePalette.Seed
                                         </span>
                                     }

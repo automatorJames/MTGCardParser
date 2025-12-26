@@ -6,12 +6,12 @@ namespace MTGPlexer.Colors;
 public record DeterministicPalette
 {
     // --- Static Cache ---
-    private static readonly Dictionary<int, Dictionary<int, Palette>> _positionalPalettes = [];
-    private static readonly Dictionary<int, Palette> _fixedRainbowPalettes = [];
-    private static readonly Dictionary<HexColor, Palette> _staticColorPalettes = [];
+    private static readonly Dictionary<int, Dictionary<int, HexPalette>> _positionalPalettes = [];
+    private static readonly Dictionary<int, HexPalette> _fixedRainbowPalettes = [];
+    private static readonly Dictionary<HexColor, HexPalette> _staticColorPalettes = [];
 
     // --- Public Color Properties ---
-    public Palette Palette { get; private set; }
+    public HexPalette Palette { get; private set; }
 
     /// <summary>
     /// The string used to generate this palette, typically a token Type name.
@@ -63,7 +63,7 @@ public record DeterministicPalette
 
     // --- Static Factory ---
 
-    public static Palette GetFixedRainbowPalette(int rainbowIndex)
+    public static HexPalette GetFixedRainbowPalette(int rainbowIndex)
     {
         var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
 
@@ -76,7 +76,7 @@ public record DeterministicPalette
         return newPalette;
     }
 
-    public static Dictionary<int, Palette> GetPositionalPalette(int totalItemCount)
+    public static Dictionary<int, HexPalette> GetPositionalPalette(int totalItemCount)
     {
         if (_positionalPalettes.TryGetValue(totalItemCount, out var positionalPalette))
         {
@@ -96,7 +96,7 @@ public record DeterministicPalette
         return positionalPalette;
     }
 
-    public static Palette GetStaticPalette(HexColor color)
+    public static HexPalette GetStaticPalette(HexColor color)
     {
         if (_staticColorPalettes.TryGetValue(color, out var palette))
             return palette;

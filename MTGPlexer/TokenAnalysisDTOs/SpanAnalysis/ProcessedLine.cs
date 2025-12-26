@@ -19,11 +19,14 @@ public class ProcessedLine
     /// </summary>
     public List<UnmatchedTextOccurrence> UnmatchedTextOccurrences { get; init; }
 
-    public ProcessedLine(SourceTextDTO sourceText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences)
+    public string DataPath { get; init; }
+
+    public ProcessedLine(SourceTextDTO sourceText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
         SourceText = sourceText;
         SpanRoots = spanRoots;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
+        DataPath = dataPath;
     }
 
     public static List<ProcessedLine> GetAll(Card card)
@@ -45,7 +48,8 @@ public class ProcessedLine
                 .ToList();
 
             List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalText);
-            lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences));
+            var dataPath = card.Name.Replace(' ', '_') + $"-line[{i}]";
+            lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences, dataPath));
         }
 
 

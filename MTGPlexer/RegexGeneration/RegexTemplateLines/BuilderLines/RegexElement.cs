@@ -4,14 +4,14 @@ public class RegexElement
 {
     public Enclosure[] Enclosures { get; }
     public string Regex { get; init; }
-    public Palette Palette { init; get; }
+    public HexPalette Palette { init; get; }
     public string Comment { get; init; }
 
     public string UniquePath { get; }
     public string NamedPath { get; }
     public string NamedPathRelativeToRoot { get; }
 
-    public RegexElement(Enclosure[] enclosures, string regex, Palette palette = null, string comment = null)
+    public RegexElement(Enclosure[] enclosures, string regex, HexPalette palette = null, string comment = null)
     {
         Enclosures = enclosures;
         Regex = regex;

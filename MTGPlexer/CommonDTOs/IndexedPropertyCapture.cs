@@ -18,7 +18,7 @@ public record IndexedPropertyCapture
     public object Value { get; private set; }
     public object ParentValue { get; private set; }
     public int Ordinal { get; private set; }
-    public Palette Palette { get; private set; }
+    public HexPalette Palette { get; private set; }
     public bool IgnoreInAnalysis { get; private set; }
     public bool IsDerivedFromManyItem { get; private set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }

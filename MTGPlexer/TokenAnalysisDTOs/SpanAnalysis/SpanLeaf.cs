@@ -5,7 +5,7 @@
 /// </summary>
 public record SpanLeaf : SpanNode, IHasPalette
 {
-    public Palette Palette { get; set; }
+    public HexPalette Palette { get; set; }
     public string TerminalValString { get; init; } = string.Empty;
     public string TerminalType { get; init; } = string.Empty;
 

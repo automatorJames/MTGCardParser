@@ -7,7 +7,7 @@ public record TokenUnitCapture
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
     public List<RegexCommentedLine> FilteredLines { get; }
-    public Palette Palette { get; }
+    public HexPalette Palette { get; }
     public string MinifiedRegexString { get; }
     public string FormattedRegexString { get; }
 

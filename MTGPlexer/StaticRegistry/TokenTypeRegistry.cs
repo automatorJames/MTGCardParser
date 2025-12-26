@@ -18,7 +18,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<RegexPropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
-    public static Dictionary<Type, Palette> Palettes { get; set; } = [];
+    public static Dictionary<Type, HexPalette> Palettes { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static Dictionary<PropertyInfo, List<Type>> DynamicPropCapturedTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];

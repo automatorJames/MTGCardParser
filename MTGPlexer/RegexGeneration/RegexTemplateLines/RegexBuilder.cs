@@ -55,7 +55,7 @@ public class RegexBuilder
 
         if (captureGroup != null)
         {
-            Palette palette = null;
+            HexPalette palette = null;
 
             if (captureGroup.IsTerminal)
             {

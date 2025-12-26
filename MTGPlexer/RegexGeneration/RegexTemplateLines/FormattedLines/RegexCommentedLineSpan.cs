@@ -3,7 +3,7 @@
 public record RegexCommentedLineSpan
 (
     string SpanText,
-    Palette Palette,
+    HexPalette Palette,
     string PathRelativeToRoot,
     SpanHighlightTreatment HighlightTreatment,
     SpanLowlightTreatment LowlightTreatment

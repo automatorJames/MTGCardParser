@@ -8,7 +8,7 @@ public record NamedEnclosure : Enclosure
     public NamedEnclosure
         (
             int ordinal,
-            Palette palette,
+            HexPalette palette,
             RegexPropInfo regexPropInfo, 
             string nameOverride = null
         ) : base

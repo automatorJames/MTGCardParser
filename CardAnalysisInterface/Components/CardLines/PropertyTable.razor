@@ -9,14 +9,14 @@
 else
 {
     <div class="token-summary-branch" style="margin-top:16px" data-path=@Branch.CapturePath>
-        <div class="token-summary-header" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(useSaturatedHighlight: true))>
+        <div class="token-summary-header" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(PaletteVariant.Sat))>
             <span class="token-type-name">@Branch.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
         </div>
 
         @if (Branch.Children.Any())
         {
             <div class="property-table-wrapper">
-                <div class="content-box" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(useSaturatedHighlight: true, shift: -1))>
+                <div class="content-box" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(PaletteVariant.Dark))>
 
                     @{
                         var leaves = Branch.Children.OfType<SpanLeaf>().ToList();

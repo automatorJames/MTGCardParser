@@ -30,17 +30,17 @@ record FormattedRegexColoringRules
     public string OmittedEnumCountColor { get; } = Grey30;
 
     // Palette-Dependent Coloring Rules
-    public Func<Palette, string> AlternateValueCommentColor { get; } = p => p.HexLight;
-    public Func<Palette, string> SynonymValueCommentColor { get; } = p => p.HexDark;
-    public Func<Palette, string> NamedGroupBookendCommentColor { get; } = p => p.HexSat;
-    public Func<Palette, string> EnclosedTextColor { get; } = p => p.Hex;
+    public Func<HexPalette, string> AlternateValueCommentColor { get; } = p => p.Light;
+    public Func<HexPalette, string> SynonymValueCommentColor { get; } = p => p.Dark;
+    public Func<HexPalette, string> NamedGroupBookendCommentColor { get; } = p => p.Sat;
+    public Func<HexPalette, string> EnclosedTextColor { get; } = p => p.Normal;
 
     // Border Coloring Rules based on Treatment
-    private Func<Palette, string> ClosedBoxBorderColor { get; } = p => p.Hex;
-    private Func<Palette, string> DashedBoxBorderColor { get; } = p => p.HexDark;
+    private Func<HexPalette, string> ClosedBoxBorderColor { get; } = p => p.Normal;
+    private Func<HexPalette, string> DashedBoxBorderColor { get; } = p => p.Dark;
     private string BraceBorderColor { get; } = Grey60;
 
-    public string GetBorderColor(GroupBorderTreatment treatment, Palette palette) => treatment switch
+    public string GetBorderColor(GroupBorderTreatment treatment, HexPalette palette) => treatment switch
     {
         GroupBorderTreatment.ClosedBox => ClosedBoxBorderColor(palette),
         GroupBorderTreatment.DashedBox => DashedBoxBorderColor(palette),

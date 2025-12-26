@@ -30,7 +30,7 @@ public record AdjacencyNode
     /// The map of palettes for this node, derived directly from its segment.
     /// The keys are character start indices within the Text property.
     /// </summary>
-    public Dictionary<int, Palette> SpanPalettes => Segment.Palettes;
+    public Dictionary<int, HexPalette> SpanPalettes => Segment.Palettes;
 
     /// <summary>
     /// The simplified constructor that was a primary goal of this refactoring.

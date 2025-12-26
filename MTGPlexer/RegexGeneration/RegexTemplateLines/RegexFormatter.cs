@@ -431,7 +431,7 @@ public class RegexFormatter
         var spans = new List<RegexCommentedLineSpan>();
         var lowlight = _treatments.CommentLowlightTreatment;
 
-        void AddSpanForEnclosurePath(string text, Palette palette, SpanHighlightTreatment highlight, IEnumerable<Enclosure> scope)
+        void AddSpanForEnclosurePath(string text, HexPalette palette, SpanHighlightTreatment highlight, IEnumerable<Enclosure> scope)
         {
             if (string.IsNullOrEmpty(text))
                 return;
@@ -443,7 +443,7 @@ public class RegexFormatter
             spans.Add(new(text, palette, relativePath, relativePath == null ? SpanHighlightTreatment.None : highlight, lowlight));
         }
 
-        void AddSpanForCurrentLine(string text, Palette palette, bool isTextSpan)
+        void AddSpanForCurrentLine(string text, HexPalette palette, bool isTextSpan)
         {
             if (string.IsNullOrEmpty(text))
                 return;
@@ -535,7 +535,7 @@ public class RegexFormatter
                     {
                         string lineText;
                         string fullContent;
-                        Palette altPalette;
+                        HexPalette altPalette;
 
                         if (alternateCounts.TryGetValue(ave, out var count))
                         {

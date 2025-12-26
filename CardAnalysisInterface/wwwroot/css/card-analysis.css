@@ -51,13 +51,17 @@ tbody tr:nth-of-type(even) {
 pre.nested-underline-container {
     background-color: var(--dark-grey);
     padding: 1rem;
-    overflow: hidden; /* Keeps the container clean */
+    overflow: hidden;
     display: block;
     white-space: pre-wrap;
     word-wrap: break-word;
+    transition: all var(--transition-time);
 }
 
-    /* This "space-sucker" only exists at the top */
+    pre.nested-underline-container.highlight-active {
+        background-color: var(--near-black);
+    }
+
     pre.nested-underline-container::before {
         content: "";
         display: block;
@@ -80,10 +84,6 @@ code {
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
-    .card-capture-block h2 {
-        margin-top: 0;
-    }
-
 pre.full-original-text {
     color: #dcdcaa;
     font-style: italic;
@@ -92,10 +92,6 @@ pre.full-original-text {
     border: 1px solid var(--lowlight-color, var(--outline-grey));
     white-space: pre-wrap;
     word-wrap: break-word;
-}
-
-pre.nested-underline-container span:has(br) + span {
-    margin-left: 0;
 }
 
 .prop-capture-table-cell {
@@ -120,11 +116,6 @@ pre.nested-underline-container span:has(br) + span {
     transition: color var(--transition-time);
 }
 
-    .token-type-name + .token-type-name {
-        display: block;
-        margin-top: 24px;
-    }
-
 .content-box {
     border-top: 1px solid var(--color);
     border-left: 1px solid var(--color);
@@ -143,7 +134,10 @@ pre.nested-underline-container span:has(br) + span {
 }
 
 .property-capture-table td {
-    transition: color var(--transition-time) var(--transition-time), box-shadow var(--transition-time) var(--transition-time);
+    /* FIX: Ensure only one time value is provided (no delay). */
+    /* FIX: Defined a base box-shadow so the browser can ease into the highlight shadow. */
+    transition: color var(--transition-time), box-shadow var(--transition-time);
+    box-shadow: inset 0 0 0 0 transparent;
 }
 
 .prop-capture-table-cell.type-column {
@@ -160,10 +154,6 @@ pre.nested-underline-container span:has(br) + span {
 
 [data-path].highlight-active {
     color: var(--highlight-color);
-}
-
-.prop-capture-overline.highlight-active {
-    border-top-color: var(--highlight-color);
 }
 
 .token-summary-header.highlight-active .token-type-name {
@@ -194,7 +184,6 @@ tr.highlight-active .prop-capture-table-cell {
     color: var(--lowlight-color);
 }
 
-/* Default Mute Styles for Table Rows */
 tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--lowlight-color);
 }
@@ -207,10 +196,8 @@ tr.mute-active .prop-capture-table-cell.value-column {
     color: gray;
 }
 
-/* --- OVERRIDE RULES FOR INTERACTION STATES --- */
+/* --- OVERRIDE RULES --- */
 
-/* 1. When a table's parent branch is highlighted (but no specific row), 
-      muted rows should appear NEUTRAL, not dimmed. */
 .token-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--color);
 }
@@ -223,9 +210,6 @@ tr.mute-active .prop-capture-table-cell.value-column {
     color: white;
 }
 
-/* 2. NEW: When a specific row IS highlighted within that table,
-      re-apply the dimming to its muted siblings. This is more specific
-      than the rule above and will take precedence. */
 .token-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--lowlight-color);
 }
@@ -236,17 +220,4 @@ tr.mute-active .prop-capture-table-cell.value-column {
 
 .token-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.value-column {
     color: gray;
-}
-
-
-/* Regex Dialog */
-
-.preview-highlight {
-    background-color: #FFECB3;
-    border-radius: 3px;
-    box-shadow: 0 0 0 1px #FFD54F;
-}
-
-precedingtext, followingtext {
-    display: inline;
 }

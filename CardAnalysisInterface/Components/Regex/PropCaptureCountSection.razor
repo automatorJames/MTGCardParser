@@ -6,17 +6,17 @@
         {
             var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
             var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
-            var propCardStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat}; border-color: {propSetPalette.HexDark};";
+            var propCardStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat}; border-color: {propSetPalette.Dark};";
 
             <div class="property-capture-card" style="@propCardStyle" data-path=@captureGroupPropPath.PropPathRelativeToRoot>
-                <div class="prop-card-header" style="color: @propSetPalette.Hex;">
+                <div class="prop-card-header" style="color: @propSetPalette.Normal;">
                     @captureGroupPropPath.PropPathFriendly
                     <br />
                 </div>
                 <div class="prop-card-body">
                     @foreach (var valueSet in captureValueVariantSetWrapper.Value.SynonymSets.Values)
                     {
-                        var canonicalStyle = $"--hex: {propSetPalette.Hex}; --hex-light: {propSetPalette.HexLight}; --hex-dark: {propSetPalette.HexDark}; --hex-sat: {propSetPalette.HexSat};";
+                        var canonicalStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat};";
                         var dataPath = valueSet.ManyOfRelatedPaths ?? captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
 
                         <div class="canonical-representation" style="@canonicalStyle" data-path=@dataPath>

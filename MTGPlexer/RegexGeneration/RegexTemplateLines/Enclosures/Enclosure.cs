@@ -3,11 +3,11 @@
 public record Enclosure
 {
     public int Ordinal { get; }
-    public Palette Palette { get; }
+    public HexPalette Palette { get; }
     public EnclosureType Type { get; }
     public GroupBorderTreatment Treatment { get; }
 
-    public Enclosure(int ordinal, Palette palette, EnclosureType type, GroupBorderTreatment treatment)
+    public Enclosure(int ordinal, HexPalette palette, EnclosureType type, GroupBorderTreatment treatment)
     {
         Ordinal = ordinal;
         Palette = palette;

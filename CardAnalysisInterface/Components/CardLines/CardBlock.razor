@@ -1,27 +1,23 @@
 ﻿<div class="card-capture-block">
     <div class="card-title">@Card.Card.Name</div>
 
-    @if (_showOriginalText)
-    {
-        <pre class="full-original-text">@Card.Card.Text</pre>
-    }
-
     @foreach (var line in Card.Lines)
     {
         <div class="line-capture-block match-boundary">
             <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
+            <div class="line-container-parent" data-path=@line.DataPath>
+                <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
+                    @foreach (var rootNode in line.SpanRoots)
+                    {
+                        <SpanView Node=@rootNode />
+                    }
+                </pre>
 
-            <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line))>
-                @foreach (var rootNode in line.SpanRoots)
+                @foreach (var summary in line.SpanRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
                 {
-                    <SpanView Node=@rootNode />
+                    <PropertyTable Branch=@summary />
                 }
-            </pre>
-
-            @foreach (var summary in line.SpanRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
-            {
-                <PropertyTable Branch=@summary />
-            }
+            </div>
         </div>
     }
 </div>
@@ -32,7 +28,6 @@
 }
 
 @code {
-    bool _showOriginalText = false;
     bool _isDialogOpen = false;
     ProcessedLine _selectedLine;
 

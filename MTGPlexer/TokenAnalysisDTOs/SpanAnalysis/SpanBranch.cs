@@ -5,7 +5,7 @@
 /// </summary>
 public record SpanBranch : SpanNode, IHasPalette
 {
-    public Palette Palette { get; set; }
+    public HexPalette Palette { get; set; }
     public bool IsCollapsed { get; init; }
 
     /// <summary>
