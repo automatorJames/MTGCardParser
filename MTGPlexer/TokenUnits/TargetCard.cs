@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-public class TagetCardType : TokenUnit
+public class TagetCard : TokenUnit
 {
     protected override string[] Snippets => ["target", nameof(CardType)];
 

@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
-[TokenUnitProperty]
+[Dependent]
 public class This : TokenUnit
 {
     protected override string[] Snippets => [@"{this}"];

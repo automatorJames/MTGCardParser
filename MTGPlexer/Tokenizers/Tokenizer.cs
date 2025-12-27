@@ -1,5 +1,7 @@
 ﻿namespace MTGPlexer.Tokenizers;
 
+using System.Text.RegularExpressions;
+
 public class Tokenizer
 {
     private readonly Dictionary<Type, Regex> _orderedTypeRegexes = [];
@@ -96,8 +98,6 @@ public class Tokenizer
                     // If we reach this point, the match is confirmed valid.
 
                     // 1. Flush "junk" text that preceded this match.
-                    // We flush until match.Index because the regex engine might have skipped 
-                    // chars to find a match (though \G usually prevents this).
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
                     // 2. Add the parent token.
@@ -115,14 +115,28 @@ public class Tokenizer
             NextIteration:;
             }
 
-            // **Step 2: If no token matched (or all provisional matches failed), track junk.**
+            // **Step 2: Ratchet Logic **
+            // If no token matched at this boundary, jump to the next possible boundary (after the next space).
             if (!matched)
             {
                 if (unmatchedStartIndex == -1)
                 {
                     unmatchedStartIndex = currentIndex;
                 }
-                currentIndex++;
+
+                // Find the next space within the bounds of the current text/scope
+                int nextSpaceIndex = sourceText.FormattedText.IndexOf(' ', currentIndex);
+
+                if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
+                {
+                    // No more spaces within scope; jump to the end
+                    currentIndex = endIndex;
+                }
+                else
+                {
+                    // Move to the character immediately following the space
+                    currentIndex = nextSpaceIndex + 1;
+                }
             }
         }
 
@@ -130,26 +144,6 @@ public class Tokenizer
         FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, endIndex);
 
         return tokens;
-    }
-
-    public TokenUnit TokenizeDynamicSubContent(Capture captureToTokenize, Match parentMatch, CaptureGroupPropPath ancestorCapturePath, SourceTextDTO sourceText, Type constrainToType = null)
-    {
-        Dictionary<Type, Regex> filteredOrderedTypeRegexes =
-            constrainToType == null ? _orderedTypeRegexes
-            : _orderedTypeRegexes.Where(x => x.Key.IsAssignableTo(constrainToType)).ToDictionary(x => x.Key, x => x.Value);
-
-        foreach (var (type, regex) in filteredOrderedTypeRegexes)
-        {
-            var captureMatch = regex.Match(captureToTokenize.Value);
-
-            if (captureMatch.Success && captureMatch.Length == captureToTokenize.Length)
-            {
-                TokenUnitMatch typeMatch = new(type, captureMatch, sourceText, ancestorCapturePath);
-                return TokenUnit.InstantiateFromMatch(typeMatch);
-            }
-        }
-
-        return null;
     }
 
     private void FlushUnmatched(SourceTextDTO sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)

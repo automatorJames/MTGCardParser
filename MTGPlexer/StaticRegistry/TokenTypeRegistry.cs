@@ -119,7 +119,7 @@ public static partial class TokenTypeRegistry
         .Where(x =>
             x.IsClass && !x.IsAbstract
             && typeof(TokenUnit).IsAssignableFrom(x)
-            && !x.IsDefined(typeof(TokenUnitPropertyAttribute)))
+            && !x.IsDefined(typeof(DependentAttribute)))
         .Concat(_dynamicAssemblyTypes);
 
         if (allTypes.Any(x => x.IsDefined(typeof(IsolateForTestingAttribute))))
@@ -194,7 +194,7 @@ public static partial class TokenTypeRegistry
 
     static void AddClassTokenType(Type tokenUnitType)
     {
-        if (AppliedOrderTypes.Contains(tokenUnitType) || tokenUnitType.IsDefined(typeof(TokenUnitPropertyAttribute)))
+        if (AppliedOrderTypes.Contains(tokenUnitType) || tokenUnitType.IsDefined(typeof(DependentAttribute)))
             return;
 
         if (EmitedOptionalManyTypes.TryGetValue(tokenUnitType, out Type multiVersionType))

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[TokenUnitProperty]
+[Dependent]
 public class Buff() : TokenUnitOneOf
 {
     public PowerToughnessMod PowerToughnessModification { get; set; }

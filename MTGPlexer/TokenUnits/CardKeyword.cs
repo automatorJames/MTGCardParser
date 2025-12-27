@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[TokenUnitProperty]
+[Dependent]
 public class CardKeyword : TokenUnit
 {
     public Keyword Keyword { get; set; }

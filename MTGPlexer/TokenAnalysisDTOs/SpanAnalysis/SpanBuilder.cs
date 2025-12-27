@@ -43,31 +43,34 @@ public static class SpanBuilder
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
 
-            _ when prop.RegexPropInfo.RegexPropType == RegexPropType.Enum 
+            _ when prop.RegexPropInfo.RegexPropType == RegexPropType.Enum
                 => BuildLeaf(prop, ctx, prop.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.EnumLeaf),
 
             _ => throw new InvalidOperationException($"Unsupported: {prop.Value?.GetType().Name}")
         };
     }
 
-    private static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnuit, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, IndexedPropertyCapture prop, SpanContext ctx)
     {
-        var (name, childCtx) = ResolveNaming(prop, ctx);
-        var children = tokenUnuit.IndexedPropertyCaptures.Select(p => BuildNode(p, childCtx)).ToList();
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var children = tokenUnit.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
     private static SpanNode BuildOneOfBranch(TokenUnitOneOf tokenUnitOneOf, IndexedPropertyCapture prop, SpanContext ctx)
     {
-        var (name, childCtx) = ResolveNaming(prop, ctx);
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var inner = tokenUnitOneOf.IndexedPropertyCaptures.Single();
-        var childNode = BuildNode(inner, childCtx.ClearNameChain());
+        var childNode = BuildNode(inner, ctx.ClearNameChain());
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
     }
 
     private static SpanNode BuildDynamicBranch(DynamicCapture dynamicCapture, IndexedPropertyCapture prop, SpanContext ctx)
     {
-        var (name, childCtx) = ResolveNaming(prop, ctx);
+        // 1. Prepare context for child: Clear inherited prefixes, but push the Type as a Suffix
+        // This ensures when the child calls FormatName("Action"), it gets "Action: Specific Action"
+        var typeName = dynamicCapture.ValueObject.GetType().Name;
+        var childCtx = ctx.ClearNameChain().PushSuffix(typeName);
 
         SpanNode innerNode = dynamicCapture.ValueObject switch
         {
@@ -76,12 +79,17 @@ public static class SpanBuilder
             _ => BuildLeaf(prop, childCtx, dynamicCapture.ValueObject.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
         };
 
-        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.DynamicCaptureItemBranch, new List<SpanNode> { innerNode }, ctx);
+        // 2. Return the branch. The branch name itself is just the prop name (e.g. "Action")
+        // since it will be collapsed in the GUI anyway.
+        return CreateBranch(prop.Capture, prop.RegexPropInfo.Name, prop.CaptureGroupPropPath,
+                            TokenAnalysisElementType.DynamicCaptureItemBranch,
+                            new List<SpanNode> { innerNode }, ctx, forceCollapse: true);
     }
 
     private static SpanNode BuildManyOfBranch(ManyOf manyOf, IndexedPropertyCapture prop, SpanContext ctx)
     {
-        var (name, childCtx) = ResolveNaming(prop, ctx);
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
 
         for (int i = 0; i < manyOf.ItemObjects.Count; i++)
@@ -92,7 +100,6 @@ public static class SpanBuilder
 
             if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && item.ItemObject is TokenUnit tu)
             {
-                // Push name for prepending inside the item
                 var itemCtx = childCtx.PushName(itemLabel);
                 var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);
                 children.Add(CreateBranch(item.Capture, itemLabel, itemPath, TokenAnalysisElementType.ManyOfItemBranch, new List<SpanNode> { innerTU }, ctx));
@@ -115,7 +122,8 @@ public static class SpanBuilder
 
     private static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, IndexedPropertyCapture prop, SpanContext ctx)
     {
-        var (name, childCtx) = ResolveNaming(prop, ctx);
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var childCtx = ctx.ClearNameChain();
 
         var children = tokenUnitDistilled.IndexedPropertyCaptures
             .Where(p => !tokenUnitDistilled.DistilledVals.ContainsKey(p))
@@ -132,17 +140,17 @@ public static class SpanBuilder
                 ElementType = TokenAnalysisElementType.DistilledValueSubLeaf,
                 Start = placeholder.Capture.Index,
                 End = placeholder.Capture.Index + placeholder.Capture.Length,
-                Length = (placeholder.Capture.Index + placeholder.Capture.Length) - placeholder.Capture.Index,
+                Length = placeholder.Capture.Length,
                 CaptureTextOriginal = placeholder.Capture.Value,
                 CapturePath = new(ctx.PathPrefix + placeholder.CaptureGroupPropPath)
             }).Cast<SpanNode>().ToList();
 
             var childBranch = CreateBranch(
-                placeholder.Capture, 
-                placeholder.RegexPropInfo.Name, 
-                placeholder.CaptureGroupPropPath, 
+                placeholder.Capture,
+                placeholder.RegexPropInfo.Name,
+                placeholder.CaptureGroupPropPath,
                 TokenAnalysisElementType.TokenUnitDistilledBranch,
-                subLeaves, 
+                subLeaves,
                 ctx);
 
             children.Add(childBranch);
@@ -151,29 +159,14 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch, children, ctx);
     }
 
-    // --- Helpers and Overloads ---
-
     private static SpanNode BuildTokenUnitBranch(TokenUnit tu, Capture cap, CaptureGroupPropPath path, SpanContext ctx)
     {
-        var (name, childCtx) = ResolveNaming(tu.Type.Name, ctx);
-        var children = tu.IndexedPropertyCaptures.Select(p => BuildNode(p, childCtx)).ToList();
+        var name = ctx.FormatName(tu.Type.Name);
+        var children = tu.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    private static (string Name, SpanContext NewCtx) ResolveNaming(IndexedPropertyCapture prop, SpanContext ctx) =>
-        ResolveNaming(prop.RegexPropInfo.Name, ctx);
-
-    private static (string Name, SpanContext NewCtx) ResolveNaming(string rawName, SpanContext ctx)
-    {
-        var friendly = rawName.ToFriendlyCase(TitleDisplayOption.Sentence);
-
-        if (ctx.CurrentNameChain.Count > 0)
-            return ($"{string.Join(": ", ctx.CurrentNameChain)}: {friendly}", ctx.ClearNameChain());
-        else
-            return (friendly, ctx);
-    }
-
-    private static SpanBranch CreateBranch(Capture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx)
+    private static SpanBranch CreateBranch(Capture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx, bool? forceCollapse = null)
     {
         return new SpanBranch
         {
@@ -185,7 +178,8 @@ public static class SpanBuilder
             CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
             ElementType = type,
             Children = children,
-            IsCollapsed = SpanBranch.CalculateIsCollapsed(children)
+            // Use the override if provided, otherwise fallback to the automatic calculation
+            IsCollapsed = forceCollapse ?? SpanBranch.CalculateIsCollapsed(children)
         };
     }
 
@@ -208,6 +202,7 @@ public static class SpanBuilder
         };
     }
 }
+
 public enum TokenAnalysisElementType
 {
     UnmatchedTokenUnitRoot,
