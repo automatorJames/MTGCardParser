@@ -33,10 +33,12 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(TokenUnitMatch match)
+    public static TokenUnit InstantiateFromMatch(TokenUnitMatch match, Dictionary<DynamicRegexProp, object> prefilledDynamicValues = null)
     {
         if (!match.Type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"Type '{match.Type.Name}' isn't a {nameof(TokenUnit)} type");
+
+        prefilledDynamicValues ??= [];
 
         var tokenUnitInstance = (TokenUnit)Activator.CreateInstance(match.Type);
         tokenUnitInstance.Match = match;
@@ -46,8 +48,20 @@ public abstract class TokenUnit
 
         foreach (var captureProp in template.CaptureGroupProps)
         {
-            if (match[captureProp.Name] != null && match.CaptureIndex <= match[captureProp.Name].Captures.Count - 1)
-                captureProp.SetValueFromNamedGroupInMatch(tokenUnitInstance);
+            if (captureProp is DynamicRegexProp dynamicRegexProp && prefilledDynamicValues.TryGetValue(dynamicRegexProp, out object prefilledValue))
+                dynamicRegexProp.SetValueFromPrefilledDynamicToken(tokenUnitInstance, prefilledValue);
+            else if (match[captureProp.Name] != null && match.CaptureIndex <= match[captureProp.Name].Captures.Count - 1)
+            {
+                var setSuccessfully = captureProp.SetValueFromNamedGroupInMatch(tokenUnitInstance);
+
+                // If this is a dynamic prop that failed to match any type regex, the parent TokenUnit is
+                // invalid. The reason we check for a valid match this late in the processing pipeline is that
+                // we don't want the tokenizer to be responsible for resolving the dynamic property to a match
+                // itself, since that would require double work (i.e. first iterate through all regexes to confirm a match,
+                // then later iterate through all again to actually assign the match value within in this method).
+                if (!setSuccessfully && captureProp.RegexPropInfo.RegexPropType == RegexPropType.Dynamic)
+                    return null;
+            }
             else if (match.Type.IsAssignableTo(typeof(TokenUnitOneOf)))
                 Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name}'");
             else

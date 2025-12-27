@@ -240,7 +240,7 @@ public static class Extensions
     /// <param name="excludeUnsuccessfulMatches">If true, groups that did not capture a value (e.g., optional groups) are excluded.</param>
     /// <param name="orderByIndex">If true, sorts successful matches by their index in the input string. If false, all returned groups are sorted alphabetically by name. Unsuccessful matches are always placed last.</param>
     /// <returns>An ordered List of strings representing the desired group information.</returns>
-    public static List<string> GetNamedGroups(
+    public static List<string> GetGroupNames(
         this Match match,
         bool includeMatch = false,
         bool excludeUnsuccessfulMatches = true,

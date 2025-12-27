@@ -13,7 +13,7 @@ public class DynamicCapture<T> : DynamicCapture
 }
 
 [Color("#696969")]
-public class DynamicCapture
+public abstract class DynamicCapture
 {
     public object ValueObject { get; protected set; }
     public Capture Capture { get; set; }

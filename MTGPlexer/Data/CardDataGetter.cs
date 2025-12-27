@@ -35,32 +35,7 @@ public class CardDataGetter
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
         //result = result.Where(x => x.Name == "Animate Dead");
-        //result = result.Where(x => x.Name == "Vesuvan Doppelganger");
-        //result = result.Where(x => x.Name == "Farmstead");
-        //result = new List<Card> { new Card { Name = "baaz", Text = "ABC, DEF, and GHI" } };
-        //result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "abc Some fecking intelligible text" } };
-        //result = new List<Card> { new Card { Name = "baafsdafgasz", Text = "target player draws three cards or something" } };
-        //result = new List<Card> { new Card { Name = "Type1", Text = "Draw three cards" }, new Card { Name = "Type2", Text = "Draws 3 cards" } };
-        //result =
-        //[ 
-        //    new Card { Name = "Type1", Text = "Draw three cards" }, 
-        //    new Card { Name = "Type2", Text = "Draws 3 cards" }, 
-        //    new Card { Name = "Type3", Text = "Draws fecking shite cards" },
-        //    //new Card { Name = "Type3", Text = "Draws holy hell cards" } 
-        //];
-        //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" } };
-        //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type1Twin", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" }, new Card { Name = "Other", Text = "at the beginning of your upkeep" } };
-        //result = new List<Card> { new Card { Name = "Type1", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type1Twin", Text = "flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "flash, fear, or bury" } };
-        //result = result.Where(x => x.Name == "Berserk"); 
-        //result = new List<Card> { new Card { Name = "baaz", Text = "Target creature gains trample and gets +X/+0 until end of turn" } };
-        //result = new List<Card> { new Card { Name = "Type1", Text = "creature has flying, reach, haste, and trample" }, new Card { Name = "Type2", Text = "creature has flying, reach, and butt poop" } };
-        //result = new List<Card> { new Card { Name = "Type2", Text = "creature has flying, poop fling, butt poop, and haste" } };
-        //result = new List<Card> { new Card { Name = "Type2", Text = "target creature has \"poop from a butt\"" } };
-        //result = result.Where(x => x.Name == "Berserk");
-        //result = new List<Card> { new Card { Name = "baahzek", Text = "Target creature gains trample and gets +X/+0" } };
-        //result = new List<Card> { new Card { Name = "baahzek", Text = "{T}: Add one mana of any color." } };
-        //result = result.Where(x => x.Name == "Animate Dead");
-        //result = result.Where(x => x.Name == "Basalt Monolith");
+        //result = new List<Card> { new Card { Name = "baahzek", Text = "If you do, add {C}." } };
         return result.ToList();
     }
 }

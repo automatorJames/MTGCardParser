@@ -7,6 +7,7 @@ public record TokenUnitMatch
     public SourceTextDTO SourceText { get; set; }
     public CaptureGroupPropPath CapturePath { get; init; }
     public int CaptureIndex { get; init; }
+    public int AbsoluteEnd { get; init; }
     public string OverrideGroupName { get; init; }
 
     public TokenUnitMatch(
@@ -25,6 +26,7 @@ public record TokenUnitMatch
         CapturePath = capturePath;
         CaptureIndex = captureIndex;
         OverrideGroupName = overrideGroupName;
+        AbsoluteEnd = RegexMatch.Index + RegexMatch.Length;
     }
 
     public Group this[string groupName]

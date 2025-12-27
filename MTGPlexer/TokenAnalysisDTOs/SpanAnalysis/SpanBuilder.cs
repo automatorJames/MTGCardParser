@@ -68,13 +68,12 @@ public static class SpanBuilder
     private static SpanNode BuildDynamicBranch(DynamicCapture dynamicCapture, IndexedPropertyCapture prop, SpanContext ctx)
     {
         var (name, childCtx) = ResolveNaming(prop, ctx);
-        var shiftedCtx = childCtx.WithOffset(prop.Capture.Index);
 
         SpanNode innerNode = dynamicCapture.ValueObject switch
         {
-            TokenUnitOneOf val => BuildOneOfBranch(val, prop, shiftedCtx),
-            TokenUnit val => BuildTokenUnitBranch(val, prop, shiftedCtx),
-            _ => BuildLeaf(prop, shiftedCtx, dynamicCapture.ValueObject.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
+            TokenUnitOneOf val => BuildOneOfBranch(val, prop, childCtx),
+            TokenUnit val => BuildTokenUnitBranch(val, prop, childCtx),
+            _ => BuildLeaf(prop, childCtx, dynamicCapture.ValueObject.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
         };
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.DynamicCaptureItemBranch, new List<SpanNode> { innerNode }, ctx);
@@ -131,9 +130,9 @@ public static class SpanBuilder
                 TerminalValString = v.Value.ToString()!.ToLower(),
                 TerminalType = "distilled",
                 ElementType = TokenAnalysisElementType.DistilledValueSubLeaf,
-                Start = placeholder.Capture.Index + ctx.AbsoluteOffset,
-                End = placeholder.Capture.Index + placeholder.Capture.Length + ctx.AbsoluteOffset,
-                Length = (placeholder.Capture.Index + placeholder.Capture.Length + ctx.AbsoluteOffset) - placeholder.Capture.Index + ctx.AbsoluteOffset,
+                Start = placeholder.Capture.Index,
+                End = placeholder.Capture.Index + placeholder.Capture.Length,
+                Length = (placeholder.Capture.Index + placeholder.Capture.Length) - placeholder.Capture.Index,
                 CaptureTextOriginal = placeholder.Capture.Value,
                 CapturePath = new(ctx.PathPrefix + placeholder.CaptureGroupPropPath)
             }).Cast<SpanNode>().ToList();
@@ -180,10 +179,10 @@ public static class SpanBuilder
         {
             Name = name,
             CapturePath = new(ctx.PathPrefix + path),
-            Start = cap.Index + ctx.AbsoluteOffset,
+            Start = cap.Index,
             Length = cap.Length,
-            End = cap.Index + cap.Length + ctx.AbsoluteOffset,
-            CaptureTextOriginal = ctx.FullText.Substring(cap.Index + ctx.AbsoluteOffset, cap.Length),
+            End = cap.Index + cap.Length,
+            CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
             ElementType = type,
             Children = children,
             IsCollapsed = SpanBranch.CalculateIsCollapsed(children)
@@ -199,10 +198,10 @@ public static class SpanBuilder
         {
             Name = name,
             CapturePath = new(ctx.PathPrefix + path),
-            Start = cap.Index + ctx.AbsoluteOffset,
+            Start = cap.Index,
             Length = cap.Length,
-            End = cap.Index + cap.Length + ctx.AbsoluteOffset,
-            CaptureTextOriginal = ctx.FullText.Substring(cap.Index + ctx.AbsoluteOffset, cap.Length),
+            End = cap.Index + cap.Length,
+            CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
             ElementType = type,
             TerminalValString = val,
             TerminalType = typeName

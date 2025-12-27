@@ -24,23 +24,26 @@ public record DynamicRegexProp : ScalarCapturePropBase
 
     public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
     {
-        var genericType = RegexPropInfo.Prop.PropertyType.GenericTypeArguments[0];
-
-        if (!genericType.IsAssignableTo(typeof(TokenUnit)))
-            throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
-
-        var capture = token.Match.GetCaptureAtRelativePath(this);
-        CaptureGroupPropPath ancestorCapturePath = new (token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-        var dynamicTokenValue = TokenTypeRegistry.ClassTokenizer.TokenizeDynamicSubContent(token, capture, token.Match.RegexMatch, ancestorCapturePath);
-
-        if (dynamicTokenValue == null)
-            return false;
-
-        var closedType = typeof(DynamicCapture<>).MakeGenericType(genericType);
-        var dynamicTokenInstance = Activator.CreateInstance(closedType, dynamicTokenValue, capture);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, dynamicTokenInstance);
+        // Though required to be overridden to fulfill the base contract, this code is never reached 
+        // because dynamic captures props are pre-filled by the tokenizer rather than upon instantiation of the
+        // parent token.
 
         return true;
     }
+
+    public bool SetValueFromPrefilledDynamicToken(TokenUnit token, object prefilledValue)
+    {
+        var genericType = RegexPropInfo.Prop.PropertyType.GenericTypeArguments[0];
+
+        if (!genericType.IsAssignableTo(typeof(TokenUnit)) || prefilledValue is not TokenUnit prefilledTokenUnitValue)
+            throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
+
+        var closedType = typeof(DynamicCapture<>).MakeGenericType(genericType);
+        var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RegexMatch);
+        token.SetPropertyFromCapture(RegexPropInfo, prefilledTokenUnitValue.Match.RegexMatch, dynamicTokenInstance);
+
+        return true;
+    }
+
 }
 
