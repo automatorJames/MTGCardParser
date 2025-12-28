@@ -50,7 +50,12 @@ public class RegexBuilder
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
     public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null)
     {
-        AddPrecedingSpaceIfApplicable();
+        bool groupIsNamedAndOptional = captureGroup?.Prop.IsDefined(typeof(OptionalComponentAttribute)) ?? false;
+
+        // If this group is named and optional, don't add a space before it
+        if (!groupIsNamedAndOptional)
+            AddPrecedingSpaceIfApplicable();
+
         Enclosure enclosure = null;
 
         if (captureGroup != null)
@@ -73,17 +78,26 @@ public class RegexBuilder
         else
             enclosure = new Enclosure(_nextEnclosureOrdinal++);
 
+        // If this group is named and optional, add the space now that it's been opened
         _enclosureStack.Push(enclosure);
 
-        spaceDisposition ??= (captureGroup?.BaseType.IsDefined(typeof(NoSpacesAttribute)) ?? false)
-            ? SpaceDisposition.NeverAddSpaceLocal
-            : SpaceDisposition.DontAddSpaceBeforeNextItem;
+        if (spaceDisposition == null)
+        {
+            if (captureGroup != null && captureGroup.BaseType.IsDefined(typeof(NoSpacesAttribute)))
+                spaceDisposition = SpaceDisposition.NeverAddSpaceLocal;
+            else
+                spaceDisposition = SpaceDisposition.DontAddSpaceBeforeNextItem; // the default state
+        }
 
         _spaceIsRequiredBeforeNextElementAtLevel[enclosure] = spaceDisposition.Value;
 
         if (captureGroup != null)
         {
             _regexElements.Add(new NamedGroupOpen(_orderedEnclosureStack, captureGroup));
+
+            // If this optional component is not the first regex element, add a space within the beginning of the capture group
+            if (groupIsNamedAndOptional && _regexElements.Count > 1)
+                _regexElements.Add(new SpaceLine(_orderedEnclosureStack));
         }
         else
             _regexElements.Add(new GroupOpen(_orderedEnclosureStack));
@@ -147,7 +161,7 @@ public class RegexBuilder
         // If any parent disallows spaces globally, don't add any spaces
         if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceGlobal))
             return;
-
+        
         var currentScope = _enclosureStack.Peek();
         var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[currentScope];
 
@@ -195,13 +209,15 @@ public class RegexBuilder
     /// Generates a minified, single-line regex string.
     /// </summary>
     /// <returns>The complete regex as a single string.</returns>
-    public string GetMinified()
+    public string GetMinified(bool addBoundaries = true)
     {
         if (!_regexElements.Any())
             return "";
 
         var finalizedElements = _regexElements.ToList();
-        AddBoundaryLines(finalizedElements);
+
+        if (addBoundaries)
+            AddBoundaryLines(finalizedElements);
 
         return string.Join("", finalizedElements.Select(x => x.Regex)).Replace("[ ]", " ");
     }
@@ -223,4 +239,6 @@ public class RegexBuilder
         lines.Add(new BlankLine([]));
         lines.Add(endBoundary);
     }
+
+    public override string ToString() => GetMinified(addBoundaries: false);
 }

@@ -21,7 +21,9 @@ public record TokenRegexProp : CaptureGroupPropBase
     {
         builder.OpenGroup(RegexPropInfo);
         ConcatenatingComposer.Instance.Compose(builder, ChildSegments.ToList());
-        builder.CloseGroup();
+        var groupIsOptional = RegexPropInfo.Prop.IsDefined(typeof(OptionalComponentAttribute));
+        GroupQuantifier? groupQuantifier = groupIsOptional ? GroupQuantifier.Optional : null;
+        builder.CloseGroup(groupQuantifier);
     }
 
     public override bool SetValueFromNamedGroupInMatch(TokenUnit token)

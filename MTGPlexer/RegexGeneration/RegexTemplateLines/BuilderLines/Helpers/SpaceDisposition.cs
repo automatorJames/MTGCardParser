@@ -6,4 +6,5 @@ public enum SpaceDisposition
     NeverAddSpaceGlobal,
     DontAddSpaceBeforeNextItem,
     AddSpaceBeforeNextItem,
+    AddSpaceAfterNextGroupOpens,
 }

@@ -64,8 +64,8 @@ public abstract class TokenUnit
             }
             else if (match.Type.IsAssignableTo(typeof(TokenUnitOneOf)))
                 Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name}'");
-            else
-                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureIndex} exists for match '{match.RegexMatch.Value}'");
+            else if (!match.Type.IsAssignableTo(typeof(TokenUnitOneOf)) && !captureProp.RegexPropInfo.Prop.IsDefined(typeof(OptionalComponentAttribute)))
+                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureIndex} exists for match '{match.RegexMatch.Value}', and it is not optional");
         }
 
         tokenUnitInstance.OnAfterHydrated();

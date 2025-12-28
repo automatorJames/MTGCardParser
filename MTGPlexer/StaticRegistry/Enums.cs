@@ -842,3 +842,62 @@ public enum LandType
     [RegexPattern("swamp(s)?")]
     Swamp
 }
+
+public enum TemporalDisposition
+{
+    At,
+    During,
+    Until
+}
+
+public enum PhasePart
+{
+    Beginning,
+    End
+}
+
+public enum Whose
+{
+    [RegexPattern("your opponent's")]
+    YourOpponents,
+
+    [RegexPattern("each player's")]
+    EachPlayers,
+
+    Your,
+
+    [RegexPattern("a")]
+    Any,
+
+    TheNext
+}
+
+public enum Phase
+{
+    Upkeep,
+    DrawStep,
+    MainPhase,
+    CombatPhase,
+    CombatStep,
+    DeclareAttackersStep,
+    DeclareBlockersStep,
+    DamageStep,
+    EndStep,
+    EndOfTurn
+}
+
+public enum NonBattlefieldZone
+{
+    [RegexPattern("exile(d)?")]
+    Exile,
+
+    Graveyard,
+    Hand,
+    Library,
+
+    [RegexPattern("you own outside the game")]
+    Sideboard,
+
+    [RegexPattern("spell")]
+    Stack
+}
