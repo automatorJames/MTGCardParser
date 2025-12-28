@@ -4,20 +4,17 @@ using System.Text.RegularExpressions;
 
 public class Tokenizer
 {
-    private readonly Dictionary<Type, Regex> _orderedTypeRegexes = [];
-    private readonly Dictionary<Type, Regex> _orderedAnchoredTypeRegexes = [];
+    const string _tokenTypeGroupPrefixName = "TYPE_";
+    List<Type> _orderedTypes;
+    Dictionary<Type, Regex> _megaRegexes = [];
 
     // A dictionary where each pattern simply matches int (Key) number of "." (any) chars (built as different lengths encountered)
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
 
     public Tokenizer(List<Type> orderedTypes)
     {
-        foreach (var type in orderedTypes)
-        {
-            var regex = TokenTypeRegistry.Templates[type].Regex;
-            _orderedTypeRegexes[type] = regex;
-            _orderedAnchoredTypeRegexes[type] = new Regex($"\\G({regex})", RegexOptions.Singleline | RegexOptions.Compiled);
-        }
+        _orderedTypes = orderedTypes;
+        SetMegaRegexForType(typeof(TokenUnit));
     }
 
     public List<TokenUnit> Tokenize(SourceTextDTO sourceText, Group scopeToGroup = null, Type scopeToType = null)
@@ -40,80 +37,88 @@ public class Tokenizer
         {
             bool matched = false;
 
-            var filteredTypeRegexes = _orderedAnchoredTypeRegexes;
-            if (scopeToType != null && scopeToType != typeof(TokenUnit))
-            {
-                filteredTypeRegexes = _orderedAnchoredTypeRegexes
-                    .Where(x => x.Key.IsAssignableTo(scopeToType))
-                    .ToDictionary(x => x.Key, x => x.Value);
-            }
+            // The TokenUnit pattern is the default regex to apply
+            Regex applicableMegaRegex = _megaRegexes[typeof(TokenUnit)];
 
-            // **Step 1: Prioritize matching a known token.**
-            foreach (var (type, regex) in filteredTypeRegexes)
-            {
-                var match = regex.Match(sourceText.FormattedText, currentIndex);
+            if (scopeToType != null)
+                if (!_megaRegexes.TryGetValue(scopeToType, out applicableMegaRegex))
+                    applicableMegaRegex = SetMegaRegexForType(scopeToType);
 
-                // Provisional Match check
-                if (match.Success && match.Length > 0 && (match.Index + match.Length <= endIndex))
+            var megaMatch = applicableMegaRegex.Match(sourceText.FormattedText, currentIndex);
+
+            if (megaMatch.Success && megaMatch.Index == currentIndex && (megaMatch.Index + megaMatch.Length <= endIndex))
+            {
+                // Find which group matched (constrained to top-level ordered types)
+                var matchedTypeName = megaMatch.GetGroupNames()
+                    .FirstOrDefault(x => x.StartsWith(_tokenTypeGroupPrefixName) && megaMatch.Groups[x].Success)
+                    .Replace(_tokenTypeGroupPrefixName, "");
+
+                var matchedType = TokenTypeRegistry.NameToType[matchedTypeName];
+
+                Dictionary<DynamicRegexProp, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[matchedType].RegexSegments
+                        .OfType<DynamicRegexProp>()
+                        .ToDictionary(x => x, x => (object)null);
+
+                //// Get a match for the type-specific pattern
+                //// This may not actually be necessary (i.e. we could pass the megaMatch), but I don't that know yet
+                //var isolatedTypeMatch = TokenTypeRegistry.TypeRegexes[matchedType].Match(sourceText.FormattedText, currentIndex);
+
+                TokenUnitMatch typeMatch = new(matchedType, megaMatch, sourceText, new CaptureGroupPropPath(matchedTypeName));
+
+                if (dynamicPrefilledValues.Any())
                 {
-                    Dictionary<DynamicRegexProp, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
-                            .OfType<DynamicRegexProp>()
-                            .ToDictionary(x => x, x => (object)null);
+                    if (dynamicPrefilledValues.Count > 1)
+                        throw new NotImplementedException($"Type '{matchedType.Name}' has {dynamicPrefilledValues.Count} dynamic properties, but the max supported is 1");
 
-                    if (dynamicPrefilledValues.Any())
+                    foreach (var dynamicPrefilledValue in dynamicPrefilledValues.Keys.ToList())
                     {
-                        if (dynamicPrefilledValues.Count > 1)
-                            throw new NotImplementedException($"Type '{type.Name}' has {dynamicPrefilledValues.Count} dynamic properties, but the max supported is 1");
+                        var dynamicGroup = megaMatch.Groups[dynamicPrefilledValue.Name];
 
-                        foreach (var dynamicPrefilledValue in dynamicPrefilledValues.Keys.ToList())
+                        if (!dynamicGroup.Success)
+                            goto FailProvisionalDynamicCheck;
+
+                        var dynamicType = dynamicPrefilledValue.RegexPropInfo.BaseType.GenericTypeArguments[0];
+
+                        // Recursive call to resolve the dynamic portion
+                        var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);
+
+                        // Find the first "real" token (ignoring unmatched noise inside the dynamic portion)
+                        var dynamicToken = tokenSet.FirstOrDefault(x => x is not DefaultUnmatchedString);
+
+                        if (dynamicToken == null)
                         {
-                            var dynamicGroup = match.Groups[dynamicPrefilledValue.Name];
-
-                            if (!dynamicGroup.Success)
-                                goto NextIteration;
-
-                            var dynamicType = dynamicPrefilledValue.RegexPropInfo.BaseType.GenericTypeArguments[0];
-
-                            // Recursive call to resolve the dynamic portion
-                            var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);
-
-                            // Find the first "real" token (ignoring unmatched noise inside the dynamic portion)
-                            var dynamicToken = tokenSet.FirstOrDefault(x => x is not DefaultUnmatchedString);
-
-                            if (dynamicToken == null)
-                            {
-                                // Fail: The dynamic portion didn't resolve to a valid sub-token.
-                                // We discard the entire provisional match.
-                                goto NextIteration;
-                            }
-                            else
-                            {
-                                // Success: Store the resolved child token
-                                dynamicPrefilledValues[dynamicPrefilledValue] = dynamicToken;
-                            }
+                            // Fail: The dynamic portion didn't resolve to a valid sub-token.
+                            // We discard the entire provisional match.
+                            goto FailProvisionalDynamicCheck;
+                        }
+                        else
+                        {
+                            // Success: Store the resolved child token
+                            dynamicPrefilledValues[dynamicPrefilledValue] = dynamicToken;
                         }
                     }
-
-                    // --- COMMIT PHASE ---
-                    // If we reach this point, the match is confirmed valid.
-
-                    // 1. Flush "junk" text that preceded this match.
-                    FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
-
-                    // 2. Add the parent token.
-                    TokenUnitMatch typeMatch = new(type, match, sourceText, new CaptureGroupPropPath(type.Name));
-                    var token = TokenUnit.InstantiateFromMatch(typeMatch, dynamicPrefilledValues);
-                    tokens.Add(token);
-
-                    // 3. Advance state.
-                    currentIndex = match.Index + match.Length;
-                    unmatchedStartIndex = -1; // Reset junk tracker
-                    matched = true;
-                    break;
                 }
 
-            NextIteration:;
+                matched = true;
+
+                // --- COMMIT PHASE ---
+                // If we reach this point, the match is confirmed valid.
+
+                // 1. Flush "junk" text that preceded this match.
+                FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, megaMatch.Index);
+
+                // 2. Add the parent token.
+                var token = TokenUnit.InstantiateFromMatch(typeMatch, dynamicPrefilledValues);
+                tokens.Add(token);
+
+                // 3. Advance state.
+                currentIndex = megaMatch.Index + megaMatch.Length;
+                unmatchedStartIndex = -1; // Reset junk tracker
+                matched = true;
+                break;
             }
+
+        FailProvisionalDynamicCheck:;
 
             // **Step 2: Ratchet Logic **
             // If no token matched at this boundary, jump to the next possible boundary (after the next space).
@@ -173,5 +178,23 @@ public class Tokenizer
         }
 
         unmatchedStartIndex = -1;
+    }
+
+    Regex SetMegaRegexForType(Type scopeToType)
+    {
+        var typeRegexes = TokenTypeRegistry.TypeRegexes
+            .Where(x => x.Key.IsAssignableTo(scopeToType))
+            .OrderBy(x => _orderedTypes.IndexOf(x.Key));
+
+        var combinedPattern = string.Join("|", typeRegexes.Select(kvp => $"(?<{_tokenTypeGroupPrefixName}{kvp.Key.Name}>{kvp.Value})"));
+
+        var megaRegex = new Regex(combinedPattern,
+            RegexOptions.Compiled |
+            RegexOptions.ExplicitCapture |
+            RegexOptions.Singleline);
+
+        _megaRegexes[scopeToType] = megaRegex;
+
+        return megaRegex; // return in case the caller wants to use the regex immediately
     }
 }

@@ -188,7 +188,6 @@ public class RegexBuilder
         var lastLineIndex = _regexElements.IndexOf(lastGroupLine);
 
         var groupLines = _regexElements.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
-        AddBoundaryLines(groupLines);
         var regexString = string.Join("", groupLines.Select(x => x.Regex));
 
         return new(regexString, RegexOptions.Compiled);
@@ -209,15 +208,15 @@ public class RegexBuilder
     /// Generates a minified, single-line regex string.
     /// </summary>
     /// <returns>The complete regex as a single string.</returns>
-    public string GetMinified(bool addBoundaries = true)
+    public string GetMinified()
     {
         if (!_regexElements.Any())
             return "";
 
         var finalizedElements = _regexElements.ToList();
 
-        if (addBoundaries)
-            AddBoundaryLines(finalizedElements);
+        //if (addBoundaries)
+        //    AddBoundaryLines(finalizedElements);
 
         return string.Join("", finalizedElements.Select(x => x.Regex)).Replace("[ ]", " ");
     }
@@ -240,5 +239,5 @@ public class RegexBuilder
         lines.Add(endBoundary);
     }
 
-    public override string ToString() => GetMinified(addBoundaries: false);
+    public override string ToString() => GetMinified();
 }
