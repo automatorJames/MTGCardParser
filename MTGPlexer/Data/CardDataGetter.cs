@@ -35,6 +35,8 @@ public class CardDataGetter
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
         //result = new List<Card> { new Card { Name = "baahzek", Text = "If you do, add {C}." } };
+        //result = new List<Card> { new Card { Name = "baahzek", Text = "target creature gets +1/+1" } };
+        //result = result.Where(x => x.Name == "Animate Dead");
         //result = result.Where(x => x.Name == "Animate Dead");
         return result.ToList();
     }

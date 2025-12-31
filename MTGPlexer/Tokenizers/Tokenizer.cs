@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 
 public class Tokenizer
 {
-    const string _tokenTypeGroupPrefixName = "TYPE_";
     List<Type> _orderedTypes;
     Dictionary<Type, Regex> _megaRegexes = [];
 
@@ -50,8 +49,8 @@ public class Tokenizer
             {
                 // Find which group matched (constrained to top-level ordered types)
                 var matchedTypeName = megaMatch.GetGroupNames()
-                    .FirstOrDefault(x => x.StartsWith(_tokenTypeGroupPrefixName) && megaMatch.Groups[x].Success)
-                    .Replace(_tokenTypeGroupPrefixName, "");
+                    .FirstOrDefault(x => x.StartsWith(TokenTypeRegistry.TypeGroupPrefixName) && megaMatch.Groups[x].Success)
+                    .Replace(TokenTypeRegistry.TypeGroupPrefixName, "");
 
                 var matchedType = TokenTypeRegistry.NameToType[matchedTypeName];
 
@@ -63,7 +62,7 @@ public class Tokenizer
                 //// This may not actually be necessary (i.e. we could pass the megaMatch), but I don't that know yet
                 //var isolatedTypeMatch = TokenTypeRegistry.TypeRegexes[matchedType].Match(sourceText.FormattedText, currentIndex);
 
-                TokenUnitMatch typeMatch = new(matchedType, megaMatch, sourceText, new CaptureGroupPropPath(matchedTypeName));
+                TokenUnitMatch typeMatch = new(matchedType, megaMatch, sourceText, new CaptureGroupPropPath(matchedTypeName), isTopLevel: true);
 
                 if (dynamicPrefilledValues.Any())
                 {
@@ -171,7 +170,7 @@ public class Tokenizer
             Match unmatchedMatch = regex.Match(sourceText.FormattedText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                TokenUnitMatch typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch, sourceText);
+                TokenUnitMatch typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch, sourceText, isTopLevel: true);
                 var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch);
                 tokens.Add(unmatchedTokenUnit);
             }
@@ -186,7 +185,7 @@ public class Tokenizer
             .Where(x => x.Key.IsAssignableTo(scopeToType))
             .OrderBy(x => _orderedTypes.IndexOf(x.Key));
 
-        var combinedPattern = string.Join("|", typeRegexes.Select(kvp => $"(?<{_tokenTypeGroupPrefixName}{kvp.Key.Name}>{kvp.Value})"));
+        var combinedPattern = string.Join("|", typeRegexes.Select(kvp => $"(?<{TokenTypeRegistry.TypeGroupPrefixName}{kvp.Key.Name}>{kvp.Value})"));
 
         var megaRegex = new Regex(combinedPattern,
             RegexOptions.Compiled |

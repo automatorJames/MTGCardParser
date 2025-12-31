@@ -3,6 +3,6 @@
 [Dependent]
 public class Buff() : TokenUnitOneOf
 {
-    public PowerToughnessMod PowerToughnessModification { get; set; }
+    public PowerToughnessMod PowerToughnessMod { get; set; }
     public Keyword Keyword { get; set; }
 }

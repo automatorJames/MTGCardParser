@@ -2,6 +2,8 @@
 
 public record TokenUnitMatch
 {
+    List<string> _captureGroupPathParts;
+
     public Type Type { get; set; }
     public Match RegexMatch { get; init; }
     public SourceTextDTO SourceText { get; set; }
@@ -16,7 +18,8 @@ public record TokenUnitMatch
         SourceTextDTO sourceText = null,
         CaptureGroupPropPath capturePath = null,
         int captureIndex = 0,
-        string overrideGroupName = null)
+        string overrideGroupName = null,
+        bool isTopLevel = false)
     {
         ArgumentNullException.ThrowIfNull(regexMatch);
 
@@ -27,6 +30,13 @@ public record TokenUnitMatch
         CaptureIndex = captureIndex;
         OverrideGroupName = overrideGroupName;
         AbsoluteEnd = RegexMatch.Index + RegexMatch.Length;
+
+        var baseName = isTopLevel ? TokenTypeRegistry.TypeGroupPrefixName : "";
+        baseName += Type.Name;
+        _captureGroupPathParts = [baseName];
+        _captureGroupPathParts.AddRange(CapturePath?.PropPathRelativeToRoot?.Split('.') ?? []);
+
+        if (baseName == "CardType") Debugger.Break();
     }
 
     public Group this[string groupName]
@@ -56,8 +66,7 @@ public record TokenUnitMatch
     /// </summary>
     public IEnumerable<Capture> GetCapturesAtRelativePath(params string[] relativePathParts)
     {
-        var parentParts = CapturePath.PropPathRelativeToRoot?.Split('.') ?? [];
-        var absolutePathParts = parentParts.Concat(relativePathParts);
+        var absolutePathParts = _captureGroupPathParts.Concat(relativePathParts);
 
         // 1. Start with the match itself as the initial "allowed scope"
         IEnumerable<Capture> currentScopes = [RegexMatch];

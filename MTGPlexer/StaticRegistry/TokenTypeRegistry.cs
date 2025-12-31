@@ -9,6 +9,7 @@ public static partial class TokenTypeRegistry
     static Type[] _staticAssemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
+    public static string TypeGroupPrefixName = "TYPE_";
 
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];

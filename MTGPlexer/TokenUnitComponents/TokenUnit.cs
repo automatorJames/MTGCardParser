@@ -54,18 +54,14 @@ public abstract class TokenUnit
             {
                 var setSuccessfully = captureProp.SetValueFromNamedGroupInMatch(tokenUnitInstance);
 
-                // If this is a dynamic prop that failed to match any type regex, the parent TokenUnit is
-                // invalid. The reason we check for a valid match this late in the processing pipeline is that
-                // we don't want the tokenizer to be responsible for resolving the dynamic property to a match
-                // itself, since that would require double work (i.e. first iterate through all regexes to confirm a match,
-                // then later iterate through all again to actually assign the match value within in this method).
-                if (!setSuccessfully && captureProp.RegexPropInfo.RegexPropType == RegexPropType.Dynamic)
-                    return null;
+                if (!setSuccessfully)
+                {
+                    if (match.Type.IsAssignableTo(typeof(TokenUnitOneOf)))
+                        Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name}'");
+                    else if (!captureProp.RegexPropInfo.Prop.IsDefined(typeof(OptionalComponentAttribute)))
+                        throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureIndex} exists for match '{match.RegexMatch.Value}', and it is not optional");
+                }
             }
-            else if (match.Type.IsAssignableTo(typeof(TokenUnitOneOf)))
-                Debug.WriteLine($"TokenUnit.HydrateFromMatch: TokenUnitOneOf Match '{match.RegexMatch.Value}' contains no named capture group '{captureProp.Name}'");
-            else if (!match.Type.IsAssignableTo(typeof(TokenUnitOneOf)) && !captureProp.RegexPropInfo.Prop.IsDefined(typeof(OptionalComponentAttribute)))
-                throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureIndex} exists for match '{match.RegexMatch.Value}', and it is not optional");
         }
 
         tokenUnitInstance.OnAfterHydrated();

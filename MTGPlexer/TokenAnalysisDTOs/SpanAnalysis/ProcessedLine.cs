@@ -42,6 +42,8 @@ public class ProcessedLine
             if (string.IsNullOrWhiteSpace(formattedText))
                 continue;
 
+            var thing = TokenTypeRegistry.Tokenize(sourceText);
+
             List<SpanRoot> spanRoots =
                 TokenTypeRegistry.Tokenize(sourceText)
                 .Select(x => SpanBuilder.Create(x, originalText, card.Name, i))
