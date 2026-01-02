@@ -45,8 +45,19 @@ public enum Quantity
     Twelve = 12
 }
 
+public enum ManaColor
+{
+    Colorless,
+    White,
+    Blue,
+    Black,
+    Red,
+    Green
+}
+
 public enum CardType
 {
+    Permanent,
     Artifact,
     Creature,
     Enchantment,
@@ -55,7 +66,7 @@ public enum CardType
     Planeswalker,
     Sorcery,
     Battle,
-    Tribal
+    Tribal,
 }
 
 public enum Keyword
@@ -769,6 +780,7 @@ public enum GainOrLose
     Gain
 }
 
+[OptionalPrefix("it")]
 public enum PermanentVerb
 {
     [RegexPattern("get(s)?")]
@@ -785,6 +797,9 @@ public enum PermanentVerb
 
     [RegexPattern("lose(es)?")]
     Lose,
+
+    [RegexPattern("it's")]
+    Is,
 }
 
 public enum WhichPlayer

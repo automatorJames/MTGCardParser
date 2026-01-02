@@ -16,6 +16,9 @@ public record EnumRegexProp : ScalarCapturePropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
+        if (RegexPropInfo.UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
+            builder.AddTextLine($"({attr.PrefixSnippet} )?", doNotAddFollowingSpace: true);
+
         builder.OpenGroup(RegexPropInfo);
         builder.AddAlternateEnumValues(EnumSet);
         builder.CloseGroup();

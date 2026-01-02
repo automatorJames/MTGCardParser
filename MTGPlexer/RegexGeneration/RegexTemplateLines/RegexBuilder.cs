@@ -9,7 +9,14 @@ public class RegexBuilder
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
     Dictionary<Enclosure, int> _enclosureTerminalPropCount = [];
+    Dictionary<Enclosure, char> _lastCharPerEnclosure = [];
     BoundaryOption _boundaryOption;
+    static readonly HashSet<char> _openingPunctuationMarks = ['(', '[', '{', '<'];
+    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>'];
+    bool _doubleQuoteIsOpen;
+
+    // For convenience
+    Enclosure _currentEnclosure => _enclosureStack.Count == 0 ? null : _enclosureStack.Peek();
 
     Dictionary<Enclosure, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
 
@@ -22,7 +29,7 @@ public class RegexBuilder
             .ToArray();
 
     /// <summary>
-    /// Initializes a new instance of the RegexBuilder class.
+    /// Constructor.
     /// </summary>
     /// <param name="topLevelType">The top-level type that defines the overall regex structure and attributes.</param>
     /// <param name="neverAddSpacesAtTopLevel">If true, prevents the builder from adding spaces at the root level.</param>
@@ -64,9 +71,8 @@ public class RegexBuilder
 
             if (captureGroup.IsTerminal)
             {
-                var currentEnclosure = _enclosureStack.Peek();
-                _enclosureTerminalPropCount.TryAdd(currentEnclosure, 0);
-                palette = DeterministicPalette.GetFixedRainbowPalette(_enclosureTerminalPropCount[currentEnclosure]++);
+                _enclosureTerminalPropCount.TryAdd(_currentEnclosure, 0);
+                palette = DeterministicPalette.GetFixedRainbowPalette(_enclosureTerminalPropCount[_currentEnclosure]++);
             }
             else if (TokenTypeRegistry.Palettes.TryGetValue(captureGroup.UnderlyingType, out var typePalette))
                 palette = typePalette;
@@ -124,10 +130,24 @@ public class RegexBuilder
     /// Adds a literal text element to the regex.
     /// </summary>
     /// <param name="text">The literal text to add.</param>
-    public void AddTextLine(string text)
+    public void AddTextLine(string text, bool doNotAddFollowingSpace = false)
     {
+        // If the last char of the previous content at this level is an opening punctuation, or the
+        // first char of the new content is a closing punctuation, don't add a space before the new content.
+        bool shouldNotAddSpaceBeforeNextItem =
+             _lastCharPerEnclosure.TryGetValue(_currentEnclosure, out var lastChar) && _openingPunctuationMarks.Contains(lastChar)
+            || _terminalPunctuationMarks.Contains(text.FirstOrDefault());
+
+        if (shouldNotAddSpaceBeforeNextItem)
+            _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.DontAddSpaceBeforeNextItem;
+
         AddPrecedingSpaceIfApplicable();
         _regexElements.Add(new TextLine(_orderedEnclosureStack, text));
+        _lastCharPerEnclosure[_currentEnclosure] = text.LastOrDefault();
+        TrackDoubleQuoteOpenState(text);
+
+        if (doNotAddFollowingSpace)
+            _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.DontAddSpaceBeforeNextItem;
     }
 
     /// <summary>
@@ -158,17 +178,23 @@ public class RegexBuilder
     /// </summary>
     void AddPrecedingSpaceIfApplicable()
     {
-        // If any parent disallows spaces globally, don't add any spaces
+        // If the current enclosure or any parent enclosure disallows spaces globally, don't add any spaces
         if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceGlobal))
             return;
         
-        var currentScope = _enclosureStack.Peek();
-        var groupSpaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[currentScope];
+        var spaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure];
 
-        if (groupSpaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
+        if (spaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
             _regexElements.Add(new SpaceLine(_orderedEnclosureStack));
-        else if (groupSpaceDisposition != SpaceDisposition.NeverAddSpaceLocal)
-            _spaceIsRequiredBeforeNextElementAtLevel[currentScope] = SpaceDisposition.AddSpaceBeforeNextItem;
+        else if (spaceDisposition != SpaceDisposition.NeverAddSpaceLocal || _doubleQuoteIsOpen)
+            _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.AddSpaceBeforeNextItem;
+    }
+
+    void TrackDoubleQuoteOpenState(string str)
+    {
+        for (int i = 0; i < str.Length; i++)
+            if (str[i] == '"')
+                _doubleQuoteIsOpen = !_doubleQuoteIsOpen;
     }
 
     /// <summary>

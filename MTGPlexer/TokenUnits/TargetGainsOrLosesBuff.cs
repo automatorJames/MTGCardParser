@@ -2,9 +2,9 @@
 
 public class TargetGainsOrLosesBuff : TokenUnit
 {
-    protected override string[] Snippets => [nameof(TagetCardType), nameof(GainedOrLostBuff), "until end of turn"];
+    protected override string[] Snippets => [nameof(TargetCard), nameof(GainedOrLostBuff), "until end of turn"];
 
-    public TagetCard TagetCardType { get; set; }
+    public TargetCard TargetCard { get; set; }
 
     [OptionalMany]
     public GainedOrLostBuff GainedOrLostBuff { get; set; }
