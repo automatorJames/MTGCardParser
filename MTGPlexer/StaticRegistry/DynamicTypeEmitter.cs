@@ -49,9 +49,7 @@ public static class DynamicTypeEmitter
 
         // If no such properties exist, there is nothing to do.
         if (!manyProps.Any())
-        {
             return null;
-        }
 
         return EmitManyTypeInternal(originalType, manyProps);
     }

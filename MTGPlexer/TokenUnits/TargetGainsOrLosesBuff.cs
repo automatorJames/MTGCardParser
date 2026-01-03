@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 public class TargetGainsOrLosesBuff : TokenUnit
 {
     protected override string[] Snippets => [nameof(TargetCard), nameof(GainedOrLostBuff), "until end of turn"];

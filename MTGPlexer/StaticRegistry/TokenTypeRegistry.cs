@@ -111,7 +111,7 @@ public static partial class TokenTypeRegistry
     }
 
     /// <summary>
-    /// Return all TokenUnit derived types except for DefaultUnmatchedString
+    /// Return all TokenUnit types except for DefaultUnmatchedString and dependent types
     /// </summary>
     static List<Type> GetAllTokenTypes()
     {
