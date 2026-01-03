@@ -81,12 +81,7 @@ public class RegexFormatter
                         expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"{wrapper.UnrepresentedAlternateCount} omitted" });
                 }
                 else
-                {
-                    //if (synonymDataLookup.Keys.Any())
-                    //    Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
-
                     expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"All {enumContainer.AlternateValueEnums.Count} omitted" });
-                }
             }
             else if (element is AlternateValueContainer container)
                 expandedAndFilteredElements.AddRange(container.AlternateValues);
@@ -119,10 +114,13 @@ public class RegexFormatter
                 if (prevEventType != currentEventType || prevEventType == 0)
                 {
                     var commonDepth = 0;
-                    while (commonDepth < previousLine.Enclosures.Length && commonDepth < currentLine.Enclosures.Length && previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
-                    {
-                        commonDepth++;
-                    }
+
+                    while (
+                        commonDepth < previousLine.Enclosures.Length 
+                        && commonDepth < currentLine.Enclosures.Length 
+                        && previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
+                           commonDepth++;
+
                     finalizedLines.Add(new BlankLine(previousLine.Enclosures.Take(commonDepth).ToArray()));
                 }
             }

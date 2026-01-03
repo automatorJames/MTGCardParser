@@ -138,8 +138,11 @@ public class RegexBuilder
              _lastCharPerEnclosure.TryGetValue(_currentEnclosure, out var lastChar) && _openingPunctuationMarks.Contains(lastChar)
             || _terminalPunctuationMarks.Contains(text.FirstOrDefault());
 
-        if (shouldNotAddSpaceBeforeNextItem)
-            _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.DontAddSpaceBeforeNextItem;
+        // "Never add space" is more restrictive, so only set "don't add after next" if not "never add"
+        if (shouldNotAddSpaceBeforeNextItem 
+            && _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] != SpaceDisposition.NeverAddSpaceLocal
+            && _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] != SpaceDisposition.NeverAddSpaceGlobal)
+                _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.DontAddSpaceBeforeNextItem;
 
         AddPrecedingSpaceIfApplicable();
         _regexElements.Add(new TextLine(_orderedEnclosureStack, text));
