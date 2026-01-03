@@ -5,605 +5,542 @@
 /// </summary>
 public class RegexFormatter
 {
-    FormattedRegexColoringRules _colors = new();
-    FormattedRegexTreatmentRules _treatments = new();
-    int _hashSeparatorColumn;
-    int _commentBoxLength;
-    const string DefaultWhite = "#FFFFFF";
-    const int _hashSeparatorPadding = 4;
-    const int _boxContentLeftPadding = 1;
-    const int _spacesPerIndent = 4;
-    const int _spacesPerAlternateIndent = 2;
+    private readonly FormattedRegexColoringRules _colors = new();
+    private readonly FormattedRegexTreatmentRules _treatments = new();
 
-    // field to hold layout metrics for enum comment boxes
-    Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics;
+    private int _hashSeparatorColumn;
+    private int _commentBoxLength;
+    private Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics = [];
+
+    private const string DefaultWhite = "#FFFFFF";
+    private const int HashSeparatorPadding = 4;
+    private const int BoxContentLeftPadding = 1;
+    private const int SpacesPerIndent = 4;
+    private const int SpacesPerAlternateIndent = 2;
 
     /// <summary>
     /// Formats a list of RegexElement objects into a human-readable, commented output.
     /// </summary>
-    /// <param name="regexElements">The logical regex elements to format.</param>
-    /// <param name="boundaryOption">The boundary option to apply.</param>
-    /// <param name="synonymData">Data for enriching enum comments with synonym info.</param>
-    /// <returns>A list of richly formatted RegexCommentedLine objects.</returns>
     public List<RegexCommentedLine> Format(
         IReadOnlyList<RegexElement> regexElements,
         BoundaryOption boundaryOption,
         List<PropPathSynonymSetContainer> synonymData)
     {
-        synonymData ??= [];
-        var synonymDataLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
-        var alternateCounts = new Dictionary<AlternateValueEnum, int>();
+        if (regexElements == null || !regexElements.Any()) return [];
 
-        // 1. Expand containers and enrich with variant data
-        var expandedAndFilteredElements = new List<RegexElement>();
-        foreach (var element in regexElements)
+        // 1. Expansion: Flatten containers and inject synonym variants
+        var expandedElements = ExpandElements(regexElements, synonymData ?? [], out var alternateCounts);
+
+        // 2. Vertical Spacing: Add blank lines to separate logical blocks
+        var spacedElements = InsertVerticalBreathingRoom(expandedElements);
+        AddBoundaryLines(spacedElements, boundaryOption);
+
+        // 3. Layout: Calculate column widths for alignment
+        CalculateLayoutMetrics(spacedElements, alternateCounts);
+
+        // 4. Rendering: Convert logical elements into formatted spans
+        var renderedLines = spacedElements.Select(line => CreateCommentedLine(line, alternateCounts)).ToList();
+
+        // 5. Post-Processing: Fix the alignment and prefixes for '|' alternate lines
+        return FinalizeAlternatePrefixes(renderedLines);
+    }
+
+    #region Phase 1: Expansion
+
+    private List<RegexElement> ExpandElements(
+        IReadOnlyList<RegexElement> elements,
+        List<PropPathSynonymSetContainer> synonymData,
+        out Dictionary<AlternateValueEnum, int> alternateCounts)
+    {
+        alternateCounts = new Dictionary<AlternateValueEnum, int>();
+        var synonymLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
+        var result = new List<RegexElement>();
+
+        foreach (var element in elements)
         {
             if (element is AlternateValueEnumContainer enumContainer)
             {
-                if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
-                {
-                    SynonymTrailingSpacer spacerBuffer = null;
-
-                    foreach (var synonymSet in wrapper.SynonymSets.Values)
-                    {
-                        if (spacerBuffer != null)
-                        {
-                            expandedAndFilteredElements.Add(spacerBuffer);
-                            spacerBuffer = null;
-                        }
-
-                        var enumElement = enumContainer.AlternateValueEnums.Single(e => e.CanonicalValue.Equals(synonymSet.CanonicalValue));
-
-                        if (synonymSet.SynonymCounts.Count > 1)
-                        {
-                            var header = new SynonymSetHeader(enumElement);
-                            alternateCounts[header] = synonymSet.TotalCount;
-                            expandedAndFilteredElements.Add(header);
-
-                            foreach (var synonym in synonymSet.SynonymCounts)
-                            {
-                                var synonymElement = new SynonymValueEnum(enumElement, synonymSet.TotalCount, synonym.Key);
-                                alternateCounts[synonymElement] = synonym.Value;
-                                expandedAndFilteredElements.Add(synonymElement);
-                            }
-
-                            spacerBuffer = new SynonymTrailingSpacer(enumElement);
-                        }
-                        else
-                        {
-                            enumElement.DisplayOverrideName = synonymSet.SynonymCounts.First().Key;
-                            expandedAndFilteredElements.Add(enumElement);
-                            alternateCounts[enumElement] = synonymSet.TotalCount;
-                        }
-                    }
-
-                    if (wrapper.UnrepresentedAlternateCount > 0)
-                        expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"{wrapper.UnrepresentedAlternateCount} omitted" });
-                }
-                else
-                {
-                    //if (synonymDataLookup.Keys.Any())
-                    //    Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
-
-                    expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"All {enumContainer.AlternateValueEnums.Count} omitted" });
-                }
+                ExpandEnumContainer(enumContainer, synonymLookup, result, alternateCounts);
             }
             else if (element is AlternateValueContainer container)
-                expandedAndFilteredElements.AddRange(container.AlternateValues);
-            else
-                expandedAndFilteredElements.Add(element);
-        }
-
-        if (!expandedAndFilteredElements.Any())
-            return [];
-
-        // 2. Add blank lines for spacing to create vertical breathing room between logical sections.
-        var finalizedLines = new List<RegexElement> { expandedAndFilteredElements[0] };
-        for (var i = 1; i < expandedAndFilteredElements.Count; i++)
-        {
-            var previousLine = expandedAndFilteredElements[i - 1];
-            var currentLine = expandedAndFilteredElements[i];
-
-            // Determine if the enclosure path has changed (e.g. entering or exiting a named group).
-            var pathChanged = currentLine.UniquePath != previousLine.UniquePath;
-
-            // Specifically check if a literal match (TextLine) is adjacent to a connective space (SpaceLine).
-            // These are often logically distinct but syntactically adjacent; we add a blank line to clarify the separation.
-            var abutsSpaceAndLiteral = (previousLine is TextLine && currentLine is SpaceLine)
-                                    || (previousLine is SpaceLine && currentLine is TextLine);
-
-            if (pathChanged || abutsSpaceAndLiteral)
             {
-                // We use a numeric type to distinguish between structure-opening events, structure-closing events, and content.
-                int GetEnclosureEventType(RegexElement line) => line switch
-                {
-                    GroupOpen or NamedGroupOpen => 1, // Open event
-                    GroupClose or NamedGroupClose => 2, // Close event
-                    _ => 0 // Content/Literal/Space
-                };
-
-                var prevEventType = GetEnclosureEventType(previousLine);
-                var currentEventType = GetEnclosureEventType(currentLine);
-
-                // We add a spacing line if:
-                // - We transition between different types of enclosure events (e.g. closing one group and opening another).
-                // - We transition from an enclosure event to content (or vice versa).
-                // - We have explicitly detected a literal match abutting a connective space.
-                if (prevEventType != currentEventType || prevEventType == 0 || abutsSpaceAndLiteral)
-                {
-                    // Find the common enclosure depth so that the blank line is visually "inside" 
-                    // the correct parent box rather than appearing at the root.
-                    var commonDepth = 0;
-                    while (commonDepth < previousLine.Enclosures.Length &&
-                           commonDepth < currentLine.Enclosures.Length &&
-                           previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
-                    {
-                        commonDepth++;
-                    }
-
-                    // Insert a BlankLine inheriting the shared path for consistent indentation and border drawing.
-                    finalizedLines.Add(new BlankLine(previousLine.Enclosures.Take(commonDepth).ToArray()));
-                }
-            }
-
-            finalizedLines.Add(currentLine);
-        }
-
-        AddBoundaryLines(finalizedLines, boundaryOption);
-
-        // 3. Prepare for formatting
-        CalculateColumnWidths(finalizedLines, alternateCounts);
-
-        // 4. Format the lines and create RegexCommentedLine objects
-        var commentedLines = new List<RegexCommentedLine>();
-        for (var i = 0; i < finalizedLines.Count; i++)
-        {
-            var line = finalizedLines[i];
-            var regexText = GetFinalRegexString(line);
-
-            var spans = new List<RegexCommentedLineSpan>();
-
-            int indentSpaces;
-            if (line is AlternateValue)
-            {
-                var parentDepth = line.Enclosures.Count(e => e is not RootEnclosure) - 1;
-                if (parentDepth < 0)
-                    parentDepth = 0;
-
-                const int alternatePrefixWidth = _spacesPerAlternateIndent + 2; // for "  | "
-                indentSpaces = (parentDepth * _spacesPerIndent) + alternatePrefixWidth;
-            }
-            else
-                indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
-
-            var indentedRegex = new string(' ', indentSpaces) + regexText;
-            var paddedRegex = indentedRegex.PadRight(_hashSeparatorColumn);
-
-            var primaryContentColor = GetPrimaryContentColorForLine(line);
-            var primaryContentPalette = DeterministicPalette.GetStaticPalette(new HexColor(primaryContentColor));
-            var highlightTreatment = _treatments.GetRegexHighlightTreatment(line);
-
-            var pathForRegexSpan = line.NamedPath;
-
-            if (line is SynonymValueEnum syn)
-                pathForRegexSpan = $"{pathForRegexSpan}.{syn.CanonicalValue}";
-            else if (line is AlternateValueEnum altValEnum)
-                pathForRegexSpan = $"{pathForRegexSpan}.{altValEnum.CanonicalValue}";
-            else if (line is AlternateValue alt)
-                pathForRegexSpan = $"{pathForRegexSpan}.{alt.CanonicalValue}";
-
-            var relativePath = RegexCommentedLine.GetRelativePath(pathForRegexSpan);
-
-            if (relativePath == null)
-                highlightTreatment = SpanHighlightTreatment.None;
-
-            spans.Add(new(paddedRegex, primaryContentPalette, relativePath, highlightTreatment, _treatments.CommentLowlightTreatment));
-
-            var commentPrefix = $"#{new string(' ', _hashSeparatorPadding)}";
-            var hashPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.HashSeparatorColor));
-            spans.Add(new(commentPrefix, hashPalette, null, SpanHighlightTreatment.None, SpanLowlightTreatment.None));
-
-            var commentSpans = GenerateCommentSpans(line, alternateCounts);
-            spans.AddRange(commentSpans);
-            var commentText = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
-
-            if (line is AlternateValue alternateValue && line is not SynonymSetHeader && line is not SynonymTrailingSpacer)
-                commentedLines.Add(new RegexCommentedAlternateLine(paddedRegex, commentText, line.NamedPath, spans, alternateValue));
-            else
-                commentedLines.Add(new RegexCommentedLine(paddedRegex, commentText, line.NamedPath, spans));
-        }
-
-        // 5. Add alternate ("|") prefixes
-        var finalResult = new List<RegexCommentedLine>();
-        string currentEnclosurePath = null;
-        var isFirstInAlternateGroup = true;
-
-        foreach (var line in commentedLines)
-        {
-            if (line is RegexCommentedAlternateLine altLine)
-            {
-                if (altLine.EnclosurePath != currentEnclosurePath)
-                {
-                    currentEnclosurePath = altLine.EnclosurePath;
-                    isFirstInAlternateGroup = true;
-                }
-
-                var originalPaddedRegex = altLine.Regex;
-                var trimmedRegex = originalPaddedRegex.Trim();
-                var textStartColumn = originalPaddedRegex.Length - originalPaddedRegex.TrimStart().Length;
-
-                string newIndentedRegex;
-                if (isFirstInAlternateGroup)
-                {
-                    newIndentedRegex = new string(' ', textStartColumn) + trimmedRegex;
-                }
-                else
-                {
-                    var prefix = $"{new string(' ', _spacesPerAlternateIndent)}| ";
-                    var prefixStartColumn = textStartColumn - prefix.Length;
-                    if (prefixStartColumn < 0) prefixStartColumn = 0;
-
-                    newIndentedRegex = new string(' ', prefixStartColumn) + prefix + trimmedRegex;
-                }
-
-                var newPaddedRegex = newIndentedRegex.PadRight(_hashSeparatorColumn);
-                var newSpans = altLine.Spans.ToList();
-                newSpans[0] = newSpans[0] with { SpanText = newPaddedRegex };
-                finalResult.Add(altLine with { Regex = newPaddedRegex, FormattedText = newPaddedRegex + altLine.Comment, Spans = newSpans });
-                isFirstInAlternateGroup = false;
+                result.AddRange(container.AlternateValues);
             }
             else
             {
-                currentEnclosurePath = null;
-                isFirstInAlternateGroup = true;
-                finalResult.Add(line);
+                result.Add(element);
             }
         }
-
-        return finalResult;
+        return result;
     }
 
-    /// <summary>
-    /// Adds start and end boundary elements to a list of regex lines based on the specified boundary option.
-    /// </summary>
-    /// <param name="lines">The list of elements to add boundaries to.</param>
-    /// <param name="boundaryOption">The type of boundary to add.</param>
-    public static void AddBoundaryLines(List<RegexElement> lines, BoundaryOption boundaryOption)
+    private void ExpandEnumContainer(
+        AlternateValueEnumContainer container,
+        Dictionary<string, PropPathSynonymSetContainer> lookup,
+        List<RegexElement> output,
+        Dictionary<AlternateValueEnum, int> counts)
     {
-        if (boundaryOption == BoundaryOption.Omit)
+        if (!lookup.TryGetValue(container.NamedPath, out var wrapper))
+        {
+            output.Add(new BlankLine(container.Enclosures) { Comment = $"All {container.AlternateValueEnums.Count} omitted" });
             return;
+        }
 
-        RegexElement startBoundary = boundaryOption == BoundaryOption.WholeWord ? new NegativeLookbehindBoundary() : new StartOfLineBoundary();
-        RegexElement endBoundary = boundaryOption == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary();
-        lines.Insert(0, startBoundary);
-        lines.Insert(1, new BlankLine([]));
-        lines.Add(new BlankLine([]));
-        lines.Add(endBoundary);
-    }
+        SynonymTrailingSpacer spacerBuffer = null;
 
-    /// <summary>
-    /// Gets the final, display-ready regex string for a given line, handling special display logic.
-    /// </summary>
-    /// <param name="line">The regex element to process.</param>
-    /// <returns>The formatted regex string for display.</returns>
-    string GetFinalRegexString(RegexElement line)
-    {
-        var regexText = line switch
+        foreach (var synonymSet in wrapper.SynonymSets.Values)
         {
-            SynonymSetHeader or SynonymTrailingSpacer => "",
-            SynonymValueEnum synonymValueEnum => synonymValueEnum.CanonicalValue.ToString(),
-            AlternateValueEnum alternateValueEnum => alternateValueEnum.DisplayOverrideName ?? alternateValueEnum.Regex,
-            _ => line.Regex
-        };
-
-        if (line is AlternateValue)
-            return regexText.Replace(" ", "[ ]");
-        else
-            return regexText;
-    }
-
-    /// <summary>
-    /// Calculates the required column widths for aligning regex parts, comments, and comment boxes.
-    /// </summary>
-    /// <param name="lines">The list of all regex elements to be rendered.</param>
-    /// <param name="alternateCounts">A dictionary of counts for enum alternates.</param>
-    void CalculateColumnWidths(List<RegexElement> lines, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
-    {
-        int GetRenderedLineLength(RegexElement line)
-        {
-            int indentSpaces;
-            if (line is AlternateValue)
+            if (spacerBuffer != null)
             {
-                var parentDepth = line.Enclosures.Count(e => e is not RootEnclosure) - 1;
-                if (parentDepth < 0)
-                    parentDepth = 0;
+                output.Add(spacerBuffer);
+                spacerBuffer = null;
+            }
 
-                const int alternatePrefixWidth = _spacesPerAlternateIndent + 2; // for "  | "
-                indentSpaces = (parentDepth * _spacesPerIndent) + alternatePrefixWidth;
+            var enumElement = container.AlternateValueEnums.Single(e => e.CanonicalValue.Equals(synonymSet.CanonicalValue));
+
+            if (synonymSet.SynonymCounts.Count > 1)
+            {
+                // Multi-synonym set: Add header and individual variants
+                var header = new SynonymSetHeader(enumElement);
+                counts[header] = synonymSet.TotalCount;
+                output.Add(header);
+
+                foreach (var synonym in synonymSet.SynonymCounts)
+                {
+                    var synonymElement = new SynonymValueEnum(enumElement, synonymSet.TotalCount, synonym.Key);
+                    counts[synonymElement] = synonym.Value;
+                    output.Add(synonymElement);
+                }
+                spacerBuffer = new SynonymTrailingSpacer(enumElement);
             }
             else
-                indentSpaces = GetIndentDepth(line) * _spacesPerIndent;
-
-            var length = indentSpaces;
-            length += GetFinalRegexString(line).Length;
-            return length;
+            {
+                // Single value: Just use the name
+                enumElement.DisplayOverrideName = synonymSet.SynonymCounts.First().Key;
+                output.Add(enumElement);
+                counts[enumElement] = synonymSet.TotalCount;
+            }
         }
 
-        var maxRegexLen = lines.Any() ? lines.Max(GetRenderedLineLength) : 0;
-        _hashSeparatorColumn = maxRegexLen + _hashSeparatorPadding;
-        _enumBoxMetrics = new Dictionary<string, EnumBoxLayoutMetrics>();
-        var enumGroups = lines.OfType<AlternateValueEnum>().GroupBy(e => e.NamedPath);
+        if (wrapper.UnrepresentedAlternateCount > 0)
+            output.Add(new BlankLine(container.Enclosures) { Comment = $"{wrapper.UnrepresentedAlternateCount} omitted" });
+    }
 
-        foreach (var group in enumGroups)
+    #endregion
+
+    #region Phase 2: Vertical Spacing
+
+    private List<RegexElement> InsertVerticalBreathingRoom(List<RegexElement> elements)
+    {
+        if (elements.Count == 0) return elements;
+
+        var result = new List<RegexElement> { elements[0] };
+        for (var i = 1; i < elements.Count; i++)
         {
-            var maxValueLength = group.Max(alt => alt.Comment.Length);
-            var maxCountLength = group.Max(alt => alternateCounts.TryGetValue(alt, out var count) ? count.ToString().Length : 0);
-            _enumBoxMetrics[group.Key] = new EnumBoxLayoutMetrics(maxValueLength, maxCountLength);
-        }
+            var prev = elements[i - 1];
+            var curr = elements[i];
 
+            bool pathChanged = curr.UniquePath != prev.UniquePath;
+            bool spaceAbutsLiteral = (prev is TextLine && curr is SpaceLine) || (prev is SpaceLine && curr is TextLine);
+
+            if (pathChanged || spaceAbutsLiteral)
+            {
+                int prevType = GetEnclosureEventType(prev);
+                int currType = GetEnclosureEventType(curr);
+
+                // Add a blank line if transitioning between structure (Open/Close) and content,
+                // or between two different structural events.
+                if (prevType != currType || prevType == 0 || spaceAbutsLiteral)
+                {
+                    int commonDepth = CalculateCommonDepth(prev, curr);
+                    result.Add(new BlankLine(prev.Enclosures.Take(commonDepth).ToArray()));
+                }
+            }
+            result.Add(curr);
+        }
+        return result;
+    }
+
+    private int GetEnclosureEventType(RegexElement line) => line switch
+    {
+        GroupOpen or NamedGroupOpen => 1,
+        GroupClose or NamedGroupClose => 2,
+        _ => 0
+    };
+
+    private int CalculateCommonDepth(RegexElement a, RegexElement b)
+    {
+        int depth = 0;
+        while (depth < a.Enclosures.Length && depth < b.Enclosures.Length &&
+               a.Enclosures[depth].Ordinal == b.Enclosures[depth].Ordinal)
+        {
+            depth++;
+        }
+        return depth;
+    }
+
+    #endregion
+
+    #region Phase 3: Layout Measurement
+
+    private void CalculateLayoutMetrics(List<RegexElement> lines, Dictionary<AlternateValueEnum, int> counts)
+    {
+        // 1. Determine the widest regex string to set the '#' column
+        int maxRegexWidth = lines.Any() ? lines.Max(GetLineRenderedLength) : 0;
+        _hashSeparatorColumn = maxRegexWidth + HashSeparatorPadding;
+
+        // 2. Calculate Enum internal box metrics (column for value names vs column for counts)
+        _enumBoxMetrics = lines.OfType<AlternateValueEnum>()
+            .GroupBy(e => e.NamedPath)
+            .ToDictionary(
+                g => g.Key,
+                g => new EnumBoxLayoutMetrics(
+                    g.Max(alt => alt.Comment.Length),
+                    g.Max(alt => counts.TryGetValue(alt, out var c) ? c.ToString().Length : 0)
+                )
+            );
+
+        // 3. Calculate recursive box widths (inner boxes force parent boxes to be wider)
+        MeasureCommentBoxes(lines);
+    }
+
+    private void MeasureCommentBoxes(List<RegexElement> lines)
+    {
         var uniquePaths = lines
-            .SelectMany(l => l.VisibleEnclosures.Select((e, i) => l.VisibleEnclosures.Take(i + 1)))
+            .SelectMany(l => l.VisibleEnclosures.Select((_, i) => l.VisibleEnclosures.Take(i + 1)))
             .GroupBy(p => string.Join(",", p.Select(e => e.Ordinal)))
             .Select(g => g.First())
             .Where(p => p.Any())
             .ToList();
 
-        var boxWidths = uniquePaths.ToDictionary(p => string.Join(",", p.Select(e => e.Ordinal)), p => 0);
+        var boxWidths = uniquePaths.ToDictionary(p => GetPathKey(p), _ => 0);
 
+        // Initial pass: width based on content of the lines themselves
         foreach (var line in lines.Where(l => l.VisibleEnclosures.Any()))
         {
-            var pathKey = string.Join(",", line.VisibleEnclosures.Select(e => e.Ordinal));
-            var requiredWidth = 0;
-            if (!string.IsNullOrEmpty(line.Comment))
-            {
-                var textWidth = line switch
-                {
-                    AlternateValueEnum ave =>
-                        _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics)
-                        ? metrics.MaxValueLength + (metrics.MaxCountLength > 0 ? 3 + metrics.MaxCountLength : 0) + 2
-                        : 0,
-                    BlankLine bl when bl.Comment.EndsWith("omitted") => bl.Comment.Length + 2,
-                    AlternateValue or NamedGroupOpen or NamedGroupClose or GroupClose => line.Comment.Length + 2,
-                    _ => _boxContentLeftPadding + line.Comment.Length
-                };
-
-                requiredWidth = line is EncloureBookend ? textWidth + 2 : textWidth + 4;
-            }
-
-            boxWidths[pathKey] = Math.Max(boxWidths[pathKey], requiredWidth);
+            var key = GetPathKey(line.VisibleEnclosures);
+            int contentWidth = CalculateInternalCommentWidth(line);
+            boxWidths[key] = Math.Max(boxWidths[key], contentWidth);
         }
 
-        var sortedPaths = uniquePaths.OrderByDescending(p => p.Count());
-
-        foreach (var path in sortedPaths)
+        // Propagate widths: parent boxes must be wide enough to contain child boxes + padding
+        foreach (var path in uniquePaths.OrderByDescending(p => p.Count()))
         {
-            if (path.Count() <= 1)
-                continue;
-
-            var childPathKey = string.Join(",", path.Select(e => e.Ordinal));
-            var parentPathKey = string.Join(",", path.Take(path.Count() - 1).Select(e => e.Ordinal));
-            var childFootprint = boxWidths[childPathKey] + 4;
-            boxWidths[parentPathKey] = Math.Max(boxWidths[parentPathKey], childFootprint);
+            if (path.Count() <= 1) continue;
+            var parentKey = GetPathKey(path.Take(path.Count() - 1));
+            boxWidths[parentKey] = Math.Max(boxWidths[parentKey], boxWidths[GetPathKey(path)] + 4);
         }
 
         var rootPaths = uniquePaths.Where(p => p.Count() == 1);
-        _commentBoxLength = rootPaths.Any() ? rootPaths.Max(p => boxWidths[string.Join(",", p.Select(e => e.Ordinal))]) : 0;
+        _commentBoxLength = rootPaths.Any() ? rootPaths.Max(p => boxWidths[GetPathKey(p)]) : 0;
     }
 
-    /// <summary>
-    /// Gets the indentation level for a given regex element based on its enclosure depth.
-    /// </summary>
-    /// <param name="line">The regex element.</param>
-    /// <returns>The number of indent levels.</returns>
-    int GetIndentDepth(RegexElement line)
+    private string GetPathKey(IEnumerable<Enclosure> enclosures) => string.Join(",", enclosures.Select(e => e.Ordinal));
+
+    private int CalculateInternalCommentWidth(RegexElement line)
     {
-        var depth = line.Enclosures.Count(e => e is not RootEnclosure);
+        if (string.IsNullOrEmpty(line.Comment)) return 0;
 
-        if (depth == 0)
-            return 0;
+        int textWidth = line switch
+        {
+            AlternateValueEnum ave => _enumBoxMetrics.TryGetValue(ave.NamedPath, out var m)
+                ? m.MaxValueLength + (m.MaxCountLength > 0 ? 3 + m.MaxCountLength : 0) + 2 : 0,
+            BlankLine bl when bl.Comment.EndsWith("omitted") => bl.Comment.Length + 2,
+            AlternateValue or NamedGroupOpen or NamedGroupClose or GroupClose => line.Comment.Length + 2,
+            _ => BoxContentLeftPadding + line.Comment.Length
+        };
 
-        return line is EncloureBookend ? depth - 1 : depth;
+        return line is EncloureBookend ? textWidth + 2 : textWidth + 4;
     }
 
-    /// <summary>
-    /// Determines the primary color for the regex content of a line.
-    /// </summary>
-    /// <param name="line">The regex element.</param>
-    /// <returns>A hex color string.</returns>
-    string GetPrimaryContentColorForLine(RegexElement line)
+    #endregion
+
+    #region Phase 4: Line Rendering
+
+    private RegexCommentedLine CreateCommentedLine(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
-        if (!line.VisibleEnclosures.Any())
-        {
-            return line switch
-            {
-                TextLine => _colors.UnenclosedTextLineCommentColor,
-                SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
-                BoundaryBase => _colors.BoundaryCommentColor,
-                _ => _colors.DefaultFallbackColor
-            };
-        }
+        var regexText = GetFinalRegexString(line);
+        int indent = (line is AlternateValue ? GetAlternateIndent(line) : GetIndentDepth(line)) * SpacesPerIndent;
 
-        var currentEnclosure = line.VisibleEnclosures.Last();
-        var palette = currentEnclosure.Palette;
+        var paddedRegex = (new string(' ', indent) + regexText).PadRight(_hashSeparatorColumn);
+        var spans = new List<RegexCommentedLineSpan>();
 
-        switch (line)
-        {
-            case NamedGroupOpen or NamedGroupClose: return _colors.NamedGroupBookendCommentColor(palette);
-            case GroupOpen: return DefaultWhite;
-            case GroupClose: return _colors.GroupCloseQuantifierColor;
-            case AlternateValue: return _colors.AlternateValueCommentColor(palette);
-            case TextLine or SpaceLine or GroupAlternativePipe:
-                var nearestNamedEnclosure = line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
-                return nearestNamedEnclosure != null ? _colors.EnclosedTextColor(nearestNamedEnclosure.Palette) : DefaultWhite;
-            default: return DefaultWhite;
-        }
+        // 1. Regex Span
+        var primaryColor = GetPrimaryContentColorForLine(line);
+        var highlight = _treatments.GetRegexHighlightTreatment(line);
+        spans.Add(new(paddedRegex, DeterministicPalette.GetStaticPalette(new HexColor(primaryColor)),
+            RegexCommentedLine.GetRelativePath(GetPathForSpan(line)), highlight, _treatments.CommentLowlightTreatment));
+
+        // 2. Hash Separator
+        var commentPrefix = $"#{new string(' ', HashSeparatorPadding)}";
+        spans.Add(new(commentPrefix, DeterministicPalette.GetStaticPalette(new HexColor(_colors.HashSeparatorColor)),
+            null, SpanHighlightTreatment.None, SpanLowlightTreatment.None));
+
+        // 3. Comment Content Spans
+        var commentSpans = GenerateCommentSpans(line, alternateCounts);
+        spans.AddRange(commentSpans);
+
+        var fullComment = commentPrefix + string.Join("", commentSpans.Select(s => s.SpanText));
+
+        if (line is AlternateValue av && line is not SynonymSetHeader && line is not SynonymTrailingSpacer)
+            return new RegexCommentedAlternateLine(paddedRegex, fullComment, line.NamedPath, spans, av);
+
+        return new RegexCommentedLine(paddedRegex, fullComment, line.NamedPath, spans);
     }
 
-    /// <summary>
-    /// Generates the list of colored and styled spans for the comment part of a line.
-    /// </summary>
-    /// <param name="line">The regex element for which to generate comment spans.</param>
-    /// <param name="alternateCounts">A dictionary of counts for enum alternates.</param>
-    /// <returns>A list of comment line spans.</returns>
-    List<RegexCommentedLineSpan> GenerateCommentSpans(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
+    private List<RegexCommentedLineSpan> GenerateCommentSpans(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
         var spans = new List<RegexCommentedLineSpan>();
-        var lowlight = _treatments.CommentLowlightTreatment;
-
-        void AddSpanForEnclosurePath(string text, HexPalette palette, SpanHighlightTreatment highlight, IEnumerable<Enclosure> scope)
-        {
-            if (string.IsNullOrEmpty(text))
-                return;
-
-            var rootName = line.Enclosures.OfType<RootEnclosure>().FirstOrDefault()?.RootTypeName ?? "";
-            var namedPath = string.Join('.', scope.OfType<NamedEnclosure>().Select(x => x.Name));
-            var fullPath = string.IsNullOrEmpty(namedPath) ? rootName : $"{rootName}.{namedPath}";
-            var relativePath = RegexCommentedLine.GetRelativePath(fullPath);
-            spans.Add(new(text, palette, relativePath, relativePath == null ? SpanHighlightTreatment.None : highlight, lowlight));
-        }
-
-        void AddSpanForCurrentLine(string text, HexPalette palette, bool isTextSpan)
-        {
-            if (string.IsNullOrEmpty(text))
-                return;
-
-            var path = line.NamedPath;
-            if (line is SynonymValueEnum syn)
-                path = $"{path}.{syn.CanonicalParent.CanonicalValue}.{syn.CanonicalValue}";
-            else if (line is AlternateValueEnum ave)
-                path = $"{path}.{ave.CanonicalValue}";
-            else if (line is AlternateValue av)
-                path = $"{path}.{av.CanonicalValue}";
-
-            var relativePath = RegexCommentedLine.GetRelativePath(path);
-            var highlight = _treatments.GetCommentHighlightTreatment(line, isTextSpan);
-            spans.Add(new(text, palette, relativePath, relativePath == null ? SpanHighlightTreatment.None : highlight, lowlight));
-        }
-
-        var defaultWhitePalette = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
         var visibleEnclosures = line.VisibleEnclosures.ToArray();
 
+        // Handle unenclosed lines (Boundaries, etc.)
         if (visibleEnclosures.Length == 0)
         {
             var color = GetPrimaryContentColorForLine(line);
-            spans.Add(new(line.Comment ?? "", DeterministicPalette.GetStaticPalette(new HexColor(color)), null, SpanHighlightTreatment.None, lowlight));
+            spans.Add(new(line.Comment ?? "", DeterministicPalette.GetStaticPalette(new HexColor(color)),
+                null, SpanHighlightTreatment.None, _treatments.CommentLowlightTreatment));
             return spans;
         }
 
         var parentEnclosures = visibleEnclosures.Take(visibleEnclosures.Length - 1).ToList();
-        var currentEnclosure = visibleEnclosures.Last();
-        var chars = BoxChars.Get(currentEnclosure.Treatment);
-        var palette = currentEnclosure.Palette;
-        var borderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(currentEnclosure.Treatment, palette)));
-        var borderHighlight = _treatments.GetCommentHighlightTreatment(line, false);
-        var currentPathParts = new List<Enclosure>();
+        var current = visibleEnclosures.Last();
+        var chars = BoxChars.Get(current.Treatment);
+        var borderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(current.Treatment, current.Palette)));
 
-        foreach (var parent in parentEnclosures)
+        // Draw Left-side parent walls
+        AddParentBorders(line, parentEnclosures, spans, isClosing: false);
+
+        int currentLevelWidth = _commentBoxLength - (parentEnclosures.Count * 4);
+
+        if (line is EncloureBookend bookend)
         {
-            currentPathParts.Add(parent);
-            var wall = BoxChars.Get(parent.Treatment).Wall;
-            var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
-            AddSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, currentPathParts);
-            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, currentPathParts);
-        }
-
-        var currentLevelWidth = _commentBoxLength - (parentEnclosures.Count * 4);
-
-        if (line is EncloureBookend)
-        {
-            var availableWidth = currentLevelWidth - 2;
-            switch (line)
-            {
-                case NamedGroupOpen ngo:
-                    var openComment = $" {ngo.Comment} ";
-                    AddSpanForCurrentLine(chars.TopLeft.ToString(), borderPalette, false);
-                    AddSpanForCurrentLine(openComment, DeterministicPalette.GetStaticPalette(new HexColor(_colors.NamedGroupBookendCommentColor(palette))), true);
-                    AddSpanForCurrentLine(new string(chars.Top, Math.Max(0, availableWidth - openComment.Length)), borderPalette, false);
-                    AddSpanForCurrentLine(chars.TopRight.ToString(), borderPalette, false);
-                    break;
-                case GroupOpen:
-                    AddSpanForCurrentLine(chars.TopLeft.ToString() + new string(chars.Top, availableWidth) + chars.TopRight.ToString(), borderPalette, false);
-                    break;
-                case NamedGroupClose ngc:
-                    var closeComment = $" {ngc.Comment} ";
-                    AddSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
-                    AddSpanForCurrentLine(new string(chars.Bottom, Math.Max(0, availableWidth - closeComment.Length)), borderPalette, false);
-                    AddSpanForCurrentLine(closeComment, DeterministicPalette.GetStaticPalette(new HexColor(_colors.NamedGroupBookendCommentColor(palette))), true);
-                    AddSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
-                    break;
-                case GroupClose gc:
-                    var quantComment = gc.Comment != null ? $" {gc.Comment} " : "";
-                    AddSpanForCurrentLine(chars.BottomLeft.ToString(), borderPalette, false);
-                    AddSpanForCurrentLine(new string(chars.Bottom, Math.Max(0, availableWidth - quantComment.Length)), borderPalette, false);
-                    AddSpanForCurrentLine(quantComment, DeterministicPalette.GetStaticPalette(new HexColor(_colors.GroupCloseQuantifierColor)), true);
-                    AddSpanForCurrentLine(chars.BottomRight.ToString(), borderPalette, false);
-                    break;
-            }
+            RenderBookendComment(bookend, spans, chars, borderPalette, currentLevelWidth - 2);
         }
         else
         {
-            var innerWidth = currentLevelWidth - 4;
-            AddSpanForEnclosurePath(chars.Wall + " ", borderPalette, borderHighlight, visibleEnclosures);
-
-            switch (line)
-            {
-                case SynonymTrailingSpacer:
-                    AddSpanForCurrentLine(new string('-', innerWidth), palette, true);
-                    break;
-                case AlternateValueEnum ave when _enumBoxMetrics.TryGetValue(ave.NamedPath, out var metrics):
-                    {
-                        string lineText;
-                        string fullContent;
-                        HexPalette altPalette;
-
-                        if (alternateCounts.TryGetValue(ave, out var count))
-                        {
-                            altPalette = DeterministicPalette.GetStaticPalette(new HexColor(ave is SynonymValueEnum ? _colors.SynonymValueCommentColor(palette) : _colors.AlternateValueCommentColor(palette)));
-                            lineText = $"{ave.Comment.PadLeft(metrics.MaxValueLength)} : {count}";
-                            var totalPad = Math.Max(0, innerWidth - (metrics.MaxValueLength + 3 + metrics.MaxCountLength));
-                            fullContent = $"{new string(' ', totalPad / 2)}{lineText}{new string(' ', metrics.MaxValueLength + 3 + metrics.MaxCountLength - lineText.Length)}{new string(' ', totalPad - (totalPad / 2))}";
-                        }
-                        else
-                        {
-                            altPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette)));
-                            lineText = ave.Comment.PadLeft(metrics.MaxValueLength);
-                            var totalPad = Math.Max(0, innerWidth - metrics.MaxValueLength);
-                            fullContent = $"{new string(' ', totalPad / 2)}{lineText}{new string(' ', totalPad - (totalPad / 2))}";
-                        }
-                        AddSpanForCurrentLine(fullContent, altPalette, true);
-                        break;
-                    }
-                case BlankLine bl when !string.IsNullOrEmpty(bl.Comment) && bl.Comment.EndsWith("omitted"):
-                    var omitPad = Math.Max(0, innerWidth - bl.Comment.Length);
-                    AddSpanForCurrentLine($"{new string(' ', omitPad / 2)}{bl.Comment}{new string(' ', omitPad - (omitPad / 2))}", DeterministicPalette.GetStaticPalette(new HexColor(_colors.OmittedEnumCountColor)), true);
-                    break;
-                case AlternateValue av:
-                    var altCommentText = $" {av.Comment} ";
-                    var genericTotalPad = Math.Max(0, innerWidth - altCommentText.Length);
-                    AddSpanForCurrentLine($"{new string(' ', genericTotalPad / 2)}{altCommentText}{new string(' ', genericTotalPad - (genericTotalPad / 2))}", DeterministicPalette.GetStaticPalette(new HexColor(_colors.AlternateValueCommentColor(palette))), true);
-                    break;
-                default:
-                    var nearestNamed = visibleEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
-                    var contentPalette = nearestNamed != null ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.EnclosedTextColor(nearestNamed.Palette))) : defaultWhitePalette;
-                    var content = string.IsNullOrEmpty(line.Comment) ? new string(' ', innerWidth) : (new string(' ', _boxContentLeftPadding) + line.Comment).PadRight(innerWidth);
-                    AddSpanForCurrentLine(content, contentPalette, true);
-                    break;
-            }
-
-            AddSpanForEnclosurePath(" " + chars.Wall, borderPalette, borderHighlight, visibleEnclosures);
+            // Internal Content
+            AddEnclosurePathSpan(line, spans, chars.Wall + " ", borderPalette, visibleEnclosures);
+            RenderInternalComment(line, spans, currentLevelWidth - 4, alternateCounts, current.Palette);
+            AddEnclosurePathSpan(line, spans, " " + chars.Wall, borderPalette, visibleEnclosures);
         }
 
-        var parentsReversed = parentEnclosures.AsEnumerable().Reverse().ToList();
-        for (int i = 0; i < parentsReversed.Count(); i++)
-        {
-            var parent = parentsReversed[i];
-            var pathForParent = visibleEnclosures.Take(parentEnclosures.Count - i).ToList();
-            var wall = BoxChars.Get(parent.Treatment).Wall;
-            var parentBorderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
-            AddSpanForEnclosurePath(" ", defaultWhitePalette, borderHighlight, pathForParent);
-            AddSpanForEnclosurePath(wall.ToString(), parentBorderPalette, borderHighlight, pathForParent);
-        }
+        // Draw Right-side parent walls
+        AddParentBorders(line, parentEnclosures, spans, isClosing: true);
 
         return spans;
     }
+
+    #endregion
+
+    #region Helpers & Sub-Renderers
+
+    private void AddParentBorders(RegexElement line, List<Enclosure> parents, List<RegexCommentedLineSpan> spans, bool isClosing)
+    {
+        var list = isClosing ? parents.AsEnumerable().Reverse().ToList() : parents;
+        var white = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+
+        for (int i = 0; i < list.Count; i++)
+        {
+            var parent = list[i];
+            var scope = isClosing ? line.VisibleEnclosures.Take(parents.Count - i).ToList() : line.VisibleEnclosures.Take(i + 1).ToList();
+            var wall = BoxChars.Get(parent.Treatment).Wall.ToString();
+            var pal = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
+
+            if (isClosing) AddEnclosurePathSpan(line, spans, " ", white, scope);
+            AddEnclosurePathSpan(line, spans, wall, pal, scope);
+            if (!isClosing) AddEnclosurePathSpan(line, spans, " ", white, scope);
+        }
+    }
+
+    private void RenderBookendComment(EncloureBookend line, List<RegexCommentedLineSpan> spans, BoxCharSet chars, HexPalette borderPal, int width)
+    {
+        string comment = line.Comment != null ? $" {line.Comment} " : "";
+        string color = line switch
+        {
+            NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(line.Enclosures.Last().Palette),
+            GroupClose => _colors.GroupCloseQuantifierColor,
+            _ => DefaultWhite
+        };
+
+        char left = line is NamedGroupOpen or GroupOpen ? chars.TopLeft : chars.BottomLeft;
+        char right = line is NamedGroupOpen or GroupOpen ? chars.TopRight : chars.BottomRight;
+        char fill = line is NamedGroupOpen or GroupOpen ? chars.Top : chars.Bottom;
+
+        AddCurrentLineSpan(line, spans, left.ToString(), borderPal, false);
+
+        if (line is NamedGroupOpen or GroupClose) // Comments are left-aligned or right-aligned based on type
+        {
+            if (line is NamedGroupOpen) AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+            AddCurrentLineSpan(line, spans, new string(fill, Math.Max(0, width - comment.Length)), borderPal, false);
+            if (line is GroupClose) AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+        }
+        else // NamedGroupClose has comment at the end
+        {
+            AddCurrentLineSpan(line, spans, new string(fill, Math.Max(0, width - comment.Length)), borderPal, false);
+            AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+        }
+
+        AddCurrentLineSpan(line, spans, right.ToString(), borderPal, false);
+    }
+
+    private void RenderInternalComment(RegexElement line, List<RegexCommentedLineSpan> spans, int width, IReadOnlyDictionary<AlternateValueEnum, int> counts, HexPalette palette)
+    {
+        var white = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+
+        switch (line)
+        {
+            case SynonymTrailingSpacer:
+                AddCurrentLineSpan(line, spans, new string('-', width), palette, true);
+                break;
+
+            case AlternateValueEnum ave when _enumBoxMetrics.TryGetValue(ave.NamedPath, out var m):
+                bool hasCount = counts.TryGetValue(ave, out var count);
+                var color = ave is SynonymValueEnum ? _colors.SynonymValueCommentColor(palette) : _colors.AlternateValueCommentColor(palette);
+                string text = hasCount ? $"{ave.Comment.PadLeft(m.MaxValueLength)} : {count}" : ave.Comment.PadLeft(m.MaxValueLength);
+                int pad = Math.Max(0, width - text.Length);
+                string full = $"{new string(' ', pad / 2)}{text}{new string(' ', pad - (pad / 2))}";
+                AddCurrentLineSpan(line, spans, full, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+                break;
+
+            case BlankLine bl when bl.Comment?.EndsWith("omitted") == true:
+                int oPad = Math.Max(0, width - bl.Comment.Length);
+                string oFull = $"{new string(' ', oPad / 2)}{bl.Comment}{new string(' ', oPad - (oPad / 2))}";
+                AddCurrentLineSpan(line, spans, oFull, DeterministicPalette.GetStaticPalette(new HexColor(_colors.OmittedEnumCountColor)), true);
+                break;
+
+            default:
+                var content = string.IsNullOrEmpty(line.Comment) ? new string(' ', width) : (new string(' ', BoxContentLeftPadding) + line.Comment).PadRight(width);
+                var nearNamed = line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
+                var cPal = nearNamed != null ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.EnclosedTextColor(nearNamed.Palette))) : white;
+                AddCurrentLineSpan(line, spans, content, cPal, true);
+                break;
+        }
+    }
+
+    private string GetPathForSpan(RegexElement line) => line switch
+    {
+        SynonymValueEnum s => $"{line.NamedPath}.{s.CanonicalValue}",
+        AlternateValueEnum a => $"{line.NamedPath}.{a.CanonicalValue}",
+        AlternateValue v => $"{line.NamedPath}.{v.CanonicalValue}",
+        _ => line.NamedPath
+    };
+
+    private void AddEnclosurePathSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, IEnumerable<Enclosure> scope)
+    {
+        var root = line.Enclosures.OfType<RootEnclosure>().FirstOrDefault()?.RootTypeName ?? "";
+        var path = string.Join('.', scope.OfType<NamedEnclosure>().Select(x => x.Name));
+        var full = string.IsNullOrEmpty(path) ? root : $"{root}.{path}";
+        var rel = RegexCommentedLine.GetRelativePath(full);
+        spans.Add(new(text, pal, rel, rel == null ? SpanHighlightTreatment.None : _treatments.GetCommentHighlightTreatment(line, false), _treatments.CommentLowlightTreatment));
+    }
+
+    private void AddCurrentLineSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, bool isText)
+    {
+        var rel = RegexCommentedLine.GetRelativePath(GetPathForSpan(line));
+        var high = _treatments.GetCommentHighlightTreatment(line, isText);
+        spans.Add(new(text, pal, rel, rel == null ? SpanHighlightTreatment.None : high, _treatments.CommentLowlightTreatment));
+    }
+
+    private List<RegexCommentedLine> FinalizeAlternatePrefixes(List<RegexCommentedLine> lines)
+    {
+        var result = new List<RegexCommentedLine>();
+        string activePath = null;
+        bool first = true;
+
+        foreach (var line in lines)
+        {
+            if (line is RegexCommentedAlternateLine alt)
+            {
+                if (alt.EnclosurePath != activePath) { activePath = alt.EnclosurePath; first = true; }
+
+                var trimmed = alt.Regex.Trim();
+                int startCol = alt.Regex.Length - alt.Regex.TrimStart().Length;
+                string newRegex;
+
+                if (first)
+                {
+                    newRegex = new string(' ', startCol) + trimmed;
+                }
+                else
+                {
+                    var prefix = $"{new string(' ', SpacesPerAlternateIndent)}| ";
+                    newRegex = new string(' ', Math.Max(0, startCol - prefix.Length)) + prefix + trimmed;
+                }
+
+                var padded = newRegex.PadRight(_hashSeparatorColumn);
+                var newSpans = alt.Spans.ToList();
+                newSpans[0] = newSpans[0] with { SpanText = padded };
+                result.Add(alt with { Regex = padded, FormattedText = padded + alt.Comment, Spans = newSpans });
+                first = false;
+            }
+            else
+            {
+                activePath = null;
+                result.Add(line);
+            }
+        }
+        return result;
+    }
+
+    private string GetFinalRegexString(RegexElement line)
+    {
+        var text = line switch
+        {
+            SynonymSetHeader or SynonymTrailingSpacer => "",
+            SynonymValueEnum syn => syn.CanonicalValue.ToString(),
+            AlternateValueEnum ave => ave.DisplayOverrideName ?? ave.Regex,
+            _ => line.Regex
+        };
+        return line is AlternateValue ? text.Replace(" ", "[ ]") : text;
+    }
+
+    private int GetLineRenderedLength(RegexElement line)
+    {
+        int indent = (line is AlternateValue ? GetAlternateIndent(line) : GetIndentDepth(line)) * SpacesPerIndent;
+        return indent + GetFinalRegexString(line).Length;
+    }
+
+    private int GetIndentDepth(RegexElement line)
+    {
+        int d = line.Enclosures.Count(e => e is not RootEnclosure);
+        return (d > 0 && line is EncloureBookend) ? d - 1 : d;
+    }
+
+    private int GetAlternateIndent(RegexElement line)
+    {
+        int d = line.Enclosures.Count(e => e is not RootEnclosure) - 1;
+        return (d < 0 ? 0 : d) + 1; // +1 to account for the "| " prefix logic
+    }
+
+    private string GetPrimaryContentColorForLine(RegexElement line)
+    {
+        if (!line.VisibleEnclosures.Any()) return line switch
+        {
+            TextLine => _colors.UnenclosedTextLineCommentColor,
+            SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
+            BoundaryBase => _colors.BoundaryCommentColor,
+            _ => _colors.DefaultFallbackColor
+        };
+
+        var palette = line.VisibleEnclosures.Last().Palette;
+        return line switch
+        {
+            NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(palette),
+            GroupClose => _colors.GroupCloseQuantifierColor,
+            AlternateValue => _colors.AlternateValueCommentColor(palette),
+            _ => (line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) is NamedEnclosure n)
+                ? _colors.EnclosedTextColor(n.Palette) : DefaultWhite
+        };
+    }
+
+    public static void AddBoundaryLines(List<RegexElement> lines, BoundaryOption option)
+    {
+        if (option == BoundaryOption.Omit) return;
+        lines.Insert(0, option == BoundaryOption.WholeWord ? new NegativeLookbehindBoundary() : new StartOfLineBoundary());
+        lines.Insert(1, new BlankLine([]));
+        lines.Add(new BlankLine([]));
+        lines.Add(option == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary());
+    }
+
+    #endregion
 }
