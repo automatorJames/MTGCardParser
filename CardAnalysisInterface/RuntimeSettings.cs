@@ -81,15 +81,15 @@ namespace CardAnalysisInterface
             }
         }
 
-        private bool _showRegexesWithZeroCaptures;
-        public bool ShowRegexesWithZeroCaptures
+        private bool _hideRegexesWithZeroCaptures;
+        public bool HideRegexesWithZeroCaptures
         {
-            get => _showRegexesWithZeroCaptures;
+            get => _hideRegexesWithZeroCaptures;
             set
             {
-                if (_showRegexesWithZeroCaptures != value)
+                if (_hideRegexesWithZeroCaptures != value)
                 {
-                    _showRegexesWithZeroCaptures = value;
+                    _hideRegexesWithZeroCaptures = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }

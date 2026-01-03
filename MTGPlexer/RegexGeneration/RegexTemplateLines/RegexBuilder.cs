@@ -5,14 +5,13 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 /// </summary>
 public class RegexBuilder
 {
+    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>'];
+
     List<RegexElement> _regexElements = [];
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
     Dictionary<Enclosure, int> _enclosureTerminalPropCount = [];
-    Dictionary<Enclosure, char> _lastCharPerEnclosure = [];
     BoundaryOption _boundaryOption;
-    static readonly HashSet<char> _openingPunctuationMarks = ['(', '[', '{', '<'];
-    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>'];
     bool _doubleQuoteIsOpen;
 
     // For convenience
@@ -132,21 +131,8 @@ public class RegexBuilder
     /// <param name="text">The literal text to add.</param>
     public void AddTextLine(string text, bool doNotAddFollowingSpace = false)
     {
-        // If the last char of the previous content at this level is an opening punctuation, or the
-        // first char of the new content is a closing punctuation, don't add a space before the new content.
-        bool shouldNotAddSpaceBeforeNextItem =
-             _lastCharPerEnclosure.TryGetValue(_currentEnclosure, out var lastChar) && _openingPunctuationMarks.Contains(lastChar)
-            || _terminalPunctuationMarks.Contains(text.FirstOrDefault());
-
-        // "Never add space" is more restrictive, so only set "don't add after next" if not "never add"
-        if (shouldNotAddSpaceBeforeNextItem 
-            && _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] != SpaceDisposition.NeverAddSpaceLocal
-            && _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] != SpaceDisposition.NeverAddSpaceGlobal)
-                _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.DontAddSpaceBeforeNextItem;
-
-        AddPrecedingSpaceIfApplicable();
+        AddPrecedingSpaceIfApplicable(text);
         _regexElements.Add(new TextLine(_orderedEnclosureStack, text));
-        _lastCharPerEnclosure[_currentEnclosure] = text.LastOrDefault();
         TrackDoubleQuoteOpenState(text);
 
         if (doNotAddFollowingSpace)
@@ -179,18 +165,43 @@ public class RegexBuilder
     /// <summary>
     /// Adds a space element if the current group's spacing rules require it.
     /// </summary>
-    void AddPrecedingSpaceIfApplicable()
+    void AddPrecedingSpaceIfApplicable(string nextTextToAdd = null)
     {
-        // If the current enclosure or any parent enclosure disallows spaces globally, don't add any spaces
+        // If the current enclosure or any parent enclosure disallows spaces globally, return early
         if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceGlobal))
             return;
-        
-        var spaceDisposition = _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure];
 
-        if (spaceDisposition == SpaceDisposition.AddSpaceBeforeNextItem)
-            _regexElements.Add(new SpaceLine(_orderedEnclosureStack));
-        else if (spaceDisposition != SpaceDisposition.NeverAddSpaceLocal || _doubleQuoteIsOpen)
-            _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.AddSpaceBeforeNextItem;
+        // If the current enclosure disallows spaces locally, return early
+        if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceLocal))
+            return;
+
+        // If the last regex element is a text line should omit trailing spaces, return early.
+        // This checks whether the text line ends with an opening punctuation like '(', or other conditions
+        if (_regexElements.LastOrDefault() is TextLine textLine && textLine.ShouldOmitSpaceAfter())
+            return;
+
+        if (nextTextToAdd is string)
+        {
+            // If next text (if provided) begins with terminal punctuation (e.g. period, comma, etc.), omit the space before it
+            if (_terminalPunctuationMarks.Contains(nextTextToAdd.FirstOrDefault()))
+                return;
+
+            // If next text starts with a double quote and there's a currently-open doubel quote pair (odd number), omit the space before it
+            if (nextTextToAdd.First() == '"' && _doubleQuoteIsOpen)
+                return;
+        }
+
+        // todo: this logic should be deprecated at some point
+        // If the current disposition is anything except "AddSpaceBeforeNextItem", omit the space
+        if (_spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] != SpaceDisposition.AddSpaceBeforeNextItem)
+            return;
+
+        // Add a space if none of the conditions above prevent doing so
+        _regexElements.Add(new SpaceLine(_orderedEnclosureStack));
+
+        // todo: this logic should be deprecated at some point
+        // Set the next disposition to add a space (default behavior)
+        _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.AddSpaceBeforeNextItem;
     }
 
     void TrackDoubleQuoteOpenState(string str)
@@ -232,6 +243,27 @@ public class RegexBuilder
     {
         var formatter = new RegexFormatter();
         return formatter.Format(_regexElements, _boundaryOption, synonymData);
+    }
+
+    public string GetExampleMatch()
+    {
+        string str = "";
+
+        foreach (var element in _regexElements)
+        {
+            if (element is TextLine textLine)
+                str += textLine.PlainTextValue;
+
+            else if (element is SpaceLine space)
+                str += " ";
+
+            else if (element is AlternateValueContainer alternateValueContainer)
+                str += alternateValueContainer.AlternateValues.First().CanonicalValue.ToString().ToLower();
+
+            else if (element is NamedGroupOpen)
+        }
+
+        return str.Trim();
     }
 
     /// <summary>

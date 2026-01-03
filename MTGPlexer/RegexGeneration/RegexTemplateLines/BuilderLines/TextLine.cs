@@ -2,9 +2,31 @@
 
 public class TextLine : RegexElement
 {
+    static readonly HashSet<char> _openingPunctuationMarks = ['(', '[', '{', '<'];
+
+    // Represents the end of a regex construct where the capture ends with a space, is enclosed in parens, and is optional
+    static readonly string _endOfOptionalGroupWithTrailingSpace = " )?";
+    char _plainTextLastChar;
+
+    public string PlainTextValue { get; set; }
+
+
+    public bool ShouldOmitSpaceAfter() =>
+        _openingPunctuationMarks.Contains(_plainTextLastChar)
+        || PlainTextValue.EndsWith(_endOfOptionalGroupWithTrailingSpace);
+
+    public bool IsOptional() =>
+        PlainTextValue.EndsWith('?') // optional quantifier
+        && !PlainTextValue.EndsWith(@"\?"); // literal question mark
+
     public TextLine(Enclosure[] enclosures, string value)
         : base(enclosures, value.Replace(" ", "[ ]"), comment: "literal match")
     {
+        if (string.IsNullOrEmpty(value))
+            throw new ArgumentNullException(nameof(value));
+
+        PlainTextValue = value;
+        _plainTextLastChar = value.Last();
     }
 
     public override string ToString() => base.ToString();

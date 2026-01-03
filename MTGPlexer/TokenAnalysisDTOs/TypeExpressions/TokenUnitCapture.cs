@@ -10,6 +10,7 @@ public record TokenUnitCapture
     public HexPalette Palette { get; }
     public string MinifiedRegexString { get; }
     public string FormattedRegexString { get; }
+    public string ExampleMatch { get; }
 
     /// <summary>
     /// Maps prop path to parent of terminal --> set of capture value variant counts.
@@ -35,6 +36,7 @@ public record TokenUnitCapture
 
         FormattedRegexString = string.Join("\r\n", FilteredLines.Select(x => x.FormattedText));
         MinifiedRegexString = template.Builder.GetMinified();
+        ExampleMatch = template.Builder.GetExampleMatch();
     }
 
     void ProcessFlattenedTerminalCaptures(List<TokenUnit> rootTokensUnitsOfType)

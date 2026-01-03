@@ -23,6 +23,10 @@
                 </span>
             </div>
 
+            <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
+                <code>@tokenUnitCapture.ExampleMatch</code>
+            </pre>
+
             <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified? tokenUnitCapture.MinifiedRegexString: tokenUnitCapture.FormattedRegexString)>
                 @if (RuntimeSettings.ShowMinified)
                 {
@@ -66,7 +70,7 @@
     {
         List<TokenUnitCapture> filteredTokenUnitCaptures = CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values.ToList();
 
-        if (RuntimeSettings.ShowRegexesWithZeroCaptures)
+        if (!RuntimeSettings.HideRegexesWithZeroCaptures)
             filteredTokenUnitCaptures.AddRange(CorpusAnalyzer.TokenCaptureSummary.UnmatchedTokenUnits.Values);
 
         var searchTerm = RuntimeSettings.SearchTerm;
