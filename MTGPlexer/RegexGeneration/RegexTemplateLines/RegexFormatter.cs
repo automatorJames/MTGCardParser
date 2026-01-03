@@ -38,7 +38,7 @@ public class RegexFormatter
         var expandedAndFilteredElements = new List<RegexElement>();
         foreach (var element in regexElements)
         {
-            if (element is AlternateValueEnumContainer enumContainer)   
+            if (element is AlternateValueEnumContainer enumContainer)
             {
                 if (synonymDataLookup.TryGetValue(enumContainer.NamedPath, out var wrapper))
                 {
@@ -81,7 +81,12 @@ public class RegexFormatter
                         expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"{wrapper.UnrepresentedAlternateCount} omitted" });
                 }
                 else
+                {
+                    //if (synonymDataLookup.Keys.Any())
+                    //    Debug.WriteLine($"Didn't find '{enumContainer.NamedPath}' among \n\t{string.Join("\n\t", synonymDataLookup.Keys)}");
+
                     expandedAndFilteredElements.Add(new BlankLine(enumContainer.Enclosures) { Comment = $"All {enumContainer.AlternateValueEnums.Count} omitted" });
+                }
             }
             else if (element is AlternateValueContainer container)
                 expandedAndFilteredElements.AddRange(container.AlternateValues);
@@ -92,35 +97,51 @@ public class RegexFormatter
         if (!expandedAndFilteredElements.Any())
             return [];
 
-        // 2. Add blank lines for spacing
+        // 2. Add blank lines for spacing to create vertical breathing room between logical sections.
         var finalizedLines = new List<RegexElement> { expandedAndFilteredElements[0] };
         for (var i = 1; i < expandedAndFilteredElements.Count; i++)
         {
             var previousLine = expandedAndFilteredElements[i - 1];
             var currentLine = expandedAndFilteredElements[i];
+
+            // Determine if the enclosure path has changed (e.g. entering or exiting a named group).
             var pathChanged = currentLine.UniquePath != previousLine.UniquePath;
-            if (pathChanged)
+
+            // Specifically check if a literal match (TextLine) is adjacent to a connective space (SpaceLine).
+            // These are often logically distinct but syntactically adjacent; we add a blank line to clarify the separation.
+            var abutsSpaceAndLiteral = (previousLine is TextLine && currentLine is SpaceLine)
+                                    || (previousLine is SpaceLine && currentLine is TextLine);
+
+            if (pathChanged || abutsSpaceAndLiteral)
             {
+                // We use a numeric type to distinguish between structure-opening events, structure-closing events, and content.
                 int GetEnclosureEventType(RegexElement line) => line switch
                 {
-                    GroupOpen or NamedGroupOpen => 1,
-                    GroupClose or NamedGroupClose => 2,
-                    _ => 0
+                    GroupOpen or NamedGroupOpen => 1, // Open event
+                    GroupClose or NamedGroupClose => 2, // Close event
+                    _ => 0 // Content/Literal/Space
                 };
 
                 var prevEventType = GetEnclosureEventType(previousLine);
                 var currentEventType = GetEnclosureEventType(currentLine);
 
-                if (prevEventType != currentEventType || prevEventType == 0)
+                // We add a spacing line if:
+                // - We transition between different types of enclosure events (e.g. closing one group and opening another).
+                // - We transition from an enclosure event to content (or vice versa).
+                // - We have explicitly detected a literal match abutting a connective space.
+                if (prevEventType != currentEventType || prevEventType == 0 || abutsSpaceAndLiteral)
                 {
+                    // Find the common enclosure depth so that the blank line is visually "inside" 
+                    // the correct parent box rather than appearing at the root.
                     var commonDepth = 0;
+                    while (commonDepth < previousLine.Enclosures.Length &&
+                           commonDepth < currentLine.Enclosures.Length &&
+                           previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
+                    {
+                        commonDepth++;
+                    }
 
-                    while (
-                        commonDepth < previousLine.Enclosures.Length 
-                        && commonDepth < currentLine.Enclosures.Length 
-                        && previousLine.Enclosures[commonDepth].Ordinal == currentLine.Enclosures[commonDepth].Ordinal)
-                           commonDepth++;
-
+                    // Insert a BlankLine inheriting the shared path for consistent indentation and border drawing.
                     finalizedLines.Add(new BlankLine(previousLine.Enclosures.Take(commonDepth).ToArray()));
                 }
             }
