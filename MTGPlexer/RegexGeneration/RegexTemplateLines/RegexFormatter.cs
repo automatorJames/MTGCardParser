@@ -47,10 +47,7 @@ public class RegexFormatter
 
     #region Phase 1: Expansion
 
-    private List<RegexElement> ExpandElements(
-        IReadOnlyList<RegexElement> elements,
-        List<PropPathSynonymSetContainer> synonymData,
-        out Dictionary<AlternateValueEnum, int> alternateCounts)
+    private List<RegexElement> ExpandElements(IReadOnlyList<RegexElement> elements, List<PropPathSynonymSetContainer> synonymData, out Dictionary<AlternateValueEnum, int> alternateCounts)
     {
         alternateCounts = new Dictionary<AlternateValueEnum, int>();
         var synonymLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
@@ -59,18 +56,13 @@ public class RegexFormatter
         foreach (var element in elements)
         {
             if (element is AlternateValueEnumContainer enumContainer)
-            {
                 ExpandEnumContainer(enumContainer, synonymLookup, result, alternateCounts);
-            }
             else if (element is AlternateValueContainer container)
-            {
                 result.AddRange(container.AlternateValues);
-            }
             else
-            {
                 result.Add(element);
-            }
         }
+
         return result;
     }
 
@@ -171,11 +163,10 @@ public class RegexFormatter
     private int CalculateCommonDepth(RegexElement a, RegexElement b)
     {
         int depth = 0;
-        while (depth < a.Enclosures.Length && depth < b.Enclosures.Length &&
-               a.Enclosures[depth].Ordinal == b.Enclosures[depth].Ordinal)
-        {
+
+        while (depth < a.Enclosures.Length && depth < b.Enclosures.Length && a.Enclosures[depth].Ordinal == b.Enclosures[depth].Ordinal)
             depth++;
-        }
+
         return depth;
     }
 
@@ -297,8 +288,15 @@ public class RegexFormatter
         if (visibleEnclosures.Length == 0)
         {
             var color = GetPrimaryContentColorForLine(line);
-            spans.Add(new(line.Comment ?? "", DeterministicPalette.GetStaticPalette(new HexColor(color)),
-                null, SpanHighlightTreatment.None, _treatments.CommentLowlightTreatment));
+
+            RegexCommentedLineSpan span = new(
+                line.Comment ?? "", DeterministicPalette.GetStaticPalette(new HexColor(color)),
+                null,
+                SpanHighlightTreatment.None,
+                _treatments.CommentLowlightTreatment);
+
+            spans.Add(span);
+
             return spans;
         }
 
@@ -346,9 +344,13 @@ public class RegexFormatter
             var wall = BoxChars.Get(parent.Treatment).Wall.ToString();
             var pal = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
 
-            if (isClosing) AddEnclosurePathSpan(line, spans, " ", white, scope);
+            if (isClosing) 
+                AddEnclosurePathSpan(line, spans, " ", white, scope);
+
             AddEnclosurePathSpan(line, spans, wall, pal, scope);
-            if (!isClosing) AddEnclosurePathSpan(line, spans, " ", white, scope);
+
+            if (!isClosing) 
+                AddEnclosurePathSpan(line, spans, " ", white, scope);
         }
     }
 
@@ -370,9 +372,13 @@ public class RegexFormatter
 
         if (line is NamedGroupOpen or GroupClose) // Comments are left-aligned or right-aligned based on type
         {
-            if (line is NamedGroupOpen) AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+            if (line is NamedGroupOpen) 
+                AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+
             AddCurrentLineSpan(line, spans, new string(fill, Math.Max(0, width - comment.Length)), borderPal, false);
-            if (line is GroupClose) AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
+
+            if (line is GroupClose) 
+                AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
         }
         else // NamedGroupClose has comment at the end
         {
@@ -458,9 +464,7 @@ public class RegexFormatter
                 string newRegex;
 
                 if (first)
-                {
                     newRegex = new string(' ', startCol) + trimmed;
-                }
                 else
                 {
                     var prefix = $"{new string(' ', SpacesPerAlternateIndent)}| ";
@@ -479,6 +483,7 @@ public class RegexFormatter
                 result.Add(line);
             }
         }
+
         return result;
     }
 
@@ -491,6 +496,7 @@ public class RegexFormatter
             AlternateValueEnum ave => ave.DisplayOverrideName ?? ave.Regex,
             _ => line.Regex
         };
+
         return line is AlternateValue ? text.Replace(" ", "[ ]") : text;
     }
 
@@ -514,15 +520,17 @@ public class RegexFormatter
 
     private string GetPrimaryContentColorForLine(RegexElement line)
     {
-        if (!line.VisibleEnclosures.Any()) return line switch
-        {
-            TextLine => _colors.UnenclosedTextLineCommentColor,
-            SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
-            BoundaryBase => _colors.BoundaryCommentColor,
-            _ => _colors.DefaultFallbackColor
-        };
+        if (!line.VisibleEnclosures.Any()) 
+            return line switch
+            {
+                TextLine => _colors.UnenclosedTextLineCommentColor,
+                SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
+                BoundaryBase => _colors.BoundaryCommentColor,
+                _ => _colors.DefaultFallbackColor
+            };
 
         var palette = line.VisibleEnclosures.Last().Palette;
+
         return line switch
         {
             NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(palette),

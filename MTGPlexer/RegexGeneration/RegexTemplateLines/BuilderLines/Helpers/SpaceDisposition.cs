@@ -2,9 +2,7 @@
 
 public enum SpaceDisposition
 {
-    NeverAddSpaceLocal,
-    NeverAddSpaceGlobal,
-    DontAddSpaceBeforeNextItem,
-    AddSpaceBeforeNextItem,
-    AddSpaceAfterNextGroupOpens,
+    Default,
+    DisallowedLocal,
+    DisallowedGlobal,
 }

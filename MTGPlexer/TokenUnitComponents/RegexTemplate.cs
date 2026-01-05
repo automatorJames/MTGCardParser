@@ -53,18 +53,14 @@ public class RegexTemplate
 
     void ComposeRegex()
     {
-        bool neverAddSpacesAtTopLevel = false;
         ISegmentComposer composer;
 
         if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
-        {
-            neverAddSpacesAtTopLevel = !RegexSegments.Any(x => x is TextSegment);
             composer = AlternatingComposer.Instance;
-        }
         else
             composer = ConcatenatingComposer.Instance;
 
-        RegexBuilder collector = new(_containingType, neverAddSpacesAtTopLevel);
+        RegexBuilder collector = new(_containingType);
         composer.Compose(collector, RegexSegments);
 
         RegexString = collector.GetMinified();

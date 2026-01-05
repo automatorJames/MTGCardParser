@@ -1,8 +1,8 @@
 ﻿internal record SpanContext(
     string FullText,
     string PathPrefix,
-    IReadOnlyList<string>? NameChain = null,
-    IReadOnlyList<string>? SuffixChain = null) // Added Suffixes
+    IReadOnlyList<string> NameChain = null,
+    IReadOnlyList<string> SuffixChain = null) // Added Suffixes
 {
     public IReadOnlyList<string> CurrentNameChain => NameChain ?? Array.Empty<string>();
     public IReadOnlyList<string> CurrentSuffixChain => SuffixChain ?? Array.Empty<string>();

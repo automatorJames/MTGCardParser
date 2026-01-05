@@ -31,7 +31,7 @@ public class AlternatingComposer : ISegmentComposer
             else if (segment is CaptureGroupPropBase)
             {
                 if (renderedAlternatives == 0 && shouldWrapAlternatives)
-                    collector.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+                    collector.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
 
                 if (renderedAlternatives > 0)
                     collector.AddGroupAlternativePipe();

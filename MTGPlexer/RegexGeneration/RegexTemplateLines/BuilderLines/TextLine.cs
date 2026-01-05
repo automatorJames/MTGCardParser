@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class TextLine : RegexElement
+public class TextLine : RegexElement, IRegexContent
 {
     static readonly HashSet<char> _openingPunctuationMarks = ['(', '[', '{', '<'];
 
@@ -8,16 +8,16 @@ public class TextLine : RegexElement
     static readonly string _endOfOptionalGroupWithTrailingSpace = " )?";
     char _plainTextLastChar;
 
-    public string PlainTextValue { get; set; }
+    public string TextValue { get; set; }
 
 
     public bool ShouldOmitSpaceAfter() =>
         _openingPunctuationMarks.Contains(_plainTextLastChar)
-        || PlainTextValue.EndsWith(_endOfOptionalGroupWithTrailingSpace);
+        || TextValue.EndsWith(_endOfOptionalGroupWithTrailingSpace);
 
     public bool IsOptional() =>
-        PlainTextValue.EndsWith('?') // optional quantifier
-        && !PlainTextValue.EndsWith(@"\?"); // literal question mark
+        TextValue.EndsWith('?') // optional quantifier
+        && !TextValue.EndsWith(@"\?"); // literal question mark
 
     public TextLine(Enclosure[] enclosures, string value)
         : base(enclosures, value.Replace(" ", "[ ]"), comment: "literal match")
@@ -25,7 +25,7 @@ public class TextLine : RegexElement
         if (string.IsNullOrEmpty(value))
             throw new ArgumentNullException(nameof(value));
 
-        PlainTextValue = value;
+        TextValue = value;
         _plainTextLastChar = value.Last();
     }
 

@@ -5,19 +5,14 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 /// </summary>
 public class RegexBuilder
 {
-    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>'];
-
-    List<RegexElement> _regexElements = [];
+    RegexElementConcatenater _concatenater;
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
     Dictionary<Enclosure, int> _enclosureTerminalPropCount = [];
     BoundaryOption _boundaryOption;
-    bool _doubleQuoteIsOpen;
 
     // For convenience
     Enclosure _currentEnclosure => _enclosureStack.Count == 0 ? null : _enclosureStack.Peek();
-
-    Dictionary<Enclosure, SpaceDisposition> _spaceIsRequiredBeforeNextElementAtLevel;
 
     /// <summary>
     /// Gets the current stack of enclosures, with the root at the start of the array.
@@ -32,21 +27,14 @@ public class RegexBuilder
     /// </summary>
     /// <param name="topLevelType">The top-level type that defines the overall regex structure and attributes.</param>
     /// <param name="neverAddSpacesAtTopLevel">If true, prevents the builder from adding spaces at the root level.</param>
-    public RegexBuilder(Type topLevelType, bool neverAddSpacesAtTopLevel = false)
+    public RegexBuilder(Type topLevelType)
     {
         // an invisible top level enclosure;
-        RootEnclosure rootEnclosure = new(topLevelType.Name);
+        RootEnclosure rootEnclosure = new(topLevelType);
 
-        // always track the root enclosure (makes space disposition tracking cleaner)
+        _concatenater = new();
         _enclosureStack.Push(rootEnclosure);
-
         _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
-
-        var topLevelSpaceDiposition = (topLevelType.IsDefined(typeof(NoSpacesAttribute)) || neverAddSpacesAtTopLevel)
-            ? SpaceDisposition.NeverAddSpaceLocal
-            : SpaceDisposition.DontAddSpaceBeforeNextItem;
-
-        _spaceIsRequiredBeforeNextElementAtLevel = new Dictionary<Enclosure, SpaceDisposition> { [rootEnclosure] = topLevelSpaceDiposition };
     }
 
     /// <summary>
@@ -56,12 +44,6 @@ public class RegexBuilder
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
     public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null)
     {
-        bool groupIsNamedAndOptional = captureGroup?.Prop.IsDefined(typeof(OptionalComponentAttribute)) ?? false;
-
-        // If this group is named and optional, don't add a space before it
-        if (!groupIsNamedAndOptional)
-            AddPrecedingSpaceIfApplicable();
-
         Enclosure enclosure = null;
 
         if (captureGroup != null)
@@ -78,34 +60,18 @@ public class RegexBuilder
             else
                 palette = DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
 
-            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, palette, captureGroup);
+            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, palette, captureGroup, spaceDisposition);
         }
         else
-            enclosure = new Enclosure(_nextEnclosureOrdinal++);
+            enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
 
         // If this group is named and optional, add the space now that it's been opened
         _enclosureStack.Push(enclosure);
 
-        if (spaceDisposition == null)
-        {
-            if (captureGroup != null && captureGroup.BaseType.IsDefined(typeof(NoSpacesAttribute)))
-                spaceDisposition = SpaceDisposition.NeverAddSpaceLocal;
-            else
-                spaceDisposition = SpaceDisposition.DontAddSpaceBeforeNextItem; // the default state
-        }
-
-        _spaceIsRequiredBeforeNextElementAtLevel[enclosure] = spaceDisposition.Value;
-
         if (captureGroup != null)
-        {
-            _regexElements.Add(new NamedGroupOpen(_orderedEnclosureStack, captureGroup));
-
-            // If this optional component is not the first regex element, add a space within the beginning of the capture group
-            if (groupIsNamedAndOptional && _regexElements.Count > 1)
-                _regexElements.Add(new SpaceLine(_orderedEnclosureStack));
-        }
+            _concatenater.Append(new NamedGroupOpen(_orderedEnclosureStack, captureGroup));
         else
-            _regexElements.Add(new GroupOpen(_orderedEnclosureStack));
+            _concatenater.Append(new GroupOpen(_orderedEnclosureStack));
     }
 
     /// <summary>
@@ -118,9 +84,9 @@ public class RegexBuilder
             throw new Exception($"No groups are available to close");
 
         if (_enclosureStack.Peek() is NamedEnclosure namedEnclosure)
-            _regexElements.Add(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
+            _concatenater.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
         else
-            _regexElements.Add(new GroupClose(_orderedEnclosureStack, quantifier));
+            _concatenater.Append(new GroupClose(_orderedEnclosureStack, quantifier));
 
         _enclosureStack.Pop();
     }
@@ -129,29 +95,22 @@ public class RegexBuilder
     /// Adds a literal text element to the regex.
     /// </summary>
     /// <param name="text">The literal text to add.</param>
-    public void AddTextLine(string text, bool doNotAddFollowingSpace = false)
-    {
-        AddPrecedingSpaceIfApplicable(text);
-        _regexElements.Add(new TextLine(_orderedEnclosureStack, text));
-        TrackDoubleQuoteOpenState(text);
-
-        if (doNotAddFollowingSpace)
-            _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.DontAddSpaceBeforeNextItem;
-    }
+    public void AddTextLine(string text) 
+        => _concatenater.Append(new TextLine(_orderedEnclosureStack, text));
 
     /// <summary>
     /// Adds a set of alternative string values (e.g., "a|b|c").
     /// </summary>
     /// <param name="alternatives">The collection of alternative strings.</param>
     public void AddAlternateValues(IEnumerable<string> alternatives)
-        => _regexElements.Add(new AlternateValueContainer(_orderedEnclosureStack, alternatives.ToList()));
+        => _concatenater.Append(new AlternateValueContainer(_orderedEnclosureStack, alternatives.ToList()));
 
     /// <summary>
     /// Adds a set of alternative enum values.
     /// </summary>
     /// <param name="enumSet">The set of enum alternates to add.</param>
     public void AddAlternateEnumValues(EnumScalarAlternateSet enumSet)
-        => _regexElements.Add(new AlternateValueEnumContainer(_orderedEnclosureStack, enumSet));
+        => _concatenater.Append(new AlternateValueEnumContainer(_orderedEnclosureStack, enumSet));
 
     /// <summary>
     /// Adds a pipe character '|' for an alternation within the current group.
@@ -159,56 +118,7 @@ public class RegexBuilder
     public void AddGroupAlternativePipe()
     {
         var path = _orderedEnclosureStack;
-        _regexElements.Add(new GroupAlternativePipe(_orderedEnclosureStack));
-    }
-
-    /// <summary>
-    /// Adds a space element if the current group's spacing rules require it.
-    /// </summary>
-    void AddPrecedingSpaceIfApplicable(string nextTextToAdd = null)
-    {
-        // If the current enclosure or any parent enclosure disallows spaces globally, return early
-        if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceGlobal))
-            return;
-
-        // If the current enclosure disallows spaces locally, return early
-        if (_enclosureStack.Any(x => _spaceIsRequiredBeforeNextElementAtLevel[x] == SpaceDisposition.NeverAddSpaceLocal))
-            return;
-
-        // If the last regex element is a text line should omit trailing spaces, return early.
-        // This checks whether the text line ends with an opening punctuation like '(', or other conditions
-        if (_regexElements.LastOrDefault() is TextLine textLine && textLine.ShouldOmitSpaceAfter())
-            return;
-
-        if (nextTextToAdd is string)
-        {
-            // If next text (if provided) begins with terminal punctuation (e.g. period, comma, etc.), omit the space before it
-            if (_terminalPunctuationMarks.Contains(nextTextToAdd.FirstOrDefault()))
-                return;
-
-            // If next text starts with a double quote and there's a currently-open doubel quote pair (odd number), omit the space before it
-            if (nextTextToAdd.First() == '"' && _doubleQuoteIsOpen)
-                return;
-        }
-
-        // todo: this logic should be deprecated at some point
-        // If the current disposition is anything except "AddSpaceBeforeNextItem", omit the space
-        if (_spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] != SpaceDisposition.AddSpaceBeforeNextItem)
-            return;
-
-        // Add a space if none of the conditions above prevent doing so
-        _regexElements.Add(new SpaceLine(_orderedEnclosureStack));
-
-        // todo: this logic should be deprecated at some point
-        // Set the next disposition to add a space (default behavior)
-        _spaceIsRequiredBeforeNextElementAtLevel[_currentEnclosure] = SpaceDisposition.AddSpaceBeforeNextItem;
-    }
-
-    void TrackDoubleQuoteOpenState(string str)
-    {
-        for (int i = 0; i < str.Length; i++)
-            if (str[i] == '"')
-                _doubleQuoteIsOpen = !_doubleQuoteIsOpen;
+        _concatenater.Append(new GroupAlternativePipe(_orderedEnclosureStack));
     }
 
     /// <summary>
@@ -218,16 +128,16 @@ public class RegexBuilder
     /// <returns>A compiled Regex object for the specified group.</returns>
     public Regex ExtractGroupRegex(RegexPropInfo group)
     {
-        var firstGroupLine = _regexElements.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
-        var lastGroupLine = _regexElements.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
+        var firstGroupLine = _concatenater.RegexElements.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
+        var lastGroupLine = _concatenater.RegexElements.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
 
         if (firstGroupLine == null || lastGroupLine == null)
             return null;
 
-        var firstLineIndex = _regexElements.IndexOf(firstGroupLine);
-        var lastLineIndex = _regexElements.IndexOf(lastGroupLine);
+        var firstLineIndex = _concatenater.RegexElements.IndexOf(firstGroupLine);
+        var lastLineIndex = _concatenater.RegexElements.IndexOf(lastGroupLine);
 
-        var groupLines = _regexElements.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
+        var groupLines = _concatenater.RegexElements.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
         AddBoundaryLines(groupLines);
         var regexString = string.Join("", groupLines.Select(x => x.Regex));
 
@@ -242,28 +152,7 @@ public class RegexBuilder
     public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
         var formatter = new RegexFormatter();
-        return formatter.Format(_regexElements, _boundaryOption, synonymData);
-    }
-
-    public string GetExampleMatch()
-    {
-        string str = "";
-
-        foreach (var element in _regexElements)
-        {
-            if (element is TextLine textLine)
-                str += textLine.PlainTextValue;
-
-            else if (element is SpaceLine space)
-                str += " ";
-
-            else if (element is AlternateValueContainer alternateValueContainer)
-                str += alternateValueContainer.AlternateValues.First().CanonicalValue.ToString().ToLower();
-
-            else if (element is NamedGroupOpen)
-        }
-
-        return str.Trim();
+        return formatter.Format(_concatenater.RegexElements, _boundaryOption, synonymData);
     }
 
     /// <summary>
@@ -272,10 +161,10 @@ public class RegexBuilder
     /// <returns>The complete regex as a single string.</returns>
     public string GetMinified(bool addBoundaries = true)
     {
-        if (!_regexElements.Any())
+        if (!_concatenater.RegexElements.Any())
             return "";
 
-        var finalizedElements = _regexElements.ToList();
+        var finalizedElements = _concatenater.RegexElements.ToList();
 
         if (addBoundaries)
             AddBoundaryLines(finalizedElements);
@@ -287,7 +176,7 @@ public class RegexBuilder
     /// Adds start and end boundary elements to a list of regex lines based on the builder's boundary option.
     /// </summary>
     /// <param name="lines">The list of elements to add boundaries to.</param>
-    private void AddBoundaryLines(List<RegexElement> lines)
+    void AddBoundaryLines(List<RegexElement> lines)
     {
         if (_boundaryOption == BoundaryOption.Omit)
             return;

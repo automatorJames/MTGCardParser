@@ -1,14 +1,12 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class NamedGroupOpen : EncloureBookend
+public class NamedGroupOpen : EncloureBookend, IGroupOpen
 {
-    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop)
-        : base(
-            enclosures,
-            RenderCaptureGroup(prop),
-            GetComment(prop)
-        )
+    public bool IsOptional { get; }
+
+    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop) : base(enclosures, RenderCaptureGroup(prop), GetComment(prop))
     {
+        IsOptional = prop.Prop.IsDefined(typeof(OptionalComponentAttribute));
     }
 
     static string RenderCaptureGroup(RegexPropInfo prop)

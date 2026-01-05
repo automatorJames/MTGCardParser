@@ -2,10 +2,12 @@
 
 public record RootEnclosure : Enclosure
 {
+    public Type TopLevelType { get; }
     public string RootTypeName { get; }
 
-    public RootEnclosure(string rootTypeName) : base(-1, null, EnclosureType.Root, GroupBorderTreatment.None)
+    public RootEnclosure(Type rootType) : base(-1, -1, null, EnclosureType.Root, GroupBorderTreatment.None)
     {
-        RootTypeName = rootTypeName;
+        TopLevelType = rootType;
+        RootTypeName = rootType.Name;
     }
 }

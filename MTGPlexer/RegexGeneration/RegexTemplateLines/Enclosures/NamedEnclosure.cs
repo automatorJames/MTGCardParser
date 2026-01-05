@@ -8,18 +8,21 @@ public record NamedEnclosure : Enclosure
     public NamedEnclosure
         (
             int ordinal,
+            int depth,
             HexPalette palette,
             RegexPropInfo regexPropInfo, 
-            string nameOverride = null
+            SpaceDisposition? spaceDisposition = null
         ) : base
         (
             ordinal,
+            depth,
             palette,
             EnclosureType.RegexProp,
-            GetTreatment(regexPropInfo)
+            GetTreatment(regexPropInfo),
+            spaceDisposition ?? (regexPropInfo.BaseType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
         )
     {
-        Name = nameOverride ?? regexPropInfo.Name;
+        Name = regexPropInfo.Name;
         RegexPropInfo = regexPropInfo;
     }
 

@@ -3,24 +3,26 @@
 public record Enclosure
 {
     public int Ordinal { get; }
+    public int Depth { get; }
     public HexPalette Palette { get; }
     public EnclosureType Type { get; }
     public GroupBorderTreatment Treatment { get; }
+    public SpaceDisposition SpaceDisposition { get; }
 
-    public Enclosure(int ordinal, HexPalette palette, EnclosureType type, GroupBorderTreatment treatment)
+    public Enclosure(
+        int ordinal, 
+        int depth, 
+        HexPalette palette = null, 
+        EnclosureType type = EnclosureType.Unnamed,
+        GroupBorderTreatment treatment  = GroupBorderTreatment.Brace,
+        SpaceDisposition? spaceDisposition = null)
     {
         Ordinal = ordinal;
-        Palette = palette;
+        Depth = depth;
+        Palette = palette ?? DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
         Type = type;
         Treatment = treatment;
-    }
-
-    public Enclosure(int ordinal)
-    {
-        Ordinal = ordinal;
-        Palette = DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
-        Type = EnclosureType.Unnamed;
-        Treatment = GroupBorderTreatment.Brace;
+        SpaceDisposition = spaceDisposition ?? SpaceDisposition.Default;
     }
 }
 

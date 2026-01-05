@@ -69,15 +69,15 @@ public record TokenRegexManyProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.DisallowedLocal);
         ConcatenatingComposer.Instance.Compose(builder, [_ordinalRegexProps[0]]);
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(", ");
         ConcatenatingComposer.Instance.Compose(builder, [_ordinalRegexProps[1]]);
         builder.CloseGroup(GroupQuantifier.AnyNumber);
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(",? ");
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.NeverAddSpaceLocal);
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         _conjunctionProp.ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);

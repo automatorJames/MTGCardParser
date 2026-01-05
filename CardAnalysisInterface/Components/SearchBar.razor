@@ -19,7 +19,7 @@
 
 @code {
     private ElementReference _searchInput;
-    private DotNetObjectReference<SearchBar>? _dotNetObjectReference;
+    private DotNetObjectReference<SearchBar> _dotNetObjectReference;
 
     protected override void OnInitialized()
     {
@@ -66,7 +66,7 @@
     /// <summary>
     /// Event handler for page navigation.
     /// </summary>
-    private async void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private async void HandleLocationChanged(object sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         await ClearSearch();
     }

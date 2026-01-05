@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class NamedGroupClose : EncloureBookend
+public class NamedGroupClose : EncloureBookend, IGroupClose
 {
     public NamedGroupClose(Enclosure[] enclosures, string name, GroupQuantifier? quantifier = null)
         : base(

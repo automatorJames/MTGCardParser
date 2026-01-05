@@ -19,7 +19,7 @@ public record EnumRegexProp : ScalarCapturePropBase
         builder.OpenGroup(RegexPropInfo);
 
         if (RegexPropInfo.UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
-            builder.AddTextLine($"({attr.PrefixSnippet} )?", doNotAddFollowingSpace: true);
+            builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
         builder.AddAlternateEnumValues(EnumSet);
         builder.CloseGroup();
