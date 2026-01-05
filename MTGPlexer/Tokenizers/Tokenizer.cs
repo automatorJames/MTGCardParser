@@ -60,6 +60,7 @@ public class Tokenizer
                             .OfType<DynamicRegexProp>()
                             .ToDictionary(x => x, x => (object)null);
 
+                    // Dynamic capture (if any exist, all must be matched)
                     if (dynamicPrefilledValues.Any())
                     {
                         if (dynamicPrefilledValues.Count > 1)
@@ -115,28 +116,21 @@ public class Tokenizer
             NextIteration:;
             }
 
-            // **Step 2: Ratchet Logic **
             // If no token matched at this boundary, jump to the next possible boundary (after the next space).
             if (!matched)
             {
                 if (unmatchedStartIndex == -1)
-                {
                     unmatchedStartIndex = currentIndex;
-                }
 
                 // Find the next space within the bounds of the current text/scope
                 int nextSpaceIndex = sourceText.FormattedText.IndexOf(' ', currentIndex);
 
                 if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
-                {
                     // No more spaces within scope; jump to the end
                     currentIndex = endIndex;
-                }
                 else
-                {
                     // Move to the character immediately following the space
                     currentIndex = nextSpaceIndex + 1;
-                }
             }
         }
 
