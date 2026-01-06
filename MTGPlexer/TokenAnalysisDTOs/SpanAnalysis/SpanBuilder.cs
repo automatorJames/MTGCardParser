@@ -98,7 +98,7 @@ public static class SpanBuilder
             var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
             var itemLabel = $"#{i + 1}";
 
-            if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit && item.ItemObject is TokenUnit tu)
+            if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit && item.ItemObject is TokenUnit tu)
             {
                 var itemCtx = childCtx.PushName(itemLabel);
                 var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);

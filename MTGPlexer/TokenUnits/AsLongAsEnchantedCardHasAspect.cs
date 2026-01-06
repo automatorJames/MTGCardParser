@@ -2,9 +2,9 @@
 
 public class AsLongAsEnchantedCardHasAspect() : TokenUnit
 {
-    protected override string[] Snippets => ["as long as enchanted", nameof(CardType), nameof(Assertion), "(an? )?", nameof(CardAspect), ",", nameof(PermanentVerb), nameof(Buff)];
+    protected override string[] Snippets => ["as long as enchanted", nameof(CardTypes), nameof(Assertion), "(an? )?", nameof(CardAspect), ",", nameof(PermanentVerb), nameof(Buff)];
 
-    public CardType CardType { get; set; }
+    public CompoundOf<CardType> CardTypes { get; set; }
     public Assertion Assertion { get; set; }
     public CardAspect CardAspect { get; set; }
     public PermanentVerb PermanentVerb { get; set; }

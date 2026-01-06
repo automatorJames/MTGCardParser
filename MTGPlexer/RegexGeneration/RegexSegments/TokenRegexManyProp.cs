@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
@@ -9,14 +7,11 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public record TokenRegexManyProp : CaptureGroupPropBase
 {
-    public Type BaseType { get; set; }
-
-    static string[] _ordinalNameAppendices = Enum.GetValues<ManyItemOrdinal>().Select(x => x.Description()).ToArray();
-    ManyItemVariant _manyItemType;
-    string[] _manyItemNames;
+    CaptureTypeVariant _manyItemType;
     CaptureGroupPropBase[] _ordinalRegexProps = new CaptureGroupPropBase[3];
     static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
+    public Type BaseType { get; set; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
     public TokenRegexManyProp(RegexPropInfo captureProp) : base(captureProp)
@@ -24,26 +19,14 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         // RegexPropInfo capture prop is a ManyOf<T> prop here
 
         BaseType = captureProp.BaseType;
-        _manyItemNames = _ordinalNameAppendices.Select(x => $"{captureProp.Name}{x}").ToArray();
 
         var derivedPropFirst = captureProp.DerviveForManyOfItem(ManyItemOrdinal.First);
         var derivedPropSecond = captureProp.DerviveForManyOfItem(ManyItemOrdinal.SecondPlus);
         var derivedPropLast = captureProp.DerviveForManyOfItem(ManyItemOrdinal.Last);
 
-        if (BaseType.IsAssignableTo(typeof(TokenUnitOneOf)))
+        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {
-            _manyItemType = ManyItemVariant.TokenUnit;
-
-            _ordinalRegexProps =
-            [
-                new TokenRegexOneOfProp(derivedPropFirst),
-                new TokenRegexOneOfProp(derivedPropSecond),
-                new TokenRegexOneOfProp(derivedPropLast),
-            ];
-        }
-        else if (BaseType.IsAssignableTo(typeof(TokenUnit)))
-        {
-            _manyItemType = ManyItemVariant.TokenUnit;
+            _manyItemType = CaptureTypeVariant.TokenUnit;
 
             _ordinalRegexProps =
             [
@@ -54,7 +37,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         }
         else if (BaseType.IsEnum)
         {
-            _manyItemType = ManyItemVariant.Enum;
+            _manyItemType = CaptureTypeVariant.Enum;
 
             _ordinalRegexProps =
             [
@@ -100,12 +83,15 @@ public record TokenRegexManyProp : CaptureGroupPropBase
             var manyItemOrdinal = (ManyItemOrdinal)i;
             var ordinalCaptures = token.Match.GetCapturesAtRelativePath(ordinalProp).ToList();
 
+            // Ordinal "first" will always have 1 item,
+            // "second" will have any number of items,
+            // and "last" will have 0 or 1 item.
             for (int j = 0; j < ordinalCaptures.Count; j++)
             {
                 var ordinalCapture = ordinalCaptures[j];
                 object childItem = null;
 
-                if (_manyItemType == ManyItemVariant.Enum)
+                if (_manyItemType == CaptureTypeVariant.Enum)
                 {
                     foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[BaseType].EnumAlternates)
                     {
@@ -119,7 +105,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                     if (childItem == null)
                         throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{ordinalCapture.Value}'");
                 }
-                else if (_manyItemType == ManyItemVariant.TokenUnit)
+                else if (_manyItemType == CaptureTypeVariant.TokenUnit)
                 {
                     CaptureGroupPropPath capturePath = token.Match.CapturePath.Append(RegexPropInfo.Name, ordinalProp.Name);
                     TokenUnitMatch typeMatch = new(BaseType, token.Match.RegexMatch, token.Match.SourceText, capturePath, j);

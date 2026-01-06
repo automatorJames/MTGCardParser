@@ -4,7 +4,6 @@ public record RegexPropInfo
 {
     public PropertyInfo Prop { get; init; }
     public RegexPropType RegexPropType { get; init; }
-    public bool IsManyOfProp { get; init; }
     public Type BaseType { get; init; }
     public Type UnderlyingType { get; init; }
     public string FriendlyTypeName { get; init; }
@@ -12,14 +11,13 @@ public record RegexPropInfo
     public bool IsTerminal { get; init; }
     public bool MayBeNull { get; init; }
     public string Name { get; init; }
-    public ManyItemOrdinal? ManyItemOrdinal { get; init; }
 
     /// <summary>
     /// If not null, any recursive descendants of this RegexPropInfo will inherit this
     /// appendix, which may grow as the descendancy tree grows. Used for scenarios like
     /// ManyOf items, which must pass their distinguishing ordinal name down to all children
     /// </summary>
-    public string ManyOfItemDistinguisher { get; init; }
+    public string ItemDistinguisher { get; init; }
 
     private RegexPropInfo()
     {
@@ -29,7 +27,7 @@ public record RegexPropInfo
     {
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
-        (RegexPropType, IsManyOfProp, BaseType) = GetCapturePropType(prop);
+        (RegexPropType, BaseType) = GetCapturePropType(prop);
         UnderlyingType = nullableType ?? prop.PropertyType;
         Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
@@ -40,8 +38,8 @@ public record RegexPropInfo
 
     public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
     {
-        if (!IsManyOfProp)
-            throw new Exception($"May only derive for a {nameof(RegexPropInfo)} ManyOf item instance if {nameof(IsManyOfProp)} is true");
+        if (RegexPropType != RegexPropType.ManyOf)
+            throw new Exception($"May only be derived from a ManyOf RegexPropInfo");
 
         var derivedManyOfPropInfo = new RegexPropInfo
         {
@@ -53,10 +51,8 @@ public record RegexPropInfo
             FriendlyPropName = FriendlyPropName,
             IsTerminal = IsTerminal,
             MayBeNull = MayBeNull,
-            IsManyOfProp = false, // "IsManyOfProp" only refers to the parent ManyOf, not the items it contains
             Name = manyItemOrdinal.ToString(),
-            ManyOfItemDistinguisher = manyItemOrdinal.ToString(),
-            ManyItemOrdinal = manyItemOrdinal
+            ItemDistinguisher = manyItemOrdinal.ToString(),
         };
 
         return derivedManyOfPropInfo;
@@ -64,8 +60,8 @@ public record RegexPropInfo
 
     public RegexPropInfo DerviveForManyOfConjunction()
     {
-        if (!IsManyOfProp)
-            throw new Exception($"May only derive for a {nameof(RegexPropInfo)} ManyOf {nameof(ManyOf.Conjunction)} if {nameof(IsManyOfProp)} is true");
+        if (RegexPropType != RegexPropType.ManyOf)
+            throw new Exception($"May only be derived from a ManyOf RegexPropInfo");
 
         var derivedManyOfPropInfo = new RegexPropInfo
         {
@@ -77,48 +73,54 @@ public record RegexPropInfo
             FriendlyPropName = nameof(Conjunction).ToFriendlyCase(),
             IsTerminal = true,
             MayBeNull = true,
-            IsManyOfProp = false,
             Name = nameof(Conjunction)
         };
 
         return derivedManyOfPropInfo;
     }
 
-
-    static (RegexPropType, bool, Type) GetCapturePropType(PropertyInfo prop)
+    public RegexPropInfo DerviveForCompoundOfItem()
     {
-        Type type = prop.PropertyType;
-        bool isArray = false;
+        if (RegexPropType != RegexPropType.CompoundOf)
+            throw new Exception($"May only be derived from a CompoundOf RegexPropInfo");
 
-        if (type.IsArray)
+        var derivedManyOfPropInfo = new RegexPropInfo
         {
-            isArray = true;
-            type = type.GetElementType()!;
-        }
-        else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ManyOf<>))
-        {
-            isArray = true;
-            type = type.GetGenericArguments()[0];
-        }
+            Prop = Prop,
+            RegexPropType = BaseType.GetRegexPropType(),
+            BaseType = BaseType,
+            UnderlyingType = UnderlyingType,
+            FriendlyTypeName = FriendlyTypeName,
+            FriendlyPropName = FriendlyPropName,
+            IsTerminal = IsTerminal,
+            MayBeNull = MayBeNull,
+            Name = Prop.Name
+        };
 
-        type = Nullable.GetUnderlyingType(type) ?? type;
+        return derivedManyOfPropInfo;
+    }
 
+
+    static (RegexPropType, Type) GetCapturePropType(PropertyInfo prop)
+    {
+        var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
         RegexPropType regexPropType;
 
-        if (isArray)
-            regexPropType = RegexPropType.ManyOf;
-        else if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
+        if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
             regexPropType = RegexPropType.DistilledValue;
         else
             regexPropType = type.GetRegexPropType();
 
-        return (regexPropType, isArray, type);
+        return (regexPropType, type);
     }
 
     string GetFriendlyTypeName()
     {
-        if (IsManyOfProp)
+        if (RegexPropType != RegexPropType.ManyOf)
             return "many of";
+
+        if (RegexPropType != RegexPropType.CompoundOf)
+            return "compound of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
 
@@ -146,11 +148,8 @@ public record RegexPropInfo
         return BaseType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
-    public CaptureGroupPropBase GetCaptureGroupPropBase(bool forceGetUnderlyingPropType = false)
+    public CaptureGroupPropBase GetCaptureGroupPropBase()
     {
-        if (IsManyOfProp && !forceGetUnderlyingPropType)
-            return new TokenRegexManyProp(this);
-
         return RegexPropType switch
         {
             RegexPropType.TokenUnit => new TokenRegexProp(this),
@@ -159,6 +158,8 @@ public record RegexPropInfo
             RegexPropType.Bool => new BoolRegexProp(this),
             RegexPropType.Placeholder => new PlaceholderRegexProp(this),
             RegexPropType.Dynamic => new DynamicRegexProp(this),
+            RegexPropType.ManyOf => new TokenRegexManyProp(this),
+            RegexPropType.CompoundOf => new TokenRegexCompoundProp(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
     }

@@ -34,5 +34,7 @@ public enum RegexPropType
     ManyOf,
     ManyOfItem,
     ManyOfConjunction,
+    CompoundOf,
+    CompoundOfItem,
 }
 

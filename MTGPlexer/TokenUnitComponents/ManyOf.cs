@@ -11,7 +11,7 @@ public class ManyOf<T> : ManyOf
         Conjunction = conjunction;
         ConjunctionCapture = conjunctionCapture;
         ItemType = typeof(T);
-        ManyItemVariant = GetManyItemVariant(typeof(T));
+        ManyItemVariant = typeof(T).ToCaptureTypeVariant();
     }
 
     public override string ToString() => base.ToString();
@@ -32,7 +32,7 @@ public class ManyOf : IEquatable<ManyOf>
 {
     public Guid DistinctId { get; } = Guid.NewGuid();
     public List<ManyItemCapture> ItemObjects { get; set; }
-    public ManyItemVariant ManyItemVariant { get; set; }
+    public CaptureTypeVariant ManyItemVariant { get; set; }
     public Type ItemType { get; set; }
     public Conjunction? Conjunction { get; set; }
     public Capture ConjunctionCapture { get; set; }
@@ -47,33 +47,6 @@ public class ManyOf : IEquatable<ManyOf>
         };
 
         return string.Join(separator, ItemObjects.Select(x => x.ToString()));
-    }
-
-    /// <summary>
-    /// Used for GUI display purposes. Returns a space-separated path to each terminal value
-    /// (first, secondPlus, last, and conjunction).
-    /// </summary>
-    public string GetJoinedPathForAllTerminals(CaptureGroupPropPath parentPath)
-    {
-        string stringPath = "";
-
-        stringPath += string.Join(' ', ItemObjects.Select(x =>
-            parentPath.PropPathRelativeToRoot
-            + "."
-            + parentPath.LeafName + x.Oridinal.Description()
-            + "."
-            + x.ItemObject.ToString()));
-
-        if (Conjunction.HasValue)
-            stringPath += 
-                " " 
-                + parentPath.PropPathRelativeToRoot 
-                + "." 
-                + nameof(Conjunction) 
-                + "." 
-                + Conjunction.ToString();
-
-        return stringPath;
     }
 
     public override bool Equals(object obj)
@@ -104,11 +77,6 @@ public class ManyOf : IEquatable<ManyOf>
             return hashCode;
         }
     }
-
-    public static ManyItemVariant GetManyItemVariant(Type type) =>
-        type.IsAssignableTo(typeof(TokenUnit)) ? ManyItemVariant.TokenUnit
-        : type.IsEnum ? ManyItemVariant.Enum
-        : throw new Exception($"{nameof(ManyOf)} item type must either be TokenUnit or Enum");
 }
 
 public enum ManyItemOrdinal
@@ -116,13 +84,6 @@ public enum ManyItemOrdinal
     First,
     SecondPlus,
     Last
-}
-
-
-public enum ManyItemVariant
-{
-    TokenUnit,
-    Enum
 }
 
 public enum Conjunction

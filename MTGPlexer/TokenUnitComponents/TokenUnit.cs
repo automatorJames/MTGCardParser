@@ -122,12 +122,12 @@ public abstract class TokenUnit
                 if (representativeManyItemAtOrdinal == null)
                     continue;
 
-                if (manyOf.ManyItemVariant == ManyItemVariant.Enum)
+                if (manyOf.ManyItemVariant == CaptureTypeVariant.Enum)
                 {
                     var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, representativeManyItemAtOrdinal);
                     terminalCaptures.Add(derivedPropCapture);
                 }
-                else if (manyOf.ManyItemVariant == ManyItemVariant.TokenUnit)
+                else if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit)
                 {
                     var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, representativeManyItemAtOrdinal);
                     var manyOfItemTokenUnit = (TokenUnit)representativeManyItemAtOrdinal.ItemObject;

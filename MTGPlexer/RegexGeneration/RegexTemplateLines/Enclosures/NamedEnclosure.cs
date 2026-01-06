@@ -27,7 +27,7 @@ public record NamedEnclosure : Enclosure
     }
 
     static GroupBorderTreatment GetTreatment(RegexPropInfo regexPropInfo) => 
-        regexPropInfo.RegexPropType == RegexPropType.Enum && !regexPropInfo.IsManyOfProp
+        regexPropInfo.RegexPropType == RegexPropType.Enum && regexPropInfo.RegexPropType != RegexPropType.ManyOf
             ? GroupBorderTreatment.ClosedBox
             : GroupBorderTreatment.DashedBox;
 }

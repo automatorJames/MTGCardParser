@@ -55,7 +55,7 @@ public record IndexedPropertyCapture
     /// </summary>
     public IndexedPropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
-        var terminalValueOrTypeName = capture.ManyItemVariant == ManyItemVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var terminalValueOrTypeName = capture.ManyItemVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
         var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, capture.Oridinal.ToString(), terminalValueOrTypeName);
 
         return new IndexedPropertyCapture

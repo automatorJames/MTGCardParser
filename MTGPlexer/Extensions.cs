@@ -139,6 +139,8 @@ public static class Extensions
         type switch
         {
             { IsEnum: true } => RegexPropType.Enum,
+            { } t when t.IsAssignableTo(typeof(ManyOf)) => RegexPropType.ManyOf,
+            { } t when t.IsAssignableTo(typeof(CompoundOf)) => RegexPropType.CompoundOf,
             { } t when t == typeof(PlaceholderCapture) => RegexPropType.Placeholder,
             { } t when t.IsAssignableTo(typeof(DynamicCapture)) => RegexPropType.Dynamic,
             { } t when t == typeof(bool) => RegexPropType.Bool,
@@ -283,6 +285,11 @@ public static class Extensions
         // This now correctly returns List<string> because g.Name is a string.
         return sortedGroups.Select(g => g.Name).ToList();
     }
+
+    public static CaptureTypeVariant ToCaptureTypeVariant(this Type type) =>
+        type.IsAssignableTo(typeof(TokenUnit)) ? CaptureTypeVariant.TokenUnit
+        : type.IsEnum ? CaptureTypeVariant.Enum
+        : throw new Exception($"{nameof(CompoundOf)} item type must either be TokenUnit or Enum");
 
     public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
 }
