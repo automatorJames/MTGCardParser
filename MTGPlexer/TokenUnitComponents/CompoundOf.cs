@@ -4,7 +4,7 @@ public class CompoundOf<T> : CompoundOf
 {
     public CompoundItemCapture<T>[] Items { get; set; }
 
-    public CompoundOf(IEnumerable<CompoundItemCapture<T>> items, Capture compoundCapture)
+    public CompoundOf(IEnumerable<CompoundItemCapture<T>> items)
     {
         Items = items.ToArray();
         ItemObjects = Items.Cast<CompoundItemCapture>().ToList();
@@ -32,7 +32,6 @@ public class CompoundOf : IEquatable<CompoundOf>
     public List<CompoundItemCapture> ItemObjects { get; set; }
     public CaptureTypeVariant CaptureTypeVariant { get; set; }
     public Type ItemType { get; set; }
-    public Capture ConjunctionCapture { get; set; }
 
     public override string ToString() => string.Join(", ", ItemObjects.Select(x => x.ToString()));
 

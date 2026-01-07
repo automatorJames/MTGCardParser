@@ -82,16 +82,16 @@ public class RegexTemplate
     {
         static bool IsTarget(Type t)
         {
-            var u = Nullable.GetUnderlyingType(t) ?? t;
+            var underlyingType = Nullable.GetUnderlyingType(t) ?? t;
 
-            if (u.IsGenericType && u.GetGenericTypeDefinition() == typeof(ManyOf<>))
-                u = u.GetGenericArguments()[0];
+            if (underlyingType.IsGenericType && (underlyingType.GetGenericTypeDefinition() == typeof(ManyOf<>) || underlyingType.GetGenericTypeDefinition() == typeof(CompoundOf<>)))
+                underlyingType = underlyingType.GetGenericArguments()[0];
 
-            return u.IsEnum
-                || u == typeof(bool)
-                || u == typeof(PlaceholderCapture)
-                || u.IsAssignableTo(typeof(DynamicCapture))
-                || typeof(TokenUnit).IsAssignableFrom(u);
+            return underlyingType.IsEnum
+                || underlyingType == typeof(bool)
+                || underlyingType == typeof(PlaceholderCapture)
+                || underlyingType.IsAssignableTo(typeof(DynamicCapture))
+                || typeof(TokenUnit).IsAssignableFrom(underlyingType);
         }
 
         return _containingType

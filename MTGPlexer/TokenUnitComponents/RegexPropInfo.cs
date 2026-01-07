@@ -111,6 +111,9 @@ public record RegexPropInfo
         else
             regexPropType = type.GetRegexPropType();
 
+        if (regexPropType == RegexPropType.ManyOf || regexPropType == RegexPropType.CompoundOf)
+            type = type.GetGenericArguments()[0];
+
         return (regexPropType, type);
     }
 
@@ -152,14 +155,14 @@ public record RegexPropInfo
     {
         return RegexPropType switch
         {
+            RegexPropType.ManyOf => new TokenRegexManyProp(this),
+            RegexPropType.CompoundOf => new TokenRegexCompoundProp(this),
             RegexPropType.TokenUnit => new TokenRegexProp(this),
             RegexPropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
             RegexPropType.Enum => new EnumRegexProp(this),
             RegexPropType.Bool => new BoolRegexProp(this),
             RegexPropType.Placeholder => new PlaceholderRegexProp(this),
             RegexPropType.Dynamic => new DynamicRegexProp(this),
-            RegexPropType.ManyOf => new TokenRegexManyProp(this),
-            RegexPropType.CompoundOf => new TokenRegexCompoundProp(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
     }

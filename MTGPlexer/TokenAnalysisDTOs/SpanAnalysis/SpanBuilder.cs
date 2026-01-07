@@ -39,6 +39,7 @@ public static class SpanBuilder
             TokenUnitDistilled val => BuildDistilledBranch(val, prop, ctx),
             TokenUnit val => BuildTokenUnitBranch(val, prop, ctx),
             ManyOf val => BuildManyOfBranch(val, prop, ctx),
+            CompoundOf val => BuildCompoundOfBranch(val, prop, ctx),
             DynamicCapture val => BuildDynamicBranch(val, prop, ctx),
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
@@ -119,6 +120,34 @@ public static class SpanBuilder
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.ManyOfBranch, children, ctx);
     }
+
+    private static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, IndexedPropertyCapture prop, SpanContext ctx)
+    {
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var childCtx = ctx.ClearNameChain();
+        var children = new List<SpanNode>();
+
+        for (int i = 0; i < compoundOf.ItemObjects.Count; i++)
+        {
+            var item = compoundOf.ItemObjects[i];
+            var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
+            var itemLabel = $"#{i + 1}";
+
+            if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.TokenUnit && item.ItemObject is TokenUnit tu)
+            {
+                var itemCtx = childCtx.PushName(itemLabel);
+                var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);
+                children.Add(CreateBranch(item.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
+            }
+            else
+            {
+                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.ItemObject.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.CompoundOfItemLeaf));
+            }
+        }
+
+        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.CompoundOfBranch, children, ctx);
+    }
+
 
     private static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, IndexedPropertyCapture prop, SpanContext ctx)
     {
@@ -213,6 +242,8 @@ public enum TokenAnalysisElementType
     OneOfItemBranch,
     ManyOfBranch, // Overall ManyOf container, parent to Conjunction & items
     ManyOfItemBranch,
+    CompoundOfBranch, // Overall CompoundOf container, parent to items
+    CompoundOfItemBranch,
     DynamicCaptureBranch,
     DynamicCaptureItemBranch,
 
@@ -220,6 +251,7 @@ public enum TokenAnalysisElementType
     BoolLeaf,
     OneOfItemLeaf,
     ManyOfItemLeaf,
+    CompoundOfItemLeaf,
     PlaceholderLeaf,
     PlaceholderPrecursorLeaf,
     DynamicCaptureItemLeaf,
