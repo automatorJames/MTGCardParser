@@ -41,7 +41,9 @@ public record TokenUnitCapture
     {
         foreach (var tokenUnit in rootTokensUnitsOfType)
         {
-            foreach (var capture in tokenUnit.GetFlattenedTerminalCaptures())
+            var flattenedTerminalCaptures = tokenUnit.GetFlattenedTerminalCaptures();
+
+            foreach (var capture in flattenedTerminalCaptures)
             {
                 var parentPropPath = capture.CaptureGroupPropPath.Parent
                     ?? throw new Exception($"The path {capture.CaptureGroupPropPath?.PropPath} has no parent, but one was expected");

@@ -20,7 +20,7 @@ public record ManyItemCapture
     public RegexPropInfo RegexPropInfo { get; }
     public Type ItemType { get; }
     public object ItemObject { get; }
-    public CaptureTypeVariant ManyItemVariant { get; }
+    public CaptureTypeVariant CaptureItemVariant { get; }
 
     public ManyItemCapture(Capture capture, int captureIndex, Type type, object itemAsObject, ManyItemOrdinal ordinal, RegexPropInfo propInfo)
     {
@@ -29,10 +29,10 @@ public record ManyItemCapture
         RegexPropInfo = propInfo;
         ItemType = type;
         ItemObject = itemAsObject;
-        ManyItemVariant = type.ToCaptureTypeVariant();
+        CaptureItemVariant = type.ToCaptureTypeVariant();
     }
 
-    public override string ToString() => ManyItemVariant == CaptureTypeVariant.Enum ?
+    public override string ToString() => CaptureItemVariant == CaptureTypeVariant.Enum ?
         ItemObject.ToString()
         : ItemType.Name;
 }

@@ -64,11 +64,15 @@ function handleMouseOut(event: MouseEvent): void {
 }
 
 /**
- * Removes all highlight and lowlight attributes from elements within a card.
+ * Removes all highlight and lowlight attributes and classes from elements within a card.
  */
 function clearAllTreatments(card: HTMLElement): void {
+    // Remove attributes from spans and property cards
     card.querySelectorAll('[highlight-active]').forEach(el => el.removeAttribute('highlight-active'));
     card.querySelectorAll('[lowlight-active]').forEach(el => el.removeAttribute('lowlight-active'));
+
+    // Remove the highlight class from the regex container
+    card.querySelector('.formatted-regex-fira')?.classList.remove('highlight-active');
 }
 
 /**
@@ -104,7 +108,18 @@ function getAllActivePaths(pathsString: string | null): Set<string> {
 function applyTreatments(card: HTMLElement, activePaths: Set<string>): void {
     const isAnyHighlighted = activePaths.size > 0;
 
-    // --- Regex Section ---
+    // --- Regex Container Section ---
+    // Toggle the "highlight-active" CLASS on the pre element
+    const regexContainer = card.querySelector('.formatted-regex-fira');
+    if (regexContainer) {
+        if (isAnyHighlighted) {
+            regexContainer.classList.add('highlight-active');
+        } else {
+            regexContainer.classList.remove('highlight-active');
+        }
+    }
+
+    // --- Regex Spans Section ---
     const regexSpans = card.querySelectorAll<HTMLElement>('pre.formatted-regex-fira code span');
     regexSpans.forEach(span => {
         const spanPaths = (span.dataset.paths ?? span.dataset.path ?? '').split(' ');

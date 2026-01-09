@@ -20,7 +20,7 @@ public class TextLine : RegexElement, IRegexContent
         && !TextValue.EndsWith(@"\?"); // literal question mark
 
     public TextLine(Enclosure[] enclosures, string value)
-        : base(enclosures, value.Replace(" ", "[ ]"), comment: "literal match")
+        : base(enclosures, value.Replace(" ", "[ ]"), comment: $"{(value.EndsWith("?") ? "optional " : "")}literal match")
     {
         if (string.IsNullOrEmpty(value))
             throw new ArgumentNullException(nameof(value));

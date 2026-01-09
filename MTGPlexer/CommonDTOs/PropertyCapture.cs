@@ -35,7 +35,7 @@ public record PropertyCapture
     /// </summary>
     public PropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
-        var terminalValueOrTypeName = capture.ManyItemVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var terminalValueOrTypeName = capture.CaptureItemVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
         var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, capture.Oridinal.ToString(), terminalValueOrTypeName);
 
         return new PropertyCapture
@@ -58,6 +58,20 @@ public record PropertyCapture
             Capture = manyOf.ConjunctionCapture,
             Value = manyOf.Conjunction,
             CaptureGroupPropPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, nameof(ManyOf.Conjunction), manyOf.Conjunction.ToString())
+        };
+    }
+
+    public PropertyCapture DeriveForCompoundOfItem(CompoundOf compoundOf, CompoundItemCapture capture)
+    {
+        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, RegexPropInfo.Prop.Name, terminalValueOrTypeName);
+
+        return new PropertyCapture
+        {
+            RegexPropInfo = capture.RegexPropInfo,
+            Capture = capture.Capture,
+            Value = capture.ItemObject,
+            CaptureGroupPropPath = newPath
         };
     }
 

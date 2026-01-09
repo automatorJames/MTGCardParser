@@ -96,6 +96,7 @@ public abstract class TokenUnit
 
         ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
         terminalCaptures.AddRange(FlattenManyOfCaptures());
+        terminalCaptures.AddRange(FlattenCompoundOfCaptures());
 
         return terminalCaptures;
     }
@@ -143,6 +144,35 @@ public abstract class TokenUnit
             {
                 var derivedPropCapture = manyOfPropCap.DeriveForManyOfConjunction(manyOf);
                 terminalCaptures.Add(derivedPropCapture);
+            }
+        }
+
+        return terminalCaptures;
+    }
+
+    public List<PropertyCapture> FlattenCompoundOfCaptures()
+    {
+        List<PropertyCapture> terminalCaptures = [];
+
+        var compoundOfPropCaps = IndexedPropertyCaptures
+            .Where(x => x.Value is CompoundOf compoundOf)
+            .ToList();
+
+        foreach (var compoundOfPropCap in compoundOfPropCaps)
+        {
+            var compoundOf = (CompoundOf)compoundOfPropCap.Value;
+
+            foreach (var compoundOfItem in compoundOf.ItemObjects)
+            {
+                var derivedPropCapture = compoundOfPropCap.DeriveForCompoundOfItem(compoundOf, compoundOfItem);
+
+                if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.Enum)
+                    terminalCaptures.Add(derivedPropCapture);
+                else if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.TokenUnit)
+                {
+                    var compoundOfTokenUnit = (TokenUnit)compoundOfItem.ItemObject;
+                    terminalCaptures.AddRange(compoundOfTokenUnit.GetFlattenedTerminalCaptures());
+                }
             }
         }
 

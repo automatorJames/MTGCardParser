@@ -6,6 +6,14 @@
     white-space: pre;
 }
 
+    .formatted-regex-fira.highlight-active {
+        background-color: var(--near-black);
+    }
+
+    .formatted-regex-fira:hover {
+        background-color: var(--near-black);
+    }
+
 pre {
     background-color: var(--dark-grey);
     padding: 1rem;
