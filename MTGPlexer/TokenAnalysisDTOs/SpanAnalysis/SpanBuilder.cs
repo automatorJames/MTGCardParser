@@ -31,7 +31,7 @@ public static class SpanBuilder
         };
     }
 
-    private static SpanNode BuildNode(IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildNode(PropertyCapture prop, SpanContext ctx)
     {
         return prop.Value switch
         {
@@ -51,14 +51,14 @@ public static class SpanBuilder
         };
     }
 
-    private static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var children = tokenUnit.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    private static SpanNode BuildOneOfBranch(TokenUnitOneOf tokenUnitOneOf, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var inner = tokenUnitOneOf.IndexedPropertyCaptures.Single();
@@ -66,7 +66,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
     }
 
-    private static SpanNode BuildDynamicBranch(DynamicCapture dynamicCapture, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildDynamicBranch(DynamicCapture dynamicCapture, PropertyCapture prop, SpanContext ctx)
     {
         // 1. Prepare context for child: Clear inherited prefixes, but push the Type as a Suffix
         // This ensures when the child calls FormatName("Action"), it gets "Action: Specific Action"
@@ -87,7 +87,7 @@ public static class SpanBuilder
                             new List<SpanNode> { innerNode }, ctx, forceCollapse: true);
     }
 
-    private static SpanNode BuildManyOfBranch(ManyOf manyOf, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -121,7 +121,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.ManyOfBranch, children, ctx);
     }
 
-    private static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -149,7 +149,7 @@ public static class SpanBuilder
     }
 
 
-    private static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, IndexedPropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -212,7 +212,7 @@ public static class SpanBuilder
         };
     }
 
-    private static SpanLeaf BuildLeaf(IndexedPropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
+    private static SpanLeaf BuildLeaf(PropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
         BuildLeaf(prop.Capture, prop.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence), prop.CaptureGroupPropPath, ctx, val, typeName, type);
 
     private static SpanLeaf BuildLeaf(Capture cap, string name, CaptureGroupPropPath path, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type)

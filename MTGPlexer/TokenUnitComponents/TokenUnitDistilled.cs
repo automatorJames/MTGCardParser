@@ -12,7 +12,7 @@ public abstract class TokenUnitDistilled : TokenUnit
     /// Dictionary to aid in capture analysis. Similar to the PropDistillationMap dictionary, except 
     /// holds concrete distilled values for each PlaceholderCapture on this instance.
     /// </summary>
-    public Dictionary<IndexedPropertyCapture, Dictionary<RegexPropInfo, object>> DistilledVals{ get; private set; } = [];
+    public Dictionary<PropertyCapture, Dictionary<RegexPropInfo, object>> DistilledVals{ get; private set; } = [];
 
     public abstract void DistillValuesFromPlaceholders();
 

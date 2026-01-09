@@ -7,10 +7,10 @@ public abstract class TokenUnitOneOf : TokenUnit
     /// this instance's canddiate values. As an analytical precaution, an exception is thrown if not exactly
     /// one non-null IndexedPropertyCapture is found.
     /// </summary>
-    public IndexedPropertyCapture GetIndexedPropertyCaptureSingle()
+    public PropertyCapture GetIndexedPropertyCaptureSingle()
     {
         if (IndexedPropertyCaptures.Count != 1)
-            throw new Exception($"Expected a single {nameof(IndexedPropertyCapture)}, but found {IndexedPropertyCaptures.Count}");
+            throw new Exception($"Expected a single {nameof(PropertyCapture)}, but found {IndexedPropertyCaptures.Count}");
 
         return IndexedPropertyCaptures.First();
     }

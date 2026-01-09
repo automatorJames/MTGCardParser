@@ -4,18 +4,18 @@
 /// Represents a property capture from a token, enriched with a stable index
 /// for consistent processing (e.g., coloring) and ordered by position.
 /// </summary>
-public record IndexedPropertyCapture
+public record PropertyCapture
 {
     public RegexPropInfo RegexPropInfo { get; private set; }
     public Capture Capture { get; private set; }
     public object Value { get; private set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }
 
-    public IndexedPropertyCapture()
+    public PropertyCapture()
     {
     }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, CaptureGroupPropPath parentTokenPath)
+    public PropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, CaptureGroupPropPath parentTokenPath)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;
@@ -33,12 +33,12 @@ public record IndexedPropertyCapture
     /// an IndexedPropertyCapture but one does not exist because the capture was delegated to a ManyOf item, which performs a
     /// second-pass match to derive its items. The RegexPropInfo element doesn't represent a ManyOf item directly, but rather its parent property.
     /// </summary>
-    public IndexedPropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
+    public PropertyCapture DeriveForManyOfItem(ManyOf manyOf, ManyItemCapture capture)
     {
         var terminalValueOrTypeName = capture.ManyItemVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
         var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, capture.Oridinal.ToString(), terminalValueOrTypeName);
 
-        return new IndexedPropertyCapture
+        return new PropertyCapture
         {
             RegexPropInfo = capture.RegexPropInfo,
             Capture = capture.Capture,
@@ -47,12 +47,12 @@ public record IndexedPropertyCapture
         };
     }
 
-    public IndexedPropertyCapture DeriveForManyOfConjunction(ManyOf manyOf)
+    public PropertyCapture DeriveForManyOfConjunction(ManyOf manyOf)
     {
         if (manyOf.Conjunction == null)
             return null;
 
-        return new IndexedPropertyCapture
+        return new PropertyCapture
         {
             RegexPropInfo = RegexPropInfo.DerviveForManyOfConjunction(),
             Capture = manyOf.ConjunctionCapture,

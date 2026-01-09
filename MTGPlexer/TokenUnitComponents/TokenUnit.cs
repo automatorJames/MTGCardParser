@@ -24,7 +24,7 @@ public abstract class TokenUnit
     /// A pre-processed and ordered list of all property captures for this token.
     /// This is the preferred way to iterate over captures for rendering or processing.
     /// </summary>
-    public List<IndexedPropertyCapture> IndexedPropertyCaptures { get; set; } = [];
+    public List<PropertyCapture> IndexedPropertyCaptures { get; set; } = [];
 
     public string[] GetSnippets() => Snippets;
 
@@ -80,7 +80,7 @@ public abstract class TokenUnit
     public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
-        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, Match.CapturePath);
+        PropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, Match.CapturePath);
         IndexedPropertyCaptures.Add(indexedPropertyCapture);
     }
 
@@ -88,7 +88,7 @@ public abstract class TokenUnit
     /// Returns a list of this TokenUnit's IndexedPropertyCaptures where RegexPropInfo.IsTerminal, and
     /// recursively gathers terminal captures from all TokenUnit children.
     /// </summary>
-    public List<IndexedPropertyCapture> GetFlattenedTerminalCaptures()
+    public List<PropertyCapture> GetFlattenedTerminalCaptures()
     {
         var terminalCaptures = IndexedPropertyCaptures
             .Where(x => x.RegexPropInfo.IsTerminal)
@@ -104,9 +104,9 @@ public abstract class TokenUnit
     /// Recursively processes all ManyOf props into terminals (ManyItemVariant.Enum). Also returns 
     /// the ManyOf.Conjunction value, if any, for both ManyItemVariant.Enum and ManyItemVariant.TokenUnit.
     /// </summary>
-    public List<IndexedPropertyCapture> FlattenManyOfCaptures()
+    public List<PropertyCapture> FlattenManyOfCaptures()
     {
-        List<IndexedPropertyCapture> terminalCaptures = [];
+        List<PropertyCapture> terminalCaptures = [];
 
         var manyOfPropCaps = IndexedPropertyCaptures
             .Where(x => x.Value is ManyOf manyOf)
