@@ -69,19 +69,17 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         builder.CloseGroup();
     }
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
         var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(BaseType);
         var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
-        var parentManyOfGroup = token.Match.RegexMatch.Groups[Name];
-
         for (int i = 0; i < _ordinalRegexProps.Length; i++)
         {
             var ordinalProp = _ordinalRegexProps[i];
             var manyItemOrdinal = (ManyItemOrdinal)i;
-            var ordinalCaptures = token.Match.GetCapturesAtRelativePath(ordinalProp).ToList();
+            var ordinalCaptures = namedGroup.Captures;
 
             // Ordinal "first" will always have 1 item,
             // "second" will have any number of items,
@@ -107,8 +105,8 @@ public record TokenRegexManyProp : CaptureGroupPropBase
                 }
                 else if (_manyItemType == CaptureTypeVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath capturePath = token.Match.CapturePath.Append(RegexPropInfo.Name, ordinalProp.Name);
-                    TokenUnitMatch typeMatch = new(BaseType, token.Match.RegexMatch, token.Match.SourceText, capturePath, j);
+                    CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(RegexPropInfo.Name, ordinalProp.Name);
+                    TokenUnitMatch typeMatch = new(BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;
                 }
@@ -118,7 +116,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
             }
         }
 
-        var conjunctionCapture = token.Match.GetCaptureAtRelativePath(nameof(Conjunction));
+        var conjunctionCapture = parentTokenUnit.Match[nameof(Conjunction)];
 
         Conjunction? conjunctionValue = conjunctionCapture == null ? null
             : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 
@@ -126,9 +124,8 @@ public record TokenRegexManyProp : CaptureGroupPropBase
 
         var manyTokenType = typeof(ManyOf<>).MakeGenericType(BaseType);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
-        token.SetPropertyFromCapture(RegexPropInfo, parentManyOfGroup, manyPropVal);
 
-        return true;
+        return manyPropVal;
     }
 
 

@@ -33,7 +33,7 @@ public class CompoundOf : IEquatable<CompoundOf>
     public CaptureTypeVariant CaptureTypeVariant { get; set; }
     public Type ItemType { get; set; }
 
-    public override string ToString() => string.Join(", ", ItemObjects.Select(x => x.ToString()));
+    public override string ToString() => string.Join(" ", ItemObjects.Select(x => x.ToString()));
 
     public override bool Equals(object obj)
     {

@@ -33,7 +33,8 @@ public class RegexElement
         UniquePath = string.Join('.', enclosures.Select(x => x.Ordinal));
         var namedPathParts = enclosures.OfType<RootEnclosure>().Select(x => x.RootTypeName).Concat(enclosures.OfType<NamedEnclosure>().Select(x => x.Name));
         NamedPath = string.Join('.', namedPathParts);
-        NamedPathRelativeToRoot = string.Join(".", namedPathParts.Skip(1));
+        var namedPathPartsRelativeToRoot = namedPathParts.Skip(1);
+        NamedPathRelativeToRoot = string.Join('.', namedPathPartsRelativeToRoot);
         Depth = enclosures.Count();
     }
 

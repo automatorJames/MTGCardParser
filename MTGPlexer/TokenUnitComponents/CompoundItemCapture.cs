@@ -9,6 +9,8 @@ public record CompoundItemCapture<T> : CompoundItemCapture
     {
         Item = item;
     }
+
+    public override string ToString() => base.ToString();
 }
 
 public record CompoundItemCapture

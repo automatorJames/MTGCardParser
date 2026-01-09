@@ -41,22 +41,7 @@ public record EnumRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
-    {
-        var capture = token.Match.GetCaptureAtRelativePath(this);
-
-        if (capture == null)
-            if (!RegexPropInfo.MayBeNull)
-                //throw new Exception($"{RegexPropInfo.Name} is a non-nullable enum, but no match was found");
-                return false;
-            else
-
-                return false;
-
-        var valueToSet = GetEnumMatchValue(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
-        return true;
-    }
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup) => GetEnumMatchValue(namedGroup.Value);
 
     object GetEnumMatchValue(string matchString)
     {

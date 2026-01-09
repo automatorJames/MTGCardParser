@@ -16,7 +16,23 @@ public abstract record CaptureGroupPropBase : RegexSegmentBase
         RegexPropInfo = captureProp;
     }
 
-    public abstract bool SetValueFromNamedGroupInMatch(TokenUnit tokenUnit);
+    public bool TrySetOnParent(TokenUnit parentTokenUnit)
+    {
+        var namedGroup = parentTokenUnit.Match[Name];
+
+        if (namedGroup == null)
+            return false;
+
+        var propValToSet = GetValueToSet(parentTokenUnit, namedGroup);
+
+        // propValToSet may sometimes be null for cases like DynamicRegexProp, which will already have been handled earlier in the flow
+        if (propValToSet != null)
+            parentTokenUnit.SetPropertyFromCapture(RegexPropInfo, namedGroup, propValToSet);
+
+        return true;
+    }
+
+    public abstract object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup);
 
     public override string ToString() => base.ToString();
 

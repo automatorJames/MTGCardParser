@@ -18,14 +18,10 @@ public record BoolRegexProp : ScalarCapturePropBase
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var capture = token.Match.GetCaptureAtRelativePath(this);
-
-        if (capture == null)
-            return false;
-
-        token.SetPropertyFromCapture(RegexPropInfo, capture, true);
+        // This override simply returns "true", because CaptureGroupPropBase already validated
+        // that the named group exists, therefore this bool check succeeds
 
         return true;
     }

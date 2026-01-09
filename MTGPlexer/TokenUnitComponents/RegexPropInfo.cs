@@ -29,11 +29,12 @@ public record RegexPropInfo
         Prop = prop;
         (RegexPropType, BaseType) = GetCapturePropType(prop);
         UnderlyingType = nullableType ?? prop.PropertyType;
-        Name = prop.Name;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
         MayBeNull = nullableType != null;
+        Name = prop.Name;
+        //Name = GetName(Prop, UnderlyingType);
     }
 
     public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
@@ -100,6 +101,16 @@ public record RegexPropInfo
         return derivedManyOfPropInfo;
     }
 
+    static string GetName(PropertyInfo prop, Type underlyingType)
+    {
+        if (underlyingType.IsAssignableTo(typeof(CompoundOf)))
+            return nameof(CompoundOf);
+
+        if (underlyingType.IsAssignableTo(typeof(ManyOf)))
+            return nameof(ManyOf);
+
+        return prop.Name;
+    }
 
     static (RegexPropType, Type) GetCapturePropType(PropertyInfo prop)
     {

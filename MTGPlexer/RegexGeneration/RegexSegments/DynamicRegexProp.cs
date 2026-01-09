@@ -22,13 +22,13 @@ public record DynamicRegexProp : ScalarCapturePropBase
         ScalarAlternativeSet = new(captureAlternatives.ToList());
     }
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
         // Though required to be overridden to fulfill the base contract, this code is never reached 
         // because dynamic captures props are pre-filled by the tokenizer rather than upon instantiation of the
         // parent token.
 
-        return true;
+        return null;
     }
 
     public bool SetValueFromPrefilledDynamicToken(TokenUnit token, object prefilledValue)

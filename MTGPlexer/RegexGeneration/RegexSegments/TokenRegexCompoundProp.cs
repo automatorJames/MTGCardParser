@@ -42,13 +42,13 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
         builder.CloseGroup(GroupQuantifier.OneOrMore);
     }
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
         var compoundItemCaptureType = typeof(CompoundItemCapture<>).MakeGenericType(BaseType);
         var listType = typeof(List<>).MakeGenericType(compoundItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
-        var parentCompoundOfGroup = token.Match.RegexMatch.Groups[Name];
-        var ordinalCaptures = token.Match.GetCapturesAtRelativePath(_regexProp).ToList();
+
+        var ordinalCaptures = namedGroup.Captures;
 
         for (int i = 0; i < ordinalCaptures.Count; i++)
         {
@@ -67,25 +67,27 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
                 }
 
                 if (childItem == null)
-                    throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{ordinalCapture.Value}'");
+                    goto NextIteration;
+                    //throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{ordinalCapture.Value}'");
             }
             else if (_compoundItemType == CaptureTypeVariant.TokenUnit)
             {
-                CaptureGroupPropPath capturePath = token.Match.CapturePath.Append(RegexPropInfo.Name, _regexProp.Name);
-                TokenUnitMatch typeMatch = new(BaseType, token.Match.RegexMatch, token.Match.SourceText, capturePath, i);
+                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(RegexPropInfo.Name, _regexProp.Name);
+                TokenUnitMatch typeMatch = new(BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, i);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                 childItem = tokenUnitChild;
             }
 
             var hydratedItem = Activator.CreateInstance(compoundItemCaptureType, childItem, ordinalCapture, i, RegexPropInfo);
             hydratedItems.Add(hydratedItem);
+
+            NextIteration:;
         }
 
-        var manyTokenType = typeof(CompoundOf<>).MakeGenericType(BaseType);
-        var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems);
-        token.SetPropertyFromCapture(RegexPropInfo, parentCompoundOfGroup, manyPropVal);
+        var compoundType = typeof(CompoundOf<>).MakeGenericType(BaseType);
+        var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
 
-        return true;
+        return compoundPropVal;
     }
 
 

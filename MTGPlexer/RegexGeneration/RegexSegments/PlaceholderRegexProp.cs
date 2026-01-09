@@ -215,11 +215,10 @@ public record PlaceholderRegexProp : ScalarCapturePropBase
     }
 
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var capture = token.Match.GetCaptureAtRelativePath(this);
-        var valueToSet = new PlaceholderCapture(capture.Value);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, valueToSet);
-        return true;
+        var valueToSet = new PlaceholderCapture(namedGroup.Value);
+
+        return valueToSet;
     }
 }

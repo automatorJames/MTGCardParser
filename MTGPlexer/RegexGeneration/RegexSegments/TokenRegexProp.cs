@@ -26,20 +26,14 @@ public record TokenRegexProp : CaptureGroupPropBase
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override bool SetValueFromNamedGroupInMatch(TokenUnit token)
+    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var capture = token.Match.GetCaptureAtRelativePath(this);
-
-        if (capture == null)
-            return false;
-
-        CaptureGroupPropPath ancestorCapturePath = new(token.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, token.Match.RegexMatch, token.Match.SourceText, ancestorCapturePath, token.Match.CaptureIndex);
+        CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
+        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
-        token.ChildTokenUnits.Add(tokenUnitInstance);
-        token.SetPropertyFromCapture(RegexPropInfo, capture, tokenUnitInstance);
+        parentTokenUnit.ChildTokenUnits.Add(tokenUnitInstance);
 
-        return true;
+        return tokenUnitInstance;
     }
 
     public override string ToString() => base.ToString();

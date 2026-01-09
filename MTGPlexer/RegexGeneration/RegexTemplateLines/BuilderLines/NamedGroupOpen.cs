@@ -2,16 +2,18 @@
 
 public class NamedGroupOpen : EncloureBookend, IGroupOpen
 {
+    public string FullyQualifiedName { get; }
     public bool IsOptional { get; }
 
-    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop) : base(enclosures, RenderCaptureGroup(prop), GetComment(prop))
+    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
     {
         IsOptional = prop.Prop.IsDefined(typeof(OptionalComponentAttribute));
+        FullyQualifiedName = GetFullyQualifiedName(enclosures);
     }
 
-    static string RenderCaptureGroup(RegexPropInfo prop)
-        => $"(?<{prop?.Name ?? ""}>";
-
+    static string RenderCaptureGroup(Enclosure[] enclosures) =>
+        $"(?<{GetFullyQualifiedName(enclosures)}>";
+    
     static string GetComment(RegexPropInfo prop)
     {
         var comment = prop.FriendlyTypeName;
@@ -22,6 +24,9 @@ public class NamedGroupOpen : EncloureBookend, IGroupOpen
 
         return comment;
     }
+
+    static string GetFullyQualifiedName(Enclosure[] enclosures) =>
+        string.Join('_', enclosures.OfType<NamedEnclosure>().Select(x => x.Name));
 
     public override string ToString() => base.ToString();
 }
