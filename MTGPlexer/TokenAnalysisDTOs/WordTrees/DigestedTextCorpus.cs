@@ -253,7 +253,7 @@ public class DigestedTextCorpus
             // Collect the collapsed linear segment
             var segmentsToCollapse = new List<(string Text, HexPalette Palette)>
             {
-                (initialToken.Text, initialToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(initialToken.TokenType))
+                (initialToken.Text, initialToken.TokenType is null ? null : DeterministicPalette.TypePaletteSet[initialToken.TokenType])
             };
 
             var remainingSequences = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
@@ -271,7 +271,7 @@ public class DigestedTextCorpus
                 if (!continuations.All(c => c.Sequence.First().Equals(nextToken)))
                     break;
 
-                segmentsToCollapse.Add((nextToken.Text, nextToken.TokenType is null ? null : TokenTypeRegistry.Palettes.GetValueOrDefault(nextToken.TokenType)));
+                segmentsToCollapse.Add((nextToken.Text, nextToken.TokenType is null ? null : DeterministicPalette.TypePaletteSet[nextToken.TokenType]));
 
                 // consume one token
                 remainingSequences = remainingSequences.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();

@@ -6,12 +6,25 @@ namespace MTGPlexer.Colors;
 public record DeterministicPalette
 {
     // --- Static Cache ---
-    private static readonly Dictionary<int, Dictionary<int, HexPalette>> _positionalPalettes = [];
-    private static readonly Dictionary<int, HexPalette> _fixedRainbowPalettes = [];
-    private static readonly Dictionary<HexColor, HexPalette> _staticColorPalettes = [];
+    static readonly Dictionary<int, Dictionary<int, HexPalette>> _positionalPaletteSets = [];
+    static readonly Dictionary<int, HexPalette> _fixedRainbowPalettes = [];
+    static readonly Dictionary<HexColor, HexPalette> _staticColorPalettes = [];
+
+    static Dictionary<Type, HexPalette> _typePaletteSet;
+    public static Dictionary<Type, HexPalette> TypePaletteSet
+    {
+        get
+        {
+            if (_typePaletteSet == null)
+                _typePaletteSet = GetTypePaletteSet();
+
+            return _typePaletteSet;
+        }
+    }
 
     // --- Public Color Properties ---
     public HexPalette Palette { get; private set; }
+
 
     /// <summary>
     /// The string used to generate this palette, typically a token Type name.
@@ -19,12 +32,12 @@ public record DeterministicPalette
     public string Seed { get; private set; }
 
     // --- Core Color Generation Constants ---
-    private const double BaseSaturation = 0.66;
-    private const double FullSaturation = 1.0;
-    private const double DarkSaturation = 0.3;
-    private const double BaseLightness = 0.6;
-    private const double LightLightness = 0.8;
-    private const double DarkLightness = 0.3;
+    const double BaseSaturation = 0.66;
+    const double FullSaturation = 1.0;
+    const double DarkSaturation = 0.3;
+    const double BaseLightness = 0.6;
+    const double LightLightness = 0.8;
+    const double DarkLightness = 0.3;
 
     // --- Constructors (Public Signatures Unchanged) ---
 
@@ -76,24 +89,45 @@ public record DeterministicPalette
         return newPalette;
     }
 
-    public static Dictionary<int, HexPalette> GetPositionalPalette(int totalItemCount)
+    static Dictionary<Type, HexPalette> GetTypePaletteSet()
     {
-        if (_positionalPalettes.TryGetValue(totalItemCount, out var positionalPalette))
+        if (_typePaletteSet != null)
+            return _typePaletteSet;
+
+        _typePaletteSet = [];
+
+        var typesInAppliedOrderThenAllOthers =
+            TokenTypeRegistry.AppliedOrderTypes
+            .Concat(TokenTypeRegistry.Templates.Keys)
+            .Distinct()
+            .ToList();
+
+        var positionalPalettes = GetPositionalPaletteSet(typesInAppliedOrderThenAllOthers.Count);
+
+        for (int i = 0; i < typesInAppliedOrderThenAllOthers.Count; i++)
+            _typePaletteSet[typesInAppliedOrderThenAllOthers[i]] = positionalPalettes[i];
+
+        return _typePaletteSet;
+    }
+
+    public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount)
+    {
+        if (_positionalPaletteSets.TryGetValue(totalItemCount, out var positionalPaletteSet))
         {
-            return positionalPalette;
+            return positionalPaletteSet;
         }
 
-        positionalPalette = [];
+        positionalPaletteSet = [];
         var hues = GetRainbowHues(totalItemCount);
 
         for (int i = 0; i < totalItemCount; i++)
         {
             // Use the private constructor to create palettes directly and consistently from hues.
-            positionalPalette[i] = new DeterministicPalette(hues[i]).Palette;
+            positionalPaletteSet[i] = new DeterministicPalette(hues[i]).Palette;
         }
 
-        _positionalPalettes[totalItemCount] = positionalPalette;
-        return positionalPalette;
+        _positionalPaletteSets[totalItemCount] = positionalPaletteSet;
+        return positionalPaletteSet;
     }
 
     public static HexPalette GetStaticPalette(HexColor color)

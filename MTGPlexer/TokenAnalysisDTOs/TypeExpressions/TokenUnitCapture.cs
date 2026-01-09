@@ -7,7 +7,6 @@ public record TokenUnitCapture
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
     public List<RegexCommentedLine> FilteredLines { get; }
-    public HexPalette Palette { get; }
     public string MinifiedRegexString { get; }
     public string FormattedRegexString { get; }
 
@@ -21,7 +20,6 @@ public record TokenUnitCapture
         Type = type;
         TypeName = type.Name;
         TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
-        Palette = TokenTypeRegistry.Palettes[type];
         var template = TokenTypeRegistry.Templates[type];
 
         if (rootTokensUnitsOfType != null)

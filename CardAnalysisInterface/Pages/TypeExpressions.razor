@@ -13,7 +13,7 @@
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in GetFilteredTokenUnitCaptures())
     {
-        var borderColorStyle = tokenUnitCapture.Palette.ToColorStyle();
+        var borderColorStyle = DeterministicPalette.TypePaletteSet[tokenUnitCapture.Type].ToColorStyle();
 
         <div class="type-card" style=@borderColorStyle @key=tokenUnitCapture.Type.Name>
             <div class="card-header">
@@ -43,6 +43,8 @@
 </div>
 
 @code {
+
+    
 
     protected override void OnInitialized()
     {

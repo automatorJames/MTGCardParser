@@ -39,7 +39,7 @@
                                     @Line.SourceText.FormattedText.Substring(cursor, token.Match.RegexMatch.Index - cursor)
                                 }
                                 var tokenText = Line.SourceText.FormattedText.Substring(token.Match.RegexMatch.Index, token.Match.RegexMatch.Index);
-                                var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : TokenTypeRegistry.Palettes[token.Type].Light;
+                                var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : DeterministicPalette.TypePaletteSet[token.Type].Light;
                                 <span style=@($"color: {color}")>@tokenText</span>
                                 cursor = token.Match.RegexMatch.Index + token.Match.RegexMatch.Length;
                             }
@@ -74,7 +74,7 @@
                                      class="autocomplete-item @(index == _selectedSuggestionIndex ? "selected" : "")"
                                      data-text-to-replace="@_textToReplaceForAutocomplete"
                                      data-full-token-text="@($"@{suggestedType.Name}")">
-                                    <span class="type-name" style=@($"color: {TokenTypeRegistry.Palettes[suggestedType].Normal}; {(suggestedType.IsEnum ? "font-style: italic" : "normal")};")>@suggestedType.Name</span>
+                                    <span class="type-name" style=@($"color: {DeterministicPalette.TypePaletteSet[suggestedType].Normal}; {(suggestedType.IsEnum ? "font-style: italic" : "normal")};")>@suggestedType.Name</span>
                                     <span class="type-kind">@(suggestedType.IsEnum ? "Enum" : "Token Type")</span>
                                 </div>
                             }

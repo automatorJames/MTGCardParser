@@ -8,7 +8,6 @@ public class RegexBuilder
     RegexElementConcatenater _concatenater;
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
-    Dictionary<Enclosure, int> _enclosureTerminalPropCount = [];
     BoundaryOption _boundaryOption;
 
     // For convenience
@@ -47,21 +46,7 @@ public class RegexBuilder
         Enclosure enclosure = null;
 
         if (captureGroup != null)
-        {
-            HexPalette palette = null;
-
-            if (captureGroup.IsTerminal)
-            {
-                _enclosureTerminalPropCount.TryAdd(_currentEnclosure, 0);
-                palette = DeterministicPalette.GetFixedRainbowPalette(_enclosureTerminalPropCount[_currentEnclosure]++);
-            }
-            else if (TokenTypeRegistry.Palettes.TryGetValue(captureGroup.UnderlyingType, out var typePalette))
-                palette = typePalette;
-            else
-                palette = DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
-
-            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, palette, captureGroup, spaceDisposition);
-        }
+            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureGroup, spaceDisposition);
         else
             enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
 
@@ -151,8 +136,8 @@ public class RegexBuilder
     /// <returns>A list of formatted regex lines.</returns>
     public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
-        var formatter = new RegexFormatter();
-        return formatter.Format(_concatenater.RegexElements, _boundaryOption, synonymData);
+        var formatter = new RegexFormatter(_concatenater.RegexElements, _boundaryOption, synonymData);
+        return formatter.Format();
     }
 
     /// <summary>

@@ -18,9 +18,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<RegexPropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
     public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
-    public static Dictionary<Type, HexPalette> Palettes { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
-    public static Dictionary<PropertyInfo, List<Type>> DynamicPropCapturedTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
@@ -49,7 +47,6 @@ public static partial class TokenTypeRegistry
 
     static void SetTypeTemplate(Type type)
     {
-        Palettes[type] = new DeterministicPalette(type).Palette;
         NameToType[type.Name] = type;
         RegexTemplate typeTemplate = new(type);
         Templates[type] = typeTemplate;
@@ -66,7 +63,6 @@ public static partial class TokenTypeRegistry
                 var enumType = enumRegexPropWithNewEnumType.RegexPropInfo.BaseType;
                 EnumRegexStrings[enumType] = enumRegexPropWithNewEnumType.RegexString;
                 ReferencedEnumTypes.Add(enumType);
-                Palettes[enumType] = new DeterministicPalette(enumType, baseSaturation: .4, baseLightness: .4).Palette;
                 NameToType[enumType.Name] = enumType;
                 EnumScalarAlternativeSets[enumType] = enumRegexPropWithNewEnumType.EnumSet;
             });
@@ -82,7 +78,6 @@ public static partial class TokenTypeRegistry
                 var enumSet = EnumRegexProp.EnumTypetoScalarSet(newEnumType);
                 EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
                 ReferencedEnumTypes.Add(newEnumType);
-                Palettes[newEnumType] = new DeterministicPalette(newEnumType, baseSaturation: .4, baseLightness: .4).Palette;
                 NameToType[newEnumType.Name] = newEnumType;
                 EnumScalarAlternativeSets[newEnumType] = enumSet;
             });

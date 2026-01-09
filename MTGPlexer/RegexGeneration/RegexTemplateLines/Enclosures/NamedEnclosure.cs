@@ -9,14 +9,12 @@ public record NamedEnclosure : Enclosure
         (
             int ordinal,
             int depth,
-            HexPalette palette,
             RegexPropInfo regexPropInfo, 
             SpaceDisposition? spaceDisposition = null
         ) : base
         (
             ordinal,
             depth,
-            palette,
             EnclosureType.RegexProp,
             GetTreatment(regexPropInfo),
             spaceDisposition ?? (regexPropInfo.BaseType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)

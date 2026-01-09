@@ -35,7 +35,7 @@ public class ProcessedCard
         if (nodesToColor.Count == 0) return;
 
         // 2. Generate the rainbow segments once based on the total count
-        var positionalPalettes = DeterministicPalette.GetPositionalPalette(nodesToColor.Count);
+        var positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(nodesToColor.Count);
 
         // 3. Assign the palettes back to the nodes
         for (int i = 0; i < nodesToColor.Count; i++)

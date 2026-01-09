@@ -5,35 +5,50 @@
 /// </summary>
 public class RegexFormatter
 {
-    private readonly FormattedRegexColoringRules _colors = new();
-    private readonly FormattedRegexTreatmentRules _treatments = new();
+    IReadOnlyList<RegexElement> _regexElements;
+    BoundaryOption _boundaryOption;
+    List<PropPathSynonymSetContainer> _synonymData;
 
-    private int _hashSeparatorColumn;
-    private int _commentBoxLength;
-    private Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics = [];
+    readonly FormattedRegexColoringRules _colors = new();
+    readonly FormattedRegexTreatmentRules _treatments = new();
 
-    private const string DefaultWhite = "#FFFFFF";
-    private const int HashSeparatorPadding = 4;
-    private const int BoxContentLeftPadding = 1;
-    private const int SpacesPerIndent = 4;
-    private const int SpacesPerAlternateIndent = 2;
+    int _hashSeparatorColumn;
+    int _commentBoxLength;
+    Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics = [];
+    Dictionary<Enclosure, HexPalette> _enclosurePalettes = [];
+
+    const string DefaultWhite = "#FFFFFF";
+    const int HashSeparatorPadding = 4;
+    const int BoxContentLeftPadding = 1;
+    const int SpacesPerIndent = 4;
+    const int SpacesPerAlternateIndent = 2;
+
+    public RegexFormatter(IReadOnlyList<RegexElement> regexElements, BoundaryOption boundaryOption, List<PropPathSynonymSetContainer> synonymData)
+    {
+        _regexElements = regexElements;
+        _boundaryOption = boundaryOption;
+        _synonymData = synonymData;
+
+        var allEnclosures = _regexElements.SelectMany(x => x.Enclosures).ToList();
+        var positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(allEnclosures.Count);
+
+        for (int i = 0; i < allEnclosures.Count; i++)
+            _enclosurePalettes[allEnclosures[i]] = positionalPalettes[i];
+    }
 
     /// <summary>
     /// Formats a list of RegexElement objects into a human-readable, commented output.
     /// </summary>
-    public List<RegexCommentedLine> Format(
-        IReadOnlyList<RegexElement> regexElements,
-        BoundaryOption boundaryOption,
-        List<PropPathSynonymSetContainer> synonymData)
+    public List<RegexCommentedLine> Format()
     {
-        if (regexElements == null || !regexElements.Any()) return [];
+        if (_regexElements == null || !_regexElements.Any()) return [];
 
         // 1. Expansion: Flatten containers and inject synonym variants
-        var expandedElements = ExpandAlternateElements(regexElements, synonymData ?? [], out var alternateCounts);
+        var expandedElements = ExpandAlternateElements(_regexElements, _synonymData ?? [], out var alternateCounts);
 
         // 2. Vertical Spacing: Add blank lines to separate logical blocks
         var spacedElements = InsertVerticalBreathingRoom(expandedElements);
-        AddBoundaryLines(spacedElements, boundaryOption);
+        AddBoundaryLines(spacedElements, _boundaryOption);
 
         // 3. Layout: Calculate column widths for alignment
         CalculateLayoutMetrics(spacedElements, alternateCounts);
@@ -303,7 +318,7 @@ public class RegexFormatter
         var parentEnclosures = visibleEnclosures.Take(visibleEnclosures.Length - 1).ToList();
         var current = visibleEnclosures.Last();
         var chars = BoxChars.Get(current.Treatment);
-        var borderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(current.Treatment, current.Palette)));
+        var borderPalette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(current.Treatment, _enclosurePalettes[current])));
 
         // Draw Left-side parent walls
         AddParentBorders(line, parentEnclosures, spans, isClosing: false);
@@ -318,7 +333,7 @@ public class RegexFormatter
         {
             // Internal Content
             AddEnclosurePathSpan(line, spans, chars.Wall + " ", borderPalette, visibleEnclosures);
-            RenderInternalComment(line, spans, currentLevelWidth - 4, alternateCounts, current.Palette);
+            RenderInternalComment(line, spans, currentLevelWidth - 4, alternateCounts, _enclosurePalettes[current]);
             AddEnclosurePathSpan(line, spans, " " + chars.Wall, borderPalette, visibleEnclosures);
         }
 
@@ -342,12 +357,12 @@ public class RegexFormatter
             var parent = list[i];
             var scope = isClosing ? line.VisibleEnclosures.Take(parents.Count - i).ToList() : line.VisibleEnclosures.Take(i + 1).ToList();
             var wall = BoxChars.Get(parent.Treatment).Wall.ToString();
-            var pal = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, parent.Palette)));
+            var palette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, _enclosurePalettes[parent])));
 
             if (isClosing) 
                 AddEnclosurePathSpan(line, spans, " ", white, scope);
 
-            AddEnclosurePathSpan(line, spans, wall, pal, scope);
+            AddEnclosurePathSpan(line, spans, wall, palette, scope);
 
             if (!isClosing) 
                 AddEnclosurePathSpan(line, spans, " ", white, scope);
@@ -359,7 +374,7 @@ public class RegexFormatter
         string comment = line.Comment != null ? $" {line.Comment} " : "";
         string color = line switch
         {
-            NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(line.Enclosures.Last().Palette),
+            NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(_enclosurePalettes[line.Enclosures.Last()]),
             GroupClose => _colors.GroupCloseQuantifierColor,
             _ => DefaultWhite
         };
@@ -417,7 +432,7 @@ public class RegexFormatter
             default:
                 var content = string.IsNullOrEmpty(line.Comment) ? new string(' ', width) : (new string(' ', BoxContentLeftPadding) + line.Comment).PadRight(width);
                 var nearNamed = line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) as NamedEnclosure;
-                var cPal = nearNamed != null ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.EnclosedTextColor(nearNamed.Palette))) : white;
+                var cPal = nearNamed != null ? DeterministicPalette.GetStaticPalette(new HexColor(_colors.EnclosedTextColor(_enclosurePalettes[nearNamed]))) : white;
                 AddCurrentLineSpan(line, spans, content, cPal, true);
                 break;
         }
@@ -529,15 +544,15 @@ public class RegexFormatter
                 _ => _colors.DefaultFallbackColor
             };
 
-        var palette = line.VisibleEnclosures.Last().Palette;
+        var palette = _enclosurePalettes[line.VisibleEnclosures.Last()];
 
         return line switch
         {
             NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(palette),
             GroupClose => _colors.GroupCloseQuantifierColor,
             AlternateValue => _colors.AlternateValueCommentColor(palette),
-            _ => (line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) is NamedEnclosure n)
-                ? _colors.EnclosedTextColor(n.Palette) : DefaultWhite
+            _ => (line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) is NamedEnclosure x)
+                ? _colors.EnclosedTextColor(_enclosurePalettes[x]) : DefaultWhite
         };
     }
 

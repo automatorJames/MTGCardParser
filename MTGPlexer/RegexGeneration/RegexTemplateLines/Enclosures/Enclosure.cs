@@ -4,7 +4,6 @@ public record Enclosure
 {
     public int Ordinal { get; }
     public int Depth { get; }
-    public HexPalette Palette { get; }
     public EnclosureType Type { get; }
     public GroupBorderTreatment Treatment { get; }
     public SpaceDisposition SpaceDisposition { get; }
@@ -12,14 +11,12 @@ public record Enclosure
     public Enclosure(
         int ordinal, 
         int depth, 
-        HexPalette palette = null, 
         EnclosureType type = EnclosureType.Unnamed,
         GroupBorderTreatment treatment  = GroupBorderTreatment.Brace,
         SpaceDisposition? spaceDisposition = null)
     {
         Ordinal = ordinal;
         Depth = depth;
-        Palette = palette ?? DeterministicPalette.GetStaticPalette(new HexColor("#696969"));
         Type = type;
         Treatment = treatment;
         SpaceDisposition = spaceDisposition ?? SpaceDisposition.Default;

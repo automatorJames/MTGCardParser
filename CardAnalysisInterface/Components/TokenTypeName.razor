@@ -21,7 +21,7 @@ style=@_palette.ToColorStyle()>
 
     protected override void OnInitialized()
     {
-        _palette = TokenTypeRegistry.Palettes[TokenType];
+        _palette = DeterministicPalette.TypePaletteSet[TokenType];
 
         if (DisplayName == null)
         {

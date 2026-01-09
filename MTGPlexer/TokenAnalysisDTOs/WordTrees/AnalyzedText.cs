@@ -104,7 +104,7 @@ public record AnalyzedText
             .ToDictionary(x => x.Key, x => x.Count());
 
         ContainingCards = OccurrencesPerCard.Keys.ToArray();
-        var positionalPalette = DeterministicPalette.GetPositionalPalette(ContainingCards.Length);
+        var positionalPalette = DeterministicPalette.GetPositionalPaletteSet(ContainingCards.Length);
 
         CardPalettes = new Dictionary<string, HexPalette>();
         for (int i = 0; i < ContainingCards.Length; i++)
