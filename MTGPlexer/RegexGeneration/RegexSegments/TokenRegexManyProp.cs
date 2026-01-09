@@ -79,11 +79,20 @@ public record TokenRegexManyProp : CaptureGroupPropBase
         {
             var ordinalProp = _ordinalRegexProps[i];
             var manyItemOrdinal = (ManyItemOrdinal)i;
-            var ordinalCaptures = namedGroup.Captures;
 
-            // Ordinal "first" will always have 1 item,
-            // "second" will have any number of items,
-            // and "last" will have 0 or 1 item.
+            // In many captures, "namedGroup" is the parent capture (at the many-of container level),
+            // but the actual item captures reside in the next level down at the ordinal level.
+            var ordinalGroup = parentTokenUnit.Match[Name + "_" + manyItemOrdinal.ToString()];
+
+            // a null ordinal group should only possibly occur for the second ordinal
+            if (ordinalGroup == null)
+                continue;
+
+            var ordinalCaptures = ordinalGroup.Captures;
+
+            // "first" will always have 1 item
+            // "second" will have any number of items (including 0)
+            // "last" will always have 1 item
             for (int j = 0; j < ordinalCaptures.Count; j++)
             {
                 var ordinalCapture = ordinalCaptures[j];

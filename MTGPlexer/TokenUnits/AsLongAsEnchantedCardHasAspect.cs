@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 public class AsLongAsEnchantedCardHasAspect() : TokenUnit
 {
     protected override string[] Snippets => ["as long as enchanted", nameof(CardType), nameof(Assertion), "(an? )?", nameof(CardAspect), ",", nameof(PermanentVerb), nameof(Buff)];

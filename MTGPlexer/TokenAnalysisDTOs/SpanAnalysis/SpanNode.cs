@@ -6,7 +6,7 @@
 public abstract record SpanNode
 {
     public string Name { get; init; } = string.Empty;
-    public CaptureGroupPropPath CapturePath { get; init; } = null!;
+    public CaptureGroupPropPath CapturePath { get; init; }
     public string CaptureTextOriginal { get; init; } = string.Empty;
     public int Start { get; init; }
     public int End { get; init; }
