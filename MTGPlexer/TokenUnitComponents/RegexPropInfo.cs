@@ -33,8 +33,7 @@ public record RegexPropInfo
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
         MayBeNull = nullableType != null;
-        Name = prop.Name;
-        //Name = GetName(Prop, UnderlyingType);
+        Name = GetName(Prop, UnderlyingType);
     }
 
     public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
@@ -104,10 +103,10 @@ public record RegexPropInfo
     static string GetName(PropertyInfo prop, Type underlyingType)
     {
         if (underlyingType.IsAssignableTo(typeof(CompoundOf)))
-            return nameof(CompoundOf);
+            return nameof(CompoundOf) + prop.Name;
 
         if (underlyingType.IsAssignableTo(typeof(ManyOf)))
-            return nameof(ManyOf);
+            return nameof(ManyOf) + prop.Name;
 
         return prop.Name;
     }
@@ -130,10 +129,10 @@ public record RegexPropInfo
 
     string GetFriendlyTypeName()
     {
-        if (RegexPropType != RegexPropType.ManyOf)
+        if (RegexPropType == RegexPropType.ManyOf)
             return "many of";
 
-        if (RegexPropType != RegexPropType.CompoundOf)
+        if (RegexPropType == RegexPropType.CompoundOf)
             return "compound of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;

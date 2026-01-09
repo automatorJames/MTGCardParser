@@ -36,10 +36,12 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenGroup(RegexPropInfo);
+        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         ConcatenatingComposer.Instance.Compose(builder, [_regexProp]);
         builder.AddTextLine(" ?");
         builder.CloseGroup(GroupQuantifier.OneOrMore);
+        builder.CloseGroup();
     }
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)

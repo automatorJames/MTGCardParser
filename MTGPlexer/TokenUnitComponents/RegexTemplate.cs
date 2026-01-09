@@ -43,7 +43,6 @@ public class RegexTemplate
         for (int i = 0; i < snippets.Length; i++)
         {
             var snippet = snippets[i];
-            var isLastSnippet = i == snippets.Length - 1;
             var segment = ResolveSnippetToSegment(snippet);
             RegexSegments.Add(segment);
         }
@@ -70,7 +69,7 @@ public class RegexTemplate
 
     RegexSegmentBase ResolveSnippetToSegment(string templateSnippet)
     {
-        var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Name == templateSnippet);
+        var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet);
 
         if (matchingProp != null)
             return matchingProp.GetCaptureGroupPropBase();
