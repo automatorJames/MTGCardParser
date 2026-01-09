@@ -59,13 +59,13 @@ export function createNode(svg, nodeData, isAdjacencyNode, config, paletteMap, c
                 const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                 const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 baseGradient.id = baseGradientId;
-                baseGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'hex', config.gradientTransitionRatio);
+                baseGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'normal', config.gradientTransitionRatio);
                 defs.appendChild(baseGradient);
                 baseShape.style.stroke = `url(#${baseGradientId})`;
                 const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                 const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 highlightGradient.id = highlightGradientId;
-                highlightGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'hexSat', config.gradientTransitionRatio);
+                highlightGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'sat', config.gradientTransitionRatio);
                 defs.appendChild(highlightGradient);
                 highlightShape.style.stroke = `url(#${highlightGradientId})`;
             }
@@ -178,10 +178,10 @@ function emitConnector(svg, pathData, childData, commonCardNames, startX, startY
                 return gradient;
             };
             if (!defs.querySelector(`#${baseGradientId}`)) {
-                defs.appendChild(createGradient(baseGradientId, 'hex'));
+                defs.appendChild(createGradient(baseGradientId, 'normal'));
             }
             if (!defs.querySelector(`#${highlightGradientId}`)) {
-                defs.appendChild(createGradient(highlightGradientId, 'hexSat'));
+                defs.appendChild(createGradient(highlightGradientId, 'sat'));
             }
             basePath.style.stroke = `url(#${baseGradientId})`;
             highlightPath.style.stroke = `url(#${highlightGradientId})`;

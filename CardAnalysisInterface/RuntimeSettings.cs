@@ -148,14 +148,21 @@ namespace CardAnalysisInterface
         {
             if (_loaded) return;
 
-            var result = await _pls.GetAsync<RuntimeSettingsDto>(Key);
-            if (result.Success && result.Value is { } dto)
+            try
             {
-                _hideFullyMatchedCards = dto.HideFullyMatchedCards;
-                _orderByWordCount = dto.OrderByWordCount;
-                _showOriginalText = dto.ShowOriginalText;
-                _minSpanWords = dto.MinSpanWords;
-                _minSpanOccurences = dto.MinSpanOccurences;
+                var result = await _pls.GetAsync<RuntimeSettingsDto>(Key);
+                if (result.Success && result.Value is { } dto)
+                {
+                    _hideFullyMatchedCards = dto.HideFullyMatchedCards;
+                    _orderByWordCount = dto.OrderByWordCount;
+                    _showOriginalText = dto.ShowOriginalText;
+                    _minSpanWords = dto.MinSpanWords;
+                    _minSpanOccurences = dto.MinSpanOccurences;
+                }
+            }
+            catch
+            {
+
             }
 
             // Mark as loaded AFTER attempting to load, so we don't try again.

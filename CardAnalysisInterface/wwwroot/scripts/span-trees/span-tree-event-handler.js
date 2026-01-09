@@ -192,7 +192,7 @@ function setCardHighlight(card, activeKeys, activeSeed) {
                 if (highlightGrad) {
                     const keysForGradient = sourceKeys.filter((key) => activeKeys.has(key));
                     const gradientTransitionRatio = 0.1;
-                    highlightGrad.innerHTML = createGradientStops(keysForGradient, processedData.cardPalettes, 'hexSat', gradientTransitionRatio);
+                    highlightGrad.innerHTML = createGradientStops(keysForGradient, processedData.cardPalettes, 'sat', gradientTransitionRatio);
                 }
             }
         }

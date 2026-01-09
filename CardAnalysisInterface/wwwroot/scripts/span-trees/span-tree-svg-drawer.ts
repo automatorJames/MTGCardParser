@@ -4,7 +4,7 @@ import { getFanDelta } from './span-tree-layout-calculator.js';
 /**
  * Generates the SVG <stop> elements for a gradient.
  */
-export function createGradientStops(sourceCardNames: string[], paletteMap: Map<string, DeterministicPalette>, colorProperty: 'hex' | 'hexSat', transitionRatio: number): string {
+export function createGradientStops(sourceCardNames: string[], paletteMap: Map<string, DeterministicPalette>, colorProperty: 'normal' | 'sat', transitionRatio: number): string {
     const numKeys = sourceCardNames.length;
     if (numKeys === 0) return '';
     if (numKeys === 1) {
@@ -68,14 +68,14 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
                 const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
                 const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 baseGradient.id = baseGradientId;
-                baseGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'hex', config.gradientTransitionRatio);
+                baseGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'normal', config.gradientTransitionRatio);
                 defs.appendChild(baseGradient);
                 baseShape.style.stroke = `url(#${baseGradientId})`;
 
                 const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
                 const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 highlightGradient.id = highlightGradientId;
-                highlightGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'hexSat', config.gradientTransitionRatio);
+                highlightGradient.innerHTML = createGradientStops(sourceCardNames, paletteMap, 'sat', config.gradientTransitionRatio);
                 defs.appendChild(highlightGradient);
                 highlightShape.style.stroke = `url(#${highlightGradientId})`;
             }
@@ -191,7 +191,7 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
             const baseGradientId = `grad-conn-base-${idSuffix}`;
             const highlightGradientId = `grad-conn-highlight-${idSuffix}`;
 
-            const createGradient = (id: string, colorProp: 'hex' | 'hexSat') => {
+            const createGradient = (id: string, colorProp: 'normal' | 'sat') => {
                 const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
                 gradient.id = id;
                 gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
@@ -204,10 +204,10 @@ function emitConnector(svg: SVGSVGElement, pathData: string, childData: Adjacenc
             };
 
             if (!defs.querySelector(`#${baseGradientId}`)) {
-                defs.appendChild(createGradient(baseGradientId, 'hex'));
+                defs.appendChild(createGradient(baseGradientId, 'normal'));
             }
             if (!defs.querySelector(`#${highlightGradientId}`)) {
-                defs.appendChild(createGradient(highlightGradientId, 'hexSat'));
+                defs.appendChild(createGradient(highlightGradientId, 'sat'));
             }
 
             basePath.style.stroke = `url(#${baseGradientId})`;
