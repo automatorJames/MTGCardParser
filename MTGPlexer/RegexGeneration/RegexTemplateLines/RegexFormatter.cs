@@ -29,7 +29,7 @@ public class RegexFormatter
         if (regexElements == null || !regexElements.Any()) return [];
 
         // 1. Expansion: Flatten containers and inject synonym variants
-        var expandedElements = ExpandElements(regexElements, synonymData ?? [], out var alternateCounts);
+        var expandedElements = ExpandAlternateElements(regexElements, synonymData ?? [], out var alternateCounts);
 
         // 2. Vertical Spacing: Add blank lines to separate logical blocks
         var spacedElements = InsertVerticalBreathingRoom(expandedElements);
@@ -47,7 +47,7 @@ public class RegexFormatter
 
     #region Phase 1: Expansion
 
-    private List<RegexElement> ExpandElements(IReadOnlyList<RegexElement> elements, List<PropPathSynonymSetContainer> synonymData, out Dictionary<AlternateValueEnum, int> alternateCounts)
+    private List<RegexElement> ExpandAlternateElements(IReadOnlyList<RegexElement> elements, List<PropPathSynonymSetContainer> synonymData, out Dictionary<AlternateValueEnum, int> alternateCounts)
     {
         alternateCounts = new Dictionary<AlternateValueEnum, int>();
         var synonymLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
@@ -56,7 +56,7 @@ public class RegexFormatter
         foreach (var element in elements)
         {
             if (element is AlternateValueEnumContainer enumContainer)
-                ExpandEnumContainer(enumContainer, synonymLookup, result, alternateCounts);
+                ExpandAlternateEnumContainer(enumContainer, synonymLookup, result, alternateCounts);
             else if (element is AlternateValueContainer container)
                 result.AddRange(container.AlternateValues);
             else
@@ -66,7 +66,7 @@ public class RegexFormatter
         return result;
     }
 
-    private void ExpandEnumContainer(
+    private void ExpandAlternateEnumContainer(
         AlternateValueEnumContainer container,
         Dictionary<string, PropPathSynonymSetContainer> lookup,
         List<RegexElement> output,

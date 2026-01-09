@@ -50,7 +50,11 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
         var listType = typeof(List<>).MakeGenericType(compoundItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
-        var ordinalCaptures = namedGroup.Captures;
+        // In compound captures, "namedGroup" is the parent capture (at the compound container level),
+        // but the actual item captures reside in the next level down at the prop level.
+        var itemContainerCapture = parentTokenUnit.Match[Name + "_" + RegexPropInfo.Prop.Name];
+
+        var ordinalCaptures = itemContainerCapture.Captures;
 
         for (int i = 0; i < ordinalCaptures.Count; i++)
         {

@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace MTGPlexer.CommonDTOs;
+﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
 /// Represents a property capture from a token, enriched with a stable index
@@ -10,36 +8,18 @@ public record IndexedPropertyCapture
 {
     public RegexPropInfo RegexPropInfo { get; private set; }
     public Capture Capture { get; private set; }
-    public int Start { get; private set; }
-    public int End { get; private set; }
-    public int Length { get; private set; }
-    public bool IsChildToken { get; private set; }
-    public string Text { get; private set; }
     public object Value { get; private set; }
-    public object ParentValue { get; private set; }
-    public int Ordinal { get; private set; }
-    public HexPalette Palette { get; private set; }
-    public bool IgnoreInAnalysis { get; private set; }
-    public bool IsDerivedFromManyItem { get; private set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }
 
     public IndexedPropertyCapture()
     {
     }
 
-    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, int capturePosition, CaptureGroupPropPath parentTokenPath)
+    public IndexedPropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, CaptureGroupPropPath parentTokenPath)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;
-        Start = capture.Index;
-        Length = capture.Length;
-        End = Start + Length;
-        IsChildToken = regexPropInfo.RegexPropType == RegexPropType.TokenUnit || regexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf;
-        Text = capture.Value;
         Value = value;
-        Ordinal = capturePosition;
-        Palette = DeterministicPalette.GetFixedRainbowPalette(Ordinal);
-        IgnoreInAnalysis = RegexPropInfo.Prop.DeclaringType.GetCustomAttribute<IgnoreInAnalysisAttribute>() != null;
 
         CaptureGroupPropPath = regexPropInfo.IsTerminal
             ? new(parentTokenPath.PropPath
@@ -60,19 +40,9 @@ public record IndexedPropertyCapture
 
         return new IndexedPropertyCapture
         {
-            IsDerivedFromManyItem = true,
             RegexPropInfo = capture.RegexPropInfo,
             Capture = capture.Capture,
-            Start = capture.Capture.Index,
-            Length = capture.Capture.Length,
-            End = capture.Capture.Index + capture.Capture.Length,
-            IsChildToken = IsChildToken,
-            Text = capture.Capture.Value,
             Value = capture.ItemObject,
-            ParentValue = manyOf,
-            Ordinal = (int)capture.Oridinal,
-            Palette = DeterministicPalette.GetFixedRainbowPalette((int)capture.Oridinal),
-            IgnoreInAnalysis = false,
             CaptureGroupPropPath = newPath
         };
     }
@@ -84,22 +54,12 @@ public record IndexedPropertyCapture
 
         return new IndexedPropertyCapture
         {
-            IsDerivedFromManyItem = true,
             RegexPropInfo = RegexPropInfo.DerviveForManyOfConjunction(),
             Capture = manyOf.ConjunctionCapture,
-            Start = manyOf.ConjunctionCapture.Index,
-            Length = manyOf.ConjunctionCapture.Length,
-            End = manyOf.ConjunctionCapture.Index + manyOf.ConjunctionCapture.Length,
-            IsChildToken = RegexPropInfo.RegexPropType == RegexPropType.TokenUnit || RegexPropInfo.RegexPropType == RegexPropType.TokenUnitOneOf,
-            Text = manyOf.ConjunctionCapture.Value,
             Value = manyOf.Conjunction,
-            ParentValue = manyOf,
-            Ordinal = 0,
-            Palette = DeterministicPalette.GetFixedRainbowPalette(0),
-            IgnoreInAnalysis = false,
             CaptureGroupPropPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, nameof(ManyOf.Conjunction), manyOf.Conjunction.ToString())
         };
     }
 
-    public override string ToString() => $"Prop: {RegexPropInfo.Name} | Position: {Ordinal} | Capture: \"{Capture.Value}\"";
+    public override string ToString() => $"Prop: {RegexPropInfo.Name} | Capture: \"{Capture.Value}\"";
 }

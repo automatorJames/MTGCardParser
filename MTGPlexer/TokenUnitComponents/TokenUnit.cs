@@ -80,8 +80,7 @@ public abstract class TokenUnit
     public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
-        var capturePosition = IndexedPropertyCaptures.Count;
-        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, capturePosition, Match.CapturePath);
+        IndexedPropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, Match.CapturePath);
         IndexedPropertyCaptures.Add(indexedPropertyCapture);
     }
 
