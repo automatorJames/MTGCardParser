@@ -125,7 +125,7 @@ public record TokenRegexManyProp : CaptureGroupPropBase
             }
         }
 
-        var conjunctionCapture = parentTokenUnit.Match[nameof(Conjunction)];
+        var conjunctionCapture = parentTokenUnit.Match[Name + "_" + nameof(Conjunction)];
 
         Conjunction? conjunctionValue = conjunctionCapture == null ? null
             : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 
