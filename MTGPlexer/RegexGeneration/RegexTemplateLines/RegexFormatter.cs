@@ -256,7 +256,7 @@ public class RegexFormatter
             _ => BoxContentLeftPadding + line.Comment.Length
         };
 
-        return line is EncloureBookend ? textWidth + 2 : textWidth + 4;
+        return line is EnclosureBookend ? textWidth + 2 : textWidth + 4;
     }
 
     #endregion
@@ -325,7 +325,7 @@ public class RegexFormatter
 
         int currentLevelWidth = _commentBoxLength - (parentEnclosures.Count * 4);
 
-        if (line is EncloureBookend bookend)
+        if (line is EnclosureBookend bookend)
         {
             RenderBookendComment(bookend, spans, chars, borderPalette, currentLevelWidth - 2);
         }
@@ -369,7 +369,7 @@ public class RegexFormatter
         }
     }
 
-    private void RenderBookendComment(EncloureBookend line, List<RegexCommentedLineSpan> spans, BoxCharSet chars, HexPalette borderPal, int width)
+    private void RenderBookendComment(EnclosureBookend line, List<RegexCommentedLineSpan> spans, BoxCharSet chars, HexPalette borderPal, int width)
     {
         string comment = line.Comment != null ? $" {line.Comment} " : "";
         string color = line switch
@@ -524,7 +524,7 @@ public class RegexFormatter
     private int GetIndentDepth(RegexElement line)
     {
         int d = line.Enclosures.Count(e => e is not RootEnclosure);
-        return (d > 0 && line is EncloureBookend) ? d - 1 : d;
+        return (d > 0 && line is EnclosureBookend) ? d - 1 : d;
     }
 
     private int GetAlternateIndent(RegexElement line)

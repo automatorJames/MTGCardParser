@@ -10,9 +10,6 @@ public class RegexBuilder
     Stack<Enclosure> _enclosureStack = [];
     BoundaryOption _boundaryOption;
 
-    // For convenience
-    Enclosure _currentEnclosure => _enclosureStack.Count == 0 ? null : _enclosureStack.Peek();
-
     /// <summary>
     /// Gets the current stack of enclosures, with the root at the start of the array.
     /// </summary>
@@ -53,10 +50,14 @@ public class RegexBuilder
         // If this group is named and optional, add the space now that it's been opened
         _enclosureStack.Push(enclosure);
 
+        RegexElement groupOpenElement = null;
+
         if (captureGroup != null)
-            _concatenater.Append(new NamedGroupOpen(_orderedEnclosureStack, captureGroup));
+            groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup, isOptional: spaceDisposition == SpaceDisposition.BeginNamedGroupWithSpaceIfNotFirstElement);
         else
-            _concatenater.Append(new GroupOpen(_orderedEnclosureStack));
+            groupOpenElement = new GroupOpen(_orderedEnclosureStack);
+
+        _concatenater.Append(groupOpenElement);
     }
 
     /// <summary>

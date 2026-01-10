@@ -5,4 +5,5 @@ public enum SpaceDisposition
     Default,
     DisallowedLocal,
     DisallowedGlobal,
+    BeginNamedGroupWithSpaceIfNotFirstElement
 }

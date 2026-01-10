@@ -1,13 +1,13 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class NamedGroupOpen : EncloureBookend, IGroupOpen
+public class NamedGroupOpen : EnclosureBookend, IGroupOpen
 {
     public string FullyQualifiedName { get; }
     public bool IsOptional { get; }
 
-    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
+    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop, bool isOptional = false) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
     {
-        IsOptional = prop.Prop.IsDefined(typeof(OptionalComponentAttribute));
+        IsOptional = isOptional || prop.Prop.IsDefined(typeof(OptionalComponentAttribute));
         FullyQualifiedName = GetFullyQualifiedName(enclosures);
     }
 

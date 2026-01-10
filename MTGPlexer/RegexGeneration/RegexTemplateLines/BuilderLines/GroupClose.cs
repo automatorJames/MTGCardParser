@@ -2,7 +2,7 @@
 
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class GroupClose : EncloureBookend, IGroupClose
+public class GroupClose : EnclosureBookend, IGroupClose
 {
     public GroupClose(Enclosure[] enclosures, GroupQuantifier? quantifier = null)
         : base(

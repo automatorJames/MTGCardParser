@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class GroupOpen : EncloureBookend, IGroupOpen
+public class GroupOpen : EnclosureBookend, IGroupOpen
 {
     public GroupOpen(Enclosure[] enclosures)
         : base(enclosures, "(")

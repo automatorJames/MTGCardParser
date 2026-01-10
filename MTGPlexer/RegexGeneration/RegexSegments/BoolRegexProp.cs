@@ -13,7 +13,7 @@ public record BoolRegexProp : ScalarCapturePropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo);
+        builder.OpenGroup(RegexPropInfo, SpaceDisposition.BeginNamedGroupWithSpaceIfNotFirstElement);
         builder.AddAlternateValues(ScalarAlternativeSet.Alternates);
         builder.CloseGroup(GroupQuantifier.Optional);
     }
