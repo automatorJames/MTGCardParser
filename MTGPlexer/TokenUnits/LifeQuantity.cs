@@ -2,7 +2,7 @@
 
 public class LifeQuantity : TokenUnit
 {
-    protected override string[] Snippets => [nameof(Quantity), "life"];
+    protected override Snippet[] Snippets => [Prop(Quantity), "life"];
 
     public Quantity Quantity { get; set; }
 }

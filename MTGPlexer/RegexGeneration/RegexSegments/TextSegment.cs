@@ -6,9 +6,14 @@
 /// </summary>
 public record TextSegment : RegexSegmentBase
 {
-    public TextSegment(string pattern)
+    public TextSegment(Snippet snippet)
     {
-        RegexString = pattern;
+        var text = snippet.Text;
+
+        if (snippet.IsOptional)
+            text = $"({text} )?";
+
+        RegexString = text;
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)

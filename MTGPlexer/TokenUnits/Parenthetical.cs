@@ -6,7 +6,7 @@
 [Color("#666666")]
 public class Parenthetical : TokenUnit
 {
-    protected override string[] Snippets => [@"\(", nameof(Content), @"\)"];
+    protected override Snippet[] Snippets => [@"\(", Prop(Content), @"\)"];
 
     [RegexPattern(@"([^)]*)")]
     public PlaceholderCapture Content { get; set; }

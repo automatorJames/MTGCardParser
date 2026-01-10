@@ -2,7 +2,7 @@
 
 public class PowerToughnessModCounters : TokenUnit
 {
-    protected override string[] Snippets => [nameof(Quantity), nameof(PowerToughnessMod), "counter(s)?"];
+    protected override Snippet[] Snippets => [Prop(Quantity), Prop(PowerToughnessMod), "counter(s)?"];
 
     public Quantity Quantity { get; set; }
     public PowerToughnessMod PowerToughnessMod { get; set; }

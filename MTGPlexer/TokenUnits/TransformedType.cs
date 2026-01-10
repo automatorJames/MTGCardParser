@@ -3,7 +3,7 @@
 [Dependent]
 public class TransformedType : TokenUnit
 {
-    protected override string[] Snippets => ["an?", nameof(CardType)];
+    protected override Snippet[] Snippets => ["an?", Prop(CardType)];
 
     public CompoundOf<CardType> CardType { get; set; }
 }

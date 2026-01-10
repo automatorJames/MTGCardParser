@@ -4,6 +4,6 @@
 [Color("#999999")]
 public class Period : TokenUnit
 {
-    protected override string[] Snippets => [@"\."];    
+    protected override Snippet[] Snippets => [@"\."];    
 }
 

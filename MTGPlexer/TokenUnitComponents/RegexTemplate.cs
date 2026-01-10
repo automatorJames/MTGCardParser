@@ -28,7 +28,7 @@ public class RegexTemplate
             // If children pass no arguments or call the default parameterless base constructor,
             // we assume they want to construct snippets from their ordered properties.
 
-            snippets = type.GetPublicPropNames();
+            snippets = type.GetPublicPropNames().Select(x => (Snippet)x).ToArray();
 
             if (snippets.Length == 0)
                 throw new Exception($"Type '{type.Name}' has no snippets or valid properties");
@@ -64,7 +64,7 @@ public class RegexTemplate
         Builder = collector;
     }
 
-    RegexSegmentBase ResolveSnippetToSegment(string templateSnippet)
+    RegexSegmentBase ResolveSnippetToSegment(Snippet templateSnippet)
     {
         var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet);
 

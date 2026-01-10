@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-public class TargetCard : TokenUnit
+public class WhenEntersBattlefield : TokenUnit
 {
     protected override Snippet[] Snippets => ["target", Prop(CardType)];
 

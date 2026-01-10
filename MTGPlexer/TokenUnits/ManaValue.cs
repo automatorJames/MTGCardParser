@@ -3,7 +3,7 @@
 [RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
 public class ManaValue : TokenUnitDistilled
 {
-    protected override string[] Snippets => [nameof(ManaSymbols)];
+    protected override Snippet[] Snippets => [Prop(ManaSymbols)];
 
 
     [RegexPattern(@"(\{([0-9]+|[wubrgxyzc∞]|w/u|w/b|u/b|u/r|b/r|b/g|r/g|r/w|g/w|g/u|2/w|2/u|2/b|2/r|2/g|p|s)\})+")]

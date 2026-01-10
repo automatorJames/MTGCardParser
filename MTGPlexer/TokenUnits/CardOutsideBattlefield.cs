@@ -2,7 +2,7 @@
 
 public class CardOutsideBattlefield() : TokenUnit
 {
-    protected override string[] Snippets => ["(card|spell)", "((in|from) )?", nameof(Whose), nameof(Zone)];
+    protected override Snippet[] Snippets => ["(card|spell)", "((in|from) )?", Prop(Whose), Prop(Zone)];
 
     public Whose? Whose { get; set; }
     public NonBattlefieldZone Zone { get; set; }

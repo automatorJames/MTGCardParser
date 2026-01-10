@@ -2,7 +2,7 @@
 
 public class TargetPlayerAction : TokenUnit
 {
-    protected override string[] Snippets => ["target", nameof(PlayerIdentity), nameof(Action)];
+    protected override Snippet[] Snippets => ["target", Prop(PlayerIdentity), Prop(Action)];
 
     public PlayerIdentity PlayerIdentity { get; set; }
     public DynamicCapture<TokenUnit> Action { get; set; }

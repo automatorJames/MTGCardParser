@@ -3,7 +3,7 @@
 [RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
 public class WhereVariableIs : TokenUnit
 {
-    protected override string[] Snippets => [", where", nameof(VariableName), "is "];
+    protected override Snippet[] Snippets => [", where", Prop(VariableName), "is "];
 
     public VariableName VariableName { get; set; }
 }

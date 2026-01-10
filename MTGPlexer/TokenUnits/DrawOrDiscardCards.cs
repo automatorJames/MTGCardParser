@@ -2,7 +2,7 @@
 
 public class DrawOrDiscardCards : TokenUnit
 {
-    protected override string[] Snippets => [nameof(CardVerb), nameof(Quantity), "cards?"];
+    protected override Snippet[] Snippets => [Prop(CardVerb), Prop(Quantity), "cards?"];
 
     public CardVerb CardVerb { get; set; }
     public Quantity Quantity { get; set; }

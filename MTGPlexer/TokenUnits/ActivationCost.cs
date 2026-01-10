@@ -3,7 +3,7 @@
 [NoSpaces]
 public class ActivationCost : TokenUnit
 {
-    protected override string[] Snippets => ["^", nameof(ActivationCostSegment), ":"];
+    protected override Snippet[] Snippets => ["^", Prop(ActivationCostSegment), ":"];
 
     [RegexPattern("[^:]+")]
     public PlaceholderCapture ActivationCostSegment { get; set; }

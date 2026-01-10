@@ -3,7 +3,7 @@
 [Color("#ff00ff")]
 public class TemporaryTargetEffect : TokenUnit
 {
-    protected override string[] Snippets => ["target", nameof(CardType), nameof(PermanentVerb), nameof(GainedOrLostBuffs), "until", nameof(Phase)];
+    protected override Snippet[] Snippets => ["target", Prop(CardType), Prop(PermanentVerb), Prop(GainedOrLostBuffs), "until", Prop(Phase)];
 
     public CardType CardType { get; set; }
     public PermanentVerb PermanentVerb { get; set; }
