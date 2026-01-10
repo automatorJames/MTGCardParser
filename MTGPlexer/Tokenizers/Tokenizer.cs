@@ -50,7 +50,7 @@ public class Tokenizer
             // **Step 1: Prioritize matching a known token.**
             foreach (var (type, regex) in filteredTypeRegexes)
             {
-                var match = regex.Match(sourceText.FormattedText, currentIndex);
+                var match = regex.Match(sourceText.FormattedText, currentIndex);    
 
                 // Validation:
                 // 1. Regex must succeed.

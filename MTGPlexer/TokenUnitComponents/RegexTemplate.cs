@@ -26,9 +26,18 @@ public class RegexTemplate
         if (snippets.Length == 0)
         {
             // If children pass no arguments or call the default parameterless base constructor,
-            // we assume they want to construct snippets from their ordered properties.
+            // we assume they want to construct snippets from their ordered properties. If no
+            // properties exist, we assume they want to construct a single snippet from a pattern attribute,
+            // or even the type name as a last-ditch fallback.
 
-            snippets = type.GetPublicPropNames().Select(x => (Snippet)x).ToArray();
+            var publicPropNames = type.GetPublicPropNames();
+
+            if (publicPropNames.Length > 0)
+                snippets = type.GetPublicPropNames().Select(x => (Snippet)x).ToArray();
+            else if (type.GetCustomAttribute<RegexPatternAttribute>() is RegexPatternAttribute attr)
+                snippets = attr.Patterns.Select(x => (Snippet)x).ToArray();
+            else
+                snippets = [type.Name.ToFriendlyCase(TitleDisplayOption.Lower)];
 
             if (snippets.Length == 0)
                 throw new Exception($"Type '{type.Name}' has no snippets or valid properties");

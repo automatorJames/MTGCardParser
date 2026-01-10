@@ -873,11 +873,11 @@ public enum PhasePart
 
 public enum Whose
 {
-    [RegexPattern("your opponent's")]
-    YourOpponents,
+    [RegexPattern("(an|your) opponent's")]
+    Opponent,
 
     [RegexPattern("each player's")]
-    EachPlayers,
+    EachPlayer,
 
     Your,
 

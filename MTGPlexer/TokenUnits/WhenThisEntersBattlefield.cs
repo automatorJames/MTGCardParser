@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 public class WhenThisEntersBattlefield : TokenUnit
 {
     protected override Snippet[] Snippets => ["when {this} enters the battlefield,", Prop(MustStillBeOnTheBattlefield), "it", Prop(GainedOrLostAbilities)];

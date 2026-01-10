@@ -1,5 +1,4 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-public class EnchantCreaturePutOntoTheBattlefieldWith_This_
-{
-}
+[RegexPattern("enchant creature put onto the battlefield with {this}")]
+public class EnchantCreaturePutOntoTheBattlefieldWithThis : TokenUnit;

@@ -303,6 +303,39 @@ public static class Extensions
         return type.Assembly.IsDynamic;
     }
 
+    public static string ReplaceAlternating(this string input, char delimiter, char opening, char closing)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // 1. Count occurrences of the delimiter
+        int count = input.Count(c => c == delimiter);
+
+        // 2. Check if count is > 0 and even
+        if (count > 0 && count % 2 == 0)
+        {
+            StringBuilder sb = new StringBuilder(input.Length);
+            bool isOpening = true;
+
+            foreach (char c in input)
+            {
+                if (c == delimiter)
+                {
+                    // 3. Alternatingly replace
+                    sb.Append(isOpening ? opening : closing);
+                    isOpening = !isOpening;
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString();
+        }
+
+        // Return original string if conditions aren't met
+        return input;
+    }
+
     public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
 }
 
