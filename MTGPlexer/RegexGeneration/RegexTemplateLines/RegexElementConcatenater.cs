@@ -96,11 +96,13 @@ public class RegexElementConcatenater
 
     void TrackDoubleQuoteOpenState(RegexElement addedElement)
     {
-        if (addedElement is TextLine textLine && textLine.TextValue is string str)
+        if (addedElement is TextLine textLine && textLine.TextValue is string str && str.Length > 0)
         {
-            for (int i = 0; i < str.Length; i++)
-                if (str[i] == '"')
-                    _doubleQuoteIsOpen = !_doubleQuoteIsOpen;
+            if (str.First() == '"')
+                _doubleQuoteIsOpen = !_doubleQuoteIsOpen;
+
+            if (str.Length > 1 && str.Last() == '"')
+                _doubleQuoteIsOpen = !_doubleQuoteIsOpen;
         }
     }
 }

@@ -9,6 +9,4 @@ public class WhenThisEntersBattlefield : TokenUnit
     public bool MustStillBeOnTheBattlefield { get; set; }
 
     public ManyOf<GainOrLoseAbility> GainedOrLostAbilities { get; set; }
-
-    //public DynamicCapture<TokenUnit> Effect { get; set; }
 }
