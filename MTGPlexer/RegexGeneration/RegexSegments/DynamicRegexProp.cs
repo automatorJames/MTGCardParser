@@ -17,7 +17,7 @@ public record DynamicRegexProp : ScalarCapturePropBase
     {
         var captureAlternatives =
             captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns // Respect RegexPattern override if present
-            ?? [".+"];                                                             // Otherwise default to "one or more characters"
+            ?? [@"[^.]+"];                                                             // Otherwise default to "one or more non-period characters"
             
         ScalarAlternativeSet = new(captureAlternatives.ToList());
     }

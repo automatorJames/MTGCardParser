@@ -916,3 +916,23 @@ public enum NonBattlefieldZone
     [RegexPattern("spell")]
     Stack
 }
+
+public enum PowerAndOrToughness
+{
+    Power,
+    Toughness,
+    PowerAndToughness
+}
+
+public enum EquivalentToMeasurement
+{
+    ItsManaValue,
+}
+
+public enum Assertion
+{
+    Is,
+
+    [RegexPattern("isn't")]
+    Isnt
+}
