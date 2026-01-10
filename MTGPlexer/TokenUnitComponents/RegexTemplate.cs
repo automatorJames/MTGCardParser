@@ -28,10 +28,7 @@ public class RegexTemplate
             // If children pass no arguments or call the default parameterless base constructor,
             // we assume they want to construct snippets from their ordered properties.
 
-            snippets = type
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                .Select(x => x.Name)
-                .ToArray();
+            snippets = type.GetPublicPropNames();
 
             if (snippets.Length == 0)
                 throw new Exception($"Type '{type.Name}' has no snippets or valid properties");

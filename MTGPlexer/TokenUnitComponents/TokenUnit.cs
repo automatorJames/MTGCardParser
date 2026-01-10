@@ -191,6 +191,12 @@ public abstract class TokenUnit
         if (string.IsNullOrEmpty(template.RegexString))
             return $"{nameof(template.RegexString)} is null or empty";
 
+        var expectedProps = Type.GetPublicPropNames();
+        var missingProps = expectedProps.Except(template.CaptureGroupProps.Select(x => x.RegexPropInfo.Prop.Name)).ToList();
+    
+        if (missingProps.Any())
+            return $"the following properties are not represented among template snippets: {string.Join(", ", missingProps)}";
+
         return null;
     }
 

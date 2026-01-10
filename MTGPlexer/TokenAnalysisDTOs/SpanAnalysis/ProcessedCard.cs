@@ -16,7 +16,12 @@ public class ProcessedCard
     {
         Card = card;
         Lines = ProcessedLine.GetAll(card);
-        IsFullyMatched = Lines.SelectMany(x => x.UnmatchedTextOccurrences).Count() == 0;
+
+        // "Fully matched" means no unmatched text occurrences (except isolated periods) exist
+        IsFullyMatched = Lines
+            .SelectMany(x => x.UnmatchedTextOccurrences.Where(y => y.Text != "."))
+            .Count() == 0;
+
         SetPositionalPalettes();
     }
 

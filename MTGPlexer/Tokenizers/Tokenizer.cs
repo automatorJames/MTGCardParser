@@ -5,10 +5,10 @@ using System.Text.RegularExpressions;
 public class Tokenizer
 {
     private readonly Dictionary<Type, Regex> _orderedTypeRegexes = [];
-    private readonly Dictionary<Type, Regex> _orderedAnchoredTypeRegexes = [];
-
-    // A dictionary where each pattern simply matches int (Key) number of "." (any) chars (built as different lengths encountered)
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
+
+    // Characters that are allowed to immediately follow a valid token match
+    private static readonly char[] _boundaryChars = [' ', '.'];
 
     public Tokenizer(List<Type> orderedTypes)
     {
@@ -16,7 +16,6 @@ public class Tokenizer
         {
             var regex = TokenTypeRegistry.Templates[type].Regex;
             _orderedTypeRegexes[type] = regex;
-            _orderedAnchoredTypeRegexes[type] = new Regex($"\\G({regex})", RegexOptions.Singleline | RegexOptions.Compiled);
         }
     }
 
@@ -40,10 +39,10 @@ public class Tokenizer
         {
             bool matched = false;
 
-            var filteredTypeRegexes = _orderedAnchoredTypeRegexes;
+            var filteredTypeRegexes = _orderedTypeRegexes;
             if (scopeToType != null && scopeToType != typeof(TokenUnit))
             {
-                filteredTypeRegexes = _orderedAnchoredTypeRegexes
+                filteredTypeRegexes = _orderedTypeRegexes
                     .Where(x => x.Key.IsAssignableTo(scopeToType))
                     .ToDictionary(x => x.Key, x => x.Value);
             }
@@ -53,14 +52,28 @@ public class Tokenizer
             {
                 var match = regex.Match(sourceText.FormattedText, currentIndex);
 
-                // Provisional Match check
-                if (match.Success && match.Length > 0 && (match.Index + match.Length <= endIndex))
+                // Validation:
+                // 1. Regex must succeed.
+                // 2. We manually enforce anchoring: the match MUST start at currentIndex.
+                // 3. The match must not exceed our current scope (endIndex).
+                if (match.Success && match.Index == currentIndex && match.Length > 0 && (match.Index + match.Length <= endIndex))
                 {
+                    int matchEndIndex = match.Index + match.Length;
+
+                    // **Boundary Check**: 
+                    // To avoid mid-word partial matches, the match is only valid if it extends 
+                    // exactly to the end of the line, or is followed by a space or period.
+                    bool endsAtBoundary = matchEndIndex == endIndex ||
+                                         (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText.FormattedText[matchEndIndex]));
+
+                    if (!endsAtBoundary)
+                        goto NextIteration;
+
                     Dictionary<DynamicRegexProp, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
                             .OfType<DynamicRegexProp>()
                             .ToDictionary(x => x, x => (object)null);
 
-                    // Dynamic capture (if any exist, all must be matched)
+                    // Dynamic capture handling
                     if (dynamicPrefilledValues.Any())
                     {
                         if (dynamicPrefilledValues.Count > 1)
@@ -77,38 +90,24 @@ public class Tokenizer
 
                             // Recursive call to resolve the dynamic portion
                             var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);
-
-                            // Find the first "real" token (ignoring unmatched noise inside the dynamic portion)
                             var dynamicToken = tokenSet.FirstOrDefault(x => x is not DefaultUnmatchedString);
 
                             if (dynamicToken == null)
-                            {
-                                // Fail: The dynamic portion didn't resolve to a valid sub-token.
-                                // We discard the entire provisional match.
                                 goto NextIteration;
-                            }
-                            else
-                            {
-                                // Success: Store the resolved child token
-                                dynamicPrefilledValues[dynamicPrefilledValue] = dynamicToken;
-                            }
+
+                            dynamicPrefilledValues[dynamicPrefilledValue] = dynamicToken;
                         }
                     }
 
                     // --- COMMIT PHASE ---
-                    // If we reach this point, the match is confirmed valid.
-
-                    // 1. Flush "junk" text that preceded this match.
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
-                    // 2. Add the parent token.
                     TokenUnitMatch typeMatch = new(type, match, sourceText, new CaptureGroupPropPath(type.Name));
                     var token = TokenUnit.InstantiateFromMatch(typeMatch, dynamicPrefilledValues);
                     tokens.Add(token);
 
-                    // 3. Advance state.
                     currentIndex = match.Index + match.Length;
-                    unmatchedStartIndex = -1; // Reset junk tracker
+                    unmatchedStartIndex = -1;
                     matched = true;
                     break;
                 }
@@ -116,25 +115,21 @@ public class Tokenizer
             NextIteration:;
             }
 
-            // If no token matched at this boundary, jump to the next possible boundary (after the next space).
+            // If no token matched at this boundary, "ratchet" up to the next space and begin again.
             if (!matched)
             {
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
-                // Find the next space within the bounds of the current text/scope
                 int nextSpaceIndex = sourceText.FormattedText.IndexOf(' ', currentIndex);
 
                 if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
-                    // No more spaces within scope; jump to the end
                     currentIndex = endIndex;
                 else
-                    // Move to the character immediately following the space
                     currentIndex = nextSpaceIndex + 1;
             }
         }
 
-        // **Step 3: Final flush for any remaining text at the end of the scope.**
         FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, endIndex);
 
         return tokens;

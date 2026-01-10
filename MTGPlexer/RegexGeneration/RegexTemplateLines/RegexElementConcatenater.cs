@@ -22,6 +22,16 @@ public class RegexElementConcatenater
 
     void AddSpaceBeforeNextElementIfAppropriate(RegexElement nextElement)
     {
+        // Determine which enclosure level the space should be placed in (if any): either at the level of the element to add,
+        // or if the element to add is a group open, at one level up from it.
+        Enclosure[] enclosuresForSpace = nextElement is IGroupOpen groupOpen ? groupOpen.ParentEnclosures : nextElement.Enclosures;
+
+        if (_lastAppendedElement is NamedGroupOpen lastNamedGroupOpen && lastNamedGroupOpen.IsOptional)
+        {
+            RegexElements.Add(new SpaceLine(enclosuresForSpace));
+            return;
+        }
+
         // If the any ancestor enclosure disallows spaces globally, or the parent enclosure disallows them locally, don't add a space
         if (nextElement.SpacesDisallowedGloballyOrLocally)
             return;
@@ -39,7 +49,7 @@ public class RegexElementConcatenater
         }
 
         // If the next element is a named group open that's optional, don't add a space
-        if (nextElement is NamedGroupOpen namedGroupOpen && namedGroupOpen.IsOptional)
+        if (nextElement is NamedGroupOpen nextNamedGroupOpen && nextNamedGroupOpen.IsOptional)
             return;
 
         // If the next element is a group close, don't add a space
@@ -66,10 +76,6 @@ public class RegexElementConcatenater
         // If the next element is a group alternative pipe, the following element is expected to be an alternative, so don't add a space
         if (nextElement is GroupAlternativePipe)
             return;
-
-        // Beyond this point, a space is going to be added. First we determine which enclosure level the space should be placed
-        // in: either at the level of the element to add, or if the element to add is a group open, at one level up from it.
-        Enclosure[] enclosuresForSpace = nextElement is IGroupOpen groupOpen ? groupOpen.ParentEnclosures : nextElement.Enclosures;
 
         // If none of the conditions above were met, add a space (constructed with the same enclosures as the element to add)
         RegexElements.Add(new SpaceLine(enclosuresForSpace));

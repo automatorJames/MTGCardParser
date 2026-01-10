@@ -291,6 +291,18 @@ public static class Extensions
         : type.IsEnum ? CaptureTypeVariant.Enum
         : throw new Exception($"{nameof(CompoundOf)} item type must either be TokenUnit or Enum");
 
+    public static string[] GetPublicPropNames(this Type type) =>
+        type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Select(x => x.Name)
+            .ToArray();
+
+    public static bool IsEmittedType(this Type type)
+    {
+        // Returns true if the type was created via Reflection.Emit in this process.
+        // Used to distinguish between regular TokenUnit classes and dynamically emited ones (like ManyOf).
+        return type.Assembly.IsDynamic;
+    }
+
     public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
 }
 
