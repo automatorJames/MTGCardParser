@@ -2,8 +2,6 @@
 
 public class RegexElementConcatenater
 {
-    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>'];
-
     public List<RegexElement> RegexElements { get; } = [];
     bool _doubleQuoteIsOpen;
     HashSet<Enclosure> _enclosuresWithContent = [];
@@ -48,14 +46,14 @@ public class RegexElementConcatenater
 
         // If the last regex element is a text line which should omit trailing spaces, return early.
         // This checks whether the text line ends with an opening punctuation like '(', or other conditions
-        if (_lastAppendedElement is TextLine lastText && lastText.ShouldOmitSpaceAfter())
+        if (_lastAppendedElement is TextLine lastText && lastText.ShouldOmitSpaceAfter)
             return;
 
         // Handle case where next element is a text line
         if (nextElement is TextLine nextTextLine && nextTextLine.TextValue is string nextText)
         {
-            // If next text begins with terminal punctuation (e.g. period, comma, etc.), don't add a space
-            if (_terminalPunctuationMarks.Contains(nextText.FirstOrDefault()))
+            // If next text begins with terminal punctuation (e.g. period, comma, etc.), don't add a space before it
+            if (nextTextLine.BeginsWithTerminalPunctuation)
                 return;
 
             // If next text starts with a double quote and there's a currently-open double quote pair (odd number), omit the space before it

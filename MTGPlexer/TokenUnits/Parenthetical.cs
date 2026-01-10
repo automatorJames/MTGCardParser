@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [NoSpaces]
-[RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
+[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 [TokenizationOrder(9999)]
 [Color("#666666")]
 public class Parenthetical : TokenUnit

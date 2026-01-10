@@ -13,8 +13,9 @@ public class RegexBoundaryOptionAtrribute : Attribute
 
 public enum BoundaryOption
 {
+    None,
+    OptionalTerminalPeriod,
     WholeWord,
-    Omit,
     FullLine
 }
 

@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 public class DrawOrDiscardCards : TokenUnit
 {
     protected override string[] Snippets => [nameof(CardVerb), nameof(Quantity), "cards?"];

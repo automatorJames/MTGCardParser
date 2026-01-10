@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
+[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class ManaValue : TokenUnitDistilled
 {
     protected override string[] Snippets => [nameof(ManaSymbols)];

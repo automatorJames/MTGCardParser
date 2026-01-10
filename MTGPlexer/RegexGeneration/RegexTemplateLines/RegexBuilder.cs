@@ -33,7 +33,7 @@ public class RegexBuilder
 
         _concatenater = new();
         _enclosureStack.Push(rootEnclosure);
-        _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
+        _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.OptionalTerminalPeriod;
     }
 
     /// <summary>
@@ -121,9 +121,8 @@ public class RegexBuilder
 
         var firstLineIndex = _concatenater.RegexElements.IndexOf(firstGroupLine);
         var lastLineIndex = _concatenater.RegexElements.IndexOf(lastGroupLine);
-
         var groupLines = _concatenater.RegexElements.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
-        AddBoundaryLines(groupLines);
+        AddBoundaries(groupLines);
         var regexString = string.Join("", groupLines.Select(x => x.Regex));
 
         return new(regexString, RegexOptions.Compiled);
@@ -136,7 +135,7 @@ public class RegexBuilder
     /// <returns>A list of formatted regex lines.</returns>
     public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
-        var formatter = new RegexFormatter(_concatenater.RegexElements, _boundaryOption, synonymData);
+        var formatter = new RegexFormatter(GetFinalizedLines(), synonymData);
         return formatter.Format();
     }
 
@@ -144,36 +143,53 @@ public class RegexBuilder
     /// Generates a minified, single-line regex string.
     /// </summary>
     /// <returns>The complete regex as a single string.</returns>
-    public string GetMinified(bool addBoundaries = true)
-    {
-        if (!_concatenater.RegexElements.Any())
-            return "";
-
-        var finalizedElements = _concatenater.RegexElements.ToList();
-
-        if (addBoundaries)
-            AddBoundaryLines(finalizedElements);
-
-        return string.Join("", finalizedElements.Select(x => x.Regex)).Replace("[ ]", " ");
-    }
+    public string GetMinified() =>
+        string.Join("", GetFinalizedLines().Select(x => x.Regex)).Replace("[ ]", " ");
 
     /// <summary>
     /// Adds start and end boundary elements to a list of regex lines based on the builder's boundary option.
     /// </summary>
     /// <param name="lines">The list of elements to add boundaries to.</param>
-    void AddBoundaryLines(List<RegexElement> lines)
+    void AddBoundaries(List<RegexElement> lines)
     {
-        if (_boundaryOption == BoundaryOption.Omit)
+        if (_boundaryOption == BoundaryOption.None)
             return;
 
-        RegexElement startBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookbehindBoundary() : new StartOfLineBoundary();
-        RegexElement endBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary();
+        RegexElement startBoundary = _boundaryOption switch
+        {
+            BoundaryOption.WholeWord => new NegativeLookbehindBoundary(),
+            BoundaryOption.FullLine => new StartOfLineBoundary(),
+            _ => null
+        };
 
-        lines.Insert(0, startBoundary);
-        lines.Insert(1, new BlankLine([]));
-        lines.Add(new BlankLine([]));
-        lines.Add(endBoundary);
+        RegexElement endBoundary = _boundaryOption switch
+        {
+            BoundaryOption.OptionalTerminalPeriod => new OptionalTerminalPeriod(),
+            BoundaryOption.WholeWord => new NegativeLookaheadBoundary(),
+            BoundaryOption.FullLine => new EndOfLineBoundary(),
+            _ => null
+        };
+
+        if (startBoundary != null)
+        {
+            lines.Insert(0, startBoundary);
+            lines.Insert(1, new BlankLine([]));
+            lines.Add(new BlankLine([]));
+        }
+
+        if (endBoundary != null)
+            lines.Add(endBoundary);
     }
 
-    public override string ToString() => GetMinified(addBoundaries: false);
+    /// <summary>
+    /// Adds boundaries, then returns the lines.
+    /// </summary>
+    List<RegexElement> GetFinalizedLines()
+    {
+        var finalizedElements = _concatenater.RegexElements.ToList();
+        AddBoundaries(finalizedElements);
+        return finalizedElements;
+    }
+
+    public override string ToString() => GetMinified();
 }

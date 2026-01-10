@@ -2,5 +2,5 @@
 
 public interface IRegexContent
 {
-    public string TextValue { get; set; }
+    public string TextValue { get; }
 }

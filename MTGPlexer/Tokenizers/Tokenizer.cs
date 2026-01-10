@@ -53,9 +53,19 @@ public class Tokenizer
             {
                 var match = regex.Match(sourceText.FormattedText, currentIndex);
 
-                // Provisional Match check
-                if (match.Success && match.Length > 0 && (match.Index + match.Length <= endIndex))
+                if (match.Success && match.Length > 0)
                 {
+                    int matchEndIndex = match.Index + match.Length;
+
+                    // **Boundary Check**: 
+                    // The match is only valid if it extends exactly to a boundary (space or end of text).
+                    // If the character immediately following the match is not a space (and we aren't at the end), 
+                    // then this is a partial-word match, which we discard.
+                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && sourceText.FormattedText[matchEndIndex] == ' ');
+
+                    if (!endsAtBoundary)
+                        goto NextIteration;
+
                     Dictionary<DynamicRegexProp, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
                             .OfType<DynamicRegexProp>()
                             .ToDictionary(x => x, x => (object)null);
@@ -84,7 +94,6 @@ public class Tokenizer
                             if (dynamicToken == null)
                             {
                                 // Fail: The dynamic portion didn't resolve to a valid sub-token.
-                                // We discard the entire provisional match.
                                 goto NextIteration;
                             }
                             else
@@ -96,8 +105,6 @@ public class Tokenizer
                     }
 
                     // --- COMMIT PHASE ---
-                    // If we reach this point, the match is confirmed valid.
-
                     // 1. Flush "junk" text that preceded this match.
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
@@ -116,7 +123,7 @@ public class Tokenizer
             NextIteration:;
             }
 
-            // If no token matched at this boundary, jump to the next possible boundary (after the next space).
+            // If no token matched starting at this boundary, "ratchet" to the next boundary (after the next space).
             if (!matched)
             {
                 if (unmatchedStartIndex == -1)
@@ -126,11 +133,15 @@ public class Tokenizer
                 int nextSpaceIndex = sourceText.FormattedText.IndexOf(' ', currentIndex);
 
                 if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
+                {
                     // No more spaces within scope; jump to the end
                     currentIndex = endIndex;
+                }
                 else
-                    // Move to the character immediately following the space
+                {
+                    // Move to the character immediately following the space to try matching again
                     currentIndex = nextSpaceIndex + 1;
+                }
             }
         }
 
