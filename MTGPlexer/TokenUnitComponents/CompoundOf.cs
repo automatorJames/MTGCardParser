@@ -2,13 +2,12 @@
 
 public class CompoundOf<T> : CompoundOf
 {
-    public CompoundItemCapture<T>[] Items { get; set; }
+    public PolyItemCapture<T>[] Items { get; set; }
 
-    public CompoundOf(IEnumerable<CompoundItemCapture<T>> items)
+    public CompoundOf(IEnumerable<PolyItemCapture<T>> items)
     {
         Items = items.ToArray();
-        ItemObjects = Items.Cast<CompoundItemCapture>().ToList();
-        ItemType = typeof(T);
+        ItemObjects = Items.Cast<PolyItemCapture>().ToList();
         CaptureTypeVariant = GetCaptureTypeVariant(typeof(T));
     }
 
@@ -28,10 +27,8 @@ public class CompoundOf<T> : CompoundOf
 [Color("#696969")]
 public class CompoundOf : IEquatable<CompoundOf>
 {
-    public Guid DistinctId { get; } = Guid.NewGuid();
-    public List<CompoundItemCapture> ItemObjects { get; set; }
+    public List<PolyItemCapture> ItemObjects { get; set; }
     public CaptureTypeVariant CaptureTypeVariant { get; set; }
-    public Type ItemType { get; set; }
 
     public override string ToString() => string.Join(" ", ItemObjects.Select(x => x.ToString()));
 

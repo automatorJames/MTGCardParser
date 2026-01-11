@@ -46,7 +46,7 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var compoundItemCaptureType = typeof(CompoundItemCapture<>).MakeGenericType(BaseType);
+        var compoundItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(BaseType);
         var listType = typeof(List<>).MakeGenericType(compoundItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 

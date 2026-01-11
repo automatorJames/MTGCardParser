@@ -61,7 +61,7 @@ public record PropertyCapture
         };
     }
 
-    public PropertyCapture DeriveForCompoundOfItem(CompoundOf compoundOf, CompoundItemCapture capture)
+    public PropertyCapture DeriveForCompoundOfItem(CompoundOf compoundOf, PolyItemCapture capture)
     {
         var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
         var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, RegexPropInfo.Prop.Name, terminalValueOrTypeName);

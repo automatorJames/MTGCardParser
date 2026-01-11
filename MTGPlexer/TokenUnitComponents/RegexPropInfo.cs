@@ -5,7 +5,6 @@ public record RegexPropInfo
     public PropertyInfo Prop { get; init; }
     public RegexPropType RegexPropType { get; init; }
     public Type BaseType { get; init; }
-    public Type UnderlyingType { get; init; }
     public string FriendlyTypeName { get; init; }
     public string FriendlyPropName { get; init; }
     public bool IsTerminal { get; init; }
@@ -28,12 +27,11 @@ public record RegexPropInfo
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
         (RegexPropType, BaseType) = GetCapturePropType(prop);
-        UnderlyingType = nullableType ?? prop.PropertyType;
         FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
         MayBeNull = nullableType != null;
-        Name = GetName(Prop, UnderlyingType);
+        Name = GetName(Prop, BaseType);
     }
 
     public RegexPropInfo DerviveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
@@ -46,7 +44,6 @@ public record RegexPropInfo
             Prop = Prop,
             RegexPropType = BaseType.GetRegexPropType(),
             BaseType = BaseType,
-            UnderlyingType = UnderlyingType,
             FriendlyTypeName = FriendlyTypeName,
             FriendlyPropName = FriendlyPropName,
             IsTerminal = IsTerminal,
@@ -68,7 +65,6 @@ public record RegexPropInfo
             Prop = typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)),
             RegexPropType = RegexPropType.ManyOfConjunction,
             BaseType = typeof(Conjunction),
-            UnderlyingType = typeof(Conjunction),
             FriendlyTypeName = nameof(Conjunction).ToFriendlyCase(),
             FriendlyPropName = nameof(Conjunction).ToFriendlyCase(),
             IsTerminal = true,
@@ -89,7 +85,6 @@ public record RegexPropInfo
             Prop = Prop,
             RegexPropType = BaseType.GetRegexPropType(),
             BaseType = BaseType,
-            UnderlyingType = UnderlyingType,
             FriendlyTypeName = FriendlyTypeName,
             FriendlyPropName = FriendlyPropName,
             IsTerminal = IsTerminal,

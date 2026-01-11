@@ -19,7 +19,7 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
         var comment = prop.FriendlyTypeName;
 
         // Disambiguate the role of enum properties named differently than their types
-        if (prop.RegexPropType == RegexPropType.Enum && prop.Name != prop.UnderlyingType.Name)
+        if (prop.RegexPropType == RegexPropType.Enum && prop.Name != prop.BaseType.Name)
             comment += $": {prop.BaseType.Name}";
 
         return comment;

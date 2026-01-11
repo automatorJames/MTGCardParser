@@ -85,26 +85,40 @@ public class RegexTemplate
 
     List<RegexPropInfo> GetRegexProps()
     {
-        static bool IsTarget(Type t)
+        // helper
+        bool PropertyTypeIsCaptureProp(Type propertyType)
         {
-            var underlyingType = Nullable.GetUnderlyingType(t) ?? t;
+            var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
 
-            if (underlyingType.IsGenericType && (underlyingType.GetGenericTypeDefinition() == typeof(ManyOf<>) || underlyingType.GetGenericTypeDefinition() == typeof(CompoundOf<>)))
-                underlyingType = underlyingType.GetGenericArguments()[0];
+            if (underlyingType.IsGenericType)
+            {
+                var genericType = underlyingType.GetGenericTypeDefinition();
 
-            return underlyingType.IsEnum
-                || underlyingType == typeof(bool)
-                || underlyingType == typeof(PlaceholderCapture)
-                || underlyingType.IsAssignableTo(typeof(DynamicCapture))
-                || typeof(TokenUnit).IsAssignableFrom(underlyingType);
+                if (genericType == typeof(ManyOf<>) || genericType == typeof(CompoundOf<>))
+                    return IsTargetUnderlyingOrGenericType(underlyingType.GetGenericArguments()[0]);
+                else if (genericType.IsAssignableTo(typeof(OneOf)))
+                    return underlyingType.GetGenericArguments().All(IsTargetUnderlyingOrGenericType);
+                else
+                    throw new Exception($"Generic type '{genericType.Name}' not supported");
+            }
+            else
+                return IsTargetUnderlyingOrGenericType(underlyingType);
+        }
+
+        // helper
+        bool IsTargetUnderlyingOrGenericType(Type underlyingOrGenericTypeArg)
+        {
+            return underlyingOrGenericTypeArg.IsEnum
+                || underlyingOrGenericTypeArg == typeof(bool)
+                || underlyingOrGenericTypeArg == typeof(PlaceholderCapture)
+                || underlyingOrGenericTypeArg.IsAssignableTo(typeof(DynamicCapture))
+                || typeof(TokenUnit).IsAssignableFrom(underlyingOrGenericTypeArg);
         }
 
         return _containingType
             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(p => p.GetMethod is { IsVirtual: false })
-            .Where(p =>
-                IsTarget(p.PropertyType)
-                || (p.PropertyType.IsArray && IsTarget(p.PropertyType.GetElementType()!)))
+            .Where(p => PropertyTypeIsCaptureProp(p.PropertyType))
             .Select(p => new RegexPropInfo(p))
             .ToList();
     }

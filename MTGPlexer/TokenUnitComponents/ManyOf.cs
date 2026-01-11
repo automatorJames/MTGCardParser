@@ -10,7 +10,6 @@ public class ManyOf<T> : ManyOf
         ItemObjects = Items.Cast<ManyItemCapture>().ToList();
         Conjunction = conjunction;
         ConjunctionCapture = conjunctionCapture;
-        ItemType = typeof(T);
         ManyItemVariant = typeof(T).ToCaptureTypeVariant();
     }
 
@@ -30,10 +29,8 @@ public class ManyOf<T> : ManyOf
 [Color("#696969")]
 public class ManyOf : IEquatable<ManyOf>
 {
-    public Guid DistinctId { get; } = Guid.NewGuid();
     public List<ManyItemCapture> ItemObjects { get; set; }
     public CaptureTypeVariant ManyItemVariant { get; set; }
-    public Type ItemType { get; set; }
     public Conjunction? Conjunction { get; set; }
     public Capture ConjunctionCapture { get; set; }
 

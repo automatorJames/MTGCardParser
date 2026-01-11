@@ -56,7 +56,7 @@ public static partial class TokenTypeRegistry
         // but steps taken during registration only care about the enum type itself)
         propCaptureSegments
             .OfType<EnumRegexProp>()
-            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.RegexPropInfo.UnderlyingType))
+            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.RegexPropInfo.BaseType))
             .ToList()
             .ForEach(enumRegexPropWithNewEnumType =>
             {

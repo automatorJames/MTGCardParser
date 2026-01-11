@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitComponents;
 
 public record ManyItemCapture<T> : ManyItemCapture
 {

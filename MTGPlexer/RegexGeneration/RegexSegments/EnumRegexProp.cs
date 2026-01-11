@@ -18,7 +18,7 @@ public record EnumRegexProp : ScalarCapturePropBase
     {
         builder.OpenGroup(RegexPropInfo);
 
-        if (RegexPropInfo.UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
+        if (RegexPropInfo.BaseType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
         builder.AddAlternateEnumValues(EnumSet);
