@@ -936,3 +936,9 @@ public enum Assertion
     [RegexPattern("isn't")]
     Isnt
 }
+
+public enum Who
+{
+    [RegexPattern("that creature's controller")]
+    ThatCreaturesController
+}
