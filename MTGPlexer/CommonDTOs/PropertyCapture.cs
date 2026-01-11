@@ -54,7 +54,7 @@ public record PropertyCapture
 
         return new PropertyCapture
         {
-            RegexPropInfo = RegexPropInfo.DerviveForManyOfConjunction(),
+            RegexPropInfo = RegexPropInfo.DeriveForManyOfConjunction(),
             Capture = manyOf.ConjunctionCapture,
             Value = manyOf.Conjunction,
             CaptureGroupPropPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, nameof(ManyOf.Conjunction), manyOf.Conjunction.ToString())
@@ -64,7 +64,7 @@ public record PropertyCapture
     public PropertyCapture DeriveForCompoundOfItem(CompoundOf compoundOf, PolyItemCapture capture)
     {
         var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
-        var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, RegexPropInfo.Prop.Name, terminalValueOrTypeName);
+        var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, terminalValueOrTypeName);
 
         return new PropertyCapture
         {
@@ -74,6 +74,21 @@ public record PropertyCapture
             CaptureGroupPropPath = newPath
         };
     }
+
+    public PropertyCapture DeriveForOneOfItem(OneOf compoundOf, PolyItemCapture capture)
+    {
+        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var newPath = CaptureGroupPropPath.Append(RegexPropInfo.Name, capture.ItemType.Name, terminalValueOrTypeName);
+
+        return new PropertyCapture
+        {
+            RegexPropInfo = capture.RegexPropInfo,
+            Capture = capture.Capture,
+            Value = capture.ItemObject,
+            CaptureGroupPropPath = newPath
+        };
+    }
+
 
     public override string ToString() => $"Prop: {RegexPropInfo.Name} | Capture: \"{Capture.Value}\"";
 }

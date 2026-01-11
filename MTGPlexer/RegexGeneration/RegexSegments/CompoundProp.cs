@@ -5,7 +5,7 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record TokenRegexCompoundProp : CaptureGroupPropBase
+public record CompoundProp : CaptureGroupPropBase
 {
     CaptureTypeVariant _compoundItemType;
     CaptureGroupPropBase _regexProp;
@@ -13,12 +13,12 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
 
-    public TokenRegexCompoundProp(RegexPropInfo captureProp) : base(captureProp)
+    public CompoundProp(RegexPropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a CompoundOf<T> prop here
 
         BaseType = captureProp.BaseType;
-        var derivedPropInfo = captureProp.DerviveForCompoundOfItem();
+        var derivedPropInfo = captureProp with { RegexPropType = RegexPropInfo.GetRegexPropType(RegexPropInfo.BaseType) };
 
         if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {
@@ -31,7 +31,7 @@ public record TokenRegexCompoundProp : CaptureGroupPropBase
             _regexProp = new EnumRegexProp(derivedPropInfo);
         }
         else
-            throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
+            throw new Exception($"TokenRegexCompoundProp base type may only be derived from TokenUnit or be an enum");
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)

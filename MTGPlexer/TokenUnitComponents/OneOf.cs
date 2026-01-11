@@ -10,6 +10,7 @@ public class OneOf<T1, T2> : OneOf
         Item1 = capture;
         ItemType = typeof(T1);
         ManyItemVariant = typeof(T1).ToCaptureTypeVariant();
+        ItemObject = capture;
     }
 
     public OneOf(PolyItemCapture<T2> capture)
@@ -17,6 +18,7 @@ public class OneOf<T1, T2> : OneOf
         Item2 = capture;
         ItemType = typeof(T2);
         ManyItemVariant = typeof(T2).ToCaptureTypeVariant();
+        ItemObject = capture;
     }
 }
 
@@ -46,7 +48,6 @@ public class OneOf<T1, T2, T3> : OneOf
         ItemType = typeof(T3);
         ManyItemVariant = typeof(T3).ToCaptureTypeVariant();
     }
-
 }
 
 

@@ -35,11 +35,12 @@ public static class SpanBuilder
     {
         return prop.Value switch
         {
-            TokenUnitOneOf val => BuildOneOfBranch(val, prop, ctx),
+            TokenUnitOneOf val => BuildTokenUnitOneOfBranch(val, prop, ctx),
             TokenUnitDistilled val => BuildDistilledBranch(val, prop, ctx),
             TokenUnit val => BuildTokenUnitBranch(val, prop, ctx),
             ManyOf val => BuildManyOfBranch(val, prop, ctx),
             CompoundOf val => BuildCompoundOfBranch(val, prop, ctx),
+            OneOf val => BuildOneOfBranch(val, prop, ctx),
             DynamicCapture val => BuildDynamicBranch(val, prop, ctx),
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
@@ -58,7 +59,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    private static SpanNode BuildOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildTokenUnitOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var inner = tokenUnitOneOf.IndexedPropertyCaptures.Single();
@@ -75,7 +76,7 @@ public static class SpanBuilder
 
         SpanNode innerNode = dynamicCapture.ValueObject switch
         {
-            TokenUnitOneOf val => BuildOneOfBranch(val, prop, childCtx),
+            TokenUnitOneOf val => BuildTokenUnitOneOfBranch(val, prop, childCtx),
             TokenUnit val => BuildTokenUnitBranch(val, prop, childCtx),
             _ => BuildLeaf(prop, childCtx, dynamicCapture.ValueObject.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
         };
@@ -147,6 +148,29 @@ public static class SpanBuilder
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.CompoundOfBranch, children, ctx);
     }
+
+    private static SpanNode BuildOneOfBranch(OneOf oneOf, PropertyCapture prop, SpanContext ctx)
+    {
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var childCtx = ctx.ClearNameChain();
+        var children = new List<SpanNode>();
+        var itemLabel = oneOf.ItemObject.RegexPropInfo.Name;
+        var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
+
+        if (oneOf.ItemObject.ItemObject is TokenUnit tokenUnit)
+        {
+            var itemCtx = childCtx.PushName(prop.RegexPropInfo.Name);
+            var innerTU = BuildTokenUnitBranch(tokenUnit, oneOf.ItemObject.Capture, itemPath, itemCtx);
+            children.Add(CreateBranch(oneOf.ItemObject.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
+        }
+        else
+        {
+            children.Add(BuildLeaf(oneOf.ItemObject.Capture, itemLabel, itemPath, ctx, oneOf.ItemObject.ItemObject.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.OneOfItemLeaf));
+        }
+
+        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, children, ctx);
+    }
+
 
 
     private static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, PropertyCapture prop, SpanContext ctx)

@@ -48,9 +48,8 @@ public enum RegexPropType
     TokenUnit,
     TokenUnitOneOf,
     ManyOf,
-    ManyOfItem,
     ManyOfConjunction,
     CompoundOf,
-    CompoundOfItem,
+    OneOf,
 }
 

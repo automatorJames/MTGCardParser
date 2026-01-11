@@ -97,6 +97,7 @@ public abstract class TokenUnit
         ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
         terminalCaptures.AddRange(FlattenManyOfCaptures());
         terminalCaptures.AddRange(FlattenCompoundOfCaptures());
+        terminalCaptures.AddRange(FlattenOneOfCaptures());
 
         return terminalCaptures;
     }
@@ -110,7 +111,7 @@ public abstract class TokenUnit
         List<PropertyCapture> terminalCaptures = [];
 
         var manyOfPropCaps = IndexedPropertyCaptures
-            .Where(x => x.Value is ManyOf manyOf)
+            .Where(x => x.Value is ManyOf)
             .ToList();
 
         foreach (var manyOfPropCap in manyOfPropCaps)
@@ -155,7 +156,7 @@ public abstract class TokenUnit
         List<PropertyCapture> terminalCaptures = [];
 
         var compoundOfPropCaps = IndexedPropertyCaptures
-            .Where(x => x.Value is CompoundOf compoundOf)
+            .Where(x => x.Value is CompoundOf)
             .ToList();
 
         foreach (var compoundOfPropCap in compoundOfPropCaps)
@@ -179,6 +180,31 @@ public abstract class TokenUnit
         return terminalCaptures;
     }
 
+    public List<PropertyCapture> FlattenOneOfCaptures()
+    {
+        List<PropertyCapture> terminalCaptures = [];
+
+        var oneOfPropCaps = IndexedPropertyCaptures
+            .Where(x => x.Value is OneOf)
+            .ToList();
+
+        foreach (var oneOfPropCap in oneOfPropCaps)
+        {
+            var oneOf = (OneOf)oneOfPropCap.Value;
+
+            var derivedPropCapture = oneOfPropCap.DeriveForOneOfItem(oneOf, oneOf.ItemObject);
+
+            if (oneOf.ItemObject.CaptureTypeVariant == CaptureTypeVariant.Enum)
+                terminalCaptures.Add(derivedPropCapture);
+            else if (oneOf.ItemObject.CaptureTypeVariant == CaptureTypeVariant.TokenUnit)
+            {
+                var compoundOfTokenUnit = (TokenUnit)oneOf.ItemObject.ItemObject;
+                terminalCaptures.AddRange(compoundOfTokenUnit.GetFlattenedTerminalCaptures());
+            }
+        }
+
+        return terminalCaptures;
+    }
 
     /// <summary>
     /// Only intended to be called by TokenTypeRegistry once upon startup. May be overridden by

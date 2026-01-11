@@ -67,13 +67,29 @@ public static partial class TokenTypeRegistry
                 EnumScalarAlternativeSets[enumType] = enumRegexPropWithNewEnumType.EnumSet;
             });
 
-        // Register enums that only appear as the T types within ManyOf<T> properties
+        // Register enums that appear as the T types within ManyOf<T> properties
         propCaptureSegments
-            .OfType<TokenRegexManyProp>()
+            .OfType<ManyProp>()
             .Where(x => x.BaseType.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x.BaseType))
             .Select(x => x.BaseType)
             .ToList()
             .ForEach(newEnumType => 
+            {
+                var enumSet = EnumRegexProp.EnumTypetoScalarSet(newEnumType);
+                EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
+                ReferencedEnumTypes.Add(newEnumType);
+                NameToType[newEnumType.Name] = newEnumType;
+                EnumScalarAlternativeSets[newEnumType] = enumSet;
+            });
+
+        // Register enums that appear as the T types within ManyOf<T> properties
+        propCaptureSegments
+            .OfType<OneOfProp>()
+            .SelectMany(x => x.EnumTypesRepresented)
+            .Distinct()
+            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x))
+            .ToList()
+            .ForEach(newEnumType =>
             {
                 var enumSet = EnumRegexProp.EnumTypetoScalarSet(newEnumType);
                 EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
@@ -91,7 +107,7 @@ public static partial class TokenTypeRegistry
 
         // Register all newly encountered ManyProps (we use BaseType as the key, not UnderlyingType which is List<T>)
         propCaptureSegments
-            .OfType<TokenRegexManyProp>()
+            .OfType<ManyProp>()
             .ToList()
             .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.RegexPropInfo)));
 

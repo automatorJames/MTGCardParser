@@ -23,6 +23,6 @@ public abstract class DynamicCapture
     {
         Capture = capture;
         ValueObject = valueObject;
-        RegexPropType = itemType.GetRegexPropType();
+        RegexPropType = RegexPropInfo.GetRegexPropType(itemType);
     }
 }
