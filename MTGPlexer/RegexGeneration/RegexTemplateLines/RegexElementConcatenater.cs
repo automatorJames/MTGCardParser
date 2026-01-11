@@ -26,12 +26,6 @@ public class RegexElementConcatenater
         // or if the element to add is a group open, at one level up from it.
         Enclosure[] enclosuresForSpace = nextElement is IGroupOpen groupOpen ? groupOpen.ParentEnclosures : nextElement.Enclosures;
 
-        if (_lastAppendedElement is NamedGroupOpen lastNamedGroupOpen && lastNamedGroupOpen.IsOptional)
-        {
-            RegexElements.Add(new SpaceLine(enclosuresForSpace));
-            return;
-        }
-
         // If the any ancestor enclosure disallows spaces globally, or the parent enclosure disallows them locally, don't add a space
         if (nextElement.SpacesDisallowedGloballyOrLocally)
             return;
@@ -48,9 +42,12 @@ public class RegexElementConcatenater
             return;
         }
 
-        // If the next element is a named group open that's optional, don't add a space
+        // If the next element is a named group open that's optional, add an optional space before it
         if (nextElement is NamedGroupOpen nextNamedGroupOpen && nextNamedGroupOpen.IsOptional)
+        {
+            RegexElements.Add(new SpaceLine(enclosuresForSpace, isOptional: true));
             return;
+        }
 
         // If the next element is a group close, don't add a space
         if (nextElement is IGroupClose)

@@ -2,8 +2,8 @@
 
 public class SpaceLine : RegexElement
 {
-    public SpaceLine(Enclosure[] enclosures)
-        : base(enclosures, "[ ]", comment: "connective space")
+    public SpaceLine(Enclosure[] enclosures, bool isOptional = false)
+        : base(enclosures, $"[ ]{(isOptional ? "?" : "")}", comment: $"{(isOptional ? "optional " : "")}connective space")
     {
     }
 }

@@ -7,22 +7,24 @@
 /// </summary>
 public record EnumRegexProp : ScalarCapturePropBase
 {
+    bool _isOptional;
     public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
+        _isOptional = Nullable.GetUnderlyingType(captureProp.Prop.PropertyType) != null;
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo);
+        builder.OpenGroup(RegexPropInfo, isOptional: _isOptional);
 
         if (RegexPropInfo.BaseType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
         builder.AddAlternateEnumValues(EnumSet);
-        builder.CloseGroup();
+        builder.CloseGroup(_isOptional ? GroupQuantifier.Optional : null);
     }
 
     protected override void SetScalarAlternativeSet(RegexPropInfo captureProp)

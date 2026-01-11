@@ -2,9 +2,9 @@
 
 public class EnchantedCard : TokenUnit
 {
-    protected override Snippet[] Snippets => ["enchanted", Prop(CardType), Prop(PermanentVerb), Prop(Buff)];
+    protected override Snippet[] Snippets => ["enchanted", Prop(CardOrCreatureType), Prop(PermanentVerb), Prop(Buff)];
 
-    public CardType CardType { get; set; }
+    public OneOf<CardType, CreatureType> CardOrCreatureType{ get; set; }
     public PermanentVerb? PermanentVerb { get; set; }
     public Buff Buff { get; set; }
 }

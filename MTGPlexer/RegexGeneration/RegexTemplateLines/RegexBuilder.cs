@@ -38,7 +38,7 @@ public class RegexBuilder
     /// </summary>
     /// <param name="captureGroup">The property info for the capture group, if it's a named group.</param>
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
-    public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null)
+    public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
     {
         Enclosure enclosure = null;
 
@@ -53,7 +53,7 @@ public class RegexBuilder
         RegexElement groupOpenElement = null;
 
         if (captureGroup != null)
-            groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup, isOptional: spaceDisposition == SpaceDisposition.BeginNamedGroupWithSpaceIfNotFirstElement);
+            groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup, isOptional: isOptional);
         else
             groupOpenElement = new GroupOpen(_orderedEnclosureStack);
 
