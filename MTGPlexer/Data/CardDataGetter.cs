@@ -36,6 +36,7 @@ public class CardDataGetter
 
         //result = new List<Card> { new Card { Name = "baahzek", Text = "If you do, add {C}." } };
         //result = result.Where(x => x.Name == "Animate Wall");
+        //result = result.Where(x => x.Name == "Ankh of Mishra");
         return result.ToList();
     }
 }

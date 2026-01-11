@@ -2,7 +2,7 @@
 
 public class RegexElementConcatenater
 {
-    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>'];
+    static readonly HashSet<char> _terminalPunctuationMarks = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '>', '\''];
 
     public List<RegexElement> RegexElements { get; } = [];
     bool _doubleQuoteIsOpen;
