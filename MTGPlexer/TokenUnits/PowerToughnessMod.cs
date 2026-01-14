@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [NoSpaces]
-[RegexBoundaryOptionAtrribute(BoundaryOption.Omit)]
+[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class PowerToughnessMod : TokenUnit
 {
     protected override Snippet[] Snippets => [Prop(PowerSign), Prop(PowerValue), "/", Prop(ToughnessSign), Prop(ToughnessValue)];

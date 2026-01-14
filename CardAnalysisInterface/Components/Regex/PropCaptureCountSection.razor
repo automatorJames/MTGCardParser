@@ -2,10 +2,12 @@
 {
     int propCount = 0;
     <div class="properties-container">
-        @foreach (var captureValueVariantSetWrapper in TokenUnitCapture.PropPathVariantSets)
+        @for (int i = 0; i < TokenUnitCapture.PropPathVariantSets.Count; i++)
         {
+            var captureValueVariantSetWrapper = TokenUnitCapture.PropPathVariantSets.Skip(i).First();
             var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
-            var propSetPalette = DeterministicPalette.GetFixedRainbowPalette(propCount++);
+            
+            var propSetPalette = _positionalPalettes[i];
             var propCardStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat}; border-color: {propSetPalette.Dark};";
 
             <div class="property-capture-card" style="@propCardStyle" data-path=@captureGroupPropPath.PropPathRelativeToRoot>
@@ -46,7 +48,14 @@
 
 @code {
 
+    Dictionary<int, HexPalette> _positionalPalettes;
+
     [Parameter]
-	public TokenUnitCapture TokenUnitCapture { get; set; }
+    public TokenUnitCapture TokenUnitCapture { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(TokenUnitCapture.PropPathVariantSets.Count);
+    }
 
 }

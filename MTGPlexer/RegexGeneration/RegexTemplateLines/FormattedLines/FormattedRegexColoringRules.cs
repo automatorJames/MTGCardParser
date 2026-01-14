@@ -6,17 +6,17 @@
 /// </summary>
 record FormattedRegexColoringRules
 {
-    const string Black = "#000000"; // 0% white
-    const string Grey10 = "#1A1A1A"; // 10% white
-    const string Grey20 = "#333333"; // 20% white
-    const string Grey30 = "#4D4D4D"; // 30% white
-    const string Grey40 = "#666666"; // 40% white
-    const string Grey50 = "#808080"; // 50% white (true mid-grey)
-    const string Grey60 = "#999999"; // 60% white
-    const string Grey70 = "#B3B3B3"; // 70% white
-    const string Grey80 = "#CCCCCC"; // 80% white
-    const string Grey90 = "#E6E6E6"; // 90% white (almost white)
-    const string White = "#FFFFFF"; // 100% white
+    public const string Black = "#000000"; // 0% white
+    public const string Grey10 = "#1A1A1A"; // 10% white
+    public const string Grey20 = "#333333"; // 20% white
+    public const string Grey30 = "#4D4D4D"; // 30% white
+    public const string Grey40 = "#666666"; // 40% white
+    public const string Grey50 = "#808080"; // 50% white (true mid-grey)
+    public const string Grey60 = "#999999"; // 60% white
+    public const string Grey70 = "#B3B3B3"; // 70% white
+    public const string Grey80 = "#CCCCCC"; // 80% white
+    public const string Grey90 = "#E6E6E6"; // 90% white (almost white)
+    public const string White = "#FFFFFF"; // 100% white
 
     // General Element Coloring Rules
     // Note: DefaultRegexTextColor is now mostly a fallback, as primary content color is dynamically picked.

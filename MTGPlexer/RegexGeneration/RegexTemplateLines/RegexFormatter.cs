@@ -6,7 +6,6 @@
 public class RegexFormatter
 {
     IReadOnlyList<RegexElement> _regexElements;
-    BoundaryOption _boundaryOption;
     List<PropPathSynonymSetContainer> _synonymData;
 
     readonly FormattedRegexColoringRules _colors = new();
@@ -17,23 +16,32 @@ public class RegexFormatter
     Dictionary<string, EnumBoxLayoutMetrics> _enumBoxMetrics = [];
     Dictionary<Enclosure, HexPalette> _enclosurePalettes = [];
 
-    const string DefaultWhite = "#FFFFFF";
     const int HashSeparatorPadding = 4;
     const int BoxContentLeftPadding = 1;
     const int SpacesPerIndent = 4;
     const int SpacesPerAlternateIndent = 2;
 
-    public RegexFormatter(IReadOnlyList<RegexElement> regexElements, BoundaryOption boundaryOption, List<PropPathSynonymSetContainer> synonymData)
+    public RegexFormatter(IReadOnlyList<RegexElement> regexElements, List<PropPathSynonymSetContainer> synonymData)
     {
         _regexElements = regexElements;
-        _boundaryOption = boundaryOption;
         _synonymData = synonymData;
 
-        var allEnclosures = _regexElements.SelectMany(x => x.Enclosures).ToList();
-        var positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(allEnclosures.Count);
+        var allNamedEnclosures = _regexElements
+            .SelectMany(x => x.Enclosures)
+            .OfType<NamedEnclosure>()
+            .Distinct()
+            .ToList();
 
-        for (int i = 0; i < allEnclosures.Count; i++)
-            _enclosurePalettes[allEnclosures[i]] = positionalPalettes[i];
+        var positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(allNamedEnclosures.Count);
+
+        // Set named enclosure palettes
+        for (int i = 0; i < allNamedEnclosures.Count; i++)
+            _enclosurePalettes[allNamedEnclosures[i]] = positionalPalettes[i];
+
+        // Let elements whose immediate parents are non-named inherit their nearst named enclosure's palette
+        foreach (var element in _regexElements.Where(x => x.ParentEnclosure != null && !_enclosurePalettes.ContainsKey(x.ParentEnclosure)))
+            if (!_enclosurePalettes.ContainsKey(element.ParentEnclosure) && element.ParentNamedEnclosure is NamedEnclosure closestNamedParent)
+                _enclosurePalettes[element.ParentEnclosure] = _enclosurePalettes[closestNamedParent];
     }
 
     /// <summary>
@@ -48,7 +56,6 @@ public class RegexFormatter
 
         // 2. Vertical Spacing: Add blank lines to separate logical blocks
         var spacedElements = InsertVerticalBreathingRoom(expandedElements);
-        AddBoundaryLines(spacedElements, _boundaryOption);
 
         // 3. Layout: Calculate column widths for alignment
         CalculateLayoutMetrics(spacedElements, alternateCounts);
@@ -62,7 +69,7 @@ public class RegexFormatter
 
     #region Phase 1: Expansion
 
-    private List<RegexElement> ExpandAlternateElements(IReadOnlyList<RegexElement> elements, List<PropPathSynonymSetContainer> synonymData, out Dictionary<AlternateValueEnum, int> alternateCounts)
+    List<RegexElement> ExpandAlternateElements(IReadOnlyList<RegexElement> elements, List<PropPathSynonymSetContainer> synonymData, out Dictionary<AlternateValueEnum, int> alternateCounts)
     {
         alternateCounts = new Dictionary<AlternateValueEnum, int>();
         var synonymLookup = synonymData.ToDictionary(d => d.ParentPath.PropPath);
@@ -81,11 +88,7 @@ public class RegexFormatter
         return result;
     }
 
-    private void ExpandAlternateEnumContainer(
-        AlternateValueEnumContainer container,
-        Dictionary<string, PropPathSynonymSetContainer> lookup,
-        List<RegexElement> output,
-        Dictionary<AlternateValueEnum, int> counts)
+    void ExpandAlternateEnumContainer(AlternateValueEnumContainer container, Dictionary<string, PropPathSynonymSetContainer> lookup, List<RegexElement> output, Dictionary<AlternateValueEnum, int> counts)
     {
         if (!lookup.TryGetValue(container.NamedPath, out var wrapper))
         {
@@ -137,7 +140,7 @@ public class RegexFormatter
 
     #region Phase 2: Vertical Spacing
 
-    private List<RegexElement> InsertVerticalBreathingRoom(List<RegexElement> elements)
+    List<RegexElement> InsertVerticalBreathingRoom(List<RegexElement> elements)
     {
         if (elements.Count == 0) return elements;
 
@@ -168,14 +171,14 @@ public class RegexFormatter
         return result;
     }
 
-    private int GetEnclosureEventType(RegexElement line) => line switch
+    int GetEnclosureEventType(RegexElement line) => line switch
     {
         GroupOpen or NamedGroupOpen => 1,
         GroupClose or NamedGroupClose => 2,
         _ => 0
     };
 
-    private int CalculateCommonDepth(RegexElement a, RegexElement b)
+    int CalculateCommonDepth(RegexElement a, RegexElement b)
     {
         int depth = 0;
 
@@ -189,7 +192,7 @@ public class RegexFormatter
 
     #region Phase 3: Layout Measurement
 
-    private void CalculateLayoutMetrics(List<RegexElement> lines, Dictionary<AlternateValueEnum, int> counts)
+    void CalculateLayoutMetrics(List<RegexElement> lines, Dictionary<AlternateValueEnum, int> counts)
     {
         // 1. Determine the widest regex string to set the '#' column
         int maxRegexWidth = lines.Any() ? lines.Max(GetLineRenderedLength) : 0;
@@ -210,7 +213,7 @@ public class RegexFormatter
         MeasureCommentBoxes(lines);
     }
 
-    private void MeasureCommentBoxes(List<RegexElement> lines)
+    void MeasureCommentBoxes(List<RegexElement> lines)
     {
         var uniquePaths = lines
             .SelectMany(l => l.VisibleEnclosures.Select((_, i) => l.VisibleEnclosures.Take(i + 1)))
@@ -241,9 +244,9 @@ public class RegexFormatter
         _commentBoxLength = rootPaths.Any() ? rootPaths.Max(p => boxWidths[GetPathKey(p)]) : 0;
     }
 
-    private string GetPathKey(IEnumerable<Enclosure> enclosures) => string.Join(",", enclosures.Select(e => e.Ordinal));
+    string GetPathKey(IEnumerable<Enclosure> enclosures) => string.Join(",", enclosures.Select(e => e.Ordinal));
 
-    private int CalculateInternalCommentWidth(RegexElement line)
+    int CalculateInternalCommentWidth(RegexElement line)
     {
         if (string.IsNullOrEmpty(line.Comment)) return 0;
 
@@ -263,7 +266,7 @@ public class RegexFormatter
 
     #region Phase 4: Line Rendering
 
-    private RegexCommentedLine CreateCommentedLine(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
+    RegexCommentedLine CreateCommentedLine(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
         var regexText = GetFinalRegexString(line);
         int indent = (line is AlternateValue ? GetAlternateIndent(line) : GetIndentDepth(line)) * SpacesPerIndent;
@@ -294,7 +297,7 @@ public class RegexFormatter
         return new RegexCommentedLine(paddedRegex, fullComment, line.NamedPath, spans);
     }
 
-    private List<RegexCommentedLineSpan> GenerateCommentSpans(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
+    List<RegexCommentedLineSpan> GenerateCommentSpans(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
         var spans = new List<RegexCommentedLineSpan>();
         var visibleEnclosures = line.VisibleEnclosures.ToArray();
@@ -347,10 +350,10 @@ public class RegexFormatter
 
     #region Helpers & Sub-Renderers
 
-    private void AddParentBorders(RegexElement line, List<Enclosure> parents, List<RegexCommentedLineSpan> spans, bool isClosing)
+    void AddParentBorders(RegexElement line, List<Enclosure> parents, List<RegexCommentedLineSpan> spans, bool isClosing)
     {
         var list = isClosing ? parents.AsEnumerable().Reverse().ToList() : parents;
-        var white = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+        var white = DeterministicPalette.GetStaticPalette(new HexColor(FormattedRegexColoringRules.White));
 
         for (int i = 0; i < list.Count; i++)
         {
@@ -369,14 +372,14 @@ public class RegexFormatter
         }
     }
 
-    private void RenderBookendComment(EnclosureBookend line, List<RegexCommentedLineSpan> spans, BoxCharSet chars, HexPalette borderPal, int width)
+    void RenderBookendComment(EnclosureBookend line, List<RegexCommentedLineSpan> spans, BoxCharSet chars, HexPalette borderPal, int width)
     {
         string comment = line.Comment != null ? $" {line.Comment} " : "";
         string color = line switch
         {
             NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(_enclosurePalettes[line.Enclosures.Last()]),
             GroupClose => _colors.GroupCloseQuantifierColor,
-            _ => DefaultWhite
+            _ => FormattedRegexColoringRules.White
         };
 
         char left = line is NamedGroupOpen or GroupOpen ? chars.TopLeft : chars.BottomLeft;
@@ -404,9 +407,9 @@ public class RegexFormatter
         AddCurrentLineSpan(line, spans, right.ToString(), borderPal, false);
     }
 
-    private void RenderInternalComment(RegexElement line, List<RegexCommentedLineSpan> spans, int width, IReadOnlyDictionary<AlternateValueEnum, int> counts, HexPalette palette)
+    void RenderInternalComment(RegexElement line, List<RegexCommentedLineSpan> spans, int width, IReadOnlyDictionary<AlternateValueEnum, int> counts, HexPalette palette)
     {
-        var white = DeterministicPalette.GetStaticPalette(new HexColor(DefaultWhite));
+        var white = DeterministicPalette.GetStaticPalette(new HexColor(FormattedRegexColoringRules.White));
 
         switch (line)
         {
@@ -438,7 +441,7 @@ public class RegexFormatter
         }
     }
 
-    private string GetPathForSpan(RegexElement line) => line switch
+    string GetPathForSpan(RegexElement line) => line switch
     {
         SynonymValueEnum s => $"{line.NamedPath}.{s.CanonicalValue}",
         AlternateValueEnum a => $"{line.NamedPath}.{a.CanonicalValue}",
@@ -446,7 +449,7 @@ public class RegexFormatter
         _ => line.NamedPath
     };
 
-    private void AddEnclosurePathSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, IEnumerable<Enclosure> scope)
+    void AddEnclosurePathSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, IEnumerable<Enclosure> scope)
     {
         var root = line.Enclosures.OfType<RootEnclosure>().FirstOrDefault()?.RootTypeName ?? "";
         var path = string.Join('.', scope.OfType<NamedEnclosure>().Select(x => x.Name));
@@ -455,14 +458,14 @@ public class RegexFormatter
         spans.Add(new(text, pal, rel, rel == null ? SpanHighlightTreatment.None : _treatments.GetCommentHighlightTreatment(line, false), _treatments.CommentLowlightTreatment));
     }
 
-    private void AddCurrentLineSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, bool isText)
+    void AddCurrentLineSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, bool isText)
     {
         var rel = RegexCommentedLine.GetRelativePath(GetPathForSpan(line));
         var high = _treatments.GetCommentHighlightTreatment(line, isText);
         spans.Add(new(text, pal, rel, rel == null ? SpanHighlightTreatment.None : high, _treatments.CommentLowlightTreatment));
     }
 
-    private List<RegexCommentedLine> FinalizeAlternatePrefixes(List<RegexCommentedLine> lines)
+    List<RegexCommentedLine> FinalizeAlternatePrefixes(List<RegexCommentedLine> lines)
     {
         var result = new List<RegexCommentedLine>();
         string activePath = null;
@@ -502,7 +505,7 @@ public class RegexFormatter
         return result;
     }
 
-    private string GetFinalRegexString(RegexElement line)
+    string GetFinalRegexString(RegexElement line)
     {
         var text = line switch
         {
@@ -515,25 +518,25 @@ public class RegexFormatter
         return line is AlternateValue ? text.Replace(" ", "[ ]") : text;
     }
 
-    private int GetLineRenderedLength(RegexElement line)
+    int GetLineRenderedLength(RegexElement line)
     {
         int indent = (line is AlternateValue ? GetAlternateIndent(line) : GetIndentDepth(line)) * SpacesPerIndent;
         return indent + GetFinalRegexString(line).Length;
     }
 
-    private int GetIndentDepth(RegexElement line)
+    int GetIndentDepth(RegexElement line)
     {
         int d = line.Enclosures.Count(e => e is not RootEnclosure);
         return (d > 0 && line is EnclosureBookend) ? d - 1 : d;
     }
 
-    private int GetAlternateIndent(RegexElement line)
+    int GetAlternateIndent(RegexElement line)
     {
         int d = line.Enclosures.Count(e => e is not RootEnclosure) - 1;
         return (d < 0 ? 0 : d) + 1; // +1 to account for the "| " prefix logic
     }
 
-    private string GetPrimaryContentColorForLine(RegexElement line)
+    string GetPrimaryContentColorForLine(RegexElement line)
     {
         if (!line.VisibleEnclosures.Any()) 
             return line switch
@@ -552,17 +555,8 @@ public class RegexFormatter
             GroupClose => _colors.GroupCloseQuantifierColor,
             AlternateValue => _colors.AlternateValueCommentColor(palette),
             _ => (line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) is NamedEnclosure x)
-                ? _colors.EnclosedTextColor(_enclosurePalettes[x]) : DefaultWhite
+                ? _colors.EnclosedTextColor(_enclosurePalettes[x]) : FormattedRegexColoringRules.White
         };
-    }
-
-    public static void AddBoundaryLines(List<RegexElement> lines, BoundaryOption option)
-    {
-        if (option == BoundaryOption.Omit) return;
-        lines.Insert(0, option == BoundaryOption.WholeWord ? new NegativeLookbehindBoundary() : new StartOfLineBoundary());
-        lines.Insert(1, new BlankLine([]));
-        lines.Add(new BlankLine([]));
-        lines.Add(option == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary());
     }
 
     #endregion

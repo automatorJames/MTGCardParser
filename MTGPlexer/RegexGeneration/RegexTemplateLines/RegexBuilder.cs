@@ -30,7 +30,7 @@ public class RegexBuilder
 
         _concatenater = new();
         _enclosureStack.Push(rootEnclosure);
-        _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.WholeWord;
+        _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.None;
     }
 
     /// <summary>
@@ -137,7 +137,9 @@ public class RegexBuilder
     /// <returns>A list of formatted regex lines.</returns>
     public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
-        var formatter = new RegexFormatter(_concatenater.RegexElements, _boundaryOption, synonymData);
+        var finalizedElements = _concatenater.RegexElements.ToList();
+        AddBoundaryLines(finalizedElements);
+        var formatter = new RegexFormatter(finalizedElements, synonymData);
         return formatter.Format();
     }
 
@@ -164,16 +166,34 @@ public class RegexBuilder
     /// <param name="lines">The list of elements to add boundaries to.</param>
     void AddBoundaryLines(List<RegexElement> lines)
     {
-        if (_boundaryOption == BoundaryOption.Omit)
+        if (_boundaryOption == BoundaryOption.None)
             return;
 
-        RegexElement startBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookbehindBoundary() : new StartOfLineBoundary();
-        RegexElement endBoundary = _boundaryOption == BoundaryOption.WholeWord ? new NegativeLookaheadBoundary() : new EndOfLineBoundary();
+        RegexElement startBoundary = _boundaryOption switch
+        {
+            BoundaryOption.WholeWord => new NegativeLookbehindBoundary(),
+            BoundaryOption.FullLine => new StartOfLineBoundary(),
+            _ => null
+        };
 
-        lines.Insert(0, startBoundary);
-        lines.Insert(1, new BlankLine([]));
-        lines.Add(new BlankLine([]));
-        lines.Add(endBoundary);
+        RegexElement endBoundary = _boundaryOption switch
+        {
+            BoundaryOption.WholeWord => new NegativeLookaheadBoundary(),
+            BoundaryOption.FullLine => new EndOfLineBoundary(),
+            _ => null
+        };
+
+        if (startBoundary != null)
+        {
+            lines.Insert(0, startBoundary);
+            lines.Insert(1, new BlankLine([]));
+        }
+
+        if (endBoundary != null)
+        {
+            lines.Add(new BlankLine([]));
+            lines.Add(endBoundary);
+        }
     }
 
     public override string ToString() => GetMinified(addBoundaries: false);
