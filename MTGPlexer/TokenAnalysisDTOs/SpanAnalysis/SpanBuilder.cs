@@ -8,8 +8,6 @@ public static class SpanBuilder
 {
     public static SpanRoot Create(TokenUnit root, string fullText, string cardName, int clauseIndex)
     {
-        if (root.Type == typeof(WhenThisLeavesTheBattlefield)) Debugger.Break();
-
         var prefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RegexMatch.Index}]-";
         var ctx = new SpanContext(fullText, prefix);
 
@@ -83,8 +81,7 @@ public static class SpanBuilder
             _ => BuildLeaf(prop, childCtx, dynamicCapture.ValueObject.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
         };
 
-        // 2. Return the branch. The branch name itself is just the prop name (e.g. "Action")
-        // since it will be collapsed in the GUI anyway.
+        // 2. Return the branch. The branch name itself is just the prop name
         return CreateBranch(
             prop.Capture, 
             prop.RegexPropInfo.Name, 
