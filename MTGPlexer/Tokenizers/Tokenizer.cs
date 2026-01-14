@@ -76,27 +76,32 @@ public class Tokenizer
                     // Dynamic capture handling
                     if (dynamicPrefilledValues.Any())
                     {
+                        // todo: I see no reason why we couldn't support any number of dynamics; just need to handle the spacing and ordering correctly/
                         if (dynamicPrefilledValues.Count > 1)
                             throw new NotImplementedException($"Type '{type.Name}' has {dynamicPrefilledValues.Count} dynamic properties, but the max supported is 1");
 
-                        foreach (var dynamicPrefilledValue in dynamicPrefilledValues.Keys.ToList())
-                        {
-                            var dynamicGroup = match.Groups[dynamicPrefilledValue.Name];
+                        var dynamicProp = dynamicPrefilledValues.First().Key;
 
-                            if (!dynamicGroup.Success)
-                                goto NextIteration;
+                        var dynamicGroup = match.Groups[dynamicProp.Name];
 
-                            var dynamicType = dynamicPrefilledValue.RegexPropInfo.BaseType.GenericTypeArguments[0];
+                        if (!dynamicGroup.Success)
+                            goto NextIteration;
 
-                            // Recursive call to resolve the dynamic portion
-                            var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);
-                            var dynamicToken = tokenSet.FirstOrDefault(x => x is not DefaultUnmatchedString);
+                        var dynamicType = dynamicProp.RegexPropInfo.BaseType.GenericTypeArguments[0];
 
-                            if (dynamicToken == null)
-                                goto NextIteration;
+                        // Recursive call to resolve the dynamic portion
+                        var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);
 
-                            dynamicPrefilledValues[dynamicPrefilledValue] = dynamicToken;
-                        }
+                        // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
+                        if (tokenSet.First() is DefaultUnmatchedString || tokenSet.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
+                            goto NextIteration;
+
+                        // Although the dynamic match must begin exactly where the parent match left off, it's allowed to be shorter than the remaining space in the parent.
+                        // When this occurs, shorten the parent match so that it ends where its dynamic child stops, allowing following tokens to be matched by something else.
+                        if (dynamicMatchToken.Match.AbsoluteEnd != match.Index + match.Length)
+                            match = regex.Match(sourceText.FormattedText, currentIndex, dynamicMatchToken.Match.AbsoluteEnd - match.Index);
+
+                        dynamicPrefilledValues[dynamicProp] = dynamicMatchToken;
                     }
 
                     // --- COMMIT PHASE ---

@@ -27,6 +27,7 @@ public abstract class TokenUnitOneOf : TokenUnit
         // (i.e. not separated by text segments)
         bool textSegmentEncountered = false;
         bool capturePropEncountered = false;
+
         foreach (var segment in template.RegexSegments)
         {
             // Ignore leading text segments
@@ -42,6 +43,10 @@ public abstract class TokenUnitOneOf : TokenUnit
             else if (segment is TextSegment)
                 textSegmentEncountered = true;
         }
+
+        // Any enums must be nullable
+        if (template.RegexSegments.OfType<EnumRegexProp>().Any(x => Nullable.GetUnderlyingType(x.RegexPropInfo.Prop.PropertyType) == null))
+            return $"All enum properties in {nameof(TokenUnitOneOf)} types must be nullable";
 
         return null;
     }

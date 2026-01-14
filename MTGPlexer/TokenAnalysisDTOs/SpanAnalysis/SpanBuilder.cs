@@ -8,6 +8,8 @@ public static class SpanBuilder
 {
     public static SpanRoot Create(TokenUnit root, string fullText, string cardName, int clauseIndex)
     {
+        if (root.Type == typeof(WhenThisLeavesTheBattlefield)) Debugger.Break();
+
         var prefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RegexMatch.Index}]-";
         var ctx = new SpanContext(fullText, prefix);
 
@@ -83,9 +85,14 @@ public static class SpanBuilder
 
         // 2. Return the branch. The branch name itself is just the prop name (e.g. "Action")
         // since it will be collapsed in the GUI anyway.
-        return CreateBranch(prop.Capture, prop.RegexPropInfo.Name, prop.CaptureGroupPropPath,
-                            TokenAnalysisElementType.DynamicCaptureItemBranch,
-                            new List<SpanNode> { innerNode }, ctx, forceCollapse: true);
+        return CreateBranch(
+            prop.Capture, 
+            prop.RegexPropInfo.Name, 
+            prop.CaptureGroupPropPath,
+            TokenAnalysisElementType.DynamicCaptureItemBranch,
+            new List<SpanNode> { innerNode }, 
+            ctx,
+            neverCollapse: true);
     }
 
     private static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
@@ -219,7 +226,7 @@ public static class SpanBuilder
         return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    private static SpanBranch CreateBranch(Capture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx, bool? forceCollapse = null)
+    private static SpanBranch CreateBranch(Capture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx, bool neverCollapse = false)
     {
         return new SpanBranch
         {
@@ -232,7 +239,7 @@ public static class SpanBuilder
             ElementType = type,
             Children = children,
             // Use the override if provided, otherwise fallback to the automatic calculation
-            IsCollapsed = forceCollapse ?? SpanBranch.CalculateIsCollapsed(children)
+            IsCollapsed = neverCollapse ? false : SpanBranch.CalculateIsCollapsed(children)
         };
     }
 

@@ -13,7 +13,12 @@ public record EnumRegexProp : ScalarCapturePropBase
 
     public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
     {
-        _isOptional = Nullable.GetUnderlyingType(captureProp.Prop.PropertyType) != null;
+        // If the enum is nullable, we treat it as optional. The exception to this is if the
+        // enum is contained in a TokenUnitOneOf, where at least one alternative must be matched,
+        // and the "zero or one" optional quantifier would allow zero-width false matches.
+        _isOptional =
+            Nullable.GetUnderlyingType(captureProp.Prop.PropertyType) != null
+            && !captureProp.Prop.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
