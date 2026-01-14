@@ -13,8 +13,7 @@
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in GetFilteredTokenUnitCaptures())
     {
-        var borderColorStyle = DeterministicPalette.TypePaletteSet[tokenUnitCapture.Type].ToColorStyle();
-
+        var borderColorStyle = "color: var(--grey);";
         <div class="type-card" style=@borderColorStyle @key=tokenUnitCapture.Type.Name>
             <div class="card-header">
                 <TokenTypeName TokenType=@tokenUnitCapture.Type />
@@ -27,8 +26,8 @@
                 @if (RuntimeSettings.ShowMinified)
                 {
                     <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
-                        <code>@tokenUnitCapture.MinifiedRegexString</code>
-                    </pre>
+                    <code>@tokenUnitCapture.MinifiedRegexString</code>
+                            </pre>
                 }
                 else
                 {
@@ -44,8 +43,6 @@
 
 @code {
 
-    
-
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += OnSettingsChanged;
@@ -54,9 +51,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        {
             await JSRuntime.InvokeVoidAsync("initializeTypeExpressionsHover");
-        }
     }
 
     private async void OnSettingsChanged()

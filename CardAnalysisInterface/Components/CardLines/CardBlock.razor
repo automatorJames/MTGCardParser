@@ -40,10 +40,10 @@
     {
         // todo: re-enable this if we want
 
-        //_selectedLine = line;
-        //_isDialogOpen = true;
-        //// We call StateHasChanged() to ensure the UI re-renders and shows the dialog.
-        //StateHasChanged();
+        _selectedLine = line;
+        _isDialogOpen = true;
+        // We call StateHasChanged() to ensure the UI re-renders and shows the dialog.
+        StateHasChanged();
     }
 
     void HandleDialogClose(string regexResult)

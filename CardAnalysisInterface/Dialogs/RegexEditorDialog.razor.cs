@@ -74,6 +74,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         {
             _textToReplaceForAutocomplete = currentWord;
             var filter = currentWord.Substring(1);
+
             _autocompleteSuggestions = _allTemplateTypes
                 .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))

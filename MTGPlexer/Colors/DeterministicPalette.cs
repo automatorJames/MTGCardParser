@@ -96,16 +96,14 @@ public record DeterministicPalette
 
         _typePaletteSet = [];
 
-        var typesInAppliedOrderThenAllOthers =
-            TokenTypeRegistry.AppliedOrderTypes
-            .Concat(TokenTypeRegistry.Templates.Keys)
-            .Distinct()
+        var allTokenTypes = TokenTypeRegistry.NameToType.Values
+            .OrderBy(x => GetDeterministicHash(x.Name))
             .ToList();
 
-        var positionalPalettes = GetPositionalPaletteSet(typesInAppliedOrderThenAllOthers.Count);
+        var positionalPalettes = GetPositionalPaletteSet(allTokenTypes.Count);
 
-        for (int i = 0; i < typesInAppliedOrderThenAllOthers.Count; i++)
-            _typePaletteSet[typesInAppliedOrderThenAllOthers[i]] = positionalPalettes[i];
+        for (int i = 0; i < allTokenTypes.Count; i++)
+            _typePaletteSet[allTokenTypes[i]] = positionalPalettes[i];
 
         return _typePaletteSet;
     }

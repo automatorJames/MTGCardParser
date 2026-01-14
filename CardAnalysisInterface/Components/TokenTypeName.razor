@@ -1,12 +1,10 @@
 ﻿<span data-path=@DataPath
-class="token-type-name"
-style=@_palette.ToColorStyle()>
+      class="token-type-name"
+      style="">
     @DisplayName
 </span>
 
 @code {
-    HexPalette _palette;
-
     [Parameter, EditorRequired]
     public Type TokenType { get; set; }
 
@@ -21,8 +19,6 @@ style=@_palette.ToColorStyle()>
 
     protected override void OnInitialized()
     {
-        _palette = DeterministicPalette.TypePaletteSet[TokenType];
-
         if (DisplayName == null)
         {
             DisplayName = TokenType.Name.Replace("_Many", " (many)").ToFriendlyCase(TitleDisplayOption.Sentence);
