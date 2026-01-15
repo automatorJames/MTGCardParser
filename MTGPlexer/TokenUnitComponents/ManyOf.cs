@@ -2,12 +2,9 @@
 
 public class ManyOf<T> : ManyOf
 {
-    public PolyItemCapture<T>[] Items { get; set; }
-
-    public ManyOf(IEnumerable<PolyItemCapture<T>> items, Conjunction? conjunction, Capture conjunctionCapture)
+    public ManyOf(IEnumerable<PolyItemCapture> items, Conjunction? conjunction, Capture conjunctionCapture)
     {
-        Items = items.ToArray();
-        ItemObjects = Items.Cast<PolyItemCapture>().ToList();
+        Items = items.ToList();
         Conjunction = conjunction;
         ConjunctionCapture = conjunctionCapture;
         ManyItemVariant = typeof(T).ToCaptureTypeVariant();
@@ -19,7 +16,7 @@ public class ManyOf<T> : ManyOf
 [Color("#696969")]
 public class ManyOf : XOf
 {
-    public List<PolyItemCapture> ItemObjects { get; set; }
+    public List<PolyItemCapture> Items { get; set; }
     public CaptureTypeVariant ManyItemVariant { get; set; }
     public Conjunction? Conjunction { get; set; }
     public Capture ConjunctionCapture { get; set; }
@@ -33,7 +30,7 @@ public class ManyOf : XOf
             _ => " & ",
         };
 
-        return string.Join(separator, ItemObjects.Select(x => x.ToString()));
+        return string.Join(separator, Items.Select(x => x.ToString()));
     }
 }
 

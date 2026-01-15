@@ -117,7 +117,7 @@ public abstract class TokenUnit
             {
                 // We only get the first (if any) among the items at the current ordinal, because its IndexedPropertyCaptures
                 // will contain all captures at that position (i.e. _secondPlus) , and we don't want to duplicate those captures
-                var representativeManyItemAtOrdinal = manyOf.ItemObjects.FirstOrDefault(x => x.DistinguishingName == manyItemOrdinal.ToString());
+                var representativeManyItemAtOrdinal = manyOf.Items.FirstOrDefault(x => x.DistinguishingName == manyItemOrdinal.ToString());
 
                 if (representativeManyItemAtOrdinal == null)
                     continue;
@@ -130,7 +130,7 @@ public abstract class TokenUnit
                 else if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit)
                 {
                     var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, representativeManyItemAtOrdinal);
-                    var manyOfItemTokenUnit = (TokenUnit)representativeManyItemAtOrdinal.ItemObject;
+                    var manyOfItemTokenUnit = (TokenUnit)representativeManyItemAtOrdinal.Value;
                     terminalCaptures.AddRange(manyOfItemTokenUnit.GetFlattenedTerminalCaptures());
                 }
             }
@@ -158,7 +158,7 @@ public abstract class TokenUnit
         {
             var compoundOf = (CompoundOf)compoundOfPropCap.Value;
 
-            foreach (var compoundOfItem in compoundOf.ItemObjects)
+            foreach (var compoundOfItem in compoundOf.Items)
             {
                 var derivedPropCapture = compoundOfPropCap.DeriveForCompoundOfItem(compoundOf, compoundOfItem);
 
@@ -166,7 +166,7 @@ public abstract class TokenUnit
                     terminalCaptures.Add(derivedPropCapture);
                 else if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.TokenUnit)
                 {
-                    var compoundOfTokenUnit = (TokenUnit)compoundOfItem.ItemObject;
+                    var compoundOfTokenUnit = (TokenUnit)compoundOfItem.Value;
                     terminalCaptures.AddRange(compoundOfTokenUnit.GetFlattenedTerminalCaptures());
                 }
             }
@@ -187,13 +187,13 @@ public abstract class TokenUnit
         {
             var oneOf = (OneOf)oneOfPropCap.Value;
 
-            var derivedPropCapture = oneOfPropCap.DeriveForOneOfItem(oneOf, oneOf.ItemObject);
+            var derivedPropCapture = oneOfPropCap.DeriveForOneOfItem(oneOf, oneOf.Item);
 
-            if (oneOf.ItemObject.CaptureTypeVariant == CaptureTypeVariant.Enum)
+            if (oneOf.Item.CaptureTypeVariant == CaptureTypeVariant.Enum)
                 terminalCaptures.Add(derivedPropCapture);
-            else if (oneOf.ItemObject.CaptureTypeVariant == CaptureTypeVariant.TokenUnit)
+            else if (oneOf.Item.CaptureTypeVariant == CaptureTypeVariant.TokenUnit)
             {
-                var compoundOfTokenUnit = (TokenUnit)oneOf.ItemObject.ItemObject;
+                var compoundOfTokenUnit = (TokenUnit)oneOf.Item.Value;
                 terminalCaptures.AddRange(compoundOfTokenUnit.GetFlattenedTerminalCaptures());
             }
         }

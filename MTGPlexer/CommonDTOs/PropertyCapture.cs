@@ -34,14 +34,14 @@ public record PropertyCapture
     /// </summary>
     public PropertyCapture DeriveForManyOfItem(ManyOf manyOf, PolyItemCapture capture)
     {
-        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.Value.ToString() : capture.Type.Name;
         var newPath = CaptureGroupPropPath.Append(TemplatePropInfo.Name, capture.DistinguishingName, terminalValueOrTypeName);
 
         return new PropertyCapture
         {
             TemplatePropInfo = capture.TemplatePropInfo,
             Capture = capture.Capture,
-            Value = capture.ItemObject,
+            Value = capture.Value,
             CaptureGroupPropPath = newPath
         };
     }
@@ -62,28 +62,28 @@ public record PropertyCapture
 
     public PropertyCapture DeriveForCompoundOfItem(CompoundOf compoundOf, PolyItemCapture capture)
     {
-        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
+        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.Value.ToString() : capture.Type.Name;
         var newPath = CaptureGroupPropPath.Append(TemplatePropInfo.Name, terminalValueOrTypeName);
 
         return new PropertyCapture
         {
             TemplatePropInfo = capture.TemplatePropInfo,
             Capture = capture.Capture,
-            Value = capture.ItemObject,
+            Value = capture.Value,
             CaptureGroupPropPath = newPath
         };
     }
 
     public PropertyCapture DeriveForOneOfItem(OneOf compoundOf, PolyItemCapture capture)
     {
-        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.ItemObject.ToString() : capture.ItemType.Name;
-        var newPath = CaptureGroupPropPath.Append(TemplatePropInfo.Name, capture.ItemType.Name, terminalValueOrTypeName);
+        var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.Value.ToString() : capture.Type.Name;
+        var newPath = CaptureGroupPropPath.Append(TemplatePropInfo.Name, capture.Type.Name, terminalValueOrTypeName);
 
         return new PropertyCapture
         {
             TemplatePropInfo = capture.TemplatePropInfo,
             Capture = capture.Capture,
-            Value = capture.ItemObject,
+            Value = capture.Value,
             CaptureGroupPropPath = newPath
         };
     }

@@ -26,8 +26,6 @@ public record OptionalOfSegment : XOfSegmentBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(GenericType);
-
         // In Optional captures, "namedGroup" is the parent capture (at the Optional container level),
         // but the actual item captures reside in the next level down at the prop level.
         var itemContainerCapture = parentTokenUnit.Match[Name + "_" + TemplatePropInfo.Prop.Name];
@@ -35,7 +33,7 @@ public record OptionalOfSegment : XOfSegmentBase
         CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, Name);
         TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
         var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
-        var hydratedItem = Activator.CreateInstance(polyItemCaptureType, tokenUnitChild, itemContainerCapture, TemplatePropInfo);
+        PolyItemCapture hydratedItem = new(tokenUnitChild, itemContainerCapture, TemplatePropInfo);
         var optionalType = typeof(OptionalOf<>).MakeGenericType(GenericType);
         var optionalPropVal = Activator.CreateInstance(optionalType, hydratedItem);
 

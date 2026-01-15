@@ -61,9 +61,7 @@ public record ManyOfSegment : XOfSegmentBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(GenericType);
-        var listType = typeof(List<>).MakeGenericType(polyItemCaptureType);
-        var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
+        List<PolyItemCapture> hydratedItems = [];
 
         for (int i = 0; i < _ordinalRegexProps.Length; i++)
         {
@@ -110,7 +108,7 @@ public record ManyOfSegment : XOfSegmentBase
                     childItem = tokenUnitChild;
                 }
 
-                var hydratedItem = Activator.CreateInstance(polyItemCaptureType, childItem, ordinalCapture, TemplatePropInfo, j, manyItemOrdinal.ToString());
+                PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo, j, manyItemOrdinal.ToString());
                 hydratedItems.Add(hydratedItem);
             }
         }

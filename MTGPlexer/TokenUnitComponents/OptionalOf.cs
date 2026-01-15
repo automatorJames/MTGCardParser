@@ -6,12 +6,10 @@
 /// </summary>
 public class OptionalOf<T> : OptionalOf where T : TokenUnit
 {
-    public PolyItemCapture<T> Item { get; set; }
 
-    public OptionalOf(PolyItemCapture<T> item)
+    public OptionalOf(PolyItemCapture item)
     {
         Item = item;
-        ItemObject = item;
     }
 
     public override string ToString() => base.ToString();
@@ -20,7 +18,7 @@ public class OptionalOf<T> : OptionalOf where T : TokenUnit
 [Color("#696969")]
 public class OptionalOf : XOf
 {
-    public PolyItemCapture ItemObject { get; set; }
+    public PolyItemCapture Item { get; set; }
 
-    public override string ToString() => string.Join(" ", ItemObject.ToString());
+    public override string ToString() => string.Join(" ", Item.ToString());
 }

@@ -101,13 +101,13 @@ public static class SpanBuilder
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
 
-        for (int i = 0; i < manyOf.ItemObjects.Count; i++)
+        for (int i = 0; i < manyOf.Items.Count; i++)
         {
-            var item = manyOf.ItemObjects[i];
+            var item = manyOf.Items[i];
             var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
             var itemLabel = $"#{i + 1}";
 
-            if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit && item.ItemObject is TokenUnit tu)
+            if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit && item.Value is TokenUnit tu)
             {
                 var itemCtx = childCtx.PushName(itemLabel);
                 var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);
@@ -115,7 +115,7 @@ public static class SpanBuilder
             }
             else
             {
-                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.ItemObject.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.ManyOfItemLeaf));
+                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.ManyOfItemLeaf));
             }
         }
 
@@ -135,13 +135,13 @@ public static class SpanBuilder
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
 
-        for (int i = 0; i < compoundOf.ItemObjects.Count; i++)
+        for (int i = 0; i < compoundOf.Items.Count; i++)
         {
-            var item = compoundOf.ItemObjects[i];
+            var item = compoundOf.Items[i];
             var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
             var itemLabel = $"#{i + 1}";
 
-            if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.TokenUnit && item.ItemObject is TokenUnit tu)
+            if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.TokenUnit && item.Value is TokenUnit tu)
             {
                 var itemCtx = childCtx.PushName(itemLabel);
                 var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);
@@ -149,7 +149,7 @@ public static class SpanBuilder
             }
             else
             {
-                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.ItemObject.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.CompoundOfItemLeaf));
+                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.CompoundOfItemLeaf));
             }
         }
 
@@ -161,18 +161,18 @@ public static class SpanBuilder
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
-        var itemLabel = oneOf.ItemObject.TemplatePropInfo.Name;
+        var itemLabel = oneOf.Item.TemplatePropInfo.Name;
         var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
 
-        if (oneOf.ItemObject.ItemObject is TokenUnit tokenUnit)
+        if (oneOf.Item.Value is TokenUnit tokenUnit)
         {
             var itemCtx = childCtx.PushName(prop.TemplatePropInfo.Name);
-            var innerTU = BuildTokenUnitBranch(tokenUnit, oneOf.ItemObject.Capture, itemPath, itemCtx);
-            children.Add(CreateBranch(oneOf.ItemObject.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
+            var innerTU = BuildTokenUnitBranch(tokenUnit, oneOf.Item.Capture, itemPath, itemCtx);
+            children.Add(CreateBranch(oneOf.Item.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
         }
         else
         {
-            children.Add(BuildLeaf(oneOf.ItemObject.Capture, itemLabel, itemPath, ctx, oneOf.ItemObject.ItemObject.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.OneOfItemLeaf));
+            children.Add(BuildLeaf(oneOf.Item.Capture, itemLabel, itemPath, ctx, oneOf.Item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.OneOfItemLeaf));
         }
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, children, ctx);
@@ -180,17 +180,17 @@ public static class SpanBuilder
 
     static SpanNode BuildOptionalOfBranch(OptionalOf optionalOf, PropertyCapture prop, SpanContext ctx)
     {
-        if (optionalOf.ItemObject.ItemObject is not TokenUnit tokenUnit)
+        if (optionalOf.Item.Value is not TokenUnit tokenUnit)
             throw new Exception("OptionalOf ItemObject must be a TokenUnit type");
 
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
-        var itemLabel = optionalOf.ItemObject.TemplatePropInfo.Name;
+        var itemLabel = optionalOf.Item.TemplatePropInfo.Name;
         var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
         var itemCtx = childCtx.PushName(prop.TemplatePropInfo.Name);
-        var innerTU = BuildTokenUnitBranch(tokenUnit, optionalOf.ItemObject.Capture, itemPath, itemCtx);
-        children.Add(CreateBranch(optionalOf.ItemObject.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
+        var innerTU = BuildTokenUnitBranch(tokenUnit, optionalOf.Item.Capture, itemPath, itemCtx);
+        children.Add(CreateBranch(optionalOf.Item.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OptionalOfItemBranch, children, ctx);
     }

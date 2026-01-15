@@ -2,51 +2,34 @@
 
 public class OneOf<T1, T2> : OneOf
 {
-    public PolyItemCapture<T1> Item1 { get; set; }
-    public PolyItemCapture<T2> Item2 { get; set; }
+    public PolyItemCapture Item1 { get; set; }
+    public PolyItemCapture Item2 { get; set; }
 
-    public OneOf(PolyItemCapture<T1> capture)
+    public OneOf(PolyItemCapture capture, int capturePropOrdinal)
     {
-        Item1 = capture;
-        ItemType = typeof(T1);
-        ManyItemVariant = typeof(T1).ToCaptureTypeVariant();
-        ItemObject = capture;
-    }
-
-    public OneOf(PolyItemCapture<T2> capture)
-    {
-        Item2 = capture;
-        ItemType = typeof(T2);
-        ManyItemVariant = typeof(T2).ToCaptureTypeVariant();
-        ItemObject = capture;
+        var capturedItemType = GetType().GetGenericArguments()[capturePropOrdinal];
+        var propToSet = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturePropOrdinal];
+        propToSet.SetValue(this, capture);
+        ItemType = propToSet.PropertyType;
+        ManyItemVariant = capturedItemType.ToCaptureTypeVariant();
+        Item = capture;
     }
 }
 
 public class OneOf<T1, T2, T3> : OneOf
 {
-    public PolyItemCapture<T1> Item1 { get; set; }
-    public PolyItemCapture<T2> Item2 { get; set; }
-    public PolyItemCapture<T3> Item3 { get; set; }
+    public PolyItemCapture Item1 { get; set; }
+    public PolyItemCapture Item2 { get; set; }
+    public PolyItemCapture Item3 { get; set; }
 
-    public OneOf(PolyItemCapture<T1> capture)
+    public OneOf(PolyItemCapture capture, int capturedItemTypeOrdinal)
     {
-        Item1 = capture;
-        ItemType = typeof(T1);
-        ManyItemVariant = typeof(T1).ToCaptureTypeVariant();
-    }
-
-    public OneOf(PolyItemCapture<T2> capture)
-    {
-        Item2 = capture;
-        ItemType = typeof(T2);
-        ManyItemVariant = typeof(T2).ToCaptureTypeVariant();
-    }
-
-    public OneOf(PolyItemCapture<T3> capture)
-    {
-        Item3 = capture;
-        ItemType = typeof(T3);
-        ManyItemVariant = typeof(T3).ToCaptureTypeVariant();
+        var capturedItemType = GetType().GetGenericArguments()[capturedItemTypeOrdinal];
+        var propToSet = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturedItemTypeOrdinal];
+        propToSet.SetValue(this, capture);
+        ItemType = propToSet.PropertyType;
+        ManyItemVariant = capturedItemType.ToCaptureTypeVariant();
+        Item = capture;
     }
 }
 
@@ -54,7 +37,7 @@ public class OneOf<T1, T2, T3> : OneOf
 [Color("#696969")]
 public class OneOf : XOf
 {
-    public PolyItemCapture ItemObject { get; set; }
+    public PolyItemCapture Item { get; set; }
     public CaptureTypeVariant ManyItemVariant { get; set; }
     public Type ItemType { get; set; }
 }

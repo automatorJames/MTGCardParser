@@ -43,10 +43,12 @@ public record OneOfSegment : XOfSegmentBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        object foundPolyMatchValue = null;
+        PolyItemCapture foundPolyMatchValue = null;
+        int foundPropIndex = 0;
 
-        foreach (var regexProp in _regexProps)
+        for (int i = 0; i < _regexProps.Count; i++)
         {
+            var regexProp = _regexProps[i];
             // In compound captures, "namedGroup" is the parent capture (at the compound container level),
             // but the actual item captures reside in the next level down at the prop level.
             var oneOfItemVariantCapture = parentTokenUnit.Match[Name + "_" + regexProp.Name];
@@ -54,15 +56,13 @@ public record OneOfSegment : XOfSegmentBase
             if (oneOfItemVariantCapture == null)
                 continue;
 
-            var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(regexProp.TemplatePropInfo.UnderlyingType);
-
             if (regexProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Enum)
             {
                 foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.TemplatePropInfo.UnderlyingType].EnumAlternates)
                 {
                     if (enumAlternative.ItemRegex.IsMatch(oneOfItemVariantCapture.Value))
                     {
-                        foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, enumAlternative.EnumValue, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
+                        foundPolyMatchValue = new(enumAlternative.EnumValue, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
                         goto ItemHasBeenFound;
                     }
                 }
@@ -72,7 +72,8 @@ public record OneOfSegment : XOfSegmentBase
                 CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(regexProp.TemplatePropInfo.Name, regexProp.Name);
                 TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.UnderlyingType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
-                foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, tokenUnitChild, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
+                foundPolyMatchValue = new(tokenUnitChild, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
+                foundPropIndex = i;
                 goto ItemHasBeenFound;
             }
         }
@@ -90,7 +91,7 @@ public record OneOfSegment : XOfSegmentBase
         };
 
         var oneOfCaptureType = genericTypeDefinition.MakeGenericType(_regexProps.Select(x => x.TemplatePropInfo.UnderlyingType).ToArray());
-        var oneOfPropVal = Activator.CreateInstance(oneOfCaptureType, foundPolyMatchValue);
+        var oneOfPropVal = Activator.CreateInstance(oneOfCaptureType, foundPolyMatchValue, foundPropIndex);
         
         return oneOfPropVal;
     }

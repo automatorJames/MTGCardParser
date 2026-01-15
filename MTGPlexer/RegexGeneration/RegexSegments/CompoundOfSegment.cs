@@ -37,9 +37,7 @@ public record CompoundOfSegment : XOfSegmentBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(GenericType);
-        var listType = typeof(List<>).MakeGenericType(polyItemCaptureType);
-        var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
+        List<PolyItemCapture> hydratedItems = [];
 
         // In compound captures, "namedGroup" is the parent capture (at the compound container level),
         // but the actual item captures reside in the next level down at the prop level.
@@ -75,7 +73,7 @@ public record CompoundOfSegment : XOfSegmentBase
                 childItem = tokenUnitChild;
             }
 
-            var hydratedItem = Activator.CreateInstance(polyItemCaptureType, childItem, ordinalCapture, TemplatePropInfo, i);
+            PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo, i);
             hydratedItems.Add(hydratedItem);
 
             NextIteration:;

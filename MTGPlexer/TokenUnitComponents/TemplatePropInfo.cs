@@ -35,12 +35,10 @@ public record TemplatePropInfo
         var genericType = GenericTypes[genericTypeIndex];
         name ??= genericType.Name;
         var templatePropType = GetTemplatePropType(genericType);
-        var polyItemCaptureGenericType = typeof(PolyItemCapture<>).MakeGenericType(genericType);
-        var polyItemCaptureProp = polyItemCaptureGenericType.GetProperty(nameof(PolyItemCapture<>.Item));
 
         return new TemplatePropInfo
         {
-            Prop = polyItemCaptureProp,
+            Prop = typeof(PolyItemCapture).GetProperty(nameof(PolyItemCapture.Value)),
             TemplatePropType = templatePropType,
             UnderlyingType = genericType,
             GenericTypes = genericType.GetGenericArguments(),
