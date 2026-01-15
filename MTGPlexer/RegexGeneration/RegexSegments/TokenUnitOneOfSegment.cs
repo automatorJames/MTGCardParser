@@ -24,7 +24,7 @@ public record TokenUnitOneOfSegment : TokenUnitSegment
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
         CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(TemplatePropInfo.Name));
-        TokenUnitMatch typeMatch = new(TemplatePropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
+        TokenUnitMatch typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
         parentTokenUnit.ChildTokenUnits.Add(tokenUnitInstance);
 

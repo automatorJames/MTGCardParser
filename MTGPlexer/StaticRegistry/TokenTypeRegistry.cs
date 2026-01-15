@@ -56,40 +56,24 @@ public static partial class TokenTypeRegistry
         // but steps taken during registration only care about the enum type itself)
         propCaptureSegments
             .OfType<EnumSegment>()
-            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.TemplatePropInfo.BaseType))
+            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.TemplatePropInfo.UnderlyingType))
             .ToList()
             .ForEach(enumRegexPropWithNewEnumType =>
             {
-                var enumType = enumRegexPropWithNewEnumType.TemplatePropInfo.BaseType;
+                var enumType = enumRegexPropWithNewEnumType.TemplatePropInfo.UnderlyingType;
                 EnumRegexStrings[enumType] = enumRegexPropWithNewEnumType.RegexString;
                 ReferencedEnumTypes.Add(enumType);
                 NameToType[enumType.Name] = enumType;
                 EnumScalarAlternativeSets[enumType] = enumRegexPropWithNewEnumType.EnumSet;
             });
 
-        // Register enums that appear as the T types within ManyOf<T> properties
+        // Register enums that appear as the T types within XOf<T> properties
         propCaptureSegments
-            .OfType<ManyOfSegment>()
-            .Where(x => x.BaseType.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x.BaseType))
-            .Select(x => x.BaseType)
+            .OfType<XOfSegmentBase>()
+            .SelectMany(x => x.GenericTypes)
+            .Where(x => x.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x))
             .ToList()
             .ForEach(newEnumType => 
-            {
-                var enumSet = EnumSegment.EnumTypetoScalarSet(newEnumType);
-                EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
-                ReferencedEnumTypes.Add(newEnumType);
-                NameToType[newEnumType.Name] = newEnumType;
-                EnumScalarAlternativeSets[newEnumType] = enumSet;
-            });
-
-        // Register enums that appear as the T types within ManyOf<T> properties
-        propCaptureSegments
-            .OfType<OneOfSegment>()
-            .SelectMany(x => x.EnumTypesRepresented)
-            .Distinct()
-            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x))
-            .ToList()
-            .ForEach(newEnumType =>
             {
                 var enumSet = EnumSegment.EnumTypetoScalarSet(newEnumType);
                 EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
@@ -109,7 +93,7 @@ public static partial class TokenTypeRegistry
         propCaptureSegments
             .OfType<ManyOfSegment>()
             .ToList()
-            .ForEach(x => ManyOfRegexes.TryAdd(x.TemplatePropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.TemplatePropInfo)));
+            .ForEach(x => ManyOfRegexes.TryAdd(x.TemplatePropInfo.UnderlyingType, typeTemplate.Builder.ExtractGroupRegex(x.TemplatePropInfo)));
 
         if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
             throw new Exception($"Type '{type.Name}' failed validation: {errorString}");

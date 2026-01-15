@@ -1,26 +1,22 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record CompoundOfSegment : CaptureGroupSegmentBase
+public record CompoundOfSegment : XOfSegmentBase
 {
     CaptureTypeVariant _compoundItemType;
     CaptureGroupSegmentBase _regexProp;
-    public Type BaseType { get; set; }
-    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
+    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[GenericType];
 
 
     public CompoundOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-        // TemplatePropInfo capture prop is a CompoundOf<T> prop here
+        var derivedPropInfo = captureProp.DeriveForXOfItem();
 
-        BaseType = captureProp.BaseType;
-        var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(TemplatePropInfo.BaseType) };
-
-        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
+        if (GenericType.IsAssignableTo(typeof(TokenUnit)))
         {
             _compoundItemType = CaptureTypeVariant.TokenUnit;
             _regexProp = new TokenUnitSegment(derivedPropInfo);
         }
-        else if (BaseType.IsEnum)
+        else if (GenericType.IsEnum)
         {
             _compoundItemType = CaptureTypeVariant.Enum;
             _regexProp = new EnumSegment(derivedPropInfo);
@@ -41,7 +37,7 @@ public record CompoundOfSegment : CaptureGroupSegmentBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(BaseType);
+        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(GenericType);
         var listType = typeof(List<>).MakeGenericType(polyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
@@ -58,7 +54,7 @@ public record CompoundOfSegment : CaptureGroupSegmentBase
 
             if (_compoundItemType == CaptureTypeVariant.Enum)
             {
-                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[BaseType].EnumAlternates)
+                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[GenericType].EnumAlternates)
                 {
                     if (enumAlternative.ItemRegex.IsMatch(ordinalCapture.Value))
                     {
@@ -74,7 +70,7 @@ public record CompoundOfSegment : CaptureGroupSegmentBase
             else if (_compoundItemType == CaptureTypeVariant.TokenUnit)
             {
                 CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, _regexProp.Name);
-                TokenUnitMatch typeMatch = new(BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, i);
+                TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, i);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                 childItem = tokenUnitChild;
             }
@@ -85,7 +81,7 @@ public record CompoundOfSegment : CaptureGroupSegmentBase
             NextIteration:;
         }
 
-        var compoundType = typeof(CompoundOf<>).MakeGenericType(BaseType);
+        var compoundType = typeof(CompoundOf<>).MakeGenericType(GenericType);
         var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
 
         return compoundPropVal;

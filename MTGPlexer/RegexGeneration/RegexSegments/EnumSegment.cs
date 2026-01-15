@@ -8,7 +8,7 @@
 public record EnumSegment : ScalarCaptureSegmentBase
 {
     bool _isOptional;
-    public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[TemplatePropInfo.BaseType].CollectiveRegex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[TemplatePropInfo.UnderlyingType].CollectiveRegex;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
     public EnumSegment(TemplatePropInfo captureProp) : base(captureProp)
@@ -25,7 +25,7 @@ public record EnumSegment : ScalarCaptureSegmentBase
     {
         builder.OpenGroup(TemplatePropInfo, isOptional: _isOptional);
 
-        if (TemplatePropInfo.BaseType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
+        if (TemplatePropInfo.UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
         builder.AddAlternateEnumValues(EnumSet);
@@ -34,7 +34,7 @@ public record EnumSegment : ScalarCaptureSegmentBase
 
     protected override void SetScalarAlternativeSet(TemplatePropInfo captureProp)
     {
-        var enumType = captureProp.BaseType;
+        var enumType = captureProp.UnderlyingType;
 
         if (TokenTypeRegistry.EnumScalarAlternativeSets.TryGetValue(enumType, out var enumSet))
         {

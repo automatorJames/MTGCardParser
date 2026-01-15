@@ -4,7 +4,8 @@ public record TemplatePropInfo
 {
     public PropertyInfo Prop { get; init; }
     public TemplatePropType TemplatePropType { get; init; }
-    public Type BaseType { get; init; }
+    public Type UnderlyingType { get; init; }
+    public Type[] GenericTypes { get; init; }
     public bool IsTerminal { get; init; }
     public string Name { get; init; }
 
@@ -14,28 +15,38 @@ public record TemplatePropInfo
 
     public TemplatePropInfo(PropertyInfo prop)
     {
-        var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
+        var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        UnderlyingType = underlyingType;
+        GenericTypes = underlyingType.GetGenericArguments();
         Prop = prop;
-        (TemplatePropType, BaseType) = GetCapturePropType(prop);
-        IsTerminal = CheckIsTerminal();
-        Name = GetName(Prop, BaseType);
+        TemplatePropType = GetTemplatePropType(underlyingType, Prop);
+        IsTerminal = _terminalTypes.Contains(TemplatePropType);
+        Name = GetName(Prop, underlyingType);
     }
 
-    public TemplatePropInfo DeriveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
+    public TemplatePropInfo DeriveForXOfItem(string name = null, int genericTypeIndex = 0)
     {
-        if (TemplatePropType != TemplatePropType.ManyOf)
-            throw new Exception($"May only be derived from a ManyOf TemplatePropInfo");
+        if (!UnderlyingType.IsAssignableTo(typeof(XOf)))
+            throw new Exception($"May only be derived from XOf types");
 
-        var derivedManyOfPropInfo = new TemplatePropInfo
+        if (GenericTypes.Length <= genericTypeIndex)
+            throw new IndexOutOfRangeException();
+
+        var genericType = GenericTypes[genericTypeIndex];
+        name ??= genericType.Name;
+        var templatePropType = GetTemplatePropType(genericType);
+        var polyItemCaptureGenericType = typeof(PolyItemCapture<>).MakeGenericType(genericType);
+        var polyItemCaptureProp = polyItemCaptureGenericType.GetProperty(nameof(PolyItemCapture<>.Item));
+
+        return new TemplatePropInfo
         {
-            Prop = Prop,
-            TemplatePropType = GetRegexPropType(BaseType),
-            BaseType = BaseType,
-            IsTerminal = IsTerminal,
-            Name = manyItemOrdinal.ToString(),
+            Prop = polyItemCaptureProp,
+            TemplatePropType = templatePropType,
+            UnderlyingType = genericType,
+            GenericTypes = genericType.GetGenericArguments(),
+            IsTerminal = _terminalTypes.Contains(templatePropType),
+            Name = name
         };
-
-        return derivedManyOfPropInfo;
     }
 
     public TemplatePropInfo DeriveForManyOfConjunction()
@@ -47,7 +58,7 @@ public record TemplatePropInfo
         {
             Prop = typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)),
             TemplatePropType = TemplatePropType.ManyOfConjunction,
-            BaseType = typeof(Conjunction),
+            UnderlyingType = typeof(Conjunction),
             IsTerminal = true,
             Name = nameof(Conjunction)
         };
@@ -72,22 +83,6 @@ public record TemplatePropInfo
         return prop.Name;
     }
 
-    static (TemplatePropType, Type) GetCapturePropType(PropertyInfo prop)
-    {
-        var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-        TemplatePropType regexPropType;
-
-        if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
-            regexPropType = TemplatePropType.DistilledValue;
-        else
-            regexPropType = GetRegexPropType(type);
-
-        if (regexPropType == TemplatePropType.ManyOf || regexPropType == TemplatePropType.CompoundOf || regexPropType == TemplatePropType.OptionalOf)
-            type = type.GetGenericArguments()[0];
-
-        return (regexPropType, type);
-    }
-
     public string GetFriendlyTypeName()
     {
         if (TemplatePropType == TemplatePropType.ManyOfConjunction)
@@ -105,30 +100,33 @@ public record TemplatePropInfo
         if (TemplatePropType == TemplatePropType.OneOf)
             return "optional of";
 
-        bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
+        // Assign to variable to avoid excessive reads on property, which muddy up reference counts
+        var underlyingType = UnderlyingType;
 
-        if (BaseType.IsEnum || isNullableEnum)
+        bool isNullableEnum = underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(Nullable<>) && underlyingType.GetGenericArguments()[0].IsEnum;
+
+        if (underlyingType.IsEnum || isNullableEnum)
             return "enum";
 
-        if (BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>))
-            return $"{BaseType.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
+        if (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            return $"{UnderlyingType.GetGenericArguments()[0].Name}".ToFriendlyCase(TitleDisplayOption.Sentence);
 
-        if (BaseType == typeof(int))
+        if (underlyingType == typeof(int))
             return "int";
 
-        if (BaseType == typeof(PlaceholderCapture))
+        if (underlyingType == typeof(PlaceholderCapture))
             return "placeholder";
 
-        if (BaseType.IsAssignableTo(typeof(DynamicOf)))
+        if (underlyingType.IsAssignableTo(typeof(DynamicOf)))
             return "dynamic";
 
-        if (BaseType.IsAssignableTo(typeof(TokenUnitOneOf)))
+        if (underlyingType.IsAssignableTo(typeof(TokenUnitOneOf)))
             return "one of";
 
-        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
+        if (underlyingType.IsAssignableTo(typeof(TokenUnit)))
             return "token unit";
 
-        return BaseType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
+        return underlyingType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
     public CaptureGroupSegmentBase GetCaptureGroupPropBase()
@@ -149,35 +147,35 @@ public record TemplatePropInfo
         };
     }
 
-    bool CheckIsTerminal()
+    public static TemplatePropType GetTemplatePropType(Type type, PropertyInfo prop = null)
     {
-        List<TemplatePropType> terminalTypes =
-        [
-            TemplatePropType.Enum,
-            TemplatePropType.Bool,
-            TemplatePropType.Placeholder,
-            TemplatePropType.Dynamic,
-            TemplatePropType.DistilledValue
-        ];
+        if (prop?.GetCustomAttribute<DistilledValueAttribute>() != null)
+            return TemplatePropType.DistilledValue;
 
-        return terminalTypes.Contains(TemplatePropType);
+        return type switch
+        {
+            { IsEnum: true } => TemplatePropType.Enum,
+            { } t when t.IsAssignableTo(typeof(ManyOf)) => TemplatePropType.ManyOf,
+            { } t when t.IsAssignableTo(typeof(CompoundOf)) => TemplatePropType.CompoundOf,
+            { } t when t.IsAssignableTo(typeof(OneOf)) => TemplatePropType.OneOf,
+            { } t when t.IsAssignableTo(typeof(OptionalOf)) => TemplatePropType.OptionalOf,
+            { } t when t == typeof(PlaceholderCapture) => TemplatePropType.Placeholder,
+            { } t when t.IsAssignableTo(typeof(DynamicOf)) => TemplatePropType.Dynamic,
+            { } t when t == typeof(bool) => TemplatePropType.Bool,
+            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => TemplatePropType.TokenUnitOneOf,
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => TemplatePropType.TokenUnit,
+            _ => throw new Exception($"{type.Name} is not a valid {nameof(TemplatePropType)} type")
+        };
     }
 
-    public static TemplatePropType GetRegexPropType(Type type) =>
-    type switch
-    {
-        { IsEnum: true } => TemplatePropType.Enum,
-        { } t when t.IsAssignableTo(typeof(ManyOf)) => TemplatePropType.ManyOf,
-        { } t when t.IsAssignableTo(typeof(CompoundOf)) => TemplatePropType.CompoundOf,
-        { } t when t.IsAssignableTo(typeof(OneOf)) => TemplatePropType.OneOf,
-        { } t when t.IsAssignableTo(typeof(OptionalOf)) => TemplatePropType.OptionalOf,
-        { } t when t == typeof(PlaceholderCapture) => TemplatePropType.Placeholder,
-        { } t when t.IsAssignableTo(typeof(DynamicOf)) => TemplatePropType.Dynamic,
-        { } t when t == typeof(bool) => TemplatePropType.Bool,
-        { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => TemplatePropType.TokenUnitOneOf,
-        { } t when typeof(TokenUnit).IsAssignableFrom(t) => TemplatePropType.TokenUnit,
-        _ => throw new Exception($"{type.Name} is not a valid {nameof(TemplatePropType)} type")
-    };
+    static HashSet<TemplatePropType> _terminalTypes =
+    [
+        TemplatePropType.Enum,
+        TemplatePropType.Bool,
+        TemplatePropType.Placeholder,
+        TemplatePropType.Dynamic,
+        TemplatePropType.DistilledValue
+    ];
 
     public override string ToString() => Name;
 }

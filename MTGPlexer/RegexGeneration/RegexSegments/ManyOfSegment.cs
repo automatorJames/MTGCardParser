@@ -1,25 +1,20 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record ManyOfSegment : CaptureGroupSegmentBase
+public record ManyOfSegment : XOfSegmentBase
 {
     CaptureTypeVariant _manyItemType;
     CaptureGroupSegmentBase[] _ordinalRegexProps = new CaptureGroupSegmentBase[3];
     static EnumSegment _conjunctionProp = (EnumSegment)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
-    public Type BaseType { get; set; }
-    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
+    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[GenericType];
 
     public ManyOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-        // TemplatePropInfo capture prop is a ManyOf<T> prop here
+        var derivedPropFirst = captureProp.DeriveForXOfItem(ManyItemOrdinal.First.ToString());
+        var derivedPropSecond = captureProp.DeriveForXOfItem(ManyItemOrdinal.SecondPlus.ToString());
+        var derivedPropLast = captureProp.DeriveForXOfItem(ManyItemOrdinal.Last.ToString());
 
-        BaseType = captureProp.BaseType;
-
-        var derivedPropFirst = captureProp.DeriveForManyOfItem(ManyItemOrdinal.First);
-        var derivedPropSecond = captureProp.DeriveForManyOfItem(ManyItemOrdinal.SecondPlus);
-        var derivedPropLast = captureProp.DeriveForManyOfItem(ManyItemOrdinal.Last);
-
-        if (BaseType.IsAssignableTo(typeof(TokenUnit)))
+        if (GenericType.IsAssignableTo(typeof(TokenUnit)))
         {
             _manyItemType = CaptureTypeVariant.TokenUnit;
 
@@ -30,7 +25,7 @@ public record ManyOfSegment : CaptureGroupSegmentBase
                 new TokenUnitSegment(derivedPropLast),
             ];
         }
-        else if (BaseType.IsEnum)
+        else if (GenericType.IsEnum)
         {
             _manyItemType = CaptureTypeVariant.Enum;
 
@@ -66,7 +61,7 @@ public record ManyOfSegment : CaptureGroupSegmentBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(BaseType);
+        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(GenericType);
         var listType = typeof(List<>).MakeGenericType(polyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
@@ -95,7 +90,7 @@ public record ManyOfSegment : CaptureGroupSegmentBase
 
                 if (_manyItemType == CaptureTypeVariant.Enum)
                 {
-                    foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[BaseType].EnumAlternates)
+                    foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[GenericType].EnumAlternates)
                     {
                         if (enumAlternative.ItemRegex.IsMatch(ordinalCapture.Value))
                         {
@@ -105,12 +100,12 @@ public record ManyOfSegment : CaptureGroupSegmentBase
                     }
 
                     if (childItem == null)
-                        throw new Exception($"Found no matching values for enum type '{BaseType.Name}' from capture '{ordinalCapture.Value}'");
+                        throw new Exception($"Found no matching values for enum type '{GenericType.Name}' from capture '{ordinalCapture.Value}'");
                 }
                 else if (_manyItemType == CaptureTypeVariant.TokenUnit)
                 {
                     CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, ordinalProp.Name);
-                    TokenUnitMatch typeMatch = new(BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, j);
+                    TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;
                 }
@@ -126,7 +121,7 @@ public record ManyOfSegment : CaptureGroupSegmentBase
             : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 
             ? parsed : null;
 
-        var manyTokenType = typeof(ManyOf<>).MakeGenericType(BaseType);
+        var manyTokenType = typeof(ManyOf<>).MakeGenericType(TemplatePropInfo.GenericTypes);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
 
         return manyPropVal;

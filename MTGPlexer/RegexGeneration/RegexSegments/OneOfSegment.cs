@@ -5,7 +5,7 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record OneOfSegment : CaptureGroupSegmentBase
+public record OneOfSegment : XOfSegmentBase
 {
     List<CaptureGroupSegmentBase> _regexProps = [];
     public override Regex ManyMatchRegex => throw new NotImplementedException();
@@ -13,20 +13,25 @@ public record OneOfSegment : CaptureGroupSegmentBase
 
     public OneOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-        // TemplatePropInfo capture prop is a OneOf<> prop here
-
-        foreach (var type in captureProp.BaseType.GetGenericArguments())
+        for (int i = 0; i < GenericTypes.Length; i++)
         {
-            var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(type), BaseType = type, Name = type.Name };
+            var genericType = GenericTypes[i];
+            var derivedPropInfo = captureProp.DeriveForXOfItem(genericTypeIndex: i);
 
-            if (type.IsAssignableTo(typeof(TokenUnit)))
+            if (genericType.IsAssignableTo(typeof(TokenUnit)))
                 _regexProps.Add(new TokenUnitSegment(derivedPropInfo));
-            else if (type.IsEnum)
+            else if (genericType.IsEnum)
             {
-                EnumTypesRepresented.Add(type);
+                EnumTypesRepresented.Add(genericType);
                 _regexProps.Add(new EnumSegment(derivedPropInfo));
             }
         }
+    }
+
+    protected override void SetGenericType(TemplatePropInfo captureProp)
+    {
+        // Overriding with a no-op since the base calls captureProp.GenericTypes.Single(),
+        // which would throw an exception in the case of OneOfSegment.
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
@@ -49,11 +54,11 @@ public record OneOfSegment : CaptureGroupSegmentBase
             if (oneOfItemVariantCapture == null)
                 continue;
 
-            var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(regexProp.TemplatePropInfo.BaseType);
+            var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(regexProp.TemplatePropInfo.UnderlyingType);
 
             if (regexProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Enum)
             {
-                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.TemplatePropInfo.BaseType].EnumAlternates)
+                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.TemplatePropInfo.UnderlyingType].EnumAlternates)
                 {
                     if (enumAlternative.ItemRegex.IsMatch(oneOfItemVariantCapture.Value))
                     {
@@ -64,8 +69,8 @@ public record OneOfSegment : CaptureGroupSegmentBase
             }
             else if (regexProp.TemplatePropInfo.Prop.PropertyType.IsAssignableTo(typeof(TokenUnit)))
             {
-                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, regexProp.Name);
-                TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
+                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(regexProp.TemplatePropInfo.Name, regexProp.Name);
+                TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.UnderlyingType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                 foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, tokenUnitChild, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
                 goto ItemHasBeenFound;
@@ -84,7 +89,7 @@ public record OneOfSegment : CaptureGroupSegmentBase
             _ => throw new Exception($"One-of regex prop count of {_regexProps.Count} not supported")
         };
 
-        var oneOfCaptureType = genericTypeDefinition.MakeGenericType(_regexProps.Select(x => x.TemplatePropInfo.BaseType).ToArray());
+        var oneOfCaptureType = genericTypeDefinition.MakeGenericType(_regexProps.Select(x => x.TemplatePropInfo.UnderlyingType).ToArray());
         var oneOfPropVal = Activator.CreateInstance(oneOfCaptureType, foundPolyMatchValue);
         
         return oneOfPropVal;

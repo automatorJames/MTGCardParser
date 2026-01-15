@@ -8,12 +8,12 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public record TokenUnitSegment : CaptureGroupSegmentBase
 {
-    public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[TemplatePropInfo.BaseType].Regex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[TemplatePropInfo.UnderlyingType].Regex;
     protected ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
 
     public TokenUnitSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
+        var template = TokenTypeRegistry.GetTypeTemplate(captureProp.UnderlyingType);
         ChildSegments = template.RegexSegments.ToImmutableList();
     }
 
@@ -29,7 +29,7 @@ public record TokenUnitSegment : CaptureGroupSegmentBase
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
         CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(TemplatePropInfo.Name));
-        TokenUnitMatch typeMatch = new(TemplatePropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
+        TokenUnitMatch typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
         parentTokenUnit.ChildTokenUnits.Add(tokenUnitInstance);
 

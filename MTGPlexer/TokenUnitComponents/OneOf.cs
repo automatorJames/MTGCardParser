@@ -52,7 +52,7 @@ public class OneOf<T1, T2, T3> : OneOf
 
 
 [Color("#696969")]
-public class OneOf
+public class OneOf : XOf
 {
     public PolyItemCapture ItemObject { get; set; }
     public CaptureTypeVariant ManyItemVariant { get; set; }

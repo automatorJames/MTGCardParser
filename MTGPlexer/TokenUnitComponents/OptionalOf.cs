@@ -18,7 +18,7 @@ public class OptionalOf<T> : OptionalOf where T : TokenUnit
 }
 
 [Color("#696969")]
-public class OptionalOf
+public class OptionalOf : XOf
 {
     public PolyItemCapture ItemObject { get; set; }
 

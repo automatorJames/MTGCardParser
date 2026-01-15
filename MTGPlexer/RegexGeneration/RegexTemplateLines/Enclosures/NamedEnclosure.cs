@@ -17,7 +17,7 @@ public record NamedEnclosure : Enclosure
             depth,
             EnclosureType.RegexProp,
             GetTreatment(templatePropInfo),
-            spaceDisposition ?? (templatePropInfo.BaseType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
+            spaceDisposition ?? (templatePropInfo.UnderlyingType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
         )
     {
         Name = templatePropInfo.Name;

@@ -17,7 +17,7 @@ public class ManyOf<T> : ManyOf
 }
 
 [Color("#696969")]
-public class ManyOf
+public class ManyOf : XOf
 {
     public List<PolyItemCapture> ItemObjects { get; set; }
     public CaptureTypeVariant ManyItemVariant { get; set; }

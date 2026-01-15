@@ -11,9 +11,9 @@ public class PropPathSynonymSetContainer
     {
         ParentPath = parentPath;
 
-        AlternateCount = prop == null || !prop.BaseType.IsEnum
-                ? 0
-                : Enum.GetValues(prop.BaseType).Length;
+        AlternateCount = prop == null || !prop.UnderlyingType.IsEnum
+            ? 0
+            : Enum.GetValues(prop.UnderlyingType).Length;
     }
 
     public void OrderByOccurrenceCount()
