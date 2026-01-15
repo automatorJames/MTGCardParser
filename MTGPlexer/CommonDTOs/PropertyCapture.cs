@@ -1,8 +1,7 @@
 ﻿namespace MTGPlexer.CommonDTOs;
 
 /// <summary>
-/// Represents a property capture from a token, enriched with a stable index
-/// for consistent processing (e.g., coloring) and ordered by position.
+/// Represents a captured value for property on a TokenUnitType.
 /// </summary>
 public record PropertyCapture
 {

@@ -6,17 +6,8 @@ public record RegexPropInfo
     public RegexPropType RegexPropType { get; init; }
     public Type BaseType { get; init; }
     public string FriendlyTypeName { get; init; }
-    public string FriendlyPropName { get; init; }
     public bool IsTerminal { get; init; }
-    public bool MayBeNull { get; init; }
     public string Name { get; init; }
-
-    /// <summary>
-    /// If not null, any recursive descendants of this RegexPropInfo will inherit this
-    /// appendix, which may grow as the descendancy tree grows. Used for scenarios like
-    /// ManyOf items, which must pass their distinguishing ordinal name down to all children
-    /// </summary>
-    public string ItemDistinguisher { get; init; }
 
     private RegexPropInfo()
     {
@@ -27,10 +18,8 @@ public record RegexPropInfo
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
         (RegexPropType, BaseType) = GetCapturePropType(prop);
-        FriendlyPropName = prop.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
-        MayBeNull = nullableType != null;
         Name = GetName(Prop, BaseType);
     }
 
@@ -45,11 +34,8 @@ public record RegexPropInfo
             RegexPropType = GetRegexPropType(BaseType),
             BaseType = BaseType,
             FriendlyTypeName = FriendlyTypeName,
-            FriendlyPropName = FriendlyPropName,
             IsTerminal = IsTerminal,
-            MayBeNull = MayBeNull,
             Name = manyItemOrdinal.ToString(),
-            ItemDistinguisher = manyItemOrdinal.ToString(),
         };
 
         return derivedManyOfPropInfo;
@@ -66,16 +52,12 @@ public record RegexPropInfo
             RegexPropType = RegexPropType.ManyOfConjunction,
             BaseType = typeof(Conjunction),
             FriendlyTypeName = nameof(Conjunction).ToFriendlyCase(),
-            FriendlyPropName = nameof(Conjunction).ToFriendlyCase(),
             IsTerminal = true,
-            MayBeNull = true,
             Name = nameof(Conjunction)
         };
 
         return derivedConjunctionPropInfo;
     }
-
-
 
     static string GetName(PropertyInfo prop, Type underlyingType)
     {
