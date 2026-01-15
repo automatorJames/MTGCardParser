@@ -189,7 +189,7 @@ public class RegexTemplate
         return type.IsEnum
             || type == typeof(bool)
             || type == typeof(PlaceholderCapture)
-            || type.IsAssignableTo(typeof(DynamicCapture))
+            || type.IsAssignableTo(typeof(DynamicOf))
             || typeof(TokenUnit).IsAssignableFrom(type);
     }
 }

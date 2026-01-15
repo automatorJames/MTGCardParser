@@ -5,7 +5,7 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record CompoundProp : CaptureGroupPropBase
+public record CompoundOfProp : CaptureGroupPropBase
 {
     CaptureTypeVariant _compoundItemType;
     CaptureGroupPropBase _regexProp;
@@ -13,7 +13,7 @@ public record CompoundProp : CaptureGroupPropBase
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
 
-    public CompoundProp(RegexPropInfo captureProp) : base(captureProp)
+    public CompoundOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a CompoundOf<T> prop here
 

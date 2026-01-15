@@ -1,8 +1,8 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record DynamicRegexProp : ScalarCapturePropBase
+public record DynamicOfProp : ScalarCapturePropBase
 {
-    public DynamicRegexProp(RegexPropInfo captureProp) : base(captureProp)
+    public DynamicOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
     }
 
@@ -38,7 +38,7 @@ public record DynamicRegexProp : ScalarCapturePropBase
         if (!genericType.IsAssignableTo(typeof(TokenUnit)) || prefilledValue is not TokenUnit prefilledTokenUnitValue)
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
-        var closedType = typeof(DynamicCapture<>).MakeGenericType(genericType);
+        var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
         var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RegexMatch);
         token.SetPropertyFromCapture(RegexPropInfo, prefilledTokenUnitValue.Match.RegexMatch, dynamicTokenInstance);
 

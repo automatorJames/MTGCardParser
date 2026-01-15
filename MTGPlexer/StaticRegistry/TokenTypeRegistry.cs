@@ -69,7 +69,7 @@ public static partial class TokenTypeRegistry
 
         // Register enums that appear as the T types within ManyOf<T> properties
         propCaptureSegments
-            .OfType<ManyProp>()
+            .OfType<ManyOfProp>()
             .Where(x => x.BaseType.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x.BaseType))
             .Select(x => x.BaseType)
             .ToList()
@@ -107,7 +107,7 @@ public static partial class TokenTypeRegistry
 
         // Register all newly encountered ManyProps (we use BaseType as the key, not UnderlyingType which is List<T>)
         propCaptureSegments
-            .OfType<ManyProp>()
+            .OfType<ManyOfProp>()
             .ToList()
             .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.RegexPropInfo)));
 

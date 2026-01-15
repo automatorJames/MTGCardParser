@@ -69,8 +69,8 @@ public class Tokenizer
                     if (!endsAtBoundary)
                         goto NextIteration;
 
-                    Dictionary<DynamicRegexProp, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
-                            .OfType<DynamicRegexProp>()
+                    Dictionary<DynamicOfProp, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
+                            .OfType<DynamicOfProp>()
                             .ToDictionary(x => x, x => (object)null);
 
                     // Dynamic capture handling

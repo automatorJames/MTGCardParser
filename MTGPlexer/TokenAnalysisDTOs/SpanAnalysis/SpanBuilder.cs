@@ -41,7 +41,7 @@ public static class SpanBuilder
             ManyOf val => BuildManyOfBranch(val, prop, ctx),
             CompoundOf val => BuildCompoundOfBranch(val, prop, ctx),
             OneOf val => BuildOneOfBranch(val, prop, ctx),
-            DynamicCapture val => BuildDynamicBranch(val, prop, ctx),
+            DynamicOf val => BuildDynamicBranch(val, prop, ctx),
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
 
@@ -67,7 +67,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
     }
 
-    private static SpanNode BuildDynamicBranch(DynamicCapture dynamicCapture, PropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildDynamicBranch(DynamicOf dynamicCapture, PropertyCapture prop, SpanContext ctx)
     {
         // 1. Prepare context for child: Clear inherited prefixes, but push the Type as a Suffix
         // This ensures when the child calls FormatName("Action"), it gets "Action: Specific Action"

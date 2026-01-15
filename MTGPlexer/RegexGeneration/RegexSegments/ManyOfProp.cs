@@ -5,7 +5,7 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record ManyProp : CaptureGroupPropBase
+public record ManyOfProp : CaptureGroupPropBase
 {
     CaptureTypeVariant _manyItemType;
     CaptureGroupPropBase[] _ordinalRegexProps = new CaptureGroupPropBase[3];
@@ -14,7 +14,7 @@ public record ManyProp : CaptureGroupPropBase
     public Type BaseType { get; set; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
-    public ManyProp(RegexPropInfo captureProp) : base(captureProp)
+    public ManyOfProp(RegexPropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a ManyOf<T> prop here
 

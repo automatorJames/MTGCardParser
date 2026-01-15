@@ -129,7 +129,7 @@ public record RegexPropInfo
         if (BaseType == typeof(PlaceholderCapture))
             return "placeholder";
 
-        if (BaseType.IsAssignableTo(typeof(DynamicCapture)))
+        if (BaseType.IsAssignableTo(typeof(DynamicOf)))
             return "dynamic";
 
         if (BaseType.IsAssignableTo(typeof(TokenUnitOneOf)))
@@ -145,15 +145,15 @@ public record RegexPropInfo
     {
         return RegexPropType switch
         {
-            RegexPropType.ManyOf => new ManyProp(this),
-            RegexPropType.CompoundOf => new CompoundProp(this),
+            RegexPropType.ManyOf => new ManyOfProp(this),
+            RegexPropType.CompoundOf => new CompoundOfProp(this),
             RegexPropType.OneOf => new OneOfProp(this),
             RegexPropType.TokenUnit => new TokenRegexProp(this),
             RegexPropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
             RegexPropType.Enum => new EnumRegexProp(this),
             RegexPropType.Bool => new BoolRegexProp(this),
             RegexPropType.Placeholder => new PlaceholderRegexProp(this),
-            RegexPropType.Dynamic => new DynamicRegexProp(this),
+            RegexPropType.Dynamic => new DynamicOfProp(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
     }
@@ -180,7 +180,7 @@ public record RegexPropInfo
         { } t when t.IsAssignableTo(typeof(CompoundOf)) => RegexPropType.CompoundOf,
         { } t when t.IsAssignableTo(typeof(OneOf)) => RegexPropType.OneOf,
         { } t when t == typeof(PlaceholderCapture) => RegexPropType.Placeholder,
-        { } t when t.IsAssignableTo(typeof(DynamicCapture)) => RegexPropType.Dynamic,
+        { } t when t.IsAssignableTo(typeof(DynamicOf)) => RegexPropType.Dynamic,
         { } t when t == typeof(bool) => RegexPropType.Bool,
         { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => RegexPropType.TokenUnitOneOf,
         { } t when typeof(TokenUnit).IsAssignableFrom(t) => RegexPropType.TokenUnit,

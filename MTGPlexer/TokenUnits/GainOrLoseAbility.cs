@@ -9,7 +9,7 @@ public class GainOrLoseAbility : TokenUnit
 
     
     [RegexPattern("[^\"]+")]
-    public DynamicCapture<TokenUnit> Ability { get; set; }
+    public DynamicOf<TokenUnit> Ability { get; set; }
     //[RegexPattern("[^\"]+")]
     //public PlaceholderCapture Ability { get; set; }
 }
