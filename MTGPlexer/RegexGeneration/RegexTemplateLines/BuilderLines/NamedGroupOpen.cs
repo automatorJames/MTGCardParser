@@ -16,7 +16,7 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
     
     static string GetComment(TemplatePropInfo prop)
     {
-        var comment = prop.FriendlyTypeName;
+        var comment = prop.GetFriendlyTypeName();
 
         // Disambiguate the role of enum properties named differently than their types
         if (prop.TemplatePropType == TemplatePropType.Enum && prop.Name != prop.BaseType.Name)

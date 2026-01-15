@@ -88,6 +88,5 @@ public record PropertyCapture
         };
     }
 
-
     public override string ToString() => $"Prop: {TemplatePropInfo.Name} | Capture: \"{Capture.Value}\"";
 }

@@ -5,7 +5,6 @@ public record TemplatePropInfo
     public PropertyInfo Prop { get; init; }
     public TemplatePropType TemplatePropType { get; init; }
     public Type BaseType { get; init; }
-    public string FriendlyTypeName { get; init; }
     public bool IsTerminal { get; init; }
     public string Name { get; init; }
 
@@ -18,7 +17,6 @@ public record TemplatePropInfo
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
         (TemplatePropType, BaseType) = GetCapturePropType(prop);
-        FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
         Name = GetName(Prop, BaseType);
     }
@@ -33,7 +31,6 @@ public record TemplatePropInfo
             Prop = Prop,
             TemplatePropType = GetRegexPropType(BaseType),
             BaseType = BaseType,
-            FriendlyTypeName = FriendlyTypeName,
             IsTerminal = IsTerminal,
             Name = manyItemOrdinal.ToString(),
         };
@@ -51,7 +48,6 @@ public record TemplatePropInfo
             Prop = typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)),
             TemplatePropType = TemplatePropType.ManyOfConjunction,
             BaseType = typeof(Conjunction),
-            FriendlyTypeName = nameof(Conjunction).ToFriendlyCase(),
             IsTerminal = true,
             Name = nameof(Conjunction)
         };
@@ -92,8 +88,11 @@ public record TemplatePropInfo
         return (regexPropType, type);
     }
 
-    string GetFriendlyTypeName()
+    public string GetFriendlyTypeName()
     {
+        if (TemplatePropType == TemplatePropType.ManyOfConjunction)
+            return "conjunction";
+
         if (TemplatePropType == TemplatePropType.ManyOf)
             return "many of";
 
@@ -181,4 +180,20 @@ public record TemplatePropInfo
     };
 
     public override string ToString() => Name;
+}
+
+public enum TemplatePropType
+{
+    Enum,
+    Placeholder,
+    Dynamic,
+    Bool,
+    DistilledValue,
+    TokenUnit,
+    TokenUnitOneOf,
+    ManyOf,
+    ManyOfConjunction,
+    CompoundOf,
+    OneOf,
+    OptionalOf,
 }

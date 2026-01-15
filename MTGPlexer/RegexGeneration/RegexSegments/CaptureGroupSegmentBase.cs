@@ -37,20 +37,3 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
     public override string ToString() => base.ToString();
 
 }
-
-public enum TemplatePropType
-{
-    Enum,
-    Placeholder,
-    Dynamic,
-    Bool,
-    DistilledValue,
-    TokenUnit,
-    TokenUnitOneOf,
-    ManyOf,
-    ManyOfConjunction,
-    CompoundOf,
-    OneOf,
-    OptionalOf,
-}
-
