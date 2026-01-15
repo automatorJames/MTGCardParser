@@ -6,13 +6,13 @@ public abstract class TokenUnitDistilled : TokenUnit
     /// Dictionary to aid in capture analysis. Allows external callers to quickly associate each
     /// PlaceholderCapture property with its distilled properties.
     /// </summary>
-    public Dictionary<RegexPropInfo, List<RegexPropInfo>> PropDistillationMap{ get; private set; } = [];
+    public Dictionary<TemplatePropInfo, List<TemplatePropInfo>> PropDistillationMap{ get; private set; } = [];
 
     /// <summary>
     /// Dictionary to aid in capture analysis. Similar to the PropDistillationMap dictionary, except 
     /// holds concrete distilled values for each PlaceholderCapture on this instance.
     /// </summary>
-    public Dictionary<PropertyCapture, Dictionary<RegexPropInfo, object>> DistilledVals{ get; private set; } = [];
+    public Dictionary<PropertyCapture, Dictionary<TemplatePropInfo, object>> DistilledVals{ get; private set; } = [];
 
     public abstract void DistillValuesFromPlaceholders();
 
@@ -70,15 +70,15 @@ public abstract class TokenUnitDistilled : TokenUnit
     List<PropertyInfo> GetPlaceholderCaptureProps() =>
         Type.GetProperties().Where(x => x.PropertyType == typeof(PlaceholderCapture)).ToList();
 
-    List<RegexPropInfo> GetDistilledProps() =>
+    List<TemplatePropInfo> GetDistilledProps() =>
         Type.GetProperties()    
         .Where(x => x.IsDefined(typeof(DistilledValueAttribute)))
-        .Select(x => new RegexPropInfo(x))
+        .Select(x => new TemplatePropInfo(x))
         .ToList();
 
-    Dictionary<RegexPropInfo, List<RegexPropInfo>> GetDistilledPropAssociations()
+    Dictionary<TemplatePropInfo, List<TemplatePropInfo>> GetDistilledPropAssociations()
     {
-        Dictionary<RegexPropInfo, List<RegexPropInfo>> dict = [];
+        Dictionary<TemplatePropInfo, List<TemplatePropInfo>> dict = [];
         var distilledProps = GetDistilledProps();
         var placeholderCaptureProps = GetPlaceholderCaptureProps();
         var isSinglePlaceholder = placeholderCaptureProps.Count == 1;
@@ -99,7 +99,7 @@ public abstract class TokenUnitDistilled : TokenUnit
             if (distilledFromProp is null)
                 throw new Exception($"Distilled values must either declare a distilled-from property, or be a property of a type with exactly one PlaceholderCapture property");
 
-            var distilledFromPropRegexInfo = new RegexPropInfo(distilledFromProp);
+            var distilledFromPropRegexInfo = new TemplatePropInfo(distilledFromProp);
 
             if (!dict.TryGetValue(distilledFromPropRegexInfo, out var list))
             {

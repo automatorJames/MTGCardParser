@@ -59,7 +59,7 @@ public abstract class TokenUnit
                 // we don't want the tokenizer to be responsible for resolving the dynamic property to a match
                 // itself, since that would require double work (i.e. first iterate through all regexes to confirm a match,
                 // then later iterate through all again to actually assign the match value within in this method).
-                if (!setSuccessfully && captureProp.RegexPropInfo.RegexPropType == RegexPropType.Dynamic)
+                if (!setSuccessfully && captureProp.RegexPropInfo.TemplatePropType == RegexPropType.Dynamic)
                     return null;
 
                 //var shouldHaveSetButDidNot =
@@ -77,7 +77,7 @@ public abstract class TokenUnit
         return tokenUnitInstance;
     }
 
-    public void SetPropertyFromCapture(RegexPropInfo regexPropInfo, Capture capture, object propVal)
+    public void SetPropertyFromCapture(TemplatePropInfo regexPropInfo, Capture capture, object propVal)
     {
         regexPropInfo.Prop.SetValue(this, propVal);
         PropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, Match.CapturePath);

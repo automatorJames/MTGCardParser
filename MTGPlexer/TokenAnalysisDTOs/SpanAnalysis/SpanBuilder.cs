@@ -48,7 +48,7 @@ public static class SpanBuilder
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
 
-            _ when prop.RegexPropInfo.RegexPropType == RegexPropType.Enum
+            _ when prop.RegexPropInfo.TemplatePropType == RegexPropType.Enum
                 => BuildLeaf(prop, ctx, prop.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.EnumLeaf),
 
             _ => throw new InvalidOperationException($"Unsupported: {prop.Value?.GetType().Name}")

@@ -5,7 +5,7 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
     public string FullyQualifiedName { get; }
     public bool IsOptional { get; }
 
-    public NamedGroupOpen(Enclosure[] enclosures, RegexPropInfo prop, bool isOptional = false) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
+    public NamedGroupOpen(Enclosure[] enclosures, TemplatePropInfo prop, bool isOptional = false) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
     {
         IsOptional = isOptional || prop.Prop.IsDefined(typeof(OptionalComponentAttribute));
         FullyQualifiedName = GetFullyQualifiedName(enclosures);
@@ -14,12 +14,12 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
     static string RenderCaptureGroup(Enclosure[] enclosures) =>
         $"(?<{GetFullyQualifiedName(enclosures)}>";
     
-    static string GetComment(RegexPropInfo prop)
+    static string GetComment(TemplatePropInfo prop)
     {
         var comment = prop.FriendlyTypeName;
 
         // Disambiguate the role of enum properties named differently than their types
-        if (prop.RegexPropType == RegexPropType.Enum && prop.Name != prop.BaseType.Name)
+        if (prop.TemplatePropType == RegexPropType.Enum && prop.Name != prop.BaseType.Name)
             comment += $": {prop.BaseType.Name}";
 
         return comment;

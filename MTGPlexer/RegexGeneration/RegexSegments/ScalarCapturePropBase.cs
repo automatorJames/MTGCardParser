@@ -10,12 +10,12 @@ public abstract record ScalarCapturePropBase : CaptureGroupPropBase
 
     public ScalarAlternateSet ScalarAlternativeSet { get; protected set; }
 
-    public ScalarCapturePropBase(RegexPropInfo captureProp) : base(captureProp)
+    public ScalarCapturePropBase(TemplatePropInfo captureProp) : base(captureProp)
     {
         SetScalarAlternativeSet(captureProp);
     }
 
-    protected virtual void SetScalarAlternativeSet(RegexPropInfo captureProp)
+    protected virtual void SetScalarAlternativeSet(TemplatePropInfo captureProp)
     {
         if (TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(captureProp, out var scalarAlternativeSet))
             ScalarAlternativeSet = scalarAlternativeSet;

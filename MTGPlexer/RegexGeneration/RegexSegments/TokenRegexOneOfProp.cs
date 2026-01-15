@@ -7,7 +7,7 @@
 /// </summary>
 public record TokenRegexOneOfProp : TokenRegexProp
 {
-    public TokenRegexOneOfProp(RegexPropInfo captureProp) : base(captureProp)
+    public TokenRegexOneOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 

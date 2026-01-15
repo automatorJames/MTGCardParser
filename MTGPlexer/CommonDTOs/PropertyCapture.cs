@@ -5,7 +5,7 @@
 /// </summary>
 public record PropertyCapture
 {
-    public RegexPropInfo RegexPropInfo { get; private set; }
+    public TemplatePropInfo RegexPropInfo { get; private set; }
     public Capture Capture { get; private set; }
     public object Value { get; private set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }
@@ -14,7 +14,7 @@ public record PropertyCapture
     {
     }
 
-    public PropertyCapture(RegexPropInfo regexPropInfo, Capture capture, object value, CaptureGroupPropPath parentTokenPath)
+    public PropertyCapture(TemplatePropInfo regexPropInfo, Capture capture, object value, CaptureGroupPropPath parentTokenPath)
     {
         RegexPropInfo = regexPropInfo;
         Capture = capture;

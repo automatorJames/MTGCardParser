@@ -4,12 +4,12 @@ public record ManyOfProp : CaptureGroupPropBase
 {
     CaptureTypeVariant _manyItemType;
     CaptureGroupPropBase[] _ordinalRegexProps = new CaptureGroupPropBase[3];
-    static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new RegexPropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
+    static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public Type BaseType { get; set; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
-    public ManyOfProp(RegexPropInfo captureProp) : base(captureProp)
+    public ManyOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a ManyOf<T> prop here
 
@@ -42,7 +42,7 @@ public record ManyOfProp : CaptureGroupPropBase
             ];
         }
         else
-            throw new Exception($"TokenRegexManyProp base type may only be derived from TokenUnit or be an enum");
+            throw new Exception($"ManyOfProp base type may only be derived from TokenUnit or be an enum");
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)

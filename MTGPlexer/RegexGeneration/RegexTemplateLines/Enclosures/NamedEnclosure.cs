@@ -3,13 +3,13 @@
 public record NamedEnclosure : Enclosure
 {
     public string Name { get; }
-    public RegexPropInfo RegexPropInfo { get; }
+    public TemplatePropInfo RegexPropInfo { get; }
 
     public NamedEnclosure
         (
             int ordinal,
             int depth,
-            RegexPropInfo regexPropInfo, 
+            TemplatePropInfo regexPropInfo, 
             SpaceDisposition? spaceDisposition = null
         ) : base
         (
@@ -24,8 +24,8 @@ public record NamedEnclosure : Enclosure
         RegexPropInfo = regexPropInfo;
     }
 
-    static GroupBorderTreatment GetTreatment(RegexPropInfo regexPropInfo) => 
-        regexPropInfo.RegexPropType == RegexPropType.Enum && regexPropInfo.RegexPropType != RegexPropType.ManyOf
+    static GroupBorderTreatment GetTreatment(TemplatePropInfo regexPropInfo) => 
+        regexPropInfo.TemplatePropType == RegexPropType.Enum && regexPropInfo.TemplatePropType != RegexPropType.ManyOf
             ? GroupBorderTreatment.ClosedBox
             : GroupBorderTreatment.DashedBox;
 }

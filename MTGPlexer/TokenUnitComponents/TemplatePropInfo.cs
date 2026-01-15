@@ -1,37 +1,37 @@
 ﻿namespace MTGPlexer.TokenUnitComponents;
 
-public record RegexPropInfo
+public record TemplatePropInfo
 {
     public PropertyInfo Prop { get; init; }
-    public RegexPropType RegexPropType { get; init; }
+    public RegexPropType TemplatePropType { get; init; }
     public Type BaseType { get; init; }
     public string FriendlyTypeName { get; init; }
     public bool IsTerminal { get; init; }
     public string Name { get; init; }
 
-    private RegexPropInfo()
+    private TemplatePropInfo()
     {
     }
 
-    public RegexPropInfo(PropertyInfo prop)
+    public TemplatePropInfo(PropertyInfo prop)
     {
         var nullableType = Nullable.GetUnderlyingType(prop.PropertyType);
         Prop = prop;
-        (RegexPropType, BaseType) = GetCapturePropType(prop);
+        (TemplatePropType, BaseType) = GetCapturePropType(prop);
         FriendlyTypeName = GetFriendlyTypeName();
         IsTerminal = CheckIsTerminal();
         Name = GetName(Prop, BaseType);
     }
 
-    public RegexPropInfo DeriveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
+    public TemplatePropInfo DeriveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
     {
-        if (RegexPropType != RegexPropType.ManyOf)
+        if (TemplatePropType != RegexPropType.ManyOf)
             throw new Exception($"May only be derived from a ManyOf RegexPropInfo");
 
-        var derivedManyOfPropInfo = new RegexPropInfo
+        var derivedManyOfPropInfo = new TemplatePropInfo
         {
             Prop = Prop,
-            RegexPropType = GetRegexPropType(BaseType),
+            TemplatePropType = GetRegexPropType(BaseType),
             BaseType = BaseType,
             FriendlyTypeName = FriendlyTypeName,
             IsTerminal = IsTerminal,
@@ -41,15 +41,15 @@ public record RegexPropInfo
         return derivedManyOfPropInfo;
     }
 
-    public RegexPropInfo DeriveForManyOfConjunction()
+    public TemplatePropInfo DeriveForManyOfConjunction()
     {
-        if (RegexPropType != RegexPropType.ManyOf)
+        if (TemplatePropType != RegexPropType.ManyOf)
             throw new Exception($"May only be derived from a ManyOf RegexPropInfo");
 
-        var derivedConjunctionPropInfo = new RegexPropInfo
+        var derivedConjunctionPropInfo = new TemplatePropInfo
         {
             Prop = typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)),
-            RegexPropType = RegexPropType.ManyOfConjunction,
+            TemplatePropType = RegexPropType.ManyOfConjunction,
             BaseType = typeof(Conjunction),
             FriendlyTypeName = nameof(Conjunction).ToFriendlyCase(),
             IsTerminal = true,
@@ -94,16 +94,16 @@ public record RegexPropInfo
 
     string GetFriendlyTypeName()
     {
-        if (RegexPropType == RegexPropType.ManyOf)
+        if (TemplatePropType == RegexPropType.ManyOf)
             return "many of";
 
-        if (RegexPropType == RegexPropType.CompoundOf)
+        if (TemplatePropType == RegexPropType.CompoundOf)
             return "compound of";
 
-        if (RegexPropType == RegexPropType.OneOf)
+        if (TemplatePropType == RegexPropType.OneOf)
             return "one of";
 
-        if (RegexPropType == RegexPropType.OneOf)
+        if (TemplatePropType == RegexPropType.OneOf)
             return "optional of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
@@ -134,7 +134,7 @@ public record RegexPropInfo
 
     public CaptureGroupPropBase GetCaptureGroupPropBase()
     {
-        return RegexPropType switch
+        return TemplatePropType switch
         {
             RegexPropType.ManyOf => new ManyOfProp(this),
             RegexPropType.CompoundOf => new CompoundOfProp(this),
@@ -161,7 +161,7 @@ public record RegexPropInfo
             RegexPropType.DistilledValue
         ];
 
-        return terminalTypes.Contains(RegexPropType);
+        return terminalTypes.Contains(TemplatePropType);
     }
 
     public static RegexPropType GetRegexPropType(Type type) =>
@@ -177,7 +177,7 @@ public record RegexPropInfo
         { } t when t == typeof(bool) => RegexPropType.Bool,
         { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => RegexPropType.TokenUnitOneOf,
         { } t when typeof(TokenUnit).IsAssignableFrom(t) => RegexPropType.TokenUnit,
-        _ => throw new Exception($"{type.Name} is not a valid {nameof(RegexPropType)} type")
+        _ => throw new Exception($"{type.Name} is not a valid {nameof(TemplatePropType)} type")
     };
 
     public override string ToString() => Name;

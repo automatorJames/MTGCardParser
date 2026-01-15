@@ -10,7 +10,7 @@ public class RegexTemplate
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
     public RegexBuilder Builder { get; private set; }
-    public List<RegexPropInfo> RegexPropInfos { get; private set; } = [];
+    public List<TemplatePropInfo> RegexPropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
     public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
 
@@ -83,7 +83,7 @@ public class RegexTemplate
             return new TextSegment(templateSnippet);
     }
 
-    List<RegexPropInfo> GetRegexProps()
+    List<TemplatePropInfo> GetRegexProps()
     {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 
@@ -91,7 +91,7 @@ public class RegexTemplate
             .GetProperties(flags)
             .Where(p => p.GetMethod is { IsVirtual: false }) // Must be non-virtual
             .Where(p => IsValidTargetType(p.PropertyType))
-            .Select(p => new RegexPropInfo(p))
+            .Select(p => new TemplatePropInfo(p))
             .ToList();
     }
 

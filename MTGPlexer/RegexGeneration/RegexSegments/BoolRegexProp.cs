@@ -7,7 +7,7 @@
 /// </summary>
 public record BoolRegexProp : ScalarCapturePropBase
 {
-    public BoolRegexProp(RegexPropInfo captureProp) : base(captureProp)
+    public BoolRegexProp(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 

@@ -7,7 +7,7 @@ public class PropPathSynonymSetContainer
     public int UnrepresentedAlternateCount => AlternateCount - SynonymSets.Count;
     public Dictionary<object, CaptureValueSynonymSet> SynonymSets { get; private set; } = [];
 
-    public PropPathSynonymSetContainer(CaptureGroupPropPath parentPath, RegexPropInfo prop = null)
+    public PropPathSynonymSetContainer(CaptureGroupPropPath parentPath, TemplatePropInfo prop = null)
     {
         ParentPath = parentPath;
 

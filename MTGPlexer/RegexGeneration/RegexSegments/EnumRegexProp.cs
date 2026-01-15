@@ -11,7 +11,7 @@ public record EnumRegexProp : ScalarCapturePropBase
     public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
-    public EnumRegexProp(RegexPropInfo captureProp) : base(captureProp)
+    public EnumRegexProp(TemplatePropInfo captureProp) : base(captureProp)
     {
         // If the enum is nullable, we treat it as optional. The exception to this is if the
         // enum is contained in a TokenUnitOneOf, where at least one alternative must be matched,
@@ -32,7 +32,7 @@ public record EnumRegexProp : ScalarCapturePropBase
         builder.CloseGroup(_isOptional ? GroupQuantifier.Optional : null);
     }
 
-    protected override void SetScalarAlternativeSet(RegexPropInfo captureProp)
+    protected override void SetScalarAlternativeSet(TemplatePropInfo captureProp)
     {
         var enumType = captureProp.BaseType;
 

@@ -23,6 +23,6 @@ public abstract class DynamicOf
     {
         Capture = capture;
         ValueObject = valueObject;
-        RegexPropType = RegexPropInfo.GetRegexPropType(itemType);
+        RegexPropType = TemplatePropInfo.GetRegexPropType(itemType);
     }
 }

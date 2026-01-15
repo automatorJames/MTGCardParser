@@ -11,7 +11,7 @@ public record TokenRegexProp : CaptureGroupPropBase
     public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.BaseType].Regex;
     public ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
 
-    public TokenRegexProp(RegexPropInfo captureProp) : base(captureProp)
+    public TokenRegexProp(TemplatePropInfo captureProp) : base(captureProp)
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         ChildSegments = template.RegexSegments.ToImmutableList();

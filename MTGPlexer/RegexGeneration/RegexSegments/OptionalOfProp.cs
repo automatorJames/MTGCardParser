@@ -10,12 +10,12 @@ public record OptionalOfProp : CaptureGroupPropBase
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
 
-    public OptionalOfProp(RegexPropInfo captureProp) : base(captureProp)
+    public OptionalOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a OptionalOf<T> prop here
 
         BaseType = captureProp.BaseType;
-        var derivedPropInfo = captureProp with { RegexPropType = RegexPropInfo.GetRegexPropType(RegexPropInfo.BaseType) };
+        var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(RegexPropInfo.BaseType) };
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         ChildSegments = template.RegexSegments.ToImmutableList();
     }

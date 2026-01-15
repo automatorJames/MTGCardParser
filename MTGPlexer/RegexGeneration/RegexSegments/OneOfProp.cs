@@ -14,13 +14,13 @@ public record OneOfProp : CaptureGroupPropBase
     public override Regex ManyMatchRegex => throw new NotImplementedException();
     public HashSet<Type> EnumTypesRepresented = [];
 
-    public OneOfProp(RegexPropInfo captureProp) : base(captureProp)
+    public OneOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a OneOf<> prop here
 
         foreach (var type in captureProp.BaseType.GetGenericArguments())
         {
-            var derivedPropInfo = captureProp with { RegexPropType = RegexPropInfo.GetRegexPropType(type), BaseType = type, Name = type.Name };
+            var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(type), BaseType = type, Name = type.Name };
 
             if (type.IsAssignableTo(typeof(TokenUnit)))
                 _regexProps.Add(new TokenRegexProp(derivedPropInfo));
@@ -54,7 +54,7 @@ public record OneOfProp : CaptureGroupPropBase
 
             var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(regexProp.RegexPropInfo.BaseType);
 
-            if (regexProp.RegexPropInfo.RegexPropType == RegexPropType.Enum)
+            if (regexProp.RegexPropInfo.TemplatePropType == RegexPropType.Enum)
             {
                 foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.RegexPropInfo.BaseType].EnumAlternates)
                 {

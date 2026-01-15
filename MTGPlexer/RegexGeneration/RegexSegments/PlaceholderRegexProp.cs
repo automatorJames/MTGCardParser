@@ -10,7 +10,7 @@
 /// </summary>
 public record PlaceholderRegexProp : ScalarCapturePropBase
 {
-    public PlaceholderRegexProp(RegexPropInfo captureProp) : base(captureProp)
+    public PlaceholderRegexProp(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 

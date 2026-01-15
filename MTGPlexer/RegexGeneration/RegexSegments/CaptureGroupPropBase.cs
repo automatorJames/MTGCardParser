@@ -8,10 +8,10 @@
 public abstract record CaptureGroupPropBase : RegexSegmentBase
 {
     public string Name => RegexPropInfo.Name;
-    public RegexPropInfo RegexPropInfo { get; init; }
+    public TemplatePropInfo RegexPropInfo { get; init; }
     public abstract Regex ManyMatchRegex { get; }
     
-    public CaptureGroupPropBase(RegexPropInfo captureProp)
+    public CaptureGroupPropBase(TemplatePropInfo captureProp)
     {
         RegexPropInfo = captureProp;
     }

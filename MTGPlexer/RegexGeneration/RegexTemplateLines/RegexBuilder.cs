@@ -38,7 +38,7 @@ public class RegexBuilder
     /// </summary>
     /// <param name="captureGroup">The property info for the capture group, if it's a named group.</param>
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
-    public void OpenGroup(RegexPropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
+    public void OpenGroup(TemplatePropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
     {
         Enclosure enclosure = null;
 
@@ -112,7 +112,7 @@ public class RegexBuilder
     /// </summary>
     /// <param name="group">The property info of the group to extract.</param>
     /// <returns>A compiled Regex object for the specified group.</returns>
-    public Regex ExtractGroupRegex(RegexPropInfo group)
+    public Regex ExtractGroupRegex(TemplatePropInfo group)
     {
         var firstGroupLine = _concatenater.RegexElements.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
         var lastGroupLine = _concatenater.RegexElements.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);

@@ -8,12 +8,12 @@ public record CompoundOfProp : CaptureGroupPropBase
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
 
-    public CompoundOfProp(RegexPropInfo captureProp) : base(captureProp)
+    public CompoundOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
         // RegexPropInfo capture prop is a CompoundOf<T> prop here
 
         BaseType = captureProp.BaseType;
-        var derivedPropInfo = captureProp with { RegexPropType = RegexPropInfo.GetRegexPropType(RegexPropInfo.BaseType) };
+        var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(RegexPropInfo.BaseType) };
 
         if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {

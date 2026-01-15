@@ -15,9 +15,9 @@ public static partial class TokenTypeRegistry
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, EnumScalarAlternateSet> EnumScalarAlternativeSets { get; set; } = [];
-    public static Dictionary<RegexPropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
+    public static Dictionary<TemplatePropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
-    public static Dictionary<Type, Dictionary<RegexPropInfo, List<RegexPropInfo>>> PropDistillationMaps { get; set; } = [];
+    public static Dictionary<Type, Dictionary<TemplatePropInfo, List<TemplatePropInfo>>> PropDistillationMaps { get; set; } = [];
     public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
@@ -101,7 +101,7 @@ public static partial class TokenTypeRegistry
         // Register all newly encountered scalar capture props that aren't enums (i.e. bools & placeholders)
         propCaptureSegments
             .OfType<ScalarCapturePropBase>()
-            .Where(x => x.RegexPropInfo.RegexPropType != RegexPropType.Enum)
+            .Where(x => x.RegexPropInfo.TemplatePropType != RegexPropType.Enum)
             .ToList()
             .ForEach(x => PropScalarAlternativeSets.TryAdd(x.RegexPropInfo, x.ScalarAlternativeSet));
 

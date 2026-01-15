@@ -2,7 +2,7 @@
 
 public record DynamicOfProp : ScalarCapturePropBase
 {
-    public DynamicOfProp(RegexPropInfo captureProp) : base(captureProp)
+    public DynamicOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 
@@ -13,7 +13,7 @@ public record DynamicOfProp : ScalarCapturePropBase
         builder.CloseGroup();
     }
 
-    protected override void SetScalarAlternativeSet(RegexPropInfo captureProp)
+    protected override void SetScalarAlternativeSet(TemplatePropInfo captureProp)
     {
         var captureAlternatives =
             captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns // Respect RegexPattern override if present
