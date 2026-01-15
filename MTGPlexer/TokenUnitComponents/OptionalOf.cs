@@ -19,9 +19,4 @@ public class OptionalOf
     public PolyItemCapture ItemObject { get; set; }
 
     public override string ToString() => string.Join(" ", ItemObject.ToString());
-
-    public static CaptureTypeVariant GetCaptureTypeVariant(Type type) =>
-        type.IsAssignableTo(typeof(TokenUnit)) ? CaptureTypeVariant.TokenUnit
-        : type.IsEnum ? CaptureTypeVariant.Enum
-        : throw new Exception($"{nameof(OptionalOf)} item type must either be TokenUnit or Enum");
 }
