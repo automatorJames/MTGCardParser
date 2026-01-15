@@ -48,7 +48,7 @@ public abstract class TokenUnitDistilled : TokenUnit
     {
         foreach (var (placeholderProp, distilledPropList) in PropDistillationMap)
         {
-            var associatedIndexedPropCapture = IndexedPropertyCaptures.FirstOrDefault(x => x.TemplatePropInfo == placeholderProp);
+            var associatedIndexedPropCapture = PropertyCaptures.FirstOrDefault(x => x.TemplatePropInfo == placeholderProp);
 
             // If this Placeholder prop has no capture, there's no need to register it (expected to be uncommon, but not impossible)
             if (associatedIndexedPropCapture == null)

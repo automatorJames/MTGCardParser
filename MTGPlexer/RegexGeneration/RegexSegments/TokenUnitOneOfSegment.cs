@@ -26,7 +26,6 @@ public record TokenUnitOneOfSegment : TokenUnitSegment
         CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(TemplatePropInfo.Name));
         TokenUnitMatch typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
-        parentTokenUnit.ChildTokenUnits.Add(tokenUnitInstance);
 
         return tokenUnitInstance;
     }

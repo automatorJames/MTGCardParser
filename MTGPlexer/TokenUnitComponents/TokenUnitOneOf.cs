@@ -9,10 +9,10 @@ public abstract class TokenUnitOneOf : TokenUnit
     /// </summary>
     public PropertyCapture GetIndexedPropertyCaptureSingle()
     {
-        if (IndexedPropertyCaptures.Count != 1)
-            throw new Exception($"Expected a single {nameof(PropertyCapture)}, but found {IndexedPropertyCaptures.Count}");
+        if (PropertyCaptures.Count != 1)
+            throw new Exception($"Expected a single {nameof(PropertyCapture)}, but found {PropertyCaptures.Count}");
 
-        return IndexedPropertyCaptures.First();
+        return PropertyCaptures.First();
     }
 
     public override string ValidateStructure()

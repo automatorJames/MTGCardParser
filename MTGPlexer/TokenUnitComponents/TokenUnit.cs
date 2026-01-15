@@ -16,15 +16,13 @@ public abstract class TokenUnit
         }
     }
 
-    //public Capture Capture => Match.RegexMatch;
     public TokenUnitMatch Match { get; set; }
-    public List<TokenUnit> ChildTokenUnits { get; set; } = [];
 
     /// <summary>
-    /// A pre-processed and ordered list of all property captures for this token.
+    /// A pre-processed  list of all property captures for this token.
     /// This is the preferred way to iterate over captures for rendering or processing.
     /// </summary>
-    public List<PropertyCapture> IndexedPropertyCaptures { get; set; } = [];
+    public List<PropertyCapture> PropertyCaptures { get; set; } = [];
 
     public Snippet[] GetSnippets() => Snippets;
 
@@ -61,14 +59,6 @@ public abstract class TokenUnit
                 // then later iterate through all again to actually assign the match value within in this method).
                 if (!setSuccessfully && captureProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Dynamic)
                     return null;
-
-                //var shouldHaveSetButDidNot =
-                //    !setSuccessfully
-                //    && !match.Type.IsAssignableTo(typeof(TokenUnitOneOf))
-                //    && !captureProp.IsOptional;
-                //
-                //if (shouldHaveSetButDidNot)
-                //    throw new Exception($"No capture group named '{captureProp.Name}' at capture index {match.CaptureOrdinal} exists for match '{match.RegexMatch.Value}', and it is not optional");
             }
         }
 
@@ -80,8 +70,8 @@ public abstract class TokenUnit
     public void SetPropertyFromCapture(TemplatePropInfo templatePropInfo, Capture capture, object propVal)
     {
         templatePropInfo.Prop.SetValue(this, propVal);
-        PropertyCapture indexedPropertyCapture = new(templatePropInfo, capture, propVal, Match.CapturePath);
-        IndexedPropertyCaptures.Add(indexedPropertyCapture);
+        PropertyCapture propertyCapture = new(templatePropInfo, capture, propVal, Match.CapturePath);
+        PropertyCaptures.Add(propertyCapture);
     }
 
     /// <summary>
@@ -90,11 +80,16 @@ public abstract class TokenUnit
     /// </summary>
     public List<PropertyCapture> GetFlattenedTerminalCaptures()
     {
-        var terminalCaptures = IndexedPropertyCaptures
+        var terminalCaptures = PropertyCaptures
             .Where(x => x.TemplatePropInfo.IsTerminal)
             .ToList();
 
-        ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
+        var childTokenUnits = PropertyCaptures
+            .Select(x => x.Value)
+            .OfType<TokenUnit>()
+            .ToList();
+
+        childTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
         terminalCaptures.AddRange(FlattenManyOfCaptures());
         terminalCaptures.AddRange(FlattenCompoundOfCaptures());
         terminalCaptures.AddRange(FlattenOneOfCaptures());
@@ -110,7 +105,7 @@ public abstract class TokenUnit
     {
         List<PropertyCapture> terminalCaptures = [];
 
-        var manyOfPropCaps = IndexedPropertyCaptures
+        var manyOfPropCaps = PropertyCaptures
             .Where(x => x.Value is ManyOf)
             .ToList();
 
@@ -155,7 +150,7 @@ public abstract class TokenUnit
     {
         List<PropertyCapture> terminalCaptures = [];
 
-        var compoundOfPropCaps = IndexedPropertyCaptures
+        var compoundOfPropCaps = PropertyCaptures
             .Where(x => x.Value is CompoundOf)
             .ToList();
 
@@ -184,7 +179,7 @@ public abstract class TokenUnit
     {
         List<PropertyCapture> terminalCaptures = [];
 
-        var oneOfPropCaps = IndexedPropertyCaptures
+        var oneOfPropCaps = PropertyCaptures
             .Where(x => x.Value is OneOf)
             .ToList();
 

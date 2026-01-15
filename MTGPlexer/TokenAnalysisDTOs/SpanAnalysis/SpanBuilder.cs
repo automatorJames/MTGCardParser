@@ -13,7 +13,7 @@ public static class SpanBuilder
         var prefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RegexMatch.Index}]-";
         var ctx = new SpanContext(fullText, prefix);
 
-        var children = root.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx)).ToList();
+        var children = root.PropertyCaptures.Select(p => BuildNode(p, ctx)).ToList();
 
         return new SpanRoot
         {
@@ -58,14 +58,14 @@ public static class SpanBuilder
     static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var children = tokenUnit.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
+        var children = tokenUnit.PropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
     static SpanNode BuildTokenUnitOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var inner = tokenUnitOneOf.IndexedPropertyCaptures.Single();
+        var inner = tokenUnitOneOf.PropertyCaptures.Single();
         var childNode = BuildNode(inner, ctx.ClearNameChain());
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
     }
@@ -200,7 +200,7 @@ public static class SpanBuilder
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
 
-        var children = tokenUnitDistilled.IndexedPropertyCaptures
+        var children = tokenUnitDistilled.PropertyCaptures
             .Where(p => !tokenUnitDistilled.DistilledVals.ContainsKey(p))
             .Select(p => BuildNode(p, childCtx))
             .ToList();
@@ -237,7 +237,7 @@ public static class SpanBuilder
     static SpanNode BuildTokenUnitBranch(TokenUnit tu, Capture cap, CaptureGroupPropPath path, SpanContext ctx)
     {
         var name = ctx.FormatName(tu.Type.Name);
-        var children = tu.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
+        var children = tu.PropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
