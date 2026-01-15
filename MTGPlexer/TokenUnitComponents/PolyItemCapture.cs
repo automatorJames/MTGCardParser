@@ -4,8 +4,16 @@ public record PolyItemCapture<T> : PolyItemCapture
 {
     public T Item { get; set; }
 
-    public PolyItemCapture(T item, Capture capture, int ordinal, TemplatePropInfo propInfo) 
-        : base(capture, typeof(T), item, ordinal, propInfo)
+    public PolyItemCapture(T item, Capture capture, TemplatePropInfo propInfo) : this(item, capture, propInfo, 0, null)
+    {
+    }
+
+    public PolyItemCapture(T item, Capture capture, TemplatePropInfo propInfo, int ordinal) : this(item, capture, propInfo, ordinal, null)
+    {
+    }
+
+    public PolyItemCapture(T item, Capture capture, TemplatePropInfo propInfo, int ordinal, string distinguishingName) 
+        : base(typeof(T), item, capture, propInfo, ordinal, distinguishingName)
     {
         Item = item;
     }
@@ -16,18 +24,20 @@ public record PolyItemCapture<T> : PolyItemCapture
 public record PolyItemCapture
 {
     public Capture Capture { get; }
-    public TemplatePropInfo RegexPropInfo { get; }
+    public TemplatePropInfo TemplatePropInfo { get; }
     public Type ItemType { get; }
     public object ItemObject { get; }
     public CaptureTypeVariant CaptureTypeVariant { get; }
+    public string DistinguishingName { get; }
 
-    public PolyItemCapture(Capture capture, Type type, object itemAsObject, int ordinal, TemplatePropInfo propInfo)
+    public PolyItemCapture(Type type, object itemAsObject, Capture capture, TemplatePropInfo propInfo, int ordinal, string distinguishingName)
     {
         Capture = capture is Group group ? group.Captures[ordinal] : capture;
-        RegexPropInfo = propInfo;
+        TemplatePropInfo = propInfo;
         ItemType = type;
         ItemObject = itemAsObject;
         CaptureTypeVariant = type.ToCaptureTypeVariant();
+        DistinguishingName = distinguishingName;
     }
 
     public override string ToString() => CaptureTypeVariant == CaptureTypeVariant.Enum ?

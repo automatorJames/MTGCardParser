@@ -8,7 +8,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public record TokenRegexProp : CaptureGroupPropBase
 {
-    public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[RegexPropInfo.BaseType].Regex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[TemplatePropInfo.BaseType].Regex;
     public ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
 
     public TokenRegexProp(TemplatePropInfo captureProp) : base(captureProp)
@@ -19,17 +19,17 @@ public record TokenRegexProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo);
+        builder.OpenGroup(TemplatePropInfo);
         ConcatenatingComposer.Instance.Compose(builder, ChildSegments.ToList());
-        var groupIsOptional = RegexPropInfo.Prop.IsDefined(typeof(OptionalComponentAttribute));
+        var groupIsOptional = TemplatePropInfo.Prop.IsDefined(typeof(OptionalComponentAttribute));
         GroupQuantifier? groupQuantifier = groupIsOptional ? GroupQuantifier.Optional : null;
         builder.CloseGroup(groupQuantifier);
     }
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
+        CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(TemplatePropInfo.Name));
+        TokenUnitMatch typeMatch = new(TemplatePropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
         parentTokenUnit.ChildTokenUnits.Add(tokenUnitInstance);
 

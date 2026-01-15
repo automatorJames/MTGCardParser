@@ -59,7 +59,7 @@ public abstract class TokenUnit
                 // we don't want the tokenizer to be responsible for resolving the dynamic property to a match
                 // itself, since that would require double work (i.e. first iterate through all regexes to confirm a match,
                 // then later iterate through all again to actually assign the match value within in this method).
-                if (!setSuccessfully && captureProp.RegexPropInfo.TemplatePropType == RegexPropType.Dynamic)
+                if (!setSuccessfully && captureProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Dynamic)
                     return null;
 
                 //var shouldHaveSetButDidNot =
@@ -77,21 +77,21 @@ public abstract class TokenUnit
         return tokenUnitInstance;
     }
 
-    public void SetPropertyFromCapture(TemplatePropInfo regexPropInfo, Capture capture, object propVal)
+    public void SetPropertyFromCapture(TemplatePropInfo templatePropInfo, Capture capture, object propVal)
     {
-        regexPropInfo.Prop.SetValue(this, propVal);
-        PropertyCapture indexedPropertyCapture = new(regexPropInfo, capture, propVal, Match.CapturePath);
+        templatePropInfo.Prop.SetValue(this, propVal);
+        PropertyCapture indexedPropertyCapture = new(templatePropInfo, capture, propVal, Match.CapturePath);
         IndexedPropertyCaptures.Add(indexedPropertyCapture);
     }
 
     /// <summary>
-    /// Returns a list of this TokenUnit's IndexedPropertyCaptures where RegexPropInfo.IsTerminal, and
+    /// Returns a list of this TokenUnit's IndexedPropertyCaptures where TemplatePropInfo.IsTerminal, and
     /// recursively gathers terminal captures from all TokenUnit children.
     /// </summary>
     public List<PropertyCapture> GetFlattenedTerminalCaptures()
     {
         var terminalCaptures = IndexedPropertyCaptures
-            .Where(x => x.RegexPropInfo.IsTerminal)
+            .Where(x => x.TemplatePropInfo.IsTerminal)
             .ToList();
 
         ChildTokenUnits.ForEach(x => terminalCaptures.AddRange(x.GetFlattenedTerminalCaptures()));
@@ -122,7 +122,7 @@ public abstract class TokenUnit
             {
                 // We only get the first (if any) among the items at the current ordinal, because its IndexedPropertyCaptures
                 // will contain all captures at that position (i.e. _secondPlus) , and we don't want to duplicate those captures
-                var representativeManyItemAtOrdinal = manyOf.ItemObjects.FirstOrDefault(x => x.Oridinal == manyItemOrdinal);
+                var representativeManyItemAtOrdinal = manyOf.ItemObjects.FirstOrDefault(x => x.DistinguishingName == manyItemOrdinal.ToString());
 
                 if (representativeManyItemAtOrdinal == null)
                     continue;
@@ -218,7 +218,7 @@ public abstract class TokenUnit
             return $"{nameof(template.RegexString)} is null or empty";
 
         var expectedProps = Type.GetPublicPropNames();
-        var missingProps = expectedProps.Except(template.CaptureGroupProps.Select(x => x.RegexPropInfo.Prop.Name)).ToList();
+        var missingProps = expectedProps.Except(template.CaptureGroupProps.Select(x => x.TemplatePropInfo.Prop.Name)).ToList();
     
         if (missingProps.Any())
             return $"the following properties are not represented among template snippets: {string.Join(", ", missingProps)}";

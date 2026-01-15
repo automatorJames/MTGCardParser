@@ -17,7 +17,7 @@ public abstract class DynamicOf
 {
     public object ValueObject { get; protected set; }
     public Capture Capture { get; set; }
-    public RegexPropType RegexPropType { get; set; }
+    public TemplatePropType RegexPropType { get; set; }
 
     public DynamicOf(object valueObject, Capture capture, Type itemType)
     {

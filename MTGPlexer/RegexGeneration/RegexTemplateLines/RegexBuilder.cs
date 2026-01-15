@@ -114,8 +114,8 @@ public class RegexBuilder
     /// <returns>A compiled Regex object for the specified group.</returns>
     public Regex ExtractGroupRegex(TemplatePropInfo group)
     {
-        var firstGroupLine = _concatenater.RegexElements.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
-        var lastGroupLine = _concatenater.RegexElements.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.RegexPropInfo == group);
+        var firstGroupLine = _concatenater.RegexElements.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.TemplatePropInfo == group);
+        var lastGroupLine = _concatenater.RegexElements.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.TemplatePropInfo == group);
 
         if (firstGroupLine == null || lastGroupLine == null)
             return null;

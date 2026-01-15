@@ -8,7 +8,7 @@
 public record EnumRegexProp : ScalarCapturePropBase
 {
     bool _isOptional;
-    public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[RegexPropInfo.BaseType].CollectiveRegex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[TemplatePropInfo.BaseType].CollectiveRegex;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
     public EnumRegexProp(TemplatePropInfo captureProp) : base(captureProp)
@@ -23,9 +23,9 @@ public record EnumRegexProp : ScalarCapturePropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo, isOptional: _isOptional);
+        builder.OpenGroup(TemplatePropInfo, isOptional: _isOptional);
 
-        if (RegexPropInfo.BaseType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
+        if (TemplatePropInfo.BaseType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
         builder.AddAlternateEnumValues(EnumSet);
@@ -56,7 +56,7 @@ public record EnumRegexProp : ScalarCapturePropBase
             if (enumAlternative.ItemRegex.IsMatch(matchString))
                 return enumAlternative.EnumValue;
 
-        throw new Exception($"Found no matching values for enum '{RegexPropInfo.Name}' from match string '{matchString}'");
+        throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{matchString}'");
     }
 
     public static EnumScalarAlternateSet EnumTypetoScalarSet(Type enumType)

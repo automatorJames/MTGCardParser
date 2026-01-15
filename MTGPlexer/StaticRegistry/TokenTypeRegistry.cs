@@ -56,11 +56,11 @@ public static partial class TokenTypeRegistry
         // but steps taken during registration only care about the enum type itself)
         propCaptureSegments
             .OfType<EnumRegexProp>()
-            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.RegexPropInfo.BaseType))
+            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.TemplatePropInfo.BaseType))
             .ToList()
             .ForEach(enumRegexPropWithNewEnumType =>
             {
-                var enumType = enumRegexPropWithNewEnumType.RegexPropInfo.BaseType;
+                var enumType = enumRegexPropWithNewEnumType.TemplatePropInfo.BaseType;
                 EnumRegexStrings[enumType] = enumRegexPropWithNewEnumType.RegexString;
                 ReferencedEnumTypes.Add(enumType);
                 NameToType[enumType.Name] = enumType;
@@ -101,15 +101,15 @@ public static partial class TokenTypeRegistry
         // Register all newly encountered scalar capture props that aren't enums (i.e. bools & placeholders)
         propCaptureSegments
             .OfType<ScalarCapturePropBase>()
-            .Where(x => x.RegexPropInfo.TemplatePropType != RegexPropType.Enum)
+            .Where(x => x.TemplatePropInfo.TemplatePropType != TemplatePropType.Enum)
             .ToList()
-            .ForEach(x => PropScalarAlternativeSets.TryAdd(x.RegexPropInfo, x.ScalarAlternativeSet));
+            .ForEach(x => PropScalarAlternativeSets.TryAdd(x.TemplatePropInfo, x.ScalarAlternativeSet));
 
         // Register all newly encountered ManyProps (we use BaseType as the key, not UnderlyingType which is List<T>)
         propCaptureSegments
             .OfType<ManyOfProp>()
             .ToList()
-            .ForEach(x => ManyOfRegexes.TryAdd(x.RegexPropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.RegexPropInfo)));
+            .ForEach(x => ManyOfRegexes.TryAdd(x.TemplatePropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.TemplatePropInfo)));
 
         if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
             throw new Exception($"Type '{type.Name}' failed validation: {errorString}");

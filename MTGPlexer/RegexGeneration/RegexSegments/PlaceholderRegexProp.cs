@@ -24,7 +24,7 @@ public record PlaceholderRegexProp : ScalarCapturePropBase
             var actions = Parse(regexString);
 
             // If parsing succeeds without error, we can confidently modify the collector.
-            builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.DisallowedGlobal);
+            builder.OpenGroup(TemplatePropInfo, spaceDisposition: SpaceDisposition.DisallowedGlobal);
             actions.ForEach(action => action(builder));
             builder.CloseGroup();
         }
@@ -32,7 +32,7 @@ public record PlaceholderRegexProp : ScalarCapturePropBase
         {
             // If parsing fails for any reason (e.g., complexity, malformed pattern),
             // fall back to the original behavior of rendering the regex as a single literal line.
-            builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.DisallowedGlobal);
+            builder.OpenGroup(TemplatePropInfo, spaceDisposition: SpaceDisposition.DisallowedGlobal);
             builder.AddTextLine(regexString);
             builder.CloseGroup();
         }

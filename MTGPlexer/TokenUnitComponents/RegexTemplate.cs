@@ -10,7 +10,7 @@ public class RegexTemplate
     public string RegexString { get; private set; }
     public Regex Regex { get; private set; }
     public RegexBuilder Builder { get; private set; }
-    public List<TemplatePropInfo> RegexPropInfos { get; private set; } = [];
+    public List<TemplatePropInfo> TemplatePropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
     public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
 
@@ -44,7 +44,7 @@ public class RegexTemplate
         }
 
         _containingType = type;
-        RegexPropInfos = GetRegexProps();
+        TemplatePropInfos = GetTemplateProps();
 
         for (int i = 0; i < snippets.Length; i++)
         {
@@ -75,7 +75,7 @@ public class RegexTemplate
 
     RegexSegmentBase ResolveSnippetToSegment(Snippet templateSnippet)
     {
-        var matchingProp = RegexPropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet);
+        var matchingProp = TemplatePropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet);
 
         if (matchingProp != null)
             return matchingProp.GetCaptureGroupPropBase();
@@ -83,7 +83,7 @@ public class RegexTemplate
             return new TextSegment(templateSnippet);
     }
 
-    List<TemplatePropInfo> GetRegexProps()
+    List<TemplatePropInfo> GetTemplateProps()
     {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 

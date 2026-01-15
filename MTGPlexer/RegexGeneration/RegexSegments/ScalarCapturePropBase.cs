@@ -6,7 +6,7 @@
 /// </summary>
 public abstract record ScalarCapturePropBase : CaptureGroupPropBase
 {
-    public override Regex ManyMatchRegex => TokenTypeRegistry.PropScalarAlternativeSets[RegexPropInfo].CollectiveRegex;
+    public override Regex ManyMatchRegex => TokenTypeRegistry.PropScalarAlternativeSets[TemplatePropInfo].CollectiveRegex;
 
     public ScalarAlternateSet ScalarAlternativeSet { get; protected set; }
 

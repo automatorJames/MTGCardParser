@@ -16,15 +16,15 @@ public record TokenRegexOneOfProp : TokenRegexProp
         // If there are no text sgements to render, the OneOf container itself doesn't need spaces between its alternating members
         SpaceDisposition? spaceDisposition = !ChildSegments.Any(x => x is TextSegment) ? SpaceDisposition.DisallowedLocal : null;
 
-        builder.OpenGroup(RegexPropInfo, spaceDisposition: spaceDisposition);
+        builder.OpenGroup(TemplatePropInfo, spaceDisposition: spaceDisposition);
         AlternatingComposer.Instance.Compose(builder, ChildSegments.ToList());
         builder.CloseGroup();
     }
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(RegexPropInfo.Name));
-        TokenUnitMatch typeMatch = new(RegexPropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
+        CaptureGroupPropPath ancestorCapturePath = new(parentTokenUnit.Match.CapturePath.PropPath.Dot(TemplatePropInfo.Name));
+        TokenUnitMatch typeMatch = new(TemplatePropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, ancestorCapturePath);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
         parentTokenUnit.ChildTokenUnits.Add(tokenUnitInstance);
 

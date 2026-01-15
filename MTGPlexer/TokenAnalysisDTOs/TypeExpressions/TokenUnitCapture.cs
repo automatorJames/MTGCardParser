@@ -48,7 +48,7 @@ public record TokenUnitCapture
 
                 if (!PropPathVariantSets.TryGetValue(parentPropPath, out var propPathVariantSetWrapper))
                 {
-                    propPathVariantSetWrapper = new(parentPropPath, capture.RegexPropInfo);
+                    propPathVariantSetWrapper = new(parentPropPath, capture.TemplatePropInfo);
                     PropPathVariantSets[parentPropPath] = propPathVariantSetWrapper;
                 }
 

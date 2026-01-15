@@ -10,10 +10,10 @@ public record CompoundOfProp : CaptureGroupPropBase
 
     public CompoundOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
-        // RegexPropInfo capture prop is a CompoundOf<T> prop here
+        // TemplatePropInfo capture prop is a CompoundOf<T> prop here
 
         BaseType = captureProp.BaseType;
-        var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(RegexPropInfo.BaseType) };
+        var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(TemplatePropInfo.BaseType) };
 
         if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {
@@ -31,7 +31,7 @@ public record CompoundOfProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo);
+        builder.OpenGroup(TemplatePropInfo);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         ConcatenatingComposer.Instance.Compose(builder, [_regexProp]);
         builder.AddTextLine(" ?");
@@ -41,13 +41,13 @@ public record CompoundOfProp : CaptureGroupPropBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var compoundItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(BaseType);
-        var listType = typeof(List<>).MakeGenericType(compoundItemCaptureType);
+        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(BaseType);
+        var listType = typeof(List<>).MakeGenericType(polyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
         // In compound captures, "namedGroup" is the parent capture (at the compound container level),
         // but the actual item captures reside in the next level down at the prop level.
-        var itemContainerCapture = parentTokenUnit.Match[Name + "_" + RegexPropInfo.Prop.Name];
+        var itemContainerCapture = parentTokenUnit.Match[Name + "_" + TemplatePropInfo.Prop.Name];
 
         var ordinalCaptures = itemContainerCapture.Captures;
 
@@ -73,13 +73,13 @@ public record CompoundOfProp : CaptureGroupPropBase
             }
             else if (_compoundItemType == CaptureTypeVariant.TokenUnit)
             {
-                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(RegexPropInfo.Name, _regexProp.Name);
+                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, _regexProp.Name);
                 TokenUnitMatch typeMatch = new(BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, i);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                 childItem = tokenUnitChild;
             }
 
-            var hydratedItem = Activator.CreateInstance(compoundItemCaptureType, childItem, ordinalCapture, i, RegexPropInfo);
+            var hydratedItem = Activator.CreateInstance(polyItemCaptureType, childItem, ordinalCapture, TemplatePropInfo, i);
             hydratedItems.Add(hydratedItem);
 
             NextIteration:;

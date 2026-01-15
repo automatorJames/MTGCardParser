@@ -3,29 +3,29 @@
 public record NamedEnclosure : Enclosure
 {
     public string Name { get; }
-    public TemplatePropInfo RegexPropInfo { get; }
+    public TemplatePropInfo TemplatePropInfo { get; }
 
     public NamedEnclosure
         (
             int ordinal,
             int depth,
-            TemplatePropInfo regexPropInfo, 
+            TemplatePropInfo templatePropInfo, 
             SpaceDisposition? spaceDisposition = null
         ) : base
         (
             ordinal,
             depth,
             EnclosureType.RegexProp,
-            GetTreatment(regexPropInfo),
-            spaceDisposition ?? (regexPropInfo.BaseType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
+            GetTreatment(templatePropInfo),
+            spaceDisposition ?? (templatePropInfo.BaseType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
         )
     {
-        Name = regexPropInfo.Name;
-        RegexPropInfo = regexPropInfo;
+        Name = templatePropInfo.Name;
+        TemplatePropInfo = templatePropInfo;
     }
 
-    static GroupBorderTreatment GetTreatment(TemplatePropInfo regexPropInfo) => 
-        regexPropInfo.TemplatePropType == RegexPropType.Enum && regexPropInfo.TemplatePropType != RegexPropType.ManyOf
+    static GroupBorderTreatment GetTreatment(TemplatePropInfo templatePropInfo) => 
+        templatePropInfo.TemplatePropType == TemplatePropType.Enum && templatePropInfo.TemplatePropType != TemplatePropType.ManyOf
             ? GroupBorderTreatment.ClosedBox
             : GroupBorderTreatment.DashedBox;
 }

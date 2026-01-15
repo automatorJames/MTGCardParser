@@ -7,13 +7,13 @@
 /// </summary>
 public abstract record CaptureGroupPropBase : RegexSegmentBase
 {
-    public string Name => RegexPropInfo.Name;
-    public TemplatePropInfo RegexPropInfo { get; init; }
+    public string Name => TemplatePropInfo.Name;
+    public TemplatePropInfo TemplatePropInfo { get; init; }
     public abstract Regex ManyMatchRegex { get; }
     
     public CaptureGroupPropBase(TemplatePropInfo captureProp)
     {
-        RegexPropInfo = captureProp;
+        TemplatePropInfo = captureProp;
     }
 
     public bool TrySetOnParent(TokenUnit parentTokenUnit)
@@ -27,7 +27,7 @@ public abstract record CaptureGroupPropBase : RegexSegmentBase
 
         // propValToSet may sometimes be null for cases like DynamicRegexProp, which will already have been handled earlier in the flow
         if (propValToSet != null)
-            parentTokenUnit.SetPropertyFromCapture(RegexPropInfo, namedGroup, propValToSet);
+            parentTokenUnit.SetPropertyFromCapture(TemplatePropInfo, namedGroup, propValToSet);
 
         return true;
     }
@@ -38,7 +38,7 @@ public abstract record CaptureGroupPropBase : RegexSegmentBase
 
 }
 
-public enum RegexPropType
+public enum TemplatePropType
 {
     Enum,
     Placeholder,

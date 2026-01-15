@@ -87,7 +87,7 @@ public class Tokenizer
                         if (!dynamicGroup.Success)
                             goto NextIteration;
 
-                        var dynamicType = dynamicProp.RegexPropInfo.BaseType.GenericTypeArguments[0];
+                        var dynamicType = dynamicProp.TemplatePropInfo.BaseType.GenericTypeArguments[0];
 
                         // Recursive call to resolve the dynamic portion
                         var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);

@@ -8,7 +8,7 @@ public record DynamicOfProp : ScalarCapturePropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo);
+        builder.OpenGroup(TemplatePropInfo);
         builder.AddAlternateValues(ScalarAlternativeSet.Alternates);
         builder.CloseGroup();
     }
@@ -33,14 +33,14 @@ public record DynamicOfProp : ScalarCapturePropBase
 
     public bool SetValueFromPrefilledDynamicToken(TokenUnit token, object prefilledValue)
     {
-        var genericType = RegexPropInfo.Prop.PropertyType.GenericTypeArguments[0];
+        var genericType = TemplatePropInfo.Prop.PropertyType.GenericTypeArguments[0];
 
         if (!genericType.IsAssignableTo(typeof(TokenUnit)) || prefilledValue is not TokenUnit prefilledTokenUnitValue)
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
         var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
         var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RegexMatch);
-        token.SetPropertyFromCapture(RegexPropInfo, prefilledTokenUnitValue.Match.RegexMatch, dynamicTokenInstance);
+        token.SetPropertyFromCapture(TemplatePropInfo, prefilledTokenUnitValue.Match.RegexMatch, dynamicTokenInstance);
 
         return true;
     }

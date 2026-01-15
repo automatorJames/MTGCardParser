@@ -3,7 +3,7 @@
 public record TemplatePropInfo
 {
     public PropertyInfo Prop { get; init; }
-    public RegexPropType TemplatePropType { get; init; }
+    public TemplatePropType TemplatePropType { get; init; }
     public Type BaseType { get; init; }
     public string FriendlyTypeName { get; init; }
     public bool IsTerminal { get; init; }
@@ -25,8 +25,8 @@ public record TemplatePropInfo
 
     public TemplatePropInfo DeriveForManyOfItem(ManyItemOrdinal manyItemOrdinal)
     {
-        if (TemplatePropType != RegexPropType.ManyOf)
-            throw new Exception($"May only be derived from a ManyOf RegexPropInfo");
+        if (TemplatePropType != TemplatePropType.ManyOf)
+            throw new Exception($"May only be derived from a ManyOf TemplatePropInfo");
 
         var derivedManyOfPropInfo = new TemplatePropInfo
         {
@@ -43,13 +43,13 @@ public record TemplatePropInfo
 
     public TemplatePropInfo DeriveForManyOfConjunction()
     {
-        if (TemplatePropType != RegexPropType.ManyOf)
-            throw new Exception($"May only be derived from a ManyOf RegexPropInfo");
+        if (TemplatePropType != TemplatePropType.ManyOf)
+            throw new Exception($"May only be derived from a ManyOf TemplatePropInfo");
 
         var derivedConjunctionPropInfo = new TemplatePropInfo
         {
             Prop = typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)),
-            TemplatePropType = RegexPropType.ManyOfConjunction,
+            TemplatePropType = TemplatePropType.ManyOfConjunction,
             BaseType = typeof(Conjunction),
             FriendlyTypeName = nameof(Conjunction).ToFriendlyCase(),
             IsTerminal = true,
@@ -76,17 +76,17 @@ public record TemplatePropInfo
         return prop.Name;
     }
 
-    static (RegexPropType, Type) GetCapturePropType(PropertyInfo prop)
+    static (TemplatePropType, Type) GetCapturePropType(PropertyInfo prop)
     {
         var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-        RegexPropType regexPropType;
+        TemplatePropType regexPropType;
 
         if (prop.GetCustomAttribute<DistilledValueAttribute>() != null)
-            regexPropType = RegexPropType.DistilledValue;
+            regexPropType = TemplatePropType.DistilledValue;
         else
             regexPropType = GetRegexPropType(type);
 
-        if (regexPropType == RegexPropType.ManyOf || regexPropType == RegexPropType.CompoundOf || regexPropType == RegexPropType.OptionalOf)
+        if (regexPropType == TemplatePropType.ManyOf || regexPropType == TemplatePropType.CompoundOf || regexPropType == TemplatePropType.OptionalOf)
             type = type.GetGenericArguments()[0];
 
         return (regexPropType, type);
@@ -94,16 +94,16 @@ public record TemplatePropInfo
 
     string GetFriendlyTypeName()
     {
-        if (TemplatePropType == RegexPropType.ManyOf)
+        if (TemplatePropType == TemplatePropType.ManyOf)
             return "many of";
 
-        if (TemplatePropType == RegexPropType.CompoundOf)
+        if (TemplatePropType == TemplatePropType.CompoundOf)
             return "compound of";
 
-        if (TemplatePropType == RegexPropType.OneOf)
+        if (TemplatePropType == TemplatePropType.OneOf)
             return "one of";
 
-        if (TemplatePropType == RegexPropType.OneOf)
+        if (TemplatePropType == TemplatePropType.OneOf)
             return "optional of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
@@ -136,47 +136,47 @@ public record TemplatePropInfo
     {
         return TemplatePropType switch
         {
-            RegexPropType.ManyOf => new ManyOfProp(this),
-            RegexPropType.CompoundOf => new CompoundOfProp(this),
-            RegexPropType.OneOf => new OneOfProp(this),
-            RegexPropType.OptionalOf => new OptionalOfProp(this),
-            RegexPropType.TokenUnit => new TokenRegexProp(this),
-            RegexPropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
-            RegexPropType.Enum => new EnumRegexProp(this),
-            RegexPropType.Bool => new BoolRegexProp(this),
-            RegexPropType.Placeholder => new PlaceholderRegexProp(this),
-            RegexPropType.Dynamic => new DynamicOfProp(this),
+            TemplatePropType.ManyOf => new ManyOfProp(this),
+            TemplatePropType.CompoundOf => new CompoundOfProp(this),
+            TemplatePropType.OneOf => new OneOfProp(this),
+            TemplatePropType.OptionalOf => new OptionalOfProp(this),
+            TemplatePropType.TokenUnit => new TokenRegexProp(this),
+            TemplatePropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
+            TemplatePropType.Enum => new EnumRegexProp(this),
+            TemplatePropType.Bool => new BoolRegexProp(this),
+            TemplatePropType.Placeholder => new PlaceholderRegexProp(this),
+            TemplatePropType.Dynamic => new DynamicOfProp(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
     }
 
     bool CheckIsTerminal()
     {
-        List<RegexPropType> terminalTypes =
+        List<TemplatePropType> terminalTypes =
         [
-            RegexPropType.Enum,
-            RegexPropType.Bool,
-            RegexPropType.Placeholder,
-            RegexPropType.Dynamic,
-            RegexPropType.DistilledValue
+            TemplatePropType.Enum,
+            TemplatePropType.Bool,
+            TemplatePropType.Placeholder,
+            TemplatePropType.Dynamic,
+            TemplatePropType.DistilledValue
         ];
 
         return terminalTypes.Contains(TemplatePropType);
     }
 
-    public static RegexPropType GetRegexPropType(Type type) =>
+    public static TemplatePropType GetRegexPropType(Type type) =>
     type switch
     {
-        { IsEnum: true } => RegexPropType.Enum,
-        { } t when t.IsAssignableTo(typeof(ManyOf)) => RegexPropType.ManyOf,
-        { } t when t.IsAssignableTo(typeof(CompoundOf)) => RegexPropType.CompoundOf,
-        { } t when t.IsAssignableTo(typeof(OneOf)) => RegexPropType.OneOf,
-        { } t when t.IsAssignableTo(typeof(OptionalOf)) => RegexPropType.OptionalOf,
-        { } t when t == typeof(PlaceholderCapture) => RegexPropType.Placeholder,
-        { } t when t.IsAssignableTo(typeof(DynamicOf)) => RegexPropType.Dynamic,
-        { } t when t == typeof(bool) => RegexPropType.Bool,
-        { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => RegexPropType.TokenUnitOneOf,
-        { } t when typeof(TokenUnit).IsAssignableFrom(t) => RegexPropType.TokenUnit,
+        { IsEnum: true } => TemplatePropType.Enum,
+        { } t when t.IsAssignableTo(typeof(ManyOf)) => TemplatePropType.ManyOf,
+        { } t when t.IsAssignableTo(typeof(CompoundOf)) => TemplatePropType.CompoundOf,
+        { } t when t.IsAssignableTo(typeof(OneOf)) => TemplatePropType.OneOf,
+        { } t when t.IsAssignableTo(typeof(OptionalOf)) => TemplatePropType.OptionalOf,
+        { } t when t == typeof(PlaceholderCapture) => TemplatePropType.Placeholder,
+        { } t when t.IsAssignableTo(typeof(DynamicOf)) => TemplatePropType.Dynamic,
+        { } t when t == typeof(bool) => TemplatePropType.Bool,
+        { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => TemplatePropType.TokenUnitOneOf,
+        { } t when typeof(TokenUnit).IsAssignableFrom(t) => TemplatePropType.TokenUnit,
         _ => throw new Exception($"{type.Name} is not a valid {nameof(TemplatePropType)} type")
     };
 

@@ -16,7 +16,7 @@ public record OneOfProp : CaptureGroupPropBase
 
     public OneOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
-        // RegexPropInfo capture prop is a OneOf<> prop here
+        // TemplatePropInfo capture prop is a OneOf<> prop here
 
         foreach (var type in captureProp.BaseType.GetGenericArguments())
         {
@@ -34,7 +34,7 @@ public record OneOfProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenGroup(TemplatePropInfo, spaceDisposition: SpaceDisposition.DisallowedLocal);
         AlternatingComposer.Instance.Compose(builder, _regexProps.Cast<RegexSegmentBase>().ToList());
         builder.CloseGroup();
     }
@@ -52,25 +52,25 @@ public record OneOfProp : CaptureGroupPropBase
             if (oneOfItemVariantCapture == null)
                 continue;
 
-            var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(regexProp.RegexPropInfo.BaseType);
+            var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(regexProp.TemplatePropInfo.BaseType);
 
-            if (regexProp.RegexPropInfo.TemplatePropType == RegexPropType.Enum)
+            if (regexProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Enum)
             {
-                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.RegexPropInfo.BaseType].EnumAlternates)
+                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.TemplatePropInfo.BaseType].EnumAlternates)
                 {
                     if (enumAlternative.ItemRegex.IsMatch(oneOfItemVariantCapture.Value))
                     {
-                        foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, enumAlternative.EnumValue, oneOfItemVariantCapture, 0, regexProp.RegexPropInfo);
+                        foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, enumAlternative.EnumValue, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
                         goto ItemHasBeenFound;
                     }
                 }
             }
-            else if (regexProp.RegexPropInfo.Prop.PropertyType.IsAssignableTo(typeof(TokenUnit)))
+            else if (regexProp.TemplatePropInfo.Prop.PropertyType.IsAssignableTo(typeof(TokenUnit)))
             {
-                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(RegexPropInfo.Name, regexProp.Name);
-                TokenUnitMatch typeMatch = new(regexProp.RegexPropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, 0);
+                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, regexProp.Name);
+                TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
-                foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, tokenUnitChild, oneOfItemVariantCapture, 0, regexProp.RegexPropInfo);
+                foundPolyMatchValue = Activator.CreateInstance(polyItemCaptureType, tokenUnitChild, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
                 goto ItemHasBeenFound;
             }
         }
@@ -87,7 +87,7 @@ public record OneOfProp : CaptureGroupPropBase
             _ => throw new Exception($"One-of regex prop count of {_regexProps.Count} not supported")
         };
 
-        var oneOfCaptureType = genericTypeDefinition.MakeGenericType(_regexProps.Select(x => x.RegexPropInfo.BaseType).ToArray());
+        var oneOfCaptureType = genericTypeDefinition.MakeGenericType(_regexProps.Select(x => x.TemplatePropInfo.BaseType).ToArray());
         var oneOfPropVal = Activator.CreateInstance(oneOfCaptureType, foundPolyMatchValue);
         
         return oneOfPropVal;

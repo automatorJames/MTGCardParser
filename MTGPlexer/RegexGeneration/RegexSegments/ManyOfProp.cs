@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.TokenUnitComponents;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 public record ManyOfProp : CaptureGroupPropBase
 {
@@ -11,7 +13,7 @@ public record ManyOfProp : CaptureGroupPropBase
 
     public ManyOfProp(TemplatePropInfo captureProp) : base(captureProp)
     {
-        // RegexPropInfo capture prop is a ManyOf<T> prop here
+        // TemplatePropInfo capture prop is a ManyOf<T> prop here
 
         BaseType = captureProp.BaseType;
 
@@ -47,7 +49,7 @@ public record ManyOfProp : CaptureGroupPropBase
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(RegexPropInfo, spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenGroup(TemplatePropInfo, spaceDisposition: SpaceDisposition.DisallowedLocal);
         ConcatenatingComposer.Instance.Compose(builder, [_ordinalRegexProps[0]]);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(", ");
@@ -66,8 +68,8 @@ public record ManyOfProp : CaptureGroupPropBase
 
     public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
     {
-        var manyItemCaptureType = typeof(ManyItemCapture<>).MakeGenericType(BaseType);
-        var listType = typeof(List<>).MakeGenericType(manyItemCaptureType);
+        var polyItemCaptureType = typeof(PolyItemCapture<>).MakeGenericType(BaseType);
+        var listType = typeof(List<>).MakeGenericType(polyItemCaptureType);
         var hydratedItems = (System.Collections.IList)Activator.CreateInstance(listType);
 
         for (int i = 0; i < _ordinalRegexProps.Length; i++)
@@ -75,7 +77,7 @@ public record ManyOfProp : CaptureGroupPropBase
             var ordinalProp = _ordinalRegexProps[i];
             var manyItemOrdinal = (ManyItemOrdinal)i;
 
-            // In many captures, "namedGroup" is the parent capture (at the many-of container level),
+            // In manyof captures, "namedGroup" is the parent capture (at the many-of container level),
             // but the actual item captures reside in the next level down at the ordinal level.
             var ordinalGroup = parentTokenUnit.Match[Name + "_" + manyItemOrdinal.ToString()];
 
@@ -109,13 +111,13 @@ public record ManyOfProp : CaptureGroupPropBase
                 }
                 else if (_manyItemType == CaptureTypeVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(RegexPropInfo.Name, ordinalProp.Name);
+                    CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, ordinalProp.Name);
                     TokenUnitMatch typeMatch = new(BaseType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;
                 }
 
-                var hydratedItem = Activator.CreateInstance(manyItemCaptureType, childItem, ordinalCapture, j, manyItemOrdinal, RegexPropInfo);
+                var hydratedItem = Activator.CreateInstance(polyItemCaptureType, childItem, ordinalCapture, TemplatePropInfo, j, manyItemOrdinal.ToString());
                 hydratedItems.Add(hydratedItem);
             }
         }

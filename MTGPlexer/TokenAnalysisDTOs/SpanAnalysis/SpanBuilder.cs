@@ -48,7 +48,7 @@ public static class SpanBuilder
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
 
-            _ when prop.RegexPropInfo.TemplatePropType == RegexPropType.Enum
+            _ when prop.TemplatePropInfo.TemplatePropType == TemplatePropType.Enum
                 => BuildLeaf(prop, ctx, prop.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.EnumLeaf),
 
             _ => throw new InvalidOperationException($"Unsupported: {prop.Value?.GetType().Name}")
@@ -57,14 +57,14 @@ public static class SpanBuilder
 
     static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var children = tokenUnit.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
     static SpanNode BuildTokenUnitOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var inner = tokenUnitOneOf.IndexedPropertyCaptures.Single();
         var childNode = BuildNode(inner, ctx.ClearNameChain());
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
@@ -87,7 +87,7 @@ public static class SpanBuilder
         // 2. Return the branch. The branch name itself is just the prop name
         return CreateBranch(
             prop.Capture, 
-            prop.RegexPropInfo.Name, 
+            prop.TemplatePropInfo.Name, 
             prop.CaptureGroupPropPath,
             TokenAnalysisElementType.DynamicCaptureItemBranch,
             new List<SpanNode> { innerNode }, 
@@ -97,7 +97,7 @@ public static class SpanBuilder
 
     static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
 
@@ -131,7 +131,7 @@ public static class SpanBuilder
 
     static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
 
@@ -158,15 +158,15 @@ public static class SpanBuilder
 
     static SpanNode BuildOneOfBranch(OneOf oneOf, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
-        var itemLabel = oneOf.ItemObject.RegexPropInfo.Name;
+        var itemLabel = oneOf.ItemObject.TemplatePropInfo.Name;
         var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
 
         if (oneOf.ItemObject.ItemObject is TokenUnit tokenUnit)
         {
-            var itemCtx = childCtx.PushName(prop.RegexPropInfo.Name);
+            var itemCtx = childCtx.PushName(prop.TemplatePropInfo.Name);
             var innerTU = BuildTokenUnitBranch(tokenUnit, oneOf.ItemObject.Capture, itemPath, itemCtx);
             children.Add(CreateBranch(oneOf.ItemObject.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
         }
@@ -183,12 +183,12 @@ public static class SpanBuilder
         if (optionalOf.ItemObject.ItemObject is not TokenUnit tokenUnit)
             throw new Exception("OptionalOf ItemObject must be a TokenUnit type");
 
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
         var children = new List<SpanNode>();
-        var itemLabel = optionalOf.ItemObject.RegexPropInfo.Name;
+        var itemLabel = optionalOf.ItemObject.TemplatePropInfo.Name;
         var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
-        var itemCtx = childCtx.PushName(prop.RegexPropInfo.Name);
+        var itemCtx = childCtx.PushName(prop.TemplatePropInfo.Name);
         var innerTU = BuildTokenUnitBranch(tokenUnit, optionalOf.ItemObject.Capture, itemPath, itemCtx);
         children.Add(CreateBranch(optionalOf.ItemObject.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
 
@@ -197,7 +197,7 @@ public static class SpanBuilder
 
     static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var childCtx = ctx.ClearNameChain();
 
         var children = tokenUnitDistilled.IndexedPropertyCaptures
@@ -222,7 +222,7 @@ public static class SpanBuilder
 
             var childBranch = CreateBranch(
                 placeholder.Capture,
-                placeholder.RegexPropInfo.Name,
+                placeholder.TemplatePropInfo.Name,
                 placeholder.CaptureGroupPropPath,
                 TokenAnalysisElementType.TokenUnitDistilledBranch,
                 subLeaves,
@@ -259,7 +259,7 @@ public static class SpanBuilder
     }
 
     static SpanLeaf BuildLeaf(PropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
-        BuildLeaf(prop.Capture, prop.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence), prop.CaptureGroupPropPath, ctx, val, typeName, type);
+        BuildLeaf(prop.Capture, prop.TemplatePropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence), prop.CaptureGroupPropPath, ctx, val, typeName, type);
 
     static SpanLeaf BuildLeaf(Capture cap, string name, CaptureGroupPropPath path, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type)
     {
