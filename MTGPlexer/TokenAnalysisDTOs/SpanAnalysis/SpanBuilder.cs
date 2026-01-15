@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+﻿using MTGPlexer.TokenUnitComponents;
+
+namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
 /// Factory service that builds a SpanAnalysis tree from a root TokenUnit.
@@ -31,7 +33,7 @@ public static class SpanBuilder
         };
     }
 
-    private static SpanNode BuildNode(PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildNode(PropertyCapture prop, SpanContext ctx)
     {
         return prop.Value switch
         {
@@ -41,6 +43,7 @@ public static class SpanBuilder
             ManyOf val => BuildManyOfBranch(val, prop, ctx),
             CompoundOf val => BuildCompoundOfBranch(val, prop, ctx),
             OneOf val => BuildOneOfBranch(val, prop, ctx),
+            OptionalOf val => BuildOptionalOfBranch(val, prop, ctx),
             DynamicOf val => BuildDynamicBranch(val, prop, ctx),
             PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
             bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
@@ -52,14 +55,14 @@ public static class SpanBuilder
         };
     }
 
-    private static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var children = tokenUnit.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    private static SpanNode BuildTokenUnitOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildTokenUnitOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var inner = tokenUnitOneOf.IndexedPropertyCaptures.Single();
@@ -67,7 +70,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
     }
 
-    private static SpanNode BuildDynamicBranch(DynamicOf dynamicCapture, PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildDynamicBranch(DynamicOf dynamicCapture, PropertyCapture prop, SpanContext ctx)
     {
         // 1. Prepare context for child: Clear inherited prefixes, but push the Type as a Suffix
         // This ensures when the child calls FormatName("Action"), it gets "Action: Specific Action"
@@ -92,7 +95,7 @@ public static class SpanBuilder
             neverCollapse: true);
     }
 
-    private static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -126,7 +129,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.ManyOfBranch, children, ctx);
     }
 
-    private static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -153,7 +156,7 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.CompoundOfBranch, children, ctx);
     }
 
-    private static SpanNode BuildOneOfBranch(OneOf oneOf, PropertyCapture prop, SpanContext ctx)
+    static SpanNode BuildOneOfBranch(OneOf oneOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -175,9 +178,24 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, children, ctx);
     }
 
+    static SpanNode BuildOptionalOfBranch(OptionalOf optionalOf, PropertyCapture prop, SpanContext ctx)
+    {
+        if (optionalOf.ItemObject.ItemObject is not TokenUnit tokenUnit)
+            throw new Exception("OptionalOf ItemObject must be a TokenUnit type");
 
+        var name = ctx.FormatName(prop.RegexPropInfo.Name);
+        var childCtx = ctx.ClearNameChain();
+        var children = new List<SpanNode>();
+        var itemLabel = optionalOf.ItemObject.RegexPropInfo.Name;
+        var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
+        var itemCtx = childCtx.PushName(prop.RegexPropInfo.Name);
+        var innerTU = BuildTokenUnitBranch(tokenUnit, optionalOf.ItemObject.Capture, itemPath, itemCtx);
+        children.Add(CreateBranch(optionalOf.ItemObject.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
 
-    private static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, PropertyCapture prop, SpanContext ctx)
+        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OptionalOfItemBranch, children, ctx);
+    }
+
+    static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.RegexPropInfo.Name);
         var childCtx = ctx.ClearNameChain();
@@ -216,14 +234,14 @@ public static class SpanBuilder
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch, children, ctx);
     }
 
-    private static SpanNode BuildTokenUnitBranch(TokenUnit tu, Capture cap, CaptureGroupPropPath path, SpanContext ctx)
+    static SpanNode BuildTokenUnitBranch(TokenUnit tu, Capture cap, CaptureGroupPropPath path, SpanContext ctx)
     {
         var name = ctx.FormatName(tu.Type.Name);
         var children = tu.IndexedPropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
         return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    private static SpanBranch CreateBranch(Capture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx, bool neverCollapse = false)
+    static SpanBranch CreateBranch(Capture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx, bool neverCollapse = false)
     {
         return new SpanBranch
         {
@@ -240,10 +258,10 @@ public static class SpanBuilder
         };
     }
 
-    private static SpanLeaf BuildLeaf(PropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
+    static SpanLeaf BuildLeaf(PropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
         BuildLeaf(prop.Capture, prop.RegexPropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence), prop.CaptureGroupPropPath, ctx, val, typeName, type);
 
-    private static SpanLeaf BuildLeaf(Capture cap, string name, CaptureGroupPropPath path, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type)
+    static SpanLeaf BuildLeaf(Capture cap, string name, CaptureGroupPropPath path, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type)
     {
         return new SpanLeaf
         {
@@ -268,6 +286,7 @@ public enum TokenAnalysisElementType
     TokenUnitOneOfBranch,
     TokenUnitDistilledBranch,
     OneOfItemBranch,
+    OptionalOfItemBranch,
     ManyOfBranch, // Overall ManyOf container, parent to Conjunction & items
     ManyOfItemBranch,
     CompoundOfBranch, // Overall CompoundOf container, parent to items

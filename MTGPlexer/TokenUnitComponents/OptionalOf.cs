@@ -1,6 +1,10 @@
 ﻿namespace MTGPlexer.TokenUnitComponents;
 
-public class OptionalOf<T> : OptionalOf
+/// <summary>
+/// Represents a property on a TokenUnit type that should be treated as an optional match (i.e. a group with the "?" quantifier).
+/// T is constrained to TokenUnit because Enum type properties can already be expressed as nullable with the "?" operator.
+/// </summary>
+public class OptionalOf<T> : OptionalOf where T : TokenUnit
 {
     public PolyItemCapture<T> Item { get; set; }
 

@@ -51,5 +51,6 @@ public enum RegexPropType
     ManyOfConjunction,
     CompoundOf,
     OneOf,
+    OptionalOf,
 }
 

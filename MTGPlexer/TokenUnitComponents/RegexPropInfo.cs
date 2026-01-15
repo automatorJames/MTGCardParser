@@ -85,6 +85,12 @@ public record RegexPropInfo
         if (underlyingType.IsAssignableTo(typeof(ManyOf)))
             return nameof(ManyOf) + prop.Name;
 
+        if (underlyingType.IsAssignableTo(typeof(OneOf)))
+            return nameof(OneOf) + prop.Name;
+
+        if (underlyingType.IsAssignableTo(typeof(ManyOf)))
+            return nameof(OptionalOf) + prop.Name;
+
         return prop.Name;
     }
 
@@ -98,7 +104,7 @@ public record RegexPropInfo
         else
             regexPropType = GetRegexPropType(type);
 
-        if (regexPropType == RegexPropType.ManyOf || regexPropType == RegexPropType.CompoundOf)
+        if (regexPropType == RegexPropType.ManyOf || regexPropType == RegexPropType.CompoundOf || regexPropType == RegexPropType.OptionalOf)
             type = type.GetGenericArguments()[0];
 
         return (regexPropType, type);
@@ -114,6 +120,9 @@ public record RegexPropInfo
 
         if (RegexPropType == RegexPropType.OneOf)
             return "one of";
+
+        if (RegexPropType == RegexPropType.OneOf)
+            return "optional of";
 
         bool isNullableEnum = BaseType.IsGenericType && BaseType.GetGenericTypeDefinition() == typeof(Nullable<>) && BaseType.GetGenericArguments()[0].IsEnum;
 
@@ -148,6 +157,7 @@ public record RegexPropInfo
             RegexPropType.ManyOf => new ManyOfProp(this),
             RegexPropType.CompoundOf => new CompoundOfProp(this),
             RegexPropType.OneOf => new OneOfProp(this),
+            RegexPropType.OptionalOf => new OptionalOfProp(this),
             RegexPropType.TokenUnit => new TokenRegexProp(this),
             RegexPropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
             RegexPropType.Enum => new EnumRegexProp(this),
@@ -179,6 +189,7 @@ public record RegexPropInfo
         { } t when t.IsAssignableTo(typeof(ManyOf)) => RegexPropType.ManyOf,
         { } t when t.IsAssignableTo(typeof(CompoundOf)) => RegexPropType.CompoundOf,
         { } t when t.IsAssignableTo(typeof(OneOf)) => RegexPropType.OneOf,
+        { } t when t.IsAssignableTo(typeof(OptionalOf)) => RegexPropType.OptionalOf,
         { } t when t == typeof(PlaceholderCapture) => RegexPropType.Placeholder,
         { } t when t.IsAssignableTo(typeof(DynamicOf)) => RegexPropType.Dynamic,
         { } t when t == typeof(bool) => RegexPropType.Bool,

@@ -1,10 +1,5 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-/// <summary>
-/// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
-/// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
-/// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
-/// </summary>
 public record CompoundOfProp : CaptureGroupPropBase
 {
     CaptureTypeVariant _compoundItemType;
@@ -31,7 +26,7 @@ public record CompoundOfProp : CaptureGroupPropBase
             _regexProp = new EnumRegexProp(derivedPropInfo);
         }
         else
-            throw new Exception($"TokenRegexCompoundProp base type may only be derived from TokenUnit or be an enum");
+            throw new Exception($"CompoundProp base type may only be derived from TokenUnit or be an enum");
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
