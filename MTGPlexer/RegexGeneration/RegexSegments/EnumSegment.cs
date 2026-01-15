@@ -5,13 +5,13 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public record EnumRegexProp : ScalarCapturePropBase
+public record EnumSegment : ScalarCaptureSegmentBase
 {
     bool _isOptional;
     public override Regex ManyMatchRegex => TokenTypeRegistry.EnumScalarAlternativeSets[TemplatePropInfo.BaseType].CollectiveRegex;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
-    public EnumRegexProp(TemplatePropInfo captureProp) : base(captureProp)
+    public EnumSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         // If the enum is nullable, we treat it as optional. The exception to this is if the
         // enum is contained in a TokenUnitOneOf, where at least one alternative must be matched,

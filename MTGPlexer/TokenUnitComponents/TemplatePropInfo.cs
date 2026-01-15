@@ -132,20 +132,20 @@ public record TemplatePropInfo
         return BaseType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
-    public CaptureGroupPropBase GetCaptureGroupPropBase()
+    public CaptureGroupSegmentBase GetCaptureGroupPropBase()
     {
         return TemplatePropType switch
         {
-            TemplatePropType.ManyOf => new ManyOfProp(this),
-            TemplatePropType.CompoundOf => new CompoundOfProp(this),
-            TemplatePropType.OneOf => new OneOfProp(this),
-            TemplatePropType.OptionalOf => new OptionalOfProp(this),
-            TemplatePropType.TokenUnit => new TokenRegexProp(this),
-            TemplatePropType.TokenUnitOneOf => new TokenRegexOneOfProp(this),
-            TemplatePropType.Enum => new EnumRegexProp(this),
-            TemplatePropType.Bool => new BoolRegexProp(this),
-            TemplatePropType.Placeholder => new PlaceholderRegexProp(this),
-            TemplatePropType.Dynamic => new DynamicOfProp(this),
+            TemplatePropType.ManyOf => new ManyOfSegment(this),
+            TemplatePropType.CompoundOf => new CompoundOfSegment(this),
+            TemplatePropType.OneOf => new OneOfSegment(this),
+            TemplatePropType.OptionalOf => new OptionalOfSegment(this),
+            TemplatePropType.TokenUnit => new TokenUnitSegment(this),
+            TemplatePropType.TokenUnitOneOf => new TokenUnitOneOfSegment(this),
+            TemplatePropType.Enum => new EnumSegment(this),
+            TemplatePropType.Bool => new BoolSegment(this),
+            TemplatePropType.Placeholder => new PlaceholderSegment(this),
+            TemplatePropType.Dynamic => new DynamicOfSegment(this),
             _ => throw new Exception($"Prop type '{Prop.PropertyType.Name}' is not a valid RegexProp type")
         };
     }

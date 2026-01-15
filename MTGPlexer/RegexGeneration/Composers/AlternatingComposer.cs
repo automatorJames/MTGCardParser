@@ -28,7 +28,7 @@ public class AlternatingComposer : ISegmentComposer
                 segment.ComposeRegexLines(collector);
 
             }
-            else if (segment is CaptureGroupPropBase)
+            else if (segment is CaptureGroupSegmentBase)
             {
                 if (renderedAlternatives == 0 && shouldWrapAlternatives)
                     collector.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);

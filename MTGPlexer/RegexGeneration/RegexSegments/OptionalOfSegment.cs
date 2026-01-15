@@ -2,14 +2,14 @@
 
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record OptionalOfProp : CaptureGroupPropBase
+public record OptionalOfSegment : CaptureGroupSegmentBase
 {
     public Type BaseType { get; set; }
     public ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
 
-    public OptionalOfProp(TemplatePropInfo captureProp) : base(captureProp)
+    public OptionalOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         // TemplatePropInfo capture prop is a OptionalOf<T> prop here
 

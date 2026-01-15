@@ -8,9 +8,9 @@
 /// know how to decompose it yet, or the containing TokenUnit overrides SetPropertiesFromMatch and needs a property
 /// to store an interim text value.
 /// </summary>
-public record PlaceholderRegexProp : ScalarCapturePropBase
+public record PlaceholderSegment : ScalarCaptureSegmentBase
 {
-    public PlaceholderRegexProp(TemplatePropInfo captureProp) : base(captureProp)
+    public PlaceholderSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 

@@ -1,17 +1,17 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
-/// The base class for all TokenUnit properties with a name Regex capture group whose pattern is 
-/// associated with some property, including child TokenUnit properties. Includes mechanisms for 
-/// setting values for properties of all relevant types.
+/// The base class for all TokenUnit properties (or TokenUnit x-Of PolyItemCapures) with a named 
+/// Regex capture group whose pattern is associated with some property, including child TokenUnit properties. 
+/// Includes mechanisms for setting values for properties of all relevant types.
 /// </summary>
-public abstract record CaptureGroupPropBase : RegexSegmentBase
+public abstract record CaptureGroupSegmentBase : RegexSegmentBase
 {
     public string Name => TemplatePropInfo.Name;
     public TemplatePropInfo TemplatePropInfo { get; init; }
     public abstract Regex ManyMatchRegex { get; }
     
-    public CaptureGroupPropBase(TemplatePropInfo captureProp)
+    public CaptureGroupSegmentBase(TemplatePropInfo captureProp)
     {
         TemplatePropInfo = captureProp;
     }

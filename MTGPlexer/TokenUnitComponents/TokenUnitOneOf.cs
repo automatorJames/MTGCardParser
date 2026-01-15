@@ -34,18 +34,18 @@ public abstract class TokenUnitOneOf : TokenUnit
             if (!capturePropEncountered && segment is TextSegment)
                 continue;
 
-            if (capturePropEncountered && textSegmentEncountered && segment is CaptureGroupPropBase)
+            if (capturePropEncountered && textSegmentEncountered && segment is CaptureGroupSegmentBase)
                 // We've already encountered both captures & non-leading text, so this capture is non-contiguous
                 return $"{nameof(TokenUnitOneOf)} properties appear contiguously in base constructor";
 
-            if (segment is CaptureGroupPropBase)
+            if (segment is CaptureGroupSegmentBase)
                 capturePropEncountered = true;
             else if (segment is TextSegment)
                 textSegmentEncountered = true;
         }
 
         // Any enums must be nullable
-        if (template.RegexSegments.OfType<EnumRegexProp>().Any(x => Nullable.GetUnderlyingType(x.TemplatePropInfo.Prop.PropertyType) == null))
+        if (template.RegexSegments.OfType<EnumSegment>().Any(x => Nullable.GetUnderlyingType(x.TemplatePropInfo.Prop.PropertyType) == null))
             return $"All enum properties in {nameof(TokenUnitOneOf)} types must be nullable";
 
         return null;

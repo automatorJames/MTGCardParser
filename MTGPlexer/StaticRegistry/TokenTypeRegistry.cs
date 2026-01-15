@@ -55,7 +55,7 @@ public static partial class TokenTypeRegistry
         // Register all newly encountered enums (we use the EnumRegexProp instance for this,
         // but steps taken during registration only care about the enum type itself)
         propCaptureSegments
-            .OfType<EnumRegexProp>()
+            .OfType<EnumSegment>()
             .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.TemplatePropInfo.BaseType))
             .ToList()
             .ForEach(enumRegexPropWithNewEnumType =>
@@ -69,13 +69,13 @@ public static partial class TokenTypeRegistry
 
         // Register enums that appear as the T types within ManyOf<T> properties
         propCaptureSegments
-            .OfType<ManyOfProp>()
+            .OfType<ManyOfSegment>()
             .Where(x => x.BaseType.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x.BaseType))
             .Select(x => x.BaseType)
             .ToList()
             .ForEach(newEnumType => 
             {
-                var enumSet = EnumRegexProp.EnumTypetoScalarSet(newEnumType);
+                var enumSet = EnumSegment.EnumTypetoScalarSet(newEnumType);
                 EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
                 ReferencedEnumTypes.Add(newEnumType);
                 NameToType[newEnumType.Name] = newEnumType;
@@ -84,14 +84,14 @@ public static partial class TokenTypeRegistry
 
         // Register enums that appear as the T types within ManyOf<T> properties
         propCaptureSegments
-            .OfType<OneOfProp>()
+            .OfType<OneOfSegment>()
             .SelectMany(x => x.EnumTypesRepresented)
             .Distinct()
             .Where(x => !EnumScalarAlternativeSets.ContainsKey(x))
             .ToList()
             .ForEach(newEnumType =>
             {
-                var enumSet = EnumRegexProp.EnumTypetoScalarSet(newEnumType);
+                var enumSet = EnumSegment.EnumTypetoScalarSet(newEnumType);
                 EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
                 ReferencedEnumTypes.Add(newEnumType);
                 NameToType[newEnumType.Name] = newEnumType;
@@ -100,14 +100,14 @@ public static partial class TokenTypeRegistry
 
         // Register all newly encountered scalar capture props that aren't enums (i.e. bools & placeholders)
         propCaptureSegments
-            .OfType<ScalarCapturePropBase>()
+            .OfType<ScalarCaptureSegmentBase>()
             .Where(x => x.TemplatePropInfo.TemplatePropType != TemplatePropType.Enum)
             .ToList()
             .ForEach(x => PropScalarAlternativeSets.TryAdd(x.TemplatePropInfo, x.ScalarAlternativeSet));
 
         // Register all newly encountered ManyProps (we use BaseType as the key, not UnderlyingType which is List<T>)
         propCaptureSegments
-            .OfType<ManyOfProp>()
+            .OfType<ManyOfSegment>()
             .ToList()
             .ForEach(x => ManyOfRegexes.TryAdd(x.TemplatePropInfo.BaseType, typeTemplate.Builder.ExtractGroupRegex(x.TemplatePropInfo)));
 

@@ -1,8 +1,8 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record DynamicOfProp : ScalarCapturePropBase
+public record DynamicOfSegment : ScalarCaptureSegmentBase
 {
-    public DynamicOfProp(TemplatePropInfo captureProp) : base(captureProp)
+    public DynamicOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 

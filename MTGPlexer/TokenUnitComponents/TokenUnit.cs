@@ -33,7 +33,7 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(TokenUnitMatch match, Dictionary<DynamicOfProp, object> prefilledDynamicValues = null)
+    public static TokenUnit InstantiateFromMatch(TokenUnitMatch match, Dictionary<DynamicOfSegment, object> prefilledDynamicValues = null)
     {
         if (!match.Type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"Type '{match.Type.Name}' isn't a {nameof(TokenUnit)} type");
@@ -48,7 +48,7 @@ public abstract class TokenUnit
 
         foreach (var captureProp in template.CaptureGroupProps)
         {
-            if (captureProp is DynamicOfProp dynamicRegexProp && prefilledDynamicValues.TryGetValue(dynamicRegexProp, out object prefilledValue))
+            if (captureProp is DynamicOfSegment dynamicRegexProp && prefilledDynamicValues.TryGetValue(dynamicRegexProp, out object prefilledValue))
                 dynamicRegexProp.SetValueFromPrefilledDynamicToken(tokenUnitInstance, prefilledValue);
             else
             {

@@ -1,17 +1,15 @@
-﻿using MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-namespace MTGPlexer.RegexGeneration.RegexSegments;
-
-public record ManyOfProp : CaptureGroupPropBase
+public record ManyOfSegment : CaptureGroupSegmentBase
 {
     CaptureTypeVariant _manyItemType;
-    CaptureGroupPropBase[] _ordinalRegexProps = new CaptureGroupPropBase[3];
-    static EnumRegexProp _conjunctionProp = (EnumRegexProp)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
+    CaptureGroupSegmentBase[] _ordinalRegexProps = new CaptureGroupSegmentBase[3];
+    static EnumSegment _conjunctionProp = (EnumSegment)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public Type BaseType { get; set; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
-    public ManyOfProp(TemplatePropInfo captureProp) : base(captureProp)
+    public ManyOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         // TemplatePropInfo capture prop is a ManyOf<T> prop here
 
@@ -27,9 +25,9 @@ public record ManyOfProp : CaptureGroupPropBase
 
             _ordinalRegexProps =
             [
-                new TokenRegexProp(derivedPropFirst),
-                new TokenRegexProp(derivedPropSecond),
-                new TokenRegexProp(derivedPropLast),
+                new TokenUnitSegment(derivedPropFirst),
+                new TokenUnitSegment(derivedPropSecond),
+                new TokenUnitSegment(derivedPropLast),
             ];
         }
         else if (BaseType.IsEnum)
@@ -38,9 +36,9 @@ public record ManyOfProp : CaptureGroupPropBase
 
             _ordinalRegexProps =
             [
-                new EnumRegexProp(derivedPropFirst),
-                new EnumRegexProp(derivedPropSecond),
-                new EnumRegexProp(derivedPropLast),
+                new EnumSegment(derivedPropFirst),
+                new EnumSegment(derivedPropSecond),
+                new EnumSegment(derivedPropLast),
             ];
         }
         else

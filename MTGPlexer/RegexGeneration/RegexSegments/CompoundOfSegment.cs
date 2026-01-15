@@ -1,14 +1,14 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record CompoundOfProp : CaptureGroupPropBase
+public record CompoundOfSegment : CaptureGroupSegmentBase
 {
     CaptureTypeVariant _compoundItemType;
-    CaptureGroupPropBase _regexProp;
+    CaptureGroupSegmentBase _regexProp;
     public Type BaseType { get; set; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[BaseType];
 
 
-    public CompoundOfProp(TemplatePropInfo captureProp) : base(captureProp)
+    public CompoundOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         // TemplatePropInfo capture prop is a CompoundOf<T> prop here
 
@@ -18,12 +18,12 @@ public record CompoundOfProp : CaptureGroupPropBase
         if (BaseType.IsAssignableTo(typeof(TokenUnit)))
         {
             _compoundItemType = CaptureTypeVariant.TokenUnit;
-            _regexProp = new TokenRegexProp(derivedPropInfo);
+            _regexProp = new TokenUnitSegment(derivedPropInfo);
         }
         else if (BaseType.IsEnum)
         {
             _compoundItemType = CaptureTypeVariant.Enum;
-            _regexProp = new EnumRegexProp(derivedPropInfo);
+            _regexProp = new EnumSegment(derivedPropInfo);
         }
         else
             throw new Exception($"CompoundProp base type may only be derived from TokenUnit or be an enum");

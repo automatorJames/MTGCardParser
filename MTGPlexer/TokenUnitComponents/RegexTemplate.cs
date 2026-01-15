@@ -12,7 +12,7 @@ public class RegexTemplate
     public RegexBuilder Builder { get; private set; }
     public List<TemplatePropInfo> TemplatePropInfos { get; private set; } = [];
     public List<RegexSegmentBase> RegexSegments { get; private set; } = [];
-    public List<CaptureGroupPropBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupPropBase>().ToList();
+    public List<CaptureGroupSegmentBase> CaptureGroupProps => RegexSegments.OfType<CaptureGroupSegmentBase>().ToList();
 
     public RegexTemplate(Type type)
     {

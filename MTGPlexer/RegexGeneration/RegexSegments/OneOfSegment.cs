@@ -1,20 +1,17 @@
-﻿using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Helpers;
-using System.Security.AccessControl;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is also some TokenUnit (i.e. a child TokenUnit). During
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record OneOfProp : CaptureGroupPropBase
+public record OneOfSegment : CaptureGroupSegmentBase
 {
-    List<CaptureGroupPropBase> _regexProps = [];
+    List<CaptureGroupSegmentBase> _regexProps = [];
     public override Regex ManyMatchRegex => throw new NotImplementedException();
     public HashSet<Type> EnumTypesRepresented = [];
 
-    public OneOfProp(TemplatePropInfo captureProp) : base(captureProp)
+    public OneOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         // TemplatePropInfo capture prop is a OneOf<> prop here
 
@@ -23,11 +20,11 @@ public record OneOfProp : CaptureGroupPropBase
             var derivedPropInfo = captureProp with { TemplatePropType = TemplatePropInfo.GetRegexPropType(type), BaseType = type, Name = type.Name };
 
             if (type.IsAssignableTo(typeof(TokenUnit)))
-                _regexProps.Add(new TokenRegexProp(derivedPropInfo));
+                _regexProps.Add(new TokenUnitSegment(derivedPropInfo));
             else if (type.IsEnum)
             {
                 EnumTypesRepresented.Add(type);
-                _regexProps.Add(new EnumRegexProp(derivedPropInfo));
+                _regexProps.Add(new EnumSegment(derivedPropInfo));
             }
         }
     }

@@ -1,13 +1,13 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
-/// Represents a bool property on a TokenUnit. Bool property Regexes typically check for the optional presence
+/// Represents a bool property on a TokenUnit or a bool x-Of PolyItemCapure. Bool property Regexes typically check for the optional presence
 /// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
 /// its pattern(s), but in the absence of this the normalized property name is matched.
 /// </summary>
-public record BoolRegexProp : ScalarCapturePropBase
+public record BoolSegment : ScalarCaptureSegmentBase
 {
-    public BoolRegexProp(TemplatePropInfo captureProp) : base(captureProp)
+    public BoolSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
     }
 

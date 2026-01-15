@@ -2,16 +2,16 @@
 namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
-/// Represents a property on a TokenUnit whose property type is also a TokenUnit (i.e. a child TokenUnit). During
-/// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
-/// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
+/// Represents a property on a TokenUnit whose property type is also a TokenUnit (i.e. a child TokenUnit), 
+/// or a TokenUnit x-Of PolyItemCapure. During compilation of a RegexTemplate, thie record creates an instance 
+/// of the child TokenUnit type and gets its rendered Regex string to add it to the parent TokenUnit's rendered Regex.
 /// </summary>
-public record TokenRegexProp : CaptureGroupPropBase
+public record TokenUnitSegment : CaptureGroupSegmentBase
 {
     public override Regex ManyMatchRegex => TokenTypeRegistry.Templates[TemplatePropInfo.BaseType].Regex;
-    public ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
+    protected ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
 
-    public TokenRegexProp(TemplatePropInfo captureProp) : base(captureProp)
+    public TokenUnitSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         var template = TokenTypeRegistry.GetTypeTemplate(captureProp.BaseType);
         ChildSegments = template.RegexSegments.ToImmutableList();
