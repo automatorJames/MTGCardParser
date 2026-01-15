@@ -115,14 +115,6 @@ public static class Extensions
         Title
     }
 
-    public static string CapitalizeFirstWord(this string input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return input;
-
-        return char.ToUpper(input[0]) + input.Substring(1);
-    }
-
     public static PropertyInfo[] GetProps(this Type type) => 
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
@@ -130,74 +122,6 @@ public static class Extensions
         nextPathParts == null || nextPathParts.Length == 0 ? parentPath
         : parentPath + "." + string.Join('.', nextPathParts);
 
-    public static string LastPathPart(this string dotPathString) =>
-        dotPathString is null ? null
-        : !dotPathString.Contains(".") ? dotPathString
-        : dotPathString.Split(".").Last();
-
-    public static void CombineDictionaryCounts<T>(this Dictionary<T, int> dictToAddTo, Dictionary<T, int> dictToAddFrom)
-    {
-        foreach (var key in dictToAddFrom.Keys)
-        {
-            if (!dictToAddTo.ContainsKey(key))
-                dictToAddTo[key] = 0;
-
-            dictToAddTo[key] += dictToAddFrom[key];
-        }
-    }
-
-    /// <summary>
-    /// Removes all non-essential whitespace from a regex pattern, preserving literal spaces indicated by "[ ]".
-    /// </summary>
-    public static string MinifyRegex(string pattern)
-    {
-        if (string.IsNullOrEmpty(pattern)) return string.Empty;
-
-        return Regex.Replace(pattern, @"(\[\ \])|(\s+)", match =>
-        {
-            if (match.Groups[1].Success)
-            {
-                return " ";
-            }
-            return string.Empty;
-        });
-    }
-
-    public static string TrimStartAndEnd(this string target, string trimString)
-    {
-        if (string.IsNullOrEmpty(trimString)) return target;
-
-        var result = target.TrimStart(trimString);
-        result = result.TrimEnd(trimString);
-
-        return result;
-    }
-
-    public static string TrimStart(this string target, string trimString)
-    {
-        if (string.IsNullOrEmpty(trimString)) return target;
-
-        string result = target;
-        while (result.StartsWith(trimString))
-        {
-            result = result.Substring(trimString.Length);
-        }
-
-        return result;
-    }
-
-    public static string TrimEnd(this string target, string trimString)
-    {
-        if (string.IsNullOrEmpty(trimString)) return target;
-
-        string result = target;
-        while (result.EndsWith(trimString))
-        {
-            result = result.Substring(0, result.Length - trimString.Length);
-        }
-
-        return result;
-    }
 
     public static string ToFriendlyStringOrPattern(object value)
     {
@@ -281,46 +205,6 @@ public static class Extensions
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
             .Select(x => x.Name)
             .ToArray();
-
-    public static bool IsEmittedType(this Type type)
-    {
-        // Returns true if the type was created via Reflection.Emit in this process.
-        // Used to distinguish between regular TokenUnit classes and dynamically emited ones (like ManyOf).
-        return type.Assembly.IsDynamic;
-    }
-
-    public static string ReplaceAlternating(this string input, char delimiter, char opening, char closing)
-    {
-        if (string.IsNullOrEmpty(input)) return input;
-
-        // 1. Count occurrences of the delimiter
-        int count = input.Count(c => c == delimiter);
-
-        // 2. Check if count is > 0 and even
-        if (count > 0 && count % 2 == 0)
-        {
-            StringBuilder sb = new StringBuilder(input.Length);
-            bool isOpening = true;
-
-            foreach (char c in input)
-            {
-                if (c == delimiter)
-                {
-                    // 3. Alternatingly replace
-                    sb.Append(isOpening ? opening : closing);
-                    isOpening = !isOpening;
-                }
-                else
-                {
-                    sb.Append(c);
-                }
-            }
-            return sb.ToString();
-        }
-
-        // Return original string if conditions aren't met
-        return input;
-    }
 
     public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
 }
