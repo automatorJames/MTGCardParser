@@ -11,16 +11,6 @@ public class OptionalOf<T> : OptionalOf
     }
 
     public override string ToString() => base.ToString();
-
-    public override bool Equals(object obj)
-    {
-        return base.Equals(obj);
-    }
-
-    public override int GetHashCode()
-    {
-        return base.GetHashCode();
-    }
 }
 
 [Color("#696969")]
