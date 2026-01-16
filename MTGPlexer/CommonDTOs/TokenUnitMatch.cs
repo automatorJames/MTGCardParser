@@ -70,26 +70,19 @@ public record TokenUnitMatch
     /// Takes a group leaf name and constructs a fully qualified path using CapturePath. If a capture group
     /// exists in the RegexMatch by that name it is returned. If a capture ordinal is provided, this indexer
     /// validates that the named group contgains at least as many captures as the ordinal position (note: it 
-    /// does not isolate and return the capture at this position, but rather the containing group).
+    /// does not isolate and return any single capture at this position, but rather the containing group).
     /// </summary>
-    public Group this[string groupLeafName, int? captureOrdinal = null]
+    public Group this[string groupLeafName]
     {
         get
         {
             if (groupLeafName == null)
                 throw new ArgumentNullException(nameof(groupLeafName));
 
-            if (captureOrdinal != null && captureOrdinal.Value < 0)
-                throw new ArgumentOutOfRangeException(nameof(captureOrdinal));
-
             var fullyQualifiedGroupName = CapturePath.GetFullyQualifiedNameFromLeaf(groupLeafName);
 
             if (RootMatch.Groups[fullyQualifiedGroupName].Success)
             {
-                // If a capture ordinal is provided, the group must contain at least that many captures, else we return null
-                if (captureOrdinal.HasValue && RootMatch.Groups[fullyQualifiedGroupName].Captures.Count - 1 < captureOrdinal)
-                    return null;
-
                 // Otherwise, return the named group
                 return RootMatch.Groups[fullyQualifiedGroupName];
             }
