@@ -84,6 +84,7 @@ public record ManyOfSegment : XOfSegmentBase
             for (int j = 0; j < ordinalCaptures.Count; j++)
             {
                 var ordinalCapture = ordinalCaptures[j];
+
                 object childItem = null;
 
                 if (_manyItemType == CaptureTypeVariant.Enum)
@@ -103,7 +104,7 @@ public record ManyOfSegment : XOfSegmentBase
                 else if (_manyItemType == CaptureTypeVariant.TokenUnit)
                 {
                     CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, ordinalProp.Name);
-                    TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, j);
+                    TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath );
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;
                 }

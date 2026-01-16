@@ -6,15 +6,14 @@ public record TokenUnitMatch
     public Match RegexMatch { get; }
     public SourceTextDTO SourceText { get; }
     public CaptureGroupPropPath CapturePath { get; }
-    public int CaptureOrdinal { get; }
     public int AbsoluteEnd { get; }
+    public Dictionary<string, int> PropPathCaptureBranches { get; } = [];
 
     public TokenUnitMatch(
         Type type,
         Match regexMatch,
         SourceTextDTO sourceText = null,
-        CaptureGroupPropPath capturePath = null,
-        int captureOrdinal = 0)
+        CaptureGroupPropPath capturePath = null)
     {
         ArgumentNullException.ThrowIfNull(regexMatch);
 
@@ -22,7 +21,6 @@ public record TokenUnitMatch
         RegexMatch = regexMatch;
         SourceText = sourceText;
         CapturePath = capturePath;
-        CaptureOrdinal = captureOrdinal;
         AbsoluteEnd = RegexMatch.Index + RegexMatch.Length;
     }
 
@@ -32,27 +30,17 @@ public record TokenUnitMatch
     /// validates that the named group contgains at least as many captures as the ordinal position (note: it 
     /// does not isolate and return the capture at this position, but rather the containing group).
     /// </summary>
-    public Group this[string groupLeafName, int? captureOrdinal = null]
+    public Group this[string groupLeafName]
     {
         get
         {
             if (groupLeafName == null)
                 throw new ArgumentNullException(nameof(groupLeafName));
 
-            if (captureOrdinal != null && captureOrdinal.Value < 0)
-                throw new ArgumentOutOfRangeException(nameof(captureOrdinal));
-
             var fullyQualifiedGroupName = CapturePath.GetFullyQualifiedNameFromLeaf(groupLeafName);
 
             if (RegexMatch.Groups[fullyQualifiedGroupName].Success)
-            {
-                // If a capture ordinal is provided, the group must contain at least that many captures, else we return null
-                if (captureOrdinal.HasValue && RegexMatch.Groups[fullyQualifiedGroupName].Captures.Count - 1 < captureOrdinal)
-                    return null;
-
-                // Otherwise, return the named group
                 return RegexMatch.Groups[fullyQualifiedGroupName];
-            }
 
             // No group exists for the fully qualified name
             return null;

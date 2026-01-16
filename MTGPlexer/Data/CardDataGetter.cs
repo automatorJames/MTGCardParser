@@ -36,6 +36,7 @@ public class CardDataGetter
 
         //result = result.Where(x => x.Name == "Animate Wall");
         //result = result.Where(x => x.Name == "Ankh of Mishra");
+        result = new List<Card> { new Card { Name = "feckall", Text = "target creature gains flying, gains trample, gains first strike, and gains shroud" } };
         return result.ToList();
     }
 }

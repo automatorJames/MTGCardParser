@@ -2,7 +2,7 @@
 
 public record PolyItemCapture
 {
-    public Capture Capture { get; }
+    public Capture Capture { get; init; }
     public TemplatePropInfo TemplatePropInfo { get; }
     public Type Type { get; }
     public object Value { get; }

@@ -115,23 +115,26 @@ public abstract class TokenUnit
 
             foreach (var manyItemOrdinal in Enum.GetValues<ManyItemOrdinal>())
             {
-                // We only get the first (if any) among the items at the current ordinal, because its IndexedPropertyCaptures
-                // will contain all captures at that position (i.e. _secondPlus) , and we don't want to duplicate those captures
-                var representativeManyItemAtOrdinal = manyOf.Items.FirstOrDefault(x => x.DistinguishingName == manyItemOrdinal.ToString());
+                var itemsAtOrdinal = manyOf.Items.Where(x => x.DistinguishingName == manyItemOrdinal.ToString()).ToList();
 
-                if (representativeManyItemAtOrdinal == null)
-                    continue;
+                for (int i = 0; i < itemsAtOrdinal.Count; i++)
+                {
+                    var itemAtOrdinal = itemsAtOrdinal[i];
 
-                if (manyOf.ManyItemVariant == CaptureTypeVariant.Enum)
-                {
-                    var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, representativeManyItemAtOrdinal);
-                    terminalCaptures.Add(derivedPropCapture);
-                }
-                else if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit)
-                {
-                    var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, representativeManyItemAtOrdinal);
-                    var manyOfItemTokenUnit = (TokenUnit)representativeManyItemAtOrdinal.Value;
-                    terminalCaptures.AddRange(manyOfItemTokenUnit.GetFlattenedTerminalCaptures());
+                    if (i > 0 && itemAtOrdinal.Capture is Group group)
+                        itemAtOrdinal = itemAtOrdinal with { Capture = group.Captures[i] };
+
+                    if (manyOf.ManyItemVariant == CaptureTypeVariant.Enum)
+                    {
+                        var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, itemAtOrdinal);
+                        terminalCaptures.Add(derivedPropCapture);
+                    }
+                    else if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit)
+                    {
+                        var derivedPropCapture = manyOfPropCap.DeriveForManyOfItem(manyOf, itemAtOrdinal);
+                        var manyOfItemTokenUnit = (TokenUnit)itemAtOrdinal.Value;
+                        terminalCaptures.AddRange(manyOfItemTokenUnit.GetFlattenedTerminalCaptures());
+                    }
                 }
             }
 
