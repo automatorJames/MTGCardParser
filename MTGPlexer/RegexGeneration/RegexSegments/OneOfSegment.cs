@@ -69,8 +69,8 @@ public record OneOfSegment : XOfSegmentBase
             }
             else if (regexProp.TemplatePropInfo.Prop.PropertyType.IsAssignableTo(typeof(TokenUnit)))
             {
-                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(regexProp.TemplatePropInfo.Name, regexProp.Name);
-                TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.UnderlyingType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
+                var nameAppendix = regexProp.TemplatePropInfo.Name.Dot(regexProp.Name);
+                TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.UnderlyingType, parentTokenUnit, nameAppendix);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                 foundPolyMatchValue = new(tokenUnitChild, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
                 foundPropIndex = i;

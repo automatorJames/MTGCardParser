@@ -11,7 +11,7 @@ public record CardTextKey
     public int SpanEndIndex { get; }
 
     public CardTextKey(string cardName, TokenUnit anchorToken)
-        : this(cardName, anchorToken.Match.RegexMatch.Index, anchorToken.Match.RegexMatch.Length + anchorToken.Match.RegexMatch.Index)
+        : this(cardName, anchorToken.Match.RootMatch.Index, anchorToken.Match.RootMatch.Length + anchorToken.Match.RootMatch.Index)
     {
     }
 

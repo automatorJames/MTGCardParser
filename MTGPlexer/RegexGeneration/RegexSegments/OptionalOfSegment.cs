@@ -30,8 +30,8 @@ public record OptionalOfSegment : XOfSegmentBase
         // but the actual item captures reside in the next level down at the prop level.
         var itemContainerCapture = parentTokenUnit.Match[Name + "_" + TemplatePropInfo.Prop.Name];
 
-        CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, Name);
-        TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath);
+        var nameAppendix = TemplatePropInfo.Name.Dot(Name);
+        TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit, nameAppendix);
         var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
         PolyItemCapture hydratedItem = new(tokenUnitChild, itemContainerCapture, TemplatePropInfo);
         var optionalType = typeof(OptionalOf<>).MakeGenericType(GenericType);

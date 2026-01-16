@@ -17,7 +17,7 @@ public record TextContext
         PrecedingToken = precedingToken;
         AnchorToken = token;
         FollowingToken = followingToken;
-        Text = token.Match.RegexMatch.Value;
+        Text = token.Match.RootMatch.Value;
         Words = Text.Split(' ');
         WordCount = Words.Length;
     }

@@ -10,7 +10,7 @@ public static class SpanBuilder
 {
     public static SpanRoot Create(TokenUnit root, string fullText, string cardName, int clauseIndex)
     {
-        var prefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RegexMatch.Index}]-";
+        var prefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RootMatch.Index}]-";
         var ctx = new SpanContext(fullText, prefix);
 
         var children = root.PropertyCaptures.Select(p => BuildNode(p, ctx)).ToList();
@@ -19,10 +19,10 @@ public static class SpanBuilder
         {
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
             CapturePath = new(prefix + root.Match.CapturePath),
-            CaptureTextOriginal = fullText.Substring(root.Match.RegexMatch.Index, root.Match.RegexMatch.Length),
-            Start = root.Match.RegexMatch.Index,
-            End = root.Match.RegexMatch.Index + root.Match.RegexMatch.Length,
-            Length = root.Match.RegexMatch.Length,
+            CaptureTextOriginal = fullText.Substring(root.Match.RootMatch.Index, root.Match.RootMatch.Length),
+            Start = root.Match.RootMatch.Index,
+            End = root.Match.RootMatch.Index + root.Match.RootMatch.Length,
+            Length = root.Match.RootMatch.Length,
             ElementType = root is DefaultUnmatchedString ? TokenAnalysisElementType.UnmatchedTokenUnitRoot : TokenAnalysisElementType.TokenUnitRoot,
             Children = children,
             IsCollapsed = false,

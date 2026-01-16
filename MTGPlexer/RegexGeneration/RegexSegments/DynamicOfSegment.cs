@@ -39,8 +39,8 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
         var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
-        var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RegexMatch);
-        token.SetPropertyFromCapture(TemplatePropInfo, prefilledTokenUnitValue.Match.RegexMatch, dynamicTokenInstance);
+        var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch);
+        token.SetPropertyFromCapture(TemplatePropInfo, prefilledTokenUnitValue.Match.RootMatch, dynamicTokenInstance);
 
         return true;
     }

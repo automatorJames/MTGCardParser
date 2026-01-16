@@ -102,8 +102,8 @@ public record ManyOfSegment : XOfSegmentBase
                 }
                 else if (_manyItemType == CaptureTypeVariant.TokenUnit)
                 {
-                    CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, ordinalProp.Name);
-                    TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, j);
+                    var nameAppendix = TemplatePropInfo.Name.Dot(ordinalProp.Name);
+                    TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit, nameAppendix, j);
                     var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                     childItem = tokenUnitChild;
                 }

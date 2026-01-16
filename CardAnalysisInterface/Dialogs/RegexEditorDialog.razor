@@ -32,16 +32,16 @@
                     <div class="text-layer-front">
                         @{
                             cursor = 0;
-                            foreach (var token in Line.SpanRoots.Select(x => x.RootToken).OrderBy(t => t.Match.RegexMatch.Index))
+                            foreach (var token in Line.SpanRoots.Select(x => x.RootToken).OrderBy(t => t.Match.RootMatch.Index))
                             {
-                                if (token.Match.RegexMatch.Index > cursor)
+                                if (token.Match.RootMatch.Index > cursor)
                                 {
-                                    @Line.SourceText.FormattedText.Substring(cursor, token.Match.RegexMatch.Index - cursor)
+                                    @Line.SourceText.FormattedText.Substring(cursor, token.Match.RootMatch.Index - cursor)
                                 }
-                                var tokenText = Line.SourceText.FormattedText.Substring(token.Match.RegexMatch.Index, token.Match.RegexMatch.Index);
+                                var tokenText = Line.SourceText.FormattedText.Substring(token.Match.RootMatch.Index, token.Match.RootMatch.Index);
                                 var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : DeterministicPalette.TypePaletteSet[token.Type].Light;
                                 <span style=@($"color: {color}")>@tokenText</span>
-                                cursor = token.Match.RegexMatch.Index + token.Match.RegexMatch.Length;
+                                cursor = token.Match.RootMatch.Index + token.Match.RootMatch.Length;
                             }
                             if (cursor < Line.SourceText.FormattedText.Length)
                             {

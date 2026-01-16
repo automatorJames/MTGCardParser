@@ -67,8 +67,8 @@ public record CompoundOfSegment : XOfSegmentBase
             }
             else if (_compoundItemType == CaptureTypeVariant.TokenUnit)
             {
-                CaptureGroupPropPath capturePath = parentTokenUnit.Match.CapturePath.Append(TemplatePropInfo.Name, _regexProp.Name);
-                TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit.Match.RegexMatch, parentTokenUnit.Match.SourceText, capturePath, i);
+                var nameAppendix = TemplatePropInfo.Name.Dot(_regexProp.Name);
+                TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit, nameAppendix, i);
                 var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
                 childItem = tokenUnitChild;
             }
