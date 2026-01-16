@@ -22,15 +22,6 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
         ScalarAlternativeSet = new(captureAlternatives.ToList());
     }
 
-    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
-    {
-        // Though required to be overridden to fulfill the base contract, this code is never reached 
-        // because dynamic captures props are pre-filled by the tokenizer rather than upon instantiation of the
-        // parent token.
-
-        return null;
-    }
-
     public bool SetValueFromPrefilledDynamicToken(TokenUnit token, object prefilledValue)
     {
         var genericType = TemplatePropInfo.Prop.PropertyType.GenericTypeArguments[0];

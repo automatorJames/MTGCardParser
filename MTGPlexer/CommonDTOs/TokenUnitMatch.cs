@@ -58,14 +58,14 @@ public record TokenUnitMatch
     /// <summary>
     /// Constructor called by child properties to be hydrated within a parent "root" TokenUnit.
     /// </summary>
-    public TokenUnitMatch(Type type, TokenUnit parentTokenUnit, string pathNameToAppend, int captureOrdinal = 0)
+    public TokenUnitMatch(Type type, TokenUnitMatch parentTokenUnitMatch, string pathNameToAppend, int captureOrdinal = 0)
     {
         Type = type;
-        Parent = parentTokenUnit.Match;
-        RootMatch = parentTokenUnit.Match.RootMatch; // Always propagated from the parent
-        CapturePath = parentTokenUnit.Match.CapturePath.Append(pathNameToAppend);
+        Parent = parentTokenUnitMatch;
+        RootMatch = parentTokenUnitMatch.RootMatch; // Always propagated from the parent
+        CapturePath = parentTokenUnitMatch.CapturePath.Append(pathNameToAppend);
         CaptureOrdinal = captureOrdinal;
-        AbsoluteEnd = parentTokenUnit.Match.AbsoluteEnd;
+        AbsoluteEnd = parentTokenUnitMatch.AbsoluteEnd;
     }
 
     /// <summary>

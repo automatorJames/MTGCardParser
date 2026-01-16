@@ -215,7 +215,7 @@ public record PlaceholderSegment : ScalarCaptureSegmentBase
     }
 
 
-    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
+    public override object GetPropertyValue(TokenUnitMatch parentTokenUnitMatch, Capture scopedCapture)
     {
         var valueToSet = new PlaceholderCapture(namedGroup.Value);
 

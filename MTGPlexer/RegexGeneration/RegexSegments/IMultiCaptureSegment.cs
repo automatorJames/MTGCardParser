@@ -2,5 +2,5 @@
 
 public interface IMultiCaptureSegment
 {
-    public object SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures);
+    public object GetPropertyValueFromMultiCapture(TokenUnitMatch parentTokenUnitMatch, Capture[] scopedCaptures);
 }

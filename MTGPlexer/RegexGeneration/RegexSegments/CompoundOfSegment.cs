@@ -35,7 +35,7 @@ public record CompoundOfSegment : XOfSegmentBase, IMultiCaptureSegment
         builder.CloseGroup();
     }
 
-    public void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
+    public void SetPropertyFromCaptures(TokenUnitMatch parentTokenUnitMatch, Capture[] scopedCaptures)
     {
         List<PolyItemCapture> hydratedItems = [];
 

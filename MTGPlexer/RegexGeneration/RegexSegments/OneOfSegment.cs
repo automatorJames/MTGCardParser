@@ -41,7 +41,7 @@ public record OneOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
+    public override object GetPropertyValue(TokenUnitMatch parentTokenUnitMatch, Capture scopedCapture)
     {
         PolyItemCapture foundPolyMatchValue = null;
         int foundPropIndex = 0;

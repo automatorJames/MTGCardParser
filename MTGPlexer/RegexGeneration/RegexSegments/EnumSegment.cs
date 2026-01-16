@@ -48,20 +48,13 @@ public record EnumSegment : ScalarCaptureSegmentBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
-    {
-        var capture = scopedCaptures.Single();
-        var value = GetEnumMatchValue(capture.Value);
-
-    }
-
-    object GetEnumMatchValue(string matchString)
+    public override object GetPropertyValue(TokenUnitMatch parentTokenUnitMatch, Capture scopedCapture)
     {
         foreach (var enumAlternative in EnumSet.EnumAlternates)
-            if (enumAlternative.ItemRegex.IsMatch(matchString))
+            if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))
                 return enumAlternative.EnumValue;
 
-        throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{matchString}'");
+        throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{scopedCapture.Value}'");
     }
 
     public static EnumScalarAlternateSet EnumTypetoScalarSet(Type enumType)

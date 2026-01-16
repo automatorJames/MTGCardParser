@@ -59,7 +59,7 @@ public record ManyOfSegment : XOfSegmentBase, IMultiCaptureSegment
         builder.CloseGroup();
     }
 
-    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
+    public object GetPropertyValueFromMultiCapture(TokenUnitMatch parentTokenUnitMatch, Capture[] scopedCaptures)
     {
         List<PolyItemCapture> hydratedItems = [];
 
