@@ -26,7 +26,7 @@ public record TokenUnitSegment : CaptureGroupSegmentBase
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
+    public override object GetPropertyValue(TokenUnit parentTokenUnit, Capture scopedCapture)
     {
         TokenUnitMatch typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnit, TemplatePropInfo.Name);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);

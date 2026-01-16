@@ -48,7 +48,12 @@ public record EnumSegment : ScalarCaptureSegmentBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup) => GetEnumMatchValue(namedGroup.Value);
+    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
+    {
+        var capture = scopedCaptures.Single();
+        var value = GetEnumMatchValue(capture.Value);
+
+    }
 
     object GetEnumMatchValue(string matchString)
     {

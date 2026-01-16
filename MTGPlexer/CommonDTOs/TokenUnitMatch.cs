@@ -61,18 +61,20 @@ public record TokenUnitMatch
     public TokenUnitMatch(Type type, TokenUnit parentTokenUnit, string pathNameToAppend, int captureOrdinal = 0)
     {
         Type = type;
+        Parent = parentTokenUnit.Match;
         RootMatch = parentTokenUnit.Match.RootMatch; // Always propagated from the parent
         CapturePath = parentTokenUnit.Match.CapturePath.Append(pathNameToAppend);
         CaptureOrdinal = captureOrdinal;
+        AbsoluteEnd = parentTokenUnit.Match.AbsoluteEnd;
     }
 
     /// <summary>
     /// Takes a group leaf name and constructs a fully qualified path using CapturePath. If a capture group
-    /// exists in the RegexMatch by that name it is returned. If a capture ordinal is provided, this indexer
-    /// validates that the named group contgains at least as many captures as the ordinal position (note: it 
-    /// does not isolate and return any single capture at this position, but rather the containing group).
+    /// exists in the RegexMatch by that name, its captures are returned. If any parent of this node is a branching
+    /// point (i.e. its named group contains multiple captures), then we first find the latest such branch and only
+    /// return the captures that fit the scope of that branch.
     /// </summary>
-    public Group this[string groupLeafName]
+    public Capture[] this[string groupLeafName]
     {
         get
         {
@@ -83,14 +85,53 @@ public record TokenUnitMatch
 
             if (RootMatch.Groups[fullyQualifiedGroupName].Success)
             {
-                // Otherwise, return the named group
-                return RootMatch.Groups[fullyQualifiedGroupName];
+                var capturePathScope = GetCapturePathScope();
+                var allCapturesInGroup = RootMatch.Groups[fullyQualifiedGroupName].Captures;
+
+                if (capturePathScope.PathIsConstrainedToScope)
+                    // If path is constrained to some scope, return only those captures within the scope
+                    return allCapturesInGroup
+                        .Where(x => x.Index >= capturePathScope.Start && x.Index + x.Length <= capturePathScope.End)
+                        .ToArray();
+                else
+                    // Otherwise, return all the captures
+                    return RootMatch.Groups[fullyQualifiedGroupName].Captures.ToArray();
             }
 
             // No group exists for the fully qualified name
-            return null;
+            return [];
         }
+    }
+
+    CapturePathScope GetCapturePathScope()
+    {
+        TokenUnitMatch currentNode = this;
+
+        // Begining with self, search back through the parental lineage looking for the first branch choice, if any
+        while (currentNode.Parent != null)
+        {
+            var currentNodeGroup = RootMatch.Groups[currentNode.CapturePath.FullyQualifiedCaptureGroupName];
+            
+            // Check whether this is a branching node
+            if (currentNodeGroup.Captures.Count > 1)
+            {
+                // We've found the latest-extant branch, so return a scope constraint reflecting the current node's path choice
+                var currentNodeBranch = currentNodeGroup.Captures[currentNode.CaptureOrdinal];
+                var startOfScope = currentNodeBranch.Index;
+                var endOfScope = currentNodeBranch.Index + currentNodeBranch.Length;
+
+                return new(true, startOfScope, endOfScope);
+            }
+
+            currentNode = currentNode.Parent;
+        }
+
+        // There is no scope constraint
+        return new();
     }
 
     public override string ToString() => $"Match: \"{RootMatch.Value}\"";
 }
+
+// Local helper record for tracking capture path scopes
+record CapturePathScope(bool PathIsConstrainedToScope = false, int Start = -1, int End = -1);

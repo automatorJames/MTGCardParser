@@ -24,7 +24,7 @@ public record OptionalOfSegment : XOfSegmentBase
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
+    public override void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
     {
         // In Optional captures, "namedGroup" is the parent capture (at the Optional container level),
         // but the actual item captures reside in the next level down at the prop level.

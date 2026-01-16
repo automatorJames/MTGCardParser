@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record CompoundOfSegment : XOfSegmentBase
+public record CompoundOfSegment : XOfSegmentBase, IMultiCaptureSegment
 {
     CaptureTypeVariant _compoundItemType;
     CaptureGroupSegmentBase _regexProp;
@@ -35,7 +35,7 @@ public record CompoundOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup)
+    public void SetPropertyFromCaptures(TokenUnit parentTokenUnit, Capture[] scopedCaptures)
     {
         List<PolyItemCapture> hydratedItems = [];
 

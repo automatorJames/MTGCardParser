@@ -18,21 +18,29 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
 
     public bool TrySetOnParent(TokenUnit parentTokenUnit)
     {
-        var namedGroup = parentTokenUnit.Match[Name];
+        var scopedCaptures = parentTokenUnit.Match[Name];
 
-        if (namedGroup == null)
+        if (!scopedCaptures.Any())
             return false;
 
-        var propValToSet = GetValueToSet(parentTokenUnit, namedGroup);
+        object propertyValue = null;
 
-        // propValToSet may sometimes be null for cases like DynamicRegexProp, which will already have been handled earlier in the flow
-        if (propValToSet != null)
-            parentTokenUnit.SetPropertyFromCapture(TemplatePropInfo, namedGroup, propValToSet);
+        if (this is IMultiCaptureSegment multiCaptureSegment)
+            propertyValue = multiCaptureSegment.SetPropertyFromCaptures(parentTokenUnit, scopedCaptures);
+        else
+            propertyValue = GetPropertyValue(parentTokenUnit, scopedCaptures.Single());
 
         return true;
     }
 
-    public abstract object GetValueToSet(TokenUnit parentTokenUnit, Group namedGroup);
+    public virtual object GetPropertyValue(TokenUnit parentTokenUnit, Capture scopedCapture)
+    {
+        // The default implementation returns null. This allows IMultiCaptureSegments to skip implementation
+        // of this method in favor of the multi-capture version of it. It also allows special cases like
+        // DynamicOfSegment instances to perform a no-op.
+
+        return null;
+    }
 
     public override string ToString() => base.ToString();
 
