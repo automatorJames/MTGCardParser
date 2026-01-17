@@ -71,13 +71,15 @@ public record ManyOfSegment : XOfSegmentBase
             if (sectionGroupCaptures.Length == 0)
                 continue;;
 
+             var pathNameAppendix = manyItemOrdinal.ToString().Dot(GenericType.Name);
+
             // "first" will always have 1 item
             // "second" will have any number of items (including 0)
             // "last" will always have 1 item
             for (int j = 0; j < sectionGroupCaptures.Length; j++)
             {
                 var ordinalCapture = sectionGroupCaptures[j];
-                MatchTraversalState state = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name, i);
+                MatchTraversalState state = new(GenericType, parentTokenUnitMatch, pathNameAppendix, i);
                 var childItem = ordinalProp.GetPropertyValue(state, ordinalCapture);
                 PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
                 hydratedItems.Add(hydratedItem);
