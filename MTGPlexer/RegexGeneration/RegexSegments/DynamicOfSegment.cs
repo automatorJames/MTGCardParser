@@ -31,7 +31,7 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
 
         var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
         var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch);
-        token.SetPropertyFromCapture(TemplatePropInfo, new ExtractedCapture(prefilledTokenUnitValue.Match.RootMatch), dynamicTokenInstance);
+        token.SetPropertyFromCapture(TemplatePropInfo, new ExtractedCapture(prefilledTokenUnitValue.Match.RootMatch.UnderlyingMatchObject, genericType.Name), dynamicTokenInstance);
 
         return true;
     }

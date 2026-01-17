@@ -16,9 +16,11 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
         TemplatePropInfo = captureProp;
     }
 
-    public bool TrySetOnParent(TokenUnit parentTokenUnit)
+    public bool TrySetOnParent(TokenUnit parentTokenUnit, MatchTraversalState state)
     {
-        var scopedCapture = parentTokenUnit.Match[LeafName].SingleOrDefault();
+        //var scopedCapture = parentTokenUnit.Match[LeafName].SingleOrDefault();
+        var scopedCapture = parentTokenUnit.Match.GetScopedCapture(LeafName, state);
+
 
         if (scopedCapture == null)
             return false;

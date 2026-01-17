@@ -81,11 +81,10 @@ public record ManyOfSegment : XOfSegmentBase
             {
                 if (ordinalProp is TokenUnitSegment)
                 {
-                    MatchTraversalState typeMatch = new(GenericType, masterState, manyItemOrdinal.ToString(), j);
+                    MatchTraversalState typeMatch = new(GenericType, masterState, manyItemOrdinal.ToString());
                     var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
                 }
 
-                var masterStateWithOrdinal = masterState with { CaptureOrdinal = j };
                 var ordinalCapture = sectionGroupCaptures[j];
                 var childItem = ordinalProp.GetPropertyValue(masterState, ordinalCapture);
                 PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);

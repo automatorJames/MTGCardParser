@@ -36,7 +36,7 @@ public record CompoundOfSegment : XOfSegmentBase
         for (int i = 0; i < scopedCaptures.Length; i++)
         {
             var ordinalCapture = scopedCaptures[i];
-            MatchTraversalState state = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name, i);
+            MatchTraversalState state = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
             var childItem = _regexProp.GetPropertyValue(state, ordinalCapture);
             PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
             hydratedItems.Add(hydratedItem);

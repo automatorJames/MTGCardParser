@@ -21,7 +21,7 @@ public static class SpanBuilder
             CapturePath = new(prefix + root.Match.CapturePath),
             CaptureTextOriginal = fullText.Substring(root.Match.RootMatch.Index, root.Match.RootMatch.Length),
             Start = root.Match.RootMatch.Index,
-            End = root.Match.RootMatch.Index + root.Match.RootMatch.Length,
+            End = root.Match.RootMatch.End,
             Length = root.Match.RootMatch.Length,
             ElementType = root is DefaultUnmatchedString ? TokenAnalysisElementType.UnmatchedTokenUnitRoot : TokenAnalysisElementType.TokenUnitRoot,
             Children = children,

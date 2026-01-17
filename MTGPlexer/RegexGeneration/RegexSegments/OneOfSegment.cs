@@ -54,7 +54,7 @@ public record OneOfSegment : XOfSegmentBase
             if (oneOfItemVariantCapture == null)
                 continue;
 
-            MatchTraversalState state = new(GenericType, parentTokenUnitMatch, regexProp.LeafName, i);
+            MatchTraversalState state = new(GenericType, parentTokenUnitMatch, regexProp.LeafName);
             var childItem = regexProp.GetPropertyValue(state, oneOfItemVariantCapture);
             foundPolyMatchValue = new(childItem, oneOfItemVariantCapture, TemplatePropInfo);
 

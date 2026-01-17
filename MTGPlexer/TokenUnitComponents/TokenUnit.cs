@@ -31,17 +31,17 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(MatchTraversalState match, Dictionary<DynamicOfSegment, object> prefilledDynamicValues = null)
+    public static TokenUnit InstantiateFromMatch(MatchTraversalState state, Dictionary<DynamicOfSegment, object> prefilledDynamicValues = null)
     {
-        if (!match.Type.IsAssignableTo(typeof(TokenUnit)))
-            throw new Exception($"Type '{match.Type.Name}' isn't a {nameof(TokenUnit)} type");
+        if (!state.Type.IsAssignableTo(typeof(TokenUnit)))
+            throw new Exception($"Type '{state.Type.Name}' isn't a {nameof(TokenUnit)} type");
 
         prefilledDynamicValues ??= [];
 
-        var tokenUnitInstance = (TokenUnit)Activator.CreateInstance(match.Type);
-        tokenUnitInstance.Match = match;
+        var tokenUnitInstance = (TokenUnit)Activator.CreateInstance(state.Type);
+        tokenUnitInstance.Match = state;
 
-        if (!TokenTypeRegistry.Templates.TryGetValue(match.Type, out var template))
+        if (!TokenTypeRegistry.Templates.TryGetValue(state.Type, out var template))
             return tokenUnitInstance;
 
         foreach (var captureProp in template.CaptureGroupProps)
@@ -50,7 +50,7 @@ public abstract class TokenUnit
                 dynamicRegexProp.SetValueFromPrefilledDynamicToken(tokenUnitInstance, prefilledValue);
             else
             {
-                var setSuccessfully = captureProp.TrySetOnParent(tokenUnitInstance);
+                var setSuccessfully = captureProp.TrySetOnParent(tokenUnitInstance, state);
 
                 // If this is a dynamic prop that failed to match any type regex, the parent TokenUnit is
                 // invalid. The reason we check for a valid match this late in the processing pipeline is that
