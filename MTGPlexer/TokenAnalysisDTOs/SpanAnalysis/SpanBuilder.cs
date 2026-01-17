@@ -92,7 +92,7 @@ public static class SpanBuilder
             TokenAnalysisElementType.DynamicCaptureItemBranch,
             new List<SpanNode> { innerNode }, 
             ctx,
-            neverCollapse: true);
+            neverCollapse: false);
     }
 
     static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)

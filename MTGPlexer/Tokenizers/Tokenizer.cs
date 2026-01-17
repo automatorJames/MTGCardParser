@@ -41,7 +41,6 @@ public class Tokenizer
                     .ToDictionary(x => x.Key, x => x.Value);
             }
 
-            // **Step 1: Prioritize matching a known token.**
             foreach (var (type, regex) in filteredTypeRegexes)
             {
                 var match = regex.Match(sourceText.FormattedText, currentIndex);    

@@ -2,8 +2,8 @@
 
 public abstract class BoundaryBase : RegexElement
 {
-    protected BoundaryBase(Enclosure[] enclosures, string regex, string comment)
-        : base(enclosures, regex, comment: comment)
+    protected BoundaryBase(Enclosure[] enclosures, string regex, string comment, bool doNotAddPrecedingSpace = false)
+        : base(enclosures, regex, comment: comment, doNotAddPrecedingSpace: doNotAddPrecedingSpace)
     {
     }
 }

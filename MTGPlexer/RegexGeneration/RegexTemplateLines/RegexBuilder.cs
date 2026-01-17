@@ -107,6 +107,9 @@ public class RegexBuilder
         _concatenater.Append(new GroupAlternativePipe(_orderedEnclosureStack));
     }
 
+    public void AddNegativeSpaceLookbehindBoundary()
+        =>_concatenater.Append(new NegativeSpaceLookbehindBoundary(_orderedEnclosureStack));
+
     /// <summary>
     /// Extracts the raw regex string for a specific named group.
     /// </summary>

@@ -23,6 +23,7 @@ public record CompoundOfSegment : XOfSegmentBase
         ConcatenatingComposer.Instance.Compose(builder, [_regexProp]);
         builder.AddTextLine(" ?");
         builder.CloseGroup(GroupQuantifier.OneOrMore);
+        builder.AddNegativeSpaceLookbehindBoundary();
         builder.CloseGroup();
     }
 

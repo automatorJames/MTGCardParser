@@ -30,6 +30,10 @@ public class RegexElementConcatenater
         if (nextElement.SpacesDisallowedGloballyOrLocally)
             return;
 
+        // If the "do not add preceding space" flag is explicitly set on the RegexElement, honor it
+        if (nextElement.DoNotAddPrecedingSpace)
+            return;
+
         // If the current enclosure doesn't contain any content yet (e.g. text line or alternate value container), then this is the first, so don't add a space.
         // This doesn't apply to group open elements since they represent their own "parent" and are handled below
         if (!_enclosuresWithContent.Contains(nextElement.ParentEnclosure))
