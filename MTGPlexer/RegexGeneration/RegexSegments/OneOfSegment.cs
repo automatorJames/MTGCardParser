@@ -41,7 +41,7 @@ public record OneOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         PolyItemCapture foundPolyMatchValue = null;
         int foundPropIndex = 0;

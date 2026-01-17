@@ -31,12 +31,12 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
 
         var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
         var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch);
-        token.SetPropertyFromCapture(TemplatePropInfo, prefilledTokenUnitValue.Match.RootMatch, dynamicTokenInstance);
+        token.SetPropertyFromCapture(TemplatePropInfo, new ExtractedCapture(prefilledTokenUnitValue.Match.RootMatch), dynamicTokenInstance);
 
         return true;
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         // This type is a special case. Since the Tokenizer preemptively passes TokenUnit a Dictionary of dynamic segment values,
         // TokenUnit sets them directly instead of the "normal" way here. Therefore we return null, which will cause the base to 

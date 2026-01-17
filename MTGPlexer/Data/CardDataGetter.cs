@@ -35,8 +35,8 @@ public class CardDataGetter
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
         //result = result.Where(x => x.Name == "Ankh of Mishra");
-        result = result.Where(x => x.Name == "Berserk");
-        //result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
+        //result = result.Where(x => x.Name == "Berserk");
+        ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
         result = [new Card { Name = "feckall", Text = "target creature gains trample, gains shroud, gains first strike, and gets +x/+0" }];
         return result.ToList();
     }

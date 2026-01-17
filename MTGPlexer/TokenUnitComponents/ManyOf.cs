@@ -2,7 +2,7 @@
 
 public class ManyOf<T> : ManyOf
 {
-    public ManyOf(IEnumerable<PolyItemCapture> items, Conjunction? conjunction, Capture conjunctionCapture)
+    public ManyOf(IEnumerable<PolyItemCapture> items, Conjunction? conjunction, ExtractedCapture conjunctionCapture)
     {
         Items = items.ToList();
         Conjunction = conjunction;
@@ -19,7 +19,7 @@ public class ManyOf : XOf
     public List<PolyItemCapture> Items { get; set; }
     public CaptureTypeVariant ManyItemVariant { get; set; }
     public Conjunction? Conjunction { get; set; }
-    public Capture ConjunctionCapture { get; set; }
+    public ExtractedCapture ConjunctionCapture { get; set; }
 
     public override string ToString()
     {

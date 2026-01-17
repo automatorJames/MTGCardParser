@@ -26,7 +26,7 @@ public record OptionalOfSegment : XOfSegmentBase
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         var itemCapture = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name].Single();
         MatchTraversalState typeMatch = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);

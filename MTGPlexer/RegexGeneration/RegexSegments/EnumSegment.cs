@@ -48,7 +48,7 @@ public record EnumSegment : ScalarCaptureSegmentBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         foreach (var enumAlternative in EnumSet.EnumAlternates)
             if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))

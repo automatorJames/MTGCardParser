@@ -21,7 +21,7 @@ public record TokenUnitOneOfSegment : TokenUnitSegment
         builder.CloseGroup();
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         MatchTraversalState typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnitMatch, TemplatePropInfo.Name);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);

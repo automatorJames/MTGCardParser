@@ -67,7 +67,7 @@ public abstract class TokenUnit
         return tokenUnitInstance;
     }
 
-    public void SetPropertyFromCapture(TemplatePropInfo templatePropInfo, Capture capture, object propVal)
+    public void SetPropertyFromCapture(TemplatePropInfo templatePropInfo, ExtractedCapture capture, object propVal)
     {
         templatePropInfo.Prop.SetValue(this, propVal);
         PropertyCapture propertyCapture = new(templatePropInfo, capture, propVal, Match.CapturePath);

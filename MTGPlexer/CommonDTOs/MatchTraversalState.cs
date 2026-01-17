@@ -74,7 +74,7 @@ public record MatchTraversalState
     /// point (i.e. its named group contains multiple captures), then we first find the latest such branch and only
     /// return the captures that fit the scope of that branch.
     /// </summary>
-    public Capture[] this[string groupLeafName]
+    public ExtractedCapture[] this[string groupLeafName]
     {
         get
         {
@@ -92,10 +92,13 @@ public record MatchTraversalState
                     // If path is constrained to some scope, return only those captures within the scope
                     return allCapturesInGroup
                         .Where(x => x.Index >= capturePathScope.Start && x.Index + x.Length <= capturePathScope.End)
+                        .Select(x => new ExtractedCapture(x))
                         .ToArray();
                 else
                     // Otherwise, return all the captures
-                    return RootMatch.Groups[fullyQualifiedGroupName].Captures.ToArray();
+                    return RootMatch.Groups[fullyQualifiedGroupName].Captures
+                        .Select(x => new ExtractedCapture(x))
+                        .ToArray();
             }
 
             // No group exists for the fully qualified name

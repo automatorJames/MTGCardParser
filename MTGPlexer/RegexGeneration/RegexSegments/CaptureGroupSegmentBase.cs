@@ -1,7 +1,4 @@
-﻿using MTGPlexer.CommonDTOs;
-using Newtonsoft.Json.Linq;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// The base class for all TokenUnit properties (or TokenUnit x-Of PolyItemCapures) with a named 
@@ -36,7 +33,7 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
         return true;
     }
 
-    public abstract object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture);
+    public abstract object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture);
 
 
     public override string ToString() => base.ToString();

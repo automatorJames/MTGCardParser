@@ -6,7 +6,7 @@
 public record PropertyCapture
 {
     public TemplatePropInfo TemplatePropInfo { get; private set; }
-    public Capture Capture { get; private set; }
+    public ExtractedCapture Capture { get; private set; }
     public object Value { get; private set; }
     public CaptureGroupPropPath CaptureGroupPropPath { get; private set; }
 
@@ -14,7 +14,7 @@ public record PropertyCapture
     {
     }
 
-    public PropertyCapture(TemplatePropInfo templatePropInfo, Capture capture, object value, CaptureGroupPropPath parentTokenPath)
+    public PropertyCapture(TemplatePropInfo templatePropInfo, ExtractedCapture capture, object value, CaptureGroupPropPath parentTokenPath)
     {
         TemplatePropInfo = templatePropInfo;
         Capture = capture;

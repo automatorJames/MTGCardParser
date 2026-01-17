@@ -215,7 +215,7 @@ public record PlaceholderSegment : ScalarCaptureSegmentBase
     }
 
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         var valueToSet = new PlaceholderCapture(scopedCapture.Value);
         return valueToSet;
