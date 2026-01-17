@@ -13,7 +13,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public ProcessedLine Line { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<string?> OnClose { get; set; }
+    public EventCallback<string> OnClose { get; set; }
 
     private string _renderedRegex = "";
     private List<Match> _currentMatches = new();
@@ -29,7 +29,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private string _textToReplaceForAutocomplete = "";
 
     private ElementReference _editorElement;
-    private DotNetObjectReference<RegexEditorDialog>? _dotNetRef;
+    private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
 
     protected override void OnInitialized()
     {
@@ -150,7 +150,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             {
                 var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
                 _dynamicTokenType = new DynamicTokenType(cleanPattern);
-                _renderedRegex = _dynamicTokenType.RenderedRegex;
+                _renderedRegex = _dynamicTokenType.GetRenderedRegexFromTemplate();
             }
             else
             {

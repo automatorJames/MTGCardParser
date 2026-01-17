@@ -212,84 +212,92 @@ public static partial class TokenTypeRegistry
         File.WriteAllText(outputPath, dynamicTokenType.ClassString);
     }
 
+    public static RegexTemplate GetTemplateFromDynamicTokenType(DynamicTokenType dynamicTokenType)
+    {
+        var newType = CreateDynamicTokenUnitType(dynamicTokenType);
+        var template = GetTypeTemplate(newType);
+
+        return template;
+
+    }
+
     static Type CreateDynamicTokenUnitType(DynamicTokenType dynamicTokenType)
     {
         var baseType = typeof(TokenUnit);
+        var snippetType = typeof(Snippet);
+
         var tb = _moduleBuilder.DefineType(
                               dynamicTokenType.ClassName,
                               TypeAttributes.Public | TypeAttributes.Class,
                               baseType
                           );
 
-        var orderCtor = typeof(TokenizationOrderAttribute)
-                    .GetConstructor(new[] { typeof(int) })!;
-        var orderAttr = new CustomAttributeBuilder(
-                              orderCtor,
-                              new object[] { -1 }
-                          );
+        // 1) Set the Order Attribute
+        var orderCtor = typeof(TokenizationOrderAttribute).GetConstructor(new[] { typeof(int) })!;
+        var orderAttr = new CustomAttributeBuilder(orderCtor, new object[] { -1 });
         tb.SetCustomAttribute(orderAttr);
 
-        // 1) Walk your snippets: if it's a Type, define an auto‑property; always remember the string to pass to base(...)
-        var snippetStrings = new string[dynamicTokenType.DynamicSnippets.Count];
-        for (int i = 0; i < dynamicTokenType.DynamicSnippets.Count; i++)
+        // 2) Define Auto-Properties for referenced types
+        // These must exist so TokenUnit.InstantiateFromMatch can hydrate them
+        foreach (var part in dynamicTokenType.CombinedParts.Where(x => x.IsType))
         {
-            var snippet = dynamicTokenType.DynamicSnippets[i];
-            object resolvedSnippet = NameToType.TryGetValue(snippet, out Type resolvedType) ? resolvedType : snippet;
-
-            switch (resolvedSnippet)
+            if (TokenTypeRegistry.NameToType.TryGetValue(part.Val, out Type resolvedType))
             {
-                case Type t:
-                    // define public T T { get; set; }
-                    DefineAutoProperty(tb, t.Name, t);
-                    snippetStrings[i] = t.Name;
-                    break;
-
-                case string s:
-                    snippetStrings[i] = s;
-                    break;
-
-                default:
-                    throw new ArgumentException(
-                        $"snippets[{i}] must be either a Type or string"
-                    );
+                DefineAutoProperty(tb, part.Val, resolvedType);
             }
         }
 
-        // 2) Define a parameterless ctor that does : base(snippetStrings...)
+        // 3) Override "protected virtual Snippet[] Snippets { get; }"
+        var getSnippetsMethod = tb.DefineMethod(
+            "get_Snippets",
+            MethodAttributes.Family | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.SpecialName,
+            snippetType.MakeArrayType(),
+            Type.EmptyTypes);
+
+        var ilGen = getSnippetsMethod.GetILGenerator();
+        var parts = dynamicTokenType.CombinedParts;
+
+        // Locate the Snippet constructor: Snippet(string, bool)
+        // Even though bool is optional in C#, it is required in Reflection/IL
+        var snippetCtor = snippetType.GetConstructor(new[] { typeof(string), typeof(bool) })
+            ?? throw new Exception("Could not find Snippet(string, bool) constructor.");
+
+        // Implementation: return new Snippet[] { ... }
+        ilGen.Emit(OpCodes.Ldc_I4, parts.Count);
+        ilGen.Emit(OpCodes.Newarr, snippetType);
+
+        for (int i = 0; i < parts.Count; i++)
+        {
+            ilGen.Emit(OpCodes.Dup);                   // Duplicate array reference
+            ilGen.Emit(OpCodes.Ldc_I4, i);             // Load index
+            ilGen.Emit(OpCodes.Ldstr, parts[i].Val);   // Load string text
+            ilGen.Emit(OpCodes.Ldc_I4_0);              // Load 'false' (0) for isOptional
+            ilGen.Emit(OpCodes.Newobj, snippetCtor);   // new Snippet(text, false)
+            ilGen.Emit(OpCodes.Stelem_Ref);            // array[i] = snippet
+        }
+        ilGen.Emit(OpCodes.Ret);
+
+        // Define the property and link the getter
+        var propSnippets = tb.DefineProperty("Snippets", PropertyAttributes.None, snippetType.MakeArrayType(), null);
+        propSnippets.SetGetMethod(getSnippetsMethod);
+
+        // 4) Define Parameterless Constructor
         var ctor = tb.DefineConstructor(
                        MethodAttributes.Public,
                        CallingConventions.Standard,
                        Type.EmptyTypes
                    );
-        var il = ctor.GetILGenerator();
+        var ctorIl = ctor.GetILGenerator();
 
-        // load `this`
-        il.Emit(OpCodes.Ldarg_0);
+        // Load 'this' and call base()
+        ctorIl.Emit(OpCodes.Ldarg_0);
+        var baseDefaultCtor = baseType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            null, Type.EmptyTypes, null)!;
+        ctorIl.Emit(OpCodes.Call, baseDefaultCtor);
+        ctorIl.Emit(OpCodes.Ret);
 
-        // create new string[snippetStrings.Length]
-        il.Emit(OpCodes.Ldc_I4, snippetStrings.Length);
-        il.Emit(OpCodes.Newarr, typeof(string));
-
-        // fill the array
-        for (int idx = 0; idx < snippetStrings.Length; idx++)
-        {
-            il.Emit(OpCodes.Dup);                             // keep array
-            il.Emit(OpCodes.Ldc_I4, idx);                     // index
-            il.Emit(OpCodes.Ldstr, snippetStrings[idx]);      // value
-            il.Emit(OpCodes.Stelem_Ref);                      // array[idx] = value
-        }
-
-        // call protected TokenUnit .ctor(string[])
-        var baseCtor = baseType.GetConstructor(
-                           BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-                           binder: null,
-                           new[] { typeof(string[]) },
-                           modifiers: null
-                       )!;
-        il.Emit(OpCodes.Call, baseCtor);
-        il.Emit(OpCodes.Ret);
-
-        // 3) Bake and return
+        // 5) Finalize
         var type = tb.CreateType()!;
         SetTypeTemplate(type);
         _dynamicAssemblyTypes.Add(type);

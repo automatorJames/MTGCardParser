@@ -5,7 +5,7 @@ public class DynamicTokenType
     protected List<string> _referencedTypeNames = [];
     protected List<string> _propertyParts = [];
     protected List<string> _parameterParts = [];
-    protected List<(string val, bool isType)> _combinedParts = [];
+    public List<(string Val, bool IsType)> CombinedParts { get; set; } = [];
     public List<string> DynamicSnippets { get; } = [];
     public string ClassName { get; }
     public string ClassString { get; private set; }
@@ -55,7 +55,7 @@ public class DynamicTokenType
                 var wordSnippet = $"\"{combinedValue}\"";
                 _parameterParts.Add(wordSnippet);
                 DynamicSnippets.Add(wordSnippet);
-                _combinedParts.Add((combinedValue, isType: false));
+                CombinedParts.Add((combinedValue, isType: false));
                 wordBuffer.Clear();
             }
         }
@@ -69,7 +69,7 @@ public class DynamicTokenType
                 _propertyParts.Add($"public {typeName} {typeName} {{ get; set; }}");
                 _parameterParts.Add($"nameof({typeName})");
                 DynamicSnippets.Add(typeName);
-                _combinedParts.Add((typeName, isType: true));
+                CombinedParts.Add((typeName, isType: true));
             }
             else
             {
@@ -116,8 +116,8 @@ public class DynamicTokenType
             $$"""
             {{publicKw}} {{classKw}} {{typeSpan}} : {{tokenUnitSpan}}
             {
-                {{publicKw}} {{typeSpan}}() : {{baseKw}} ({{string.Join(", ", _combinedParts.Select(x =>
-                    x.isType ? $"<span class=\"keyword\">nameof(</span><span class=\"identifier\">{x.val}</span><span class=\"keyword\">)</span>"
+                {{publicKw}} {{typeSpan}}() : {{baseKw}} ({{string.Join(", ", CombinedParts.Select(x =>
+                    x.IsType ? $"<span class=\"keyword\">nameof(</span><span class=\"identifier\">{x.Val}</span><span class=\"keyword\">)</span>"
                     : $"<span class=\"string\">\"{x}\"</span>"))}}) { }
 
                 {{string.Join("\r\n    ", styledProps)}}
@@ -126,5 +126,12 @@ public class DynamicTokenType
 
         classStringStyled = classStringStyled.Replace("  ", "&nbsp;&nbsp;").Replace("\r\n", "<br>");
         ClassStringStyled = classStringStyled;
+    }
+
+    public string GetRenderedRegexFromTemplate()
+    {
+        var template = TokenTypeRegistry.GetTemplateFromDynamicTokenType(this);
+
+        return template.Builder.GetMinified();
     }
 }
