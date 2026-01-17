@@ -6,8 +6,6 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
 
 	public DynamicOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-		var derivedProp = captureProp.DeriveForXOfItem();
-        _regexProp = new TokenUnitSegment(derivedProp);
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
@@ -34,34 +32,36 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
             throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
 
         var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
-        var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch.UnderlyingMatchObject);
-        token.SetPropertyFromCapture(TemplatePropInfo, new ExtractedCapture(prefilledTokenUnitValue.Match.RootMatch.UnderlyingMatchObject, genericType.Name), dynamicTokenInstance);
+        var capture = new ExtractedCapture(prefilledTokenUnitValue.Match.RootMatch);
+        PolyItemCapture polyItemCapture = new(prefilledValue, capture, TemplatePropInfo);
+        var dynamicTokenInstance = Activator.CreateInstance(closedType, polyItemCapture, capture);
+        token.SetPropertyFromCapture(TemplatePropInfo, capture, dynamicTokenInstance);
 
         return true;
     }
 
-    //public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
-    //{
-    //    // This type is a special case. Since the Tokenizer preemptively passes TokenUnit a Dictionary of dynamic segment values,
-    //    // TokenUnit sets them directly instead of the "normal" way here. Therefore we return null, which will cause the base to 
-    //    // effectively "no-op".
-    //
-    //    return null;
-    //}
-
     public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
-		var genericType = TemplatePropInfo.Prop.PropertyType.GenericTypeArguments[0];
-
-		if (!genericType.IsAssignableTo(typeof(TokenUnit)))
-			throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
-
-		var childItem = _regexProp.GetPropertyValue(parentTokenUnitMatch, scopedCapture);
-		PolyItemCapture hydratedItem = new(childItem, scopedCapture, TemplatePropInfo);
-
-		var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
-		//var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch.UnderlyingMatchObject);
-		return null;
+        // This type is a special case. Since the Tokenizer preemptively passes TokenUnit a Dictionary of dynamic segment values,
+        // TokenUnit sets them directly instead of the "normal" way here. Therefore we return null, which will cause the base to 
+        // effectively "no-op".
+    
+        return null;
     }
+
+    //public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    //{
+	//	var genericType = TemplatePropInfo.Prop.PropertyType.GenericTypeArguments[0];
+    //
+	//	if (!genericType.IsAssignableTo(typeof(TokenUnit)))
+	//		throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
+    //
+	//	var childItem = _regexProp.GetPropertyValue(parentTokenUnitMatch, scopedCapture);
+	//	PolyItemCapture hydratedItem = new(childItem, scopedCapture, TemplatePropInfo);
+    //
+	//	var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
+	//	//var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch.UnderlyingMatchObject);
+	//	return null;
+    //}
 
 }

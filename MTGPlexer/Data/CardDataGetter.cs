@@ -37,7 +37,8 @@ public class CardDataGetter
         //result = result.Where(x => x.Name == "Ankh of Mishra");
         //result = result.Where(x => x.Name == "Berserk");
         ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
-        result = [new Card { Name = "feckall", Text = "target creature gains trample, gains shroud, gains first strike, and gets +x/+0" }];
+        result = [new Card { Name = "Animate Dead", Text = "when Animate Dead enters the battlefield, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with Animate Dead.\"" }];
+        //result = result.Where(x => x.Name == "Animate Dead");
         return result.ToList();
     }
 }

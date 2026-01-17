@@ -20,4 +20,13 @@ public record ExtractedCapture
         Ordinal = ordinal;
         SiblingBranchCount = siblingBranchCount;
     }
+
+    public ExtractedCapture(ExtractedMatch match)
+    {
+        Name = "root";
+        Index = match.Index;
+        Length = match.Length;
+        End = Index + Length;
+        Value = match.Value;
+    }
 }

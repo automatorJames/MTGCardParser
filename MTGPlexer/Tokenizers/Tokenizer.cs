@@ -69,6 +69,8 @@ public class Tokenizer
                     if (!endsAtBoundary)
                         goto NextIteration;
 
+                    var thing = TokenTypeRegistry.Templates[type].RegexSegments;
+
                     Dictionary<DynamicOfSegment, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
                             .OfType<DynamicOfSegment>()
                             .ToDictionary(x => x, x => (object)null);
@@ -81,7 +83,6 @@ public class Tokenizer
                             throw new NotImplementedException($"Type '{type.Name}' has {dynamicPrefilledValues.Count} dynamic properties, but the max supported is 1");
 
                         var dynamicProp = dynamicPrefilledValues.First().Key;
-
                         var dynamicGroup = match.Groups[dynamicProp.LeafName];
 
                         if (!dynamicGroup.Success)

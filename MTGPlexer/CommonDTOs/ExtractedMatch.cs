@@ -2,7 +2,6 @@
 
 public record ExtractedMatch
 {
-    public Match UnderlyingMatchObject { get; }
     public IReadOnlyList<ExtractedCapture> Captures { get; }
     public int Index { get; }
     public int Length { get; }
@@ -11,7 +10,6 @@ public record ExtractedMatch
 
     public ExtractedMatch(Match match)
     {
-        UnderlyingMatchObject = match;
         List<ExtractedCapture> captures = [];
 
         foreach (var name in GetGroupNames(match))

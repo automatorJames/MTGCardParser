@@ -28,7 +28,9 @@ public static partial class TokenTypeRegistry
     {
         InitializeEmitedManyTypes();
 
-        foreach (var type in GetAllTokenTypes())
+        var allTokenTypes = GetAllTokenTypes();
+
+        foreach (var type in allTokenTypes)
             SetTypeTemplate(type);
 
         InitializeClassTokenizer();
@@ -37,7 +39,6 @@ public static partial class TokenTypeRegistry
 
     public static RegexTemplate GetTypeTemplate(Type type)
     {
-        Debug.WriteLine(type.Name);
         if (!Templates.ContainsKey(type))
             SetTypeTemplate(type);
 
