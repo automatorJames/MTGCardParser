@@ -91,8 +91,7 @@ public static class SpanBuilder
             prop.CaptureGroupPropPath,
             TokenAnalysisElementType.DynamicCaptureItemBranch,
             new List<SpanNode> { innerNode }, 
-            ctx,
-            neverCollapse: false);
+            ctx);
     }
 
     static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
@@ -241,7 +240,7 @@ public static class SpanBuilder
         return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    static SpanBranch CreateBranch(ExtractedCapture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx, bool neverCollapse = false)
+    static SpanBranch CreateBranch(ExtractedCapture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx)
     {
         return new SpanBranch
         {
@@ -253,8 +252,7 @@ public static class SpanBuilder
             CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
             ElementType = type,
             Children = children,
-            // Use the override if provided, otherwise fallback to the automatic calculation
-            IsCollapsed = neverCollapse ? false : SpanBranch.CalculateIsCollapsed(children)
+            IsCollapsed = SpanBranch.CalculateIsCollapsed(children)
         };
     }
 

@@ -39,6 +39,7 @@ public class CardDataGetter
         ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
         //result = result.Where(x => x.Name == "Animate Artifact");
         //result = [new Card { Name = "feckall", Text = "as long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value." }];
+        //result = result.Where(x => x.Name == "Animate Dead");
         return result.ToList();
     }
 }
