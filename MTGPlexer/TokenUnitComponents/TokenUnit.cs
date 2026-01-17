@@ -16,7 +16,7 @@ public abstract class TokenUnit
         }
     }
 
-    public TokenUnitMatch Match { get; set; }
+    public MatchTraversalState Match { get; set; }
 
     /// <summary>
     /// A pre-processed  list of all property captures for this token.
@@ -31,7 +31,7 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(TokenUnitMatch match, Dictionary<DynamicOfSegment, object> prefilledDynamicValues = null)
+    public static TokenUnit InstantiateFromMatch(MatchTraversalState match, Dictionary<DynamicOfSegment, object> prefilledDynamicValues = null)
     {
         if (!match.Type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"Type '{match.Type.Name}' isn't a {nameof(TokenUnit)} type");

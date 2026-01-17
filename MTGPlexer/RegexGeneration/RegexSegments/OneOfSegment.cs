@@ -41,7 +41,7 @@ public record OneOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override object GetPropertyValue(TokenUnitMatch parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
     {
         PolyItemCapture foundPolyMatchValue = null;
         int foundPropIndex = 0;
@@ -49,37 +49,20 @@ public record OneOfSegment : XOfSegmentBase
         for (int i = 0; i < _regexProps.Count; i++)
         {
             var regexProp = _regexProps[i];
-            // In compound captures, "namedGroup" is the parent capture (at the compound container level),
-            // but the actual item captures reside in the next level down at the prop level.
-            var oneOfItemVariantCapture = parentTokenUnit.Match[Name + "_" + regexProp.Name];
+            var oneOfItemVariantCapture = parentTokenUnitMatch[LeafName + "_" + regexProp.LeafName].SingleOrDefault();
 
             if (oneOfItemVariantCapture == null)
                 continue;
 
-            if (regexProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Enum)
-            {
-                foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[regexProp.TemplatePropInfo.UnderlyingType].EnumAlternates)
-                {
-                    if (enumAlternative.ItemRegex.IsMatch(oneOfItemVariantCapture.Value))
-                    {
-                        foundPolyMatchValue = new(enumAlternative.EnumValue, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
-                        goto ItemHasBeenFound;
-                    }
-                }
-            }
-            else if (regexProp.TemplatePropInfo.Prop.PropertyType.IsAssignableTo(typeof(TokenUnit)))
-            {
-                var nameAppendix = regexProp.TemplatePropInfo.Name.Dot(regexProp.Name);
-                TokenUnitMatch typeMatch = new(regexProp.TemplatePropInfo.UnderlyingType, parentTokenUnit, nameAppendix);
-                var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
-                foundPolyMatchValue = new(tokenUnitChild, oneOfItemVariantCapture, regexProp.TemplatePropInfo);
-                foundPropIndex = i;
-                goto ItemHasBeenFound;
-            }
+            MatchTraversalState state = new(GenericType, parentTokenUnitMatch, regexProp.LeafName, i);
+            var childItem = regexProp.GetPropertyValue(state, oneOfItemVariantCapture);
+            foundPolyMatchValue = new(childItem, oneOfItemVariantCapture, TemplatePropInfo);
+
+            goto ItemHasBeenFound;
         }
 
         // If none of the regex props found a match, there's a problem
-        throw new Exception($"Failed to extract value for OneOfProp from match '{namedGroup.Value}'");
+        throw new Exception($"Failed to extract value for OneOfProp from capture '{scopedCapture.Value}'");
 
         ItemHasBeenFound:;
 

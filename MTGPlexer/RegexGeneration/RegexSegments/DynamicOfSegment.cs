@@ -36,5 +36,13 @@ public record DynamicOfSegment : ScalarCaptureSegmentBase
         return true;
     }
 
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
+    {
+        // This type is a special case. Since the Tokenizer preemptively passes TokenUnit a Dictionary of dynamic segment values,
+        // TokenUnit sets them directly instead of the "normal" way here. Therefore we return null, which will cause the base to 
+        // effectively "no-op".
+
+        return null;
+    }
 }
 

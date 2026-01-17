@@ -9,9 +9,9 @@ public record PolyItemCapture
     public CaptureTypeVariant CaptureTypeVariant { get; }
     public string DistinguishingName { get; }
 
-    public PolyItemCapture(object value, Capture capture, TemplatePropInfo propInfo, int ordinal = 0, string distinguishingName = null)
+    public PolyItemCapture(object value, Capture capture, TemplatePropInfo propInfo, string distinguishingName = null)
     {
-        Capture = capture is Group group ? group.Captures[ordinal] : capture;
+        Capture = capture;
         TemplatePropInfo = propInfo;
         this.Value = value;
         Type = value.GetType();

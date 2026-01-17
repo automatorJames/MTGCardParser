@@ -82,7 +82,7 @@ public class Tokenizer
 
                         var dynamicProp = dynamicPrefilledValues.First().Key;
 
-                        var dynamicGroup = match.Groups[dynamicProp.Name];
+                        var dynamicGroup = match.Groups[dynamicProp.LeafName];
 
                         if (!dynamicGroup.Success)
                             goto NextIteration;
@@ -107,7 +107,7 @@ public class Tokenizer
                     // --- COMMIT PHASE ---
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
-                    TokenUnitMatch typeMatch = new(type, match);
+                    MatchTraversalState typeMatch = new(type, match);
                     var token = TokenUnit.InstantiateFromMatch(typeMatch, dynamicPrefilledValues);
                     tokens.Add(token);
 
@@ -160,7 +160,7 @@ public class Tokenizer
             Match unmatchedMatch = regex.Match(sourceText.FormattedText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                TokenUnitMatch typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch);
+                MatchTraversalState typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch);
                 var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch);
                 tokens.Add(unmatchedTokenUnit);
             }

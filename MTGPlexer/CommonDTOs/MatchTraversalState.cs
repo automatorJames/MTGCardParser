@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.CommonDTOs;
 
-public record TokenUnitMatch
+public record MatchTraversalState
 {
     /// <summary>
     /// The type of root or property value this instance is meant to hydrate.
@@ -40,12 +40,12 @@ public record TokenUnitMatch
     /// the path to root and determine which nodes have branching capture paths where the correct path is determined by checking
     /// each node's CaptureOrdinal value.
     /// </summary>
-    public TokenUnitMatch Parent { get; }
+    public MatchTraversalState Parent { get; }
 
     /// <summary>
     /// Constructor called by Tokenizer for top-level "root" matches with no TokenUnit parent.
     /// </summary>
-    public TokenUnitMatch(Type type, Match regexMatch)
+    public MatchTraversalState(Type type, Match regexMatch)
     {
         ArgumentNullException.ThrowIfNull(regexMatch);
 
@@ -58,7 +58,7 @@ public record TokenUnitMatch
     /// <summary>
     /// Constructor called by child properties to be hydrated within a parent "root" TokenUnit.
     /// </summary>
-    public TokenUnitMatch(Type type, TokenUnitMatch parentTokenUnitMatch, string pathNameToAppend, int captureOrdinal = 0)
+    public MatchTraversalState(Type type, MatchTraversalState parentTokenUnitMatch, string pathNameToAppend, int captureOrdinal = 0)
     {
         Type = type;
         Parent = parentTokenUnitMatch;
@@ -105,7 +105,7 @@ public record TokenUnitMatch
 
     CapturePathScope GetCapturePathScope()
     {
-        TokenUnitMatch currentNode = this;
+        MatchTraversalState currentNode = this;
 
         // Begining with self, search back through the parental lineage looking for the first branch choice, if any
         while (currentNode.Parent != null)

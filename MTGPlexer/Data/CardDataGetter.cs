@@ -34,8 +34,9 @@ public class CardDataGetter
         using var conn = new SqlConnection(_sqlConnString);
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
-        //result = result.Where(x => x.Name == "Animate Wall");
         //result = result.Where(x => x.Name == "Ankh of Mishra");
+        result = result.Where(x => x.Name == "Berserk");
+        //result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
         return result.ToList();
     }
 }

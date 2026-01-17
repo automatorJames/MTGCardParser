@@ -10,7 +10,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 /// </summary>
 public abstract record CaptureGroupSegmentBase : RegexSegmentBase
 {
-    public string Name => TemplatePropInfo.Name;
+    public string LeafName => TemplatePropInfo.Name;
     public TemplatePropInfo TemplatePropInfo { get; init; }
     public abstract Regex ManyMatchRegex { get; }
     
@@ -21,34 +21,23 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
 
     public bool TrySetOnParent(TokenUnit parentTokenUnit)
     {
-        var scopedCaptures = parentTokenUnit.Match[Name];
+        var scopedCapture = parentTokenUnit.Match[LeafName].SingleOrDefault();
 
-        if (!scopedCaptures.Any())
+        if (scopedCapture == null)
             return false;
 
-        object propertyValue = null;
-
-        if (this is IMultiCaptureSegment multiCaptureSegment)
-            propertyValue = multiCaptureSegment.GetPropertyValueFromMultiCapture(parentTokenUnit.Match, scopedCaptures);
-        else
-            propertyValue = GetPropertyValue(parentTokenUnit.Match, scopedCaptures.Single());
+        var propertyValue = GetPropertyValue(parentTokenUnit.Match, scopedCapture);
 
         if (propertyValue == null)
             return false;
 
-        parentTokenUnit.SetPropertyFromCapture(TemplatePropInfo, parentTokenUnit.Match.RootMatch, propertyValue);
+        parentTokenUnit.SetPropertyFromCapture(TemplatePropInfo, scopedCapture, propertyValue);
 
         return true;
     }
 
-    public virtual object GetPropertyValue(TokenUnitMatch parentTokenUnitMatch, Capture scopedCapture)
-    {
-        // The default implementation returns null. This allows IMultiCaptureSegments to skip implementation
-        // of this method in favor of the multi-capture version of it. It also allows special cases like
-        // DynamicOfSegment instances to perform a no-op.
+    public abstract object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture);
 
-        return null;
-    }
 
     public override string ToString() => base.ToString();
 

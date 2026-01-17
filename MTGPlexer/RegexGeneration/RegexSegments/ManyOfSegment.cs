@@ -1,8 +1,7 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record ManyOfSegment : XOfSegmentBase, IMultiCaptureSegment
+public record ManyOfSegment : XOfSegmentBase
 {
-    CaptureTypeVariant _manyItemType;
     CaptureGroupSegmentBase[] _ordinalRegexProps = new CaptureGroupSegmentBase[3];
     static EnumSegment _conjunctionProp = (EnumSegment)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
@@ -16,8 +15,6 @@ public record ManyOfSegment : XOfSegmentBase, IMultiCaptureSegment
 
         if (GenericType.IsAssignableTo(typeof(TokenUnit)))
         {
-            _manyItemType = CaptureTypeVariant.TokenUnit;
-
             _ordinalRegexProps =
             [
                 new TokenUnitSegment(derivedPropFirst),
@@ -27,8 +24,6 @@ public record ManyOfSegment : XOfSegmentBase, IMultiCaptureSegment
         }
         else if (GenericType.IsEnum)
         {
-            _manyItemType = CaptureTypeVariant.Enum;
-
             _ordinalRegexProps =
             [
                 new EnumSegment(derivedPropFirst),
@@ -59,7 +54,7 @@ public record ManyOfSegment : XOfSegmentBase, IMultiCaptureSegment
         builder.CloseGroup();
     }
 
-    public object GetPropertyValueFromMultiCapture(TokenUnitMatch parentTokenUnitMatch, Capture[] scopedCaptures)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
     {
         List<PolyItemCapture> hydratedItems = [];
 
@@ -70,50 +65,26 @@ public record ManyOfSegment : XOfSegmentBase, IMultiCaptureSegment
 
             // In manyof captures, "namedGroup" is the parent capture (at the many-of container level),
             // but the actual item captures reside in the next level down at the ordinal level.
-            var ordinalGroup = parentTokenUnit.Match[Name + "_" + manyItemOrdinal.ToString()];
+            var sectionGroupCaptures = parentTokenUnitMatch[LeafName + "_" + manyItemOrdinal.ToString()];
 
-            // a null ordinal group should only possibly occur for the second ordinal
-            if (ordinalGroup == null)
-                continue;
-
-            var ordinalCaptures = ordinalGroup.Captures;
+            // an empty section group should only possibly occur for the second second
+            if (sectionGroupCaptures.Length == 0)
+                continue;;
 
             // "first" will always have 1 item
             // "second" will have any number of items (including 0)
             // "last" will always have 1 item
-            for (int j = 0; j < ordinalCaptures.Count; j++)
+            for (int j = 0; j < sectionGroupCaptures.Length; j++)
             {
-                var ordinalCapture = ordinalCaptures[j];
-                object childItem = null;
-
-                if (_manyItemType == CaptureTypeVariant.Enum)
-                {
-                    foreach (var enumAlternative in TokenTypeRegistry.EnumScalarAlternativeSets[GenericType].EnumAlternates)
-                    {
-                        if (enumAlternative.ItemRegex.IsMatch(ordinalCapture.Value))
-                        {
-                            childItem = enumAlternative.EnumValue;
-                            break;
-                        }
-                    }
-
-                    if (childItem == null)
-                        throw new Exception($"Found no matching values for enum type '{GenericType.Name}' from capture '{ordinalCapture.Value}'");
-                }
-                else if (_manyItemType == CaptureTypeVariant.TokenUnit)
-                {
-                    var nameAppendix = TemplatePropInfo.Name.Dot(ordinalProp.Name);
-                    TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit, nameAppendix, j);
-                    var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
-                    childItem = tokenUnitChild;
-                }
-
-                PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo, j, manyItemOrdinal.ToString());
+                var ordinalCapture = sectionGroupCaptures[j];
+                MatchTraversalState state = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name, i);
+                var childItem = ordinalProp.GetPropertyValue(state, ordinalCapture);
+                PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
                 hydratedItems.Add(hydratedItem);
             }
         }
 
-        var conjunctionCapture = parentTokenUnit.Match[Name + "_" + nameof(Conjunction)];
+        var conjunctionCapture = parentTokenUnitMatch[LeafName + "_" + nameof(Conjunction)].SingleOrDefault();
 
         Conjunction? conjunctionValue = conjunctionCapture == null ? null
             : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed) 

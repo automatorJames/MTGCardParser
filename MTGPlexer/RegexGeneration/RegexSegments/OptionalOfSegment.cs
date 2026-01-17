@@ -4,14 +4,16 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 public record OptionalOfSegment : XOfSegmentBase
 {
+    TokenUnitSegment _tokenUnitSegment;
     public ImmutableList<RegexSegmentBase> ChildSegments { get; init; }
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[GenericType];
 
 
     public OptionalOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-        GenericType = TemplatePropInfo.GenericTypes.Single();
         var derivedPropInfo = captureProp.DeriveForXOfItem();
+        _tokenUnitSegment = new TokenUnitSegment(derivedPropInfo);
+        GenericType = TemplatePropInfo.GenericTypes.Single();
         var template = TokenTypeRegistry.GetTypeTemplate(GenericType);
         ChildSegments = template.RegexSegments.ToImmutableList();
     }
@@ -24,16 +26,12 @@ public record OptionalOfSegment : XOfSegmentBase
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetPropertyValue(TokenUnitMatch parentTokenUnitMatch, Capture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, Capture scopedCapture)
     {
-        // In Optional captures, "namedGroup" is the parent capture (at the Optional container level),
-        // but the actual item captures reside in the next level down at the prop level.
-        var itemContainerCapture = parentTokenUnit.Match[Name + "_" + TemplatePropInfo.Prop.Name];
-
-        var nameAppendix = TemplatePropInfo.Name.Dot(Name);
-        TokenUnitMatch typeMatch = new(GenericType, parentTokenUnit, nameAppendix);
+        var itemCapture = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name].Single();
+        MatchTraversalState typeMatch = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
         var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
-        PolyItemCapture hydratedItem = new(tokenUnitChild, itemContainerCapture, TemplatePropInfo);
+        PolyItemCapture hydratedItem = new(tokenUnitChild, itemCapture, TemplatePropInfo);
         var optionalType = typeof(OptionalOf<>).MakeGenericType(GenericType);
         var optionalPropVal = Activator.CreateInstance(optionalType, hydratedItem);
 
