@@ -1,39 +1,56 @@
 ﻿.line-text-container {
-    background-color: var(--dark-grey);
-    padding: 1rem;
+    position: relative; /* Acts as the anchor for the absolute front layer */
+    background-color: var(--dark-grey, #1A202C);
     border-radius: 4px;
-    border: 1px solid var(--lowlight-color, var(--outline-grey));
-    font-family: 'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    border: 1px solid var(--outline-grey, #4A5568);
+    /* Typography must be identical for both layers to align */
+    font-family: 'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 1.0em;
     line-height: 1.6;
-    color: #E2E8F0;
-    white-space: pre-wrap;
-    word-break: break-word;
+    overflow: hidden;
 }
 
 .text-layer-back {
     position: relative;
+    padding: 1rem;
+    color: transparent; /* Hides text but keeps highlights/underlines visible */
+    white-space: pre-wrap;
+    word-break: break-word;
+    z-index: 1;
 }
 
 .text-layer-front {
     position: absolute;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 1rem; /* Must match .text-layer-back exactly */
+    white-space: pre-wrap;
+    word-break: break-word;
+    z-index: 2;
+    pointer-events: none; /* Allows clicks to pass through to the container if needed */
+    color: #E2E8F0; /* Default text color */
 }
 
 .highlight-token {
+    /* This sits in the back layer under the transparent text */
     text-decoration: underline;
-    text-decoration-color: rgba(255, 255, 255, 0.5);
+    text-decoration-color: rgba(66, 153, 225, 0.6);
     text-decoration-thickness: 2px;
-    text-underline-offset: 6px;
+    text-underline-offset: 4px;
 }
 
 .autocomplete-container {
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .autocomplete-dropdown {
     position: absolute;
+    top: 100%;
+    left: 0;
     width: 100%;
     background-color: #2D3748;
     border: 1px solid #4A5568;
@@ -49,6 +66,9 @@
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     border-bottom: 1px solid #4A5568;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
     .autocomplete-item:last-child {
@@ -59,58 +79,40 @@
         background-color: #4A5568;
     }
 
-.autocomplete-dropdown.keyboard-navigating .autocomplete-item:hover {
-    background-color: transparent;
-}
+    .autocomplete-item .type-name {
+        font-weight: 600;
+    }
 
-.autocomplete-item .type-name {
-    font-weight: 600;
-}
-
-.autocomplete-item .type-kind {
-    font-size: 0.8em;
-    color: #A0AEC0;
-    margin-left: 0.5rem;
-}
+    .autocomplete-item .type-kind {
+        font-size: 0.8em;
+        color: #A0AEC0;
+    }
 
 .small-box-label {
     color: #718096;
-    margin-left: auto;
     font-size: 0.8em;
 }
 
-.small-box-label .right {
-    align-self: flex-end; /* right-align inside a flex column */
-}
-
-/* --- NEW STYLES FOR PILL INPUT --- */
+    .small-box-label.right {
+        text-align: right;
+        display: block;
+        width: 100%;
+    }
 
 .regex-input-composite {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px; /* Provides spacing between pills and text */
-    height: auto;
-    min-height: calc(1.5em + 0.75rem + 2px); /* Matches Bootstrap form-control height */
-    cursor: text;
+    width: 100%;
+    background-color: #1A202C;
+    color: white;
+    border: 1px solid #4A5568;
+    padding: 0.5rem;
+    min-height: 44px;
 }
 
-.text-segment {
-    white-space: pre; /* Preserves leading/trailing spaces in text segments */
-    line-height: 1.5;
-}
-
-.ghost-input {
-    flex-grow: 1;
-    border: none;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    padding: 0;
-    margin: 0;
-    outline: none;
-    min-width: 180px; /* Ensures space for the placeholder text */
-}
+    .regex-input-composite:focus {
+        outline: none;
+        border-color: #63B3ED;
+        box-shadow: 0 0 0 1px #63B3ED;
+    }
 
 pre {
     font-family: 'Consolas', 'Fira Code', monospace;
@@ -119,11 +121,12 @@ pre {
     padding: 1em;
     white-space: pre-wrap;
     word-wrap: break-word;
-    border: 1px solid var(--outline-grey);
+    border: 1px solid #333;
     border-radius: 4px;
-
+    margin-top: 0.5rem;
 }
 
+/* C# Syntax Highlighting Colors */
 .c-sharp .keyword {
     color: #569CD6;
 }
@@ -141,25 +144,5 @@ pre {
 }
 
 .c-sharp .comment {
-    color: #6A9955;
-}
-
-.keyword {
-    color: #569CD6;
-}
-
-.type {
-    color: #4EC9B0;
-}
-
-.identifier {
-    color: #9CDCFE;
-}
-
-.string {
-    color: #D69D85;
-}
-
-.comment {
     color: #6A9955;
 }

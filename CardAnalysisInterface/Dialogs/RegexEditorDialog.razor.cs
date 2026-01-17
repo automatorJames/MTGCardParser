@@ -1,18 +1,22 @@
-﻿using MTGPlexer.CommonDTOs;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
+using MTGPlexer.CommonDTOs;
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
 public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 {
     [Parameter]
-    public ProcessedLine Line { get; set; }
+    public ProcessedLine Line { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<string> OnClose { get; set; }
+    public EventCallback<string?> OnClose { get; set; }
 
     private string _renderedRegex = "";
-    private List<Match> _currentMatches = new List<Match>();
+    private List<Match> _currentMatches = new();
     private DynamicTokenType _dynamicTokenType;
 
     private bool _isDropdownVisible = false;
@@ -25,11 +29,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private string _textToReplaceForAutocomplete = "";
 
     private ElementReference _editorElement;
-    private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
+    private DotNetObjectReference<RegexEditorDialog>? _dotNetRef;
 
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
+
+        // Populate autocomplete source
+        _allTemplateTypes.Clear();
         _allTemplateTypes.AddRange(TokenTypeRegistry.AppliedOrderTypes);
         _allTemplateTypes.AddRange(TokenTypeRegistry.ReferencedEnumTypes);
         _allTemplateTypes = _allTemplateTypes.OrderBy(t => t.Name).ToList();
@@ -37,7 +44,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && _dotNetRef != null)
         {
             await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement);
         }
@@ -46,31 +53,33 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public void HideDropdown()
     {
-        _isDropdownVisible = false;
-        StateHasChanged();
+        if (_isDropdownVisible)
+        {
+            _isDropdownVisible = false;
+            StateHasChanged();
+        }
     }
 
     [JSInvokable]
-    public Task HandleGlobalEscape()
+    public async Task HandleGlobalEscape()
     {
         if (_isDropdownVisible)
         {
             _isDropdownVisible = false;
             StateHasChanged();
-            return Task.CompletedTask;
         }
         else
         {
-            return HandleCancel();
+            await HandleCancel();
         }
     }
 
     [JSInvokable]
     public void UpdateFromJavaScript(string rawText, string currentWord)
     {
-        _isEditorEmpty = string.IsNullOrEmpty(rawText);
+        _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
 
-        if (currentWord.StartsWith("@"))
+        if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
         {
             _textToReplaceForAutocomplete = currentWord;
             var filter = currentWord.Substring(1);
@@ -96,31 +105,32 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
-        if (!_isDropdownVisible)
-        {
-            return;
-        }
+        if (!_isDropdownVisible) return;
 
         switch (e.Key)
         {
             case "ArrowDown":
                 _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
-                StateHasChanged(); // This is needed to update the 'selected' class
                 await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
                 break;
             case "ArrowUp":
                 _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
-                StateHasChanged(); // This is needed to update the 'selected' class
                 await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
                 break;
             case "Enter":
             case "Tab":
-                if (_selectedSuggestionIndex != -1 && _autocompleteSuggestions.Count > _selectedSuggestionIndex)
+                if (_selectedSuggestionIndex >= 0 && _selectedSuggestionIndex < _autocompleteSuggestions.Count)
+                {
                     await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
+                }
+                break;
+            case "Escape":
+                _isDropdownVisible = false;
                 break;
         }
     }
 
+    // Renamed back to SelectSuggestionByKeyboard to match the Razor template
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
         string fullTokenText = $"@{selection.Name}";
@@ -132,31 +142,34 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private void UpdateRenderedRegexAndMatches(string patternToRender)
     {
         var logicalPattern = patternToRender.Trim();
-
         _showPreviewBoxes = logicalPattern.Contains("@");
-
-        if (!_showPreviewBoxes)
-        {
-            _renderedRegex = logicalPattern;
-            _dynamicTokenType = null;
-        }
 
         try
         {
             if (_showPreviewBoxes)
             {
-                // Replace nbsp; with space
-                var logicalPatternClean = logicalPattern.Replace('\u00A0', ' ');
-
-                _dynamicTokenType = new DynamicTokenType(logicalPatternClean);
+                var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
+                _dynamicTokenType = new DynamicTokenType(cleanPattern);
                 _renderedRegex = _dynamicTokenType.RenderedRegex;
             }
+            else
+            {
+                _renderedRegex = logicalPattern;
+                _dynamicTokenType = null;
+            }
 
-            _currentMatches = string.IsNullOrWhiteSpace(_renderedRegex)
-                ? new List<Match>()
-                : Regex.Matches(Line.SourceText.FormattedText, _renderedRegex).Cast<Match>().ToList();
+            if (!string.IsNullOrWhiteSpace(_renderedRegex) && _renderedRegex != "Error: Invalid template")
+            {
+                _currentMatches = Regex.Matches(Line.SourceText.FormattedText, _renderedRegex)
+                                       .Cast<Match>()
+                                       .ToList();
+            }
+            else
+            {
+                _currentMatches.Clear();
+            }
         }
-        catch (Exception)
+        catch
         {
             _renderedRegex = "Error: Invalid template";
             _currentMatches.Clear();
@@ -165,8 +178,11 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task HandleSubmit()
     {
-        TokenTypeRegistry.AddNewTypeAndSaveToDisk(_dynamicTokenType);
-        await OnClose.InvokeAsync();
+        if (_dynamicTokenType != null)
+        {
+            TokenTypeRegistry.AddNewTypeAndSaveToDisk(_dynamicTokenType);
+        }
+        await OnClose.InvokeAsync(_renderedRegex);
     }
 
     private Task HandleCancel() => OnClose.InvokeAsync(null);
@@ -175,7 +191,12 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (_dotNetRef != null)
         {
-            await JsRuntime.InvokeVoidAsync("disposeEditor");
+            try
+            {
+                await JsRuntime.InvokeVoidAsync("disposeEditor");
+            }
+            catch { /* Ignore JS errors during disposal */ }
+
             _dotNetRef.Dispose();
         }
     }

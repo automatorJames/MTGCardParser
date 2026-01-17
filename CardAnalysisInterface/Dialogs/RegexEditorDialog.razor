@@ -3,58 +3,79 @@
 
 <CustomDialog OnBackdropClick="HandleCancel">
     <DialogContent>
+        @* Header Section *@
         <div style="display:flex; align-items:baseline;">
             <span style="color: #A0AEC0; font-weight: 500; font-size: 28px; margin-bottom: 12px;">
                 @Line.SourceText.CorpusMemberName
             </span>
             <span class="small-box-label">@($"Line #{Line.SourceText.LineIndex + 1}")</span>
         </div>
+
         <div style="display: flex; flex-direction: column; gap: 16px;">
 
+            @* 1. THE TEXT PREVIEW (Layered) *@
             <div class="line-text-container">
+                @* Back Layer: Responsible for layout and Underline Highlights (Text is transparent) *@
                 <div class="text-layer-back">
                     @{
-                        int cursor = 0;
+                        int cursorBack = 0;
+                        string textBack = Line.SourceText.FormattedText;
                         foreach (var match in _currentMatches.OrderBy(m => m.Index))
                         {
-                            if (match.Index > cursor)
+                            if (match.Index > cursorBack)
                             {
-                                @Line.SourceText.FormattedText.Substring(cursor, match.Index - cursor)
+                                @textBack.Substring(cursorBack, match.Index - cursorBack)
                             }
                             <span class="highlight-token">@match.Value</span>
-                            cursor = match.Index + match.Length;
+                            cursorBack = match.Index + match.Length;
                         }
-                        if (cursor < Line.SourceText.FormattedText.Length)
+                        if (cursorBack < textBack.Length)
                         {
-                            @Line.SourceText.FormattedText.Substring(cursor)
+                            @textBack.Substring(cursorBack)
                         }
                     }
-                    <div class="text-layer-front">
-                        @{
-                            cursor = 0;
-                            foreach (var token in Line.SpanRoots.Select(x => x.RootToken).OrderBy(t => t.Match.RootMatch.Index))
+                </div>
+
+                @* Front Layer: Responsible for Syntax Coloring (Text is visible) *@
+                <div class="text-layer-front">
+                    @{
+                        int cursorFront = 0;
+                        string textFront = Line.SourceText.FormattedText;
+                        var tokens = Line.SpanRoots.Select(x => x.RootToken)
+                        .OrderBy(t => t.Match.RootMatch.Index);
+
+                        foreach (var token in tokens)
+                        {
+                            // Fill gap before the token
+                            if (token.Match.RootMatch.Index > cursorFront)
                             {
-                                if (token.Match.RootMatch.Index > cursor)
-                                {
-                                    @Line.SourceText.FormattedText.Substring(cursor, token.Match.RootMatch.Index - cursor)
-                                }
-                                var tokenText = Line.SourceText.FormattedText.Substring(token.Match.RootMatch.Index, token.Match.RootMatch.Index);
-                                var color = token.Type == typeof(DefaultUnmatchedString) ? "lightgray" : DeterministicPalette.TypePaletteSet[token.Type].Light;
-                                <span style=@($"color: {color}")>@tokenText</span>
-                                cursor = token.Match.RootMatch.Index + token.Match.RootMatch.Length;
+                                @textFront.Substring(cursorFront, token.Match.RootMatch.Index - cursorFront)
                             }
-                            if (cursor < Line.SourceText.FormattedText.Length)
-                            {
-                                @Line.SourceText.FormattedText.Substring(cursor)
-                            }
+
+                            // Calculate token text and color
+                            // FIX: Corrected Substring parameters (Start, Length)
+                            var tokenText = textFront.Substring(token.Match.RootMatch.Index, token.Match.RootMatch.Length);
+                            var color = token.Type == typeof(DefaultUnmatchedString)
+                            ? "#E2E8F0"
+                            : DeterministicPalette.TypePaletteSet[token.Type].Light;
+
+                            <span style="color: @color">@tokenText</span>
+                            cursorFront = token.Match.RootMatch.Index + token.Match.RootMatch.Length;
                         }
-                    </div>
+
+                        // Fill final gap
+                        if (cursorFront < textFront.Length)
+                        {
+                            @textFront.Substring(cursorFront)
+                        }
+                    }
                 </div>
             </div>
 
+            @* 2. THE INPUT SECTION *@
             <div>
                 <div class="autocomplete-container">
-                    <label for="regex-input-field">Regular expression template</label>
+                    <label for="regex-input-field" style="color: #A0AEC0; margin-bottom: 4px; display: block;">Regular expression template</label>
                     <div @ref="_editorElement"
                          @key=@("regexInputField")
                          id="regex-input-field"
@@ -72,9 +93,11 @@
                             {
                                 <div id="@($"autocomplete-item-{index}")"
                                      class="autocomplete-item @(index == _selectedSuggestionIndex ? "selected" : "")"
-                                     data-text-to-replace="@_textToReplaceForAutocomplete"
-                                     data-full-token-text="@($"@{suggestedType.Name}")">
-                                    <span class="type-name" style=@($"color: {DeterministicPalette.TypePaletteSet[suggestedType].Normal}; {(suggestedType.IsEnum ? "font-style: italic" : "normal")};")>@suggestedType.Name</span>
+                                     @onclick="() => SelectSuggestionByKeyboard(suggestedType)">
+
+                                    <span class="type-name" style="color: @DeterministicPalette.TypePaletteSet[suggestedType].Normal; @(suggestedType.IsEnum ? "font-style: italic" : "")">
+                                        @suggestedType.Name
+                                    </span>
                                     <span class="type-kind">@(suggestedType.IsEnum ? "Enum" : "Token Type")</span>
                                 </div>
                             }
@@ -82,35 +105,52 @@
                     }
                 </div>
 
+                @* 3. PREVIEW BOXES *@
                 @if (_showPreviewBoxes)
                 {
-                    <br /> <br />
-                    <div style="border-top: 1px dashed var(--outline-grey)" />
-                    <br />
-                    <div style="display: flex; flex-direction: column;">
-                        <div class="small-box-label right">Rendered regex</div>
-                        <div class="rendered-regex-box"> <pre>@_renderedRegex</pre> </div>
-                        <br />
-                        <div class="small-box-label right">C# class preview</div>
-                        <div class="rendered-regex-box"> <pre class="c-sharp">@(new MarkupString(_dynamicTokenType.ClassStringStyled))</pre> </div>
+                    <div style="margin-top: 24px;">
+                        <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
+
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div>
+                                <div class="small-box-label right">Rendered regex</div>
+                                <div class="rendered-regex-box"><pre>@_renderedRegex</pre></div>
+                            </div>
+
+                            <div>
+                                <div class="small-box-label right">C# class preview</div>
+                                <div class="rendered-regex-box">
+                                    <pre class="c-sharp">@(new MarkupString(_dynamicTokenType?.ClassStringStyled ?? ""))</pre>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 }
             </div>
         </div>
     </DialogContent>
+
     <DialogActions>
         <button class="btn btn-secondary" @onclick="HandleCancel">Cancel</button>
         <button class="btn btn-primary" @onclick="HandleSubmit">Preview</button>
     </DialogActions>
 </CustomDialog>
 
-<!-- This defines the appearance of the "tokens" -->
 <style>
+    /* Inline styles for components within the razor */
     .token-style {
-        background-color: #4A5568; /* A neutral, dark gray */
+        background-color: #4A5568;
         color: white;
         padding: 1px 5px;
         border-radius: 4px;
         font-family: Consolas, monaco, monospace;
+    }
+
+    /* Placeholder logic for contenteditable */
+    [contenteditable=true]:empty:before {
+        content: attr(placeholder);
+        color: #718096;
+        pointer-events: none;
+        display: block;
     }
 </style>
