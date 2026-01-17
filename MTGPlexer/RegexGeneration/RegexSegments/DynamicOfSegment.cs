@@ -1,67 +1,59 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using System.Text.RegularExpressions;
 
-public record DynamicOfSegment : ScalarCaptureSegmentBase
+namespace MTGPlexer.RegexGeneration.RegexSegments;
+
+public record DynamicOfSegment : XOfSegmentBase
 {
-    CaptureGroupSegmentBase _regexProp;
+    ScalarAlternateSet _scalarAlternativeSet;
 
 	public DynamicOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
-    }
+        if (!GenericType.IsAssignableTo(typeof(TokenUnit)))
+            throw new Exception($"{nameof(DynamicOfSegment)} only supports {nameof(TokenUnit)} types");
+
+		if (TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(captureProp, out var scalarAlternativeSet))
+			_scalarAlternativeSet = scalarAlternativeSet;
+		else
+		{
+			var captureAlternatives =
+				captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns // Respect RegexPattern override if present
+				?? [@"[^.]+"];                                                         // Otherwise default to "one or more non-period characters"
+
+			_scalarAlternativeSet = new(captureAlternatives.ToList());
+		}
+	}
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenGroup(TemplatePropInfo);
-        builder.AddAlternateValues(ScalarAlternativeSet.Alternates);
+        builder.AddAlternateValues(_scalarAlternativeSet.Alternates);
         builder.CloseGroup();
     }
 
-    protected override void SetScalarAlternativeSet(TemplatePropInfo captureProp)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
-        var captureAlternatives =
-            captureProp.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns // Respect RegexPattern override if present
-            ?? [@"[^.]+"];                                                             // Otherwise default to "one or more non-period characters"
-            
-        ScalarAlternativeSet = new(captureAlternatives.ToList());
+		var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(
+			parentTokenUnitMatch.SourceText, 
+			scopeToType: GenericType, 
+			scopeStart: scopedCapture.Index, 
+			scopeEnd: scopedCapture.Index + scopedCapture.Length);
+
+		// Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
+		if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
+		{
+			result = ValueResult.DynamicResolutionFailure;
+			return null;
+		}
+
+		//// Although the dynamic match must begin exactly where the parent match left off, it's allowed to be shorter than the remaining space in the parent.
+		//// When this occurs, shorten the parent match so that it ends where its dynamic child stops, allowing following tokens to be matched by something else.
+		//if (dynamicMatchToken.Match.AbsoluteEnd != match.Index + match.Length)
+		//	match = regex.Match(sourceText.FormattedText, currentIndex, dynamicMatchToken.Match.AbsoluteEnd - match.Index);
+		PolyItemCapture hydratedItem = new(dynamicMatchToken, scopedCapture, TemplatePropInfo);
+		var closedType = typeof(DynamicOf<>).MakeGenericType(GenericType);
+		var dynamicOfInstance = Activator.CreateInstance(closedType, hydratedItem, scopedCapture);
+
+		result = ValueResult.Success;
+		return dynamicOfInstance;
     }
-
-    public bool SetValueFromPrefilledDynamicToken(TokenUnit token, object prefilledValue)
-    {
-        var genericType = TemplatePropInfo.Prop.PropertyType.GenericTypeArguments[0];
-
-        if (!genericType.IsAssignableTo(typeof(TokenUnit)) || prefilledValue is not TokenUnit prefilledTokenUnitValue)
-            throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
-
-        var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
-        var capture = new ExtractedCapture(prefilledTokenUnitValue.Match.RootMatch);
-        PolyItemCapture polyItemCapture = new(prefilledValue, capture, TemplatePropInfo);
-        var dynamicTokenInstance = Activator.CreateInstance(closedType, polyItemCapture, capture);
-        token.SetPropertyFromCapture(TemplatePropInfo, capture, dynamicTokenInstance);
-
-        return true;
-    }
-
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
-    {
-        // This type is a special case. Since the Tokenizer preemptively passes TokenUnit a Dictionary of dynamic segment values,
-        // TokenUnit sets them directly instead of the "normal" way here. Therefore we return null, which will cause the base to 
-        // effectively "no-op".
-    
-        return null;
-    }
-
-    //public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
-    //{
-	//	var genericType = TemplatePropInfo.Prop.PropertyType.GenericTypeArguments[0];
-    //
-	//	if (!genericType.IsAssignableTo(typeof(TokenUnit)))
-	//		throw new NotImplementedException($"Haven't yet implemented support for dynamic captures of types of other than TokenUnit types");
-    //
-	//	var childItem = _regexProp.GetPropertyValue(parentTokenUnitMatch, scopedCapture);
-	//	PolyItemCapture hydratedItem = new(childItem, scopedCapture, TemplatePropInfo);
-    //
-	//	var closedType = typeof(DynamicOf<>).MakeGenericType(genericType);
-	//	//var dynamicTokenInstance = Activator.CreateInstance(closedType, prefilledValue, prefilledTokenUnitValue.Match.RootMatch.UnderlyingMatchObject);
-	//	return null;
-    //}
-
 }

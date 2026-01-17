@@ -3,9 +3,7 @@
 public record CompoundOfSegment : XOfSegmentBase
 {
     CaptureGroupSegmentBase _regexProp;
-    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[GenericType];
-
-
+    
     public CompoundOfSegment(TemplatePropInfo captureProp) : base(captureProp)
     {
         var derivedPropInfo = captureProp.DeriveForXOfItem();
@@ -28,7 +26,7 @@ public record CompoundOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         List<PolyItemCapture> hydratedItems = [];
         var scopedCaptures = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name];
@@ -37,7 +35,7 @@ public record CompoundOfSegment : XOfSegmentBase
         {
             var ordinalCapture = scopedCaptures[i];
             MatchTraversalState state = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
-            var childItem = _regexProp.GetPropertyValue(state, ordinalCapture);
+            var childItem = _regexProp.GetPropertyValue(state, ordinalCapture, out var ordinalResult);
             PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
             hydratedItems.Add(hydratedItem);
         }
@@ -45,6 +43,7 @@ public record CompoundOfSegment : XOfSegmentBase
         var compoundType = typeof(CompoundOf<>).MakeGenericType(GenericType);
         var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
 
+        result = ValueResult.Success;
         return compoundPropVal;
     }
 

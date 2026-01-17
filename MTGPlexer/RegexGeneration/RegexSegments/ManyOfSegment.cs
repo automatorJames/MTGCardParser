@@ -56,7 +56,7 @@ public record ManyOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         List<PolyItemCapture> hydratedItems = [];
         MatchTraversalState manyOfContainerState = new(null, parentTokenUnitMatch, LeafName);
@@ -80,7 +80,7 @@ public record ManyOfSegment : XOfSegmentBase
             for (int j = 0; j < sectionGroupCaptures.Length; j++)
             {
                 var ordinalCapture = sectionGroupCaptures[j];
-                var childItem = ordinalProp.GetPropertyValue(manyOfContainerState, ordinalCapture);
+                var childItem = ordinalProp.GetPropertyValue(manyOfContainerState, ordinalCapture, out var ordinalResult);
                 PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
                 hydratedItems.Add(hydratedItem);
             }
@@ -94,7 +94,8 @@ public record ManyOfSegment : XOfSegmentBase
     
         var manyTokenType = typeof(ManyOf<>).MakeGenericType(TemplatePropInfo.GenericTypes);
         var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
-    
+
+        result = ValueResult.Success;
         return manyPropVal;
     }
 

@@ -48,11 +48,14 @@ public record EnumSegment : ScalarCaptureSegmentBase
         ScalarAlternativeSet = EnumSet;
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         foreach (var enumAlternative in EnumSet.EnumAlternates)
             if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))
+            {
+                result = ValueResult.Success;
                 return enumAlternative.EnumValue;
+            }
 
         throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{scopedCapture.Value}'");
     }

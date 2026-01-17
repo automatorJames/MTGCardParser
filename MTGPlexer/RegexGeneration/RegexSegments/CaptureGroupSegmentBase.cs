@@ -16,28 +16,33 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
         TemplatePropInfo = captureProp;
     }
 
-    public bool TrySetOnParent(TokenUnit parentTokenUnit, MatchTraversalState state)
+    public ValueResult TrySetOnParent(TokenUnit parentTokenUnit, MatchTraversalState state)
     {
         //var scopedCapture = parentTokenUnit.Match[LeafName].SingleOrDefault();
         var scopedCapture = parentTokenUnit.Match.GetScopedCapture(LeafName, state);
 
-
         if (scopedCapture == null)
-            return false;
+            return ValueResult.NamedCaptureNotFound;
 
-        var propertyValue = GetPropertyValue(parentTokenUnit.Match, scopedCapture);
+        var propertyValue = GetPropertyValue(parentTokenUnit.Match, scopedCapture, out ValueResult result);
 
-        if (propertyValue == null)
-            return false;
+        if (result == ValueResult.Success)
+            parentTokenUnit.SetPropertyFromCapture(TemplatePropInfo, scopedCapture, propertyValue);
 
-        parentTokenUnit.SetPropertyFromCapture(TemplatePropInfo, scopedCapture, propertyValue);
-
-        return true;
+        return result;
     }
 
-    public abstract object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture);
+    public abstract object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result);
 
 
     public override string ToString() => base.ToString();
 
+}
+
+public enum ValueResult
+{
+    NamedCaptureNotFound,
+    DynamicResolutionFailure,
+    Failure,
+    Success,
 }

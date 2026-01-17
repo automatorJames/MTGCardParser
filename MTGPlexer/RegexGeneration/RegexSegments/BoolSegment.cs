@@ -18,11 +18,12 @@ public record BoolSegment : ScalarCaptureSegmentBase
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         // This override simply returns "true", because CaptureGroupPropBase already validated
         // that the named group exists, therefore this bool check succeeds
 
+        result = ValueResult.Success;
         return true;
     }
 }

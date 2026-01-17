@@ -41,7 +41,7 @@ public record OneOfSegment : XOfSegmentBase
         builder.CloseGroup();
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         PolyItemCapture foundPolyMatchValue = null;
         int foundPropIndex = 0;
@@ -55,7 +55,7 @@ public record OneOfSegment : XOfSegmentBase
                 continue;
 
             MatchTraversalState state = new(GenericType, parentTokenUnitMatch, regexProp.LeafName);
-            var childItem = regexProp.GetPropertyValue(state, oneOfItemVariantCapture);
+            var childItem = regexProp.GetPropertyValue(state, oneOfItemVariantCapture, out var ordinalResult);
             foundPolyMatchValue = new(childItem, oneOfItemVariantCapture, TemplatePropInfo);
 
             goto ItemHasBeenFound;
@@ -75,7 +75,8 @@ public record OneOfSegment : XOfSegmentBase
 
         var oneOfCaptureType = genericTypeDefinition.MakeGenericType(_regexProps.Select(x => x.TemplatePropInfo.UnderlyingType).ToArray());
         var oneOfPropVal = Activator.CreateInstance(oneOfCaptureType, foundPolyMatchValue, foundPropIndex);
-        
+
+        result = ValueResult.Success;
         return oneOfPropVal;
     }
 

@@ -26,15 +26,16 @@ public record OptionalOfSegment : XOfSegmentBase
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
+    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         var itemCapture = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name].Single();
         MatchTraversalState typeMatch = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
-        var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch);
+        var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch, out var localResult);
         PolyItemCapture hydratedItem = new(tokenUnitChild, itemCapture, TemplatePropInfo);
         var optionalType = typeof(OptionalOf<>).MakeGenericType(GenericType);
         var optionalPropVal = Activator.CreateInstance(optionalType, hydratedItem);
 
+        result = ValueResult.Success;
         return optionalPropVal;
     }
 

@@ -19,21 +19,15 @@ public class Tokenizer
         }
     }
 
-    public List<TokenUnit> Tokenize(SourceTextDTO sourceText, Group scopeToGroup = null, Type scopeToType = null)
+    public List<TokenUnit> Tokenize(SourceTextDTO sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
     {
         if (string.IsNullOrEmpty(sourceText.FormattedText))
             throw new Exception("Source text may not be null or empty");
 
         var tokens = new List<TokenUnit>();
-        int currentIndex = 0;
-        int endIndex = sourceText.FormattedText.Length;
+        int currentIndex = scopeStart ?? 0;
+        int endIndex = scopeEnd ?? sourceText.FormattedText.Length;
         int unmatchedStartIndex = -1;
-
-        if (scopeToGroup != null)
-        {
-            currentIndex = scopeToGroup.Index;
-            endIndex = scopeToGroup.Index + scopeToGroup.Length;
-        }
 
         while (currentIndex < endIndex)
         {
@@ -63,59 +57,25 @@ public class Tokenizer
                     // **Boundary Check**: 
                     // To avoid mid-word partial matches, the match is only valid if it extends 
                     // exactly to the end of the line, or is followed by a space or period.
-                    bool endsAtBoundary = matchEndIndex == endIndex ||
-                                         (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText.FormattedText[matchEndIndex]));
+                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText.FormattedText[matchEndIndex]));
 
                     if (!endsAtBoundary)
                         goto NextIteration;
 
-                    var thing = TokenTypeRegistry.Templates[type].RegexSegments;
-
-                    Dictionary<DynamicOfSegment, object> dynamicPrefilledValues = TokenTypeRegistry.Templates[type].RegexSegments
-                            .OfType<DynamicOfSegment>()
-                            .ToDictionary(x => x, x => (object)null);
-
-                    // Dynamic capture handling
-                    if (dynamicPrefilledValues.Any())
-                    {
-                        // todo: I see no reason why we couldn't support any number of dynamics; just need to handle the spacing and ordering correctly/
-                        if (dynamicPrefilledValues.Count > 1)
-                            throw new NotImplementedException($"Type '{type.Name}' has {dynamicPrefilledValues.Count} dynamic properties, but the max supported is 1");
-
-                        var dynamicProp = dynamicPrefilledValues.First().Key;
-                        var dynamicGroup = match.Groups[dynamicProp.LeafName];
-
-                        if (!dynamicGroup.Success)
-                            goto NextIteration;
-
-                        var dynamicType = dynamicProp.TemplatePropInfo.UnderlyingType.GenericTypeArguments[0];
-
-                        // Recursive call to resolve the dynamic portion
-                        var tokenSet = Tokenize(sourceText, dynamicGroup, dynamicType);
-
-                        // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
-                        if (tokenSet.First() is DefaultUnmatchedString || tokenSet.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
-                            goto NextIteration;
-
-                        // Although the dynamic match must begin exactly where the parent match left off, it's allowed to be shorter than the remaining space in the parent.
-                        // When this occurs, shorten the parent match so that it ends where its dynamic child stops, allowing following tokens to be matched by something else.
-                        if (dynamicMatchToken.Match.AbsoluteEnd != match.Index + match.Length)
-                            match = regex.Match(sourceText.FormattedText, currentIndex, dynamicMatchToken.Match.AbsoluteEnd - match.Index);
-
-                        dynamicPrefilledValues[dynamicProp] = dynamicMatchToken;
-                    }
-
                     // --- COMMIT PHASE ---
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
-                    MatchTraversalState typeMatch = new(type, match);
-                    var token = TokenUnit.InstantiateFromMatch(typeMatch, dynamicPrefilledValues);
-                    tokens.Add(token);
+                    MatchTraversalState typeMatch = new(type, match, sourceText);
+                    var token = TokenUnit.InstantiateFromMatch(typeMatch, out var result);
 
-                    currentIndex = match.Index + match.Length;
-                    unmatchedStartIndex = -1;
-                    matched = true;
-                    break;
+                    if (result == ValueResult.Success)
+                    {
+                        tokens.Add(token);
+                        currentIndex = match.Index + match.Length;
+                        unmatchedStartIndex = -1;
+                        matched = true;
+                        break;
+                    }
                 }
 
             NextIteration:;
@@ -161,8 +121,8 @@ public class Tokenizer
             Match unmatchedMatch = regex.Match(sourceText.FormattedText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                MatchTraversalState typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch);
-                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch);
+                MatchTraversalState typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch, sourceText);
+                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch, out var result);
                 tokens.Add(unmatchedTokenUnit);
             }
         }

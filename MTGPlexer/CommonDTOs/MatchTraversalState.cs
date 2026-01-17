@@ -34,11 +34,12 @@ public record MatchTraversalState
     public MatchTraversalState Parent { get; }
 
     public ExtractedCapture Capture { get; }
+    public SourceTextDTO SourceText { get; }
 
     /// <summary>
     /// Constructor called by Tokenizer for top-level "root" matches with no TokenUnit parent.
     /// </summary>
-    public MatchTraversalState(Type type, Match match)
+    public MatchTraversalState(Type type, Match match, SourceTextDTO sourceText)
     {
         ArgumentNullException.ThrowIfNull(match);
 
@@ -47,6 +48,7 @@ public record MatchTraversalState
         CapturePath = new(type.Name);
         AbsoluteEnd = match.Index + match.Length;
         Capture = new(match, "root");
+        SourceText = sourceText;
     }
 
     /// <summary>
@@ -60,6 +62,7 @@ public record MatchTraversalState
         CapturePath = parentTokenUnitMatch.CapturePath.Append(pathNameToAppend);
         AbsoluteEnd = parentTokenUnitMatch.AbsoluteEnd;
         Capture = scopedCapture ?? parentTokenUnitMatch[pathNameToAppend].FirstOrDefault();
+        SourceText = parentTokenUnitMatch.SourceText;
     }
 
     /// <summary>

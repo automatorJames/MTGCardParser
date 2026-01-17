@@ -5,6 +5,8 @@ public abstract record XOfSegmentBase : CaptureGroupSegmentBase
     public Type[] GenericTypes { get; set; }
     protected Type GenericType { get; set; }
 
+    public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[GenericType];
+
     public XOfSegmentBase(TemplatePropInfo captureProp) : base(captureProp)
     {
         GenericTypes = captureProp.GenericTypes;

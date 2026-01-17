@@ -31,39 +31,37 @@ public abstract class TokenUnit
         // Base implementation requires no actions post-hydration
     }
 
-    public static TokenUnit InstantiateFromMatch(MatchTraversalState state, Dictionary<DynamicOfSegment, object> prefilledDynamicValues = null)
+    public static TokenUnit InstantiateFromMatch(MatchTraversalState state, out ValueResult result)
     {
         if (!state.Type.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"Type '{state.Type.Name}' isn't a {nameof(TokenUnit)} type");
-
-        prefilledDynamicValues ??= [];
 
         var tokenUnitInstance = (TokenUnit)Activator.CreateInstance(state.Type);
         tokenUnitInstance.Match = state;
 
         if (!TokenTypeRegistry.Templates.TryGetValue(state.Type, out var template))
-            return tokenUnitInstance;
+            throw new Exception($"No regex template registered for type '{state.Type.Name}'");
 
         foreach (var captureProp in template.CaptureGroupProps)
         {
-            if (captureProp is DynamicOfSegment dynamicRegexProp && prefilledDynamicValues.TryGetValue(dynamicRegexProp, out object prefilledValue))
-                dynamicRegexProp.SetValueFromPrefilledDynamicToken(tokenUnitInstance, prefilledValue);
-            else
-            {
-                var setSuccessfully = captureProp.TrySetOnParent(tokenUnitInstance, state);
+            var propSetResult = captureProp.TrySetOnParent(tokenUnitInstance, state);
 
-                // If this is a dynamic prop that failed to match any type regex, the parent TokenUnit is
-                // invalid. The reason we check for a valid match this late in the processing pipeline is that
-                // we don't want the tokenizer to be responsible for resolving the dynamic property to a match
-                // itself, since that would require double work (i.e. first iterate through all regexes to confirm a match,
-                // then later iterate through all again to actually assign the match value within in this method).
-                if (!setSuccessfully && captureProp.TemplatePropInfo.TemplatePropType == TemplatePropType.Dynamic)
-                    return null;
+            // If this is a dynamic prop that failed to match any type regex, the parent TokenUnit is
+            // invalid. The reason we check for a valid match this late in the processing pipeline is that
+            // we don't want the tokenizer to be responsible for resolving the dynamic property to a match
+            // itself, since that would require double work (i.e. first iterate through all regexes to confirm a match,
+            // then later iterate through all again to actually assign the match value within in this method).
+
+            if (propSetResult == ValueResult.DynamicResolutionFailure)
+            {
+                result = propSetResult;
+                return null;
             }
         }
 
         tokenUnitInstance.OnAfterHydrated();
 
+        result = ValueResult.Success;
         return tokenUnitInstance;
     }
 
