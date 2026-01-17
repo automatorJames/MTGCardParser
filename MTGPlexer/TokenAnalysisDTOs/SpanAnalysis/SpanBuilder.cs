@@ -74,14 +74,14 @@ public static class SpanBuilder
     {
         // 1. Prepare context for child: Clear inherited prefixes, but push the Type as a Suffix
         // This ensures when the child calls FormatName("Action"), it gets "Action: Specific Action"
-        var typeName = dynamicCapture.ValueObject.GetType().Name;
+        var typeName = dynamicCapture.Item.Value.GetType().Name;
         var childCtx = ctx.ClearNameChain().PushSuffix(typeName);
 
-        SpanNode innerNode = dynamicCapture.ValueObject switch
+        SpanNode innerNode = dynamicCapture.Item.Value switch
         {
             TokenUnitOneOf val => BuildTokenUnitOneOfBranch(val, prop, childCtx),
             TokenUnit val => BuildTokenUnitBranch(val, prop, childCtx),
-            _ => BuildLeaf(prop, childCtx, dynamicCapture.ValueObject.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
+            _ => BuildLeaf(prop, childCtx, dynamicCapture.Item.Value.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
         };
 
         // 2. Return the branch. The branch name itself is just the prop name

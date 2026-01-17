@@ -59,7 +59,7 @@ public record ManyOfSegment : XOfSegmentBase
     public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
         List<PolyItemCapture> hydratedItems = [];
-        MatchTraversalState masterState = new(null, parentTokenUnitMatch, LeafName);
+        MatchTraversalState manyOfContainerState = new(null, parentTokenUnitMatch, LeafName);
     
         for (int i = 0; i < _ordinalRegexProps.Length; i++)
         {
@@ -68,7 +68,7 @@ public record ManyOfSegment : XOfSegmentBase
 
             // In manyof captures, "namedGroup" is the parent capture (at the many-of container level),
             // but the actual item captures reside in the next level down at the ordinal level.
-            var sectionGroupCaptures = masterState[manyItemOrdinal.ToString()];
+            var sectionGroupCaptures = manyOfContainerState[manyItemOrdinal.ToString()];
     
             // an empty section group should only possibly occur for the second second
             if (sectionGroupCaptures.Length == 0)
@@ -79,14 +79,8 @@ public record ManyOfSegment : XOfSegmentBase
             // "last" will always have 1 item
             for (int j = 0; j < sectionGroupCaptures.Length; j++)
             {
-                if (ordinalProp is TokenUnitSegment)
-                {
-                    MatchTraversalState typeMatch = new(GenericType, masterState, manyItemOrdinal.ToString());
-                    var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
-                }
-
                 var ordinalCapture = sectionGroupCaptures[j];
-                var childItem = ordinalProp.GetPropertyValue(masterState, ordinalCapture);
+                var childItem = ordinalProp.GetPropertyValue(manyOfContainerState, ordinalCapture);
                 PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
                 hydratedItems.Add(hydratedItem);
             }

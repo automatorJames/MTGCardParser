@@ -37,6 +37,7 @@ public static partial class TokenTypeRegistry
 
     public static RegexTemplate GetTypeTemplate(Type type)
     {
+        Debug.WriteLine(type.Name);
         if (!Templates.ContainsKey(type))
             SetTypeTemplate(type);
 

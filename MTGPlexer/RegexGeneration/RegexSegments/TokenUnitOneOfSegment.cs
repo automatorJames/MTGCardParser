@@ -23,8 +23,6 @@ public record TokenUnitOneOfSegment : TokenUnitSegment
 
     public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture)
     {
-        if (scopedCapture.Value == "first strike") Debugger.Break();
-
         MatchTraversalState typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnitMatch, TemplatePropInfo.Name, scopedCapture);
         var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch);
 
