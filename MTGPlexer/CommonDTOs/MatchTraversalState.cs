@@ -27,7 +27,7 @@ public record MatchTraversalState
     /// of captures this instance is allowed to return given a fully-qualified capture group name. In other words, this
     /// value disambiguates which "capture path" to choose when a fully-qualified named group "node" contains multipled captures.
     /// </summary>
-    public int CaptureOrdinal { get; }
+    public int CaptureOrdinal { get; init; }
 
     /// <summary>
     /// A convenience method that exposes the index of the end of this instance's match within the full original SourceText.
