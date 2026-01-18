@@ -43,16 +43,11 @@
     color: var(--unmatched-default);
 }
 
-/* 
-   We define the underline offset separately as it's not part of the shorthand,
-   but we combine line, style, color, and thickness into a single property.
-*/
 .line-text-container .highlight-token {
     text-underline-offset: 4px !important;
 }
 
     .line-text-container .highlight-token.full-match {
-        /* Shorthand syntax: [line] [style] [color] [thickness] */
         text-decoration: underline solid var(--match-full-underline) 2px !important;
     }
 
@@ -135,26 +130,6 @@
         box-shadow: 0 0 0 1px var(--highlight-blue);
     }
 
-/* TOKEN PILL STYLES */
-.token-style {
-    display: inline-flex;
-    align-items: center;
-    padding: 0px 6px;
-    margin: 0 1px;
-    border-radius: 4px;
-    font-family: Consolas, monospace;
-    color: white;
-    user-select: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    cursor: pointer;
-    transition: background-color 0.1s ease;
-}
-
-    .token-style.token-selected {
-        border-color: #FBD38D;
-        box-shadow: 0 0 0 1px #FBD38D;
-    }
-
 pre {
     font-family: 'Consolas', 'Fira Code', monospace;
     background: #1e1e1e;
@@ -211,4 +186,85 @@ pre {
     margin-left: auto;
     text-align: right;
     white-space: nowrap;
+}
+
+/* CLASS NAME EDITOR STYLES - PIXEL PERFECT SYNC */
+.class-name-wrapper {
+    display: inline-block; /* Changed from flex to block for fit-content behavior */
+    width: fit-content;
+    height: 32px;
+    vertical-align: bottom;
+    box-sizing: border-box;
+}
+
+.class-name-display, .class-name-grid, .class-name-input, .grid-sizer {
+    font-family: 'Consolas', 'Monaco', monospace !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    line-height: 20px !important;
+    box-sizing: border-box !important;
+}
+
+.class-name-display {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    border-bottom: 2px solid transparent; /* invisible but takes space to prevent jitter */
+}
+
+    .class-name-display:hover {
+        background-color: rgba(99, 179, 237, 0.1);
+    }
+
+    .class-name-display .name-text {
+        color: var(--highlight-blue);
+        border-bottom: 1px dashed rgba(99, 179, 237, 0.4);
+    }
+
+    .class-name-display .edit-icon {
+        font-size: 0.75rem;
+        color: var(--outline-grey);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .class-name-display:hover .edit-icon {
+        opacity: 1;
+    }
+
+.class-name-grid {
+    display: inline-grid;
+    width: fit-content;
+    position: relative;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08); /* Faint highlight */
+    overflow: hidden;
+}
+
+.grid-sizer {
+    grid-area: 1 / 1;
+    visibility: hidden;
+    white-space: pre; /* Essential to match input width exactly */
+    padding: 4px 8px;
+    border-bottom: 2px solid transparent;
+}
+
+.class-name-input {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #63B3ED; /* Hardcoded blue */
+    color: #63B3ED !important; /* Force blue text */
+    caret-color: #63B3ED;
+    outline: none;
+    padding: 4px 8px;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
 }

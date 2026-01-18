@@ -2,6 +2,10 @@
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 using MTGPlexer.TokenUnitComponents;
 using MTGPlexer.TokenUnits;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
+using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -15,11 +19,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     string _renderedRegex = "";
     string _className = $"New{nameof(TokenUnit)}";
+    string _currentRawPattern = "";
     List<RegexSegment> _regexSegments = new();
     List<Match> _currentMatches = new();
     DynamicTokenType _dynamicTokenType;
 
     bool _isDropdownVisible = false;
+    bool _isEditingClassName = false;
+    bool _shouldFocusClassName = false;
     List<Type> _allTemplateTypes = new();
     List<Type> _autocompleteSuggestions = new();
     int _selectedSuggestionIndex = -1;
@@ -58,6 +65,48 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             );
             await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement, colorMap);
         }
+
+        if (_isEditingClassName && _shouldFocusClassName)
+        {
+            _shouldFocusClassName = false;
+            await JsRuntime.InvokeVoidAsync("eval", @"
+                (function() {
+                    const el = document.querySelector('.class-name-input');
+                    if (el) {
+                        el.focus();
+                        const val = el.value;
+                        el.value = '';
+                        el.value = val;
+                    }
+                })()");
+        }
+    }
+
+    private void StartEditingClassName()
+    {
+        _isEditingClassName = true;
+        _shouldFocusClassName = true;
+    }
+
+    private void StopEditingClassName()
+    {
+        if (!_isEditingClassName) return;
+        _isEditingClassName = false;
+        UpdateRenderedRegexAndMatches(_currentRawPattern);
+        StateHasChanged();
+    }
+
+    private void HandleClassNameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            StopEditingClassName();
+        }
+        else if (e.Key == "Escape")
+        {
+            _isEditingClassName = false;
+            StateHasChanged();
+        }
     }
 
     private List<TextSegment> GetProcessedSegments()
@@ -69,7 +118,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         var charStatus = new MatchStatus[text.Length];
         for (int i = 0; i < text.Length; i++) charStatus[i] = MatchStatus.None;
 
-        // 1. Identify "word" spans (strings of non-whitespace)
         var words = new List<(int Start, int End)>();
         int? wordStart = null;
         for (int i = 0; i <= text.Length; i++)
@@ -83,60 +131,45 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             }
         }
 
-        // 2. Evaluate every match against word boundaries
         foreach (var m in _currentMatches)
         {
             int mStart = m.Index;
             int mEnd = m.Index + m.Length - 1;
-
-            // Find words that overlap with this specific match
             var overlappingWords = words.Where(w => mStart <= w.End && mEnd >= w.Start);
 
             foreach (var word in overlappingWords)
             {
                 int strippedEnd = (text[word.End] == '.') ? word.End - 1 : word.End;
-
-                // Full Match Check: Match covers word OR match covers word minus trailing period
                 bool coversFull = (mStart <= word.Start && mEnd >= word.End);
                 bool coversStripped = (mStart <= word.Start && mEnd == strippedEnd && strippedEnd < word.End);
 
                 if (coversFull || coversStripped)
                 {
-                    // Only mark characters that are actually PART of the regex match as Full
                     for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
-                    {
                         charStatus[k] = MatchStatus.Full;
-                    }
                 }
                 else
                 {
-                    // Otherwise, it's a partial match for this word
                     for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
-                    {
-                        // Don't downgrade an existing Full status from a different match
                         if (charStatus[k] == MatchStatus.None) charStatus[k] = MatchStatus.Partial;
-                    }
                 }
             }
 
-            // Handle characters in match that aren't part of words (like leading/trailing spaces in the pattern)
             for (int k = mStart; k <= mEnd; k++)
             {
                 if (charStatus[k] == MatchStatus.None)
                 {
-                    // Check if this space connects two Full segments
                     bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
                     bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
 
                     if (leftFull && rightFull && char.IsWhiteSpace(text[k]))
                         charStatus[k] = MatchStatus.Full;
                     else
-                        charStatus[k] = MatchStatus.Partial; // Default for match chars not in "Full" words
+                        charStatus[k] = MatchStatus.Partial;
                 }
             }
         }
 
-        // 3. Create visual segments
         for (int i = 0; i < text.Length; i++)
         {
             string color;
@@ -174,9 +207,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         for (int i = 1; i < source.Count; i++)
         {
             if (source[i].Color == current.Color && source[i].UnderlineClass == current.UnderlineClass)
-            {
                 current = current with { Text = current.Text + source[i].Text };
-            }
             else
             {
                 result.Add(current);
@@ -215,6 +246,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public void UpdateFromJavaScript(string rawText, string currentWord)
     {
         _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
+        _currentRawPattern = rawText;
 
         if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
         {
@@ -267,9 +299,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             case "Enter":
             case "Tab":
                 if (_selectedSuggestionIndex >= 0 && _selectedSuggestionIndex < _autocompleteSuggestions.Count)
-                {
                     await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
-                }
                 break;
             case "Escape":
                 _isDropdownVisible = false;
@@ -288,7 +318,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private void UpdateRenderedRegexAndMatches(string patternToRender)
     {
         _currentMatches.Clear();
-
         var logicalPattern = patternToRender.Trim();
         _showPreviewBoxes = logicalPattern.Contains("@");
 
