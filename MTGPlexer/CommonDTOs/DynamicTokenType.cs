@@ -14,7 +14,7 @@ public class DynamicTokenType
     public DynamicTokenType(string templateString, string className = null)
     {
         ClassName = className ?? "NewTokenType";
-        RenderedRegex = RegexTemplate.TemplateToRegex<TokenUnit>(templateString);
+        RenderedRegex = RegexTemplate.TemplateStringToRegex<TokenUnit>(templateString);
         BuildClassFile(templateString);
     }
 

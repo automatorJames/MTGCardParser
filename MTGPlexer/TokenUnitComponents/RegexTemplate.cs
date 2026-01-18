@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿using System.Linq;
+
+namespace MTGPlexer.TokenUnitComponents;
 
 public class RegexTemplate
 {
@@ -57,30 +59,56 @@ public class RegexTemplate
     }
 
     /// <summary>
-    /// Takes a string like "these are my template @Type snippets", converts them into a set of RegexSegment bases,
-    /// then uses the appropriate Composer strategy to generate a regex string. Used for rendering templated 
-    /// regex patterns for preview without commiting emitted types to the runtime.
+    /// Takes a string like "these are my template @Type snippets with interspersed Opt(snippet shortcuts)", 
+    /// converts them into a set of RegexSegment bases, then uses the appropriate Composer strategy to generate 
+    /// a regex string. Used for rendering templated regex patterns for preview without commiting emitted types to the runtime.
     /// </summary>
     /// <typeparam name="T">The type of TokenUnit or derivative used to dermine the Composer strategy</typeparam>
     /// <param name="templateString">a string of words containing "@Token" style type tokens</param>
-    public static string TemplateToRegex<T>(string templateString) where T : TokenUnit
+    public static string TemplateStringToRegex<T>(string templateString) where T : TokenUnit
     {
-        // pattern to digest "@Type" token patterns from plain strings
-        Regex templatePattern = new(@"\s*@(\w+)\s*");
+        // Pattern to split on both "@Token" elements and "Opt(text)" elements interspered in normal text
+        var splittingPattern = @"(@\w+|(?:Alt|Opt|NoSpace|Prop)\([^)]+\)|.+?(?=@\w+|(?:Alt|Opt|NoSpace|Prop)\(|$))";
 
-        // pattern to digest snippet shortcuts like "Opt(optional text)"
-        Regex snippetShortcutsPattern = new(@"(?<SnippetShortcutName>Alt|Opt|NoSpace)\((?<SnippetText>.+)\)");
+        var snippets = Regex.Split(templateString, splittingPattern)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Select(x => x.Trim());
 
-        var snippets = templatePattern.Split(templateString)
-            .Where(s => !string.IsNullOrWhiteSpace(s)) // Remove empty entries
-            .Select(s => s.Trim());                    // Trim any leftover stray spaces
+        List<RegexSegmentBase> regexSegments = snippets.Select<string, RegexSegmentBase>(x =>
+        {
+            // Case A: It's a Type Token (Check if it starts with @ and try to resolve)
+            if (x.StartsWith("@") && TokenTypeRegistry.NameToType.TryGetValue(x[1..], out var type))
+                return new TemplatePropInfo(type).GetCaptureGroupPropBase();
 
-        List<RegexSegmentBase> regexSegments = snippets.Select<string, RegexSegmentBase>(x => {
-            if (TokenTypeRegistry.NameToType.TryGetValue(x, out var type))
+            // Case B: It's a Shortcut Token
+            var shortcutMatch = Regex.Match(x, @"^(?<Name>Alt|Opt|NoSpace|Prop)\((?<Args>.+)\)$");
+            if (shortcutMatch.Success)
             {
-                TemplatePropInfo templatePropInfo = new(type);
-                return templatePropInfo.GetCaptureGroupPropBase();
+                var methodName = shortcutMatch.Groups["Name"].Value;
+                var argsString = shortcutMatch.Groups["Args"].Value;
+
+                var method = typeof(SnippetShortcuts).GetMethod(methodName);
+                if (method != null)
+                {
+                    var parameters = method.GetParameters();
+                    object[] invokeArgs = parameters.Length switch
+                    {
+                        1 when parameters[0].ParameterType == typeof(string[])
+                            => new object[] { argsString.Split(',').Select(s => s.Trim()).ToArray() },
+                        1 => new object[] { argsString },
+                        2 => new object[] { null, argsString },
+                        _ => null
+                    };
+
+                    if (invokeArgs != null)
+                    {
+                        var shortcutSnippet = (Snippet)method.Invoke(null, invokeArgs);
+                        return new TextSegment(shortcutSnippet);
+                    }
+                }
             }
+
+            // Case C: Plain text (including literal spaces from the template)
             return new TextSegment(x);
         }).ToList();
 

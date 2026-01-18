@@ -6,9 +6,6 @@ public static class SnippetShortcuts
 {
     public static Snippet Prop(object member, [CallerArgumentExpression("member")] string expression = "")
     {
-        // If you pass 'S(CardType)', expression is "CardType".
-        // If you pass 'S(this.CardType)', expression is "this.CardType".
-
         var lastDot = expression.LastIndexOf('.');
         var name = lastDot == -1 ? expression : expression[(lastDot + 1)..];
 
