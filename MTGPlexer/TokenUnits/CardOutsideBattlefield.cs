@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-public class CardOutsideBattlefield() : TokenUnit
+public class CardOutsideBattlefield : TokenUnit
 {
     protected override Snippet[] Snippets => ["(card|spell)", "((in|from) )?", Prop(Whose), Prop(Zone)];
 
