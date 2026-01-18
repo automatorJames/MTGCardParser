@@ -64,6 +64,25 @@ public record TemplatePropInfo
         return derivedConjunctionPropInfo;
     }
 
+    /// <summary>
+    /// Constructor used for generating "regex previews" from snippets, some of which may be type names, and
+    /// which require conversion to a RegexSegment. In this workflow, the "Prop" property is never intended
+    /// to be used to set a value on any object.
+    /// </summary>
+    public TemplatePropInfo(Type type)
+    {
+        // Here, "Prop" is a Dummy placeholder that is never intended to be used to set a value.
+        // We assign a Prop merely so we don't break downstream code that checks things like nullability
+        // of Prop.
+        Prop = GetType().GetProperty(nameof(Prop)); 
+
+        TemplatePropType = GetTemplatePropType(type);
+        UnderlyingType = type;
+        GenericTypes = type.GetGenericArguments();
+        IsTerminal = _terminalTypes.Contains(TemplatePropType);
+        Name = type.Name;
+    }
+
     static string GetName(PropertyInfo prop, Type underlyingType)
     {
         if (underlyingType.IsAssignableTo(typeof(CompoundOf)))

@@ -3,6 +3,7 @@
 public abstract class TokenUnit
 {
     protected virtual Snippet[] Snippets { get; } = [];
+    public Snippet[] GetSnippets() => Snippets;
 
     Type _type;
     public Type Type
@@ -24,7 +25,6 @@ public abstract class TokenUnit
     /// </summary>
     public List<PropertyCapture> PropertyCaptures { get; set; } = [];
 
-    public Snippet[] GetSnippets() => Snippets;
 
     protected virtual void OnAfterHydrated()
     {

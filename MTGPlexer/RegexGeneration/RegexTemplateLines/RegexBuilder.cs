@@ -21,16 +21,16 @@ public class RegexBuilder
     /// <summary>
     /// Constructor.
     /// </summary>
-    /// <param name="topLevelType">The top-level type that defines the overall regex structure and attributes.</param>
+    /// <param name="rootType">The top-level type that defines the name of the root enclosure.</param>
     /// <param name="neverAddSpacesAtTopLevel">If true, prevents the builder from adding spaces at the root level.</param>
-    public RegexBuilder(Type topLevelType)
+    public RegexBuilder(Type rootType)
     {
         // an invisible top level enclosure;
-        RootEnclosure rootEnclosure = new(topLevelType);
+        RootEnclosure rootEnclosure = new(rootType);
 
         _concatenater = new();
         _enclosureStack.Push(rootEnclosure);
-        _boundaryOption = topLevelType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.None;
+        _boundaryOption = rootType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.None;
     }
 
     /// <summary>
@@ -81,8 +81,8 @@ public class RegexBuilder
     /// Adds a literal text element to the regex.
     /// </summary>
     /// <param name="text">The literal text to add.</param>
-    public void AddTextLine(string text) 
-        => _concatenater.Append(new TextLine(_orderedEnclosureStack, text));
+    public void AddTextLine(string text, bool doNotAddPrecedingSpace = false) 
+        => _concatenater.Append(new TextLine(_orderedEnclosureStack, text, doNotAddPrecedingSpace: doNotAddPrecedingSpace));
 
     /// <summary>
     /// Adds a set of alternative string values (e.g., "a|b|c").

@@ -6,6 +6,8 @@
 /// </summary>
 public record TextSegment : RegexSegmentBase
 {
+    public bool DoNotAddPrecedingSpace { get; }
+
     public TextSegment(Snippet snippet)
     {
         var text = snippet.Text;
@@ -13,11 +15,10 @@ public record TextSegment : RegexSegmentBase
         if (snippet.IsOptional)
             text = $"({text} )?";
 
+        DoNotAddPrecedingSpace = snippet.IsNoPrecedingSpace;
         RegexString = text;
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
-    {
-        builder.AddTextLine(RegexString);
-    }
+    public override void ComposeRegexLines(RegexBuilder builder) =>
+        builder.AddTextLine(RegexString, doNotAddPrecedingSpace: DoNotAddPrecedingSpace);
 }

@@ -10,7 +10,6 @@ public class TextLine : RegexElement, IRegexContent
 
     public string TextValue { get; set; }
 
-
     public bool ShouldOmitSpaceAfter() =>
         _openingPunctuationMarks.Contains(_plainTextLastChar)
         || TextValue.EndsWith(_endOfOptionalGroupWithTrailingSpace);
@@ -19,8 +18,12 @@ public class TextLine : RegexElement, IRegexContent
         TextValue.EndsWith('?') // optional quantifier
         && !TextValue.EndsWith(@"\?"); // literal question mark
 
-    public TextLine(Enclosure[] enclosures, string value)
-        : base(enclosures, value.Replace(" ", "[ ]"), comment: $"{(value.EndsWith("?") ? "optional " : "")}literal match")
+    public TextLine(Enclosure[] enclosures, string value, bool doNotAddPrecedingSpace = false)
+        : base(
+            enclosures, 
+            value.Replace(" ", "[ ]"), 
+            comment: $"{(value.EndsWith("?") ? "optional " : "")}literal match{(doNotAddPrecedingSpace ? " (no preceding space)" : "")}", 
+            doNotAddPrecedingSpace: doNotAddPrecedingSpace)
     {
         if (string.IsNullOrEmpty(value))
             throw new ArgumentNullException(nameof(value));

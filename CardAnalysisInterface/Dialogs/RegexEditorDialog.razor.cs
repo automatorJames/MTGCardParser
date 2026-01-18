@@ -1,9 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
-using MTGPlexer.CommonDTOs;
+﻿using MTGPlexer.CommonDTOs;
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
-using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -45,9 +41,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && _dotNetRef != null)
-        {
             await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement);
-        }
     }
 
     [JSInvokable]
@@ -150,7 +144,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             {
                 var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
                 _dynamicTokenType = new DynamicTokenType(cleanPattern);
-                _renderedRegex = _dynamicTokenType.GetRenderedRegexFromTemplate();
+                _renderedRegex = _dynamicTokenType.RenderedRegex;
             }
             else
             {
@@ -158,21 +152,29 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 _dynamicTokenType = null;
             }
 
-            if (!string.IsNullOrWhiteSpace(_renderedRegex) && _renderedRegex != "Error: Invalid template")
+            if (!string.IsNullOrWhiteSpace(_renderedRegex))
             {
-                _currentMatches = Regex.Matches(Line.SourceText.FormattedText, _renderedRegex)
-                                       .Cast<Match>()
-                                       .ToList();
-            }
-            else
-            {
-                _currentMatches.Clear();
+                try
+                {
+                    // The currently-rendered regex might be invalid (e.g. not enough closing parentheses)
+                    _currentMatches = Regex.Matches(Line.SourceText.FormattedText, _renderedRegex)
+                       .Cast<Match>()
+                       .ToList();
+                }
+                catch(Exception ex)
+                {
+                    // That's OK: just clear the matches for now
+                    _currentMatches.Clear();
+
+                    // Tell the user what's wrong like a good GUI
+                    _renderedRegex = ex.Message;
+                }
             }
         }
         catch
         {
-            _renderedRegex = "Error: Invalid template";
             _currentMatches.Clear();
+            _renderedRegex = "Error rendering template";
         }
     }
 

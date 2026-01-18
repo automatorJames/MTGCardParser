@@ -56,21 +56,43 @@ public class RegexTemplate
         ComposeRegex();
     }
 
+    /// <summary>
+    /// Takes a string like "these are my template @Type snippets", converts them into a set of RegexSegment bases,
+    /// then uses the appropriate Composer strategy to generate a regex string. Used for rendering templated 
+    /// regex patterns for preview without commiting emitted types to the runtime.
+    /// </summary>
+    /// <typeparam name="T">The type of TokenUnit or derivative used to dermine the Composer strategy</typeparam>
+    /// <param name="templateString">a string of words containing "@Token" style type tokens</param>
+    public static string TemplateToRegex<T>(string templateString) where T : TokenUnit
+    {
+        // pattern to digest "@Type" token patterns from plain strings
+        Regex templatePattern = new(@"\s*@(\w+)\s*");
+
+        // pattern to digest snippet shortcuts like "Opt(optional text)"
+        Regex snippetShortcutsPattern = new(@"(?<SnippetShortcutName>Alt|Opt|NoSpace)\((?<SnippetText>.+)\)");
+
+        var snippets = templatePattern.Split(templateString)
+            .Where(s => !string.IsNullOrWhiteSpace(s)) // Remove empty entries
+            .Select(s => s.Trim());                    // Trim any leftover stray spaces
+
+        List<RegexSegmentBase> regexSegments = snippets.Select<string, RegexSegmentBase>(x => {
+            if (TokenTypeRegistry.NameToType.TryGetValue(x, out var type))
+            {
+                TemplatePropInfo templatePropInfo = new(type);
+                return templatePropInfo.GetCaptureGroupPropBase();
+            }
+            return new TextSegment(x);
+        }).ToList();
+
+        return CompositionFactory.GetComposedString(regexSegments, typeof(T));
+    }
+
     void ComposeRegex()
     {
-        ISegmentComposer composer;
-
-        if (_containingType.IsAssignableTo(typeof(TokenUnitOneOf)))
-            composer = AlternatingComposer.Instance;
-        else
-            composer = ConcatenatingComposer.Instance;
-
-        RegexBuilder collector = new(_containingType);
-        composer.Compose(collector, RegexSegments);
-
-        RegexString = collector.GetMinified();
+        var builderWithComposition = CompositionFactory.Compose(RegexSegments, _containingType);
+        RegexString = builderWithComposition.GetMinified();
         Regex = new Regex(RegexString, RegexOptions.Compiled);
-        Builder = collector;
+        Builder = builderWithComposition;
     }
 
     RegexSegmentBase ResolveSnippetToSegment(Snippet templateSnippet)
