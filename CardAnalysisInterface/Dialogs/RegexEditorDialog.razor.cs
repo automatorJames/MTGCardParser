@@ -48,7 +48,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (firstRender && _dotNetRef != null)
         {
-            // Pass the palette colors to JS so the tokens can be colored correctly
             var colorMap = _allTemplateTypes.ToDictionary(
                 t => t.Name,
                 t => new {
@@ -111,6 +110,16 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
         UpdateRenderedRegexAndMatches(rawText);
         StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task SelectSuggestionFromJS(string typeName)
+    {
+        var type = _allTemplateTypes.FirstOrDefault(t => t.Name == typeName);
+        if (type != null)
+        {
+            await SelectSuggestionByKeyboard(type);
+        }
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -198,19 +207,17 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         _regexSegments.Clear();
         if (string.IsNullOrEmpty(_renderedRegex)) return;
 
-        // Algorithm to find top-level capture groups
         int depth = 0;
         int lastPos = 0;
 
         for (int i = 0; i < _renderedRegex.Length; i++)
         {
-            if (_renderedRegex[i] == '\\') { i++; continue; } // skip escaped
+            if (_renderedRegex[i] == '\\') { i++; continue; }
 
             if (_renderedRegex[i] == '(')
             {
                 if (depth == 0)
                 {
-                    // Add text before the group
                     if (i > lastPos)
                         _regexSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "#d4d4d4"));
                     lastPos = i;
@@ -222,7 +229,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 depth--;
                 if (depth == 0)
                 {
-                    // Found end of top-level group
                     var groupText = _renderedRegex.Substring(lastPos, i - lastPos + 1);
                     var match = Regex.Match(groupText, @"^\(\?<(?<name>[a-zA-Z0-9_]+)>");
 

@@ -1,7 +1,7 @@
 ﻿let editorDotNetReference = null;
 let editorElement = null;
 let isInternallyChanging = false;
-let typeColors = {}; // Now stores { Normal, Highlight }
+let typeColors = {};
 
 function initializeEditor(_dotNetReference, _editorElement, _colors) {
     editorDotNetReference = _dotNetReference;
@@ -14,7 +14,9 @@ function initializeEditor(_dotNetReference, _editorElement, _colors) {
         editorElement.addEventListener('mousedown', onEditorMouseDown);
         document.addEventListener('mousedown', onDropdownMouseDown);
         document.addEventListener('keydown', onGlobalKeyDown);
-        editorElement.focus();
+
+        // Ensure initial focus
+        setTimeout(() => editorElement.focus(), 10);
     }
 }
 
@@ -32,13 +34,23 @@ function disposeEditor() {
 }
 
 function onEditorMouseDown(e) {
-    // Requirement 4: Mouse clicks on tokens highlight them
     const token = e.target.closest('.token-style');
     if (token) {
+        // Prevent default browser text selection logic so we can override it
         e.preventDefault();
         e.stopPropagation();
+
         clearTokenHighlights();
         setTokenHighlight(token, true);
+
+        // Logical fix: Set the browser selection to the token node
+        // This ensures the caret is "on" the token for delete operations
+        const range = document.createRange();
+        range.selectNode(token);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
         editorElement.focus();
     } else {
         clearTokenHighlights();
@@ -50,15 +62,20 @@ function onBeforeInput(event) {
 
     const highlighted = editorElement.querySelector('.token-selected');
 
-    // Requirement 4: Delete/Backspace removes highlighted token
     if (highlighted && (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward')) {
         event.preventDefault();
+
+        // Calculate the string offset where this token starts
+        const pos = getOffsetOfNode(editorElement, highlighted);
+
         highlighted.remove();
-        onEditorInput();
-        highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement));
+
+        // Re-render and place cursor where the token was
+        highlightAndRestoreCursor(editorElement.textContent, pos);
         return;
     }
 
+    // Handle range selections intersecting with tokens
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
@@ -92,10 +109,11 @@ function onBeforeInput(event) {
 
     if (tokensToDelete.size > 0) {
         event.preventDefault();
+        const firstToken = Array.from(tokensToDelete)[0];
+        const pos = getOffsetOfNode(editorElement, firstToken);
+
         tokensToDelete.forEach(t => t.remove());
-        onEditorInput();
-        // Re-render to ensure text flow is correct after removal
-        highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement));
+        highlightAndRestoreCursor(editorElement.textContent, pos);
     }
 }
 
@@ -106,7 +124,6 @@ function onEditorKeyDown(event) {
         return;
     }
 
-    // Requirement 3: Arrow navigation highlighting
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
@@ -131,6 +148,11 @@ function onEditorKeyDown(event) {
                     event.preventDefault();
                     clearTokenHighlights();
                     setTokenHighlight(targetToken, true);
+
+                    const newRange = document.createRange();
+                    newRange.selectNode(targetToken);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
                 } else {
                     event.preventDefault();
                     setTokenHighlight(targetToken, false);
@@ -170,16 +192,16 @@ function setTokenHighlight(token, isHighlighted) {
 }
 
 function commitToken(textToReplace, fullTokenText) {
-    // Requirement 2: Ensure focus and proper cursor placement after token commit
     const pos = getCaretCharacterOffsetWithin(editorElement);
     const fullText = editorElement.textContent;
 
-    // Inserting a non-breaking space after the token ensures the cursor has a text node to land in
     const textToInsert = fullTokenText + '\u00A0';
     const newText = fullText.substring(0, pos - textToReplace.length) + textToInsert + fullText.substring(pos);
 
     highlightAndRestoreCursor(newText, pos - textToReplace.length + textToInsert.length);
-    editorElement.focus();
+
+    // Crucial: Re-focus specifically after DOM manipulation
+    setTimeout(() => editorElement.focus(), 0);
 }
 
 function onEditorInput() {
@@ -210,8 +232,6 @@ function highlightAndRestoreCursor(text, cursorPos) {
         span.contentEditable = 'false';
         span.style.backgroundColor = colors.normal;
         span.setAttribute('data-type-name', typeName);
-
-        // Requirement 5: Hide @ visually but keep it in textContent for downstream regex
         span.innerHTML = `<span style="display:none">@</span><span>${typeName}</span>`;
 
         editorElement.appendChild(span);
@@ -222,7 +242,7 @@ function highlightAndRestoreCursor(text, cursorPos) {
         editorElement.appendChild(document.createTextNode(text.substring(lastIndex)));
     }
 
-    // Ensure we have at least one text node at the end to allow cursor placement
+    // Ensure terminal text node for cursor landing
     if (editorElement.childNodes.length === 0 || editorElement.lastChild.nodeType !== Node.TEXT_NODE) {
         editorElement.appendChild(document.createTextNode(''));
     }
@@ -237,35 +257,43 @@ function highlightAndRestoreCursor(text, cursorPos) {
                 range.collapse(true);
                 selection.removeAllRanges();
                 selection.addRange(range);
-            } catch (e) { console.error("Cursor restoration failed", e); }
+            } catch (e) { /* ignore range errors on edge cases */ }
         }
     }
 
     isInternallyChanging = false;
     onEditorInput();
+
+    // Final focus check
+    if (document.activeElement !== editorElement) {
+        editorElement.focus();
+    }
 }
 
 function getCaretPositionInfo() {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return null;
-    const range = selection.getRangeAt(0);
     const pos = getCaretCharacterOffsetWithin(editorElement);
     const textBeforeCaret = editorElement.textContent.substring(0, pos);
     const words = textBeforeCaret.split(/[\s\u00A0]+/);
-    return { selection, range, currentWord: words[words.length - 1] };
+    return { currentWord: words[words.length - 1] };
 }
 
 function getCaretCharacterOffsetWithin(element) {
-    let caretOffset = 0;
     const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const preCaretRange = range.cloneRange();
-        preCaretRange.selectNodeContents(element);
-        preCaretRange.setEnd(range.endContainer, range.endOffset);
-        caretOffset = preCaretRange.toString().length;
-    }
-    return caretOffset;
+    if (selection.rangeCount === 0) return 0;
+    const range = selection.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(element);
+    preCaretRange.setEnd(range.startContainer, range.startOffset);
+    return preCaretRange.toString().length;
+}
+
+function getOffsetOfNode(root, node) {
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    range.setEndBefore(node);
+    return range.toString().length;
 }
 
 function findNodeAndOffset(element, charOffset) {
@@ -279,7 +307,6 @@ function findNodeAndOffset(element, charOffset) {
         }
         cumulativeOffset += nodeLength;
     }
-    // Fallback to the very last text node
     const lastTextNode = Array.from(element.childNodes).reverse().find(n => n.nodeType === Node.TEXT_NODE);
     return { node: lastTextNode || element, offset: lastTextNode ? lastTextNode.textContent.length : 0 };
 }
@@ -292,10 +319,14 @@ function scrollToAutocompleteItem(elementId) {
 function onDropdownMouseDown(event) {
     const item = event.target.closest('.autocomplete-item');
     if (!item) return;
+
+    // Prevent focus loss from editor
     event.preventDefault();
+
     const typeName = item.querySelector('.type-name').textContent.trim();
-    commitToken(editorDotNetReference.lastAutocompleteFilter || "@", "@" + typeName);
-    editorDotNetReference.invokeMethodAsync('HideDropdown');
+    if (editorDotNetReference) {
+        editorDotNetReference.invokeMethodAsync('SelectSuggestionFromJS', typeName);
+    }
 }
 
 function onGlobalKeyDown(event) {
