@@ -15,22 +15,21 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<string> OnClose { get; set; }
 
-    private string _renderedRegex = "";
-    private List<RegexSegment> _regexSegments = new();
-    private List<Match> _currentMatches = new();
-    private DynamicTokenType _dynamicTokenType;
+    string _renderedRegex = "";
+    List<RegexSegment> _regexSegments = new();
+    List<Match> _currentMatches = new();
+    DynamicTokenType _dynamicTokenType;
 
-    private bool _isDropdownVisible = false;
-    private List<Type> _allTemplateTypes = new();
-    private List<Type> _autocompleteSuggestions = new();
-    private int _selectedSuggestionIndex = -1;
-    private bool _isEditorEmpty = true;
-    private bool _showPreviewBoxes = false;
+    bool _isDropdownVisible = false;
+    List<Type> _allTemplateTypes = new();
+    List<Type> _autocompleteSuggestions = new();
+    int _selectedSuggestionIndex = -1;
+    bool _isEditorEmpty = true;
+    bool _showPreviewBoxes = false;
+    string _textToReplaceForAutocomplete = "";
 
-    private string _textToReplaceForAutocomplete = "";
-
-    private ElementReference _editorElement;
-    private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
+    ElementReference _editorElement;
+    DotNetObjectReference<RegexEditorDialog> _dotNetRef;
 
     public record RegexSegment(string Text, string Color);
 

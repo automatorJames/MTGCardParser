@@ -42,23 +42,21 @@
                     @{
                         int cursorFront = 0;
                         string textFront = Line.SourceText.FormattedText;
-                        var tokens = Line.SpanRoots.Select(x => x.RootToken)
-                        .OrderBy(t => t.Match.RootMatch.Index);
 
-                        foreach (var token in tokens)
+                        foreach (var spanRoot in Line.SpanRoots)
                         {
-                            if (token.Match.RootMatch.Index > cursorFront)
+                            if (spanRoot.RootToken.Match.RootMatch.Index > cursorFront)
                             {
-                                @textFront.Substring(cursorFront, token.Match.RootMatch.Index - cursorFront)
+                                @textFront.Substring(cursorFront, spanRoot.RootToken.Match.RootMatch.Index - cursorFront)
                             }
 
-                            var tokenText = textFront.Substring(token.Match.RootMatch.Index, token.Match.RootMatch.Length);
-                            var color = token.Type == typeof(DefaultUnmatchedString)
-                            ? "#E2E8F0"
-                            : DeterministicPalette.TypePaletteSet[token.Type].Light;
+                            var match = spanRoot.RootToken.Match.RootMatch;
+                            var tokenText = textFront.Substring(match.Index, match.Length);
+                            var color = spanRoot.RootToken.Type == typeof(DefaultUnmatchedString) ? "#E2E8F0" : spanRoot.Palette.Normal;
 
                             <span style="color: @color">@tokenText</span>
-                            cursorFront = token.Match.RootMatch.Index + token.Match.RootMatch.Length;
+
+                            cursorFront = match.Index + match.Length;
                         }
 
                         if (cursorFront < textFront.Length)

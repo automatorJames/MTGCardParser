@@ -111,9 +111,7 @@ public record DeterministicPalette
     public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount)
     {
         if (_positionalPaletteSets.TryGetValue(totalItemCount, out var positionalPaletteSet))
-        {
             return positionalPaletteSet;
-        }
 
         positionalPaletteSet = [];
         var hues = GetRainbowHues(totalItemCount);
@@ -126,6 +124,16 @@ public record DeterministicPalette
 
         _positionalPaletteSets[totalItemCount] = positionalPaletteSet;
         return positionalPaletteSet;
+    }
+
+    public static Dictionary<T, HexPalette> GetPositionalPaletteSet<T>(IEnumerable<T> items)
+    {
+        var itemsAsList = items.ToList();
+        var paletteSet = GetPositionalPaletteSet(itemsAsList.Count).Values.ToList();
+
+        return paletteSet
+            .Select((palette, idx) => new { palette, idx })
+            .ToDictionary(x => itemsAsList[x.idx], x => x.palette);
     }
 
     public static HexPalette GetStaticPalette(HexColor color)
