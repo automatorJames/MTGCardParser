@@ -141,8 +141,10 @@ public class DynamicTokenType
 
     List<DynamicSnippet> TemplateStringToDynamicSnippets(string templateString)
     {
+        var snippetShortCutAlts = string.Join('|', SnippetShortcuts.GetPublicStaticMethodNames());
+
         // Pattern to split on both "@Token" elements and "Opt(text)" elements interspered in normal text
-        var splittingPattern = @"(@\w+|(?:Alt|Opt|NoSpace|Prop)\([^)]+\)|.+?(?=@\w+|(?:Alt|Opt|NoSpace|Prop)\(|$))";
+        var splittingPattern = $@"(@\w+|(?:{snippetShortCutAlts})\([^)]+\)|.+?(?=@\w+|(?:{snippetShortCutAlts})\(|$))";
 
         return Regex.Split(templateString, splittingPattern)
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -154,7 +156,7 @@ public class DynamicTokenType
                     return new DynamicSnippet(DynamicSnippetType.Type, Text: type.Name, Type: type, IsEnum: TokenTypeRegistry.EnumRegexStrings.ContainsKey(type));
             
                 // Case B: It's a Shortcut Token
-                var shortcutMatch = Regex.Match(x, @"^(?<Name>Alt|Opt|NoSpace|Prop)\((?<Args>.+)\)$");
+                var shortcutMatch = Regex.Match(x, $@"^(?<Name>{snippetShortCutAlts})\((?<Args>[^)]*)\)$");
                 if (shortcutMatch.Success)
                 {
                     var methodName = shortcutMatch.Groups["Name"].Value;
@@ -173,17 +175,29 @@ public class DynamicTokenType
     TextSegment DynamicSnippetMethodToTextSegment(DynamicSnippet methodSnippet)
     {
         var parameters = methodSnippet.Method.GetParameters();
+
         object[] invokeArgs = parameters.Length switch
         {
+            // 0 parameters: Return empty array so invokeArgs is NOT null
+            0 => Array.Empty<object>(),
+
+            // 1 parameter (string array)
             1 when parameters[0].ParameterType == typeof(string[])
                 => new object[] { methodSnippet.Text.Split(',').Select(s => s.Trim()).ToArray() },
+
+            // 1 parameter (default string)
             1 => new object[] { methodSnippet.Text },
+
+            // 2 parameters
             2 => new object[] { null, methodSnippet.Text },
+
+            // Default: No matching signature found
             _ => null
         };
 
         if (invokeArgs != null)
         {
+            // If invokeArgs is Array.Empty<object>(), Invoke will be called with no parameters.
             var shortcutSnippet = (Snippet)methodSnippet.Method.Invoke(null, invokeArgs);
             return new TextSegment(shortcutSnippet);
         }

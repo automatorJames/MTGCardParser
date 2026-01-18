@@ -20,4 +20,15 @@ public static class SnippetShortcuts
 
     public static SnippetNoPrecedingSpace NoSpace(string text) =>
         new SnippetNoPrecedingSpace(text);
+
+    public static SnippetOptionalPlural Plural() =>
+        new SnippetOptionalPlural();
+
+    public static IReadOnlyList<string> GetPublicStaticMethodNames()
+    {
+        return typeof(SnippetShortcuts)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Select(m => m.Name)
+            .ToList();
+    }
 }

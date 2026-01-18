@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace MTGPlexer.SnippetHelpers;
+﻿namespace MTGPlexer.SnippetHelpers;
 
 public record Snippet
 {
@@ -16,7 +14,7 @@ public record Snippet
     {
         Text = text;
         IsOptional = this is SnippetOptional;
-        IsNoPrecedingSpace = this is SnippetNoPrecedingSpace;
+        IsNoPrecedingSpace = this is SnippetNoPrecedingSpace or SnippetOptionalPlural;
     }
 
     // Implicitly create a Snippet from a string
