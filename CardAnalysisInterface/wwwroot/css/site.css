@@ -29,38 +29,30 @@ pre.c-sharp {
 }
 
 .c-sharp .keyword {
-    color: #569CD6;
+    color: #569cd6;
 }
 
 .c-sharp .type {
-    color: #4EC9B0;
+    color: #4dc9b1;
+}
+
+.c-sharp .enumtype {
+    color: #b8d7a3;
 }
 
 .c-sharp .identifier {
-    color: #9CDCFE;
+    color: #dcdcdc;
 }
 
-.c-sharp .string {
-    color: #D69D85;
+.c-sharp .stringliteral {
+    color: #d3a181;
+}
+
+.c-sharp .method {
+    color: #dcdcaa;
 }
 
 .c-sharp .comment {
-    color: #6A9955;
-}
-
-.type {
-    color: #4EC9B0;
-}
-
-.identifier {
-    color: #9CDCFE;
-}
-
-.string {
-    color: #D69D85;
-}
-
-.comment {
     color: #6A9955;
 }
 
@@ -76,10 +68,6 @@ h1:focus {
     outline: none;
 }
 
-/* --- THIS LINE IS REMOVED TO FIX THE LINK COLOR OVERRIDE --- */
-/* a, .btn-link {
-    color: #0071c1;
-} */
 
 .btn-primary {
     color: #fff;

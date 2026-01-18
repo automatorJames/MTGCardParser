@@ -209,17 +209,9 @@ public static partial class TokenTypeRegistry
     {
         var newType = CreateDynamicTokenUnitType(dynamicTokenType);
         var outputPath = Path.Combine(_sourceCodeDir, dynamicTokenType.ClassName + ".cs");
-        File.WriteAllText(outputPath, dynamicTokenType.ClassString);
+        File.WriteAllText(outputPath, dynamicTokenType.ClassStringForSavingToFile);
     }
 
-    public static RegexTemplate GetTemplateFromDynamicTokenType(DynamicTokenType dynamicTokenType)
-    {
-        var newType = CreateDynamicTokenUnitType(dynamicTokenType);
-        var template = GetTypeTemplate(newType);
-
-        return template;
-
-    }
 
     static Type CreateDynamicTokenUnitType(DynamicTokenType dynamicTokenType)
     {
@@ -239,13 +231,8 @@ public static partial class TokenTypeRegistry
 
         // 2) Define Auto-Properties for referenced types
         // These must exist so TokenUnit.InstantiateFromMatch can hydrate them
-        foreach (var part in dynamicTokenType.CombinedParts.Where(x => x.IsType))
-        {
-            if (TokenTypeRegistry.NameToType.TryGetValue(part.Val, out Type resolvedType))
-            {
-                DefineAutoProperty(tb, part.Val, resolvedType);
-            }
-        }
+        foreach (var snippet in dynamicTokenType.DynamicSnippets.Where(x => x.SnippetType == DynamicSnippetType.Type))
+            DefineAutoProperty(tb, snippet.Type.Name, snippet.Type);
 
         // 3) Override "protected virtual Snippet[] Snippets { get; }"
         var getSnippetsMethod = tb.DefineMethod(
@@ -255,7 +242,7 @@ public static partial class TokenTypeRegistry
             Type.EmptyTypes);
 
         var ilGen = getSnippetsMethod.GetILGenerator();
-        var parts = dynamicTokenType.CombinedParts;
+        var parts = dynamicTokenType.DynamicSnippets;
 
         // Locate the Snippet constructor: Snippet(string, bool)
         // Even though bool is optional in C#, it is required in Reflection/IL
@@ -270,7 +257,7 @@ public static partial class TokenTypeRegistry
         {
             ilGen.Emit(OpCodes.Dup);                   // Duplicate array reference
             ilGen.Emit(OpCodes.Ldc_I4, i);             // Load index
-            ilGen.Emit(OpCodes.Ldstr, parts[i].Val);   // Load string text
+            ilGen.Emit(OpCodes.Ldstr, parts[i].Text);  // Load string text
             ilGen.Emit(OpCodes.Ldc_I4_0);              // Load 'false' (0) for isOptional
             ilGen.Emit(OpCodes.Newobj, snippetCtor);   // new Snippet(text, false)
             ilGen.Emit(OpCodes.Stelem_Ref);            // array[i] = snippet

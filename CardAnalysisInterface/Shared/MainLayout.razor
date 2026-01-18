@@ -48,8 +48,6 @@
 </div>
 
 @code {
-    private DotNetObjectReference<MainLayout> _dotNetObjectReference;
-
     // Define the ordered list of page routes
     private readonly List<string> _pageRoutes = new()
     {
@@ -66,13 +64,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        {
             await RuntimeSettings.EnsureLoadedAsync();
-
-            //// Set up the JS interop for keyboard shortcuts
-            //_dotNetObjectReference = DotNetObjectReference.Create(this);
-            //await JSRuntime.InvokeVoidAsync("initializeLayoutListener", _dotNetObjectReference);
-        }
     }
 
     [JSInvokable]
@@ -114,16 +106,5 @@
     public void Dispose()
     {
         RuntimeSettings.OnChanged -= OnSettingsChanged;
-
-        // Clean up the JS listener and DotNet reference to prevent memory leaks
-        if (_dotNetObjectReference != null)
-        {
-            _dotNetObjectReference.Dispose();
-            try
-            {
-                JSRuntime.InvokeVoidAsync("disposeLayoutListener");
-            }
-            catch (JSDisconnectedException) { /* ignored */ }
-        }
     }
 }
