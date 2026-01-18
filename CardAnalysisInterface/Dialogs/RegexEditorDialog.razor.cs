@@ -51,7 +51,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             // Pass the palette colors to JS so the tokens can be colored correctly
             var colorMap = _allTemplateTypes.ToDictionary(
                 t => t.Name,
-                t => DeterministicPalette.TypePaletteSet[t].Dark
+                t => new {
+                    Normal = DeterministicPalette.TypePaletteSet[t].Dark,
+                    Highlight = DeterministicPalette.TypePaletteSet[t].Light
+                }
             );
             await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement, colorMap);
         }
