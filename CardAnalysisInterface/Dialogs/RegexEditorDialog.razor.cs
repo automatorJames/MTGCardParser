@@ -1,10 +1,7 @@
-﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
-using MTGPlexer.CommonDTOs;
+﻿using MTGPlexer.CommonDTOs;
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+using MTGPlexer.TokenUnitComponents;
 using MTGPlexer.TokenUnits;
-using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -17,6 +14,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public EventCallback<string> OnClose { get; set; }
 
     string _renderedRegex = "";
+    string _className = $"New{nameof(TokenUnit)}";
     List<RegexSegment> _regexSegments = new();
     List<Match> _currentMatches = new();
     DynamicTokenType _dynamicTokenType;
@@ -306,7 +304,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             if (_showPreviewBoxes)
             {
                 var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
-                _dynamicTokenType = new DynamicTokenType(cleanPattern);
+                _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className);
                 _renderedRegex = _dynamicTokenType.RenderedRegex;
             }
             else
@@ -387,12 +385,11 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _regexSegments.Add(new(_renderedRegex.Substring(lastPos), "var(--syntax-default)"));
     }
 
-    private async Task HandleSubmit()
+    private async Task SaveClassToFile()
     {
         if (_dynamicTokenType != null)
-        {
             TokenTypeRegistry.AddNewTypeAndSaveToDisk(_dynamicTokenType);
-        }
+
         await OnClose.InvokeAsync(_renderedRegex);
     }
 
