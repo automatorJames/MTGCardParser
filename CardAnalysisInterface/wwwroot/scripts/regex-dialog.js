@@ -1,4 +1,4 @@
-﻿// wwwroot/js/regexEditorInterop.js
+﻿// wwwroot/js/regex-dialog.js
 
 let editorDotNetReference = null;
 let editorElement = null;
