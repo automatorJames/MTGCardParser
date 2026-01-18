@@ -4,7 +4,8 @@ namespace MTGPlexer.StaticRegistry;
 
 public static partial class TokenTypeRegistry
 {
-    static AssemblyBuilder _asmBuilder =AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("DynamicTokenUnits"), AssemblyBuilderAccess.Run);
+    const string _dynamicAssemblyName = "MTGPlexer.DynamicTokenUnits";
+    static AssemblyBuilder _asmBuilder =AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(_dynamicAssemblyName), AssemblyBuilderAccess.Run);
     static ModuleBuilder _moduleBuilder =_asmBuilder.DefineDynamicModule("MainModule");
     static Type[] _staticAssemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
     static List<Type> _dynamicAssemblyTypes = [];
@@ -205,18 +206,20 @@ public static partial class TokenTypeRegistry
         AppliedOrderTypes.Add(tokenUnitType);
     }
 
-    public static void AddNewTypeAndSaveToDisk(DynamicTokenType dynamicTokenType)
+    public static void CreateAndRegisterNewTypeAndSaveToDisk(DynamicTokenType dynamicTokenType)
     {
         var newType = CreateDynamicTokenUnitType(dynamicTokenType);
+        SetTypeTemplate(newType);
+        DeterministicPalette.RefreshTypePaletteSet();
         var outputPath = Path.Combine(_sourceCodeDir, dynamicTokenType.ClassName + ".cs");
         File.WriteAllText(outputPath, dynamicTokenType.ClassStringForSavingToFile);
     }
-
 
     static Type CreateDynamicTokenUnitType(DynamicTokenType dynamicTokenType)
     {
         var baseType = typeof(TokenUnit);
         var snippetType = typeof(Snippet);
+        var shortcutsType = typeof(SnippetShortcuts);
 
         var tb = _moduleBuilder.DefineType(
                               dynamicTokenType.ClassName,
@@ -230,9 +233,10 @@ public static partial class TokenTypeRegistry
         tb.SetCustomAttribute(orderAttr);
 
         // 2) Define Auto-Properties for referenced types
-        // These must exist so TokenUnit.InstantiateFromMatch can hydrate them
         foreach (var snippet in dynamicTokenType.DynamicSnippets.Where(x => x.SnippetType == DynamicSnippetType.Type))
+        {
             DefineAutoProperty(tb, snippet.Type.Name, snippet.Type);
+        }
 
         // 3) Override "protected virtual Snippet[] Snippets { get; }"
         var getSnippetsMethod = tb.DefineMethod(
@@ -244,27 +248,69 @@ public static partial class TokenTypeRegistry
         var ilGen = getSnippetsMethod.GetILGenerator();
         var parts = dynamicTokenType.DynamicSnippets;
 
-        // Locate the Snippet constructor: Snippet(string, bool)
-        // Even though bool is optional in C#, it is required in Reflection/IL
-        var snippetCtor = snippetType.GetConstructor(new[] { typeof(string), typeof(bool) })
-            ?? throw new Exception("Could not find Snippet(string, bool) constructor.");
-
         // Implementation: return new Snippet[] { ... }
         ilGen.Emit(OpCodes.Ldc_I4, parts.Count);
         ilGen.Emit(OpCodes.Newarr, snippetType);
 
         for (int i = 0; i < parts.Count; i++)
         {
-            ilGen.Emit(OpCodes.Dup);                   // Duplicate array reference
-            ilGen.Emit(OpCodes.Ldc_I4, i);             // Load index
-            ilGen.Emit(OpCodes.Ldstr, parts[i].Text);  // Load string text
-            ilGen.Emit(OpCodes.Ldc_I4_0);              // Load 'false' (0) for isOptional
-            ilGen.Emit(OpCodes.Newobj, snippetCtor);   // new Snippet(text, false)
-            ilGen.Emit(OpCodes.Stelem_Ref);            // array[i] = snippet
+            var snippet = parts[i];
+            ilGen.Emit(OpCodes.Dup);           // Duplicate array reference
+            ilGen.Emit(OpCodes.Ldc_I4, i);     // Load index
+
+            if (snippet.SnippetType == DynamicSnippetType.Type)
+            {
+                // Call SnippetShortcuts.Prop(null, "TypeName")
+                var propMethod = shortcutsType.GetMethod(nameof(SnippetShortcuts.Prop))!;
+                ilGen.Emit(OpCodes.Ldnull);         // First arg: null
+                ilGen.Emit(OpCodes.Ldstr, snippet.Text); // Second arg: property name
+                ilGen.Emit(OpCodes.Call, propMethod);
+            }
+            else if (snippet.SnippetType == DynamicSnippetType.Method)
+            {
+                var method = snippet.Method;
+                var parameters = method.GetParameters();
+
+                // Special Case: Alt(params string[])
+                if (method.Name == nameof(SnippetShortcuts.Alt))
+                {
+                    var alts = snippet.Text.Split(',').Select(s => s.Trim()).ToArray();
+                    ilGen.Emit(OpCodes.Ldc_I4, alts.Length);
+                    ilGen.Emit(OpCodes.Newarr, typeof(string));
+                    for (int j = 0; j < alts.Length; j++)
+                    {
+                        ilGen.Emit(OpCodes.Dup);
+                        ilGen.Emit(OpCodes.Ldc_I4, j);
+                        ilGen.Emit(OpCodes.Ldstr, alts[j]);
+                        ilGen.Emit(OpCodes.Stelem_Ref);
+                    }
+                }
+                // Methods with 1 string parameter (Opt, NoSpace)
+                else if (parameters.Length == 1 && parameters[0].ParameterType == typeof(string))
+                {
+                    ilGen.Emit(OpCodes.Ldstr, snippet.Text);
+                }
+                // Methods with 0 parameters (Plural)
+                else if (parameters.Length == 0)
+                {
+                    // No args to load
+                }
+
+                ilGen.Emit(OpCodes.Call, method);
+            }
+            else
+            {
+                // Plain text: new Snippet("text")
+                var snippetCtor = snippetType.GetConstructor(new[] { typeof(string) })!;
+                ilGen.Emit(OpCodes.Ldstr, snippet.Text);
+                ilGen.Emit(OpCodes.Newobj, snippetCtor);
+            }
+
+            ilGen.Emit(OpCodes.Stelem_Ref); // array[i] = createdSnippet
         }
         ilGen.Emit(OpCodes.Ret);
 
-        // Define the property and link the getter
+        // Link the getter to the Property
         var propSnippets = tb.DefineProperty("Snippets", PropertyAttributes.None, snippetType.MakeArrayType(), null);
         propSnippets.SetGetMethod(getSnippetsMethod);
 
@@ -276,7 +322,6 @@ public static partial class TokenTypeRegistry
                    );
         var ctorIl = ctor.GetILGenerator();
 
-        // Load 'this' and call base()
         ctorIl.Emit(OpCodes.Ldarg_0);
         var baseDefaultCtor = baseType.GetConstructor(
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
@@ -291,54 +336,30 @@ public static partial class TokenTypeRegistry
         InitializeClassTokenizer();
 
         return type;
-    }
 
-    private static void DefineAutoProperty(TypeBuilder tb, string name, Type propertyType)
-    {
-        // backing field
-        var field = tb.DefineField(
-                        $"_{char.ToLowerInvariant(name[0])}{name.Substring(1)}",
-                        propertyType,
-                        FieldAttributes.Private
-                    );
+        // local helper
+        void DefineAutoProperty(TypeBuilder tb, string name, Type propertyType)
+        {
+            var field = tb.DefineField($"_{char.ToLowerInvariant(name[0])}{name[1..]}", propertyType, FieldAttributes.Private);
+            var prop = tb.DefineProperty(name, PropertyAttributes.HasDefault, propertyType, null);
 
-        // the Property itself
-        var prop = tb.DefineProperty(
-                       name,
-                       PropertyAttributes.HasDefault,
-                       propertyType,
-                       null
-                   );
+            // getter
+            var getter = tb.DefineMethod($"get_{name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
+            var getIL = getter.GetILGenerator();
+            getIL.Emit(OpCodes.Ldarg_0);
+            getIL.Emit(OpCodes.Ldfld, field);
+            getIL.Emit(OpCodes.Ret);
+            prop.SetGetMethod(getter);
 
-        // getter
-        var getter = tb.DefineMethod(
-                         $"get_{name}",
-                         MethodAttributes.Public |
-                         MethodAttributes.SpecialName |
-                         MethodAttributes.HideBySig,
-                         propertyType,
-                         Type.EmptyTypes
-                     );
-        var getIL = getter.GetILGenerator();
-        getIL.Emit(OpCodes.Ldarg_0);
-        getIL.Emit(OpCodes.Ldfld, field);
-        getIL.Emit(OpCodes.Ret);
-        prop.SetGetMethod(getter);
-
-        // setter
-        var setter = tb.DefineMethod(
-                         $"set_{name}",
-                         MethodAttributes.Public |
-                         MethodAttributes.SpecialName |
-                         MethodAttributes.HideBySig,
-                         null,
-                         new[] { propertyType }
-                     );
-        var setIL = setter.GetILGenerator();
-        setIL.Emit(OpCodes.Ldarg_0);
-        setIL.Emit(OpCodes.Ldarg_1);
-        setIL.Emit(OpCodes.Stfld, field);
-        setIL.Emit(OpCodes.Ret);
-        prop.SetSetMethod(setter);
+            // setter
+            var setter = tb.DefineMethod($"set_{name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, null, new[] { propertyType });
+            var setIL = setter.GetILGenerator();
+            setIL.Emit(OpCodes.Ldarg_0);
+            setIL.Emit(OpCodes.Ldarg_1);
+            setIL.Emit(OpCodes.Stfld, field);
+            setIL.Emit(OpCodes.Ret);
+            prop.SetSetMethod(setter);
+        }
     }
 }
+

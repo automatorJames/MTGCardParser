@@ -108,6 +108,12 @@ public record DeterministicPalette
         return _typePaletteSet;
     }
 
+    public static void RefreshTypePaletteSet()
+    {
+        _typePaletteSet = null;
+        _typePaletteSet = GetTypePaletteSet();
+    }
+
     public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount)
     {
         if (_positionalPaletteSets.TryGetValue(totalItemCount, out var positionalPaletteSet))

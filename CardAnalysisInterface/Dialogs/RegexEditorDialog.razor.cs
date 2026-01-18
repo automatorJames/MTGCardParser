@@ -417,7 +417,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task SaveClassToFile()
     {
         if (_dynamicTokenType != null)
-            TokenTypeRegistry.AddNewTypeAndSaveToDisk(_dynamicTokenType);
+            TokenTypeRegistry.CreateAndRegisterNewTypeAndSaveToDisk(_dynamicTokenType);
 
         await OnClose.InvokeAsync(_renderedRegex);
     }

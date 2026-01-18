@@ -63,7 +63,7 @@ public class DynamicTokenType
 
             return
                 $$"""
-                protected override Snippet[] Snippets => [{{string.Join(", ", _parameterParts)}}]
+                protected override Snippet[] Snippets => [{{string.Join(", ", _parameterParts)}}];
 
 
             """;
