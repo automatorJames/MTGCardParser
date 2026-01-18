@@ -1,9 +1,8 @@
 ﻿.line-text-container {
-    position: relative; /* Acts as the anchor for the absolute front layer */
+    position: relative;
     background-color: var(--dark-grey, #1A202C);
     border-radius: 4px;
     border: 1px solid var(--outline-grey, #4A5568);
-    /* Typography must be identical for both layers to align */
     font-family: 'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 1.0em;
     line-height: 1.6;
@@ -13,7 +12,7 @@
 .text-layer-back {
     position: relative;
     padding: 1rem;
-    color: transparent; /* Hides text but keeps highlights/underlines visible */
+    color: transparent;
     white-space: pre-wrap;
     word-break: break-word;
     z-index: 1;
@@ -25,16 +24,15 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1rem; /* Must match .text-layer-back exactly */
+    padding: 1rem;
     white-space: pre-wrap;
     word-break: break-word;
     z-index: 2;
-    pointer-events: none; /* Allows clicks to pass through to the container if needed */
-    color: #E2E8F0; /* Default text color */
+    pointer-events: none;
+    color: #E2E8F0;
 }
 
 .highlight-token {
-    /* This sits in the back layer under the transparent text */
     text-decoration: underline;
     text-decoration-color: rgba(66, 153, 225, 0.6);
     text-decoration-thickness: 2px;
@@ -106,12 +104,49 @@
     border: 1px solid #4A5568;
     padding: 0.5rem;
     min-height: 44px;
+    font-family: 'Consolas', monospace;
+    line-height: 1.5;
 }
 
     .regex-input-composite:focus {
         outline: none;
         border-color: #63B3ED;
         box-shadow: 0 0 0 1px #63B3ED;
+    }
+
+/* TOKEN PILL STYLES */
+.token-style {
+    display: inline-flex;
+    align-items: center;
+    padding: 0px 4px 0px 6px;
+    margin: 0 1px;
+    border-radius: 4px;
+    font-family: Consolas, monospace;
+    color: white;
+    user-select: none;
+    border: 1px solid transparent;
+    cursor: default;
+}
+
+    /* Highlight state for deletion readiness */
+    .token-style.token-selected {
+        border-color: #FBD38D;
+        box-shadow: 0 0 0 2px rgba(251, 211, 141, 0.4);
+    }
+
+.token-delete {
+    margin-left: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0.6;
+    line-height: 1;
+    padding-bottom: 2px; /* Visual centering */
+}
+
+    .token-delete:hover {
+        opacity: 1;
+        color: #FC8181;
     }
 
 pre {
@@ -126,7 +161,6 @@ pre {
     margin-top: 0.5rem;
 }
 
-/* C# Syntax Highlighting Colors */
 .c-sharp .keyword {
     color: #569CD6;
 }

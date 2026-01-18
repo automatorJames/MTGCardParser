@@ -15,7 +15,6 @@
 
             @* 1. THE TEXT PREVIEW (Layered) *@
             <div class="line-text-container">
-                @* Back Layer: Responsible for layout and Underline Highlights (Text is transparent) *@
                 <div class="text-layer-back">
                     @{
                         int cursorBack = 0;
@@ -36,7 +35,6 @@
                     }
                 </div>
 
-                @* Front Layer: Responsible for Syntax Coloring (Text is visible) *@
                 <div class="text-layer-front">
                     @{
                         int cursorFront = 0;
@@ -46,14 +44,11 @@
 
                         foreach (var token in tokens)
                         {
-                            // Fill gap before the token
                             if (token.Match.RootMatch.Index > cursorFront)
                             {
                                 @textFront.Substring(cursorFront, token.Match.RootMatch.Index - cursorFront)
                             }
 
-                            // Calculate token text and color
-                            // FIX: Corrected Substring parameters (Start, Length)
                             var tokenText = textFront.Substring(token.Match.RootMatch.Index, token.Match.RootMatch.Length);
                             var color = token.Type == typeof(DefaultUnmatchedString)
                             ? "#E2E8F0"
@@ -63,7 +58,6 @@
                             cursorFront = token.Match.RootMatch.Index + token.Match.RootMatch.Length;
                         }
 
-                        // Fill final gap
                         if (cursorFront < textFront.Length)
                         {
                             @textFront.Substring(cursorFront)
@@ -114,18 +108,23 @@
                         <div style="display: flex; flex-direction: column; gap: 12px;">
                             <div>
                                 <div class="small-box-label right">Rendered regex</div>
-                                <div class="rendered-regex-box"><pre>@_renderedRegex</pre></div>
-                            </div>
-
-                            <div>
-                                <div class="small-box-label right">C# class preview</div>
                                 <div class="rendered-regex-box">
-                                    <pre class="c-sharp">@(new MarkupString(_dynamicTokenType?.ClassStringStyled ?? ""))</pre>
-                                </div>
+                                    <pre>@foreach(var segment in _regexSegments){
+                                    <span style="color: @segment.Color">@segment.Text</span>
+                                }
+</pre>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="small-box-label right">C# class preview</div>
+                            <div class="rendered-regex-box">
+                                <pre class="c-sharp">@(new MarkupString(_dynamicTokenType?.ClassStringStyled ?? ""))</pre>
                             </div>
                         </div>
                     </div>
-                }
+                </div>
+                                }
             </div>
         </div>
     </DialogContent>
@@ -137,16 +136,6 @@
 </CustomDialog>
 
 <style>
-    /* Inline styles for components within the razor */
-    .token-style {
-        background-color: #4A5568;
-        color: white;
-        padding: 1px 5px;
-        border-radius: 4px;
-        font-family: Consolas, monaco, monospace;
-    }
-
-    /* Placeholder logic for contenteditable */
     [contenteditable=true]:empty:before {
         content: attr(placeholder);
         color: #718096;

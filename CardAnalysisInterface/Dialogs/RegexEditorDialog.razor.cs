@@ -1,5 +1,9 @@
-﻿using MTGPlexer.CommonDTOs;
+﻿using System.Text.RegularExpressions;
+using MTGPlexer.CommonDTOs;
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -12,6 +16,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public EventCallback<string> OnClose { get; set; }
 
     private string _renderedRegex = "";
+    private List<RegexSegment> _regexSegments = new();
     private List<Match> _currentMatches = new();
     private DynamicTokenType _dynamicTokenType;
 
@@ -27,11 +32,12 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private ElementReference _editorElement;
     private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
 
+    public record RegexSegment(string Text, string Color);
+
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
 
-        // Populate autocomplete source
         _allTemplateTypes.Clear();
         _allTemplateTypes.AddRange(TokenTypeRegistry.AppliedOrderTypes);
         _allTemplateTypes.AddRange(TokenTypeRegistry.ReferencedEnumTypes);
@@ -41,7 +47,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && _dotNetRef != null)
-            await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement);
+        {
+            // Pass the palette colors to JS so the tokens can be colored correctly
+            var colorMap = _allTemplateTypes.ToDictionary(
+                t => t.Name,
+                t => DeterministicPalette.TypePaletteSet[t].Dark
+            );
+            await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement, colorMap);
+        }
     }
 
     [JSInvokable]
@@ -124,7 +137,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
     }
 
-    // Renamed back to SelectSuggestionByKeyboard to match the Razor template
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
         string fullTokenText = $"@{selection.Name}";
@@ -152,22 +164,21 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 _dynamicTokenType = null;
             }
 
+            ParseSegments();
+
             if (!string.IsNullOrWhiteSpace(_renderedRegex))
             {
                 try
                 {
-                    // The currently-rendered regex might be invalid (e.g. not enough closing parentheses)
                     _currentMatches = Regex.Matches(Line.SourceText.FormattedText, _renderedRegex)
                        .Cast<Match>()
                        .ToList();
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    // That's OK: just clear the matches for now
                     _currentMatches.Clear();
-
-                    // Tell the user what's wrong like a good GUI
                     _renderedRegex = ex.Message;
+                    _regexSegments = new List<RegexSegment> { new(_renderedRegex, "#F87171") };
                 }
             }
         }
@@ -175,7 +186,59 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         {
             _currentMatches.Clear();
             _renderedRegex = "Error rendering template";
+            _regexSegments = new List<RegexSegment> { new(_renderedRegex, "#F87171") };
         }
+    }
+
+    private void ParseSegments()
+    {
+        _regexSegments.Clear();
+        if (string.IsNullOrEmpty(_renderedRegex)) return;
+
+        // Algorithm to find top-level capture groups
+        int depth = 0;
+        int lastPos = 0;
+
+        for (int i = 0; i < _renderedRegex.Length; i++)
+        {
+            if (_renderedRegex[i] == '\\') { i++; continue; } // skip escaped
+
+            if (_renderedRegex[i] == '(')
+            {
+                if (depth == 0)
+                {
+                    // Add text before the group
+                    if (i > lastPos)
+                        _regexSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "#d4d4d4"));
+                    lastPos = i;
+                }
+                depth++;
+            }
+            else if (_renderedRegex[i] == ')')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    // Found end of top-level group
+                    var groupText = _renderedRegex.Substring(lastPos, i - lastPos + 1);
+                    var match = Regex.Match(groupText, @"^\(\?<(?<name>[a-zA-Z0-9_]+)>");
+
+                    string color = "#d4d4d4";
+                    if (match.Success)
+                    {
+                        var name = match.Groups["name"].Value;
+                        if (TokenTypeRegistry.NameToType.TryGetValue(name, out var type))
+                            color = DeterministicPalette.TypePaletteSet[type].Normal;
+                    }
+
+                    _regexSegments.Add(new(groupText, color));
+                    lastPos = i + 1;
+                }
+            }
+        }
+
+        if (lastPos < _renderedRegex.Length)
+            _regexSegments.Add(new(_renderedRegex.Substring(lastPos), "#d4d4d4"));
     }
 
     private async Task HandleSubmit()
@@ -193,12 +256,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (_dotNetRef != null)
         {
-            try
-            {
-                await JsRuntime.InvokeVoidAsync("disposeEditor");
-            }
-            catch { /* Ignore JS errors during disposal */ }
-
+            try { await JsRuntime.InvokeVoidAsync("disposeEditor"); } catch { }
             _dotNetRef.Dispose();
         }
     }
