@@ -1,8 +1,19 @@
 ﻿.line-text-container {
+    /* Centralized Theme Colors */
+    --match-full-text: #FFFFFF;
+    --match-full-underline: rgba(66, 153, 225, 0.8);
+    --match-partial-text: #a9bbcf;
+    --match-partial-underline: #a9bbcf;
+    --unmatched-default: #AAAAAA;
+    --bg-dark: #1A202C;
+    --outline-grey: #4A5568;
+    --highlight-blue: #63B3ED;
+    --error-red: #F87171;
+    --syntax-default: #d4d4d4;
     position: relative;
-    background-color: var(--dark-grey, #1A202C);
+    background-color: var(--bg-dark);
     border-radius: 4px;
-    border: 1px solid var(--outline-grey, #4A5568);
+    border: 1px solid var(--outline-grey);
     font-family: 'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 1.0em;
     line-height: 1.6;
@@ -29,15 +40,25 @@
     word-break: break-word;
     z-index: 2;
     pointer-events: none;
-    color: #E2E8F0;
+    color: var(--unmatched-default);
 }
 
-.highlight-token {
-    text-decoration: underline;
-    text-decoration-color: rgba(66, 153, 225, 0.6);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 4px;
+/* 
+   We define the underline offset separately as it's not part of the shorthand,
+   but we combine line, style, color, and thickness into a single property.
+*/
+.line-text-container .highlight-token {
+    text-underline-offset: 4px !important;
 }
+
+    .line-text-container .highlight-token.full-match {
+        /* Shorthand syntax: [line] [style] [color] [thickness] */
+        text-decoration: underline solid var(--match-full-underline) 2px !important;
+    }
+
+    .line-text-container .highlight-token.partial-match {
+        text-decoration: underline dotted var(--match-partial-underline) 2px !important;
+    }
 
 .autocomplete-container {
     position: relative;
@@ -51,7 +72,7 @@
     left: 0;
     width: 100%;
     background-color: #2D3748;
-    border: 1px solid #4A5568;
+    border: 1px solid var(--outline-grey);
     border-radius: 4px;
     margin-top: 4px;
     max-height: 250px;
@@ -63,7 +84,7 @@
 .autocomplete-item {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
-    border-bottom: 1px solid #4A5568;
+    border-bottom: 1px solid var(--outline-grey);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -74,7 +95,7 @@
     }
 
     .autocomplete-item:hover, .autocomplete-item.selected {
-        background-color: #4A5568;
+        background-color: var(--outline-grey);
     }
 
     .autocomplete-item .type-name {
@@ -99,10 +120,10 @@
 
 .regex-input-composite {
     width: 100%;
-    background-color: #1A202C;
+    background-color: var(--bg-dark);
     color: white;
-    border: 1px solid #4A5568;
-    padding: 0.5rem;
+    border: 1px solid var(--outline-grey);
+    padding: 0.5rem 1rem;
     min-height: 44px;
     font-family: 'Consolas', monospace;
     line-height: 1.5;
@@ -110,8 +131,8 @@
 
     .regex-input-composite:focus {
         outline: none;
-        border-color: #63B3ED;
-        box-shadow: 0 0 0 1px #63B3ED;
+        border-color: var(--highlight-blue);
+        box-shadow: 0 0 0 1px var(--highlight-blue);
     }
 
 /* TOKEN PILL STYLES */
@@ -137,7 +158,7 @@
 pre {
     font-family: 'Consolas', 'Fira Code', monospace;
     background: #1e1e1e;
-    color: #d4d4d4;
+    color: var(--syntax-default);
     padding: 1em;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -169,7 +190,7 @@ pre {
 .header-row {
     display: flex;
     align-items: baseline;
-    justify-content: space-between; /* left + right */
+    justify-content: space-between;
     width: 100%;
     gap: 12px;
 }
@@ -178,16 +199,16 @@ pre {
     color: #A0AEC0;
     font-weight: 500;
     font-size: 28px;
-    margin-bottom: 6px; /* required */
+    margin-bottom: 6px;
     line-height: 1.2;
-    min-width: 0; /* allow shrink */
-    overflow: hidden; /* optional */
-    text-overflow: ellipsis; /* optional */
-    white-space: nowrap; /* optional */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .header-line-number {
-    margin-left: auto; /* ensures it stays right even if justify changes */
+    margin-left: auto;
     text-align: right;
     white-space: nowrap;
 }

@@ -1,6 +1,4 @@
-﻿using System.Linq;
-
-namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitComponents;
 
 public class RegexTemplate
 {
@@ -71,7 +69,7 @@ public class RegexTemplate
         var splittingPattern = @"(@\w+|(?:Alt|Opt|NoSpace|Prop)\([^)]+\)|.+?(?=@\w+|(?:Alt|Opt|NoSpace|Prop)\(|$))";
 
         var snippets = Regex.Split(templateString, splittingPattern)
-            .Where(x => !string.IsNullOrEmpty(x))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim());
 
         List<RegexSegmentBase> regexSegments = snippets.Select<string, RegexSegmentBase>(x =>

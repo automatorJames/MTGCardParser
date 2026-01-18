@@ -18,51 +18,21 @@
 
             @* 1. THE TEXT PREVIEW (Layered) *@
             <div class="line-text-container">
+                @{
+                    var displaySegments = GetProcessedSegments();
+                }
+
                 <div class="text-layer-back">
-                    @{
-                        int cursorBack = 0;
-                        string textBack = Line.SourceText.FormattedText;
-                        foreach (var match in _currentMatches.OrderBy(m => m.Index))
-                        {
-                            if (match.Index > cursorBack)
-                            {
-                                @textBack.Substring(cursorBack, match.Index - cursorBack)
-                            }
-                            <span class="highlight-token">@match.Value</span>
-                            cursorBack = match.Index + match.Length;
-                        }
-                        if (cursorBack < textBack.Length)
-                        {
-                            @textBack.Substring(cursorBack)
-                        }
+                    @foreach (var segment in displaySegments)
+                    {
+                        <span class="highlight-token @segment.UnderlineClass">@segment.Text</span>
                     }
                 </div>
 
                 <div class="text-layer-front">
-                    @{
-                        int cursorFront = 0;
-                        string textFront = Line.SourceText.FormattedText;
-
-                        foreach (var spanRoot in Line.SpanRoots)
-                        {
-                            if (spanRoot.RootToken.Match.RootMatch.Index > cursorFront)
-                            {
-                                @textFront.Substring(cursorFront, spanRoot.RootToken.Match.RootMatch.Index - cursorFront)
-                            }
-
-                            var match = spanRoot.RootToken.Match.RootMatch;
-                            var tokenText = textFront.Substring(match.Index, match.Length);
-                            var color = spanRoot.RootToken.Type == typeof(DefaultUnmatchedString) ? "#E2E8F0" : spanRoot.Palette.Normal;
-
-                            <span style="color: @color">@tokenText</span>
-
-                            cursorFront = match.Index + match.Length;
-                        }
-
-                        if (cursorFront < textFront.Length)
-                        {
-                            @textFront.Substring(cursorFront)
-                        }
+                    @foreach (var segment in displaySegments)
+                    {
+                        <span style="color: @segment.Color">@segment.Text</span>
                     }
                 </div>
             </div>

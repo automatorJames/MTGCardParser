@@ -1,9 +1,10 @@
-﻿using System.Text.RegularExpressions;
-using MTGPlexer.CommonDTOs;
-using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
+using MTGPlexer.CommonDTOs;
+using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+using MTGPlexer.TokenUnits;
+using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -33,6 +34,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     public record RegexSegment(string Text, string Color);
 
+    private enum MatchStatus { None, Partial, Full }
+    private record TextSegment(string Text, string Color, string UnderlineClass);
+
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
@@ -56,6 +60,133 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             );
             await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement, colorMap);
         }
+    }
+
+    private List<TextSegment> GetProcessedSegments()
+    {
+        var segments = new List<TextSegment>();
+        string text = Line.SourceText.FormattedText;
+        if (string.IsNullOrEmpty(text)) return segments;
+
+        var charStatus = new MatchStatus[text.Length];
+        for (int i = 0; i < text.Length; i++) charStatus[i] = MatchStatus.None;
+
+        // 1. Identify "word" spans (strings of non-whitespace)
+        var words = new List<(int Start, int End)>();
+        int? wordStart = null;
+        for (int i = 0; i <= text.Length; i++)
+        {
+            bool isWordChar = i < text.Length && !char.IsWhiteSpace(text[i]);
+            if (isWordChar && wordStart == null) wordStart = i;
+            else if (!isWordChar && wordStart != null)
+            {
+                words.Add((wordStart.Value, i - 1));
+                wordStart = null;
+            }
+        }
+
+        // 2. Evaluate every match against word boundaries
+        foreach (var m in _currentMatches)
+        {
+            int mStart = m.Index;
+            int mEnd = m.Index + m.Length - 1;
+
+            // Find words that overlap with this specific match
+            var overlappingWords = words.Where(w => mStart <= w.End && mEnd >= w.Start);
+
+            foreach (var word in overlappingWords)
+            {
+                int strippedEnd = (text[word.End] == '.') ? word.End - 1 : word.End;
+
+                // Full Match Check: Match covers word OR match covers word minus trailing period
+                bool coversFull = (mStart <= word.Start && mEnd >= word.End);
+                bool coversStripped = (mStart <= word.Start && mEnd == strippedEnd && strippedEnd < word.End);
+
+                if (coversFull || coversStripped)
+                {
+                    // Only mark characters that are actually PART of the regex match as Full
+                    for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
+                    {
+                        charStatus[k] = MatchStatus.Full;
+                    }
+                }
+                else
+                {
+                    // Otherwise, it's a partial match for this word
+                    for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
+                    {
+                        // Don't downgrade an existing Full status from a different match
+                        if (charStatus[k] == MatchStatus.None) charStatus[k] = MatchStatus.Partial;
+                    }
+                }
+            }
+
+            // Handle characters in match that aren't part of words (like leading/trailing spaces in the pattern)
+            for (int k = mStart; k <= mEnd; k++)
+            {
+                if (charStatus[k] == MatchStatus.None)
+                {
+                    // Check if this space connects two Full segments
+                    bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
+                    bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
+
+                    if (leftFull && rightFull && char.IsWhiteSpace(text[k]))
+                        charStatus[k] = MatchStatus.Full;
+                    else
+                        charStatus[k] = MatchStatus.Partial; // Default for match chars not in "Full" words
+                }
+            }
+        }
+
+        // 3. Create visual segments
+        for (int i = 0; i < text.Length; i++)
+        {
+            string color;
+            string underlineClass = "";
+            MatchStatus status = charStatus[i];
+
+            if (status == MatchStatus.Full)
+            {
+                color = "var(--match-full-text)";
+                underlineClass = "full-match";
+            }
+            else if (status == MatchStatus.Partial)
+            {
+                color = "var(--match-partial-text)";
+                underlineClass = "partial-match";
+            }
+            else
+            {
+                var span = Line.SpanRoots.FirstOrDefault(sr => i >= sr.RootToken.Match.RootMatch.Index && i < sr.RootToken.Match.RootMatch.Index + sr.RootToken.Match.RootMatch.Length);
+                color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
+            }
+
+            segments.Add(new TextSegment(text[i].ToString(), color, underlineClass));
+        }
+
+        return CollapseSegments(segments);
+    }
+
+    private List<TextSegment> CollapseSegments(List<TextSegment> source)
+    {
+        if (!source.Any()) return source;
+        var result = new List<TextSegment>();
+        var current = source[0];
+
+        for (int i = 1; i < source.Count; i++)
+        {
+            if (source[i].Color == current.Color && source[i].UnderlineClass == current.UnderlineClass)
+            {
+                current = current with { Text = current.Text + source[i].Text };
+            }
+            else
+            {
+                result.Add(current);
+                current = source[i];
+            }
+        }
+        result.Add(current);
+        return result;
     }
 
     [JSInvokable]
@@ -158,8 +289,17 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private void UpdateRenderedRegexAndMatches(string patternToRender)
     {
+        _currentMatches.Clear();
+
         var logicalPattern = patternToRender.Trim();
         _showPreviewBoxes = logicalPattern.Contains("@");
+
+        if (string.IsNullOrWhiteSpace(logicalPattern))
+        {
+            _renderedRegex = "";
+            _regexSegments.Clear();
+            return;
+        }
 
         try
         {
@@ -187,17 +327,15 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 }
                 catch (Exception ex)
                 {
-                    _currentMatches.Clear();
                     _renderedRegex = ex.Message;
-                    _regexSegments = new List<RegexSegment> { new(_renderedRegex, "#F87171") };
+                    _regexSegments = new List<RegexSegment> { new(_renderedRegex, "var(--error-red)") };
                 }
             }
         }
         catch
         {
-            _currentMatches.Clear();
             _renderedRegex = "Error rendering template";
-            _regexSegments = new List<RegexSegment> { new(_renderedRegex, "#F87171") };
+            _regexSegments = new List<RegexSegment> { new(_renderedRegex, "var(--error-red)") };
         }
     }
 
@@ -218,7 +356,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 if (depth == 0)
                 {
                     if (i > lastPos)
-                        _regexSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "#d4d4d4"));
+                        _regexSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
                     lastPos = i;
                 }
                 depth++;
@@ -231,7 +369,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                     var groupText = _renderedRegex.Substring(lastPos, i - lastPos + 1);
                     var match = Regex.Match(groupText, @"^\(\?<(?<name>[a-zA-Z0-9_]+)>");
 
-                    string color = "#d4d4d4";
+                    string color = "var(--syntax-default)";
                     if (match.Success)
                     {
                         var name = match.Groups["name"].Value;
@@ -246,7 +384,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
 
         if (lastPos < _renderedRegex.Length)
-            _regexSegments.Add(new(_renderedRegex.Substring(lastPos), "#d4d4d4"));
+            _regexSegments.Add(new(_renderedRegex.Substring(lastPos), "var(--syntax-default)"));
     }
 
     private async Task HandleSubmit()
