@@ -85,3 +85,24 @@ function disposeCardCaptureHover() {
         mainContent.removeEventListener('mouseleave', mouseleaveHandler);
     }
 }
+
+function flashLineHighlight(dataPath) {
+    // Select the specific container by class and data-path
+    const selector = `.line-container-parent[data-path="${dataPath}"]`;
+    const element = document.querySelector(selector);
+
+    if (element) {
+        // Remove the class first in case it's already there (re-trigger)
+        element.classList.remove('flash-highlight');
+
+        // Force a reflow to ensure the browser notices the class was removed
+        void element.offsetWidth;
+
+        element.classList.add('flash-highlight');
+
+        // Clean up the class after the animation finishes
+        element.addEventListener('animationend', () => {
+            element.classList.remove('flash-highlight');
+        }, { once: true });
+    }
+}

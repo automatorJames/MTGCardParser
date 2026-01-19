@@ -29,3 +29,27 @@ pre.line-text {
     pre.line-text span {
         color: #d4d4d4;
     }
+
+
+/* The flash animation */
+@keyframes flash-highlight-animation {
+    0% {
+        box-shadow: 0 0 0 0px rgba(255, 255, 255, 0);
+        background-color: rgba(255, 255, 255, 0);
+    }
+
+    15% {
+        box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.6); /* Adjust color to your theme */
+        background-color: rgba(64, 158, 255, 0.1);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0px rgba(255, 255, 255, 0);
+        background-color: rgba(255, 255, 255, 0);
+    }
+}
+
+.flash-highlight {
+    animation: flash-highlight-animation 2.0s ease-out;
+    border-radius: 4px; /* Matches the visual "pop" */
+}

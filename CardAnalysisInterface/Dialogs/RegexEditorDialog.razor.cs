@@ -329,10 +329,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
 
                 if (_classNameHasBeenManuallyEdited)
-                    _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className);
+                    _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className, lineMetadata: Line);
                 else
                 {
-                    _dynamicTokenType = new DynamicTokenType(cleanPattern);
+                    _dynamicTokenType = new DynamicTokenType(cleanPattern, lineMetadata: Line);
                     _className = _dynamicTokenType.ClassName;
                 }
 

@@ -1,4 +1,5 @@
 ﻿@inject CorpusAnalyzer CorpusAnalyzer
+@inject IJSRuntime JS
 
 <Snackbar @ref="_snackbar" />
 
@@ -55,12 +56,13 @@
 
         if (dynamicTokenType != null)
         {
-            // 1. Process data
             Card = await CorpusAnalyzer.ReprocessCard(Card.Card);
-
-            // 2. IMPORTANT: Update the UI here so the dialog vanishes
-            // and the Snackbar component is properly rendered in the DOM
             StateHasChanged();
+
+            await Task.Yield();
+
+            if (dynamicTokenType.LineMetadata?.DataPath is string pathToHighlight)
+                await JS.InvokeVoidAsync("flashLineHighlight", pathToHighlight);
 
             if (_snackbar != null)
             {

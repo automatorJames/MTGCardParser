@@ -15,8 +15,9 @@ public class DynamicTokenType
     public string ClassStringForSavingToFile { get; }
     public string ClassStringForDisplayingHtml { get; }
     public string RenderedRegex { get; }
+    public ProcessedLine LineMetadata { get; }
 
-    public DynamicTokenType(string templateString, Type tokenUnitType = null, string className = null)
+    public DynamicTokenType(string templateString, Type tokenUnitType = null, string className = null, ProcessedLine lineMetadata = null)
     {
         tokenUnitType ??= typeof(TokenUnit);
         _baseTypeName = tokenUnitType.Name;
@@ -25,6 +26,7 @@ public class DynamicTokenType
         RenderedRegex = DynamicSnippetsToRegex<TokenUnit>(DynamicSnippets);
         ClassStringForSavingToFile = GetClassStringForSavingToFile(DynamicSnippets);
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml(DynamicSnippets);
+        LineMetadata = lineMetadata;
 
         // If parameters only consist of type, the parameters block can be omitted
         _omitParameterBlock = DynamicSnippets.All(x => x.SnippetType == DynamicSnippetType.Type);
