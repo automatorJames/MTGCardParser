@@ -30,4 +30,18 @@ public class CorpusAnalyzer
         TokenCaptureSummary = new TokenUnitCaptureSummary(ProcessedCards);
         DigestedCorpusWithCaptureTokens = new DigestedTextCorpus(ProcessedCards);
     }
+
+    public async Task<ProcessedCard> ReprocessCard(Card card)
+    {
+        ProcessedCard reprocessedCard = new(card);
+
+        // There should be only one, but let's be tolerant of duplicates
+        ProcessedCards
+            .Where(x => x.Card.Name == card.Name)
+            .ToList()
+            .ForEach(x => x = reprocessedCard);
+
+        return reprocessedCard;
+    }
+
 }

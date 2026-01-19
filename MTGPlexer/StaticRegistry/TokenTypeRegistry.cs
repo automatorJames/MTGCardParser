@@ -19,7 +19,7 @@ public static partial class TokenTypeRegistry
     public static Dictionary<TemplatePropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
     public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
     public static Dictionary<Type, Dictionary<TemplatePropInfo, List<TemplatePropInfo>>> PropDistillationMaps { get; set; } = [];
-    public static Dictionary<Type, Type> EmitedOptionalManyTypes { get; set; } = [];
+    public static Dictionary<Type, Type> EmittedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
@@ -29,7 +29,7 @@ public static partial class TokenTypeRegistry
     {
         InitializeEmitedManyTypes();
 
-        var allTokenTypes = GetAllTokenTypes();
+        var allTokenTypes = GetAllTopLevelTokenTypes();
 
         foreach (var type in allTokenTypes)
             SetTypeTemplate(type);
@@ -111,14 +111,14 @@ public static partial class TokenTypeRegistry
     /// <summary>
     /// Return all TokenUnit derived types except for DefaultUnmatchedString
     /// </summary>
-    static List<Type> GetAllTokenTypes()
+    public static List<Type> GetAllTopLevelTokenTypes()
     {
         var allTypes = _staticAssemblyTypes
-        .Where(x =>
-            x.IsClass && !x.IsAbstract
-            && typeof(TokenUnit).IsAssignableFrom(x)
-            && !x.IsDefined(typeof(DependentAttribute)))
-        .Concat(_dynamicAssemblyTypes);
+            .Where(x =>
+                x.IsClass && !x.IsAbstract
+                && typeof(TokenUnit).IsAssignableFrom(x)
+                && !x.IsDefined(typeof(DependentAttribute)))
+            .Concat(_dynamicAssemblyTypes);
 
         if (allTypes.Any(x => x.IsDefined(typeof(IsolateForTestingAttribute))))
             allTypes = allTypes.Where(x => x.IsDefined(typeof(IsolateForTestingAttribute)) || x == typeof(DefaultUnmatchedString));
@@ -126,15 +126,30 @@ public static partial class TokenTypeRegistry
         return allTypes.ToList();
     }
 
+    public static List<Type> GetAllTypesExhaustive()
+    {
+        return _staticAssemblyTypes
+            .Where(x =>
+                x.IsClass
+                && !x.IsAbstract
+                && typeof(TokenUnit).IsAssignableFrom(x))
+            .Concat(_dynamicAssemblyTypes)
+            .Concat(ReferencedEnumTypes)
+            .Concat(EmittedOptionalManyTypes.Values)
+            .Distinct()
+            .OrderBy(x => x.Name)
+            .ToList();
+    }
+
     static void InitializeEmitedManyTypes()
     {
-        var typesContainingManyProps = GetAllTokenTypes()
+        var typesContainingManyProps = GetAllTopLevelTokenTypes()
             .Where(x => x.GetProps().Any(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))));
 
         foreach (var type in typesContainingManyProps)
         {
             var emittedType = DynamicTypeEmitter.EmitManyType(type);
-            EmitedOptionalManyTypes[type] = emittedType;
+            EmittedOptionalManyTypes[type] = emittedType;
             SetTypeTemplate(emittedType);
         }
     }
@@ -145,7 +160,7 @@ public static partial class TokenTypeRegistry
         AppliedOrderTypes = [];
 
         // Get all tokens except default unmatched string, which will be added last
-        var allTokenTypes = GetAllTokenTypes().Where(x => x != typeof(DefaultUnmatchedString));
+        var allTokenTypes = GetAllTopLevelTokenTypes().Where(x => x != typeof(DefaultUnmatchedString));
 
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
         // each dictionary entry is a List, though each List should ideally only have one item.
@@ -195,7 +210,7 @@ public static partial class TokenTypeRegistry
         if (AppliedOrderTypes.Contains(tokenUnitType) || tokenUnitType.IsDefined(typeof(DependentAttribute)))
             return;
 
-        if (EmitedOptionalManyTypes.TryGetValue(tokenUnitType, out Type multiVersionType))
+        if (EmittedOptionalManyTypes.TryGetValue(tokenUnitType, out Type multiVersionType))
         {
             // If the tokenCaptureType emitted an optional many type version of itself, add that one first.
             // We do this so that the more specific many-item version of the token is not preempted by the
@@ -361,5 +376,10 @@ public static partial class TokenTypeRegistry
             prop.SetSetMethod(setter);
         }
     }
+
+    static List<Type> TypeOrderList =
+    [
+    
+    ];
 }
 

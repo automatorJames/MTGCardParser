@@ -96,7 +96,7 @@ public record DeterministicPalette
 
         _typePaletteSet = [];
 
-        var allTokenTypes = TokenTypeRegistry.NameToType.Values
+        var allTokenTypes = TokenTypeRegistry.GetAllTypesExhaustive()
             .OrderBy(x => GetDeterministicHash(x.Name))
             .ToList();
 

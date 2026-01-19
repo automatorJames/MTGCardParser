@@ -1,0 +1,47 @@
+﻿<div class="snackbar-pill @(_isVisible ? "show" : "")">
+    @_content
+</div>
+
+@code {
+    private bool _isVisible;
+    private RenderFragment? _content;
+    private int _activeId = 0;
+
+    /// <summary>
+    /// Show plain text
+    /// </summary>
+    public Task Show(string message, int duration = 3000)
+    {
+        return Show(builder => builder.AddContent(0, message), duration);
+    }
+
+    /// <summary>
+    /// Show HTML / MarkupString
+    /// </summary>
+    public Task Show(MarkupString markupMessage, int duration = 3000)
+    {
+        return Show(builder => builder.AddContent(0, markupMessage), duration);
+    }
+
+    /// <summary>
+    /// Internal master method
+    /// </summary>
+    private async Task Show(RenderFragment content, int duration)
+    {
+        _activeId++;
+        int currentId = _activeId;
+
+        _content = content;
+        _isVisible = true;
+
+        await InvokeAsync(StateHasChanged);
+
+        await Task.Delay(duration);
+
+        if (currentId == _activeId)
+        {
+            _isVisible = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

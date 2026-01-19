@@ -1,4 +1,8 @@
-﻿<div class="card-capture-block">
+﻿@inject CorpusAnalyzer CorpusAnalyzer
+
+<Snackbar @ref="_snackbar" />
+
+<div class="card-capture-block">
     <div class="card-title">@Card.Card.Name</div>
 
     @foreach (var line in Card.Lines)
@@ -30,6 +34,7 @@
 @code {
     bool _isDialogOpen = false;
     ProcessedLine _selectedLine;
+    Snackbar _snackbar;
 
     [Parameter]
     public ProcessedCard Card { get; set; }
@@ -38,32 +43,36 @@
 
     void OpenRegexEditorDialog(ProcessedLine line)
     {
-        // todo: re-enable this if we want
-
         _selectedLine = line;
         _isDialogOpen = true;
         // We call StateHasChanged() to ensure the UI re-renders and shows the dialog.
         StateHasChanged();
     }
 
-    void HandleDialogClose(string regexResult)
+    async Task HandleDialogClose(DynamicTokenType dynamicTokenType)
     {
-        _isDialogOpen = false; // Hide the dialog
+        _isDialogOpen = false;
 
-        if (regexResult != null) // Check if the user clicked "Save"
+        if (dynamicTokenType != null)
         {
-            Console.WriteLine($"User saved new regex: {regexResult}");
-            //
-            // --> This is where you put your logic to process the new regex.
-            //
+            // 1. Process data
+            Card = await CorpusAnalyzer.ReprocessCard(Card.Card);
+
+            // 2. IMPORTANT: Update the UI here so the dialog vanishes
+            // and the Snackbar component is properly rendered in the DOM
+            StateHasChanged();
+
+            if (_snackbar != null)
+            {
+                // Do NOT await this if you want the method to finish immediately,
+                // OR await it after StateHasChanged so the UI isn't "stuck"
+                _ = _snackbar.Show(new MarkupString($"Added type <b>{dynamicTokenType.ClassName}</b>!"));
+            }
         }
         else
         {
-            Console.WriteLine("Dialog was cancelled.");
+            StateHasChanged();
         }
-
-        // We need to re-render to hide the dialog.
-        StateHasChanged();
     }
 
     string GetLineHeightStyle(ProcessedLine line)

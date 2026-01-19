@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.CommonDTOs;
+﻿using System.ComponentModel.Design;
+
+namespace MTGPlexer.CommonDTOs;
 
 public class DynamicTokenType
 {
@@ -9,17 +11,17 @@ public class DynamicTokenType
     bool _omitParameterBlock;
 
     public List<DynamicSnippet> DynamicSnippets { get; }
-    public string ClassName { get; }
-    public string ClassStringForSavingToFile { get; private set; }
-    public string ClassStringForDisplayingHtml { get; private set; }
+    public string ClassName { get; private set; }
+    public string ClassStringForSavingToFile { get; }
+    public string ClassStringForDisplayingHtml { get; }
     public string RenderedRegex { get; }
 
     public DynamicTokenType(string templateString, Type tokenUnitType = null, string className = null)
     {
         tokenUnitType ??= typeof(TokenUnit);
         _baseTypeName = tokenUnitType.Name;
-        ClassName = className ?? $"New{tokenUnitType.Name}";
         DynamicSnippets = TemplateStringToDynamicSnippets(templateString);
+        ClassName = className ?? GetSuggestedClassName(DynamicSnippets) ?? $"New{tokenUnitType.Name}";
         RenderedRegex = DynamicSnippetsToRegex<TokenUnit>(DynamicSnippets);
         ClassStringForSavingToFile = GetClassStringForSavingToFile(DynamicSnippets);
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml(DynamicSnippets);
@@ -204,6 +206,32 @@ public class DynamicTokenType
         else
             return new TextSegment(methodSnippet.Text);
     }
+
+    string GetSuggestedClassName(List<DynamicSnippet> dynamicSnippets)
+    {
+        string str = "";
+        var relevantSnippets = dynamicSnippets.Where(x => x.SnippetType != DynamicSnippetType.Method);
+
+        foreach (var relevantSnippet in relevantSnippets)
+        {
+            if (relevantSnippet.SnippetType == DynamicSnippetType.Type)
+                str += relevantSnippet.Type.Name;
+            else
+            {
+                var rawTextParts =
+                    relevantSnippet.Text.Split(' ')
+                    .Select(x => Regex.Replace(x, @"[^\w]+", ""))
+                    .Select(x => x.Trim().ToLower())
+                    .Select(x => char.ToUpper(x[0]) + x[1..])
+                    .Where(x => !string.IsNullOrWhiteSpace(x));
+
+                str += string.Join("", rawTextParts);
+            }
+        }
+
+        return str;
+    }
+
 }
 
 enum SpanClass

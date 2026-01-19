@@ -2,10 +2,6 @@
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 using MTGPlexer.TokenUnitComponents;
 using MTGPlexer.TokenUnits;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
-using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -15,9 +11,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public ProcessedLine Line { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<string> OnClose { get; set; }
+    public EventCallback<DynamicTokenType> OnClose { get; set; }
 
     string _renderedRegex = "";
+    bool _classNameHasBeenManuallyEdited;
     string _className = $"New{nameof(TokenUnit)}";
     string _currentRawPattern = "";
     List<RegexSegment> _regexSegments = new();
@@ -27,7 +24,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     bool _isDropdownVisible = false;
     bool _isEditingClassName = false;
     bool _shouldFocusClassName = false;
-    List<Type> _allTemplateTypes = new();
+    List<Type> _allTokenTypes = new();
     List<Type> _autocompleteSuggestions = new();
     int _selectedSuggestionIndex = -1;
     bool _isEditorEmpty = true;
@@ -45,18 +42,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
-
-        _allTemplateTypes.Clear();
-        _allTemplateTypes.AddRange(TokenTypeRegistry.AppliedOrderTypes);
-        _allTemplateTypes.AddRange(TokenTypeRegistry.ReferencedEnumTypes);
-        _allTemplateTypes = _allTemplateTypes.OrderBy(t => t.Name).ToList();
+        _allTokenTypes = TokenTypeRegistry.GetAllTypesExhaustive();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && _dotNetRef != null)
         {
-            var colorMap = _allTemplateTypes.ToDictionary(
+            var colorMap = _allTokenTypes.ToDictionary(
                 t => t.Name,
                 t => new {
                     Normal = DeterministicPalette.TypePaletteSet[t].Dark,
@@ -86,11 +79,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         _isEditingClassName = true;
         _shouldFocusClassName = true;
+        _classNameHasBeenManuallyEdited = true;
     }
 
     private void StopEditingClassName()
     {
-        if (!_isEditingClassName) return;
+        if (!_isEditingClassName)
+            return;
+
         _isEditingClassName = false;
         UpdateRenderedRegexAndMatches(_currentRawPattern);
         StateHasChanged();
@@ -99,9 +95,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private void HandleClassNameKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
-        {
             StopEditingClassName();
-        }
         else if (e.Key == "Escape")
         {
             _isEditingClassName = false;
@@ -253,7 +247,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _textToReplaceForAutocomplete = currentWord;
             var filter = currentWord.Substring(1);
 
-            _autocompleteSuggestions = _allTemplateTypes
+            _autocompleteSuggestions = _allTokenTypes
                 .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
                 .ThenBy(t => t.Name)
@@ -275,7 +269,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public async Task SelectSuggestionFromJS(string typeName)
     {
-        var type = _allTemplateTypes.FirstOrDefault(t => t.Name == typeName);
+        var type = _allTokenTypes.FirstOrDefault(t => t.Name == typeName);
         if (type != null)
         {
             await SelectSuggestionByKeyboard(type);
@@ -333,7 +327,15 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             if (_showPreviewBoxes)
             {
                 var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
-                _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className);
+
+                if (_classNameHasBeenManuallyEdited)
+                    _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className);
+                else
+                {
+                    _dynamicTokenType = new DynamicTokenType(cleanPattern);
+                    _className = _dynamicTokenType.ClassName;
+                }
+
                 _renderedRegex = _dynamicTokenType.RenderedRegex;
             }
             else
@@ -419,7 +421,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         if (_dynamicTokenType != null)
             TokenTypeRegistry.CreateAndRegisterNewTypeAndSaveToDisk(_dynamicTokenType);
 
-        await OnClose.InvokeAsync(_renderedRegex);
+        await OnClose.InvokeAsync(_dynamicTokenType);
     }
 
     private Task HandleCancel() => OnClose.InvokeAsync(null);
