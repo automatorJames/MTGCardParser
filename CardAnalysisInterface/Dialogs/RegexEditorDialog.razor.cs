@@ -1,7 +1,12 @@
-﻿using MTGPlexer.CommonDTOs;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
+using MTGPlexer.CommonDTOs;
 using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 using MTGPlexer.TokenUnitComponents;
 using MTGPlexer.TokenUnits;
+using System.ComponentModel;
+using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -13,6 +18,18 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<DynamicTokenType> OnClose { get; set; }
 
+    public enum TokenModifier
+    {
+        [Description("Match Exactly One")]
+        None,
+        [Description("Optional (?)")]
+        Optional,
+        [Description("Zero or More (*)")]
+        ZeroOrMore,
+        [Description("One or More (+)")]
+        OneOrMore
+    }
+
     string _className = $"New{nameof(TokenUnit)}";
     string ClassName
     {
@@ -23,12 +40,19 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _dynamicTokenType = new DynamicTokenType(_currentRawPattern, className: ClassName, lineMetadata: Line);
         }
     }
+
+    private bool _isPillMenuVisible;
+    private double _menuX;
+    private double _menuY;
+    private string _targetPillTypeName = "";
+    private int _targetPillIndex = -1; // Refinement 1
+
     string _renderedRegex = "";
     bool _classNameHasBeenManuallyEdited;
     string _currentRawPattern = "";
     List<RegexSegment> _regexSegments = new();
     List<Match> _currentMatches = new();
-    DynamicTokenType _dynamicTokenType;
+    DynamicTokenType _dynamicTokenType = default!;
 
     bool _isDropdownVisible = false;
     bool _isEditingClassName = false;
@@ -40,10 +64,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     string _textToReplaceForAutocomplete = "";
 
     ElementReference _editorElement;
-    DotNetObjectReference<RegexEditorDialog> _dotNetRef;
+    DotNetObjectReference<RegexEditorDialog>? _dotNetRef;
 
     public record RegexSegment(string Text, string Color);
-
     private enum MatchStatus { None, Partial, Full }
     private record TextSegment(string Text, string Color, string UnderlineClass);
 
@@ -84,6 +107,69 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
     }
 
+    [JSInvokable("OpenPillMenu")]
+    public void OpenPillContextMenu(string typeName, int pillIndex, double x, double y)
+    {
+        _targetPillTypeName = typeName;
+        _targetPillIndex = pillIndex;
+        _menuX = x;
+        _menuY = y;
+        _isPillMenuVisible = true;
+        StateHasChanged();
+    }
+
+    private async Task HandlePillModifier(TokenModifier modifier)
+    {
+        _isPillMenuVisible = false;
+
+        var targetDynamicSnippet = _dynamicTokenType.DynamicSnippets[_targetPillIndex];
+
+
+        string quantifier = modifier switch
+        {
+            TokenModifier.Optional => "?",
+            TokenModifier.ZeroOrMore => "*",
+            TokenModifier.OneOrMore => "+",
+            _ => ""
+        };
+
+        // Precision replacement using index to handle duplicate type names
+        var pattern = $@"@{Regex.Escape(_targetPillTypeName)}[?*+]?";
+        int occurrence = 0;
+
+        _currentRawPattern = Regex.Replace(_currentRawPattern, pattern, m =>
+        {
+            if (occurrence++ == _targetPillIndex)
+                return $"@{_targetPillTypeName}{quantifier}";
+            return m.Value;
+        });
+
+        await UpdateEditorFromCode();
+    }
+
+    private async Task HandlePillDelete()
+    {
+        _isPillMenuVisible = false;
+        var pattern = $@"@{Regex.Escape(_targetPillTypeName)}[?*+]?";
+        int occurrence = 0;
+
+        _currentRawPattern = Regex.Replace(_currentRawPattern, pattern, m =>
+        {
+            if (occurrence++ == _targetPillIndex)
+                return "";
+            return m.Value;
+        });
+
+        await UpdateEditorFromCode();
+    }
+
+    private async Task UpdateEditorFromCode()
+    {
+        await JsRuntime.InvokeVoidAsync("highlightAndRestoreCursor", _currentRawPattern, -1);
+        UpdateRenderedRegexAndMatches(_currentRawPattern);
+        StateHasChanged();
+    }
+
     private void StartEditingClassName()
     {
         _isEditingClassName = true;
@@ -93,9 +179,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private void StopEditingClassName()
     {
-        if (!_isEditingClassName)
-            return;
-
+        if (!_isEditingClassName) return;
         _isEditingClassName = false;
         UpdateRenderedRegexAndMatches(_currentRawPattern);
         StateHasChanged();
@@ -103,8 +187,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private void HandleClassNameKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter")
-            StopEditingClassName();
+        if (e.Key == "Enter") StopEditingClassName();
         else if (e.Key == "Escape")
         {
             _isEditingClassName = false;
@@ -234,6 +317,13 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public async Task HandleGlobalEscape()
     {
+        if (_isPillMenuVisible)
+        {
+            _isPillMenuVisible = false;
+            StateHasChanged();
+            return;
+        }
+
         if (_isDropdownVisible)
         {
             _isDropdownVisible = false;

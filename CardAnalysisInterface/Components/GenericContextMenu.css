@@ -1,0 +1,51 @@
+﻿.context-menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Use an extremely high z-index */
+    z-index: 2000000000 !important;
+    background: rgba(0, 0, 0, 0.01);
+    cursor: default;
+}
+
+.context-menu-container {
+    position: fixed;
+    /* One higher than the backdrop */
+    z-index: 2000000001 !important;
+    background: #2D3748;
+    border: 1px solid #4A5568;
+    border-radius: 4px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    min-width: 180px;
+    padding: 4px 0;
+    pointer-events: auto;
+    /* Ensure no parent filters or transforms affect positioning */
+    transform: translateZ(0);
+}
+
+.menu-item {
+    padding: 10px 16px;
+    color: #E2E8F0;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: sans-serif;
+    transition: background 0.1s;
+}
+
+    .menu-item:hover {
+        background: #4A5568;
+        color: white;
+    }
+
+.menu-divider {
+    height: 1px;
+    margin: 4px 0;
+    background: #4A5568; /* Solid line often renders better than dotted at high z-index */
+    border: none;
+}
+
+.delete-item {
+    color: #F87171;
+}

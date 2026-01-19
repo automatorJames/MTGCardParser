@@ -7,7 +7,7 @@ public class GroupClose : EnclosureBookend, IGroupClose
     public GroupClose(Enclosure[] enclosures, GroupQuantifier? quantifier = null)
         : base(
             enclosures,
-            $"){(quantifier.HasValue ? quantifier.Value.Description() : "")}",
+            $"){(quantifier.HasValue ? quantifier.Value.GetDescription() : "")}",
             GetComment(quantifier)
         )
     {

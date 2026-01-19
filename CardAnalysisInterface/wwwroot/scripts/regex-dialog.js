@@ -12,10 +12,10 @@ function initializeEditor(_dotNetReference, _editorElement, _colors) {
         editorElement.addEventListener('input', onEditorInput);
         editorElement.addEventListener('keydown', onEditorKeyDown);
         editorElement.addEventListener('mousedown', onEditorMouseDown);
+        editorElement.addEventListener('contextmenu', onPillContextMenu);
         document.addEventListener('mousedown', onDropdownMouseDown);
         document.addEventListener('keydown', onGlobalKeyDown);
 
-        // Ensure initial focus
         setTimeout(() => editorElement.focus(), 10);
     }
 }
@@ -26,6 +26,7 @@ function disposeEditor() {
         editorElement.removeEventListener('input', onEditorInput);
         editorElement.removeEventListener('keydown', onEditorKeyDown);
         editorElement.removeEventListener('mousedown', onEditorMouseDown);
+        editorElement.removeEventListener('contextmenu', onPillContextMenu);
     }
     document.removeEventListener('mousedown', onDropdownMouseDown);
     document.removeEventListener('keydown', onGlobalKeyDown);
@@ -33,24 +34,30 @@ function disposeEditor() {
     editorElement = null;
 }
 
+function onPillContextMenu(e) {
+    const token = e.target.closest('.token-style');
+    if (token) {
+        e.preventDefault();
+        const typeName = token.getAttribute('data-type-name');
+        const pillIndex = parseInt(token.getAttribute('data-pill-index')); // Refinement 1
+        if (editorDotNetReference) {
+            editorDotNetReference.invokeMethodAsync('OpenPillMenu', typeName, pillIndex, e.clientX, e.clientY);
+        }
+    }
+}
+
 function onEditorMouseDown(e) {
     const token = e.target.closest('.token-style');
     if (token) {
-        // Prevent default browser text selection logic so we can override it
         e.preventDefault();
         e.stopPropagation();
-
         clearTokenHighlights();
         setTokenHighlight(token, true);
-
-        // Logical fix: Set the browser selection to the token node
-        // This ensures the caret is "on" the token for delete operations
         const range = document.createRange();
         range.selectNode(token);
         const selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
-
         editorElement.focus();
     } else {
         clearTokenHighlights();
@@ -59,30 +66,19 @@ function onEditorMouseDown(e) {
 
 function onBeforeInput(event) {
     if (!event.inputType.startsWith('delete') && event.inputType !== 'insertText') return;
-
     const highlighted = editorElement.querySelector('.token-selected');
-
     if (highlighted && (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward')) {
         event.preventDefault();
-
-        // Calculate the string offset where this token starts
         const pos = getOffsetOfNode(editorElement, highlighted);
-
         highlighted.remove();
-
-        // Re-render and place cursor where the token was
         highlightAndRestoreCursor(editorElement.textContent, pos);
         return;
     }
-
-    // Handle range selections intersecting with tokens
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
-
     const range = selection.getRangeAt(0);
     const tokensToDelete = new Set();
     const allTokens = Array.from(editorElement.querySelectorAll('.token-style'));
-
     for (const token of allTokens) {
         const tokenRange = document.createRange();
         tokenRange.selectNode(token);
@@ -90,12 +86,10 @@ function onBeforeInput(event) {
             range.compareBoundaryPoints(Range.END_TO_START, tokenRange) <= 0);
         if (intersect) tokensToDelete.add(token);
     }
-
     if (range.collapsed) {
         const container = range.startContainer;
         const offset = range.startOffset;
         let adj = null;
-
         if (event.inputType === 'deleteContentBackward') {
             if (container.nodeType === Node.TEXT_NODE && offset === 0) adj = container.previousSibling;
             else if (container.nodeType === Node.ELEMENT_NODE && offset > 0) adj = container.childNodes[offset - 1];
@@ -103,15 +97,12 @@ function onBeforeInput(event) {
             if (container.nodeType === Node.TEXT_NODE && offset === container.textContent.length) adj = container.nextSibling;
             else if (container.nodeType === Node.ELEMENT_NODE && offset < container.childNodes.length) adj = container.childNodes[offset];
         }
-
         if (adj && adj.classList && adj.classList.contains('token-style')) tokensToDelete.add(adj);
     }
-
     if (tokensToDelete.size > 0) {
         event.preventDefault();
         const firstToken = Array.from(tokensToDelete)[0];
         const pos = getOffsetOfNode(editorElement, firstToken);
-
         tokensToDelete.forEach(t => t.remove());
         highlightAndRestoreCursor(editorElement.textContent, pos);
     }
@@ -123,17 +114,14 @@ function onEditorKeyDown(event) {
         if (['Enter', 'Tab', 'ArrowUp', 'ArrowDown'].includes(event.key)) event.preventDefault();
         return;
     }
-
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
         const range = selection.getRangeAt(0);
-
         if (range.collapsed) {
             const isRight = event.key === 'ArrowRight';
             const container = range.startContainer;
             const offset = range.startOffset;
-
             let targetToken = null;
             if (isRight) {
                 if (container.nodeType === Node.TEXT_NODE && offset === container.textContent.length) targetToken = container.nextSibling;
@@ -142,19 +130,16 @@ function onEditorKeyDown(event) {
                 if (container.nodeType === Node.TEXT_NODE && offset === 0) targetToken = container.previousSibling;
                 else if (container.nodeType === Node.ELEMENT_NODE && offset > 0) targetToken = container.childNodes[offset - 1];
             }
-
             if (targetToken && targetToken.classList && targetToken.classList.contains('token-style')) {
+                event.preventDefault();
                 if (!targetToken.classList.contains('token-selected')) {
-                    event.preventDefault();
                     clearTokenHighlights();
                     setTokenHighlight(targetToken, true);
-
                     const newRange = document.createRange();
                     newRange.selectNode(targetToken);
                     selection.removeAllRanges();
                     selection.addRange(newRange);
                 } else {
-                    event.preventDefault();
                     setTokenHighlight(targetToken, false);
                     const newRange = document.createRange();
                     if (isRight) newRange.setStartAfter(targetToken);
@@ -167,9 +152,7 @@ function onEditorKeyDown(event) {
             }
         }
     }
-
     clearTokenHighlights();
-
     if (event.key === ' ' || event.key === 'Enter') {
         setTimeout(() => highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement)), 0);
     }
@@ -194,13 +177,9 @@ function setTokenHighlight(token, isHighlighted) {
 function commitToken(textToReplace, fullTokenText) {
     const pos = getCaretCharacterOffsetWithin(editorElement);
     const fullText = editorElement.textContent;
-
     const textToInsert = fullTokenText + '\u00A0';
     const newText = fullText.substring(0, pos - textToReplace.length) + textToInsert + fullText.substring(pos);
-
     highlightAndRestoreCursor(newText, pos - textToReplace.length + textToInsert.length);
-
-    // Crucial: Re-focus specifically after DOM manipulation
     setTimeout(() => editorElement.focus(), 0);
 }
 
@@ -213,40 +192,34 @@ function onEditorInput() {
 function highlightAndRestoreCursor(text, cursorPos) {
     if (isInternallyChanging) return;
     isInternallyChanging = true;
-
     editorElement.innerHTML = '';
-    const tokenRegex = /(@(\w+))/g;
+    const tokenRegex = /(@(\w+)[?*+]?)/g;
     let lastIndex = 0;
+    let pillCounter = 0; // Refinement 1
     let match;
-
     while ((match = tokenRegex.exec(text)) !== null) {
         if (match.index > lastIndex) {
             editorElement.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
         }
-
+        const fullMatchText = match[1];
         const typeName = match[2];
         const colors = typeColors[typeName] || { normal: '#4A5568', highlight: '#718096' };
-
         const span = document.createElement('span');
         span.className = 'token-style';
         span.contentEditable = 'false';
         span.style.backgroundColor = colors.normal;
         span.setAttribute('data-type-name', typeName);
-        span.innerHTML = `<span style="display:none">@</span><span>${typeName}</span>`;
-
+        span.setAttribute('data-pill-index', pillCounter++); // Refinement 1
+        span.innerHTML = `<span style="display:none">@</span><span>${fullMatchText.substring(1)}</span>`;
         editorElement.appendChild(span);
         lastIndex = match.index + match[0].length;
     }
-
     if (lastIndex < text.length) {
         editorElement.appendChild(document.createTextNode(text.substring(lastIndex)));
     }
-
-    // Ensure terminal text node for cursor landing
     if (editorElement.childNodes.length === 0 || editorElement.lastChild.nodeType !== Node.TEXT_NODE) {
         editorElement.appendChild(document.createTextNode(''));
     }
-
     if (cursorPos >= 0) {
         const result = findNodeAndOffset(editorElement, cursorPos);
         if (result && result.node) {
@@ -257,17 +230,10 @@ function highlightAndRestoreCursor(text, cursorPos) {
                 range.collapse(true);
                 selection.removeAllRanges();
                 selection.addRange(range);
-            } catch (e) { /* ignore range errors on edge cases */ }
+            } catch (e) { }
         }
     }
-
     isInternallyChanging = false;
-    onEditorInput();
-
-    // Final focus check
-    if (document.activeElement !== editorElement) {
-        editorElement.focus();
-    }
 }
 
 function getCaretPositionInfo() {
@@ -319,10 +285,7 @@ function scrollToAutocompleteItem(elementId) {
 function onDropdownMouseDown(event) {
     const item = event.target.closest('.autocomplete-item');
     if (!item) return;
-
-    // Prevent focus loss from editor
     event.preventDefault();
-
     const typeName = item.querySelector('.type-name').textContent.trim();
     if (editorDotNetReference) {
         editorDotNetReference.invokeMethodAsync('SelectSuggestionFromJS', typeName);

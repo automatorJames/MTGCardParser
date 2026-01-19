@@ -74,17 +74,17 @@
 
                 @* 3. PREVIEW BOXES *@
 
-                    <div style="margin-top: 24px;">
-                        <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
+                <div style="margin-top: 24px;">
+                    <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
 
-                        <div style="display: flex; flex-direction: column; gap: 12px;">
-                            <div>
-                                <div class="small-box-label right">Rendered regex</div>
-                                <div class="rendered-regex-box">
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div>
+                            <div class="small-box-label right">Rendered regex</div>
+                            <div class="rendered-regex-box">
                                 <pre>
-                                    @foreach(var segment in _regexSegments)
+                                    @foreach (var segment in _regexSegments)
                                     {
-                                        <span style=@($"color: {segment.Color}")>@segment.Text</span>
+                                    <span style=@($"color: {segment.Color}")>@segment.Text</span>
                                     }
                                 </pre>
                             </div>
@@ -123,6 +123,18 @@
                 </div>
             </div>
         </div>
+
+        @if (_isPillMenuVisible)
+        {
+            <GenericContextMenu T="TokenModifier"
+                                IsVisible="_isPillMenuVisible"
+                                X="_menuX"
+                                Y="_menuY"
+                                ShowDelete="true"
+                                OnClicked="HandlePillModifier"
+                                OnDelete="HandlePillDelete"
+                                OnClose="() => _isPillMenuVisible = false" />
+        }
     </DialogContent>
 
     <DialogActions>
@@ -137,5 +149,10 @@
         color: #718096;
         pointer-events: none;
         display: block;
+    }
+
+    /* Support for context menu display within dialog */
+    .mud-dialog-content, .modal-body, .custom-dialog-content {
+        overflow: visible !important;
     }
 </style>

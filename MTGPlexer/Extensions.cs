@@ -39,7 +39,7 @@ public static class Extensions
         return root + suffix;
     }
 
-    public static string Description(this Enum value)
+    public static string GetDescription(this Enum value)
     {
         var field = value.GetType().GetField(value.ToString());
         var attr = field?.GetCustomAttribute<DescriptionAttribute>();

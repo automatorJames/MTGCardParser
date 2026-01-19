@@ -65,7 +65,7 @@ public record DeterministicPalette
     public DeterministicPalette(int rainbowIndex)
     {
         var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
-        InitializeFromColor(new HexColor(rainbowMember.Description()));
+        InitializeFromColor(new HexColor(rainbowMember.GetDescription()));
     }
 
     // Private constructor for direct, consistent hue initialization.

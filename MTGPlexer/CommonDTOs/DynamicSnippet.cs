@@ -8,6 +8,8 @@ public record DynamicSnippet
     bool IsEnum = false
 )
 {
+    public Guid Id { get; } = Guid.NewGuid();
+
     public override string ToString()
     {
         return SnippetType switch
