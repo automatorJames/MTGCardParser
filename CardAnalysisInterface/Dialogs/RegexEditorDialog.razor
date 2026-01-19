@@ -96,11 +96,11 @@
                                     @if (_isEditingClassName)
                                     {
                                         <div class="class-name-grid">
-                                            <span class="grid-sizer">@_className</span>
+                                            <span class="grid-sizer">@ClassName</span>
                                             <input class="class-name-input"
-                                                   value="@_className"
+                                                   value="@ClassName"
                                                    spellcheck="false"
-                                                   @oninput="(e) => _className = e.Value?.ToString() ?? _className"
+                                                   @oninput="(e) => ClassName = e.Value?.ToString() ?? ClassName"
                                                    @onblur="StopEditingClassName"
                                                    @onkeydown="HandleClassNameKeyDown" />
                                         </div>
@@ -108,7 +108,7 @@
                                     else
                                     {
                                         <div class="class-name-display" @onclick="StartEditingClassName">
-                                            <span class="name-text">@_className</span>
+                                            <span class="name-text">@ClassName</span>
                                             <i class="fas fa-pencil-alt edit-icon"></i>
                                         </div>
                                     }

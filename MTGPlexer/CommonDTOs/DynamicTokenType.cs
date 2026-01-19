@@ -22,7 +22,11 @@ public class DynamicTokenType
         tokenUnitType ??= typeof(TokenUnit);
         _baseTypeName = tokenUnitType.Name;
         DynamicSnippets = TemplateStringToDynamicSnippets(templateString);
-        ClassName = className ?? GetSuggestedClassName(DynamicSnippets) ?? $"New{tokenUnitType.Name}";
+        ClassName = className ?? GetSuggestedClassName(DynamicSnippets);
+
+        if (string.IsNullOrWhiteSpace(ClassName))
+            ClassName = $"New{tokenUnitType.Name}";
+
         RenderedRegex = DynamicSnippetsToRegex<TokenUnit>(DynamicSnippets);
         ClassStringForSavingToFile = GetClassStringForSavingToFile(DynamicSnippets);
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml(DynamicSnippets);

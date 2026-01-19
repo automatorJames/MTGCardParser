@@ -13,13 +13,22 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<DynamicTokenType> OnClose { get; set; }
 
+    string _className = $"New{nameof(TokenUnit)}";
+    string ClassName
+    {
+        get => _className;
+        set
+        {
+            _className = Regex.Replace(value, " ", "");
+            _dynamicTokenType = new DynamicTokenType(_currentRawPattern, className: ClassName, lineMetadata: Line);
+        }
+    }
     string _renderedRegex = "";
     bool _classNameHasBeenManuallyEdited;
-    string _className = $"New{nameof(TokenUnit)}";
     string _currentRawPattern = "";
     List<RegexSegment> _regexSegments = new();
     List<Match> _currentMatches = new();
-    DynamicTokenType _dynamicTokenType = new(string.Empty);
+    DynamicTokenType _dynamicTokenType;
 
     bool _isDropdownVisible = false;
     bool _isEditingClassName = false;
@@ -41,6 +50,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
+        _dynamicTokenType = new(string.Empty);
         _allTokenTypes = TokenTypeRegistry.GetAllTypesExhaustive();
     }
 
@@ -326,11 +336,11 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
 
             if (_classNameHasBeenManuallyEdited)
-                _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className, lineMetadata: Line);
+                _dynamicTokenType = new DynamicTokenType(cleanPattern, className: ClassName, lineMetadata: Line);
             else
             {
                 _dynamicTokenType = new DynamicTokenType(cleanPattern, lineMetadata: Line);
-                _className = _dynamicTokenType.ClassName;
+                ClassName = _dynamicTokenType.ClassName;
             }
 
             _renderedRegex = _dynamicTokenType.RenderedRegex;
