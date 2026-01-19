@@ -73,8 +73,7 @@
                 </div>
 
                 @* 3. PREVIEW BOXES *@
-                @if (_showPreviewBoxes)
-                {
+
                     <div style="margin-top: 24px;">
                         <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
 
@@ -82,10 +81,12 @@
                             <div>
                                 <div class="small-box-label right">Rendered regex</div>
                                 <div class="rendered-regex-box">
-                                    <pre>@foreach(var segment in _regexSegments){
-                                    <span style="color: @segment.Color">@segment.Text</span>
-                                }
-</pre>
+                                <pre>
+                                    @foreach(var segment in _regexSegments)
+                                    {
+                                        <span style=@($"color: {segment.Color}")>@segment.Text</span>
+                                    }
+                                </pre>
                             </div>
                         </div>
 
@@ -120,7 +121,6 @@
                         </div>
                     </div>
                 </div>
-                                }
             </div>
         </div>
     </DialogContent>

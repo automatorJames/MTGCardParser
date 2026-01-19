@@ -275,3 +275,7 @@ pre {
     text-overflow: clip;
     white-space: nowrap;
 }
+
+.rendered-regex-box pre:empty::before {
+    content: " ";
+}

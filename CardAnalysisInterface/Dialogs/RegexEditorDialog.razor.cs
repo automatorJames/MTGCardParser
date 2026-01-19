@@ -19,7 +19,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     string _currentRawPattern = "";
     List<RegexSegment> _regexSegments = new();
     List<Match> _currentMatches = new();
-    DynamicTokenType _dynamicTokenType;
+    DynamicTokenType _dynamicTokenType = new(string.Empty);
 
     bool _isDropdownVisible = false;
     bool _isEditingClassName = false;
@@ -28,7 +28,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     List<Type> _autocompleteSuggestions = new();
     int _selectedSuggestionIndex = -1;
     bool _isEditorEmpty = true;
-    bool _showPreviewBoxes = false;
     string _textToReplaceForAutocomplete = "";
 
     ElementReference _editorElement;
@@ -313,36 +312,28 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         _currentMatches.Clear();
         var logicalPattern = patternToRender.Trim();
-        _showPreviewBoxes = logicalPattern.Contains("@");
 
         if (string.IsNullOrWhiteSpace(logicalPattern))
         {
             _renderedRegex = "";
             _regexSegments.Clear();
+            _dynamicTokenType = new(string.Empty);
             return;
         }
 
         try
         {
-            if (_showPreviewBoxes)
-            {
-                var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
+            var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
 
-                if (_classNameHasBeenManuallyEdited)
-                    _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className, lineMetadata: Line);
-                else
-                {
-                    _dynamicTokenType = new DynamicTokenType(cleanPattern, lineMetadata: Line);
-                    _className = _dynamicTokenType.ClassName;
-                }
-
-                _renderedRegex = _dynamicTokenType.RenderedRegex;
-            }
+            if (_classNameHasBeenManuallyEdited)
+                _dynamicTokenType = new DynamicTokenType(cleanPattern, className: _className, lineMetadata: Line);
             else
             {
-                _renderedRegex = logicalPattern;
-                _dynamicTokenType = null;
+                _dynamicTokenType = new DynamicTokenType(cleanPattern, lineMetadata: Line);
+                _className = _dynamicTokenType.ClassName;
             }
+
+            _renderedRegex = _dynamicTokenType.RenderedRegex;
 
             ParseSegments();
 
