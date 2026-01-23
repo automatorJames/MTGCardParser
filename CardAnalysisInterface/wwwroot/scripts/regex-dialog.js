@@ -16,7 +16,6 @@ function initializeEditor(_dotNetReference, _editorElement, _colors) {
         document.addEventListener('mousedown', onDropdownMouseDown);
         document.addEventListener('keydown', onGlobalKeyDown);
 
-        // Ensure initial focus
         setTimeout(() => {
             if (editorElement) editorElement.focus();
         }, 10);
@@ -79,8 +78,6 @@ function onBeforeInput(event) {
         event.preventDefault();
         const pos = getOffsetOfNode(editorElement, highlighted);
         highlighted.remove();
-        highlightAndRestoreCursor(editorElement.textContent, pos);
-        // Force update to Blazor after manual pill deletion
         onEditorInput();
         return;
     }
@@ -118,12 +115,7 @@ function onBeforeInput(event) {
 
     if (tokensToDelete.size > 0) {
         event.preventDefault();
-        const firstToken = Array.from(tokensToDelete)[0];
-        const pos = getOffsetOfNode(editorElement, firstToken);
-
         tokensToDelete.forEach(t => t.remove());
-        highlightAndRestoreCursor(editorElement.textContent, pos);
-        // Force update to Blazor
         onEditorInput();
     }
 }
@@ -180,15 +172,6 @@ function onEditorKeyDown(event) {
     }
 
     clearTokenHighlights();
-
-    if (event.key === ' ' || event.key === 'Enter') {
-        setTimeout(() => {
-            if (editorElement) {
-                highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement));
-                onEditorInput();
-            }
-        }, 0);
-    }
 }
 
 function clearTokenHighlights() {
@@ -218,10 +201,10 @@ function commitToken(textToReplace, fullTokenText) {
     const textToInsert = fullTokenText + '\u00A0';
     const newText = fullText.substring(0, pos - textToReplace.length) + textToInsert + fullText.substring(pos);
 
-    // 1. Redraw the DOM
-    highlightAndRestoreCursor(newText, pos - textToReplace.length + textToInsert.length);
-
-    // 2. IMPORTANT: Manually trigger the input update to Blazor
+    // We force a high-level update so Blazor knows the dropdown is closed 
+    // and can safely call highlightAndRestoreCursor with the new IDs
+    isInternallyChanging = false;
+    editorElement.textContent = newText;
     onEditorInput();
 
     setTimeout(() => {
@@ -252,26 +235,30 @@ function highlightAndRestoreCursor(text, cursorPos, snippetMetadata) {
         }
 
         const fullMatchText = match[0];
-
         let dataSnippetId = "";
+
+        // Only convert to a pill if we have valid metadata (ID) from the backend
         const metaIdx = metaQueue.findIndex(m => m.typeName === fullMatchText);
         if (metaIdx !== -1) {
             dataSnippetId = metaQueue[metaIdx].id;
             metaQueue.splice(metaIdx, 1);
+
+            const baseTypeMatch = fullMatchText.match(/<([^>]+)>/) || [null, fullMatchText.substring(1)];
+            const colors = typeColors[baseTypeMatch[1]] || { normal: '#4A5568', highlight: '#718096' };
+
+            const span = document.createElement('span');
+            span.className = 'token-style';
+            span.contentEditable = 'false';
+            span.style.backgroundColor = colors.normal;
+            span.setAttribute('data-type-name', fullMatchText);
+            span.setAttribute('data-snippet-id', dataSnippetId);
+            span.innerHTML = `<span style="display:none">@</span><span>${fullMatchText.substring(1)}</span>`;
+            editorElement.appendChild(span);
+        } else {
+            // Keep as plain text if no ID yet (allows typing filter)
+            editorElement.appendChild(document.createTextNode(fullMatchText));
         }
 
-        const baseTypeMatch = fullMatchText.match(/<([^>]+)>/) || [null, fullMatchText.substring(1)];
-        const colors = typeColors[baseTypeMatch[1]] || { normal: '#4A5568', highlight: '#718096' };
-
-        const span = document.createElement('span');
-        span.className = 'token-style';
-        span.contentEditable = 'false';
-        span.style.backgroundColor = colors.normal;
-        span.setAttribute('data-type-name', fullMatchText);
-        span.setAttribute('data-snippet-id', dataSnippetId);
-        span.innerHTML = `<span style="display:none">@</span><span>${fullMatchText.substring(1)}</span>`;
-
-        editorElement.appendChild(span);
         lastIndex = match.index + match[0].length;
     }
 

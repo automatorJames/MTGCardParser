@@ -282,10 +282,12 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     }
 
     [JSInvokable]
-    public void UpdateFromJavaScript(string rawText, string currentWord)
+    public async Task UpdateFromJavaScript(string rawText, string currentWord)
     {
         _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
         _currentRawPattern = rawText;
+
+        bool wasDropdownVisible = _isDropdownVisible;
 
         if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
         {
@@ -308,6 +310,23 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
 
         UpdateRenderedRegexAndMatches(rawText);
+
+        // SYNC LOGIC: 
+        // We only force a DOM re-render if the dropdown is NOT visible.
+        // This ensures typing "@abc" doesn't lock the UI, but once "@abc" 
+        // becomes a pill (menu closed), we sync the IDs.
+        if (!_isDropdownVisible)
+        {
+            var metadata = _editorTokenUnit.EditorSnippets
+                .Where(x => x.DisplayAsBlockInEditor)
+                .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
+                .ToList();
+
+            // Get current caret to prevent jumping
+            var caretPos = await JsRuntime.InvokeAsync<int>("getCaretCharacterOffsetWithin", _editorElement);
+            await JsRuntime.InvokeVoidAsync("highlightAndRestoreCursor", rawText, caretPos, metadata);
+        }
+
         StateHasChanged();
     }
 
