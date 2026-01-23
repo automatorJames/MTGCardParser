@@ -28,13 +28,12 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private string _targetPillTypeName = "";
     private string _targetSnippetId = "";
 
-    public record PillContextAction(string Id, string Label, string IconClass, string IconColor, bool IsDestructive = false);
-
-    private readonly List<PillContextAction> _pillContextMenuOptions = new()
+    private readonly List<ContextAction> _pillContextMenuOptions = new()
     {
-        new PillContextAction("info", "View Documentation", "fas fa-info-circle", "#63B3ED"),
-        new PillContextAction("clone", "Duplicate Snippet", "fas fa-copy", "#A0AEC0"),
-        new PillContextAction("delete", "Remove Snippet", "bi bi-trash", "#F87171", true)
+        new(ContextActionType.ConvertToOneOf),
+        new(ContextActionType.ConvertToManyOf),
+        new(ContextActionType.ConvertToCompoundOf),
+        new(ContextActionType.Delete),
     };
 
     // Regex State
@@ -203,25 +202,17 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         StateHasChanged();
     }
 
-    private async Task HandlePillAction(PillContextAction action)
+    private async Task HandlePillAction(ContextAction action)
     {
         _isPillMenuVisible = false;
 
-        switch (action.Id)
+        switch (action.Type)
         {
-            case "delete":
+            case ContextActionType.Delete:
                 _editorTokenUnit.RemoveSnippet(_targetSnippetId);
                 _currentRawPattern = _editorTokenUnit.GetTemplateString();
                 UpdateRenderedRegexAndMatches(_currentRawPattern);
                 await SyncEditorPills();
-                break;
-
-            case "clone":
-                // Logic for cloning would go here
-                break;
-
-            case "info":
-                // Logic for showing info would go here
                 break;
         }
 

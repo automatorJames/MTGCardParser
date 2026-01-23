@@ -328,15 +328,6 @@ pre {
         background: #4A5568;
     }
 
-    .pill-context-menu .menu-item.destructive:hover {
-        background: #C53030;
-    }
-
-        .pill-context-menu .menu-item.destructive:hover span,
-        .pill-context-menu .menu-item.destructive:hover i {
-            color: white !important;
-        }
-
 .rendered-regex-box pre:empty::before {
     content: " ";
 }

@@ -1,0 +1,15 @@
+﻿<svg width="@Size"
+     height="@Size"
+     viewBox="0 0 24 24"
+     fill="none"
+     xmlns="http://www.w3.org/2000/svg"
+     style="@Style">
+    <path d="@PathData" fill="@Color" />
+</svg>
+
+@code {
+    [Parameter] public string PathData { get; set; } = "M2,18 V6 L7,11 L12,6 V18 M15,18 V11 Q15,9 18,9 H19 V18 M23,18 V9 Q23,7 26,7 H27 V18 M31,9 L35,18 L39,9 M35,18 V22 Q35,24 31,24 M48,18 Q44,18 44,14 V10 Q44,6 48,6 H51 Q55,6 55,10 V14 Q55,18 51,18 Z M59,18 V8 Q59,6 61,6 H63 M58,11 H64 M76,9 L70,14 L76,19 M80,9 H90 M85,9 V19 M94,9 L100,14 L94,19";
+    [Parameter] public string Color { get; set; } = "currentColor";
+    [Parameter] public int Size { get; set; } = 18;
+    [Parameter] public string Style { get; set; } = "";
+}

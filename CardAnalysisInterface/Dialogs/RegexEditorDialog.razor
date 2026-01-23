@@ -125,10 +125,7 @@
                 <div class="pill-context-menu-header">@_targetPillTypeName</div>
                 @foreach (var action in _pillContextMenuOptions)
                 {
-                    <button class="menu-item @(action.IsDestructive ? "destructive" : "")" @onclick="() => HandlePillAction(action)">
-                        <i class="@action.IconClass" style="color: @action.IconColor"></i>
-                        <span>@action.Label</span>
-                    </button>
+                    <button class="menu-item" @onclick="() => HandlePillAction(action)">@action.MarkupString</button>
                 }
             </div>
         }
