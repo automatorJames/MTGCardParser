@@ -22,13 +22,10 @@ public class EditorTokenUnit
     public string RenderedRegex { get; private set; } = "";
     public string ClassStringForSavingToFile { get; private set; } = "";
     public string ClassStringForDisplayingHtml { get; private set; } = "";
-    public List<RegexSegment> RegexSegments { get; private set; } = [];
-    public List<TextSegment> TextSegments { get; private set; } = [];
+    public List<RegexStyledRun> RegexRuns { get; private set; } = [];
+    public List<TextStyledRun> TextRuns { get; private set; } = [];
     public List<Match> CurrentMatches { get; private set; } = [];
 
-    public record RegexSegment(string Text, string Color);
-    public record TextSegment(string Text, string Color, string UnderlineClass);
-    private enum MatchStatus { None, Partial, Full }
 
     public EditorTokenUnit(ProcessedLine lineMetadata)
     {
@@ -66,7 +63,7 @@ public class EditorTokenUnit
         // 4. Analysis & Matching
         ParseRegexSegments();
         PerformMatching();
-        GenerateTextSegments();
+        GenerateTextStyledRuns();
 
         // 5. Generate C# Previews
         ClassStringForSavingToFile = GetClassStringForSavingToFile();
@@ -89,7 +86,7 @@ public class EditorTokenUnit
 
     private void ParseRegexSegments()
     {
-        RegexSegments.Clear();
+        RegexRuns.Clear();
         if (string.IsNullOrEmpty(RenderedRegex)) return;
 
         int depth = 0;
@@ -103,7 +100,7 @@ public class EditorTokenUnit
                 if (depth == 0)
                 {
                     if (i > lastPos)
-                        RegexSegments.Add(new(RenderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
+                        RegexRuns.Add(new(RenderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
 
                     lastPos = i;
                 }
@@ -125,21 +122,26 @@ public class EditorTokenUnit
                         if (TokenTypeRegistry.NameToType.TryGetValue(name, out var type))
                             color = DeterministicPalette.TypePaletteSet[type].Normal;
                     }
-                    RegexSegments.Add(new(groupText, color));
+                    RegexRuns.Add(new(groupText, color));
                     lastPos = i + 1;
                 }
             }
         }
 
         if (lastPos < RenderedRegex.Length)
-            RegexSegments.Add(new(RenderedRegex.Substring(lastPos), "var(--syntax-default)"));
+            RegexRuns.Add(new(RenderedRegex.Substring(lastPos), "var(--syntax-default)"));
     }
 
-    private void GenerateTextSegments()
+    private void GenerateTextStyledRuns()
     {
-        var rawSegments = new List<TextSegment>();
+        var rawSegments = new List<TextStyledRun>();
         string text = LineMetadata.SourceText.FormattedText;
-        if (string.IsNullOrEmpty(text)) { TextSegments = []; return; }
+
+        if (string.IsNullOrEmpty(text)) 
+        { 
+            TextRuns = []; 
+            return; 
+        }
 
         var charStatus = new MatchStatus[text.Length];
         Array.Fill(charStatus, MatchStatus.None);
@@ -216,16 +218,18 @@ public class EditorTokenUnit
 
                 color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
             }
-            rawSegments.Add(new TextSegment(text[i].ToString(), color, underlineClass));
+            rawSegments.Add(new TextStyledRun(text[i].ToString(), color, underlineClass));
         }
 
-        TextSegments = CollapseSegments(rawSegments);
+        TextRuns = CollapseSegments(rawSegments);
     }
 
-    private List<TextSegment> CollapseSegments(List<TextSegment> source)
+    private List<TextStyledRun> CollapseSegments(List<TextStyledRun> source)
     {
-        if (source.Count == 0) return source;
-        var result = new List<TextSegment>();
+        if (source.Count == 0) 
+            return source;
+
+        var result = new List<TextStyledRun>();
         var current = source[0];
 
         for (int i = 1; i < source.Count; i++)
@@ -238,7 +242,9 @@ public class EditorTokenUnit
                 current = source[i];
             }
         }
+
         result.Add(current);
+
         return result;
     }
 

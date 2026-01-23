@@ -12,13 +12,13 @@
         <div style="display: flex; flex-direction: column; gap: 16px;">
             <div class="line-text-container">
                 <div class="text-layer-back">
-                    @foreach (var segment in _editorTokenUnit.TextSegments)
+                    @foreach (var segment in _editorTokenUnit.TextRuns)
                     {
                         <span class="highlight-token @segment.UnderlineClass">@segment.Text</span>
                     }
                 </div>
                 <div class="text-layer-front">
-                    @foreach (var segment in _editorTokenUnit.TextSegments)
+                    @foreach (var segment in _editorTokenUnit.TextRuns)
                     {
                         <span style="color: @segment.Color">@segment.Text</span>
                     }
@@ -64,7 +64,7 @@
                         <div>
                             <div class="small-box-label right">Rendered regex</div>
                             <div class="rendered-regex-box">
-                                <pre>@foreach(var segment in _editorTokenUnit.RegexSegments) {
+                                <pre>@foreach(var segment in _editorTokenUnit.RegexRuns) {
                                 <span style=@($"color: {segment.Color}")>@segment.Text</span>
                                                                 }
 </pre>

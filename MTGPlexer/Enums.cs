@@ -6,6 +6,13 @@ public enum CaptureTypeVariant
     Enum
 }
 
+public enum MatchStatus 
+{
+    None, 
+    Partial, 
+    Full 
+}
+
 public enum SpanClass
 {
     keyword,
