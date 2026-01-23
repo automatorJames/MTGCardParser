@@ -147,7 +147,7 @@ public class EditorTokenUnit
                 list.Add(new EditorPropertySnippet(parsedBaseType, xOfType));
             }
             else if (match.Groups["Plain"].Success)
-                list.Add(new EditorTextSnippet(match.Value));
+                list.Add(new EditorTextSnippet(match.Value.Trim()));
         }
 
         return list;
