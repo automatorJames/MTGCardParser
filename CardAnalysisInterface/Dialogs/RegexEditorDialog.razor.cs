@@ -1,11 +1,6 @@
 ﻿using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 using MTGPlexer.TokenUnitComponents;
 using MTGPlexer.TokenUnits;
-using MTGPlexer.CommonDTOs;
-using MTGPlexer.TokenEditor;
-using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
-using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -26,12 +21,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
     }
 
+    // Context Menu State
     private bool _isPillMenuVisible;
     private double _menuX;
     private double _menuY;
     private string _targetPillTypeName = "";
     private string _targetSnippetId = "";
 
+    // Regex State
     private string _renderedRegex = "";
     private bool _classNameHasBeenManuallyEdited;
     private string _currentRawPattern = "";
@@ -39,6 +36,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private List<Match> _currentMatches = new();
     private EditorTokenUnit _editorTokenUnit = default!;
 
+    // Autocomplete State
     private bool _isDropdownVisible = false;
     private bool _isEditingClassName = false;
     private bool _shouldFocusClassName = false;
@@ -48,6 +46,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private bool _isEditorEmpty = true;
     private string _textToReplaceForAutocomplete = "";
 
+    // Interop
     private ElementReference _editorElement;
     private DotNetObjectReference<RegexEditorDialog>? _dotNetRef;
 
@@ -74,24 +73,18 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                     Highlight = DeterministicPalette.TypePaletteSet[t].Light
                 }
             );
-            await JsRuntime.InvokeVoidAsync("initializeEditor", _dotNetRef, _editorElement, colorMap);
+
+            await JsRuntime.InvokeVoidAsync("regexEditor.initialize", _dotNetRef, _editorElement, colorMap);
         }
 
         if (_isEditingClassName && _shouldFocusClassName)
         {
             _shouldFocusClassName = false;
-            await JsRuntime.InvokeVoidAsync("eval", @"
-                (function() {
-                    const el = document.querySelector('.class-name-input');
-                    if (el) {
-                        el.focus();
-                        const val = el.value;
-                        el.value = '';
-                        el.value = val;
-                    }
-                })()");
+            await JsRuntime.InvokeVoidAsync("regexEditor.focusClassNameInput", ".class-name-input");
         }
     }
+
+    #region JS Invokable Methods
 
     [JSInvokable("OpenPillMenu")]
     public void OpenPillContextMenu(string typeName, string snippetId, double x, double y)
@@ -104,25 +97,147 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         StateHasChanged();
     }
 
-    private async Task HandlePillDelete()
+    [JSInvokable("HideDropdown")]
+    public void HideDropdown()
     {
-        _isPillMenuVisible = false;
-        _editorTokenUnit.RemoveSnippet(_targetSnippetId);
-        _currentRawPattern = _editorTokenUnit.GetTemplateString();
-        await UpdateEditorFromCode();
+        if (_isDropdownVisible)
+        {
+            _isDropdownVisible = false;
+            StateHasChanged();
+        }
     }
 
-    private async Task UpdateEditorFromCode()
+    [JSInvokable("HandleGlobalEscape")]
+    public async Task HandleGlobalEscape()
+    {
+        if (_isPillMenuVisible)
+        {
+            _isPillMenuVisible = false;
+            StateHasChanged();
+            return;
+        }
+
+        if (_isDropdownVisible)
+        {
+            _isDropdownVisible = false;
+            StateHasChanged();
+        }
+        else
+        {
+            await HandleCancel();
+        }
+    }
+
+    [JSInvokable("NotifyContentChanged")]
+    public async Task NotifyContentChanged(string rawText, string currentWord)
+    {
+        _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
+        _currentRawPattern = rawText;
+
+        if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
+        {
+            _textToReplaceForAutocomplete = currentWord;
+            var filter = currentWord.Substring(1);
+
+            _autocompleteSuggestions = _allTokenTypes
+                .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                .ThenBy(t => t.Name)
+                .ToList();
+
+            _isDropdownVisible = _autocompleteSuggestions.Any();
+            _selectedSuggestionIndex = _isDropdownVisible ? 0 : -1;
+        }
+        else
+        {
+            _isDropdownVisible = false;
+            _textToReplaceForAutocomplete = "";
+        }
+
+        UpdateRenderedRegexAndMatches(rawText);
+
+        // If the dropdown is closed, ensure the HTML structure (pills) matches the raw text
+        if (!_isDropdownVisible)
+        {
+            await SyncEditorPills();
+        }
+
+        StateHasChanged();
+    }
+
+    [JSInvokable("SelectSuggestionFromJS")]
+    public async Task SelectSuggestionFromJS(string typeName)
+    {
+        var type = _allTokenTypes.FirstOrDefault(t => t.Name == typeName);
+        if (type != null) await SelectSuggestionByKeyboard(type);
+    }
+
+    #endregion
+
+    #region Editor Logic
+
+    private async Task SyncEditorPills(int forceCaretPos = -1)
     {
         var metadata = _editorTokenUnit.EditorSnippets
             .Where(x => x.DisplayAsBlockInEditor)
             .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
             .ToList();
 
-        await JsRuntime.InvokeVoidAsync("highlightAndRestoreCursor", _currentRawPattern, -1, metadata);
+        // Get current caret to prevent jumping unless a position is forced
+        var caretPos = forceCaretPos >= 0
+            ? forceCaretPos
+            : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset", _editorElement);
+
+        await JsRuntime.InvokeVoidAsync("regexEditor.syncPills", _currentRawPattern, caretPos, metadata);
+    }
+
+    private async Task HandlePillDelete()
+    {
+        _isPillMenuVisible = false;
+        _editorTokenUnit.RemoveSnippet(_targetSnippetId);
+        _currentRawPattern = _editorTokenUnit.GetTemplateString();
+
         UpdateRenderedRegexAndMatches(_currentRawPattern);
+        await SyncEditorPills();
         StateHasChanged();
     }
+
+    private async Task SelectSuggestionByKeyboard(Type selection)
+    {
+        string fullTokenText = $"@{selection.Name}";
+        // insertPill triggers the NotifyContentChanged flow via JS
+        await JsRuntime.InvokeVoidAsync("regexEditor.insertPill", _textToReplaceForAutocomplete, fullTokenText);
+        _isDropdownVisible = false;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!_isDropdownVisible) return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
+                await JsRuntime.InvokeVoidAsync("regexEditor.scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
+                break;
+            case "ArrowUp":
+                _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
+                await JsRuntime.InvokeVoidAsync("regexEditor.scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
+                break;
+            case "Enter":
+            case "Tab":
+                if (_selectedSuggestionIndex >= 0 && _selectedSuggestionIndex < _autocompleteSuggestions.Count)
+                    await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
+                break;
+            case "Escape":
+                _isDropdownVisible = false;
+                break;
+        }
+    }
+
+    #endregion
+
+    #region Class Name Editing
 
     private void StartEditingClassName()
     {
@@ -147,6 +262,108 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _isEditingClassName = false;
             StateHasChanged();
         }
+    }
+
+    #endregion
+
+    #region Regex Rendering & Analysis
+
+    private void UpdateRenderedRegexAndMatches(string patternToRender)
+    {
+        _currentMatches.Clear();
+        var logicalPattern = patternToRender.Trim();
+
+        if (string.IsNullOrWhiteSpace(logicalPattern))
+        {
+            _renderedRegex = "";
+            _regexEditorSegments.Clear();
+            _editorTokenUnit.Update(string.Empty);
+            return;
+        }
+
+        try
+        {
+            var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
+
+            if (_classNameHasBeenManuallyEdited)
+                _editorTokenUnit.Update(cleanPattern, ClassName);
+            else
+            {
+                _editorTokenUnit.Update(cleanPattern);
+                _className = _editorTokenUnit.ClassName;
+            }
+
+            _renderedRegex = _editorTokenUnit.RenderedRegex;
+            ParseSegments();
+
+            if (!string.IsNullOrWhiteSpace(_renderedRegex))
+            {
+                try
+                {
+                    _currentMatches = Regex.Matches(Line.SourceText.FormattedText, _renderedRegex)
+                       .Cast<Match>()
+                       .ToList();
+                }
+                catch (Exception ex)
+                {
+                    _renderedRegex = ex.Message;
+                    _regexEditorSegments = new List<RegexEditorSegment> { new(_renderedRegex, "var(--error-red)") };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _renderedRegex = $"Error: {ex.Message}";
+            _regexEditorSegments = new List<RegexEditorSegment> { new(_renderedRegex, "var(--error-red)") };
+        }
+    }
+
+    private void ParseSegments()
+    {
+        _regexEditorSegments.Clear();
+        if (string.IsNullOrEmpty(_renderedRegex)) return;
+
+        int depth = 0;
+        int lastPos = 0;
+
+        for (int i = 0; i < _renderedRegex.Length; i++)
+        {
+            if (_renderedRegex[i] == '\\') { i++; continue; }
+
+            if (_renderedRegex[i] == '(')
+            {
+                if (depth == 0)
+                {
+                    if (i > lastPos)
+                        _regexEditorSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
+                    lastPos = i;
+                }
+                depth++;
+            }
+            else if (_renderedRegex[i] == ')')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    var groupText = _renderedRegex.Substring(lastPos, i - lastPos + 1);
+                    var match = Regex.Match(groupText, @"^\(\?<(?<name>[a-zA-Z0-9_]+)>");
+
+                    string color = "var(--syntax-default)";
+                    if (match.Success)
+                    {
+                        var name = match.Groups["name"].Value;
+                        if (TokenTypeRegistry.NameToType.TryGetValue(name, out var type))
+                            color = DeterministicPalette.TypePaletteSet[type].Normal;
+                    }
+
+                    _regexEditorSegments.Add(new(groupText, color));
+                    lastPos = i + 1;
+                }
+            }
+        }
+
+        if (lastPos < _renderedRegex.Length)
+            _regexEditorSegments.Add(new(_renderedRegex.Substring(lastPos), "var(--syntax-default)"));
     }
 
     private List<TextSegment> GetProcessedSegments()
@@ -250,223 +467,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         return result;
     }
 
-    [JSInvokable]
-    public void HideDropdown()
-    {
-        if (_isDropdownVisible)
-        {
-            _isDropdownVisible = false;
-            StateHasChanged();
-        }
-    }
-
-    [JSInvokable]
-    public async Task HandleGlobalEscape()
-    {
-        if (_isPillMenuVisible)
-        {
-            _isPillMenuVisible = false;
-            StateHasChanged();
-            return;
-        }
-
-        if (_isDropdownVisible)
-        {
-            _isDropdownVisible = false;
-            StateHasChanged();
-        }
-        else
-        {
-            await HandleCancel();
-        }
-    }
-
-    [JSInvokable]
-    public async Task UpdateFromJavaScript(string rawText, string currentWord)
-    {
-        _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
-        _currentRawPattern = rawText;
-
-        bool wasDropdownVisible = _isDropdownVisible;
-
-        if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
-        {
-            _textToReplaceForAutocomplete = currentWord;
-            var filter = currentWord.Substring(1);
-
-            _autocompleteSuggestions = _allTokenTypes
-                .Where(t => t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(t => t.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
-                .ThenBy(t => t.Name)
-                .ToList();
-
-            _isDropdownVisible = _autocompleteSuggestions.Any();
-            _selectedSuggestionIndex = _isDropdownVisible ? 0 : -1;
-        }
-        else
-        {
-            _isDropdownVisible = false;
-            _textToReplaceForAutocomplete = "";
-        }
-
-        UpdateRenderedRegexAndMatches(rawText);
-
-        // SYNC LOGIC: 
-        // We only force a DOM re-render if the dropdown is NOT visible.
-        // This ensures typing "@abc" doesn't lock the UI, but once "@abc" 
-        // becomes a pill (menu closed), we sync the IDs.
-        if (!_isDropdownVisible)
-        {
-            var metadata = _editorTokenUnit.EditorSnippets
-                .Where(x => x.DisplayAsBlockInEditor)
-                .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
-                .ToList();
-
-            // Get current caret to prevent jumping
-            var caretPos = await JsRuntime.InvokeAsync<int>("getCaretCharacterOffsetWithin", _editorElement);
-            await JsRuntime.InvokeVoidAsync("highlightAndRestoreCursor", rawText, caretPos, metadata);
-        }
-
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public async Task SelectSuggestionFromJS(string typeName)
-    {
-        var type = _allTokenTypes.FirstOrDefault(t => t.Name == typeName);
-        if (type != null) await SelectSuggestionByKeyboard(type);
-    }
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (!_isDropdownVisible) return;
-
-        switch (e.Key)
-        {
-            case "ArrowDown":
-                _selectedSuggestionIndex = (_selectedSuggestionIndex + 1) % _autocompleteSuggestions.Count;
-                await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
-                break;
-            case "ArrowUp":
-                _selectedSuggestionIndex = (_selectedSuggestionIndex - 1 + _autocompleteSuggestions.Count) % _autocompleteSuggestions.Count;
-                await JsRuntime.InvokeVoidAsync("scrollToAutocompleteItem", $"autocomplete-item-{_selectedSuggestionIndex}");
-                break;
-            case "Enter":
-            case "Tab":
-                if (_selectedSuggestionIndex >= 0 && _selectedSuggestionIndex < _autocompleteSuggestions.Count)
-                    await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
-                break;
-            case "Escape":
-                _isDropdownVisible = false;
-                break;
-        }
-    }
-
-    private async Task SelectSuggestionByKeyboard(Type selection)
-    {
-        string fullTokenText = $"@{selection.Name}";
-        // commitToken will trigger the UpdateFromJavaScript callback
-        await JsRuntime.InvokeVoidAsync("commitToken", _textToReplaceForAutocomplete, fullTokenText);
-        _isDropdownVisible = false;
-    }
-
-    private void UpdateRenderedRegexAndMatches(string patternToRender)
-    {
-        _currentMatches.Clear();
-        var logicalPattern = patternToRender.Trim();
-
-        if (string.IsNullOrWhiteSpace(logicalPattern))
-        {
-            _renderedRegex = "";
-            _regexEditorSegments.Clear();
-            _editorTokenUnit.Update(string.Empty);
-            return;
-        }
-
-        try
-        {
-            var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
-
-            if (_classNameHasBeenManuallyEdited)
-                _editorTokenUnit.Update(cleanPattern, ClassName);
-            else
-            {
-                _editorTokenUnit.Update(cleanPattern);
-                _className = _editorTokenUnit.ClassName;
-            }
-
-            _renderedRegex = _editorTokenUnit.RenderedRegex;
-            ParseSegments();
-
-            if (!string.IsNullOrWhiteSpace(_renderedRegex))
-            {
-                try
-                {
-                    _currentMatches = Regex.Matches(Line.SourceText.FormattedText, _renderedRegex)
-                       .Cast<Match>()
-                       .ToList();
-                }
-                catch (Exception ex)
-                {
-                    _renderedRegex = ex.Message;
-                    _regexEditorSegments = new List<RegexEditorSegment> { new(_renderedRegex, "var(--error-red)") };
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _renderedRegex = $"Error: {ex.Message}";
-            _regexEditorSegments = new List<RegexEditorSegment> { new(_renderedRegex, "var(--error-red)") };
-        }
-    }
-
-    private void ParseSegments()
-    {
-        _regexEditorSegments.Clear();
-        if (string.IsNullOrEmpty(_renderedRegex)) return;
-
-        int depth = 0;
-        int lastPos = 0;
-
-        for (int i = 0; i < _renderedRegex.Length; i++)
-        {
-            if (_renderedRegex[i] == '\\') { i++; continue; }
-
-            if (_renderedRegex[i] == '(')
-            {
-                if (depth == 0)
-                {
-                    if (i > lastPos)
-                        _regexEditorSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
-                    lastPos = i;
-                }
-                depth++;
-            }
-            else if (_renderedRegex[i] == ')')
-            {
-                depth--;
-                if (depth == 0)
-                {
-                    var groupText = _renderedRegex.Substring(lastPos, i - lastPos + 1);
-                    var match = Regex.Match(groupText, @"^\(\?<(?<name>[a-zA-Z0-9_]+)>");
-
-                    string color = "var(--syntax-default)";
-                    if (match.Success)
-                    {
-                        var name = match.Groups["name"].Value;
-                        if (TokenTypeRegistry.NameToType.TryGetValue(name, out var type))
-                            color = DeterministicPalette.TypePaletteSet[type].Normal;
-                    }
-
-                    _regexEditorSegments.Add(new(groupText, color));
-                    lastPos = i + 1;
-                }
-            }
-        }
-
-        if (lastPos < _renderedRegex.Length)
-            _regexEditorSegments.Add(new(_renderedRegex.Substring(lastPos), "var(--syntax-default)"));
-    }
+    #endregion
 
     private async Task SaveClassToFile()
     {
@@ -482,7 +483,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (_dotNetRef != null)
         {
-            try { await JsRuntime.InvokeVoidAsync("disposeEditor"); } catch { }
+            try { await JsRuntime.InvokeVoidAsync("regexEditor.dispose"); } catch { }
             _dotNetRef.Dispose();
         }
     }
