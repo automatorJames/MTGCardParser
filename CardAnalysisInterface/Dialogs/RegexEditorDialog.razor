@@ -5,28 +5,20 @@
 <CustomDialog OnBackdropClick="HandleCancel">
     <DialogContent>
         <div class="header-row">
-            <span class="header-title">
-                @Line.SourceText.CorpusMemberName
-            </span>
-            <span class="small-box-label header-line-number">
-                @($"Line #{Line.SourceText.LineIndex + 1}")
-            </span>
+            <span class="header-title">@Line.SourceText.CorpusMemberName</span>
+            <span class="small-box-label header-line-number">@($"Line #{Line.SourceText.LineIndex + 1}")</span>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 16px;">
-            @* 1. THE TEXT PREVIEW *@
             <div class="line-text-container">
-                @{
-                    var displaySegments = GetProcessedSegments();
-                }
                 <div class="text-layer-back">
-                    @foreach (var segment in displaySegments)
+                    @foreach (var segment in _editorTokenUnit.TextSegments)
                     {
                         <span class="highlight-token @segment.UnderlineClass">@segment.Text</span>
                     }
                 </div>
                 <div class="text-layer-front">
-                    @foreach (var segment in displaySegments)
+                    @foreach (var segment in _editorTokenUnit.TextSegments)
                     {
                         <span style="color: @segment.Color">@segment.Text</span>
                     }
@@ -35,7 +27,6 @@
 
             <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
 
-            @* 2. THE INPUT SECTION *@
             <div>
                 <div class="autocomplete-container">
                     <label for="regex-input-field" style="color: #A0AEC0; margin-bottom: 4px; display: block;">Regular expression template</label>
@@ -57,9 +48,9 @@
                                 <div id="@($"autocomplete-item-{index}")"
                                      class="autocomplete-item @(index == _selectedSuggestionIndex ? "selected" : "")"
                                      @onclick="() => SelectSuggestionByKeyboard(suggestedType)">
-                                    <span class="type-name" style="color: @DeterministicPalette.TypePaletteSet[suggestedType].Normal; @(suggestedType.IsEnum ? "font-style: italic" : "")">
+                                    <span class="type-name" style=@($"color: {DeterministicPalette.TypePaletteSet[suggestedType].Normal}; {(suggestedType.IsEnum ? "font-style: italic" : "")}")>
                                         @suggestedType.Name
-                                    </span>
+                                        </span>
                                     <span class="type-kind">@(suggestedType.IsEnum ? "Enum" : "Token Type")</span>
                                 </div>
                             }
@@ -67,17 +58,15 @@
                     }
                 </div>
 
-                @* 3. PREVIEW BOXES *@
                 <div style="margin-top: 24px;">
                     <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
-
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div>
                             <div class="small-box-label right">Rendered regex</div>
                             <div class="rendered-regex-box">
-                                <pre>@foreach(var segment in _regexEditorSegments) {
+                                <pre>@foreach(var segment in _editorTokenUnit.RegexSegments) {
                                 <span style=@($"color: {segment.Color}")>@segment.Text</span>
-                                                                                                                                }
+                                                                }
 </pre>
                             </div>
                         </div>
@@ -108,7 +97,7 @@
                                 <div class="small-box-label right">C# class preview</div>
                             </div>
                             <div class="rendered-regex-box">
-                                <pre class="c-sharp">@(new MarkupString(_editorTokenUnit?.ClassStringForDisplayingHtml ?? ""))</pre>
+                                <pre class="c-sharp">@(new MarkupString(_editorTokenUnit.ClassStringForDisplayingHtml))</pre>
                             </div>
                         </div>
                     </div>
@@ -118,9 +107,7 @@
 
         @if (_isPillMenuVisible)
         {
-            @* Global Invisible Shield to close menu on click outside *@
             <div class="pill-context-menu-shield" @onclick="CloseContextMenu" @oncontextmenu:preventDefault @oncontextmenu="CloseContextMenu"></div>
-
             <div class="pill-context-menu" style="position:fixed; left:@(_menuX)px; top:@(_menuY)px; z-index:2001;">
                 <div class="pill-context-menu-header">@_targetPillTypeName</div>
                 @foreach (var action in _pillContextMenuOptions)
@@ -129,10 +116,7 @@
                     {
                         <div class="pill-context-menu-divider"></div>
                     }
-
-                    <button class="menu-item" @onclick="() => HandlePillAction(action)">
-                        @action.MarkupString
-                    </button>
+                    <button class="menu-item" @onclick="() => HandlePillAction(action)">@action.MarkupString</button>
                 }
             </div>
         }
@@ -143,30 +127,3 @@
         <button class="btn btn-primary" @onclick="SaveClassToFile">Generate & Register Type</button>
     </DialogActions>
 </CustomDialog>
-
-<style>
-    [contenteditable=true]:empty:before {
-        content: attr(placeholder);
-        color: #718096;
-        pointer-events: none;
-        display: block;
-    }
-
-    .token-style {
-        display: inline-flex;
-        align-items: center;
-        padding: 0 6px;
-        margin: 0 2px;
-        border-radius: 4px;
-        cursor: default;
-        user-select: none;
-        border: 1px solid rgba(0,0,0,0.2);
-        color: white;
-        font-weight: 600;
-        font-size: 0.9em;
-    }
-
-    .token-selected {
-        outline: 2px solid var(--highlight-blue);
-    }
-</style>
