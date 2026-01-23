@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using MTGPlexer.TokenEditor;
+using System.Reflection.Emit;
 
 namespace MTGPlexer.StaticRegistry;
 
@@ -221,7 +222,7 @@ public static partial class TokenTypeRegistry
         AppliedOrderTypes.Add(tokenUnitType);
     }
 
-    public static void CreateAndRegisterNewTypeAndSaveToDisk(DynamicTokenType dynamicTokenType)
+    public static void CreateAndRegisterNewTypeAndSaveToDisk(EditorTokenUnit dynamicTokenType)
     {
         var newType = CreateDynamicTokenUnitType(dynamicTokenType);
         SetTypeTemplate(newType);
@@ -230,14 +231,14 @@ public static partial class TokenTypeRegistry
         File.WriteAllText(outputPath, dynamicTokenType.ClassStringForSavingToFile);
     }
 
-    static Type CreateDynamicTokenUnitType(DynamicTokenType dynamicTokenType)
+    static Type CreateDynamicTokenUnitType(EditorTokenUnit editorTokenUnit)
     {
         var baseType = typeof(TokenUnit);
         var snippetType = typeof(Snippet);
         var shortcutsType = typeof(SnippetShortcuts);
 
         var tb = _moduleBuilder.DefineType(
-                              dynamicTokenType.ClassName,
+                              editorTokenUnit.ClassName,
                               TypeAttributes.Public | TypeAttributes.Class,
                               baseType
                           );
@@ -248,10 +249,8 @@ public static partial class TokenTypeRegistry
         tb.SetCustomAttribute(orderAttr);
 
         // 2) Define Auto-Properties for referenced types
-        foreach (var snippet in dynamicTokenType.DynamicSnippets.Where(x => x.SnippetType == DynamicSnippetType.Type))
-        {
-            DefineAutoProperty(tb, snippet.Type.Name, snippet.Type);
-        }
+        foreach (var snippet in editorTokenUnit.EditorSnippets.OfType<EditorPropertySnippet>())
+            DefineAutoProperty(tb, snippet.ResolvedType.Name, snippet.ResolvedType);
 
         // 3) Override "protected virtual Snippet[] Snippets { get; }"
         var getSnippetsMethod = tb.DefineMethod(
@@ -261,7 +260,7 @@ public static partial class TokenTypeRegistry
             Type.EmptyTypes);
 
         var ilGen = getSnippetsMethod.GetILGenerator();
-        var parts = dynamicTokenType.DynamicSnippets;
+        var parts = editorTokenUnit.EditorSnippets;
 
         // Implementation: return new Snippet[] { ... }
         ilGen.Emit(OpCodes.Ldc_I4, parts.Count);
@@ -273,23 +272,23 @@ public static partial class TokenTypeRegistry
             ilGen.Emit(OpCodes.Dup);           // Duplicate array reference
             ilGen.Emit(OpCodes.Ldc_I4, i);     // Load index
 
-            if (snippet.SnippetType == DynamicSnippetType.Type)
+            if (snippet is EditorPropertySnippet propertySnippet)
             {
                 // Call SnippetShortcuts.Prop(null, "TypeName")
                 var propMethod = shortcutsType.GetMethod(nameof(SnippetShortcuts.Prop))!;
                 ilGen.Emit(OpCodes.Ldnull);         // First arg: null
-                ilGen.Emit(OpCodes.Ldstr, snippet.Text); // Second arg: property name
+                ilGen.Emit(OpCodes.Ldstr, propertySnippet.PropertyNameRepresentation); // Second arg: property name
                 ilGen.Emit(OpCodes.Call, propMethod);
             }
-            else if (snippet.SnippetType == DynamicSnippetType.Method)
+            else if (snippet is EditorMethodSnippet methodSnippet)
             {
-                var method = snippet.Method;
+                var method = methodSnippet.Method;
                 var parameters = method.GetParameters();
 
                 // Special Case: Alt(params string[])
                 if (method.Name == nameof(SnippetShortcuts.Alt))
                 {
-                    var alts = snippet.Text.Split(',').Select(s => s.Trim()).ToArray();
+                    var alts = methodSnippet.Args;
                     ilGen.Emit(OpCodes.Ldc_I4, alts.Length);
                     ilGen.Emit(OpCodes.Newarr, typeof(string));
                     for (int j = 0; j < alts.Length; j++)
@@ -303,7 +302,7 @@ public static partial class TokenTypeRegistry
                 // Methods with 1 string parameter (Opt, NoSpace)
                 else if (parameters.Length == 1 && parameters[0].ParameterType == typeof(string))
                 {
-                    ilGen.Emit(OpCodes.Ldstr, snippet.Text);
+                    ilGen.Emit(OpCodes.Ldstr, methodSnippet.Args[0]);
                 }
                 // Methods with 0 parameters (Plural)
                 else if (parameters.Length == 0)
@@ -313,11 +312,11 @@ public static partial class TokenTypeRegistry
 
                 ilGen.Emit(OpCodes.Call, method);
             }
-            else
+            else if (snippet is EditorTextSnippet textSnippet)
             {
                 // Plain text: new Snippet("text")
                 var snippetCtor = snippetType.GetConstructor(new[] { typeof(string) })!;
-                ilGen.Emit(OpCodes.Ldstr, snippet.Text);
+                ilGen.Emit(OpCodes.Ldstr, textSnippet.Text);
                 ilGen.Emit(OpCodes.Newobj, snippetCtor);
             }
 

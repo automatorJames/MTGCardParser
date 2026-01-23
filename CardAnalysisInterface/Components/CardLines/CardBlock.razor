@@ -1,4 +1,5 @@
-﻿@inject CorpusAnalyzer CorpusAnalyzer
+﻿@using MTGPlexer.TokenEditor
+@inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JS
 
 <Snackbar @ref="_snackbar" />
@@ -50,25 +51,25 @@
         StateHasChanged();
     }
 
-    async Task HandleDialogClose(DynamicTokenType dynamicTokenType)
+    async Task HandleDialogClose(EditorTokenUnit editorTokenUnit)
     {
         _isDialogOpen = false;
 
-        if (dynamicTokenType != null)
+        if (editorTokenUnit != null)
         {
             Card = await CorpusAnalyzer.ReprocessCard(Card.Card);
             StateHasChanged();
 
             await Task.Yield();
 
-            if (dynamicTokenType.LineMetadata?.DataPath is string pathToHighlight)
+            if (editorTokenUnit.LineMetadata?.DataPath is string pathToHighlight)
                 await JS.InvokeVoidAsync("flashLineHighlight", pathToHighlight);
 
             if (_snackbar != null)
             {
                 // Do NOT await this if you want the method to finish immediately,
                 // OR await it after StateHasChanged so the UI isn't "stuck"
-                _ = _snackbar.Show(new MarkupString($"Added type <b>{dynamicTokenType.ClassName}</b>!"));
+                _ = _snackbar.Show(new MarkupString($"Added type <b>{editorTokenUnit.ClassName}</b>!"));
             }
         }
         else

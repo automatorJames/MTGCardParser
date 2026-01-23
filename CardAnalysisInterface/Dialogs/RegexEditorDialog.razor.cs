@@ -1,12 +1,6 @@
-﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
-using MTGPlexer.CommonDTOs;
-using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+﻿using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 using MTGPlexer.TokenUnitComponents;
 using MTGPlexer.TokenUnits;
-using System.ComponentModel;
-using System.Text.RegularExpressions;
 
 namespace CardAnalysisInterface.Dialogs;
 
@@ -16,19 +10,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public ProcessedLine Line { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<DynamicTokenType> OnClose { get; set; }
-
-    public enum TokenModifier
-    {
-        [Description("Match Exactly One")]
-        None,
-        [Description("Optional (?)")]
-        Optional,
-        [Description("Zero or More (*)")]
-        ZeroOrMore,
-        [Description("One or More (+)")]
-        OneOrMore
-    }
+    public EventCallback<EditorTokenUnit> OnClose { get; set; }
 
     string _className = $"New{nameof(TokenUnit)}";
     string ClassName
@@ -37,7 +19,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         set
         {
             _className = Regex.Replace(value, " ", "");
-            _dynamicTokenType = new DynamicTokenType(_currentRawPattern, className: ClassName, lineMetadata: Line);
+            _editorTokenUnit.Update(_currentRawPattern, ClassName);
         }
     }
 
@@ -45,14 +27,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private double _menuX;
     private double _menuY;
     private string _targetPillTypeName = "";
-    private int _targetPillIndex = -1; // Refinement 1
+    private Guid _targetSnippetId = Guid.Empty;
 
     string _renderedRegex = "";
     bool _classNameHasBeenManuallyEdited;
     string _currentRawPattern = "";
-    List<RegexSegment> _regexSegments = new();
+    List<RegexEditorSegment> _regexEditorSegments = new();
     List<Match> _currentMatches = new();
-    DynamicTokenType _dynamicTokenType = default!;
+    EditorTokenUnit _editorTokenUnit;
 
     bool _isDropdownVisible = false;
     bool _isEditingClassName = false;
@@ -64,16 +46,16 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     string _textToReplaceForAutocomplete = "";
 
     ElementReference _editorElement;
-    DotNetObjectReference<RegexEditorDialog>? _dotNetRef;
+    DotNetObjectReference<RegexEditorDialog> _dotNetRef;
 
-    public record RegexSegment(string Text, string Color);
+    public record RegexEditorSegment(string Text, string Color);
     private enum MatchStatus { None, Partial, Full }
     private record TextSegment(string Text, string Color, string UnderlineClass);
 
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
-        _dynamicTokenType = new(string.Empty);
+        _editorTokenUnit = new(Line);
         _allTokenTypes = TokenTypeRegistry.GetAllTypesExhaustive();
     }
 
@@ -108,64 +90,52 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     }
 
     [JSInvokable("OpenPillMenu")]
-    public void OpenPillContextMenu(string typeName, int pillIndex, double x, double y)
+    public void OpenPillContextMenu(string typeName, string snippetId, double x, double y)
     {
         _targetPillTypeName = typeName;
-        _targetPillIndex = pillIndex;
+        if (Guid.TryParse(snippetId, out var id))
+            _targetSnippetId = id;
+
         _menuX = x;
         _menuY = y;
         _isPillMenuVisible = true;
         StateHasChanged();
     }
 
-    private async Task HandlePillModifier(TokenModifier modifier)
-    {
-        _isPillMenuVisible = false;
-
-        var targetDynamicSnippet = _dynamicTokenType.DynamicSnippets[_targetPillIndex];
-
-
-        string quantifier = modifier switch
-        {
-            TokenModifier.Optional => "?",
-            TokenModifier.ZeroOrMore => "*",
-            TokenModifier.OneOrMore => "+",
-            _ => ""
-        };
-
-        // Precision replacement using index to handle duplicate type names
-        var pattern = $@"@{Regex.Escape(_targetPillTypeName)}[?*+]?";
-        int occurrence = 0;
-
-        _currentRawPattern = Regex.Replace(_currentRawPattern, pattern, m =>
-        {
-            if (occurrence++ == _targetPillIndex)
-                return $"@{_targetPillTypeName}{quantifier}";
-            return m.Value;
-        });
-
-        await UpdateEditorFromCode();
-    }
+    //private async Task HandlePillModifier(TokenModifier modifier)
+    //{
+    //    _isPillMenuVisible = false;
+    //
+    //    // Route selection to the new method on DynamicTokenType
+    //    _dynamicTokenType.HandleSnippetAction(_targetSnippetId, modifier);
+    //
+    //    // Update raw pattern from the refreshed snippet state
+    //    _currentRawPattern = _dynamicTokenType.GetTemplateString();
+    //
+    //    await UpdateEditorFromCode();
+    //}
 
     private async Task HandlePillDelete()
     {
         _isPillMenuVisible = false;
-        var pattern = $@"@{Regex.Escape(_targetPillTypeName)}[?*+]?";
-        int occurrence = 0;
 
-        _currentRawPattern = Regex.Replace(_currentRawPattern, pattern, m =>
-        {
-            if (occurrence++ == _targetPillIndex)
-                return "";
-            return m.Value;
-        });
+        // Route deletion to DynamicTokenType
+        _editorTokenUnit.RemoveSnippet(_targetSnippetId);
+
+        _currentRawPattern = _editorTokenUnit.GetTemplateString();
 
         await UpdateEditorFromCode();
     }
 
     private async Task UpdateEditorFromCode()
     {
-        await JsRuntime.InvokeVoidAsync("highlightAndRestoreCursor", _currentRawPattern, -1);
+        // Extract ordered metadata for JS to map GUIDs to rendered matches
+        var metadata = _editorTokenUnit.EditorSnippets
+            .Where(x => x.DisplayAsBlockInEditor)
+            .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
+            .ToList();
+
+        await JsRuntime.InvokeVoidAsync("highlightAndRestoreCursor", _currentRawPattern, -1, metadata);
         UpdateRenderedRegexAndMatches(_currentRawPattern);
         StateHasChanged();
     }
@@ -404,7 +374,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         string fullTokenText = $"@{selection.Name}";
         await JsRuntime.InvokeVoidAsync("commitToken", _textToReplaceForAutocomplete, fullTokenText);
+        _currentRawPattern = Regex.Replace(_currentRawPattern, _textToReplaceForAutocomplete, fullTokenText);
         _isDropdownVisible = false;
+        _editorTokenUnit.Update(_currentRawPattern);
         StateHasChanged();
     }
 
@@ -416,8 +388,8 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         if (string.IsNullOrWhiteSpace(logicalPattern))
         {
             _renderedRegex = "";
-            _regexSegments.Clear();
-            _dynamicTokenType = new(string.Empty);
+            _regexEditorSegments.Clear();
+            _editorTokenUnit = new(Line);
             return;
         }
 
@@ -426,14 +398,14 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             var cleanPattern = logicalPattern.Replace('\u00A0', ' ');
 
             if (_classNameHasBeenManuallyEdited)
-                _dynamicTokenType = new DynamicTokenType(cleanPattern, className: ClassName, lineMetadata: Line);
+                _editorTokenUnit.Update(cleanPattern, ClassName);
             else
             {
-                _dynamicTokenType = new DynamicTokenType(cleanPattern, lineMetadata: Line);
-                ClassName = _dynamicTokenType.ClassName;
+                _editorTokenUnit.Update(cleanPattern);
+                ClassName = _editorTokenUnit.ClassName;
             }
 
-            _renderedRegex = _dynamicTokenType.RenderedRegex;
+            _renderedRegex = _editorTokenUnit.RenderedRegex;
 
             ParseSegments();
 
@@ -448,20 +420,20 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 catch (Exception ex)
                 {
                     _renderedRegex = ex.Message;
-                    _regexSegments = new List<RegexSegment> { new(_renderedRegex, "var(--error-red)") };
+                    _regexEditorSegments = new List<RegexEditorSegment> { new(_renderedRegex, "var(--error-red)") };
                 }
             }
         }
-        catch
+        catch(Exception ex)
         {
-            _renderedRegex = "Error rendering template";
-            _regexSegments = new List<RegexSegment> { new(_renderedRegex, "var(--error-red)") };
+            _renderedRegex = $"Error rendering template: {ex.Message}";
+            _regexEditorSegments = new List<RegexEditorSegment> { new(_renderedRegex, "var(--error-red)") };
         }
     }
 
     private void ParseSegments()
     {
-        _regexSegments.Clear();
+        _regexEditorSegments.Clear();
         if (string.IsNullOrEmpty(_renderedRegex)) return;
 
         int depth = 0;
@@ -476,7 +448,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                 if (depth == 0)
                 {
                     if (i > lastPos)
-                        _regexSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
+                        _regexEditorSegments.Add(new(_renderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
                     lastPos = i;
                 }
                 depth++;
@@ -497,22 +469,22 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
                             color = DeterministicPalette.TypePaletteSet[type].Normal;
                     }
 
-                    _regexSegments.Add(new(groupText, color));
+                    _regexEditorSegments.Add(new(groupText, color));
                     lastPos = i + 1;
                 }
             }
         }
 
         if (lastPos < _renderedRegex.Length)
-            _regexSegments.Add(new(_renderedRegex.Substring(lastPos), "var(--syntax-default)"));
+            _regexEditorSegments.Add(new(_renderedRegex.Substring(lastPos), "var(--syntax-default)"));
     }
 
     private async Task SaveClassToFile()
     {
-        if (_dynamicTokenType != null)
-            TokenTypeRegistry.CreateAndRegisterNewTypeAndSaveToDisk(_dynamicTokenType);
+        if (_editorTokenUnit != null)
+            TokenTypeRegistry.CreateAndRegisterNewTypeAndSaveToDisk(_editorTokenUnit);
 
-        await OnClose.InvokeAsync(_dynamicTokenType);
+        await OnClose.InvokeAsync(_editorTokenUnit);
     }
 
     private Task HandleCancel() => OnClose.InvokeAsync(null);
