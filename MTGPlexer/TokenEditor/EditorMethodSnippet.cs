@@ -1,10 +1,11 @@
 ﻿namespace MTGPlexer.TokenEditor;
 
-public record EditorMethodSnippet(ShortcutSnippetMethod MethodType, params string[] Args) 
+public record EditorMethodSnippet(ShortcutSnippetMethod MethodType, string[] Args, string Id) 
     : EditorSnippet(
         EditorRepresentation: $"@{MethodType}({string.Join(", ", Args)})",
         ParameterRepresentation: GetParameterRepresentation(MethodType, Args),
-        DisplayAsBlockInEditor: true
+        DisplayAsBlockInEditor: true,
+        Id: Id
         )
 {
     public MethodInfo Method { get; } = typeof(SnippetShortcuts).GetMethod(MethodType.ToString());

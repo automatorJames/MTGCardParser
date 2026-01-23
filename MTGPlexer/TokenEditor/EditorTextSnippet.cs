@@ -1,11 +1,12 @@
 ﻿
 namespace MTGPlexer.CommonDTOs;
 
-public record EditorTextSnippet(string Text)
+public record EditorTextSnippet(string Text, string Id)
     : EditorSnippet(
         EditorRepresentation: Text,
         ParameterRepresentation: $"\"{Text}\"",
-        DisplayAsBlockInEditor: false)
+        DisplayAsBlockInEditor: false,
+        Id)
 {
     public override string GetParameterHtmlRepresentation() =>
         Span("\"" + Text + "\"", SpanClass.stringliteral);

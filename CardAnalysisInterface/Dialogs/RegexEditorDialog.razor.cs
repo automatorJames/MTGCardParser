@@ -30,7 +30,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private double _menuX;
     private double _menuY;
     private string _targetPillTypeName = "";
-    private Guid _targetSnippetId = Guid.Empty;
+    private string _targetSnippetId = "";
 
     private string _renderedRegex = "";
     private bool _classNameHasBeenManuallyEdited;
@@ -97,9 +97,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public void OpenPillContextMenu(string typeName, string snippetId, double x, double y)
     {
         _targetPillTypeName = typeName;
-        if (Guid.TryParse(snippetId, out var id))
-            _targetSnippetId = id;
-
+        _targetSnippetId = snippetId;
         _menuX = x;
         _menuY = y;
         _isPillMenuVisible = true;

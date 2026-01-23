@@ -50,7 +50,7 @@ public class EditorTokenUnit
 
     public void Update(string templateString, string preferredClassName = null)
     {
-        EditorSnippets = DigestTemplateStringToSnippets(templateString);
+        DigestTemplateStringToSnippets(templateString);
         ClassName = preferredClassName ?? GetSuggestedClassName();
 
         if (string.IsNullOrWhiteSpace(ClassName))
@@ -108,10 +108,17 @@ public class EditorTokenUnit
         return classPartStyled;
     }
 
-    List<EditorSnippet> DigestTemplateStringToSnippets(string templateString)
+    void DigestTemplateStringToSnippets(string templateString)
     {
+        // Although rare, it's possible for multiple EditorPropertySnippet or EditorMethodSnippet instances to appear
+        // the same in the template string. Therefore we track occurrence count to guarantee unique IDs.
+
+        Dictionary<string, int> snippetNameOccurrenceCount = [];
         List <EditorSnippet> list = [];
         var matches = _templateSplitPattern.Matches(templateString);
+
+        // local helper
+        string GetId(string name) => snippetNameOccurrenceCount.TryAdd(name, 0) ? name : $"name-{++snippetNameOccurrenceCount[name] + 1}";
 
         foreach (Match match in matches)
         {
@@ -125,32 +132,33 @@ public class EditorTokenUnit
 
                 if (!Enum.TryParse<ShortcutSnippetMethod>(name, out var parsedMethodType))
                     continue;
-                    //throw new Exception($"'{name}' isn't a valid {nameof(ShortcutSnippetMethod)}");
 
-                list.Add(new EditorMethodSnippet(parsedMethodType, args));
+                list.Add(new EditorMethodSnippet(parsedMethodType, args, GetId(name)));
             }
             else if (match.Groups["Type"].Success)
             {
                 var wrapper = match.Groups["Wrapper"].Value; // Empty if no < >
                 var baseType = match.Groups["Base"].Value;
+                var name = string.IsNullOrEmpty(wrapper) ? baseType : $"{wrapper}<{baseType}>";
 
                 XOfType xOfType = XOfType.None;
 
                 if (!string.IsNullOrEmpty(wrapper) && !Enum.TryParse<XOfType>(wrapper, out xOfType))
                     continue;
-                    //throw new Exception($"'{wrapper}' isn't a valid {nameof(XOfType)}");
 
                 if (!TokenTypeRegistry.NameToType.TryGetValue(baseType, out Type parsedBaseType))
                     continue;
-                    //throw new Exception($"'{baseType}' isn't a registered type");
 
-                list.Add(new EditorPropertySnippet(parsedBaseType, xOfType));
+                list.Add(new EditorPropertySnippet(parsedBaseType, xOfType, GetId(name)));
             }
             else if (match.Groups["Plain"].Success)
-                list.Add(new EditorTextSnippet(match.Value.Trim()));
+            {
+                var text = match.Value.Trim();
+                list.Add(new EditorTextSnippet(text, GetId(text)));
+            }
         }
 
-        return list;
+        EditorSnippets = list;
     }
 
     string GetSuggestedClassName()
@@ -176,7 +184,7 @@ public class EditorTokenUnit
         return str;
     }
 
-    public void RemoveSnippet(Guid snippetId)
+    public void RemoveSnippet(string snippetId)
     {
         EditorSnippets.RemoveAll(s => s.Id == snippetId);
         var newTemplateString = GetTemplateString();

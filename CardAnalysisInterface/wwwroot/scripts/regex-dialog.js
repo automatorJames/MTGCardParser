@@ -42,9 +42,9 @@ function onPillContextMenu(e) {
     if (token) {
         e.preventDefault();
         const typeName = token.getAttribute('data-type-name');
-        const guid = token.getAttribute('data-snippet-id');
+        const dataSnippetId = token.getAttribute('data-snippet-id');
         if (editorDotNetReference) {
-            editorDotNetReference.invokeMethodAsync('OpenPillMenu', typeName, guid, e.clientX, e.clientY);
+            editorDotNetReference.invokeMethodAsync('OpenPillMenu', typeName, dataSnippetId, e.clientX, e.clientY);
         }
     }
 }
@@ -253,10 +253,10 @@ function highlightAndRestoreCursor(text, cursorPos, snippetMetadata) {
 
         const fullMatchText = match[0];
 
-        let guid = "";
+        let dataSnippetId = "";
         const metaIdx = metaQueue.findIndex(m => m.typeName === fullMatchText);
         if (metaIdx !== -1) {
-            guid = metaQueue[metaIdx].id;
+            dataSnippetId = metaQueue[metaIdx].id;
             metaQueue.splice(metaIdx, 1);
         }
 
@@ -268,7 +268,7 @@ function highlightAndRestoreCursor(text, cursorPos, snippetMetadata) {
         span.contentEditable = 'false';
         span.style.backgroundColor = colors.normal;
         span.setAttribute('data-type-name', fullMatchText);
-        span.setAttribute('data-snippet-id', guid);
+        span.setAttribute('data-snippet-id', dataSnippetId);
         span.innerHTML = `<span style="display:none">@</span><span>${fullMatchText.substring(1)}</span>`;
 
         editorElement.appendChild(span);

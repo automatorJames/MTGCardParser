@@ -1,11 +1,12 @@
 ﻿
 namespace MTGPlexer.CommonDTOs;
 
-public record EditorPropertySnippet(Type BasePropertyType, XOfType XOfType = XOfType.None) 
+public record EditorPropertySnippet(Type BasePropertyType, XOfType XOfType, string Id) 
     : EditorSnippet(
         EditorRepresentation: "@" + GetTypeRepresentation(BasePropertyType, XOfType),
         ParameterRepresentation: GetParameterRepresentation(BasePropertyType, XOfType),
-        DisplayAsBlockInEditor: true)
+        DisplayAsBlockInEditor: true,
+        Id: Id)
 {
     public bool BaseIsEnum { get; } = BasePropertyType.IsEnum;
     public Type ClosedGenericType { get; } = GetClosedGenericType(BasePropertyType, XOfType);

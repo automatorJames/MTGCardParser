@@ -3,11 +3,10 @@
 public abstract record EditorSnippet(
     string EditorRepresentation, 
     string ParameterRepresentation,
-    bool DisplayAsBlockInEditor
+    bool DisplayAsBlockInEditor,
+    string Id
     )
 {
-    public Guid Id { get; } = Guid.NewGuid();
-
     public abstract string GetParameterHtmlRepresentation();
     public abstract RegexSegmentBase GetRegexSegment();
 
