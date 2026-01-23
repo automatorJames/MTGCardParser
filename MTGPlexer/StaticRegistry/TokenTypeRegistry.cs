@@ -249,7 +249,7 @@ public static partial class TokenTypeRegistry
         tb.SetCustomAttribute(orderAttr);
 
         // 2) Define Auto-Properties for referenced types
-        foreach (var snippet in editorTokenUnit.EditorSnippets.OfType<EditorPropertySnippet>())
+        foreach (var snippet in editorTokenUnit.Snippets.OfType<EditorPropertySnippet>())
             DefineAutoProperty(tb, snippet.ResolvedType.Name, snippet.ResolvedType);
 
         // 3) Override "protected virtual Snippet[] Snippets { get; }"
@@ -260,7 +260,7 @@ public static partial class TokenTypeRegistry
             Type.EmptyTypes);
 
         var ilGen = getSnippetsMethod.GetILGenerator();
-        var parts = editorTokenUnit.EditorSnippets;
+        var parts = editorTokenUnit.Snippets;
 
         // Implementation: return new Snippet[] { ... }
         ilGen.Emit(OpCodes.Ldc_I4, parts.Count);

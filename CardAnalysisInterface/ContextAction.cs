@@ -1,53 +1,66 @@
-﻿
-namespace CardAnalysisInterface;
+﻿namespace CardAnalysisInterface;
 
 public record ContextAction
 {
     public ContextActionType Type { get; }
     public string Label { get; }
     public string Color { get; }
-    public string IconName { get; }
+    public MaterialIcon Icon { get; }
     public MarkupString MarkupString { get; }
+    public bool SectionBreak { get; }
 
-    public ContextAction(ContextActionType type, string iconName = null, string label = null, string color = null)
+    public ContextAction(ContextActionType type, MaterialIcon? icon = null, string label = null, string color = null, bool sectionBreak = false)
     {
         Type = type;
         Label = label ?? type.ToString().ToFriendlyCase(Extensions.TitleDisplayOption.Lower);
         Color = color ?? GetDefaultColor(type);
-        IconName = iconName ?? GetMaterialIconName(type);
+        Icon = icon ?? GetDefaultIcon(type);
         MarkupString = GetMarkupString();
+        SectionBreak = sectionBreak;
     }
 
-    static string GetMaterialIconName(ContextActionType type) =>
+    static MaterialIcon GetDefaultIcon(ContextActionType type) =>
         type switch
         {
-            ContextActionType.Delete => "delete",
-            ContextActionType.ConvertToOneOf => "code",
-            ContextActionType.ConvertToManyOf => "code",
-            ContextActionType.ConvertToCompoundOf => "code",
-            _ => string.Empty
+            ContextActionType.Delete => MaterialIcon.Delete,
+            ContextActionType.ConvertToOneOf => MaterialIcon.Code,
+            ContextActionType.ConvertToManyOf => MaterialIcon.Code,
+            ContextActionType.ConvertToCompoundOf => MaterialIcon.Code,
+            _ => MaterialIcon.None
         };
 
     static string GetDefaultColor(ContextActionType type) =>
         type switch
         {
-            ContextActionType.Delete =>                 "#A37362", // Terracotta
-            ContextActionType.ConvertToOneOf =>         "#858F5C", // Olive
-            ContextActionType.ConvertToManyOf =>        "#5E947A", // Sage
-            ContextActionType.ConvertToCompoundOf =>    "#5E8399", // Slate
-            //ContextActionType.Delete => "#7D7394", // Thistle
-            //ContextActionType.Delete => "#A36280", // Rose
+            ContextActionType.Delete => "#A37362",
+            ContextActionType.ConvertToOneOf => "#858F5C",
+            ContextActionType.ConvertToManyOf => "#5E947A",
+            ContextActionType.ConvertToCompoundOf => "#5E8399",
+            _ => "#AAAAAA"
         };
 
     MarkupString GetMarkupString()
     {
-        var iconStyle = $"style=\"color: {Color}; font-size: 18px;\"";
-        var textStyle = $"style=\"color: {Color}; font-size: 14px;\"";
-        var str = $"<span class=\"material-symbols-outlined\" {iconStyle}>";
-        str += IconName;
-        str += $"</span>";
-        str += $"<span {textStyle}>{Label}</span>";
+        if (Icon == MaterialIcon.None) return new MarkupString($"<span>{Label}</span>");
 
-        return new(str);
+        // Get the SVG Path via your extension method
+        string pathData = Icon.GetDescription();
+
+        // Build SVG - Note: Material Symbols use 24x24 viewBox
+        var svgHtml = $@"
+            <svg width=""18"" height=""18"" viewBox=""0 0 24 24"" style=""flex-shrink:0; margin-right:10px;"">
+                <path d=""{pathData}"" fill=""{Color}"" />
+            </svg>";
+
+        var containerStyle = "display: flex; align-items: center; width: 100%;";
+        var textStyle = $"color: {Color}; font-size: 14px; white-space: nowrap;";
+
+        var finalMarkup = $@"
+            <div style=""{containerStyle}"">
+                {svgHtml}
+                <span style=""{textStyle}"">{Label}</span>
+            </div>";
+
+        return new MarkupString(finalMarkup);
     }
 }

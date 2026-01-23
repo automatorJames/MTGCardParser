@@ -125,7 +125,14 @@
                 <div class="pill-context-menu-header">@_targetPillTypeName</div>
                 @foreach (var action in _pillContextMenuOptions)
                 {
-                    <button class="menu-item" @onclick="() => HandlePillAction(action)">@action.MarkupString</button>
+                    @if (action.SectionBreak)
+                    {
+                        <div class="pill-context-menu-divider"></div>
+                    }
+
+                    <button class="menu-item" @onclick="() => HandlePillAction(action)">
+                        @action.MarkupString
+                    </button>
                 }
             </div>
         }

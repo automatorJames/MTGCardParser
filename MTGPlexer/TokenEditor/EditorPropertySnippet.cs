@@ -77,6 +77,16 @@ public record EditorPropertySnippet(Type BasePropertyType, XOfType XOfType, stri
 
     public override RegexSegmentBase GetRegexSegment() =>
          new TemplatePropInfo(ResolvedType).GetCaptureGroupPropBase();
+
+    public string GetContextMenuDisplayName()
+    {
+        var baseTypeDescriptor = BaseIsEnum ? "enum" : BasePropertyType.Name;
+
+        if (ClosedGenericType?.Name is string wrapperTypeName)
+            return $"{PropertyNameRepresentation}: {wrapperTypeName}<{baseTypeDescriptor}> "; 
+        else
+            return $"{PropertyNameRepresentation}: {baseTypeDescriptor}";
+    }
 }
 
 public enum XOfType

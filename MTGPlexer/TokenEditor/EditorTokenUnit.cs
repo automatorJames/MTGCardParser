@@ -36,7 +36,7 @@ public class EditorTokenUnit
 
     public ProcessedLine LineMetadata { get; }
     public Type TokenUnitType { get; } = typeof(TokenUnit);
-    public List<EditorSnippet> EditorSnippets { get; private set; }
+    public List<EditorSnippet> Snippets { get; private set; } = [];
     public string ClassName { get; private set; }
     public string ClassStringForSavingToFile { get; private set; }
     public string ClassStringForDisplayingHtml { get; private set; }
@@ -48,15 +48,22 @@ public class EditorTokenUnit
         Update(string.Empty);
     }
 
-    public void Update(string templateString, string preferredClassName = null)
+    public EditorPropertySnippet this[string id]
     {
-        DigestTemplateStringToSnippets(templateString);
+        get => Snippets.OfType<EditorPropertySnippet>().FirstOrDefault(x => x.Id == id);
+    }
+
+    public void Update(string templateString = null, string preferredClassName = null)
+    {
+        if (templateString != null)
+            DigestTemplateStringToSnippets(templateString);
+
         ClassName = preferredClassName ?? GetSuggestedClassName();
 
         if (string.IsNullOrWhiteSpace(ClassName))
             ClassName = $"New{TokenUnitType.Name}";
 
-        RenderedRegex = CompositionFactory.GetComposedString(EditorSnippets.Select(x => x.GetRegexSegment()), TokenUnitType);
+        RenderedRegex = CompositionFactory.GetComposedString(Snippets.Select(x => x.GetRegexSegment()), TokenUnitType);
         ClassStringForSavingToFile = GetClassStringForSavingToFile();
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
     }
@@ -69,9 +76,9 @@ public class EditorTokenUnit
 
             public class {{ClassName}} : {{nameof(TokenUnit)}}
             {
-                protected override Snippet[] Snippets => [{{string.Join(", ", EditorSnippets.Select(x => x.ParameterRepresentation))}}];
+                protected override Snippet[] Snippets => [{{string.Join(", ", Snippets.Select(x => x.ParameterRepresentation))}}];
 
-                {{string.Join("\r\n    ", EditorSnippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineRepresentation()))}}
+                {{string.Join("\r\n    ", Snippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineRepresentation()))}}
             }
             """;
     }
@@ -82,10 +89,10 @@ public class EditorTokenUnit
 
         var snippetSection = 
             $"{Span("protected override")} {Span("Snippet", SpanClass.type)}{Span("[]")} {Span("Snippets =>", SpanClass.identifier)} {Span("[", SpanClass.identifier)}"
-            + string.Join(", ", EditorSnippets.Select(x => x.GetParameterHtmlRepresentation()))
+            + string.Join(", ", Snippets.Select(x => x.GetParameterHtmlRepresentation()))
             + $"{Span("]", SpanClass.identifier)};";
 
-        var propDeclarations = EditorSnippets
+        var propDeclarations = Snippets
             .OfType<EditorPropertySnippet>()
             .Select(x => x.GetPropertyLineHtmlRepresentation());
 
@@ -158,14 +165,14 @@ public class EditorTokenUnit
             }
         }
 
-        EditorSnippets = list;
+        Snippets = list;
     }
 
     string GetSuggestedClassName()
     {
         string str = "";
 
-        foreach (var snippet in EditorSnippets)
+        foreach (var snippet in Snippets)
         {
             if (snippet is EditorPropertySnippet propertySnippet)
                 str += propertySnippet.PropertyNameRepresentation;
@@ -186,13 +193,24 @@ public class EditorTokenUnit
 
     public void RemoveSnippet(string snippetId)
     {
-        EditorSnippets.RemoveAll(s => s.Id == snippetId);
+        Snippets.RemoveAll(s => s.Id == snippetId);
+        Update();
+    }
+
+    public void ConvertSnippetToOneOf(string snippetId)
+    {
+        var snippet = Snippets.FirstOrDefault(s => s.Id == snippetId);
+
+        if (snippet is not EditorPropertySnippet propertySnippet)
+            return;
+
         var newTemplateString = GetTemplateString();
         Update(newTemplateString);
     }
 
+
     public string GetTemplateString() =>
-        string.Join(' ', EditorSnippets.Select(x => x.EditorRepresentation));
+        string.Join(' ', Snippets.Select(x => x.EditorRepresentation));
 
     static string Span(string content, SpanClass spanClass = SpanClass.keyword) => $"<span class=\"{spanClass}\">{content}</span>";
 }

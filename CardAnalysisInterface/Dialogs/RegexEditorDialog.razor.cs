@@ -33,7 +33,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         new(ContextActionType.ConvertToOneOf),
         new(ContextActionType.ConvertToManyOf),
         new(ContextActionType.ConvertToCompoundOf),
-        new(ContextActionType.Delete),
+        new(ContextActionType.Delete, sectionBreak: true),
     };
 
     // Regex State
@@ -97,7 +97,8 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [JSInvokable("OpenPillMenu")]
     public void OpenPillContextMenu(string typeName, string snippetId, double x, double y)
     {
-        _targetPillTypeName = typeName;
+        var propertySnippet = _editorTokenUnit[snippetId];
+        _targetPillTypeName = propertySnippet?.GetContextMenuDisplayName() ?? typeName;
         _targetSnippetId = snippetId;
         _menuX = x;
         _menuY = y;
@@ -184,7 +185,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task SyncEditorPills(int forceCaretPos = -1)
     {
-        var metadata = _editorTokenUnit.EditorSnippets
+        var metadata = _editorTokenUnit.Snippets
             .Where(x => x.DisplayAsBlockInEditor)
             .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
             .ToList();
@@ -209,6 +210,13 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         switch (action.Type)
         {
             case ContextActionType.Delete:
+                _editorTokenUnit.RemoveSnippet(_targetSnippetId);
+                _currentRawPattern = _editorTokenUnit.GetTemplateString();
+                UpdateRenderedRegexAndMatches(_currentRawPattern);
+                await SyncEditorPills();
+                break;
+
+            case ContextActionType.ConvertToOneOf:
                 _editorTokenUnit.RemoveSnippet(_targetSnippetId);
                 _currentRawPattern = _editorTokenUnit.GetTemplateString();
                 UpdateRenderedRegexAndMatches(_currentRawPattern);
