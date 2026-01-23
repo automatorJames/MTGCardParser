@@ -53,9 +53,7 @@ public class EditorTokenUnit
         // 2. If a preferred name is provided, it's a manual edit. 
         // If the string is empty/whitespace, we revert to using suggestions.
         if (preferredClassName != null)
-        {
             ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
-        }
 
         // 3. Generate Regex
         RenderedRegex = CompositionFactory.GetComposedString(Snippets.Select(x => x.GetRegexSegment()), TokenUnitType);
@@ -81,7 +79,10 @@ public class EditorTokenUnit
                 .Cast<Match>()
                 .ToList();
         }
-        catch { /* Invalid Regex during typing */ }
+        catch 
+        {
+            /* Invalid Regex during typing */
+        }
     }
 
     private void ParseRegexSegments()
@@ -94,7 +95,12 @@ public class EditorTokenUnit
 
         for (int i = 0; i < RenderedRegex.Length; i++)
         {
-            if (RenderedRegex[i] == '\\') { i++; continue; }
+            if (RenderedRegex[i] == '\\') 
+            { 
+                i++; 
+                continue; 
+            }
+
             if (RenderedRegex[i] == '(')
             {
                 if (depth == 0)
@@ -116,12 +122,14 @@ public class EditorTokenUnit
                     var groupText = RenderedRegex.Substring(lastPos, i - lastPos + 1);
                     var match = Regex.Match(groupText, @"^\(\?<(?<name>[a-zA-Z0-9_]+)>");
                     string color = "var(--syntax-default)";
+
                     if (match.Success)
                     {
                         var name = match.Groups["name"].Value;
                         if (TokenTypeRegistry.NameToType.TryGetValue(name, out var type))
                             color = DeterministicPalette.TypePaletteSet[type].Normal;
                     }
+
                     RegexRuns.Add(new(groupText, color));
                     lastPos = i + 1;
                 }
@@ -148,6 +156,7 @@ public class EditorTokenUnit
 
         var words = new List<(int Start, int End)>();
         int? wordStart = null;
+
         for (int i = 0; i <= text.Length; i++)
         {
             bool isWordChar = i < text.Length && !char.IsWhiteSpace(text[i]);
@@ -188,8 +197,11 @@ public class EditorTokenUnit
                 {
                     bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
                     bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
-                    if (leftFull && rightFull && char.IsWhiteSpace(text[k])) charStatus[k] = MatchStatus.Full;
-                    else charStatus[k] = MatchStatus.Partial;
+
+                    if (leftFull && rightFull && char.IsWhiteSpace(text[k]))
+                        charStatus[k] = MatchStatus.Full;
+                    else
+                        charStatus[k] = MatchStatus.Partial;
                 }
             }
         }
@@ -218,6 +230,7 @@ public class EditorTokenUnit
 
                 color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
             }
+
             rawSegments.Add(new TextStyledRun(text[i].ToString(), color, underlineClass));
         }
 
