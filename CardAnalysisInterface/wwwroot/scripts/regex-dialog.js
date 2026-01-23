@@ -80,6 +80,8 @@ function onBeforeInput(event) {
         const pos = getOffsetOfNode(editorElement, highlighted);
         highlighted.remove();
         highlightAndRestoreCursor(editorElement.textContent, pos);
+        // Force update to Blazor after manual pill deletion
+        onEditorInput();
         return;
     }
 
@@ -121,6 +123,8 @@ function onBeforeInput(event) {
 
         tokensToDelete.forEach(t => t.remove());
         highlightAndRestoreCursor(editorElement.textContent, pos);
+        // Force update to Blazor
+        onEditorInput();
     }
 }
 
@@ -179,7 +183,10 @@ function onEditorKeyDown(event) {
 
     if (event.key === ' ' || event.key === 'Enter') {
         setTimeout(() => {
-            if (editorElement) highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement));
+            if (editorElement) {
+                highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement));
+                onEditorInput();
+            }
         }, 0);
     }
 }
@@ -211,14 +218,19 @@ function commitToken(textToReplace, fullTokenText) {
     const textToInsert = fullTokenText + '\u00A0';
     const newText = fullText.substring(0, pos - textToReplace.length) + textToInsert + fullText.substring(pos);
 
+    // 1. Redraw the DOM
     highlightAndRestoreCursor(newText, pos - textToReplace.length + textToInsert.length);
+
+    // 2. IMPORTANT: Manually trigger the input update to Blazor
+    onEditorInput();
+
     setTimeout(() => {
         if (editorElement) editorElement.focus();
     }, 0);
 }
 
 function onEditorInput() {
-    if (isInternallyChanging) return;
+    if (isInternallyChanging || !editorElement) return;
     const { currentWord } = getCaretPositionInfo() || {};
     editorDotNetReference.invokeMethodAsync('UpdateFromJavaScript', editorElement.textContent, currentWord || '');
 }
@@ -288,28 +300,17 @@ function highlightAndRestoreCursor(text, cursorPos, snippetMetadata) {
     isInternallyChanging = false;
 }
 
-/**
- * FIXED: Returns information about the word currently being typed.
- * Only identifies words if the caret is within a TEXT node.
- * If the caret is touching a pill boundary (Element node), returns an empty string.
- */
 function getCaretPositionInfo() {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return null;
 
     const node = selection.anchorNode;
-
-    // If the cursor is not in a text node (e.g. it's touching a span),
-    // we are not actively typing a word that should trigger autocomplete.
     if (!node || node.nodeType !== Node.TEXT_NODE) {
         return { currentWord: "" };
     }
 
     const offset = selection.anchorOffset;
     const textUpToCaret = node.textContent.substring(0, offset);
-
-    // Only look at the text node the user is currently interacting with.
-    // This prevents "reaching into" adjacent pill block text.
     const words = textUpToCaret.split(/[\s\u00A0]+/);
     const lastWord = words[words.length - 1];
 

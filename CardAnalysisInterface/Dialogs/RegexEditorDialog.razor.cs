@@ -289,7 +289,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
         _currentRawPattern = rawText;
 
-        // If currentWord is empty (which happens when touching a pill), dropdown is hidden.
         if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
         {
             _textToReplaceForAutocomplete = currentWord;
@@ -349,6 +348,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
         string fullTokenText = $"@{selection.Name}";
+        // commitToken will trigger the UpdateFromJavaScript callback
         await JsRuntime.InvokeVoidAsync("commitToken", _textToReplaceForAutocomplete, fullTokenText);
         _isDropdownVisible = false;
     }
