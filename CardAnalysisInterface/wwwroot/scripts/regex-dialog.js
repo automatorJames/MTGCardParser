@@ -17,7 +17,9 @@ function initializeEditor(_dotNetReference, _editorElement, _colors) {
         document.addEventListener('keydown', onGlobalKeyDown);
 
         // Ensure initial focus
-        setTimeout(() => editorElement.focus(), 10);
+        setTimeout(() => {
+            if (editorElement) editorElement.focus();
+        }, 10);
     }
 }
 
@@ -75,11 +77,8 @@ function onBeforeInput(event) {
 
     if (highlighted && (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward')) {
         event.preventDefault();
-
         const pos = getOffsetOfNode(editorElement, highlighted);
-
         highlighted.remove();
-
         highlightAndRestoreCursor(editorElement.textContent, pos);
         return;
     }
@@ -179,23 +178,29 @@ function onEditorKeyDown(event) {
     clearTokenHighlights();
 
     if (event.key === ' ' || event.key === 'Enter') {
-        setTimeout(() => highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement)), 0);
+        setTimeout(() => {
+            if (editorElement) highlightAndRestoreCursor(editorElement.textContent, getCaretCharacterOffsetWithin(editorElement));
+        }, 0);
     }
 }
 
 function clearTokenHighlights() {
-    editorElement.querySelectorAll('.token-selected').forEach(t => setTokenHighlight(t, false));
+    if (editorElement) {
+        editorElement.querySelectorAll('.token-selected').forEach(t => setTokenHighlight(t, false));
+    }
 }
 
 function setTokenHighlight(token, isHighlighted) {
     const typeName = token.getAttribute('data-type-name');
-    const colors = typeColors[typeName];
+    const baseTypeMatch = typeName.match(/<([^>]+)>/) || [null, typeName.replace('@', '')];
+    const colors = typeColors[baseTypeMatch[1]] || { normal: '#4A5568', highlight: '#718096' };
+
     if (isHighlighted) {
         token.classList.add('token-selected');
-        if (colors) token.style.backgroundColor = colors.highlight;
+        token.style.backgroundColor = colors.highlight;
     } else {
         token.classList.remove('token-selected');
-        if (colors) token.style.backgroundColor = colors.normal;
+        token.style.backgroundColor = colors.normal;
     }
 }
 
@@ -207,8 +212,9 @@ function commitToken(textToReplace, fullTokenText) {
     const newText = fullText.substring(0, pos - textToReplace.length) + textToInsert + fullText.substring(pos);
 
     highlightAndRestoreCursor(newText, pos - textToReplace.length + textToInsert.length);
-
-    setTimeout(() => editorElement.focus(), 0);
+    setTimeout(() => {
+        if (editorElement) editorElement.focus();
+    }, 0);
 }
 
 function onEditorInput() {
@@ -218,40 +224,38 @@ function onEditorInput() {
 }
 
 function highlightAndRestoreCursor(text, cursorPos, snippetMetadata) {
-    if (isInternallyChanging) return;
+    if (isInternallyChanging || !editorElement) return;
     isInternallyChanging = true;
 
     editorElement.innerHTML = '';
-    const tokenRegex = /(@(\w+)[?*+]?)/g;
+    const tokenRegex = /(@[\w<>]+(\([^)]*\))?)/g;
     let lastIndex = 0;
-    let snippetMetaIndex = 0;
     let match;
+
+    let metaQueue = snippetMetadata ? [...snippetMetadata] : [];
 
     while ((match = tokenRegex.exec(text)) !== null) {
         if (match.index > lastIndex) {
             editorElement.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
         }
 
-        const fullMatchText = match[1];
-        const typeName = match[2];
-        const colors = typeColors[typeName] || { normal: '#4A5568', highlight: '#718096' };
+        const fullMatchText = match[0];
 
         let guid = "";
-        if (snippetMetadata && snippetMetadata.length > 0) {
-            while (snippetMetaIndex < snippetMetadata.length) {
-                let meta = snippetMetadata[snippetMetaIndex++];
-                if (meta.typeName === typeName) {
-                    guid = meta.id;
-                    break;
-                }
-            }
+        const metaIdx = metaQueue.findIndex(m => m.typeName === fullMatchText);
+        if (metaIdx !== -1) {
+            guid = metaQueue[metaIdx].id;
+            metaQueue.splice(metaIdx, 1);
         }
+
+        const baseTypeMatch = fullMatchText.match(/<([^>]+)>/) || [null, fullMatchText.substring(1)];
+        const colors = typeColors[baseTypeMatch[1]] || { normal: '#4A5568', highlight: '#718096' };
 
         const span = document.createElement('span');
         span.className = 'token-style';
         span.contentEditable = 'false';
         span.style.backgroundColor = colors.normal;
-        span.setAttribute('data-type-name', typeName);
+        span.setAttribute('data-type-name', fullMatchText);
         span.setAttribute('data-snippet-id', guid);
         span.innerHTML = `<span style="display:none">@</span><span>${fullMatchText.substring(1)}</span>`;
 
@@ -284,18 +288,37 @@ function highlightAndRestoreCursor(text, cursorPos, snippetMetadata) {
     isInternallyChanging = false;
 }
 
+/**
+ * FIXED: Returns information about the word currently being typed.
+ * Only identifies words if the caret is within a TEXT node.
+ * If the caret is touching a pill boundary (Element node), returns an empty string.
+ */
 function getCaretPositionInfo() {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return null;
-    const pos = getCaretCharacterOffsetWithin(editorElement);
-    const textBeforeCaret = editorElement.textContent.substring(0, pos);
-    const words = textBeforeCaret.split(/[\s\u00A0]+/);
-    return { currentWord: words[words.length - 1] };
+
+    const node = selection.anchorNode;
+
+    // If the cursor is not in a text node (e.g. it's touching a span),
+    // we are not actively typing a word that should trigger autocomplete.
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+        return { currentWord: "" };
+    }
+
+    const offset = selection.anchorOffset;
+    const textUpToCaret = node.textContent.substring(0, offset);
+
+    // Only look at the text node the user is currently interacting with.
+    // This prevents "reaching into" adjacent pill block text.
+    const words = textUpToCaret.split(/[\s\u00A0]+/);
+    const lastWord = words[words.length - 1];
+
+    return { currentWord: lastWord };
 }
 
 function getCaretCharacterOffsetWithin(element) {
     const selection = window.getSelection();
-    if (selection.rangeCount === 0) return 0;
+    if (!selection || selection.rangeCount === 0) return 0;
     const range = selection.getRangeAt(0);
     const preCaretRange = range.cloneRange();
     preCaretRange.selectNodeContents(element);
@@ -333,9 +356,7 @@ function scrollToAutocompleteItem(elementId) {
 function onDropdownMouseDown(event) {
     const item = event.target.closest('.autocomplete-item');
     if (!item) return;
-
     event.preventDefault();
-
     const typeName = item.querySelector('.type-name').textContent.trim();
     if (editorDotNetReference) {
         editorDotNetReference.invokeMethodAsync('SelectSuggestionFromJS', typeName);
