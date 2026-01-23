@@ -28,6 +28,15 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private string _targetPillTypeName = "";
     private string _targetSnippetId = "";
 
+    public record PillContextAction(string Id, string Label, string IconClass, string IconColor, bool IsDestructive = false);
+
+    private readonly List<PillContextAction> _pillContextMenuOptions = new()
+    {
+        new PillContextAction("info", "View Documentation", "fas fa-info-circle", "#63B3ED"),
+        new PillContextAction("clone", "Duplicate Snippet", "fas fa-copy", "#A0AEC0"),
+        new PillContextAction("delete", "Remove Snippet", "bi bi-trash", "#F87171", true)
+    };
+
     // Regex State
     private string _renderedRegex = "";
     private bool _classNameHasBeenManuallyEdited;
@@ -112,8 +121,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (_isPillMenuVisible)
         {
-            _isPillMenuVisible = false;
-            StateHasChanged();
+            CloseContextMenu();
             return;
         }
 
@@ -156,7 +164,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
         UpdateRenderedRegexAndMatches(rawText);
 
-        // If the dropdown is closed, ensure the HTML structure (pills) matches the raw text
         if (!_isDropdownVisible)
         {
             await SyncEditorPills();
@@ -183,7 +190,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
             .ToList();
 
-        // Get current caret to prevent jumping unless a position is forced
         var caretPos = forceCaretPos >= 0
             ? forceCaretPos
             : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset", _editorElement);
@@ -191,21 +197,40 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         await JsRuntime.InvokeVoidAsync("regexEditor.syncPills", _currentRawPattern, caretPos, metadata);
     }
 
-    private async Task HandlePillDelete()
+    private void CloseContextMenu()
     {
         _isPillMenuVisible = false;
-        _editorTokenUnit.RemoveSnippet(_targetSnippetId);
-        _currentRawPattern = _editorTokenUnit.GetTemplateString();
+        StateHasChanged();
+    }
 
-        UpdateRenderedRegexAndMatches(_currentRawPattern);
-        await SyncEditorPills();
+    private async Task HandlePillAction(PillContextAction action)
+    {
+        _isPillMenuVisible = false;
+
+        switch (action.Id)
+        {
+            case "delete":
+                _editorTokenUnit.RemoveSnippet(_targetSnippetId);
+                _currentRawPattern = _editorTokenUnit.GetTemplateString();
+                UpdateRenderedRegexAndMatches(_currentRawPattern);
+                await SyncEditorPills();
+                break;
+
+            case "clone":
+                // Logic for cloning would go here
+                break;
+
+            case "info":
+                // Logic for showing info would go here
+                break;
+        }
+
         StateHasChanged();
     }
 
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
         string fullTokenText = $"@{selection.Name}";
-        // insertPill triggers the NotifyContentChanged flow via JS
         await JsRuntime.InvokeVoidAsync("regexEditor.insertPill", _textToReplaceForAutocomplete, fullTokenText);
         _isDropdownVisible = false;
     }

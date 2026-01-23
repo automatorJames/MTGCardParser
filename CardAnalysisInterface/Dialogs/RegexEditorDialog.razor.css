@@ -188,7 +188,7 @@ pre {
     white-space: nowrap;
 }
 
-/* CLASS NAME EDITOR STYLES - JITTER-FREE DYNAMIC WIDTH */
+/* CLASS NAME EDITOR STYLES */
 .class-name-wrapper {
     display: inline-block;
     width: fit-content;
@@ -196,7 +196,6 @@ pre {
 }
 
 .class-name-display, .class-name-grid, .class-name-input, .grid-sizer {
-    /* Critical: All text properties must be identical to the pixel */
     font-family: 'Consolas', 'Monaco', monospace !important;
     font-weight: 600 !important;
     font-size: 14px !important;
@@ -251,7 +250,6 @@ pre {
     grid-area: 1 / 1;
     visibility: hidden;
     white-space: pre;
-    /* Safety buffer: Padding-right is larger than the input to prevent jitter */
     padding: 4px 14px 4px 10px;
     border: none;
     pointer-events: none;
@@ -265,16 +263,79 @@ pre {
     color: #63B3ED !important;
     caret-color: #63B3ED;
     outline: none;
-    /* Input padding has less on the right so it doesn't trigger scroll jitters */
     padding: 4px 0px 4px 10px;
     margin: 0;
     appearance: none;
     -webkit-appearance: none;
-    /* Prevent the browser from trying to scroll text horizontally */
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;
 }
+
+/* CONTEXT MENU STYLES */
+.pill-context-menu-shield {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2000;
+    background: transparent;
+}
+
+.pill-context-menu {
+    background: #2D3748;
+    border: 1px solid #4A5568;
+    border-radius: 6px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    min-width: 190px;
+    padding: 4px 0;
+    overflow: hidden;
+}
+
+.pill-context-menu-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #718096;
+    border-bottom: 1px solid #4A5568;
+    margin-bottom: 4px;
+}
+
+.pill-context-menu .menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #E2E8F0;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13.5px;
+    gap: 10px;
+    transition: background 0.1s;
+    cursor: pointer;
+}
+
+    .pill-context-menu .menu-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .pill-context-menu .menu-item:hover {
+        background: #4A5568;
+    }
+
+    .pill-context-menu .menu-item.destructive:hover {
+        background: #C53030;
+    }
+
+        .pill-context-menu .menu-item.destructive:hover span,
+        .pill-context-menu .menu-item.destructive:hover i {
+            color: white !important;
+        }
 
 .rendered-regex-box pre:empty::before {
     content: " ";

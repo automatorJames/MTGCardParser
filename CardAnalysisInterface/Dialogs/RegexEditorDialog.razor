@@ -77,7 +77,7 @@
                             <div class="rendered-regex-box">
                                 <pre>@foreach(var segment in _regexEditorSegments) {
                                 <span style=@($"color: {segment.Color}")>@segment.Text</span>
-                                                                }
+                                                                                                                                }
 </pre>
                             </div>
                         </div>
@@ -118,10 +118,18 @@
 
         @if (_isPillMenuVisible)
         {
-            <div class="pill-context-menu" style="position:fixed; left:@(_menuX)px; top:@(_menuY)px; z-index:2000; background:#2D3748; border:1px solid #4A5568; padding:4px; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.5)">
-                <button class="btn btn-sm btn-danger" @onclick="HandlePillDelete">
-                    <i class="fas fa-trash-alt"></i> Remove Snippet
-                </button>
+            @* Global Invisible Shield to close menu on click outside *@
+            <div class="pill-context-menu-shield" @onclick="CloseContextMenu" @oncontextmenu:preventDefault @oncontextmenu="CloseContextMenu"></div>
+
+            <div class="pill-context-menu" style="position:fixed; left:@(_menuX)px; top:@(_menuY)px; z-index:2001;">
+                <div class="pill-context-menu-header">@_targetPillTypeName</div>
+                @foreach (var action in _pillContextMenuOptions)
+                {
+                    <button class="menu-item @(action.IsDestructive ? "destructive" : "")" @onclick="() => HandlePillAction(action)">
+                        <i class="@action.IconClass" style="color: @action.IconColor"></i>
+                        <span>@action.Label</span>
+                    </button>
+                }
             </div>
         }
     </DialogContent>
@@ -157,18 +165,4 @@
     .token-selected {
         outline: 2px solid var(--highlight-blue);
     }
-
-    .pill-context-menu button {
-        display: block;
-        width: 100%;
-        text-align: left;
-        background: transparent;
-        border: none;
-        color: white;
-        padding: 8px 12px;
-    }
-
-        .pill-context-menu button:hover {
-            background: #4A5568;
-        }
 </style>

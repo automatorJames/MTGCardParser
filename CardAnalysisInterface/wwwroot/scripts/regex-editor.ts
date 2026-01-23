@@ -48,15 +48,12 @@ class RegexEditor {
         this.el = null;
     }
 
-    /**
-     * Focuses the C# Class Name input and handles cursor placement at the end.
-     */
     public focusClassNameInput(selector: string) {
         const el = document.querySelector(selector) as HTMLInputElement;
         if (el) {
             el.focus();
             const val = el.value;
-            el.value = ''; // Reset to force cursor to end
+            el.value = '';
             el.value = val;
         }
     }
@@ -72,7 +69,6 @@ class RegexEditor {
         const metaQueue = [...metadata];
 
         while ((match = tokenRegex.exec(text)) !== null) {
-            // Append text before the match
             if (match.index > lastIndex) {
                 this.el.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
             }
@@ -93,7 +89,6 @@ class RegexEditor {
             this.el.appendChild(document.createTextNode(text.substring(lastIndex)));
         }
 
-        // Ensure there is always a text node to focus
         if (this.el.childNodes.length === 0 || this.el.lastChild?.nodeType !== Node.TEXT_NODE) {
             this.el.appendChild(document.createTextNode(''));
         }
@@ -130,7 +125,6 @@ class RegexEditor {
         span.style.backgroundColor = colors.normal;
         span.setAttribute('data-type-name', text);
         span.setAttribute('data-snippet-id', id);
-        // The hidden @ ensures the .textContent of the parent div includes the @ symbol
         span.innerHTML = `<span style="display:none">@</span><span>${text.substring(1)}</span>`;
         return span;
     }
@@ -150,7 +144,6 @@ class RegexEditor {
         const tokensToDelete = new Set<HTMLElement>();
         const allTokens = Array.from(this.el.querySelectorAll('.token-style')) as HTMLElement[];
 
-        // Handle direct deletion of highlighted pill
         const highlighted = this.el.querySelector('.token-selected') as HTMLElement;
         if (highlighted && e.inputType.startsWith('delete')) {
             e.preventDefault();
@@ -159,7 +152,6 @@ class RegexEditor {
             return;
         }
 
-        // Detect pills intersected by a selection range
         allTokens.forEach(token => {
             const tokenRange = document.createRange();
             tokenRange.selectNode(token);
@@ -182,7 +174,6 @@ class RegexEditor {
             return;
         }
 
-        // Navigation logic into/out of pills
         if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
             this.handlePillNavigation(e);
         } else {
@@ -329,5 +320,4 @@ class RegexEditor {
     }
 }
 
-// Global singleton/instance for Blazor
 (window as any).regexEditor = new RegexEditor();
