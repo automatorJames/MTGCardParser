@@ -50,7 +50,7 @@
                                      @onclick="() => SelectSuggestionByKeyboard(suggestedType)">
                                     <span class="type-name" style=@($"color: {DeterministicPalette.TypePaletteSet[suggestedType].Normal}; {(suggestedType.IsEnum ? "font-style: italic" : "")}")>
                                         @suggestedType.Name
-                                        </span>
+                                    </span>
                                     <span class="type-kind">@(suggestedType.IsEnum ? "Enum" : "Token Type")</span>
                                 </div>
                             }
@@ -66,7 +66,7 @@
                             <div class="rendered-regex-box">
                                 <pre>@foreach(var segment in _editorTokenUnit.RegexRuns) {
                                 <span style=@($"color: {segment.Color}")>@segment.Text</span>
-                                                                }
+                                                                                                                                }
 </pre>
                             </div>
                         </div>

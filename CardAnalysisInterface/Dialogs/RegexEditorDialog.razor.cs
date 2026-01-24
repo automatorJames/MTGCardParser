@@ -66,12 +66,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (firstRender && _dotNetRef != null)
         {
+            // Requirement 2: Only send the base color to JS
             var colorMap = _allTokenTypes.ToDictionary(
                 t => t.Name,
-                t => new {
-                    Normal = DeterministicPalette.TypePaletteSet[t].Dark,
-                    Highlight = DeterministicPalette.TypePaletteSet[t].Light
-                }
+                t => DeterministicPalette.TypePaletteSet[t].Dark
             );
 
             await JsRuntime.InvokeVoidAsync("regexEditor.initialize", _dotNetRef, _editorElement, colorMap);
@@ -157,7 +155,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _textToReplaceForAutocomplete = "";
         }
 
-        // If a forceCaretPos is provided, we use it. This happens when a pill is inserted.
         if (!_isDropdownVisible)
             await SyncEditorPills(forceCaretPos);
 
@@ -185,9 +182,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
             .ToList();
 
-        // If forceCaretPos is -1, it means this is a standard input event and we should
-        // ask JS where the cursor currently is. If it's >= 0, it means we are forcing
-        // the cursor to a specific spot (e.g. after a pill insertion).
         var caretPos = forceCaretPos >= 0
             ? forceCaretPos
             : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset", _editorElement);
@@ -217,7 +211,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
         string fullTokenText = $"@{selection.Name}";
-        // This triggers the JS insertPill which will eventually call NotifyContentChanged
         await JsRuntime.InvokeVoidAsync("regexEditor.insertPill", _textToReplaceForAutocomplete, fullTokenText);
         _isDropdownVisible = false;
     }

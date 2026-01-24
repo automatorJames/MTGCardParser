@@ -1,5 +1,5 @@
 ﻿interface TypeColors {
-    [key: string]: { normal: string; highlight: string };
+    [key: string]: string; // Changed to a single string for the base color
 }
 
 interface SnippetMetadata {
@@ -68,7 +68,6 @@ class RegexEditor {
     public syncPills(text: string, cursorPos: number, metadata: SnippetMetadata[]) {
         if (!this.el) return;
 
-        // Block input events while we are reconstructing the DOM
         this.isInternallyChanging = true;
 
         this.el.innerHTML = '';
@@ -98,13 +97,12 @@ class RegexEditor {
             this.el.appendChild(document.createTextNode(text.substring(lastIndex)));
         }
 
-        // Ensure there is a trailing text node if the last item is a pill
+        // Always ensure a trailing text node so the cursor can land after a pill
         if (this.el.childNodes.length === 0 || this.el.lastChild?.nodeType !== Node.TEXT_NODE) {
             this.el.appendChild(document.createTextNode(''));
         }
 
         if (cursorPos >= 0) {
-            // Delay slightly to ensure DOM is painted and focusable
             requestAnimationFrame(() => this.restoreCursor(cursorPos));
         }
 
@@ -117,37 +115,34 @@ class RegexEditor {
         const pos = this.getCaretOffset();
         const fullText = this.el.textContent || "";
 
-        // We add a non-breaking space after the pill so the user isn't stuck "inside" the pill logic
-        const textToInsert = fullTokenText + '\u00A0';
+        // Requirement 1: No space inserted after the token
+        const textToInsert = fullTokenText;
         const head = fullText.substring(0, pos - textToReplace.length);
         const tail = fullText.substring(pos);
         const newText = head + textToInsert + tail;
 
-        // Calculate exactly where the cursor should be: Start of match + length of new token + 1 for the space
+        // Cursor is placed exactly at the end of the token
         const newCaretPos = head.length + textToInsert.length;
 
         this.isInternallyChanging = true;
         this.el.textContent = newText;
 
-        // Pass the new text AND the intended caret position to Blazor
         this.dotNetRef.invokeMethodAsync('NotifyContentChanged', newText, "", newCaretPos);
         this.isInternallyChanging = false;
 
-        // Ensure focus remains on the editor
         this.el.focus();
     }
 
     private createPillElement(text: string, id: string): HTMLElement {
         const baseTypeName = text.match(/<([^>]+)>/)?.[1] || text.substring(1);
-        const colors = this.typeColors[baseTypeName] || { normal: '#4A5568', highlight: '#718096' };
+        const color = this.typeColors[baseTypeName] || '#4A5568';
 
         const span = document.createElement('span');
         span.className = 'token-style';
         span.contentEditable = 'false';
-        span.style.backgroundColor = colors.normal;
+        span.style.backgroundColor = color;
         span.setAttribute('data-type-name', text);
         span.setAttribute('data-snippet-id', id);
-        // The hidden @ allows the textContent property to still see the @ symbol for regex parsing
         span.innerHTML = `<span style="display:none">@</span><span>${text.substring(1)}</span>`;
         return span;
     }
@@ -167,6 +162,7 @@ class RegexEditor {
         const tokensToDelete = new Set<HTMLElement>();
         const allTokens = Array.from(this.el.querySelectorAll('.token-style')) as HTMLElement[];
 
+        // Handle deletion of a highlighted token
         const highlighted = this.el.querySelector('.token-selected') as HTMLElement;
         if (highlighted && e.inputType.startsWith('delete')) {
             e.preventDefault();
@@ -285,16 +281,12 @@ class RegexEditor {
     };
 
     private setTokenHighlight(token: HTMLElement, isHighlighted: boolean) {
-        const typeName = token.getAttribute('data-type-name') || "";
-        const baseTypeName = typeName.match(/<([^>]+)>/)?.[1] || typeName.replace('@', '');
-        const colors = this.typeColors[baseTypeName] || { normal: '#4A5568', highlight: '#718096' };
-
+        // Requirement 2: Stripped out manual background color changes.
+        // We only maintain the CSS class for logical tracking of the "selected" state.
         if (isHighlighted) {
             token.classList.add('token-selected');
-            token.style.backgroundColor = colors.highlight;
         } else {
             token.classList.remove('token-selected');
-            token.style.backgroundColor = colors.normal;
         }
     }
 
@@ -315,15 +307,11 @@ class RegexEditor {
             return 0;
         }
 
-        // cloneContents() creates a fragment; textContent on a fragment 
-        // includes hidden nodes, unlike range.toString()
         return preCaretRange.cloneContents().textContent?.length || 0;
     }
 
     private restoreCursor(charOffset: number) {
         if (!this.el) return;
-
-        // 1. Force focus to the element first
         this.el.focus();
 
         const selection = window.getSelection();
@@ -332,8 +320,6 @@ class RegexEditor {
         const range = document.createRange();
         let cumulativeOffset = 0;
         let found = false;
-
-        // Iterate only through top-level nodes (Pills and Text nodes)
         const childNodes = Array.from(this.el.childNodes);
 
         for (const node of childNodes) {
@@ -342,10 +328,8 @@ class RegexEditor {
 
             if (cumulativeOffset + len >= charOffset) {
                 if (node.nodeType === Node.TEXT_NODE) {
-                    // If it's a text node, we can place the caret inside safely
                     range.setStart(node, charOffset - cumulativeOffset);
                 } else {
-                    // If it's a Pill, place the caret before or after it, never INSIDE.
                     if (charOffset <= cumulativeOffset) {
                         range.setStartBefore(node);
                     } else {
@@ -359,7 +343,6 @@ class RegexEditor {
             cumulativeOffset += len;
         }
 
-        // 2. Fallback: If offset is at the very end
         if (!found) {
             const lastNode = this.el.lastChild;
             if (lastNode) {
