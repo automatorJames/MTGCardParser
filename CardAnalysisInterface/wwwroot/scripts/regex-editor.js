@@ -44,34 +44,19 @@ class RegexEditor {
             element.scrollIntoView({ block: 'nearest' });
         }
     }
-    syncPills(text, cursorPos, metadata) {
+    syncPills(fragments, cursorPos) {
         if (!this.el)
             return;
         this.isInternallyChanging = true;
         this.el.innerHTML = '';
-        const tokenRegex = /(@[\w<>]+(\([^)]*\))?)/g;
-        let lastIndex = 0;
-        let match;
-        const metaQueue = [...metadata];
-        while ((match = tokenRegex.exec(text)) !== null) {
-            if (match.index > lastIndex) {
-                this.el.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
-            }
-            const fullMatchText = match[0];
-            const metaIdx = metaQueue.findIndex(m => m.typeName === fullMatchText);
-            if (metaIdx !== -1) {
-                const meta = metaQueue.splice(metaIdx, 1)[0];
-                this.el.appendChild(this.createPillElement(fullMatchText, meta.id));
+        for (const fragment of fragments) {
+            if (fragment.isPill) {
+                this.el.appendChild(this.createPillElement(fragment.text, fragment.id));
             }
             else {
-                this.el.appendChild(document.createTextNode(fullMatchText));
+                this.el.appendChild(document.createTextNode(fragment.text));
             }
-            lastIndex = match.index + fullMatchText.length;
         }
-        if (lastIndex < text.length) {
-            this.el.appendChild(document.createTextNode(text.substring(lastIndex)));
-        }
-        // Always ensure a trailing text node so the cursor can land after a pill
         if (this.el.childNodes.length === 0 || this.el.lastChild?.nodeType !== Node.TEXT_NODE) {
             this.el.appendChild(document.createTextNode(''));
         }
@@ -85,12 +70,10 @@ class RegexEditor {
             return;
         const pos = this.getCaretOffset();
         const fullText = this.el.textContent || "";
-        // Requirement 1: No space inserted after the token
         const textToInsert = fullTokenText;
         const head = fullText.substring(0, pos - textToReplace.length);
         const tail = fullText.substring(pos);
         const newText = head + textToInsert + tail;
-        // Cursor is placed exactly at the end of the token
         const newCaretPos = head.length + textToInsert.length;
         this.isInternallyChanging = true;
         this.el.textContent = newText;
@@ -107,7 +90,8 @@ class RegexEditor {
         span.style.backgroundColor = color;
         span.setAttribute('data-type-name', text);
         span.setAttribute('data-snippet-id', id);
-        span.innerHTML = `<span style="display:none">@</span><span>${text.substring(1)}</span>`;
+        // Explicitly set text content to avoid @ symbols being hidden by innerHTML hacks
+        span.textContent = text;
         return span;
     }
     onInput = () => {
@@ -125,7 +109,6 @@ class RegexEditor {
         const range = selection.getRangeAt(0);
         const tokensToDelete = new Set();
         const allTokens = Array.from(this.el.querySelectorAll('.token-style'));
-        // Handle deletion of a highlighted token
         const highlighted = this.el.querySelector('.token-selected');
         if (highlighted && e.inputType.startsWith('delete')) {
             e.preventDefault();
@@ -245,8 +228,6 @@ class RegexEditor {
             this.dotNetRef?.invokeMethodAsync('HandleGlobalEscape');
     };
     setTokenHighlight(token, isHighlighted) {
-        // Requirement 2: Stripped out manual background color changes.
-        // We only maintain the CSS class for logical tracking of the "selected" state.
         if (isHighlighted) {
             token.classList.add('token-selected');
         }

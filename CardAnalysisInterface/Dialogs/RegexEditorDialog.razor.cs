@@ -177,16 +177,13 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task SyncEditorPills(int forceCaretPos = -1)
     {
-        var metadata = _editorTokenUnit.Snippets
-            .OfType<EditorBlockSnippet>()
-            .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
-            .ToList();
+        var fragments = _editorTokenUnit.GetTemplateFragments();
 
         var caretPos = forceCaretPos >= 0
             ? forceCaretPos
             : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset", _editorElement);
 
-        await JsRuntime.InvokeVoidAsync("regexEditor.syncPills", _editorTokenUnit.RawTemplate, caretPos, metadata);
+        await JsRuntime.InvokeVoidAsync("regexEditor.syncPills", fragments, caretPos);
     }
 
     private void CloseContextMenu()

@@ -1,4 +1,10 @@
-﻿namespace MTGPlexer.TokenEditor;
+﻿using System.Text.RegularExpressions;
+using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+using MTGPlexer.CommonDTOs;
+
+namespace MTGPlexer.TokenEditor;
+
+public record TemplateFragment(string Text, string Id = null, bool IsPill = false);
 
 public class EditorTokenUnit
 {
@@ -12,12 +18,10 @@ public class EditorTokenUnit
     public Type TokenUnitType { get; } = typeof(TokenUnit);
     public List<EditorSnippet> Snippets { get; private set; } = [];
 
-    // Naming State
     string _suggestedClassName = "";
     public string ManualClassName { get; private set; }
     public string ClassName => ManualClassName ?? _suggestedClassName;
 
-    // Consumables for the UI
     public string RawTemplate { get; private set; } = "";
     public string RenderedRegex { get; private set; } = "";
     public string ClassStringForSavingToFile { get; private set; } = "";
@@ -25,7 +29,6 @@ public class EditorTokenUnit
     public List<RegexStyledRun> RegexRuns { get; private set; } = [];
     public List<TextStyledRun> TextRuns { get; private set; } = [];
     public List<Match> CurrentMatches { get; private set; } = [];
-
 
     public EditorTokenUnit(ProcessedLine lineMetadata)
     {
@@ -37,12 +40,8 @@ public class EditorTokenUnit
     public EditorPropertySnippet this[string id] =>
         Snippets.OfType<EditorPropertySnippet>().FirstOrDefault(x => x.Id == id);
 
-    /// <summary>
-    /// The single entry point for updating the model state.
-    /// </summary>
     public void Update(string templateString = null, string preferredClassName = null)
     {
-        // 1. If the template changed, rebuild snippets and the suggestion
         if (templateString != null)
         {
             RawTemplate = templateString;
@@ -50,28 +49,62 @@ public class EditorTokenUnit
             _suggestedClassName = GetSuggestedClassName();
         }
 
-        // 2. If a preferred name is provided, it's a manual edit. 
-        // If the string is empty/whitespace, we revert to using suggestions.
         if (preferredClassName != null)
             ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
 
-        // 3. Generate Regex
-        RenderedRegex = CompositionFactory.GetComposedString(Snippets.Select(x => x.GetRegexSegment()), TokenUnitType);
+        // COMPENSATE FOR FACTORY SPACING:
+        // We create a temporary list for the factory. We strip the spaces that the factory 
+        // will automatically re-insert between snippets so they aren't doubled.
+        var segmentsForFactory = new List<RegexSegmentBase>();
+        for (int i = 0; i < Snippets.Count; i++)
+        {
+            var s = Snippets[i];
+            if (s is EditorTextSnippet ts)
+            {
+                var val = ts.Text;
+                bool followedByPill = i + 1 < Snippets.Count && Snippets[i + 1] is EditorBlockSnippet;
+                bool precededByPill = i > 0 && Snippets[i - 1] is EditorBlockSnippet;
 
-        // 4. Analysis & Matching
+                // If it's just a single space between two pills, the factory's join is enough.
+                if (val == " " && followedByPill && precededByPill) continue;
+
+                // Strip the trailing space if a pill follows (factory will add it)
+                if (val.EndsWith(" ") && followedByPill) val = val[..^1];
+
+                // Strip the leading space if it follows a pill (factory will add it)
+                if (val.StartsWith(" ") && precededByPill) val = val[1..];
+
+                segmentsForFactory.Add(new TextSegment(val));
+            }
+            else
+            {
+                segmentsForFactory.Add(s.GetRegexSegment());
+            }
+        }
+
+        RenderedRegex = CompositionFactory.GetComposedString(segmentsForFactory, TokenUnitType);
+
         ParseRegexSegments();
         PerformMatching();
         GenerateTextStyledRuns();
 
-        // 5. Generate C# Previews
         ClassStringForSavingToFile = GetClassStringForSavingToFile();
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
+    }
+
+    public List<TemplateFragment> GetTemplateFragments()
+    {
+        return Snippets.Select(s => new TemplateFragment(
+            Text: s.EditorRepresentation,
+            Id: s.Id,
+            IsPill: s is EditorBlockSnippet
+        )).ToList();
     }
 
     void PerformMatching()
     {
         CurrentMatches.Clear();
-        if (string.IsNullOrWhiteSpace(RenderedRegex)) return;
+        if (string.IsNullOrEmpty(RenderedRegex)) return;
 
         try
         {
@@ -79,10 +112,7 @@ public class EditorTokenUnit
                 .Cast<Match>()
                 .ToList();
         }
-        catch 
-        {
-            /* Invalid Regex during typing */
-        }
+        catch { }
     }
 
     void ParseRegexSegments()
@@ -95,11 +125,7 @@ public class EditorTokenUnit
 
         for (int i = 0; i < RenderedRegex.Length; i++)
         {
-            if (RenderedRegex[i] == '\\') 
-            { 
-                i++; 
-                continue; 
-            }
+            if (RenderedRegex[i] == '\\') { i++; continue; }
 
             if (RenderedRegex[i] == '(')
             {
@@ -107,16 +133,13 @@ public class EditorTokenUnit
                 {
                     if (i > lastPos)
                         RegexRuns.Add(new(RenderedRegex.Substring(lastPos, i - lastPos), "var(--syntax-default)"));
-
                     lastPos = i;
                 }
-
                 depth++;
             }
             else if (RenderedRegex[i] == ')')
             {
                 depth--;
-
                 if (depth == 0)
                 {
                     var groupText = RenderedRegex.Substring(lastPos, i - lastPos + 1);
@@ -145,11 +168,7 @@ public class EditorTokenUnit
         var rawSegments = new List<TextStyledRun>();
         string text = LineMetadata.SourceText.FormattedText;
 
-        if (string.IsNullOrEmpty(text)) 
-        { 
-            TextRuns = []; 
-            return; 
-        }
+        if (string.IsNullOrEmpty(text)) { TextRuns = []; return; }
 
         var charStatus = new MatchStatus[text.Length];
         Array.Fill(charStatus, MatchStatus.None);
@@ -160,10 +179,7 @@ public class EditorTokenUnit
         for (int i = 0; i <= text.Length; i++)
         {
             bool isWordChar = i < text.Length && !char.IsWhiteSpace(text[i]);
-
-            if (isWordChar && wordStart == null) 
-                wordStart = i;
-
+            if (isWordChar && wordStart == null) wordStart = i;
             else if (!isWordChar && wordStart != null)
             {
                 words.Add((wordStart.Value, i - 1));
@@ -198,7 +214,8 @@ public class EditorTokenUnit
                     bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
                     bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
 
-                    if (leftFull && rightFull && char.IsWhiteSpace(text[k]))
+                    // If it's whitespace and touches a match on either side, it's Full
+                    if ((leftFull || rightFull) && char.IsWhiteSpace(text[k]))
                         charStatus[k] = MatchStatus.Full;
                     else
                         charStatus[k] = MatchStatus.Partial;
@@ -224,10 +241,7 @@ public class EditorTokenUnit
             }
             else
             {
-                var span = LineMetadata.SpanRoots.FirstOrDefault(
-                    sr => i >= sr.RootToken.Match.RootMatch.Index 
-                    && i < sr.RootToken.Match.RootMatch.Index + sr.RootToken.Match.RootMatch.Length);
-
+                var span = LineMetadata.SpanRoots.FirstOrDefault(sr => i >= sr.RootToken.Match.RootMatch.Index && i < sr.RootToken.Match.RootMatch.Index + sr.RootToken.Match.RootMatch.Length);
                 color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
             }
 
@@ -239,12 +253,9 @@ public class EditorTokenUnit
 
     List<TextStyledRun> CollapseSegments(List<TextStyledRun> source)
     {
-        if (source.Count == 0) 
-            return source;
-
+        if (source.Count == 0) return source;
         var result = new List<TextStyledRun>();
         var current = source[0];
-
         for (int i = 1; i < source.Count; i++)
         {
             if (source[i].Color == current.Color && source[i].UnderlineClass == current.UnderlineClass)
@@ -255,9 +266,7 @@ public class EditorTokenUnit
                 current = source[i];
             }
         }
-
         result.Add(current);
-
         return result;
     }
 
@@ -271,16 +280,13 @@ public class EditorTokenUnit
 
         foreach (Match match in matches)
         {
-            string snippet = match.Value.Trim();
-
-            if (string.IsNullOrEmpty(snippet)) 
-                continue;
+            string snippet = match.Value;
+            if (string.IsNullOrEmpty(snippet)) continue;
 
             if (match.Groups["Method"].Success)
             {
                 var name = match.Groups["MethodName"].Value;
                 var args = match.Groups["Arg"].Captures.Cast<Capture>().Select(c => c.Value.Trim()).ToArray();
-
                 if (Enum.TryParse<ShortcutSnippetMethod>(name, out var parsedMethodType))
                     list.Add(new EditorMethodSnippet(parsedMethodType, args, GetId(name)));
             }
@@ -290,20 +296,15 @@ public class EditorTokenUnit
                 var baseType = match.Groups["Base"].Value;
                 var name = string.IsNullOrEmpty(wrapper) ? baseType : $"{wrapper}<{baseType}>";
                 XOfType xOfType = XOfType.None;
-
-                if (!string.IsNullOrEmpty(wrapper) && !Enum.TryParse<XOfType>(wrapper, out xOfType))
-                    continue;
-
+                if (!string.IsNullOrEmpty(wrapper) && !Enum.TryParse<XOfType>(wrapper, out xOfType)) continue;
                 if (TokenTypeRegistry.NameToType.TryGetValue(baseType, out Type parsedBaseType))
                     list.Add(new EditorPropertySnippet(parsedBaseType, xOfType, GetId(name)));
             }
             else if (match.Groups["Plain"].Success)
             {
-                var text = match.Value.Trim();
-                list.Add(new EditorTextSnippet(text, GetId(text)));
+                list.Add(new EditorTextSnippet(match.Value, GetId(match.Value)));
             }
         }
-
         Snippets = list;
     }
 
@@ -316,6 +317,7 @@ public class EditorTokenUnit
                 str += propertySnippet.PropertyNameRepresentation;
             else if (snippet is EditorTextSnippet textSnippet)
             {
+                if (string.IsNullOrWhiteSpace(textSnippet.Text)) continue;
                 var rawTextParts = textSnippet.Text
                     .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => Regex.Replace(x, @"[^\w]+", ""))
@@ -333,14 +335,14 @@ public class EditorTokenUnit
             return;
 
         var index = Snippets.IndexOf(propertySnippet);
-
         switch (action)
         {
-            case ContextActionType.Delete:              Snippets.Remove(propertySnippet); break;
-            case ContextActionType.ConvertToManyOf:     Snippets[index] = propertySnippet.ConvertToXOfType(XOfType.ManyOf); break;
+            case ContextActionType.Delete: Snippets.Remove(propertySnippet); break;
+            case ContextActionType.ConvertToManyOf: Snippets[index] = propertySnippet.ConvertToXOfType(XOfType.ManyOf); break;
         }
 
-        RawTemplate = string.Join(' ', Snippets.Select(x => x.EditorRepresentation));
+        // Reconstruct using string.Empty because Snippets now contain literal spaces
+        RawTemplate = string.Join(string.Empty, Snippets.Select(x => x.EditorRepresentation));
         Update();
     }
 
