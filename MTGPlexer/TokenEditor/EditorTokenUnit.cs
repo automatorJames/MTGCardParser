@@ -52,37 +52,7 @@ public class EditorTokenUnit
         if (preferredClassName != null)
             ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
 
-        // COMPENSATE FOR FACTORY SPACING:
-        // We create a temporary list for the factory. We strip the spaces that the factory 
-        // will automatically re-insert between snippets so they aren't doubled.
-        var segmentsForFactory = new List<RegexSegmentBase>();
-        for (int i = 0; i < Snippets.Count; i++)
-        {
-            var s = Snippets[i];
-            if (s is EditorTextSnippet ts)
-            {
-                var val = ts.Text;
-                bool followedByPill = i + 1 < Snippets.Count && Snippets[i + 1] is EditorBlockSnippet;
-                bool precededByPill = i > 0 && Snippets[i - 1] is EditorBlockSnippet;
-
-                // If it's just a single space between two pills, the factory's join is enough.
-                if (val == " " && followedByPill && precededByPill) continue;
-
-                // Strip the trailing space if a pill follows (factory will add it)
-                if (val.EndsWith(" ") && followedByPill) val = val[..^1];
-
-                // Strip the leading space if it follows a pill (factory will add it)
-                if (val.StartsWith(" ") && precededByPill) val = val[1..];
-
-                segmentsForFactory.Add(new TextSegment(val));
-            }
-            else
-            {
-                segmentsForFactory.Add(s.GetRegexSegment());
-            }
-        }
-
-        RenderedRegex = CompositionFactory.GetComposedString(segmentsForFactory, TokenUnitType);
+        RenderedRegex = CompositionFactory.GetComposedString(Snippets.Select(x => x.GetRegexSegment()), TokenUnitType);
 
         ParseRegexSegments();
         PerformMatching();

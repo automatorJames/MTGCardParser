@@ -14,8 +14,8 @@ public record EditorTextSnippet : EditorSnippet
     }
 
     public override string GetParameterHtmlRepresentation() =>
-        Span($"\"{Text}\"", SpanClass.stringliteral);
+        Span($"\"{Text.Trim()}\"", SpanClass.stringliteral);
 
     public override RegexSegmentBase GetRegexSegment() =>
-        new TextSegment(Text);
+        new TextSegment(Text.Trim());
 }
