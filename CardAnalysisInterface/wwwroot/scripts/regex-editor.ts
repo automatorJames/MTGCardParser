@@ -59,7 +59,9 @@ class RegexEditor {
     }
 
     public syncPills(text: string, cursorPos: number, metadata: SnippetMetadata[]) {
-        if (this.isInternallyChanging || !this.el) return;
+        if (!this.el) return;
+
+        // Block input events while we are reconstructing the DOM
         this.isInternallyChanging = true;
 
         this.el.innerHTML = '';
@@ -89,6 +91,7 @@ class RegexEditor {
             this.el.appendChild(document.createTextNode(text.substring(lastIndex)));
         }
 
+        // Critical: Ensure there is always a text node at the end to land the cursor on
         if (this.el.childNodes.length === 0 || this.el.lastChild?.nodeType !== Node.TEXT_NODE) {
             this.el.appendChild(document.createTextNode(''));
         }
@@ -101,18 +104,29 @@ class RegexEditor {
     }
 
     public insertPill(textToReplace: string, fullTokenText: string) {
-        if (!this.el) return;
+        if (!this.el || !this.dotNetRef) return;
+
         const pos = this.getCaretOffset();
         const fullText = this.el.textContent || "";
 
+        // We add a non-breaking space after the pill so the user isn't stuck "inside" the pill logic
         const textToInsert = fullTokenText + '\u00A0';
-        const newText = fullText.substring(0, pos - textToReplace.length) + textToInsert + fullText.substring(pos);
+        const head = fullText.substring(0, pos - textToReplace.length);
+        const tail = fullText.substring(pos);
+        const newText = head + textToInsert + tail;
 
-        this.isInternallyChanging = false;
+        // Calculate exactly where the cursor should be: Start of match + length of new token + 1 for the space
+        const newCaretPos = head.length + textToInsert.length;
+
+        this.isInternallyChanging = true;
         this.el.textContent = newText;
-        this.onInput();
 
-        setTimeout(() => this.el?.focus(), 0);
+        // Pass the new text AND the intended caret position to Blazor
+        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', newText, "", newCaretPos);
+        this.isInternallyChanging = false;
+
+        // Ensure focus remains on the editor
+        this.el.focus();
     }
 
     private createPillElement(text: string, id: string): HTMLElement {
@@ -125,6 +139,7 @@ class RegexEditor {
         span.style.backgroundColor = colors.normal;
         span.setAttribute('data-type-name', text);
         span.setAttribute('data-snippet-id', id);
+        // The hidden @ allows the textContent property to still see the @ symbol for regex parsing
         span.innerHTML = `<span style="display:none">@</span><span>${text.substring(1)}</span>`;
         return span;
     }
@@ -132,7 +147,7 @@ class RegexEditor {
     private onInput = () => {
         if (this.isInternallyChanging || !this.el || !this.dotNetRef) return;
         const info = this.getCaretPositionInfo();
-        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', this.el.textContent, info.currentWord);
+        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', this.el.textContent, info.currentWord, -1);
     };
 
     private onBeforeInput = (e: InputEvent) => {
@@ -279,7 +294,7 @@ class RegexEditor {
         this.el?.querySelectorAll('.token-selected').forEach(t => this.setTokenHighlight(t as HTMLElement, false));
     }
 
-    private getCaretOffset(): number {
+    public getCaretOffset(): number {
         const selection = window.getSelection();
         if (!selection?.rangeCount || !this.el) return 0;
         const range = selection.getRangeAt(0);
@@ -291,11 +306,18 @@ class RegexEditor {
 
     private restoreCursor(charOffset: number) {
         if (!this.el) return;
+
+        // Very Important: Focus the element before attempting to modify the selection.
+        // This prevents the focus from leaking to the body/background.
+        this.el.focus();
+
         const walker = document.createTreeWalker(this.el, NodeFilter.SHOW_TEXT, null);
         let cumulativeOffset = 0;
         let node: Text | null;
+        let lastNode: Text | null = null;
 
         while (node = walker.nextNode() as Text) {
+            lastNode = node;
             if (cumulativeOffset + node.length >= charOffset) {
                 const range = document.createRange();
                 const selection = window.getSelection();
@@ -306,6 +328,16 @@ class RegexEditor {
                 return;
             }
             cumulativeOffset += node.length;
+        }
+
+        // If we reached here, the offset is at the very end of the content
+        if (lastNode) {
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.setStart(lastNode, lastNode.length);
+            range.collapse(true);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
         }
     }
 

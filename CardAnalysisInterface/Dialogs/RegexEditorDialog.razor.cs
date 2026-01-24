@@ -15,10 +15,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
         set
         {
-            if (_editorTokenUnit.ClassName == value) 
+            if (_editorTokenUnit.ClassName == value)
                 return;
 
-            // Passing the value here tells the model this is a manual override.
             string cleanName = Regex.Replace(value, @"\s+", "");
             _editorTokenUnit.Update(preferredClassName: cleanName);
         }
@@ -132,12 +131,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     }
 
     [JSInvokable("NotifyContentChanged")]
-    public async Task NotifyContentChanged(string rawText, string currentWord)
+    public async Task NotifyContentChanged(string rawText, string currentWord, int forceCaretPos)
     {
         _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
 
-        // Update the model. If no preferredClassName is passed, 
-        // the model logic decides whether to use a new suggestion or a previous manual override.
         _editorTokenUnit.Update(templateString: rawText);
 
         if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
@@ -160,8 +157,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _textToReplaceForAutocomplete = "";
         }
 
+        // If a forceCaretPos is provided, we use it. This happens when a pill is inserted.
         if (!_isDropdownVisible)
-            await SyncEditorPills();
+            await SyncEditorPills(forceCaretPos);
 
         StateHasChanged();
     }
@@ -187,6 +185,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
             .ToList();
 
+        // If forceCaretPos is -1, it means this is a standard input event and we should
+        // ask JS where the cursor currently is. If it's >= 0, it means we are forcing
+        // the cursor to a specific spot (e.g. after a pill insertion).
         var caretPos = forceCaretPos >= 0
             ? forceCaretPos
             : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset", _editorElement);
@@ -209,7 +210,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _editorTokenUnit.RemoveSnippet(_targetSnippetId);
             await SyncEditorPills();
         }
-        // Additional snippet transformations would be handled here by the model
 
         StateHasChanged();
     }
@@ -217,9 +217,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
         string fullTokenText = $"@{selection.Name}";
+        // This triggers the JS insertPill which will eventually call NotifyContentChanged
         await JsRuntime.InvokeVoidAsync("regexEditor.insertPill", _textToReplaceForAutocomplete, fullTokenText);
         _isDropdownVisible = false;
-        // Logic will return through NotifyContentChanged via JS
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
