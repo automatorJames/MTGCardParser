@@ -2,9 +2,9 @@
 
 public class EditorTokenUnit
 {
-    private const string SaveFileInNamespace = "MTGPlexer.TokenUnits";
+    const string SaveFileInNamespace = "MTGPlexer.TokenUnits";
 
-    private static readonly Regex TemplateSplitPattern = new Regex(
+    static readonly Regex TemplateSplitPattern = new Regex(
         @"(?<Method>@(?<MethodName>\w+)\((?:\s*(?<Arg>[^,)]+)\s*(?:,|$|(?=\)))\s*)*\))|(?<Type>@(?:(?<Wrapper>\w+)<(?<Base>\w+)>|(?<Base>\w+)))|(?<Plain>(?:(?!@\w).)+)",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.IgnorePatternWhitespace);
 
@@ -13,7 +13,7 @@ public class EditorTokenUnit
     public List<EditorSnippet> Snippets { get; private set; } = [];
 
     // Naming State
-    private string _suggestedClassName = "";
+    string _suggestedClassName = "";
     public string ManualClassName { get; private set; }
     public string ClassName => ManualClassName ?? _suggestedClassName;
 
@@ -68,7 +68,7 @@ public class EditorTokenUnit
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
     }
 
-    private void PerformMatching()
+    void PerformMatching()
     {
         CurrentMatches.Clear();
         if (string.IsNullOrWhiteSpace(RenderedRegex)) return;
@@ -85,7 +85,7 @@ public class EditorTokenUnit
         }
     }
 
-    private void ParseRegexSegments()
+    void ParseRegexSegments()
     {
         RegexRuns.Clear();
         if (string.IsNullOrEmpty(RenderedRegex)) return;
@@ -140,7 +140,7 @@ public class EditorTokenUnit
             RegexRuns.Add(new(RenderedRegex.Substring(lastPos), "var(--syntax-default)"));
     }
 
-    private void GenerateTextStyledRuns()
+    void GenerateTextStyledRuns()
     {
         var rawSegments = new List<TextStyledRun>();
         string text = LineMetadata.SourceText.FormattedText;
@@ -237,7 +237,7 @@ public class EditorTokenUnit
         TextRuns = CollapseSegments(rawSegments);
     }
 
-    private List<TextStyledRun> CollapseSegments(List<TextStyledRun> source)
+    List<TextStyledRun> CollapseSegments(List<TextStyledRun> source)
     {
         if (source.Count == 0) 
             return source;
@@ -261,7 +261,7 @@ public class EditorTokenUnit
         return result;
     }
 
-    private void DigestTemplateStringToSnippets(string templateString)
+    void DigestTemplateStringToSnippets(string templateString)
     {
         Dictionary<string, int> snippetNameOccurrenceCount = [];
         List<EditorSnippet> list = [];
@@ -303,10 +303,11 @@ public class EditorTokenUnit
                 list.Add(new EditorTextSnippet(text, GetId(text)));
             }
         }
+
         Snippets = list;
     }
 
-    private string GetSuggestedClassName()
+    string GetSuggestedClassName()
     {
         string str = "";
         foreach (var snippet in Snippets)
@@ -326,15 +327,24 @@ public class EditorTokenUnit
         return string.IsNullOrEmpty(str) ? $"New{TokenUnitType.Name}" : str;
     }
 
-    public void RemoveSnippet(string snippetId)
+    public void HandleActionOnSnippet(string snippetId, ContextActionType action)
     {
-        Snippets.RemoveAll(s => s.Id == snippetId);
-        Update(GetTemplateString());
+        if (Snippets.FirstOrDefault(x => x.Id == snippetId) is not EditorPropertySnippet propertySnippet)
+            return;
+
+        var index = Snippets.IndexOf(propertySnippet);
+
+        switch (action)
+        {
+            case ContextActionType.Delete:              Snippets.Remove(propertySnippet); break;
+            case ContextActionType.ConvertToManyOf:     Snippets[index] = propertySnippet.ConvertToXOfType(XOfType.ManyOf); break;
+        }
+
+        RawTemplate = string.Join(' ', Snippets.Select(x => x.EditorRepresentation));
+        Update();
     }
 
-    public string GetTemplateString() => string.Join(' ', Snippets.Select(x => x.EditorRepresentation));
-
-    private string GetClassStringForSavingToFile() =>
+    string GetClassStringForSavingToFile() =>
         $$"""
         namespace {{SaveFileInNamespace}};
 
@@ -346,7 +356,7 @@ public class EditorTokenUnit
         }
         """;
 
-    private string GetClassStringForDisplayingHtml()
+    string GetClassStringForDisplayingHtml()
     {
         var classDeclaration = $"{Span("public class")} {Span(ClassName, SpanClass.type)} {Span(":", SpanClass.identifier)} {Span(TokenUnitType.Name, SpanClass.type)}";
         var snippetSection = $"{Span("protected override")} {Span("Snippet", SpanClass.type)}{Span("[]")} {Span("Snippets =>", SpanClass.identifier)} {Span("[", SpanClass.identifier)}"
@@ -366,5 +376,5 @@ public class EditorTokenUnit
         return styled.Replace("  ", "&nbsp;&nbsp;").Replace("\r\n", "<br>");
     }
 
-    private static string Span(string content, SpanClass spanClass = SpanClass.keyword) => $"<span class=\"{spanClass}\">{content}</span>";
+    static string Span(string content, SpanClass spanClass = SpanClass.keyword) => $"<span class=\"{spanClass}\">{content}</span>";
 }

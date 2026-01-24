@@ -1,34 +1,35 @@
 ﻿namespace MTGPlexer.TokenEditor;
 
-public record EditorMethodSnippet(ShortcutSnippetMethod MethodType, string[] Args, string Id) 
-    : EditorSnippet(
-        EditorRepresentation: $"@{MethodType}({string.Join(", ", Args)})",
-        ParameterRepresentation: GetParameterRepresentation(MethodType, Args),
-        DisplayAsBlockInEditor: true,
-        Id: Id
-        )
+public record EditorMethodSnippet : EditorBlockSnippet
 {
-    public MethodInfo Method { get; } = typeof(SnippetShortcuts).GetMethod(MethodType.ToString());
+    public ShortcutSnippetMethod MethodType { get; init; }
+    public string[] Args { get; init; }
+    public MethodInfo Method { get; init; }
 
-    static string GetParameterRepresentation(ShortcutSnippetMethod method, params string[] args)
+    public EditorMethodSnippet(ShortcutSnippetMethod methodType, string[] args, string id)
+        : base(
+            editorRepresentation: $"@{methodType}({string.Join(", ", args)})",
+            parameterRepresentation: args.Length == 0 ? $"{methodType}()" : $"{methodType}(\"{string.Join("\", \"", args)}\")",
+            id: id)
     {
-        if (args.Length == 0)
-            return $"{method}()";
-        else
-            return $"{method}(\"{string.Join("\", \"", args)}\")";
+        MethodType = methodType;
+        Args = args;
+        Method = typeof(SnippetShortcuts).GetMethod(methodType.ToString())
+                 ?? throw new Exception($"Method {methodType} not found in SnippetShortcuts");
     }
 
     public override string GetParameterHtmlRepresentation()
     {
+        var methodName = Span($"{MethodType}", SpanClass.method);
         if (Args.Length == 0)
-            return $"{Span($"{Method}", SpanClass.method)}{Span("()", SpanClass.identifier)}";
+            return $"{methodName}{Span("()", SpanClass.identifier)}";
 
-        var methodWithArgs = $"{Span($"{Method}", SpanClass.method)}{Span("(", SpanClass.identifier)}{Span("\"", SpanClass.stringliteral)}";
-        methodWithArgs += string.Join(Span("\"", SpanClass.stringliteral) + Span(", ", SpanClass.identifier) + Span("\"", SpanClass.stringliteral), Args);
-        methodWithArgs += Span("\"", SpanClass.stringliteral);
-        methodWithArgs += Span(")", SpanClass.identifier);
+        var joinedArgs = string.Join(
+            Span("\"", SpanClass.stringliteral) + Span(", ", SpanClass.identifier) + Span("\"", SpanClass.stringliteral),
+            Args);
 
-        return methodWithArgs;
+        return $"{methodName}{Span("(", SpanClass.identifier)}{Span("\"", SpanClass.stringliteral)}" +
+               $"{joinedArgs}{Span("\"", SpanClass.stringliteral)}{Span(")", SpanClass.identifier)}";
     }
 
     public override RegexSegmentBase GetRegexSegment()
@@ -37,38 +38,17 @@ public record EditorMethodSnippet(ShortcutSnippetMethod MethodType, string[] Arg
 
         object[] invokeArgs = parameters.Length switch
         {
-            // 0 parameters: Return empty array so invokeArgs is NOT null
             0 => Array.Empty<object>(),
-
-            // 1 parameter (string array)
-            1 when parameters[0].ParameterType == typeof(string[])
-                => new object[] { Args },
-
-            // 1 parameter (default string)
-            1 => new object[] { Args },
-
-            // 2 parameters
-            2 => new object[] { null, Args },
-
-            // Default: No matching signature found
+            1 when parameters[0].ParameterType == typeof(string[]) => [Args],
+            1 => [Args],
+            2 => [null!, Args],
             _ => null
         };
 
-        if (invokeArgs != null)
-        {
-            // If invokeArgs is Array.Empty<object>(), Invoke will be called with no parameters.
-            var shortcutSnippet = (Snippet)Method.Invoke(null, invokeArgs);
-            return new TextSegment(shortcutSnippet);
-        }
-        else
-            throw new Exception($"Could not invoke mehtod '{Method.Name}' with args {string.Join(", " , Args)}");
-    }
-}
+        if (invokeArgs == null)
+            throw new Exception($"Could not map parameters for '{Method.Name}'");
 
-public enum ShortcutSnippetMethod
-{
-    Alt,
-    Opt,
-    NoSpace,
-    Plural
+        var shortcutSnippet = (Snippet)Method.Invoke(null, invokeArgs)!;
+        return new TextSegment(shortcutSnippet);
+    }
 }

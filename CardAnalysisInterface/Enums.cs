@@ -2,14 +2,6 @@
 
 namespace CardAnalysisInterface;
 
-public enum ContextActionType
-{
-    Delete,
-    ConvertToOneOf,
-    ConvertToManyOf,
-    ConvertToCompoundOf
-}
-
 public enum MaterialIcon
 {
     [Description("")]

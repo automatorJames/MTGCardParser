@@ -178,7 +178,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task SyncEditorPills(int forceCaretPos = -1)
     {
         var metadata = _editorTokenUnit.Snippets
-            .Where(x => x.DisplayAsBlockInEditor)
+            .OfType<EditorBlockSnippet>()
             .Select(x => new { id = x.Id, typeName = x.EditorRepresentation })
             .ToList();
 
@@ -198,13 +198,8 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task HandlePillAction(ContextAction action)
     {
         _isPillMenuVisible = false;
-
-        if (action.Type == ContextActionType.Delete)
-        {
-            _editorTokenUnit.RemoveSnippet(_targetSnippetId);
-            await SyncEditorPills();
-        }
-
+         _editorTokenUnit.HandleActionOnSnippet(_targetSnippetId, action.Type);
+        await SyncEditorPills();
         StateHasChanged();
     }
 

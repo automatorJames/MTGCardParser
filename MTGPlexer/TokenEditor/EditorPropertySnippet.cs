@@ -1,99 +1,87 @@
 ﻿
 namespace MTGPlexer.CommonDTOs;
 
-public record EditorPropertySnippet(Type BasePropertyType, XOfType XOfType, string Id) 
-    : EditorSnippet(
-        EditorRepresentation: "@" + GetTypeRepresentation(BasePropertyType, XOfType),
-        ParameterRepresentation: GetParameterRepresentation(BasePropertyType, XOfType),
-        DisplayAsBlockInEditor: true,
-        Id: Id)
+public record EditorPropertySnippet : EditorBlockSnippet
 {
-    public bool BaseIsEnum { get; } = BasePropertyType.IsEnum;
-    public Type ClosedGenericType { get; } = GetClosedGenericType(BasePropertyType, XOfType);
-    public string PropertyTypeRepresentation { get; } = GetTypeRepresentation(BasePropertyType, XOfType);
-    public string PropertyNameRepresentation { get; } = GetPropertyNameRepresentation(BasePropertyType, XOfType);
+    public Type BasePropertyType { get; init; }
+    public XOfType XOfType { get; init; }
+    public bool BaseIsEnum { get; init; }
+    public Type ClosedGenericType { get; init; }
+    public string PropertyTypeRepresentation { get; init; }
+    public string PropertyNameRepresentation { get; init; }
     public Type ResolvedType => ClosedGenericType ?? BasePropertyType;
 
-    static string GetTypeRepresentation(Type propertyType, XOfType xOfType)
+    public EditorPropertySnippet(Type basePropertyType, XOfType xOfType, string id)
+        : base(
+            editorRepresentation: $"@{(xOfType != XOfType.None ? $"{xOfType}<{basePropertyType.Name}>" : basePropertyType.Name)}",
+            parameterRepresentation: $"Prop({(xOfType == XOfType.ManyOf ? basePropertyType.Name.AddPluralization(false) : basePropertyType.Name)})",
+            id: id)
     {
-        var representation = propertyType.Name;
+        BasePropertyType = basePropertyType;
+        XOfType = xOfType;
+        BaseIsEnum = basePropertyType.IsEnum;
 
-        if (xOfType != XOfType.None)
-            representation = $"{xOfType}<{representation}>";
+        PropertyNameRepresentation = XOfType == XOfType.ManyOf
+            ? basePropertyType.Name.AddPluralization(false)
+            : basePropertyType.Name;
 
-        return representation ;
-    }
+        PropertyTypeRepresentation = basePropertyType.Name;
 
-    static Type GetClosedGenericType(Type basePropertyType, XOfType xOfType)
-    {
-        if (xOfType == XOfType.None)
-            return null;
-
-        var openGenericType = xOfType switch
+        ClosedGenericType = XOfType switch
         {
-            XOfType.ManyOf => typeof(ManyOf<>),
-            XOfType.CompoundOf => typeof(CompoundOf<>),
-            XOfType.OptionalOf => typeof(OptionalOf<>),
-            XOfType.DynamicOf => throw new NotImplementedException($"DynamicOf not yet supported as editor snippet"),
-            _ => throw new ArgumentException($"Unsupported type: '{xOfType}'")
+            XOfType.None => null,
+            XOfType.ManyOf => typeof(ManyOf<>).MakeGenericType(basePropertyType),
+            XOfType.CompoundOf => typeof(CompoundOf<>).MakeGenericType(basePropertyType),
+            XOfType.OptionalOf => typeof(OptionalOf<>).MakeGenericType(basePropertyType),
+            XOfType.DynamicOf => throw new NotImplementedException("DynamicOf not supported"),
+            _ => throw new ArgumentException($"Unsupported type: {xOfType}")
         };
-
-        return openGenericType.MakeGenericType(basePropertyType);
     }
-
-    static string GetParameterRepresentation(Type propertyType, XOfType xOfType)
-        => $"Prop({GetPropertyNameRepresentation})";
-
-    static string GetPropertyNameRepresentation(Type propertyType, XOfType xOfType)
-        => xOfType == XOfType.ManyOf ? propertyType.Name.AddPluralization(makeOptional: false) : propertyType.Name;
 
     public string GetPropertyLineRepresentation()
     {
-        var str = "public ";
-        str += XOfType != XOfType.None ? $"{XOfType}<" : "";
-        str += $"{PropertyTypeRepresentation}";
-        str += XOfType != XOfType.None ? $">" : "";
-        str += " { get; set; }";
-
-        return str;
+        var wrapper = XOfType != XOfType.None ? $"{XOfType}<" : "";
+        var closer = XOfType != XOfType.None ? ">" : "";
+        return $"public {wrapper}{PropertyTypeRepresentation}{closer} {PropertyNameRepresentation} {{ get; set; }}";
     }
 
     public string GetPropertyLineHtmlRepresentation()
     {
-        var str = $"{Span("public")} ";
-        str += XOfType != XOfType.None ? $"{Span(XOfType.ToString(), SpanClass.type)}{Span("<", SpanClass.identifier)}" : "";
-        str += Span(PropertyTypeRepresentation, BaseIsEnum ? SpanClass.enumtype : SpanClass.type);
-        str += XOfType != XOfType.None ? Span(">", SpanClass.identifier) : "";
-        str += " ";
-        str += Span(PropertyNameRepresentation, SpanClass.identifier);
-        str += " ";
-        str += $"{Span("{", SpanClass.identifier)} {Span("get")}{Span(";", SpanClass.identifier)} {Span("set")}{Span("; }", SpanClass.identifier)}";
+        var typeStyle = BaseIsEnum ? SpanClass.enumtype : SpanClass.type;
+        var part1 = $"{Span("public")} ";
 
-        return str;
+        if (XOfType != XOfType.None)
+            part1 += $"{Span(XOfType.ToString(), SpanClass.type)}{Span("<", SpanClass.identifier)}";
+
+        part1 += Span(PropertyTypeRepresentation, typeStyle);
+
+        if (XOfType != XOfType.None)
+            part1 += Span(">", SpanClass.identifier);
+
+        return $"{part1} {Span(PropertyNameRepresentation, SpanClass.identifier)} " +
+               $"{Span("{", SpanClass.identifier)} {Span("get")}{Span(";", SpanClass.identifier)} " +
+               $"{Span("set")}{Span("; }", SpanClass.identifier)}";
     }
 
     public override string GetParameterHtmlRepresentation() =>
-        $"{Span("Prop", SpanClass.method)}{Span("(" + PropertyNameRepresentation + ")", SpanClass.identifier)}";
+        $"{Span("Prop", SpanClass.method)}{Span($"({PropertyNameRepresentation})", SpanClass.identifier)}";
 
     public override RegexSegmentBase GetRegexSegment() =>
          new TemplatePropInfo(ResolvedType).GetCaptureGroupPropBase();
 
     public string GetContextMenuDisplayName()
     {
-        var baseTypeDescriptor = BaseIsEnum ? "enum" : BasePropertyType.Name;
-
-        if (ClosedGenericType?.Name is string wrapperTypeName)
-            return $"{PropertyNameRepresentation}: {wrapperTypeName}<{baseTypeDescriptor}> "; 
-        else
-            return $"{PropertyNameRepresentation}: {baseTypeDescriptor}";
+        var typeDesc = BaseIsEnum ? "enum" : BasePropertyType.Name;
+        return ClosedGenericType != null
+            ? $"{PropertyNameRepresentation}: {ClosedGenericType.Name}<{typeDesc}>"
+            : $"{PropertyNameRepresentation}: {typeDesc}";
     }
-}
 
-public enum XOfType
-{
-    None,
-    ManyOf,
-    CompoundOf,
-    OptionalOf,
-    DynamicOf,
+    public EditorPropertySnippet ConvertToXOfType(XOfType xOfType)
+    {
+        if (xOfType == XOfType)
+            return this;
+
+        return new(BasePropertyType, xOfType, Id);
+    }
 }

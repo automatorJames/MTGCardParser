@@ -22,3 +22,28 @@ public enum SpanClass
     method,
     stringliteral
 }
+
+public enum ContextActionType
+{
+    Delete,
+    ConvertToOneOf,
+    ConvertToManyOf,
+    ConvertToCompoundOf
+}
+
+public enum XOfType
+{
+    None,
+    ManyOf,
+    CompoundOf,
+    OptionalOf,
+    DynamicOf,
+}
+
+public enum ShortcutSnippetMethod
+{
+    Alt,
+    Opt,
+    NoSpace,
+    Plural
+}
