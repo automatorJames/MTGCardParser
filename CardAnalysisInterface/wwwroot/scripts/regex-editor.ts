@@ -58,6 +58,13 @@ class RegexEditor {
         }
     }
 
+    public scrollToAutocompleteItem(elementId: string) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
     public syncPills(text: string, cursorPos: number, metadata: SnippetMetadata[]) {
         if (!this.el) return;
 
@@ -308,7 +315,6 @@ class RegexEditor {
         if (!this.el) return;
 
         // Very Important: Focus the element before attempting to modify the selection.
-        // This prevents the focus from leaking to the body/background.
         this.el.focus();
 
         const walker = document.createTreeWalker(this.el, NodeFilter.SHOW_TEXT, null);
