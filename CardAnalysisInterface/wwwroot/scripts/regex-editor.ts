@@ -98,13 +98,14 @@ class RegexEditor {
             this.el.appendChild(document.createTextNode(text.substring(lastIndex)));
         }
 
-        // Critical: Ensure there is always a text node at the end to land the cursor on
+        // Ensure there is a trailing text node if the last item is a pill
         if (this.el.childNodes.length === 0 || this.el.lastChild?.nodeType !== Node.TEXT_NODE) {
             this.el.appendChild(document.createTextNode(''));
         }
 
         if (cursorPos >= 0) {
-            this.restoreCursor(cursorPos);
+            // Delay slightly to ensure DOM is painted and focusable
+            requestAnimationFrame(() => this.restoreCursor(cursorPos));
         }
 
         this.isInternallyChanging = false;
@@ -305,45 +306,77 @@ class RegexEditor {
         const selection = window.getSelection();
         if (!selection?.rangeCount || !this.el) return 0;
         const range = selection.getRangeAt(0);
+
         const preCaretRange = range.cloneRange();
         preCaretRange.selectNodeContents(this.el);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        return preCaretRange.toString().length;
+        try {
+            preCaretRange.setEnd(range.startContainer, range.startOffset);
+        } catch (e) {
+            return 0;
+        }
+
+        // cloneContents() creates a fragment; textContent on a fragment 
+        // includes hidden nodes, unlike range.toString()
+        return preCaretRange.cloneContents().textContent?.length || 0;
     }
 
     private restoreCursor(charOffset: number) {
         if (!this.el) return;
 
-        // Very Important: Focus the element before attempting to modify the selection.
+        // 1. Force focus to the element first
         this.el.focus();
 
-        const walker = document.createTreeWalker(this.el, NodeFilter.SHOW_TEXT, null);
-        let cumulativeOffset = 0;
-        let node: Text | null;
-        let lastNode: Text | null = null;
+        const selection = window.getSelection();
+        if (!selection) return;
 
-        while (node = walker.nextNode() as Text) {
-            lastNode = node;
-            if (cumulativeOffset + node.length >= charOffset) {
-                const range = document.createRange();
-                const selection = window.getSelection();
-                range.setStart(node, charOffset - cumulativeOffset);
+        const range = document.createRange();
+        let cumulativeOffset = 0;
+        let found = false;
+
+        // Iterate only through top-level nodes (Pills and Text nodes)
+        const childNodes = Array.from(this.el.childNodes);
+
+        for (const node of childNodes) {
+            const nodeText = node.textContent || "";
+            const len = nodeText.length;
+
+            if (cumulativeOffset + len >= charOffset) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    // If it's a text node, we can place the caret inside safely
+                    range.setStart(node, charOffset - cumulativeOffset);
+                } else {
+                    // If it's a Pill, place the caret before or after it, never INSIDE.
+                    if (charOffset <= cumulativeOffset) {
+                        range.setStartBefore(node);
+                    } else {
+                        range.setStartAfter(node);
+                    }
+                }
                 range.collapse(true);
-                selection?.removeAllRanges();
-                selection?.addRange(range);
-                return;
+                found = true;
+                break;
             }
-            cumulativeOffset += node.length;
+            cumulativeOffset += len;
         }
 
-        // If we reached here, the offset is at the very end of the content
-        if (lastNode) {
-            const range = document.createRange();
-            const selection = window.getSelection();
-            range.setStart(lastNode, lastNode.length);
-            range.collapse(true);
-            selection?.removeAllRanges();
-            selection?.addRange(range);
+        // 2. Fallback: If offset is at the very end
+        if (!found) {
+            const lastNode = this.el.lastChild;
+            if (lastNode) {
+                if (lastNode.nodeType === Node.TEXT_NODE) {
+                    range.setStart(lastNode, (lastNode as Text).length);
+                } else {
+                    range.setStartAfter(lastNode);
+                }
+                range.collapse(true);
+            }
+        }
+
+        try {
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } catch (err) {
+            console.warn("Failed to restore selection:", err);
         }
     }
 
