@@ -67,7 +67,7 @@ public record EditorPropertySnippet : EditorBlockSnippet
         $"{Span("Prop", SpanClass.method)}{Span($"({PropertyNameRepresentation})", SpanClass.identifier)}";
 
     public override RegexSegmentBase GetRegexSegment() =>
-         new TemplatePropInfo(ResolvedType).GetCaptureGroupPropBase();
+         new TemplatePropInfo(ResolvedType, PropertyNameRepresentation).GetCaptureGroupPropBase();
 
     public string GetContextMenuDisplayName()
     {

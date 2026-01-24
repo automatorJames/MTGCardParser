@@ -69,7 +69,7 @@ public record TemplatePropInfo
     /// which require conversion to a RegexSegment. In this workflow, the "Prop" property is never intended
     /// to be used to set a value on any object.
     /// </summary>
-    public TemplatePropInfo(Type type)
+    public TemplatePropInfo(Type type, string name)
     {
         // Here, "Prop" is a Dummy placeholder that is never intended to be used to set a value.
         // We assign a Prop merely so we don't break downstream code that checks things like nullability
@@ -80,7 +80,7 @@ public record TemplatePropInfo
         UnderlyingType = type;
         GenericTypes = type.GetGenericArguments();
         IsTerminal = _terminalTypes.Contains(TemplatePropType);
-        Name = type.Name;
+        Name = name;
     }
 
     static string GetName(PropertyInfo prop, Type underlyingType)
