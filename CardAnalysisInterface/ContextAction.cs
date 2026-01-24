@@ -32,10 +32,10 @@ public record ContextAction
     static string GetDefaultColor(ContextActionType type) =>
         type switch
         {
-            ContextActionType.Delete => "#A37362",
-            ContextActionType.ConvertToOneOf => "#858F5C",
-            ContextActionType.ConvertToManyOf => "#5E947A",
-            ContextActionType.ConvertToCompoundOf => "#5E8399",
+            ContextActionType.Delete => "#B07E6C", // brighter, warmer clay
+            ContextActionType.ConvertToOneOf => "#9AA864", // livelier olive
+            ContextActionType.ConvertToManyOf => "#6EAD8F", // fresher teal-green
+            ContextActionType.ConvertToCompoundOf => "#6B97B1", // clearer steel-blue
             _ => "#AAAAAA"
         };
 
