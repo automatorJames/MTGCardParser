@@ -253,6 +253,7 @@ public class EditorTokenUnit
             {
                 var name = match.Groups["MethodName"].Value;
                 var args = match.Groups["Arg"].Captures.Cast<Capture>().Select(c => c.Value.Trim()).ToArray();
+
                 if (Enum.TryParse<ShortcutSnippetMethod>(name, out var parsedMethodType))
                     list.Add(new EditorMethodSnippet(parsedMethodType, args, GetId(name)));
             }
@@ -262,7 +263,10 @@ public class EditorTokenUnit
                 var baseType = match.Groups["Base"].Value;
                 var name = string.IsNullOrEmpty(wrapper) ? baseType : $"{wrapper}<{baseType}>";
                 XOfType xOfType = XOfType.None;
-                if (!string.IsNullOrEmpty(wrapper) && !Enum.TryParse<XOfType>(wrapper, out xOfType)) continue;
+
+                if (!string.IsNullOrEmpty(wrapper) && !Enum.TryParse<XOfType>(wrapper, out xOfType)) 
+                    continue;
+
                 if (TokenTypeRegistry.NameToType.TryGetValue(baseType, out Type parsedBaseType))
                     list.Add(new EditorPropertySnippet(parsedBaseType, xOfType, GetId(name)));
             }
@@ -295,16 +299,30 @@ public class EditorTokenUnit
         return string.IsNullOrEmpty(str) ? $"New{TokenUnitType.Name}" : str;
     }
 
-    public void HandleActionOnSnippet(string snippetId, ContextActionType action)
+    public void HandleActionOnSnippet(SnippetContextAction snippetContextAction)
     {
-        if (Snippets.FirstOrDefault(x => x.Id == snippetId) is not EditorPropertySnippet propertySnippet)
-            return;
+        var snippet = snippetContextAction.Snippet;
+        var index = Snippets.IndexOf(snippet);
 
-        var index = Snippets.IndexOf(propertySnippet);
-        switch (action)
+        switch (snippetContextAction.ActionType)
         {
-            case ContextActionType.Delete: Snippets.Remove(propertySnippet); break;
-            case ContextActionType.ConvertToManyOf: Snippets[index] = propertySnippet.ConvertToXOfType(XOfType.ManyOf); break;
+            case ContextActionType.Delete: Snippets.Remove(snippet); break;
+
+            case ContextActionType.RemoveOneOf:
+            case ContextActionType.RemoveManyOf:
+            case ContextActionType.RemoveCompoundOf: Snippets[index] = snippet.ConvertToXOfType(XOfType.None); break;
+
+            case ContextActionType.ConvertToOneOf: Snippets[index] = snippet.ConvertToXOfType(XOfType.OneOf); break;
+            case ContextActionType.ConvertToManyOf: Snippets[index] = snippet.ConvertToXOfType(XOfType.ManyOf); break;
+            case ContextActionType.ConvertToCompoundOf: Snippets[index] = snippet.ConvertToXOfType(XOfType.CompoundOf); break;
+
+            case ContextActionType.MakePlural: 
+            case ContextActionType.RemovePlural: 
+                Snippets[index] = snippet.UpdateProptions(oneHotToggleProptions: Proptions.Plural); break;
+
+            case ContextActionType.MakeOptional:
+            case ContextActionType.RemoveOptional:
+                Snippets[index] = snippet.UpdateProptions(oneHotToggleProptions: Proptions.Optional); break;
         }
 
         // Reconstruct using string.Empty because Snippets now contain literal spaces

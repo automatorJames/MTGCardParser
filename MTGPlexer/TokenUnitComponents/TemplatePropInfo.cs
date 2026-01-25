@@ -75,7 +75,7 @@ public record TemplatePropInfo
         // Here, "Prop" is a Dummy placeholder that is never intended to be used to set a value.
         // We assign a Prop merely so we don't break downstream code that checks things like nullability
         // of Prop.
-        Prop = GetType().GetProperty(nameof(Prop)); 
+        Prop = GetType().GetProperty(nameof(Prop));
 
         TemplatePropType = GetTemplatePropType(type);
         UnderlyingType = type;

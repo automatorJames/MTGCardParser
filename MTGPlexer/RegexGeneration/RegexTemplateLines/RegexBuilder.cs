@@ -44,6 +44,7 @@ public class RegexBuilder
     public void OpenGroup(TemplatePropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
     {
         Enclosure enclosure;
+        isOptional |= captureGroup?.Proptions.HasFlag(Proptions.Optional) ?? false;
 
         if (captureGroup != null)
             enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureGroup, spaceDisposition);

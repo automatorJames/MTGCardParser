@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 public class EnchantedCard : TokenUnit
 {
     protected override Snippet[] Snippets => ["enchanted", Prop(CardOrCreatureType), Prop(PermanentVerb), Prop(Buff)];

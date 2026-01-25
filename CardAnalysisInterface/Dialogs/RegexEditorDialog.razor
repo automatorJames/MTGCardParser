@@ -110,13 +110,13 @@
             <div class="pill-context-menu-shield" @onclick="CloseContextMenu" @oncontextmenu:preventDefault @oncontextmenu="CloseContextMenu"></div>
             <div class="pill-context-menu" style="position:fixed; left:@(_menuX)px; top:@(_menuY)px; z-index:2001;">
                 <div class="pill-context-menu-header">@_targetPillTypeName</div>
-                @foreach (var action in _pillContextMenuOptions)
+                @foreach (var action in SnippetContextAction.GetSnippetContextOptions(_targetPropertySnippet))
                 {
-                    @if (action.SectionBreak)
+                    @if (action.AddSectionBreak)
                     {
                         <div class="pill-context-menu-divider"></div>
                     }
-                    <button class="menu-item" @onclick="() => HandlePillAction(action)">@action.MarkupString</button>
+                    <button class="menu-item" @onclick="() => HandlePillAction(action)">@(new MarkupString(action.Html))</button>
                 }
             </div>
         }

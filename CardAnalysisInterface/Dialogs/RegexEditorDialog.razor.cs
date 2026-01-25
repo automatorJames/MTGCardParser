@@ -1,13 +1,11 @@
-﻿using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
-
-namespace CardAnalysisInterface.Dialogs;
+﻿namespace CardAnalysisInterface.Dialogs;
 
 public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 {
     [Parameter] public ProcessedLine Line { get; set; } = default!;
     [Parameter] public EventCallback<EditorTokenUnit> OnClose { get; set; }
 
-    private string ClassName
+    string ClassName
     {
         get
         {
@@ -24,36 +22,28 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     }
 
     // Context Menu State
-    private bool _isPillMenuVisible;
-    private double _menuX;
-    private double _menuY;
-    private string _targetPillTypeName = "";
-    private string _targetSnippetId = "";
-
-    private readonly List<ContextAction> _pillContextMenuOptions = new()
-    {
-        new(ContextActionType.ConvertToOneOf),
-        new(ContextActionType.ConvertToManyOf),
-        new(ContextActionType.ConvertToCompoundOf),
-        new(ContextActionType.Delete, sectionBreak: true),
-    };
+    bool _isPillMenuVisible;
+    double _menuX;
+    double _menuY;
+    string _targetPillTypeName = "";
+    EditorPropertySnippet _targetPropertySnippet;
 
     // UI State
-    private bool _isDropdownVisible = false;
-    private bool _isEditingClassName = false;
-    private bool _shouldFocusClassName = false;
-    private List<Type> _allTokenTypes = new();
-    private List<Type> _autocompleteSuggestions = new();
-    private int _selectedSuggestionIndex = -1;
-    private bool _isEditorEmpty = true;
-    private string _textToReplaceForAutocomplete = "";
+    bool _isDropdownVisible = false;
+    bool _isEditingClassName = false;
+    bool _shouldFocusClassName = false;
+    List<Type> _allTokenTypes = new();
+    List<Type> _autocompleteSuggestions = new();
+    int _selectedSuggestionIndex = -1;
+    bool _isEditorEmpty = true;
+    string _textToReplaceForAutocomplete = "";
 
     // Domain Model
-    private EditorTokenUnit _editorTokenUnit = default!;
+    EditorTokenUnit _editorTokenUnit = default!;
 
     // Interop
-    private ElementReference _editorElement;
-    private DotNetObjectReference<RegexEditorDialog> _dotNetRef;
+    ElementReference _editorElement;
+    DotNetObjectReference<RegexEditorDialog> _dotNetRef;
 
     protected override void OnInitialized()
     {
@@ -87,9 +77,12 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [JSInvokable("OpenPillMenu")]
     public void OpenPillContextMenu(string typeName, string snippetId, double x, double y)
     {
-        var propertySnippet = _editorTokenUnit[snippetId];
-        _targetPillTypeName = propertySnippet?.GetContextMenuDisplayName() ?? typeName;
-        _targetSnippetId = snippetId;
+        _targetPropertySnippet = _editorTokenUnit[snippetId];
+
+        if (_targetPropertySnippet == null)
+            return;
+
+        _targetPillTypeName = _targetPropertySnippet.GetContextMenuDisplayName() ?? typeName;
         _menuX = x;
         _menuY = y;
         _isPillMenuVisible = true;
@@ -192,10 +185,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         StateHasChanged();
     }
 
-    private async Task HandlePillAction(ContextAction action)
+    private async Task HandlePillAction(SnippetContextAction action)
     {
         _isPillMenuVisible = false;
-         _editorTokenUnit.HandleActionOnSnippet(_targetSnippetId, action.Type);
+         _editorTokenUnit.HandleActionOnSnippet(action);
         await SyncEditorPills();
         StateHasChanged();
     }

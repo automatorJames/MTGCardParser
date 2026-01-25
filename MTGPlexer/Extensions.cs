@@ -154,6 +154,25 @@ public static class Extensions
             .Select(x => x.Name)
             .ToArray();
 
+    public static object[] GetSetFlags(this Enum value)
+    {
+        if (value is null)
+            throw new ArgumentNullException(nameof(value));
+
+        var type = value.GetType();
+
+        if (!Attribute.IsDefined(type, typeof(FlagsAttribute)))
+            throw new ArgumentException($"Enum type '{type.Name}' is not marked with [Flags].", nameof(value));
+
+        return Enum.GetValues(type)
+            .Cast<Enum>()
+            .Where(flag =>
+            Convert.ToUInt64(flag) != 0 &&
+            value.HasFlag(flag))
+            .Cast<object>()
+            .ToArray();
+    }
+
     public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
 }
 
