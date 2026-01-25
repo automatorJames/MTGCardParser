@@ -1,9 +1,11 @@
-﻿namespace MTGPlexer.TokenEditor;
+﻿using System;
+
+namespace MTGPlexer.TokenEditor;
 
 public class EditorTokenUnit
 {
     const string SaveFileInNamespace = "MTGPlexer.TokenUnits";
-    
+
     public ProcessedLine LineMetadata { get; }
     public Type TokenUnitType { get; } = typeof(TokenUnit);
     public List<EditorSnippet> Snippets { get; private set; } = [];
@@ -62,22 +64,24 @@ public class EditorTokenUnit
 
         foreach (var frag in fragments)
         {
-            if (string.IsNullOrEmpty(frag.Text)) continue;
-
             if (frag.IsPill)
             {
+                // If we already have this snippet in our internal list, keep it.
+                // This preserves its XOfType, Proptions, and other internal states.
                 if (frag.Id != null && existingSnippetMap.TryGetValue(frag.Id, out var existing))
                 {
                     newSnippets.Add(existing);
                 }
                 else
                 {
-                    var newSnippet = CreateSnippetFromText(frag.Text, frag.Id ?? $"pill-{Guid.NewGuid():N}");
+                    // Brand new pill (e.g. just inserted from autocomplete)
+                    var newSnippet = CreateSnippetFromFragment(frag);
                     if (newSnippet != null) newSnippets.Add(newSnippet);
                 }
             }
             else
             {
+                if (string.IsNullOrEmpty(frag.Text)) continue;
                 newSnippets.Add(new EditorTextSnippet(frag.Text, $"txt-{autoIdCounter++}"));
             }
         }
@@ -85,38 +89,24 @@ public class EditorTokenUnit
         Snippets = CollapseTextSnippets(newSnippets);
     }
 
-    private EditorSnippet CreateSnippetFromText(string text, string id)
+    private EditorSnippet CreateSnippetFromFragment(TemplateFragment frag)
     {
-        if (!text.StartsWith("@")) return new EditorTextSnippet(text, id);
+        if (!frag.IsPill) return new EditorTextSnippet(frag.Text, frag.Id);
 
-        var methodMatch = Regex.Match(text, @"^@(?<Name>\w+)\((?<Args>.*)\)$");
-        if (methodMatch.Success)
-        {
-            var name = methodMatch.Groups["Name"].Value;
-            var args = methodMatch.Groups["Args"].Value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim()).ToArray();
-            if (Enum.TryParse<ShortcutSnippetMethod>(name, out var methodType))
-                return new EditorMethodSnippet(methodType, args, id);
-        }
+        if (!string.IsNullOrEmpty(frag.MethodName))
+            if (Enum.TryParse<ShortcutSnippetMethod>(frag.MethodName, out var methodType))
+                return new EditorMethodSnippet(methodType, frag.Args ?? [], frag.Id);
 
-        var typeMatch = Regex.Match(text, @"^@(?:(?<Wrapper>\w+)<(?<Base>\w+)>|(?<Base>\w+))$");
-        if (typeMatch.Success)
-        {
-            var wrapper = typeMatch.Groups["Wrapper"].Value;
-            var baseType = typeMatch.Groups["Base"].Value;
-            XOfType xOfType = XOfType.None;
-            if (!string.IsNullOrEmpty(wrapper)) Enum.TryParse<XOfType>(wrapper, out xOfType);
+        if (!string.IsNullOrEmpty(frag.TypeName))
+            if (TokenTypeRegistry.NameToType.TryGetValue(frag.TypeName, out Type parsedBaseType))
+                return new EditorPropertySnippet(parsedBaseType, XOfType.None, frag.Id);
 
-            if (TokenTypeRegistry.NameToType.TryGetValue(baseType, out Type parsedBaseType))
-                return new EditorPropertySnippet(parsedBaseType, xOfType, id);
-        }
-
-        return new EditorTextSnippet(text, id);
+        return new EditorTextSnippet(frag.Text, frag.Id);
     }
 
     private List<EditorSnippet> CollapseTextSnippets(List<EditorSnippet> source)
     {
-        if (source.Count == 0) 
-            return source;
+        if (source.Count == 0) return source;
 
         var result = new List<EditorSnippet>();
         EditorTextSnippet currentText = null;
@@ -125,36 +115,36 @@ public class EditorTokenUnit
         {
             if (snippet is EditorTextSnippet textSnippet)
             {
-                if (currentText == null) 
-                    currentText = textSnippet;
-                else 
-                    currentText = currentText with { Text = currentText.Text + textSnippet.Text };
+                if (currentText == null) currentText = textSnippet;
+                else currentText = currentText with { Text = currentText.Text + textSnippet.Text };
             }
             else
             {
-                if (currentText != null)
-                {
-                    result.Add(currentText);
-                    currentText = null;
-                }
-
+                if (currentText != null) { result.Add(currentText); currentText = null; }
                 result.Add(snippet);
             }
         }
 
-        if (currentText != null) 
-            result.Add(currentText);
-
+        if (currentText != null) result.Add(currentText);
         return result;
     }
 
     public List<TemplateFragment> GetTemplateFragments()
     {
-        return Snippets.Select(s => new TemplateFragment(
-            Text: s.EditorRepresentation,
-            Id: s.Id,
-            IsPill: s is EditorBlockSnippet
-        )).ToList();
+        return Snippets.Select(s => {
+            string typeName = (s as EditorPropertySnippet)?.BasePropertyType.Name;
+            string methodName = (s as EditorMethodSnippet)?.MethodType.ToString();
+            string[] args = (s as EditorMethodSnippet)?.Args;
+
+            return new TemplateFragment(
+                Text: s.EditorRepresentation,
+                Id: s.Id,
+                IsPill: s is EditorBlockSnippet,
+                TypeName: typeName,
+                MethodName: methodName,
+                Args: args
+            );
+        }).ToList();
     }
 
     void PerformMatching()

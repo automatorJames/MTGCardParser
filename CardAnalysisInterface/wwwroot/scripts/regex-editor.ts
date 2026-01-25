@@ -6,6 +6,9 @@ interface TemplateFragment {
     text: string;
     id: string | null;
     isPill: boolean;
+    typeName: string | null;
+    methodName: string | null;
+    args: string[] | null;
 }
 
 interface DotNetReference {
@@ -74,7 +77,7 @@ class RegexEditor {
 
         for (const fragment of fragments) {
             if (fragment.isPill) {
-                this.el.appendChild(this.createPillElement(fragment.text, fragment.id!));
+                this.el.appendChild(this.createPillElement(fragment));
             } else {
                 this.el.appendChild(document.createTextNode(fragment.text));
             }
@@ -91,7 +94,7 @@ class RegexEditor {
         this.isInternallyChanging = false;
     }
 
-    public insertPill(textToReplace: string, fullTokenText: string) {
+    public insertPill(textToReplace: string, typeName: string | null, methodName: string | null, args: string[] | null) {
         if (!this.el || !this.dotNetRef) return;
 
         const selection = window.getSelection();
@@ -106,7 +109,15 @@ class RegexEditor {
             const startOfWord = content.lastIndexOf(textToReplace, offset - 1);
 
             if (startOfWord !== -1) {
-                const newPill = this.createPillElement(fullTokenText, "");
+                const newPill = this.createPillElement({
+                    text: typeName ? typeName : (methodName ? `@${methodName}` : ""),
+                    id: null,
+                    isPill: true,
+                    typeName: typeName,
+                    methodName: methodName,
+                    args: args
+                });
+
                 range.setStart(node, startOfWord);
                 range.setEnd(node, offset);
                 range.deleteContents();
@@ -128,22 +139,25 @@ class RegexEditor {
 
         this.el.childNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
-                // Replace non-breaking spaces with regular spaces
                 const text = (node.textContent || "").replace(/\u00A0/g, ' ');
-                raw.push({ text: text, id: null, isPill: false });
+                raw.push({ text: text, id: null, isPill: false, typeName: null, methodName: null, args: null });
             } else if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).classList.contains('token-style')) {
                 const element = node as HTMLElement;
+                const argsRaw = element.getAttribute('data-args');
                 raw.push({
-                    text: element.getAttribute('data-type-name') || element.textContent || "",
+                    text: element.textContent || "",
                     id: element.getAttribute('data-snippet-id'),
-                    isPill: true
+                    isPill: true,
+                    typeName: element.getAttribute('data-type-name'),
+                    methodName: element.getAttribute('data-method-name'),
+                    args: argsRaw ? JSON.parse(argsRaw) : null
                 });
             }
         });
 
         const normalized: TemplateFragment[] = [];
         for (const frag of raw) {
-            if (frag.text.length === 0) continue;
+            if (!frag.isPill && frag.text.length === 0) continue;
 
             const last = normalized[normalized.length - 1];
             if (last && !last.isPill && !frag.isPill) {
@@ -155,17 +169,22 @@ class RegexEditor {
         return normalized;
     }
 
-    private createPillElement(text: string, id: string): HTMLElement {
-        const baseTypeName = text.match(/<([^>]+)>/)?.[1] || (text.startsWith('@') ? text.substring(1) : text);
-        const color = this.typeColors[baseTypeName] || '#4A5568';
+    private createPillElement(frag: TemplateFragment): HTMLElement {
+        const displayLabel = frag.text;
+        const colorKey = frag.typeName || frag.methodName || "";
+        const color = this.typeColors[colorKey] || '#4A5568';
 
         const span = document.createElement('span');
         span.className = 'token-style';
         span.contentEditable = 'false';
         span.style.backgroundColor = color;
-        span.setAttribute('data-type-name', text);
-        span.setAttribute('data-snippet-id', id || `pill-${Math.random().toString(36).substr(2, 9)}`);
-        span.textContent = text;
+
+        if (frag.typeName) span.setAttribute('data-type-name', frag.typeName);
+        if (frag.methodName) span.setAttribute('data-method-name', frag.methodName);
+        if (frag.args) span.setAttribute('data-args', JSON.stringify(frag.args));
+
+        span.setAttribute('data-snippet-id', frag.id || `pill-${Math.random().toString(36).slice(2, 11)}`);
+        span.textContent = displayLabel;
         return span;
     }
 

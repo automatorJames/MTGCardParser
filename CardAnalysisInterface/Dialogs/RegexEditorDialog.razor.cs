@@ -130,7 +130,6 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _textToReplaceForAutocomplete = "";
         }
 
-        // Always sync back to ensure JS and C# are 100% aligned on pill IDs and text concatenation
         await SyncEditorPills(forceCaretPos);
         StateHasChanged();
     }
@@ -172,8 +171,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task SelectSuggestionByKeyboard(Type selection)
     {
-        string fullTokenText = $"@{selection.Name}";
-        await JsRuntime.InvokeVoidAsync("regexEditor.insertPill", _textToReplaceForAutocomplete, fullTokenText);
+        await JsRuntime.InvokeVoidAsync("regexEditor.insertPill", _textToReplaceForAutocomplete, selection.Name, null, null);
         _isDropdownVisible = false;
     }
 
