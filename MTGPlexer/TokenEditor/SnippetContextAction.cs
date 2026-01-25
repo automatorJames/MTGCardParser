@@ -91,7 +91,7 @@ public enum ContextActionType
     [ContextActionAppearance("Make Optional", MaterialIcon.question_mark, ContextMenuColor.Yellow)]
     MakeOptional,
 
-    [ContextActionAppearance("Remove Plural", MaterialIcon.remove, ContextMenuColor.Yellow)]
+    [ContextActionAppearance("Remove Optional", MaterialIcon.remove, ContextMenuColor.Yellow)]
     RemoveOptional
 }
 

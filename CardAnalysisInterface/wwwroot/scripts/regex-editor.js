@@ -68,51 +68,61 @@ class RegexEditor {
     insertPill(textToReplace, fullTokenText) {
         if (!this.el || !this.dotNetRef)
             return;
-        const pos = this.getCaretOffset();
-        const fragments = this.getCurrentFragments();
-        // Find which fragment contains the text being replaced
-        let cumulativeLen = 0;
-        let newCaretPos = 0;
-        const updatedFragments = [];
-        for (const frag of fragments) {
-            const fragLen = frag.text.length;
-            if (!frag.isPill && pos > cumulativeLen && pos <= cumulativeLen + fragLen) {
-                const internalOffset = pos - cumulativeLen;
-                const head = frag.text.substring(0, internalOffset - textToReplace.length);
-                const tail = frag.text.substring(internalOffset);
-                if (head)
-                    updatedFragments.push({ text: head, isPill: false, id: null });
-                updatedFragments.push({ text: fullTokenText, isPill: true, id: null }); // ID null tells C# to create new
-                if (tail)
-                    updatedFragments.push({ text: tail, isPill: false, id: null });
-                newCaretPos = cumulativeLen + head.length + fullTokenText.length;
+        const selection = window.getSelection();
+        if (!selection?.rangeCount)
+            return;
+        const range = selection.getRangeAt(0);
+        const node = range.startContainer;
+        if (node.nodeType === Node.TEXT_NODE) {
+            const content = node.textContent || "";
+            const offset = range.startOffset;
+            const startOfWord = content.lastIndexOf(textToReplace, offset - 1);
+            if (startOfWord !== -1) {
+                const newPill = this.createPillElement(fullTokenText, "");
+                range.setStart(node, startOfWord);
+                range.setEnd(node, offset);
+                range.deleteContents();
+                range.insertNode(newPill);
+                range.setStartAfter(newPill);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
             }
-            else {
-                updatedFragments.push(frag);
-            }
-            cumulativeLen += fragLen;
         }
-        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', updatedFragments, "", newCaretPos);
-        this.el.focus();
+        this.onInput();
     }
     getCurrentFragments() {
         if (!this.el)
             return [];
-        const fragments = [];
+        const raw = [];
         this.el.childNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
-                fragments.push({ text: node.textContent || "", id: null, isPill: false });
+                // Replace non-breaking spaces with regular spaces
+                const text = (node.textContent || "").replace(/\u00A0/g, ' ');
+                raw.push({ text: text, id: null, isPill: false });
             }
             else if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('token-style')) {
                 const element = node;
-                fragments.push({
+                raw.push({
                     text: element.getAttribute('data-type-name') || element.textContent || "",
                     id: element.getAttribute('data-snippet-id'),
                     isPill: true
                 });
             }
         });
-        return fragments;
+        const normalized = [];
+        for (const frag of raw) {
+            if (frag.text.length === 0)
+                continue;
+            const last = normalized[normalized.length - 1];
+            if (last && !last.isPill && !frag.isPill) {
+                last.text += frag.text;
+            }
+            else {
+                normalized.push(frag);
+            }
+        }
+        return normalized;
     }
     createPillElement(text, id) {
         const baseTypeName = text.match(/<([^>]+)>/)?.[1] || (text.startsWith('@') ? text.substring(1) : text);
@@ -122,7 +132,7 @@ class RegexEditor {
         span.contentEditable = 'false';
         span.style.backgroundColor = color;
         span.setAttribute('data-type-name', text);
-        span.setAttribute('data-snippet-id', id);
+        span.setAttribute('data-snippet-id', id || `pill-${Math.random().toString(36).substr(2, 9)}`);
         span.textContent = text;
         return span;
     }
@@ -147,7 +157,6 @@ class RegexEditor {
             this.onInput();
             return;
         }
-        // Handle cases where selection overlaps pills
         const allTokens = Array.from(this.el.querySelectorAll('.token-style'));
         let tokensToDelete = false;
         allTokens.forEach(token => {

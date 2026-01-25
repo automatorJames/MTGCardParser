@@ -3,7 +3,7 @@
 public class EditorTokenUnit
 {
     const string SaveFileInNamespace = "MTGPlexer.TokenUnits";
-
+    
     public ProcessedLine LineMetadata { get; }
     public Type TokenUnitType { get; } = typeof(TokenUnit);
     public List<EditorSnippet> Snippets { get; private set; } = [];
@@ -19,6 +19,9 @@ public class EditorTokenUnit
     public List<RegexStyledRun> RegexRuns { get; private set; } = [];
     public List<TextStyledRun> TextRuns { get; private set; } = [];
     public List<Match> CurrentMatches { get; private set; } = [];
+
+    IEnumerable<EditorSnippet> _nonEmptySnippets =>
+        Snippets.Where(x => x is not EditorTextSnippet textSnippet || !string.IsNullOrWhiteSpace(textSnippet.Text));
 
     public EditorTokenUnit(ProcessedLine lineMetadata)
     {
@@ -41,7 +44,7 @@ public class EditorTokenUnit
         if (preferredClassName != null)
             ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
 
-        RenderedRegex = CompositionFactory.GetComposedString(Snippets.Select(x => x.GetRegexSegment()), TokenUnitType);
+        RenderedRegex = CompositionFactory.GetComposedString(_nonEmptySnippets.Select(x => x.GetRegexSegment()), TokenUnitType);
 
         ParseRegexSegments();
         PerformMatching();
@@ -57,32 +60,33 @@ public class EditorTokenUnit
         var existingSnippetMap = Snippets.Where(s => s.Id != null).ToDictionary(s => s.Id);
         int autoIdCounter = 0;
 
-        foreach (var fragment in fragments)
+        foreach (var frag in fragments)
         {
-            if (fragment.IsPill)
+            if (string.IsNullOrEmpty(frag.Text)) continue;
+
+            if (frag.IsPill)
             {
-                // If we have an existing pill with this ID, keep it (preserves complex state)
-                if (fragment.Id != null && existingSnippetMap.TryGetValue(fragment.Id, out var existing))
+                if (frag.Id != null && existingSnippetMap.TryGetValue(frag.Id, out var existing))
+                {
                     newSnippets.Add(existing);
+                }
                 else
                 {
-                    // Create a new pill (likely just inserted via autocomplete)
-                    var newSnippet = CreateSnippetFromText(fragment.Text, $"pill-{Guid.NewGuid():N}");
+                    var newSnippet = CreateSnippetFromText(frag.Text, frag.Id ?? $"pill-{Guid.NewGuid():N}");
                     if (newSnippet != null) newSnippets.Add(newSnippet);
                 }
             }
-            else if (!string.IsNullOrEmpty(fragment.Text))
-                // It's a text fragment
-                newSnippets.Add(new EditorTextSnippet(fragment.Text, $"txt-{autoIdCounter++}"));
+            else
+            {
+                newSnippets.Add(new EditorTextSnippet(frag.Text, $"txt-{autoIdCounter++}"));
+            }
         }
 
-        // Collapse adjacent text snippets
         Snippets = CollapseTextSnippets(newSnippets);
     }
 
     private EditorSnippet CreateSnippetFromText(string text, string id)
     {
-        // Simple manual parsing for @Type or @Method syntax
         if (!text.StartsWith("@")) return new EditorTextSnippet(text, id);
 
         var methodMatch = Regex.Match(text, @"^@(?<Name>\w+)\((?<Args>.*)\)$");
@@ -106,12 +110,14 @@ public class EditorTokenUnit
                 return new EditorPropertySnippet(parsedBaseType, xOfType, id);
         }
 
-        return null;
+        return new EditorTextSnippet(text, id);
     }
 
     private List<EditorSnippet> CollapseTextSnippets(List<EditorSnippet> source)
     {
-        if (source.Count == 0) return source;
+        if (source.Count == 0) 
+            return source;
+
         var result = new List<EditorSnippet>();
         EditorTextSnippet currentText = null;
 
@@ -119,16 +125,26 @@ public class EditorTokenUnit
         {
             if (snippet is EditorTextSnippet textSnippet)
             {
-                if (currentText == null) currentText = textSnippet;
-                else currentText = currentText with { Text = currentText.Text + textSnippet.Text };
+                if (currentText == null) 
+                    currentText = textSnippet;
+                else 
+                    currentText = currentText with { Text = currentText.Text + textSnippet.Text };
             }
             else
             {
-                if (currentText != null) { result.Add(currentText); currentText = null; }
+                if (currentText != null)
+                {
+                    result.Add(currentText);
+                    currentText = null;
+                }
+
                 result.Add(snippet);
             }
         }
-        if (currentText != null) result.Add(currentText);
+
+        if (currentText != null) 
+            result.Add(currentText);
+
         return result;
     }
 
@@ -318,8 +334,9 @@ public class EditorTokenUnit
                 str += propertySnippet.PropertyNameRepresentation;
             else if (snippet is EditorTextSnippet textSnippet)
             {
-                if (string.IsNullOrWhiteSpace(textSnippet.Text)) continue;
-                var rawTextParts = textSnippet.Text
+                var text = textSnippet.Text.Trim();
+                if (string.IsNullOrWhiteSpace(text)) continue;
+                var rawTextParts = text
                     .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => Regex.Replace(x, @"[^\w]+", ""))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -365,20 +382,21 @@ public class EditorTokenUnit
 
         public class {{ClassName}} : {{nameof(TokenUnit)}}
         {
-            protected override Snippet[] Snippets => [{{string.Join(", ", Snippets.Select(x => x.ParameterRepresentation))}}];
+            protected override Snippet[] Snippets => [{{string.Join(", ", _nonEmptySnippets.Select(x => x.ParameterRepresentation))}}];
 
-            {{string.Join("\r\n    ", Snippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineRepresentation()))}}
+            {{string.Join("\r\n    ", _nonEmptySnippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineRepresentation()))}}
         }
         """;
 
     string GetClassStringForDisplayingHtml()
     {
         var classDeclaration = $"{Span("public class")} {Span(ClassName, SpanClass.type)} {Span(":", SpanClass.identifier)} {Span(TokenUnitType.Name, SpanClass.type)}";
+
         var snippetSection = $"{Span("protected override")} {Span("Snippet", SpanClass.type)}{Span("[]")} {Span("Snippets =>", SpanClass.identifier)} {Span("[", SpanClass.identifier)}"
-            + string.Join(", ", Snippets.Select(x => x.GetParameterHtmlRepresentation()))
+            + string.Join(", ", _nonEmptySnippets.Select(x => x.GetParameterHtmlRepresentation()))
             + $"{Span("]", SpanClass.identifier)};";
 
-        var propDeclarations = Snippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineHtmlRepresentation());
+        var propDeclarations = _nonEmptySnippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineHtmlRepresentation());
 
         var styled = $$"""
             {{classDeclaration}}
