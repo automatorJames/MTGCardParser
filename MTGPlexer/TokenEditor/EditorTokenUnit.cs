@@ -1,14 +1,8 @@
 ﻿namespace MTGPlexer.TokenEditor;
 
-public record TemplateFragment(string Text, string Id = null, bool IsPill = false);
-
 public class EditorTokenUnit
 {
     const string SaveFileInNamespace = "MTGPlexer.TokenUnits";
-
-    static readonly Regex TemplateSplitPattern = new Regex(
-        @"(?<Method>@(?<MethodName>\w+)\((?:\s*(?<Arg>[^,)]+)\s*(?:,|$|(?=\)))\s*)*\))|(?<Type>@(?:(?<Wrapper>\w+)<(?<Base>\w+)>|(?<Base>\w+)))|(?<Plain>(?:(?!@\w).)+)",
-        RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.IgnorePatternWhitespace);
 
     public ProcessedLine LineMetadata { get; }
     public Type TokenUnitType { get; } = typeof(TokenUnit);
@@ -18,7 +12,7 @@ public class EditorTokenUnit
     public string ManualClassName { get; private set; }
     public string ClassName => ManualClassName ?? _suggestedClassName;
 
-    public string RawTemplate { get; private set; } = "";
+    public string RawTemplate => string.Concat(Snippets.Select(s => s.EditorRepresentation));
     public string RenderedRegex { get; private set; } = "";
     public string ClassStringForSavingToFile { get; private set; } = "";
     public string ClassStringForDisplayingHtml { get; private set; } = "";
@@ -30,18 +24,17 @@ public class EditorTokenUnit
     {
         LineMetadata = lineMetadata;
         _suggestedClassName = $"New{TokenUnitType.Name}";
-        Update(string.Empty);
+        Update([]);
     }
 
     public EditorPropertySnippet this[string id] =>
         Snippets.OfType<EditorPropertySnippet>().FirstOrDefault(x => x.Id == id);
 
-    public void Update(string templateString = null, string preferredClassName = null)
+    public void Update(List<TemplateFragment> fragments = null, string preferredClassName = null)
     {
-        if (templateString != null)
+        if (fragments != null)
         {
-            RawTemplate = templateString;
-            DigestTemplateStringToSnippets(templateString);
+            SyncSnippetsFromFragments(fragments);
             _suggestedClassName = GetSuggestedClassName();
         }
 
@@ -56,6 +49,87 @@ public class EditorTokenUnit
 
         ClassStringForSavingToFile = GetClassStringForSavingToFile();
         ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
+    }
+
+    private void SyncSnippetsFromFragments(List<TemplateFragment> fragments)
+    {
+        var newSnippets = new List<EditorSnippet>();
+        var existingSnippetMap = Snippets.Where(s => s.Id != null).ToDictionary(s => s.Id);
+        int autoIdCounter = 0;
+
+        foreach (var fragment in fragments)
+        {
+            if (fragment.IsPill)
+            {
+                // If we have an existing pill with this ID, keep it (preserves complex state)
+                if (fragment.Id != null && existingSnippetMap.TryGetValue(fragment.Id, out var existing))
+                    newSnippets.Add(existing);
+                else
+                {
+                    // Create a new pill (likely just inserted via autocomplete)
+                    var newSnippet = CreateSnippetFromText(fragment.Text, $"pill-{Guid.NewGuid():N}");
+                    if (newSnippet != null) newSnippets.Add(newSnippet);
+                }
+            }
+            else if (!string.IsNullOrEmpty(fragment.Text))
+                // It's a text fragment
+                newSnippets.Add(new EditorTextSnippet(fragment.Text, $"txt-{autoIdCounter++}"));
+        }
+
+        // Collapse adjacent text snippets
+        Snippets = CollapseTextSnippets(newSnippets);
+    }
+
+    private EditorSnippet CreateSnippetFromText(string text, string id)
+    {
+        // Simple manual parsing for @Type or @Method syntax
+        if (!text.StartsWith("@")) return new EditorTextSnippet(text, id);
+
+        var methodMatch = Regex.Match(text, @"^@(?<Name>\w+)\((?<Args>.*)\)$");
+        if (methodMatch.Success)
+        {
+            var name = methodMatch.Groups["Name"].Value;
+            var args = methodMatch.Groups["Args"].Value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim()).ToArray();
+            if (Enum.TryParse<ShortcutSnippetMethod>(name, out var methodType))
+                return new EditorMethodSnippet(methodType, args, id);
+        }
+
+        var typeMatch = Regex.Match(text, @"^@(?:(?<Wrapper>\w+)<(?<Base>\w+)>|(?<Base>\w+))$");
+        if (typeMatch.Success)
+        {
+            var wrapper = typeMatch.Groups["Wrapper"].Value;
+            var baseType = typeMatch.Groups["Base"].Value;
+            XOfType xOfType = XOfType.None;
+            if (!string.IsNullOrEmpty(wrapper)) Enum.TryParse<XOfType>(wrapper, out xOfType);
+
+            if (TokenTypeRegistry.NameToType.TryGetValue(baseType, out Type parsedBaseType))
+                return new EditorPropertySnippet(parsedBaseType, xOfType, id);
+        }
+
+        return null;
+    }
+
+    private List<EditorSnippet> CollapseTextSnippets(List<EditorSnippet> source)
+    {
+        if (source.Count == 0) return source;
+        var result = new List<EditorSnippet>();
+        EditorTextSnippet currentText = null;
+
+        foreach (var snippet in source)
+        {
+            if (snippet is EditorTextSnippet textSnippet)
+            {
+                if (currentText == null) currentText = textSnippet;
+                else currentText = currentText with { Text = currentText.Text + textSnippet.Text };
+            }
+            else
+            {
+                if (currentText != null) { result.Add(currentText); currentText = null; }
+                result.Add(snippet);
+            }
+        }
+        if (currentText != null) result.Add(currentText);
+        return result;
     }
 
     public List<TemplateFragment> GetTemplateFragments()
@@ -180,7 +254,6 @@ public class EditorTokenUnit
                     bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
                     bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
 
-                    // If it's whitespace and touches a match on either side, it's Full
                     if ((leftFull || rightFull) && char.IsWhiteSpace(text[k]))
                         charStatus[k] = MatchStatus.Full;
                     else
@@ -236,48 +309,6 @@ public class EditorTokenUnit
         return result;
     }
 
-    void DigestTemplateStringToSnippets(string templateString)
-    {
-        Dictionary<string, int> snippetNameOccurrenceCount = [];
-        List<EditorSnippet> list = [];
-        var matches = TemplateSplitPattern.Matches(templateString);
-
-        string GetId(string name) => snippetNameOccurrenceCount.TryAdd(name, 0) ? name : $"{name}-{++snippetNameOccurrenceCount[name]}";
-
-        foreach (Match match in matches)
-        {
-            string snippet = match.Value;
-            if (string.IsNullOrEmpty(snippet)) continue;
-
-            if (match.Groups["Method"].Success)
-            {
-                var name = match.Groups["MethodName"].Value;
-                var args = match.Groups["Arg"].Captures.Cast<Capture>().Select(c => c.Value.Trim()).ToArray();
-
-                if (Enum.TryParse<ShortcutSnippetMethod>(name, out var parsedMethodType))
-                    list.Add(new EditorMethodSnippet(parsedMethodType, args, GetId(name)));
-            }
-            else if (match.Groups["Type"].Success)
-            {
-                var wrapper = match.Groups["Wrapper"].Value;
-                var baseType = match.Groups["Base"].Value;
-                var name = string.IsNullOrEmpty(wrapper) ? baseType : $"{wrapper}<{baseType}>";
-                XOfType xOfType = XOfType.None;
-
-                if (!string.IsNullOrEmpty(wrapper) && !Enum.TryParse<XOfType>(wrapper, out xOfType)) 
-                    continue;
-
-                if (TokenTypeRegistry.NameToType.TryGetValue(baseType, out Type parsedBaseType))
-                    list.Add(new EditorPropertySnippet(parsedBaseType, xOfType, GetId(name)));
-            }
-            else if (match.Groups["Plain"].Success)
-            {
-                list.Add(new EditorTextSnippet(match.Value, GetId(match.Value)));
-            }
-        }
-        Snippets = list;
-    }
-
     string GetSuggestedClassName()
     {
         string str = "";
@@ -316,8 +347,8 @@ public class EditorTokenUnit
             case ContextActionType.ConvertToManyOf: Snippets[index] = snippet.ConvertToXOfType(XOfType.ManyOf); break;
             case ContextActionType.ConvertToCompoundOf: Snippets[index] = snippet.ConvertToXOfType(XOfType.CompoundOf); break;
 
-            case ContextActionType.MakePlural: 
-            case ContextActionType.RemovePlural: 
+            case ContextActionType.MakePlural:
+            case ContextActionType.RemovePlural:
                 Snippets[index] = snippet.UpdateProptions(oneHotToggleProptions: Proptions.Plural); break;
 
             case ContextActionType.MakeOptional:
@@ -325,8 +356,6 @@ public class EditorTokenUnit
                 Snippets[index] = snippet.UpdateProptions(oneHotToggleProptions: Proptions.Optional); break;
         }
 
-        // Reconstruct using string.Empty because Snippets now contain literal spaces
-        RawTemplate = string.Join(string.Empty, Snippets.Select(x => x.EditorRepresentation));
         Update();
     }
 

@@ -95,26 +95,55 @@ class RegexEditor {
         if (!this.el || !this.dotNetRef) return;
 
         const pos = this.getCaretOffset();
-        const fullText = this.el.textContent || "";
+        const fragments = this.getCurrentFragments();
 
-        const textToInsert = fullTokenText;
-        const head = fullText.substring(0, pos - textToReplace.length);
-        const tail = fullText.substring(pos);
-        const newText = head + textToInsert + tail;
+        // Find which fragment contains the text being replaced
+        let cumulativeLen = 0;
+        let newCaretPos = 0;
+        const updatedFragments: TemplateFragment[] = [];
 
-        const newCaretPos = head.length + textToInsert.length;
+        for (const frag of fragments) {
+            const fragLen = frag.text.length;
+            if (!frag.isPill && pos > cumulativeLen && pos <= cumulativeLen + fragLen) {
+                const internalOffset = pos - cumulativeLen;
+                const head = frag.text.substring(0, internalOffset - textToReplace.length);
+                const tail = frag.text.substring(internalOffset);
 
-        this.isInternallyChanging = true;
-        this.el.textContent = newText;
+                if (head) updatedFragments.push({ text: head, isPill: false, id: null });
+                updatedFragments.push({ text: fullTokenText, isPill: true, id: null }); // ID null tells C# to create new
+                if (tail) updatedFragments.push({ text: tail, isPill: false, id: null });
 
-        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', newText, "", newCaretPos);
-        this.isInternallyChanging = false;
+                newCaretPos = cumulativeLen + head.length + fullTokenText.length;
+            } else {
+                updatedFragments.push(frag);
+            }
+            cumulativeLen += fragLen;
+        }
 
+        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', updatedFragments, "", newCaretPos);
         this.el.focus();
     }
 
+    private getCurrentFragments(): TemplateFragment[] {
+        if (!this.el) return [];
+        const fragments: TemplateFragment[] = [];
+        this.el.childNodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                fragments.push({ text: node.textContent || "", id: null, isPill: false });
+            } else if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).classList.contains('token-style')) {
+                const element = node as HTMLElement;
+                fragments.push({
+                    text: element.getAttribute('data-type-name') || element.textContent || "",
+                    id: element.getAttribute('data-snippet-id'),
+                    isPill: true
+                });
+            }
+        });
+        return fragments;
+    }
+
     private createPillElement(text: string, id: string): HTMLElement {
-        const baseTypeName = text.match(/<([^>]+)>/)?.[1] || text.substring(1);
+        const baseTypeName = text.match(/<([^>]+)>/)?.[1] || (text.startsWith('@') ? text.substring(1) : text);
         const color = this.typeColors[baseTypeName] || '#4A5568';
 
         const span = document.createElement('span');
@@ -123,8 +152,6 @@ class RegexEditor {
         span.style.backgroundColor = color;
         span.setAttribute('data-type-name', text);
         span.setAttribute('data-snippet-id', id);
-
-        // Explicitly set text content to avoid @ symbols being hidden by innerHTML hacks
         span.textContent = text;
         return span;
     }
@@ -132,7 +159,8 @@ class RegexEditor {
     private onInput = () => {
         if (this.isInternallyChanging || !this.el || !this.dotNetRef) return;
         const info = this.getCaretPositionInfo();
-        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', this.el.textContent, info.currentWord, -1);
+        const fragments = this.getCurrentFragments();
+        this.dotNetRef.invokeMethodAsync('NotifyContentChanged', fragments, info.currentWord, -1);
     };
 
     private onBeforeInput = (e: InputEvent) => {
@@ -141,10 +169,8 @@ class RegexEditor {
         if (!selection?.rangeCount) return;
 
         const range = selection.getRangeAt(0);
-        const tokensToDelete = new Set<HTMLElement>();
-        const allTokens = Array.from(this.el.querySelectorAll('.token-style')) as HTMLElement[];
-
         const highlighted = this.el.querySelector('.token-selected') as HTMLElement;
+
         if (highlighted && e.inputType.startsWith('delete')) {
             e.preventDefault();
             highlighted.remove();
@@ -152,17 +178,22 @@ class RegexEditor {
             return;
         }
 
+        // Handle cases where selection overlaps pills
+        const allTokens = Array.from(this.el.querySelectorAll('.token-style')) as HTMLElement[];
+        let tokensToDelete = false;
         allTokens.forEach(token => {
             const tokenRange = document.createRange();
             tokenRange.selectNode(token);
             const intersect = !(range.compareBoundaryPoints(Range.START_TO_END, tokenRange) >= 0 ||
                 range.compareBoundaryPoints(Range.END_TO_START, tokenRange) <= 0);
-            if (intersect) tokensToDelete.add(token);
+            if (intersect) {
+                token.remove();
+                tokensToDelete = true;
+            }
         });
 
-        if (tokensToDelete.size > 0) {
+        if (tokensToDelete) {
             e.preventDefault();
-            tokensToDelete.forEach(t => t.remove());
             this.onInput();
         }
     };

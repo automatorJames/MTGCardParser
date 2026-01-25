@@ -7,10 +7,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     string ClassName
     {
-        get
-        {
-            return _editorTokenUnit.ClassName;
-        }
+        get => _editorTokenUnit.ClassName;
         set
         {
             if (_editorTokenUnit.ClassName == value)
@@ -56,13 +53,13 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     {
         if (firstRender && _dotNetRef != null)
         {
-            // Requirement 2: Only send the base color to JS
             var colorMap = _allTokenTypes.ToDictionary(
                 t => t.Name,
                 t => DeterministicPalette.TypePaletteSet[t].Dark
             );
 
             await JsRuntime.InvokeVoidAsync("regexEditor.initialize", _dotNetRef, _editorElement, colorMap);
+            await SyncEditorPills();
         }
 
         if (_isEditingClassName && _shouldFocusClassName)
@@ -78,15 +75,12 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public void OpenPillContextMenu(string typeName, string snippetId, double x, double y)
     {
         _targetPropertySnippet = _editorTokenUnit[snippetId];
-
-        if (_targetPropertySnippet == null)
-            return;
+        if (_targetPropertySnippet == null) return;
 
         _targetPillTypeName = _targetPropertySnippet.GetContextMenuDisplayName() ?? typeName;
         _menuX = x;
         _menuY = y;
         _isPillMenuVisible = true;
-
         StateHasChanged();
     }
 
@@ -103,30 +97,18 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     [JSInvokable("HandleGlobalEscape")]
     public async Task HandleGlobalEscape()
     {
-        if (_isPillMenuVisible)
-        {
-            _isPillMenuVisible = false;
-            StateHasChanged();
-            return;
-        }
+        if (_isPillMenuVisible) { _isPillMenuVisible = false; StateHasChanged(); return; }
 
-        if (_isDropdownVisible)
-        {
-            _isDropdownVisible = false;
-            StateHasChanged();
-        }
-        else
-        {
-            await HandleCancel();
-        }
+        if (_isDropdownVisible) { _isDropdownVisible = false; StateHasChanged(); }
+        else await HandleCancel();
     }
 
     [JSInvokable("NotifyContentChanged")]
-    public async Task NotifyContentChanged(string rawText, string currentWord, int forceCaretPos)
+    public async Task NotifyContentChanged(List<TemplateFragment> fragments, string currentWord, int forceCaretPos)
     {
-        _isEditorEmpty = string.IsNullOrWhiteSpace(rawText);
+        _isEditorEmpty = fragments.Count == 0 || (fragments.Count == 1 && string.IsNullOrWhiteSpace(fragments[0].Text));
 
-        _editorTokenUnit.Update(templateString: rawText);
+        _editorTokenUnit.Update(fragments: fragments);
 
         if (!string.IsNullOrEmpty(currentWord) && currentWord.StartsWith("@"))
         {
@@ -148,9 +130,8 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             _textToReplaceForAutocomplete = "";
         }
 
-        if (!_isDropdownVisible)
-            await SyncEditorPills(forceCaretPos);
-
+        // Always sync back to ensure JS and C# are 100% aligned on pill IDs and text concatenation
+        await SyncEditorPills(forceCaretPos);
         StateHasChanged();
     }
 
@@ -158,10 +139,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     public async Task SelectSuggestionFromJS(string typeName)
     {
         var type = _allTokenTypes.FirstOrDefault(t => t.Name == typeName);
-        if (type != null)
-        {
-            await SelectSuggestionByKeyboard(type);
-        }
+        if (type != null) await SelectSuggestionByKeyboard(type);
     }
 
     #endregion
@@ -171,10 +149,9 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task SyncEditorPills(int forceCaretPos = -1)
     {
         var fragments = _editorTokenUnit.GetTemplateFragments();
-
         var caretPos = forceCaretPos >= 0
             ? forceCaretPos
-            : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset", _editorElement);
+            : await JsRuntime.InvokeAsync<int>("regexEditor.getCaretOffset");
 
         await JsRuntime.InvokeVoidAsync("regexEditor.syncPills", fragments, caretPos);
     }
@@ -188,7 +165,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     private async Task HandlePillAction(SnippetContextAction action)
     {
         _isPillMenuVisible = false;
-         _editorTokenUnit.HandleActionOnSnippet(action);
+        _editorTokenUnit.HandleActionOnSnippet(action);
         await SyncEditorPills();
         StateHasChanged();
     }
@@ -217,9 +194,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
             case "Enter":
             case "Tab":
                 if (_selectedSuggestionIndex >= 0 && _selectedSuggestionIndex < _autocompleteSuggestions.Count)
-                {
                     await SelectSuggestionByKeyboard(_autocompleteSuggestions[_selectedSuggestionIndex]);
-                }
                 break;
             case "Escape":
                 _isDropdownVisible = false;
@@ -227,29 +202,13 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         }
     }
 
-    private void StartEditingClassName()
-    {
-        _isEditingClassName = true;
-        _shouldFocusClassName = true;
-    }
-
-    private void StopEditingClassName()
-    {
-        _isEditingClassName = false;
-        StateHasChanged();
-    }
+    private void StartEditingClassName() { _isEditingClassName = true; _shouldFocusClassName = true; }
+    private void StopEditingClassName() { _isEditingClassName = false; StateHasChanged(); }
 
     private void HandleClassNameKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter")
-        {
-            StopEditingClassName();
-        }
-        else if (e.Key == "Escape")
-        {
-            _isEditingClassName = false;
-            StateHasChanged();
-        }
+        if (e.Key == "Enter") StopEditingClassName();
+        else if (e.Key == "Escape") { _isEditingClassName = false; StateHasChanged(); }
     }
 
     #endregion
@@ -260,21 +219,13 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
         await OnClose.InvokeAsync(_editorTokenUnit);
     }
 
-    private Task HandleCancel()
-    {
-        return OnClose.InvokeAsync(null);
-    }
+    private Task HandleCancel() => OnClose.InvokeAsync(null);
 
     public async ValueTask DisposeAsync()
     {
         if (_dotNetRef != null)
         {
-            try
-            {
-                await JsRuntime.InvokeVoidAsync("regexEditor.dispose");
-            }
-            catch { }
-
+            try { await JsRuntime.InvokeVoidAsync("regexEditor.dispose"); } catch { }
             _dotNetRef.Dispose();
         }
     }
