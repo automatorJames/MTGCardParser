@@ -4,12 +4,16 @@ namespace MTGPlexer.SnippetHelpers;
 
 public static class SnippetShortcuts
 {
-    public static Snippet Prop(object member, [CallerArgumentExpression("member")] string expression = "")
+    public static Snippet Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
     {
         var lastDot = expression.LastIndexOf('.');
         var name = lastDot == -1 ? expression : expression[(lastDot + 1)..];
 
-        return new Snippet(name);
+        return new Snippet(name, proptions)
+        {
+            IsPlural = proptions.HasFlag(Proptions.Plural),
+            IsOptional = proptions.HasFlag(Proptions.Optional),
+        };
     }
 
     public static SnippetAlternatives Alt(params string[] alternatives) =>
@@ -31,4 +35,13 @@ public static class SnippetShortcuts
             .Select(m => m.Name)
             .ToList();
     }
+}
+
+[Flags]
+public enum Proptions
+{
+    None,
+    Plural,
+    Optional,
+    NoPrecedingSpace,
 }

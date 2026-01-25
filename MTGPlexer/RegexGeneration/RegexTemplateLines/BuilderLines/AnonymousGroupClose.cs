@@ -2,9 +2,9 @@
 
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class GroupClose : EnclosureBookend, IGroupClose
+public class AnonymousGroupClose : EnclosureBookend, IGroupClose
 {
-    public GroupClose(Enclosure[] enclosures, GroupQuantifier? quantifier = null)
+    public AnonymousGroupClose(Enclosure[] enclosures, GroupQuantifier? quantifier = null)
         : base(
             enclosures,
             $"){(quantifier.HasValue ? quantifier.Value.GetDescription() : "")}",

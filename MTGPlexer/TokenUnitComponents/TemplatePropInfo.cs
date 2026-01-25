@@ -8,6 +8,7 @@ public record TemplatePropInfo
     public Type[] GenericTypes { get; init; }
     public bool IsTerminal { get; init; }
     public string Name { get; init; }
+    public Proptions Proptions { get; set; } = Proptions.None;
 
     private TemplatePropInfo()
     {
@@ -146,8 +147,10 @@ public record TemplatePropInfo
         return underlyingType.Name.ToFriendlyCase(TitleDisplayOption.Sentence).ToLower();
     }
 
-    public CaptureGroupSegmentBase GetCaptureGroupPropBase()
+    public CaptureGroupSegmentBase GetCaptureGroupPropBase(Proptions proptions = Proptions.None)
     {
+        this.Proptions = proptions;
+
         return TemplatePropType switch
         {
             TemplatePropType.ManyOf => new ManyOfSegment(this),

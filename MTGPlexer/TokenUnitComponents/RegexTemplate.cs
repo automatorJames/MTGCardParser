@@ -66,10 +66,10 @@ public class RegexTemplate
 
     RegexSegmentBase ResolveSnippetToSegment(Snippet templateSnippet)
     {
-        var matchingProp = TemplatePropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet);
+        var matchingProp = TemplatePropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet.Text);
 
         if (matchingProp != null)
-            return matchingProp.GetCaptureGroupPropBase();
+            return matchingProp.GetCaptureGroupPropBase(templateSnippet.Proptions);
         else
             return new TextSegment(templateSnippet);
     }

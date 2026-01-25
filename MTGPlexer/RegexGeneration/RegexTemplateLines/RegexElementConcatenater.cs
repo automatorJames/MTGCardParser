@@ -34,6 +34,10 @@ public class RegexElementConcatenater
         if (nextElement.DoNotAddPrecedingSpace)
             return;
 
+        // Atom elements are surgical self-contained units added when appropriate by the RegexBuilder, and thus are intended to be appended without preceding spaces
+        if (nextElement is AtomElement)
+            return;
+
         // If the current enclosure doesn't contain any content yet (e.g. text line or alternate value container), then this is the first, so don't add a space.
         // This doesn't apply to group open elements since they represent their own "parent" and are handled below
         if (!_enclosuresWithContent.Contains(nextElement.ParentEnclosure))

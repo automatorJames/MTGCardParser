@@ -38,7 +38,6 @@ public class RegexElement
         DoNotAddPrecedingSpace = doNotAddPrecedingSpace;
     }
 
-
     public override string ToString() =>
         Regex
         + (Comment == null ? "" : $" # {Comment}");

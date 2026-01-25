@@ -1,8 +1,8 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
-public class GroupOpen : EnclosureBookend, IGroupOpen
+public class AnonymousGroupOpen : EnclosureBookend, IGroupOpen
 {
-    public GroupOpen(Enclosure[] enclosures)
+    public AnonymousGroupOpen(Enclosure[] enclosures)
         : base(enclosures, "(")
     {
     }

@@ -1,8 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
-using MTGPlexer.CommonDTOs;
-
-namespace MTGPlexer.TokenEditor;
+﻿namespace MTGPlexer.TokenEditor;
 
 public record TemplateFragment(string Text, string Id = null, bool IsPill = false);
 

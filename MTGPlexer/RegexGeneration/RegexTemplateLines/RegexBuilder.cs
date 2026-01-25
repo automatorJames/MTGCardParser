@@ -1,7 +1,10 @@
+using static System.Net.Mime.MediaTypeNames;
+
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
-/// Manages the construction of a logical sequence of regular expression elements.
+/// Manages the construction of a logical sequence of regular expression elements. Acts as the single interface to translate RegexSegmentBase
+/// components into properly-concatenated RegexElements, and ultimately composed Regex patterns. 
 /// </summary>
 public class RegexBuilder
 {
@@ -40,14 +43,13 @@ public class RegexBuilder
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
     public void OpenGroup(TemplatePropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
     {
-        Enclosure enclosure = null;
+        Enclosure enclosure;
 
         if (captureGroup != null)
             enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureGroup, spaceDisposition);
         else
             enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
 
-        // If this group is named and optional, add the space now that it's been opened
         _enclosureStack.Push(enclosure);
 
         RegexElement groupOpenElement = null;
@@ -55,7 +57,7 @@ public class RegexBuilder
         if (captureGroup != null)
             groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup, isOptional: isOptional);
         else
-            groupOpenElement = new GroupOpen(_orderedEnclosureStack);
+            groupOpenElement = new AnonymousGroupOpen(_orderedEnclosureStack);
 
         _concatenater.Append(groupOpenElement);
     }
@@ -66,15 +68,24 @@ public class RegexBuilder
     /// <param name="quantifier">An optional quantifier to apply to the closed group.</param>
     public void CloseGroup(GroupQuantifier? quantifier = null)
     {
-        if (_enclosureStack.Peek() is RootEnclosure)
+        var currentEnclosure = _enclosureStack.Peek();
+        bool shouldAddOptionalPluralGroupAfterPop = false;
+
+        if (currentEnclosure is RootEnclosure)
             throw new Exception($"No groups are available to close");
 
-        if (_enclosureStack.Peek() is NamedEnclosure namedEnclosure)
+        if (currentEnclosure is NamedEnclosure namedEnclosure)
+        {
             _concatenater.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
+            shouldAddOptionalPluralGroupAfterPop = namedEnclosure.TemplatePropInfo.Proptions.HasFlag(Proptions.Plural);
+        }
         else
-            _concatenater.Append(new GroupClose(_orderedEnclosureStack, quantifier));
+            _concatenater.Append(new AnonymousGroupClose(_orderedEnclosureStack, quantifier));
 
         _enclosureStack.Pop();
+
+        if (shouldAddOptionalPluralGroupAfterPop)
+            _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
     }
 
     /// <summary>

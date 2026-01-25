@@ -142,7 +142,8 @@ public class RegexFormatter
 
     List<RegexElement> InsertVerticalBreathingRoom(List<RegexElement> elements)
     {
-        if (elements.Count == 0) return elements;
+        if (elements.Count == 0) 
+            return elements;
 
         var result = new List<RegexElement> { elements[0] };
         for (var i = 1; i < elements.Count; i++)
@@ -151,7 +152,7 @@ public class RegexFormatter
             var curr = elements[i];
 
             bool pathChanged = curr.UniquePath != prev.UniquePath;
-            bool spaceAbutsLiteral = (prev is TextLine && curr is SpaceLine) || (prev is SpaceLine && curr is TextLine);
+            bool spaceAbutsLiteral = (prev is TextLine or AtomElement && curr is SpaceLine) || (prev is SpaceLine && curr is TextLine or AtomElement);
 
             if (pathChanged || spaceAbutsLiteral)
             {
@@ -173,8 +174,8 @@ public class RegexFormatter
 
     int GetEnclosureEventType(RegexElement line) => line switch
     {
-        GroupOpen or NamedGroupOpen => 1,
-        GroupClose or NamedGroupClose => 2,
+        AnonymousGroupOpen or NamedGroupOpen => 1,
+        AnonymousGroupClose or NamedGroupClose => 2,
         _ => 0
     };
 
@@ -255,7 +256,7 @@ public class RegexFormatter
             AlternateValueEnum ave => _enumBoxMetrics.TryGetValue(ave.NamedPath, out var m)
                 ? m.MaxValueLength + (m.MaxCountLength > 0 ? 3 + m.MaxCountLength : 0) + 2 : 0,
             BlankLine bl when bl.Comment.EndsWith("omitted") => bl.Comment.Length + 2,
-            AlternateValue or NamedGroupOpen or NamedGroupClose or GroupClose => line.Comment.Length + 2,
+            AlternateValue or NamedGroupOpen or NamedGroupClose or AnonymousGroupClose => line.Comment.Length + 2,
             _ => BoxContentLeftPadding + line.Comment.Length
         };
 
@@ -378,24 +379,24 @@ public class RegexFormatter
         string color = line switch
         {
             NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(_enclosurePalettes[line.Enclosures.Last()]),
-            GroupClose => _colors.GroupCloseQuantifierColor,
+            AnonymousGroupClose => _colors.AnonymousGroupBookendColor,
             _ => FormattedRegexColoringRules.White
         };
 
-        char left = line is NamedGroupOpen or GroupOpen ? chars.TopLeft : chars.BottomLeft;
-        char right = line is NamedGroupOpen or GroupOpen ? chars.TopRight : chars.BottomRight;
-        char fill = line is NamedGroupOpen or GroupOpen ? chars.Top : chars.Bottom;
+        char left = line is NamedGroupOpen or AnonymousGroupOpen ? chars.TopLeft : chars.BottomLeft;
+        char right = line is NamedGroupOpen or AnonymousGroupOpen ? chars.TopRight : chars.BottomRight;
+        char fill = line is NamedGroupOpen or AnonymousGroupOpen ? chars.Top : chars.Bottom;
 
         AddCurrentLineSpan(line, spans, left.ToString(), borderPal, false);
 
-        if (line is NamedGroupOpen or GroupClose) // Comments are left-aligned or right-aligned based on type
+        if (line is NamedGroupOpen or AnonymousGroupClose) // Comments are left-aligned or right-aligned based on type
         {
             if (line is NamedGroupOpen) 
                 AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
 
             AddCurrentLineSpan(line, spans, new string(fill, Math.Max(0, width - comment.Length)), borderPal, false);
 
-            if (line is GroupClose) 
+            if (line is AnonymousGroupClose) 
                 AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
         }
         else // NamedGroupClose has comment at the end
@@ -552,7 +553,7 @@ public class RegexFormatter
         return line switch
         {
             NamedGroupOpen or NamedGroupClose => _colors.NamedGroupBookendCommentColor(palette),
-            GroupClose => _colors.GroupCloseQuantifierColor,
+            AnonymousGroupOpen or AnonymousGroupClose => _colors.AnonymousGroupBookendColor,
             AlternateValue => _colors.AlternateValueCommentColor(palette),
             _ => (line.VisibleEnclosures.LastOrDefault(e => e is NamedEnclosure) is NamedEnclosure x)
                 ? _colors.EnclosedTextColor(_enclosurePalettes[x]) : FormattedRegexColoringRules.White
