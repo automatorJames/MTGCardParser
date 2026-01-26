@@ -18,7 +18,6 @@ public abstract record CaptureGroupSegmentBase : RegexSegmentBase
 
     public ValueResult TrySetOnParent(TokenUnit parentTokenUnit, MatchTraversalState state)
     {
-        //var scopedCapture = parentTokenUnit.Match[LeafName].SingleOrDefault();
         var scopedCapture = parentTokenUnit.Match.GetScopedCapture(LeafName, state);
 
         if (scopedCapture == null)

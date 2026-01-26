@@ -5,9 +5,13 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
     public string FullyQualifiedName { get; }
     public bool IsOptional { get; }
 
-    public NamedGroupOpen(Enclosure[] enclosures, TemplatePropInfo prop, bool isOptional = false) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
+    public NamedGroupOpen(Enclosure[] enclosures, TemplatePropInfo prop) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
     {
-        IsOptional = isOptional || prop.Prop.IsDefined(typeof(OptionalComponentAttribute));
+        IsOptional = 
+            prop.Proptions.HasFlag(Proptions.Optional) 
+            || prop.Prop.IsDefined(typeof(OptionalComponentAttribute))
+            || prop.TemplatePropType == TemplatePropType.Enum && Nullable.GetUnderlyingType(prop.Prop.PropertyType) != null;
+
         FullyQualifiedName = GetFullyQualifiedName(enclosures);
     }
 

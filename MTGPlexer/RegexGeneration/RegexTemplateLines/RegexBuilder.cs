@@ -56,7 +56,7 @@ public class RegexBuilder
         RegexElement groupOpenElement = null;
 
         if (captureGroup != null)
-            groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup, isOptional: isOptional);
+            groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup);
         else
             groupOpenElement = new AnonymousGroupOpen(_orderedEnclosureStack);
 
@@ -70,23 +70,25 @@ public class RegexBuilder
     public void CloseGroup(GroupQuantifier? quantifier = null)
     {
         var currentEnclosure = _enclosureStack.Peek();
-        bool shouldAddOptionalPluralGroupAfterPop = false;
 
         if (currentEnclosure is RootEnclosure)
             throw new Exception($"No groups are available to close");
 
         if (currentEnclosure is NamedEnclosure namedEnclosure)
         {
+            quantifier ??= namedEnclosure.TemplatePropInfo.Proptions.HasFlag(Proptions.Optional) ? GroupQuantifier.Optional : null;
             _concatenater.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
-            shouldAddOptionalPluralGroupAfterPop = namedEnclosure.TemplatePropInfo.Proptions.HasFlag(Proptions.Plural);
         }
         else
             _concatenater.Append(new AnonymousGroupClose(_orderedEnclosureStack, quantifier));
 
-        _enclosureStack.Pop();
+        var closedEnclosure = _enclosureStack.Pop();
 
-        if (shouldAddOptionalPluralGroupAfterPop)
-            _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
+        if (closedEnclosure is NamedEnclosure closedNamedEnclosure)
+        {
+            if (closedNamedEnclosure.TemplatePropInfo.Proptions.HasFlag(Proptions.Plural))
+                _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
+        }
     }
 
     /// <summary>
