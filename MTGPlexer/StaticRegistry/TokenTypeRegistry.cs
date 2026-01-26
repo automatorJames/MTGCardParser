@@ -238,108 +238,104 @@ public static partial class TokenTypeRegistry
         var shortcutsType = typeof(SnippetShortcuts);
 
         var tb = _moduleBuilder.DefineType(
-                              editorTokenUnit.ClassName,
-                              TypeAttributes.Public | TypeAttributes.Class,
-                              baseType
-                          );
+            editorTokenUnit.ClassName,
+            TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.BeforeFieldInit,
+            baseType
+        );
 
-        // 1) Set the Order Attribute
-        var orderCtor = typeof(TokenizationOrderAttribute).GetConstructor(new[] { typeof(int) })!;
-        var orderAttr = new CustomAttributeBuilder(orderCtor, new object[] { -1 });
+        // 1) Set TokenizationOrder Attribute
+        var orderCtor = typeof(TokenizationOrderAttribute).GetConstructor([typeof(int)])!;
+        var orderAttr = new CustomAttributeBuilder(orderCtor, [-1]);
         tb.SetCustomAttribute(orderAttr);
 
-        // 2) Define Auto-Properties for referenced types
+        // 2) Define Auto-Properties (Non-Virtual)
         foreach (var snippet in editorTokenUnit.Snippets.OfType<EditorPropertySnippet>())
-            DefineAutoProperty(tb, snippet.ResolvedType.Name, snippet.ResolvedType);
+        {
+            DefineAutoProperty(tb, snippet.PropertyNameRepresentation, snippet.ResolvedType);
+        }
 
-        // 3) Override "protected virtual Snippet[] Snippets { get; }"
+        // 3) Override "protected virtual Snippet[] Snippets" (This one MUST be virtual to override)
         var getSnippetsMethod = tb.DefineMethod(
             "get_Snippets",
             MethodAttributes.Family | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.SpecialName,
             snippetType.MakeArrayType(),
             Type.EmptyTypes);
 
-        var ilGen = getSnippetsMethod.GetILGenerator();
-        var parts = editorTokenUnit.Snippets;
+        var il = getSnippetsMethod.GetILGenerator();
+        var snippets = editorTokenUnit.Snippets;
 
-        // Implementation: return new Snippet[] { ... }
-        ilGen.Emit(OpCodes.Ldc_I4, parts.Count);
-        ilGen.Emit(OpCodes.Newarr, snippetType);
+        il.Emit(OpCodes.Ldc_I4, snippets.Count);
+        il.Emit(OpCodes.Newarr, snippetType);
 
-        for (int i = 0; i < parts.Count; i++)
+        var snippetFromString = snippetType.GetMethod("op_Implicit", BindingFlags.Public | BindingFlags.Static, null, [typeof(string)], null)
+            ?? throw new InvalidOperationException("Snippet.op_Implicit(string) not found.");
+
+        for (int i = 0; i < snippets.Count; i++)
         {
-            var snippet = parts[i];
-            ilGen.Emit(OpCodes.Dup);           // Duplicate array reference
-            ilGen.Emit(OpCodes.Ldc_I4, i);     // Load index
+            var snippet = snippets[i];
+            il.Emit(OpCodes.Dup);
+            il.Emit(OpCodes.Ldc_I4, i);
 
-            if (snippet is EditorPropertySnippet propertySnippet)
+            if (snippet is EditorPropertySnippet propSnippet)
             {
-                // Call SnippetShortcuts.Prop(null, "TypeName")
-                var propMethod = shortcutsType.GetMethod(nameof(SnippetShortcuts.Prop))!;
-                ilGen.Emit(OpCodes.Ldnull);         // First arg: null
-                ilGen.Emit(OpCodes.Ldstr, propertySnippet.PropertyNameRepresentation); // Second arg: property name
-                ilGen.Emit(OpCodes.Call, propMethod);
+                var propMethod = shortcutsType.GetMethod(nameof(SnippetShortcuts.Prop))
+                    ?? throw new Exception("SnippetShortcuts.Prop not found.");
+
+                il.Emit(OpCodes.Ldnull);
+                il.Emit(OpCodes.Ldc_I4, (int)propSnippet.Proptions);
+                il.Emit(OpCodes.Ldstr, propSnippet.PropertyNameRepresentation);
+
+                il.Emit(OpCodes.Call, propMethod);
             }
             else if (snippet is EditorMethodSnippet methodSnippet)
             {
                 var method = methodSnippet.Method;
-                var parameters = method.GetParameters();
+                var paras = method.GetParameters();
 
-                // Special Case: Alt(params string[])
-                if (method.Name == nameof(SnippetShortcuts.Alt))
+                for (int pIdx = 0; pIdx < paras.Length; pIdx++)
                 {
-                    var alts = methodSnippet.Args;
-                    ilGen.Emit(OpCodes.Ldc_I4, alts.Length);
-                    ilGen.Emit(OpCodes.Newarr, typeof(string));
-                    for (int j = 0; j < alts.Length; j++)
+                    var pType = paras[pIdx].ParameterType;
+                    if (pType == typeof(string[]))
                     {
-                        ilGen.Emit(OpCodes.Dup);
-                        ilGen.Emit(OpCodes.Ldc_I4, j);
-                        ilGen.Emit(OpCodes.Ldstr, alts[j]);
-                        ilGen.Emit(OpCodes.Stelem_Ref);
+                        var args = methodSnippet.Args;
+                        il.Emit(OpCodes.Ldc_I4, args.Length);
+                        il.Emit(OpCodes.Newarr, typeof(string));
+                        for (int j = 0; j < args.Length; j++)
+                        {
+                            il.Emit(OpCodes.Dup);
+                            il.Emit(OpCodes.Ldc_I4, j);
+                            il.Emit(OpCodes.Ldstr, args[j]);
+                            il.Emit(OpCodes.Stelem_Ref);
+                        }
                     }
+                    else if (pType == typeof(string))
+                    {
+                        string val = methodSnippet.Args.Length > 0 ? methodSnippet.Args[0] : "";
+                        il.Emit(OpCodes.Ldstr, val);
+                    }
+                    else il.Emit(OpCodes.Ldnull);
                 }
-                // Methods with 1 string parameter (Opt, NoSpace)
-                else if (parameters.Length == 1 && parameters[0].ParameterType == typeof(string))
-                {
-                    ilGen.Emit(OpCodes.Ldstr, methodSnippet.Args[0]);
-                }
-                // Methods with 0 parameters (Plural)
-                else if (parameters.Length == 0)
-                {
-                    // No args to load
-                }
-
-                ilGen.Emit(OpCodes.Call, method);
+                il.Emit(OpCodes.Call, method);
             }
             else if (snippet is EditorTextSnippet textSnippet)
             {
-                // Plain text: new Snippet("text")
-                var snippetCtor = snippetType.GetConstructor(new[] { typeof(string) })!;
-                ilGen.Emit(OpCodes.Ldstr, textSnippet.Text);
-                ilGen.Emit(OpCodes.Newobj, snippetCtor);
+                il.Emit(OpCodes.Ldstr, textSnippet.TrimmedText);
+                il.Emit(OpCodes.Call, snippetFromString);
             }
 
-            ilGen.Emit(OpCodes.Stelem_Ref); // array[i] = createdSnippet
+            il.Emit(OpCodes.Stelem_Ref);
         }
-        ilGen.Emit(OpCodes.Ret);
 
-        // Link the getter to the Property
+        il.Emit(OpCodes.Ret);
+
         var propSnippets = tb.DefineProperty("Snippets", PropertyAttributes.None, snippetType.MakeArrayType(), null);
         propSnippets.SetGetMethod(getSnippetsMethod);
 
-        // 4) Define Parameterless Constructor
-        var ctor = tb.DefineConstructor(
-                       MethodAttributes.Public,
-                       CallingConventions.Standard,
-                       Type.EmptyTypes
-                   );
+        // 4) Constructor
+        var ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
         var ctorIl = ctor.GetILGenerator();
-
         ctorIl.Emit(OpCodes.Ldarg_0);
-        var baseDefaultCtor = baseType.GetConstructor(
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            null, Type.EmptyTypes, null)!;
+        var baseDefaultCtor = baseType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null)!;
         ctorIl.Emit(OpCodes.Call, baseDefaultCtor);
         ctorIl.Emit(OpCodes.Ret);
 
@@ -351,28 +347,33 @@ public static partial class TokenTypeRegistry
 
         return type;
 
-        // local helper
-        void DefineAutoProperty(TypeBuilder tb, string name, Type propertyType)
+        // Corrected helper: Removed MethodAttributes.Virtual
+        void DefineAutoProperty(TypeBuilder typeBuilder, string propertyName, Type propertyType)
         {
-            var field = tb.DefineField($"_{char.ToLowerInvariant(name[0])}{name[1..]}", propertyType, FieldAttributes.Private);
-            var prop = tb.DefineProperty(name, PropertyAttributes.HasDefault, propertyType, null);
+            var fieldBuilder = typeBuilder.DefineField($"<{propertyName}>k__BackingField", propertyType, FieldAttributes.Private);
+            var propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
 
-            // getter
-            var getter = tb.DefineMethod($"get_{name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
-            var getIL = getter.GetILGenerator();
-            getIL.Emit(OpCodes.Ldarg_0);
-            getIL.Emit(OpCodes.Ldfld, field);
-            getIL.Emit(OpCodes.Ret);
-            prop.SetGetMethod(getter);
+            // Standard Public, Non-Virtual Getter
+            var getter = typeBuilder.DefineMethod($"get_{propertyName}",
+                MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                propertyType, Type.EmptyTypes);
+            var gIl = getter.GetILGenerator();
+            gIl.Emit(OpCodes.Ldarg_0);
+            gIl.Emit(OpCodes.Ldfld, fieldBuilder);
+            gIl.Emit(OpCodes.Ret);
 
-            // setter
-            var setter = tb.DefineMethod($"set_{name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, null, new[] { propertyType });
-            var setIL = setter.GetILGenerator();
-            setIL.Emit(OpCodes.Ldarg_0);
-            setIL.Emit(OpCodes.Ldarg_1);
-            setIL.Emit(OpCodes.Stfld, field);
-            setIL.Emit(OpCodes.Ret);
-            prop.SetSetMethod(setter);
+            // Standard Public, Non-Virtual Setter
+            var setter = typeBuilder.DefineMethod($"set_{propertyName}",
+                MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                null, [propertyType]);
+            var sIl = setter.GetILGenerator();
+            sIl.Emit(OpCodes.Ldarg_0);
+            sIl.Emit(OpCodes.Ldarg_1);
+            sIl.Emit(OpCodes.Stfld, fieldBuilder);
+            sIl.Emit(OpCodes.Ret);
+
+            propertyBuilder.SetGetMethod(getter);
+            propertyBuilder.SetSetMethod(setter);
         }
     }
 

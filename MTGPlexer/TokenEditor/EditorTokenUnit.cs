@@ -23,7 +23,7 @@ public class EditorTokenUnit
     public List<Match> CurrentMatches { get; private set; } = [];
 
     IEnumerable<EditorSnippet> _nonEmptySnippets =>
-        Snippets.Where(x => x is not EditorTextSnippet textSnippet || !string.IsNullOrWhiteSpace(textSnippet.Text));
+        Snippets.Where(x => x is not EditorTextSnippet textSnippet || !string.IsNullOrWhiteSpace(textSnippet.RawText));
 
     public EditorTokenUnit(ProcessedLine lineMetadata)
     {
@@ -116,7 +116,7 @@ public class EditorTokenUnit
             if (snippet is EditorTextSnippet textSnippet)
             {
                 if (currentText == null) currentText = textSnippet;
-                else currentText = currentText with { Text = currentText.Text + textSnippet.Text };
+                else currentText = currentText with { RawText = currentText.RawText + textSnippet.RawText };
             }
             else
             {
@@ -324,7 +324,7 @@ public class EditorTokenUnit
                 str += propertySnippet.PropertyNameRepresentation;
             else if (snippet is EditorTextSnippet textSnippet)
             {
-                var text = textSnippet.Text.Trim();
+                var text = textSnippet.TrimmedText;
                 if (string.IsNullOrWhiteSpace(text)) continue;
                 var rawTextParts = text
                     .Split(' ', StringSplitOptions.RemoveEmptyEntries)
