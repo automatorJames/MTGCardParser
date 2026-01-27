@@ -1,10 +1,10 @@
 ﻿@page "/"
-@page "/card-analysis"
+@page "/card-lines"
 @inject IJSRuntime JSRuntime
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
 
-<div class="analyzed-card-container" id="card-analysis">
+<div class="analyzed-card-container" id="card-lines">
     @foreach (var card in GetFilteredCards())
     {
         <CardBlock Card=card />

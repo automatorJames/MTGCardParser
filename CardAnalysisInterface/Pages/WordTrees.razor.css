@@ -4,7 +4,7 @@
 /* == CONTAINER & CARD STYLES                                       == */
 /* =================================================================== */
 
-.span-trees-container {
+.word-trees-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -12,7 +12,7 @@
     padding: 1rem;
 }
 
-.span-trees-card {
+.word-trees-card {
     width: 90%;
     background-color: #252525;
     border-radius: 8px;
@@ -89,21 +89,21 @@
     color: #e0e0e0;
 }
 
-.span-trees-card.highlight-active .card-name-item.lowlight {
+.word-trees-card.highlight-active .card-name-item.lowlight {
     opacity: 0.2;
 }
 
-.span-trees-card.highlight-active .card-name-item.highlight {
+.word-trees-card.highlight-active .card-name-item.highlight {
     border-color: var(--sat-color);
     color: var(--highlight-color);
     opacity: 1;
 }
 
-.span-trees-card.type-highlight-active .type-name-item.lowlight {
+.word-trees-card.type-highlight-active .type-name-item.lowlight {
     opacity: 0.2;
 }
 
-.span-trees-card.type-highlight-active .type-name-item.highlight {
+.word-trees-card.type-highlight-active .type-name-item.highlight {
     color: var(--highlight-color);
     opacity: 1;
 }

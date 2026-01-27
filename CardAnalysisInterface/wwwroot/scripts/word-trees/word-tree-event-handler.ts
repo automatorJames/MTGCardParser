@@ -1,7 +1,7 @@
-﻿// span-tree-event-handler.ts
-import { CardElement } from "./span-tree-models.js";
-import { WordTree } from "./span-tree-animator.js";
-import { createGradientStops } from "./span-tree-svg-drawer.js";
+﻿// word-tree-event-handler.ts
+import { CardElement } from "./word-tree-models.js";
+import { WordTree } from "./word-tree-animator.js";
+import { createGradientStops } from "./word-tree-svg-drawer.js";
 
 const globalEventState = {
     initialized: false,
@@ -239,7 +239,7 @@ export function setupGlobalEventHandlers(): void {
 
     document.addEventListener('mouseover', (event: MouseEvent) => {
         const target = event.target as Element;
-        const card = target.closest<CardElement>('.span-trees-card');
+        const card = target.closest<CardElement>('.word-trees-card');
         const last = globalEventState.lastHovered;
 
         // *** FIX: Explicitly reset the last card if we have moved to a different card or off all cards. ***

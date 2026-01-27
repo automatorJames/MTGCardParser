@@ -1,5 +1,5 @@
-﻿import { AdjacencyNode, DeterministicPalette, NodeConfig } from './span-tree-models.js';
-import { getFanDelta } from './span-tree-layout-calculator.js';
+﻿import { AdjacencyNode, DeterministicPalette, NodeConfig } from './word-tree-models.js';
+import { getFanDelta } from './word-tree-layout-calculator.js';
 
 /**
  * Generates the SVG <stop> elements for a gradient.

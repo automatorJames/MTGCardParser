@@ -180,4 +180,4 @@ function applyTreatments(card, activePaths) {
         });
     }
 }
-//# sourceMappingURL=type-expressions.js.map
+//# sourceMappingURL=type-regex.js.map

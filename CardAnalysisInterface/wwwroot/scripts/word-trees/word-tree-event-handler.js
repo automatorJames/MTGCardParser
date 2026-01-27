@@ -1,5 +1,5 @@
-import { WordTree } from "./span-tree-animator.js";
-import { createGradientStops } from "./span-tree-svg-drawer.js";
+import { WordTree } from "./word-tree-animator.js";
+import { createGradientStops } from "./word-tree-svg-drawer.js";
 const globalEventState = {
     initialized: false,
     lastHovered: {
@@ -219,7 +219,7 @@ export function setupGlobalEventHandlers() {
     window.unifiedHighlighterInitialized = true;
     document.addEventListener('mouseover', (event) => {
         const target = event.target;
-        const card = target.closest('.span-trees-card');
+        const card = target.closest('.word-trees-card');
         const last = globalEventState.lastHovered;
         // *** FIX: Explicitly reset the last card if we have moved to a different card or off all cards. ***
         if (last.card && last.card !== card) {
@@ -274,4 +274,4 @@ export function setupGlobalEventHandlers() {
         globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
     });
 }
-//# sourceMappingURL=span-tree-event-handler.js.map
+//# sourceMappingURL=word-tree-event-handler.js.map

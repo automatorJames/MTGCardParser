@@ -1,4 +1,4 @@
-﻿// card-analysis.js
+﻿// card-lines.js
 
 // --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
 
@@ -12,7 +12,7 @@ const dataPathSelector = '[data-path]';
 const boundaryClass = 'match-boundary';
 
 function initCardCaptureHover() {
-    const mainContent = document.getElementById('card-analysis');
+    const mainContent = document.getElementById('card-lines');
     if (!mainContent) {
         return;
     }
@@ -79,7 +79,7 @@ function initCardCaptureHover() {
 }
 
 function disposeCardCaptureHover() {
-    const mainContent = document.getElementById('card-analysis');
+    const mainContent = document.getElementById('card-lines');
     if (mainContent && mouseoverHandler && mouseleaveHandler) {
         mainContent.removeEventListener('mouseover', mouseoverHandler);
         mainContent.removeEventListener('mouseleave', mouseleaveHandler);

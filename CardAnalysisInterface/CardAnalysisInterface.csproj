@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <Folder Include="SampleImages\" />
-    <Folder Include="wwwroot\scripts\type-expressions\" />
+    <Folder Include="wwwroot\scripts\type-regex\" />
   </ItemGroup>
 
 </Project>

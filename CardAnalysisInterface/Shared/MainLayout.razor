@@ -7,9 +7,9 @@
 <div class="page">
     <nav class="top-row px-4">
         <div class="nav-links">
-            <NavLink href="/" Match="NavLinkMatch.All">Card Analysis</NavLink>
-            <NavLink href="type-expressions">Type Expressions</NavLink>
-            <NavLink href="span-trees">Span Trees</NavLink>
+            <NavLink href="/" Match="NavLinkMatch.All">Card Lines</NavLink>
+            <NavLink href="type-regex">Type Regex</NavLink>
+            <NavLink href="word-trees">Word Trees</NavLink>
         </div>
 
         <div class="top-row-right-items">
@@ -17,16 +17,16 @@
             @if (RuntimeSettings.IsLoaded)
             {
                 var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
-                if (relativePath == "" || relativePath == "card-analysis")
+                if (relativePath == "" || relativePath == "card-lines")
                 {
                     <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
                 }
-                else if (relativePath == "type-expressions")
+                else if (relativePath == "type-regex")
                 {
                     <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Show Minified" />
                     <Switch @bind-Value=@RuntimeSettings.HideRegexesWithZeroCaptures Label="Hide Zero-Capture" />
                 }
-                else if (relativePath == "span-trees")
+                else if (relativePath == "word-trees")
                 {
                     <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
                     <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
@@ -52,8 +52,8 @@
     private readonly List<string> _pageRoutes = new()
     {
         "/",
-        "type-expressions",
-        "span-trees"
+        "type-regex",
+        "word-trees"
     };
 
     protected override void OnInitialized()

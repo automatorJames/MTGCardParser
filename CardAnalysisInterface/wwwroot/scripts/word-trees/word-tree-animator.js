@@ -58,4 +58,4 @@ export var WordTree;
         Animator.animateOpacity = animateOpacity;
     })(Animator = WordTree.Animator || (WordTree.Animator = {}));
 })(WordTree || (WordTree = {}));
-//# sourceMappingURL=span-tree-animator.js.map
+//# sourceMappingURL=word-tree-animator.js.map

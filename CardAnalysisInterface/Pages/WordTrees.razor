@@ -1,4 +1,4 @@
-﻿@page "/span-trees"
+﻿@page "/word-trees"
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
@@ -13,10 +13,10 @@
     }
     else
     {
-        <div class="span-trees-container">
+        <div class="word-trees-container">
             @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
             {
-                <div class="span-trees-card">
+                <div class="word-trees-card">
                     <div class="card-header">
                         <div class="header-main-info">
                             <span class="header-span-text" title="@span.Text">@span.Text</span>

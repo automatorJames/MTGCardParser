@@ -1,6 +1,6 @@
-// span-tree-orchestrator.ts
-import * as Layout from "./span-tree-layout-calculator.js";
-import * as Drawer from "./span-tree-svg-drawer.js";
+// word-tree-orchestrator.ts
+import * as Layout from "./word-tree-layout-calculator.js";
+import * as Drawer from "./word-tree-svg-drawer.js";
 /**
  * Builds a cumulative map of layout offsets. For each column, the offset is the
  * sum of its own required push plus all pushes from columns closer to the center.
@@ -43,7 +43,7 @@ function createSvgDefs(svg) {
  * Orchestrates the entire process of calculating layout and drawing a word tree SVG.
  */
 export function orchestrateWordTreeRender(container) {
-    const card = container.closest('.span-trees-card');
+    const card = container.closest('.word-trees-card');
     const processedData = card?.__data;
     const svg = container.querySelector('svg');
     if (!processedData || !svg)
@@ -109,4 +109,4 @@ export function orchestrateWordTreeRender(container) {
     Drawer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 1, config, cardPalettes, allCardsSet, container.id);
     Drawer.createNode(svg, mainSpanObject, false, config, cardPalettes, container.id);
 }
-//# sourceMappingURL=span-tree-orchestrator.js.map
+//# sourceMappingURL=word-tree-orchestrator.js.map
