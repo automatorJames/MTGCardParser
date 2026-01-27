@@ -9,44 +9,24 @@
 
     public string FormatName(string rawName, params string[] localExtensions)
     {
-        var friendlyRaw = rawName.ToFriendlyCase(TitleDisplayOption.Sentence);
-
-        // Check if the current rawName is already the last item in the chain
-        bool isRedundant = CurrentNameChain.Count > 0 &&
-                           CurrentNameChain.Last().Equals(friendlyRaw, StringComparison.OrdinalIgnoreCase);
-
-        var parts = new List<string>();
-        if (!isRedundant)
-            parts.Add(friendlyRaw);
+        var parts = new List<string> { rawName.ToFriendlyCase(TitleDisplayOption.Sentence) };
 
         parts.AddRange(CurrentSuffixChain.Select(e => e.ToFriendlyCase(TitleDisplayOption.Sentence)));
         parts.AddRange(localExtensions.Select(e => e.ToFriendlyCase(TitleDisplayOption.Sentence)));
 
-        var formattedBase = string.Join(": ", parts);
+        var nameWithSuffixes = string.Join(": ", parts);
 
-        if (CurrentNameChain.Count > 0)
-        {
-            return string.IsNullOrEmpty(formattedBase)
-                ? string.Join(": ", CurrentNameChain)
-                : $"{string.Join(": ", CurrentNameChain)}: {formattedBase}";
-        }
-
-        return formattedBase;
+        return CurrentNameChain.Count > 0
+            ? $"{string.Join(": ", CurrentNameChain)}: {nameWithSuffixes}"
+            : nameWithSuffixes;
     }
 
     public SpanContext PushSuffix(string name) =>
         this with { SuffixChain = new List<string>(CurrentSuffixChain) { name } };
 
-    public SpanContext PushName(string name)
-    {
-        var friendly = name.ToFriendlyCase(TitleDisplayOption.Sentence);
+    public SpanContext PushName(string name) =>
+        this with { NameChain = new List<string>(CurrentNameChain) { name.ToFriendlyCase(TitleDisplayOption.Sentence) } };
 
-        // FIX: Prevent pushing the same name twice in a row (e.g., from OneOf variants)
-        if (CurrentNameChain.Count > 0 && CurrentNameChain.Last().Equals(friendly, StringComparison.OrdinalIgnoreCase))
-            return this;
-
-        return this with { NameChain = new List<string>(CurrentNameChain) { friendly } };
-    }
-
-    public SpanContext ClearNameChain() => this with { NameChain = null, SuffixChain = null };
+    // Clear everything: used when a visible branch is reached
+    public SpanContext Clear() => this with { NameChain = null, SuffixChain = null };
 }
