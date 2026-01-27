@@ -1,6 +1,4 @@
-﻿using MTGPlexer.TokenUnitComponents;
-
-namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
 /// Factory service that builds a SpanAnalysis tree from a root TokenUnit.
