@@ -2,33 +2,51 @@
     string FullText,
     string PathPrefix,
     IReadOnlyList<string> NameChain = null,
-    IReadOnlyList<string> SuffixChain = null) // Added Suffixes
+    IReadOnlyList<string> SuffixChain = null)
 {
     public IReadOnlyList<string> CurrentNameChain => NameChain ?? Array.Empty<string>();
     public IReadOnlyList<string> CurrentSuffixChain => SuffixChain ?? Array.Empty<string>();
 
     public string FormatName(string rawName, params string[] localExtensions)
     {
-        var parts = new List<string> { rawName.ToFriendlyCase(TitleDisplayOption.Sentence) };
+        var friendlyRaw = rawName.ToFriendlyCase(TitleDisplayOption.Sentence);
 
-        // 1. Add context-level suffixes first, then local ones
+        // Check if the current rawName is already the last item in the chain
+        bool isRedundant = CurrentNameChain.Count > 0 &&
+                           CurrentNameChain.Last().Equals(friendlyRaw, StringComparison.OrdinalIgnoreCase);
+
+        var parts = new List<string>();
+        if (!isRedundant)
+            parts.Add(friendlyRaw);
+
         parts.AddRange(CurrentSuffixChain.Select(e => e.ToFriendlyCase(TitleDisplayOption.Sentence)));
         parts.AddRange(localExtensions.Select(e => e.ToFriendlyCase(TitleDisplayOption.Sentence)));
 
-        var nameWithSuffixes = string.Join(": ", parts);
+        var formattedBase = string.Join(": ", parts);
 
-        // 2. Prepend the inherited chain
-        return CurrentNameChain.Count > 0
-            ? $"{string.Join(": ", CurrentNameChain)}: {nameWithSuffixes}"
-            : nameWithSuffixes;
+        if (CurrentNameChain.Count > 0)
+        {
+            return string.IsNullOrEmpty(formattedBase)
+                ? string.Join(": ", CurrentNameChain)
+                : $"{string.Join(": ", CurrentNameChain)}: {formattedBase}";
+        }
+
+        return formattedBase;
     }
 
     public SpanContext PushSuffix(string name) =>
         this with { SuffixChain = new List<string>(CurrentSuffixChain) { name } };
 
-    public SpanContext PushName(string name) =>
-        this with { NameChain = new List<string>(CurrentNameChain) { name } };
+    public SpanContext PushName(string name)
+    {
+        var friendly = name.ToFriendlyCase(TitleDisplayOption.Sentence);
 
-    // Clear both so suffixes are "one-shot" for the immediate child
+        // FIX: Prevent pushing the same name twice in a row (e.g., from OneOf variants)
+        if (CurrentNameChain.Count > 0 && CurrentNameChain.Last().Equals(friendly, StringComparison.OrdinalIgnoreCase))
+            return this;
+
+        return this with { NameChain = new List<string>(CurrentNameChain) { friendly } };
+    }
+
     public SpanContext ClearNameChain() => this with { NameChain = null, SuffixChain = null };
 }
