@@ -4,7 +4,7 @@
 
 .token-type-name {
     font-size: 1.15rem;
-    font-weight: 500;
+    font-weight: 300;
     color: var(--color);
     padding-left: 24px;
     transition: color var(--transition-time);
