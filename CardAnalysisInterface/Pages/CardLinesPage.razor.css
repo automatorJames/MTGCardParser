@@ -1,0 +1,23 @@
+﻿.analyzed-card-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem;
+}
+
+h1, h2, h3, h4, h5 {
+    color: #569cd6;
+    padding-bottom: 8px;
+}
+
+h5 {
+    font-size: 1.15rem;
+}
+
+h4 {
+    color: #9cdcfe;
+    border-bottom: 1px dashed;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}

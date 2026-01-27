@@ -1,8 +1,11 @@
 ﻿.card-capture-block {
     width: 65%;
-    background-color: #252525;
+    background-color: var(--light-grey);
+    border: 1px solid var(--outline-grey);
     border-radius: 8px;
-    border: 1px solid #333;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .line-label {
@@ -17,21 +20,29 @@
         border-top: 1px dashed;
     }
 
-pre.line-text {
-    color: #aaa; /* darker gray for non-span text */
+pre.nested-underline-container {
+    background-color: var(--dark-grey);
     padding: 1rem;
-    cursor: default;
-    line-height: 4em;
-    margin-bottom: 1rem;
+    overflow: hidden;
+    display: block;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    transition: all var(--transition-time);
+    border: 1px solid transparent;
 }
 
-    /* Override color for span children only */
-    pre.line-text span {
-        color: #d4d4d4;
+    pre.nested-underline-container.highlight-active {
+        background-color: var(--near-black);
     }
 
+    pre.nested-underline-container::before {
+        content: "";
+        display: block;
+        height: 0;
+        margin-top: var(--top-crop, 0);
+    }
 
-/* The flash animation */
+/* Flash Animation */
 @keyframes flash-highlight-animation {
     0% {
         box-shadow: 0 0 0 0px rgba(255, 255, 255, 0);
@@ -39,7 +50,7 @@ pre.line-text {
     }
 
     15% {
-        box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.6); /* Adjust color to your theme */
+        box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.6);
         background-color: rgba(64, 158, 255, 0.1);
     }
 
@@ -51,5 +62,5 @@ pre.line-text {
 
 .flash-highlight {
     animation: flash-highlight-animation 2.0s ease-out;
-    border-radius: 4px; /* Matches the visual "pop" */
+    border-radius: 4px;
 }

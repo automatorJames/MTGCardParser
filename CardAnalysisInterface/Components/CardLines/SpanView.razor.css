@@ -2,32 +2,40 @@
     border-bottom-width: var(--underline-width);
     border-bottom-style: solid;
     border-bottom-color: var(--color);
-    padding-bottom: 2px; /* Base padding */
+    padding-bottom: 2px;
 }
 
 .prop-capture-overline {
-    border-top: 2px solid;
+    border-top-width: var(--underline-width);
+    border-top-style: solid;
     border-top-color: var(--color);
     margin-top: -2px;
+    padding-top: 1px;
 }
 
-    .prop-capture-overline.dashed-line {
-        border-top-style: dashed;
-    }
-
-    .prop-capture-overline.dotted-line {
-        border-top-style: dotted;
-    }
-
-.twig {
-    /* Styles for text that is part of a parent capture but not a child capture */
-    color: #bdbdbd;
+/* Modifier classes */
+.dashed-line {
+    border-top-style: dashed;
 }
 
+.dotted-line {
+    border-top-style: dotted;
+}
+
+/* Highlight/Mute logic for the spans themselves */
 .nested-underline.highlight-active {
     border-bottom-color: var(--highlight-color);
+    color: var(--highlight-color);
 }
 
 .nested-underline.mute-active {
     border-bottom-color: var(--lowlight-color);
+}
+
+.prop-capture-overline.mute-active {
+    border-top-color: var(--lowlight-color);
+}
+
+.twig {
+    color: #bdbdbd;
 }
