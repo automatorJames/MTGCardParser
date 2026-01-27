@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitGraphComponents;
 
 public class ManyOf<T> : ManyOf
 {
@@ -25,8 +25,8 @@ public class ManyOf : XOf
     {
         var separator = Conjunction switch
         {
-            TokenUnitComponents.Conjunction.And => " & ",
-            TokenUnitComponents.Conjunction.Or => " | ",
+            TokenUnitGraphComponents.Conjunction.And => " & ",
+            TokenUnitGraphComponents.Conjunction.Or => " | ",
             _ => " & ",
         };
 

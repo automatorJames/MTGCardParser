@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.TokenUnitGraphComponents;
 
 public class DynamicOf<T> : DynamicOf
 {

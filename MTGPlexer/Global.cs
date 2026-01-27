@@ -19,7 +19,7 @@ global using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Helpers;
 global using MTGPlexer.SnippetHelpers;
 global using MTGPlexer.Tokenizers;
 global using MTGPlexer.RegexGeneration.Composers;
-global using MTGPlexer.TokenUnitComponents;
+global using MTGPlexer.TokenUnitGraphComponents;
 global using MTGPlexer.TokenUnits;
 global using MTGPlexer.TokenEditor;
 global using System.Reflection;

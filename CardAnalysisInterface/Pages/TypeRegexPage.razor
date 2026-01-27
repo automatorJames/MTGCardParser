@@ -3,12 +3,12 @@
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @using System.Text
+@using MTGPlexer.Colors
 @using MTGPlexer.CommonDTOs
 @using MTGPlexer.RegexGeneration
-@using MTGPlexer.TokenUnitComponents
-@using Microsoft.AspNetCore.Components
 @using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines
-@using MTGPlexer.Colors
+@using MTGPlexer.TokenUnitGraphComponents
+@using Microsoft.AspNetCore.Components
 
 <div class="type-card-container">
     @foreach (var tokenUnitCapture in GetFilteredTokenUnitCaptures())

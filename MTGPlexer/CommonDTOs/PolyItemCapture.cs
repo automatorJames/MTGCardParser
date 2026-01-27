@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnitComponents;
+﻿namespace MTGPlexer.CommonDTOs;
 
 public record PolyItemCapture
 {
