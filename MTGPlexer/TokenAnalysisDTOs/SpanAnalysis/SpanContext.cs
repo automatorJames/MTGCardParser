@@ -1,32 +1,38 @@
-﻿internal record SpanContext(
-    string FullText,
-    string PathPrefix,
-    IReadOnlyList<string> NameChain = null,
-    IReadOnlyList<string> SuffixChain = null)
+﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
+
+internal record SpanContext(string FullText, string PathPrefix, IReadOnlyList<string> NameChain = null)
 {
-    public IReadOnlyList<string> CurrentNameChain => NameChain ?? Array.Empty<string>();
-    public IReadOnlyList<string> CurrentSuffixChain => SuffixChain ?? Array.Empty<string>();
+    private IReadOnlyList<string> CurrentNameChain => NameChain ?? Array.Empty<string>();
 
-    public string FormatName(string rawName, params string[] localExtensions)
+    /// <summary>
+    /// Combines the inherited name chain with the current node's name.
+    /// Handles Role vs Identity redundancy (e.g., preventing "Apple: Apple").
+    /// </summary>
+    public string FormatName(string rawName)
     {
-        var parts = new List<string> { rawName.ToFriendlyCase(TitleDisplayOption.Sentence) };
+        var friendly = rawName.ToFriendlyCase(TitleDisplayOption.Sentence);
 
-        parts.AddRange(CurrentSuffixChain.Select(e => e.ToFriendlyCase(TitleDisplayOption.Sentence)));
-        parts.AddRange(localExtensions.Select(e => e.ToFriendlyCase(TitleDisplayOption.Sentence)));
-
-        var nameWithSuffixes = string.Join(": ", parts);
+        // If the chain already ends with this name, don't repeat it
+        if (CurrentNameChain.Count > 0 && CurrentNameChain.Last().Equals(friendly, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Join(": ", CurrentNameChain);
+        }
 
         return CurrentNameChain.Count > 0
-            ? $"{string.Join(": ", CurrentNameChain)}: {nameWithSuffixes}"
-            : nameWithSuffixes;
+            ? $"{string.Join(": ", CurrentNameChain)}: {friendly}"
+            : friendly;
     }
 
-    public SpanContext PushSuffix(string name) =>
-        this with { SuffixChain = new List<string>(CurrentSuffixChain) { name } };
+    public SpanContext PushName(string name)
+    {
+        return this with
+        {
+            NameChain = new List<string>(CurrentNameChain) { name.ToFriendlyCase(TitleDisplayOption.Sentence) }
+        };
+    }
 
-    public SpanContext PushName(string name) =>
-        this with { NameChain = new List<string>(CurrentNameChain) { name.ToFriendlyCase(TitleDisplayOption.Sentence) } };
-
-    // Clear everything: used when a visible branch is reached
-    public SpanContext Clear() => this with { NameChain = null, SuffixChain = null };
+    public SpanContext Clear()
+    {
+        return this with { NameChain = null };
+    }
 }
