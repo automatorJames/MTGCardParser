@@ -173,6 +173,6 @@ public static class Extensions
             .ToArray();
     }
 
-    public static string Debug(this object obj) => DebugSerializer.Serialize(obj);
+    public static string PrintDebug(this object obj) => DebugSerializer.Serialize(obj);
 }
 

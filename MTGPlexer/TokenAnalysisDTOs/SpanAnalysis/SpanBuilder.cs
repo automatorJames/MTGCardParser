@@ -76,8 +76,7 @@ public static class SpanBuilder
         var children = new List<SpanNode> { BuildNode(innerProp, childCtx) };
 
         return CreateBranch(prop.Capture, "one-of-wrapper", prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, children, ctx)
-            with
-        { IsCollapsed = true };
+            with { IsCollapsed = true };
     }
 
     private static SpanBranch BuildDynamicBranch(DynamicOf dyn, PropertyCapture prop, SpanContext ctx)
