@@ -1,17 +1,11 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
-/// <summary>
-/// Factory service that builds a SpanAnalysis tree from a root TokenUnit.
-/// Replaces the legacy precursor-node logic with a cleaner, single-pass recursive build.
-/// </summary>
 public static class SpanBuilder
 {
     public static SpanRoot Create(TokenUnit root, string fullText, string cardName, int clauseIndex)
     {
         var prefix = $"{cardName.Replace(' ', '_')}-line[{clauseIndex}]-index[{root.Match.RootMatch.Index}]-";
         var ctx = new SpanContext(fullText, prefix);
-
-        var children = root.PropertyCaptures.Select(p => BuildNode(p, ctx)).ToList();
 
         return new SpanRoot
         {
@@ -22,7 +16,7 @@ public static class SpanBuilder
             End = root.Match.RootMatch.End,
             Length = root.Match.RootMatch.Length,
             ElementType = root is DefaultUnmatchedString ? TokenAnalysisElementType.UnmatchedTokenUnitRoot : TokenAnalysisElementType.TokenUnitRoot,
-            Children = children,
+            Children = root.PropertyCaptures.Select(p => BuildNode(p, ctx)).ToList(),
             IsCollapsed = false,
             OriginalFullText = fullText,
             RootToken = root,
@@ -31,178 +25,108 @@ public static class SpanBuilder
         };
     }
 
-    static SpanNode BuildNode(PropertyCapture prop, SpanContext ctx)
+    private static SpanNode BuildNode(PropertyCapture prop, SpanContext ctx)
     {
-        return prop.Value switch
+        var type = prop.TemplatePropInfo.TemplatePropType;
+
+        return type switch
         {
-            TokenUnitOneOf val => BuildTokenUnitOneOfBranch(val, prop, ctx),
-            TokenUnitDistilled val => BuildDistilledBranch(val, prop, ctx),
-            TokenUnit val => BuildTokenUnitBranch(val, prop, ctx),
-            ManyOf val => BuildManyOfBranch(val, prop, ctx),
-            CompoundOf val => BuildCompoundOfBranch(val, prop, ctx),
-            OneOf val => BuildOneOfBranch(val, prop, ctx),
-            OptionalOf val => BuildOptionalOfBranch(val, prop, ctx),
-            DynamicOf val => BuildDynamicBranch(val, prop, ctx),
-            PlaceholderCapture val => BuildLeaf(prop, ctx, val.Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
-            bool val => BuildLeaf(prop, ctx, val.ToString().ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
+            TemplatePropType.TokenUnit => BuildTokenUnitBranch((TokenUnit)prop.Value, prop, ctx),
+            TemplatePropType.TokenUnitOneOf => BuildTokenUnitOneOfBranch((TokenUnitOneOf)prop.Value, prop, ctx),
+            TemplatePropType.Dynamic => BuildDynamicBranch((DynamicOf)prop.Value, prop, ctx),
+            TemplatePropType.DistilledValue => BuildDistilledBranch((TokenUnitDistilled)prop.Value, prop, ctx),
 
-            _ when prop.TemplatePropInfo.TemplatePropType == TemplatePropType.Enum
-                => BuildLeaf(prop, ctx, prop.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.EnumLeaf),
+            TemplatePropType.ManyOf or
+            TemplatePropType.CompoundOf or
+            TemplatePropType.OneOf or
+            TemplatePropType.OptionalOf => BuildXOfBranch((XOf)prop.Value, prop, ctx),
 
-            _ => throw new InvalidOperationException($"Unsupported: {prop.Value?.GetType().Name}")
+            TemplatePropType.Placeholder => CreateLeaf(prop, ctx, ((PlaceholderCapture)prop.Value).Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
+            TemplatePropType.Bool => CreateLeaf(prop, ctx, prop.Value.ToString()!.ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),
+            TemplatePropType.Enum => CreateLeaf(prop, ctx, prop.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.EnumLeaf),
+
+            _ => throw new InvalidOperationException($"Unsupported PropType: {type}")
         };
     }
 
-    static SpanNode BuildTokenUnitBranch(TokenUnit tokenUnit, PropertyCapture prop, SpanContext ctx)
+    // Overload 1: For standard properties
+    private static SpanBranch BuildTokenUnitBranch(TokenUnit tu, PropertyCapture prop, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var children = tokenUnit.PropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
-        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
+        return BuildTokenUnitBranch(tu, prop.Capture, prop.CaptureGroupPropPath, ctx.PushName(prop.TemplatePropInfo.Name));
     }
 
-    static SpanNode BuildTokenUnitOneOfBranch(TokenUnitOneOf tokenUnitOneOf, PropertyCapture prop, SpanContext ctx)
+    // Overload 2: For items inside collections (ManyOf/OneOf) where we only have the raw components
+    private static SpanBranch BuildTokenUnitBranch(TokenUnit tu, ExtractedCapture cap, CaptureGroupPropPath path, SpanContext ctx)
     {
-        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var inner = tokenUnitOneOf.PropertyCaptures.Single();
-        var childNode = BuildNode(inner, ctx.ClearNameChain());
-        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, new List<SpanNode> { childNode }, ctx);
+        var name = ctx.FormatName(tu.Type.Name);
+        var children = tu.PropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
+        return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
     }
 
-    static SpanNode BuildDynamicBranch(DynamicOf dynamicCapture, PropertyCapture prop, SpanContext ctx)
-    {
-        // 1. Prepare context for child: Clear inherited prefixes, but push the Type as a Suffix
-        // This ensures when the child calls FormatName("Action"), it gets "Action: Specific Action"
-        var typeName = dynamicCapture.Item.Value.GetType().Name;
-        var childCtx = ctx.ClearNameChain().PushSuffix(typeName);
-
-        SpanNode innerNode = dynamicCapture.Item.Value switch
-        {
-            TokenUnitOneOf val => BuildTokenUnitOneOfBranch(val, prop, childCtx),
-            TokenUnit val => BuildTokenUnitBranch(val, prop, childCtx),
-            _ => BuildLeaf(prop, childCtx, dynamicCapture.Item.Value.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
-        };
-
-        // 2. Return the branch. The branch name itself is just the prop name
-        return CreateBranch(
-            prop.Capture, 
-            prop.TemplatePropInfo.Name, 
-            prop.CaptureGroupPropPath,
-            TokenAnalysisElementType.DynamicCaptureItemBranch,
-            new List<SpanNode> { innerNode }, 
-            ctx);
-    }
-
-    static SpanNode BuildManyOfBranch(ManyOf manyOf, PropertyCapture prop, SpanContext ctx)
+    private static SpanBranch BuildTokenUnitOneOfBranch(TokenUnitOneOf tuOneOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var childCtx = ctx.ClearNameChain();
-        var children = new List<SpanNode>();
-
-        for (int i = 0; i < manyOf.Items.Count; i++)
-        {
-            var item = manyOf.Items[i];
-            var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
-            var itemLabel = $"#{i + 1}";
-
-            if (manyOf.ManyItemVariant == CaptureTypeVariant.TokenUnit && item.Value is TokenUnit tu)
-            {
-                var itemCtx = childCtx.PushName(itemLabel);
-                var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);
-                children.Add(CreateBranch(item.Capture, itemLabel, itemPath, TokenAnalysisElementType.ManyOfItemBranch, new List<SpanNode> { innerTU }, ctx));
-            }
-            else
-            {
-                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.ManyOfItemLeaf));
-            }
-        }
-
-        if (manyOf.Conjunction != null)
-        {
-            var conjPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath.PropPath.Dot(nameof(ManyOf.Conjunction)));
-            var conjunctionLeaf = BuildLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), conjPath, ctx, manyOf.Conjunction.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.ConjunctionLeaf);
-            children.Add(conjunctionLeaf);
-        }
-
-        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.ManyOfBranch, children, ctx);
-    }
-
-    static SpanNode BuildCompoundOfBranch(CompoundOf compoundOf, PropertyCapture prop, SpanContext ctx)
-    {
-        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var childCtx = ctx.ClearNameChain();
-        var children = new List<SpanNode>();
-
-        for (int i = 0; i < compoundOf.Items.Count; i++)
-        {
-            var item = compoundOf.Items[i];
-            var itemPath = new CaptureGroupPropPath(prop.CaptureGroupPropPath + $"[{i}]");
-            var itemLabel = $"#{i + 1}";
-
-            if (compoundOf.CaptureTypeVariant == CaptureTypeVariant.TokenUnit && item.Value is TokenUnit tu)
-            {
-                var itemCtx = childCtx.PushName(itemLabel);
-                var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, itemCtx);
-                children.Add(CreateBranch(item.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
-            }
-            else
-            {
-                children.Add(BuildLeaf(item.Capture, itemLabel, itemPath, ctx, item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.CompoundOfItemLeaf));
-            }
-        }
-
-        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.CompoundOfBranch, children, ctx);
-    }
-
-    static SpanNode BuildOneOfBranch(OneOf oneOf, PropertyCapture prop, SpanContext ctx)
-    {
-        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var childCtx = ctx.ClearNameChain();
-        var children = new List<SpanNode>();
-        var itemLabel = oneOf.Item.TemplatePropInfo.Name;
-        var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
-
-        if (oneOf.Item.Value is TokenUnit tokenUnit)
-        {
-            var itemCtx = childCtx.PushName(prop.TemplatePropInfo.Name);
-            var innerTU = BuildTokenUnitBranch(tokenUnit, oneOf.Item.Capture, itemPath, itemCtx);
-            children.Add(CreateBranch(oneOf.Item.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
-        }
-        else
-        {
-            children.Add(BuildLeaf(oneOf.Item.Capture, itemLabel, itemPath, ctx, oneOf.Item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", TokenAnalysisElementType.OneOfItemLeaf));
-        }
-
+        var innerProp = tuOneOf.PropertyCaptures.Single();
+        var children = new List<SpanNode> { BuildNode(innerProp, ctx.ClearNameChain()) };
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, children, ctx);
     }
 
-    static SpanNode BuildOptionalOfBranch(OptionalOf optionalOf, PropertyCapture prop, SpanContext ctx)
+    private static SpanBranch BuildDynamicBranch(DynamicOf dynamic, PropertyCapture prop, SpanContext ctx)
     {
-        if (optionalOf.Item.Value is not TokenUnit tokenUnit)
-            throw new Exception("OptionalOf ItemObject must be a TokenUnit type");
+        var typeName = dynamic.Item.Value.GetType().Name;
+        var childCtx = ctx.ClearNameChain().PushSuffix(typeName);
 
-        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
-        var childCtx = ctx.ClearNameChain();
-        var children = new List<SpanNode>();
-        var itemLabel = optionalOf.Item.TemplatePropInfo.Name;
-        var itemPath = prop.CaptureGroupPropPath.Append(itemLabel);
-        var itemCtx = childCtx.PushName(prop.TemplatePropInfo.Name);
-        var innerTU = BuildTokenUnitBranch(tokenUnit, optionalOf.Item.Capture, itemPath, itemCtx);
-        children.Add(CreateBranch(optionalOf.Item.Capture, itemLabel, itemPath, TokenAnalysisElementType.CompoundOfItemBranch, new List<SpanNode> { innerTU }, ctx));
+        // Cast to SpanNode to fix CS8506 (common type resolution)
+        SpanNode innerNode = dynamic.Item.Value switch
+        {
+            TokenUnit tu => (SpanNode)BuildTokenUnitBranch(tu, prop.Capture, prop.CaptureGroupPropPath, childCtx),
+            _ => (SpanNode)CreateLeaf(prop, childCtx, dynamic.Item.Value.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
+        };
 
-        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OptionalOfItemBranch, children, ctx);
+        return CreateBranch(prop.Capture, prop.TemplatePropInfo.Name, prop.CaptureGroupPropPath, TokenAnalysisElementType.DynamicCaptureItemBranch, [innerNode], ctx);
     }
 
-    static SpanNode BuildDistilledBranch(TokenUnitDistilled tokenUnitDistilled, PropertyCapture prop, SpanContext ctx)
+    private static SpanBranch BuildXOfBranch(XOf xOf, PropertyCapture prop, SpanContext ctx)
     {
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
+        var children = new List<SpanNode>();
         var childCtx = ctx.ClearNameChain();
 
-        var children = tokenUnitDistilled.PropertyCaptures
-            .Where(p => !tokenUnitDistilled.DistilledVals.ContainsKey(p))
-            .Select(p => BuildNode(p, childCtx))
-            .ToList();
+        var items = GetXOfItems(xOf);
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            var itemPath = prop.CaptureGroupPropPath.Append(item.DistinguishingName ?? $"item[{i}]");
+            var itemLabel = (xOf is OneOf or OptionalOf) ? prop.TemplatePropInfo.Name : $"#{i + 1}";
 
-        foreach (var (placeholder, vals) in tokenUnitDistilled.DistilledVals)
+            if (item.Value is TokenUnit tu)
+            {
+                var innerTU = BuildTokenUnitBranch(tu, item.Capture, itemPath, childCtx.PushName(itemLabel));
+                children.Add(CreateBranch(item.Capture, itemLabel, itemPath, MapXOfElementType(xOf, true), [innerTU], ctx));
+            }
+            else
+            {
+                children.Add(CreateLeaf(item.Capture, itemLabel, itemPath, ctx, item.Value.ToString()!.ToFriendlyCase(TitleDisplayOption.Lower), "enum", MapXOfElementType(xOf, false)));
+            }
+        }
+
+        if (xOf is ManyOf { Conjunction: not null } manyOf)
+        {
+            var conjPath = prop.CaptureGroupPropPath.Append(nameof(ManyOf.Conjunction));
+            children.Add(CreateLeaf(manyOf.ConjunctionCapture, nameof(ManyOf.Conjunction), conjPath, ctx, manyOf.Conjunction.Value.ToString()!.ToLower(), "enum", TokenAnalysisElementType.ConjunctionLeaf));
+        }
+
+        return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, MapXOfContainerType(xOf), children, ctx);
+    }
+
+    private static SpanBranch BuildDistilledBranch(TokenUnitDistilled distilled, PropertyCapture prop, SpanContext ctx)
+    {
+        var name = ctx.FormatName(prop.TemplatePropInfo.Name);
+        var children = distilled.PropertyCaptures
+            .Where(p => !distilled.DistilledVals.ContainsKey(p))
+            .Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
+
+        foreach (var (placeholder, vals) in distilled.DistilledVals)
         {
             var subLeaves = vals.Select(v => new SpanSubLeaf
             {
@@ -211,67 +135,73 @@ public static class SpanBuilder
                 TerminalType = "distilled",
                 ElementType = TokenAnalysisElementType.DistilledValueSubLeaf,
                 Start = placeholder.Capture.Index,
-                End = placeholder.Capture.Index + placeholder.Capture.Length,
+                End = placeholder.Capture.End,
                 Length = placeholder.Capture.Length,
                 CaptureTextOriginal = placeholder.Capture.Value,
                 CapturePath = new(ctx.PathPrefix + placeholder.CaptureGroupPropPath)
             }).Cast<SpanNode>().ToList();
 
-            var childBranch = CreateBranch(
-                placeholder.Capture,
-                placeholder.TemplatePropInfo.Name,
-                placeholder.CaptureGroupPropPath,
-                TokenAnalysisElementType.TokenUnitDistilledBranch,
-                subLeaves,
-                ctx);
-
-            children.Add(childBranch);
+            children.Add(CreateBranch(placeholder.Capture, placeholder.TemplatePropInfo.Name, placeholder.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch, subLeaves, ctx));
         }
 
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch, children, ctx);
     }
 
-    static SpanNode BuildTokenUnitBranch(TokenUnit tu, ExtractedCapture cap, CaptureGroupPropPath path, SpanContext ctx)
-    {
-        var name = ctx.FormatName(tu.Type.Name);
-        var children = tu.PropertyCaptures.Select(p => BuildNode(p, ctx.ClearNameChain())).ToList();
-        return CreateBranch(cap, name, path, TokenAnalysisElementType.TokenUnitBranch, children, ctx);
-    }
+    #region Helpers
 
-    static SpanBranch CreateBranch(ExtractedCapture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx)
+    private static SpanBranch CreateBranch(ExtractedCapture cap, string name, CaptureGroupPropPath path, TokenAnalysisElementType type, List<SpanNode> children, SpanContext ctx) => new()
     {
-        return new SpanBranch
-        {
-            Name = name,
-            CapturePath = new(ctx.PathPrefix + path),
-            Start = cap.Index,
-            Length = cap.Length,
-            End = cap.Index + cap.Length,
-            CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
-            ElementType = type,
-            Children = children,
-            IsCollapsed = SpanBranch.CalculateIsCollapsed(children)
-        };
-    }
+        Name = name,
+        CapturePath = new(ctx.PathPrefix + path),
+        Start = cap.Index,
+        Length = cap.Length,
+        End = cap.End,
+        CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
+        ElementType = type,
+        Children = children,
+        IsCollapsed = SpanBranch.CalculateIsCollapsed(children)
+    };
 
-    static SpanLeaf BuildLeaf(PropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
-        BuildLeaf(prop.Capture, prop.TemplatePropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence), prop.CaptureGroupPropPath, ctx, val, typeName, type);
+    private static SpanLeaf CreateLeaf(PropertyCapture prop, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) =>
+        CreateLeaf(prop.Capture, prop.TemplatePropInfo.Name.ToFriendlyCase(TitleDisplayOption.Sentence), prop.CaptureGroupPropPath, ctx, val, typeName, type);
 
-    static SpanLeaf BuildLeaf(ExtractedCapture cap, string name, CaptureGroupPropPath path, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type)
+    private static SpanLeaf CreateLeaf(ExtractedCapture cap, string name, CaptureGroupPropPath path, SpanContext ctx, string val, string typeName, TokenAnalysisElementType type) => new()
     {
-        return new SpanLeaf
-        {
-            Name = name,
-            CapturePath = new(ctx.PathPrefix + path),
-            Start = cap.Index,
-            Length = cap.Length,
-            End = cap.Index + cap.Length,
-            CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
-            ElementType = type,
-            TerminalValString = val,
-            TerminalType = typeName
-        };
-    }
+        Name = name,
+        CapturePath = new(ctx.PathPrefix + path),
+        Start = cap.Index,
+        Length = cap.Length,
+        End = cap.End,
+        CaptureTextOriginal = ctx.FullText.Substring(cap.Index, cap.Length),
+        ElementType = type,
+        TerminalValString = val,
+        TerminalType = typeName
+    };
+
+    private static List<PolyItemCapture> GetXOfItems(XOf xOf) => xOf switch
+    {
+        ManyOf m => m.Items,
+        CompoundOf c => c.Items,
+        OneOf o => [o.Item],
+        OptionalOf p => [p.Item],
+        _ => []
+    };
+
+    private static TokenAnalysisElementType MapXOfContainerType(XOf xOf) => xOf switch
+    {
+        ManyOf => TokenAnalysisElementType.ManyOfBranch,
+        CompoundOf => TokenAnalysisElementType.CompoundOfBranch,
+        _ => TokenAnalysisElementType.OneOfItemBranch
+    };
+
+    private static TokenAnalysisElementType MapXOfElementType(XOf xOf, bool isBranch) => xOf switch
+    {
+        ManyOf => isBranch ? TokenAnalysisElementType.ManyOfItemBranch : TokenAnalysisElementType.ManyOfItemLeaf,
+        CompoundOf => isBranch ? TokenAnalysisElementType.CompoundOfItemBranch : TokenAnalysisElementType.CompoundOfItemLeaf,
+        _ => isBranch ? TokenAnalysisElementType.CompoundOfItemBranch : TokenAnalysisElementType.OneOfItemLeaf
+    };
+
+    #endregion
 }
 
 public enum TokenAnalysisElementType
