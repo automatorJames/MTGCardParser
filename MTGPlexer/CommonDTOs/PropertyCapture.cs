@@ -24,7 +24,7 @@ public record PropertyCapture
             ? new(parentTokenPath.PropPath
                 .Dot(templatePropInfo.Name)
                 .Dot(value.ToString()))
-            : new(parentTokenPath.PropPath);
+            : parentTokenPath.Append(templatePropInfo.Name);
     }
 
     /// <summary>

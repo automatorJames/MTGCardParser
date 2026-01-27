@@ -10,7 +10,7 @@ public static class SpanBuilder
         return new SpanRoot
         {
             Name = root.Type.Name.ToFriendlyCase(TitleDisplayOption.Title),
-            CapturePath = new(prefix + root.Match.CapturePath),
+            CapturePath = new(prefix + root.Match.CapturePath), // The root path (e.g. Card)
             CaptureTextOriginal = fullText.Substring(root.Match.RootMatch.Index, root.Match.RootMatch.Length),
             Start = root.Match.RootMatch.Index,
             End = root.Match.RootMatch.End,
@@ -49,13 +49,13 @@ public static class SpanBuilder
         };
     }
 
-    // Overload 1: For standard properties
     private static SpanBranch BuildTokenUnitBranch(TokenUnit tu, PropertyCapture prop, SpanContext ctx)
     {
+        // Path uniqueness: 'prop.CaptureGroupPropPath' now contains the property name segment 
+        // thanks to the fix in the PropertyCapture constructor.
         return BuildTokenUnitBranch(tu, prop.Capture, prop.CaptureGroupPropPath, ctx.PushName(prop.TemplatePropInfo.Name));
     }
 
-    // Overload 2: For items inside collections (ManyOf/OneOf) where we only have the raw components
     private static SpanBranch BuildTokenUnitBranch(TokenUnit tu, ExtractedCapture cap, CaptureGroupPropPath path, SpanContext ctx)
     {
         var name = ctx.FormatName(tu.Type.Name);
@@ -67,6 +67,8 @@ public static class SpanBuilder
     {
         var name = ctx.FormatName(prop.TemplatePropInfo.Name);
         var innerProp = tuOneOf.PropertyCaptures.Single();
+
+        // We use the inner property's path for the child node to maintain depth
         var children = new List<SpanNode> { BuildNode(innerProp, ctx.ClearNameChain()) };
         return CreateBranch(prop.Capture, name, prop.CaptureGroupPropPath, TokenAnalysisElementType.OneOfItemBranch, children, ctx);
     }
@@ -76,11 +78,13 @@ public static class SpanBuilder
         var typeName = dynamic.Item.Value.GetType().Name;
         var childCtx = ctx.ClearNameChain().PushSuffix(typeName);
 
-        // Cast to SpanNode to fix CS8506 (common type resolution)
+        // Use a unique path for the resolved dynamic item
+        var itemPath = prop.CaptureGroupPropPath.Append(typeName);
+
         SpanNode innerNode = dynamic.Item.Value switch
         {
-            TokenUnit tu => (SpanNode)BuildTokenUnitBranch(tu, prop.Capture, prop.CaptureGroupPropPath, childCtx),
-            _ => (SpanNode)CreateLeaf(prop, childCtx, dynamic.Item.Value.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
+            TokenUnit tu => (SpanNode)BuildTokenUnitBranch(tu, prop.Capture, itemPath, childCtx),
+            _ => (SpanNode)CreateLeaf(prop.Capture, typeName, itemPath, childCtx, dynamic.Item.Value.ToString()!, "enum", TokenAnalysisElementType.DynamicCaptureItemLeaf)
         };
 
         return CreateBranch(prop.Capture, prop.TemplatePropInfo.Name, prop.CaptureGroupPropPath, TokenAnalysisElementType.DynamicCaptureItemBranch, [innerNode], ctx);
@@ -96,7 +100,10 @@ public static class SpanBuilder
         for (int i = 0; i < items.Count; i++)
         {
             var item = items[i];
-            var itemPath = prop.CaptureGroupPropPath.Append(item.DistinguishingName ?? $"item[{i}]");
+
+            // FIX: Ensure OneOf variants have unique paths by using the Type Name if DistinguishingName is absent
+            var identifier = item.DistinguishingName ?? (xOf is OneOf or OptionalOf ? item.Type.Name : $"item[{i}]");
+            var itemPath = prop.CaptureGroupPropPath.Append(identifier);
             var itemLabel = (xOf is OneOf or OptionalOf) ? prop.TemplatePropInfo.Name : $"#{i + 1}";
 
             if (item.Value is TokenUnit tu)
@@ -138,7 +145,7 @@ public static class SpanBuilder
                 End = placeholder.Capture.End,
                 Length = placeholder.Capture.Length,
                 CaptureTextOriginal = placeholder.Capture.Value,
-                CapturePath = new(ctx.PathPrefix + placeholder.CaptureGroupPropPath)
+                CapturePath = new(ctx.PathPrefix + placeholder.CaptureGroupPropPath.Append(v.Key.Name)) // Unique path for sub-leaf
             }).Cast<SpanNode>().ToList();
 
             children.Add(CreateBranch(placeholder.Capture, placeholder.TemplatePropInfo.Name, placeholder.CaptureGroupPropPath, TokenAnalysisElementType.TokenUnitDistilledBranch, subLeaves, ctx));
