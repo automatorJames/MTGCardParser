@@ -1,19 +1,19 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
-public record CompoundOfSegment : XOfSegmentBase
+public record CompoundOfNode : WrapperPropertyNode
 {
-    CaptureGroupSegmentBase _regexProp;
-    
-    public CompoundOfSegment(TemplatePropInfo captureProp) : base(captureProp)
+    public CollectionNode Collection { get; set; }
+    public CompoundOfNode(PropertySnippet propertySnippet) : base(propertySnippet)
     {
-        var derivedPropInfo = captureProp.DeriveForXOfItem();
+        var genericType = GenericTypes[0];
+        Collection = new CollectionNode(genericType);
 
-        if (GenericType.IsAssignableTo(typeof(TokenUnit)))
-            _regexProp = new TokenUnitSegment(derivedPropInfo);
+        if (genericType.IsAssignableTo(typeof(TokenUnit)))
+            _regexProp = new TokenUnitNode(derivedPropInfo);
         else if (GenericType.IsEnum)
-            _regexProp = new EnumSegment(derivedPropInfo);
+            _regexProp = new EnumNode(derivedPropInfo);
         else
-            throw new Exception($"CompoundProp base type may only be derived from TokenUnit or be an enum");
+            throw new Exception($"CompoundOfNode type may only be derived from TokenUnit or be an enum");
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)

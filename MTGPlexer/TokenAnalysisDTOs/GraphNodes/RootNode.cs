@@ -1,13 +1,21 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public record RootNode : BranchNode
+public record RootNode : ParentNode
 {
     public Type RootType { get; set; }
 
-    public RootNode(Type type) : base(type)
+    public RootNode(Type type)
     {
         RootType = type;
         PopulateChildren();
+    }
+
+    public TokenUnit(Match match)
+    {
+        foreach (var captureChild in CaptureChildren)
+        {
+            var val = captureChild.GetPropertyValue
+        }
     }
 
     void PopulateChildren()
@@ -40,6 +48,8 @@ public record RootNode : BranchNode
                 throw new Exception($"Type '{RootType.Name}' has no snippets or valid properties");
         }
 
+        Children = snippets.Select(SnippetToNode).ToList();
+
         for (int i = 0; i < snippets.Length; i++)
         {
             var snippet = snippets[i];
@@ -58,9 +68,29 @@ public record RootNode : BranchNode
         ComposeRegex();
     }
 
-    Node SnippetToNode(Snippet snippet)
+    static Node SnippetToNode(Snippet snippet)
     {
-        var matchingProp = 
+        if (snippet is PropertySnippet propertySnippet)
+        {
+            var underlyingType = Nullable.GetUnderlyingType(propertySnippet.Prop.PropertyType) ?? propertySnippet.Prop.PropertyType;
+
+            return underlyingType switch
+            {
+                { IsEnum: true } => new EnumNode(propertySnippet)
+                { } t when t.IsAssignableTo(typeof(ManyOf)) => TemplatePropType.ManyOf,
+                { } t when t.IsAssignableTo(typeof(CompoundOf)) => TemplatePropType.CompoundOf,
+                { } t when t.IsAssignableTo(typeof(OneOf)) => TemplatePropType.OneOf,
+                { } t when t.IsAssignableTo(typeof(OptionalOf)) => TemplatePropType.OptionalOf,
+                { } t when t == typeof(PlaceholderCapture) => TemplatePropType.Placeholder,
+                { } t when t.IsAssignableTo(typeof(DynamicOf)) => TemplatePropType.Dynamic,
+                { } t when t == typeof(bool) => TemplatePropType.Bool,
+                { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => TemplatePropType.TokenUnitOneOf,
+                { } t when typeof(TokenUnit).IsAssignableFrom(t) => TemplatePropType.TokenUnit,
+                _ => throw new Exception($"{type.Name} is not a valid {nameof(TemplatePropType)} type")
+            };
+        }
+        else
+            return new TextNode(snippet);
     }
 
     void ComposeRegex()

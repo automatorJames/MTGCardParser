@@ -1,25 +1,19 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public abstract record BranchNode : Node
+public abstract record BranchNode : ParentNode
 {
     public string Name { get; }
+    public PropertySnippet PropertySnippet { get; }
     public Type UnderlyingType { get; }
     public Type[] GenericTypes { get; }
     public Proptions Proptions { get; } = Proptions.None;
-    public List<Node> Children { get; } = [];
 
-    public BranchNode(Type type)
+    public BranchNode(PropertySnippet propertySnippet)
     {
-        Name = type.Name;
-        UnderlyingType = type;
-        GenericTypes = type.GetGenericArguments();
-    }
-
-    public BranchNode(PropertyInfo prop) : base(prop)
-    {
-        var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        Name = propertySnippet.Prop.Name;
+        PropertySnippet = propertySnippet;
+        var underlyingType = Nullable.GetUnderlyingType(PropertySnippet.Prop.PropertyType) ?? PropertySnippet.Prop.PropertyType;
         UnderlyingType = underlyingType;
         GenericTypes = underlyingType.GetGenericArguments();
-        Name = prop.Name;
     }
 }

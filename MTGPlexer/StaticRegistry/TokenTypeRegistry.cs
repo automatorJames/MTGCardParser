@@ -59,7 +59,7 @@ public static partial class TokenTypeRegistry
         // Register all newly encountered enums (we use the EnumRegexProp instance for this,
         // but steps taken during registration only care about the enum type itself)
         propCaptureSegments
-            .OfType<EnumSegment>()
+            .OfType<EnumNode>()
             .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.TemplatePropInfo.UnderlyingType))
             .ToList()
             .ForEach(enumRegexPropWithNewEnumType =>
@@ -79,7 +79,7 @@ public static partial class TokenTypeRegistry
             .ToList()
             .ForEach(newEnumType => 
             {
-                var enumSet = EnumSegment.EnumTypetoScalarSet(newEnumType);
+                var enumSet = EnumNode.EnumTypetoScalarSet(newEnumType);
                 EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
                 ReferencedEnumTypes.Add(newEnumType);
                 NameToType[newEnumType.Name] = newEnumType;

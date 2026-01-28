@@ -5,7 +5,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 public record ManyOfSegment : XOfSegmentBase
 {
     CaptureGroupSegmentBase[] _ordinalRegexProps = new CaptureGroupSegmentBase[3];
-    static EnumSegment _conjunctionProp = (EnumSegment)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
+    static EnumNode _conjunctionProp = (EnumNode)(new TemplatePropInfo(typeof(ManyOf).GetProperty(nameof(ManyOf.Conjunction)))).GetCaptureGroupPropBase();
 
     public override Regex ManyMatchRegex => TokenTypeRegistry.ManyOfRegexes[GenericType];
 

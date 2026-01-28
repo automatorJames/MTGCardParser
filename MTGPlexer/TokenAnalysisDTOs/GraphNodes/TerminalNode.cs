@@ -1,26 +1,28 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public abstract record TerminalNode : Node
+public abstract record TerminalNode : CaptureNode
 {
-    public PropertyInfo Prop { get; set; }
-    public ScalarAlternateSet ScalarAlternativeSet { get; protected set; }
-
-    public TerminalNode(PropertyInfo prop)
+    public TerminalNode(PropertySnippet propertySnippet) : base(propertySnippet)
     {
-        Prop = prop;
-        SetScalarAlternativeSet(prop);
     }
 
-    protected virtual void SetScalarAlternativeSet(PropertyInfo prop)
+    public ScalarAlternateSet ScalarAlternativeSet
     {
-        if (TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(new TemplatePropInfo(prop), out var scalarAlternativeSet))
-            ScalarAlternativeSet = scalarAlternativeSet;
-        else
+        get
         {
-            var captureAlternatives = (prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [prop.Name])
-                .OrderByDescending(s => s.Length).ToList();
+            if (!TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(new TemplatePropInfo(PropertySnippet.Prop), out var scalarAlternativeSet))
+            {
+                scalarAlternativeSet =  GetScalarAlternateSet();)
+                TokenTypeRegistry.PropScalarAlternativeSets[new TemplatePropInfo(PropertySnippet.Prop)] = scalarAlternativeSet;
+            }
 
-            ScalarAlternativeSet = new(captureAlternatives);
+            return scalarAlternativeSet;
         }
+    }
+
+    protected virtual ScalarAlternateSet GetScalarAlternateSet()
+    {
+        var captureAlternatives = (PropertySnippet.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [PropertySnippet.Prop.Name]).OrderByDescending(s => s.Length).ToList();
+        return new(captureAlternatives);
     }
 }

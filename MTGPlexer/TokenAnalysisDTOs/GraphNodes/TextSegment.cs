@@ -4,21 +4,22 @@
 /// This record is used for strings defined in RegexTemplate expression bodies. These strings aren't associated
 /// with any TokenUnit property, but rather must be matched as part of the TokenUnit's overall Regex.
 /// </summary>
-public record TextSegment : RegexSegmentBase
+public record TextNode : Node
 {
+    public string Text { get; set; }
     public bool DoNotAddPrecedingSpace { get; }
 
-    public TextSegment(Snippet snippet)
+    public TextNode(Snippet snippet)
     {
         var text = snippet.Text;
 
         if (snippet.IsOptional)
             text = $"({text} )?";
 
+        Text = text;
         DoNotAddPrecedingSpace = snippet.IsNoPrecedingSpace;
-        RegexString = text;
     }
 
     public override void ComposeRegexLines(RegexBuilder builder) =>
-        builder.AddTextLine(RegexString, doNotAddPrecedingSpace: DoNotAddPrecedingSpace);
+        builder.AddTextLine(Text, doNotAddPrecedingSpace: DoNotAddPrecedingSpace);
 }

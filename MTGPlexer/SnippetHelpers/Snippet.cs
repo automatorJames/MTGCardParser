@@ -6,12 +6,10 @@ public record Snippet
     public bool IsPlural { get; init; }
     public bool IsOptional { get; init; }
     public bool IsNoPrecedingSpace { get; init; }
-    public Proptions Proptions { get; init; } = Proptions.None;
 
-    public Snippet(string text, Proptions proptions = Proptions.None)
+    public Snippet(string text)
     {
         Text = text;
-        Proptions = proptions;
         IsOptional = this is SnippetOptional;
         IsNoPrecedingSpace = this is SnippetNoPrecedingSpace or SnippetOptionalPlural;
     }
