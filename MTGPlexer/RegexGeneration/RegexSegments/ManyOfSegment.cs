@@ -81,7 +81,7 @@ public record ManyOfSegment : XOfSegmentBase
             {
                 var ordinalCapture = sectionGroupCaptures[j];
                 var childItem = ordinalProp.GetPropertyValue(manyOfContainerState, ordinalCapture, out var ordinalResult);
-                PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
+                PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo, distinguishingValue: manyItemOrdinal);
                 hydratedItems.Add(hydratedItem);
             }
         }

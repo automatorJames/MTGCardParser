@@ -7,16 +7,20 @@ public record PolyItemCapture
     public Type Type { get; }
     public object Value { get; }
     public CaptureTypeVariant CaptureTypeVariant { get; }
-    public string DistinguishingName { get; }
+    public object DistinguishingValue { get; }
 
-    public PolyItemCapture(object value, ExtractedCapture capture, TemplatePropInfo propInfo, string distinguishingName = null)
+    public PolyItemCapture(
+        object value, 
+        ExtractedCapture capture, 
+        TemplatePropInfo propInfo, 
+        object distinguishingValue = null)
     {
         Capture = capture;
         TemplatePropInfo = propInfo;
         this.Value = value;
         Type = value.GetType();
         CaptureTypeVariant = Type.ToCaptureTypeVariant();
-        DistinguishingName = distinguishingName;
+        DistinguishingValue = distinguishingValue;
     }
 
     public override string ToString() => CaptureTypeVariant == CaptureTypeVariant.Enum ?

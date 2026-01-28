@@ -116,7 +116,7 @@ public abstract class TokenUnit
             {
                 // We only get the first (if any) among the items at the current ordinal, because its IndexedPropertyCaptures
                 // will contain all captures at that position (i.e. _secondPlus) , and we don't want to duplicate those captures
-                var representativeManyItemAtOrdinal = manyOf.Items.FirstOrDefault(x => x.DistinguishingName == manyItemOrdinal.ToString());
+                var representativeManyItemAtOrdinal = manyOf.Items.FirstOrDefault(x => x.DistinguishingValue.Equals(manyItemOrdinal));
 
                 if (representativeManyItemAtOrdinal == null)
                     continue;

@@ -12,7 +12,7 @@ public class CompoundOf<T> : CompoundOf
 }
 
 [Color("#696969")]
-public class CompoundOf : XOfTree
+public class CompoundOf : XOf
 {
     public List<PolyItemCapture> Items { get; set; }
     public CaptureTypeVariant CaptureTypeVariant { get; set; }

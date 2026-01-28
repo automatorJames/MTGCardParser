@@ -11,7 +11,7 @@ public record MatchTraversalState
     /// The original top-level match that created this instance's root ancestor (or self if this instance is root).
     /// Contains all fully-qualified named capture groups required to hydrate all downstream child property values.
     /// The RootMatch the same for all descendents in the tree; it is not newly updated or scoped at each level.
-    /// </summary>
+    /// </summary> 
     public ExtractedMatch RootMatch { get; }
 
     /// <summary>

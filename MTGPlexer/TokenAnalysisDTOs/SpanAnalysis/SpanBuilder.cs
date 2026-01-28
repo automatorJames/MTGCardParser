@@ -111,7 +111,7 @@ public static class SpanBuilder
         for (int i = 0; i < items.Count; i++)
         {
             var item = items[i];
-            var identifier = item.DistinguishingName ?? (xOf is OneOf or OptionalOf ? item.Type.Name : $"item[{i}]");
+            var identifier = item.DistinguishingValue?.ToString() ?? (xOf is OneOf or OptionalOf ? item.Type.Name : $"item[{i}]");
             var path = prop.CaptureGroupPropPath.Append(identifier);
             var label = (xOf is OneOf or OptionalOf) ? prop.TemplatePropInfo.Name : $"#{i + 1}";
 

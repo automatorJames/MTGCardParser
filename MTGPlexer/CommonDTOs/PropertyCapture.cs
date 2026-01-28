@@ -35,7 +35,7 @@ public record PropertyCapture
     public PropertyCapture DeriveForManyOfItem(ManyOf manyOf, PolyItemCapture capture)
     {
         var terminalValueOrTypeName = capture.CaptureTypeVariant == CaptureTypeVariant.Enum ? capture.Value.ToString() : capture.Type.Name;
-        var newPath = CaptureGroupPropPath.Append(TemplatePropInfo.Name, capture.DistinguishingName, terminalValueOrTypeName);
+        var newPath = CaptureGroupPropPath.Append(TemplatePropInfo.Name, capture.DistinguishingValue.ToString(), terminalValueOrTypeName);
 
         return new PropertyCapture
         {
