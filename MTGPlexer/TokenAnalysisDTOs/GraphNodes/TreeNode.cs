@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphAnalysis;
+﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
 public record TreeNode : Node
 {
