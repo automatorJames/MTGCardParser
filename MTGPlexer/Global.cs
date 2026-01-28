@@ -22,6 +22,8 @@ global using MTGPlexer.RegexGeneration.Composers;
 global using MTGPlexer.TokenUnitGraphComponents;
 global using MTGPlexer.TokenUnits;
 global using MTGPlexer.TokenEditor;
+global using MTGPlexer.TokenAnalysisDTOs.GraphAnalysis;
+
 global using System.Reflection;
 global using System.Text;
 global using System.Text.Json.Serialization;
