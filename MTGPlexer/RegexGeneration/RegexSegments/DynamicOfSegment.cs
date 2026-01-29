@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 public record DynamicOfSegment : XOfSegmentBase
 {

@@ -2,7 +2,7 @@
 
 public abstract record TerminalNode : CaptureNode
 {
-    public TerminalNode(PropertySnippet propertySnippet) : base(propertySnippet)
+    public TerminalNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
     }
 
@@ -12,7 +12,7 @@ public abstract record TerminalNode : CaptureNode
         {
             if (!TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(new TemplatePropInfo(PropertySnippet.Prop), out var scalarAlternativeSet))
             {
-                scalarAlternativeSet =  GetScalarAlternateSet();)
+                scalarAlternativeSet =  GetScalarAlternateSet();
                 TokenTypeRegistry.PropScalarAlternativeSets[new TemplatePropInfo(PropertySnippet.Prop)] = scalarAlternativeSet;
             }
 

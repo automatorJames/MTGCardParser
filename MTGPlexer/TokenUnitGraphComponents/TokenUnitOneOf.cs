@@ -45,7 +45,7 @@ public abstract class TokenUnitOneOf : TokenUnit
         }
 
         // Any enums must be nullable
-        if (template.RegexSegments.OfType<EnumNode>().Any(x => Nullable.GetUnderlyingType(x.TemplatePropInfo.Prop.PropertyType) == null))
+        if (template.RegexSegments.OfType<EnumSegment>().Any(x => Nullable.GetUnderlyingType(x.TemplatePropInfo.Prop.PropertyType) == null))
             return $"All enum properties in {nameof(TokenUnitOneOf)} types must be nullable";
 
         return null;

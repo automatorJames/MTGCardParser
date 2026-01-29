@@ -2,21 +2,42 @@
 
 public abstract record CaptureNode : Node
 {
-    public string Name { get; }
-    public Node ParentNode { get; }
     public PropertySnippet PropertySnippet { get; }
     public Type UnderlyingType { get; }
-    public Type[] GenericTypes { get; }
     public Proptions Proptions { get; }
 
-    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet)
+    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet.Prop.Name)
     {
-        Name = propertySnippet.Prop.Name;
-        ParentNode = parentNode;
         PropertySnippet = propertySnippet;
         UnderlyingType = Nullable.GetUnderlyingType(propertySnippet.Prop.PropertyType) ?? propertySnippet.Prop.PropertyType;
-        GenericTypes = UnderlyingType.GetGenericArguments();
     }
 
-    public abstract void SetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result);
+    public void SetPropertyValue(Match match, TokenUnit parent)
+    {
+        var fullyQualifiedName = GetFullyQualifiedName();
+        var capture = match.Groups[fullyQualifiedName];
+        var value = GetPropertyValue(capture);
+
+        if (value == null)
+            return;
+
+        PropertySnippet.Prop.SetValue(parent, value);
+    }
+
+    string GetFullyQualifiedName()
+    {
+        List<string> parts = [];
+        var current = ParentNode;
+
+        while (current != null)
+        {
+            parts.Add(current.Name);
+            current = current.ParentNode;
+        }
+
+        parts.Reverse();
+        return string.Join('.', parts);
+    }
+
+    protected abstract object GetPropertyValue(Capture capture);
 }

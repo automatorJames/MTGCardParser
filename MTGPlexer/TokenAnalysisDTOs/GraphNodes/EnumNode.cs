@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the
@@ -10,7 +11,7 @@ public record EnumNode : TerminalNode
     bool _isOptional;
     public EnumScalarAlternateSet EnumSet { get; private set; }
 
-    public EnumNode(PropertySnippet propertySnippet) : base(propertySnippet)
+    public EnumNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
         // If the enum is nullable, we treat it as optional. The exception to this is if the
         // enum is contained in a TokenUnitOneOf, where at least one alternative must be matched,
@@ -48,15 +49,17 @@ public record EnumNode : TerminalNode
         return new EnumScalarAlternateSet(enumAlternates);
     }
 
-    public override object SetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
+    protected override object GetPropertyValue(Capture capture)
     {
-        foreach (var enumAlternative in EnumSet.EnumAlternates)
-            if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))
-            {
-                result = ValueResult.Success;
-                return enumAlternative.EnumValue;
-            }
+        //foreach (var enumAlternative in EnumSet.EnumAlternates)
+        //    if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))
+        //    {
+        //        result = ValueResult.Success;
+        //        return enumAlternative.EnumValue;
+        //    }
+        //
+        //throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{scopedCapture.Value}'");
 
-        throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{scopedCapture.Value}'");
+        throw new NotImplementedException();
     }
 }

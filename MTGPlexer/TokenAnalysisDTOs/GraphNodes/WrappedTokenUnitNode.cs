@@ -1,13 +1,10 @@
 ﻿
 namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public record CollectionNode : ParentNode
+public record WrappedTokenUnitNode : WrappedNode
 {
-    public Type ItemType { get; set; }
-
-    public CollectionNode(Type itemType)
+    public WrappedTokenUnitNode(Node parentNode, Type type, string name = null) : base(parentNode, name ?? type.Name, type)
     {
-        ItemType = itemType;
     }
 
     public override void ComposeRegexLines(RegexBuilder collector)

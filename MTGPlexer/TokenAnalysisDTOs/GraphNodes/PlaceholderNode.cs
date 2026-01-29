@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have
@@ -8,9 +9,9 @@
 /// know how to decompose it yet, or the containing TokenUnit overrides SetPropertiesFromMatch and needs a property
 /// to store an interim text value.
 /// </summary>
-public record PlaceholderSegment : ScalarCaptureSegmentBase
+public record PlaceholderNode : TerminalNode
 {
-    public PlaceholderSegment(TemplatePropInfo captureProp) : base(captureProp)
+    public PlaceholderNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
     }
 
@@ -24,7 +25,7 @@ public record PlaceholderSegment : ScalarCaptureSegmentBase
             var actions = Parse(regexString);
 
             // If parsing succeeds without error, we can confidently modify the collector.
-            builder.OpenGroup(TemplatePropInfo, spaceDisposition: SpaceDisposition.DisallowedGlobal);
+            builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedGlobal);
             actions.ForEach(action => action(builder));
             builder.CloseGroup();
         }
@@ -32,7 +33,7 @@ public record PlaceholderSegment : ScalarCaptureSegmentBase
         {
             // If parsing fails for any reason (e.g., complexity, malformed pattern),
             // fall back to the original behavior of rendering the regex as a single literal line.
-            builder.OpenGroup(TemplatePropInfo, spaceDisposition: SpaceDisposition.DisallowedGlobal);
+            builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedGlobal);
             builder.AddTextLine(regexString);
             builder.CloseGroup();
         }
@@ -214,11 +215,14 @@ public record PlaceholderSegment : ScalarCaptureSegmentBase
         return splits;
     }
 
-
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
+    protected override object GetPropertyValue(Capture capture)
     {
-        var valueToSet = new PlaceholderCapture(scopedCapture.Value);
-        result = ValueResult.Success;
-        return valueToSet;
+        //var valueToSet = new PlaceholderCapture(scopedCapture.Value);
+        //result = ValueResult.Success;
+        //return valueToSet;
+
+        throw new NotImplementedException();
     }
+
+    public override string ToString() => base.ToString();
 }

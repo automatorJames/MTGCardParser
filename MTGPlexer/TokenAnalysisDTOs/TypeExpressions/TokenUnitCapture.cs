@@ -6,7 +6,7 @@ public record TokenUnitCapture
     public string TypeName { get; }
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
-    public List<RegexCommentedLine> FilteredLines { get; }
+    public List<RegexFormattedLine> FilteredLines { get; }
     public string MinifiedRegexString { get; }
     public string FormattedRegexString { get; }
 

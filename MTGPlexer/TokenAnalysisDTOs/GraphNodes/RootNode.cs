@@ -1,12 +1,23 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public record RootNode : ParentNode
+public record RootNode : Node
 {
     public Type RootType { get; }
-    public string Regex { get; }
+    public BuiltRegex BuiltRegex { get; }
     public Snippet[] Snippets { get; }
+    public List<Node> Children { get; } = [];
 
-    public RootNode(Type type)
+    public IEnumerable<CaptureNode> _captureChildren => Children.OfType<CaptureNode>();
+
+    public RootNode(Type type) : base(null, type.Name)
+    {
+        Snippets = GetSnippets();
+        RootType = type;
+        Children = Snippets.Select(SnippetToNode).ToList();
+        BuiltRegex = BuildRegex();
+    }
+
+    Snippet[] GetSnippets()
     {
         var instance = Activator.CreateInstance(RootType);
 
@@ -35,26 +46,35 @@ public record RootNode : ParentNode
                 throw new Exception($"Type '{RootType.Name}' has no snippets or valid properties");
         }
 
-        Snippets = snippets;
-        RootType = type;
-        PopulateChildren();
+        return snippets;
+    }
+
+    BuiltRegex BuildRegex()
+    {
+        RegexBuilder regexBuilder = new(RootType);
+        ComposeRegexLines(regexBuilder);
+        return regexBuilder.GetBuiltRegex();
+    }
+
+    public override void ComposeRegexLines(RegexBuilder builder)
+    {
+        if (RootType.IsAssignableTo(typeof(TokenUnitOneOf)))
+            AlternatingComposer.Instance.Compose(builder, Children);
+        else if (RootType.IsAssignableTo(typeof(TokenUnit)))
+            ConcatenatingComposer.Instance.Compose(builder, Children);
     }
 
     public TokenUnit Hydrate(Match match)
     {
-        foreach (var captureChild in CaptureChildren)
-        {
-            var val = captureChild.SetPropertyValue
-        }
+        var instance = (TokenUnit)Activator.CreateInstance(RootType);
+
+        foreach (var captureChild in _captureChildren)
+            captureChild.SetPropertyValue(match, instance);
+
+        return instance;
     }
 
-    void PopulateChildren()
-    {
-
-        ComposeRegex();
-    }
-
-    static Node SnippetToNode(Snippet snippet)
+    Node SnippetToNode(Snippet snippet)
     {
         if (snippet is PropertySnippet propertySnippet)
         {
@@ -62,77 +82,20 @@ public record RootNode : ParentNode
 
             return underlyingType switch
             {
-                { IsEnum: true } => new EnumNode(propertySnippet),
-                { } t when t.IsAssignableTo(typeof(ManyOf)) => TemplatePropType.ManyOf,
-                { } t when t.IsAssignableTo(typeof(CompoundOf)) => TemplatePropType.CompoundOf,
-                { } t when t.IsAssignableTo(typeof(OneOf)) => TemplatePropType.OneOf,
-                { } t when t.IsAssignableTo(typeof(OptionalOf)) => TemplatePropType.OptionalOf,
-                { } t when t == typeof(PlaceholderCapture) => TemplatePropType.Placeholder,
-                { } t when t.IsAssignableTo(typeof(DynamicOf)) => TemplatePropType.Dynamic,
-                { } t when t == typeof(bool) => TemplatePropType.Bool,
-                { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => TemplatePropType.TokenUnitOneOf,
-                { } t when typeof(TokenUnit).IsAssignableFrom(t) => TemplatePropType.TokenUnit,
-                _ => throw new Exception($"{type.Name} is not a valid {nameof(TemplatePropType)} type")
+                { IsEnum: true } => new EnumNode(this, propertySnippet),
+                { } t when t.IsAssignableTo(typeof(ManyOf)) => new ManyOfNode(this, propertySnippet),
+                { } t when t.IsAssignableTo(typeof(CompoundOf)) => new CompoundOfNode(this, propertySnippet),
+                { } t when t.IsAssignableTo(typeof(OneOf)) => new OneOfNode(this, propertySnippet),
+                { } t when t.IsAssignableTo(typeof(OptionalOf)) => new OptionalOfNode(this, propertySnippet),
+                { } t when t.IsAssignableTo(typeof(DynamicOf)) => new DynamicOfNode(this, propertySnippet),
+                { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(this, propertySnippet),
+                { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(this, propertySnippet),
+                { } t when t == typeof(bool) => new BoolNode(this, propertySnippet),
+                { } t when t == typeof(PlaceholderCapture) => new PlaceholderNode(this, propertySnippet),
+                _ => throw new Exception($"{underlyingType} is not a valid {nameof(PropertySnippet)} type")
             };
         }
         else
-            return new TextNode(snippet);
-    }
-
-    void ComposeRegex()
-    {
-        var builderWithComposition = CompositionFactory.Compose(RegexSegments, _containingType);
-        RegexString = builderWithComposition.GetMinified();
-        Regex = new Regex(RegexString, RegexOptions.Compiled);
-        Builder = builderWithComposition;
-    }
-
-    List<PropertyInfo> GetTargetProps()
-    {
-        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
-
-        return RootType
-            .GetProperties(flags)
-            .Where(p => p.GetMethod is { IsVirtual: false }) // Must be non-virtual
-            .Where(p => IsValidTargetType(p.PropertyType))
-            .ToList();
-    }
-
-    static bool IsValidTargetType(Type type)
-    {
-        // Unwrap Nullable
-        type = Nullable.GetUnderlyingType(type) ?? type;
-
-        // Handle Generic Wrappers
-        if (type.IsGenericType)
-        {
-            var genericDef = type.GetGenericTypeDefinition();
-
-            // Single-argument wrappers: ManyOf<T> or CompoundOf<T>
-            if (genericDef == typeof(ManyOf<>) || genericDef == typeof(CompoundOf<>) || genericDef == typeof(OptionalOf<>))
-                return IsValidTargetType(type.GetGenericArguments()[0]);
-
-            // Multi-argument wrappers: OneOf<T1, T2> or OneOf<T1, T2, T3>
-            if (genericDef == typeof(OneOf<,>) || genericDef == typeof(OneOf<,,>))
-                return type.GetGenericArguments().All(IsValidTargetType);
-
-        }
-
-        // Check Leaf/Base Types
-        return IsLeafTargetType(type);
-    }
-
-    static bool IsLeafTargetType(Type type)
-    {
-        return type.IsEnum
-            || type == typeof(bool)
-            || type == typeof(PlaceholderCapture)
-            || type.IsAssignableTo(typeof(DynamicOf))
-            || typeof(TokenUnit).IsAssignableFrom(type);
-    }
-
-    public override void ComposeRegexLines(RegexBuilder collector)
-    {
-        throw new NotImplementedException();
+            return new TextNode(this, snippet);
     }
 }

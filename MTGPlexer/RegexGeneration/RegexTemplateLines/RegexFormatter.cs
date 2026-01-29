@@ -47,7 +47,7 @@ public class RegexFormatter
     /// <summary>
     /// Formats a list of RegexElement objects into a human-readable, commented output.
     /// </summary>
-    public List<RegexCommentedLine> Format()
+    public List<RegexFormattedLine> Format()
     {
         if (_regexElements == null || !_regexElements.Any()) return [];
 
@@ -267,7 +267,7 @@ public class RegexFormatter
 
     #region Phase 4: Line Rendering
 
-    RegexCommentedLine CreateCommentedLine(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
+    RegexFormattedLine CreateCommentedLine(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
     {
         var regexText = GetFinalRegexString(line);
         int indent = (line is AlternateValue ? GetAlternateIndent(line) : GetIndentDepth(line)) * SpacesPerIndent;
@@ -279,7 +279,7 @@ public class RegexFormatter
         var primaryColor = GetPrimaryContentColorForLine(line);
         var highlight = _treatments.GetRegexHighlightTreatment(line);
         spans.Add(new(paddedRegex, DeterministicPalette.GetStaticPalette(new HexColor(primaryColor)),
-            RegexCommentedLine.GetRelativePath(GetPathForSpan(line)), highlight, _treatments.CommentLowlightTreatment));
+            RegexFormattedLine.GetRelativePath(GetPathForSpan(line)), highlight, _treatments.CommentLowlightTreatment));
 
         // 2. Hash Separator
         var commentPrefix = $"#{new string(' ', HashSeparatorPadding)}";
@@ -295,7 +295,7 @@ public class RegexFormatter
         if (line is AlternateValue av && line is not SynonymSetHeader && line is not SynonymTrailingSpacer)
             return new RegexCommentedAlternateLine(paddedRegex, fullComment, line.NamedPath, spans, av);
 
-        return new RegexCommentedLine(paddedRegex, fullComment, line.NamedPath, spans);
+        return new RegexFormattedLine(paddedRegex, fullComment, line.NamedPath, spans);
     }
 
     List<RegexCommentedLineSpan> GenerateCommentSpans(RegexElement line, IReadOnlyDictionary<AlternateValueEnum, int> alternateCounts)
@@ -455,20 +455,20 @@ public class RegexFormatter
         var root = line.Enclosures.OfType<RootEnclosure>().FirstOrDefault()?.RootTypeName ?? "";
         var path = string.Join('.', scope.OfType<NamedEnclosure>().Select(x => x.Name));
         var full = string.IsNullOrEmpty(path) ? root : $"{root}.{path}";
-        var rel = RegexCommentedLine.GetRelativePath(full);
+        var rel = RegexFormattedLine.GetRelativePath(full);
         spans.Add(new(text, pal, rel, rel == null ? SpanHighlightTreatment.None : _treatments.GetCommentHighlightTreatment(line, false), _treatments.CommentLowlightTreatment));
     }
 
     void AddCurrentLineSpan(RegexElement line, List<RegexCommentedLineSpan> spans, string text, HexPalette pal, bool isText)
     {
-        var rel = RegexCommentedLine.GetRelativePath(GetPathForSpan(line));
+        var rel = RegexFormattedLine.GetRelativePath(GetPathForSpan(line));
         var high = _treatments.GetCommentHighlightTreatment(line, isText);
         spans.Add(new(text, pal, rel, rel == null ? SpanHighlightTreatment.None : high, _treatments.CommentLowlightTreatment));
     }
 
-    List<RegexCommentedLine> FinalizeAlternatePrefixes(List<RegexCommentedLine> lines)
+    List<RegexFormattedLine> FinalizeAlternatePrefixes(List<RegexFormattedLine> lines)
     {
-        var result = new List<RegexCommentedLine>();
+        var result = new List<RegexFormattedLine>();
         string activePath = null;
         bool first = true;
 

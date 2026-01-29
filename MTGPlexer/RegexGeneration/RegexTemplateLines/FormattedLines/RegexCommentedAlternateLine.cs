@@ -2,7 +2,7 @@
 
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
 
-public record RegexCommentedAlternateLine : RegexCommentedLine
+public record RegexCommentedAlternateLine : RegexFormattedLine
 {
     public object CanonicalValue { get; }
     public override string FullPath { get; }

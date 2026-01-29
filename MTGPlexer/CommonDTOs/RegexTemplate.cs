@@ -30,10 +30,10 @@ public class RegexTemplate
             // properties exist, we assume they want to construct a single snippet from a pattern attribute,
             // or even the type name as a last-ditch fallback.
 
-            var publicPropNames = type.GetPublicPropNames();
+            var publicProps = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
-            if (publicPropNames.Length > 0)
-                snippets = type.GetPublicPropNames().Select(x => (Snippet)x).ToArray();
+            if (publicProps.Length > 0)
+                snippets = publicProps.Select(x => new PropertySnippet(x.Name, x, Proptions.None)).ToArray();
             else if (type.GetCustomAttribute<RegexPatternAttribute>() is RegexPatternAttribute attr)
                 snippets = attr.Patterns.Select(x => (Snippet)x).ToArray();
             else
@@ -66,12 +66,15 @@ public class RegexTemplate
 
     RegexSegmentBase ResolveSnippetToSegment(Snippet templateSnippet)
     {
-        var matchingProp = TemplatePropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet.Text);
+        if (templateSnippet is PropertySnippet propertySnippet)
+        {
+            var matchingProp = TemplatePropInfos.FirstOrDefault(x => x.Prop.Name == templateSnippet.Text);
 
-        if (matchingProp != null)
-            return matchingProp.GetCaptureGroupPropBase(templateSnippet.Proptions);
-        else
-            return new TextSegment(templateSnippet);
+            if (matchingProp != null)
+                return matchingProp.GetCaptureGroupPropBase(propertySnippet.Proptions);
+        }
+
+        return new TextSegment(templateSnippet);
     }
 
     List<TemplatePropInfo> GetTemplateProps()

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines;
 
-public record RegexCommentedLine
+public record RegexFormattedLine
 {
     public List<RegexCommentedLineSpan> Spans { get; set; }
 
@@ -10,7 +10,7 @@ public record RegexCommentedLine
     public virtual string FullPath { get; }
     public string FormattedText { get; set; }
 
-    public RegexCommentedLine(string regex, string comment, string enclosurePath, List<RegexCommentedLineSpan> spans)
+    public RegexFormattedLine(string regex, string comment, string enclosurePath, List<RegexCommentedLineSpan> spans)
     {
         Regex = regex;
         Comment = comment;

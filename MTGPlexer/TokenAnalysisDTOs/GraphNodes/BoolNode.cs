@@ -7,23 +7,22 @@
 /// </summary>
 public record BoolNode : TerminalNode
 {
-    public BoolNode(PropertyInfo prop) : base(prop)
+    public BoolNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(new TemplatePropInfo(Prop), isOptional: true);
+        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), isOptional: true);
         builder.AddAlternateValues(ScalarAlternativeSet.Alternates);
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override object SetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
+    protected override object GetPropertyValue(Capture capture)
     {
         // This override simply returns "true", because CaptureGroupPropBase already validated
         // that the named group exists, therefore this bool check succeeds
 
-        result = ValueResult.Success;
         return true;
     }
 }

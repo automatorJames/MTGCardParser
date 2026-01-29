@@ -17,13 +17,13 @@ public static class CompositionFactory
 
     public static RegexBuilder Compose(IEnumerable<Node> nodes, Type rootType)
     {
-        var segmentList = segments.ToList();
+        var nodeList = nodes.ToList();
         RegexBuilder builder = new(rootType);
 
         if (rootType.IsAssignableTo(typeof(TokenUnitOneOf)))
-            AlternatingComposer.Instance.Compose(builder, segmentList);
+            AlternatingComposer.Instance.Compose(builder, nodeList);
         else if (rootType.IsAssignableTo(typeof(TokenUnit)))
-            ConcatenatingComposer.Instance.Compose(builder, segmentList);
+            ConcatenatingComposer.Instance.Compose(builder, nodeList);
 
         return builder;
     }

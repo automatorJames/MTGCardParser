@@ -1,51 +1,49 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿using MTGPlexer.TokenAnalysisDTOs.GraphNodes;
+
+namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 public record CompoundOfNode : WrapperPropertyNode
 {
-    public CollectionNode Collection { get; set; }
-    public CompoundOfNode(PropertySnippet propertySnippet) : base(propertySnippet)
-    {
-        var genericType = GenericTypes[0];
-        Collection = new CollectionNode(genericType);
+    public List<WrappedNode> WrappedNodes { get; } = [];
 
-        if (genericType.IsAssignableTo(typeof(TokenUnit)))
-            _regexProp = new TokenUnitNode(derivedPropInfo);
-        else if (GenericType.IsEnum)
-            _regexProp = new EnumNode(derivedPropInfo);
-        else
-            throw new Exception($"CompoundOfNode type may only be derived from TokenUnit or be an enum");
+    public CompoundOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    {
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(TemplatePropInfo);
+        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo());
         builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
-        ConcatenatingComposer.Instance.Compose(builder, [_regexProp]);
+        TemplateNodeForComposition.ComposeRegexLines(builder);
         builder.AddTextLine(" ?");
         builder.CloseGroup(GroupQuantifier.OneOrMore);
         builder.AddNegativeSpaceLookbehindBoundary();
         builder.CloseGroup();
     }
 
-    public override object SetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
+    protected override object GetPropertyValue(Capture capture)
     {
-        List<PolyItemCapture> hydratedItems = [];
-        var scopedCaptures = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name];
+        //List<PolyItemCapture> hydratedItems = [];
+        //
+        //if (capture is not Group group)
+        //    throw new Exception();
+        //
+        //for (int i = 0; i < group.Captures.Count; i++)
+        //{
+        //    var ordinalCapture = group.Captures[i];
+        //    MatchTraversalState state = new(_genericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
+        //    var childItem = _regexProp.GetPropertyValue(state, ordinalCapture, out var ordinalResult);
+        //    PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
+        //    hydratedItems.Add(hydratedItem);
+        //}
+        //
+        //var compoundType = typeof(CompoundOf<>).MakeGenericType(GenericType);
+        //var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
+        //
+        //result = ValueResult.Success;
+        //return compoundPropVal;
 
-        for (int i = 0; i < scopedCaptures.Length; i++)
-        {
-            var ordinalCapture = scopedCaptures[i];
-            MatchTraversalState state = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
-            var childItem = _regexProp.GetPropertyValue(state, ordinalCapture, out var ordinalResult);
-            PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo);
-            hydratedItems.Add(hydratedItem);
-        }
-
-        var compoundType = typeof(CompoundOf<>).MakeGenericType(GenericType);
-        var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
-
-        result = ValueResult.Success;
-        return compoundPropVal;
+        throw new NotImplementedException();
     }
 
 

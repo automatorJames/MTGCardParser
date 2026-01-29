@@ -10,4 +10,10 @@ public class ConcatenatingComposer : ISegmentComposer
         foreach (var segment in segments)
             segment.ComposeRegexLines(collector);
     }
+    public void Compose(RegexBuilder collector, List<Node> nodes)
+    {
+        foreach (var node in nodes)
+            node.ComposeRegexLines(collector);
+    }
+
 }

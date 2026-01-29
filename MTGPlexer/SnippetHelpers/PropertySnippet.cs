@@ -10,4 +10,7 @@ public record PropertySnippet : Snippet
         Prop = prop;
         Proptions = proptions;
     }
+
+    // A temporary conversion method
+    public TemplatePropInfo ToTemplatePropInfo() => new(Prop);
 }

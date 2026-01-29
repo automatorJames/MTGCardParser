@@ -150,7 +150,7 @@ public class RegexBuilder
     /// </summary>
     /// <param name="synonymData">Optional data about captured synonyms to enrich the comments.</param>
     /// <returns>A list of formatted regex lines.</returns>
-    public List<RegexCommentedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
+    public List<RegexFormattedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
         var finalizedElements = _concatenater.RegexElements.ToList();
         AddBoundaryLines(finalizedElements);
@@ -209,6 +209,15 @@ public class RegexBuilder
             lines.Add(new BlankLine([]));
             lines.Add(endBoundary);
         }
+    }
+
+    public BuiltRegex GetBuiltRegex()
+    {
+        var regexString = GetMinified();
+        Regex regex = new(regexString, RegexOptions.Compiled);
+        var lines = GetFormattedLines();
+
+        return new(regexString, regex, lines);
     }
 
     public override string ToString() => GetMinified(addBoundaries: false);

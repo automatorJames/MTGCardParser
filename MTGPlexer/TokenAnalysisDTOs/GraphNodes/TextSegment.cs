@@ -9,7 +9,7 @@ public record TextNode : Node
     public string Text { get; set; }
     public bool DoNotAddPrecedingSpace { get; }
 
-    public TextNode(Snippet snippet)
+    public TextNode(Node parentNode, Snippet snippet) : base(parentNode, snippet.Text)
     {
         var text = snippet.Text;
 
