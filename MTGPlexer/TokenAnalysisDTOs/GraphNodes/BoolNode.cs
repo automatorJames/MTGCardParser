@@ -14,7 +14,7 @@ public record BoolNode : TerminalNode
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), isOptional: true);
-        builder.AddAlternateValues(ScalarAlternativeSet.Alternates);
+        builder.AddAlternateValues(ScalarAlternateSet.Alternates);
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 

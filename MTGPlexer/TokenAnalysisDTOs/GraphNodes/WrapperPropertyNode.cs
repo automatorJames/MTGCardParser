@@ -12,13 +12,6 @@ public abstract record WrapperPropertyNode : CaptureNode
         GenericTypes = UnderlyingType.GetGenericArguments();
 
         foreach (var genericType in GenericTypes)
-        {
-            if (GenericType.IsAssignableTo(typeof(TokenUnit)))
-                TemplateNodesForComposition.Add(new WrappedTokenUnitNode(this, GenericType));
-            else if (GenericType.IsEnum)
-                TemplateNodesForComposition.Add(new WrappedEnumNode(this, GenericType));
-            else
-                throw new Exception($"{nameof(WrapperPropertyNode)} may only be derived from TokenUnit or be an enum");
-        }
+            TemplateNodesForComposition.Add(new WrappedNode(this, GenericType));
     }
 }

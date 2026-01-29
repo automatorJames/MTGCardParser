@@ -6,7 +6,7 @@ public abstract record TerminalNode : CaptureNode
     {
     }
 
-    public ScalarAlternateSet ScalarAlternativeSet
+    public ScalarAlternateSet ScalarAlternateSet
     {
         get
         {

@@ -17,7 +17,7 @@ public record PlaceholderNode : TerminalNode
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        var regexString = ScalarAlternativeSet.Alternates.Single();
+        var regexString = ScalarAlternateSet.Alternates.Single();
 
         try
         {

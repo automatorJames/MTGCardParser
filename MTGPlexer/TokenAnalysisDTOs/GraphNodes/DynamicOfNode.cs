@@ -3,14 +3,11 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 
 public record DynamicOfNode : WrapperPropertyNode
 {
-    Type _genericType;
     ScalarAlternateSet _scalarAlternativeSet;
 
 	public DynamicOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        _genericType = GenericTypes[0];
-
-        if (_genericType.IsAssignableTo(typeof(TokenUnit)))
+        if (!GenericType.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{nameof(DynamicOfNode)} only supports {nameof(TokenUnit)} types");
 
 		if (TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(propertySnippet.ToTemplatePropInfo(), out var scalarAlternativeSet))

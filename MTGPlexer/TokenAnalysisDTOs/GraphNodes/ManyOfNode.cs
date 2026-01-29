@@ -2,13 +2,14 @@
 
 public record ManyOfNode : WrapperPropertyNode
 {
-    WrappedEnumNode _conjunctionNode { get; }
+    WrappedNode _conjunctionNode { get; }
     WrappedNode _nodeTheFirst { get; }
     WrappedNode _nodeTheLast { get; }
     List<WrappedNode> _nodesTheSecond { get; } = [];
 
     public ManyOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
+        _conjunctionNode = new(this, typeof(Conjunction));
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)

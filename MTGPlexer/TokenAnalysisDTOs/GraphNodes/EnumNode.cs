@@ -9,7 +9,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 public record EnumNode : TerminalNode
 {
     bool _isOptional;
-    public EnumScalarAlternateSet EnumSet { get; private set; }
+    //public EnumScalarAlternateSet EnumSet { get; private set; }
 
     public EnumNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -28,7 +28,7 @@ public record EnumNode : TerminalNode
         if (UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
-        builder.AddAlternateEnumValues(EnumSet);
+        builder.AddAlternateEnumValues((EnumScalarAlternateSet)ScalarAlternateSet);
         builder.CloseGroup(_isOptional ? GroupQuantifier.Optional : null);
     }
 
@@ -62,4 +62,24 @@ public record EnumNode : TerminalNode
 
         throw new NotImplementedException();
     }
+
+    //public static EnumScalarAlternateSet EnumTypetoScalarSet(Type enumType)
+    //{
+    //    if (!enumType.IsEnum)
+    //        throw new Exception($"'{enumType.Name}' is not an enum type");
+    //
+    //    List<EnumScalarAlternate> enumAlternates = new();
+    //
+    //    // get enum values in declared order
+    //    var enumValues = enumType
+    //        .GetFields(BindingFlags.Public | BindingFlags.Static)
+    //        .OrderBy(x => x.MetadataToken)
+    //        .Select(x => x.GetValue(null)!)
+    //        .ToList();
+    //
+    //    foreach (var enumValue in enumValues)
+    //        enumAlternates.Add(new(enumType, enumValue));
+    //
+    //    return new(enumAlternates);
+    //}
 }

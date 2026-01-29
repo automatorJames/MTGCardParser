@@ -49,7 +49,7 @@ public static class SpanBuilder
                 BuildXOfBranch((XOf)prop.Value, prop, ctx),
 
             TemplatePropType.Placeholder =>
-                CreateLeaf(prop, ctx, ((PlaceholderCapture)prop.Value).Text, "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
+                CreateLeaf(prop, ctx, ((PlaceholderCapture)prop.Value).GetText(), "placeholder", TokenAnalysisElementType.PlaceholderLeaf),
 
             TemplatePropType.Bool =>
                 CreateLeaf(prop, ctx, prop.Value.ToString()!.ToLower(), "bool", TokenAnalysisElementType.BoolLeaf),

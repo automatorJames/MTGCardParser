@@ -1,15 +1,13 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public abstract record CaptureNode : Node
+public abstract record CaptureNode : TypedNode
 {
     public PropertySnippet PropertySnippet { get; }
-    public Type UnderlyingType { get; }
     public Proptions Proptions { get; }
 
-    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet.Prop.Name)
+    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet.Prop.Name, propertySnippet.Prop.PropertyType)
     {
         PropertySnippet = propertySnippet;
-        UnderlyingType = Nullable.GetUnderlyingType(propertySnippet.Prop.PropertyType) ?? propertySnippet.Prop.PropertyType;
     }
 
     public void SetPropertyValue(Match match, TokenUnit parent)

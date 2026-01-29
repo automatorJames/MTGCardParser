@@ -12,6 +12,7 @@ public static partial class TokenTypeRegistry
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
 
+    public static Dictionary<Type, RootNode> RootNodes { get; set; } = [];
     public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
@@ -53,6 +54,7 @@ public static partial class TokenTypeRegistry
     {
         NameToType[type.Name] = type;
         RegexTemplate typeTemplate = new(type);
+        RootNodes[type] = new(type);
         Templates[type] = typeTemplate;
         var propCaptureSegments = typeTemplate.CaptureGroupProps;
 

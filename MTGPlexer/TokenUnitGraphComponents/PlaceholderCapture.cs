@@ -10,10 +10,15 @@
 /// </summary>
 [Color("#696969")]
 public record PlaceholderCapture
-(
-    string Text
-)
 {
-    public override string ToString() => Text;
+    string _text;
+
+    public PlaceholderCapture(string text)
+    {
+        _text = text;
+    }
+
+    public string GetText() => _text;
+    public override string ToString() => _text;
 }
 
