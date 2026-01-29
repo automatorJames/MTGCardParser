@@ -25,8 +25,6 @@ public abstract class TokenUnit
     /// </summary>
     public List<PropertyCapture> PropertyCaptures { get; set; } = [];
 
-    public List<Node> Nodes { get; set; } = [];
-
     protected virtual void OnAfterHydrated()
     {
         // Base implementation requires no actions post-hydration
@@ -198,12 +196,6 @@ public abstract class TokenUnit
         }
 
         return terminalCaptures;
-    }
-
-    void AddNode(TemplatePropInfo templatePropInfo, ExtractedCapture capture, object nodeVal)
-    {
-        //if (nodeVal.GetType().IsAssignableTo(typeof(XOfTree)))
-        //    Nodes.Add(new TreeNode(TemplatePropInfo templatePropInfo, ExtractedCapture capture))
     }
 
     /// <summary>

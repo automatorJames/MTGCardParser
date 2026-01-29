@@ -48,7 +48,7 @@ public record EnumNode : TerminalNode
         return new EnumScalarAlternateSet(enumAlternates);
     }
 
-    public override object GetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
+    public override object SetPropertyValue(MatchTraversalState parentTokenUnitMatch, ExtractedCapture scopedCapture, out ValueResult result)
     {
         foreach (var enumAlternative in EnumSet.EnumAlternates)
             if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))

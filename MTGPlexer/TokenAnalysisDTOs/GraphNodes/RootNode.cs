@@ -2,25 +2,12 @@
 
 public record RootNode : ParentNode
 {
-    public Type RootType { get; set; }
+    public Type RootType { get; }
+    public string Regex { get; }
+    public Snippet[] Snippets { get; }
 
     public RootNode(Type type)
     {
-        RootType = type;
-        PopulateChildren();
-    }
-
-    public TokenUnit(Match match)
-    {
-        foreach (var captureChild in CaptureChildren)
-        {
-            var val = captureChild.GetPropertyValue
-        }
-    }
-
-    void PopulateChildren()
-    {
-        List<Node> children = [];
         var instance = Activator.CreateInstance(RootType);
 
         if (instance is not TokenUnit tokenUnitInstance)
@@ -48,22 +35,21 @@ public record RootNode : ParentNode
                 throw new Exception($"Type '{RootType.Name}' has no snippets or valid properties");
         }
 
-        Children = snippets.Select(SnippetToNode).ToList();
+        Snippets = snippets;
+        RootType = type;
+        PopulateChildren();
+    }
 
-        for (int i = 0; i < snippets.Length; i++)
+    public TokenUnit Hydrate(Match match)
+    {
+        foreach (var captureChild in CaptureChildren)
         {
-            var snippet = snippets[i];
-            var matchingProp = targetProps.FirstOrDefault(x => x.Name == snippet.Text);
-
-            if (matchingProp != null)
-                return matchingProp.GetCaptureGroupPropBase(templateSnippet.Proptions);
-            else
-                return new TextSegment(templateSnippet);
-
-            var segment = ResolveSnippetToSegment(snippet);
-
-            RegexSegments.Add(segment);
+            var val = captureChild.SetPropertyValue
         }
+    }
+
+    void PopulateChildren()
+    {
 
         ComposeRegex();
     }
@@ -76,7 +62,7 @@ public record RootNode : ParentNode
 
             return underlyingType switch
             {
-                { IsEnum: true } => new EnumNode(propertySnippet)
+                { IsEnum: true } => new EnumNode(propertySnippet),
                 { } t when t.IsAssignableTo(typeof(ManyOf)) => TemplatePropType.ManyOf,
                 { } t when t.IsAssignableTo(typeof(CompoundOf)) => TemplatePropType.CompoundOf,
                 { } t when t.IsAssignableTo(typeof(OneOf)) => TemplatePropType.OneOf,
