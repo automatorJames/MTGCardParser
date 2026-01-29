@@ -26,6 +26,7 @@ public static partial class TokenTypeRegistry
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
     public static Tokenizer OriginalTextTokenizer { get; set; }
+    public static NodeTokenizer NodeTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
@@ -206,6 +207,7 @@ public static partial class TokenTypeRegistry
 
         TypeRegexes = Templates.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.Regex);
         ClassTokenizer = new(AppliedOrderTypes);
+        NodeTokenizer = new(AppliedOrderTypes);
     }
 
     static void AddClassTokenType(Type tokenUnitType)
