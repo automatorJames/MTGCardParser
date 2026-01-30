@@ -5,7 +5,7 @@ public record RootNode : TypedNode
     public Type RootType { get; }
     public BuiltRegex BuiltRegex { get; }
 
-    public IEnumerable<CaptureNode> _captureChildren => Children.OfType<CaptureNode>();
+    public IEnumerable<CaptureNode> CaptureChildren => Children.OfType<CaptureNode>();
 
     public RootNode(Type type) : base(null, type.Name, type)
     {
@@ -32,7 +32,7 @@ public record RootNode : TypedNode
     {
         var instance = (TokenUnit)Activator.CreateInstance(RootType);
 
-        foreach (var captureChild in _captureChildren)
+        foreach (var captureChild in CaptureChildren)
             captureChild.SetPropertyValue(captures, instance);
 
         return instance;

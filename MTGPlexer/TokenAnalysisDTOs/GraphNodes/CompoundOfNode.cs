@@ -10,8 +10,8 @@ public record CompoundOfNode : WrapperPropertyNode
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo());
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenNamedGroup(this);
+        builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         TemplateNodeForComposition.ComposeRegexLines(builder);
         builder.AddTextLine(" ?");
         builder.CloseGroup(GroupQuantifier.OneOrMore);
@@ -28,7 +28,7 @@ public record CompoundOfNode : WrapperPropertyNode
             var ordinalCapture = captures[i];
             ExtractedCapture extractedCapture = new(ordinalCapture, FullyQualifiedName, i, captures.Length); // todo: deprecate ExtractedCapture?
             var childItem = TemplateNodeForComposition with { Ordinal = i };
-            PolyItemCapture hydratedItem = new(childItem, extractedCapture, PropertySnippet.ToTemplatePropInfo());
+            PolyItemCapture hydratedItem = new(childItem, extractedCapture);
             hydratedItems.Add(hydratedItem);
         }
         

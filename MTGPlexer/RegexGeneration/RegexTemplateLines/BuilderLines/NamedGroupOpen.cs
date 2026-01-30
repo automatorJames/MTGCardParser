@@ -5,12 +5,12 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
     public string FullyQualifiedName { get; }
     public bool IsOptional { get; }
 
-    public NamedGroupOpen(Enclosure[] enclosures, TemplatePropInfo prop) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(prop))
+    public NamedGroupOpen(Enclosure[] enclosures, CaptureNode captureNode) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(captureNode))
     {
-        IsOptional = 
-            prop.Proptions.HasFlag(Proptions.Optional) 
-            || prop.Prop.IsDefined(typeof(OptionalComponentAttribute))
-            || prop.TemplatePropType == TemplatePropType.Enum && Nullable.GetUnderlyingType(prop.Prop.PropertyType) != null;
+        IsOptional =
+            captureNode.Proptions.HasFlag(Proptions.Optional)
+            || captureNode.PropertySnippet.Prop.IsDefined(typeof(OptionalComponentAttribute))
+            || captureNode.UnderlyingType.IsEnum && Nullable.GetUnderlyingType(captureNode.PropertySnippet.Prop.PropertyType) != null;
 
         FullyQualifiedName = GetFullyQualifiedName(enclosures);
     }
@@ -18,13 +18,13 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
     static string RenderCaptureGroup(Enclosure[] enclosures) =>
         $"(?<{GetFullyQualifiedName(enclosures)}>";
     
-    static string GetComment(TemplatePropInfo prop)
+    static string GetComment(CaptureNode captureNode)
     {
-        var comment = prop.GetFriendlyTypeName();
+        var comment = captureNode.UnderlyingType.Name.ToFriendlyCase();
 
         // Disambiguate the role of enum properties named differently than their types
-        if (prop.TemplatePropType == TemplatePropType.Enum && prop.Name != prop.UnderlyingType.Name)
-            comment += $": {prop.UnderlyingType.Name}";
+        if (captureNode.UnderlyingType.IsEnum && captureNode.PropertySnippet.Prop.Name != captureNode.UnderlyingType.Name)
+            comment += $": {captureNode.UnderlyingType.Name}";
 
         return comment;
     }

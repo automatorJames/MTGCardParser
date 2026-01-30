@@ -1,5 +1,4 @@
-﻿using MTGPlexer.TokenEditor;
-using System.Reflection.Emit;
+﻿using System.Reflection.Emit;
 
 namespace MTGPlexer.StaticRegistry;
 
@@ -13,20 +12,15 @@ public static partial class TokenTypeRegistry
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
 
     public static Dictionary<Type, RootNode> RootNodes { get; set; } = [];
-    public static Dictionary<Type, RegexTemplate> Templates { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
-    public static Dictionary<Type, EnumScalarAlternateSet> EnumScalarAlternativeSets { get; set; } = [];
-    public static Dictionary<TemplatePropInfo, ScalarAlternateSet> PropScalarAlternativeSets { get; set; } = [];
-    public static Dictionary<Type, Regex> ManyOfRegexes { get; set; } = [];
-    public static Dictionary<Type, Dictionary<TemplatePropInfo, List<TemplatePropInfo>>> PropDistillationMaps { get; set; } = [];
+    public static Dictionary<Type, Dictionary<PropertyInfo, List<PropertyInfo>>> PropDistillationMaps { get; set; } = [];
     public static Dictionary<Type, Type> EmittedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
     public static Tokenizer OriginalTextTokenizer { get; set; }
-    public static NodeTokenizer NodeTokenizer { get; set; }
 
     static TokenTypeRegistry()
     {
@@ -35,83 +29,33 @@ public static partial class TokenTypeRegistry
         var allTokenTypes = GetAllTopLevelTokenTypes();
 
         foreach (var type in allTokenTypes)
-            SetTypeTemplate(type);
-
-
-        var thing1 = NameToType["TargetGainsOrLosesBuff_Many"];
-        var thing2 = RootNodes[thing1];
-        var sayrEal = Templates[thing1];
+            SetRootNode(type);
 
         InitializeClassTokenizer();
         OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
     }
 
-    public static RegexTemplate GetTypeTemplate(Type type)
+    public static RootNode GetRootNode(Type type)
     {
-        if (!Templates.ContainsKey(type))
-            SetTypeTemplate(type);
+        if (!RootNodes.ContainsKey(type))
+            SetRootNode(type);
 
-        var template = Templates[type];
-
-        return template;
+        return RootNodes[type];
     }
 
-    static void SetTypeTemplate(Type type)
+    static void SetRootNode(Type type)
     {
         NameToType[type.Name] = type;
-        RootNodes[type] = new(type);
-        RegexTemplate typeTemplate = new(type);
-        Templates[type] = typeTemplate;
-        var propCaptureSegments = typeTemplate.CaptureGroupProps;
+        RootNode rootNode = new(type);
+        RootNodes[type] = rootNode;
 
-        // Register all newly encountered enums (we use the EnumRegexProp instance for this,
-        // but steps taken during registration only care about the enum type itself)
-        propCaptureSegments
-            .OfType<EnumSegment>()
-            .Where(x => !EnumScalarAlternativeSets.ContainsKey(x.TemplatePropInfo.UnderlyingType))
-            .ToList()
-            .ForEach(enumRegexPropWithNewEnumType =>
-            {
-                var enumType = enumRegexPropWithNewEnumType.TemplatePropInfo.UnderlyingType;
-                EnumRegexStrings[enumType] = enumRegexPropWithNewEnumType.RegexString;
-                ReferencedEnumTypes.Add(enumType);
-                NameToType[enumType.Name] = enumType;
-                EnumScalarAlternativeSets[enumType] = enumRegexPropWithNewEnumType.EnumSet;
-            });
-
-        // Register enums that appear as the T types within XOf<T> properties
-        propCaptureSegments
-            .OfType<XOfSegmentBase>()
-            .SelectMany(x => x.GenericTypes)
-            .Where(x => x.IsEnum && !EnumScalarAlternativeSets.ContainsKey(x))
-            .ToList()
-            .ForEach(newEnumType => 
-            {
-                var enumSet = EnumSegment.EnumTypetoScalarSet(newEnumType);
-                EnumRegexStrings[newEnumType] = enumSet.CollectiveRegex.ToString();
-                ReferencedEnumTypes.Add(newEnumType);
-                NameToType[newEnumType.Name] = newEnumType;
-                EnumScalarAlternativeSets[newEnumType] = enumSet;
-            });
-
-        // Register all newly encountered scalar capture props that aren't enums (i.e. bools & placeholders)
-        propCaptureSegments
-            .OfType<ScalarCaptureSegmentBase>()
-            .Where(x => x.TemplatePropInfo.TemplatePropType != TemplatePropType.Enum)
-            .ToList()
-            .ForEach(x => PropScalarAlternativeSets.TryAdd(x.TemplatePropInfo, x.ScalarAlternativeSet));
-
-        // Register all newly encountered ManyProps (we use BaseType as the key, not UnderlyingType which is List<T>)
-        propCaptureSegments
-            .OfType<ManyOfSegment>()
-            .ToList()
-            .ForEach(x => ManyOfRegexes.TryAdd(x.TemplatePropInfo.UnderlyingType, typeTemplate.Builder.ExtractGroupRegex(x.TemplatePropInfo)));
+        var captureChildren = rootNode.CaptureChildren;
 
         if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
             throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
     }
 
-    public static List<TokenUnit> Tokenize(SourceTextDTO sourceText, bool originalTextOnly = false)
+    public static List<TokenUnit> Tokenize(string sourceText, bool originalTextOnly = false)
     {
         var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(sourceText) : ClassTokenizer.Tokenize(sourceText);
         return tokens;
@@ -159,7 +103,7 @@ public static partial class TokenTypeRegistry
         {
             var emittedType = DynamicTypeEmitter.EmitManyType(type);
             EmittedOptionalManyTypes[type] = emittedType;
-            SetTypeTemplate(emittedType);
+            SetRootNode(emittedType);
         }
     }
 
@@ -193,7 +137,7 @@ public static partial class TokenTypeRegistry
         // Order by descending length, which is a rough approximate of complexity/match length (not exact)
         var unorderedRemainingTypes = allTokenTypes
             .Except(orderedTypes.SelectMany(x => x.Value))
-            .OrderByDescending(x => Templates[x].RegexString.Length)
+            .OrderByDescending(x => RootNodes[x].BuiltRegex.MinifiedRegexString.Length)
             .ToList();
 
         var nextKey = orderedTypes.Keys.Any() ? orderedTypes.Keys.Max() + 1 : 0;
@@ -210,9 +154,8 @@ public static partial class TokenTypeRegistry
             .ToList()
             .ForEach(AddClassTokenType);
 
-        TypeRegexes = Templates.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.Regex);
+        TypeRegexes = RootNodes.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
         ClassTokenizer = new(AppliedOrderTypes);
-        NodeTokenizer = new(AppliedOrderTypes);
     }
 
     static void AddClassTokenType(Type tokenUnitType)
@@ -234,7 +177,7 @@ public static partial class TokenTypeRegistry
     public static void CreateAndRegisterNewTypeAndSaveToDisk(EditorTokenUnit dynamicTokenType)
     {
         var newType = CreateDynamicTokenUnitType(dynamicTokenType);
-        SetTypeTemplate(newType);
+        SetRootNode(newType);
         DeterministicPalette.RefreshTypePaletteSet();
         var outputPath = Path.Combine(_sourceCodeDir, dynamicTokenType.ClassName + ".cs");
         File.WriteAllText(outputPath, dynamicTokenType.ClassStringForSavingToFile);
@@ -350,7 +293,7 @@ public static partial class TokenTypeRegistry
 
         // 5) Finalize
         var type = tb.CreateType()!;
-        SetTypeTemplate(type);
+        SetRootNode(type);
         _dynamicAssemblyTypes.Add(type);
         InitializeClassTokenizer();
 

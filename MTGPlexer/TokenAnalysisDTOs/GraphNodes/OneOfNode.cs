@@ -13,7 +13,7 @@ public record OneOfNode : WrapperPropertyNode
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
         AlternatingComposer.Instance.Compose(builder, TemplateNodesForComposition.Cast<Node>().ToList());
         builder.CloseGroup();
     }

@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.TokenEditor;
+﻿
+namespace MTGPlexer.TokenEditor;
 
 public record EditorMethodSnippet : EditorBlockSnippet
 {
@@ -32,23 +33,25 @@ public record EditorMethodSnippet : EditorBlockSnippet
                $"{joinedArgs}{Span("\"", SpanClass.stringliteral)}{Span(")", SpanClass.identifier)}";
     }
 
-    public override RegexSegmentBase GetRegexSegment()
+    public override CaptureNode ToCaptureNode()
     {
-        var parameters = Method.GetParameters();
+        //var parameters = Method.GetParameters();
+        //
+        //object[] invokeArgs = parameters.Length switch
+        //{
+        //    0 => Array.Empty<object>(),
+        //    1 when parameters[0].ParameterType == typeof(string[]) => [Args],
+        //    1 => [Args],
+        //    2 => [null!, Args],
+        //    _ => null
+        //};
+        //
+        //if (invokeArgs == null)
+        //    throw new Exception($"Could not map parameters for '{Method.Name}'");
+        //
+        //var shortcutSnippet = (Snippet)Method.Invoke(null, invokeArgs)!;
+        //return new TextSegment(shortcutSnippet);
 
-        object[] invokeArgs = parameters.Length switch
-        {
-            0 => Array.Empty<object>(),
-            1 when parameters[0].ParameterType == typeof(string[]) => [Args],
-            1 => [Args],
-            2 => [null!, Args],
-            _ => null
-        };
-
-        if (invokeArgs == null)
-            throw new Exception($"Could not map parameters for '{Method.Name}'");
-
-        var shortcutSnippet = (Snippet)Method.Invoke(null, invokeArgs)!;
-        return new TextSegment(shortcutSnippet);
+        throw new NotImplementedException();
     }
 }

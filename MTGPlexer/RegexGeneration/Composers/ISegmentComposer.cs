@@ -1,8 +1,6 @@
-﻿using MTGPlexer.RegexGeneration.RegexSegments;
-
-namespace MTGPlexer.RegexGeneration.Composers;
+﻿namespace MTGPlexer.RegexGeneration.Composers;
 
 public interface ISegmentComposer
 {
-    void Compose(RegexBuilder collector, List<RegexSegmentBase> segments);
+    void Compose(RegexBuilder collector, List<Node> nodes);
 }

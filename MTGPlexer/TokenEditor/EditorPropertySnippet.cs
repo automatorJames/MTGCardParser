@@ -124,8 +124,6 @@ public record EditorPropertySnippet : EditorBlockSnippet
         return representation;
     }
 
-    public override RegexSegmentBase GetRegexSegment() =>
-         new TemplatePropInfo(ResolvedType, PropertyNameRepresentation).GetCaptureGroupPropBase(Proptions);
 
     public string GetContextMenuDisplayName()
     {
@@ -152,6 +150,11 @@ public record EditorPropertySnippet : EditorBlockSnippet
         var updatedProptions = Proptions ^ oneHotToggleProptions;
 
         return new(BasePropertyType, XOfType, Id, updatedProptions);
+    }
+
+    public override CaptureNode ToCaptureNode()
+    {
+        throw new NotImplementedException();
     }
 
     public enum ContextActionType

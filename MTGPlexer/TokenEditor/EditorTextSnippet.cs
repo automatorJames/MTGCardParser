@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.TokenEditor;
+﻿
+namespace MTGPlexer.TokenEditor;
 
 public record EditorTextSnippet : EditorSnippet
 {
@@ -18,6 +19,11 @@ public record EditorTextSnippet : EditorSnippet
     public override string GetParameterHtmlRepresentation() =>
         Span($"\"{TrimmedText}\"", SpanClass.stringliteral);
 
-    public override RegexSegmentBase GetRegexSegment() =>
-        new TextSegment(TrimmedText);
+    public override CaptureNode ToCaptureNode()
+    {
+        // new TextSegment(TrimmedText);
+        throw new NotImplementedException();
+    }
+
+    
 }

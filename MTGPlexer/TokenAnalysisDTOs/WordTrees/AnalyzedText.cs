@@ -98,7 +98,7 @@ public record AnalyzedText
         TotalOccurrenceCount = occurrences.Count;
 
         OccurrencesPerCard = occurrences
-            .GroupBy(x => x.OriginalOccurrence.Key.CardName)
+            .GroupBy(x => x.OriginalOccurrence.CardName)
             .OrderByDescending(x => x.Count())
             .ThenBy(x => x.Key)
             .ToDictionary(x => x.Key, x => x.Count());

@@ -16,7 +16,7 @@ public record TokenUnitOneOfNode : TokenUnitNode
         // If there are no text sgements to render, the OneOf container itself doesn't need spaces between its alternating members
         SpaceDisposition? spaceDisposition = !Children.Any(x => x is TextNode) ? SpaceDisposition.DisallowedLocal : null;
 
-        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: spaceDisposition);
+        builder.OpenNamedGroup(this, spaceDisposition: spaceDisposition);
         AlternatingComposer.Instance.Compose(builder, Children);
         builder.CloseGroup();
     }

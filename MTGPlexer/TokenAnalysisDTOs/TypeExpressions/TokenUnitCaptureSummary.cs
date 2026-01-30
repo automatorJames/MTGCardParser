@@ -17,7 +17,7 @@ public class TokenUnitCaptureSummary
             .Select(x => x.RootToken)
             .Where(x => x is not DefaultUnmatchedString);
 
-        var orderedRootTokenUnitTypes = TokenTypeRegistry.Templates.Keys
+        var orderedRootTokenUnitTypes = TokenTypeRegistry.RootNodes.Keys
             .OrderBy(TokenTypeRegistry.AppliedOrderTypes.IndexOf);
 
         foreach (var rootType in orderedRootTokenUnitTypes)

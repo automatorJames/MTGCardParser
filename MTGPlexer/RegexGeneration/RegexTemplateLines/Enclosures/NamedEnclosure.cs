@@ -3,29 +3,31 @@
 public record NamedEnclosure : Enclosure
 {
     public string Name { get; }
-    public TemplatePropInfo TemplatePropInfo { get; }
+    public CaptureNode CaptureNode { get; }
 
     public NamedEnclosure
         (
             int ordinal,
             int depth,
-            TemplatePropInfo templatePropInfo, 
+            CaptureNode captureNode, 
             SpaceDisposition? spaceDisposition = null
         ) : base
         (
             ordinal,
             depth,
             EnclosureType.RegexProp,
-            GetTreatment(templatePropInfo),
-            spaceDisposition ?? (templatePropInfo.UnderlyingType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
+            GetTreatment(captureNode),
+            spaceDisposition ?? (captureNode.UnderlyingType.IsDefined(typeof(NoSpacesAttribute)) ? SpaceDisposition.DisallowedLocal : SpaceDisposition.Default)
         )
     {
-        Name = templatePropInfo.Name;
-        TemplatePropInfo = templatePropInfo;
+        Name = captureNode.Name;
+        CaptureNode = captureNode;
     }
 
-    static GroupBorderTreatment GetTreatment(TemplatePropInfo templatePropInfo) => 
-        templatePropInfo.TemplatePropType == TemplatePropType.Enum && templatePropInfo.TemplatePropType != TemplatePropType.ManyOf
-            ? GroupBorderTreatment.ClosedBox
-            : GroupBorderTreatment.DashedBox;
+    static GroupBorderTreatment GetTreatment(CaptureNode captureNode) =>
+        captureNode.UnderlyingType switch
+        {
+            { IsEnum: true } => GroupBorderTreatment.ClosedBox,
+            _ => GroupBorderTreatment.DashedBox
+        };
 }

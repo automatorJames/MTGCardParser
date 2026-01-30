@@ -17,51 +17,51 @@ public record TokenUnitCapture
 
     public TokenUnitCapture(Type type, List<TokenUnit> rootTokensUnitsOfType = null)
     {
-        Type = type;
-        TypeName = type.Name;
-        TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
-        var template = TokenTypeRegistry.Templates[type];
-
-        if (rootTokensUnitsOfType != null)
-        {
-            ProcessFlattenedTerminalCaptures(rootTokensUnitsOfType);
-            FilteredLines = template.Builder.GetFormattedLines(PropPathVariantSets.Values.ToList());
-            OccurrenceCount = rootTokensUnitsOfType.Count;
-        }
-        else
-            FilteredLines = template.Builder.GetFormattedLines(null);
-
-        FormattedRegexString = string.Join("\r\n", FilteredLines.Select(x => x.FormattedText));
-        MinifiedRegexString = template.Builder.GetMinified();
+        //Type = type;
+        //TypeName = type.Name;
+        //TypeNameFriendly = TypeName.ToFriendlyCase(TitleDisplayOption.Sentence);
+        //var rootNode = TokenTypeRegistry.RootNodes[type];
+        //
+        //if (rootTokensUnitsOfType != null)
+        //{
+        //    ProcessFlattenedTerminalCaptures(rootTokensUnitsOfType);
+        //    FilteredLines = rootNode.Fo .GetFormattedLines(PropPathVariantSets.Values.ToList());
+        //    OccurrenceCount = rootTokensUnitsOfType.Count;
+        //}
+        //else
+        //    FilteredLines = rootNode.Builder.GetFormattedLines(null);
+        //
+        //FormattedRegexString = string.Join("\r\n", FilteredLines.Select(x => x.FormattedText));
+        //MinifiedRegexString = rootNode.Builder.GetMinified();
     }
 
     void ProcessFlattenedTerminalCaptures(List<TokenUnit> rootTokensUnitsOfType)
     {
-        foreach (var tokenUnit in rootTokensUnitsOfType)
-        {
-            var flattenedTerminalCaptures = tokenUnit.GetFlattenedTerminalCaptures();
-
-            foreach (var capture in flattenedTerminalCaptures)
-            {
-                var parentPropPath = capture.CaptureGroupPropPath.Parent
-                    ?? throw new Exception($"The path {capture.CaptureGroupPropPath?.PropPath} has no parent, but one was expected");
-
-                if (!PropPathVariantSets.TryGetValue(parentPropPath, out var propPathVariantSetWrapper))
-                {
-                    propPathVariantSetWrapper = new(parentPropPath, capture.TemplatePropInfo);
-                    PropPathVariantSets[parentPropPath] = propPathVariantSetWrapper;
-                }
-
-                if (!propPathVariantSetWrapper.SynonymSets.TryGetValue(capture.Value, out var captureValueVariantSet))
-                {
-                    captureValueVariantSet = new(capture.Value, capture.Capture);
-                    propPathVariantSetWrapper.SynonymSets[capture.Value] = captureValueVariantSet;
-                }
-                else
-                    captureValueVariantSet.IncrementSynonymCapture(capture.Capture);
-            }
-        }
-
-        PropPathVariantSets.Values.ToList().ForEach(x => x.OrderByOccurrenceCount());
+        //foreach (var tokenUnit in rootTokensUnitsOfType)
+        //{
+        //    var flattenedTerminalCaptures = tokenUnit.GetFlattenedTerminalCaptures();
+        //
+        //    foreach (var capture in flattenedTerminalCaptures)
+        //    {
+        //        var parentPropPath = capture.CaptureGroupPropPath.Parent
+        //            ?? throw new Exception($"The path {capture.CaptureGroupPropPath?.PropPath} has no parent, but one was expected");
+        //
+        //        if (!PropPathVariantSets.TryGetValue(parentPropPath, out var propPathVariantSetWrapper))
+        //        {
+        //            propPathVariantSetWrapper = new(parentPropPath, capture.TemplatePropInfo);
+        //            PropPathVariantSets[parentPropPath] = propPathVariantSetWrapper;
+        //        }
+        //
+        //        if (!propPathVariantSetWrapper.SynonymSets.TryGetValue(capture.Value, out var captureValueVariantSet))
+        //        {
+        //            captureValueVariantSet = new(capture.Value, capture.Capture);
+        //            propPathVariantSetWrapper.SynonymSets[capture.Value] = captureValueVariantSet;
+        //        }
+        //        else
+        //            captureValueVariantSet.IncrementSynonymCapture(capture.Capture);
+        //    }
+        //}
+        //
+        //PropPathVariantSets.Values.ToList().ForEach(x => x.OrderByOccurrenceCount());
     }
 }

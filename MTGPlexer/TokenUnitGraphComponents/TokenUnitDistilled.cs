@@ -6,13 +6,13 @@ public abstract class TokenUnitDistilled : TokenUnit
     /// Dictionary to aid in capture analysis. Allows external callers to quickly associate each
     /// PlaceholderCapture property with its distilled properties.
     /// </summary>
-    public Dictionary<TemplatePropInfo, List<TemplatePropInfo>> PropDistillationMap{ get; private set; } = [];
+    public Dictionary<PropertyInfo, List<PropertyInfo>> PropDistillationMap{ get; private set; } = [];
 
     /// <summary>
     /// Dictionary to aid in capture analysis. Similar to the PropDistillationMap dictionary, except 
     /// holds concrete distilled values for each PlaceholderCapture on this instance.
     /// </summary>
-    public Dictionary<PropertyCapture, Dictionary<TemplatePropInfo, object>> DistilledVals{ get; private set; } = [];
+    public Dictionary<PropertyInfo, Dictionary<PropertyInfo, object>> DistilledVals{ get; private set; } = [];
 
     public abstract void DistillValuesFromPlaceholders();
 
@@ -48,21 +48,15 @@ public abstract class TokenUnitDistilled : TokenUnit
     {
         foreach (var (placeholderProp, distilledPropList) in PropDistillationMap)
         {
-            var associatedIndexedPropCapture = PropertyCaptures.FirstOrDefault(x => x.TemplatePropInfo == placeholderProp);
-
-            // If this Placeholder prop has no capture, there's no need to register it (expected to be uncommon, but not impossible)
-            if (associatedIndexedPropCapture == null)
-                continue;
-
             foreach (var distilledProp in distilledPropList)
             {
-                var distilledVal = distilledProp.Prop.GetValue(this);
+                var distilledVal = distilledProp.GetValue(this);
 
                 if (distilledVal is null)
                     continue;
 
-                DistilledVals.TryAdd(associatedIndexedPropCapture, []);
-                DistilledVals[associatedIndexedPropCapture][distilledProp] = distilledVal;
+                DistilledVals.TryAdd(placeholderProp, []);
+                DistilledVals[placeholderProp][distilledProp] = distilledVal;
             }
         }
     }
@@ -70,15 +64,14 @@ public abstract class TokenUnitDistilled : TokenUnit
     List<PropertyInfo> GetPlaceholderCaptureProps() =>
         Type.GetProperties().Where(x => x.PropertyType == typeof(PlaceholderCapture)).ToList();
 
-    List<TemplatePropInfo> GetDistilledProps() =>
+    List<PropertyInfo> GetDistilledProps() =>
         Type.GetProperties()    
         .Where(x => x.IsDefined(typeof(DistilledValueAttribute)))
-        .Select(x => new TemplatePropInfo(x))
         .ToList();
 
-    Dictionary<TemplatePropInfo, List<TemplatePropInfo>> GetDistilledPropAssociations()
+    Dictionary<PropertyInfo, List<PropertyInfo>> GetDistilledPropAssociations()
     {
-        Dictionary<TemplatePropInfo, List<TemplatePropInfo>> dict = [];
+        Dictionary<PropertyInfo, List<PropertyInfo>> dict = [];
         var distilledProps = GetDistilledProps();
         var placeholderCaptureProps = GetPlaceholderCaptureProps();
         var isSinglePlaceholder = placeholderCaptureProps.Count == 1;
@@ -86,7 +79,7 @@ public abstract class TokenUnitDistilled : TokenUnit
         foreach (var distilledProp in distilledProps)
         {
             PropertyInfo distilledFromProp = null;
-            var distilledFromPropName = distilledProp.Prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
+            var distilledFromPropName = distilledProp.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
 
             // If the distilled prop has a DistilledValueAttribute with a defined DistilledFromPropName, get that prop
             if (distilledFromPropName is not null)
@@ -99,12 +92,10 @@ public abstract class TokenUnitDistilled : TokenUnit
             if (distilledFromProp is null)
                 throw new Exception($"Distilled values must either declare a distilled-from property, or be a property of a type with exactly one PlaceholderCapture property");
 
-            var distilledFromPropRegexInfo = new TemplatePropInfo(distilledFromProp);
-
-            if (!dict.TryGetValue(distilledFromPropRegexInfo, out var list))
+            if (!dict.TryGetValue(distilledFromProp, out var list))
             {
                 list = [];
-                dict[distilledFromPropRegexInfo] = list;
+                dict[distilledFromProp] = list;
             }
 
             list.Add(distilledProp);
@@ -130,10 +121,10 @@ public abstract class TokenUnitDistilled : TokenUnit
 
         foreach (var prop in distilledProps)
         {
-            var propName = prop.Prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
+            var propName = prop.GetCustomAttribute<DistilledValueAttribute>()?.DistilledFromPropName;
 
             if (propName is null)
-                return $"Prop '{prop.Prop.Name}' isn't associated with any {nameof(DistilledValueAttribute.DistilledFromPropName)}";
+                return $"Prop '{prop.Name}' isn't associated with any {nameof(DistilledValueAttribute.DistilledFromPropName)}";
 
             var distilledFromProp = Type.GetProperty(propName);
 

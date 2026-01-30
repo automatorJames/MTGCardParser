@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MTGPlexer.TokenEditor;
+﻿namespace MTGPlexer.TokenEditor;
 
 public class EditorTokenUnit
 {
@@ -46,7 +44,7 @@ public class EditorTokenUnit
         if (preferredClassName != null)
             ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
 
-        RenderedRegex = CompositionFactory.GetComposedString(_nonEmptySnippets.Select(x => x.GetRegexSegment()), TokenUnitType);
+        RenderedRegex = CompositionFactory.GetComposedString(_nonEmptySnippets.Select(x => x.ToCaptureNode()), TokenUnitType);
 
         ParseRegexSegments();
         PerformMatching();
@@ -211,89 +209,89 @@ public class EditorTokenUnit
 
     void GenerateTextStyledRuns()
     {
-        var rawSegments = new List<TextStyledRun>();
-        string text = LineMetadata.SourceText.FormattedText;
-
-        if (string.IsNullOrEmpty(text)) { TextRuns = []; return; }
-
-        var charStatus = new MatchStatus[text.Length];
-        Array.Fill(charStatus, MatchStatus.None);
-
-        var words = new List<(int Start, int End)>();
-        int? wordStart = null;
-
-        for (int i = 0; i <= text.Length; i++)
-        {
-            bool isWordChar = i < text.Length && !char.IsWhiteSpace(text[i]);
-            if (isWordChar && wordStart == null) wordStart = i;
-            else if (!isWordChar && wordStart != null)
-            {
-                words.Add((wordStart.Value, i - 1));
-                wordStart = null;
-            }
-        }
-
-        foreach (var m in CurrentMatches)
-        {
-            int mStart = m.Index;
-            int mEnd = m.Index + m.Length - 1;
-            var overlappingWords = words.Where(w => mStart <= w.End && mEnd >= w.Start);
-
-            foreach (var word in overlappingWords)
-            {
-                int strippedEnd = (text[word.End] == '.') ? word.End - 1 : word.End;
-                bool coversFull = (mStart <= word.Start && mEnd >= word.End);
-                bool coversStripped = (mStart <= word.Start && mEnd == strippedEnd && strippedEnd < word.End);
-
-                if (coversFull || coversStripped)
-                    for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
-                        charStatus[k] = MatchStatus.Full;
-                else
-                    for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
-                        if (charStatus[k] == MatchStatus.None) charStatus[k] = MatchStatus.Partial;
-            }
-
-            for (int k = mStart; k <= mEnd; k++)
-            {
-                if (charStatus[k] == MatchStatus.None)
-                {
-                    bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
-                    bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
-
-                    if ((leftFull || rightFull) && char.IsWhiteSpace(text[k]))
-                        charStatus[k] = MatchStatus.Full;
-                    else
-                        charStatus[k] = MatchStatus.Partial;
-                }
-            }
-        }
-
-        for (int i = 0; i < text.Length; i++)
-        {
-            string color;
-            string underlineClass = "";
-            MatchStatus status = charStatus[i];
-
-            if (status == MatchStatus.Full)
-            {
-                color = "var(--match-full-text)";
-                underlineClass = "full-match";
-            }
-            else if (status == MatchStatus.Partial)
-            {
-                color = "var(--match-partial-text)";
-                underlineClass = "partial-match";
-            }
-            else
-            {
-                var span = LineMetadata.SpanRoots.FirstOrDefault(sr => i >= sr.RootToken.Match.RootMatch.Index && i < sr.RootToken.Match.RootMatch.Index + sr.RootToken.Match.RootMatch.Length);
-                color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
-            }
-
-            rawSegments.Add(new TextStyledRun(text[i].ToString(), color, underlineClass));
-        }
-
-        TextRuns = CollapseSegments(rawSegments);
+        //var rawSegments = new List<TextStyledRun>();
+        //string text = LineMetadata.SourceText.FormattedText;
+        //
+        //if (string.IsNullOrEmpty(text)) { TextRuns = []; return; }
+        //
+        //var charStatus = new MatchStatus[text.Length];
+        //Array.Fill(charStatus, MatchStatus.None);
+        //
+        //var words = new List<(int Start, int End)>();
+        //int? wordStart = null;
+        //
+        //for (int i = 0; i <= text.Length; i++)
+        //{
+        //    bool isWordChar = i < text.Length && !char.IsWhiteSpace(text[i]);
+        //    if (isWordChar && wordStart == null) wordStart = i;
+        //    else if (!isWordChar && wordStart != null)
+        //    {
+        //        words.Add((wordStart.Value, i - 1));
+        //        wordStart = null;
+        //    }
+        //}
+        //
+        //foreach (var m in CurrentMatches)
+        //{
+        //    int mStart = m.Index;
+        //    int mEnd = m.Index + m.Length - 1;
+        //    var overlappingWords = words.Where(w => mStart <= w.End && mEnd >= w.Start);
+        //
+        //    foreach (var word in overlappingWords)
+        //    {
+        //        int strippedEnd = (text[word.End] == '.') ? word.End - 1 : word.End;
+        //        bool coversFull = (mStart <= word.Start && mEnd >= word.End);
+        //        bool coversStripped = (mStart <= word.Start && mEnd == strippedEnd && strippedEnd < word.End);
+        //
+        //        if (coversFull || coversStripped)
+        //            for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
+        //                charStatus[k] = MatchStatus.Full;
+        //        else
+        //            for (int k = Math.Max(mStart, word.Start); k <= Math.Min(mEnd, word.End); k++)
+        //                if (charStatus[k] == MatchStatus.None) charStatus[k] = MatchStatus.Partial;
+        //    }
+        //
+        //    for (int k = mStart; k <= mEnd; k++)
+        //    {
+        //        if (charStatus[k] == MatchStatus.None)
+        //        {
+        //            bool leftFull = k > 0 && charStatus[k - 1] == MatchStatus.Full;
+        //            bool rightFull = k < text.Length - 1 && charStatus[k + 1] == MatchStatus.Full;
+        //
+        //            if ((leftFull || rightFull) && char.IsWhiteSpace(text[k]))
+        //                charStatus[k] = MatchStatus.Full;
+        //            else
+        //                charStatus[k] = MatchStatus.Partial;
+        //        }
+        //    }
+        //}
+        //
+        //for (int i = 0; i < text.Length; i++)
+        //{
+        //    string color;
+        //    string underlineClass = "";
+        //    MatchStatus status = charStatus[i];
+        //
+        //    if (status == MatchStatus.Full)
+        //    {
+        //        color = "var(--match-full-text)";
+        //        underlineClass = "full-match";
+        //    }
+        //    else if (status == MatchStatus.Partial)
+        //    {
+        //        color = "var(--match-partial-text)";
+        //        underlineClass = "partial-match";
+        //    }
+        //    else
+        //    {
+        //        var span = LineMetadata.SpanRoots.FirstOrDefault(sr => i >= sr.RootToken.Match.RootMatch.Index && i < sr.RootToken.Match.RootMatch.Index + //sr.RootToken.Match.RootMatch.Length);
+        //        color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
+        //    }
+        //
+        //    rawSegments.Add(new TextStyledRun(text[i].ToString(), color, underlineClass));
+        //}
+        //
+        //TextRuns = CollapseSegments(rawSegments);
     }
 
     List<TextStyledRun> CollapseSegments(List<TextStyledRun> source)

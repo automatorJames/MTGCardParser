@@ -7,13 +7,13 @@ public class PropPathSynonymSetContainer
     public int UnrepresentedAlternateCount => AlternateCount - SynonymSets.Count;
     public Dictionary<object, CaptureValueSynonymSet> SynonymSets { get; private set; } = [];
 
-    public PropPathSynonymSetContainer(CaptureGroupPropPath parentPath, TemplatePropInfo prop = null)
+    public PropPathSynonymSetContainer(CaptureGroupPropPath parentPath, CaptureNode captureNode = null)
     {
         ParentPath = parentPath;
 
-        AlternateCount = prop == null || !prop.UnderlyingType.IsEnum
+        AlternateCount = captureNode == null || !captureNode.UnderlyingType.IsEnum
             ? 0
-            : Enum.GetValues(prop.UnderlyingType).Length;
+            : Enum.GetValues(captureNode.UnderlyingType).Length;
     }
 
     public void OrderByOccurrenceCount()

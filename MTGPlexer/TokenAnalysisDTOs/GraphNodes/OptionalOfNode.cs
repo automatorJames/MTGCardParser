@@ -11,7 +11,7 @@ public record OptionalOfNode : WrapperPropertyNode
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo());
+        builder.OpenNamedGroup(this);
         TemplateNodeForComposition.ComposeRegexLines(builder);
         GroupQuantifier? groupQuantifier = GroupQuantifier.Optional;
         builder.CloseGroup(groupQuantifier);

@@ -11,58 +11,60 @@ public class ManaValue : TokenUnitDistilled
 
     public override void DistillValuesFromPlaceholders()
     {
-        // local helper
-        int? Increment(int? v, int by = 1) 
-            => (v ?? 0) + by;
+        throw new Exception($"fixy thisy latery");
 
-        var matches = TokenTypeRegistry.Templates[Type].Regex.Matches(Match.RootMatch.Value);
-
-        foreach (Match match in matches)
-        {
-            var symbols = match.Groups[nameof(ManaSymbols)].Value.ToLowerInvariant();
-            var symbolsMatches = Regex.Matches(symbols, @"(?<=\{)[^{}]+(?=\})");
-
-            foreach (var symbol in symbolsMatches.Select(x => x.Value))
-            {
-                switch (symbol)
-                {
-                    case "w": White = Increment(White); break;
-                    case "u": Blue = Increment(Blue); break;
-                    case "b": Black = Increment(Black); break;
-                    case "r": Red = Increment(Red); break;
-                    case "g": Green = Increment(Green); break;
-                    case "x": X = Increment(X); break;
-                    case "c": Colorless = Increment(Colorless); break;
-                    case "∞": Infinite = Increment(Infinite); break;
-                    case "p": Phyrexian = Increment(Phyrexian); break;
-                    case "s": Snow = Increment(Snow); break;
-
-                    case "w/u": HybridWhiteBlue = Increment(HybridWhiteBlue); break;
-                    case "w/b": HybridWhiteBlack = Increment(HybridWhiteBlack); break;
-                    case "u/b": HybridBlueBlack = Increment(HybridBlueBlack); break;
-                    case "u/r": HybridBlueRed = Increment(HybridBlueRed); break;
-                    case "b/r": HybridBlackRed = Increment(HybridBlackRed); break;
-                    case "b/g": HybridBlackGreen = Increment(HybridBlackGreen); break;
-                    case "r/g": HybridRedGreen = Increment(HybridRedGreen); break;
-                    case "r/w": HybridRedWhite = Increment(HybridRedWhite); break;
-                    case "g/w": HybridGreenWhite = Increment(HybridGreenWhite); break;
-                    case "g/u": HybridGreenBlue = Increment(HybridGreenBlue); break;
-
-                    case "2/w": TwoOrWhite = Increment(TwoOrWhite); break;
-                    case "2/u": TwoOrBlue = Increment(TwoOrBlue); break;
-                    case "2/b": TwoOrBlack = Increment(TwoOrBlack); break;
-                    case "2/r": TwoOrRed = Increment(TwoOrRed); break;
-                    case "2/g": TwoOrGreen = Increment(TwoOrGreen); break;
-
-                    default:
-                        if (int.TryParse(symbol, out int numericValue))
-                            Colorless = Increment(Colorless, numericValue);
-                        else
-                            throw new Exception($"Unrecognized mana symbol: {symbol}");
-                        break;
-                }
-            }
-        }
+        //// local helper
+        //int? Increment(int? v, int by = 1) 
+        //    => (v ?? 0) + by;
+        //
+        ////var matches = TokenTypeRegistry.Templates[Type].Regex.Matches(Match.RootMatch.Value);
+        //
+        //foreach (Match match in matches)
+        //{
+        //    var symbols = match.Groups[nameof(ManaSymbols)].Value.ToLowerInvariant();
+        //    var symbolsMatches = Regex.Matches(symbols, @"(?<=\{)[^{}]+(?=\})");
+        //
+        //    foreach (var symbol in symbolsMatches.Select(x => x.Value))
+        //    {
+        //        switch (symbol)
+        //        {
+        //            case "w": White = Increment(White); break;
+        //            case "u": Blue = Increment(Blue); break;
+        //            case "b": Black = Increment(Black); break;
+        //            case "r": Red = Increment(Red); break;
+        //            case "g": Green = Increment(Green); break;
+        //            case "x": X = Increment(X); break;
+        //            case "c": Colorless = Increment(Colorless); break;
+        //            case "∞": Infinite = Increment(Infinite); break;
+        //            case "p": Phyrexian = Increment(Phyrexian); break;
+        //            case "s": Snow = Increment(Snow); break;
+        //
+        //            case "w/u": HybridWhiteBlue = Increment(HybridWhiteBlue); break;
+        //            case "w/b": HybridWhiteBlack = Increment(HybridWhiteBlack); break;
+        //            case "u/b": HybridBlueBlack = Increment(HybridBlueBlack); break;
+        //            case "u/r": HybridBlueRed = Increment(HybridBlueRed); break;
+        //            case "b/r": HybridBlackRed = Increment(HybridBlackRed); break;
+        //            case "b/g": HybridBlackGreen = Increment(HybridBlackGreen); break;
+        //            case "r/g": HybridRedGreen = Increment(HybridRedGreen); break;
+        //            case "r/w": HybridRedWhite = Increment(HybridRedWhite); break;
+        //            case "g/w": HybridGreenWhite = Increment(HybridGreenWhite); break;
+        //            case "g/u": HybridGreenBlue = Increment(HybridGreenBlue); break;
+        //
+        //            case "2/w": TwoOrWhite = Increment(TwoOrWhite); break;
+        //            case "2/u": TwoOrBlue = Increment(TwoOrBlue); break;
+        //            case "2/b": TwoOrBlack = Increment(TwoOrBlack); break;
+        //            case "2/r": TwoOrRed = Increment(TwoOrRed); break;
+        //            case "2/g": TwoOrGreen = Increment(TwoOrGreen); break;
+        //
+        //            default:
+        //                if (int.TryParse(symbol, out int numericValue))
+        //                    Colorless = Increment(Colorless, numericValue);
+        //                else
+        //                    throw new Exception($"Unrecognized mana symbol: {symbol}");
+        //                break;
+        //        }
+        //    }
+        //}
     }
 
     [DistilledValue] public int? Colorless { get; set; }

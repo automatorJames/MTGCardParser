@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 public class Tokenizer
 {
-    private readonly Dictionary<Type, Regex> _orderedTypeRegexes = [];
+    List<Type> _orderedTypes;
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
 
     // Characters that are allowed to immediately follow a valid token match
@@ -12,38 +12,32 @@ public class Tokenizer
 
     public Tokenizer(List<Type> orderedTypes)
     {
-        foreach (var type in orderedTypes)
-        {
-            var regex = TokenTypeRegistry.Templates[type].Regex;
-            _orderedTypeRegexes[type] = regex;
-        }
+        _orderedTypes = orderedTypes;
     }
 
-    public List<TokenUnit> Tokenize(SourceTextDTO sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
+    public List<TokenUnit> Tokenize(string sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
     {
-        if (string.IsNullOrEmpty(sourceText.FormattedText))
+        if (string.IsNullOrEmpty(sourceText))
             throw new Exception("Source text may not be null or empty");
 
         var tokens = new List<TokenUnit>();
         int currentIndex = scopeStart ?? 0;
-        int endIndex = scopeEnd ?? sourceText.FormattedText.Length;
+        int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
 
         while (currentIndex < endIndex)
         {
             bool matched = false;
+            var filteredTypes = _orderedTypes;
 
-            var filteredTypeRegexes = _orderedTypeRegexes;
             if (scopeToType != null && scopeToType != typeof(TokenUnit))
-            {
-                filteredTypeRegexes = _orderedTypeRegexes
-                    .Where(x => x.Key.IsAssignableTo(scopeToType))
-                    .ToDictionary(x => x.Key, x => x.Value);
-            }
+                filteredTypes = _orderedTypes
+                    .Where(x => x.IsAssignableTo(scopeToType)).ToList();
 
-            foreach (var (type, regex) in filteredTypeRegexes)
+            foreach (var type in filteredTypes)
             {
-                var match = regex.Match(sourceText.FormattedText, currentIndex);    
+                var rootNode = TokenTypeRegistry.RootNodes[type];
+                var match = rootNode.BuiltRegex.Regex.Match(sourceText, currentIndex);    
 
                 // Validation:
                 // 1. Regex must succeed.
@@ -56,7 +50,7 @@ public class Tokenizer
                     // **Boundary Check**: 
                     // To avoid mid-word partial matches, the match is only valid if it extends 
                     // exactly to the end of the line, or is followed by a space or period.
-                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText.FormattedText[matchEndIndex]));
+                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
 
                     if (!endsAtBoundary)
                         goto NextIteration;
@@ -64,17 +58,13 @@ public class Tokenizer
                     // --- COMMIT PHASE ---
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
-                    MatchTraversalState typeMatch = new(type, match, sourceText);
-                    var token = TokenUnit.InstantiateFromMatch(typeMatch, out var result);
+                    var token = rootNode.Hydrate(new CaptureDictionary(match));
 
-                    if (result == ValueResult.Success)
-                    {
-                        tokens.Add(token);
-                        currentIndex = match.Index + match.Length;
-                        unmatchedStartIndex = -1;
-                        matched = true;
-                        break;
-                    }
+                    tokens.Add(token);
+                    currentIndex = match.Index + match.Length;
+                    unmatchedStartIndex = -1;
+                    matched = true;
+                    break;
                 }
 
             NextIteration:;
@@ -86,7 +76,7 @@ public class Tokenizer
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
-                int nextSpaceIndex = sourceText.FormattedText.IndexOf(' ', currentIndex);
+                int nextSpaceIndex = sourceText.IndexOf(' ', currentIndex);
 
                 if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
                     currentIndex = endIndex;
@@ -100,7 +90,7 @@ public class Tokenizer
         return tokens;
     }
 
-    private void FlushUnmatched(SourceTextDTO sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)
+    private void FlushUnmatched(string sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)
     {
         if (unmatchedStartIndex == -1 || unmatchedStartIndex >= flushUntilIndex)
         {
@@ -117,11 +107,11 @@ public class Tokenizer
                 _unmatchedRegexCache[length] = regex;
             }
 
-            Match unmatchedMatch = regex.Match(sourceText.FormattedText, unmatchedStartIndex);
+            Match unmatchedMatch = regex.Match(sourceText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                MatchTraversalState typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch, sourceText);
-                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch, out var result);
+                var unmatchedStringRootNode = TokenTypeRegistry.RootNodes[typeof(DefaultUnmatchedString)];
+                var unmatchedTokenUnit = unmatchedStringRootNode.Hydrate(new CaptureDictionary(unmatchedMatch));
                 tokens.Add(unmatchedTokenUnit);
             }
         }

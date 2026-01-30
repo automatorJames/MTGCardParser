@@ -3,7 +3,6 @@
 public record PolyItemCapture
 {
     public ExtractedCapture Capture { get; }
-    public TemplatePropInfo TemplatePropInfo { get; }
     public Type Type { get; }
     public object Value { get; }
     public CaptureTypeVariant CaptureTypeVariant { get; }
@@ -12,11 +11,9 @@ public record PolyItemCapture
     public PolyItemCapture(
         object value, 
         ExtractedCapture capture, 
-        TemplatePropInfo propInfo, 
         object distinguishingValue = null)
     {
         Capture = capture;
-        TemplatePropInfo = propInfo;
         this.Value = value;
         Type = value.GetType();
         CaptureTypeVariant = Type.ToCaptureTypeVariant();

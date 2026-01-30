@@ -14,7 +14,7 @@ public abstract record EditorSnippet
     }
 
     public abstract string GetParameterHtmlRepresentation();
-    public abstract RegexSegmentBase GetRegexSegment();
+    public abstract CaptureNode ToCaptureNode();
 
     protected static string Span(string content, SpanClass spanClass = SpanClass.keyword)
         => $"<span class=\"{spanClass}\">{content}</span>";

@@ -9,7 +9,7 @@ namespace MTGPlexer.RegexGeneration.RegexSegments;
 public record EnumNode : TerminalNode
 {
     bool _isOptional;
-    //public EnumScalarAlternateSet EnumSet { get; private set; }
+    public string RegexString { get; }
 
     public EnumNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -19,11 +19,13 @@ public record EnumNode : TerminalNode
         _isOptional =
             Nullable.GetUnderlyingType(propertySnippet.Prop.PropertyType) != null
             && !propertySnippet.Prop.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
+
+
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenGroup(new TemplatePropInfo(PropertySnippet.Prop), isOptional: _isOptional);
+        builder.OpenNamedGroup(this, isOptional: _isOptional);
 
         if (UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");

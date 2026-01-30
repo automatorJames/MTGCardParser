@@ -25,7 +25,7 @@ public record PlaceholderNode : TerminalNode
             var actions = Parse(regexString);
 
             // If parsing succeeds without error, we can confidently modify the collector.
-            builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedGlobal);
+            builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedGlobal);
             actions.ForEach(action => action(builder));
             builder.CloseGroup();
         }
@@ -33,7 +33,7 @@ public record PlaceholderNode : TerminalNode
         {
             // If parsing fails for any reason (e.g., complexity, malformed pattern),
             // fall back to the original behavior of rendering the regex as a single literal line.
-            builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedGlobal);
+            builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedGlobal);
             builder.AddTextLine(regexString);
             builder.CloseGroup();
         }
@@ -105,7 +105,7 @@ public record PlaceholderNode : TerminalNode
                 index = groupEnd + 1; // Move past the closing parenthesis.
                 var quantifier = GetQuantifier(regex, ref index);
 
-                actions.Add(c => c.OpenGroup());
+                actions.Add(c => c.OpenAnonymousGroup());
                 actions.AddRange(groupActions);
                 actions.Add(c => c.CloseGroup(quantifier));
             }

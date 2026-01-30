@@ -6,7 +6,7 @@
 /// </summary>
 public record UnmatchedTextOccurrence
 {
-    public CardTextKey Key { get; }
+    public string CardName { get; }
     public int LineIndex { get; }
 
     /// <summary>
@@ -33,9 +33,10 @@ public record UnmatchedTextOccurrence
         LineSpanRoots = lineSpanRoots.ToArray();
         AnchorTokenIndex = anchorTokenIndex;
         Anchor = (DefaultUnmatchedString)LineSpanRoots[AnchorTokenIndex].RootToken;
-        Text =  Anchor.Match.RootMatch.Value;
+        //Text =  Anchor.Match.RootMatch.Value;
+        Text = "Fixxx thisss laterrr";
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        Key = new(cardName, Anchor);
+        CardName = cardName;
     }
 
     public override string ToString() => Text;

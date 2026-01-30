@@ -18,15 +18,15 @@ public record ManyOfNode : WrapperPropertyNode
     {
         var thing = Children;
 
-        builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
         ConcatenatingComposer.Instance.Compose(builder, [_nodeTheFirst]);
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(", ");
         ConcatenatingComposer.Instance.Compose(builder, [TemplateNodeForComposition with { DifferentiatorValue = ManyItemOrdinal.SecondPlus }]);
         builder.CloseGroup(GroupQuantifier.AnyNumber);
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(",? ");
-        builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         _conjunctionNode.ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);

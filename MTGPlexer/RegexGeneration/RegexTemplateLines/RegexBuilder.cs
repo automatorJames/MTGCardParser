@@ -39,25 +39,20 @@ public class RegexBuilder
     /// </summary>
     /// <param name="captureGroup">The property info for the capture group, if it's a named group.</param>
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
-    public void OpenGroup(TemplatePropInfo captureGroup = null, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
+    public void OpenNamedGroup(CaptureNode captureNode, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
     {
-        Enclosure enclosure;
-        isOptional |= captureGroup?.Proptions.HasFlag(Proptions.Optional) ?? false;
-
-        if (captureGroup != null)
-            enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureGroup, spaceDisposition);
-        else
-            enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
-
+        var enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureNode, spaceDisposition);
+        isOptional |= captureNode?.Proptions.HasFlag(Proptions.Optional) ?? false;
         _enclosureStack.Push(enclosure);
+        var groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureNode);
+        _concatenater.Append(groupOpenElement);
+    }
 
-        RegexElement groupOpenElement = null;
-
-        if (captureGroup != null)
-            groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureGroup);
-        else
-            groupOpenElement = new AnonymousGroupOpen(_orderedEnclosureStack);
-
+    public void OpenAnonymousGroup(SpaceDisposition? spaceDisposition = null, bool isOptional = false)
+    {
+        var enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
+        _enclosureStack.Push(enclosure);
+        var groupOpenElement = new AnonymousGroupOpen(_orderedEnclosureStack);
         _concatenater.Append(groupOpenElement);
     }
 
@@ -74,7 +69,7 @@ public class RegexBuilder
 
         if (currentEnclosure is NamedEnclosure namedEnclosure)
         {
-            quantifier ??= namedEnclosure.TemplatePropInfo.Proptions.HasFlag(Proptions.Optional) ? GroupQuantifier.Optional : null;
+            quantifier ??= namedEnclosure.CaptureNode.Proptions.HasFlag(Proptions.Optional) ? GroupQuantifier.Optional : null;
             _concatenater.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
         }
         else
@@ -84,7 +79,7 @@ public class RegexBuilder
 
         if (closedEnclosure is NamedEnclosure closedNamedEnclosure)
         {
-            if (closedNamedEnclosure.TemplatePropInfo.Proptions.HasFlag(Proptions.Plural))
+            if (closedNamedEnclosure.CaptureNode.Proptions.HasFlag(Proptions.Plural))
                 _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
         }
     }
@@ -121,29 +116,6 @@ public class RegexBuilder
 
     public void AddNegativeSpaceLookbehindBoundary()
         =>_concatenater.Append(new NegativeSpaceLookbehindBoundary(_orderedEnclosureStack));
-
-    /// <summary>
-    /// Extracts the raw regex string for a specific named group.
-    /// </summary>
-    /// <param name="group">The property info of the group to extract.</param>
-    /// <returns>A compiled Regex object for the specified group.</returns>
-    public Regex ExtractGroupRegex(TemplatePropInfo group)
-    {
-        var firstGroupLine = _concatenater.RegexElements.FirstOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.TemplatePropInfo == group);
-        var lastGroupLine = _concatenater.RegexElements.LastOrDefault(x => x.Enclosures.OfType<NamedEnclosure>().LastOrDefault()?.TemplatePropInfo == group);
-
-        if (firstGroupLine == null || lastGroupLine == null)
-            return null;
-
-        var firstLineIndex = _concatenater.RegexElements.IndexOf(firstGroupLine);
-        var lastLineIndex = _concatenater.RegexElements.IndexOf(lastGroupLine);
-
-        var groupLines = _concatenater.RegexElements.Skip(firstLineIndex).Take(lastLineIndex - firstLineIndex + 1).ToList();
-        AddBoundaryLines(groupLines);
-        var regexString = string.Join("", groupLines.Select(x => x.Regex));
-
-        return new(regexString, RegexOptions.Compiled);
-    }
 
     /// <summary>
     /// Generates a fully formatted, commented, and colorized list of regex lines.

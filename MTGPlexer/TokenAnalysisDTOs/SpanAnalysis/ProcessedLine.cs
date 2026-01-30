@@ -19,17 +19,15 @@ public class ProcessedLine
     /// </summary>
     public List<UnmatchedTextOccurrence> UnmatchedTextOccurrences { get; init; }
 
-    public List<TokenUnit> TokenUnitsFromRootNodes { get; init; } = [];
 
     public string DataPath { get; init; }
 
-    public ProcessedLine(SourceTextDTO sourceText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath, List<TokenUnit> tokenUnitsFromRootNodes)
+    public ProcessedLine(SourceTextDTO sourceText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
         SourceText = sourceText;
         SpanRoots = spanRoots;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
-        TokenUnitsFromRootNodes = tokenUnitsFromRootNodes;
     }
 
     public static List<ProcessedLine> GetAll(Card card)
@@ -46,18 +44,14 @@ public class ProcessedLine
                 continue;
 
             List<SpanRoot> spanRoots =
-                TokenTypeRegistry.Tokenize(sourceText)
+                TokenTypeRegistry.Tokenize(sourceText.FormattedText)
                 .Select(x => SpanBuilder.Create(x, originalText, card.Name, i))
                 .ToList();
 
             List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalText);
             var dataPath = card.Name.Replace(' ', '_') + $"-line[{i}]";
 
-            // New node approach
-            var tokenUnitsFromRootNodes = TokenTypeRegistry.NodeTokenizer.Tokenize(sourceText.FormattedText);
-
-            lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences, dataPath, tokenUnitsFromRootNodes));
-
+            lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences, dataPath));
         }
 
 
