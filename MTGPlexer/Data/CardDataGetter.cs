@@ -35,12 +35,13 @@ public class CardDataGetter
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
         //result = result.Where(x => x.Name == "Ankh of Mishra");
-        //result = result.Where(x => x.Name == "Berserk");
         ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
         //result = result.Where(x => x.Name == "Animate Artifact");
         //result = [new Card { Name = "feckall", Text = "as long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value." }];
         //result = result.Where(x => x.Name == "Aspect of Wolf");
         //result = result.Where(x => x.Name == "Ancestral Recall");
+        //result = result.Where(x => x.Name == "Berserk");
+        result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
         return result.ToList();
     }
 }

@@ -214,7 +214,7 @@ public class RegexBuilder
     public BuiltRegex GetBuiltRegex()
     {
         var regexString = GetMinified();
-        Regex regex = new(regexString, RegexOptions.Compiled);
+        Regex regex = new(regexString, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
         var lines = GetFormattedLines();
 
         return new(regexString, regex, lines);

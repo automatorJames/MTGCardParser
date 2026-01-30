@@ -29,32 +29,19 @@ public record DynamicOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture capture)
     {
-        //var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(
-        //    parentTokenUnitMatch.SourceText,
-        //    scopeToType: GenericType,
-        //    scopeStart: scopedCapture.Index,
-        //    scopeEnd: scopedCapture.Index + scopedCapture.Length);
-        //
-        //// Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
-        //if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
-        //{
-        //    result = ValueResult.DynamicResolutionFailure;
-        //    return null;
-        //}
-        //
-        ////// Although the dynamic match must begin exactly where the parent match left off, it's allowed to be shorter than the remaining space in the parent.
-        ////// When this occurs, shorten the parent match so that it ends where its dynamic child stops, allowing following tokens to be matched by something else.
-        ////if (dynamicMatchToken.Match.AbsoluteEnd != match.Index + match.Length)
-        ////	match = regex.Match(sourceText.FormattedText, currentIndex, dynamicMatchToken.Match.AbsoluteEnd - match.Index);
-        //PolyItemCapture hydratedItem = new(dynamicMatchToken, scopedCapture, TemplatePropInfo);
-        //var closedType = typeof(DynamicOf<>).MakeGenericType(GenericType);
-        //var dynamicOfInstance = Activator.CreateInstance(closedType, hydratedItem, scopedCapture);
-        //
-        //result = ValueResult.Success;
-        //return dynamicOfInstance;
+        var resolvedTokens = TokenTypeRegistry.NodeTokenizer.Tokenize(capture.Value, scopeToType: GenericType);
+        
+        // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
+        if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
+            return null;
 
-        throw new NotImplementedException();
+        ExtractedCapture extractedCapture = new(capture, FullyQualifiedName); // todo: deprecate ExtractedCapture?
+        PolyItemCapture hydratedItem = new(dynamicMatchToken, extractedCapture, PropertySnippet.ToTemplatePropInfo());
+        var closedType = typeof(DynamicOf<>).MakeGenericType(GenericType);
+        var dynamicOfInstance = Activator.CreateInstance(closedType, hydratedItem, extractedCapture);
+        
+        return dynamicOfInstance;
     }
 }

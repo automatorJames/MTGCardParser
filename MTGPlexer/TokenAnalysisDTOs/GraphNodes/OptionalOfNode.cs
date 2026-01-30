@@ -17,7 +17,7 @@ public record OptionalOfNode : WrapperPropertyNode
         builder.CloseGroup(groupQuantifier);
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture capture)
     {
         //var itemCapture = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name].Single();
         //MatchTraversalState typeMatch = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);

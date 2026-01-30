@@ -54,7 +54,7 @@ public class ProcessedLine
             var dataPath = card.Name.Replace(' ', '_') + $"-line[{i}]";
 
             // New node approach
-            var tokenUnitsFromRootNodes = TokenTypeRegistry.NodeTokenizer.Tokenize(sourceText);
+            var tokenUnitsFromRootNodes = TokenTypeRegistry.NodeTokenizer.Tokenize(sourceText.FormattedText);
 
             lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences, dataPath, tokenUnitsFromRootNodes));
 

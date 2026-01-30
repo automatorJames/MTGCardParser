@@ -37,6 +37,11 @@ public static partial class TokenTypeRegistry
         foreach (var type in allTokenTypes)
             SetTypeTemplate(type);
 
+
+        var thing1 = NameToType["TargetGainsOrLosesBuff_Many"];
+        var thing2 = RootNodes[thing1];
+        var sayrEal = Templates[thing1];
+
         InitializeClassTokenizer();
         OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
     }
@@ -54,8 +59,8 @@ public static partial class TokenTypeRegistry
     static void SetTypeTemplate(Type type)
     {
         NameToType[type.Name] = type;
-        RegexTemplate typeTemplate = new(type);
         RootNodes[type] = new(type);
+        RegexTemplate typeTemplate = new(type);
         Templates[type] = typeTemplate;
         var propCaptureSegments = typeTemplate.CaptureGroupProps;
 

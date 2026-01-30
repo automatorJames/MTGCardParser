@@ -16,8 +16,14 @@ public record TokenUnitNode : CaptureNode
         builder.CloseGroup(groupQuantifier);
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture capture)
     {
+        //var rematch = 
+        //MatchTraversalState typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnitMatch, TemplatePropInfo.Name, scopedCapture: scopedCapture);
+        //var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch, out result);
+        //
+        //return tokenUnitInstance;
+
         throw new NotImplementedException();
     }
 }

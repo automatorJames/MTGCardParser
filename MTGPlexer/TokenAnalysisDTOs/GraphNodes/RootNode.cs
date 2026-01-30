@@ -28,12 +28,12 @@ public record RootNode : TypedNode
             ConcatenatingComposer.Instance.Compose(builder, Children);
     }
 
-    public TokenUnit Hydrate(Match match)
+    public TokenUnit Hydrate(CaptureDictionary captures)
     {
         var instance = (TokenUnit)Activator.CreateInstance(RootType);
 
         foreach (var captureChild in _captureChildren)
-            captureChild.SetPropertyValue(match, instance);
+            captureChild.SetPropertyValue(captures, instance);
 
         return instance;
     }

@@ -15,14 +15,14 @@ public class NodeTokenizer
         _orderedTypes = orderedTypes;
     }
 
-    public List<TokenUnit> Tokenize(SourceTextDTO sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
+    public List<TokenUnit> Tokenize(string sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
     {
-        if (string.IsNullOrEmpty(sourceText.FormattedText))
+        if (string.IsNullOrEmpty(sourceText))
             throw new Exception("Source text may not be null or empty");
 
         var tokens = new List<TokenUnit>();
         int currentIndex = scopeStart ?? 0;
-        int endIndex = scopeEnd ?? sourceText.FormattedText.Length;
+        int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
 
         while (currentIndex < endIndex)
@@ -37,7 +37,7 @@ public class NodeTokenizer
             foreach (var type in filteredTypes)
             {
                 var rootNode = TokenTypeRegistry.RootNodes[type];
-                var match = rootNode.BuiltRegex.Regex.Match(sourceText.FormattedText, currentIndex);    
+                var match = rootNode.BuiltRegex.Regex.Match(sourceText, currentIndex);    
 
                 // Validation:
                 // 1. Regex must succeed.
@@ -50,7 +50,7 @@ public class NodeTokenizer
                     // **Boundary Check**: 
                     // To avoid mid-word partial matches, the match is only valid if it extends 
                     // exactly to the end of the line, or is followed by a space or period.
-                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText.FormattedText[matchEndIndex]));
+                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
 
                     if (!endsAtBoundary)
                         goto NextIteration;
@@ -58,7 +58,7 @@ public class NodeTokenizer
                     // --- COMMIT PHASE ---
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
 
-                    var token = rootNode.Hydrate(match);
+                    var token = rootNode.Hydrate(new CaptureDictionary(match));
 
                     tokens.Add(token);
                     currentIndex = match.Index + match.Length;
@@ -76,7 +76,7 @@ public class NodeTokenizer
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
-                int nextSpaceIndex = sourceText.FormattedText.IndexOf(' ', currentIndex);
+                int nextSpaceIndex = sourceText.IndexOf(' ', currentIndex);
 
                 if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
                     currentIndex = endIndex;
@@ -90,7 +90,7 @@ public class NodeTokenizer
         return tokens;
     }
 
-    private void FlushUnmatched(SourceTextDTO sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)
+    private void FlushUnmatched(string sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)
     {
         if (unmatchedStartIndex == -1 || unmatchedStartIndex >= flushUntilIndex)
         {
@@ -107,11 +107,11 @@ public class NodeTokenizer
                 _unmatchedRegexCache[length] = regex;
             }
 
-            Match unmatchedMatch = regex.Match(sourceText.FormattedText, unmatchedStartIndex);
+            Match unmatchedMatch = regex.Match(sourceText, unmatchedStartIndex);
             if (unmatchedMatch.Success)
             {
-                MatchTraversalState typeMatch = new(typeof(DefaultUnmatchedString), unmatchedMatch, sourceText);
-                var unmatchedTokenUnit = TokenUnit.InstantiateFromMatch(typeMatch, out var result);
+                var unmatchedStringRootNode = TokenTypeRegistry.RootNodes[typeof(DefaultUnmatchedString)];
+                var unmatchedTokenUnit = unmatchedStringRootNode.Hydrate(new CaptureDictionary(unmatchedMatch));
                 tokens.Add(unmatchedTokenUnit);
             }
         }

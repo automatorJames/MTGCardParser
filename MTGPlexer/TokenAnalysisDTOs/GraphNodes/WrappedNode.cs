@@ -1,14 +1,16 @@
 ﻿
 namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public record WrappedNode : TypedNode
+public record WrappedNode : ValueNode
 {
     public Type Type { get; }
     public object DifferentiatorValue { get; init; }
+    public int Ordinal { get; init; }
 
-    public WrappedNode(Node parentNode, Type type, object differentiatorValue = null) : base(parentNode, type.Name, type)
+    public WrappedNode(Node parentNode, Type type, int ordinal = 0, object differentiatorValue = null) : base(parentNode, type.Name, type)
     {
         Type = type;
+        Ordinal = ordinal;
         DifferentiatorValue = differentiatorValue;
     }
 

@@ -18,10 +18,10 @@ public record BoolNode : TerminalNode
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture capture)
     {
         // This override simply returns "true", because CaptureGroupPropBase already validated
-        // that the named group exists, therefore this bool check succeeds
+        // that the named group exists, therefore this bool check has already succeeded
 
         return true;
     }

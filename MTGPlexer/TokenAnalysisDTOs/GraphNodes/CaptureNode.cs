@@ -1,20 +1,23 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
-public abstract record CaptureNode : TypedNode
+public abstract record CaptureNode : ValueNode
 {
+    public string FullyQualifiedName { get; }
     public PropertySnippet PropertySnippet { get; }
     public Proptions Proptions { get; }
 
-    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet.Prop.Name, propertySnippet.Prop.PropertyType)
+    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet)
+        : base(parentNode, propertySnippet.Prop.Name, propertySnippet.Prop.PropertyType)
     {
+        FullyQualifiedName = GetFullyQualifiedName();
         PropertySnippet = propertySnippet;
     }
 
-    public void SetPropertyValue(Match match, TokenUnit parent)
+    public void SetPropertyValue(CaptureDictionary captures, TokenUnit parent)
     {
-        var fullyQualifiedName = GetFullyQualifiedName();
-        var capture = match.Groups[fullyQualifiedName];
-        var value = GetPropertyValue(capture);
+        var capturesForName = captures[FullyQualifiedName];
+
+        var value = GetValue(capturesForName);
 
         if (value == null)
             return;
@@ -22,10 +25,10 @@ public abstract record CaptureNode : TypedNode
         PropertySnippet.Prop.SetValue(parent, value);
     }
 
-    string GetFullyQualifiedName()
+    private string GetFullyQualifiedName()
     {
         List<string> parts = [];
-        var current = ParentNode;
+        Node current = this;
 
         while (current != null)
         {
@@ -34,8 +37,7 @@ public abstract record CaptureNode : TypedNode
         }
 
         parts.Reverse();
-        return string.Join('.', parts);
+        parts = parts.Skip(1).ToList();
+        return string.Join('_', parts);
     }
-
-    protected abstract object GetPropertyValue(Capture capture);
 }

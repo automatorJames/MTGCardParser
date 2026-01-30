@@ -49,37 +49,14 @@ public record EnumNode : TerminalNode
         return new EnumScalarAlternateSet(enumAlternates);
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture capture)
     {
-        //foreach (var enumAlternative in EnumSet.EnumAlternates)
-        //    if (enumAlternative.ItemRegex.IsMatch(scopedCapture.Value))
-        //    {
-        //        result = ValueResult.Success;
-        //        return enumAlternative.EnumValue;
-        //    }
-        //
-        //throw new Exception($"Found no matching values for enum '{TemplatePropInfo.Name}' from match string '{scopedCapture.Value}'");
+        var enumSet = (EnumScalarAlternateSet)ScalarAlternateSet;
 
-        throw new NotImplementedException();
+        foreach (var enumAlternative in enumSet.EnumAlternates)
+            if (enumAlternative.ItemRegex.IsMatch(capture.Value))
+                return enumAlternative.EnumValue;
+
+        throw new Exception($"Found no matching values for enum '{PropertySnippet.Prop.PropertyType.Name}' from match string '{capture.Value}'");
     }
-
-    //public static EnumScalarAlternateSet EnumTypetoScalarSet(Type enumType)
-    //{
-    //    if (!enumType.IsEnum)
-    //        throw new Exception($"'{enumType.Name}' is not an enum type");
-    //
-    //    List<EnumScalarAlternate> enumAlternates = new();
-    //
-    //    // get enum values in declared order
-    //    var enumValues = enumType
-    //        .GetFields(BindingFlags.Public | BindingFlags.Static)
-    //        .OrderBy(x => x.MetadataToken)
-    //        .Select(x => x.GetValue(null)!)
-    //        .ToList();
-    //
-    //    foreach (var enumValue in enumValues)
-    //        enumAlternates.Add(new(enumType, enumValue));
-    //
-    //    return new(enumAlternates);
-    //}
 }

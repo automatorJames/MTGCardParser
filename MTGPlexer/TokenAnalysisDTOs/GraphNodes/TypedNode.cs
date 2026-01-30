@@ -2,12 +2,17 @@
 
 public abstract record TypedNode : Node
 {
-    public List<Node> Children { get; } = [];
+    public Dictionary<Type, List<Node>> ChildrenPerType { get; } = [];
+    public List<Node> Children => ChildrenPerType.First().Value;
     public Type UnderlyingType { get; }
+    public Type[] GenericTypes { get; }
 
     protected TypedNode(Node parentNode, string name, Type type) : base(parentNode, name)
     {
+        if (this.GetType() == typeof(ManyOfNode)) Debugger.Break();
+
         UnderlyingType = Nullable.GetUnderlyingType(type) ?? type;
+        GenericTypes = UnderlyingType.GetGenericArguments();
 
         // todo: I don't like this one bit. There should be a cleaner way to effect the outcome "DynamicOf won't have children".
         // The reason we don't let children get set is because (usually) DynamicOf<T> has T of TokenUnit, and since the GetChildNodes
@@ -15,7 +20,11 @@ public abstract record TypedNode : Node
         if (parentNode is DynamicOfNode)
             return;
 
-        Children = GetChildNodes(UnderlyingType);
+        if (GenericTypes.Any())
+            foreach (var genericType in GenericTypes)
+                ChildrenPerType[genericType] = GetChildNodes(genericType);
+        else
+            ChildrenPerType[UnderlyingType] = GetChildNodes(UnderlyingType);
     }
 
     List<Node> GetChildNodes(Type type)
@@ -44,6 +53,8 @@ public abstract record TypedNode : Node
                 else
                     snippets = [new Snippet(type.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
             }
+
+            return snippets;
         }
 
         return GetPropertySnippets(type);

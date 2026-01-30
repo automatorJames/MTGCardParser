@@ -10,12 +10,16 @@ public record ManyOfNode : WrapperPropertyNode
     public ManyOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
         _conjunctionNode = new(this, typeof(Conjunction));
+        _nodeTheFirst = new(this, GenericType, 0, ManyItemOrdinal.First);
+        _nodeTheLast = new(this, GenericType, 0, ManyItemOrdinal.Last);
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
+        var thing = Children;
+
         builder.OpenGroup(PropertySnippet.ToTemplatePropInfo(), spaceDisposition: SpaceDisposition.DisallowedLocal);
-        ConcatenatingComposer.Instance.Compose(builder, [TemplateNodeForComposition with { DifferentiatorValue = ManyItemOrdinal.First }]);
+        ConcatenatingComposer.Instance.Compose(builder, [_nodeTheFirst]);
         builder.OpenGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(", ");
         ConcatenatingComposer.Instance.Compose(builder, [TemplateNodeForComposition with { DifferentiatorValue = ManyItemOrdinal.SecondPlus }]);
@@ -26,42 +30,31 @@ public record ManyOfNode : WrapperPropertyNode
         _conjunctionNode.ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);
-        ConcatenatingComposer.Instance.Compose(builder, [TemplateNodeForComposition with { DifferentiatorValue = ManyItemOrdinal.Last }]);
+        ConcatenatingComposer.Instance.Compose(builder, [_nodeTheLast]);
         builder.CloseGroup();
         builder.CloseGroup();
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture[] captures)
     {
         //List<PolyItemCapture> hydratedItems = [];
-        //MatchTraversalState manyOfContainerState = new(null, parentTokenUnitMatch, LeafName);
         //
-        //for (int i = 0; i < _ordinalRegexProps.Length; i++)
+        //for (int i = 0; i < captures.Length; i++)
         //{
-        //    var ordinalProp = _ordinalRegexProps[i];
-        //    var manyItemOrdinal = (ManyItemOrdinal)i;
+        //    var manyItemOrdinal =
+        //        i == 0 ? ManyItemOrdinal.First
+        //        : i == captures.Length - 1 ? ManyItemOrdinal.Last
+        //        : ManyItemOrdinal.SecondPlus;
         //
-        //    // In manyof captures, "namedGroup" is the parent capture (at the many-of container level),
-        //    // but the actual item captures reside in the next level down at the ordinal level.
-        //    var sectionGroupCaptures = manyOfContainerState[manyItemOrdinal.ToString()];
-        //
-        //    // an empty section group should only possibly occur for the second second
-        //    if (sectionGroupCaptures.Length == 0)
-        //        continue;
-        //
-        //    // "first" will always have 1 item
-        //    // "second" will have any number of items (including 0)
-        //    // "last" will always have 1 item
-        //    for (int j = 0; j < sectionGroupCaptures.Length; j++)
-        //    {
-        //        var ordinalCapture = sectionGroupCaptures[j];
-        //        var childItem = ordinalProp.GetPropertyValue(manyOfContainerState, ordinalCapture, out var ordinalResult);
-        //        PolyItemCapture hydratedItem = new(childItem, ordinalCapture, TemplatePropInfo, distinguishingValue: manyItemOrdinal);
-        //        hydratedItems.Add(hydratedItem);
-        //    }
+        //    WrappedNode wrappedNode = new(this, GenericType, i, manyItemOrdinal);
+        //    var capture = captures[i];
+        //    ExtractedCapture extractedCapture = new(capture, FullyQualifiedName, i, captures.Length); // todo: deprecate ExtractedCapture?
+        //    var wrappedNodeValue = wrappedNode.GetValue(capture);
+        //    PolyItemCapture hydratedItem = new(wrappedNodeValue, extractedCapture, PropertySnippet.ToTemplatePropInfo(), distinguishingValue: manyItemOrdinal);
+        //    hydratedItems.Add(hydratedItem);
         //}
         //
-        //var conjunctionCapture = parentTokenUnitMatch[LeafName + "_" + nameof(Conjunction)].SingleOrDefault();
+        //var conjunctionCapture = captures[FullyQualifiedName + "_" + nameof(Conjunction)].SingleOrDefault();
         //
         //Conjunction? conjunctionValue = conjunctionCapture == null ? null
         //    : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed)

@@ -18,7 +18,7 @@ public record OneOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    protected override object GetPropertyValue(Capture capture)
+    public override object GetValue(Capture capture)
     {
         //PolyItemCapture foundPolyMatchValue = null;
         //int foundPropIndex = 0;
