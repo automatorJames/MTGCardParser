@@ -1,14 +1,11 @@
-﻿namespace MTGPlexer.Tokenizers;
+﻿using System.Text.RegularExpressions;
 
-using System.Text.RegularExpressions;
+namespace MTGPlexer.Tokenizers;
 
 public class Tokenizer
 {
-    List<Type> _orderedTypes;
+    private readonly List<Type> _orderedTypes;
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
-
-    // Characters that are allowed to immediately follow a valid token match
-    private static readonly char[] _boundaryChars = [' ', '.'];
 
     public Tokenizer(List<Type> orderedTypes)
     {
@@ -25,57 +22,42 @@ public class Tokenizer
         int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
 
+        // Pre-filter types to avoid repeating logic inside the while loop
+        var filteredTypes = (scopeToType != null && scopeToType != typeof(TokenUnit))
+            ? _orderedTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
+            : _orderedTypes;
+
         while (currentIndex < endIndex)
         {
             bool matched = false;
-            var filteredTypes = _orderedTypes;
-
-            if (scopeToType != null && scopeToType != typeof(TokenUnit))
-                filteredTypes = _orderedTypes
-                    .Where(x => x.IsAssignableTo(scopeToType)).ToList();
 
             foreach (var type in filteredTypes)
             {
                 var rootNode = TokenTypeRegistry.RootNodes[type];
-                var match = rootNode.BuiltRegex.Regex.Match(sourceText, currentIndex);    
 
-                // Validation:
-                // 1. Regex must succeed.
-                // 2. We manually enforce anchoring: the match MUST start at currentIndex.
-                // 3. The match must not exceed our current scope (endIndex).
-                if (match.Success && match.Index == currentIndex && match.Length > 0 && (match.Index + match.Length <= endIndex))
+                if (rootNode.TryMatch(sourceText, currentIndex, endIndex, out var token))
                 {
-                    int matchEndIndex = match.Index + match.Length;
-
-                    // **Boundary Check**: 
-                    // To avoid mid-word partial matches, the match is only valid if it extends 
-                    // exactly to the end of the line, or is followed by a space or period.
-                    bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
-
-                    if (!endsAtBoundary)
-                        goto NextIteration;
-
                     // --- COMMIT PHASE ---
-                    FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, match.Index);
-
-                    var token = rootNode.Hydrate(new CaptureDictionary(match));
+                    FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
                     tokens.Add(token);
-                    currentIndex = match.Index + match.Length;
+
+                    // Advance by the length of the matched token
+                    // Assuming TokenUnit contains the length or the raw text
+                    currentIndex += token.NodeGraph.Value.Length;
+
                     unmatchedStartIndex = -1;
                     matched = true;
                     break;
                 }
-
-            NextIteration:;
             }
 
-            // If no token matched at this boundary, "ratchet" up to the next space and begin again.
             if (!matched)
             {
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
+                // Ratchet logic: skip to the next space
                 int nextSpaceIndex = sourceText.IndexOf(' ', currentIndex);
 
                 if (nextSpaceIndex == -1 || nextSpaceIndex >= endIndex)
@@ -99,22 +81,15 @@ public class Tokenizer
         }
 
         int length = flushUntilIndex - unmatchedStartIndex;
-        if (length > 0)
-        {
-            if (!_unmatchedRegexCache.TryGetValue(length, out var regex))
-            {
-                regex = new Regex($".{{{length}}}", RegexOptions.Singleline | RegexOptions.Compiled);
-                _unmatchedRegexCache[length] = regex;
-            }
 
-            Match unmatchedMatch = regex.Match(sourceText, unmatchedStartIndex);
-            if (unmatchedMatch.Success)
-            {
-                var unmatchedStringRootNode = TokenTypeRegistry.RootNodes[typeof(DefaultUnmatchedString)];
-                var unmatchedTokenUnit = unmatchedStringRootNode.Hydrate(new CaptureDictionary(unmatchedMatch));
-                tokens.Add(unmatchedTokenUnit);
-            }
+        if (length <= 0)
+        {
+            unmatchedStartIndex = -1;
+            return;
         }
+
+        DefaultUnmatchedString defualtUnmatchedString = new(sourceText, unmatchedStartIndex, length);
+        tokens.Add(defualtUnmatchedString);
 
         unmatchedStartIndex = -1;
     }

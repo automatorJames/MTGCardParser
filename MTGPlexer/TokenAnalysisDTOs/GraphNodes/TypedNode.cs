@@ -9,8 +9,6 @@ public abstract record TypedNode : Node
 
     protected TypedNode(Node parentNode, string name, Type type) : base(parentNode, name)
     {
-        if (this.GetType() == typeof(ManyOfNode)) Debugger.Break();
-
         UnderlyingType = Nullable.GetUnderlyingType(type) ?? type;
         GenericTypes = UnderlyingType.GetGenericArguments();
 

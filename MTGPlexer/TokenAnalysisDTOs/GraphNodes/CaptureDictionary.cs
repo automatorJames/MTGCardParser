@@ -4,9 +4,18 @@ public class CaptureDictionary
 {
     private readonly Dictionary<string, Capture[]> _dictionary;
 
-    public CaptureDictionary(Match match)
+    public string SourceText { get; }
+    public string Value { get; }
+    public int Index { get; }
+    public int Length { get; }
+
+    public CaptureDictionary(Match match, string sourceText)
     {
         _dictionary = GetNamedGroupCaptures(match);
+        SourceText = sourceText;
+        Value = match.Value;
+        Index = match.Index;
+        Length = match.Length;
     }
 
     /// <summary>
