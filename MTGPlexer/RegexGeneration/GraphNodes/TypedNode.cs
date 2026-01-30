@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 public abstract record TypedNode : Node
 {

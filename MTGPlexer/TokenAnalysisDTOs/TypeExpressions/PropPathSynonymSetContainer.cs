@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+﻿using MTGPlexer.RegexGeneration.GraphNodes;
+
+namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 
 public class PropPathSynonymSetContainer
 {

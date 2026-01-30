@@ -1,5 +1,4 @@
-﻿
-namespace MTGPlexer.TokenAnalysisDTOs.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 public record TokenUnitNode : CaptureNode
 {

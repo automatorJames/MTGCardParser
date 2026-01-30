@@ -1,4 +1,6 @@
-﻿namespace ConsoleUtility;
+﻿using MTGPlexer.RegexGeneration.GraphNodes;
+
+namespace ConsoleUtility;
 
 internal class Program
 {

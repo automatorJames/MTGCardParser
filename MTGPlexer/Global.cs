@@ -3,7 +3,7 @@
 global using MTGPlexer.Attributes;
 global using MTGPlexer.CommonDTOs;
 global using MTGPlexer.Data;
-global using MTGPlexer.RegexGeneration.RegexSegments;
+global using MTGPlexer.RegexGeneration.GraphNodes;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines.Boundaries;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
@@ -22,7 +22,6 @@ global using MTGPlexer.RegexGeneration.Composers;
 global using MTGPlexer.TokenUnitGraphComponents;
 global using MTGPlexer.TokenUnits;
 global using MTGPlexer.TokenEditor;
-global using MTGPlexer.TokenAnalysisDTOs.GraphNodes;
 
 global using System.Reflection;
 global using System.Text;

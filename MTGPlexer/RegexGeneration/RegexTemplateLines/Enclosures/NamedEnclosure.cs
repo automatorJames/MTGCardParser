@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
+﻿using MTGPlexer.RegexGeneration.GraphNodes;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines.PathElements;
 
 public record NamedEnclosure : Enclosure
 {

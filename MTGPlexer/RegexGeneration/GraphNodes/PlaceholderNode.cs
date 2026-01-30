@@ -1,5 +1,4 @@
-﻿
-namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 /// <summary>
 /// Represents a placeholder text property of type PlaceholderCapture. This property type will typically have

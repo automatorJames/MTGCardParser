@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.Composers;
+﻿using MTGPlexer.RegexGeneration.GraphNodes;
+
+namespace MTGPlexer.RegexGeneration.Composers;
 
 public static class CompositionFactory
 {

@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
+﻿using MTGPlexer.RegexGeneration.GraphNodes;
+
+namespace MTGPlexer.RegexGeneration.RegexTemplateLines.BuilderLines;
 
 public class NamedGroupOpen : EnclosureBookend, IGroupOpen
 {

@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 public record CompoundOfNode : WrapperPropertyNode
 {

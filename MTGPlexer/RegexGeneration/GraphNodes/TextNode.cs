@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexSegments;
+﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 /// <summary>
 /// This record is used for strings defined in RegexTemplate expression bodies. These strings aren't associated

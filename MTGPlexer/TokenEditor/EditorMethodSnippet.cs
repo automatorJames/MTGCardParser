@@ -1,4 +1,6 @@
 ﻿
+using MTGPlexer.RegexGeneration.GraphNodes;
+
 namespace MTGPlexer.TokenEditor;
 
 public record EditorMethodSnippet : EditorBlockSnippet
