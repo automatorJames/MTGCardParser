@@ -2,6 +2,7 @@
 
 public record PropertySnippet : Snippet
 {
+    public string Name { get; }
     public PropertyInfo Prop { get; }
     public Proptions Proptions { get; }
 
@@ -9,5 +10,12 @@ public record PropertySnippet : Snippet
     {
         Prop = prop;
         Proptions = proptions;
+
+        var name = prop.Name;
+
+        if (prop.PropertyType.IsAssignableTo(typeof(XOf)))
+            name = prop.PropertyType.GetGenericTypeDefinition().BaseType.Name + name;
+
+        Name = name;
     }
 }

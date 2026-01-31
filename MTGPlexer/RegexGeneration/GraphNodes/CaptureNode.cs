@@ -7,9 +7,9 @@ public abstract class CaptureNode : ValueNode
     public Proptions Proptions { get; }
 
     protected CaptureNode(Node parentNode, PropertySnippet propertySnippet)
-        : base(parentNode, propertySnippet.Prop.Name, propertySnippet.Prop.PropertyType)
+        : base(parentNode, propertySnippet.Name, propertySnippet.Prop.PropertyType)
     {
-        FullyQualifiedName = GetFullyQualifiedName();
+        FullyQualifiedName = GetFullyQualifiedCaptureGroupName();
         PropertySnippet = propertySnippet;
     }
 
@@ -25,7 +25,7 @@ public abstract class CaptureNode : ValueNode
         PropertySnippet.Prop.SetValue(parent, value);
     }
 
-    private string GetFullyQualifiedName()
+    string GetFullyQualifiedCaptureGroupName()
     {
         List<string> parts = [];
         Node current = this;

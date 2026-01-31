@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnits;
+﻿    namespace MTGPlexer.TokenUnits;
 
 [Dependent]
 public class GainedOrLostBuff : TokenUnit
