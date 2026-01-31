@@ -15,13 +15,14 @@ public abstract class CaptureNode : TypedNode
         Navigable = navigable;
         ConcreteProperty = (navigable as PropertySnippet)?.Prop;
 
+        IsOptional = navigable.Proptions.HasFlag(Proptions.Optional)
+            || UnderlyingType.IsEnum && Nullable.GetUnderlyingType(Navigable.Type) != null;
+
         if (navigable is PropertySnippet propertySnippet)
         {
             ConcreteProperty = propertySnippet.Prop;
 
-            IsOptional =
-                ConcreteProperty.IsDefined(typeof(OptionalComponentAttribute))
-                || UnderlyingType.IsEnum && Nullable.GetUnderlyingType(ConcreteProperty.PropertyType) != null;
+            IsOptional |= ConcreteProperty.IsDefined(typeof(OptionalComponentAttribute)); 
 
             // Optional sub-groups aren't allowed in TokenUnitOneOf groups, because they would allow zero-width matches
             IsOptional &= !ConcreteProperty.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
@@ -29,7 +30,6 @@ public abstract class CaptureNode : TypedNode
             OverrideRegexPatterns = ConcreteProperty.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         }
 
-        IsOptional |= navigable.Proptions.HasFlag(Proptions.Optional);
     }
 
     public void SetPropertyValue(CaptureDictionary captures, TokenUnit parent)

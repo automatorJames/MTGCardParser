@@ -17,7 +17,7 @@ public class ManyOfNode : WrapperPropertyNode
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(",? ");
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
-        new WrappedNode(this, typeof(Conjunction)).ComposeRegexLines(builder);
+        new WrappedNode(this, typeof(Conjunction?)).ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);
         ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.Last)]);
