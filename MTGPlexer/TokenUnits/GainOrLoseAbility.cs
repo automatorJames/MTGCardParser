@@ -1,11 +1,11 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[NoSpaces]
+[IsolateForTesting]
 public class GainOrLoseAbility : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(LoseOrGain), " \"", Prop(Ability), "\""];
+    protected override Snippet[] Snippets => [Prop(GainOrLose), "\"", Prop(Ability), "\""];
 
-    public GainOrLose LoseOrGain { get; set; }
+    public GainOrLose GainOrLose { get; set; }
     
     [RegexPattern("[^\"]+")]
     public DynamicOf<TokenUnit> Ability { get; set; }

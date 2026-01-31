@@ -66,6 +66,10 @@ public class RegexElementConcatenater
         if (_lastAppendedElement is TextLine lastText && lastText.ShouldOmitSpaceAfter())
             return;
 
+        // If the last element ends witgh a double quote, and the total number of double quotes so far is odd (open), we've just begun a quoted block, so omit the space.
+        if (_lastAppendedElement.Regex.EndsWith("\"") && _doubleQuoteIsOpen)
+            return;
+
         // Handle case where next element is a text line
         if (nextElement is TextLine nextTextLine && nextTextLine.TextValue is string nextText)
         {
