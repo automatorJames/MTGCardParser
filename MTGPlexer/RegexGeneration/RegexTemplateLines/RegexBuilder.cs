@@ -41,10 +41,9 @@ public class RegexBuilder
     /// </summary>
     /// <param name="captureGroup">The property info for the capture group, if it's a named group.</param>
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
-    public void OpenNamedGroup(CaptureNode captureNode, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
+    public void OpenNamedGroup(CaptureNode captureNode, SpaceDisposition? spaceDisposition = null)
     {
         var enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureNode, spaceDisposition);
-        isOptional |= captureNode?.Navigable.Proptions.HasFlag(Proptions.Optional) ?? false;
         _enclosureStack.Push(enclosure);
         var groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureNode);
         _concatenater.Append(groupOpenElement);

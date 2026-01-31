@@ -13,7 +13,7 @@ public class EnumNode : TerminalNode
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenNamedGroup(this, isOptional: IsOptional);
+        builder.OpenNamedGroup(this);
 
         if (UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
