@@ -4,7 +4,6 @@ public abstract class CaptureNode : ValueNode
 {
     public string FullyQualifiedName { get; }
     public PropertySnippet PropertySnippet { get; }
-    public Proptions Proptions { get; }
 
     protected CaptureNode(Node parentNode, PropertySnippet propertySnippet)
         : base(parentNode, propertySnippet.Name, propertySnippet.Prop.PropertyType)
