@@ -7,30 +7,19 @@
 /// </summary>
 public class EnumNode : TerminalNode
 {
-    bool _isOptional;
-
     public EnumNode(Node parentNode, INavigable navigable) : base(parentNode, navigable)
     {
-        // If the enum is nullable, we treat it as optional. The exception to this is if the
-        // enum is contained in a TokenUnitOneOf, where at least one alternative must be matched,
-        // and the "zero or one" optional quantifier would allow zero-width false matches.
-        _isOptional =
-            Nullable.GetUnderlyingType(Navigable.Type) != null
-            && ConcreteProperty is PropertyInfo prop
-            && !prop.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
-
-        _isOptional |= IsOptional;
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenNamedGroup(this, isOptional: _isOptional);
+        builder.OpenNamedGroup(this, isOptional: IsOptional);
 
         if (UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
             builder.AddTextLine($"({attr.PrefixSnippet} )?");
 
         builder.AddAlternateEnumValues((EnumScalarAlternateSet)ScalarAlternateSet);
-        builder.CloseGroup(_isOptional ? GroupQuantifier.Optional : null);
+        builder.CloseGroup(IsOptional ? GroupQuantifier.Optional : null);
     }
 
     protected override ScalarAlternateSet GetScalarAlternateSet()

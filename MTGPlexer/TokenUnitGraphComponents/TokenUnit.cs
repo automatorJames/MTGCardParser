@@ -35,7 +35,7 @@ public abstract class TokenUnit
             return $"{nameof(RootNode.BuiltRegex.MinifiedRegexString)} is null or empty";
 
         var expectedProps = Type.GetPublicPropNames();
-        var missingProps = expectedProps.Except(rootNode.CaptureChildren.Select(x => x.Navigable.Name)).ToList();
+        var missingProps = expectedProps.Except(rootNode.CaptureChildren.Select(x => x.ConcreteProperty.Name)).ToList();
     
         if (missingProps.Any())
             return $"the following properties are not represented among template snippets: {string.Join(", ", missingProps)}";

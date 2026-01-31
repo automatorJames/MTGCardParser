@@ -23,6 +23,9 @@ public abstract class CaptureNode : TypedNode
                 ConcreteProperty.IsDefined(typeof(OptionalComponentAttribute))
                 || UnderlyingType.IsEnum && Nullable.GetUnderlyingType(ConcreteProperty.PropertyType) != null;
 
+            // Optional sub-groups aren't allowed in TokenUnitOneOf groups, because they would allow zero-width matches
+            IsOptional &= !ConcreteProperty.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
+
             OverrideRegexPatterns = ConcreteProperty.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         }
 
