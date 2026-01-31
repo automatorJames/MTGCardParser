@@ -25,8 +25,7 @@ public static partial class TokenTypeRegistry
 
     static TokenTypeRegistry()
     {
-        // todo: reimplement this!
-        //InitializeEmitedManyTypes();
+        InitializeEmittedManyTypes();
 
         var allTokenTypes = GetAllTopLevelTokenTypes();
 
@@ -97,7 +96,7 @@ public static partial class TokenTypeRegistry
             .ToList();
     }
 
-    static void InitializeEmitedManyTypes()
+    static void InitializeEmittedManyTypes()
     {
         var typesContainingManyProps = GetAllTopLevelTokenTypes()
             .Where(x => x.GetProps().Any(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))));
