@@ -9,11 +9,7 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
 
     public NamedGroupOpen(Enclosure[] enclosures, CaptureNode captureNode) : base(enclosures, RenderCaptureGroup(enclosures), GetComment(captureNode))
     {
-        IsOptional =
-            captureNode.Proptions.HasFlag(Proptions.Optional)
-            || captureNode.PropertySnippet.Prop.IsDefined(typeof(OptionalComponentAttribute))
-            || captureNode.UnderlyingType.IsEnum && Nullable.GetUnderlyingType(captureNode.PropertySnippet.Prop.PropertyType) != null;
-
+        IsOptional = captureNode.IsOptional;
         FullyQualifiedName = GetFullyQualifiedName(enclosures);
     }
 
@@ -25,7 +21,12 @@ public class NamedGroupOpen : EnclosureBookend, IGroupOpen
         var comment = captureNode.UnderlyingType.Name.ToFriendlyCase();
 
         // Disambiguate the role of enum properties named differently than their types
-        if (captureNode.UnderlyingType.IsEnum && captureNode.PropertySnippet.Prop.Name != captureNode.UnderlyingType.Name)
+        bool enumPropHasDifferentNameFromTypeName =
+            captureNode.UnderlyingType.IsEnum
+            && captureNode.ConcreteProperty is PropertyInfo prop
+            && prop.Name != captureNode.UnderlyingType.Name;
+
+        if (enumPropHasDifferentNameFromTypeName)
             comment += $": {captureNode.UnderlyingType.Name}";
 
         return comment;

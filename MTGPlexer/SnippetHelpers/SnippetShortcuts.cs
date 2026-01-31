@@ -46,12 +46,3 @@ public static class SnippetShortcuts
             .ToList();
     }
 }
-
-[Flags]
-public enum Proptions
-{
-    None,
-    Plural,
-    Optional,
-    NoPrecedingSpace,
-}

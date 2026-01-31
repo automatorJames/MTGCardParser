@@ -1,9 +1,9 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class ValueNode : TypedNode
+public abstract class ValueNode : Node
 {
-    protected ValueNode(Node parentNode, string name, Type nodeType)
-    : base(parentNode, name, nodeType)
+    protected ValueNode(Node parentNode, string name)
+    : base(parentNode, name)
     {
     }
 

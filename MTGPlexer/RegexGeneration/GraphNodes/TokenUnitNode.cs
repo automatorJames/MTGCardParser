@@ -2,7 +2,7 @@
 
 public class TokenUnitNode : CaptureNode
 {
-    public TokenUnitNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public TokenUnitNode(Node parentNode, INavigable navigation) : base(parentNode, navigation)
     {
     }
 
@@ -10,8 +10,7 @@ public class TokenUnitNode : CaptureNode
     {
         builder.OpenNamedGroup(this);
         ConcatenatingComposer.Instance.Compose(builder, Children.ToList());
-        var groupIsOptional = PropertySnippet.Prop.IsDefined(typeof(OptionalComponentAttribute));
-        GroupQuantifier? groupQuantifier = groupIsOptional ? GroupQuantifier.Optional : null;
+        GroupQuantifier? groupQuantifier = IsOptional ? GroupQuantifier.Optional : null;
         builder.CloseGroup(groupQuantifier);
     }
 

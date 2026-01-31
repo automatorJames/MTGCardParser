@@ -1,15 +1,17 @@
 ﻿namespace MTGPlexer.SnippetHelpers;
 
-public record PropertySnippet : Snippet
+public record PropertySnippet : Snippet, INavigable
 {
-    public string Name { get; }
     public PropertyInfo Prop { get; }
+    public Type Type { get; }
+    public string Name { get; }
     public Proptions Proptions { get; }
 
     public PropertySnippet(string text, PropertyInfo prop, Proptions proptions) : base(text)
     {
         Prop = prop;
         Proptions = proptions;
+        Type = prop.PropertyType;
 
         var name = prop.Name;
 

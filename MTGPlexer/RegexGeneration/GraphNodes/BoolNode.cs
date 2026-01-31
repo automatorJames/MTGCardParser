@@ -7,7 +7,8 @@
 /// </summary>
 public class BoolNode : TerminalNode
 {
-    public BoolNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public BoolNode(Node parentNode, INavigable navigable) 
+        : base(parentNode, navigable)
     {
     }
 

@@ -1,19 +1,39 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class CaptureNode : ValueNode
+public abstract class CaptureNode : TypedNode
 {
     public string FullyQualifiedName { get; }
-    public PropertySnippet PropertySnippet { get; }
+    public INavigable Navigable { get; }
+    public PropertyInfo ConcreteProperty { get; }
+    public bool IsOptional { get; }
+    public string[] OverrideRegexPatterns { get; }
 
-    protected CaptureNode(Node parentNode, PropertySnippet propertySnippet)
-        : base(parentNode, propertySnippet.Name, propertySnippet.Prop.PropertyType)
+    protected CaptureNode(Node parentNode, INavigable navigable)
+        : base(parentNode, navigable.Name, navigable.Type)
     {
         FullyQualifiedName = GetFullyQualifiedCaptureGroupName();
-        PropertySnippet = propertySnippet;
+        Navigable = navigable;
+        ConcreteProperty = (navigable as PropertySnippet)?.Prop;
+
+        if (navigable is PropertySnippet propertySnippet)
+        {
+            ConcreteProperty = propertySnippet.Prop;
+
+            IsOptional =
+                ConcreteProperty.IsDefined(typeof(OptionalComponentAttribute))
+                || UnderlyingType.IsEnum && Nullable.GetUnderlyingType(ConcreteProperty.PropertyType) != null;
+
+            OverrideRegexPatterns = ConcreteProperty.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
+        }
+
+        IsOptional |= navigable.Proptions.HasFlag(Proptions.Optional);
     }
 
     public void SetPropertyValue(CaptureDictionary captures, TokenUnit parent)
     {
+        if (ConcreteProperty == null)
+            throw new Exception($"{FullyQualifiedName} does not represent a concrete CLR property, so its value cannot be set");
+
         var capturesForName = captures[FullyQualifiedName];
 
         var value = GetValue(capturesForName);
@@ -21,7 +41,7 @@ public abstract class CaptureNode : ValueNode
         if (value == null)
             return;
 
-        PropertySnippet.Prop.SetValue(parent, value);
+        ConcreteProperty.SetValue(parent, value);
     }
 
     string GetFullyQualifiedCaptureGroupName()

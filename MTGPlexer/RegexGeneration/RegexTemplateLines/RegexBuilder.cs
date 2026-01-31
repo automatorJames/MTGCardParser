@@ -44,7 +44,7 @@ public class RegexBuilder
     public void OpenNamedGroup(CaptureNode captureNode, SpaceDisposition? spaceDisposition = null, bool isOptional = false)
     {
         var enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureNode, spaceDisposition);
-        isOptional |= captureNode?.Proptions.HasFlag(Proptions.Optional) ?? false;
+        isOptional |= captureNode?.Navigable.Proptions.HasFlag(Proptions.Optional) ?? false;
         _enclosureStack.Push(enclosure);
         var groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureNode);
         _concatenater.Append(groupOpenElement);
@@ -71,7 +71,7 @@ public class RegexBuilder
 
         if (currentEnclosure is NamedEnclosure namedEnclosure)
         {
-            quantifier ??= namedEnclosure.CaptureNode.Proptions.HasFlag(Proptions.Optional) ? GroupQuantifier.Optional : null;
+            quantifier ??= namedEnclosure.CaptureNode.Navigable.Proptions.HasFlag(Proptions.Optional) ? GroupQuantifier.Optional : null;
             _concatenater.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
         }
         else
@@ -81,7 +81,7 @@ public class RegexBuilder
 
         if (closedEnclosure is NamedEnclosure closedNamedEnclosure)
         {
-            if (closedNamedEnclosure.CaptureNode.Proptions.HasFlag(Proptions.Plural))
+            if (closedNamedEnclosure.CaptureNode.Navigable.Proptions.HasFlag(Proptions.Plural))
                 _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
         }
     }

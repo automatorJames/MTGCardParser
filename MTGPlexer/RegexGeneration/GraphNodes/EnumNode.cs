@@ -9,14 +9,17 @@ public class EnumNode : TerminalNode
 {
     bool _isOptional;
 
-    public EnumNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public EnumNode(Node parentNode, INavigable navigable) : base(parentNode, navigable)
     {
         // If the enum is nullable, we treat it as optional. The exception to this is if the
         // enum is contained in a TokenUnitOneOf, where at least one alternative must be matched,
         // and the "zero or one" optional quantifier would allow zero-width false matches.
         _isOptional =
-            Nullable.GetUnderlyingType(propertySnippet.Prop.PropertyType) != null
-            && !propertySnippet.Prop.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
+            Nullable.GetUnderlyingType(Navigable.Type) != null
+            && ConcreteProperty is PropertyInfo prop
+            && !prop.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
+
+        _isOptional |= IsOptional;
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
@@ -55,6 +58,6 @@ public class EnumNode : TerminalNode
             if (enumAlternative.ItemRegex.IsMatch(capture.Value))
                 return enumAlternative.EnumValue;
 
-        throw new Exception($"Found no matching values for enum '{PropertySnippet.Prop.PropertyType.Name}' from match string '{capture.Value}'");
+        throw new Exception($"Found no matching values for enum '{Navigable.Type.Name}' from match string '{capture.Value}'");
     }
 }

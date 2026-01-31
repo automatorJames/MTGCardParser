@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class TypedNode : Node
+public abstract class TypedNode : ValueNode
 {
     public Dictionary<Type, List<Node>> ChildrenPerType { get; } = [];
     public List<Node> Children => ChildrenPerType.First().Value;

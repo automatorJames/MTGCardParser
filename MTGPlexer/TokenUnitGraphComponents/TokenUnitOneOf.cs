@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.GraphNodes;
-
-namespace MTGPlexer.TokenUnitGraphComponents;
+﻿namespace MTGPlexer.TokenUnitGraphComponents;
 
 public abstract class TokenUnitOneOf : TokenUnit
 {
@@ -34,7 +32,7 @@ public abstract class TokenUnitOneOf : TokenUnit
         }
 
         // Any enums must be nullable
-        if (rootNode.Children.OfType<EnumNode>().Any(x => Nullable.GetUnderlyingType(x.PropertySnippet.Prop.PropertyType) == null))
+        if (rootNode.Children.OfType<EnumNode>().Any(x => Nullable.GetUnderlyingType(x.Navigable.Type) == null))
             return $"All enum properties in {nameof(TokenUnitOneOf)} types must be nullable";
 
         return null;

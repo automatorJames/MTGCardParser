@@ -2,7 +2,8 @@
 
 public abstract class TerminalNode : CaptureNode
 {
-    public TerminalNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public TerminalNode(Node parentNode, INavigable navigable) 
+        : base(parentNode, navigable)
     {
     }
 
@@ -24,7 +25,10 @@ public abstract class TerminalNode : CaptureNode
 
     protected virtual ScalarAlternateSet GetScalarAlternateSet()
     {
-        var captureAlternatives = (PropertySnippet.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [PropertySnippet.Prop.Name]).OrderByDescending(s => s.Length).ToList();
+        var captureAlternatives = (OverrideRegexPatterns ?? [Navigable.Name])
+            .OrderByDescending(s => s.Length)
+            .ToList();
+
         return new(captureAlternatives);
     }
 }
