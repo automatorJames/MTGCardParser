@@ -19,7 +19,7 @@ public class CompoundOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    public override object GetValue(Capture[] captures)
+    public override CaptureValueInfo GetCaputureValueInfo(CaptureDictionary captures)
     {
         List<PolyItemCapture> hydratedItems = [];
         
@@ -40,4 +40,5 @@ public class CompoundOfNode : WrapperPropertyNode
 
 
     public override string ToString() => base.ToString();
+
 }

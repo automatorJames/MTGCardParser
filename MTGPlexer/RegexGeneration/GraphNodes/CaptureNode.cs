@@ -29,7 +29,6 @@ public abstract class CaptureNode : TypedNode
 
             OverrideRegexPatterns = ConcreteProperty.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         }
-
     }
 
     public void SetPropertyValue(CaptureDictionary captures, TokenUnit parent)
@@ -38,7 +37,6 @@ public abstract class CaptureNode : TypedNode
             throw new Exception($"{FullyQualifiedName} does not represent a concrete CLR property, so its value cannot be set");
 
         var capturesForName = captures[FullyQualifiedName];
-
         var value = GetValue(capturesForName);
 
         if (value == null)

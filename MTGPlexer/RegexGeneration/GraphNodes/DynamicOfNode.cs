@@ -1,13 +1,18 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class DynamicOfNode : WrapperPropertyNode
+public class DynamicOfNode : TerminalNode
 {
+    Type _genericType;
     ScalarAlternateSet _scalarAlternativeSet;
 
 	public DynamicOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        if (!GenericType.IsAssignableTo(typeof(TokenUnit)))
-            throw new Exception($"{nameof(DynamicOfNode)} only supports {nameof(TokenUnit)} types");
+        var genericTypes = propertySnippet.Type.GenericTypeArguments;
+
+        if (genericTypes.Length != 1 || !genericTypes[0].IsAssignableTo(typeof(TokenUnit)))
+            throw new Exception($"{nameof(DynamicOfNode)} expects exactly one generic type assignable to {nameof(TokenUnit)}");
+
+        _genericType = genericTypes[0];
 
         // todo: bring back cache lookup if appropriate
 		//if (TokenTypeRegistry.PropScalarAlternativeSets.TryGetValue(propertySnippet.ToTemplatePropInfo(), out var scalarAlternativeSet))
@@ -29,19 +34,23 @@ public class DynamicOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    public override object GetValue(Capture capture)
+    protected override object TryGetValue(Capture capture, out CaptureValueResult result)
     {
-        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: GenericType);
+        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: _genericType);
         
         // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
         if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
+        {
+            result = CaptureValueResult.FoundButNull;
             return null;
+        }
 
         ExtractedCapture extractedCapture = new(capture, FullyQualifiedName); // todo: deprecate ExtractedCapture?
         PolyItemCapture hydratedItem = new(dynamicMatchToken, extractedCapture);
-        var closedType = typeof(DynamicOf<>).MakeGenericType(GenericType);
+        var closedType = typeof(DynamicOf<>).MakeGenericType(_genericType);
         var dynamicOfInstance = Activator.CreateInstance(closedType, hydratedItem, extractedCapture);
-        
+
+        result = CaptureValueResult.FoundWithValue;
         return dynamicOfInstance;
     }
 }

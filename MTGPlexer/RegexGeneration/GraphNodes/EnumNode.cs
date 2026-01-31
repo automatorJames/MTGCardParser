@@ -39,14 +39,18 @@ public class EnumNode : TerminalNode
         return new EnumScalarAlternateSet(enumAlternates);
     }
 
-    public override object GetValue(Capture capture)
+    protected override object TryGetValue(Capture capture, out CaptureValueResult result)
     {
         var enumSet = (EnumScalarAlternateSet)ScalarAlternateSet;
 
         foreach (var enumAlternative in enumSet.EnumAlternates)
             if (enumAlternative.ItemRegex.IsMatch(capture.Value))
+            {
+                result = CaptureValueResult.FoundWithValue;
                 return enumAlternative.EnumValue;
+            }
 
-        throw new Exception($"Found no matching values for enum '{Navigable.Type.Name}' from match string '{capture.Value}'");
+        result = CaptureValueResult.Exception;
+        return null;
     }
 }

@@ -214,7 +214,7 @@ public class PlaceholderNode : TerminalNode
         return splits;
     }
 
-    public override object GetValue(Capture capture)
+    public override object TryGetValue(Capture capture)
     {
         //var valueToSet = new PlaceholderCapture(scopedCapture.Value);
         //result = ValueResult.Success;

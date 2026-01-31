@@ -50,8 +50,6 @@ public static partial class TokenTypeRegistry
         RootNode rootNode = new(type);
         RootNodes[type] = rootNode;
 
-        var captureChildren = rootNode.CaptureChildren;
-
         if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
             throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
     }
