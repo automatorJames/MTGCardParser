@@ -25,7 +25,8 @@ public static partial class TokenTypeRegistry
 
     static TokenTypeRegistry()
     {
-        InitializeEmitedManyTypes();
+        // todo: reimplement this!
+        //InitializeEmitedManyTypes();
 
         var allTokenTypes = GetAllTopLevelTokenTypes();
 
@@ -46,6 +47,7 @@ public static partial class TokenTypeRegistry
 
     static void SetRootNode(Type type)
     {
+        Debug.WriteLine(type.Name);
         NameToType[type.Name] = type;
         RootNode rootNode = new(type);
         RootNodes[type] = rootNode;

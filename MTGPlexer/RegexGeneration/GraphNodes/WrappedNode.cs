@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record WrappedNode : ValueNode
+public class WrappedNode : ValueNode
 {
     public Type Type { get; }
     public object DifferentiatorValue { get; init; }

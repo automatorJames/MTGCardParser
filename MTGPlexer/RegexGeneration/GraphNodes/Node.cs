@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract record Node
+public abstract class Node
 {
     public string Name { get; set; }
     public Node ParentNode { get; }

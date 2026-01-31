@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record DynamicOfNode : WrapperPropertyNode
+public class DynamicOfNode : WrapperPropertyNode
 {
     ScalarAlternateSet _scalarAlternativeSet;
 

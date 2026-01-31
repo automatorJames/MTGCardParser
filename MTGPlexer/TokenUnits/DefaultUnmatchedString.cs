@@ -5,6 +5,10 @@ public class DefaultUnmatchedString : TokenUnit
 {
     protected override Snippet[] Snippets => [@"[^\s]+"];
 
+    public DefaultUnmatchedString()
+    {
+    }
+
     public DefaultUnmatchedString(string sourceText, int unmatchedStart, int unmatchedLength)
     {
         var regexForLength = new Regex($".{{{unmatchedLength}}}", RegexOptions.Singleline);

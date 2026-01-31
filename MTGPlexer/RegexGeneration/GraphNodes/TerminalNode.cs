@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract record TerminalNode : CaptureNode
+public abstract class TerminalNode : CaptureNode
 {
     public TerminalNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {

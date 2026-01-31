@@ -5,7 +5,7 @@
 /// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
 /// its pattern(s), but in the absence of this the normalized property name is matched.
 /// </summary>
-public record BoolNode : TerminalNode
+public class BoolNode : TerminalNode
 {
     public BoolNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {

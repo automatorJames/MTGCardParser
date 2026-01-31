@@ -1,14 +1,18 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract record WrapperPropertyNode : CaptureNode
+public abstract class WrapperPropertyNode : CaptureNode
 {
-    protected List<WrappedNode> TemplateNodesForComposition = [];
-    protected WrappedNode TemplateNodeForComposition => TemplateNodesForComposition.Single();
     protected Type GenericType => GenericTypes[0];
 
     public WrapperPropertyNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        foreach (var genericType in GenericTypes)
-            TemplateNodesForComposition.Add(new WrappedNode(this, GenericType));
+    }
+
+    protected WrappedNode GetTemplateNodeForType(int ordinal = 0, int genericTypeIndex = 0, object differentiatorValue = null)
+    {
+        if (0 > GenericTypes.Length)
+            throw new IndexOutOfRangeException();
+
+        return new WrappedNode(this, GenericTypes[genericTypeIndex], ordinal, differentiatorValue);
     }
 }

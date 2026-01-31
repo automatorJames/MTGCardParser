@@ -5,7 +5,7 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public record EnumNode : TerminalNode
+public class EnumNode : TerminalNode
 {
     bool _isOptional;
 

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record CompoundOfNode : WrapperPropertyNode
+public class CompoundOfNode : WrapperPropertyNode
 {
     public List<WrappedNode> WrappedNodes { get; } = [];
 
@@ -12,7 +12,7 @@ public record CompoundOfNode : WrapperPropertyNode
     {
         builder.OpenNamedGroup(this);
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
-        TemplateNodeForComposition.ComposeRegexLines(builder);
+        GetTemplateNodeForType().ComposeRegexLines(builder);
         builder.AddTextLine(" ?");
         builder.CloseGroup(GroupQuantifier.OneOrMore);
         builder.AddNegativeSpaceLookbehindBoundary();
@@ -27,7 +27,7 @@ public record CompoundOfNode : WrapperPropertyNode
         {
             var ordinalCapture = captures[i];
             ExtractedCapture extractedCapture = new(ordinalCapture, FullyQualifiedName, i, captures.Length); // todo: deprecate ExtractedCapture?
-            var childItem = TemplateNodeForComposition with { Ordinal = i };
+            var childItem = GetTemplateNodeForType(ordinal: i);
             PolyItemCapture hydratedItem = new(childItem, extractedCapture);
             hydratedItems.Add(hydratedItem);
         }

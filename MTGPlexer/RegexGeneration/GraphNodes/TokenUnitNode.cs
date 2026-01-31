@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record TokenUnitNode : CaptureNode
+public class TokenUnitNode : CaptureNode
 {
     public TokenUnitNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {

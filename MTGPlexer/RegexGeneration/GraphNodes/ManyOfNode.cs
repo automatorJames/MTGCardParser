@@ -1,36 +1,26 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record ManyOfNode : WrapperPropertyNode
+public class ManyOfNode : WrapperPropertyNode
 {
-    WrappedNode _conjunctionNode { get; }
-    WrappedNode _nodeTheFirst { get; }
-    WrappedNode _nodeTheLast { get; }
-    List<WrappedNode> _nodesTheSecond { get; } = [];
-
     public ManyOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        _conjunctionNode = new(this, typeof(Conjunction));
-        _nodeTheFirst = new(this, GenericType, 0, ManyItemOrdinal.First);
-        _nodeTheLast = new(this, GenericType, 0, ManyItemOrdinal.Last);
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        var thing = Children;
-
         builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
-        ConcatenatingComposer.Instance.Compose(builder, [_nodeTheFirst]);
+        ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.First)]);
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(", ");
-        ConcatenatingComposer.Instance.Compose(builder, [TemplateNodeForComposition with { DifferentiatorValue = ManyItemOrdinal.SecondPlus }]);
+        ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.SecondPlus)]);
         builder.CloseGroup(GroupQuantifier.AnyNumber);
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(",? ");
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
-        _conjunctionNode.ComposeRegexLines(builder);
+        new WrappedNode(this, typeof(Conjunction)).ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);
-        ConcatenatingComposer.Instance.Compose(builder, [_nodeTheLast]);
+        ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.Last)]);
         builder.CloseGroup();
         builder.CloseGroup();
     }

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record RootNode : TypedNode
+public class RootNode : TypedNode
 {
     static readonly char[] _boundaryChars = [' ', '.'];
 

@@ -5,7 +5,7 @@
 /// compilation of a RegexTemplate, thie record simply creates an instance of the child TokenUnit type and gets its
 /// rendered Regex string to add it to the parent TokenUnit's own rendered Regex.
 /// </summary>
-public record OneOfNode : WrapperPropertyNode
+public class OneOfNode : WrapperPropertyNode
 {
     public OneOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -13,8 +13,13 @@ public record OneOfNode : WrapperPropertyNode
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
+        var typedWrappedNodes = GenericTypes
+            .Select((type, idx) => GetTemplateNodeForType(genericTypeIndex: idx))
+            .Cast<Node>()
+            .ToList();
+
         builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
-        AlternatingComposer.Instance.Compose(builder, TemplateNodesForComposition.Cast<Node>().ToList());
+        AlternatingComposer.Instance.Compose(builder, typedWrappedNodes);
         builder.CloseGroup();
     }
 

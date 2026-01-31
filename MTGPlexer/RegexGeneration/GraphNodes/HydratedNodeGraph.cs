@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record HydratedNodeGraph : RootNode
+public class HydratedNodeGraph : RootNode
 {
     public CaptureDictionary CaptureDictionary { get; }
     public string Value => CaptureDictionary.Value;

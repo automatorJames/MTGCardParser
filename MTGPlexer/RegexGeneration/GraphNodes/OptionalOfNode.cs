@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public record OptionalOfNode : WrapperPropertyNode
+public class OptionalOfNode : WrapperPropertyNode
 {
     public OptionalOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -11,7 +11,7 @@ public record OptionalOfNode : WrapperPropertyNode
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenNamedGroup(this);
-        TemplateNodeForComposition.ComposeRegexLines(builder);
+        GetTemplateNodeForType().ComposeRegexLines(builder);
         GroupQuantifier? groupQuantifier = GroupQuantifier.Optional;
         builder.CloseGroup(groupQuantifier);
     }

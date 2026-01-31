@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract record CaptureNode : ValueNode
+public abstract class CaptureNode : ValueNode
 {
     public string FullyQualifiedName { get; }
     public PropertySnippet PropertySnippet { get; }
