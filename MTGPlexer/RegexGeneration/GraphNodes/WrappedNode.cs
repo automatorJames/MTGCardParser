@@ -39,11 +39,4 @@ public class WrappedNode : CaptureNode
 
         return value;
     }
-
-    //public WrappedNode HydrateFromCapture(CaptureContext captureContext)
-    //{
-    //    var value = WrappedCaptureNode.TryGetValue(captureContext, out _);
-    //    CaptureValueHydrationInfo = new(WrappedCaptureNode, capture, value);
-    //    return this;
-    //}
 }
