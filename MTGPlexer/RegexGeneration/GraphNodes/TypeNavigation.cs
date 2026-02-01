@@ -9,6 +9,6 @@ public class TypeNavigation : INavigable
     public TypeNavigation(Type type)
     {
         Type = type;
-        Name = type.Name;
+        Name = (Nullable.GetUnderlyingType(type) ?? type).Name;
     }
 }

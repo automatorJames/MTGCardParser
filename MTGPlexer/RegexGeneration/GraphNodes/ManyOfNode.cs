@@ -9,10 +9,10 @@ public class ManyOfNode : WrapperNode
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
-        ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.First)]);
+        GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.First).ComposeRegexLines(builder);
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(", ");
-        ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.SecondPlus)]);
+        GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.SecondPlus).ComposeRegexLines(builder);
         builder.CloseGroup(GroupQuantifier.AnyNumber);
         builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
         builder.AddTextLine(",? ");
@@ -20,7 +20,7 @@ public class ManyOfNode : WrapperNode
         new WrappedNode(this, typeof(Conjunction?)).ComposeRegexLines(builder);
         builder.AddTextLine(" ");
         builder.CloseGroup(GroupQuantifier.Optional);
-        ConcatenatingComposer.Instance.Compose(builder, [GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.Last)]);
+        GetTemplateNodeForType(differentiatorValue: ManyItemOrdinal.Last).ComposeRegexLines(builder);
         builder.CloseGroup();
         builder.CloseGroup();
     }

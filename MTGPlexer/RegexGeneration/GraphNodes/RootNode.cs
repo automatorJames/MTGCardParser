@@ -20,6 +20,8 @@ public class RootNode : BranchNode
         BuiltRegex = TokenTypeRegistry.RootNodes.TryGetValue(type, out var rootNode) ? rootNode.BuiltRegex : BuildRegex();
     }
 
+    public bool TryMatch(string sourceText, out TokenUnit tokenUnit) => TryMatch(sourceText, 0, sourceText.Length, out tokenUnit);
+
     /// <summary>
     /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.
     /// </summary>

@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[IsolateForTesting]
 public class GainOrLoseAbility : TokenUnit
 {
     protected override Snippet[] Snippets => [Prop(GainOrLose), "\"", Prop(Ability), "\""];

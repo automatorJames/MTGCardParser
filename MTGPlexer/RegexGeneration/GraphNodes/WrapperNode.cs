@@ -11,7 +11,7 @@ public abstract class WrapperNode : CaptureNode
 
     public WrapperNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        _closedWrapperType = propertySnippet.Prop.PropertyType.MakeGenericType(GenericTypes);
+        _closedWrapperType = propertySnippet.Prop.PropertyType.GetGenericTypeDefinition().MakeGenericType(GenericTypes);
     }
 
     protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0, object differentiatorValue = null)
