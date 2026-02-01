@@ -12,6 +12,9 @@ public record CaptureValueHydrationInfo
 
     public CaptureValueHydrationInfo(CaptureNode captureNode, Capture capture, object value)
     {
+        if (capture is null)
+            throw new ArgumentNullException(nameof(capture));
+
         CaptureNode = captureNode;
         Value = value;
         FullyQualifiedName = captureNode.FullyQualifiedName;
@@ -20,11 +23,3 @@ public record CaptureValueHydrationInfo
         Length = capture.Length;
     }
 };
-
-public enum CaptureValueResult
-{
-    FoundWithValue,
-    FoundButNull,
-    NameNotFound,
-    Exception
-}

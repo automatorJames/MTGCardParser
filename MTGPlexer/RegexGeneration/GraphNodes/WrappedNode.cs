@@ -6,6 +6,8 @@ public class WrappedNode : CaptureNode
     public int? Ordinal { get; }
     public CaptureNode WrappedCaptureNode { get; }
 
+    public override bool IsCollapsible => true;
+
     public WrappedNode(Node parentNode, Type type, int? ordinal = null, string name = null) 
         : base(parentNode, new TypeNavigation(type, name))
     {
@@ -21,13 +23,6 @@ public class WrappedNode : CaptureNode
             throw new Exception($"{nameof(WrappedNode)} can only be created from enum of {nameof(TokenUnit)} types, but '{type.Name}' was passed");
     }
 
-    public WrappedNode HydrateFromCapture(Capture capture)
-    {
-        var value = WrappedCaptureNode.GetValueSingleCapture(capture);
-        CaptureValueHydrationInfo = new(WrappedCaptureNode, capture, value);
-        return this;
-    }
-
     static Type GetUnderlyingType(Type type)
         => Nullable.GetUnderlyingType(type) ?? type;
 
@@ -36,9 +31,19 @@ public class WrappedNode : CaptureNode
         WrappedCaptureNode.ComposeRegexLines(builder);
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result) =>
-        WrappedCaptureNode.TryGetValue(captureDictionary, out result);
+    public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
+    {
+        var scopedCaptureContext = captureContext[FullyQualifiedName];
+        var value = WrappedCaptureNode.GetValueAndSetHydrationInfo(scopedCaptureContext);
+        CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, value);
 
-    public override object GetValueSingleCapture(Capture capture)
-        => WrappedCaptureNode.CaptureValueHydrationInfo?.Value ?? WrappedCaptureNode.GetValueSingleCapture(capture);
+        return value;
+    }
+
+    //public WrappedNode HydrateFromCapture(CaptureContext captureContext)
+    //{
+    //    var value = WrappedCaptureNode.TryGetValue(captureContext, out _);
+    //    CaptureValueHydrationInfo = new(WrappedCaptureNode, capture, value);
+    //    return this;
+    //}
 }

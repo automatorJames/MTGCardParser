@@ -7,25 +7,21 @@ public abstract class SingleCaptureNode : CaptureNode
     {
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     {
-        var singleCapture = captureDictionary[FullyQualifiedName].SingleOrDefault();
+        var singleCapture = captureContext[FullyQualifiedName].Capture;
 
         if (singleCapture == null)
-        {
-            result = CaptureValueResult.NameNotFound;
             return null;
-        }
 
-        var value = GetValueSingleCapture(singleCapture);
+        var value = GetValueSingle(singleCapture);
 
         if (value == null)
-        {
-            result = CaptureValueResult.FoundButNull;
             return null;
-        }
 
-        result = CaptureValueResult.FoundWithValue;
+        CaptureValueHydrationInfo = new(this, singleCapture, value);
         return value;
     }
+
+    public abstract object GetValueSingle(Capture capture);
 }

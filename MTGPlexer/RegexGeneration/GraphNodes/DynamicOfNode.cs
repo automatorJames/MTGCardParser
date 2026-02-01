@@ -5,6 +5,8 @@ public class DynamicOfNode : LeafNode
     Type _genericType;
     ScalarAlternateSet _scalarAlternativeSet;
 
+    protected override bool AbortIfSetPropertyToNull => true;
+
 	public DynamicOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
         var genericTypes = propertySnippet.Type.GenericTypeArguments;
@@ -34,7 +36,7 @@ public class DynamicOfNode : LeafNode
         builder.CloseGroup();
     }
 
-    public override object GetValueSingleCapture(Capture capture)
+    public override object GetValueSingle(Capture capture)
     {
         var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: _genericType);
 

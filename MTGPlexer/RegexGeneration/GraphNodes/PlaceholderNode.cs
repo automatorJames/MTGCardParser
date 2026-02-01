@@ -38,7 +38,7 @@ public class PlaceholderNode : LeafNode
         }
     }
 
-    public override object GetValueSingleCapture(Capture capture) =>
+    public override object GetValueSingle(Capture capture) =>
         new PlaceholderCapture(capture.Value);
 
     /// <summary>

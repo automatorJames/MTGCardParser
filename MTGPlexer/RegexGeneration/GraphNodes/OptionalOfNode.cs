@@ -16,19 +16,15 @@ public class OptionalOfNode : WrapperNode
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    protected override object GetWrapperValue(CaptureContext captureContext)
     {
-        var capture = captureDictionary[FullyQualifiedName + "_" + GenericType.Name].SingleOrDefault();
+        var scopedCaptureContext = captureContext[FullyQualifiedName + "_" + GenericType.Name];
 
-        if (capture == null)
-        {
-            result = CaptureValueResult.NameNotFound;
+        if (!scopedCaptureContext.Success)
             return null;
-        }
 
-        AddNewWrappedNode(capture);
+        AddNewWrappedNode(scopedCaptureContext);
 
-        result = CaptureValueResult.FoundWithValue;
         return CreateWrapperValue();
     }
 }

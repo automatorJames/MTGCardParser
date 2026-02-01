@@ -15,21 +15,27 @@ public class TokenUnitNode : BranchNode
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     {
+        var scopedCaptureContext = captureContext[FullyQualifiedName];
+
+        if (!scopedCaptureContext.Success)
+            return null;
+
         var instance = (TokenUnit)Activator.CreateInstance(UnderlyingType);
 
         foreach (var captureNode in CaptureNodes)
-            captureNode.SetPropertyValue(captureDictionary, instance);
+        {
+            // will return false only if an underlying property has AbortIfSetPropertyToNull == true
+            // and the property value is null
+            var setSuccessfully = captureNode.SetPropertyValue(scopedCaptureContext, instance);
 
-        // todo: how should the actual value be determined?
-        result = CaptureValueResult.FoundWithValue;
+            if (!setSuccessfully)
+                return null;
+        }
+
+        CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, instance);
 
         return instance;
-    }
-
-    public override object GetValueSingleCapture(Capture capture)
-    {
-        
     }
 }

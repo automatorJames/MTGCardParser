@@ -8,9 +8,9 @@ public class ManyOfNode : WrapperNode
     WrappedNode _containerTheConjunction;
     public ManyOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        _containerTheFirst = new VirtualNode(this, ManyItemOrdinal.First.ToString()).AddChild(GetTemplateNodeForType());
-        _containerTheSecond = new VirtualNode(this, ManyItemOrdinal.SecondPlus.ToString()).AddChild(GetTemplateNodeForType());
-        _containerTheLast = new VirtualNode(this, ManyItemOrdinal.Last.ToString()).AddChild(GetTemplateNodeForType());
+        _containerTheFirst = new VirtualNode(this, ManyItemOrdinal.First.ToString(), GenericType);
+        _containerTheSecond = new VirtualNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
+        _containerTheLast = new VirtualNode(this, ManyItemOrdinal.Last.ToString(), GenericType);
         _containerTheConjunction = new WrappedNode(this, typeof(Conjunction?));
     }
 
@@ -47,32 +47,32 @@ public class ManyOfNode : WrapperNode
     }
 
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    protected override object GetWrapperValue(CaptureContext captureContext)
     {
-        var captureTheFirst = captureDictionary[_containerTheFirst.FullyQualifiedName].Single();
-        var capturesTheSecond = captureDictionary[_containerTheSecond.FullyQualifiedName];
-        var captureTheLast = captureDictionary[_containerTheLast.FullyQualifiedName].Single();
-        var captureTheConjunction = captureDictionary[_containerTheConjunction.FullyQualifiedName].SingleOrDefault();
+        var captureContextTheFirst = captureContext[_containerTheFirst.FullyQualifiedName];
+        var captureContextTheSecond = captureContext[_containerTheSecond.FullyQualifiedName];
+        var captureContextTheLast = captureContext[_containerTheLast.FullyQualifiedName];
+        var captureContextTheConjunction = captureContext[_containerTheConjunction.FullyQualifiedName];
 
-        WrappedNodes.Add(_containerTheFirst.HydrateFromCapture(captureTheFirst));
-        WrappedNodes.Add(_containerTheLast.HydrateFromCapture(captureTheLast));
+        WrappedNodes.Add(_containerTheFirst.HydrateChild(captureContextTheFirst));
+        WrappedNodes.Add(_containerTheLast.HydrateChild(captureContextTheLast));
 
         // Second may contain any number, including 0
-        for (int i = 0; i < capturesTheSecond.Length; i++)
+        for (int i = 0; i < captureContextTheSecond.Captures.Length; i++)
         {
-            Capture ordinalCapture = capturesTheSecond[i];
-            var secondOrdinalWrapper = new VirtualNode(this, ManyItemOrdinal.SecondPlus.ToString()).AddChild(GetTemplateNodeForType());
-            WrappedNodes.Add(secondOrdinalWrapper.HydrateFromCapture(ordinalCapture));
+            var secondOrdinalWrapper = new VirtualNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
+            var scopedContext = captureContextTheSecond.ScopeToCaptureIndex(i);
+            WrappedNodes.Add(secondOrdinalWrapper.HydrateChild(scopedContext));
         }
 
-        //// before we add the conjunction value to WrappedNodes, extract them into a ManyItem value list for convenience
-        //var manyItemValues = WrappedNodes.Select(x => x.CaptureValueHydrationInfo.Value).ToList();
+        // before we add the conjunction value to WrappedNodes, extract them into a ManyItem value list for convenience
+        var manyItemValues = WrappedNodes.Select(x => x.CaptureValueHydrationInfo.Value).ToList();
+        object nullableConjunctionItemValue = null;
 
-        if (captureTheConjunction != null)
-            AddNewWrappedNode(captureTheConjunction, genericType: typeof(Conjunction));
+        if (captureContextTheConjunction.Success)
+            nullableConjunctionItemValue = AddNewWrappedNode(captureContextTheConjunction, genericType: typeof(Conjunction)).CaptureValueHydrationInfo.Value;
 
-        result = CaptureValueResult.FoundWithValue;
-        return CreateWrapperValue();
+        return CreateWrapperValue(manyItemValues, nullableConjunctionItemValue);
     }
 
     public override string ToString() => base.ToString();

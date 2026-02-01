@@ -11,10 +11,15 @@ public abstract class CaptureNode : Node
     public Type UnderlyingType { get; }
     public Type[] GenericTypes { get; }
 
+    protected virtual bool AbortIfSetPropertyToNull => false;
+
     protected CaptureNode(Node parentNode, INavigable navigable)
         : base(parentNode, navigable.Name)
     {
         FullyQualifiedName = GetFullyQualifiedCaptureGroupName();
+
+        if (FullyQualifiedName == "ManyOfGainedOrLostBuff_Many_First_GainedOrLostBuff_GainedOrLostBuff") Debugger.Break();
+
         Navigable = navigable;
         ConcreteProperty = (navigable as PropertySnippet)?.Prop;
         UnderlyingType = Nullable.GetUnderlyingType(navigable.Type) ?? navigable.Type;
@@ -36,29 +41,22 @@ public abstract class CaptureNode : Node
         }
     }
 
-    public void SetPropertyValue(CaptureDictionary captureDictionary, TokenUnit parent)
+    public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
     {
         if (ConcreteProperty == null)
             throw new Exception($"{FullyQualifiedName} does not represent a concrete CLR property, so its value cannot be set");
 
-        var value = TryGetValue(captureDictionary, out CaptureValueResult result);
+        var value = GetValueAndSetHydrationInfo(captureContext);
 
-        if (result != CaptureValueResult.FoundWithValue)
-            return;
+        if (value == null && AbortIfSetPropertyToNull)
+            return false;
 
         ConcreteProperty.SetValue(parent, value);
+
+        return true;
     }
 
-    public abstract object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result);
-
-    public virtual object GetValueSingleCapture(Capture capture)
-    {
-        // todo: This is leaky because not every inheritor of CaptureNode has a way to derive a value from a single capture.
-        // We may need to refactor because we don't want to silently fail by returning null, and we prefer abstract methods
-        // over virtual ones for clearer compile-time warnings in inheritors who don't override the method.
-
-        return null;
-    }
+    public abstract object GetValueAndSetHydrationInfo(CaptureContext captureContext);
 
     string GetFullyQualifiedCaptureGroupName()
     {
@@ -67,7 +65,9 @@ public abstract class CaptureNode : Node
 
         while (current != null)
         {
-            parts.Add(current.Name);
+            if (!current.IsCollapsible)
+                parts.Add(current.Name);
+
             current = current.ParentNode;
         }
 

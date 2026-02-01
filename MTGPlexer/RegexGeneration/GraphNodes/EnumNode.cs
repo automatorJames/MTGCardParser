@@ -39,7 +39,7 @@ public class EnumNode : LeafNode
         return new EnumScalarAlternateSet(enumAlternates);
     }
 
-    public override object GetValueSingleCapture(Capture capture)
+    public override object GetValueSingle(Capture capture)
     {
         var enumSet = (EnumScalarAlternateSet)ScalarAlternateSet;
 

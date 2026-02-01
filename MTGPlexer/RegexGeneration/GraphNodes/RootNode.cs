@@ -69,10 +69,11 @@ public class RootNode : BranchNode
             ConcatenatingComposer.Instance.Compose(builder, Children);
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     {
         // todo: this represents a leak in our abstraction, because you can't (or perhaps shouldn't) try to 
         // get a value on a RootNode, but only of its children
+
         throw new NotImplementedException();
     }
 }

@@ -17,11 +17,11 @@ public abstract class WrapperNode : CaptureNode
     protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0) =>
         new WrappedNode(this, GenericTypes[genericTypeIndex]);
 
-    public WrappedNode AddNewWrappedNode(Capture capture, int? ordinal = null, Type genericType = null)
+    public WrappedNode AddNewWrappedNode(CaptureContext captureContext, int? ordinal = null, Type genericType = null)
     {
         genericType ??= GenericType;
         WrappedNode wrappedNode = new(this, genericType, ordinal);
-        wrappedNode.HydrateFromCapture(capture);
+        wrappedNode.GetValueAndSetHydrationInfo(captureContext);
         WrappedNodes.Add(wrappedNode);
         return wrappedNode;
     }
@@ -30,4 +30,17 @@ public abstract class WrapperNode : CaptureNode
 
     protected object CreateWrapperValue(params object[] constructorParameters) =>
         Activator.CreateInstance(_closedWrapperType, constructorParameters);
+
+    public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
+    {
+        var scopedCaptureContext = captureContext[FullyQualifiedName];
+        var value = GetWrapperValue(scopedCaptureContext);
+
+        if (value != null)
+            CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, value);
+
+        return value;
+    }
+
+    protected abstract object GetWrapperValue(CaptureContext captureContext);
 }

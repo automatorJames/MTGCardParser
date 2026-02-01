@@ -23,19 +23,19 @@ public class OneOfNode : WrapperNode
         builder.CloseGroup();
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    protected override object GetWrapperValue(CaptureContext captureContext)
     {
         int captureFoundAtGenericTypeIndex = -1;
 
         for (int i = 0; i < GenericTypes.Length; i++)
         {
             var genericType = GenericTypes[i];
-            var capture = captureDictionary[FullyQualifiedName + "_" + genericType.Name].SingleOrDefault();
+            var scopedCapture = captureContext[FullyQualifiedName + "_" + genericType.Name];
         
-            if (capture == null)
+            if (!scopedCapture.Success)
                 continue;
 
-            AddNewWrappedNode(capture, genericType: genericType);
+            AddNewWrappedNode(scopedCapture, genericType: genericType);
             captureFoundAtGenericTypeIndex = i;
 
             goto ItemHasBeenFound;
@@ -52,7 +52,6 @@ public class OneOfNode : WrapperNode
             _ => throw new Exception($"One-of regex prop count of {GenericTypes.Length} not supported")
         };
         
-        result = CaptureValueResult.FoundWithValue;
         return CreateWrapperValue(WrappedValues.Single(), captureFoundAtGenericTypeIndex);
     }
 }

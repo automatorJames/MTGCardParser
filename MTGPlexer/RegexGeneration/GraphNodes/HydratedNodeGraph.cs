@@ -2,12 +2,12 @@
 
 public class HydratedNodeGraph : RootNode
 {
-    public CaptureDictionary CaptureDictionary { get; }
-    public string Value => CaptureDictionary.Value;
+    public CaptureContext CaptureContext { get; }
+    public string Value => CaptureContext.FullMatch;
 
     public HydratedNodeGraph(Type type, Match match, string sourceText) : base(type)
     {
-        CaptureDictionary = new(match, sourceText);
+        CaptureContext = CaptureContext.Create(match, sourceText);
     }
 
     public TokenUnit Hydrate()
@@ -15,7 +15,14 @@ public class HydratedNodeGraph : RootNode
         var instance = (TokenUnit)Activator.CreateInstance(RootType);
 
         foreach (var captureChild in CaptureChildren)
-            captureChild.SetPropertyValue(CaptureDictionary, instance);
+        {
+            // will return false only if an underlying property has AbortIfSetPropertyToNull == true
+            // and the property value is null
+            var setSuccessfully = captureChild.SetPropertyValue(CaptureContext, instance);
+
+            if (!setSuccessfully)
+                return null;
+        }
 
         instance.NodeGraph = this;
 

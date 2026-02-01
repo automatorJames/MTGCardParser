@@ -17,21 +17,20 @@ public class CompoundOfNode : WrapperNode
         builder.CloseGroup();
     }
 
-    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    protected override object GetWrapperValue(CaptureContext captureContext)
     {
-        var captures = captureDictionary[FullyQualifiedName];
+        var scopedCaptureContext = captureContext[FullyQualifiedName];
 
         // We expect two or more captures
-        if (captures.Length <= 1)
-        {
-            result = CaptureValueResult.Exception;
+        if (scopedCaptureContext.Captures.Length <= 1)
             return null;
+
+        for (int i = 0; i < scopedCaptureContext.Captures.Length; i++)
+        {
+            var singleScopedContext = scopedCaptureContext.ScopeToCaptureIndex(i);
+            AddNewWrappedNode(singleScopedContext, ordinal: i);
         }
 
-        for (int i = 0; i < captures.Length; i++)
-            AddNewWrappedNode(captures[i], ordinal: i);
-
-        result = CaptureValueResult.FoundWithValue;
         return CreateWrapperValue();
     }
 }

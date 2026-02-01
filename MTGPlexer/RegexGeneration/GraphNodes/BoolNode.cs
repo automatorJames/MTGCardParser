@@ -19,7 +19,7 @@ public class BoolNode : LeafNode
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    public override object GetValueSingleCapture(Capture capture)
+    public override object GetValueSingle(Capture capture)
     {
         // Simply return "true", because TerminalNode already validated that the
         // named group exists, and therefore this bool check has already succeeded
