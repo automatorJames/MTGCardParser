@@ -1,4 +1,5 @@
-﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿
+namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 public class TokenUnitNode : BranchNode
 {
@@ -25,5 +26,10 @@ public class TokenUnitNode : BranchNode
         result = CaptureValueResult.FoundWithValue;
 
         return instance;
+    }
+
+    public override object GetValueSingleCapture(Capture capture)
+    {
+        
     }
 }

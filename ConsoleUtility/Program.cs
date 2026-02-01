@@ -23,7 +23,7 @@ internal class Program
 
         //thereeeelmakeyousayreeeel.BuiltRegex.FormattedLines.Select(x => x.Regex).ToList().ForEach(Console.WriteLine);
         //thereeeelmakeyousayreeeel.BuiltRegex.FormattedLines.Select(x => x.Regex.TrimEnd()).ToList().ForEach(x => Debug.WriteLine(x));
-        Debug.WriteLine(thingThatMakesYouSayReeeeaL.BuiltRegex.MinifiedRegexString);
+        //Debug.WriteLine(thingThatMakesYouSayReeeeaL.BuiltRegex.MinifiedRegexString);
         //DynamicTokenType dynamicTokenType = new("destroy all @CardType Plural()", className: "DestroyAllCardType");
         //TokenTypeRegistry.CreateAndRegisterNewTypeAndSaveToDisk(dynamicTokenType);
     }

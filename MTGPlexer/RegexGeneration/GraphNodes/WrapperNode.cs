@@ -14,18 +14,13 @@ public abstract class WrapperNode : CaptureNode
         _closedWrapperType = propertySnippet.Prop.PropertyType.GetGenericTypeDefinition().MakeGenericType(GenericTypes);
     }
 
-    protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0, object differentiatorValue = null)
-    {
-        if (0 > GenericTypes.Length)
-            throw new IndexOutOfRangeException();
+    protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0) =>
+        new WrappedNode(this, GenericTypes[genericTypeIndex]);
 
-        return new WrappedNode(this, GenericTypes[genericTypeIndex], differentiatorValue: differentiatorValue);
-    }
-
-    public WrappedNode AddNewWrappedNode(Capture capture, int? ordinal = null, object differentiatorValue = null, Type genericType = null)
+    public WrappedNode AddNewWrappedNode(Capture capture, int? ordinal = null, Type genericType = null)
     {
         genericType ??= GenericType;
-        WrappedNode wrappedNode = new(this, genericType, ordinal, differentiatorValue);
+        WrappedNode wrappedNode = new(this, genericType, ordinal);
         wrappedNode.HydrateFromCapture(capture);
         WrappedNodes.Add(wrappedNode);
         return wrappedNode;

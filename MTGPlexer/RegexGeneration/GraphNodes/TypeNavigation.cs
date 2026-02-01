@@ -6,9 +6,9 @@ public class TypeNavigation : INavigable
     public Type Type { get; }
     public Proptions Proptions { get; } = Proptions.None;
 
-    public TypeNavigation(Type type)
+    public TypeNavigation(Type type, string name = null)
     {
         Type = type;
-        Name = (Nullable.GetUnderlyingType(type) ?? type).Name;
+        Name = name ?? (Nullable.GetUnderlyingType(type) ?? type).Name;
     }
 }

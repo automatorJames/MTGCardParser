@@ -3,17 +3,14 @@
 public class WrappedNode : CaptureNode
 {
     public Type Type { get; }
-    public object DifferentiatorValue { get; }
     public int? Ordinal { get; }
     public CaptureNode WrappedCaptureNode { get; }
 
-    public WrappedNode(Node parentNode, Type type, int? ordinal = null, object differentiatorValue = null) 
-        : base(parentNode, new TypeNavigation(type))
+    public WrappedNode(Node parentNode, Type type, int? ordinal = null, string name = null) 
+        : base(parentNode, new TypeNavigation(type, name))
     {
         Type = type;
         Ordinal = ordinal;
-        DifferentiatorValue = differentiatorValue;
-        var name = GetUnderlyingType(type).Name + differentiatorValue?.ToString();
         TypeNavigation navigation = new(type);
 
         if (GetUnderlyingType(type).IsEnum)
@@ -24,10 +21,11 @@ public class WrappedNode : CaptureNode
             throw new Exception($"{nameof(WrappedNode)} can only be created from enum of {nameof(TokenUnit)} types, but '{type.Name}' was passed");
     }
 
-    public void HydrateFromCapture(Capture capture)
+    public WrappedNode HydrateFromCapture(Capture capture)
     {
         var value = WrappedCaptureNode.GetValueSingleCapture(capture);
         CaptureValueHydrationInfo = new(WrappedCaptureNode, capture, value);
+        return this;
     }
 
     static Type GetUnderlyingType(Type type)
