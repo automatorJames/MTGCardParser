@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class DynamicOfNode : TerminalNode
+public class DynamicOfNode : LeafNode
 {
     Type _genericType;
     ScalarAlternateSet _scalarAlternativeSet;
@@ -34,23 +34,17 @@ public class DynamicOfNode : TerminalNode
         builder.CloseGroup();
     }
 
-    protected override object TryGetValue(Capture capture, out CaptureValueResult result)
+    public override object GetValueSingleCapture(Capture capture)
     {
         var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: _genericType);
-        
+
         // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
         if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
-        {
-            result = CaptureValueResult.FoundButNull;
             return null;
-        }
 
-        ExtractedCapture extractedCapture = new(capture, FullyQualifiedName); // todo: deprecate ExtractedCapture?
-        PolyItemCapture hydratedItem = new(dynamicMatchToken, extractedCapture);
         var closedType = typeof(DynamicOf<>).MakeGenericType(_genericType);
-        var dynamicOfInstance = Activator.CreateInstance(closedType, hydratedItem, extractedCapture);
+        var dynamicOfInstance = Activator.CreateInstance(closedType, dynamicMatchToken);
 
-        result = CaptureValueResult.FoundWithValue;
         return dynamicOfInstance;
     }
 }

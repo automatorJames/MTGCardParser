@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class RootNode : TypedNode
+public class RootNode : BranchNode
 {
     static readonly char[] _boundaryChars = [' ', '.'];
 
@@ -9,7 +9,7 @@ public class RootNode : TypedNode
 
     public IEnumerable<CaptureNode> CaptureChildren => Children.OfType<CaptureNode>();
 
-    public RootNode(Type type) : base(null, type.Name, type)
+    public RootNode(Type type) : base(null, new TypeNavigation(type))
     {
         if (!type.IsAssignableTo(typeof(TokenUnit)))
             throw new ArgumentException($"{nameof(RootNode)} is only constructible from {nameof(TokenUnit)} types, but '{type.Name}' was passed");
@@ -65,5 +65,12 @@ public class RootNode : TypedNode
             AlternatingComposer.Instance.Compose(builder, Children);
         else if (RootType.IsAssignableTo(typeof(TokenUnit)))
             ConcatenatingComposer.Instance.Compose(builder, Children);
+    }
+
+    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
+    {
+        // todo: this represents a leak in our abstraction, because you can't (or perhaps shouldn't) try to 
+        // get a value on a RootNode, but only of its children
+        throw new NotImplementedException();
     }
 }

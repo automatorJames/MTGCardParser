@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class CompoundOfNode : WrapperPropertyNode
+public class CompoundOfNode : WrapperNode
 {
     public CompoundOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -17,29 +17,21 @@ public class CompoundOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    public override CaptureValueInfo GetCaptureValueInfo(CaptureDictionary captureDictionary)
+    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
     {
         var captures = captureDictionary[FullyQualifiedName];
 
         // We expect two or more captures
         if (captures.Length <= 1)
-            return new(this, CaptureValueResult.Exception);
-        
-        for (int i = 0; i < captures.Length; i++)
         {
-            var ordinalCapture = captures[i];
-            var itemNode = GetTemplateNodeForType(ordinal: i, siblingCaptureCount: captures.Length);
-            WrappedNodes.Add(itemNode);
+            result = CaptureValueResult.Exception;
+            return null;
         }
-        
-        var compoundType = typeof(CompoundOf<>).MakeGenericType(GenericType);
-        var values = WrappedNodes.Select(x => x.GetCaputureValueInfo(c))
-        var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
-        
-        return compoundPropVal;
+
+        for (int i = 0; i < captures.Length; i++)
+            AddNewWrappedNode(captures[i], ordinal: i);
+
+        result = CaptureValueResult.FoundWithValue;
+        return CreateWrapperValue();
     }
-
-
-    public override string ToString() => base.ToString();
-
 }

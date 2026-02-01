@@ -8,7 +8,7 @@
 /// know how to decompose it yet, or the containing TokenUnit overrides SetPropertiesFromMatch and needs a property
 /// to store an interim text value.
 /// </summary>
-public class PlaceholderNode : TerminalNode
+public class PlaceholderNode : LeafNode
 {
     public PlaceholderNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -37,6 +37,9 @@ public class PlaceholderNode : TerminalNode
             builder.CloseGroup();
         }
     }
+
+    public override object GetValueSingleCapture(Capture capture) =>
+        new PlaceholderCapture(capture.Value);
 
     /// <summary>
     /// Kicks off the parsing process for the entire regex string.
@@ -212,15 +215,6 @@ public class PlaceholderNode : TerminalNode
         }
         splits.Add(new Tuple<int, int>(lastSplit, end));
         return splits;
-    }
-
-    public override object TryGetValue(Capture capture)
-    {
-        //var valueToSet = new PlaceholderCapture(scopedCapture.Value);
-        //result = ValueResult.Success;
-        //return valueToSet;
-
-        throw new NotImplementedException();
     }
 
     public override string ToString() => base.ToString();

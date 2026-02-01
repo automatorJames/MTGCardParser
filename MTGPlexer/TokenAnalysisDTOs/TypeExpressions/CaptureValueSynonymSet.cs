@@ -13,7 +13,7 @@ public class CaptureValueSynonymSet
     /// </summary>
     public string ManyOfRelatedPaths { get; set; }
 
-    public CaptureValueSynonymSet(object canonicalValue, ExtractedCapture synonymCapture) : this(canonicalValue, synonymCapture.Value)
+    public CaptureValueSynonymSet(object canonicalValue, Capture capture) : this(canonicalValue, capture.Value)
     {
     }
 
@@ -27,7 +27,7 @@ public class CaptureValueSynonymSet
         IncrementOrSetValueCount(stringValue, count);
     }
 
-    public void IncrementSynonymCapture(ExtractedCapture variantCapture) => IncrementOrSetValueCount(variantCapture.Value);
+    public void IncrementSynonymCapture(Capture variantCapture) => IncrementOrSetValueCount(variantCapture.Value);
 
     public void IncrementOrSetValueCount(string stringValue, int? count = null)
     {

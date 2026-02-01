@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class OptionalOfNode : WrapperPropertyNode
+public class OptionalOfNode : WrapperNode
 {
     public OptionalOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -16,20 +16,19 @@ public class OptionalOfNode : WrapperPropertyNode
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetValue(Capture capture)
+    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
     {
-        //var itemCapture = parentTokenUnitMatch[LeafName + "_" + TemplatePropInfo.Prop.Name].Single();
-        //MatchTraversalState typeMatch = new(GenericType, parentTokenUnitMatch, TemplatePropInfo.Prop.Name);
-        //var tokenUnitChild = TokenUnit.InstantiateFromMatch(typeMatch, out var localResult);
-        //PolyItemCapture hydratedItem = new(tokenUnitChild, itemCapture, TemplatePropInfo);
-        //var optionalType = typeof(OptionalOf<>).MakeGenericType(GenericType);
-        //var optionalPropVal = Activator.CreateInstance(optionalType, hydratedItem);
-        //
-        //result = ValueResult.Success;
-        //return optionalPropVal;
+        var capture = captureDictionary[FullyQualifiedName + "_" + GenericType.Name].SingleOrDefault();
 
-        throw new NotImplementedException();
+        if (capture == null)
+        {
+            result = CaptureValueResult.NameNotFound;
+            return null;
+        }
+
+        AddNewWrappedNode(capture);
+
+        result = CaptureValueResult.FoundWithValue;
+        return CreateWrapperValue();
     }
-
-    public override string ToString() => base.ToString();
 }

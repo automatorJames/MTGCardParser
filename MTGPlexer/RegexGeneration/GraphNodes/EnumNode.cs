@@ -5,7 +5,7 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public class EnumNode : TerminalNode
+public class EnumNode : LeafNode
 {
     public EnumNode(Node parentNode, INavigable navigable) : base(parentNode, navigable)
     {
@@ -39,18 +39,14 @@ public class EnumNode : TerminalNode
         return new EnumScalarAlternateSet(enumAlternates);
     }
 
-    protected override object TryGetValue(Capture capture, out CaptureValueResult result)
+    public override object GetValueSingleCapture(Capture capture)
     {
         var enumSet = (EnumScalarAlternateSet)ScalarAlternateSet;
 
         foreach (var enumAlternative in enumSet.EnumAlternates)
             if (enumAlternative.ItemRegex.IsMatch(capture.Value))
-            {
-                result = CaptureValueResult.FoundWithValue;
                 return enumAlternative.EnumValue;
-            }
 
-        result = CaptureValueResult.Exception;
-        return null;
+        throw new Exception($"Found no matching values for enum '{UnderlyingType.Name}' from match string '{capture.Value}'");
     }
 }

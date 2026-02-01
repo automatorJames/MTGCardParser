@@ -5,7 +5,7 @@
 /// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
 /// its pattern(s), but in the absence of this the normalized property name is matched.
 /// </summary>
-public class BoolNode : TerminalNode
+public class BoolNode : LeafNode
 {
     public BoolNode(Node parentNode, INavigable navigable) 
         : base(parentNode, navigable)
@@ -19,12 +19,11 @@ public class BoolNode : TerminalNode
         builder.CloseGroup(GroupQuantifier.Optional);
     }
 
-    protected override object TryGetValue(Capture capture, out CaptureValueResult result)
+    public override object GetValueSingleCapture(Capture capture)
     {
-        // This override simply returns "true", because TerminalNode already validated
-        // that the named group exists, therefore this bool check has already succeeded
+        // Simply return "true", because TerminalNode already validated that the
+        // named group exists, and therefore this bool check has already succeeded
 
-        result = CaptureValueResult.FoundWithValue;
         return true;
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class ManyOfNode : WrapperPropertyNode
+public class ManyOfNode : WrapperNode
 {
     public ManyOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
@@ -25,38 +25,31 @@ public class ManyOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    public override object GetValue(Capture[] captures)
+    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
     {
-        //List<PolyItemCapture> hydratedItems = [];
-        //
-        //for (int i = 0; i < captures.Length; i++)
-        //{
-        //    var manyItemOrdinal =
-        //        i == 0 ? ManyItemOrdinal.First
-        //        : i == captures.Length - 1 ? ManyItemOrdinal.Last
-        //        : ManyItemOrdinal.SecondPlus;
-        //
-        //    WrappedNode wrappedNode = new(this, GenericType, i, manyItemOrdinal);
-        //    var capture = captures[i];
-        //    ExtractedCapture extractedCapture = new(capture, FullyQualifiedName, i, captures.Length); // todo: deprecate ExtractedCapture?
-        //    var wrappedNodeValue = wrappedNode.GetValue(capture);
-        //    PolyItemCapture hydratedItem = new(wrappedNodeValue, extractedCapture, PropertySnippet.ToTemplatePropInfo(), distinguishingValue: manyItemOrdinal);
-        //    hydratedItems.Add(hydratedItem);
-        //}
-        //
-        //var conjunctionCapture = captures[FullyQualifiedName + "_" + nameof(Conjunction)].SingleOrDefault();
-        //
-        //Conjunction? conjunctionValue = conjunctionCapture == null ? null
-        //    : Enum.TryParse<Conjunction>(conjunctionCapture.Value, true, out var parsed)
-        //    ? parsed : null;
-        //
-        //var manyTokenType = typeof(ManyOf<>).MakeGenericType(TemplatePropInfo.GenericTypes);
-        //var manyPropVal = Activator.CreateInstance(manyTokenType, hydratedItems, conjunctionValue, conjunctionCapture);
-        //
-        //result = ValueResult.Success;
-        //return manyPropVal;
+        var captureTheFirst = captureDictionary[FullyQualifiedName + "_" + ManyItemOrdinal.First].Single();
+        var capturesTheSecond = captureDictionary[FullyQualifiedName + "_" + ManyItemOrdinal.SecondPlus];
+        var captureTheLast = captureDictionary[FullyQualifiedName + "_" + ManyItemOrdinal.Last].Single();
+        var captureTheConjunction = captureDictionary[FullyQualifiedName + "_" + nameof(Conjunction)].SingleOrDefault();
 
-        throw new NotImplementedException();
+        AddNewWrappedNode(captureTheFirst, differentiatorValue: ManyItemOrdinal.First);
+
+        for (int i = 0; i < capturesTheSecond.Length; i++)
+        {
+            Capture ordinalCapture = capturesTheSecond[i];
+            AddNewWrappedNode(ordinalCapture, ordinal: i, differentiatorValue: ManyItemOrdinal.SecondPlus);
+        }
+
+        AddNewWrappedNode(captureTheLast, differentiatorValue: ManyItemOrdinal.Last);
+
+        // before we add the conjunction value to WrappedNodes, extract them into a ManyItem value list for convenience
+        var manyItemValues = WrappedNodes.Select(x => x.CaptureValueHydrationInfo.Value).ToList();
+
+        if (captureTheConjunction != null)
+            AddNewWrappedNode(captureTheConjunction, genericType: typeof(Conjunction));
+
+        result = CaptureValueResult.FoundWithValue;
+        return CreateWrapperValue();
     }
 
     public override string ToString() => base.ToString();

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class TokenUnitNode : CaptureNode
+public class TokenUnitNode : BranchNode
 {
     public TokenUnitNode(Node parentNode, INavigable navigation) : base(parentNode, navigation)
     {
@@ -14,14 +14,16 @@ public class TokenUnitNode : CaptureNode
         builder.CloseGroup(groupQuantifier);
     }
 
-    public override object GetValue(Capture capture)
+    public override object TryGetValue(CaptureDictionary captureDictionary, out CaptureValueResult result)
     {
-        //var rematch = 
-        //MatchTraversalState typeMatch = new(TemplatePropInfo.UnderlyingType, parentTokenUnitMatch, TemplatePropInfo.Name, scopedCapture: scopedCapture);
-        //var tokenUnitInstance = TokenUnit.InstantiateFromMatch(typeMatch, out result);
-        //
-        //return tokenUnitInstance;
+        var instance = (TokenUnit)Activator.CreateInstance(UnderlyingType);
 
-        throw new NotImplementedException();
+        foreach (var captureNode in CaptureNodes)
+            captureNode.SetPropertyValue(captureDictionary, instance);
+
+        // todo: how should the actual value be determined?
+        result = CaptureValueResult.FoundWithValue;
+
+        return instance;
     }
 }

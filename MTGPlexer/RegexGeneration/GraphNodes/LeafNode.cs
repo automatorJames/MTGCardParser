@@ -1,8 +1,8 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class TerminalNode : CaptureNode
+public abstract class LeafNode : SingleCaptureNode
 {
-    public TerminalNode(Node parentNode, INavigable navigable) 
+    public LeafNode(Node parentNode, INavigable navigable) 
         : base(parentNode, navigable)
     {
     }
@@ -31,21 +31,4 @@ public abstract class TerminalNode : CaptureNode
 
         return new(captureAlternatives);
     }
-
-    public override CaptureValueInfo GetCaptureValueInfo(CaptureDictionary captureDictionary)
-    {
-        var capture = captureDictionary[FullyQualifiedName].SingleOrDefault();
-
-        if (capture == null)
-            return new(this, CaptureValueResult.NameNotFound);
-
-        var value = TryGetValue(capture, out var result);
-
-        if (result != CaptureValueResult.FoundWithValue)
-            return new(this, result);
-
-        return new(this, value, FullyQualifiedName, capture);
-    }
-
-    protected abstract object TryGetValue(Capture capture, out CaptureValueResult result);
 }
