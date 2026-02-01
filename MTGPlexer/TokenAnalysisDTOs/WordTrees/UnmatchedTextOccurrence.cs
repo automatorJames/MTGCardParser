@@ -33,8 +33,7 @@ public record UnmatchedTextOccurrence
         LineSpanRoots = lineSpanRoots.ToArray();
         AnchorTokenIndex = anchorTokenIndex;
         Anchor = (DefaultUnmatchedString)LineSpanRoots[AnchorTokenIndex].RootToken;
-        //Text =  Anchor.Match.RootMatch.Value;
-        Text = "Fixxx thisss laterrr";
+        Text = Anchor.NodeGraph.Value;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         CardName = cardName;
     }
