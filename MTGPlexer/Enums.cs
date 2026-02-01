@@ -8,9 +8,3 @@ public enum Proptions
     Optional,
     NoPrecedingSpace,
 }
-
-public enum CaptureTypeVariant
-{
-    TokenUnit,
-    Enum
-}

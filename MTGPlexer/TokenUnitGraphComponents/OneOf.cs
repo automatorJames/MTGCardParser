@@ -2,33 +2,31 @@
 
 public class OneOf<T1, T2> : OneOf
 {
-    public PolyItemCapture Item1 { get; set; }
-    public PolyItemCapture Item2 { get; set; }
+    public object Item1 { get; set; }
+    public object Item2 { get; set; }
 
-    public OneOf(PolyItemCapture capture, int capturePropOrdinal)
+    public OneOf(object item, int capturePropOrdinal)
     {
         var capturedItemType = GetType().GetGenericArguments()[capturePropOrdinal];
         var propToSet = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturePropOrdinal];
-        propToSet.SetValue(this, capture);
+        propToSet.SetValue(this, item);
         ItemType = propToSet.PropertyType;
-        ManyItemVariant = capturedItemType.ToCaptureTypeVariant();
-        Item = capture;
+        Item = item;
     }
 }
 
 public class OneOf<T1, T2, T3> : OneOf
 {
-    public PolyItemCapture Item1 { get; set; }
-    public PolyItemCapture Item2 { get; set; }
-    public PolyItemCapture Item3 { get; set; }
+    public object Item1 { get; set; }
+    public object Item2 { get; set; }
+    public object Item3 { get; set; }
 
-    public OneOf(PolyItemCapture capture, int capturedItemTypeOrdinal)
+    public OneOf(object capture, int capturedItemTypeOrdinal)
     {
         var capturedItemType = GetType().GetGenericArguments()[capturedItemTypeOrdinal];
         var propToSet = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturedItemTypeOrdinal];
         propToSet.SetValue(this, capture);
         ItemType = propToSet.PropertyType;
-        ManyItemVariant = capturedItemType.ToCaptureTypeVariant();
         Item = capture;
     }
 }
@@ -37,7 +35,6 @@ public class OneOf<T1, T2, T3> : OneOf
 [Color("#696969")]
 public class OneOf : XOf
 {
-    public PolyItemCapture Item { get; set; }
-    public CaptureTypeVariant ManyItemVariant { get; set; }
+    public object Item { get; set; }
     public Type ItemType { get; set; }
 }

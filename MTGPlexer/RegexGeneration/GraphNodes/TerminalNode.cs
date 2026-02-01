@@ -32,19 +32,19 @@ public abstract class TerminalNode : CaptureNode
         return new(captureAlternatives);
     }
 
-    public override CaptureValueInfo GetCaputureValueInfo(CaptureDictionary captures)
+    public override CaptureValueInfo GetCaptureValueInfo(CaptureDictionary captureDictionary)
     {
-        var capture = captures[FullyQualifiedName].SingleOrDefault();
+        var capture = captureDictionary[FullyQualifiedName].SingleOrDefault();
 
         if (capture == null)
-            return new(CaptureValueResult.NameNotFound);
+            return new(this, CaptureValueResult.NameNotFound);
 
         var value = TryGetValue(capture, out var result);
 
         if (result != CaptureValueResult.FoundWithValue)
-            return new(result);
+            return new(this, result);
 
-        return new(value, FullyQualifiedName, capture);
+        return new(this, value, FullyQualifiedName, capture);
     }
 
     protected abstract object TryGetValue(Capture capture, out CaptureValueResult result);

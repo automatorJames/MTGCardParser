@@ -31,13 +31,12 @@ public abstract class CaptureNode : TypedNode
         }
     }
 
-    public void SetPropertyValue(CaptureDictionary captures, TokenUnit parent)
+    public void SetPropertyValue(CaptureDictionary captureDictionary, TokenUnit parent)
     {
         if (ConcreteProperty == null)
             throw new Exception($"{FullyQualifiedName} does not represent a concrete CLR property, so its value cannot be set");
 
-        var capturesForName = captures[FullyQualifiedName];
-        var value = GetValue(capturesForName);
+        var value = GetCaptureValueInfo(captureDictionary);
 
         if (value == null)
             return;

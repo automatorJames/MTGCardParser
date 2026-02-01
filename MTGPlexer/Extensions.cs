@@ -144,11 +144,6 @@ public static class Extensions
         return value.ToString()?.ToFriendlyCase(TitleDisplayOption.Lower) ?? string.Empty;
     }
 
-    public static CaptureTypeVariant ToCaptureTypeVariant(this Type type) =>
-        type.IsAssignableTo(typeof(TokenUnit)) ? CaptureTypeVariant.TokenUnit
-        : type.IsEnum ? CaptureTypeVariant.Enum
-        : throw new Exception($"{nameof(CompoundOf)} item type must either be TokenUnit or Enum");
-
     public static string[] GetPublicPropNames(this Type type) =>
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
             .Select(x => x.Name)

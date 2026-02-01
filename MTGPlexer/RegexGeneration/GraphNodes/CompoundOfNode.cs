@@ -2,8 +2,6 @@
 
 public class CompoundOfNode : WrapperPropertyNode
 {
-    public List<WrappedNode> WrappedNodes { get; } = [];
-
     public CompoundOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
     }
@@ -19,20 +17,23 @@ public class CompoundOfNode : WrapperPropertyNode
         builder.CloseGroup();
     }
 
-    public override CaptureValueInfo GetCaputureValueInfo(CaptureDictionary captures)
+    public override CaptureValueInfo GetCaptureValueInfo(CaptureDictionary captureDictionary)
     {
-        List<PolyItemCapture> hydratedItems = [];
+        var captures = captureDictionary[FullyQualifiedName];
+
+        // We expect two or more captures
+        if (captures.Length <= 1)
+            return new(this, CaptureValueResult.Exception);
         
         for (int i = 0; i < captures.Length; i++)
         {
             var ordinalCapture = captures[i];
-            ExtractedCapture extractedCapture = new(ordinalCapture, FullyQualifiedName, i, captures.Length); // todo: deprecate ExtractedCapture?
-            var childItem = GetTemplateNodeForType(ordinal: i);
-            PolyItemCapture hydratedItem = new(childItem, extractedCapture);
-            hydratedItems.Add(hydratedItem);
+            var itemNode = GetTemplateNodeForType(ordinal: i, siblingCaptureCount: captures.Length);
+            WrappedNodes.Add(itemNode);
         }
         
         var compoundType = typeof(CompoundOf<>).MakeGenericType(GenericType);
+        var values = WrappedNodes.Select(x => x.GetCaputureValueInfo(c))
         var compoundPropVal = Activator.CreateInstance(compoundType, hydratedItems);
         
         return compoundPropVal;

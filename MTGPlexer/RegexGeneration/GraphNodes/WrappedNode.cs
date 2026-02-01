@@ -5,13 +5,15 @@ public class WrappedNode : ValueNode
     public Type Type { get; }
     public object DifferentiatorValue { get; }
     public int Ordinal { get; }
+    public int SiblingCaptureCount { get; }
     public CaptureNode WrappedCaptureNode { get; }
 
-    public WrappedNode(Node parentNode, Type type, int ordinal = 0, object differentiatorValue = null) 
+    public WrappedNode(Node parentNode, Type type, int ordinal = 0, int siblingCaptureCount = 0, object differentiatorValue = null) 
         : base(parentNode, GetUnderlyingType(type).Name)
     {
         Type = type;
         Ordinal = ordinal;
+        SiblingCaptureCount = siblingCaptureCount;
         DifferentiatorValue = differentiatorValue;
         var name = GetUnderlyingType(type).Name + differentiatorValue?.ToString();
         VirtualNavigation navigation = new(name, type);
@@ -31,4 +33,7 @@ public class WrappedNode : ValueNode
     {
         WrappedCaptureNode.ComposeRegexLines(builder);
     }
+
+    public override CaptureValueInfo GetCaptureValueInfo(CaptureDictionary captureDictionary) =>
+        WrappedCaptureNode.GetCaptureValueInfo(captureDictionary) with { Ordinal = Ordinal, SiblingCaptureCount = SiblingCaptureCount };
 }

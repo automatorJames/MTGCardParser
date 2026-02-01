@@ -3,7 +3,7 @@
 public abstract class TypedNode : ValueNode
 {
     public Dictionary<Type, List<Node>> ChildrenPerType { get; } = [];
-    public List<Node> Children => ChildrenPerType.First().Value;
+    public virtual List<Node> Children => ChildrenPerType.First().Value;
     public Type UnderlyingType { get; }
     public Type[] GenericTypes { get; }
 
@@ -60,9 +60,7 @@ public abstract class TypedNode : ValueNode
 
     static PropertySnippet[] GetPropertySnippets(Type type) =>
          type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-            .Where(x => x.PropertyType != typeof(PolyItemCapture)) // todo: this is only for OneOf<T1, T2> : OneOf, which is the only XOf that declares public props directly instead of relying on the the non-generic version
             .Select(x => new PropertySnippet(x.Name, x, Proptions.None)).ToArray();
-
 
     static Node SnippetToNode(Node parentNode, Snippet snippet)
     {
