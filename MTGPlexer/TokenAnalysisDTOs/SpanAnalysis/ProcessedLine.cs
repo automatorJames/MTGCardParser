@@ -12,7 +12,7 @@ public class ProcessedLine
     /// <summary>
     /// The hierarchical representation of matched tokens on this line.
     /// </summary>
-    public List<SpanRoot> SpanRoots { get; init; }
+    public List<TokenUnit> TokenUnits { get; init; }
 
     /// <summary>
     /// A list of all full spans found on this specific line.
@@ -22,10 +22,10 @@ public class ProcessedLine
 
     public string DataPath { get; init; }
 
-    public ProcessedLine(SourceTextDTO sourceText, List<SpanRoot> spanRoots, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
+    public ProcessedLine(SourceTextDTO sourceText, List<TokenUnit> tokenUnits, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
         SourceText = sourceText;
-        SpanRoots = spanRoots;
+        TokenUnits = tokenUnits;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
     }
@@ -43,37 +43,33 @@ public class ProcessedLine
             if (string.IsNullOrWhiteSpace(formattedText))
                 continue;
 
-            List<SpanRoot> spanRoots =
-                TokenTypeRegistry.Tokenize(sourceText.FormattedText)
-                .Select(x => SpanBuilder.Create(x, originalText, card.Name, i))
-                .ToList();
-
-            List<UnmatchedTextOccurrence> unmatchedStringOccurrences = GetUnmatchedStringOccurrences(card, spanRoots, i, originalText);
+            var lineTokenUnits = TokenTypeRegistry.Tokenize(sourceText.FormattedText);
+            var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(card, lineTokenUnits, i, originalText);
             var dataPath = card.Name.Replace(' ', '_') + $"-line[{i}]";
 
-            lines.Add(new ProcessedLine(sourceText, spanRoots, unmatchedStringOccurrences, dataPath));
+            lines.Add(new ProcessedLine(sourceText, lineTokenUnits, unmatchedTextOccurrences, dataPath));
         }
 
 
         return lines;
     }
 
-    static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(Card card, List<SpanRoot> lineSpanRoots, int lineIndex, string originalLineText)
+    static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(Card card, List<TokenUnit> lineTokenUnits, int lineIndex, string originalLineText)
     {
         var occurrences = new List<UnmatchedTextOccurrence>();
 
-        for (int i = 0; i < lineSpanRoots.Count; i++)
+        for (int i = 0; i < lineTokenUnits.Count; i++)
         {
-            var spanRoot = lineSpanRoots[i];
+            var tokenUnit = lineTokenUnits[i];
 
             // Check for and record unmatched tokens
             // Create a new occurrence, giving it the context of the entire line's tokens.
-            if (spanRoot.RootToken.Type == typeof(DefaultUnmatchedString))
-                occurrences.Add(new UnmatchedTextOccurrence(card.Name, lineIndex, lineSpanRoots, i));
+            if (tokenUnit.Type == typeof(DefaultUnmatchedString))
+                occurrences.Add(new UnmatchedTextOccurrence(card.Name, lineIndex, lineTokenUnits, i));
         }
 
         return occurrences;
     }
 
-    public int GetDeepestChildDepth() => SpanRoots.Max(x => x.GetRecursiveDepth());
+    public int GetDeepestChildDepth() => TokenUnits.Max(x => x.NodeGraph.GetRecursiveDepth());
 }

@@ -13,8 +13,7 @@ public class TokenUnitCaptureSummary
     {
         var allTokenUnits = processedCards
             .SelectMany(x => x.Lines)
-            .SelectMany(x => x.SpanRoots)
-            .Select(x => x.RootToken)
+            .SelectMany(x => x.TokenUnits)
             .Where(x => x is not DefaultUnmatchedString);
 
         var orderedRootTokenUnitTypes = TokenTypeRegistry.RootNodes.Keys

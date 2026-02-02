@@ -12,12 +12,12 @@ public record UnmatchedTextOccurrence
     /// <summary>
     /// The complete array of tokens from the line where this unmatched span occurred.
     /// </summary>
-    public SpanRoot[] LineSpanRoots { get; }
+    public TokenUnit[] LineTokenUnits { get; }
 
     /// <summary>
     /// The index of the specific token of interest within the LineTokens list.
     /// </summary>
-    public int AnchorTokenIndex { get; }
+    public int UnmatchedTokenIndex { get; }
 
     /// <summary>
     /// The full, original unmatched span token.
@@ -27,12 +27,12 @@ public record UnmatchedTextOccurrence
     public string Text { get; }
     public string[] Words { get; }
 
-    public UnmatchedTextOccurrence(string cardName, int lineIndex, List<SpanRoot> lineSpanRoots, int anchorTokenIndex)
+    public UnmatchedTextOccurrence(string cardName, int lineIndex, IEnumerable<TokenUnit> lineTokenUnits, int unmatchedTokenIndex)
     {
         LineIndex = lineIndex;
-        LineSpanRoots = lineSpanRoots.ToArray();
-        AnchorTokenIndex = anchorTokenIndex;
-        Anchor = (DefaultUnmatchedString)LineSpanRoots[AnchorTokenIndex].RootToken;
+        LineTokenUnits = lineTokenUnits.ToArray();
+        UnmatchedTokenIndex = unmatchedTokenIndex;
+        Anchor = (DefaultUnmatchedString)LineTokenUnits[UnmatchedTokenIndex];
         Text = Anchor.NodeGraph.Value;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         CardName = cardName;

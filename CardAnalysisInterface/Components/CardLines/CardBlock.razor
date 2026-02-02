@@ -10,13 +10,14 @@
 
     @foreach (var line in Card.Lines)
     {
+        var paletteSet = DeterministicPalette.GetPositionalPaletteSet(line.TokenUnits.SelectMany(x => x.NodeGraph.Chi);
         <div class="line-capture-block match-boundary">
             <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
             <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
                 <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
-                    @foreach (var rootNode in line.SpanRoots)
+                    @foreach (var tokenUnit in line.TokenUnits)
                     {
-                        <SpanView Node=@rootNode />
+                        <SpanView CaptureNode=@tokenUnit />
                     }
                 </pre>
 

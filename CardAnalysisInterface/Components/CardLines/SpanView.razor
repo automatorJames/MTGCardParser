@@ -1,26 +1,26 @@
-﻿@if (Node != null)
+﻿@if (CaptureNode != null)
 {
-    <span class=@GetClass(Node) style=@GetStyle(Node) data-path="@Node.CapturePath">
+    <span class=@GetClass(CaptureNode) style=@GetStyle(CaptureNode) data-path="@CaptureNode.CapturePath">
         @{
             var cursor = 0;
 
-            foreach (var child in Node.Children.OrderBy(c => c.Start))
+            foreach (var child in CaptureNode.Children.OrderBy(c => c.Start))
             {
-                var relativeChildStart = child.Start - Node.Start;
+                var relativeChildStart = child.Start - CaptureNode.Start;
 
                 if (relativeChildStart > cursor)
                 {
-                    <text>@Node.CaptureTextOriginal.Substring(cursor, relativeChildStart - cursor)</text>
+                    <text>@CaptureNode.CaptureTextOriginal.Substring(cursor, relativeChildStart - cursor)</text>
                 }
 
-                <SpanView Node="@child" Depth="@(Depth + (child is SpanBranch branch && branch.IsCollapsed ? 0 : 1))" />
+                <SpanView CaptureNode="@child" Depth="@(Depth + (child is SpanBranch branch && branch.IsCollapsed ? 0 : 1))" />
 
-                cursor = child.End - Node.Start;
+                cursor = child.End - CaptureNode.Start;
             }
 
-            if (cursor < Node.Length)
+            if (cursor < CaptureNode.Length)
             {
-                <text>@Node.CaptureTextOriginal.Substring(cursor, Node.Length - cursor)</text>
+                <text>@CaptureNode.CaptureTextOriginal.Substring(cursor, CaptureNode.Length - cursor)</text>
             }
         }
     </span>
@@ -28,39 +28,39 @@
 
 @code {
     [Parameter, EditorRequired]
-    public SpanNode Node { get; set; }
+    public CaptureNode CaptureNode { get; set; }
 
     [Parameter]
     public int Depth { get; set; } = 0;
 
-    string GetClass(SpanNode node)
+    string GetClass(CaptureNode node)
     {
-        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
+        if (node.UnderlyingType == typeof(DefaultUnmatchedString))
             return "";
 
         var classes = new List<string>();
 
-        if (node is SpanBranch branch && !branch.IsCollapsed)
+        if (node is BranchNode && !node.IsCollapsible)
             classes.Add("nested-underline");
 
-        if (node is SpanLeaf spanLeaf)
+        if (node is LeafNode)
             classes.Add("prop-capture-overline");
 
-        if (node is SpanSubLeaf spanSubLeaf)
-            classes.Add("dashed-line");
+        //if (node is SpanSubLeaf spanSubLeaf)
+        //    classes.Add("dashed-line");
 
-        if (node.ElementType == TokenAnalysisElementType.PlaceholderLeaf)
-            classes.Add("dotted-line");
+        //if (node.ElementType == TokenAnalysisElementType.PlaceholderLeaf)
+        //    classes.Add("dotted-line");
 
         return string.Join(" ", classes);
     }
 
-    string GetStyle(SpanNode node)
+    string GetStyle(CaptureNode node)
     {
-        if (node.ElementType == TokenAnalysisElementType.UnmatchedTokenUnitRoot)
+        if (node.UnderlyingType == typeof(DefaultUnmatchedString))
             return "";
 
-        if (node is SpanBranch branch && branch.IsCollapsed)
+        if (node is BranchNode && !node.IsCollapsible)
             return "";
 
         var style = new System.Text.StringBuilder();

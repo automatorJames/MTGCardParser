@@ -16,221 +16,220 @@ public class DigestedTextCorpus
 
     private List<AnalyzedText> RunDigestionAutomaton(List<UnmatchedTextOccurrence> allUnmatchedOccurrences)
     {
-        //// =================================================================================
-        //// Suffix Automaton Construction
-        //// =================================================================================
-        //var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
-        //var idToWord = new List<string>();
-        //var flattenedWordSequenceIdList = new List<int>();
-        //var indexToOccurrenceMap = new List<UnmatchedTextOccurrence>();
-        //int nextWordId = 0;
-        //int nextCorrelationId = -1;
-        //
-        //foreach (var occurrence in allUnmatchedOccurrences)
-        //{
-        //    foreach (var word in occurrence.Words)
-        //    {
-        //        if (!wordToId.TryGetValue(word, out var id))
-        //        {
-        //            id = nextWordId++;
-        //            wordToId[word] = id;
-        //            idToWord.Add(word);
-        //        }
-        //        flattenedWordSequenceIdList.Add(id);
-        //        indexToOccurrenceMap.Add(occurrence);
-        //    }
-        //    // correlation boundary
-        //    flattenedWordSequenceIdList.Add(nextCorrelationId);
-        //    indexToOccurrenceMap.Add(occurrence);
-        //    nextCorrelationId--;
-        //}
-        //
-        //int alphabetSize = nextWordId;
-        //var states = new List<AutomatonState> { new(alphabetSize) };
-        //int lastStateIndex = 0;
-        //
-        //for (int i = 0; i < flattenedWordSequenceIdList.Count; i++)
-        //{
-        //    var currentId = flattenedWordSequenceIdList[i];
-        //    if (currentId < 0) { lastStateIndex = 0; continue; }
-        //
-        //    int newStateIndex = states.Count;
-        //    states.Add(new AutomatonState(alphabetSize)
-        //    {
-        //        Length = states[lastStateIndex].Length + 1,
-        //        Count = 1,
-        //        FirstOccurrenceEndPosition = i
-        //    });
-        //
-        //    int p = lastStateIndex;
-        //    while (p != -1 && states[p].Next[currentId] == -1)
-        //    {
-        //        states[p].Next[currentId] = newStateIndex;
-        //        p = states[p].Link;
-        //    }
-        //
-        //    if (p == -1)
-        //    {
-        //        states[newStateIndex].Link = 0;
-        //    }
-        //    else
-        //    {
-        //        int q = states[p].Next[currentId];
-        //        if (states[q].Length == states[p].Length + 1)
-        //        {
-        //            states[newStateIndex].Link = q;
-        //        }
-        //        else
-        //        {
-        //            int cloneIndex = states.Count;
-        //            var qState = states[q];
-        //            states.Add(new AutomatonState(alphabetSize)
-        //            {
-        //                Length = states[p].Length + 1,
-        //                Next = (int[])qState.Next.Clone(),
-        //                Link = qState.Link,
-        //                FirstOccurrenceEndPosition = qState.FirstOccurrenceEndPosition
-        //            });
-        //            while (p != -1 && states[p].Next[currentId] == q)
-        //            {
-        //                states[p].Next[currentId] = cloneIndex;
-        //                p = states[p].Link;
-        //            }
-        //            qState.Link = states[newStateIndex].Link = cloneIndex;
-        //        }
-        //    }
-        //    lastStateIndex = newStateIndex;
-        //}
-        //
-        //var order = Enumerable.Range(0, states.Count).OrderByDescending(i => states[i].Length).ToArray();
-        //foreach (var i in order)
-        //{
-        //    if (states[i].Link != -1) states[states[i].Link].Count += states[i].Count;
-        //}
-        //
-        //// =================================================================================
-        //// Extract Spans and Consolidate with Rich, Key-Based Contexts
-        //// =================================================================================
-        //var result = new List<AnalyzedText>();
-        //var allMaximalSpans = new Dictionary<string, int>(StringComparer.Ordinal);
-        //
-        //for (int i = 1; i < states.Count; i++)
-        //{
-        //    if (states[i].Count <= 1) continue;
-        //
-        //    bool isMaximal = true;
-        //    for (int j = 0; j < alphabetSize; j++)
-        //    {
-        //        if (states[i].Next[j] != -1 && states[states[i].Next[j]].Count == states[i].Count)
-        //        {
-        //            isMaximal = false; break;
-        //        }
-        //    }
-        //    if (!isMaximal) continue;
-        //
-        //    int len = states[i].Length;
-        //    int start = states[i].FirstOccurrenceEndPosition - len + 1;
-        //    var spanText = string.Join(' ', flattenedWordSequenceIdList
-        //        .GetRange(start, len)
-        //        .Select(id => idToWord[id]));
-        //
-        //    if (!allMaximalSpans.ContainsKey(spanText) || allMaximalSpans[spanText] < states[i].Count)
-        //    {
-        //        allMaximalSpans[spanText] = (int)states[i].Count;
-        //    }
-        //}
-        //
-        //// include whole-span counts too
-        //var wholeCounts = allUnmatchedOccurrences
-        //    .GroupBy(s => s.Text)
-        //    .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
-        //
-        //foreach (var (text, count) in wholeCounts)
-        //{
-        //    if (!allMaximalSpans.ContainsKey(text))
-        //        allMaximalSpans.Add(text, count);
-        //}
-        //
-        //foreach (var (spanText, count) in allMaximalSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
-        //{
-        //    if (string.IsNullOrWhiteSpace(spanText))
-        //        continue;
-        //
-        //    var subSpanContexts = new List<SubSpanContext>();
-        //    var precedingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardTextKey Key)>();
-        //    var followingSequencesWithKeys = new List<(List<TokenInfo> Sequence, CardTextKey Key)>();
-        //
-        //    var spanTextWords = spanText.Trim().Split(' ');
-        //    var allOccurrenceIndices = FindAllOccurrences(
-        //        flattenedWordSequenceIdList,
-        //        spanTextWords.Select(w =>  wordToId[w]).ToArray());
-        //
-        //    foreach (int startIndexInFlatList in allOccurrenceIndices)
-        //    {
-        //        var originalSpanOccurrence = indexToOccurrenceMap[startIndexInFlatList];
-        //        int wordStartIndexInSource = -1;
-        //
-        //        for (int i = 0; i <= originalSpanOccurrence.Words.Length - spanTextWords.Length; i++)
-        //        {
-        //            if (originalSpanOccurrence.Words.Skip(i).Take(spanTextWords.Length).SequenceEqual(spanTextWords, StringComparer.Ordinal))
-        //            {
-        //                wordStartIndexInSource = i; break;
-        //            }
-        //        }
-        //
-        //        if (wordStartIndexInSource == -1) continue;
-        //
-        //        subSpanContexts.Add(new SubSpanContext(originalSpanOccurrence, wordStartIndexInSource, spanTextWords.Length));
-        //
-        //        var precedingSequence = new List<TokenInfo>();
-        //        var followingSequence = new List<TokenInfo>();
-        //
-        //        // Process PRECEDING sequences: nearest → farthest
-        //        for (int i = wordStartIndexInSource - 1; i >= 0; i--)
-        //            precedingSequence.Add(new(originalSpanOccurrence.Words[i], null));
-        //
-        //        for (int i = originalSpanOccurrence.AnchorTokenIndex - 1; i >= 0; i--)
-        //        {
-        //            var token = originalSpanOccurrence.LineSpanRoots[i].RootToken;
-        //            Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
-        //            precedingSequence.Add(new(token.Match.RootMatch.Value, type));
-        //        }
-        //
-        //        if (precedingSequence.Any())
-        //            precedingSequencesWithKeys.Add((precedingSequence, originalSpanOccurrence.Key));
-        //        
-        //        // Build FOLLOWING sequences: nearest → farthest
-        //        int followingWordIndex = wordStartIndexInSource + spanTextWords.Length;
-        //        for (int i = followingWordIndex; i < originalSpanOccurrence.Words.Length; i++)
-        //            followingSequence.Add(new(originalSpanOccurrence.Words[i], null));
-        //
-        //        // Process FOLLOWING tokens nearest → farthest
-        //        for (int i = originalSpanOccurrence.AnchorTokenIndex + 1; i < originalSpanOccurrence.LineSpanRoots.Length; i++)
-        //        {
-        //            var token = originalSpanOccurrence.LineSpanRoots[i].RootToken;
-        //            Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
-        //            followingSequence.Add(new(token.Match.RootMatch.Value, type));
-        //        }
-        //
-        //        if (followingSequence.Any())
-        //            followingSequencesWithKeys.Add((followingSequence, originalSpanOccurrence.Key));
-        //    }
-        //
-        //    //Reverse collapsed text for PRECEDING so phrases read left→right (farthest→nearest)
-        //    var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys, reverseCollapsedText: true);
-        //    var followingAdjacencyTree = BuildAdjacencyTree(followingSequencesWithKeys, reverseCollapsedText: false);
-        //
-        //    result.Add(new AnalyzedText(
-        //        text: spanText,
-        //        maximalSpanOccurrenceCount: count,
-        //        occurrences: subSpanContexts,
-        //        precedingAdjacencies: precedingAdjacencyTree,
-        //        followingAdjacencies: followingAdjacencyTree
-        //    ));
-        //}
-        //return result;
+        // =================================================================================
+        // Suffix Automaton Construction
+        // =================================================================================
+        var wordToId = new Dictionary<string, int>(StringComparer.Ordinal);
+        var idToWord = new List<string>();
+        var flattenedWordSequenceIdList = new List<int>();
+        var indexToOccurrenceMap = new List<UnmatchedTextOccurrence>();
+        int nextWordId = 0;
+        int nextCorrelationId = -1;
+        
+        foreach (var occurrence in allUnmatchedOccurrences)
+        {
+            foreach (var word in occurrence.Words)
+            {
+                if (!wordToId.TryGetValue(word, out var id))
+                {
+                    id = nextWordId++;
+                    wordToId[word] = id;
+                    idToWord.Add(word);
+                }
+                flattenedWordSequenceIdList.Add(id);
+                indexToOccurrenceMap.Add(occurrence);
+            }
+            // correlation boundary
+            flattenedWordSequenceIdList.Add(nextCorrelationId);
+            indexToOccurrenceMap.Add(occurrence);
+            nextCorrelationId--;
+        }
+        
+        int alphabetSize = nextWordId;
+        var states = new List<AutomatonState> { new(alphabetSize) };
+        int lastStateIndex = 0;
+        
+        for (int i = 0; i < flattenedWordSequenceIdList.Count; i++)
+        {
+            var currentId = flattenedWordSequenceIdList[i];
+            if (currentId < 0) { lastStateIndex = 0; continue; }
+        
+            int newStateIndex = states.Count;
+            states.Add(new AutomatonState(alphabetSize)
+            {
+                Length = states[lastStateIndex].Length + 1,
+                Count = 1,
+                FirstOccurrenceEndPosition = i
+            });
+        
+            int p = lastStateIndex;
+            while (p != -1 && states[p].Next[currentId] == -1)
+            {
+                states[p].Next[currentId] = newStateIndex;
+                p = states[p].Link;
+            }
+        
+            if (p == -1)
+            {
+                states[newStateIndex].Link = 0;
+            }
+            else
+            {
+                int q = states[p].Next[currentId];
+                if (states[q].Length == states[p].Length + 1)
+                {
+                    states[newStateIndex].Link = q;
+                }
+                else
+                {
+                    int cloneIndex = states.Count;
+                    var qState = states[q];
+                    states.Add(new AutomatonState(alphabetSize)
+                    {
+                        Length = states[p].Length + 1,
+                        Next = (int[])qState.Next.Clone(),
+                        Link = qState.Link,
+                        FirstOccurrenceEndPosition = qState.FirstOccurrenceEndPosition
+                    });
+                    while (p != -1 && states[p].Next[currentId] == q)
+                    {
+                        states[p].Next[currentId] = cloneIndex;
+                        p = states[p].Link;
+                    }
+                    qState.Link = states[newStateIndex].Link = cloneIndex;
+                }
+            }
+            lastStateIndex = newStateIndex;
+        }
+        
+        var order = Enumerable.Range(0, states.Count).OrderByDescending(i => states[i].Length).ToArray();
+        foreach (var i in order)
+        {
+            if (states[i].Link != -1) states[states[i].Link].Count += states[i].Count;
+        }
+        
+        // =================================================================================
+        // Extract Spans and Consolidate with Rich, Key-Based Contexts
+        // =================================================================================
+        var result = new List<AnalyzedText>();
+        var allMaximalSpans = new Dictionary<string, int>(StringComparer.Ordinal);
+        
+        for (int i = 1; i < states.Count; i++)
+        {
+            if (states[i].Count <= 1) continue;
+        
+            bool isMaximal = true;
+            for (int j = 0; j < alphabetSize; j++)
+            {
+                if (states[i].Next[j] != -1 && states[states[i].Next[j]].Count == states[i].Count)
+                {
+                    isMaximal = false; break;
+                }
+            }
+            if (!isMaximal) continue;
+        
+            int len = states[i].Length;
+            int start = states[i].FirstOccurrenceEndPosition - len + 1;
+            var spanText = string.Join(' ', flattenedWordSequenceIdList
+                .GetRange(start, len)
+                .Select(id => idToWord[id]));
+        
+            if (!allMaximalSpans.ContainsKey(spanText) || allMaximalSpans[spanText] < states[i].Count)
+            {
+                allMaximalSpans[spanText] = (int)states[i].Count;
+            }
+        }
+        
+        // include whole-span counts too
+        var wholeCounts = allUnmatchedOccurrences
+            .GroupBy(s => s.Text)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        
+        foreach (var (text, count) in wholeCounts)
+        {
+            if (!allMaximalSpans.ContainsKey(text))
+                allMaximalSpans.Add(text, count);
+        }
+        
+        foreach (var (spanText, count) in allMaximalSpans.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key))
+        {
+            if (string.IsNullOrWhiteSpace(spanText))
+                continue;
+        
+            var subSpanContexts = new List<SubSpanContext>();
+            var precedingSequencesWithKeys = new List<(List<TokenInfo> Sequence, string Key)>();
+            var followingSequencesWithKeys = new List<(List<TokenInfo> Sequence, string Key)>();
+        
+            var spanTextWords = spanText.Trim().Split(' ');
+            var allOccurrenceIndices = FindAllOccurrences(
+                flattenedWordSequenceIdList,
+                spanTextWords.Select(w =>  wordToId[w]).ToArray());
+        
+            foreach (int startIndexInFlatList in allOccurrenceIndices)
+            {
+                var originalSpanOccurrence = indexToOccurrenceMap[startIndexInFlatList];
+                int wordStartIndexInSource = -1;
+        
+                for (int i = 0; i <= originalSpanOccurrence.Words.Length - spanTextWords.Length; i++)
+                {
+                    if (originalSpanOccurrence.Words.Skip(i).Take(spanTextWords.Length).SequenceEqual(spanTextWords, StringComparer.Ordinal))
+                    {
+                        wordStartIndexInSource = i; break;
+                    }
+                }
+        
+                if (wordStartIndexInSource == -1) continue;
+        
+                subSpanContexts.Add(new SubSpanContext(originalSpanOccurrence, wordStartIndexInSource, spanTextWords.Length));
+        
+                var precedingSequence = new List<TokenInfo>();
+                var followingSequence = new List<TokenInfo>();
+        
+                // Process PRECEDING sequences: nearest → farthest
+                for (int i = wordStartIndexInSource - 1; i >= 0; i--)
+                    precedingSequence.Add(new(originalSpanOccurrence.Words[i], null));
+        
+                for (int i = originalSpanOccurrence.UnmatchedTokenIndex - 1; i >= 0; i--)
+                {
+                    var token = originalSpanOccurrence.LineTokenUnits[i];
+                    Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
+                    precedingSequence.Add(new(token.NodeGraph.Value, type));
+                }
+        
+                if (precedingSequence.Any())
+                    precedingSequencesWithKeys.Add((precedingSequence, originalSpanOccurrence.CardName));
+                
+                // Build FOLLOWING sequences: nearest → farthest
+                int followingWordIndex = wordStartIndexInSource + spanTextWords.Length;
+                for (int i = followingWordIndex; i < originalSpanOccurrence.Words.Length; i++)
+                    followingSequence.Add(new(originalSpanOccurrence.Words[i], null));
+        
+                // Process FOLLOWING tokens nearest → farthest
+                for (int i = originalSpanOccurrence.UnmatchedTokenIndex + 1; i < originalSpanOccurrence.LineTokenUnits.Length; i++)
+                {
+                    var token = originalSpanOccurrence.LineTokenUnits[i];
+                    Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
+                    followingSequence.Add(new(token.NodeGraph.Value, type));
+                }
+        
+                if (followingSequence.Any())
+                    followingSequencesWithKeys.Add((followingSequence, originalSpanOccurrence.CardName));
+            }
+        
+            //Reverse collapsed text for PRECEDING so phrases read left→right (farthest→nearest)
+            var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys, reverseCollapsedText: true);
+            var followingAdjacencyTree = BuildAdjacencyTree(followingSequencesWithKeys, reverseCollapsedText: false);
+        
+            result.Add(new AnalyzedText(
+                text: spanText,
+                maximalSpanOccurrenceCount: count,
+                occurrences: subSpanContexts,
+                precedingAdjacencies: precedingAdjacencyTree,
+                followingAdjacencies: followingAdjacencyTree
+            ));
+        }
 
-        return default;
+        return result;
     }
 
     /// <summary>
@@ -332,19 +331,19 @@ public class DigestedTextCorpus
         return indices;
     }
 
-    //private class AutomatonState
-    //{
-    //    public int[] Next;
-    //    public int Link;
-    //    public int Length;
-    //    public long Count;
-    //    public int FirstOccurrenceEndPosition;
-    //
-    //    public AutomatonState(int alphabetSize)
-    //    {
-    //        Next = new int[alphabetSize];
-    //        Array.Fill(Next, -1);
-    //        Link = -1;
-    //    }
-    //}
+    private class AutomatonState
+    {
+        public int[] Next;
+        public int Link;
+        public int Length;
+        public long Count;
+        public int FirstOccurrenceEndPosition;
+    
+        public AutomatonState(int alphabetSize)
+        {
+            Next = new int[alphabetSize];
+            Array.Fill(Next, -1);
+            Link = -1;
+        }
+    }
 }
