@@ -23,40 +23,9 @@ public abstract class BranchNode : CaptureNode
 
     List<Node> GetChildNodes(Type type)
     {
-        var snippets = GetSnippets(type);
+        var snippets = Snippet.GetSnippets(type);
         return snippets.Select(x => SnippetToNode(this, x)).ToList();
     }
-
-    static Snippet[] GetSnippets(Type type)
-    {
-        if (type.IsAssignableTo(typeof(TokenUnit)))
-        {
-            var instance = (TokenUnit)Activator.CreateInstance(type);
-            var snippets = instance.GetSnippets();
-
-            if (snippets.Length > 0)
-                return snippets;
-            else
-            {
-                var propertySnippets = GetPropertySnippets(type);
-
-                if (propertySnippets.Length > 0)
-                    return propertySnippets;
-                else if (type.GetCustomAttribute<RegexPatternAttribute>() is RegexPatternAttribute attr)
-                    return attr.Patterns.Select(x => new Snippet(x)).ToArray();
-                else
-                    snippets = [new Snippet(type.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
-            }
-
-            return snippets;
-        }
-
-        return GetPropertySnippets(type);
-    }
-
-    static PropertySnippet[] GetPropertySnippets(Type type) =>
-         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-            .Select(x => new PropertySnippet(x.Name, x, Proptions.None)).ToArray();
 
     static Node SnippetToNode(Node parentNode, Snippet snippet)
     {
@@ -72,14 +41,49 @@ public abstract class BranchNode : CaptureNode
                 { } t when t.IsAssignableTo(typeof(OneOf)) => new OneOfNode(parentNode, propertySnippet),
                 { } t when t.IsAssignableTo(typeof(OptionalOf)) => new OptionalOfNode(parentNode, propertySnippet),
                 { } t when t.IsAssignableTo(typeof(DynamicOf)) => new DynamicOfNode(parentNode, propertySnippet),
+                { } t when t == typeof(DefaultUnmatchedString) => new TokenUnitOneOfNode(parentNode, propertySnippet),
                 { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, propertySnippet),
                 { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, propertySnippet),
                 { } t when t == typeof(bool) => new BoolNode(parentNode, propertySnippet),
-                { } t when t == typeof(PlaceholderCapture) => new PlaceholderNode(parentNode, propertySnippet),
+                { } t when t == typeof(int) => new BoolNode(parentNode, propertySnippet),
+                { } t when t == typeof(PrecursorCapture) => new IntNode(parentNode, propertySnippet),
                 _ => throw new Exception($"{underlyingType} is not a valid {nameof(PropertySnippet)} type")
             };
         }
         else
             return new TextNode(parentNode, snippet.Text);
     }
-}
+
+    /// <summary>
+    /// Validates the capture structure based on two rules:
+    /// 1. There must be at least one CaptureNode present.
+    /// 2. All CaptureNodes must form a single, contiguous block (no gaps allowed).
+    /// </summary>
+    /// <returns>True if exactly one contiguous group of CaptureNodes exists.</returns>
+    public bool ValidateCapturePropertiesAreContiguous()
+    {
+        int groups = 0;
+        bool inGroup = false;
+
+        foreach (var node in Children)
+        {
+            if (node is CaptureNode)
+            {
+                // If we hit a capture and weren't already in a group, 
+                // we've discovered a new "island"
+                if (!inGroup)
+                {
+                    groups++;
+                    inGroup = true;
+                }
+            }
+            else
+            {
+                // Any non-capture node (TextNode, etc.) terminates the current group
+                inGroup = false;
+            }
+        }
+
+        // Returns true only if we found exactly one contiguous cluster
+        return groups == 1;
+    }

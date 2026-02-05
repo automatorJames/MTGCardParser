@@ -1,15 +1,12 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-/// <summary>
-/// Represents a bool property on a TokenUnit or x-Of. Bool property Regexes typically check for the optional presence
-/// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
-/// its pattern(s), but in the absence of this the normalized property name is matched.
-/// </summary>
-public class BoolNode : LeafNode
+public class IntNode : LeafNode
 {
-    public BoolNode(Node parentNode, PropertySnippet propertySnippet) 
+
+    public IntNode(Node parentNode, PropertySnippet propertySnippet) 
         : base(parentNode, propertySnippet)
     {
+
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)

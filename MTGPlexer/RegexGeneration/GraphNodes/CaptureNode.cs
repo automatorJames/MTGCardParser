@@ -17,9 +17,6 @@ public abstract class CaptureNode : Node
         : base(parentNode, navigable.Name)
     {
         FullyQualifiedName = GetFullyQualifiedCaptureGroupName();
-
-        if (FullyQualifiedName == "ManyOfGainedOrLostBuff_Many_First_GainedOrLostBuff_GainedOrLostBuff") Debugger.Break();
-
         Navigable = navigable;
         ConcreteProperty = (navigable as PropertySnippet)?.Prop;
         UnderlyingType = Nullable.GetUnderlyingType(navigable.Type) ?? navigable.Type;

@@ -16,6 +16,8 @@ public class RootNode : BranchNode
 
         RootType = type;
 
+        RegexBuilder regexBuilder = new(this);
+
         // Read from cache if available, else build
         BuiltRegex = TokenTypeRegistry.RootNodes.TryGetValue(type, out var rootNode) ? rootNode.BuiltRegex : BuildRegex();
     }
@@ -56,7 +58,7 @@ public class RootNode : BranchNode
 
     BuiltRegex BuildRegex()
     {
-        RegexBuilder regexBuilder = new(RootType);
+        
         ComposeRegexLines(regexBuilder);
         return regexBuilder.GetBuiltRegex();
     }

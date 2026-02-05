@@ -9,5 +9,5 @@ public class Parenthetical : TokenUnit
     protected override Snippet[] Snippets => [@"\(", Prop(Content), @"\)"];
 
     [RegexPattern(@"([^)]*)")]
-    public PlaceholderCapture Content { get; set; }
+    public PrecursorCapture Content { get; set; }
 }

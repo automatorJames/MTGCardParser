@@ -23,8 +23,8 @@ public class RegexElement
         : Enclosures.LastOrDefault();
 
     public Enclosure ParentNamedEnclosure =>
-    this is IGroupOpen ? Enclosures.Take(Enclosures.Length - 1).OfType<NamedEnclosure>().LastOrDefault()
-    : Enclosures.OfType<NamedEnclosure>().LastOrDefault();
+        this is IGroupOpen ? Enclosures.Take(Enclosures.Length - 1).OfType<NamedEnclosure>().LastOrDefault()
+        : Enclosures.OfType<NamedEnclosure>().LastOrDefault();
 
     public RegexElement(Enclosure[] enclosures, string regex, string comment = null, bool doNotAddPrecedingSpace = false)
     {

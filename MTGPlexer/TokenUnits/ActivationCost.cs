@@ -6,5 +6,5 @@ public class ActivationCost : TokenUnit
     protected override Snippet[] Snippets => ["^", Prop(ActivationCostSegment), ":"];
 
     [RegexPattern("[^:]+")]
-    public PlaceholderCapture ActivationCostSegment { get; set; }
+    public PrecursorCapture ActivationCostSegment { get; set; }
 }

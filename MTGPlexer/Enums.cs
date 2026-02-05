@@ -8,3 +8,10 @@ public enum Proptions
     Optional,
     NoPrecedingSpace,
 }
+
+public enum CaptureGroupJoinStrategy
+{
+    ConcatenateWithSpace,
+    AlternateValues,
+    CompoundValue
+}

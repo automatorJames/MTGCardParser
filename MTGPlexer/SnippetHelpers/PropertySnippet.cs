@@ -20,4 +20,8 @@ public record PropertySnippet : Snippet, INavigable
 
         Name = name;
     }
+
+    public static PropertySnippet[] GetPropertySnippets(Type type) =>
+     type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+        .Select(x => new PropertySnippet(x.Name, x, Proptions.None)).ToArray();
 }

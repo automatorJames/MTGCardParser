@@ -9,11 +9,11 @@
 /// processed later.
 /// </summary>
 [Color("#696969")]
-public record PlaceholderCapture
+public record PrecursorCapture
 {
     string _text;
 
-    public PlaceholderCapture(string text)
+    public PrecursorCapture(string text)
     {
         _text = text;
     }
@@ -21,4 +21,3 @@ public record PlaceholderCapture
     public string GetText() => _text;
     public override string ToString() => _text;
 }
-

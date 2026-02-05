@@ -1,3 +1,5 @@
+using MTGPlexer.RegexGeneration.GraphNodes;
+
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
@@ -6,10 +8,14 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 /// </summary>
 public class RegexBuilder
 {
-    RegexElementConcatenater _concatenater;
+    RegexElementJoiner _concatenater;
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
     BoundaryOption _boundaryOption;
+    RootNode _rootNode;
+    Type _rootType;
+    Dictionary<CaptureNode, Action> _actionsToPerformBeforeCaptureGroupOpen;
+    Dictionary<CaptureNode, Action> _actionsToPerformAfterCaptureGroupClose;
 
     /// <summary>
     /// Gets the current stack of enclosures, with the root at the start of the array.
@@ -19,19 +25,40 @@ public class RegexBuilder
             .Reverse()
             .ToArray();
 
-    /// <summary>
-    /// Constructor.
-    /// </summary>
-    /// <param name="rootType">The top-level type that defines the name of the root enclosure.</param>
-    /// <param name="neverAddSpacesAtTopLevel">If true, prevents the builder from adding spaces at the root level.</param>
-    public RegexBuilder(Type rootType)
+    public RegexBuilder(RootNode rootNode)
     {
-        // an invisible top level enclosure;
-        RootEnclosure rootEnclosure = new(rootType);
+        _rootNode = rootNode;
+        _rootType = rootNode.RootType;
 
-        _concatenater = new();
+        // an invisible top level enclosure;
+        RootEnclosure rootEnclosure = new(_rootType);
+
+        _concatenater = new(_rootType);
         _enclosureStack.Push(rootEnclosure);
-        _boundaryOption = rootType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.None;
+        _boundaryOption = _rootType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.None;
+        AddAnonymousWrapperActionsIfNecessary();
+    }
+
+    public void AddAnonymousWrapperActionsIfNecessary()
+    {
+        // TokenUnitCompound alternate values must always be wrapped in ()+ to allow multiple captures
+        var isTokenUnitCompound = _rootType.IsAssignableTo(typeof(TokenUnitCompound));
+
+        // TokenUnitOneOfs with mixed content (both text and props) require wrappers around the contiguous named groups
+        var isMixedTokenUnitOneOf = _rootType.IsAssignableTo(typeof(TokenUnitCompound))
+            && _rootNode.Children.Any(x => x is not CaptureNode);
+
+        if (!isTokenUnitCompound && !isMixedTokenUnitOneOf)
+            return;
+
+        GroupQuantifier? quantifier = isTokenUnitCompound ? GroupQuantifier.OneOrMore : null;
+
+        // The prop section is guaranteed to be contiguous with text elements on the left and/or right, so
+        // we can simply get the first and the last
+        var captureNodes = _rootNode.Children.OfType<CaptureNode>();
+
+        _actionsToPerformBeforeCaptureGroupOpen.Add(captureNodes.First(), () => OpenAnonymousGroup());
+        _actionsToPerformAfterCaptureGroupClose.Add(captureNodes.Last(), () => CloseGroup(quantifier));
     }
 
     /// <summary>
@@ -41,13 +68,16 @@ public class RegexBuilder
     /// <param name="spaceDisposition">The spacing behavior for this group.</param>
     public void OpenNamedGroup(CaptureNode captureNode, SpaceDisposition? spaceDisposition = null)
     {
+        if (_actionsToPerformAfterCaptureGroupClose.TryGetValue(captureNode, out var action))
+            action.Invoke();
+
         var enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureNode, spaceDisposition);
         _enclosureStack.Push(enclosure);
         var groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureNode);
         _concatenater.Append(groupOpenElement);
     }
 
-    public void OpenAnonymousGroup(SpaceDisposition? spaceDisposition = null, bool isOptional = false)
+    public void OpenAnonymousGroup(SpaceDisposition? spaceDisposition = null)
     {
         var enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
         _enclosureStack.Push(enclosure);
@@ -80,6 +110,9 @@ public class RegexBuilder
         {
             if (closedNamedEnclosure.CaptureNode.Navigable.Proptions.HasFlag(Proptions.Plural))
                 _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
+
+            if (_actionsToPerformAfterCaptureGroupClose.TryGetValue(closedNamedEnclosure.CaptureNode, out var action))
+                action.Invoke();
         }
     }
 
