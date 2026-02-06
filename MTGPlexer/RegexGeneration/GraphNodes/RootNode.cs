@@ -1,11 +1,12 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class RootNode : BranchNode
+public class RootNode : RegexNode
 {
     static readonly char[] _boundaryChars = [' ', '.'];
 
     public Type RootType { get; }
     public BuiltRegex BuiltRegex { get; }
+    public TokenUnitNode ContentRootNode { get;}
 
     public IEnumerable<CaptureNode> CaptureChildren => Children.OfType<CaptureNode>();
 
@@ -15,8 +16,12 @@ public class RootNode : BranchNode
             throw new ArgumentException($"{nameof(RootNode)} is only constructible from {nameof(TokenUnit)} types, but '{type.Name}' was passed");
 
         RootType = type;
-
         RegexBuilder regexBuilder = new(this);
+
+        TokenUnitNode contentRoot = RootType switch
+        {
+            { } t when t == typeof(TokenUnitCompound) => new TokenUnitNode(this,)
+        }
 
         // Read from cache if available, else build
         BuiltRegex = TokenTypeRegistry.RootNodes.TryGetValue(type, out var rootNode) ? rootNode.BuiltRegex : BuildRegex();
@@ -58,8 +63,11 @@ public class RootNode : BranchNode
 
     BuiltRegex BuildRegex()
     {
-        
-        ComposeRegexLines(regexBuilder);
+        RegexCollector collector = new();
+        ComposeRegexLines(collector);
+
+
+
         return regexBuilder.GetBuiltRegex();
     }
 

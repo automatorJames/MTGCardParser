@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class VirtualNode : CaptureNode
+public class VirtualNamedGroupNode : NamedGroupNode
 {
     public WrappedNode ChildNode { get; private set; }
 
-    public VirtualNode(Node parentNode, string name, Type childType) 
+    public VirtualNamedGroupNode(RegexNode parentNode, string name, Type childType) 
         : base(parentNode, new TypeNavigation(typeof(object), name))
     {
         ChildNode = new(this, childType);

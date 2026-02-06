@@ -7,7 +7,7 @@
 /// </summary>
 public class BoolNode : LeafNode
 {
-    public BoolNode(Node parentNode, PropertySnippet propertySnippet) 
+    public BoolNode(RegexNode parentNode, PropertySnippet propertySnippet) 
         : base(parentNode, propertySnippet)
     {
     }

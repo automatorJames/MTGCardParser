@@ -8,7 +8,7 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 /// </summary>
 public class RegexBuilder
 {
-    RegexElementJoiner _concatenater;
+    RegexElementJoiner _joiner;
     int _nextEnclosureOrdinal;
     Stack<Enclosure> _enclosureStack = [];
     BoundaryOption _boundaryOption;
@@ -33,7 +33,7 @@ public class RegexBuilder
         // an invisible top level enclosure;
         RootEnclosure rootEnclosure = new(_rootType);
 
-        _concatenater = new(_rootType);
+        _joiner = new(_rootType);
         _enclosureStack.Push(rootEnclosure);
         _boundaryOption = _rootType.GetCustomAttribute<RegexBoundaryOptionAtrribute>()?.Option ?? BoundaryOption.None;
         AddAnonymousWrapperActionsIfNecessary();
@@ -65,24 +65,23 @@ public class RegexBuilder
     /// Opens a new regex group, which can be named or anonymous.
     /// </summary>
     /// <param name="captureGroup">The property info for the capture group, if it's a named group.</param>
-    /// <param name="spaceDisposition">The spacing behavior for this group.</param>
-    public void OpenNamedGroup(CaptureNode captureNode, SpaceDisposition? spaceDisposition = null)
+    public void OpenNamedGroup(CaptureNode captureNode)
     {
         if (_actionsToPerformAfterCaptureGroupClose.TryGetValue(captureNode, out var action))
             action.Invoke();
 
-        var enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureNode, spaceDisposition);
+        var enclosure = new NamedEnclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, captureNode);
         _enclosureStack.Push(enclosure);
         var groupOpenElement = new NamedGroupOpen(_orderedEnclosureStack, captureNode);
-        _concatenater.Append(groupOpenElement);
+        _joiner.Append(groupOpenElement);
     }
 
-    public void OpenAnonymousGroup(SpaceDisposition? spaceDisposition = null)
+    public void OpenAnonymousGroup()
     {
-        var enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count, spaceDisposition: spaceDisposition);
+        var enclosure = new Enclosure(_nextEnclosureOrdinal++, _enclosureStack.Count);
         _enclosureStack.Push(enclosure);
         var groupOpenElement = new AnonymousGroupOpen(_orderedEnclosureStack);
-        _concatenater.Append(groupOpenElement);
+        _joiner.Append(groupOpenElement);
     }
 
     /// <summary>
@@ -99,17 +98,17 @@ public class RegexBuilder
         if (currentEnclosure is NamedEnclosure namedEnclosure)
         {
             quantifier ??= namedEnclosure.CaptureNode.Navigable.Proptions.HasFlag(Proptions.Optional) ? GroupQuantifier.Optional : null;
-            _concatenater.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
+            _joiner.Append(new NamedGroupClose(_orderedEnclosureStack, namedEnclosure.Name, quantifier));
         }
         else
-            _concatenater.Append(new AnonymousGroupClose(_orderedEnclosureStack, quantifier));
+            _joiner.Append(new AnonymousGroupClose(_orderedEnclosureStack, quantifier));
 
         var closedEnclosure = _enclosureStack.Pop();
 
         if (closedEnclosure is NamedEnclosure closedNamedEnclosure)
         {
             if (closedNamedEnclosure.CaptureNode.Navigable.Proptions.HasFlag(Proptions.Plural))
-                _concatenater.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
+                _joiner.Append(new AtomElement(_orderedEnclosureStack, "(s|es)?", "optional plural"));
 
             if (_actionsToPerformAfterCaptureGroupClose.TryGetValue(closedNamedEnclosure.CaptureNode, out var action))
                 action.Invoke();
@@ -121,21 +120,21 @@ public class RegexBuilder
     /// </summary>
     /// <param name="text">The literal text to add.</param>
     public void AddTextLine(string text, bool doNotAddPrecedingSpace = false) 
-        => _concatenater.Append(new TextLine(_orderedEnclosureStack, text, doNotAddPrecedingSpace: doNotAddPrecedingSpace));
+        => _joiner.Append(new TextLine(_orderedEnclosureStack, text, doNotAddPrecedingSpace: doNotAddPrecedingSpace));
 
     /// <summary>
     /// Adds a set of alternative string values (e.g., "a|b|c").
     /// </summary>
     /// <param name="alternatives">The collection of alternative strings.</param>
     public void AddAlternateValues(IEnumerable<string> alternatives)
-        => _concatenater.Append(new AlternateValueContainer(_orderedEnclosureStack, alternatives.ToList()));
+        => _joiner.Append(new AlternateValueContainer(_orderedEnclosureStack, alternatives.ToList()));
 
     /// <summary>
     /// Adds a set of alternative enum values.
     /// </summary>
     /// <param name="enumSet">The set of enum alternates to add.</param>
     public void AddAlternateEnumValues(EnumScalarAlternateSet enumSet)
-        => _concatenater.Append(new AlternateValueEnumContainer(_orderedEnclosureStack, enumSet));
+        => _joiner.Append(new AlternateValueEnumContainer(_orderedEnclosureStack, enumSet));
 
     /// <summary>
     /// Adds a pipe character '|' for an alternation within the current group.
@@ -143,11 +142,11 @@ public class RegexBuilder
     public void AddGroupAlternativePipe()
     {
         var path = _orderedEnclosureStack;
-        _concatenater.Append(new GroupAlternativePipe(_orderedEnclosureStack));
+        _joiner.Append(new GroupAlternativePipe(_orderedEnclosureStack));
     }
 
     public void AddNegativeSpaceLookbehindBoundary()
-        =>_concatenater.Append(new NegativeSpaceLookbehindBoundary(_orderedEnclosureStack));
+        =>_joiner.Append(new NegativeSpaceLookbehindBoundary(_orderedEnclosureStack));
 
     /// <summary>
     /// Generates a fully formatted, commented, and colorized list of regex lines.
@@ -156,7 +155,7 @@ public class RegexBuilder
     /// <returns>A list of formatted regex lines.</returns>
     public List<RegexFormattedLine> GetFormattedLines(List<PropPathSynonymSetContainer> synonymData = null)
     {
-        var finalizedElements = _concatenater.RegexElements.ToList();
+        var finalizedElements = _joiner.RegexElements.ToList();
         AddBoundaryLines(finalizedElements);
         var formatter = new RegexFormatter(finalizedElements, synonymData);
         return formatter.Format();
@@ -168,10 +167,10 @@ public class RegexBuilder
     /// <returns>The complete regex as a single string.</returns>
     public string GetMinified(bool addBoundaries = true)
     {
-        if (!_concatenater.RegexElements.Any())
+        if (!_joiner.RegexElements.Any())
             return "";
 
-        var finalizedElements = _concatenater.RegexElements.ToList();
+        var finalizedElements = _joiner.RegexElements.ToList();
 
         if (addBoundaries)
             AddBoundaryLines(finalizedElements);

@@ -8,7 +8,7 @@ public class WrappedNode : CaptureNode
 
     public override bool IsCollapsible => true;
 
-    public WrappedNode(Node parentNode, Type type, int? ordinal = null, string name = null) 
+    public WrappedNode(RegexNode parentNode, Type type, int? ordinal = null, string name = null) 
         : base(parentNode, new TypeNavigation(type, name))
     {
         Type = type;

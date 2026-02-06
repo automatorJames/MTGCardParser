@@ -3,7 +3,7 @@ namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 public class TokenUnitNode : BranchNode
 {
-    public TokenUnitNode(Node parentNode, INavigable navigation) : base(parentNode, navigation)
+    public TokenUnitNode(RegexNode parentNode, INavigable navigation) : base(parentNode, navigation)
     {
     }
 
@@ -24,7 +24,7 @@ public class TokenUnitNode : BranchNode
 
         var instance = (TokenUnit)Activator.CreateInstance(UnderlyingType);
 
-        foreach (var captureNode in CaptureNodes)
+        foreach (var captureNode in NamedGroupNodes)
         {
             // will return false only if an underlying property has AbortIfSetPropertyToNull == true
             // and the property value is null

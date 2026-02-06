@@ -1,8 +1,8 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class SingleCaptureNode : CaptureNode
+public abstract class SingleCaptureNode : NamedGroupNode
 {
-    protected SingleCaptureNode(Node parentNode, INavigable navigable)
+    protected SingleCaptureNode(RegexNode parentNode, INavigable navigable)
         : base(parentNode, navigable)
     {
     }

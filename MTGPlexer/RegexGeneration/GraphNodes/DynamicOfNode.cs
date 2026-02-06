@@ -7,7 +7,7 @@ public class DynamicOfNode : LeafNode
 
     protected override bool AbortIfSetPropertyToNull => true;
 
-	public DynamicOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+	public DynamicOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
         var genericTypes = propertySnippet.Type.GenericTypeArguments;
 

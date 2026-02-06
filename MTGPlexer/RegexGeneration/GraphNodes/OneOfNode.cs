@@ -7,7 +7,7 @@
 /// </summary>
 public class OneOfNode : WrapperNode
 {
-    public OneOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public OneOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
     }
 
@@ -15,10 +15,10 @@ public class OneOfNode : WrapperNode
     {
         var typedWrappedNodes = GenericTypes
             .Select((type, idx) => GetTemplateNodeForType(genericTypeIndex: idx))
-            .Cast<Node>()
+            .Cast<RegexNode>()
             .ToList();
 
-        builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenNamedGroup(this);
         AlternatingComposer.Instance.Compose(builder, typedWrappedNodes);
         builder.CloseGroup();
     }

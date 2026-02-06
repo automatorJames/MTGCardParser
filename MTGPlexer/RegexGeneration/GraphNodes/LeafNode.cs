@@ -3,7 +3,7 @@ namespace MTGPlexer.RegexGeneration.GraphNodes;
 
 public abstract class LeafNode : SingleCaptureNode
 {
-    public LeafNode(Node parentNode, INavigable navigable) 
+    public LeafNode(RegexNode parentNode, INavigable navigable) 
         : base(parentNode, navigable)
     {
     }

@@ -2,36 +2,36 @@
 
 public class ManyOfNode : WrapperNode
 {
-    VirtualNode _containerTheFirst;
-    VirtualNode _containerTheSecond;
-    VirtualNode _containerTheLast;
+    VirtualNamedGroupNode _containerTheFirst;
+    VirtualNamedGroupNode _containerTheSecond;
+    VirtualNamedGroupNode _containerTheLast;
     WrappedNode _containerTheConjunction;
-    public ManyOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public ManyOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
-        _containerTheFirst = new VirtualNode(this, ManyItemOrdinal.First.ToString(), GenericType);
-        _containerTheSecond = new VirtualNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
-        _containerTheLast = new VirtualNode(this, ManyItemOrdinal.Last.ToString(), GenericType);
+        _containerTheFirst = new VirtualNamedGroupNode(this, ManyItemOrdinal.First.ToString(), GenericType);
+        _containerTheSecond = new VirtualNamedGroupNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
+        _containerTheLast = new VirtualNamedGroupNode(this, ManyItemOrdinal.Last.ToString(), GenericType);
         _containerTheConjunction = new WrappedNode(this, typeof(Conjunction?));
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
-        builder.OpenNamedGroup(this, spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenNamedGroup(this);
         {
             _containerTheFirst.ComposeRegexLines(builder);
 
-            builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+            builder.OpenAnonymousGroup();
             {
                 builder.AddTextLine(", ");
                 _containerTheSecond.ComposeRegexLines(builder);
                 builder.CloseGroup(GroupQuantifier.AnyNumber);
             }
 
-            builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+            builder.OpenAnonymousGroup();
             {
                 builder.AddTextLine(",? ");
 
-                builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+                builder.OpenAnonymousGroup();
                 {
                     _containerTheConjunction.ComposeRegexLines(builder);
                     builder.AddTextLine(" ");
@@ -60,7 +60,7 @@ public class ManyOfNode : WrapperNode
         // Second may contain any number, including 0
         for (int i = 0; i < captureContextTheSecond.Captures.Length; i++)
         {
-            var secondOrdinalWrapper = new VirtualNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
+            var secondOrdinalWrapper = new VirtualNamedGroupNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
             var scopedContext = captureContextTheSecond.ScopeToCaptureIndex(i);
             WrappedNodes.Add(secondOrdinalWrapper.HydrateChild(scopedContext));
         }

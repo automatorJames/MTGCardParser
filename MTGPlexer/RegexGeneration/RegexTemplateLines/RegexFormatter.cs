@@ -544,7 +544,7 @@ public class RegexFormatter
             {
                 TextLine => _colors.UnenclosedTextLineCommentColor,
                 SpaceLine => _colors.UnenclosedSpaceLineCommentColor,
-                BoundaryBase => _colors.BoundaryCommentColor,
+                AtomElement => _colors.AtomElementColor,
                 _ => _colors.DefaultFallbackColor
             };
 

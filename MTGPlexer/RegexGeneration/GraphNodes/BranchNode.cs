@@ -1,12 +1,12 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class BranchNode : CaptureNode
+public abstract class BranchNode : NamedGroupNode
 {
-    public Dictionary<Type, List<Node>> ChildrenPerType { get; } = [];
-    public virtual List<Node> Children => ChildrenPerType.First().Value;
-    public virtual List<CaptureNode> CaptureNodes => Children.OfType<CaptureNode>().ToList();
+    public Dictionary<Type, List<RegexNode>> ChildrenPerType { get; } = [];
+    public virtual List<RegexNode> Children => ChildrenPerType.First().Value;
+    public virtual List<NamedGroupNode> NamedGroupNodes => Children.OfType<NamedGroupNode>().ToList();
 
-    protected BranchNode(Node parentNode, INavigable navigable) : base(parentNode, navigable)
+    protected BranchNode(RegexNode parentNode, INavigable navigable) : base(parentNode, navigable)
     {
         // todo: I don't like this one bit. There should be a cleaner way to effect the outcome "DynamicOf won't have children".
         // The reason we don't let children get set is because (usually) DynamicOf<T> has T of TokenUnit, and since the GetChildNodes
@@ -21,13 +21,13 @@ public abstract class BranchNode : CaptureNode
             ChildrenPerType[UnderlyingType] = GetChildNodes(UnderlyingType);
     }
 
-    List<Node> GetChildNodes(Type type)
+    List<RegexNode> GetChildNodes(Type type)
     {
         var snippets = Snippet.GetSnippets(type);
         return snippets.Select(x => SnippetToNode(this, x)).ToList();
     }
 
-    static Node SnippetToNode(Node parentNode, Snippet snippet)
+    static RegexNode SnippetToNode(RegexNode parentNode, Snippet snippet)
     {
         if (snippet is PropertySnippet propertySnippet)
         {
@@ -42,6 +42,7 @@ public abstract class BranchNode : CaptureNode
                 { } t when t.IsAssignableTo(typeof(OptionalOf)) => new OptionalOfNode(parentNode, propertySnippet),
                 { } t when t.IsAssignableTo(typeof(DynamicOf)) => new DynamicOfNode(parentNode, propertySnippet),
                 { } t when t == typeof(DefaultUnmatchedString) => new TokenUnitOneOfNode(parentNode, propertySnippet),
+                { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, propertySnippet),
                 { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, propertySnippet),
                 { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, propertySnippet),
                 { } t when t == typeof(bool) => new BoolNode(parentNode, propertySnippet),
@@ -67,7 +68,7 @@ public abstract class BranchNode : CaptureNode
 
         foreach (var node in Children)
         {
-            if (node is CaptureNode)
+            if (node is NamedGroupNode)
             {
                 // If we hit a capture and weren't already in a group, 
                 // we've discovered a new "island"
@@ -87,3 +88,37 @@ public abstract class BranchNode : CaptureNode
         // Returns true only if we found exactly one contiguous cluster
         return groups == 1;
     }
+
+    public override void ComposeRegexLines(RegexBuilder builder)
+    {
+        builder.OpenNamedGroup(this);
+        ConcatenatingComposer.Instance.Compose(builder, Children.ToList());
+        GroupQuantifier? groupQuantifier = IsOptional ? GroupQuantifier.Optional : null;
+        builder.CloseGroup(groupQuantifier);
+    }
+
+    public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
+    {
+        var scopedCaptureContext = captureContext[FullyQualifiedName];
+
+        if (!scopedCaptureContext.Success)
+            return null;
+
+        var instance = (TokenUnit)Activator.CreateInstance(UnderlyingType);
+
+        foreach (var captureNode in NamedGroupNodes)
+        {
+            // will return false only if an underlying property has AbortIfSetPropertyToNull == true
+            // and the property value is null
+            var setSuccessfully = captureNode.SetPropertyValue(scopedCaptureContext, instance);
+
+            if (!setSuccessfully)
+                return null;
+        }
+
+        CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, instance);
+
+        return instance;
+    }
+
+}

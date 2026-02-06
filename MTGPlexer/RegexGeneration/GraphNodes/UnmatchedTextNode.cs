@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public class UnmatchedTextNode : Node
+public class UnmatchedTextNode : RegexNode
 {
     public string Text { get; set; }
 
-    public UnmatchedTextNode(Node parentNode, Snippet snippet) : base(parentNode, snippet.Text)
+    public UnmatchedTextNode(RegexNode parentNode, Snippet snippet) : base(parentNode, snippet.Text)
     {
         var text = snippet.Text;
 

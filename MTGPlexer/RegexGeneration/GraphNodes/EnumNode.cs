@@ -7,7 +7,7 @@
 /// </summary>
 public class EnumNode : LeafNode
 {
-    public EnumNode(Node parentNode, INavigable navigable) : base(parentNode, navigable)
+    public EnumNode(RegexNode parentNode, INavigable navigable) : base(parentNode, navigable)
     {
     }
 

@@ -1,9 +1,9 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class Node
+public abstract class RegexNode
 {
     public string Name { get; set; }
-    public Node ParentNode { get; }
+    public RegexNode ParentNode { get; }
 
     //public abstract IEnumerable<Node> AnalysisNodes { get;}
 
@@ -12,8 +12,9 @@ public abstract class Node
     public virtual bool IsCollapsible => false;
 
     public abstract void ComposeRegexLines(RegexBuilder collector);
+    public abstract void AppendRegexElements(RegexCollector collector);
 
-    protected Node(Node parentNode, string name)
+    protected RegexNode(RegexNode parentNode, string name)
     {
         Name = name;
         ParentNode = parentNode;

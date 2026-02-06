@@ -24,7 +24,7 @@ record FormattedRegexColoringRules
     public string HashSeparatorColor { get; } = Grey20;
     public string UnenclosedTextLineCommentColor { get; } = White;
     public string UnenclosedSpaceLineCommentColor { get; } = Grey50;
-    public string BoundaryCommentColor { get; } = Grey30;
+    public string AtomElementColor { get; } = Grey30;
     public string AnonymousGroupBookendColor { get; } = Grey40;
     public string DefaultFallbackColor { get; } = Grey30;
     public string OmittedEnumCountColor { get; } = Grey30;

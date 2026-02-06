@@ -2,14 +2,14 @@
 
 public class CompoundOfNode : WrapperNode
 {
-    public CompoundOfNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public CompoundOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
     }
 
     public override void ComposeRegexLines(RegexBuilder builder)
     {
         builder.OpenNamedGroup(this);
-        builder.OpenAnonymousGroup(spaceDisposition: SpaceDisposition.DisallowedLocal);
+        builder.OpenAnonymousGroup();
         GetTemplateNodeForType().ComposeRegexLines(builder);
         builder.AddTextLine(" ?");
         builder.CloseGroup(GroupQuantifier.OneOrMore);

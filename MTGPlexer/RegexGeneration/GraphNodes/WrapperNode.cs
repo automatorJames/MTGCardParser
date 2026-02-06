@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
 
-public abstract class WrapperNode : CaptureNode
+public abstract class WrapperNode : NamedGroupNode
 {
     Type _closedWrapperType;
     protected IEnumerable<object> WrappedValues => 
@@ -9,7 +9,7 @@ public abstract class WrapperNode : CaptureNode
     public List<WrappedNode> WrappedNodes { get; } = [];
     protected Type GenericType => GenericTypes[0];
 
-    public WrapperNode(Node parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public WrapperNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
     {
         _closedWrapperType = propertySnippet.Prop.PropertyType.GetGenericTypeDefinition().MakeGenericType(GenericTypes);
     }

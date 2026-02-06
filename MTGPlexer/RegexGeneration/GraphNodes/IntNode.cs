@@ -3,7 +3,7 @@
 public class IntNode : LeafNode
 {
 
-    public IntNode(Node parentNode, PropertySnippet propertySnippet) 
+    public IntNode(RegexNode parentNode, PropertySnippet propertySnippet) 
         : base(parentNode, propertySnippet)
     {
 

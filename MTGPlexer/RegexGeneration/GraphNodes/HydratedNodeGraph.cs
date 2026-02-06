@@ -37,7 +37,7 @@ public class HydratedNodeGraph : RootNode
     {
         return GetMaxDepth(this, 0);
 
-        static int GetMaxDepth(Node node, int currentDepth)
+        static int GetMaxDepth(RegexNode node, int currentDepth)
         {
             if (node is not BranchNode branch)
                 return currentDepth;
