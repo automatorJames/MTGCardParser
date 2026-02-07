@@ -29,7 +29,7 @@ public class DynamicOfNode : LeafNode
 		}
 	}
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         builder.AddAlternateValues(_scalarAlternativeSet.Alternates);

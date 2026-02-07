@@ -8,8 +8,8 @@ public class RegexCollector
 {
     public List<string> RegexLines { get; } = [];
 
-    public void Append(string regexElement) =>
-        RegexLines.Add(regexElement);
+    public void Append(RegexBrick brick) =>
+        RegexLines.Add(brick);
 
     /// <summary>
     /// Generates a fully formatted, commented, and colorized list of regex lines.

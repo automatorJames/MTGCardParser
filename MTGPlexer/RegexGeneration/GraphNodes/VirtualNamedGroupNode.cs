@@ -26,7 +26,7 @@ public class VirtualNamedGroupNode : NamedGroupNode
         return value;
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         if (ChildNode == null)
             throw new Exception($"Cannot build regex before {nameof(ChildNode)} has been set");

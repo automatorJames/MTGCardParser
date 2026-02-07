@@ -89,14 +89,6 @@ public abstract class BranchNode : NamedGroupNode
         return groups == 1;
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
-    {
-        builder.OpenNamedGroup(this);
-        ConcatenatingComposer.Instance.Compose(builder, Children.ToList());
-        GroupQuantifier? groupQuantifier = IsOptional ? GroupQuantifier.Optional : null;
-        builder.CloseGroup(groupQuantifier);
-    }
-
     public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     {
         var scopedCaptureContext = captureContext[FullyQualifiedName];

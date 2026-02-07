@@ -8,7 +8,7 @@ public class OptionalOfNode : WrapperNode
             throw new Exception($"{nameof(OptionalOfNode)} expects '{nameof(TokenUnit)}' type, but found '{GenericType.Name}' type");
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         GetTemplateNodeForType().ComposeRegexLines(builder);

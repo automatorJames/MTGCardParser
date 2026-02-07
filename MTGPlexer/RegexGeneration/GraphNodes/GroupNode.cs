@@ -4,15 +4,16 @@ namespace MTGPlexer.RegexGeneration.GraphNodes;
 public abstract class GroupNode : RegexNode
 {
     public virtual GroupQuantifier? Quantifier => null;
-
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
-    public string FullyQualifiedName { get; }
     public INavigable Navigable { get; }
     public PropertyInfo ConcreteProperty { get; }
     public bool IsOptional { get; }
     public string[] OverrideRegexPatterns { get; }
     public Type UnderlyingType { get; }
     public Type[] GenericTypes { get; }
+
+    protected string QuantifierComment => 
+        Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
 
     protected virtual bool AbortIfSetPropertyToNull => false;
 
@@ -42,24 +43,6 @@ public abstract class GroupNode : RegexNode
     }
 
     public abstract object GetValueAndSetHydrationInfo(CaptureContext captureContext);
-
-    string GetFullyQualifiedCaptureGroupName()
-    {
-        List<string> parts = [];
-        RegexNode current = this;
-
-        while (current != null)
-        {
-            if (!current.IsCollapsible)
-                parts.Add(current.Name);
-
-            current = current.ParentNode;
-        }
-
-        parts.Reverse();
-        parts = parts.Skip(1).ToList();
-        return string.Join('_', parts);
-    }
 
     public GroupNode(RegexNode parentNode, string name) : base(parentNode, name)
     {

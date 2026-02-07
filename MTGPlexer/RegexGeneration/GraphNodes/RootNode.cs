@@ -64,14 +64,14 @@ public class RootNode : RegexNode
     BuiltRegex BuildRegex()
     {
         RegexCollector collector = new();
-        ComposeRegexLines(collector);
+        AppendRegexBricks(collector);
 
 
 
         return regexBuilder.GetBuiltRegex();
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         if (RootType.IsAssignableTo(typeof(TokenUnitOneOf)))
             AlternatingComposer.Instance.Compose(builder, Children);

@@ -11,7 +11,7 @@ public class OneOfNode : WrapperNode
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         var typedWrappedNodes = GenericTypes
             .Select((type, idx) => GetTemplateNodeForType(genericTypeIndex: idx))

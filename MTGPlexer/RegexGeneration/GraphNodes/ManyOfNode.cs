@@ -14,7 +14,7 @@ public class ManyOfNode : WrapperNode
         _containerTheConjunction = new WrappedNode(this, typeof(Conjunction?));
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         {

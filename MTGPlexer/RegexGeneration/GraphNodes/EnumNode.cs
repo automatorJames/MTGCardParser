@@ -11,7 +11,7 @@ public class EnumNode : LeafNode
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
 

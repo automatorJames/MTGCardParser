@@ -7,7 +7,7 @@ public class TokenUnitNode : BranchNode
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         ConcatenatingComposer.Instance.Compose(builder, Children.ToList());

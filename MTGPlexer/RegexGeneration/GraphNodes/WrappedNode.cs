@@ -26,7 +26,7 @@ public class WrappedNode : CaptureNode
     static Type GetUnderlyingType(Type type)
         => Nullable.GetUnderlyingType(type) ?? type;
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void ComposeRegexLines(RegexCollector collector)
     {
         WrappedCaptureNode.ComposeRegexLines(builder);
     }

@@ -12,7 +12,7 @@ public class BoolNode : LeafNode
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         builder.AddAlternateValues(ScalarAlternateSet.Alternates);

@@ -7,11 +7,11 @@
 /// </summary>
 public class TokenUnitOneOfNode : TokenUnitNode
 {
-    public TokenUnitOneOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public TokenUnitOneOfNode(RegexNode parentNode, INavigable navigable) : base(parentNode, navigable)
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         AlternatingComposer.Instance.Compose(builder, Children);

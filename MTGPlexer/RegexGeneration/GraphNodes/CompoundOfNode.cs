@@ -6,7 +6,7 @@ public class CompoundOfNode : WrapperNode
     {
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
         builder.OpenNamedGroup(this);
         builder.OpenAnonymousGroup();

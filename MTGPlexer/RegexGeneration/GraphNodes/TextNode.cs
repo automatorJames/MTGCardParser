@@ -20,6 +20,6 @@ public class TextNode : RegexNode
         DoNotAddPrecedingSpace = snippet.IsNoPrecedingSpace;
     }
 
-    public override void ComposeRegexLines(RegexBuilder builder) =>
+    public override void AppendRegexBricks(RegexCollector collector) =>
         builder.AddTextLine(Text, doNotAddPrecedingSpace: DoNotAddPrecedingSpace);
 }
