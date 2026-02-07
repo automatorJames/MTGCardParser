@@ -1,4 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.GraphNodes;
+﻿using MTGPlexer.RegexGeneration.Graph;
 
 namespace MTGPlexer.TokenEditor;
 

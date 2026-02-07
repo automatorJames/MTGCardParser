@@ -1,5 +1,4 @@
-﻿
-namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public abstract class LeafNode : SingleCaptureNode
 {

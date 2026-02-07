@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenUnitGraphComponents;
+﻿using MTGPlexer.RegexGeneration.Graph.Nodes;
+
+namespace MTGPlexer.TokenUnitGraphComponents;
 
 public abstract class TokenUnitOneOf : TokenUnit
 {

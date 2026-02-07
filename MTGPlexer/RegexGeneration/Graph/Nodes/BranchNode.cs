@@ -1,6 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public abstract class BranchNode : NamedGroupNode
+public abstract class BranchNode : RegexNode
 {
     public Dictionary<Type, List<RegexNode>> ChildrenPerType { get; } = [];
     public virtual List<RegexNode> Children => ChildrenPerType.First().Value;

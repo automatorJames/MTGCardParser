@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph;
 
 /// <summary>
 /// Represents a behavioral contract for traversing a node hierarchy. 

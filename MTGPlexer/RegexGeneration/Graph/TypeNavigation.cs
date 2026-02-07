@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph;
 
 public class TypeNavigation : INavigable
 {

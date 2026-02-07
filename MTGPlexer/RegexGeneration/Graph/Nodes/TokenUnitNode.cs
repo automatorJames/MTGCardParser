@@ -1,7 +1,6 @@
-﻿
-namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class TokenUnitNode : BranchNode
+public class TokenUnitNode : NamedGroupNode
 {
     public TokenUnitNode(RegexNode parentNode, INavigable navigation) : base(parentNode, navigation)
     {

@@ -1,7 +1,6 @@
-﻿
-namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public abstract class GroupNode : RegexNode
+public abstract class GroupNode : BranchNode
 {
     public virtual GroupQuantifier? Quantifier => null;
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }

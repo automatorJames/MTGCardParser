@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.GraphNodes;
+﻿using MTGPlexer.RegexGeneration.Graph.Nodes;
+
+namespace MTGPlexer.RegexGeneration.Graph;
 
 public class RegexGraph
 {

@@ -1,4 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.GraphNodes;
+﻿using MTGPlexer.RegexGeneration.Graph;
 using System.Reflection.Emit;
 
 namespace MTGPlexer.StaticRegistry;
