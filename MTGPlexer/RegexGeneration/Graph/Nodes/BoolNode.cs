@@ -5,18 +5,20 @@
 /// of some matching pattern. Such properties are usually expected to have a RegexPattern attribute that defines
 /// its pattern(s), but in the absence of this the normalized property name is matched.
 /// </summary>
-public class BoolNode : LeafNode
+public class BoolNode : ScalarContainerNode
 {
-    public BoolNode(RegexNode parentNode, PropertySnippet propertySnippet) 
-        : base(parentNode, propertySnippet)
+    protected override GroupQuantifier? Quantifier => GroupQuantifier.Optional;
+
+    public BoolNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        builder.OpenNamedGroup(this);
-        builder.AddAlternateValues(ScalarAlternateSet.Alternates);
-        builder.CloseGroup(GroupQuantifier.Optional);
+        collector.Append(GroupOpenBrick);
+        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
+        collector.Append(GroupCloseBrick);
     }
 
     public override object GetValueSingle(Capture capture)

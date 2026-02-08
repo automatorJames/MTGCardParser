@@ -6,10 +6,21 @@ namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 /// </summary>
 public class RegexCollector
 {
-    public List<string> RegexLines { get; } = [];
+    public List<RegexBrick> RegexBricks { get; } = [];
 
     public void Append(RegexBrick brick) =>
-        RegexLines.Add(brick);
+        RegexBricks.Add(brick);
+
+    public void AppendJoined(List<RegexNode> nodes, RegexBrick joiner)
+    {
+        for (int i = 0; i < RegexBricks.Count; i++)
+        {
+            nodes[i].AppendRegexBricks(this);
+
+            if (i < RegexBricks.Count - 1)
+                Append(joiner);
+        }
+    }
 
     /// <summary>
     /// Generates a fully formatted, commented, and colorized list of regex lines.

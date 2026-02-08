@@ -13,13 +13,11 @@ public static partial class TokenTypeRegistry
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
 
     public static Dictionary<Type, RegexGraph> RegexGraphs { get; set; } = [];
-    public static Dictionary<Type, RootNode> RootNodes { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<Type, Snippet[]> TypeSnippets { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Type> EmittedOptionalManyTypes { get; set; } = [];
-    public static Dictionary<Type, ScalarAlternateSet> ScalarAlternateSetCache { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }

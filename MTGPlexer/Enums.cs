@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer;
+﻿using System.ComponentModel;
+
+namespace MTGPlexer;
 
 [Flags]
 public enum Proptions
@@ -14,4 +16,25 @@ public enum CaptureGroupJoinStrategy
     ConcatenateWithSpace,
     AlternateValues,
     CompoundValue
+}
+
+public enum Joiner
+{
+    [Description("")]
+    None,
+
+    [Description("[ ]")]
+    Space,
+
+    [Description("|")]
+    Pipe,
+
+    [Description("-")]
+    Dash,
+
+    [Description("_")]
+    Underscore,
+
+    [Description(".")]
+    Dot,
 }

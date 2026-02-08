@@ -6,7 +6,8 @@ public class ManyOfNode : WrapperNode
     VirtualNamedGroupNode _containerTheSecond;
     VirtualNamedGroupNode _containerTheLast;
     WrappedNode _containerTheConjunction;
-    public ManyOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public ManyOfNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
         _containerTheFirst = new VirtualNamedGroupNode(this, ManyItemOrdinal.First.ToString(), GenericType);
         _containerTheSecond = new VirtualNamedGroupNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
@@ -16,7 +17,9 @@ public class ManyOfNode : WrapperNode
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        builder.OpenNamedGroup(this);
+        // todo: instead of VirtualNamedGroupNode, use the name override of the TypeNavigation to construct TokenUnitNode or EnumNode children
+        // that operate as normal except with the new name
+        collector.Append(GroupOpenBrick);
         {
             _containerTheFirst.ComposeRegexLines(builder);
 

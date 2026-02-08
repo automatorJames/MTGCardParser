@@ -9,9 +9,10 @@ public abstract class WrapperNode : NamedGroupNode
     public List<WrappedNode> WrappedNodes { get; } = [];
     protected Type GenericType => GenericTypes[0];
 
-    public WrapperNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public WrapperNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
-        _closedWrapperType = propertySnippet.Prop.PropertyType.GetGenericTypeDefinition().MakeGenericType(GenericTypes);
+        _closedWrapperType = navigable.Type.GetGenericTypeDefinition().MakeGenericType(GenericTypes);
     }
 
     protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0) =>

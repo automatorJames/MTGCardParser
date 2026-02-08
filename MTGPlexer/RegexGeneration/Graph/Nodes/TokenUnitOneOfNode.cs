@@ -7,15 +7,15 @@
 /// </summary>
 public class TokenUnitOneOfNode : TokenUnitNode
 {
-    public TokenUnitOneOfNode(RegexNode parentNode, INavigable navigable) : base(parentNode, navigable)
+    public TokenUnitOneOfNode(RegexNode parentNode, TypeNavigation navigation) : base(parentNode, navigation)
     {
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        builder.OpenNamedGroup(this);
-        AlternatingComposer.Instance.Compose(builder, Children);
-        builder.CloseGroup();
+        collector.Append(GroupOpenBrick);
+        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
+        collector.Append(GroupCloseBrick);
     }
 
     public override string ToString() => base.ToString();

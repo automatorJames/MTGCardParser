@@ -9,7 +9,8 @@ public class TextNode : RegexNode
     public string Text { get; set; }
     public bool DoNotAddPrecedingSpace { get; }
 
-    public TextNode(RegexNode parentNode, Snippet snippet) : base(parentNode, snippet.Text)
+    public TextNode(RegexNode parentNode, Snippet snippet) 
+        : base(parentNode, snippet.Text)
     {
         var text = snippet.Text;
 

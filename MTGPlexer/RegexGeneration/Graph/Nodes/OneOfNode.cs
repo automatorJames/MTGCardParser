@@ -7,7 +7,8 @@
 /// </summary>
 public class OneOfNode : WrapperNode
 {
-    public OneOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public OneOfNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
     }
 

@@ -2,12 +2,20 @@
 
 public class CompoundOfNode : WrapperNode
 {
-    public CompoundOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    Joiner _joiner;
+    public CompoundOfNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
+        _joiner = navigation.UnderlyingType.GetCustomAttribute<CompoundJoinerAttribute>()?.Joiner
+            ?? Joiner.Space;
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
+        collector.Append(GroupOpenBrick);
+        collector.AppendJoined(Children, GetJoinerBrick(_joiner));
+        collector.Append(GroupCloseBrick);
+
         builder.OpenNamedGroup(this);
         builder.OpenAnonymousGroup();
         GetTemplateNodeForType().ComposeRegexLines(builder);

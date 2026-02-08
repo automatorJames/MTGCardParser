@@ -44,7 +44,7 @@
         if (node is BranchNode && !node.IsCollapsible)
             classes.Add("nested-underline");
 
-        if (node is LeafNode)
+        if (node is LeafNoContainer
             classes.Add("prop-capture-overline");
 
         //if (node is SpanSubLeaf spanSubLeaf)

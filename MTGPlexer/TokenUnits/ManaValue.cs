@@ -1,6 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
+[CompoundJoiner(Joiner.None)]
 public class ManaValue : TokenUnitCompound
 {
     [RegexPattern("[0-9]+")] public int? Colorless { get; set; }

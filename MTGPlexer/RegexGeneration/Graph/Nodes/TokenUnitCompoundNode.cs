@@ -2,15 +2,19 @@
 
 public class TokenUnitCompoundNode : TokenUnitNode
 {
-    public TokenUnitCompoundNode(RegexNode parentNode, INavigable navigable) : base(parentNode, navigable)
+    Joiner _joiner;
+
+    public TokenUnitCompoundNode(RegexNode parentNode, TypeNavigation navigation) : base(parentNode, navigation)
     {
+        _joiner = navigation.UnderlyingType.GetCustomAttribute<CompoundJoinerAttribute>()?.Joiner 
+            ?? Joiner.Space;
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        builder.OpenNamedGroup(this);
-        AlternatingComposer.Instance.Compose(builder, Children);
-        builder.CloseGroup();
+        collector.Append(GroupOpenBrick);
+        collector.AppendJoined(Children, GetJoinerBrick(_joiner));
+        collector.Append(GroupCloseBrick);
     }
 
     public override string ToString() => base.ToString();

@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class IntNode : LeafNode
+public class IntNode : ScalarContainerNode
 {
 
-    public IntNode(RegexNode parentNode, PropertySnippet propertySnippet) 
-        : base(parentNode, propertySnippet)
+    public IntNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
 
     }

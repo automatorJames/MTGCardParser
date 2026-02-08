@@ -2,48 +2,49 @@
 
 public abstract class GroupNode : BranchNode
 {
-    public virtual GroupQuantifier? Quantifier => null;
+    protected virtual RegexBrick GroupOpenBrick => new RegexBrick(this, "(", null);
+    protected RegexBrick GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
+    protected virtual GroupQuantifier? Quantifier => null;
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
-    public INavigable Navigable { get; }
-    public PropertyInfo ConcreteProperty { get; }
-    public bool IsOptional { get; }
-    public string[] OverrideRegexPatterns { get; }
-    public Type UnderlyingType { get; }
-    public Type[] GenericTypes { get; }
 
     protected string QuantifierComment => 
         Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
 
     protected virtual bool AbortIfSetPropertyToNull => false;
 
-    protected GroupNode(RegexNode parentNode, INavigable navigable)
-        : base(parentNode, navigable.Name)
+    protected GroupNode(RegexNode parentNode, TypeNavigation navigation)
+        : base(parentNode, navigation)
     {
-        FullyQualifiedName = GetFullyQualifiedCaptureGroupName();
-        Navigable = navigable;
-        ConcreteProperty = (navigable as PropertySnippet)?.Prop;
-        UnderlyingType = Nullable.GetUnderlyingType(navigable.Type) ?? navigable.Type;
-        GenericTypes = UnderlyingType.GetGenericArguments();
-
-        IsOptional = navigable.Proptions.HasFlag(Proptions.Optional)
-            || UnderlyingType.IsEnum && Nullable.GetUnderlyingType(Navigable.Type) != null;
-
-        if (navigable is PropertySnippet propertySnippet)
-        {
-            ConcreteProperty = propertySnippet.Prop;
-
-            IsOptional |= ConcreteProperty.IsDefined(typeof(OptionalComponentAttribute));
-
-            // Optional sub-groups aren't allowed in TokenUnitOneOf groups, because they would allow zero-width matches
-            IsOptional &= !ConcreteProperty.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
-
-            OverrideRegexPatterns = ConcreteProperty.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
-        }
+        //IsOptional = navigable.Proptions.HasFlag(Proptions.Optional)
+        //    || UnderlyingType.IsEnum && Nullable.GetUnderlyingType(Navigable.Type) != null;
+        //
+        //if (navigable is PropertySnippet propertySnippet)
+        //{
+        //    ConcreteProperty = propertySnippet.Prop;
+        //
+        //    IsOptional |= ConcreteProperty.IsDefined(typeof(OptionalComponentAttribute));
+        //
+        //    // Optional sub-groups aren't allowed in TokenUnitOneOf groups, because they would allow zero-width matches
+        //    IsOptional &= !ConcreteProperty.DeclaringType.IsAssignableTo(typeof(TokenUnitOneOf));
+        //
+        //    OverrideRegexPatterns = ConcreteProperty.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
+        //}
     }
 
-    public abstract object GetValueAndSetHydrationInfo(CaptureContext captureContext);
+    //protected void WrapChildren(RegexCollector collector)
+    //{
+    //    collector.Append(GetGroupOpenBrick()); // open group
+    //    base.AppendRegexBricks(collector); // all children append their bricks
+    //    collector.Append(new(this, $"){Quantifier?.GetDescription()}", QuantifierComment)); // close group
+    //}
 
-    public GroupNode(RegexNode parentNode, string name) : base(parentNode, name)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
+        collector.Append(GetGroupOpenBrick()); // open group
+        base.AppendRegexBricks(collector); // all children append their bricks
+        collector.Append(new(this, $"){Quantifier?.GetDescription()}", QuantifierComment)); // close group
     }
+
+    protected virtual RegexBrick GetGroupOpenBrick() =>
+        new RegexBrick(this, "(", null);
 }

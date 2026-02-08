@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class WrappedNode : CaptureNode
+public class WrappedNode : BranchNode
 {
     public Type Type { get; }
     public int? Ordinal { get; }
-    public CaptureNode WrappedCaptureNode { get; }
+    public NamedGroupNode UnderlyingNode { get; }
 
     public override bool IsCollapsible => true;
 
@@ -16,25 +16,23 @@ public class WrappedNode : CaptureNode
         TypeNavigation navigation = new(type);
 
         if (GetUnderlyingType(type).IsEnum)
-            WrappedCaptureNode = new EnumNode(this, navigation);
+            UnderlyingNode = new EnumNode(this, navigation);
         else if (type.IsAssignableTo(typeof(TokenUnit)))
-            WrappedCaptureNode = new TokenUnitNode(this, navigation);
+            UnderlyingNode = new TokenUnitNode(this, navigation);
         else
-            throw new Exception($"{nameof(WrappedNode)} can only be created from enum of {nameof(TokenUnit)} types, but '{type.Name}' was passed");
+            throw new Exception($"{nameof(Nodes.WrappedNode)} can only be created from enum of {nameof(TokenUnit)} types, but '{type.Name}' was passed");
     }
 
-    static Type GetUnderlyingType(Type type)
-        => Nullable.GetUnderlyingType(type) ?? type;
-
-    public override void ComposeRegexLines(RegexCollector collector)
+    public override void AppendRegexBricks(RegexCollector collector)
     {
-        WrappedCaptureNode.ComposeRegexLines(builder);
+        WrappedNode.ComposeRegexLines(builder);
+        throw new NotImplementedException();
     }
 
     public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     {
         var scopedCaptureContext = captureContext[FullyQualifiedName];
-        var value = WrappedCaptureNode.GetValueAndSetHydrationInfo(scopedCaptureContext);
+        var value = WrappedNode.GetValueAndSetHydrationInfo(scopedCaptureContext);
         CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, value);
 
         return value;

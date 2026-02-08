@@ -1,13 +1,14 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class DynamicOfNode : LeafNode
+public class DynamicOfNode : WrapperNode
 {
     Type _genericType;
     ScalarAlternateSet _scalarAlternativeSet;
 
     protected override bool AbortIfSetPropertyToNull => true;
 
-	public DynamicOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+	public DynamicOfNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
         var genericTypes = propertySnippet.Type.GenericTypeArguments;
 

@@ -2,7 +2,8 @@
 
 public class OptionalOfNode : WrapperNode
 {
-    public OptionalOfNode(RegexNode parentNode, PropertySnippet propertySnippet) : base(parentNode, propertySnippet)
+    public OptionalOfNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
         if (!GenericType.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{nameof(OptionalOfNode)} expects '{nameof(TokenUnit)}' type, but found '{GenericType.Name}' type");

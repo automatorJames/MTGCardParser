@@ -7,6 +7,9 @@ public abstract class RegexNode
     public RegexNode[] Lineage { get; }
     public RegexNode ParentNode => Lineage.LastOrDefault();
 
+    public RegexBrick GetJoinerBrick(Joiner joiner) =>
+        new RegexBrick(this, joiner.GetDescription(), $"joiner {joiner.ToString().ToFriendlyCase(TitleDisplayOption.Lower)}");
+
     // todo: This feels like a hack that prevents duplicate parts in name paths
     // used only when WrappedNodes are in play rather than a univerasal necessity
     public virtual bool IsCollapsible => false;

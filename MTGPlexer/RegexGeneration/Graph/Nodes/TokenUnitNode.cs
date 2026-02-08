@@ -2,16 +2,18 @@
 
 public class TokenUnitNode : NamedGroupNode
 {
-    public TokenUnitNode(RegexNode parentNode, INavigable navigation) : base(parentNode, navigation)
+    public List<NamedGroupNode> ContiguousCoreNodes { get; set; }
+
+    public TokenUnitNode(RegexNode parentNode, TypeNavigation navigation) 
+        : base(parentNode, navigation)
     {
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        builder.OpenNamedGroup(this);
-        ConcatenatingComposer.Instance.Compose(builder, Children.ToList());
-        GroupQuantifier? groupQuantifier = IsOptional ? GroupQuantifier.Optional : null;
-        builder.CloseGroup(groupQuantifier);
+        collector.Append(GroupOpenBrick);
+        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Space));
+        collector.Append(GroupCloseBrick);
     }
 
     public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
@@ -36,5 +38,39 @@ public class TokenUnitNode : NamedGroupNode
         CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, instance);
 
         return instance;
+    }
+
+    /// <summary>
+    /// Validates the capture structure based on two rules:
+    /// 1. There must be at least one CaptureNode present.
+    /// 2. All CaptureNodes must form a single, contiguous block (no gaps allowed).
+    /// </summary>
+    /// <returns>True if exactly one contiguous group of CaptureNodes exists.</returns>
+    public bool ValidateCapturePropertiesAreContiguous()
+    {
+        int groups = 0;
+        bool inGroup = false;
+
+        foreach (var node in Children)
+        {
+            if (node is NamedGroupNode)
+            {
+                // If we hit a capture and weren't already in a group, 
+                // we've discovered a new "island"
+                if (!inGroup)
+                {
+                    groups++;
+                    inGroup = true;
+                }
+            }
+            else
+            {
+                // Any non-capture node (TextNode, etc.) terminates the current group
+                inGroup = false;
+            }
+        }
+
+        // Returns true only if we found exactly one contiguous cluster
+        return groups == 1;
     }
 }
