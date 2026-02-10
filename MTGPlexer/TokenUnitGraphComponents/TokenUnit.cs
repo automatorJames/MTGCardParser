@@ -24,13 +24,18 @@ public abstract class TokenUnit
     /// </summary>
     public virtual string ValidateStructure()
     {
-        var rootNode = TokenTypeRegistry.RootNodes[Type];
+        var regexGraph = TokenTypeRegistry.RegexGraphs[Type];
 
-        if (string.IsNullOrEmpty(rootNode.BuiltRegex.MinifiedRegexString))
-            return $"{nameof(RootNode.BuiltRegex.MinifiedRegexString)} is null or empty";
+        if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegexString))
+            return $"{nameof(regexGraph.BuiltRegex.MinifiedRegexString)} is null or empty";
 
         var expectedProps = Type.GetPublicPropNames();
-        var missingProps = expectedProps.Except(rootNode.CaptureChildren.Select(x => x.ConcreteProperty.Name)).ToList();
+
+        var missingProps = expectedProps
+            .Except(regexGraph.RootNode.Children
+            .OfType<NamedGroupNode>()
+            .Select(x => x.Name))
+            .ToList();
 
         if (missingProps.Any())
             return $"the following properties are not represented among template snippets: {string.Join(", ", missingProps)}";

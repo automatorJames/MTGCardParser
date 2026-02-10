@@ -1,13 +1,12 @@
-﻿using MTGPlexer.RegexGeneration.Graph.Nodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph;
 
-namespace MTGPlexer.RegexGeneration.Graph;
-
-public class HydratedNodeGraph : RootNode
+public class HydratedNodeGraph : TokenUnitNode
 {
     public CaptureContext CaptureContext { get; }
     public string Value => CaptureContext.FullMatch;
 
-    public HydratedNodeGraph(Type type, Match match, string sourceText) : base(type)
+    public HydratedNodeGraph(Type type, Match match, string sourceText) 
+        : base(parentNode: null, new TypeNavigation(type))
     {
         CaptureContext = CaptureContext.Create(match, sourceText);
     }

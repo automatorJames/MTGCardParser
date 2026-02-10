@@ -21,8 +21,8 @@ public class ManyOf : XOf
     {
         var separator = Conjunction switch
         {
-            TokenUnitGraphComponents.Conjunction.And => " & ",
-            TokenUnitGraphComponents.Conjunction.Or => " | ",
+            MTGPlexer.Conjunction.And => " & ",
+            MTGPlexer.Conjunction.Or => " | ",
             _ => " & ",
         };
 

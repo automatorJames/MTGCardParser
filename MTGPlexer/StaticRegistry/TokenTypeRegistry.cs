@@ -1,5 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.Graph;
-using System.Reflection.Emit;
+﻿using System.Reflection.Emit;
 
 namespace MTGPlexer.StaticRegistry;
 
@@ -36,22 +35,20 @@ public static partial class TokenTypeRegistry
         OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
     }
 
-    public static RootNode GetRootNode(Type type)
+    public static RegexGraph GetRegexGraph(Type type) =>
+        RegexGraphs.TryGetValue(type, out var regexGraph)
+            ? regexGraph : SetRootNode(type);
+
+    static RegexGraph SetRootNode(Type type)
     {
-        if (!RootNodes.ContainsKey(type))
-            SetRootNode(type);
-
-        return RootNodes[type];
-    }
-
-    static void SetRootNode(Type type)
-    {
-        NameToType[type.Name] = type;
-        RootNode rootNode = new(type);
-        RootNodes[type] = rootNode;
-
         if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
             throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
+
+        NameToType[type.Name] = type;
+        var regexGraph = RegexGraph.Create(type);
+        RegexGraphs[type] = regexGraph;
+
+        return regexGraph;
     }
 
     public static List<TokenUnit> Tokenize(string sourceText, bool originalTextOnly = false)

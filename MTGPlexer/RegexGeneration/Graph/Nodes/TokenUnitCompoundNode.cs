@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class TokenUnitCompoundNode : TokenUnitNode
+public class TokenUnitCompoundNode : TokenUnitNodeContiguousProps
 {
     Joiner _joiner;
 

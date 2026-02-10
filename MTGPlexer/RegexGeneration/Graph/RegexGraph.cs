@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.Graph.Nodes;
-
-namespace MTGPlexer.RegexGeneration.Graph;
+﻿namespace MTGPlexer.RegexGeneration.Graph;
 
 public class RegexGraph
 {
@@ -16,7 +14,7 @@ public class RegexGraph
         RootNode = RootNode;
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
-        return collector.GetBuiltRegex();
+        BuiltRegex = collector.GetBuiltRegex();
     }
 
     public static RegexGraph Create(Type rootTokenUnitType)
@@ -34,7 +32,8 @@ public class RegexGraph
         return new(rootTokenUnitType, contentRoot);
     }
 
-    public bool TryMatch(string sourceText, out TokenUnit tokenUnit) => TryMatch(sourceText, 0, sourceText.Length, out tokenUnit);
+    public bool TryMatch(string sourceText, out TokenUnit tokenUnit) => 
+        TryMatch(sourceText, 0, sourceText.Length, out tokenUnit);
 
     /// <summary>
     /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.

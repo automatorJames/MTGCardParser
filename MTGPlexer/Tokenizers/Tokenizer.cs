@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace MTGPlexer.Tokenizers;
+﻿namespace MTGPlexer.Tokenizers;
 
 public class Tokenizer
 {
@@ -33,7 +31,7 @@ public class Tokenizer
 
             foreach (var type in filteredTypes)
             {
-                var rootNode = TokenTypeRegistry.RootNodes[type];
+                var rootNode = TokenTypeRegistry.RegexGraphs[type];
 
                 if (rootNode.TryMatch(sourceText, currentIndex, endIndex, out var token))
                 {

@@ -23,7 +23,15 @@ public class IntNode : ScalarContainerNode
         collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
         collector.Append(GroupCloseBrick);
     }
-}
+
+    public override object GetValueSingle(Capture capture)
+    {
+        return Children
+            .OfType<INamedScalarValue>()
+            .FirstOrDefault(x => x.Name == capture.Value)
+            .ScalarValue
+            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{capture.Value}'");
+    }
 
     //public override object GetValueSingle(Capture capture)
     //{
