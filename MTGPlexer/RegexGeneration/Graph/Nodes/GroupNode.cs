@@ -2,7 +2,8 @@
 
 public abstract class GroupNode : BranchNode
 {
-    protected virtual RegexBrick GroupOpenBrick => new RegexBrick(this, "(", null);
+    protected virtual RegexBrick GroupOpenBrick => AnonymousGroupOpenBrick;
+    protected RegexBrick AnonymousGroupOpenBrick => new RegexBrick(this, "(", null);
     protected RegexBrick GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
     protected virtual GroupQuantifier? Quantifier => null;
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
@@ -47,4 +48,17 @@ public abstract class GroupNode : BranchNode
 
     protected virtual RegexBrick GetGroupOpenBrick() =>
         new RegexBrick(this, "(", null);
+
+    protected RegexBrick GetGroupCloseBrick(GroupQuantifier? quantifier = null)
+    {
+        quantifier ??= Quantifier;
+        var comment = GetQuantifierComment(quantifier);
+        return new RegexBrick(this, $"){quantifier?.GetDescription()}", comment);
+    }
+
+    protected string GetQuantifierComment(GroupQuantifier? quantifier = null)
+    {
+        quantifier ??= Quantifier;
+        return quantifier?.GetDescription();
+    }
 }

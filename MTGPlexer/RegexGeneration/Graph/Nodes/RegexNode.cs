@@ -7,8 +7,17 @@ public abstract class RegexNode
     public RegexNode[] Lineage { get; }
     public RegexNode ParentNode => Lineage.LastOrDefault();
 
-    public RegexBrick GetJoinerBrick(Joiner joiner) =>
-        new RegexBrick(this, joiner.GetDescription(), $"joiner {joiner.ToString().ToFriendlyCase(TitleDisplayOption.Lower)}");
+    public RegexBrick GetJoinerBrick(Joiner joiner, bool isOptional = false)
+    {
+        var regex = joiner.GetDescription() + (isOptional ? "?" : "");
+        var comment = $"joiner {joiner.ToString().ToFriendlyCase(TitleDisplayOption.Lower)}";
+
+        if (isOptional)
+            comment = "optional " + comment;
+
+        return new RegexBrick(this, regex, comment);
+
+    }
 
     // todo: This feels like a hack that prevents duplicate parts in name paths
     // used only when WrappedNodes are in play rather than a univerasal necessity

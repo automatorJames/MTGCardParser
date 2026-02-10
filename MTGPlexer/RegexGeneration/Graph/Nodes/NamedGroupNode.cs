@@ -11,6 +11,21 @@ public abstract class NamedGroupNode : GroupNode
         FullyQualifiedName = string.Join("_", Lineage.Where(x => !x.IsCollapsible));
     }
 
+    public static NamedGroupNode GetWrappedTokenUnitOrEnumNode(WrapperNode parentNode, Type typeToWrap, string groupNameAppendix)
+    {
+        var wrappedName = parentNode.Name + "_" + groupNameAppendix;
+        TypeNavigation navigation = new(typeToWrap, wrappedName);
+
+        return GetUnderlyingType(typeToWrap) switch
+        {
+            { IsEnum: true } => new EnumNode(parentNode, navigation),
+            { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
+            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
+            _ => throw new Exception($"'{typeToWrap}' is not an enum or a {nameof(TokenUnit)} type")
+        };
+    }
+
     //public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
     //{
     //    if (ConcreteProperty == null)

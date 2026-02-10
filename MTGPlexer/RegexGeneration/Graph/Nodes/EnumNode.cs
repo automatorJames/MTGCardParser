@@ -52,12 +52,8 @@ public class EnumNode : ScalarContainerNode
     public override void AppendRegexBricks(RegexCollector collector)
     {
         collector.Append(GroupOpenBrick);
-        Children.ForEach(x => x.AppendRegexBricks(collector));
+        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
         collector.Append(GroupCloseBrick);
-
-        // todo: reinstate this
-        //if (UnderlyingType.GetCustomAttribute<OptionalPrefix>() is OptionalPrefix attr)
-        //    builder.AddTextLine($"({attr.PrefixSnippet} )?");
     }
 
     public override object GetValueSingle(Capture capture)

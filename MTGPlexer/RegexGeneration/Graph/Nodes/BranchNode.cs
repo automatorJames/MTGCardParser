@@ -48,10 +48,9 @@ public abstract class BranchNode : RegexNode
 
     static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)
     {
-        TypeNavigation navigation = new(propertySnippet.Type, propertySnippet.Prop.Name, propertySnippet.Proptions);
-        var underlyingType = GetUnderlyingType(propertySnippet.Type);
+        PropNavigation navigation = new(propertySnippet);
 
-        return GetUnderlyingType(propertySnippet.Type) switch
+        return GetUnderlyingType(navigation.UnderlyingType) switch
         {
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t.IsAssignableTo(typeof(ManyOf)) => new ManyOfNode(parentNode, navigation),
@@ -64,9 +63,8 @@ public abstract class BranchNode : RegexNode
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
-            { } t when t == typeof(int) => new BoolNode(parentNode, navigation),
-            { } t when t == typeof(PrecursorCapture) => new IntNode(parentNode, navigation),
-            _ => throw new Exception($"{underlyingType} is not a valid {nameof(PropertySnippet)} type")
+            { } t when t == typeof(int) => new IntNode(parentNode, navigation),
+            _ => throw new Exception($"'{navigation.UnderlyingType}' is not a valid {nameof(PropertySnippet)} type")
         };
     }
 
@@ -94,6 +92,6 @@ public abstract class BranchNode : RegexNode
     //    return instance;
     //}
 
-    static Type GetUnderlyingType(Type type)
+    protected static Type GetUnderlyingType(Type type)
         => Nullable.GetUnderlyingType(type) ?? type;
 }

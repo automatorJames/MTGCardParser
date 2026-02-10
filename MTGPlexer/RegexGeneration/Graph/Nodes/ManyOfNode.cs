@@ -2,81 +2,78 @@
 
 public class ManyOfNode : WrapperNode
 {
-    VirtualNamedGroupNode _containerTheFirst;
-    VirtualNamedGroupNode _containerTheSecond;
-    VirtualNamedGroupNode _containerTheLast;
-    WrappedNode _containerTheConjunction;
+    NamedGroupNode _itemTheFirst;
+    NamedGroupNode _itemTheSecond;
+    NamedGroupNode _itemLast;
+    NamedGroupNode _containerTheConjunction;
     public ManyOfNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation)
     {
-        _containerTheFirst = new VirtualNamedGroupNode(this, ManyItemOrdinal.First.ToString(), GenericType);
-        _containerTheSecond = new VirtualNamedGroupNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
-        _containerTheLast = new VirtualNamedGroupNode(this, ManyItemOrdinal.Last.ToString(), GenericType);
-        _containerTheConjunction = new WrappedNode(this, typeof(Conjunction?));
+        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.First.ToString());
+        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.SecondPlus.ToString());
+        _itemLast = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.Last.ToString());
+        _containerTheConjunction = GetWrappedTokenUnitOrEnumNode(this, typeof(Conjunction?), nameof(Conjunction));
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        // todo: instead of VirtualNamedGroupNode, use the name override of the TypeNavigation to construct TokenUnitNode or EnumNode children
-        // that operate as normal except with the new name
         collector.Append(GroupOpenBrick);
         {
-            _containerTheFirst.ComposeRegexLines(builder);
+            _itemTheFirst.AppendRegexBricks(collector);
 
-            builder.OpenAnonymousGroup();
+            collector.Append(AnonymousGroupOpenBrick);
             {
-                builder.AddTextLine(", ");
-                _containerTheSecond.ComposeRegexLines(builder);
-                builder.CloseGroup(GroupQuantifier.AnyNumber);
+                collector.Append(new RegexBrick(this, ",[ ]", "Oxford comma"));
+                _itemTheSecond.AppendRegexBricks(collector);
             }
+            collector.Append(GetGroupCloseBrick(GroupQuantifier.AnyNumber));
 
-            builder.OpenAnonymousGroup();
+            collector.Append(AnonymousGroupOpenBrick);
             {
-                builder.AddTextLine(",? ");
+                collector.Append(new RegexBrick(this, ",?[ ]", "optional Oxford comma"));
 
-                builder.OpenAnonymousGroup();
+                collector.Append(AnonymousGroupOpenBrick);
                 {
-                    _containerTheConjunction.ComposeRegexLines(builder);
-                    builder.AddTextLine(" ");
-                    builder.CloseGroup(GroupQuantifier.Optional);
+                    _containerTheConjunction.AppendRegexBricks(collector);
+                    collector.Append(GetJoinerBrick(Joiner.Space));
                 }
+                collector.Append(GetGroupCloseBrick(GroupQuantifier.Optional));
 
-                _containerTheLast.ComposeRegexLines(builder);
-                builder.CloseGroup();
+                _itemLast.AppendRegexBricks(collector);
             }
+            collector.Append(GroupCloseBrick);
 
-            builder.CloseGroup();
         }
+        collector.Append(GroupCloseBrick);
     }
 
-
-    protected override object GetWrapperValue(CaptureContext captureContext)
-    {
-        var captureContextTheFirst = captureContext[_containerTheFirst.FullyQualifiedName];
-        var captureContextTheSecond = captureContext[_containerTheSecond.FullyQualifiedName];
-        var captureContextTheLast = captureContext[_containerTheLast.FullyQualifiedName];
-        var captureContextTheConjunction = captureContext[_containerTheConjunction.FullyQualifiedName];
-
-        WrappedNodes.Add(_containerTheFirst.HydrateChild(captureContextTheFirst));
-        WrappedNodes.Add(_containerTheLast.HydrateChild(captureContextTheLast));
-
-        // Second may contain any number, including 0
-        for (int i = 0; i < captureContextTheSecond.Captures.Length; i++)
-        {
-            var secondOrdinalWrapper = new VirtualNamedGroupNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
-            var scopedContext = captureContextTheSecond.ScopeToCaptureIndex(i);
-            WrappedNodes.Add(secondOrdinalWrapper.HydrateChild(scopedContext));
-        }
-
-        // before we add the conjunction value to WrappedNodes, extract them into a ManyItem value list for convenience
-        var manyItemValues = WrappedNodes.Select(x => x.CaptureValueHydrationInfo.Value).ToList();
-        object nullableConjunctionItemValue = null;
-
-        if (captureContextTheConjunction.Success)
-            nullableConjunctionItemValue = AddNewWrappedNode(captureContextTheConjunction, genericType: typeof(Conjunction)).CaptureValueHydrationInfo.Value;
-
-        return CreateWrapperValue(manyItemValues, nullableConjunctionItemValue);
-    }
+    //protected override object GetWrapperValue(CaptureContext captureContext)
+    //{
+    //    var captureContextTheFirst = captureContext[_itemTheFirst.FullyQualifiedName];
+    //    var captureContextTheSecond = captureContext[_itemTheSecond.FullyQualifiedName];
+    //    var captureContextTheLast = captureContext[_itemLast.FullyQualifiedName];
+    //    var captureContextTheConjunction = captureContext[_containerTheConjunction.FullyQualifiedName];
+    //
+    //    WrappedNodes.Add(_itemTheFirst.HydrateChild(captureContextTheFirst));
+    //    WrappedNodes.Add(_itemLast.HydrateChild(captureContextTheLast));
+    //
+    //    // Second may contain any number, including 0
+    //    for (int i = 0; i < captureContextTheSecond.Captures.Length; i++)
+    //    {
+    //        var secondOrdinalWrapper = new VirtualNamedGroupNode(this, ManyItemOrdinal.SecondPlus.ToString(), GenericType);
+    //        var scopedContext = captureContextTheSecond.ScopeToCaptureIndex(i);
+    //        WrappedNodes.Add(secondOrdinalWrapper.HydrateChild(scopedContext));
+    //    }
+    //
+    //    // before we add the conjunction value to WrappedNodes, extract them into a ManyItem value list for convenience
+    //    var manyItemValues = WrappedNodes.Select(x => x.CaptureValueHydrationInfo.Value).ToList();
+    //    object nullableConjunctionItemValue = null;
+    //
+    //    if (captureContextTheConjunction.Success)
+    //        nullableConjunctionItemValue = AddNewWrappedNode(captureContextTheConjunction, genericType: typeof(Conjunction)).CaptureValueHydrationInfo.Value;
+    //
+    //    return CreateWrapperValue(manyItemValues, nullableConjunctionItemValue);
+    //}
 
     public override string ToString() => base.ToString();
 }

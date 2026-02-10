@@ -29,16 +29,3 @@ public class ManyOf : XOf
         return string.Join(separator, Items.Select(x => x.ToString()));
     }
 }
-
-public enum ManyItemOrdinal
-{
-    First,
-    SecondPlus,
-    Last
-}
-
-public enum Conjunction
-{
-    And,
-    Or
-}

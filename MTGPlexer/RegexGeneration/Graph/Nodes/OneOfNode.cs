@@ -7,52 +7,66 @@
 /// </summary>
 public class OneOfNode : WrapperNode
 {
+    NamedGroupNode _itemTheFirst;
+    NamedGroupNode _itemTheSecond;
+    NamedGroupNode _itemTheThird;
+
     public OneOfNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation)
     {
+        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, OneOfItemOrdinal.First.ToString());
+        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, OneOfItemOrdinal.Second.ToString());
+        _itemTheThird = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, OneOfItemOrdinal.Third.ToString());
+    }
+
+    protected override List<RegexNode> GetChildNodes()
+    {
+        List<RegexNode> children = [_itemTheFirst, _itemTheSecond];
+
+        if (GenericTypes.Length >= 3)
+            children.Add(_itemTheThird);
+
+        return children;
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        var typedWrappedNodes = GenericTypes
-            .Select((type, idx) => GetTemplateNodeForType(genericTypeIndex: idx))
-            .Cast<RegexNode>()
-            .ToList();
-
-        builder.OpenNamedGroup(this);
-        AlternatingComposer.Instance.Compose(builder, typedWrappedNodes);
-        builder.CloseGroup();
-    }
-
-    protected override object GetWrapperValue(CaptureContext captureContext)
-    {
-        int captureFoundAtGenericTypeIndex = -1;
-
-        for (int i = 0; i < GenericTypes.Length; i++)
+        collector.Append(GroupOpenBrick);
         {
-            var genericType = GenericTypes[i];
-            var scopedCapture = captureContext[FullyQualifiedName + "_" + genericType.Name];
-        
-            if (!scopedCapture.Success)
-                continue;
-
-            AddNewWrappedNode(scopedCapture, genericType: genericType);
-            captureFoundAtGenericTypeIndex = i;
-
-            goto ItemHasBeenFound;
+            collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
         }
-       
-        throw new Exception($"Failed to extract any value for OneOfProp");
-        
-        ItemHasBeenFound:;
-        
-        var genericTypeDefinition = GenericTypes.Length switch
-        {
-            2 => typeof(OneOf<,>),
-            3 => typeof(OneOf<,,>),
-            _ => throw new Exception($"One-of regex prop count of {GenericTypes.Length} not supported")
-        };
-        
-        return CreateWrapperValue(WrappedValues.Single(), captureFoundAtGenericTypeIndex);
+        collector.Append(GroupCloseBrick);
     }
+
+    //protected override object GetWrapperValue(CaptureContext captureContext)
+    //{
+    //    int captureFoundAtGenericTypeIndex = -1;
+    //
+    //    for (int i = 0; i < GenericTypes.Length; i++)
+    //    {
+    //        var genericType = GenericTypes[i];
+    //        var scopedCapture = captureContext[FullyQualifiedName + "_" + genericType.Name];
+    //    
+    //        if (!scopedCapture.Success)
+    //            continue;
+    //
+    //        AddNewWrappedNode(scopedCapture, genericType: genericType);
+    //        captureFoundAtGenericTypeIndex = i;
+    //
+    //        goto ItemHasBeenFound;
+    //    }
+    //   
+    //    throw new Exception($"Failed to extract any value for OneOfProp");
+    //    
+    //    ItemHasBeenFound:;
+    //    
+    //    var genericTypeDefinition = GenericTypes.Length switch
+    //    {
+    //        2 => typeof(OneOf<,>),
+    //        3 => typeof(OneOf<,,>),
+    //        _ => throw new Exception($"One-of regex prop count of {GenericTypes.Length} not supported")
+    //    };
+    //    
+    //    return CreateWrapperValue(WrappedValues.Single(), captureFoundAtGenericTypeIndex);
+    //}
 }

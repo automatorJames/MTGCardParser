@@ -5,13 +5,11 @@ public record Snippet
     public string Text { get; init; }
     public bool IsPlural { get; init; }
     public bool IsOptional { get; init; }
-    public bool IsNoPrecedingSpace { get; init; }
 
     public Snippet(string text)
     {
         Text = text;
         IsOptional = this is SnippetOptional;
-        IsNoPrecedingSpace = this is SnippetNoPrecedingSpace or SnippetOptionalPlural;
     }
 
     // Implicitly create a Snippet from a string

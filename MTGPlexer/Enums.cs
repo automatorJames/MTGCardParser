@@ -38,3 +38,23 @@ public enum Joiner
     [Description(".")]
     Dot,
 }
+
+public enum MultiItemOrdinal
+{
+    First,
+    SecondPlus,
+    Last
+}
+
+public enum OneOfItemOrdinal
+{
+    First,
+    Second,
+    Third
+}
+
+public enum Conjunction
+{
+    And,
+    Or
+}

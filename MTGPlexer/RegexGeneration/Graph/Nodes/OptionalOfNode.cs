@@ -2,30 +2,32 @@
 
 public class OptionalOfNode : WrapperNode
 {
+    NamedGroupNode _optionalItem;
+
     public OptionalOfNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation)
     {
-        if (!GenericType.IsAssignableTo(typeof(TokenUnit)))
-            throw new Exception($"{nameof(OptionalOfNode)} expects '{nameof(TokenUnit)}' type, but found '{GenericType.Name}' type");
+        _optionalItem = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.First.ToString());
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        builder.OpenNamedGroup(this);
-        GetTemplateNodeForType().ComposeRegexLines(builder);
-        GroupQuantifier? groupQuantifier = GroupQuantifier.Optional;
-        builder.CloseGroup(groupQuantifier);
+        collector.Append(GroupOpenBrick);
+        {
+            _optionalItem.AppendRegexBricks(collector);
+        }
+        collector.Append(GetGroupCloseBrick(GroupQuantifier.Optional));
     }
 
-    protected override object GetWrapperValue(CaptureContext captureContext)
-    {
-        var scopedCaptureContext = captureContext[FullyQualifiedName + "_" + GenericType.Name];
-
-        if (!scopedCaptureContext.Success)
-            return null;
-
-        AddNewWrappedNode(scopedCaptureContext);
-
-        return CreateWrapperValue();
-    }
+    //protected override object GetWrapperValue(CaptureContext captureContext)
+    //{
+    //    var scopedCaptureContext = captureContext[FullyQualifiedName + "_" + GenericType.Name];
+    //
+    //    if (!scopedCaptureContext.Success)
+    //        return null;
+    //
+    //    AddNewWrappedNode(scopedCaptureContext);
+    //
+    //    return CreateWrapperValue();
+    //}
 }
