@@ -35,23 +35,23 @@ public class EditorTokenUnit
 
     public void Update(List<TemplateFragment> fragments = null, string preferredClassName = null)
     {
-        if (fragments != null)
-        {
-            SyncSnippetsFromFragments(fragments);
-            _suggestedClassName = GetSuggestedClassName();
-        }
-
-        if (preferredClassName != null)
-            ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
-
-        RenderedRegex = CompositionFactory.GetComposedString(_nonEmptySnippets.Select(x => x.ToCaptureNode()), TokenUnitType);
-
-        ParseRegexSegments();
-        PerformMatching();
-        GenerateTextStyledRuns();
-
-        ClassStringForSavingToFile = GetClassStringForSavingToFile();
-        ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
+        //if (fragments != null)
+        //{
+        //    SyncSnippetsFromFragments(fragments);
+        //    _suggestedClassName = GetSuggestedClassName();
+        //}
+        //
+        //if (preferredClassName != null)
+        //    ManualClassName = string.IsNullOrWhiteSpace(preferredClassName) ? null : preferredClassName;
+        //
+        //RenderedRegex = CompositionFactory.GetComposedString(_nonEmptySnippets.Select(x => x.ToNamedGroupNode()), TokenUnitType);
+        //
+        //ParseRegexSegments();
+        //PerformMatching();
+        //GenerateTextStyledRuns();
+        //
+        //ClassStringForSavingToFile = GetClassStringForSavingToFile();
+        //ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
     }
 
     private void SyncSnippetsFromFragments(List<TemplateFragment> fragments)

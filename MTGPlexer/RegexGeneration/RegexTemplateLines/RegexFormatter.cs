@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿/*namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>
 /// Handles the formatting and presentation of a sequence of regular expression elements.
@@ -561,4 +561,4 @@ public class RegexFormatter
     }
 
     #endregion
-}
+}*/

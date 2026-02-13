@@ -6,6 +6,9 @@ public abstract class TokenUnit
     protected virtual Snippet[] Snippets { get; } = [];
     public Snippet[] GetSnippets() => Snippets;
 
+    public CaptureContext CaptureContext { get; }
+    public string Value => CaptureContext.FullMatch;
+
     Type _type;
     public Type Type
     {

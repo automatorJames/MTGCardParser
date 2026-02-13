@@ -13,21 +13,23 @@ public class HydratedNodeGraph : TokenUnitNode
 
     public TokenUnit Hydrate()
     {
-        var instance = (TokenUnit)Activator.CreateInstance(RootType);
+        //var instance = (TokenUnit)Activator.CreateInstance(Navigation.UnderlyingType);
+        //
+        //foreach (var captureChild in Children.OfType<BranchNode>())
+        //{
+        //    // will return false only if an underlying property has AbortIfSetPropertyToNull == true
+        //    // and the property value is null
+        //    var setSuccessfully = captureChild.SetPropertyValue(CaptureContext, instance);
+        //
+        //    if (!setSuccessfully)
+        //        return null;
+        //}
+        //
+        //instance.NodeGraph = this;
+        //
+        //return instance;
 
-        foreach (var captureChild in CaptureChildren)
-        {
-            // will return false only if an underlying property has AbortIfSetPropertyToNull == true
-            // and the property value is null
-            var setSuccessfully = captureChild.SetPropertyValue(CaptureContext, instance);
-
-            if (!setSuccessfully)
-                return null;
-        }
-
-        instance.NodeGraph = this;
-
-        return instance;
+        return default;
     }
 
     /// <summary>

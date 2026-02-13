@@ -4,5 +4,5 @@ public record BuiltRegex
 (
     string MinifiedRegexString,
     Regex Regex,
-    List<RegexFormattedLine> FormattedLines
+    List<string> FormattedLines
 );

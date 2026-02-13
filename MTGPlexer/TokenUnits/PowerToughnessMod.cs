@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[NoSpaces]
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class PowerToughnessMod : TokenUnit
 {

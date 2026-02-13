@@ -12,10 +12,6 @@ public class CorpusAnalyzer
     /// </summary>
     public List<ProcessedCard> ProcessedCards { get; }
 
-    /// <summary>
-    /// A collection of every instace of each root token type.
-    /// </summary>
-    public TokenUnitCaptureSummary TokenCaptureSummary { get; }
 
     /// <summary>
     /// Word trees build around all maximal repeated spans across the corpus
@@ -27,7 +23,6 @@ public class CorpusAnalyzer
     public CorpusAnalyzer(List<Card> cards)
     {
         ProcessedCards = cards.Select(x => new ProcessedCard(x)).ToList();
-        TokenCaptureSummary = new TokenUnitCaptureSummary(ProcessedCards);
         DigestedCorpusWithCaptureTokens = new DigestedTextCorpus(ProcessedCards);
     }
 

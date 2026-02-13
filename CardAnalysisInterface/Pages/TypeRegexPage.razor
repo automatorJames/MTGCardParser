@@ -1,4 +1,4 @@
-﻿@page "/type-regex"
+﻿@* @page "/type-regex"
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
@@ -6,8 +6,6 @@
 @using MTGPlexer.Colors
 @using MTGPlexer.CommonDTOs
 @using MTGPlexer.RegexGeneration
-@using MTGPlexer.RegexGeneration.Graph
-@using MTGPlexer.RegexGeneration.RegexTemplateLines.FormattedLines
 @using MTGPlexer.TokenUnitGraphComponents
 @using Microsoft.AspNetCore.Components
 
@@ -81,4 +79,4 @@
                 || x.MinifiedRegexString.Contains(term, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
-}
+} *@

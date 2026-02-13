@@ -154,7 +154,7 @@ public record EditorPropertySnippet : EditorBlockSnippet
         return new(BasePropertyType, XOfType, Id, updatedProptions);
     }
 
-    public override CaptureNode ToCaptureNode()
+    public override NamedGroupNode ToNamedGroupNode()
     {
         throw new NotImplementedException();
     }

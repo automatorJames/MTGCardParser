@@ -1,6 +1,5 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
-[NoSpaces]
 public class OptionalPayCost : TokenUnit
 {
     protected override Snippet[] Snippets => [Prop(PayOptionType), " pay ", Prop(Cost)];

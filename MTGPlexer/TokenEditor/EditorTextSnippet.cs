@@ -1,7 +1,4 @@
-﻿
-using MTGPlexer.RegexGeneration.Graph;
-
-namespace MTGPlexer.TokenEditor;
+﻿namespace MTGPlexer.TokenEditor;
 
 public record EditorTextSnippet : EditorSnippet
 {
@@ -21,7 +18,7 @@ public record EditorTextSnippet : EditorSnippet
     public override string GetParameterHtmlRepresentation() =>
         Span($"\"{TrimmedText}\"", SpanClass.stringliteral);
 
-    public override CaptureNode ToCaptureNode()
+    public override NamedGroupNode ToNamedGroupNode()
     {
         // new TextSegment(TrimmedText);
         throw new NotImplementedException();

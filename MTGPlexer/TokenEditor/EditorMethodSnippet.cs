@@ -35,7 +35,7 @@ public record EditorMethodSnippet : EditorBlockSnippet
                $"{joinedArgs}{Span("\"", SpanClass.stringliteral)}{Span(")", SpanClass.identifier)}";
     }
 
-    public override CaptureNode ToCaptureNode()
+    public override NamedGroupNode ToNamedGroupNode()
     {
         //var parameters = Method.GetParameters();
         //

@@ -2,6 +2,7 @@
 
 public abstract class NamedGroupNode : GroupNode
 {
+    public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
     protected override RegexBrick GroupOpenBrick => new(this, $"?<{FullyQualifiedName}>", FullyQualifiedName);
     public string FullyQualifiedName { get; }
 

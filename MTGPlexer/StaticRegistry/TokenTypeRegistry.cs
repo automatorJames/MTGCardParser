@@ -133,7 +133,7 @@ public static partial class TokenTypeRegistry
         // Order by descending length, which is a rough approximate of complexity/match length (not exact)
         var unorderedRemainingTypes = allTokenTypes
             .Except(orderedTypes.SelectMany(x => x.Value))
-            .OrderByDescending(x => RootNodes[x].BuiltRegex.MinifiedRegexString.Length)
+            .OrderByDescending(x => RegexGraphs[x].BuiltRegex.MinifiedRegexString.Length)
             .ToList();
 
         var nextKey = orderedTypes.Keys.Any() ? orderedTypes.Keys.Max() + 1 : 0;
@@ -150,7 +150,7 @@ public static partial class TokenTypeRegistry
             .ToList()
             .ForEach(AddClassTokenType);
 
-        TypeRegexes = RootNodes.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
+        TypeRegexes = RegexGraphs.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
         ClassTokenizer = new(AppliedOrderTypes);
     }
 

@@ -1,6 +1,7 @@
-﻿@if (Branch.IsCollapsed)
+﻿@* 
+@if (Branch.IsCollapsed)
 {
-    @* Directly render branch children of the collapsed parent branch *@
+    <!-- Directly render branch children of the collapsed parent branch -->
     @foreach (var branch in Branch.Children.OfType<SpanBranch>())
     {
         <PropertyTable Branch="@branch" />
@@ -52,7 +53,7 @@ else
                         }
                     }
 
-                    @* Recursively render tables for children that are also branches *@
+                    <!-- Recursively render tables for children that are also branches -->
                     @foreach (var branch in Branch.Children.OfType<SpanBranch>())
                     {
                         <PropertyTable Branch="@branch" />
@@ -65,5 +66,6 @@ else
 
 @code {
     [Parameter, EditorRequired]
-    public SpanBranch Branch { get; set; }
+    public TokenUnitNode Branch { get; set; }
 }
+ *@

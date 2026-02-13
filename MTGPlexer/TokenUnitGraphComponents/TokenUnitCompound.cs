@@ -4,13 +4,13 @@ public class TokenUnitCompound : TokenUnit
 {
         public override string ValidateStructure()
     {
-        var rootNode = TokenTypeRegistry.RootNodes[Type];
+        var graph = TokenTypeRegistry.RegexGraphs[Type];
         var props = GetType().GetProps();
 
         if (!props.Any())
             return $"Snippets for {Type.Name} must contain at least one property reference";
 
-        if (!rootNode.ValidateCapturePropertiesAreContiguous())
+        if (!graph.RootNode.ValidateCapturePropertiesAreContiguous())
             return $"Snippets for {Type.Name} contains more than one contiguous run of property references interspersed by text";
 
         // todo: we should ponder whether it makes sense for this type to support any property types other nullable ints

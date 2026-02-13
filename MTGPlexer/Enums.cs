@@ -58,3 +58,15 @@ public enum Conjunction
     And,
     Or
 }
+
+public enum GroupQuantifier
+{
+    [Description("*")]
+    AnyNumber,
+
+    [Description("+")]
+    OneOrMore,
+
+    [Description("?")]
+    Optional
+}

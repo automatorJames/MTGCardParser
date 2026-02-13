@@ -32,9 +32,6 @@ public static class SnippetShortcuts
     public static SnippetOptional Opt(string optionalText) =>
         new SnippetOptional(optionalText);
 
-    public static SnippetNoPrecedingSpace NoSpace(string text) =>
-        new SnippetNoPrecedingSpace(text);
-
     public static SnippetOptionalPlural Plural() =>
         new SnippetOptionalPlural();
 

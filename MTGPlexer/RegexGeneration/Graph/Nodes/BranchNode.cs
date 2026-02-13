@@ -5,7 +5,6 @@ public abstract class BranchNode : RegexNode
     public TypeNavigation Navigation { get; }
     public List<RegexNode> Children { get; }
 
-
     protected BranchNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation.Name)
     {
@@ -58,7 +57,7 @@ public abstract class BranchNode : RegexNode
             { } t when t.IsAssignableTo(typeof(OneOf)) => new OneOfNode(parentNode, navigation),
             { } t when t.IsAssignableTo(typeof(OptionalOf)) => new OptionalOfNode(parentNode, navigation),
             { } t when t.IsAssignableTo(typeof(DynamicOf)) => new DynamicOfNode(parentNode, navigation),
-            { } t when t == typeof(DefaultUnmatchedString) => new TokenUnitOneOfNode(parentNode, navigation),
+            { } t when t == typeof(DefaultUnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
             { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
@@ -91,6 +90,11 @@ public abstract class BranchNode : RegexNode
     //
     //    return instance;
     //}
+
+    public void SetPropertyValue()
+    {
+        throw new NotImplementedException();
+    }
 
     protected static Type GetUnderlyingType(Type type)
         => Nullable.GetUnderlyingType(type) ?? type;

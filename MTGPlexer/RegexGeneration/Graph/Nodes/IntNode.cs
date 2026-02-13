@@ -2,7 +2,7 @@
 
 public class IntNode : ScalarContainerNode
 {
-    string[] _captureAlternatives;
+    //string[] _captureAlternatives;
 
     public IntNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
@@ -11,11 +11,11 @@ public class IntNode : ScalarContainerNode
             throw new Exception($"Int properties are required to define at least one RegexPattern");
     }
 
-    protected override List<RegexNode> GetChildNodes() =>
-        _captureAlternatives
-        .Select((x, idx) => new ScalarNode(this, scalarValue: true, name: x, isFirst: idx == 0))
-        .Cast<RegexNode>()
-        .ToList();
+    //protected override List<RegexNode> GetChildNodes() =>
+    //    _captureAlternatives
+    //    .Select((x, idx) => new ScalarNode(this, scalarValue: true, name: x, isFirst: idx == 0))
+    //    .Cast<RegexNode>()
+    //    .ToList();
 
     public override void AppendRegexBricks(RegexCollector collector)
     {

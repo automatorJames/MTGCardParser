@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.SnippetHelpers;
 
-public record PropertySnippet : Snippet, INavigable
+public record PropertySnippet : Snippet
 {
     public PropertyInfo Prop { get; }
     public Type Type { get; }

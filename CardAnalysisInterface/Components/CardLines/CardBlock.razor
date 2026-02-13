@@ -1,4 +1,4 @@
-﻿@using MTGPlexer.RegexGeneration.Graph
+﻿@* @using MTGPlexer.RegexGeneration.Graph
 @using MTGPlexer.TokenEditor
 @using MTGPlexer.TokenUnitGraphComponents
 @inject CorpusAnalyzer CorpusAnalyzer
@@ -22,7 +22,7 @@
                     }
                 </pre>
 
-                @foreach (var summary in line.SpanRoots.Where(x => x.ElementType != TokenAnalysisElementType.UnmatchedTokenUnitRoot))
+                @foreach (var summary in line.TokenUnits.Select(x => x.NodeGraph) .Where(x => x is not TokenAnalysisElementType.UnmatchedTokenUnitRoot))
                 {
                     <PropertyTable Branch=@summary />
                 }
@@ -91,4 +91,4 @@
 
         return $"line-height: {lh}px; --top-crop: -{topCrop}px;";
     }
-}
+} *@

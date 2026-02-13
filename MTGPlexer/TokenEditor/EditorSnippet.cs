@@ -16,7 +16,7 @@ public abstract record EditorSnippet
     }
 
     public abstract string GetParameterHtmlRepresentation();
-    public abstract CaptureNode ToCaptureNode();
+    public abstract NamedGroupNode ToNamedGroupNode();
 
     protected static string Span(string content, SpanClass spanClass = SpanClass.keyword)
         => $"<span class=\"{spanClass}\">{content}</span>";

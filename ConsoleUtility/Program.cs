@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Reflection;
 
 namespace ConsoleUtility;
 
@@ -13,11 +12,6 @@ internal class Program
         //var sourceText = "destroy all lands";
         //thingThatMakesYouSayReeeeaL.TryMatch(sourceText, out var hyrdrated);
 
-        RootNode thingThatMakesYouSayReeeeaL = new(type);
-        Debug.WriteLine(thingThatMakesYouSayReeeeaL.BuiltRegex.MinifiedRegexString);
-        thingThatMakesYouSayReeeeaL.BuiltRegex.FormattedLines.Select(x => x.Regex.TrimEnd()).ToList().ForEach(x => Console.WriteLine(x));
-        var sourceText = "target creature gains trample and gets +x/+0";
-        thingThatMakesYouSayReeeeaL.TryMatch(sourceText, out var hyrdrated);
 
         //RootNode thereeeelmakeyousayreeeel = TokenTypeRegistry.GetRootNode(TokenTypeRegistry.NameToType["DestroyAllCardType"]);
 

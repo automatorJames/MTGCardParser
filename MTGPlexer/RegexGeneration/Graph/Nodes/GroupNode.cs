@@ -6,7 +6,6 @@ public abstract class GroupNode : BranchNode
     protected RegexBrick AnonymousGroupOpenBrick => new RegexBrick(this, "(", null);
     protected RegexBrick GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
     protected virtual GroupQuantifier? Quantifier => null;
-    public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
 
     protected string QuantifierComment => 
         Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
