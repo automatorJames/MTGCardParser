@@ -25,7 +25,7 @@ public record Snippet
             var instance = (TokenUnit)Activator.CreateInstance(type);
             snippets = instance.GetSnippets();
 
-            if (snippets.Length == 0)
+            if (snippets == null || snippets.Length == 0)
             {
                 var propertySnippets = PropertySnippet.GetPropertySnippets(type);
 

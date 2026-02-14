@@ -3,13 +3,13 @@
 public abstract class NamedGroupNode : GroupNode
 {
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
-    protected override RegexBrick GroupOpenBrick => new(this, $"?<{FullyQualifiedName}>", FullyQualifiedName);
+    protected override RegexBrickBookend GroupOpenBrick => new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
     public string FullyQualifiedName { get; }
 
     public NamedGroupNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation)
     {
-        FullyQualifiedName = string.Join("_", Lineage.Where(x => !x.IsCollapsible));
+        FullyQualifiedName = NamePath.Replace('.', '_');
     }
 
     public static NamedGroupNode GetWrappedTokenUnitOrEnumNode(WrapperNode parentNode, Type typeToWrap, string groupNameAppendix)

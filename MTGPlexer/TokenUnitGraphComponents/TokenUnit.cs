@@ -27,7 +27,7 @@ public abstract class TokenUnit
     /// </summary>
     public virtual string ValidateStructure()
     {
-        var regexGraph = TokenTypeRegistry.RegexGraphs[Type];
+        var regexGraph = TokenTypeRegistry.GetRegexGraph(Type);
 
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegexString))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegexString)} is null or empty";

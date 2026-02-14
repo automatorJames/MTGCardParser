@@ -41,8 +41,8 @@ public static partial class TokenTypeRegistry
 
     static RegexGraph SetRootNode(Type type)
     {
-        if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
-            throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
+        //if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
+        //    throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
 
         NameToType[type.Name] = type;
         var regexGraph = RegexGraph.Create(type);

@@ -15,6 +15,11 @@ public class RegexBrick
         Comment = comment;
         Lineage = parentNode.Lineage;
         NamePath = parentNode.NamePath;
-        NestedDepth = Lineage.Count(x => x is GroupNode);
+        NestedDepth = CalculateNestedDepth();
     }
+
+    protected virtual int CalculateNestedDepth() =>
+        Lineage.Count(x => x is GroupNode);
+
+    public override string ToString() => Regex;
 }

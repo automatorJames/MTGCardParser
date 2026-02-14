@@ -18,7 +18,12 @@ public class DynamicOfNode : WrapperNode
 
     protected override List<RegexNode> GetChildNodes() =>
         _captureAlternatives
-        .Select((x, idx) => new ScalarNode(this, scalarValue: true, name: x, isFirst: idx == 0))
+        .Select((x, idx) => new ScalarNode(
+            parentNode: this, 
+            scalarValue: true, 
+            name: "Dynamic-Capture",
+            regex: x, 
+            isFirst: idx == 0))
         .Cast<RegexNode>()
         .ToList();
 

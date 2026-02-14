@@ -26,6 +26,9 @@ public abstract class BranchNode : RegexNode
     /// </summary>
     protected virtual List<RegexNode> GetChildNodes()
     {
+        if (!Navigation.Type.IsAssignableTo(typeof(TokenUnit)))
+            return [];
+
         var snippets = Snippet.GetSnippets(Navigation.UnderlyingType);
         List<RegexNode> list = [];
 

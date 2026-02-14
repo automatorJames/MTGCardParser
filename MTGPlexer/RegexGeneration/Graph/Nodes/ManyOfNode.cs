@@ -9,9 +9,9 @@ public class ManyOfNode : WrapperNode
     public ManyOfNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation)
     {
-        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.First.ToString());
-        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.SecondPlus.ToString());
-        _itemLast = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.Last.ToString());
+        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, GenericType, MultiItemOrdinal.First.ToString());
+        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, GenericType, MultiItemOrdinal.SecondPlus.ToString());
+        _itemLast = GetWrappedTokenUnitOrEnumNode(this, GenericType, MultiItemOrdinal.Last.ToString());
         _containerTheConjunction = GetWrappedTokenUnitOrEnumNode(this, typeof(Conjunction?), nameof(Conjunction));
     }
 

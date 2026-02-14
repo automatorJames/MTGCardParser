@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using MTGPlexer.RegexGeneration.Graph;
+using MTGPlexer.TokenUnits;
+using System.Diagnostics;
 
 namespace ConsoleUtility;
 
@@ -7,8 +9,9 @@ internal class Program
     static void Main(string[] args)
     {
         var thing = TokenTypeRegistry.AppliedOrderTypes;
-        var type = TokenTypeRegistry.NameToType["TargetGainsOrLosesBuff_Many"];
-        //RootNode thingThatMakesYouSayReeeeaL = new(typeof(DestroyAllCardType));
+        //var type = TokenTypeRegistry.NameToType["TargetGainsOrLosesBuff_Many"];
+        var type = TokenTypeRegistry.NameToType["AsLongAsEnchantedCardHasAspect"];
+        var thingThatMakesYouSayReeeeaL = RegexGraph.Create(type);
         //var sourceText = "destroy all lands";
         //thingThatMakesYouSayReeeeaL.TryMatch(sourceText, out var hyrdrated);
 

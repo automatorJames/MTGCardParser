@@ -2,10 +2,22 @@
 
 public abstract class RegexNode
 {
-    public string Name { get; set; }
+    public string Name { get; }
     public string NamePath { get; }
+    public RegexNode ParentNode { get; }
     public RegexNode[] Lineage { get; }
-    public RegexNode ParentNode => Lineage.LastOrDefault();
+
+    protected RegexNode(RegexNode parentNode, string name)
+    {
+        Name = name;
+        ParentNode = parentNode;
+        Lineage = GetLineage();
+        NamePath = string.Join('.', Lineage.Select(x => x.Name));
+    }
+
+    // todo: This feels like a hack that prevents duplicate parts in name paths
+    // used only when WrappedNodes are in play rather than a univerasal necessity
+    public virtual bool IsCollapsible => false;
 
     public RegexBrick GetJoinerBrick(Joiner joiner, bool isOptional = false)
     {
@@ -19,18 +31,7 @@ public abstract class RegexNode
 
     }
 
-    // todo: This feels like a hack that prevents duplicate parts in name paths
-    // used only when WrappedNodes are in play rather than a univerasal necessity
-    public virtual bool IsCollapsible => false;
-
     public abstract void AppendRegexBricks(RegexCollector collector);
-
-    protected RegexNode(RegexNode parentNode, string name)
-    {
-        Name = name;
-        Lineage = GetLineage();
-        NamePath = string.Join('.', Lineage.Select(x => x.Name));
-    }
 
     RegexNode[] GetLineage()
     {
@@ -46,4 +47,6 @@ public abstract class RegexNode
         lineage.Reverse();
         return lineage.ToArray();
     }
+
+    public override string ToString() => NamePath;
 }

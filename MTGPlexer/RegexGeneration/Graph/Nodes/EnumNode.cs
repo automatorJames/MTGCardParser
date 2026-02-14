@@ -31,19 +31,30 @@ public class EnumNode : ScalarContainerNode
             if (scalarSynonyms.Length > 0)
             {
                 if (scalarSynonyms.Length == 1)
-                {
                     // If there's only one "synonym", it's really just an alias for the scalar value
-                    children.Add(new ScalarNode(this, scalarValue, scalarSynonyms[0], isFirst: isFirst));
-                }
+                    children.Add(new ScalarNode(
+                        parentNode: this, 
+                        name: valueAsString, 
+                        scalarValue: scalarValue, 
+                        regex: scalarSynonyms[0], 
+                        isFirst: isFirst));
                 else
-                {
                     // If there are two or more, they're true synonyms
-                    TypeNavigation typeNavigation = new(typeof(Enum), name: valueAsString);
-                    children.Add(new ScalarSynonymSet(this, typeNavigation, scalarValue, scalarSynonyms, isFirst));
-                }
+                    children.Add(new ScalarSynonymSet(
+                        parentNode: this, 
+                        name: valueAsString, 
+                        scalarValue: scalarValue, 
+                        scalarSynonyms: scalarSynonyms, 
+                        isFirst: isFirst));
             }
             else
-                children.Add(new ScalarNode(this, scalarValue, valueAsString, isFirst: isFirst));
+                // This is a single scalar node whose regex is a formatted version of the enum member
+                children.Add(new ScalarNode(
+                    parentNode: this, 
+                    name: valueAsString, 
+                    scalarValue: scalarValue, 
+                    regex: valueAsString.ToFriendlyCase(), 
+                    isFirst: isFirst));
         }
 
         return children;
@@ -52,7 +63,7 @@ public class EnumNode : ScalarContainerNode
     public override void AppendRegexBricks(RegexCollector collector)
     {
         collector.Append(GroupOpenBrick);
-        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
+        collector.AppendJoinedAlternating(this, Children);
         collector.Append(GroupCloseBrick);
     }
 

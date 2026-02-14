@@ -1,34 +1,33 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class ScalarSynonymSet : BranchNode, INamedScalarValue
+public class ScalarSynonymSet : RegexNode, INamedScalarValue
 {
     public object ScalarValue { get; }
-    string[] _scalarSynonyms;
+
     bool _isFirst;
+    List<ScalarNode> _scalarChildren = [];
 
     public ScalarSynonymSet(
         ScalarContainerNode parentNode, 
-        TypeNavigation typeNavigation, 
+        string name,
         object scalarValue,
         string[] scalarSynonyms, 
         bool isFirst = false) 
-        : base(parentNode, typeNavigation)
+        : base(parentNode, name)
     {
-        ScalarValue = typeNavigation.Name; // "Name" is expected to be a representative value like an Enum member ToString()
-        _scalarSynonyms = scalarSynonyms;
+        ScalarValue = scalarValue;
         _isFirst = isFirst;
-    }
 
-    protected override List<RegexNode> GetChildNodes()
-    {
-        return
-            _scalarSynonyms
-            .Select((x, idx) => (RegexNode)new ScalarNode(this, ScalarValue, x, isFirst: _isFirst && idx == 0, isSynonym: idx > 0))
+        _scalarChildren = scalarSynonyms.Select((x, idx) => new ScalarNode(
+                parentNode: this,
+                name: $"Synonym-{idx}",
+                scalarValue: ScalarValue,
+                regex: x,
+                isFirst: _isFirst && idx == 0,
+                isSecondarySynonym: idx > 0))
             .ToList();
     }
 
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        Children.ForEach(x => x.AppendRegexBricks(collector));
-    }
+    public override void AppendRegexBricks(RegexCollector collector) =>
+        collector.AppendJoinedAlternating(this, _scalarChildren.Cast<RegexNode>().ToList());
 }

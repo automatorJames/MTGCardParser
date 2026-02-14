@@ -13,14 +13,26 @@ public class RegexCollector
 
     public void AppendJoined(List<RegexNode> nodes, RegexBrick joiner)
     {
-        for (int i = 0; i < RegexBricks.Count; i++)
+        for (int i = 0; i < nodes.Count; i++)
         {
             nodes[i].AppendRegexBricks(this);
 
-            if (i < RegexBricks.Count - 1)
+            if (i < nodes.Count - 1)
                 Append(joiner);
         }
     }
+
+    public void AppendJoinedAlternating(RegexNode parentNode, List<RegexNode> childNodesToJoin)
+    {
+        for (int i = 0; i < childNodesToJoin.Count; i++)
+        {
+            childNodesToJoin[i].AppendRegexBricks(this);
+
+            if (i < childNodesToJoin.Count - 1)
+                Append(new RegexBrickAlternatingPipe(parentNode));
+        }
+    }
+
 
     ///// <summary>
     ///// Generates a fully formatted, commented, and colorized list of regex lines.
@@ -49,8 +61,9 @@ public class RegexCollector
     public BuiltRegex GetBuiltRegex()
     {
         var regexString = GetMinified();
+        var lines = RegexBricks.Select(x => new string(' ', x.NestedDepth * 4) + x.Regex.Replace("[ ]", " ")).ToList();
+        Console.WriteLine(string.Join(Environment.NewLine, lines));
         Regex regex = new(regexString, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
-        var lines = RegexBricks.Select(x => x.Regex.Replace("[ ]", " ")).ToList();
 
         return new(regexString, regex, lines);
     }

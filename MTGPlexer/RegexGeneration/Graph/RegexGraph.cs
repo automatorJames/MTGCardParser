@@ -11,7 +11,7 @@ public class RegexGraph
     public RegexGraph(Type rootTokenUnitType, TokenUnitNode rootNode)
     {
         RootTokenUnitType = rootTokenUnitType;
-        RootNode = RootNode;
+        RootNode = rootNode;
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
         BuiltRegex = collector.GetBuiltRegex();
