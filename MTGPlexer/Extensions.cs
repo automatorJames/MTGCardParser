@@ -168,6 +168,9 @@ public static class Extensions
             .ToArray();
     }
 
+    public static Type GetUnderlyingType(this Type type)
+        => Nullable.GetUnderlyingType(type) ?? type;
+
     public static string PrintDebug(this object obj) => DebugSerializer.Serialize(obj);
 }
 

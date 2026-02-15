@@ -1,10 +1,12 @@
-﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
+﻿
+namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public class DynamicOfNode : WrapperNode
 {
     const string _defaultCaptureAllCharsPattern = @"[^.]+";
-    string[] _captureAlternatives;
+    string[] _dynamicPatterns;
 
+    protected override bool OneOrMoreRegexPatternsRequired => true;
     protected override bool AbortIfSetPropertyToNull => true;
 
 	public DynamicOfNode(RegexNode parentNode, PropNavigation navigation) 
@@ -13,26 +15,18 @@ public class DynamicOfNode : WrapperNode
         if (GenericTypes.Length != 1 || GenericType.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{nameof(DynamicOfNode)} expects exactly one generic type assignable to {nameof(TokenUnit)}");
 
-        _captureAlternatives = navigation.RegexPatterns ?? [_defaultCaptureAllCharsPattern];
+        _dynamicPatterns = navigation.Patterns ?? [_defaultCaptureAllCharsPattern];
 	}
 
     protected override List<RegexNode> GetChildNodes() =>
-        _captureAlternatives
-        .Select((x, idx) => new ScalarNode(
-            parentNode: this, 
-            scalarValue: true, 
-            name: "Dynamic-Capture",
-            regex: x, 
-            isFirst: idx == 0))
-        .Cast<RegexNode>()
-        .ToList();
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        collector.Append(GroupOpenBrick);
-        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
-        collector.Append(GroupCloseBrick);
-    }
+        _dynamicPatterns.Select((x, idx) => new ScalarNode(
+                parentNode: this,
+                name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
+                scalarValue: true,
+                regex: x
+            ))
+            .Cast<RegexNode>()
+            .ToList();
 
     //public override object GetValueSingle(Capture capture)
     //{

@@ -67,6 +67,9 @@ public enum GroupQuantifier
     [Description("+")]
     OneOrMore,
 
+    [Description("{2,}")]
+    TwoOrMore,
+
     [Description("?")]
     Optional
 }

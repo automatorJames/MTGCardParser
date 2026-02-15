@@ -2,8 +2,6 @@
 
 public abstract class WrapperNode : NamedGroupNode
 {
-    Type _closedWrapperType;
-
     protected Type[] GenericTypes { get; }
     protected Type GenericType => GenericTypes[0];
 
@@ -11,7 +9,6 @@ public abstract class WrapperNode : NamedGroupNode
         : base(parentNode, navigation)
     {
         GenericTypes = navigation.UnderlyingType.GenericTypeArguments;
-        _closedWrapperType = navigation.Type.GetGenericTypeDefinition().MakeGenericType(GenericTypes);
     }
 
     //protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0) =>
@@ -27,9 +24,6 @@ public abstract class WrapperNode : NamedGroupNode
     //}
 
     //protected object CreateWrapperValue() => CreateWrapperValue(WrappedValues);
-
-    protected object CreateWrapperValue(params object[] constructorParameters) =>
-        Activator.CreateInstance(_closedWrapperType, constructorParameters);
 
     //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     //{

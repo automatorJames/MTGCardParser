@@ -2,43 +2,44 @@
 
 public class CompoundOfNode : WrapperNode
 {
-    Joiner _joiner;
-    NamedGroupNode _itemTheFirst;
-    NamedGroupNode _itemTheSecond;
+    protected override Joiner Joiner => Joiner.Pipe;
+    protected override GroupQuantifier? Quantifier => GroupQuantifier.OneOrMore;
 
-    public CompoundOfNode(RegexNode parentNode, TypeNavigation navigation) 
+    Joiner _localJoinerBetweenTerms;
+
+    NamedGroupNode _nodeTheFirst;
+    NamedGroupNode _nodeTheSecond;
+
+    List<RegexNode> _immediateChildren;
+
+    public CompoundOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.First.ToString());
-        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.SecondPlus.ToString());
-
-        _joiner = navigation.UnderlyingType.GetCustomAttribute<CompoundJoinerAttribute>()?.Joiner
+        _localJoinerBetweenTerms = navigation.UnderlyingType.GetCustomAttribute<CompoundJoinerAttribute>()?.Joiner
             ?? Joiner.Space;
+
+        SetChildNodes(navigation);
     }
 
-    public override void AppendRegexBricks(RegexCollector collector)
+    void SetChildNodes(PropNavigation navigation)
     {
-        if (_joiner == Joiner.None)
-            AppendRegexBricksNoJoiner(collector);
-        else
-            AppendRegexBricksWithJoiner(collector);
-    }
-
-    void AppendRegexBricksNoJoiner(RegexCollector collector)
-    {
-        _itemTheFirst.AppendRegexBricks(collector);
-    }
-
-    void AppendRegexBricksWithJoiner(RegexCollector collector)
-    {
-        _itemTheFirst.AppendRegexBricks(collector);
-
-        collector.Append(AnonymousGroupOpenBrick);
+        if (_localJoinerBetweenTerms == Joiner.None)
         {
-            _itemTheSecond.AppendRegexBricks(collector);
+            AnonymousGroupNode twoOrMoreWrapper = new(this, "Two-Or-More", GroupQuantifier.TwoOrMore);
+            _nodeTheFirst = twoOrMoreWrapper.AddWrappedNamedGroupChild(navigation, GenericType, MultiItemOrdinal.First.ToString());
+            _immediateChildren = [twoOrMoreWrapper];
         }
-        collector.Append(GetGroupCloseBrick(GroupQuantifier.OneOrMore));
+        else
+        {
+            _nodeTheFirst = GetNamedGroupChild(this, navigation, GenericType, MultiItemOrdinal.First.ToString());
+            AnonymousGroupNode secondItemOneOrMoreWrapper = new(this, "One-Or-More", GroupQuantifier.TwoOrMore);
+            secondItemOneOrMoreWrapper.AddWrappedBrick("Joiner", new RegexBrick(this, _localJoinerBetweenTerms.GetDescription(), $"joiner {_localJoinerBetweenTerms}"));
+            _nodeTheSecond = secondItemOneOrMoreWrapper.AddWrappedNamedGroupChild(navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
+            _immediateChildren = [_nodeTheFirst, secondItemOneOrMoreWrapper];
+        }
     }
+
+    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{

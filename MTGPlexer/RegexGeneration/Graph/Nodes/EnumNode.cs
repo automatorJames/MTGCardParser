@@ -23,20 +23,15 @@ public class EnumNode : ScalarContainerNode
             var valueAsString = scalarValue.ToString();
             bool isFirst = i == 0;
 
-            var scalarSynonyms = enumType
-                .GetField(valueAsString)
-                .GetCustomAttribute<RegexPatternAttribute>()?
-                .Patterns ?? [];
-
-            if (scalarSynonyms.Length > 0)
+            if (Navigation.Patterns is string[] patterns && patterns.Length > 0)
             {
-                if (scalarSynonyms.Length == 1)
+                if (patterns.Length == 1)
                     // If there's only one "synonym", it's really just an alias for the scalar value
                     children.Add(new ScalarNode(
                         parentNode: this, 
                         name: valueAsString, 
                         scalarValue: scalarValue, 
-                        regex: scalarSynonyms[0], 
+                        regex: patterns[0], 
                         isFirst: isFirst));
                 else
                     // If there are two or more, they're true synonyms
@@ -44,7 +39,7 @@ public class EnumNode : ScalarContainerNode
                         parentNode: this, 
                         name: valueAsString, 
                         scalarValue: scalarValue, 
-                        scalarSynonyms: scalarSynonyms, 
+                        scalarSynonyms: patterns, 
                         isFirst: isFirst));
             }
             else

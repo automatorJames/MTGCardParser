@@ -2,50 +2,41 @@
 
 public class ManyOfNode : WrapperNode
 {
-    NamedGroupNode _itemTheFirst;
-    NamedGroupNode _itemTheSecond;
-    NamedGroupNode _itemLast;
-    NamedGroupNode _containerTheConjunction;
-    public ManyOfNode(RegexNode parentNode, TypeNavigation navigation) 
+    NamedGroupNode _nodeTheFirst;
+    NamedGroupNode _nodeTheSecond;
+    NamedGroupNode _nodeTheLast;
+    NamedGroupNode _nodeTheConjunction;
+
+    List<RegexNode> _immediateChildren;
+
+    public ManyOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, GenericType, MultiItemOrdinal.First.ToString());
-        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, GenericType, MultiItemOrdinal.SecondPlus.ToString());
-        _itemLast = GetWrappedTokenUnitOrEnumNode(this, GenericType, MultiItemOrdinal.Last.ToString());
-        _containerTheConjunction = GetWrappedTokenUnitOrEnumNode(this, typeof(Conjunction?), nameof(Conjunction));
+        SetChildNodes(navigation);
     }
 
-    public override void AppendRegexBricks(RegexCollector collector)
+    void SetChildNodes(PropNavigation navigation)
     {
-        collector.Append(GroupOpenBrick);
-        {
-            _itemTheFirst.AppendRegexBricks(collector);
+        _nodeTheFirst = GetNamedGroupChild(this, navigation, GenericType, MultiItemOrdinal.First.ToString());
 
-            collector.Append(AnonymousGroupOpenBrick);
-            {
-                collector.Append(new RegexBrick(this, ",[ ]", "Oxford comma"));
-                _itemTheSecond.AppendRegexBricks(collector);
-            }
-            collector.Append(GetGroupCloseBrick(GroupQuantifier.AnyNumber));
+        AnonymousGroupNode secondItemContainer = new(this, "Second-Item-Container", GroupQuantifier.AnyNumber);
+        secondItemContainer.AddWrappedBrick("Oxford-Comma", new RegexBrick(this, ",[ ]", "Oxford comma"));
+        _nodeTheSecond = secondItemContainer.AddWrappedNamedGroupChild(navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
 
-            collector.Append(AnonymousGroupOpenBrick);
-            {
-                collector.Append(new RegexBrick(this, ",?[ ]", "optional Oxford comma"));
+        AnonymousGroupNode lastItemContainer = new(this, "Last-Item-Outer-Container");
+        lastItemContainer.AddWrappedBrick("Optional-Oxford-Comma", new RegexBrick(this, ",?[ ]", "optional Oxford comma"));
 
-                collector.Append(AnonymousGroupOpenBrick);
-                {
-                    _containerTheConjunction.AppendRegexBricks(collector);
-                    collector.Append(GetJoinerBrick(Joiner.Space));
-                }
-                collector.Append(GetGroupCloseBrick(GroupQuantifier.Optional));
+        AnonymousGroupNode conjunctionContainer = new(this, "Conjunction-Container", GroupQuantifier.Optional);
+        _nodeTheConjunction = conjunctionContainer.AddWrappedNamedGroupChild(navigation, typeof(Conjunction?), nameof(Conjunction));
 
-                _itemLast.AppendRegexBricks(collector);
-            }
-            collector.Append(GroupCloseBrick);
+        lastItemContainer.AddWrappedBrick("Conjunction-Space", new RegexBrick(this, "[ ]", "joiner space"));
+        lastItemContainer.AddNode(conjunctionContainer);
+        _nodeTheLast = lastItemContainer.AddWrappedNamedGroupChild(navigation, GenericType, MultiItemOrdinal.Last.ToString());
 
-        }
-        collector.Append(GroupCloseBrick);
+        _immediateChildren = [_nodeTheFirst, secondItemContainer, lastItemContainer];
     }
+
+    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{

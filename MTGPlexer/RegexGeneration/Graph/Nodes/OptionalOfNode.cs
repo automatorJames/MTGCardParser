@@ -3,21 +3,22 @@
 public class OptionalOfNode : WrapperNode
 {
     NamedGroupNode _optionalItem;
+    List<RegexNode> _immediateChildren = [];
 
-    public OptionalOfNode(RegexNode parentNode, TypeNavigation navigation) 
+    public OptionalOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        _optionalItem = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, MultiItemOrdinal.First.ToString());
+        SetChildNodes(navigation);
     }
 
-    public override void AppendRegexBricks(RegexCollector collector)
+    void SetChildNodes(PropNavigation navigation)
     {
-        collector.Append(GroupOpenBrick);
-        {
-            _optionalItem.AppendRegexBricks(collector);
-        }
-        collector.Append(GetGroupCloseBrick(GroupQuantifier.Optional));
+        AnonymousGroupNode optionalItemContainer = new(this, "Optional-Item-Container", GroupQuantifier.Optional);
+        _optionalItem = optionalItemContainer.AddWrappedNamedGroupChild(navigation, GenericType, "Optional");
+        _immediateChildren.Add(optionalItemContainer);
     }
+
+    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{

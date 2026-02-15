@@ -7,16 +7,8 @@
 /// </summary>
 public class TokenUnitOneOfNode : TokenUnitNode
 {
+    protected override Joiner Joiner => Joiner.Pipe;
     public TokenUnitOneOfNode(RegexNode parentNode, TypeNavigation navigation) : base(parentNode, navigation)
     {
     }
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        collector.Append(GroupOpenBrick);
-        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
-        collector.Append(GroupCloseBrick);
-    }
-
-    public override string ToString() => base.ToString();
 }

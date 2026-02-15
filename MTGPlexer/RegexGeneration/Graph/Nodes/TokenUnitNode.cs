@@ -2,16 +2,52 @@
 
 public class TokenUnitNode : NamedGroupNode
 {
+    protected override Joiner Joiner => Joiner.Space;
+
     public TokenUnitNode(RegexNode parentNode, TypeNavigation navigation) 
         : base(parentNode, navigation)
     {
     }
 
-    public override void AppendRegexBricks(RegexCollector collector)
+    protected override List<RegexNode> GetChildNodes()
     {
-        collector.Append(GroupOpenBrick);
-        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Space));
-        collector.Append(GroupCloseBrick);
+        if (!Navigation.Type.IsAssignableTo(typeof(TokenUnit)))
+            return [];
+
+        var snippets = Snippet.GetSnippets(Navigation.UnderlyingType);
+        List<RegexNode> list = [];
+
+        foreach (var snippet in snippets)
+        {
+            if (snippet is PropertySnippet propertySnippet)
+                list.Add(GetNodeForPropertySnippetType(this, propertySnippet));
+            else
+                list.Add(new TextNode(this, snippet.Text));
+        }
+
+        return list;
+    }
+
+    static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)
+    {
+        PropNavigation navigation = new(propertySnippet);
+
+        return navigation.UnderlyingType.GetUnderlyingType() switch
+        {
+            { IsEnum: true } => new EnumNode(parentNode, navigation),
+            { } t when t.IsAssignableTo(typeof(ManyOf)) => new ManyOfNode(parentNode, navigation),
+            { } t when t.IsAssignableTo(typeof(CompoundOf)) => new CompoundOfNode(parentNode, navigation),
+            { } t when t.IsAssignableTo(typeof(OneOf)) => new OneOfNode(parentNode, navigation),
+            { } t when t.IsAssignableTo(typeof(OptionalOf)) => new OptionalOfNode(parentNode, navigation),
+            { } t when t.IsAssignableTo(typeof(DynamicOf)) => new DynamicOfNode(parentNode, navigation),
+            { } t when t == typeof(DefaultUnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
+            { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
+            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
+            { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
+            { } t when t == typeof(int) => new IntNode(parentNode, navigation),
+            _ => throw new Exception($"'{navigation.UnderlyingType}' is not a valid {nameof(PropertySnippet)} type")
+        };
     }
 
     //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)

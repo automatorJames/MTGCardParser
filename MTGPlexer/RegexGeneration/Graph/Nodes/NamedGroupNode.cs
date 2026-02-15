@@ -2,30 +2,32 @@
 
 public abstract class NamedGroupNode : GroupNode
 {
+    public TypeNavigation Navigation { get; }
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
-    protected override RegexBrickBookend GroupOpenBrick => new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
     public string FullyQualifiedName { get; }
 
+    protected virtual bool OneOrMoreRegexPatternsRequired => false;
+
     public NamedGroupNode(RegexNode parentNode, TypeNavigation navigation) 
-        : base(parentNode, navigation)
+        : base(parentNode, navigation.Name)
     {
+        Navigation = navigation;
         FullyQualifiedName = NamePath.Replace('.', '_');
+        Children = GetChildNodes();
+
+        if (OneOrMoreRegexPatternsRequired && (navigation.Patterns == null || navigation.Patterns.Length == 0))
+            throw new Exception($"'{Name}' is required to have one or more patterns defined via {nameof(RegexPatternAttribute)}");
     }
 
-    public static NamedGroupNode GetWrappedTokenUnitOrEnumNode(WrapperNode parentNode, Type typeToWrap, string groupNameAppendix)
+    protected abstract List<RegexNode> GetChildNodes();
+
+    public override void AppendRegexBricks(RegexCollector collector)
     {
-        var wrappedName = parentNode.Name + "_" + groupNameAppendix;
-        TypeNavigation navigation = new(typeToWrap, wrappedName);
-
-        return GetUnderlyingType(typeToWrap) switch
-        {
-            { IsEnum: true } => new EnumNode(parentNode, navigation),
-            { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
-            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
-            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
-            _ => throw new Exception($"'{typeToWrap}' is not an enum or a {nameof(TokenUnit)} type")
-        };
+        Children.ForEach(x => x.AppendRegexBricks(collector));
     }
+
+    protected override RegexBrick GetGroupOpenBrick() =>
+        new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
 
     //public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
     //{

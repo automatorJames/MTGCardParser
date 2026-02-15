@@ -31,40 +31,4 @@ public class HydratedNodeGraph : TokenUnitNode
 
         return default;
     }
-
-    /// <summary>
-    /// Calculates the maximum depth of the node hierarchy.
-    /// Collapsible nodes (like WrappedNodes) do not increment the depth count.
-    /// </summary>
-    public int GetRecursiveDepth()
-    {
-        return GetMaxDepth(this, 0);
-
-        static int GetMaxDepth(RegexNode node, int currentDepth)
-        {
-            if (node is not BranchNode branch)
-                return currentDepth;
-
-            int maxFound = currentDepth;
-
-            foreach (var child in branch.Children)
-            {
-                // TextNodes are structural literals and don't count toward logical data depth
-                if (child is TextNode)
-                    continue;
-
-                // Increment depth only if the node is NOT collapsible.
-                // WrappedNodes return IsCollapsible = true, so they act as pass-throughs.
-                int childDepth = currentDepth + (child.IsCollapsible ? 0 : 1);
-
-                int branchMax = GetMaxDepth(child, childDepth);
-                if (branchMax > maxFound)
-                {
-                    maxFound = branchMax;
-                }
-            }
-
-            return maxFound;
-        }
-    }
 }

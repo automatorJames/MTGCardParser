@@ -8,17 +8,11 @@
 public class BoolNode : ScalarContainerNode
 {
     protected override GroupQuantifier? Quantifier => GroupQuantifier.Optional;
+    protected override bool OneOrMoreRegexPatternsRequired => true;
 
-    public BoolNode(RegexNode parentNode, TypeNavigation navigation) 
+    public BoolNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-    }
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        collector.Append(GroupOpenBrick);
-        collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
-        collector.Append(GroupCloseBrick);
     }
 
     public override object GetValueSingle(Capture capture)

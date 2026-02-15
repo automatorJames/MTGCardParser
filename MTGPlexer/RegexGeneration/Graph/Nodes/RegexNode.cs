@@ -19,16 +19,25 @@ public abstract class RegexNode
     // used only when WrappedNodes are in play rather than a univerasal necessity
     public virtual bool IsCollapsible => false;
 
-    public RegexBrick GetJoinerBrick(Joiner joiner, bool isOptional = false)
+    public static NamedGroupNode GetNamedGroupChild(
+        RegexNode parentNode,
+        PropNavigation wrapperPropNavigation,
+        Type typeToWrap,
+        string groupNameAppendix)
     {
-        var regex = joiner.GetDescription() + (isOptional ? "?" : "");
-        var comment = $"joiner {joiner.ToString().ToFriendlyCase(TitleDisplayOption.Lower)}";
+        var wrappedName = parentNode.Name + "_" + groupNameAppendix;
+        TypeNavigation navigation = new(typeToWrap, wrappedName, wrapperPropNavigation.Patterns);
 
-        if (isOptional)
-            comment = "optional " + comment;
+        NamedGroupNode wrappedNamedGroupChild = typeToWrap.GetUnderlyingType() switch
+        {
+            { IsEnum: true } => new EnumNode(parentNode, navigation),
+            { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
+            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
+            _ => throw new Exception($"'{typeToWrap}' is not an enum or a {nameof(TokenUnit)} type")
+        };
 
-        return new RegexBrick(this, regex, comment);
-
+        return wrappedNamedGroupChild;
     }
 
     public abstract void AppendRegexBricks(RegexCollector collector);

@@ -4,13 +4,14 @@ public class PropNavigation : TypeNavigation
 {
     public PropertyInfo Prop { get; }
     public Proptions Proptions { get; }
-    public string[] RegexPatterns { get; }
 
     public PropNavigation(PropertySnippet propertySnippet)
-        : base(propertySnippet.Type, propertySnippet.Name)
+        : base(
+            propertySnippet.Type, 
+            propertySnippet.Name, 
+            propertySnippet.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns)
     {
         Prop = propertySnippet.Prop;
         Proptions = propertySnippet.Proptions;
-        RegexPatterns = Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
     }
 }

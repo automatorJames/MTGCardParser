@@ -7,36 +7,35 @@
 /// </summary>
 public class OneOfNode : WrapperNode
 {
-    NamedGroupNode _itemTheFirst;
-    NamedGroupNode _itemTheSecond;
-    NamedGroupNode _itemTheThird;
+    protected override Joiner Joiner => Joiner.Pipe;
 
-    public OneOfNode(RegexNode parentNode, TypeNavigation navigation) 
+    NamedGroupNode _nodeTheFirst;
+    NamedGroupNode _nodeTheSecond;
+    NamedGroupNode _nodeTheThird;
+
+    List<RegexNode> _immediateChildren = [];
+
+    public OneOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        _itemTheFirst = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, OneOfItemOrdinal.First.ToString());
-        _itemTheSecond = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, OneOfItemOrdinal.Second.ToString());
-        _itemTheThird = GetWrappedTokenUnitOrEnumNode(this, navigation.Type, OneOfItemOrdinal.Third.ToString());
+        SetChildNodes(navigation);
     }
 
-    protected override List<RegexNode> GetChildNodes()
+    void SetChildNodes(PropNavigation navigation)
     {
-        List<RegexNode> children = [_itemTheFirst, _itemTheSecond];
+        _nodeTheFirst = GetNamedGroupChild(this, navigation, GenericType, OneOfItemOrdinal.First.ToString());
+        _nodeTheSecond = GetNamedGroupChild(this, navigation, GenericType, OneOfItemOrdinal.Second.ToString());
+
+        _immediateChildren.AddRange([_nodeTheFirst, _nodeTheSecond]);
 
         if (GenericTypes.Length >= 3)
-            children.Add(_itemTheThird);
-
-        return children;
-    }
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        collector.Append(GroupOpenBrick);
         {
-            collector.AppendJoined(Children, GetJoinerBrick(Joiner.Pipe));
+            _nodeTheThird = GetNamedGroupChild(this, navigation, GenericType, OneOfItemOrdinal.Third.ToString());
+            _immediateChildren.Add(_nodeTheThird);
         }
-        collector.Append(GroupCloseBrick);
     }
+
+    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{
