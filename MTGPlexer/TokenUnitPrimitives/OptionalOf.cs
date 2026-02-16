@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnitGraphComponents;
+﻿namespace MTGPlexer.TokenUnitPrimitives;
 
 /// <summary>
 /// Represents a property on a TokenUnit type that should be treated as an optional match (i.e. a group with the "?" quantifier).

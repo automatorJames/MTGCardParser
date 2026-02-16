@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnitGraphComponents;
+﻿namespace MTGPlexer.TokenUnitPrimitives;
 
 public class ManyOf<T> : ManyOf
 {

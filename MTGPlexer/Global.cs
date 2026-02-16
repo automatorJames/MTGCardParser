@@ -14,7 +14,7 @@ global using MTGPlexer.SnippetHelpers;
 global using MTGPlexer.Tokenizers;
 global using MTGPlexer.RegexGeneration.Graph.Nodes;
 
-global using MTGPlexer.TokenUnitGraphComponents;
+global using MTGPlexer.TokenUnitPrimitives;
 global using MTGPlexer.TokenUnits;
 global using MTGPlexer.TokenEditor;
 

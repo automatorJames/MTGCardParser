@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.TokenUnitGraphComponents;
+﻿namespace MTGPlexer.TokenUnitPrimitives;
 
 /// <summary>
 /// Serves merely as a marker type of its inheritors, which share conceptual use cases instead of actual properties. Used for

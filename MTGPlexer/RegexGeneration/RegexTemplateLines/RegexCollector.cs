@@ -63,7 +63,6 @@ public class RegexCollector
         var regexString = GetMinified();
         //var lines = RegexBricks.Select(x => new string(' ', x.NestedDepth * 4) + x.Regex.Replace("[ ]", " ")).ToList();
         var lines = RegexBricks.Select(x => new string(' ', x.NestedDepth * 4) + x.Regex).ToList();
-        Console.WriteLine(string.Join(Environment.NewLine, lines));
         Regex regex = new(regexString, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
         return new(regexString, regex, lines);
