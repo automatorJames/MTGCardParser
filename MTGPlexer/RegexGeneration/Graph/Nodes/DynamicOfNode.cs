@@ -22,7 +22,7 @@ public class DynamicOfNode : WrapperNode
         children.AddRange(
             _dynamicPatterns.Select((x, idx) => new ScalarNode(
                     parentNode: this,
-                    name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
+                    name: $"{GetType().Name}_Pattern" + (idx > 0 ? $"_{idx}" : ""),
                     scalarValue: true,
                     regex: x
                 )));

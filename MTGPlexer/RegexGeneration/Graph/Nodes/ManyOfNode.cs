@@ -11,17 +11,17 @@ public class ManyOfNode : WrapperNode
     {
         var nodeTheFirst = GetNamedGroupChild(this, Navigation, GenericType, MultiItemOrdinal.First.ToString());
 
-        AnonymousGroupNode secondItemContainer = new(this, "Second-Item-Container", GroupQuantifier.AnyNumber);
-        secondItemContainer.AddWrappedBrickContent("Oxford-Comma", ",[ ]", "Oxford comma");
+        AnonymousGroupNode secondItemContainer = new(this, "Second_Item_Container", GroupQuantifier.AnyNumber);
+        secondItemContainer.AddWrappedBrickContent("Oxford_Comma", ",[ ]", "Oxford comma");
         var nodeTheSecond = secondItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
 
-        AnonymousGroupNode lastItemContainer = new(this, "Last-Item-Outer-Container");
-        lastItemContainer.AddWrappedBrickContent("Optional-Oxford-Comma", ",?[ ]", "optional Oxford comma");
+        AnonymousGroupNode lastItemContainer = new(this, "Last_Item_Outer_Container");
+        lastItemContainer.AddWrappedBrickContent("Optional_Oxford_Comma", ",?[ ]", "optional Oxford comma");
 
-        AnonymousGroupNode conjunctionContainer = new(lastItemContainer, "Conjunction-Container", GroupQuantifier.Optional);
+        AnonymousGroupNode conjunctionContainer = new(lastItemContainer, "Conjunction_Container", GroupQuantifier.Optional);
         var nodeTheConjunction = conjunctionContainer.AddWrappedNamedGroupChild(Navigation, typeof(Conjunction?), nameof(Conjunction));
 
-        conjunctionContainer.AddWrappedBrickContent("Conjunction-Space", "[ ]", "joiner space");
+        conjunctionContainer.AddWrappedBrickContent("Conjunction_Space", "[ ]", "joiner space");
         lastItemContainer.AddNode(conjunctionContainer);
         var nodeTheLast = lastItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.Last.ToString());
 

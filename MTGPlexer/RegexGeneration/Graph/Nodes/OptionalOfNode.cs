@@ -9,7 +9,7 @@ public class OptionalOfNode : WrapperNode
 
     protected override void AddComputedChildren(List<RegexNode> children)
     {
-        AnonymousGroupNode optionalItemContainer = new(this, "Optional-Item-Container", GroupQuantifier.Optional);
+        AnonymousGroupNode optionalItemContainer = new(this, "Optional_Item_Container", GroupQuantifier.Optional);
         var optionalItem = optionalItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, "Optional");
         children.Add(optionalItemContainer);
     }

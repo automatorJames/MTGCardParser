@@ -17,14 +17,14 @@ public class CompoundOfNode : WrapperNode
 
         if (localJoinerBetweenTerms == Joiner.None)
         {
-            AnonymousGroupNode twoOrMoreWrapper = new(this, "Two-Or-More", GroupQuantifier.TwoOrMore);
+            AnonymousGroupNode twoOrMoreWrapper = new(this, "Two_Or_More", GroupQuantifier.TwoOrMore);
             var nodeTheFirst = twoOrMoreWrapper.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.First.ToString());
             children.Add(twoOrMoreWrapper);
         }
         else
         {
             var nodeTheFirst = GetNamedGroupChild(this, Navigation, GenericType, MultiItemOrdinal.First.ToString());
-            AnonymousGroupNode secondItemOneOrMoreWrapper = new(this, "One-Or-More", GroupQuantifier.TwoOrMore);
+            AnonymousGroupNode secondItemOneOrMoreWrapper = new(this, "One_Or_More", GroupQuantifier.TwoOrMore);
             secondItemOneOrMoreWrapper.AddWrappedBrickContent("Joiner", localJoinerBetweenTerms.GetDescription(), $"joiner {localJoinerBetweenTerms}");
             var nodeTheSecond = secondItemOneOrMoreWrapper.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
             children.AddRange([nodeTheFirst, secondItemOneOrMoreWrapper]);
