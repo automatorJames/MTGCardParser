@@ -2,41 +2,31 @@
 
 public class ManyOfNode : WrapperNode
 {
-    NamedGroupNode _nodeTheFirst;
-    NamedGroupNode _nodeTheSecond;
-    NamedGroupNode _nodeTheLast;
-    NamedGroupNode _nodeTheConjunction;
-
-    List<RegexNode> _immediateChildren;
-
     public ManyOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        SetChildNodes(navigation);
     }
 
-    void SetChildNodes(PropNavigation navigation)
+    protected override void AddComputedChildren(List<RegexNode> children)
     {
-        _nodeTheFirst = GetNamedGroupChild(this, navigation, GenericType, MultiItemOrdinal.First.ToString());
+        var nodeTheFirst = GetNamedGroupChild(this, Navigation, GenericType, MultiItemOrdinal.First.ToString());
 
         AnonymousGroupNode secondItemContainer = new(this, "Second-Item-Container", GroupQuantifier.AnyNumber);
-        secondItemContainer.AddWrappedBrick("Oxford-Comma", new RegexBrick(this, ",[ ]", "Oxford comma"));
-        _nodeTheSecond = secondItemContainer.AddWrappedNamedGroupChild(navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
+        secondItemContainer.AddWrappedBrickContent("Oxford-Comma", ",[ ]", "Oxford comma");
+        var nodeTheSecond = secondItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
 
         AnonymousGroupNode lastItemContainer = new(this, "Last-Item-Outer-Container");
-        lastItemContainer.AddWrappedBrick("Optional-Oxford-Comma", new RegexBrick(this, ",?[ ]", "optional Oxford comma"));
+        lastItemContainer.AddWrappedBrickContent("Optional-Oxford-Comma", ",?[ ]", "optional Oxford comma");
 
-        AnonymousGroupNode conjunctionContainer = new(this, "Conjunction-Container", GroupQuantifier.Optional);
-        _nodeTheConjunction = conjunctionContainer.AddWrappedNamedGroupChild(navigation, typeof(Conjunction?), nameof(Conjunction));
+        AnonymousGroupNode conjunctionContainer = new(lastItemContainer, "Conjunction-Container", GroupQuantifier.Optional);
+        var nodeTheConjunction = conjunctionContainer.AddWrappedNamedGroupChild(Navigation, typeof(Conjunction?), nameof(Conjunction));
 
-        lastItemContainer.AddWrappedBrick("Conjunction-Space", new RegexBrick(this, "[ ]", "joiner space"));
+        conjunctionContainer.AddWrappedBrickContent("Conjunction-Space", "[ ]", "joiner space");
         lastItemContainer.AddNode(conjunctionContainer);
-        _nodeTheLast = lastItemContainer.AddWrappedNamedGroupChild(navigation, GenericType, MultiItemOrdinal.Last.ToString());
+        var nodeTheLast = lastItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.Last.ToString());
 
-        _immediateChildren = [_nodeTheFirst, secondItemContainer, lastItemContainer];
+        children.AddRange([nodeTheFirst, secondItemContainer, lastItemContainer]);
     }
-
-    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{
@@ -65,6 +55,4 @@ public class ManyOfNode : WrapperNode
     //
     //    return CreateWrapperValue(manyItemValues, nullableConjunctionItemValue);
     //}
-
-    public override string ToString() => base.ToString();
 }

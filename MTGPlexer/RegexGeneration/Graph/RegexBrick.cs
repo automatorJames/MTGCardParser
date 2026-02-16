@@ -7,7 +7,7 @@ public class RegexBrick
     public string NamePath { get; }
     public int NestedDepth { get; }
     public RegexNode[] Lineage { get; }
-    public RegexNode Parent => Lineage.FirstOrDefault();
+    public RegexNode Parent => Lineage.LastOrDefault();
 
     public RegexBrick(RegexNode parentNode, string regex, string comment)
     {

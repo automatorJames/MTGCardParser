@@ -9,33 +9,24 @@ public class OneOfNode : WrapperNode
 {
     protected override Joiner Joiner => Joiner.Pipe;
 
-    NamedGroupNode _nodeTheFirst;
-    NamedGroupNode _nodeTheSecond;
-    NamedGroupNode _nodeTheThird;
-
-    List<RegexNode> _immediateChildren = [];
-
     public OneOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        SetChildNodes(navigation);
     }
 
-    void SetChildNodes(PropNavigation navigation)
+    protected override void AddComputedChildren(List<RegexNode> children)
     {
-        _nodeTheFirst = GetNamedGroupChild(this, navigation, GenericType, OneOfItemOrdinal.First.ToString());
-        _nodeTheSecond = GetNamedGroupChild(this, navigation, GenericType, OneOfItemOrdinal.Second.ToString());
+        var nodeTheFirst = GetNamedGroupChild(this, Navigation, GenericType, OneOfItemOrdinal.First.ToString());
+        var nodeTheSecond = GetNamedGroupChild(this, Navigation, GenericType, OneOfItemOrdinal.Second.ToString());
 
-        _immediateChildren.AddRange([_nodeTheFirst, _nodeTheSecond]);
+        children.AddRange([nodeTheFirst, nodeTheSecond]);
 
         if (GenericTypes.Length >= 3)
         {
-            _nodeTheThird = GetNamedGroupChild(this, navigation, GenericType, OneOfItemOrdinal.Third.ToString());
-            _immediateChildren.Add(_nodeTheThird);
+            var nodeTheThird = GetNamedGroupChild(this, Navigation, GenericType, OneOfItemOrdinal.Third.ToString());
+            children.Add(nodeTheThird);
         }
     }
-
-    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{

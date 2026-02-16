@@ -2,23 +2,17 @@
 
 public class OptionalOfNode : WrapperNode
 {
-    NamedGroupNode _optionalItem;
-    List<RegexNode> _immediateChildren = [];
-
     public OptionalOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        SetChildNodes(navigation);
     }
 
-    void SetChildNodes(PropNavigation navigation)
+    protected override void AddComputedChildren(List<RegexNode> children)
     {
         AnonymousGroupNode optionalItemContainer = new(this, "Optional-Item-Container", GroupQuantifier.Optional);
-        _optionalItem = optionalItemContainer.AddWrappedNamedGroupChild(navigation, GenericType, "Optional");
-        _immediateChildren.Add(optionalItemContainer);
+        var optionalItem = optionalItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, "Optional");
+        children.Add(optionalItemContainer);
     }
-
-    protected override List<RegexNode> GetChildNodes() => _immediateChildren;
 
     //protected override object GetWrapperValue(CaptureContext captureContext)
     //{

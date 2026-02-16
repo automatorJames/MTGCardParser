@@ -21,12 +21,11 @@ public abstract class RegexNode
 
     public static NamedGroupNode GetNamedGroupChild(
         RegexNode parentNode,
-        PropNavigation wrapperPropNavigation,
+        TypeNavigation wrapperPropNavigation,
         Type typeToWrap,
-        string groupNameAppendix)
+        string groupName)
     {
-        var wrappedName = parentNode.Name + "_" + groupNameAppendix;
-        TypeNavigation navigation = new(typeToWrap, wrappedName, wrapperPropNavigation.Patterns);
+        TypeNavigation navigation = new(typeToWrap, groupName, wrapperPropNavigation.Patterns);
 
         NamedGroupNode wrappedNamedGroupChild = typeToWrap.GetUnderlyingType() switch
         {

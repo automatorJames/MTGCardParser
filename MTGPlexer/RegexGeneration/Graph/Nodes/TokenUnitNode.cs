@@ -9,23 +9,17 @@ public class TokenUnitNode : NamedGroupNode
     {
     }
 
-    protected override List<RegexNode> GetChildNodes()
+    protected override void AddComputedChildren(List<RegexNode> children)
     {
-        if (!Navigation.Type.IsAssignableTo(typeof(TokenUnit)))
-            return [];
-
         var snippets = Snippet.GetSnippets(Navigation.UnderlyingType);
-        List<RegexNode> list = [];
 
         foreach (var snippet in snippets)
         {
             if (snippet is PropertySnippet propertySnippet)
-                list.Add(GetNodeForPropertySnippetType(this, propertySnippet));
+                children.Add(GetNodeForPropertySnippetType(this, propertySnippet));
             else
-                list.Add(new TextNode(this, snippet.Text));
+                children.Add(new TextNode(this, snippet.Text));
         }
-
-        return list;
     }
 
     static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)

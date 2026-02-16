@@ -2,7 +2,23 @@
 
 public abstract class GroupNode : RegexNode
 {
-    public List<RegexNode> Children { get; protected set; } = [];
+    private bool _childrenInitialized;
+    List<RegexNode> _children;
+
+    public List<RegexNode> Children
+    {
+        get
+        {
+            EnsureChildren();
+            return _children;
+        }
+        set
+        {
+            _children = value ?? throw new ArgumentNullException(nameof(value));
+            _childrenInitialized = true;
+        }
+    }
+
     protected virtual RegexBrickBookend GroupOpenBrick => AnonymousGroupOpenBrick;
     protected RegexBrickBookend AnonymousGroupOpenBrick => new (this, "(", null);
     protected RegexBrickBookend GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
@@ -33,13 +49,24 @@ public abstract class GroupNode : RegexNode
         //}
     }
 
-    public void SetChildren(params RegexNode[] children) =>
-        Children.AddRange(children);
+    private void EnsureChildren()
+    {
+        if (_childrenInitialized) 
+            return;
+
+        _children = new List<RegexNode>();
+        AddComputedChildren(_children);
+        _childrenInitialized = true;
+    }
+
+    protected virtual void AddComputedChildren(List<RegexNode> children) 
+    { 
+    }
 
     public override void AppendRegexBricks(RegexCollector collector)
     {
         // open group
-        collector.Append(GetGroupOpenBrick());
+        collector.Append(GroupOpenBrick);
 
         // append all children and joiners
         for (int i = 0; i < Children.Count; i++)
@@ -58,22 +85,6 @@ public abstract class GroupNode : RegexNode
         }
 
         // close group
-        collector.Append(new(this, $"){Quantifier?.GetDescription()}", QuantifierComment)); // close group
-    }
-
-    protected virtual RegexBrick GetGroupOpenBrick() =>
-        new RegexBrick(this, "(", null);
-
-    protected RegexBrick GetGroupCloseBrick(GroupQuantifier? quantifier = null)
-    {
-        quantifier ??= Quantifier;
-        var comment = GetQuantifierComment(quantifier);
-        return new RegexBrick(this, $"){quantifier?.GetDescription()}", comment);
-    }
-
-    protected string GetQuantifierComment(GroupQuantifier? quantifier = null)
-    {
-        quantifier ??= Quantifier;
-        return quantifier?.GetDescription();
+        collector.Append(GroupCloseBrick); // close group
     }
 }

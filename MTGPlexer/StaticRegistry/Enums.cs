@@ -73,7 +73,6 @@ public enum Keyword
 {
     Flying,
     Trample,
-    FirstStrike
 }
 
 public enum Keywordz

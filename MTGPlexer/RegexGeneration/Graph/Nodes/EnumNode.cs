@@ -7,13 +7,14 @@
 /// </summary>
 public class EnumNode : ScalarContainerNode
 {
+    protected override Joiner Joiner => Joiner.Pipe;
+
     public EnumNode(RegexNode parentNode, TypeNavigation navigation) : base(parentNode, navigation)
     {
     }
 
-    protected override List<RegexNode> GetChildNodes()
+    protected override void AddComputedChildren(List<RegexNode> children)
     {
-        List<RegexNode> children = [];
         var enumType = Navigation.UnderlyingType;
         var scalarValues = Enum.GetValues(enumType).Cast<object>().ToList();
 
@@ -51,15 +52,6 @@ public class EnumNode : ScalarContainerNode
                     regex: valueAsString.ToFriendlyCase(), 
                     isFirst: isFirst));
         }
-
-        return children;
-    }
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        collector.Append(GroupOpenBrick);
-        collector.AppendJoinedAlternating(this, Children);
-        collector.Append(GroupCloseBrick);
     }
 
     public override object GetValueSingle(Capture capture)

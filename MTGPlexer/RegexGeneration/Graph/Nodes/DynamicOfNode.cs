@@ -18,15 +18,14 @@ public class DynamicOfNode : WrapperNode
         _dynamicPatterns = navigation.Patterns ?? [_defaultCaptureAllCharsPattern];
 	}
 
-    protected override List<RegexNode> GetChildNodes() =>
-        _dynamicPatterns.Select((x, idx) => new ScalarNode(
-                parentNode: this,
-                name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
-                scalarValue: true,
-                regex: x
-            ))
-            .Cast<RegexNode>()
-            .ToList();
+    protected override void AddComputedChildren(List<RegexNode> children) =>
+        children.AddRange(
+            _dynamicPatterns.Select((x, idx) => new ScalarNode(
+                    parentNode: this,
+                    name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
+                    scalarValue: true,
+                    regex: x
+                )));
 
     //public override object GetValueSingle(Capture capture)
     //{

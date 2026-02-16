@@ -1,5 +1,6 @@
 ﻿
 
+
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public class AnonymousGroupNode : GroupNode
@@ -13,21 +14,16 @@ public class AnonymousGroupNode : GroupNode
         Quantifier = groupQuantifier;
     }
 
-    public NamedGroupNode AddWrappedNamedGroupChild(PropNavigation wrapperPropNavigation, Type typeToWrap, string groupNameAppendix)
+    public NamedGroupNode AddWrappedNamedGroupChild(TypeNavigation wrapperNavigation, Type typeToWrap, string groupName)
     {
-        NamedGroupNode wrappedNamedGroupChild = GetNamedGroupChild(this, wrapperPropNavigation, typeToWrap, groupNameAppendix);
+        NamedGroupNode wrappedNamedGroupChild = GetNamedGroupChild(this, wrapperNavigation, typeToWrap, groupName);
         Children.Add(wrappedNamedGroupChild);
         return wrappedNamedGroupChild;
     }
 
-    public void AddWrappedBrick(string brickName, RegexBrick brick) =>
-        Children.Add(new TransparentBrickWrapperNode(this, brickName, brick));
+    public void AddWrappedBrickContent(string nodeName, string brickRegex, string brickComment) =>
+        Children.Add(new TransparentBrickWrapperNode(this, nodeName, new RegexBrick(this, brickRegex, brickComment)));
 
     public void AddNode(RegexNode node) =>
         Children.Add(node);
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        base.AppendRegexBricks(collector);
-    }
 }

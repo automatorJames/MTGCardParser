@@ -9,15 +9,14 @@ public abstract class ScalarContainerNode : NamedGroupNode
     {
     }
 
-    protected override List<RegexNode> GetChildNodes() =>
-        Navigation.Patterns.Select((x, idx) => new ScalarNode(
-                parentNode: this,
-                name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
-                scalarValue: true,
-                regex: x
-            ))
-            .Cast<RegexNode>()
-            .ToList();
+    protected override void AddComputedChildren(List<RegexNode> children) =>
+        children.AddRange(
+            Navigation.Patterns.Select((x, idx) => new ScalarNode(
+                    parentNode: this,
+                    name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
+                    scalarValue: true,
+                    regex: x
+                )));
 
     //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     //{

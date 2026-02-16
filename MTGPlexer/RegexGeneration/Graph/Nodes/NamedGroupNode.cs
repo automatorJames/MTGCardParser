@@ -6,6 +6,7 @@ public abstract class NamedGroupNode : GroupNode
     public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
     public string FullyQualifiedName { get; }
 
+    protected override RegexBrickBookend GroupOpenBrick => new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
     public NamedGroupNode(RegexNode parentNode, TypeNavigation navigation) 
@@ -13,21 +14,10 @@ public abstract class NamedGroupNode : GroupNode
     {
         Navigation = navigation;
         FullyQualifiedName = NamePath.Replace('.', '_');
-        Children = GetChildNodes();
 
         if (OneOrMoreRegexPatternsRequired && (navigation.Patterns == null || navigation.Patterns.Length == 0))
             throw new Exception($"'{Name}' is required to have one or more patterns defined via {nameof(RegexPatternAttribute)}");
     }
-
-    protected abstract List<RegexNode> GetChildNodes();
-
-    public override void AppendRegexBricks(RegexCollector collector)
-    {
-        Children.ForEach(x => x.AppendRegexBricks(collector));
-    }
-
-    protected override RegexBrick GetGroupOpenBrick() =>
-        new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
 
     //public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
     //{
