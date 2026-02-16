@@ -6,13 +6,12 @@ public class DynamicOfNode : WrapperNode
     const string _defaultCaptureAllCharsPattern = @"[^.]+";
     string[] _dynamicPatterns;
 
-    protected override bool OneOrMoreRegexPatternsRequired => true;
     protected override bool AbortIfSetPropertyToNull => true;
 
 	public DynamicOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
-        if (GenericTypes.Length != 1 || GenericType.IsAssignableTo(typeof(TokenUnit)))
+        if (GenericTypes.Length != 1 || !GenericType.IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{nameof(DynamicOfNode)} expects exactly one generic type assignable to {nameof(TokenUnit)}");
 
         _dynamicPatterns = navigation.Patterns ?? [_defaultCaptureAllCharsPattern];
