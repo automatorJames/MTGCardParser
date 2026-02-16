@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 /// <summary>
 /// Represents a property on a TokenUnit whose property type is some enum. Enums are special in the sense that the
@@ -22,9 +24,12 @@ public class EnumNode : ScalarContainerNode
         {
             var scalarValue = scalarValues[i];
             var valueAsString = scalarValue.ToString();
+            var field = enumType.GetField(valueAsString);
+            var patterns = field.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
+
             bool isFirst = i == 0;
 
-            if (Navigation.Patterns is string[] patterns && patterns.Length > 0)
+            if (patterns != null && patterns.Length > 0)
             {
                 if (patterns.Length == 1)
                     // If there's only one "synonym", it's really just an alias for the scalar value

@@ -71,12 +71,6 @@ public enum CardType
 
 public enum Keyword
 {
-    Flying,
-    Trample,
-}
-
-public enum Keywordz
-{
     // Evergreen
     Deathtouch,
     Defender,

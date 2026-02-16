@@ -10,7 +10,7 @@ internal class Program
     {
         var thing = TokenTypeRegistry.AppliedOrderTypes;
         //var type = TokenTypeRegistry.NameToType["TargetGainsOrLosesBuff_Many"];
-        var type = TokenTypeRegistry.NameToType["AsLongAsEnchantedCardHasAspect"];
+        var type = TokenTypeRegistry.NameToType["TargetGainsOrLosesBuff_Many"];
         var thingThatMakesYouSayReeeeaL = RegexGraph.Create(type);
         //var sourceText = "destroy all lands";
         //thingThatMakesYouSayReeeeaL.TryMatch(sourceText, out var hyrdrated);
