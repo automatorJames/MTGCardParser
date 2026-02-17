@@ -31,15 +31,13 @@ public class CompoundOfNode : WrapperNode
         }
     }
 
-    //protected override object GetWrapperValue(CaptureContext captureContext)
+    //protected override object GetValue(CaptureContext scopedContext)
     //{
-    //    var scopedCaptureContext = captureContext[FullyQualifiedName];
-    //
     //    // We expect two or more captures
-    //    if (scopedCaptureContext.Captures.Length <= 1)
+    //    if (scopedContext.Count < 2)
     //        return null;
     //
-    //    for (int i = 0; i < scopedCaptureContext.Captures.Length; i++)
+    //    for (int i = 0; i < scopedContext.Count; i++)
     //    {
     //        var singleScopedContext = scopedCaptureContext.ScopeToCaptureIndex(i);
     //        AddNewWrappedNode(singleScopedContext, ordinal: i);

@@ -18,20 +18,12 @@ public abstract class ScalarContainerNode : NamedGroupNode
                     regex: x
                 )));
 
-    //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
+    //protected override object GetValue(CaptureContext captureContext)
     //{
-    //    var singleCapture = captureContext[FullyQualifiedName].Capture;
+    //    if (captureContext.Count != 1)
+    //        throw new Exception($"{nameof(ScalarContainerNode)} expects exactly one capture");
     //
-    //    if (singleCapture == null)
-    //        return null;
-    //
-    //    var value = GetValueSingle(singleCapture);
-    //
-    //    if (value == null)
-    //        return null;
-    //
-    //    CaptureValueHydrationInfo = new(this, singleCapture, value);
-    //    return value;
+    //    return GetValueSingle(captureContext.Capture);
     //}
 
     public abstract object GetValueSingle(Capture capture);

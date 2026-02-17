@@ -2,6 +2,7 @@
 
 public class TokenUnitNode : NamedGroupNode
 {
+    public bool IsRoot => ParentNode == null;
     protected override Joiner Joiner => Joiner.Space;
 
     public TokenUnitNode(RegexNode parentNode, TypeNavigation navigation) 

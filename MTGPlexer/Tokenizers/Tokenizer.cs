@@ -42,7 +42,7 @@ public class Tokenizer
 
                     // Advance by the length of the matched token
                     // Assuming TokenUnit contains the length or the raw text
-                    currentIndex += token.NodeGraph.Value.Length;
+                    currentIndex += token.Value.Length;
 
                     unmatchedStartIndex = -1;
                     matched = true;

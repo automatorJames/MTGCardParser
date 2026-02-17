@@ -11,19 +11,6 @@ public abstract class WrapperNode : NamedGroupNode
         GenericTypes = navigation.UnderlyingType.GenericTypeArguments;
     }
 
-    //protected WrappedNode GetTemplateNodeForType(int genericTypeIndex = 0) =>
-    //    new WrappedNode(this, GenericTypes[genericTypeIndex]);
-
-    //public WrappedNode AddNewWrappedNode(CaptureContext captureContext, int? ordinal = null, Type genericType = null)
-    //{
-    //    genericType ??= GenericType;
-    //    WrappedNode wrappedNode = new(this, genericType, ordinal);
-    //    wrappedNode.GetValueAndSetHydrationInfo(captureContext);
-    //    WrappedNodes.Add(wrappedNode);
-    //    return wrappedNode;
-    //}
-
-    //protected object CreateWrapperValue() => CreateWrapperValue(WrappedValues);
 
     //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     //{

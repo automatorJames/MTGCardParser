@@ -33,7 +33,7 @@ public record UnmatchedTextOccurrence
         LineTokenUnits = lineTokenUnits.ToArray();
         UnmatchedTokenIndex = unmatchedTokenIndex;
         Anchor = (DefaultUnmatchedString)LineTokenUnits[UnmatchedTokenIndex];
-        Text = Anchor.NodeGraph.Value;
+        Text = Anchor.Value;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         CardName = cardName;
     }

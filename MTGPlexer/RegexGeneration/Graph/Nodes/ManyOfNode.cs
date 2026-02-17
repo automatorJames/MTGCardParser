@@ -2,6 +2,11 @@
 
 public class ManyOfNode : WrapperNode
 {
+    NamedGroupNode _nodeTheFirst;
+    NamedGroupNode _nodeTheSecond;
+    NamedGroupNode _nodeTheLast;
+    NamedGroupNode _nodeTheConjunction;
+
     public ManyOfNode(RegexNode parentNode, PropNavigation navigation) 
         : base(parentNode, navigation)
     {
@@ -9,27 +14,31 @@ public class ManyOfNode : WrapperNode
 
     protected override void AddComputedChildren(List<RegexNode> children)
     {
-        var nodeTheFirst = GetNamedGroupChild(this, Navigation, GenericType, MultiItemOrdinal.First.ToString());
+        _nodeTheFirst = GetNamedGroupChild(this, Navigation, GenericType, MultiItemOrdinal.First.ToString());
 
         AnonymousGroupNode secondItemContainer = new(this, "Second_Item_Container", GroupQuantifier.AnyNumber);
         secondItemContainer.AddWrappedBrickContent("Oxford_Comma", ",[ ]", "Oxford comma");
-        var nodeTheSecond = secondItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
+        _nodeTheSecond = secondItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.SecondPlus.ToString());
 
         AnonymousGroupNode lastItemContainer = new(this, "Last_Item_Outer_Container");
         lastItemContainer.AddWrappedBrickContent("Optional_Oxford_Comma", ",?[ ]", "optional Oxford comma");
 
         AnonymousGroupNode conjunctionContainer = new(lastItemContainer, "Conjunction_Container", GroupQuantifier.Optional);
-        var nodeTheConjunction = conjunctionContainer.AddWrappedNamedGroupChild(Navigation, typeof(Conjunction?), nameof(Conjunction));
+        _nodeTheConjunction = conjunctionContainer.AddWrappedNamedGroupChild(Navigation, typeof(Conjunction?), nameof(Conjunction));
 
         conjunctionContainer.AddWrappedBrickContent("Conjunction_Space", "[ ]", "joiner space");
         lastItemContainer.AddNode(conjunctionContainer);
-        var nodeTheLast = lastItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.Last.ToString());
+        _nodeTheLast = lastItemContainer.AddWrappedNamedGroupChild(Navigation, GenericType, MultiItemOrdinal.Last.ToString());
 
-        children.AddRange([nodeTheFirst, secondItemContainer, lastItemContainer]);
+        children.AddRange([_nodeTheFirst, secondItemContainer, lastItemContainer]);
     }
 
-    //protected override object GetWrapperValue(CaptureContext captureContext)
+    //protected override object GetValue(CaptureContext context)
     //{
+    //    var scopedContext = GetScopedContext(context);
+    //    var firstValue = _nodeTheFirst.GetValueForNamedPath(scopedContext);
+    //    var secondPlusValues = _nodeTheSecond.GetValueForNamedPath(scopedContext);
+    //
     //    var captureContextTheFirst = captureContext[_itemTheFirst.FullyQualifiedName];
     //    var captureContextTheSecond = captureContext[_itemTheSecond.FullyQualifiedName];
     //    var captureContextTheLast = captureContext[_itemLast.FullyQualifiedName];

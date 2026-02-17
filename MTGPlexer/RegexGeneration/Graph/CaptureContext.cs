@@ -5,6 +5,8 @@ public class CaptureContext
     private readonly IReadOnlyDictionary<string, Capture[]> _dictionary;
     private readonly bool _isRoot;
 
+    public CaptureInfo[] CaptureInfos { get; }
+
     /// <summary>
     /// The captures belonging to the current group that fall within the parent's scope.
     /// </summary>
@@ -30,13 +32,15 @@ public class CaptureContext
     // Private constructor ensures controlled creation via Create() or Indexer
     private CaptureContext(
         IReadOnlyDictionary<string, Capture[]> dictionary, 
-        Capture[] captures, 
+        Capture[] captures,
+        CaptureInfo[] captureInfos = null,
         bool isRoot = false, 
         string sourceText = null,
         string fullMatch = null)
     {
         _dictionary = dictionary;
         Captures = captures;
+        CaptureInfos = captureInfos;
         _isRoot = isRoot;
         SourceText = sourceText;
         FullMatch = fullMatch;
@@ -65,32 +69,36 @@ public class CaptureContext
 
     /// <summary>
     /// Fluent Indexer. 
-    /// If called on Root: returns all captures for the group name.
-    /// If called on a scoped context: returns captures for the name that exist physically inside the current scope.
+    /// If called on Root, returns all captures for the group name.
+    /// If called on a scoped context, returns captures for the name that exist physically inside the current scope.
     /// </summary>
-    public CaptureContext this[string groupName]
+    public CaptureContext this[NamedGroupNode namedGroupNode]
     {
         get
         {
-            if (!_dictionary.TryGetValue(groupName, out var allCapturesOfGroup))
+            if (!_dictionary.TryGetValue(namedGroupNode.FullyQualifiedName, out var allCapturesForGroup))
                 return new CaptureContext(_dictionary, Array.Empty<Capture>());
+
+            var captureInfos = allCapturesForGroup
+                .Select((x, idx) => new CaptureInfo(namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx))
+                .ToArray();
 
             // If we are root, we don't filter (provide all captures for this name)
             if (_isRoot)
-                return new CaptureContext(_dictionary, allCapturesOfGroup);
+                return new CaptureContext(_dictionary, allCapturesForGroup, captureInfos);
 
             // If we are a scoped context, only return captures that are geographically inside our current captures
-            var filtered = allCapturesOfGroup.Where(child =>
+            var filtered = allCapturesForGroup.Where(child =>
                 Captures.Any(parent =>
                     child.Index >= parent.Index &&
                     (child.Index + child.Length) <= (parent.Index + parent.Length)))
                 .ToArray();
 
-            return new CaptureContext(_dictionary, filtered, sourceText: SourceText, fullMatch: FullMatch);
+            return new CaptureContext(_dictionary, filtered, captureInfos, sourceText: SourceText, fullMatch: FullMatch);
         }
     }
 
-    private static Dictionary<string, Capture[]> GetNamedGroupCaptures(Match match)
+    static Dictionary<string, Capture[]> GetNamedGroupCaptures(Match match)
     {
         if (match == null || !match.Success) return new();
 

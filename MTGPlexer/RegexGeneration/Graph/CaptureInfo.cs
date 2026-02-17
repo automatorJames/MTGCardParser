@@ -1,15 +1,15 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph;
 
-public record CaptureValueHydrationInfo
+public record CaptureInfo
 {
-    public NamedGroupNode NamedGroupNode { get; set; }
+    public NamedGroupNode NamedGroupNode { get; }
     public string FullyQualifiedName { get; }
     public string CaptureText { get; }
     public int Index { get; }
     public int Length { get; }
-    public object Value { get; }
+    public int? SiblingIndex { get; }
 
-    public CaptureValueHydrationInfo(NamedGroupNode namedGroupNode, Capture capture, object value)
+    public CaptureInfo(NamedGroupNode namedGroupNode, Capture capture, int? siblingIndex = null)
     {
         if (capture is null)
             throw new ArgumentNullException(nameof(capture));
@@ -19,6 +19,6 @@ public record CaptureValueHydrationInfo
         CaptureText = capture.Value;
         Index = capture.Index;
         Length = capture.Length;
-        Value = value;
+        SiblingIndex = siblingIndex;
     }
 };

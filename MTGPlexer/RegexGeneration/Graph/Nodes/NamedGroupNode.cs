@@ -3,7 +3,7 @@
 public abstract class NamedGroupNode : GroupNode
 {
     public TypeNavigation Navigation { get; }
-    public CaptureValueHydrationInfo CaptureValueHydrationInfo { get; protected set; }
+    public CaptureInfo CaptureValueHydrationInfo { get; protected set; }
     public string FullyQualifiedName { get; }
 
     protected override RegexBrickBookend GroupOpenBrick => new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
@@ -19,10 +19,24 @@ public abstract class NamedGroupNode : GroupNode
             throw new Exception($"'{Name}' is required to have one or more patterns defined via {nameof(RegexPatternAttribute)}");
     }
 
+    //public object GetValueForNamedPath(CaptureContext captureContext)
+    //{
+    //    var scopedContext = captureContext[this];
+    //
+    //    if (!scopedContext.Success)
+    //        return null;
+    //
+    //    return GetValue(scopedContext);
+    //}
+    //
+    //public CaptureContext GetScopedContext(CaptureContext context) => context[this];
+    //
+    //protected abstract object GetValue(CaptureContext context);
+    //
     //public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
     //{
-    //    if (ConcreteProperty == null)
-    //        throw new Exception($"{FullyQualifiedName} does not represent a concrete CLR property, so its value cannot be set");
+    //    if (Navigation is not PropNavigation propNavigation)
+    //        throw new Exception($"Navigation for {FullyQualifiedName} is not a {nameof(PropNavigation)}, so it can't set a value on an instance");
     //
     //    var value = GetValueAndSetHydrationInfo(captureContext);
     //

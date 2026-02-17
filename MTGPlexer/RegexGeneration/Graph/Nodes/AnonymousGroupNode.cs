@@ -1,7 +1,4 @@
-﻿
-
-
-namespace MTGPlexer.RegexGeneration.Graph.Nodes;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public class AnonymousGroupNode : GroupNode
 {

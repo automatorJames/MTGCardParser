@@ -2,7 +2,6 @@
 
 public abstract class TokenUnit
 {
-    public HydratedNodeGraph NodeGraph { get; set; }
     protected virtual Snippet[] Snippets { get; } = [];
     public Snippet[] GetSnippets() => Snippets;
 

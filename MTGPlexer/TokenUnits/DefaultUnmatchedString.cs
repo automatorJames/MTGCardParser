@@ -18,6 +18,7 @@ public class DefaultUnmatchedString : TokenUnit
         if (!match.Success)
             throw new Exception();
 
-        NodeGraph = new(typeof(DefaultUnmatchedString), match, sourceText);
+        throw new Exception($"Fix this");
+        //NodeGraph = new(typeof(DefaultUnmatchedString), match, sourceText);
     }
 }

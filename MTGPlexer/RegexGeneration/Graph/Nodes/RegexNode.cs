@@ -15,10 +15,6 @@ public abstract class RegexNode
         NamePath = string.Join('.', Lineage.Select(x => x.Name));
     }
 
-    // todo: This feels like a hack that prevents duplicate parts in name paths
-    // used only when WrappedNodes are in play rather than a univerasal necessity
-    public virtual bool IsCollapsible => false;
-
     public static NamedGroupNode GetNamedGroupChild(
         RegexNode parentNode,
         TypeNavigation wrapperPropNavigation,
