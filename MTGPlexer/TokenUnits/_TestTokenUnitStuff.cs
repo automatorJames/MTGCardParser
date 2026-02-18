@@ -7,3 +7,19 @@
 //
 //    public CardType CardType { get; set; }
 //}
+
+[IsolateForTesting]
+public class TestClass : TokenUnit
+{
+    protected override Snippet[] Snippets => ["target", Prop(Letters)];
+
+    public ManyOf<Letter> Letters { get; set; }
+}
+
+public enum Letter
+{
+    A,
+    B,
+    C,
+    D
+}

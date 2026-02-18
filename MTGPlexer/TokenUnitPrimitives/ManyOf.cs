@@ -2,6 +2,10 @@
 
 public class ManyOf<T> : ManyOf
 {
+    public T First { get; set; }
+    public List<T> SecondPlus { get; set; } = [];
+    public T Last { get; set; }
+
     public ManyOf(IEnumerable<object> items, Conjunction? conjunction)
     {
         Items = items.ToList();
