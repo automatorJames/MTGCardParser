@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardAnalysisInterface", "Ca
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleUtility", "ConsoleUtility\ConsoleUtility.csproj", "{72EA536F-AD52-4738-B8FA-7BE5C79D5193}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{D887D7A6-890F-46DA-813C-FD499DDEAF78}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{72EA536F-AD52-4738-B8FA-7BE5C79D5193}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{72EA536F-AD52-4738-B8FA-7BE5C79D5193}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{72EA536F-AD52-4738-B8FA-7BE5C79D5193}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D887D7A6-890F-46DA-813C-FD499DDEAF78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D887D7A6-890F-46DA-813C-FD499DDEAF78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D887D7A6-890F-46DA-813C-FD499DDEAF78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D887D7A6-890F-46DA-813C-FD499DDEAF78}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
