@@ -90,6 +90,12 @@ public abstract class NamedGroupNode : RegexNode
         collector.Append(GroupCloseBrick); // close group
     }
 
+    public void SetPropertyValue(TokenUnit instance, CaptureContext context)
+    {
+        var scopedContext = context[this];
+        var value = GetValue(scopedContext);
+        Navigation.Prop.SetValue(instance, value);
+    }
 
     //public object GetValueForNamedPath(CaptureContext captureContext)
     //{
@@ -103,7 +109,7 @@ public abstract class NamedGroupNode : RegexNode
     //
     //public CaptureContext GetScopedContext(CaptureContext context) => context[this];
     //
-    //protected abstract object GetValue(CaptureContext context);
+    protected abstract object GetValue(CaptureContext context);
     //
     //public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
     //{

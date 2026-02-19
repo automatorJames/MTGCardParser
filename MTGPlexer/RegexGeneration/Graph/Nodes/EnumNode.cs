@@ -61,7 +61,7 @@ public class EnumNode : ScalarContainerNode
     {
         return Children
             .OfType<INamedScalarValue>()
-            .FirstOrDefault(x => x.Name == capture.Value)
+            .FirstOrDefault(x => x.Name.Equals(capture.Value, StringComparison.InvariantCultureIgnoreCase))?
             .ScalarValue
             ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{capture.Value}'");
     }

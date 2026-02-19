@@ -16,12 +16,20 @@
 //    public ManyOf<Letter> Letters { get; set; }
 //}
 
+//[IsolateForTesting]
+//public class TestClass : TokenUnit
+//{
+//    protected override Snippet[] Snippets => ["target", Prop(Letters)];
+//
+//    public CompoundOf<Letter> Letters { get; set; }
+//}
+
 [IsolateForTesting]
 public class TestClass : TokenUnit
 {
-    protected override Snippet[] Snippets => ["target", Prop(Letters)];
+    protected override Snippet[] Snippets => ["target", Prop(Letter)];
 
-    public CompoundOf<Letter> Letters { get; set; }
+    public Letter Letter { get; set; }
 }
 
 public enum Letter

@@ -1,6 +1,6 @@
 ﻿using MTGPlexer.RegexGeneration.Graph;
+using MTGPlexer.TokenUnitPrimitives;
 using MTGPlexer.TokenUnits;
-using System.Diagnostics;
 
 namespace ConsoleUtility;
 
@@ -8,7 +8,13 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        var thing = RegexGraph.Create(typeof(TestClass));
-        Console.WriteLine(thing.BuiltRegex.FormattedRegex);
+        var testGraph = RegexGraph.Create(typeof(TestClass));
+        Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
+
+        var text = "target c";
+
+        var things = TokenTypeRegistry.Tokenize(text);
+
+        testGraph.TryMatch(text, out TokenUnit result);
     }
 }

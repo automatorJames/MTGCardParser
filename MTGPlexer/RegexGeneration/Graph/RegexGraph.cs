@@ -2,6 +2,8 @@
 
 public class RegexGraph
 {
+    static readonly char[] _boundaryChars = [' ', '.'];
+
     public Type RootTokenUnitType { get; }
     public TokenUnitNode RootNode { get; }
     public BuiltRegex BuiltRegex { get; }
@@ -39,51 +41,53 @@ public class RegexGraph
     /// </summary>
     public bool TryMatch(string sourceText, int currentIndex, int endIndex, out TokenUnit tokenUnit)
     {
-        //tokenUnit = null;
-        //var match = BuiltRegex.Regex.Match(sourceText, currentIndex);
-        //
-        //// 1. Regex Success
-        //// 2. Anchoring: Match must start exactly at currentIndex
-        //// 3. Length: Match must be non-empty
-        //// 4. Scope: Match must not exceed endIndex
-        //if (match.Success && match.Index == currentIndex && match.Length > 0 && (match.Index + match.Length <= endIndex))
-        //{
-        //    int matchEndIndex = match.Index + match.Length;
-        //
-        //    // 5. Boundary Check: End of scope OR followed by a boundary char
-        //    bool endsAtBoundary = matchEndIndex == endIndex ||
-        //                         (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
-        //
-        //    if (endsAtBoundary)
-        //    {
-        //        HydratedNodeGraph hydratedRootNode = new(RootTokenUnitType, match, sourceText);
-        //        tokenUnit = hydratedRootNode.Hydrate();
-        //
-        //        return true;
-        //    }
-        //}
-
         tokenUnit = null;
+
+        var match = BuiltRegex.Regex.Match(sourceText, currentIndex);
+        
+        // 1. Regex Success
+        // 2. Anchoring: Match must start exactly at currentIndex
+        // 3. Length: Match must be non-empty
+        // 4. Scope: Match must not exceed endIndex
+        if (match.Success && match.Index == currentIndex && match.Length > 0 && (match.Index + match.Length <= endIndex))
+        {
+            int matchEndIndex = match.Index + match.Length;
+        
+            // 5. Boundary Check: End of scope OR followed by a boundary char
+            bool endsAtBoundary = matchEndIndex == endIndex ||
+                                 (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
+        
+            if (endsAtBoundary)
+            {
+                var captureContext = CaptureContext.Create(match, sourceText);
+                tokenUnit = RootNode.Hydrate(captureContext);
+                return true;
+            }
+        }
+
         return false;
     }
 
-    //public TokenUnit Hydrate(Match match, string sourceText)
-    //{
-    //    var captureContext = CaptureContext.Create(match, sourceText);
-    //    var instance = (TokenUnit)Activator.CreateInstance(RootTokenUnitType);
-    //    
-    //    foreach (var branchChild in RootNode.Children.OfType<NamedGroupNode>())
-    //    {
-    //        // will return false only if an underlying property has AbortIfSetPropertyToNull == true
-    //        // and the property value is null
-    //        var setSuccessfully = branchChild.SetPropertyValue(captureContext, instance);
-    //    
-    //        if (!setSuccessfully)
-    //            return null;
-    //    }
-    //    
-    //    instance.NodeGraph = this;
-    //    
-    //    return instance;
-    //}
+    public TokenUnit Hydrate(Match match, string sourceText)
+    {
+        var captureContext = CaptureContext.Create(match, sourceText);
+        var instance = (TokenUnit)Activator.CreateInstance(RootTokenUnitType);
+
+        RootNode.Children
+            .OfType<NamedGroupNode>()
+            .ToList()
+            .ForEach(x => x.SetPropertyValue(instance, captureContext));
+
+        //foreach (var namedGroupNode in RootNode.Children.OfType<NamedGroupNode>())
+        //{
+        //    // will return false only if an underlying property has AbortIfSetPropertyToNull == true
+        //    // and the property value is null
+        //    var setSuccessfully = namedGroupNode.SetPropertyValue(captureContext, instance);
+        //
+        //    if (!setSuccessfully)
+        //        return null;
+        //}
+        
+        return instance;
+    }
 }

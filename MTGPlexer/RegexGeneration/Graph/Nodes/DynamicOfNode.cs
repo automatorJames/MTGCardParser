@@ -1,7 +1,7 @@
 ﻿
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class DynamicOfNode : NamedGroupNode
+public class DynamicOfNode : ScalarContainerNode
 {
     const string _defaultCaptureAllCharsPattern = @"[^.]+";
     string[] _dynamicPatterns;
@@ -24,17 +24,17 @@ public class DynamicOfNode : NamedGroupNode
                     regex: x
                 )));
 
-    //public override object GetValueSingle(Capture capture)
-    //{
-    //    var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: _genericType);
-    //
-    //    // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
-    //    if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
-    //        return null;
-    //
-    //    var closedType = typeof(DynamicOf<>).MakeGenericType(_genericType);
-    //    var dynamicOfInstance = Activator.CreateInstance(closedType, dynamicMatchToken);
-    //
-    //    return dynamicOfInstance;
-    //}
+    public override object GetValueSingle(Capture capture)
+    {
+        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: Navigation.GenericTypes[0]);
+    
+        // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
+        if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
+            return null;
+    
+        var closedType = typeof(DynamicOf<>).MakeGenericType(Navigation.GenericTypes[0]);
+        var dynamicOfInstance = Activator.CreateInstance(closedType, dynamicMatchToken);
+    
+        return dynamicOfInstance;
+    }
 }

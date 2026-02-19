@@ -39,6 +39,21 @@ public class TokenUnitNode : NamedGroupNode
         };
     }
 
+    public TokenUnit Hydrate(CaptureContext context)
+    {
+        var instance = (TokenUnit)Activator.CreateInstance(Navigation.NodeType);
+
+        Children.OfType<NamedGroupNode>()
+            .ToList()
+            .ForEach(x => x.SetPropertyValue(instance, context));
+
+        instance.CaptureContext = context;
+
+        return instance;
+    }
+
+    protected override object GetValue(CaptureContext context) => Hydrate(context);
+
     //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
     //{
     //    var scopedCaptureContext = captureContext[FullyQualifiedName];

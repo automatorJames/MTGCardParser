@@ -15,7 +15,7 @@ public class BuiltRegex
         var bricksMinusOuterBookends = regexBricks.Skip(1).Take(regexBricks.Count - 2);
         FormattedLines = bricksMinusOuterBookends.Select(x => new string(' ', (x.NestedDepth - 1) * 4) + x.Regex).ToList();
         FormattedRegex = string.Join(Environment.NewLine, FormattedLines);
-        Regex regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+        Regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
     }
 
     public override string ToString() => MinifiedRegex;

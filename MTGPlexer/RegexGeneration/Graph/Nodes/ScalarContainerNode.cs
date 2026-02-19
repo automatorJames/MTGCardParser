@@ -18,13 +18,13 @@ public abstract class ScalarContainerNode : NamedGroupNode
                     regex: x
                 )));
 
-    //protected override object GetValue(CaptureContext captureContext)
-    //{
-    //    if (captureContext.Count != 1)
-    //        throw new Exception($"{nameof(ScalarContainerNode)} expects exactly one capture");
-    //
-    //    return GetValueSingle(captureContext.Capture);
-    //}
+    protected override object GetValue(CaptureContext captureContext)
+    {
+        if (captureContext.Count != 1)
+            throw new Exception($"{nameof(ScalarContainerNode)} expects exactly one capture");
+    
+        return GetValueSingle(captureContext.Capture);
+    }
 
     public abstract object GetValueSingle(Capture capture);
 }

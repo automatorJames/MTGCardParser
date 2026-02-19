@@ -30,7 +30,7 @@ public abstract class TokenUnit
     }
     public virtual Joiner Joiner => Joiner.Space;
 
-    public CaptureContext CaptureContext { get; }
+    public CaptureContext CaptureContext { get; set; }
     public string Value => CaptureContext.FullMatch;
 
     Type _type;
