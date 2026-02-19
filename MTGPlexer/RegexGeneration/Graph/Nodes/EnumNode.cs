@@ -9,11 +9,11 @@ public class EnumNode : ScalarContainerNode
 {
     protected override Joiner Joiner => Joiner.Pipe;
 
-    public EnumNode(RegexNode parentNode, TypeNavigation navigation) : base(parentNode, navigation)
+    public EnumNode(RegexNode parentNode, Navigation navigation) : base(parentNode, navigation)
     {
     }
 
-    protected override void AddComputedChildren(List<RegexNode> children)
+    protected override void AddReflectedChildren(List<RegexNode> children)
     {
         var enumType = Navigation.UnderlyingType;
         var scalarValues = Enum.GetValues(enumType).Cast<object>().ToList();

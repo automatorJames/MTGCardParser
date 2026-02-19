@@ -5,15 +5,15 @@ namespace MTGPlexer.StaticRegistry;
 public static partial class TokenTypeRegistry
 {
     const string _dynamicAssemblyName = "MTGPlexer.DynamicTokenUnits";
-    static AssemblyBuilder _asmBuilder =AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(_dynamicAssemblyName), AssemblyBuilderAccess.Run);
-    static ModuleBuilder _moduleBuilder =_asmBuilder.DefineDynamicModule("MainModule");
+    static AssemblyBuilder _asmBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(_dynamicAssemblyName), AssemblyBuilderAccess.Run);
+    static ModuleBuilder _moduleBuilder = _asmBuilder.DefineDynamicModule("MainModule");
     static Type[] _staticAssemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", nameof(MTGPlexer), nameof(TokenUnits)));
 
     public static Dictionary<Type, RegexGraph> RegexGraphs { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
-    public static Dictionary<Type, Snippet[]> TypeSnippets { get; set; } = [];
+    public static Dictionary<Type, TokenTypeConfiguration> TypeConfigurations { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
     public static Dictionary<Type, Type> EmittedOptionalManyTypes { get; set; } = [];
@@ -41,14 +41,47 @@ public static partial class TokenTypeRegistry
 
     static RegexGraph SetRootNode(Type type)
     {
-        //if (((TokenUnit)Activator.CreateInstance(type)).ValidateStructure() is string errorString)
-        //    throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
+        // Ensure TypeConfiguration is set (not strictly necessary, but convenient)
+        _ = GetTokenUnitTypeConfiguration(type);
 
         NameToType[type.Name] = type;
         var regexGraph = RegexGraph.Create(type);
         RegexGraphs[type] = regexGraph;
 
         return regexGraph;
+    }
+
+    public static TokenTypeConfiguration GetTokenUnitTypeConfiguration(Type tokenUnitType)
+    {
+        if (!tokenUnitType.IsAssignableTo(typeof(TokenUnit)))
+            throw new Exception($"'{tokenUnitType.Name}' is not a TokenUnit type, and therefore has no Snippets");
+
+        if (TypeConfigurations.TryGetValue(tokenUnitType, out var configuration))
+            return configuration;
+
+        var instance = (TokenUnit)Activator.CreateInstance(tokenUnitType);
+
+        //if ((instance.ValidateStructure() is string errorString))
+        //    throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
+
+        var snippets = instance.GetSnippets();
+
+        if (snippets == null || snippets.Length == 0)
+        {
+            var propertySnippets = PropertySnippet.GetPropertySnippets(tokenUnitType);
+
+            if (propertySnippets.Length > 0)
+                snippets = propertySnippets;
+            else if (tokenUnitType.GetCustomAttribute<RegexPatternAttribute>() is RegexPatternAttribute attr)
+                snippets = attr.Patterns.Select(x => new Snippet(x)).ToArray();
+            else
+                snippets = [new Snippet(tokenUnitType.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
+        }
+
+        configuration = new(tokenUnitType, snippets, instance.Joiner);
+        TypeConfigurations[tokenUnitType] = configuration;
+
+        return configuration;
     }
 
     public static List<TokenUnit> Tokenize(string sourceText, bool originalTextOnly = false)

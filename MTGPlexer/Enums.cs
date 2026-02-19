@@ -8,6 +8,7 @@ public enum Proptions
     None,
     Plural,
     Optional,
+    OneOrMore,
     NoPrecedingSpace,
 }
 

@@ -3,7 +3,31 @@
 public abstract class TokenUnit
 {
     protected virtual Snippet[] Snippets { get; } = [];
-    public Snippet[] GetSnippets() => Snippets;
+    public Snippet[] GetSnippets()
+    {
+        if (Type.GenericTypeArguments.Length == 0)
+            return Snippets;
+        else
+            // Return Snippets with generics replaced with concrete types
+            return Snippets.Select(ResolveToConcrete).ToArray();
+
+        // local helper
+        Snippet ResolveToConcrete(Snippet snippet)
+        {
+            if (snippet is not PropertySnippet propertySnippet)
+                return snippet;
+
+            // rebind property to constructed type
+            var reboundProp = Type.GetProperty(propertySnippet.Name,
+                BindingFlags.Instance | BindingFlags.Public);
+
+            if (reboundProp == null)
+                return snippet; // defensive fallback
+
+            return new PropertySnippet(propertySnippet.Text, reboundProp, propertySnippet.Proptions);
+        }
+    }
+    public virtual Joiner Joiner => Joiner.Space;
 
     public CaptureContext CaptureContext { get; }
     public string Value => CaptureContext.FullMatch;
@@ -79,7 +103,7 @@ public abstract class TokenUnit
         IEnumerable<Type> GetUnderlyingTokenUnits(Type type)
         {
             // 1. Explicitly ignore DynamicOf branches (as per requirements)
-            if (typeof(DynamicOf).IsAssignableFrom(type))
+            if (typeof(DynamicOf<>).IsAssignableFrom(type))
                 yield break;
 
             // 2. If it is a TokenUnit, that is a direct dependency
@@ -88,7 +112,7 @@ public abstract class TokenUnit
 
             // 3. If it is an XOf generic (ManyOf<T>, OneOf<T1, T2>, etc), 
             // recurse into the generic arguments to find the TokenUnits inside.
-            else if (typeof(XOf).IsAssignableFrom(type) && type.IsGenericType)
+            else if (type.IsGenericType)
             {
                 foreach (var arg in type.GetGenericArguments())
                     foreach (var nested in GetUnderlyingTokenUnits(arg))

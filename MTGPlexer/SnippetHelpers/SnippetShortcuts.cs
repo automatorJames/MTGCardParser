@@ -19,6 +19,10 @@ public static class SnippetShortcuts
         // 3. Find the PropertyInfo on that type
         PropertyInfo propInfo = callerType?.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 
+        // 4. Add relevant attribute metadata
+        if (propInfo.IsDefined(typeof(OneOrMoreAttribute)))
+            proptions |= Proptions.OneOrMore;
+
         return new PropertySnippet(name, propInfo, proptions)
         {
             IsPlural = proptions.HasFlag(Proptions.Plural),

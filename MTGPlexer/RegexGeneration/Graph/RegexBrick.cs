@@ -19,7 +19,7 @@ public class RegexBrick
     }
 
     protected virtual int CalculateNestedDepth() =>
-        Lineage.Count(x => x is GroupNode);
+        Lineage.Count(x => x is NamedGroupNode);
 
     public override string ToString() => Regex;
 }

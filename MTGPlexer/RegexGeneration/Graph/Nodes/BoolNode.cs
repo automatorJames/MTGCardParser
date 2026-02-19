@@ -10,7 +10,7 @@ public class BoolNode : ScalarContainerNode
     protected override GroupQuantifier? Quantifier => GroupQuantifier.Optional;
     protected override bool OneOrMoreRegexPatternsRequired => true;
 
-    public BoolNode(RegexNode parentNode, PropNavigation navigation) 
+    public BoolNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
     }

@@ -2,8 +2,6 @@
 
 public class RegexGraph
 {
-    static readonly char[] _boundaryChars = [' ', '.'];
-
     public Type RootTokenUnitType { get; }
     public TokenUnitNode RootNode { get; }
     public BuiltRegex BuiltRegex { get; }
@@ -19,18 +17,18 @@ public class RegexGraph
 
     public static RegexGraph Create(Type rootTokenUnitType)
     {
-        TypeNavigation navigation = new(rootTokenUnitType);
+        Navigation navigation = new(rootTokenUnitType);
 
-        TokenUnitNode contentRoot = rootTokenUnitType switch
+        TokenUnitNode root = rootTokenUnitType switch
         {
-            { } t when t.IsAssignableTo(typeof(TokenUnitCompound)) => new TokenUnitCompoundNode(null, navigation),
-            { } t when t.IsAssignableTo(typeof(TokenUnitOneOf)) => new TokenUnitOneOfNode(null, navigation),
             { } t when t.IsAssignableTo(typeof(DefaultUnmatchedString)) => new UnmatchedTokenUnitNode(null, navigation),
-            { } t when t.IsAssignableTo(typeof(TokenUnit)) =>new TokenUnitNode(null, navigation),
-            _ => throw new ArgumentException($"Type '{rootTokenUnitType.Name}' is not a {nameof(TokenUnit)} type")
+            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(null, navigation),
+            { } t when typeof(TokenUnitFused).IsAssignableFrom(t) => new TokenUnitFusedNode(null, navigation),
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(null, navigation),
+            _ => throw new Exception($"'{rootTokenUnitType}' is not an enum or a {nameof(TokenUnit)} type, which are the only types that are valid named groups")
         };
 
-        return new(rootTokenUnitType, contentRoot);
+        return new(rootTokenUnitType, root);
     }
 
     public bool TryMatch(string sourceText, out TokenUnit tokenUnit) => 

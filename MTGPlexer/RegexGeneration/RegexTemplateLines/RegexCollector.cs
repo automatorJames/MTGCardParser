@@ -8,6 +8,10 @@ public class RegexCollector
 {
     public List<RegexBrick> RegexBricks { get; } = [];
 
+    public char LastChar =>
+        RegexBricks.LastOrDefault(x => x is not RegexBrickBookend)
+        .Regex.LastOrDefault();
+
     public void Append(RegexBrick brick) =>
         RegexBricks.Add(brick);
 
@@ -29,7 +33,7 @@ public class RegexCollector
             childNodesToJoin[i].AppendRegexBricks(this);
 
             if (i < childNodesToJoin.Count - 1)
-                Append(new RegexBrickAlternatingPipe(parentNode));
+                Append(new RegexBrickJoiner(parentNode, Joiner.Pipe));
         }
     }
 
@@ -68,5 +72,6 @@ public class RegexCollector
         return new(regexString, regex, lines);
     }
 
-    public override string ToString() => GetMinified();
+    public override string ToString() => 
+        string.Join("", RegexBricks.Select(x => x.Regex));
 }

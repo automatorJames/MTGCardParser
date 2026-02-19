@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnitPrimitives;
 
-public class TokenUnitCompound : TokenUnit
+public class TokenUnitFused : TokenUnit
 {
         public override string ValidateStructure()
     {

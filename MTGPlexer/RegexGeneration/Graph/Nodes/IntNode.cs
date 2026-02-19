@@ -3,7 +3,7 @@
 public class IntNode : ScalarContainerNode
 {
     protected override bool OneOrMoreRegexPatternsRequired => true;
-    public IntNode(RegexNode parentNode, PropNavigation navigation) 
+    public IntNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
     }

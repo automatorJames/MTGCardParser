@@ -1,23 +1,21 @@
 ﻿
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class DynamicOfNode : WrapperNode
+public class DynamicOfNode : NamedGroupNode
 {
     const string _defaultCaptureAllCharsPattern = @"[^.]+";
     string[] _dynamicPatterns;
 
-    protected override bool AbortIfSetPropertyToNull => true;
-
-	public DynamicOfNode(RegexNode parentNode, PropNavigation navigation) 
+	public DynamicOfNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
-        if (GenericTypes.Length != 1 || !GenericType.IsAssignableTo(typeof(TokenUnit)))
+        if (navigation.GenericTypes.Length != 1 || !navigation.GenericTypes[0].IsAssignableTo(typeof(TokenUnit)))
             throw new Exception($"{nameof(DynamicOfNode)} expects exactly one generic type assignable to {nameof(TokenUnit)}");
 
         _dynamicPatterns = navigation.Patterns ?? [_defaultCaptureAllCharsPattern];
 	}
 
-    protected override void AddComputedChildren(List<RegexNode> children) =>
+    protected override void AddReflectedChildren(List<RegexNode> children) =>
         children.AddRange(
             _dynamicPatterns.Select((x, idx) => new ScalarNode(
                     parentNode: this,

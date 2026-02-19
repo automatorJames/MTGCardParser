@@ -12,16 +12,12 @@ public record PropertySnippet : Snippet
         Prop = prop;
         Proptions = proptions;
         Type = prop.PropertyType;
-
-        var name = prop.Name;
-
-        if (prop.PropertyType.IsAssignableTo(typeof(XOf)))
-            name = prop.PropertyType.GetGenericTypeDefinition().BaseType.Name + name;
-
-        Name = name;
+        Name = prop.Name;
     }
 
     public static PropertySnippet[] GetPropertySnippets(Type type) =>
-     type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-        .Select(x => new PropertySnippet(x.Name, x, Proptions.None)).ToArray();
+        type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(x => x.GetSetMethod() != null) // Ignore get-only props like Joiner overrides
+            .Select(x => new PropertySnippet(x.Name, x, Proptions.None))
+            .ToArray();
 }

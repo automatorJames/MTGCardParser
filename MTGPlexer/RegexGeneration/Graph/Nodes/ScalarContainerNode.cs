@@ -4,12 +4,12 @@ namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public abstract class ScalarContainerNode : NamedGroupNode
 {
-    protected ScalarContainerNode(RegexNode parentNode, TypeNavigation navigation)
+    protected ScalarContainerNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
     }
 
-    protected override void AddComputedChildren(List<RegexNode> children) =>
+    protected override void AddReflectedChildren(List<RegexNode> children) =>
         children.AddRange(
             Navigation.Patterns.Select((x, idx) => new ScalarNode(
                     parentNode: this,

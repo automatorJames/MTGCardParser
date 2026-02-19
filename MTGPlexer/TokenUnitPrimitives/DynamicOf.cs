@@ -1,15 +1,11 @@
 ﻿namespace MTGPlexer.TokenUnitPrimitives;
 
-public class DynamicOf<T> : DynamicOf
+public class DynamicOf<T> : TokenUnit
 {
+    public object Item { get; set; }
+
     public DynamicOf(object item)
     {
         Item = item;
     }
-}
-
-[Color("#696969")]
-public class DynamicOf : XOf
-{
-    public object Item { get; protected set; }
 }

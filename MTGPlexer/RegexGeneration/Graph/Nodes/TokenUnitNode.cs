@@ -3,18 +3,17 @@
 public class TokenUnitNode : NamedGroupNode
 {
     public bool IsRoot => ParentNode == null;
-    protected override Joiner Joiner => Joiner.Space;
+    protected override Joiner Joiner { get; }
 
-    public TokenUnitNode(RegexNode parentNode, TypeNavigation navigation) 
+    public TokenUnitNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
+        Joiner = Navigation.TokenTypeConfiguration.Joiner;
     }
 
-    protected override void AddComputedChildren(List<RegexNode> children)
+    protected override void AddReflectedChildren(List<RegexNode> children)
     {
-        var snippets = Snippet.GetSnippets(Navigation.UnderlyingType);
-
-        foreach (var snippet in snippets)
+        foreach (var snippet in Navigation.TokenTypeConfiguration.Snippets)
         {
             if (snippet is PropertySnippet propertySnippet)
                 children.Add(GetNodeForPropertySnippetType(this, propertySnippet));
@@ -25,23 +24,18 @@ public class TokenUnitNode : NamedGroupNode
 
     static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)
     {
-        PropNavigation navigation = new(propertySnippet);
+        Navigation navigation = new(propertySnippet);
 
-        return navigation.UnderlyingType.GetUnderlyingType() switch
+        return navigation.NodeType switch
         {
             { IsEnum: true } => new EnumNode(parentNode, navigation),
-            { } t when t.IsAssignableTo(typeof(ManyOf)) => new ManyOfNode(parentNode, navigation),
-            { } t when t.IsAssignableTo(typeof(CompoundOf)) => new CompoundOfNode(parentNode, navigation),
-            { } t when t.IsAssignableTo(typeof(OneOf)) => new OneOfNode(parentNode, navigation),
-            { } t when t.IsAssignableTo(typeof(OptionalOf)) => new OptionalOfNode(parentNode, navigation),
-            { } t when t.IsAssignableTo(typeof(DynamicOf)) => new DynamicOfNode(parentNode, navigation),
             { } t when t == typeof(DefaultUnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
-            { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
+            { } t when typeof(TokenUnitFused).IsAssignableFrom(t) => new TokenUnitFusedNode(parentNode, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
             { } t when t == typeof(int) => new IntNode(parentNode, navigation),
-            _ => throw new Exception($"'{navigation.UnderlyingType}' is not a valid {nameof(PropertySnippet)} type")
+            _ => throw new Exception($"'{navigation.NodeType}' is not a valid {nameof(PropertySnippet)} type")
         };
     }
 

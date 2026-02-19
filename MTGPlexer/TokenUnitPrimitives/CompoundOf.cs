@@ -1,19 +1,14 @@
-﻿namespace MTGPlexer.TokenUnitPrimitives;
+﻿using MTGPlexer.TokenUnitPrimitives.Internal;
 
-public class CompoundOf<T> : CompoundOf
+namespace MTGPlexer.TokenUnitPrimitives;
+
+public class CompoundOf<T> : TokenUnit
 {
-    public CompoundOf(IEnumerable<object> items)
-    {
-        Items = items.ToList();
-    }
+    protected override Snippet[] Snippets => [];
+    public override Joiner Joiner => Joiner.None;
 
-    public override string ToString() => base.ToString();
-}
+    public T FirstItem { get; set; }
 
-[Color("#696969")]
-public class CompoundOf : XOf
-{
-    public List<object> Items { get; set; }
-
-    public override string ToString() => string.Join(" ", Items.Select(x => x.ToString()));
+    [OneOrMore] 
+    public List<CompoundOfSecondItem<T>> SecondPlus { get; set; } = [];
 }

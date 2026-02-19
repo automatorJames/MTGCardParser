@@ -15,26 +15,6 @@ public abstract class RegexNode
         NamePath = string.Join('.', Lineage.Select(x => x.Name));
     }
 
-    public static NamedGroupNode GetNamedGroupChild(
-        RegexNode parentNode,
-        TypeNavigation wrapperPropNavigation,
-        Type typeToWrap,
-        string groupName)
-    {
-        TypeNavigation navigation = new(typeToWrap, groupName, wrapperPropNavigation.Patterns);
-
-        NamedGroupNode wrappedNamedGroupChild = typeToWrap.GetUnderlyingType() switch
-        {
-            { IsEnum: true } => new EnumNode(parentNode, navigation),
-            { } t when typeof(TokenUnitCompound).IsAssignableFrom(t) => new TokenUnitCompoundNode(parentNode, navigation),
-            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
-            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
-            _ => throw new Exception($"'{typeToWrap}' is not an enum or a {nameof(TokenUnit)} type")
-        };
-
-        return wrappedNamedGroupChild;
-    }
-
     public abstract void AppendRegexBricks(RegexCollector collector);
 
     RegexNode[] GetLineage()

@@ -2,7 +2,7 @@
 
 public class UnmatchedTokenUnitNode : TokenUnitNode
 {
-    public UnmatchedTokenUnitNode(RegexNode parentNode, TypeNavigation navigation) 
+    public UnmatchedTokenUnitNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
     }
