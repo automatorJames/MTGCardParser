@@ -52,8 +52,8 @@ public abstract class TokenUnit
     {
         var regexGraph = TokenTypeRegistry.GetRegexGraph(Type);
 
-        if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegexString))
-            return $"{nameof(regexGraph.BuiltRegex.MinifiedRegexString)} is null or empty";
+        if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
+            return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
         var expectedProps = Type.GetPublicPropNames();
 

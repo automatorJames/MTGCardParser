@@ -53,24 +53,7 @@ public class RegexCollector
     //    return default;
     //}
 
-    /// <summary>
-    /// Generates a minified, single-line regex string.
-    /// </summary>
-    /// <returns>The complete regex as a single string.</returns>
-    public string GetMinified()
-    {
-        return string.Join("", RegexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
-    }
-
-    public BuiltRegex GetBuiltRegex()
-    {
-        var regexString = GetMinified();
-        //var lines = RegexBricks.Select(x => new string(' ', x.NestedDepth * 4) + x.Regex.Replace("[ ]", " ")).ToList();
-        var lines = RegexBricks.Select(x => new string(' ', x.NestedDepth * 4) + x.Regex).ToList();
-        Regex regex = new(regexString, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
-
-        return new(regexString, regex, lines);
-    }
+    public BuiltRegex GetBuiltRegex() => new(RegexBricks);
 
     public override string ToString() => 
         string.Join("", RegexBricks.Select(x => x.Regex));

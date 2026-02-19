@@ -11,7 +11,7 @@ internal class Program
         var thing = TokenTypeRegistry.AppliedOrderTypes;
         //var type = TokenTypeRegistry.NameToType["TargetGainsOrLosesBuff_Many"];
         var thingThatMakesYouSayReeeeaL = RegexGraph.Create(typeof(TestClass));
-        Console.WriteLine(string.Join(Environment.NewLine, thingThatMakesYouSayReeeeaL.BuiltRegex.FormattedLines));
+        Console.WriteLine(thingThatMakesYouSayReeeeaL.BuiltRegex.FormattedRegex);
         //var sourceText = "destroy all lands";
         //thingThatMakesYouSayReeeeaL.TryMatch(sourceText, out var hyrdrated);
 
