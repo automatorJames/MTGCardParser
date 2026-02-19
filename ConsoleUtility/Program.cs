@@ -11,9 +11,8 @@ internal class Program
         var testGraph = RegexGraph.Create(typeof(TestClass));
         Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
 
-        var text = "target c";
-
-        var things = TokenTypeRegistry.Tokenize(text);
+        //var text = "target a, b, c, and d";
+        var text = "target b c d";
 
         testGraph.TryMatch(text, out TokenUnit result);
     }

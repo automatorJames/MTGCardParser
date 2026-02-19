@@ -10,4 +10,6 @@ public class CompoundOf<T> : TokenUnit
 
     [OneOrMore] 
     public List<CompoundOfSecondItem<T>> SecondPlus { get; set; } = [];
+
+    public List<T> Items => [FirstItem, ..SecondPlus.Select(x => x.Item)];
 }

@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
+﻿using System.Collections;
+
+namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public abstract class NamedGroupNode : RegexNode
 {
@@ -92,8 +94,26 @@ public abstract class NamedGroupNode : RegexNode
 
     public void SetPropertyValue(TokenUnit instance, CaptureContext context)
     {
+        object value = null;
         var scopedContext = context[this];
-        var value = GetValue(scopedContext);
+
+        if (Navigation.IsList)
+        {
+            var listType = typeof(List<>).MakeGenericType(Navigation.GenericTypes[0]);
+            var list = (IList)Activator.CreateInstance(listType);
+            
+            for (int i = 0; i < scopedContext.Count; i++)
+            {
+                var captureScopedContext = scopedContext.ScopeToCaptureIndex(i);
+                var itemValue = GetValue(captureScopedContext);
+                list.Add(itemValue);
+            }
+
+            value = list;
+        }
+        else
+            value = GetValue(scopedContext);
+
         Navigation.Prop.SetValue(instance, value);
     }
 

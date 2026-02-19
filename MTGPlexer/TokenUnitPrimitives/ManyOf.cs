@@ -12,4 +12,11 @@ public class ManyOf<T> : TokenUnit
     public List<ManyOfSecondItem<T>> SecondPlus { get; set; } = [];
     public Conjunction? Conjunction { get; set; }
     public T LastItem { get; set; }
+
+    public List<T> Items =>
+        [ 
+            FirstItem, 
+            .. SecondPlus?.Select(x => x.Item),
+            LastItem 
+        ];
 }
