@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using MTGPlexer.SnippetHelpers;
+using System.Reflection.Emit;
 
 namespace MTGPlexer.StaticRegistry;
 

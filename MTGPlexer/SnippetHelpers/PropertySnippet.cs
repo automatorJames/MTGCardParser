@@ -13,6 +13,14 @@ public record PropertySnippet : Snippet
         Proptions = proptions;
         Type = prop.PropertyType;
         Name = prop.Name;
+
+        // Extract metadata info from property attributes
+
+        if (Prop.IsDefined(typeof(OneOrMoreAttribute)))
+            Proptions |= Proptions.OneOrMore;
+
+        if (Prop.IsDefined(typeof(OptionalAttribute)))
+            Proptions |= Proptions.Optional;
     }
 
     public static PropertySnippet[] GetPropertySnippets(Type type) =>

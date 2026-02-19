@@ -54,4 +54,6 @@ public class Navigation
         if (NodeType.IsAssignableTo(typeof(TokenUnit)))
             TokenTypeConfiguration = TokenTypeRegistry.GetTokenUnitTypeConfiguration(NodeType);
     }
+
+    public override string ToString() => Name;
 }

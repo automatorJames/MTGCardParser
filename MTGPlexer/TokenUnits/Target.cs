@@ -8,6 +8,6 @@ public class Target : TokenUnit
     [RegexPattern("any")]
     public bool IsAny { get; set; }
 
-    [OptionalComponent]
+    [Optional]
     public TargetableEntity TargetableEntity { get; set; }
 }

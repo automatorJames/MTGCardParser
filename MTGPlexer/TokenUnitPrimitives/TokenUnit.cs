@@ -3,6 +3,7 @@
 public abstract class TokenUnit
 {
     protected virtual Snippet[] Snippets { get; } = [];
+
     public Snippet[] GetSnippets()
     {
         if (Type.GenericTypeArguments.Length == 0)

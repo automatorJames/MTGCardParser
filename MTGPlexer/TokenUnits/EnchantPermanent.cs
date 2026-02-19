@@ -6,6 +6,6 @@ public class EnchantPermanent : TokenUnit
 
     public OneOf<CardType, CreatureType> CardOrCreatureType { get; set; }
 
-    [OptionalComponent]
+    [Optional]
     public CardOutsideBattlefield CardOutsideBattlefield { get; set; }
 }
