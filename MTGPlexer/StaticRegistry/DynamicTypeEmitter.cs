@@ -32,29 +32,6 @@ public static class DynamicTypeEmitter
         .Where(op => op.Size == 1)
         .ToDictionary(op => op.Value);
 
-    /// <summary>
-    /// Scans a type for properties decorated with [OptionalMany] and, if found, emits a new dynamic type.
-    /// If no properties are marked with [OptionalMany] (either directly or on their type), this method returns null.
-    /// </summary>
-    /// <param name="originalType">The source type to be duplicated and modified.</param>
-    /// <returns>The newly created dynamic Type, or null if no [OptionalMany] properties were found.</returns>
-    public static Type EmitManyType(Type originalType)
-    {
-        // Discover properties that have the [OptionalMany] attribute on the property itself
-        // or on the property's type definition.
-        var manyProps = originalType
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Where(prop => prop.IsDefined(typeof(OptionalManyAttribute)) || prop.PropertyType.IsDefined(typeof(OptionalManyAttribute)))
-            .ToList();
-
-        // If no such properties exist, there is nothing to do.
-        if (!manyProps.Any())
-        {
-            return null;
-        }
-
-        return EmitManyTypeInternal(originalType, manyProps);
-    }
 
     /// <summary>
     /// Internal implementation that emits a new dynamic type based on an original type and a pre-defined

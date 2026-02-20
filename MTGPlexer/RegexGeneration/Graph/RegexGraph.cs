@@ -25,7 +25,7 @@ public class RegexGraph
         {
             { } t when t.IsAssignableTo(typeof(DefaultUnmatchedString)) => new UnmatchedTokenUnitNode(null, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(null, navigation),
-            { } t when typeof(TokenUnitFused).IsAssignableFrom(t) => new TokenUnitFusedNode(null, navigation),
+            //{ } t when typeof(TokenUnitFused).IsAssignableFrom(t) => new TokenUnitFusedNode(null, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(null, navigation),
             _ => throw new Exception($"'{rootTokenUnitType}' is not an enum or a {nameof(TokenUnit)} type, which are the only types that are valid named groups")
         };

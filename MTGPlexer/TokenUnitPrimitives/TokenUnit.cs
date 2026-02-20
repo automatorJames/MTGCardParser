@@ -3,6 +3,7 @@
 public abstract class TokenUnit
 {
     protected virtual Snippet[] Snippets { get; } = [];
+    public virtual Joiner Joiner => Joiner.Space;
 
     public Snippet[] GetSnippets()
     {
@@ -28,7 +29,6 @@ public abstract class TokenUnit
             return new PropertySnippet(propertySnippet.Text, reboundProp, propertySnippet.Proptions);
         }
     }
-    public virtual Joiner Joiner => Joiner.Space;
 
     public CaptureContext CaptureContext { get; set; }
     public string Value => CaptureContext.FullMatch;

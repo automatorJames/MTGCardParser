@@ -16,8 +16,6 @@ public static partial class TokenTypeRegistry
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<Type, TokenTypeConfiguration> TypeConfigurations { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
-    public static Dictionary<Type, string> EnumRegexStrings { get; set; } = [];
-    public static Dictionary<Type, Type> EmittedOptionalManyTypes { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
@@ -25,8 +23,6 @@ public static partial class TokenTypeRegistry
 
     static TokenTypeRegistry()
     {
-        InitializeEmittedManyTypes();
-
         var allTokenTypes = GetAllTopLevelTokenTypes();
 
         foreach (var type in allTokenTypes)
@@ -118,23 +114,9 @@ public static partial class TokenTypeRegistry
                 && typeof(TokenUnit).IsAssignableFrom(x))
             .Concat(_dynamicAssemblyTypes)
             .Concat(ReferencedEnumTypes)
-            .Concat(EmittedOptionalManyTypes.Values)
             .Distinct()
             .OrderBy(x => x.Name)
             .ToList();
-    }
-
-    static void InitializeEmittedManyTypes()
-    {
-        var typesContainingManyProps = GetAllTopLevelTokenTypes()
-            .Where(x => x.GetProps().Any(y => y.IsDefined(typeof(OptionalManyAttribute)) || y.PropertyType.IsDefined(typeof(OptionalManyAttribute))));
-
-        foreach (var type in typesContainingManyProps)
-        {
-            var emittedType = DynamicTypeEmitter.EmitManyType(type);
-            EmittedOptionalManyTypes[type] = emittedType;
-            SetRootNode(emittedType);
-        }
     }
 
     static void InitializeClassTokenizer()
@@ -192,14 +174,6 @@ public static partial class TokenTypeRegistry
     {
         if (AppliedOrderTypes.Contains(tokenUnitType) || tokenUnitType.IsDefined(typeof(DependentAttribute)))
             return;
-
-        if (EmittedOptionalManyTypes.TryGetValue(tokenUnitType, out Type multiVersionType))
-        {
-            // If the tokenCaptureType emitted an optional many type version of itself, add that one first.
-            // We do this so that the more specific many-item version of the token is not preempted by the
-            // less-specific single version during tokenization.
-            AppliedOrderTypes.Add(multiVersionType);
-        }
 
         AppliedOrderTypes.Add(tokenUnitType);
     }

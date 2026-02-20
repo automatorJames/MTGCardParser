@@ -1,9 +1,21 @@
 ﻿namespace MTGPlexer.TokenUnitPrimitives;
 
-public class TokenUnitFused : TokenUnit
+public class TokenUnitFused<T> : TokenUnit where T : TokenUnit
 {
-    public virtual string BeforeContent => null;
-    public virtual string AfterContent => null;
+    public virtual Snippet BeforeContent => null;
+    public virtual Snippet AfterContent => null;
+
+    protected override Snippet[] Snippets =>
+        (BeforeContent, AfterContent) switch
+        {
+            (null, null) => [Prop(FusedContent)],
+            (not null, null) => [BeforeContent, Prop(FusedContent)],
+            (null, not null) => [Prop(FusedContent), AfterContent],
+            _ => [BeforeContent, Prop(FusedContent), AfterContent]
+        };
+
+    public T FusedContent { get; set; }
+
     public override string ValidateStructure()
     {
         var graph = TokenTypeRegistry.RegexGraphs[Type];

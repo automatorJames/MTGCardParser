@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
-public class ManaValue : TokenUnitFused
+public class ManaValue : TokenUnitFused<ManaValue>
 {
-    public override string BeforeContent => "{";
-    public override string AfterContent => "}";
+    public override Snippet BeforeContent => "{";
+    public override Snippet AfterContent => "}";
 
     [RegexPattern(@"\d+")] public int? Colorless { get; set; }
 
