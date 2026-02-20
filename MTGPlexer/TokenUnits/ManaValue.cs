@@ -3,7 +3,10 @@
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class ManaValue : TokenUnitFused
 {
-    [RegexPattern("[0-9]+")] public int? Colorless { get; set; }
+    public override string BeforeContent => "{";
+    public override string AfterContent => "}";
+
+    [RegexPattern(@"\d+")] public int? Colorless { get; set; }
 
     [RegexPattern("w")] public int? White { get; set; }
     [RegexPattern("u")] public int? Blue { get; set; }

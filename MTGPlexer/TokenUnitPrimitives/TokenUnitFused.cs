@@ -2,6 +2,8 @@
 
 public class TokenUnitFused : TokenUnit
 {
+    public virtual string BeforeContent => null;
+    public virtual string AfterContent => null;
     public override string ValidateStructure()
     {
         var graph = TokenTypeRegistry.RegexGraphs[Type];
