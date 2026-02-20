@@ -370,7 +370,7 @@ public class EditorTokenUnit
 
         public class {{ClassName}} : {{nameof(TokenUnit)}}
         {
-            protected override Snippet[] Snippets => [{{string.Join(", ", _nonEmptySnippets.Select(x => x.ParameterRepresentation))}}];
+            public override Snippet[] Snippets => [{{string.Join(", ", _nonEmptySnippets.Select(x => x.ParameterRepresentation))}}];
 
             {{string.Join("\r\n    ", _nonEmptySnippets.OfType<EditorPropertySnippet>().Select(x => x.GetPropertyLineRepresentation()))}}
         }

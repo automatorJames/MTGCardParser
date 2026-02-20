@@ -3,7 +3,7 @@
 [TokenizationOrder(0)]
 public class AtOrUntilPlayerPhase : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(TemporalDisposition), "the", Prop(PhasePart), "of", Prop(Whose), Prop(Phase)];
+    public override Snippet[] Snippets => [Prop(TemporalDisposition), "the", Prop(PhasePart), "of", Prop(Whose), Prop(Phase)];
 
     public TemporalDisposition TemporalDisposition { get; set; }
     public PhasePart PhasePart { get; set; }

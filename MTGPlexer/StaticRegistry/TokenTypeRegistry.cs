@@ -61,9 +61,10 @@ public static partial class TokenTypeRegistry
         //if ((instance.ValidateStructure() is string errorString))
         //    throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
 
-        var snippets = instance.GetSnippets();
 
-        if (snippets == null || snippets.Length == 0)
+        var snippets = instance.Snippets.ToArray();
+
+        if (snippets.Length == 0)
         {
             var propertySnippets = PropertySnippet.GetPropertySnippets(tokenUnitType);
 
@@ -234,8 +235,8 @@ public static partial class TokenTypeRegistry
 
             if (snippet is EditorPropertySnippet propSnippet)
             {
-                var propMethod = shortcutsType.GetMethod(nameof(SnippetShortcuts.Prop))
-                    ?? throw new Exception("SnippetShortcuts.Prop not found.");
+                var propMethod = shortcutsType.GetMethod(nameof(TokenUnit.Prop))
+                    ?? throw new Exception("TokenUnit.Prop not found.");
 
                 il.Emit(OpCodes.Ldnull);
                 il.Emit(OpCodes.Ldc_I4, (int)propSnippet.Proptions);

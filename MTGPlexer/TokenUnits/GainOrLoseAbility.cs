@@ -2,7 +2,7 @@
 
 public class GainOrLoseAbility : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(GainOrLose), "\"", Prop(Ability), "\""];
+    public override Snippet[] Snippets => [Prop(GainOrLose), "\"", Prop(Ability), "\""];
 
     public GainOrLose GainOrLose { get; set; }
     

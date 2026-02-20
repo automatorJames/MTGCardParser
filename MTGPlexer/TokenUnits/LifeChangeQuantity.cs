@@ -2,7 +2,7 @@
 
 public class LifeChangeQuantity : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(WhichPlayer), Prop(LifeVerb), Prop(Quantity), "life"];
+    public override Snippet[] Snippets => [Prop(WhichPlayer), Prop(LifeVerb), Prop(Quantity), "life"];
 
     public WhichPlayer WhichPlayer { get; set; }
     public LifeVerb LifeVerb { get; set; }

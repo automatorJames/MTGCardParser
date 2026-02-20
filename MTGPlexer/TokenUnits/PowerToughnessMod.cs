@@ -3,7 +3,7 @@
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class PowerToughnessMod : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(PowerSign), Prop(PowerValue), "/", Prop(ToughnessSign), Prop(ToughnessValue)];
+    public override Snippet[] Snippets => [Prop(PowerSign), Prop(PowerValue), "/", Prop(ToughnessSign), Prop(ToughnessValue)];
 
     public PlusMinus PowerSign { get; set; }
     public Quantity PowerValue { get; set; }

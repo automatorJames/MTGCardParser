@@ -4,6 +4,6 @@
 [Dependent]
 public class This : TokenUnit
 {
-    protected override Snippet[] Snippets => [@"{this}"];
+    public override Snippet[] Snippets => [@"{this}"];
 
 }

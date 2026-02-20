@@ -5,7 +5,7 @@ public class TokenUnitFused<T> : TokenUnit where T : TokenUnit
     public virtual Snippet BeforeContent => null;
     public virtual Snippet AfterContent => null;
 
-    protected override Snippet[] Snippets =>
+    public override Snippet[] Snippets =>
         (BeforeContent, AfterContent) switch
         {
             (null, null) => [Prop(FusedContent)],

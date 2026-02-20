@@ -2,7 +2,7 @@
 
 public class WhenThisEntersTheBattlefield : TokenUnit
 {
-    protected override Snippet[] Snippets => ["when {this} enters the battlefield,", Prop(MustStillBeOnTheBattlefield), "it", Prop(GainedOrLostAbilities)];
+    public override Snippet[] Snippets => ["when {this} enters the battlefield,", Prop(MustStillBeOnTheBattlefield), "it", Prop(GainedOrLostAbilities)];
 
     [RegexPattern("if it's on the battlefield,")]
     public bool MustStillBeOnTheBattlefield { get; set; }

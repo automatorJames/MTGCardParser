@@ -3,7 +3,7 @@
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class DefaultUnmatchedString : TokenUnit
 {
-    protected override Snippet[] Snippets => [@"[^\s]+"];
+    public override Snippet[] Snippets => [@"[^\s]+"];
 
     public DefaultUnmatchedString()
     {

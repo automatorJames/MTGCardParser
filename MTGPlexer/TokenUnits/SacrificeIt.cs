@@ -2,7 +2,7 @@
 
 public class SacrificeIt : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(Who), "sacrifice(s)? it"];
+    public override Snippet[] Snippets => [Prop(Who), "sacrifice(s)? it"];
 
     public Who? Who { get; set; }
 }

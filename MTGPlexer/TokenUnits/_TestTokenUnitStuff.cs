@@ -2,8 +2,8 @@
 
 //public class _TestTokenUnitStuff : TokenUnit
 //{
-//    //protected override Snippet[] Snippets => ["destroy all", Prop(CardType), NoSpace("s")];
-//    protected override Snippet[] Snippets => ["destroy all", Prop(CardType), Plural];
+//    //public override Snippet[] Snippets => ["destroy all", Prop(CardType), NoSpace("s")];
+//    public override Snippet[] Snippets => ["destroy all", Prop(CardType), Plural];
 //
 //    public CardType CardType { get; set; }
 //}
@@ -11,7 +11,7 @@
 [IsolateForTesting]
 public class TestClass : TokenUnit
 {
-    protected override Snippet[] Snippets => ["target", Prop(Letters)];
+    public override Snippet[] Snippets => ["target", Prop(Letters)];
 
     public ManyOf<Letter> Letters { get; set; }
 }
@@ -19,7 +19,7 @@ public class TestClass : TokenUnit
 //[IsolateForTesting]
 //public class TestClass : TokenUnit
 //{
-//    protected override Snippet[] Snippets => ["target", Prop(Letters)];
+//    public override Snippet[] Snippets => ["target", Prop(Letters)];
 //
 //    public CompoundOf<Letter> Letters { get; set; }
 //}
@@ -27,7 +27,7 @@ public class TestClass : TokenUnit
 //[IsolateForTesting]
 //public class TestClass : TokenUnit
 //{
-//    protected override Snippet[] Snippets => ["target", Prop(Letter)];
+//    public override Snippet[] Snippets => ["target", Prop(Letter)];
 //
 //    public Letter Letter { get; set; }
 //}

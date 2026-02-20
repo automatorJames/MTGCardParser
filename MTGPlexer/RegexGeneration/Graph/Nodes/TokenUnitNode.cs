@@ -54,30 +54,6 @@ public class TokenUnitNode : NamedGroupNode
 
     protected override object GetValue(CaptureContext context) => Hydrate(context);
 
-    //public override object GetValueAndSetHydrationInfo(CaptureContext captureContext)
-    //{
-    //    var scopedCaptureContext = captureContext[FullyQualifiedName];
-    //
-    //    if (!scopedCaptureContext.Success)
-    //        return null;
-    //
-    //    var instance = (TokenUnit)Activator.CreateInstance(UnderlyingType);
-    //
-    //    foreach (var captureNode in NamedGroupNodes)
-    //    {
-    //        // will return false only if an underlying property has AbortIfSetPropertyToNull == true
-    //        // and the property value is null
-    //        var setSuccessfully = captureNode.SetPropertyValue(scopedCaptureContext, instance);
-    //
-    //        if (!setSuccessfully)
-    //            return null;
-    //    }
-    //
-    //    CaptureValueHydrationInfo = new(this, scopedCaptureContext.Capture, instance);
-    //
-    //    return instance;
-    //}
-
     /// <summary>
     /// Validates the capture structure based on two rules:
     /// 1. There must be at least one CaptureNode present.

@@ -2,7 +2,7 @@
 
 public class TargetCard : TokenUnit
 {
-    protected override Snippet[] Snippets => ["target", Prop(CardType)];
+    public override Snippet[] Snippets => ["target", Prop(CardType)];
 
     public CardType CardType { get; set; }
 }

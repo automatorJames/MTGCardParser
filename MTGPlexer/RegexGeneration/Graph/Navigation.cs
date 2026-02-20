@@ -53,8 +53,6 @@ public class Navigation
 
         if (NodeType.IsAssignableTo(typeof(TokenUnit)))
             TokenTypeConfiguration = TokenTypeRegistry.GetTokenUnitTypeConfiguration(NodeType);
-
-        if (TokenTypeConfiguration != null && TokenTypeConfiguration.Snippets.OfType<PropertySnippet>().Any(x => x.Prop.PropertyType.IsGenericTypeParameter)) Debugger.Break();
     }
 
     public override string ToString() => Name;

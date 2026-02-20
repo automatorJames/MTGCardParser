@@ -3,7 +3,7 @@
 [Dependent]
 public class TargetableEntity : TokenUnitOneOf
 {
-    protected override Snippet[] Snippets => ["target"];
+    public override Snippet[] Snippets => ["target"];
 
     public TargetablePlayer? TargetablePlayer { get; set; }
     public CardType? CardType { get; set; }

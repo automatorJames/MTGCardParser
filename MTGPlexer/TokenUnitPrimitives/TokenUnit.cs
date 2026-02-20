@@ -1,34 +1,40 @@
-﻿namespace MTGPlexer.TokenUnitPrimitives;
+﻿using System.Runtime.CompilerServices;
+
+namespace MTGPlexer.TokenUnitPrimitives;
 
 public abstract class TokenUnit
 {
-    protected virtual Snippet[] Snippets { get; } = [];
+    public virtual Snippet[] Snippets { get; } = [];
     public virtual Joiner Joiner => Joiner.Space;
 
-    public Snippet[] GetSnippets()
+    public PropertySnippet Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
     {
-        if (Type.GenericTypeArguments.Length == 0)
-            return Snippets;
-        else
-            // Return Snippets with generics replaced with concrete types
-            return Snippets.Select(ResolveToConcrete).ToArray();
+        var lastDot = expression.LastIndexOf('.');
+        var name = lastDot == -1 ? expression : expression;
 
-        // local helper
-        Snippet ResolveToConcrete(Snippet snippet)
+        // 1. Get the actual, fully resolved runtime type
+        var actualType = this.GetType();
+
+        // 2. Fetch the PropertyInfo from the closed type. 
+        // This automatically resolves `T` to the concrete type.
+        PropertyInfo propInfo = actualType.GetProperty(name,
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+
+        return new PropertySnippet(name, propInfo, proptions)
         {
-            if (snippet is not PropertySnippet propertySnippet)
-                return snippet;
-
-            // rebind property to constructed type
-            var reboundProp = Type.GetProperty(propertySnippet.Name,
-                BindingFlags.Instance | BindingFlags.Public);
-
-            if (reboundProp == null)
-                return snippet; // defensive fallback
-
-            return new PropertySnippet(propertySnippet.Text, reboundProp, propertySnippet.Proptions);
-        }
+            IsPlural = proptions.HasFlag(Proptions.Plural),
+            IsOptional = proptions.HasFlag(Proptions.Optional),
+        };
     }
+
+    public SnippetAlternatives Alt(params string[] alternatives) =>
+    new SnippetAlternatives(alternatives);
+
+    public SnippetOptional Opt(string optionalText) =>
+        new SnippetOptional(optionalText);
+
+    public SnippetOptionalPlural Plural() =>
+        new SnippetOptionalPlural();
 
     public CaptureContext CaptureContext { get; set; }
     public string Value => CaptureContext.FullMatch;

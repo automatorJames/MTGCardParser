@@ -2,7 +2,7 @@
 
 public class EnchantPermanent : TokenUnit
 {
-    protected override Snippet[] Snippets => ["enchant", Prop(CardOrCreatureType), Prop(CardOutsideBattlefield)];
+    public override Snippet[] Snippets => ["enchant", Prop(CardOrCreatureType), Prop(CardOutsideBattlefield)];
 
     public OneOf<CardType, CreatureType> CardOrCreatureType { get; set; }
 

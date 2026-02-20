@@ -4,7 +4,7 @@ namespace MTGPlexer.TokenUnitPrimitives;
 
 public class ManyOf<T> : TokenUnit
 {
-    protected override Snippet[] Snippets => [Prop(FirstItem), Prop(SecondPlus), ",?[ ]", Prop(Conjunction), "[ ]", Prop(LastItem)];
+    public override Snippet[] Snippets => [Prop(FirstItem), Prop(SecondPlus), ",?[ ]", Prop(Conjunction), "[ ]", Prop(LastItem)];
 
     public override Joiner Joiner => Joiner.None;
 
