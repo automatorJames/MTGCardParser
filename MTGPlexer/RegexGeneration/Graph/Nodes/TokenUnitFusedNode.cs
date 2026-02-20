@@ -7,7 +7,7 @@
 /// </summary>
 public class TokenUnitFusedNode : TokenUnitNode
 {
-    protected override Joiner Joiner => Joiner.None;
+    protected override Joiner Joiner => Joiner.Pipe;
     protected override GroupQuantifier? Quantifier => GroupQuantifier.OneOrMore;
 
     public TokenUnitFusedNode(RegexNode parentNode, Navigation navigation) 

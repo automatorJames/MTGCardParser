@@ -2,7 +2,7 @@
 
 public class TokenUnitFused : TokenUnit
 {
-        public override string ValidateStructure()
+    public override string ValidateStructure()
     {
         var graph = TokenTypeRegistry.RegexGraphs[Type];
         var props = GetType().GetProps();
