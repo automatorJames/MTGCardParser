@@ -17,7 +17,7 @@ public record EditorMethodSnippet : EditorBlockSnippet
     {
         MethodType = methodType;
         Args = args;
-        Method = typeof(SnippetShortcuts).GetMethod(methodType.ToString())
+        Method = typeof(TokenUnit).GetMethod(methodType.ToString())
                  ?? throw new Exception($"Method {methodType} not found in SnippetShortcuts");
     }
 

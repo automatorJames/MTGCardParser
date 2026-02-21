@@ -1,6 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.Graph;
-
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 public class BuiltRegex
 {

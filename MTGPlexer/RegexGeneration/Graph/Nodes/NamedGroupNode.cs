@@ -92,7 +92,7 @@ public abstract class NamedGroupNode : RegexNode
         collector.Append(GroupCloseBrick); // close group
     }
 
-    public void SetPropertyValue(TokenUnit instance, CaptureContext context)
+    public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)
     {
         object value = null;
         var scopedContext = context[this];

@@ -24,4 +24,3 @@ global using System.Diagnostics;
 
 global using System.Text.RegularExpressions;
 global using static MTGPlexer.Extensions;
-global using static MTGPlexer.SnippetHelpers.SnippetShortcuts;

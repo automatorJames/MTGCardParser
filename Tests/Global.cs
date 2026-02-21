@@ -14,4 +14,3 @@ global using MTGPlexer.Tokenizers;
 global using MTGPlexer.RegexGeneration.Graph.Nodes;
 
 global using static MTGPlexer.Extensions;
-global using static MTGPlexer.SnippetHelpers.SnippetShortcuts;

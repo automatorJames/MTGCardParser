@@ -2,6 +2,7 @@
 
 public class TokenUnitFused<T> : TokenUnit where T : TokenUnit
 {
+    public override Joiner Joiner => Joiner.None;
     public virtual Snippet BeforeContent => null;
     public virtual Snippet AfterContent => null;
 

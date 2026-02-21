@@ -192,7 +192,6 @@ public static partial class TokenTypeRegistry
     {
         var baseType = typeof(TokenUnit);
         var snippetType = typeof(Snippet);
-        var shortcutsType = typeof(SnippetShortcuts);
 
         var tb = _moduleBuilder.DefineType(
             editorTokenUnit.ClassName,
@@ -235,7 +234,7 @@ public static partial class TokenTypeRegistry
 
             if (snippet is EditorPropertySnippet propSnippet)
             {
-                var propMethod = shortcutsType.GetMethod(nameof(TokenUnit.Prop))
+                var propMethod = typeof(TokenUnit).GetMethod(nameof(TokenUnit.Prop))
                     ?? throw new Exception("TokenUnit.Prop not found.");
 
                 il.Emit(OpCodes.Ldnull);
