@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using MTGPlexer.RegexGeneration.Graph.Bricks;
+using System.Collections;
 
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
@@ -11,7 +12,8 @@ public abstract class NamedGroupNode : RegexNode
     public string FullyQualifiedName { get; }
 
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
-    protected RegexBrickBookend GroupOpenBrick => new(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
+    protected RegexBrickBookend GroupOpenBrick => 
+    protected RegexBrickBookend GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
 
@@ -34,7 +36,6 @@ public abstract class NamedGroupNode : RegexNode
     protected string QuantifierComment =>
         Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
 
-    protected RegexBrickBookend GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
     protected virtual Joiner Joiner => Joiner.None;
 
     public NamedGroupNode(RegexNode parentNode, Navigation navigation) 
@@ -53,6 +54,19 @@ public abstract class NamedGroupNode : RegexNode
             return Navigation.Proptions.HasFlag(Proptions.OneOrMore) ? GroupQuantifier.OneOrMore : GroupQuantifier.AnyNumber;
         else
             return null;
+    }
+
+    protected RegexBrickBookend GetGroupOpenBrick()
+    {
+        if (this.Navigation.IsRoot)
+            return new RegexBrickBookendRoot(this, $"(?<{FullyQualifiedName}>");
+        else
+            return new RegexBrickBookend(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
+    }
+
+    protected RegexBrickBookend GetGroupCloseBrick()
+    {
+
     }
 
     private void EnsureChildren()
@@ -89,7 +103,7 @@ public abstract class NamedGroupNode : RegexNode
         }
 
         // close group
-        collector.Append(GroupCloseBrick); // close group
+        collector.Append(GroupCloseBrick);
     }
 
     public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)

@@ -1,4 +1,4 @@
-﻿namespace MTGPlexer.RegexGeneration.Graph;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Bricks;
 
 public class RegexBrick
 {

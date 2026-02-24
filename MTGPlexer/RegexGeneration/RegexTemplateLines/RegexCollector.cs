@@ -1,3 +1,5 @@
+using MTGPlexer.RegexGeneration.Graph.Bricks;
+
 namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
 
 /// <summary>

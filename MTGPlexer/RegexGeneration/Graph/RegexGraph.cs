@@ -25,7 +25,7 @@ public class RegexGraph
         {
             { } t when t.IsAssignableTo(typeof(DefaultUnmatchedString)) => new UnmatchedTokenUnitNode(null, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(null, navigation),
-            { } t when IsTokenUnitFused(t) => new TokenUnitFusedNode(null, navigation),
+            { } t when typeof(TokenUnitFused).IsAssignableFrom(t) => new TokenUnitFusedNode(null, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(null, navigation),
             _ => throw new Exception($"'{rootTokenUnitType}' is not an enum or a {nameof(TokenUnit)} type, which are the only types that are valid named groups")
         };
@@ -77,22 +77,7 @@ public class RegexGraph
             .OfType<NamedGroupNode>()
             .ToList()
             .ForEach(x => x.SetPropertyValue(instance, captureContext));
-
-        //foreach (var namedGroupNode in RootNode.Children.OfType<NamedGroupNode>())
-        //{
-        //    // will return false only if an underlying property has AbortIfSetPropertyToNull == true
-        //    // and the property value is null
-        //    var setSuccessfully = namedGroupNode.SetPropertyValue(captureContext, instance);
-        //
-        //    if (!setSuccessfully)
-        //        return null;
-        //}
         
         return instance;
     }
-
-    public static bool IsTokenUnitFused(Type t) =>
-    t.BaseType != null &&
-    t.BaseType.IsGenericType &&
-    t.BaseType.GetGenericTypeDefinition() == typeof(TokenUnitFused<>);
 }

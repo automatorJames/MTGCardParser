@@ -12,6 +12,7 @@ global using MTGPlexer.TokenAnalysisDTOs.WordTrees;
 global using MTGPlexer.SnippetHelpers;
 global using MTGPlexer.Tokenizers;
 global using MTGPlexer.RegexGeneration.Graph.Nodes;
+global using MTGPlexer.RegexGeneration.Graph.Bricks;
 
 global using MTGPlexer.TokenUnitPrimitives;
 global using MTGPlexer.TokenUnits;

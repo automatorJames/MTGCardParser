@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
-public class ManaValue : TokenUnitFused<ManaValue>
+public class ManaValue : TokenUnitFused
 {
     public override Snippet BeforeContent => "{";
     public override Snippet AfterContent => "}";
