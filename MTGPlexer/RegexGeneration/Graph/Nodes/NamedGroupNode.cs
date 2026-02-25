@@ -12,8 +12,6 @@ public abstract class NamedGroupNode : RegexNode
     public string FullyQualifiedName { get; }
 
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
-    protected RegexBrickBookend GroupOpenBrick => 
-    protected RegexBrickBookend GroupCloseBrick => new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
 
@@ -64,10 +62,8 @@ public abstract class NamedGroupNode : RegexNode
             return new RegexBrickBookend(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
     }
 
-    protected RegexBrickBookend GetGroupCloseBrick()
-    {
-
-    }
+    protected RegexBrickBookend GetGroupCloseBrick() =>
+        new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
 
     private void EnsureChildren()
     {
@@ -86,7 +82,7 @@ public abstract class NamedGroupNode : RegexNode
     public override void AppendRegexBricks(RegexCollector collector)
     {
         // open group
-        collector.Append(GroupOpenBrick);
+        collector.Append(GetGroupOpenBrick());
 
         // append all children and joiners
         for (int i = 0; i < Children.Count; i++)
@@ -103,7 +99,7 @@ public abstract class NamedGroupNode : RegexNode
         }
 
         // close group
-        collector.Append(GroupCloseBrick);
+        collector.Append(GetGroupCloseBrick());
     }
 
     public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)

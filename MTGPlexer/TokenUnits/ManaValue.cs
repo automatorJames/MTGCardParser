@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[Dependent]
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
-public class ManaValue : TokenUnitFused
+public class ManaValue : TokenUnit
 {
-    public override Snippet BeforeContent => "{";
-    public override Snippet AfterContent => "}";
+    public override Joiner Joiner => Joiner.Pipe;
 
     [RegexPattern(@"\d+")] public int? Colorless { get; set; }
 
@@ -34,4 +34,11 @@ public class ManaValue : TokenUnitFused
     [RegexPattern("p")] public int? Phyrexian { get; set; }
     [RegexPattern("s")] public int? Snow { get; set; }
     [RegexPattern("∞")] public int? Infinite { get; set; }
+}
+
+[IsolateForTesting]
+public class ManaValueWrapper : TokenUnitFused<ManaValue>
+{
+    public override Snippet BeforeContent => "{";
+    public override Snippet AfterContent => "}";
 }

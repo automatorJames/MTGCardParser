@@ -6,6 +6,7 @@ public abstract class TokenUnit
 {
     public virtual Snippet[] Snippets { get; } = [];
     public virtual Joiner Joiner => Joiner.Space;
+    public virtual GroupQuantifier? Quantifier => null;
 
     public PropertySnippet Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
     {

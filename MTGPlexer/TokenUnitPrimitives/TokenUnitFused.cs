@@ -1,10 +1,25 @@
 ﻿namespace MTGPlexer.TokenUnitPrimitives;
 
-public class TokenUnitFused : TokenUnit
+public class TokenUnitFused<T> : TokenUnit where T : TokenUnit
 {
-    public override Joiner Joiner => Joiner.None;
+    public override Snippet[] Snippets => GetSnippets();
+
+    Snippet[] GetSnippets()
+    {
+        return (BeforeContent, AfterContent) switch
+        {
+            (null, null) =>         [Prop(FusedContent)],
+            (not null, null) =>     [BeforeContent, Prop(FusedContent)],
+            (null, not null) =>     [Prop(FusedContent), AfterContent],
+            (not null, not null) => [BeforeContent, Prop(FusedContent), AfterContent],
+        };
+    }
+
     public virtual Snippet BeforeContent => null;
     public virtual Snippet AfterContent => null;
+    public override Joiner Joiner => Joiner.None;
+
+    public T FusedContent { get; set; }
 
     public override string ValidateStructure()
     {

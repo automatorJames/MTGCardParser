@@ -4,6 +4,7 @@ public class TokenUnitNode : NamedGroupNode
 {
     public bool IsRoot => ParentNode == null;
     protected override Joiner Joiner { get; }
+    protected override GroupQuantifier? Quantifier => GroupQuantifier.OneOrMore;
 
     public TokenUnitNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
@@ -31,7 +32,6 @@ public class TokenUnitNode : NamedGroupNode
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(DefaultUnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
-            { } t when typeof(TokenUnitFused).IsAssignableFrom(t) => new TokenUnitFusedNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
             { } t when t == typeof(int) => new IntNode(parentNode, navigation),
