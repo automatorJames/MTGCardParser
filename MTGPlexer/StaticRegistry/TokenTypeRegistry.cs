@@ -76,7 +76,7 @@ public static partial class TokenTypeRegistry
                 snippets = [new Snippet(tokenUnitType.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
         }
 
-        configuration = new(tokenUnitType, snippets, instance.Joiner);
+        configuration = new(tokenUnitType, snippets, instance.Joiner, instance.Quantifier);
         TypeConfigurations[tokenUnitType] = configuration;
 
         return configuration;

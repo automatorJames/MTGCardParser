@@ -1,5 +1,4 @@
-﻿using MTGPlexer.RegexGeneration.Graph.Bricks;
-using System.Collections;
+﻿using System.Collections;
 
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
@@ -13,6 +12,7 @@ public abstract class NamedGroupNode : RegexNode
 
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
+    public virtual bool MayIgnoreInFormattedOutput => Navigation.IsRoot && Quantifier == null;
 
 
     bool _childrenInitialized;
@@ -54,16 +54,17 @@ public abstract class NamedGroupNode : RegexNode
             return null;
     }
 
-    protected RegexBrickBookend GetGroupOpenBrick()
-    {
-        if (this.Navigation.IsRoot)
-            return new RegexBrickBookendRoot(this, $"(?<{FullyQualifiedName}>");
-        else
-            return new RegexBrickBookend(this, $"(?<{FullyQualifiedName}>", FullyQualifiedName);
-    }
+    protected RegexBrickBookend GetGroupOpenBrick() =>
+        new RegexBrickBookend(
+            parentNode: this, 
+            regex: $"(?<{FullyQualifiedName}>", 
+            comment: FullyQualifiedName);
 
     protected RegexBrickBookend GetGroupCloseBrick() =>
-        new(this, $"){Quantifier?.GetDescription()}", QuantifierComment);
+        new(
+            parentNode: this, 
+            regex: $"){Quantifier?.GetDescription()}", 
+            comment: QuantifierComment);
 
     private void EnsureChildren()
     {

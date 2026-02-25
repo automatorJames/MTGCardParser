@@ -3,6 +3,7 @@
 public class TokenUnitFused<T> : TokenUnit where T : TokenUnit
 {
     public override Snippet[] Snippets => GetSnippets();
+    public override GroupQuantifier? Quantifier => GroupQuantifier.OneOrMore;
 
     Snippet[] GetSnippets()
     {

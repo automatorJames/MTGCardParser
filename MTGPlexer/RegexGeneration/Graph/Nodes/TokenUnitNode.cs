@@ -4,12 +4,13 @@ public class TokenUnitNode : NamedGroupNode
 {
     public bool IsRoot => ParentNode == null;
     protected override Joiner Joiner { get; }
-    protected override GroupQuantifier? Quantifier => GroupQuantifier.OneOrMore;
+    protected override GroupQuantifier? Quantifier { get; }
 
     public TokenUnitNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
         Joiner = Navigation.TokenTypeConfiguration.Joiner;
+        Quantifier = Navigation.TokenTypeConfiguration.Quantifier;
     }
 
     protected override void AddReflectedChildren(List<RegexNode> children)
