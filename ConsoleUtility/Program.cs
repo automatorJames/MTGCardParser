@@ -8,7 +8,7 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        var testGraph = RegexGraph.Create(typeof(ManaValueWrapper));
+        var testGraph = RegexGraph.Create(typeof(TestClass));
         Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
 
         //var text = "target a, b, c, and d";

@@ -12,7 +12,7 @@ public abstract class NamedGroupNode : RegexNode
 
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
-    public virtual bool MayIgnoreInFormattedOutput => Navigation.IsRoot && Quantifier == null;
+    public override bool MayIgnoreInFormattedOutput => Navigation.IsRoot && Quantifier == null;
 
 
     bool _childrenInitialized;

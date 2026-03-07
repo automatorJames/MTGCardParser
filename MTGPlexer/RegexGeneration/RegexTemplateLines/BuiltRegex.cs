@@ -10,7 +10,7 @@ public class BuiltRegex
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
         MinifiedRegex = string.Join("", regexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
-        FormattedLines = regexBricks.Select(x => new string(' ', x.NestedDepth * 4) + x.Regex).ToList();
+        FormattedLines = regexBricks.Where(x => !x.Parent.MayIgnoreInFormattedOutput).Select(x => new string(' ', x.NestedDepthFormatted * 4) + x.Regex).ToList();
         FormattedRegex = string.Join(Environment.NewLine, FormattedLines);
         Regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
     }

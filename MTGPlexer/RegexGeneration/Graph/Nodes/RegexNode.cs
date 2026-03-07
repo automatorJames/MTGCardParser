@@ -2,6 +2,8 @@
 
 public abstract class RegexNode
 {
+    public virtual bool MayIgnoreInFormattedOutput => false;
+
     public string Name { get; }
     public string NamePath { get; }
     public RegexNode ParentNode { get; }
