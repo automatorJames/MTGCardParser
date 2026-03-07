@@ -36,7 +36,7 @@ public class EnumNode : ScalarContainerNode
                         name: valueAsString, 
                         scalarValue: scalarValue, 
                         regex: patterns[0], 
-                        isFirst: isFirst));
+                        positionAmongSiblings: i));
                 else
                     // If there are two or more, they're true synonyms
                     children.Add(new ScalarSynonymSet(
@@ -44,7 +44,7 @@ public class EnumNode : ScalarContainerNode
                         name: valueAsString, 
                         scalarValue: scalarValue, 
                         scalarSynonyms: patterns, 
-                        isFirst: isFirst));
+                        positionAmongSiblings: i));
             }
             else
                 // This is a single scalar node whose regex is a formatted version of the enum member
@@ -53,7 +53,7 @@ public class EnumNode : ScalarContainerNode
                     name: valueAsString, 
                     scalarValue: scalarValue, 
                     regex: valueAsString.ToFriendlyCase(), 
-                    isFirst: isFirst));
+                    positionAmongSiblings : i));
         }
     }
 

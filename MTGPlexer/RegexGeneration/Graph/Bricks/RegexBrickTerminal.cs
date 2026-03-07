@@ -1,13 +1,22 @@
-﻿/*namespace MTGPlexer.RegexGeneration.Graph.Bricks;
+﻿namespace MTGPlexer.RegexGeneration.Graph.Bricks;
 
 public class RegexBrickTerminal : RegexBrick
 {
-    public Joiner Joiner { get; }
+    public object Value { get; }
+    public int PositionAmongSiblings { get; set; }
+    public int PositionAmongSynonymns { get; set; }
 
-    public RegexBrickTerminal(RegexNode parentNode, Joiner joiner)
-        : base(parentNode, joiner.GetDescription(), $"joiner {joiner}")
+    public RegexBrickTerminal(
+        RegexNode parentNode, 
+        string regex, 
+        string comment, 
+        object value, 
+        int positionAmongSiblings, 
+        int positionAmongSynonyms)
+        : base(parentNode, regex, comment)
     {
-        Joiner = joiner;
+        Value = value;
+        PositionAmongSiblings = positionAmongSiblings;
+        PositionAmongSynonymns = positionAmongSynonyms;
     }
 }
-*/

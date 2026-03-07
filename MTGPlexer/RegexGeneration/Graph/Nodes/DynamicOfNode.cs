@@ -21,7 +21,8 @@ public class DynamicOfNode : ScalarContainerNode
                     parentNode: this,
                     name: $"{GetType().Name}_Pattern" + (idx > 0 ? $"_{idx}" : ""),
                     scalarValue: true,
-                    regex: x
+                    regex: x,
+                    positionAmongSiblings: idx
                 )));
 
     public override object GetValueSingle(Capture capture)

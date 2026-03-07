@@ -17,27 +17,27 @@ public class RegexCollector
     public void Append(RegexBrick brick) =>
         RegexBricks.Add(brick);
 
-    public void AppendJoined(List<RegexNode> nodes, RegexBrick joiner)
-    {
-        for (int i = 0; i < nodes.Count; i++)
-        {
-            nodes[i].AppendRegexBricks(this);
-
-            if (i < nodes.Count - 1)
-                Append(joiner);
-        }
-    }
-
-    public void AppendJoinedAlternating(RegexNode parentNode, List<RegexNode> childNodesToJoin)
-    {
-        for (int i = 0; i < childNodesToJoin.Count; i++)
-        {
-            childNodesToJoin[i].AppendRegexBricks(this);
-
-            if (i < childNodesToJoin.Count - 1)
-                Append(new RegexBrickJoiner(parentNode, Joiner.Pipe));
-        }
-    }
+    //public void AppendJoined(List<RegexNode> nodes, RegexBrick joiner)
+    //{
+    //    for (int i = 0; i < nodes.Count; i++)
+    //    {
+    //        nodes[i].AppendRegexBricks(this);
+    //
+    //        if (i < nodes.Count - 1)
+    //            Append(joiner);
+    //    }
+    //}
+    //
+    //public void AppendJoinedAlternating(RegexNode parentNode, List<RegexNode> childNodesToJoin)
+    //{
+    //    for (int i = 0; i < childNodesToJoin.Count; i++)
+    //    {
+    //        childNodesToJoin[i].AppendRegexBricks(this);
+    //
+    //        if (i < childNodesToJoin.Count - 1)
+    //            Append(new RegexBrickJoiner(parentNode, Joiner.Pipe));
+    //    }
+    //}
 
 
     ///// <summary>

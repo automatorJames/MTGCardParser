@@ -15,7 +15,8 @@ public abstract class ScalarContainerNode : NamedGroupNode
                     parentNode: this,
                     name: $"{GetType().Name}-Pattern" + (idx > 0 ? $"-{idx}" : ""),
                     scalarValue: true,
-                    regex: x
+                    regex: x,
+                    positionAmongSiblings: idx
                 )));
 
     protected override object GetValue(CaptureContext captureContext)

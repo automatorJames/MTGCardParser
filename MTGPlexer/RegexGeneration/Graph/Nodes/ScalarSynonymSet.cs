@@ -2,32 +2,41 @@
 
 public class ScalarSynonymSet : RegexNode, INamedScalarValue
 {
-    public object ScalarValue { get; }
-
-    bool _isFirst;
     List<ScalarNode> _scalarChildren = [];
+
+    public object ScalarValue { get; }
+    public string[] ScalarSynonyms { get; }
+
 
     public ScalarSynonymSet(
         ScalarContainerNode parentNode, 
         string name,
         object scalarValue,
         string[] scalarSynonyms, 
-        bool isFirst = false) 
+        int positionAmongSiblings) 
         : base(parentNode, name)
     {
         ScalarValue = scalarValue;
-        _isFirst = isFirst;
+        ScalarSynonyms = scalarSynonyms;
 
         _scalarChildren = scalarSynonyms.Select((x, idx) => new ScalarNode(
                 parentNode: this,
                 name: $"Synonym-{idx}",
                 scalarValue: ScalarValue,
                 regex: x,
-                isFirst: _isFirst && idx == 0,
-                isSecondarySynonym: idx > 0))
+                positionAmongSiblings: positionAmongSiblings,
+                positionAmongSynonyms: idx))
             .ToList();
     }
 
-    public override void AppendRegexBricks(RegexCollector collector) =>
-        collector.AppendJoinedAlternating(this, _scalarChildren.Cast<RegexNode>().ToList());
+    public override void AppendRegexBricks(RegexCollector collector)
+    {
+        for (int i = 0; i < _scalarChildren.Count; i++)
+        {
+            _scalarChildren[i].AppendRegexBricks(collector);
+    
+            if (i < _scalarChildren.Count - 1)
+                collector.Append(new RegexBrickJoiner(this, Joiner.Pipe));
+        }
+    }
 }
