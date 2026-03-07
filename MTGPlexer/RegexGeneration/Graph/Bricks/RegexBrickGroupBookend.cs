@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Bricks;
 
-public class RegexBrickBookend : RegexBrick
+public class RegexBrickGroupBookend : RegexBrick
 {
     protected override int NestedDepthModifer => -1;
 
-    public RegexBrickBookend(RegexNode parentNode, string regex, string comment)
+    public RegexBrickGroupBookend(RegexNode parentNode, string regex, string comment)
         : base(parentNode, regex, comment)
     {
     }

@@ -54,16 +54,16 @@ public abstract class NamedGroupNode : RegexNode
             return null;
     }
 
-    protected RegexBrickBookend GetGroupOpenBrick() =>
-        new RegexBrickBookend(
+    protected RegexBrickGroupOpen GetGroupOpenBrick() =>
+        new (
             parentNode: this, 
-            regex: $"(?<{FullyQualifiedName}>", 
+            groupName: FullyQualifiedName, 
             comment: FullyQualifiedName);
 
-    protected RegexBrickBookend GetGroupCloseBrick() =>
-        new(
+    protected RegexBrickGroupClose GetGroupCloseBrick() =>
+        new (
             parentNode: this, 
-            regex: $"){Quantifier?.GetDescription()}", 
+            quantifier: Quantifier,
             comment: QuantifierComment);
 
     private void EnsureChildren()

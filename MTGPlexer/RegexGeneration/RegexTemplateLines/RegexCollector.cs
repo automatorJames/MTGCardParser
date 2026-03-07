@@ -11,7 +11,7 @@ public class RegexCollector
     public List<RegexBrick> RegexBricks { get; } = [];
 
     public char LastChar =>
-        RegexBricks.LastOrDefault(x => x is not RegexBrickBookend)
+        RegexBricks.LastOrDefault(x => x is not RegexBrickGroupBookend)
         .Regex.LastOrDefault();
 
     public void Append(RegexBrick brick) =>

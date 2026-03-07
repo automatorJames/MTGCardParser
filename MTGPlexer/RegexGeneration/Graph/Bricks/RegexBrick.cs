@@ -11,6 +11,16 @@ public class RegexBrick
     public int NestedDepthFormatted { get; }
     public RegexNode[] Lineage { get; }
     public RegexNode Parent => Lineage.LastOrDefault();
+    public string[] ContainingGroupNames { get; }
+    public int NamePartsToInclude { get; }
+
+    // Optionally set during formatting phase after all RegexBricks have been initially rendered
+    string _regexFormatted;
+    public string RegexFormatted
+    {
+        get => _regexFormatted ?? Regex;
+        set => _regexFormatted = value;
+    }
 
     public RegexBrick(RegexNode parentNode, string regex, string comment)
     {
@@ -18,6 +28,7 @@ public class RegexBrick
         Comment = comment;
         Lineage = parentNode.Lineage;
         NamePath = parentNode.NamePath;
+        ContainingGroupNames = parentNode.Lineage.Where(x => !x.MayIgnoreInFormattedOutput).Select(x => x.Name).Reverse().ToArray();
         NestedDepth = CalculateNestedDepth();
         NestedDepthFormatted = CalculateNestedDepthFormatted();
     }
@@ -28,5 +39,5 @@ public class RegexBrick
     protected virtual int CalculateNestedDepthFormatted() =>
         Lineage.Count(x => x is NamedGroupNode node && !node.MayIgnoreInFormattedOutput) + NestedDepthModifer;
 
-    public override string ToString() => Regex;
+    public override string ToString() => RegexFormatted;
 }
