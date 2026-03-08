@@ -37,5 +37,5 @@ public enum Letter
     A,
     B,
     C,
-    [RegexPattern("d", "deezNutz")] D
+    [RegexPattern("d", "deeznutz")] D
 }

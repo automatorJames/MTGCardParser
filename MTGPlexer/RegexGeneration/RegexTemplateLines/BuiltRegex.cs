@@ -9,6 +9,7 @@ public class BuiltRegex
 
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
+        if (regexBricks.Any(x => x.Regex.Contains("TestClass"))) Debugger.Break();
         MinifiedRegex = string.Join("", regexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
         FormatNamedGroups(regexBricks);
         FormattedLines = regexBricks.Where(x => !x.Parent.MayIgnoreInFormattedOutput).Select(x => new string(' ', x.NestedDepthFormatted * 4) + x.RegexFormatted).ToList();
