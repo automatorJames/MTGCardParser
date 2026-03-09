@@ -42,7 +42,7 @@ public class CardDataGetter
         //result = result.Where(x => x.Name == "Ancestral Recall");
         //result = result.Where(x => x.Name == "Berserk");
         //result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
-        result = [new Card { Name = "A", Text = "target a" }, new Card { Name = "B", Text = "target b" }, new Card { Name = "D1", Text = "target d" }, new Card { Name = "D2", Text = "target deeznutz" }];
+        result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
         return result.ToList();
     }
 }

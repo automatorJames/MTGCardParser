@@ -2,12 +2,10 @@
 
 public abstract class RegexNode
 {
-    public virtual bool MayIgnoreInFormattedOutput => false;
-
     public string Name { get; }
     public string NamePath { get; }
     public RegexNode ParentNode { get; }
-    public NamedGroupNode NamedGroupParentNode { get; }
+    //public NamedGroupNode NamedGroupParentNode { get; }
     public RegexNode[] Lineage { get; }
 
     protected RegexNode(RegexNode parentNode, string name)
@@ -17,10 +15,10 @@ public abstract class RegexNode
         Lineage = GetLineage();
         NamePath = string.Join('.', Lineage.Select(x => x.Name));
 
-        NamedGroupParentNode = Lineage
-            .Take(Lineage.Length - 1) // exclude self
-            .OfType<NamedGroupNode>()
-            .LastOrDefault();
+        //NamedGroupParentNode = Lineage
+        //    .Take(Lineage.Length - 1) // exclude self
+        //    .OfType<NamedGroupNode>()
+        //    .LastOrDefault();
     }
 
     public abstract void AppendRegexBricks(RegexCollector collector);

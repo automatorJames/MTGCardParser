@@ -10,16 +10,20 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        TestSimple();
-        TestTokenization();
+        TestSimple<ManaValue>();
+        //TestTokenization();
     }
 
-    static void TestSimple()
+    static void TestSimple<T>(string tryToMatchText = null)
     {
-        var testGraph = RegexGraph.Create(typeof(TestClass));
+        var testGraph = RegexGraph.Create(typeof(T));
         Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
-        var text = "target b c d";
-        testGraph.TryMatch(text, out TokenUnit result);
+
+        if (tryToMatchText != null)
+        {
+            testGraph.TryMatch(tryToMatchText, out TokenUnit result);
+            Debugger.Break();
+        }
     }
 
     static void TestTokenization()

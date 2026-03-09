@@ -2,7 +2,7 @@
 
 [Dependent]
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
-public class ManaValue : TokenUnit
+public class ManaValueItem : TokenUnit
 {
     public override Joiner Joiner => Joiner.Pipe;
 
@@ -37,7 +37,7 @@ public class ManaValue : TokenUnit
 }
 
 [IsolateForTesting]
-public class ManaValueWrapper : TokenUnitFused<ManaValue>
+public class ManaValue : TokenUnitFused<ManaValueItem>
 {
     public override Snippet BeforeContent => "{";
     public override Snippet AfterContent => "}";

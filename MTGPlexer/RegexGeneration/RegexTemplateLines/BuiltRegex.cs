@@ -2,6 +2,8 @@
 
 public class BuiltRegex
 {
+    int _spacesPerIndent = 4;
+
     public string MinifiedRegex { get; }
     public string FormattedRegex { get; }
     public List<string> FormattedLines { get; }
@@ -9,10 +11,9 @@ public class BuiltRegex
 
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
-        if (regexBricks.Any(x => x.Regex.Contains("TestClass"))) Debugger.Break();
         MinifiedRegex = string.Join("", regexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
         FormatNamedGroups(regexBricks);
-        FormattedLines = regexBricks.Where(x => !x.Parent.MayIgnoreInFormattedOutput).Select(x => new string(' ', x.NestedDepthFormatted * 4) + x.RegexFormatted).ToList();
+        FormattedLines = regexBricks.Select(x => new string(' ', x.NestedDepth * _spacesPerIndent) + x.RegexFormatted).ToList();
         FormattedRegex = string.Join(Environment.NewLine, FormattedLines);
         Regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
     }
@@ -24,7 +25,7 @@ public class BuiltRegex
 
         while (groupOpenBricksPendingFormatting.Any())
         {
-            var nameGroups = groupOpenBricksPendingFormatting.ToList().GroupBy(x => string.Join("_", x.ContainingGroupNames.Take(minimumDepthForDistinctName)));
+            var nameGroups = groupOpenBricksPendingFormatting.ToList().GroupBy(x => string.Join("_", x.GroupLineageNames.Take(minimumDepthForDistinctName)));
 
             foreach (var group in nameGroups.Where(x => x.Count() == 1))
             {
@@ -36,6 +37,8 @@ public class BuiltRegex
             minimumDepthForDistinctName++;
         }
     }
+
+    
 
     public override string ToString() => MinifiedRegex;
 }

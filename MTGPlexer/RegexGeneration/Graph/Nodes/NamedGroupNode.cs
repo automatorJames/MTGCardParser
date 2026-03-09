@@ -5,6 +5,7 @@ namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 public abstract class NamedGroupNode : RegexNode
 {
     static HashSet<char> _terminals = ['.', ';', ','];
+    public bool IsTransparentRoot => Navigation.IsRoot && Quantifier == null;
 
     public Navigation Navigation { get; }
     public CaptureInfo CaptureValueHydrationInfo { get; protected set; }
@@ -12,7 +13,6 @@ public abstract class NamedGroupNode : RegexNode
 
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
-    public override bool MayIgnoreInFormattedOutput => Navigation.IsRoot && Quantifier == null;
 
 
     bool _childrenInitialized;
@@ -83,7 +83,8 @@ public abstract class NamedGroupNode : RegexNode
     public override void AppendRegexBricks(RegexCollector collector)
     {
         // open group
-        collector.Append(GetGroupOpenBrick());
+        if (!IsTransparentRoot)
+            collector.Append(GetGroupOpenBrick());
 
         // append all children and joiners
         for (int i = 0; i < Children.Count; i++)
@@ -100,7 +101,8 @@ public abstract class NamedGroupNode : RegexNode
         }
 
         // close group
-        collector.Append(GetGroupCloseBrick());
+        if (!IsTransparentRoot)
+            collector.Append(GetGroupCloseBrick());
     }
 
     public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)
