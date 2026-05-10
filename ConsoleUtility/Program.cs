@@ -10,7 +10,7 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        TestSimple<ManaValue>();
+        TestSimple<ManaValue>("{12}{w}{w}{r}");
         //TestTokenization();
     }
 

@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class IntNode : ScalarContainerNode
+public class IntNode : NamedGroupNode
 {
     protected override bool OneOrMoreRegexPatternsRequired => true;
     public IntNode(RegexNode parentNode, Navigation navigation) 
@@ -8,20 +8,23 @@ public class IntNode : ScalarContainerNode
     {
     }
 
-    public override object GetValueSingle(Capture capture)
-    {
-        return Children
-            .OfType<INamedScalarValue>()
-            .FirstOrDefault(x => x.Name == capture.Value)
-            .ScalarValue
-            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{capture.Value}'");
-    }
+    protected override void AddReflectedChildren(List<RegexNode> children) =>
+        children.AddRange(
+            Navigation.Patterns.Select((x, idx) => new ScalarNode(
+                    parentNode: this,
+                    name: $"Countable-Pattern" + (idx > 0 ? $"-{idx}" : ""),
+                    scalarValue: true,
+                    regex: x,
+                    positionAmongSiblings: idx
+                )));
 
-    //public override object GetValueSingle(Capture capture)
-    //{
-    //    // Simply return "true", because TerminalNode already validated that the
-    //    // named group exists, and therefore this bool check has already succeeded
-    //
-    //    return true;
-    //}
+    protected override object GetValue(CaptureContext captureContext)
+    {
+        // Check if the capture itself is a singular int
+        if (captureContext.Count == 1 && int.TryParse(captureContext.Capture.Value, out int parsedInt))
+            return parsedInt;
+
+        // Otherwise, return the count of occurrences of the match
+        return captureContext.Count;
+    }
 }
