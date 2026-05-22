@@ -23,6 +23,9 @@ public static partial class TokenTypeRegistry
 
     static TokenTypeRegistry()
     {
+        // Add a default configuration for type TokenUnit, since it's abstract and can't be instantiated directly to check its Snippets
+        TypeConfigurations[typeof(TokenUnit)] = new TokenTypeConfiguration(typeof(TokenUnit), [], Joiner.Space, null);
+
         var allTokenTypes = GetAllTopLevelTokenTypes();
 
         foreach (var type in allTokenTypes)
@@ -50,17 +53,28 @@ public static partial class TokenTypeRegistry
 
     public static TokenTypeConfiguration GetTokenUnitTypeConfiguration(Type tokenUnitType)
     {
-        if (!tokenUnitType.IsAssignableTo(typeof(TokenUnit)))
-            throw new Exception($"'{tokenUnitType.Name}' is not a TokenUnit type, and therefore has no Snippets");
-
         if (TypeConfigurations.TryGetValue(tokenUnitType, out var configuration))
             return configuration;
+
+        //if (tokenUnitType.ContainsGenericParameters)
+        //{
+        //    // Close open generic parameters with typeof(object) so we can create
+        //    // a temporary dummy instance for configuration/snippet inspection.
+        //    // The actual generic argument types are irrelevant for this purpose.
+        //    var genericArgs = tokenUnitType
+        //        .GetGenericArguments()
+        //        .Select(_ => typeof(object))
+        //        .ToArray();
+        //
+        //    tokenUnitType = tokenUnitType
+        //        .GetGenericTypeDefinition()
+        //        .MakeGenericType(genericArgs);
+        //}
 
         var instance = (TokenUnit)Activator.CreateInstance(tokenUnitType);
 
         //if ((instance.ValidateStructure() is string errorString))
         //    throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
-
 
         var snippets = instance.Snippets.ToArray();
 
@@ -89,7 +103,7 @@ public static partial class TokenTypeRegistry
     }
 
     /// <summary>
-    /// Return all TokenUnit derived types except for DefaultUnmatchedString
+    /// Return all TokenUnit deArgumentException: Cannot create an instance of MTGPlexer.TokenUnitPrimitives.CompoundOf`1[T] because Type.ContainsGenericParameters is true.rived types except for DefaultUnmatchedString
     /// </summary>
     public static List<Type> GetAllTopLevelTokenTypes()
     {
@@ -97,6 +111,7 @@ public static partial class TokenTypeRegistry
             .Where(x =>
                 x.IsClass && !x.IsAbstract
                 && typeof(TokenUnit).IsAssignableFrom(x)
+                && !x.ContainsGenericParameters
                 && !x.IsDefined(typeof(DependentAttribute)))
             .Concat(_dynamicAssemblyTypes);
 

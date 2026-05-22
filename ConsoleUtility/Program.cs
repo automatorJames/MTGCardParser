@@ -10,7 +10,9 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        TestSimple<ManaValue>("{12}{w}{w}{r}");
+        //TestSimple<ManaValue>("{12}{w}{w}{r}");
+        var thing = TokenTypeRegistry.Tokenize("target creature gains flying until end of turn");
+        var thingy = "sdaf";
         //TestTokenization();
     }
 

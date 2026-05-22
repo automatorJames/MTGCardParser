@@ -36,7 +36,6 @@ public class ManaValueItem : TokenUnit
     [RegexPattern("∞")] public int? Infinite { get; set; }
 }
 
-[IsolateForTesting]
 public class ManaValue : TokenUnitFused<ManaValueItem>
 {
     public override Snippet BeforeContent => "{";

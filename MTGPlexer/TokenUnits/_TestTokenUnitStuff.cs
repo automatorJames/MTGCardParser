@@ -8,13 +8,12 @@
 //    public CardType CardType { get; set; }
 //}
 
-[IsolateForTesting]
-public class TestClass : TokenUnit
-{
-    public override Snippet[] Snippets => ["target", Prop(Letters)];
-
-    public ManyOf<Letter> Letters { get; set; }
-}
+//public class TestClass : TokenUnit
+//{
+//    public override Snippet[] Snippets => ["target", Prop(Letters)];
+//
+//    public ManyOf<Letter> Letters { get; set; }
+//}
 
 //[IsolateForTesting]
 //public class TestClass : TokenUnit

@@ -6,10 +6,17 @@
 /// </summary>
 public class OptionalOf<T> : TokenUnit where T : TokenUnit
 {
-    public object Item { get; set; }
+    public T Item { get; set; }
+
+    public OptionalOf()
+    {
+    }
 
     public OptionalOf(object item)
     {
-        Item = item;
+        if (item.GetType() is not T)
+            throw new Exception($"Expected type {typeof(T).Name}, but received object of type {item.GetType().Name}");
+
+        Item = (T)item;
     }
 }
