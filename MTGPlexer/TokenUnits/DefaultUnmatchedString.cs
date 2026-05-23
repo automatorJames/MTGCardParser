@@ -18,6 +18,6 @@ public class DefaultUnmatchedString : TokenUnit
         if (!match.Success)
             throw new Exception();
 
-        CaptureContext = CaptureContext.Create(match, sourceText);
+        CaptureContext = CaptureContext.Create(new UnmatchedTokenUnitNode(null, new(typeof(DefaultUnmatchedString))), match, sourceText);
     }
 }

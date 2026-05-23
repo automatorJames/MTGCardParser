@@ -35,7 +35,7 @@ public class EnumNode : ScalarContainerNode
                         parentNode: this, 
                         name: valueAsString, 
                         scalarValue: scalarValue, 
-                        regex: patterns[0], 
+                        regex: patterns[0],
                         positionAmongSiblings: i));
                 else
                     // If there are two or more, they're true synonyms
@@ -61,7 +61,8 @@ public class EnumNode : ScalarContainerNode
     {
         return Children
             .OfType<INamedScalarValue>()
-            .FirstOrDefault(x => x.Name.Equals(capture.Value, StringComparison.InvariantCultureIgnoreCase))?
+            //.FirstOrDefault(x => x.Name.Equals(capture.Value, StringComparison.InvariantCultureIgnoreCase))?
+            .FirstOrDefault(x => x.Regex.IsMatch(capture.Value))
             .ScalarValue
             ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{capture.Value}'");
     }

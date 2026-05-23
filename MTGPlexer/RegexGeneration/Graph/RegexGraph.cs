@@ -58,7 +58,7 @@ public class RegexGraph
         
             if (endsAtBoundary)
             {
-                var captureContext = CaptureContext.Create(match, sourceText);
+                var captureContext = CaptureContext.Create(RootNode, match, sourceText);
                 tokenUnit = RootNode.Hydrate(captureContext);
                 return true;
             }
@@ -69,7 +69,7 @@ public class RegexGraph
 
     public TokenUnit Hydrate(Match match, string sourceText)
     {
-        var captureContext = CaptureContext.Create(match, sourceText);
+        var captureContext = CaptureContext.Create(RootNode, match, sourceText);
         var instance = (TokenUnit)Activator.CreateInstance(RootTokenUnitType);
 
         RootNode.Children

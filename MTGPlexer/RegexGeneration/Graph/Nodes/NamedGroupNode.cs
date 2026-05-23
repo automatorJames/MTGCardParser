@@ -110,6 +110,12 @@ public abstract class NamedGroupNode : RegexNode
         object value = null;
         var scopedContext = context[this];
 
+        // todo: for certain navigations, scopedContext.Success should be required for (excepting OneOf, OptionalOf, etc.)
+        // Therefore we should enforce this as necessary to avoid hard-to-isolate silent failure modes where hydration succeeds without
+        // throwing an exception, but is missing most or all of its property values
+        if (!scopedContext.Success)
+            return;
+
         if (Navigation.IsList)
         {
             var listType = typeof(List<>).MakeGenericType(Navigation.GenericTypes[0]);

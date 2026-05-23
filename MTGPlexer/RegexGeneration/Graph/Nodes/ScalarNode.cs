@@ -3,7 +3,8 @@
 public class ScalarNode : RegexNode, INamedScalarValue
 {
     public object ScalarValue { get; }
-    public string Regex { get; }
+    public string RegexString { get; }
+    public Regex Regex { get; }
     public int PositionAmongSiblings { get; }
     public int PositionAmongSynonyms { get; }
 
@@ -17,11 +18,12 @@ public class ScalarNode : RegexNode, INamedScalarValue
         : base(parentNode, name)
     {
         ScalarValue = scalarValue;
-        Regex = regex;
+        RegexString = regex;
+        Regex = new (RegexString);
         PositionAmongSiblings = positionAmongSiblings;
         PositionAmongSynonyms = positionAmongSynonyms;
     }
 
     public override void AppendRegexBricks(RegexCollector collector) =>
-        collector.Append(new RegexBrickTerminal(this, Regex, null, ScalarValue, PositionAmongSiblings, PositionAmongSynonyms));
+        collector.Append(new RegexBrickTerminal(this, RegexString, null, ScalarValue, PositionAmongSiblings, PositionAmongSynonyms));
 }

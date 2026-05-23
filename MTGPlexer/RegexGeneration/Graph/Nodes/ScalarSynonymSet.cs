@@ -6,6 +6,7 @@ public class ScalarSynonymSet : RegexNode, INamedScalarValue
 
     public object ScalarValue { get; }
     public string[] ScalarSynonyms { get; }
+    public Regex Regex { get; }
 
 
     public ScalarSynonymSet(
@@ -27,6 +28,8 @@ public class ScalarSynonymSet : RegexNode, INamedScalarValue
                 positionAmongSiblings: positionAmongSiblings,
                 positionAmongSynonyms: idx))
             .ToList();
+
+        Regex = new(string.Join('|', _scalarChildren.Select(x => x.RegexString)));
     }
 
     public override void AppendRegexBricks(RegexCollector collector)

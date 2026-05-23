@@ -128,4 +128,6 @@ public abstract class TokenUnit
             }
         }
     }
+
+    public override string ToString() => $"{Type.Name}: \"{CaptureContext.ToString()}\"";
 }

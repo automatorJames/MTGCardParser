@@ -49,10 +49,11 @@ public class CaptureContext
     /// <summary>
     /// Entry point: Wraps a Match into a Root CaptureContext.
     /// </summary>
-    public static CaptureContext Create(Match match, string sourceText) =>
+    public static CaptureContext Create(TokenUnitNode rootNode, Match match, string sourceText) =>
         new CaptureContext(
-            GetNamedGroupCaptures(match), 
-            Array.Empty<Capture>(), 
+            dictionary: GetNamedGroupCaptures(match), 
+            captures: [match], 
+            captureInfos: [new CaptureInfo(rootNode, match)],
             isRoot: true, 
             sourceText: sourceText, 
             fullMatch: match.Value);
@@ -77,6 +78,11 @@ public class CaptureContext
         get
         {
             if (!_dictionary.TryGetValue(namedGroupNode.FullyQualifiedName, out var allCapturesForGroup))
+                // This should never happen; even if an FQN has no captures, it should still appear in the dictionary
+                throw new Exception($"Name '{namedGroupNode.FullyQualifiedName}' does not appear in the dictionary");
+
+            if (allCapturesForGroup.Length == 0)
+                // Equivalent to "no capture found"
                 return new CaptureContext(_dictionary, Array.Empty<Capture>());
 
             var captureInfos = allCapturesForGroup
