@@ -134,6 +134,10 @@ public abstract class NamedGroupNode : RegexNode
             value = GetValue(scopedContext);
 
         Navigation.Prop.SetValue(instance, value);
+
+        // memorialize the object value in the capture context (only applies to terminal values)
+
+        
     }
 
     //public object GetValueForNamedPath(CaptureContext captureContext)

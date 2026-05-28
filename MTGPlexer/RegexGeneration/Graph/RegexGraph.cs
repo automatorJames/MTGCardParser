@@ -66,17 +66,4 @@ public class RegexGraph
 
         return false;
     }
-
-    public TokenUnit Hydrate(Match match, string sourceText)
-    {
-        var captureContext = CaptureContext.Create(RootNode, match, sourceText);
-        var instance = (TokenUnit)Activator.CreateInstance(RootTokenUnitType);
-
-        RootNode.Children
-            .OfType<NamedGroupNode>()
-            .ToList()
-            .ForEach(x => x.SetPropertyValue(instance, captureContext));
-        
-        return instance;
-    }
 }
