@@ -108,12 +108,12 @@ public abstract class NamedGroupNode : RegexNode
     public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)
     {
         object value = null;
-        var scopedContext = context[this];
+        var success = context[this];
 
         // todo: for certain navigations, scopedContext.Success should be required for (excepting OneOf, OptionalOf, etc.)
         // Therefore we should enforce this as necessary to avoid hard-to-isolate silent failure modes where hydration succeeds without
         // throwing an exception, but is missing most or all of its property values
-        if (!scopedContext.Success)
+        if (!success)
             return;
 
         if (Navigation.IsList)
@@ -121,17 +121,17 @@ public abstract class NamedGroupNode : RegexNode
             var listType = typeof(List<>).MakeGenericType(Navigation.GenericTypes[0]);
             var list = (IList)Activator.CreateInstance(listType);
             
-            for (int i = 0; i < scopedContext.Count; i++)
+            for (int i = 0; i < context.ScopedCaptures.Length; i++)
             {
-                var captureScopedContext = scopedContext.ScopeToCaptureIndex(i);
-                var itemValue = GetValue(captureScopedContext);
+                context.ScopeToLatchedCaptureIndex(i);
+                var itemValue = GetValue(context);
                 list.Add(itemValue);
             }
 
             value = list;
         }
         else
-            value = GetValue(scopedContext);
+            value = GetValue(context);
 
         Navigation.Prop.SetValue(instance, value);
 
