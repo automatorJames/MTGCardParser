@@ -40,6 +40,7 @@ public abstract class TokenUnit
     //public string CaptureValue { get; set; }
     public CaptureContext CaptureContext { get; set; }
     public string CaptureValue => CaptureContext.FullMatch;
+    public string JsonDebug => CaptureContext?.GetCaptureTree().JsonDebug ?? "";
 
     Type _type;
     public Type Type

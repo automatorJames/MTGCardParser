@@ -8,6 +8,7 @@
 public class EnumNode : ScalarContainerNode
 {
     protected override Joiner Joiner => Joiner.Pipe;
+    public override CaptureNodeType NodeType => CaptureNodeType.Enum;
 
     public EnumNode(RegexNode parentNode, Navigation navigation) : base(parentNode, navigation)
     {

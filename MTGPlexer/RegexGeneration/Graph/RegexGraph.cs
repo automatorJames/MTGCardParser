@@ -60,6 +60,7 @@ public class RegexGraph
             {
                 CaptureContext captureContext = new(RootNode, match, sourceText);
                 tokenUnit = RootNode.Hydrate(captureContext);
+                captureContext.RootCaptureInfo.ClrValue = tokenUnit;
                 return true;
             }
         }

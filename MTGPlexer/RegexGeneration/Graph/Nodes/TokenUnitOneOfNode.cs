@@ -8,6 +8,7 @@
 public class TokenUnitOneOfNode : TokenUnitNode
 {
     protected override Joiner Joiner => Joiner.Pipe;
+    public override CaptureNodeType NodeType => CaptureNodeType.OneOf;
     public TokenUnitOneOfNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {

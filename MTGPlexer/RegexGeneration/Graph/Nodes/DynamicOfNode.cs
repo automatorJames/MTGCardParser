@@ -6,7 +6,9 @@ public class DynamicOfNode : ScalarContainerNode
     const string _defaultCaptureAllCharsPattern = @"[^.]+";
     string[] _dynamicPatterns;
 
-	public DynamicOfNode(RegexNode parentNode, Navigation navigation) 
+    public override CaptureNodeType NodeType => CaptureNodeType.DynamicOf;
+
+    public DynamicOfNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
         if (navigation.GenericTypes.Length != 1 || !navigation.GenericTypes[0].IsAssignableTo(typeof(TokenUnit)))

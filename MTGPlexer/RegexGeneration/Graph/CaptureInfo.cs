@@ -1,27 +1,48 @@
-﻿using System.Collections;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Collections;
 
 namespace MTGPlexer.RegexGeneration.Graph;
 
+[JsonObject(MemberSerialization.OptIn)]
 public class CaptureInfo : IEnumerable<CaptureInfo>
 {
     public CaptureContext CaptureContext { get; }
+    [JsonProperty] public string FullyQualifiedName { get; }
+    [JsonProperty] public string CaptureValue { get; set; }
+    public string PrintValue => GetPrintValue();
     public bool Success { get; }
-    public string NodeTypeName { get; }
-    public string FullyQualifiedName { get; }
+    [JsonProperty] public CaptureNodeType NodeType { get; }
     public string ParentName { get; }
-    public int Index { get; }
-    public int Length { get; }
-    public int? SiblingIndex { get; }
-    public List<CaptureInfo> Siblings { get; } = [];
-    public List<CaptureInfo> Children { get; } = [];
-    public string CaptureValue { get; set; }
+    [JsonProperty] public int Index { get; }
+    [JsonProperty] public int Length { get; }
+    [JsonProperty] public int End { get; }
+    [JsonProperty] public int? SiblingIndex { get; }
+    [JsonProperty] public int Count => (Success ? 1 : 0) + Siblings.Count;
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureInfo> Siblings { get; } = [];
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureInfo> Children { get; } = [];
     public object ClrValue { get; set; }
-    public int Count => (Success ? 1 : 0) + Siblings.Count;
+
+    public string JsonDebug => JsonConvert.SerializeObject(
+    this,
+    Formatting.Indented,
+    new JsonSerializerSettings
+    {
+        NullValueHandling = NullValueHandling.Ignore,
+        Converters =
+        [
+            new StringEnumConverter()
+        ]
+    });
+
+    public bool ShouldSerializeSiblings() => Siblings.Count > 0;
+    public bool ShouldSerializeChildren() => Children.Count > 0;
+    public bool ShouldSerializeCount() => Count > 1;
 
     public CaptureInfo(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
         Success = false;
-        NodeTypeName = namedGroupNode.GetType().Name;
+        NodeType = namedGroupNode.NodeType;
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
 
         var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
@@ -42,6 +63,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
         CaptureValue = capture.Value;
         Index = capture.Index;
         Length = capture.Length;
+        End = Index + Length;
         SiblingIndex = siblingIndex;
     }
 
@@ -70,5 +92,27 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    string GetPrintValue()
+    {
+        if (ClrValue == null)
+            return null;
+
+        return NodeType.ToString() + ": " + ClrValue.ToString();
+    }
+
     public override string ToString() => CaptureValue;
 };
+
+public enum CaptureNodeType
+{
+    TokenUnit,
+    OneOf,
+    ManyOf,
+    CompoundOf,
+    OptionalOf,
+    DynamicOf,
+    Enum,
+    Int,
+    Bool,
+
+}

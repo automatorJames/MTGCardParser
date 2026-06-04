@@ -4,8 +4,8 @@ public class CaptureContext
 {
     IReadOnlyDictionary<string, Capture[]> _captureDictionary;
     Dictionary<string, CaptureInfo> _flatTree = [];
-    CaptureInfo _rootCaptureInfo;
 
+    public CaptureInfo RootCaptureInfo { get; }
     public string SourceText { get; }
     public string FullMatch { get; }
 
@@ -14,8 +14,8 @@ public class CaptureContext
         _captureDictionary = GetNamedGroupCaptures(match);
         SourceText = sourceText;
         FullMatch = match.Value;
-        _rootCaptureInfo = new(this, rootNode, match);
-        _flatTree[rootNode.FullyQualifiedName] = _rootCaptureInfo;
+        RootCaptureInfo = new(this, rootNode, match);
+        _flatTree[rootNode.FullyQualifiedName] = RootCaptureInfo;
     }
 
     public CaptureInfo this[NamedGroupNode namedGroupNode]
@@ -48,7 +48,7 @@ public class CaptureContext
 
     public CaptureInfo GetCaptureTree()
     {
-        var children = _flatTree.Values.Except([_rootCaptureInfo]);
+        var children = _flatTree.Values.Except([RootCaptureInfo]);
 
         foreach (var child in children)
         {
@@ -58,7 +58,7 @@ public class CaptureContext
             parentCaptureInfo.Children.Add(child);
         }
 
-        return _rootCaptureInfo;
+        return RootCaptureInfo;
     }
 
     static Dictionary<string, Capture[]> GetNamedGroupCaptures(Match match)

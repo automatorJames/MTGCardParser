@@ -7,6 +7,7 @@
 /// </summary>
 public class BoolNode : ScalarContainerNode
 {
+    public override CaptureNodeType NodeType => CaptureNodeType.Bool;
     protected override GroupQuantifier? Quantifier => GroupQuantifier.Optional;
     protected override bool OneOrMoreRegexPatternsRequired => true;
 

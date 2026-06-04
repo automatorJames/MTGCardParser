@@ -2,6 +2,7 @@
 using MTGPlexer.RegexGeneration.Graph;
 using MTGPlexer.TokenUnitPrimitives;
 using MTGPlexer.TokenUnits;
+using Newtonsoft.Json;
 using System.Diagnostics;
 
 namespace ConsoleUtility;
@@ -12,10 +13,9 @@ internal class Program
     {
         //TestSimple<ManaValue>("{12}{w}{w}{r}");
         var thing = TokenTypeRegistry.Tokenize("target creature gains flying until end of turn");
+        var debug = thing[0].JsonDebug;
         var captureTree = thing[0].CaptureContext.GetCaptureTree();
-        //var thing = TokenTypeRegistry.Tokenize("target creature gains trample and gets +x/+0 until end of turn");
-        var thingy = "sdaf";
-        //TestTokenization();
+
     }
 
     static void TestSimple<T>(string tryToMatchText = null)

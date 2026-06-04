@@ -3,6 +3,9 @@
 public class IntNode : NamedGroupNode
 {
     protected override bool OneOrMoreRegexPatternsRequired => true;
+
+    public override CaptureNodeType NodeType => CaptureNodeType.Int;
+
     public IntNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {

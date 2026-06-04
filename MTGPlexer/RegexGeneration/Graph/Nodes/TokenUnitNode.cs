@@ -6,6 +6,8 @@ public class TokenUnitNode : NamedGroupNode
     protected override Joiner Joiner { get; }
     protected override GroupQuantifier? Quantifier { get; }
 
+    public override CaptureNodeType NodeType => CaptureNodeType.TokenUnit;
+
     public TokenUnitNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {

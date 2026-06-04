@@ -11,6 +11,7 @@ public abstract class NamedGroupNode : RegexNode
     public CaptureInfo CaptureValueHydrationInfo { get; protected set; }
     public string FullyQualifiedName { get; }
 
+    public abstract CaptureNodeType NodeType { get; }
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
