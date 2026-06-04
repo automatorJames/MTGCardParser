@@ -57,13 +57,13 @@ public class EnumNode : ScalarContainerNode
         }
     }
 
-    public override object GetValueSingle(Capture capture)
+    public override object GetValueSingle(CaptureInfo captureInfo)
     {
         return Children
             .OfType<INamedScalarValue>()
             //.FirstOrDefault(x => x.Name.Equals(capture.Value, StringComparison.InvariantCultureIgnoreCase))?
-            .FirstOrDefault(x => x.Regex.IsMatch(capture.Value))
+            .FirstOrDefault(x => x.Regex.IsMatch(captureInfo.CaptureValue))
             .ScalarValue
-            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{capture.Value}'");
+            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{captureInfo.CaptureValue}'");
     }
 }

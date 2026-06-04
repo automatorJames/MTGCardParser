@@ -40,20 +40,27 @@ public class TokenUnitNode : NamedGroupNode
         };
     }
 
-    public TokenUnit Hydrate(CaptureContext context)
+    public TokenUnit Hydrate(CaptureContext captureContext)
     {
         var instance = (TokenUnit)Activator.CreateInstance(Navigation.NodeType);
 
         Children.OfType<NamedGroupNode>()
             .ToList()
-            .ForEach(x => x.SetPropertyValue(instance, context));
+            .ForEach(x => x.SetPropertyValue(instance, captureContext));
 
-        instance.CaptureContext = context;
+        instance.CaptureContext = captureContext;
 
         return instance;
     }
 
-    protected override object GetValue(CaptureContext context) => Hydrate(context);
+    protected override object GetValue(CaptureInfo captureInfo)
+    {
+        var tokenUnit = Hydrate(captureInfo.CaptureContext);
+        //tokenUnit.CaptureValue = captureInfo.CaptureValue;
+        captureInfo.ClrValue = tokenUnit;
+
+        return tokenUnit;
+    }
 
     /// <summary>
     /// Validates the capture structure based on two rules:

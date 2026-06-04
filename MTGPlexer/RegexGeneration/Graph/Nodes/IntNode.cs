@@ -18,13 +18,13 @@ public class IntNode : NamedGroupNode
                     positionAmongSiblings: idx
                 )));
 
-    protected override object GetValue(CaptureContext captureContext)
+    protected override object GetValue(CaptureInfo captureInfo)
     {
         // Check if the capture itself is a singular int
-        if (captureContext.Count == 1 && int.TryParse(captureContext.Capture.Value, out int parsedInt))
+        if (captureInfo.Count == 1 && int.TryParse(captureInfo.CaptureValue, out int parsedInt))
             return parsedInt;
 
         // Otherwise, return the count of occurrences of the match
-        return captureContext.Count;
+        return captureInfo.Count;
     }
 }

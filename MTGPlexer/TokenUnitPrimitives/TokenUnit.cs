@@ -37,8 +37,9 @@ public abstract class TokenUnit
     public SnippetOptionalPlural Plural() =>
         new SnippetOptionalPlural();
 
+    //public string CaptureValue { get; set; }
     public CaptureContext CaptureContext { get; set; }
-    public string Value => CaptureContext.FullMatch;
+    public string CaptureValue => CaptureContext.FullMatch;
 
     Type _type;
     public Type Type

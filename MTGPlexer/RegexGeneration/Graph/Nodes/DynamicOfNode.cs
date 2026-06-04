@@ -25,9 +25,9 @@ public class DynamicOfNode : ScalarContainerNode
                     positionAmongSiblings: idx
                 )));
 
-    public override object GetValueSingle(Capture capture)
+    public override object GetValueSingle(CaptureInfo captureInfo)
     {
-        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(capture.Value, scopeToType: Navigation.GenericTypes[0]);
+        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(captureInfo.CaptureValue, scopeToType: Navigation.GenericTypes[0]);
     
         // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
         if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)

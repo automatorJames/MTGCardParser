@@ -108,12 +108,12 @@ public abstract class NamedGroupNode : RegexNode
     public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)
     {
         object value = null;
-        var success = context[this];
+        var captureInfo = context[this];
 
         // todo: for certain navigations, scopedContext.Success should be required for (excepting OneOf, OptionalOf, etc.)
         // Therefore we should enforce this as necessary to avoid hard-to-isolate silent failure modes where hydration succeeds without
         // throwing an exception, but is missing most or all of its property values
-        if (!success)
+        if (!captureInfo.Success)
             return;
 
         if (Navigation.IsList)
@@ -121,51 +121,24 @@ public abstract class NamedGroupNode : RegexNode
             var listType = typeof(List<>).MakeGenericType(Navigation.GenericTypes[0]);
             var list = (IList)Activator.CreateInstance(listType);
             
-            for (int i = 0; i < context.ScopedCaptures.Length; i++)
+            foreach (var sibling in captureInfo)
             {
-                context.ScopeToLatchedCaptureIndex(i);
-                var itemValue = GetValue(context);
+                var itemValue = GetValue(sibling);
+                sibling.ClrValue = itemValue;
                 list.Add(itemValue);
             }
 
             value = list;
         }
         else
-            value = GetValue(context);
+        {
+            value = GetValue(captureInfo);
+            captureInfo.ClrValue = value;
+        }
 
+        // Assign the value to the prop (either a single object value or a List<object> value)
         Navigation.Prop.SetValue(instance, value);
-
-        // memorialize the object value in the capture context (only applies to terminal values)
-
-        
     }
 
-    //public object GetValueForNamedPath(CaptureContext captureContext)
-    //{
-    //    var scopedContext = captureContext[this];
-    //
-    //    if (!scopedContext.Success)
-    //        return null;
-    //
-    //    return GetValue(scopedContext);
-    //}
-    //
-    //public CaptureContext GetScopedContext(CaptureContext context) => context[this];
-    //
-    protected abstract object GetValue(CaptureContext context);
-    //
-    //public bool SetPropertyValue(CaptureContext captureContext, TokenUnit parent)
-    //{
-    //    if (Navigation is not PropNavigation propNavigation)
-    //        throw new Exception($"Navigation for {FullyQualifiedName} is not a {nameof(PropNavigation)}, so it can't set a value on an instance");
-    //
-    //    var value = GetValueAndSetHydrationInfo(captureContext);
-    //
-    //    if (value == null && AbortIfSetPropertyToNull)
-    //        return false;
-    //
-    //    ConcreteProperty.SetValue(parent, value);
-    //
-    //    return true;
-    //}
+    protected abstract object GetValue(CaptureInfo captureInfo);
 }
