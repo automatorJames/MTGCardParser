@@ -9,6 +9,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
 {
     public CaptureContext CaptureContext { get; }
     [JsonProperty] public string FullyQualifiedName { get; }
+    [JsonProperty] public string Name { get; }
     [JsonProperty] public string CaptureValue { get; set; }
     public string PrintValue => GetPrintValue();
     public bool Success { get; }
@@ -44,6 +45,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
         Success = false;
         NodeType = namedGroupNode.NodeType;
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
+        Name = namedGroupNode.Name;
 
         var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
 

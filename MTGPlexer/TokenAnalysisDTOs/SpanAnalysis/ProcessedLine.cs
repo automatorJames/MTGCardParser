@@ -1,7 +1,7 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 
 /// <summary>
-/// Represents a single, fully processed line from a card, containing both the
+/// Represents a single, fully processed line from a document, containing both the
 /// hierarchical analysis of matched tokens (TokenCaptureSummaries) and a list of any
 /// unmatched occurrences.
 /// </summary>
@@ -30,22 +30,23 @@ public class ProcessedLine
         DataPath = dataPath;
     }
 
-    public static List<ProcessedLine> GetAll(Card card)
+    public static List<ProcessedLine> GetAll(IDocument document)
     {
+        var formattedLines = document.GetFormattedLines();
         List<ProcessedLine> lines = [];
-
-        for (int i = 0; i < card.FormattedLinesLower.Length; i++)
+        
+        for (int i = 0; i < formattedLines.Length; i++)
         {
-            var formattedText = card.FormattedLinesLower[i];
-            var originalText = card.FormattedLines[i];
-            SourceTextDTO sourceText = new(formattedText, originalText, card.Name, i);
+            var formattedText = formattedLines[i];
 
             if (string.IsNullOrWhiteSpace(formattedText))
                 continue;
 
+            SourceTextDTO sourceText = new(formattedText, document.Name, i);
+
             var lineTokenUnits = TokenTypeRegistry.Tokenize(sourceText.FormattedText);
-            var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(card, lineTokenUnits, i, originalText);
-            var dataPath = card.Name.Replace(' ', '_') + $"-line[{i}]";
+            var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(document, lineTokenUnits, i);
+            var dataPath = document.Name.Replace(' ', '_') + $"-line[{i}]";
 
             lines.Add(new ProcessedLine(sourceText, lineTokenUnits, unmatchedTextOccurrences, dataPath));
         }
@@ -54,7 +55,7 @@ public class ProcessedLine
         return lines;
     }
 
-    static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(Card card, List<TokenUnit> lineTokenUnits, int lineIndex, string originalLineText)
+    static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(IDocument document, List<TokenUnit> lineTokenUnits, int lineIndex)
     {
         var occurrences = new List<UnmatchedTextOccurrence>();
 
@@ -65,7 +66,7 @@ public class ProcessedLine
             // Check for and record unmatched tokens
             // Create a new occurrence, giving it the context of the entire line's tokens.
             if (tokenUnit.Type == typeof(DefaultUnmatchedString))
-                occurrences.Add(new UnmatchedTextOccurrence(card.Name, lineIndex, lineTokenUnits, i));
+                occurrences.Add(new UnmatchedTextOccurrence(document.Name, lineIndex, lineTokenUnits, i));
         }
 
         return occurrences;

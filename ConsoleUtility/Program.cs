@@ -12,9 +12,10 @@ internal class Program
     static void Main(string[] args)
     {
         //TestSimple<ManaValue>("{12}{w}{w}{r}");
-        var thing = TokenTypeRegistry.Tokenize("target creature gains flying until end of turn");
-        var debug = thing[0].JsonDebug;
-        var captureTree = thing[0].CaptureContext.GetCaptureTree();
+        //var thing = TokenTypeRegistry.Tokenize("target creature gains flying until end of turn");
+        //var debug = thing[0].JsonDebug;
+        //var captureTree = thing[0].CaptureContext.GetCaptureTree();
+        TestTokenization();
 
     }
 
@@ -37,7 +38,7 @@ internal class Program
         List<TokenUnit> tokens = [];
 
         foreach (var card in cardDataGetter.GetCardsAsync().Result)
-            foreach (var line in card.FormattedLinesLower)
+            foreach (var line in card.GetFormattedLines())
                 tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line));
 
         Debugger.Break();

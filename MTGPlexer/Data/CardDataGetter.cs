@@ -16,7 +16,7 @@ public class CardDataGetter
         _ignoreEmptyText = ignoreEmptyText;
     }
 
-    public async Task<List<Card>> GetCardsAsync()
+    public async Task<IEnumerable<IDocument>> GetCardsAsync()
     {
         var conditions = new List<string>();
 
@@ -42,8 +42,8 @@ public class CardDataGetter
         //result = result.Where(x => x.Name == "Ancestral Recall");
         //result = result.Where(x => x.Name == "Berserk");
         //result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
-        result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
-        return result.ToList();
+        //result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
+        return result;
     }
 }
 
