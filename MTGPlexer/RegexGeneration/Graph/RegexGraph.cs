@@ -59,7 +59,7 @@ public class RegexGraph
             if (endsAtBoundary)
             {
                 CaptureContext captureContext = new(RootNode, match, sourceText);
-                tokenUnit = RootNode.Hydrate(captureContext);
+                tokenUnit = RootNode.TryHydrate(captureContext);
                 captureContext.RootCaptureInfo.ClrValue = tokenUnit;
                 return true;
             }

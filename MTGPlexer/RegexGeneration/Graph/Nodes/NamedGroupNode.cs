@@ -106,16 +106,16 @@ public abstract class NamedGroupNode : RegexNode
             collector.Append(GetGroupCloseBrick());
     }
 
-    public virtual void SetPropertyValue(TokenUnit instance, CaptureContext context)
+    public virtual bool SetPropertyValue(TokenUnit instance, CaptureContext context)
     {
-        object value = null;
+        object value;
         var captureInfo = context[this];
 
         // todo: for certain navigations, scopedContext.Success should be required for (excepting OneOf, OptionalOf, etc.)
         // Therefore we should enforce this as necessary to avoid hard-to-isolate silent failure modes where hydration succeeds without
         // throwing an exception, but is missing most or all of its property values
         if (!captureInfo.Success)
-            return;
+            return false;
 
         if (Navigation.IsList)
         {
@@ -137,8 +137,13 @@ public abstract class NamedGroupNode : RegexNode
             captureInfo.ClrValue = value;
         }
 
+        if (value == null)
+            return false;
+
         // Assign the value to the prop (either a single object value or a List<object> value)
         Navigation.Prop.SetValue(instance, value);
+
+        return true;
     }
 
     protected abstract object GetValue(CaptureInfo captureInfo);
