@@ -41,7 +41,6 @@ public class RegexGraph
     public bool TryMatch(string sourceText, int currentIndex, int endIndex, out TokenUnit tokenUnit)
     {
         tokenUnit = null;
-
         var match = BuiltRegex.Regex.Match(sourceText, currentIndex);
         
         // 1. Regex Success
@@ -53,13 +52,16 @@ public class RegexGraph
             int matchEndIndex = match.Index + match.Length;
         
             // 5. Boundary Check: End of scope OR followed by a boundary char
-            bool endsAtBoundary = matchEndIndex == endIndex ||
-                                 (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
+            bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
         
             if (endsAtBoundary)
             {
                 CaptureContext captureContext = new(RootNode, match, sourceText);
-                tokenUnit = RootNode.TryHydrate(captureContext);
+                var success = RootNode.TryHydrate(captureContext, out tokenUnit);
+
+                if (!success)
+                    return false;
+
                 captureContext.RootCaptureInfo.ClrValue = tokenUnit;
                 return true;
             }

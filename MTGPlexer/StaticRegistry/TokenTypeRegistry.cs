@@ -56,25 +56,11 @@ public static partial class TokenTypeRegistry
         if (TypeConfigurations.TryGetValue(tokenUnitType, out var configuration))
             return configuration;
 
-        //if (tokenUnitType.ContainsGenericParameters)
-        //{
-        //    // Close open generic parameters with typeof(object) so we can create
-        //    // a temporary dummy instance for configuration/snippet inspection.
-        //    // The actual generic argument types are irrelevant for this purpose.
-        //    var genericArgs = tokenUnitType
-        //        .GetGenericArguments()
-        //        .Select(_ => typeof(object))
-        //        .ToArray();
-        //
-        //    tokenUnitType = tokenUnitType
-        //        .GetGenericTypeDefinition()
-        //        .MakeGenericType(genericArgs);
-        //}
+        // DynamicTokens have no snippets b/c it contains an Item object that will be resolved via the Tokenizer at runtime
+        if (tokenUnitType.IsAssignableTo(typeof(DynamicToken)))
+            return new(tokenUnitType, [], Joiner.None, null)    ;
 
         var instance = (TokenUnit)Activator.CreateInstance(tokenUnitType);
-
-        //if ((instance.ValidateStructure() is string errorString))
-        //    throw new Exception($"Type '{type.Name}' failed validation: {errorString}");
 
         var snippets = instance.Snippets.ToArray();
 

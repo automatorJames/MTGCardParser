@@ -42,7 +42,7 @@ public class TokenUnitNode : NamedGroupNode
         };
     }
 
-    public bool TryHydrate(CaptureContext captureContext, out TokenUnit tokenUnit)
+    public virtual bool TryHydrate(CaptureContext captureContext, out TokenUnit tokenUnit)
     {
         tokenUnit = null;
         var instance = (TokenUnit)Activator.CreateInstance(Navigation.NodeType);
@@ -64,12 +64,11 @@ public class TokenUnitNode : NamedGroupNode
 
     protected override object GetValue(CaptureInfo captureInfo)
     {
-        var tokenUnit = TryHydrate(captureInfo.CaptureContext);
+        TryHydrate(captureInfo.CaptureContext, out var tokenUnit);
         captureInfo.ClrValue = tokenUnit;
 
         return tokenUnit;
     }
-
 
     /// <summary>
     /// Validates the capture structure based on two rules:

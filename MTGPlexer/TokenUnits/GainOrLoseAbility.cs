@@ -7,5 +7,5 @@ public class GainOrLoseAbility : TokenUnit
     public GainOrLose GainOrLose { get; set; }
     
     [RegexPattern("[^\"]+")]
-    public DynamicOf<TokenUnit> Ability { get; set; }
+    public DynamicToken Ability { get; set; }
 }

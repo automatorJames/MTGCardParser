@@ -144,11 +144,6 @@ public static class Extensions
         return value.ToString()?.ToFriendlyCase(TitleDisplayOption.Lower) ?? string.Empty;
     }
 
-    public static string[] GetPublicPropNames(this Type type) =>
-        type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-            .Select(x => x.Name)
-            .ToArray();
-
     public static object[] GetSetFlags(this Enum value)
     {
         if (value is null)

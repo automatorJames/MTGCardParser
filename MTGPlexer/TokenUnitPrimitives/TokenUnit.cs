@@ -65,12 +65,11 @@ public abstract class TokenUnit
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
-        var expectedProps = Type.GetPublicPropNames();
+        var props = Type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly).ToArray();
 
-        var missingProps = expectedProps
-            .Except(regexGraph.RootNode.Children
-            .OfType<NamedGroupNode>()
-            .Select(x => x.Name))
+        var missingProps = props
+            .Select(x => x.Name)
+            .Except(regexGraph.RootNode.Children.OfType<NamedGroupNode>().Select(y => y.Name))
             .ToList();
 
         if (missingProps.Any())
@@ -112,15 +111,11 @@ public abstract class TokenUnit
 
         IEnumerable<Type> GetUnderlyingTokenUnits(Type type)
         {
-            // 1. Explicitly ignore DynamicOf branches (as per requirements)
-            if (typeof(DynamicOf<>).IsAssignableFrom(type))
-                yield break;
-
-            // 2. If it is a TokenUnit, that is a direct dependency
+            // If it is a TokenUnit, that is a direct dependency
             if (typeof(TokenUnit).IsAssignableFrom(type))
                 yield return type;
 
-            // 3. If it is an XOf generic (ManyOf<T>, OneOf<T1, T2>, etc), 
+            // If it is an XOf generic (ManyOf<T>, OneOf<T1, T2>, etc), 
             // recurse into the generic arguments to find the TokenUnits inside.
             else if (type.IsGenericType)
             {
