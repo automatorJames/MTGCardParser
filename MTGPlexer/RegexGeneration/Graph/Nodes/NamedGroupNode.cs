@@ -95,6 +95,7 @@ public abstract class NamedGroupNode : RegexNode
             bool shouldAddJoiner =
                 i < Children.Count - 1
                 && Joiner != Joiner.None
+                && collector.LastChar != ' '
                 && !_terminals.Contains(collector.LastChar);
 
             if (shouldAddJoiner)

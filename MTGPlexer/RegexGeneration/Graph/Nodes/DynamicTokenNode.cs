@@ -28,7 +28,8 @@ public class DynamicTokenNode : TokenUnitNode
     {
         tokenUnit = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(TokenUnit);
-        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize("discard a card", scopeToType: filterType);
+        var captureValue = captureContext[this].CaptureValue;
+        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(captureValue, scopeToType: filterType);
         
         // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
         if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)
