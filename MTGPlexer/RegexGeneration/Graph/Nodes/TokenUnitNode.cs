@@ -35,6 +35,7 @@ public class TokenUnitNode : NamedGroupNode
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(DefaultUnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
+            { } t when typeof(DynamicToken).IsAssignableFrom(t) => new DynamicTokenNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
             { } t when t == typeof(int) => new IntNode(parentNode, navigation),

@@ -27,8 +27,8 @@ public class DynamicTokenNode : TokenUnitNode
     public override bool TryHydrate(CaptureContext captureContext, out TokenUnit tokenUnit)
     {
         tokenUnit = null;
-        Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>().Type;
-        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize("foo", scopeToType: filterType);
+        Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(TokenUnit);
+        var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize("discard a card", scopeToType: filterType);
         
         // Dynamic match tokens must not begin with DefaultUnmatchedString, and must contain at least one non-DefaultUnmatchedString
         if (resolvedTokens.FirstOrDefault() is DefaultUnmatchedString || resolvedTokens.FirstOrDefault(x => x is not DefaultUnmatchedString) is not TokenUnit dynamicMatchToken)

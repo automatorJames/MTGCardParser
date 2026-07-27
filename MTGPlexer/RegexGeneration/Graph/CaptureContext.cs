@@ -12,6 +12,10 @@ public class CaptureContext
     public CaptureContext(TokenUnitNode rootNode, Match match, string sourceText)
     {
         _captureDictionary = GetNamedGroupCaptures(match);
+
+        var all = _captureDictionary.Values.SelectMany(x => x);
+        if (all.Any(x => x.Value == "")) Debugger.Break();
+
         SourceText = sourceText;
         FullMatch = match.Value;
         RootCaptureInfo = new(this, rootNode, match);

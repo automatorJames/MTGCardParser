@@ -41,8 +41,6 @@ internal class Program
             foreach (var line in card.GetFormattedLines())
                 tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line));
 
-        
-        
         Debugger.Break();
     }
 }

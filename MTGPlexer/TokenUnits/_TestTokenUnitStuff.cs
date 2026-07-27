@@ -23,13 +23,11 @@
 //    public CompoundOf<Letter> Letters { get; set; }
 //}
 
-//[IsolateForTesting]
-//public class TestClass : TokenUnit
-//{
-//    public override Snippet[] Snippets => ["target", Prop(Letter)];
-//
-//    public Letter Letter { get; set; }
-//}
+[IsolateForTesting]
+public class DiscardACard : TokenUnit
+{
+    public override Snippet[] Snippets => ["discard a card"];
+}
 
 public enum Letter
 {

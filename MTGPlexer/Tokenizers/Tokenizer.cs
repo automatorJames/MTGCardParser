@@ -21,8 +21,8 @@ public class Tokenizer
         int unmatchedStartIndex = -1;
 
         // Pre-filter types to avoid repeating logic inside the while loop
-        var filteredTypes = (scopeToType != null && scopeToType != typeof(TokenUnit))
-            ? _orderedTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
+        var filteredTypes = 
+            (scopeToType != null && scopeToType != typeof(TokenUnit)) ? _orderedTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
             : _orderedTypes;
 
         while (currentIndex < endIndex)
