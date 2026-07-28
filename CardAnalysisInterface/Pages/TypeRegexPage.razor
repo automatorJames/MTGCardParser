@@ -1,12 +1,11 @@
 ﻿@* @page "/type-regex"
-@inject CorpusAnalyzer CorpusAnalyzer
+@inject DocumentCorpusAnalyzer DocumentAnalyzer
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @using System.Text
 @using MTGPlexer.Colors
 @using MTGPlexer.CommonDTOs
 @using MTGPlexer.RegexGeneration
-@using MTGPlexer.TokenUnitGraphComponents
 @using Microsoft.AspNetCore.Components
 
 <div class="type-card-container">
@@ -60,10 +59,10 @@
 
     List<TokenUnitCapture> GetFilteredTokenUnitCaptures()
     {
-        List<TokenUnitCapture> filteredTokenUnitCaptures = CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values.ToList();
+        List<TokenUnitCapture> filteredTokenUnitCaptures = DocumentAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values.ToList();
 
         if (!RuntimeSettings.HideRegexesWithZeroCaptures)
-            filteredTokenUnitCaptures.AddRange(CorpusAnalyzer.TokenCaptureSummary.UnmatchedTokenUnits.Values);
+            filteredTokenUnitCaptures.AddRange(DocumentAnalyzer.TokenCaptureSummary.UnmatchedTokenUnits.Values);
 
         var searchTerm = RuntimeSettings.SearchTerm;
 

@@ -3,27 +3,27 @@ using Microsoft.Data.SqlClient;
 
 namespace MTGPlexer.Data;
 
-public class CardDataGetter
+public class CardDataGetter : IDocumentRepository
 {
     readonly string _sqlConnString;
     int? _maxSetSequence;
-    bool _ignoreEmptyText;
+    bool _includeEmptyDocuments;
 
-    public CardDataGetter(string sqlConnString, int? maxSetSequence = null, bool ignoreEmptyText = true)
+    public CardDataGetter(GlobalSettings settings)
     {
-        _sqlConnString = sqlConnString;
-        _maxSetSequence = maxSetSequence;
-        _ignoreEmptyText = ignoreEmptyText;
+        _sqlConnString = settings.SqlConnString;
+        _maxSetSequence = settings.MaxSetSequence;
+        _includeEmptyDocuments = settings.IncludeEmptyDocuments;
     }
 
-    public async Task<IEnumerable<IDocument>> GetCardsAsync()
+    public async Task<List<IDocument>> GetDocumentsAsync()
     {
         var conditions = new List<string>();
 
         if (_maxSetSequence.HasValue)
             conditions.Add("SetSequence <= @MaxSequence");
 
-        if (_ignoreEmptyText)
+        if (!_includeEmptyDocuments)
             conditions.Add("Text is not null");
 
         var whereClause = conditions.Count > 0
@@ -43,7 +43,7 @@ public class CardDataGetter
         //result = result.Where(x => x.Name == "Berserk");
         //result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
         //result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
-        return result;
+        return result.Cast<IDocument>().ToList();
     }
 }
 

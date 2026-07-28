@@ -1,0 +1,58 @@
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="loading-indicator">
+    <svg class="loading-spinner" viewBox="0 0 48 48" width="56" height="56">
+        <defs>
+            <linearGradient id="@_gradientId" gradientUnits="userSpaceOnUse" x1="4" y1="24" x2="44" y2="24">
+                <stop offset="0%" stop-color="#ff5f6d" />
+                <stop offset="16%" stop-color="#ffc371" />
+                <stop offset="33%" stop-color="#f9f871" />
+                <stop offset="50%" stop-color="#3ee089" />
+                <stop offset="66%" stop-color="#4fa9f7" />
+                <stop offset="83%" stop-color="#b26bff" />
+                <stop offset="100%" stop-color="#ff5f6d" />
+            </linearGradient>
+        </defs>
+        <circle class="loading-spinner-arc" cx="24" cy="24" r="20" pathLength="100" stroke="url(#@_gradientId)" />
+    </svg>
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <span class="loading-indicator-label">@Label</span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; }
+
+    readonly string _gradientId = $"loading-indicator-gradient-{Guid.NewGuid():N}";
+    bool _rainbowSpinnerStarted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initRainbowSpinner", _gradientId, 24, 24, 3000);
+            _rainbowSpinnerStarted = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // OnAfterRenderAsync (and therefore the JS animation) never runs during static
+        // prerendering, so skip the JS call entirely rather than invoking interop that
+        // isn't available yet on a component that's being torn down before the circuit exists.
+        if (!_rainbowSpinnerStarted)
+            return;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("stopRainbowSpinner", _gradientId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit already gone; nothing to clean up client-side.
+        }
+    }
+}

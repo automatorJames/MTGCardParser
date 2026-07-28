@@ -1,0 +1,64 @@
+.loading-indicator {
+    position: fixed;
+    top: 33vh;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    pointer-events: none;
+}
+
+.loading-spinner {
+    animation: loading-spinner-rotate 2s linear infinite;
+    transform-origin: 50% 50%;
+    overflow: visible;
+}
+
+.loading-spinner-arc {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    animation: loading-spinner-dash 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.loading-indicator-label {
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    animation: loading-indicator-label-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes loading-spinner-rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes loading-spinner-dash {
+    0% {
+        stroke-dasharray: 1, 300;
+        stroke-dashoffset: 0;
+    }
+
+    50% {
+        stroke-dasharray: 45, 300;
+        stroke-dashoffset: -17;
+    }
+
+    100% {
+        stroke-dasharray: 45, 300;
+        stroke-dashoffset: -62;
+    }
+}
+
+@keyframes loading-indicator-label-pulse {
+    0%, 100% {
+        color: #6b6b6b;
+    }
+
+    50% {
+        color: #d4d4d4;
+    }
+}

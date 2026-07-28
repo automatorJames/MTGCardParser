@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MTGPlexer.Data;
+using MTGPlexer.Interfaces;
 using MTGPlexer.TokenAnalysisDTOs;
 
 namespace CardAnalysisInterface;
@@ -12,13 +13,17 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
+
+        var globalSettings = builder.Configuration
+            .GetSection(nameof(GlobalSettings))
+            .Get<GlobalSettings>()
+            ?? throw new InvalidOperationException("GlobalSettings is missing from configuration.");
+
+        builder.Services.AddSingleton(globalSettings);
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
-
-        CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 1);
-        var cards = cardDataGetter.GetCardsAsync().Result;
-        builder.Services.AddSingleton(cards);
-        builder.Services.AddSingleton<CorpusAnalyzer>();
+        builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();
+        builder.Services.AddSingleton<DocumentCorpusAnalyzer>();
 
         var app = builder.Build();
 

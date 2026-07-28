@@ -1,7 +1,7 @@
 ﻿@page "/word-trees"
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
-@inject CorpusAnalyzer CorpusAnalyzer
+@inject DocumentCorpusAnalyzer CorpusAnalyzer
 
 @* Only render the body of the page after settings are loaded to avoid incorrect filtering *@
 @if (RuntimeSettings.IsLoaded)
@@ -107,10 +107,10 @@ else
     private IEnumerable<AnalyzedText> GetFilteredSpans()
     {
         // todo: re-implement support for this switch if it's desired
-        DigestedTextCorpus corpus = RuntimeSettings.ShowOriginalText
+        DigestedText corpus = RuntimeSettings.ShowOriginalText
             //? throw new NotImplementedException("Support for showing word trees from original text has been temporarily paused")
-            ? CorpusAnalyzer.DigestedCorpusWithCaptureTokens
-            : CorpusAnalyzer.DigestedCorpusWithCaptureTokens;
+            ? CorpusAnalyzer.DigestedTextWithCaptureTokens
+            : CorpusAnalyzer.DigestedTextWithCaptureTokens;
 
         var items = corpus.Spans
             .Where(x =>

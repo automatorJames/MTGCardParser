@@ -1,10 +1,10 @@
 ﻿namespace MTGPlexer.TokenAnalysisDTOs.WordTrees;
 
-public class DigestedTextCorpus
+public class DigestedText
 {
     public List<AnalyzedText> Spans { get; }
 
-    public DigestedTextCorpus(List<ProcessedCard> processedCards)
+    public DigestedText(List<ProcessedDocument> processedCards)
     {
         var allUnmatchedOccurrences = processedCards
             .SelectMany(card => card.Lines)
