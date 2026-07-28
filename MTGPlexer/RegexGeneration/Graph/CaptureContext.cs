@@ -36,7 +36,7 @@ public class CaptureContext
                 return new(this, namedGroupNode);
             }
 
-            Debug.WriteLine(namedGroupNode.FullyQualifiedName + ": " + allCapturesForGroup[0].Value);
+            //Debug.WriteLine(namedGroupNode.FullyQualifiedName + ": " + allCapturesForGroup[0].Value);
 
             var captureInfos = allCapturesForGroup.Select((x, idx) => new CaptureTrace(this, namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx));
             var captureInfo = captureInfos.First();
