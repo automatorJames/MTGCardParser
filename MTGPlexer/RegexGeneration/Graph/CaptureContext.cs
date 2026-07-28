@@ -3,9 +3,9 @@
 public class CaptureContext
 {
     IReadOnlyDictionary<string, Capture[]> _captureDictionary;
-    Dictionary<string, CaptureInfo> _flatTree = [];
+    Dictionary<string, CaptureTrace> _flatTree = [];
 
-    public CaptureInfo RootCaptureInfo { get; }
+    public CaptureTrace RootCaptureInfo { get; }
     public string SourceText { get; }
     public string FullMatch { get; }
 
@@ -22,7 +22,7 @@ public class CaptureContext
         _flatTree[rootNode.FullyQualifiedName] = RootCaptureInfo;
     }
 
-    public CaptureInfo this[NamedGroupNode namedGroupNode]
+    public CaptureTrace this[NamedGroupNode namedGroupNode]
     {
         get
         {
@@ -38,7 +38,7 @@ public class CaptureContext
 
             Debug.WriteLine(namedGroupNode.FullyQualifiedName + ": " + allCapturesForGroup[0].Value);
 
-            var captureInfos = allCapturesForGroup.Select((x, idx) => new CaptureInfo(this, namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx));
+            var captureInfos = allCapturesForGroup.Select((x, idx) => new CaptureTrace(this, namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx));
             var captureInfo = captureInfos.First();
 
             if (captureInfos.Count() > 1)
@@ -50,7 +50,7 @@ public class CaptureContext
         }
     }
 
-    public CaptureInfo GetCaptureTree()
+    public CaptureTrace GetCaptureTree()
     {
         var children = _flatTree.Values.Except([RootCaptureInfo]);
 

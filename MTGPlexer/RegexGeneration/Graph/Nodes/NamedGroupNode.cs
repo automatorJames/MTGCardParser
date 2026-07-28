@@ -8,7 +8,7 @@ public abstract class NamedGroupNode : RegexNode
     public bool IsTransparentRoot => Navigation.IsRoot && Quantifier == null;
 
     public Navigation Navigation { get; }
-    public CaptureInfo CaptureValueHydrationInfo { get; protected set; }
+    public CaptureTrace CaptureValueHydrationInfo { get; protected set; }
     public string FullyQualifiedName { get; }
 
     public abstract CaptureNodeType NodeType { get; }
@@ -147,5 +147,5 @@ public abstract class NamedGroupNode : RegexNode
         return true;
     }
 
-    protected abstract object GetValue(CaptureInfo captureInfo);
+    protected abstract object GetValue(CaptureTrace captureInfo);
 }

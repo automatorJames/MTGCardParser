@@ -19,7 +19,7 @@ public abstract class ScalarContainerNode : NamedGroupNode
                     positionAmongSiblings: idx
                 )));
 
-    protected override object GetValue(CaptureInfo captureInfo)
+    protected override object GetValue(CaptureTrace captureInfo)
     {
         if (captureInfo.Count != 1)
             throw new Exception($"{nameof(ScalarContainerNode)} expects exactly one capture");
@@ -27,5 +27,5 @@ public abstract class ScalarContainerNode : NamedGroupNode
         return GetValueSingle(captureInfo);
     }
 
-    public abstract object GetValueSingle(CaptureInfo captureInfo);
+    public abstract object GetValueSingle(CaptureTrace captureInfo);
 }

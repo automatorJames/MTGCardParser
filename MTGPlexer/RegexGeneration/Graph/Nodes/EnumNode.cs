@@ -58,7 +58,7 @@ public class EnumNode : ScalarContainerNode
         }
     }
 
-    public override object GetValueSingle(CaptureInfo captureInfo)
+    public override object GetValueSingle(CaptureTrace captureInfo)
     {
         return Children
             .OfType<INamedScalarValue>()

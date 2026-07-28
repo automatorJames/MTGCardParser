@@ -16,7 +16,7 @@ public class BoolNode : ScalarContainerNode
     {
     }
 
-    public override object GetValueSingle(CaptureInfo captureInfo)
+    public override object GetValueSingle(CaptureTrace captureInfo)
     {
         // Simply return "true", because TerminalNode already validated that the
         // named group exists, and therefore this bool check has already succeeded

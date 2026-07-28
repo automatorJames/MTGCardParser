@@ -5,7 +5,7 @@ using System.Collections;
 namespace MTGPlexer.RegexGeneration.Graph;
 
 [JsonObject(MemberSerialization.OptIn)]
-public class CaptureInfo : IEnumerable<CaptureInfo>
+public class CaptureTrace : IEnumerable<CaptureTrace>
 {
     public CaptureContext CaptureContext { get; }
     [JsonProperty] public string FullyQualifiedName { get; }
@@ -20,8 +20,8 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
     [JsonProperty] public int End { get; }
     [JsonProperty] public int? SiblingIndex { get; }
     [JsonProperty] public int Count => (Success ? 1 : 0) + Siblings.Count;
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureInfo> Siblings { get; } = [];
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureInfo> Children { get; } = [];
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Siblings { get; } = [];
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Children { get; } = [];
     public object ClrValue { get; set; }
 
     public string JsonDebug => JsonConvert.SerializeObject(
@@ -40,7 +40,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
     public bool ShouldSerializeChildren() => Children.Count > 0;
     public bool ShouldSerializeCount() => Count > 1;
 
-    public CaptureInfo(CaptureContext captureContext, NamedGroupNode namedGroupNode)
+    public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
         Success = false;
         NodeType = namedGroupNode.NodeType;
@@ -55,7 +55,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
         CaptureContext = captureContext;
     }
 
-    public CaptureInfo(CaptureContext captureContext, NamedGroupNode namedGroupNode, Capture capture, int? siblingIndex = null)
+    public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode, Capture capture, int? siblingIndex = null)
         : this(captureContext, namedGroupNode)
     {
         if (capture is null)
@@ -69,7 +69,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
         SiblingIndex = siblingIndex;
     }
 
-    public CaptureInfo this[int captureIndex]
+    public CaptureTrace this[int captureIndex]
     {
         get
         {
@@ -83,7 +83,7 @@ public class CaptureInfo : IEnumerable<CaptureInfo>
         }
     }
 
-    public IEnumerator<CaptureInfo> GetEnumerator()
+    public IEnumerator<CaptureTrace> GetEnumerator()
     {
         if (Success)
             yield return this;

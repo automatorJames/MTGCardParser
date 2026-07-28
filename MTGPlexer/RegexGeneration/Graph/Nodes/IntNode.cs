@@ -21,7 +21,7 @@ public class IntNode : NamedGroupNode
                     positionAmongSiblings: idx
                 )));
 
-    protected override object GetValue(CaptureInfo captureInfo)
+    protected override object GetValue(CaptureTrace captureInfo)
     {
         // Check if the capture itself is a singular int
         if (captureInfo.Count == 1 && int.TryParse(captureInfo.CaptureValue, out int parsedInt))

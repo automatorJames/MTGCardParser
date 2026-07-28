@@ -23,16 +23,16 @@
 //    public CompoundOf<Letter> Letters { get; set; }
 //}
 
-[IsolateForTesting]
-public class DiscardACard : TokenUnit
-{
-    public override Snippet[] Snippets => ["discard a card"];
-}
-
-public enum Letter
-{
-    A,
-    B,
-    C,
-    [RegexPattern("d", "deeznutz")] D
-}
+//[IsolateForTesting]
+//public class DiscardACard : TokenUnit
+//{
+//    public override Snippet[] Snippets => ["discard a card"];
+//}
+//
+//public enum Letter
+//{
+//    A,
+//    B,
+//    C,
+//    [RegexPattern("d", "deeznutz")] D
+//}
