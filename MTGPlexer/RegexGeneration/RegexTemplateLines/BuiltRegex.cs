@@ -7,10 +7,12 @@ public class BuiltRegex
     public string MinifiedRegex { get; }
     public string FormattedRegex { get; }
     public List<string> FormattedLines { get; }
+    public List<RegexBrick> Bricks { get; }
     public Regex Regex { get; }
 
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
+        Bricks = regexBricks;
         MinifiedRegex = string.Join("", regexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
         FormatNamedGroups(regexBricks);
         FormattedLines = regexBricks.Select(x => new string(' ', x.NestedDepth * _spacesPerIndent) + x.RegexFormatted).ToList();

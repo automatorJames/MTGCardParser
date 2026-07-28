@@ -1,50 +1,46 @@
-﻿@* @page "/type-regex"
+@page "/type-regex"
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
-@using System.Text
-@using MTGPlexer.Colors
-@using MTGPlexer.CommonDTOs
-@using MTGPlexer.RegexGeneration
-@using MTGPlexer.TokenUnitGraphComponents
-@using Microsoft.AspNetCore.Components
 
 <div class="type-card-container">
-    @foreach (var tokenUnitCapture in GetFilteredTokenUnitCaptures())
+    @foreach (var type in GetFilteredTypes())
     {
+        var builtRegex = TokenTypeRegistry.GetRegexGraph(type).BuiltRegex;
+        var occurrenceCount = _instancesByType.TryGetValue(type, out var instances) ? instances.Count : 0;
         var borderColorStyle = "color: var(--grey);";
-        <div class="type-card" style=@borderColorStyle @key=tokenUnitCapture.Type.Name>
+
+        <div class="type-card" style="@borderColorStyle" @key="type.Name">
             <div class="card-header">
-                <TokenTypeName TokenType=@tokenUnitCapture.Type />
-                <span class="match-count @(tokenUnitCapture.OccurrenceCount == 0 ? "zero" : "")">
-                    <i class="matches-label">matches:</i> @tokenUnitCapture.OccurrenceCount
+                <TokenTypeName TokenType="type" />
+                <span class="match-count @(occurrenceCount == 0 ? "zero" : "")">
+                    <i class="matches-label">matches:</i> @occurrenceCount
                 </span>
             </div>
 
-            <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified? tokenUnitCapture.MinifiedRegexString: tokenUnitCapture.FormattedRegexString)>
+            <CopyButtonOverlay TextToCopy="@(RuntimeSettings.ShowMinified ? builtRegex.MinifiedRegex : builtRegex.FormattedRegex)">
                 @if (RuntimeSettings.ShowMinified)
                 {
-                    <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
-                    <code>@tokenUnitCapture.MinifiedRegexString</code>
-                            </pre>
+                    <pre style="@(borderColorStyle + " white-space: pre-wrap;")"><code>@builtRegex.MinifiedRegex</code></pre>
                 }
                 else
                 {
-                    <FormattedRegex Lines=@tokenUnitCapture.FilteredLines BorderStyle=@borderColorStyle />
+                    <FormattedRegex Bricks="builtRegex.Bricks" BorderStyle="borderColorStyle" />
                 }
             </CopyButtonOverlay>
 
-            <PropCaptureCountSection TokenUnitCapture=@tokenUnitCapture />
+            <PropCaptureCountSection Instances="instances ?? []" />
         </div>
-
     }
 </div>
 
 @code {
+    Dictionary<Type, List<CaptureTrace>> _instancesByType = [];
 
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += OnSettingsChanged;
+        _instancesByType = BuildInstancesByType();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -53,30 +49,48 @@
             await JSRuntime.InvokeVoidAsync("initializeTypeExpressionsHover");
     }
 
-    private async void OnSettingsChanged()
+    private async void OnSettingsChanged() => await InvokeAsync(StateHasChanged);
+
+    Dictionary<Type, List<CaptureTrace>> BuildInstancesByType() =>
+        CorpusAnalyzer.ProcessedCards
+            .SelectMany(card => card.Lines)
+            .SelectMany(line => line.TokenUnits)
+            .SelectMany(tokenUnit => WalkCaptureTree(tokenUnit.CaptureTraceTree))
+            .Where(node => node.ClrType() != null)
+            .GroupBy(node => node.ClrType())
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+    static IEnumerable<CaptureTrace> WalkCaptureTree(CaptureTrace node)
     {
-        await InvokeAsync(StateHasChanged);
+        yield return node;
+
+        foreach (var child in node.ChildInstances())
+            foreach (var descendant in WalkCaptureTree(child))
+                yield return descendant;
     }
 
-    List<TokenUnitCapture> GetFilteredTokenUnitCaptures()
+    List<Type> GetFilteredTypes()
     {
-        List<TokenUnitCapture> filteredTokenUnitCaptures = CorpusAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values.ToList();
+        var types = TokenTypeRegistry.GetAllTopLevelTokenTypes()
+            .Where(t => t != typeof(DefaultUnmatchedString))
+            .ToList();
 
-        if (!RuntimeSettings.HideRegexesWithZeroCaptures)
-            filteredTokenUnitCaptures.AddRange(CorpusAnalyzer.TokenCaptureSummary.UnmatchedTokenUnits.Values);
+        if (RuntimeSettings.HideRegexesWithZeroCaptures)
+            types = types.Where(t => _instancesByType.TryGetValue(t, out var instances) && instances.Count > 0).ToList();
 
         var searchTerm = RuntimeSettings.SearchTerm;
 
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return filteredTokenUnitCaptures;
+            return types.OrderBy(t => t.Name).ToList();
 
         var term = searchTerm.Trim();
 
-        return filteredTokenUnitCaptures
-            .Where(x =>
-                x.Type.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
-                || x.Type.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase)
-                || x.MinifiedRegexString.Contains(term, StringComparison.OrdinalIgnoreCase))
+        return types
+            .Where(t =>
+                t.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || t.Name.ToFriendlyCase().Contains(term, StringComparison.OrdinalIgnoreCase)
+                || TokenTypeRegistry.GetRegexGraph(t).BuiltRegex.MinifiedRegex.Contains(term, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Name)
             .ToList();
     }
-} *@
+}

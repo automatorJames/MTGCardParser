@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MTGPlexer.Data;
+using MTGPlexer.Interfaces;
 using MTGPlexer.TokenAnalysisDTOs;
 
 namespace CardAnalysisInterface;
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +16,11 @@ public class Program
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
 
+        // Load the corpus up front with a genuine await (not a blocking .Result), so the
+        // rest of app startup stays on the normal async host-building path.
         CardDataGetter cardDataGetter = new(builder.Configuration["SqlConnString"], 1);
-        var cards = cardDataGetter.GetCardsAsync().Result;
-        builder.Services.AddSingleton(cards);
+        List<IDocument> documents = await cardDataGetter.GetCardsAsync();
+        builder.Services.AddSingleton(documents);
         builder.Services.AddSingleton<CorpusAnalyzer>();
 
         var app = builder.Build();
@@ -39,6 +42,6 @@ public class Program
         app.MapBlazorHub();
         app.MapFallbackToPage("/_Host");
 
-        app.Run();
+        await app.RunAsync();
     }
 }

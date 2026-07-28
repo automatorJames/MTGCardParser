@@ -1,30 +1,33 @@
-﻿@* @using MTGPlexer.RegexGeneration.Graph
-@using MTGPlexer.TokenEditor
-@using MTGPlexer.TokenUnitGraphComponents
 @inject CorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JS
 
 <Snackbar @ref="_snackbar" />
 
 <div class="card-capture-block">
-    <div class="card-title">@Card.Card.Name</div>
+    <div class="card-title">@Card.Document.Name</div>
 
     @foreach (var line in Card.Lines)
     {
-        var paletteSet = DeterministicPalette.GetPositionalPaletteSet(line.TokenUnits.SelectMany(x => x.NodeGraph.Chi);
         <div class="line-capture-block match-boundary">
             <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
-            <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
-                <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
+            <div class="line-container-parent" style="cursor: pointer" data-path="@line.DataPath">
+                <pre class="nested-underline-container" style="@GetLineHeightStyle(line)" @onclick="@(() => OpenRegexEditorDialog(line))" data-path="@line.DataPath">
                     @foreach (var tokenUnit in line.TokenUnits)
                     {
-                        <SpanView CaptureNode=@tokenUnit />
+                        @if (tokenUnit.Type == typeof(DefaultUnmatchedString))
+                        {
+                            @tokenUnit.CaptureValue
+                        }
+                        else
+                        {
+                            <SpanView Node="tokenUnit.CaptureTraceTree" SourceText="line.SourceText.FormattedText" IsRoot="true" />
+                        }
                     }
                 </pre>
 
-                @foreach (var summary in line.TokenUnits.Select(x => x.NodeGraph) .Where(x => x is not TokenAnalysisElementType.UnmatchedTokenUnitRoot))
+                @foreach (var tokenUnit in line.TokenUnits.Where(x => x.Type != typeof(DefaultUnmatchedString)))
                 {
-                    <PropertyTable Branch=@summary />
+                    <PropertyTable Branch="tokenUnit.CaptureTraceTree" />
                 }
             </div>
         </div>
@@ -42,15 +45,12 @@
     Snackbar _snackbar;
 
     [Parameter]
-    public ProcessedCard Card { get; set; }
-
-    static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
+    public ProcessedDocument Card { get; set; }
 
     void OpenRegexEditorDialog(ProcessedLine line)
     {
         _selectedLine = line;
         _isDialogOpen = true;
-        // We call StateHasChanged() to ensure the UI re-renders and shows the dialog.
         StateHasChanged();
     }
 
@@ -60,7 +60,7 @@
 
         if (editorTokenUnit != null)
         {
-            Card = await CorpusAnalyzer.ReprocessCard(Card.Card);
+            Card = await CorpusAnalyzer.ReprocessDocument(Card.Document);
             StateHasChanged();
 
             await Task.Yield();
@@ -69,11 +69,7 @@
                 await JS.InvokeVoidAsync("flashLineHighlight", pathToHighlight);
 
             if (_snackbar != null)
-            {
-                // Do NOT await this if you want the method to finish immediately,
-                // OR await it after StateHasChanged so the UI isn't "stuck"
                 _ = _snackbar.Show(new MarkupString($"Added type <b>{editorTokenUnit.ClassName}</b>!"));
-            }
         }
         else
         {
@@ -85,10 +81,7 @@
     {
         int fontSize = 16;
         int lh = 24 + (line.GetDeepestChildDepth() * 8);
-
-        // Calculate only the top half of the extra space
         double topCrop = (lh - fontSize) / 2.0;
-
         return $"line-height: {lh}px; --top-crop: -{topCrop}px;";
     }
-} *@
+}

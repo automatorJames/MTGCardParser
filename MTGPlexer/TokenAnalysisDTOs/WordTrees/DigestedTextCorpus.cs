@@ -4,7 +4,7 @@ public class DigestedTextCorpus
 {
     public List<AnalyzedText> Spans { get; }
 
-    public DigestedTextCorpus(List<ProcessedCard> processedCards)
+    public DigestedTextCorpus(List<ProcessedDocument> processedCards)
     {
         var allUnmatchedOccurrences = processedCards
             .SelectMany(card => card.Lines)

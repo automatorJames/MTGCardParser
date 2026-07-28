@@ -1,43 +1,24 @@
-﻿@* @if (TokenUnitCapture.PropPathVariantSets.Any())
+@{ var groups = GetPropertyGroups(); }
+
+@if (groups.Count > 0)
 {
     <div class="properties-container">
-        @for (int i = 0; i < TokenUnitCapture.PropPathVariantSets.Count; i++)
+        @foreach (var group in groups)
         {
-            var captureValueVariantSetWrapper = TokenUnitCapture.PropPathVariantSets.Skip(i).First();
-            var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
-            
-            var propSetPalette = _positionalPalettes[i];
-            var propCardStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat}; border-color: {propSetPalette.Dark};";
+            var palette = new DeterministicPalette(group.PropertyName).Palette;
+            var cardStyle = $"--hex: {palette.Normal}; --hex-light: {palette.Light}; --hex-dark: {palette.Dark}; --hex-sat: {palette.Sat}; border-color: {palette.Dark};";
 
-            <div class="property-capture-card" style="@propCardStyle" data-path=@captureGroupPropPath.PropPathRelativeToRoot>
-                <div class="prop-card-header" style="color: @propSetPalette.Normal;">
-                    @captureGroupPropPath.PropPathFriendly
-                    <br />
+            <div class="property-capture-card" style="@cardStyle" data-path="@group.PropertyName">
+                <div class="prop-card-header" style="color: @palette.Normal;">
+                    @group.PropertyName.ToFriendlyCase(TitleDisplayOption.Title)
                 </div>
                 <div class="prop-card-body">
-                    @foreach (var valueSet in captureValueVariantSetWrapper.Value.SynonymSets.Values)
+                    @foreach (var (value, count) in group.Values)
                     {
-                        var canonicalStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat};";
-                        var dataPath = valueSet.ManyOfRelatedPaths ?? captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
-
-                        <div class="canonical-representation" style="@canonicalStyle" data-path=@dataPath>
-                            <span class="canonical-value">@valueSet.CanonicalValueDisplay</span>
-                            <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
+                        <div class="canonical-representation" data-path="@group.PropertyName">
+                            <span class="canonical-value">@value</span>
+                            <span class="total-count">@count</span>
                         </div>
-
-                        @if (valueSet.SynonymCounts.Count > 1)
-                        {
-                            <div class="variants-sub-table">
-                                @foreach (var synonym in valueSet.SynonymCounts.OrderByDescending(x => x.Value))
-                                {
-                                    var synonymPath = dataPath.Dot(synonym.Key);
-                                    <div class="capture-variant" data-path=@synonymPath>
-                                        <span class="variant-value">@synonym.Key</span>
-                                        <span class="variant-count">@synonym.Value</span>
-                                    </div>
-                                }
-                            </div>
-                        }
                     }
                 </div>
             </div>
@@ -46,16 +27,25 @@
 }
 
 @code {
+    [Parameter, EditorRequired]
+    public List<CaptureTrace> Instances { get; set; }
 
-    Dictionary<int, HexPalette> _positionalPalettes;
-
-    [Parameter]
-    public TokenUnitCapture TokenUnitCapture { get; set; }
-
-    protected override void OnInitialized()
+    List<(string PropertyName, List<(string Value, int Count)> Values)> GetPropertyGroups()
     {
-        _positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(TokenUnitCapture.PropPathVariantSets.Count);
-    }
+        if (Instances == null || Instances.Count == 0)
+            return [];
 
+        return Instances
+            .SelectMany(x => x.ChildInstances())
+            .Where(x => !string.IsNullOrEmpty(x.CaptureValue))
+            .GroupBy(x => x.Name)
+            .OrderBy(g => g.Key)
+            .Select(g => (
+                PropertyName: g.Key,
+                Values: g.GroupBy(x => x.CaptureValue)
+                    .Select(vg => (Value: vg.Key, Count: vg.Count()))
+                    .OrderByDescending(x => x.Count)
+                    .ToList()))
+            .ToList();
+    }
 }
- *@

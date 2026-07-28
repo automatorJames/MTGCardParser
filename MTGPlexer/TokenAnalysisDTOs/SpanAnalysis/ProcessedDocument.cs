@@ -3,21 +3,21 @@
 using MTGPlexer.Colors;
 
 /// <summary>
-/// Represents a single card and all its processed lines of text.
+/// Represents a single document and all its processed lines of text.
 /// This is a lightweight container for the results of the CorpusAnalyzer.
 /// </summary>
-public class ProcessedCard
+public class ProcessedDocument
 {
     static HashSet<string> _irrelevantUnmatchedStrings = [".", ". ", " "];
 
-    public Card Card { get; init; }
+    public IDocument Document { get; init; }
     public List<ProcessedLine> Lines { get; init; }
     public bool IsFullyMatched { get; init; }
 
-    public ProcessedCard(Card card)
+    public ProcessedDocument(IDocument document)
     {
-        Card = card;
-        Lines = ProcessedLine.GetAll(card);
+        Document = document;
+        Lines = ProcessedLine.GetAll(document);
 
         // "Fully matched" means no unmatched text occurrences (except isolated periods) exist
         IsFullyMatched = Lines

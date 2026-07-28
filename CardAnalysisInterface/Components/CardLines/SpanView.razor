@@ -1,77 +1,80 @@
-﻿@* @using MTGPlexer.RegexGeneration.Graph.Nodes
-@if (CaptureNode != null)
+@if (Node.IsCollapsedWrapper())
 {
-    <span class=@GetClass(CaptureNode) style=@GetStyle(CaptureNode) data-path="@CaptureNode.CapturePath">
-        @{
-            var cursor = 0;
-
-            foreach (var child in CaptureNode.Children.OrderBy(c => c.Start))
+    @foreach (var child in Node.ChildInstances())
+    {
+        <SpanView Node="child" SourceText="SourceText" Depth="Depth" />
+    }
+}
+else if (Node.IsBranch())
+{
+    <span class="nested-underline" style="@GetBranchStyle()" data-path="@Node.FullyQualifiedName">
+        @foreach (var segment in GetSegments())
+        {
+            @if (segment.Child is { } child)
             {
-                var relativeChildStart = child.Start - CaptureNode.Start;
-
-                if (relativeChildStart > cursor)
-                {
-                    <text>@CaptureNode.CaptureTextOriginal.Substring(cursor, relativeChildStart - cursor)</text>
-                }
-
-                <SpanView CaptureNode="@child" Depth="@(Depth + (child is SpanBranch branch && branch.IsCollapsed ? 0 : 1))" />
-
-                cursor = child.End - CaptureNode.Start;
+                <SpanView Node="child" SourceText="SourceText" Depth="Depth + 1" />
             }
-
-            if (cursor < CaptureNode.Length)
+            else
             {
-                <text>@CaptureNode.CaptureTextOriginal.Substring(cursor, CaptureNode.Length - cursor)</text>
+                @segment.Text
             }
         }
     </span>
 }
+else if (IsRoot)
+{
+    @* A top-level match with no captured properties at all - just plain text, nothing to highlight *@
+    @Node.CaptureValue
+}
+else
+{
+    <span class="prop-capture-overline" style="@GetLeafStyle()" data-path="@Node.FullyQualifiedName">@Node.CaptureValue</span>
+}
 
 @code {
     [Parameter, EditorRequired]
-    public CaptureNode CaptureNode { get; set; }
+    public CaptureTrace Node { get; set; }
+
+    [Parameter, EditorRequired]
+    public string SourceText { get; set; }
 
     [Parameter]
-    public int Depth { get; set; } = 0;
+    public int Depth { get; set; }
 
-    string GetClass(CaptureNode node)
+    [Parameter]
+    public bool IsRoot { get; set; }
+
+    /// <summary>
+    /// Walks this node's children in source order, filling the gaps between them with plain text.
+    /// Capture bounds are clamped defensively: overlapping or out-of-range children (which can
+    /// happen for nested list-of-TokenUnit captures) are skipped rather than crashing the page.
+    /// </summary>
+    IEnumerable<(CaptureTrace Child, string Text)> GetSegments()
     {
-        if (node.UnderlyingType == typeof(DefaultUnmatchedString))
-            return "";
+        var nodeEnd = Math.Min(Node.End, SourceText.Length);
+        var cursor = Math.Clamp(Node.Index, 0, nodeEnd);
 
-        var classes = new List<string>();
+        foreach (var child in Node.ChildInstances())
+        {
+            var childStart = Math.Max(child.Index, cursor);
+            var childEnd = Math.Min(child.End, nodeEnd);
 
-        if (node is BranchNode && !node.IsCollapsible)
-            classes.Add("nested-underline");
+            if (childEnd <= childStart)
+                continue;
 
-        if (node is LeafNoContainer
-            classes.Add("prop-capture-overline");
+            if (childStart > cursor)
+                yield return (null, SourceText.Substring(cursor, childStart - cursor));
 
-        //if (node is SpanSubLeaf spanSubLeaf)
-        //    classes.Add("dashed-line");
+            yield return (child, null);
+            cursor = childEnd;
+        }
 
-        //if (node.ElementType == TokenAnalysisElementType.PlaceholderLeaf)
-        //    classes.Add("dotted-line");
-
-        return string.Join(" ", classes);
+        if (cursor < nodeEnd)
+            yield return (null, SourceText.Substring(cursor, nodeEnd - cursor));
     }
 
-    string GetStyle(CaptureNode node)
-    {
-        if (node.UnderlyingType == typeof(DefaultUnmatchedString))
-            return "";
+    string GetBranchStyle() => $"padding-bottom: {2 + Depth * 6}px;";
 
-        if (node is BranchNode && !node.IsCollapsible)
-            return "";
-
-        var style = new System.Text.StringBuilder();
-
-        if (node is IHasPalette hasPalette)
-            style.Append(hasPalette.Palette.ToColorStyle());
-
-        var paddingBottom = 2 + (Depth * 6);
-        style.Append($" padding-bottom: {paddingBottom}px;");
-
-        return style.ToString();
-    }
-} *@
+    string GetLeafStyle() =>
+        (Node.Palette()?.ToColorStyle() ?? "") + $" padding-bottom: {2 + Depth * 6}px;";
+}

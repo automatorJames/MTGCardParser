@@ -1,28 +1,36 @@
-﻿@* <pre class="formatted-regex-fira" style=@BorderStyle>
-    <code>
-        @foreach (var line in Lines)
-        {
-            foreach (var span in line.Spans)
+@using MTGPlexer.RegexGeneration.Graph.Bricks
+@if (Bricks != null)
+{
+    <pre class="formatted-regex-fira" style="@BorderStyle">
+        <code>
+            @foreach (var brick in Bricks)
             {
-                var style = $"--hex: {span.Palette.Normal}; --hex-light: {span.Palette.Light}; --hex-dark: {span.Palette.Dark}; --hex-sat: {span.Palette.Sat}; color: {span.Palette.Normal};";
-                <span style="@style"
-                    data-path="@span.PathRelativeToRoot"
-                    data-highlight="@span.HighlightTreatment"
-                    data-lowlight="@span.LowlightTreatment">@span.SpanText</span>
-            }
-            @("\n")
-        }
-    </code>
-</pre>
+                var path = GetPath(brick);
 
+                @if (string.IsNullOrEmpty(path))
+                {
+                    <span>@GetIndentedText(brick)</span>
+                }
+                else
+                {
+                    var palette = new DeterministicPalette(path).Palette;
+                    var style = $"--hex: {palette.Normal}; --hex-light: {palette.Light}; --hex-dark: {palette.Dark}; --hex-sat: {palette.Sat}; color: {palette.Normal};";
+                    <span style="@style" data-path="@path" data-highlight="TextToHexSat" data-lowlight="TextToHexDark">@GetIndentedText(brick)</span>
+                }
+                @("\n")
+            }
+        </code>
+    </pre>
+}
 
 @code {
-
-	[Parameter]
-	public List<RegexFormattedLine> Lines { get; set; }
+    [Parameter, EditorRequired]
+    public List<RegexBrick> Bricks { get; set; }
 
     [Parameter]
     public string BorderStyle { get; set; }
 
+    static string GetPath(RegexBrick brick) => brick.GroupLineageNames.LastOrDefault();
+
+    static string GetIndentedText(RegexBrick brick) => new string(' ', brick.NestedDepth * 4) + brick.RegexFormatted;
 }
- *@

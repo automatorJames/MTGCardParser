@@ -72,5 +72,5 @@ public class ProcessedLine
         return occurrences;
     }
 
-    //public int GetDeepestChildDepth() => TokenUnits.Max(x => x.NodeGraph.GetRecursiveDepth());
+    public int GetDeepestChildDepth() => TokenUnits.Max(x => x.CaptureTraceTree.GetMaxBranchDepth());
 }

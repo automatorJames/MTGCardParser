@@ -1,62 +1,55 @@
-﻿@* 
-@if (Branch.IsCollapsed)
+@if (Branch.IsCollapsedWrapper())
 {
-    <!-- Directly render branch children of the collapsed parent branch -->
-    @foreach (var branch in Branch.Children.OfType<SpanBranch>())
+    @foreach (var child in Branch.ChildInstances())
     {
-        <PropertyTable Branch="@branch" />
+        <PropertyTable Branch="child" />
     }
 }
 else
 {
-    <div class="token-summary-branch" style="margin-top:16px" data-path=@Branch.CapturePath>
-        <div class="token-summary-header" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(PaletteVariant.Sat))>
+    var palette = Branch.Palette();
+    var leaves = Children.Where(x => !x.IsBranch()).ToList();
+    var branches = Children.Where(x => x.IsBranch()).ToList();
+
+    <div class="token-summary-branch" style="margin-top:16px" data-path="@Branch.FullyQualifiedName">
+        <div class="token-summary-header" data-path="@Branch.FullyQualifiedName" style="@palette?.ToColorStyle(PaletteVariant.Sat)">
             <span class="token-type-name">@Branch.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
         </div>
 
-        @if (Branch.Children.Any())
+        @if (leaves.Count > 0 || branches.Count > 0)
         {
             <div class="property-table-wrapper">
-                <div class="content-box" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(PaletteVariant.Dark))>
-
-                    @{
-                        var leaves = Branch.Children.OfType<SpanLeaf>().ToList();
-                        if (leaves.Any())
-                        {
-                            <table class="property-capture-table">
-                                <thead>
-                                    <tr><th>Property</th><th>Type</th><th>Value</th></tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var leaf in leaves)
-                                    {
-                                        var subLeafChildren = leaf.Children.OfType<SpanSubLeaf>();
-                                        IEnumerable<SpanLeaf> leafOrSubleaves = subLeafChildren.Any() ? subLeafChildren : [leaf];
-
-                                        foreach (var leafOrSubleaf in leafOrSubleaves)
-                                        {
-                                            <tr data-path="@leafOrSubleaf.CapturePath">
-                                                <td class="prop-capture-table-cell first-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
-                                                    @leafOrSubleaf.Name
-                                                </td>
-                                                <td class="prop-capture-table-cell type-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
-                                                    @leafOrSubleaf.TerminalType
-                                                </td>
-                                                <td class="prop-capture-table-cell value-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
-                                                    @leafOrSubleaf.TerminalValString
-                                                </td>
-                                            </tr>
-                                        }
-                                    }
-                                </tbody>
-                            </table>
-                        }
+                <div class="content-box" data-path="@Branch.FullyQualifiedName" style="@palette?.ToColorStyle(PaletteVariant.Dark)">
+                    @if (leaves.Count > 0)
+                    {
+                        <table class="property-capture-table">
+                            <thead>
+                                <tr><th>Property</th><th>Type</th><th>Value</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var leaf in leaves)
+                                {
+                                    var leafPalette = leaf.Palette();
+                                    <tr data-path="@leaf.FullyQualifiedName">
+                                        <td class="prop-capture-table-cell first-column" style="@leafPalette?.ToColorStyle()">
+                                            @leaf.Name.ToFriendlyCase(TitleDisplayOption.Title)
+                                        </td>
+                                        <td class="prop-capture-table-cell type-column" style="@leafPalette?.ToColorStyle()">
+                                            @leaf.NodeType
+                                        </td>
+                                        <td class="prop-capture-table-cell value-column" style="@leafPalette?.ToColorStyle()">
+                                            @leaf.CaptureValue
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     }
 
-                    <!-- Recursively render tables for children that are also branches -->
-                    @foreach (var branch in Branch.Children.OfType<SpanBranch>())
+                    @* Recursively render tables for children that are also branches *@
+                    @foreach (var branch in branches)
                     {
-                        <PropertyTable Branch="@branch" />
+                        <PropertyTable Branch="branch" />
                     }
                 </div>
             </div>
@@ -66,6 +59,7 @@ else
 
 @code {
     [Parameter, EditorRequired]
-    public TokenUnitNode Branch { get; set; }
+    public CaptureTrace Branch { get; set; }
+
+    IEnumerable<CaptureTrace> Children => Branch.ChildInstances();
 }
- *@

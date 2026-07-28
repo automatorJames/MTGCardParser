@@ -10,7 +10,7 @@ public class CorpusAnalyzer
     /// Structured list of all processed cards, containing the hierarchical
     /// TokenCaptureSummary analysis for each line. This is the output for your matched-token logic.
     /// </summary>
-    public List<ProcessedCard> ProcessedCards { get; }
+    public List<ProcessedDocument> ProcessedCards { get; }
 
 
     /// <summary>
@@ -20,23 +20,23 @@ public class CorpusAnalyzer
     /// </summary>
     public DigestedTextCorpus DigestedCorpusWithCaptureTokens { get; }
 
-    public CorpusAnalyzer(List<Card> cards)
+    public CorpusAnalyzer(List<IDocument> documents)
     {
-        ProcessedCards = cards.Select(x => new ProcessedCard(x)).ToList();
+        ProcessedCards = documents.Select(x => new ProcessedDocument(x)).ToList();
         DigestedCorpusWithCaptureTokens = new DigestedTextCorpus(ProcessedCards);
     }
 
-    public async Task<ProcessedCard> ReprocessCard(Card card)
+    public async Task<ProcessedDocument> ReprocessDocument(IDocument document)
     {
-        ProcessedCard reprocessedCard = new(card);
+        ProcessedDocument reprocessedDocument = new(document);
 
         // There should be only one, but let's be tolerant of duplicates
         ProcessedCards
-            .Where(x => x.Card.Name == card.Name)
+            .Where(x => x.Document.Name == document.Name)
             .ToList()
-            .ForEach(x => x = reprocessedCard);
+            .ForEach(x => x = reprocessedDocument);
 
-        return reprocessedCard;
+        return reprocessedDocument;
     }
 
 }
