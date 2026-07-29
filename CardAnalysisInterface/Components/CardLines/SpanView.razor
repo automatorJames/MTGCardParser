@@ -11,7 +11,7 @@
 
                 if (relativeChildStart > cursor)
                 {
-                    <text>@CaptureTrace.CaptureContext.SourceText.Substring(cursor, relativeChildStart - cursor)</text>
+                    <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, relativeChildStart - cursor)</text>
                 }
 
                 <SpanView CaptureTrace=@child />
@@ -21,7 +21,7 @@
 
             if (cursor < CaptureTrace.Length)
             {
-                <text>@CaptureTrace.CaptureContext.SourceText.Substring(cursor, CaptureTrace.Length - cursor)</text>
+                <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, CaptureTrace.Length - cursor)</text>
             }
         }
     </span>

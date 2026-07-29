@@ -4,6 +4,7 @@ public class CaptureContext
 {
     IReadOnlyDictionary<string, Capture[]> _captureDictionary;
     Dictionary<string, CaptureTrace> _flatTree = [];
+    bool _captureTreeIsHydrated;
 
     public CaptureTrace RootCaptureInfo { get; }
     public string SourceText { get; }
@@ -52,6 +53,9 @@ public class CaptureContext
 
     public CaptureTrace GetCaptureTree()
     {
+        if (_captureTreeIsHydrated)
+            return RootCaptureInfo;
+
         var children = _flatTree.Values.Except([RootCaptureInfo]);
 
         foreach (var child in children)
@@ -61,6 +65,8 @@ public class CaptureContext
 
             parentCaptureInfo.Children.Add(child);
         }
+
+        _captureTreeIsHydrated = true;
 
         return RootCaptureInfo;
     }

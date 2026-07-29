@@ -22,6 +22,7 @@ else
 
                     @{
                         var terminals = BranchTrace.Children.Where(x => x.IsTerminal).ToList();
+
                         if (terminals.Any())
                         {
                             <table class="property-capture-table">
@@ -32,23 +33,18 @@ else
                                     @foreach (var leaf in terminals)
                                     {
                                         var leafPaletteStyle = ProcessedLine.CaptureTracePositionalPalettes[leaf].ToColorStyle();
-                                        //var subLeafChildren = leaf.Children.OfType<SpanSubLeaf>();
-                                        //IEnumerable<SpanLeaf> leafOrSubleaves = subLeafChildren.Any() ? subLeafChildren : [leaf];
 
-                                        //foreach (var leafOrSubleaf in leafOrSubleaves)
-                                        //{
-                                            <tr data-path="@leaf.FullyQualifiedName">
-                                                <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle)>
-                                                    @leaf.Name
-                                                </td>
-                                                <td class="prop-capture-table-cell type-column" style=@(leafPaletteStyle)>
-                                                    @leaf.NodeType
-                                                </td>
-                                                <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
-                                                    @leaf.ClrValue.ToString()
-                                                </td>
-                                            </tr>
-                                        //}
+                                        <tr data-path="@leaf.FullyQualifiedName">
+                                            <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle)>
+                                                @leaf.Name
+                                            </td>
+                                            <td class="prop-capture-table-cell type-column" style=@(leafPaletteStyle)>
+                                                @leaf.NodeType
+                                            </td>
+                                            <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
+                                                @leaf.ClrValue.ToString()
+                                            </td>
+                                        </tr>
                                     }
                                 </tbody>
                             </table>

@@ -25,6 +25,7 @@ public class ProcessedLine
     public Dictionary<CaptureTrace, int> CaptureTraceDepthFirstPositions { get; } = [];
     public Dictionary<CaptureTrace, HexPalette> CaptureTracePositionalPalettes { get; } = [];
     public List<CaptureTrace> CaptureTraceRoots => TokenUnits.Select(x => x.CaptureTraceRoot).ToList();
+    public List<CaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
 
     public ProcessedLine(SourceTextDTO sourceText, List<TokenUnit> tokenUnits, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {

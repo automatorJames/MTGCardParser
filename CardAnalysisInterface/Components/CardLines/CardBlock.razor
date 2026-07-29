@@ -25,7 +25,7 @@
 
                     }
 
-                    @foreach (var root in line.CaptureTraceRoots)
+                    @foreach (var root in line.CaptureTraceRootsExceptUnmatchedStrings)
                     {
                         <PropertyTable BranchTrace=@root />
                     }
