@@ -37,7 +37,7 @@ public abstract class TokenUnit
     public SnippetOptionalPlural Plural() =>
         new SnippetOptionalPlural();
 
-    public CaptureTrace CaptureTraceTree => CaptureContext?.GetCaptureTree();
+    public CaptureTrace CaptureTraceRoot => CaptureContext?.GetCaptureTree();
     public CaptureContext CaptureContext { get; set; }
     public string CaptureValue => CaptureContext.FullMatch;
     public string JsonDebug => CaptureContext?.GetCaptureTree().JsonDebug ?? "";

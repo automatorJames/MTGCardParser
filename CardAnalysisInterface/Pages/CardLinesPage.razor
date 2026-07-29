@@ -13,8 +13,8 @@ else
     <div class="analyzed-card-container" id="card-lines">
         @foreach (var card in GetFilteredCards())
         {
-            //<CardBlock Card=card />
-            @card.Document.Name
+            <CardBlock ProcessedDocument=card />
+            //@card.Document.Name
         }
     </div>
 }

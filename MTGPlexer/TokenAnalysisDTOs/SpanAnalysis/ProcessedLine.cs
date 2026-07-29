@@ -10,17 +10,21 @@ public class ProcessedLine
     public SourceTextDTO SourceText { get; set; }
 
     /// <summary>
-    /// The hierarchical representation of matched tokens on this line.
+    /// The hierarchical representation of matched tokens on this line. Each contains a root CaptureTrace.
     /// </summary>
-    public List<TokenUnit> TokenUnits { get; init; }
+    public List<TokenUnit> TokenUnits { get; init; } = [];
 
     /// <summary>
     /// A list of all full spans found on this specific line.
     /// </summary>
     public List<UnmatchedTextOccurrence> UnmatchedTextOccurrences { get; init; }
 
-
     public string DataPath { get; init; }
+
+    public Dictionary<CaptureTrace, int> CaptureTraceNestedDepths { get; } = [];
+    public Dictionary<CaptureTrace, int> CaptureTraceDepthFirstPositions { get; } = [];
+    public Dictionary<CaptureTrace, HexPalette> CaptureTracePositionalPalettes { get; } = [];
+    public List<CaptureTrace> CaptureTraceRoots => TokenUnits.Select(x => x.CaptureTraceRoot).ToList();
 
     public ProcessedLine(SourceTextDTO sourceText, List<TokenUnit> tokenUnits, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
@@ -28,6 +32,9 @@ public class ProcessedLine
         TokenUnits = tokenUnits;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
+        tokenUnits.ForEach(x => RegisterPaletteAndDepthRecursive(x.CaptureTraceRoot));
+        var paletteSet = DeterministicPalette.GetPositionalPaletteSet(CaptureTraceDepthFirstPositions.Count);
+        CaptureTracePositionalPalettes = CaptureTraceDepthFirstPositions.ToDictionary(x => x.Key, x => paletteSet[x.Value]);
     }
 
     public static List<ProcessedLine> GetAll(IDocument document)
@@ -47,12 +54,26 @@ public class ProcessedLine
             var lineTokenUnits = TokenTypeRegistry.Tokenize(sourceText.FormattedText);
             var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(document, lineTokenUnits, i);
             var dataPath = document.Name.Replace(' ', '_') + $"-line[{i}]";
-
-            lines.Add(new ProcessedLine(sourceText, lineTokenUnits, unmatchedTextOccurrences, dataPath));
+            ProcessedLine processedLine = new(sourceText, lineTokenUnits, unmatchedTextOccurrences, dataPath);
+            lineTokenUnits.ForEach(x => processedLine.RegisterPaletteAndDepthRecursive(x.CaptureTraceRoot));
+            lines.Add(processedLine);
         }
 
-
         return lines;
+    }
+
+    void RegisterPaletteAndDepthRecursive(CaptureTrace captureTrace, int depth = 0)
+    {
+        //if (captureTrace.CaptureValue.Contains("if you do, you gain 1 life")) Debugger.Break();
+
+        //if (!captureTrace.IsCollapsible)
+        //{
+            CaptureTraceDepthFirstPositions[captureTrace] = CaptureTraceDepthFirstPositions.Count;
+            CaptureTraceNestedDepths[captureTrace] = depth;
+        //}
+
+        foreach (var childTrace in captureTrace.Children)
+            RegisterPaletteAndDepthRecursive(childTrace, depth + 1);
     }
 
     static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(IDocument document, List<TokenUnit> lineTokenUnits, int lineIndex)
@@ -72,5 +93,5 @@ public class ProcessedLine
         return occurrences;
     }
 
-    //public int GetDeepestChildDepth() => TokenUnits.Max(x => x.NodeGraph.GetRecursiveDepth());
+    public int GetDeepestChildDepth() => TokenUnits.Max(x => x.CaptureTraceRoot.GetRecursiveDepth());
 }

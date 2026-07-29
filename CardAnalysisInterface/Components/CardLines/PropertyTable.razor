@@ -1,52 +1,54 @@
-﻿@* 
-@if (Branch.IsCollapsed)
+﻿
+@if (BranchTrace.IsCollapsible)
 {
     <!-- Directly render branch children of the collapsed parent branch -->
-    @foreach (var branch in Branch.Children.OfType<SpanBranch>())
+    @foreach (var child in BranchTrace.Children)
     {
-        <PropertyTable Branch="@branch" />
+        <PropertyTable BranchTrace=@child />
     }
 }
 else
 {
-    <div class="token-summary-branch" style="margin-top:16px" data-path=@Branch.CapturePath>
-        <div class="token-summary-header" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(PaletteVariant.Sat))>
-            <span class="token-type-name">@Branch.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
+    <div class="token-summary-branch" style="margin-top:16px" data-path=@BranchTrace.FullyQualifiedName>
+        <div class="token-summary-header" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
+            <span class="token-type-name">@BranchTrace.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
         </div>
 
-        @if (Branch.Children.Any())
+        @if (BranchTrace.Children.Any())
         {
             <div class="property-table-wrapper">
-                <div class="content-box" data-path=@Branch.CapturePath style=@(Branch.Palette?.ToColorStyle(PaletteVariant.Dark))>
+                <div 
+                    class="content-box" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Dark))>
 
                     @{
-                        var leaves = Branch.Children.OfType<SpanLeaf>().ToList();
-                        if (leaves.Any())
+                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal).ToList();
+                        if (terminals.Any())
                         {
                             <table class="property-capture-table">
                                 <thead>
                                     <tr><th>Property</th><th>Type</th><th>Value</th></tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var leaf in leaves)
+                                    @foreach (var leaf in terminals)
                                     {
-                                        var subLeafChildren = leaf.Children.OfType<SpanSubLeaf>();
-                                        IEnumerable<SpanLeaf> leafOrSubleaves = subLeafChildren.Any() ? subLeafChildren : [leaf];
+                                        var leafPaletteStyle = ProcessedLine.CaptureTracePositionalPalettes[leaf].ToColorStyle();
+                                        //var subLeafChildren = leaf.Children.OfType<SpanSubLeaf>();
+                                        //IEnumerable<SpanLeaf> leafOrSubleaves = subLeafChildren.Any() ? subLeafChildren : [leaf];
 
-                                        foreach (var leafOrSubleaf in leafOrSubleaves)
-                                        {
-                                            <tr data-path="@leafOrSubleaf.CapturePath">
-                                                <td class="prop-capture-table-cell first-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
-                                                    @leafOrSubleaf.Name
+                                        //foreach (var leafOrSubleaf in leafOrSubleaves)
+                                        //{
+                                            <tr data-path="@leaf.FullyQualifiedName">
+                                                <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle)>
+                                                    @leaf.Name
                                                 </td>
-                                                <td class="prop-capture-table-cell type-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
-                                                    @leafOrSubleaf.TerminalType
+                                                <td class="prop-capture-table-cell type-column" style=@(leafPaletteStyle)>
+                                                    @leaf.NodeType
                                                 </td>
-                                                <td class="prop-capture-table-cell value-column" style=@(leafOrSubleaf.Palette?.ToColorStyle())>
-                                                    @leafOrSubleaf.TerminalValString
+                                                <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
+                                                    @leaf.ClrValue.ToString()
                                                 </td>
                                             </tr>
-                                        }
+                                        //}
                                     }
                                 </tbody>
                             </table>
@@ -54,9 +56,9 @@ else
                     }
 
                     <!-- Recursively render tables for children that are also branches -->
-                    @foreach (var branch in Branch.Children.OfType<SpanBranch>())
+                    @foreach (var branch in BranchTrace.Children.Where(x => x.Children.Any()))
                     {
-                        <PropertyTable Branch="@branch" />
+                        <PropertyTable BranchTrace="@branch" />
                     }
                 </div>
             </div>
@@ -65,7 +67,12 @@ else
 }
 
 @code {
+
+    [CascadingParameter]
+    public ProcessedLine ProcessedLine { get; set; } = null!;
+
     [Parameter, EditorRequired]
-    public TokenUnitNode Branch { get; set; }
+    public CaptureTrace BranchTrace { get; set; }
+
+    HexPalette RootPalette => ProcessedLine.CaptureTracePositionalPalettes[BranchTrace];
 }
- *@

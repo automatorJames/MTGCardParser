@@ -38,4 +38,14 @@ public class DocumentCorpusAnalyzer
 
         _isInitialized = true;
     }
+
+    public ProcessedDocument ReprocessDocument(IDocument document)
+    {
+        var oldProcessedDocument = ProcessedDocuments.FirstOrDefault(x => x.Document == document);
+        var index = ProcessedDocuments.IndexOf(oldProcessedDocument);
+        ProcessedDocument reprocessedDocument = new(document);
+        ProcessedDocuments[index] = reprocessedDocument;
+
+        return reprocessedDocument;
+    }
 }

@@ -1,33 +1,37 @@
-﻿@* @using MTGPlexer.RegexGeneration.Graph
+﻿@using MTGPlexer.RegexGeneration.Graph
 @using MTGPlexer.TokenEditor
-@using MTGPlexer.TokenUnitGraphComponents
-@inject CorpusAnalyzer CorpusAnalyzer
+@inject DocumentCorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JS
 
 <Snackbar @ref="_snackbar" />
 
 <div class="card-capture-block">
-    <div class="card-title">@Card.Card.Name</div>
+    <div class="card-title">@ProcessedDocument.Document.Name</div>
 
-    @foreach (var line in Card.Lines)
+    @foreach (var line in ProcessedDocument.Lines)
     {
-        var paletteSet = DeterministicPalette.GetPositionalPaletteSet(line.TokenUnits.SelectMany(x => x.NodeGraph.Chi);
-        <div class="line-capture-block match-boundary">
-            <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
-            <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
-                <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
-                    @foreach (var tokenUnit in line.TokenUnits)
-                    {
-                        <SpanView CaptureNode=@tokenUnit />
-                    }
-                </pre>
+        <CascadingValue Value=line>
+            <div class="line-capture-block match-boundary">
+                <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
+                <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
+                    <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
+                        @foreach (var root in line.CaptureTraceRoots)
+                        {
+                            <SpanView CaptureTrace=@root />
+                        }
+                    </pre>
 
-                @foreach (var summary in line.TokenUnits.Select(x => x.NodeGraph) .Where(x => x is not TokenAnalysisElementType.UnmatchedTokenUnitRoot))
-                {
-                    <PropertyTable Branch=@summary />
-                }
+                    @{
+
+                    }
+
+                    @foreach (var root in line.CaptureTraceRoots)
+                    {
+                        <PropertyTable BranchTrace=@root />
+                    }
+                </div>
             </div>
-        </div>
+        </CascadingValue>
     }
 </div>
 
@@ -42,7 +46,7 @@
     Snackbar _snackbar;
 
     [Parameter]
-    public ProcessedCard Card { get; set; }
+    public ProcessedDocument ProcessedDocument { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 
@@ -50,7 +54,6 @@
     {
         _selectedLine = line;
         _isDialogOpen = true;
-        // We call StateHasChanged() to ensure the UI re-renders and shows the dialog.
         StateHasChanged();
     }
 
@@ -60,7 +63,7 @@
 
         if (editorTokenUnit != null)
         {
-            Card = await CorpusAnalyzer.ReprocessCard(Card.Card);
+            ProcessedDocument = CorpusAnalyzer.ReprocessDocument(ProcessedDocument.Document);
             StateHasChanged();
 
             await Task.Yield();
@@ -69,11 +72,7 @@
                 await JS.InvokeVoidAsync("flashLineHighlight", pathToHighlight);
 
             if (_snackbar != null)
-            {
-                // Do NOT await this if you want the method to finish immediately,
-                // OR await it after StateHasChanged so the UI isn't "stuck"
                 _ = _snackbar.Show(new MarkupString($"Added type <b>{editorTokenUnit.ClassName}</b>!"));
-            }
         }
         else
         {
@@ -91,4 +90,4 @@
 
         return $"line-height: {lh}px; --top-crop: -{topCrop}px;";
     }
-} *@
+}

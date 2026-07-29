@@ -23,40 +23,28 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Siblings { get; } = [];
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Children { get; } = [];
     public object ClrValue { get; set; }
+    [JsonProperty] public bool IsUnmatchedString { get; }
+    [JsonProperty] public bool IsTerminal { get; }
+    [JsonProperty] public bool IsCollapsible => Children.Count > 0 && !Children.Any(x => x.IsTerminal);
 
     public string JsonDebug => JsonConvert.SerializeObject(
-    this,
-    Formatting.Indented,
-    new JsonSerializerSettings
-    {
-        NullValueHandling = NullValueHandling.Ignore,
-        Converters =
-        [
-            new StringEnumConverter()
-        ]
-    });
+        this,
+        Formatting.Indented,
+        new JsonSerializerSettings
+        {
+            NullValueHandling = NullValueHandling.Ignore,
+            Converters =
+            [
+                new StringEnumConverter()
+            ]
+        });
 
-    public bool ShouldSerializeSiblings() => Siblings.Count > 0;
-    public bool ShouldSerializeChildren() => Children.Count > 0;
-    public bool ShouldSerializeCount() => Count > 1;
-
-    public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
-    {
-        Success = false;
-        NodeType = namedGroupNode.NodeType;
-        FullyQualifiedName = namedGroupNode.FullyQualifiedName;
-        Name = namedGroupNode.Name;
-
-        var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
-
-        if (parentNameMatch.Success && !string.IsNullOrWhiteSpace(parentNameMatch.Value))
-            ParentName = parentNameMatch.Value;
-
-        CaptureContext = captureContext;
-    }
+    public bool ShouldSerializeSiblings => Siblings.Count > 0;
+    public bool ShouldSerializeChildren => Children.Count > 0;
+    public bool ShouldSerializeCount => Count > 1;
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode, Capture capture, int? siblingIndex = null)
-        : this(captureContext, namedGroupNode)
+    : this(captureContext, namedGroupNode)
     {
         if (capture is null)
             throw new ArgumentNullException(nameof(capture));
@@ -67,6 +55,22 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         Length = capture.Length;
         End = Index + Length;
         SiblingIndex = siblingIndex;
+    }
+
+    public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
+    {
+        NodeType = namedGroupNode.NodeType;
+        IsUnmatchedString = namedGroupNode is UnmatchedTokenUnitNode;
+        IsTerminal = CheckNodeTypeIsTerminal(NodeType);
+        FullyQualifiedName = namedGroupNode.FullyQualifiedName;
+        Name = namedGroupNode.Name;
+
+        var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
+
+        if (parentNameMatch.Success && !string.IsNullOrWhiteSpace(parentNameMatch.Value))
+            ParentName = parentNameMatch.Value;
+
+        CaptureContext = captureContext;
     }
 
     public CaptureTrace this[int captureIndex]
@@ -94,6 +98,14 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    public int GetRecursiveDepth()
+    {
+        if (Children.Count == 0)
+            return 0;
+
+        return 1 + Children.Max(child => child.GetRecursiveDepth());
+    }
+
     string GetPrintValue()
     {
         if (ClrValue == null)
@@ -102,8 +114,17 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         return NodeType.ToString() + ": " + ClrValue.ToString();
     }
 
+    static bool CheckNodeTypeIsTerminal(CaptureNodeType nodeType) =>
+        nodeType switch
+        {
+            CaptureNodeType.Enum => true,
+            CaptureNodeType.Int => true,
+            CaptureNodeType.Bool => true,
+            _ => false
+        };
+
     public override string ToString() => CaptureValue;
-};
+}
 
 public enum CaptureNodeType
 {
@@ -116,5 +137,4 @@ public enum CaptureNodeType
     Enum,
     Int,
     Bool,
-
 }
