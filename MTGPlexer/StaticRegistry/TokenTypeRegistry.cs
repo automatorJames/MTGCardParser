@@ -88,9 +88,6 @@ public static partial class TokenTypeRegistry
         return tokens;
     }
 
-    /// <summary>
-    /// Return all TokenUnit deArgumentException: Cannot create an instance of MTGPlexer.TokenUnitPrimitives.CompoundOf`1[T] because Type.ContainsGenericParameters is true.rived types except for DefaultUnmatchedString
-    /// </summary>
     public static List<Type> GetAllTopLevelTokenTypes()
     {
         var allTypes = _staticAssemblyTypes
