@@ -2,7 +2,6 @@
 
 public class TokenUnitNode : NamedGroupNode
 {
-    public bool IsRoot => ParentNode == null;
     protected override Joiner Joiner { get; }
     protected override GroupQuantifier? Quantifier { get; }
 

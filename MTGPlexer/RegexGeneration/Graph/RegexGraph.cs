@@ -8,6 +8,18 @@ public class RegexGraph
     public TokenUnitNode RootNode { get; }
     public BuiltRegex BuiltRegex { get; }
 
+    /// <summary>
+    /// Maps NamedGroupNode FullyQualifiedName -> RegexNode.
+    /// </summary>
+    public Dictionary<string, NamedGroupNode> NamedGroupFlatGraph { get; } = [];
+
+    /// <summary>
+    /// Maps each NamedGroupNode FullyQualifiedName to a minimum unique simplified 
+    /// name. The simplified name is typically the name of the node itself
+    /// disambiguation is required. For example, "My_Path_To_Node" -> "Node".
+    /// </summary>
+    public Dictionary<string, string> SimpleUniqueNames { get; } = [];
+
     public RegexGraph(Type rootTokenUnitType, TokenUnitNode rootNode)
     {
         RootTokenUnitType = rootTokenUnitType;
@@ -15,6 +27,8 @@ public class RegexGraph
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
         BuiltRegex = collector.GetBuiltRegex();
+        PopulateFlatGraphRecursive();
+        PopulateSimpleUniqueNames();
     }
 
     public static RegexGraph Create(Type rootTokenUnitType)
@@ -30,6 +44,29 @@ public class RegexGraph
         };
 
         return new(rootTokenUnitType, root);
+    }
+
+    void PopulateFlatGraphRecursive(NamedGroupNode node = null)
+    {
+        node ??= RootNode;
+        NamedGroupFlatGraph[node.FullyQualifiedName] = node;
+
+        foreach (var child in node.Children.OfType<NamedGroupNode>())
+            PopulateFlatGraphRecursive(child);
+    }
+
+    void PopulateSimpleUniqueNames()
+    {
+        foreach (var fullyQualifiedName in NamedGroupFlatGraph.Keys)
+        {
+            var parts = fullyQualifiedName.Split('_');
+
+            SimpleUniqueNames[fullyQualifiedName] = Enumerable
+                .Range(1, parts.Length)
+                .Select(partCount => string.Join('_', parts[^partCount..]))
+                .First(candidate => NamedGroupFlatGraph.Keys.Count(
+                    key => key == candidate || key.EndsWith($"_{candidate}")) == 1);
+        }
     }
 
     public bool TryMatch(string sourceText, out TokenUnit tokenUnit) => 
@@ -62,7 +99,7 @@ public class RegexGraph
                 if (!success)
                     return false;
 
-                captureContext.RootCaptureInfo.ClrValue = tokenUnit;
+                captureContext.RootCaptureTrace.ClrValue = tokenUnit;
                 return true;
             }
         }

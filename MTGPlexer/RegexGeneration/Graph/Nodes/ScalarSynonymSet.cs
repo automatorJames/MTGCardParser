@@ -13,16 +13,16 @@ public class ScalarSynonymSet : RegexNode, INamedScalarValue
         ScalarContainerNode parentNode, 
         string name,
         object scalarValue,
-        string[] scalarSynonyms, 
+        IEnumerable<string> scalarSynonyms, 
         int positionAmongSiblings) 
         : base(parentNode, name)
     {
         ScalarValue = scalarValue;
-        ScalarSynonyms = scalarSynonyms;
+        ScalarSynonyms = scalarSynonyms.ToArray();
 
         _scalarChildren = scalarSynonyms.Select((x, idx) => new ScalarNode(
                 parentNode: this,
-                name: $"Synonym-{idx}",
+                name: x.Replace(' ', '-'), // no spaces allowed for FullyQualifiedName purposes
                 scalarValue: ScalarValue,
                 regex: x,
                 positionAmongSiblings: positionAmongSiblings,

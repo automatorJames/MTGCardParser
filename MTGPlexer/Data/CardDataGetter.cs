@@ -41,7 +41,8 @@ public class CardDataGetter : IDocumentRepository
         //result = result.Where(x => x.Name == "Aspect of Wolf");
         //result = result.Where(x => x.Name == "Ancestral Recall");
         //result = result.Where(x => x.Name == "Berserk");
-        result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
+        //result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
+        result = [new Card { Name = "feck you all", Text = "draw three cards" }, new Card { Name = "feck them all", Text = "draws seven cards" }];
         //result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
         return result.Cast<IDocument>().ToList();
     }

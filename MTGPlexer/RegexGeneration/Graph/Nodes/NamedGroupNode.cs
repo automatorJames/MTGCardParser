@@ -8,9 +8,6 @@ public abstract class NamedGroupNode : RegexNode
     public bool IsTransparentRoot => Navigation.IsRoot && Quantifier == null;
 
     public Navigation Navigation { get; }
-    public CaptureTrace CaptureValueHydrationInfo { get; protected set; }
-    public string FullyQualifiedName { get; }
-
     public abstract CaptureNodeType NodeType { get; }
     protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
@@ -41,7 +38,6 @@ public abstract class NamedGroupNode : RegexNode
         : base(parentNode, navigation.Name)
     {
         Navigation = navigation;
-        FullyQualifiedName = NamePath.Replace('.', '_');
 
         if (OneOrMoreRegexPatternsRequired && (navigation.Patterns == null || navigation.Patterns.Length == 0))
             throw new Exception($"'{Name}' is required to have one or more patterns defined via {nameof(RegexPatternAttribute)}");

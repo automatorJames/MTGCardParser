@@ -12,5 +12,7 @@ public class DrawOrDiscardCards : TokenUnit
 public enum CardVerb
 {
     Draw,
+
+    [RegexPattern("discard", "discard angrily")]
     Discard
 }

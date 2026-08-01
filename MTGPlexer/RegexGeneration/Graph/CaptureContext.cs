@@ -3,10 +3,8 @@
 public class CaptureContext
 {
     IReadOnlyDictionary<string, Capture[]> _captureDictionary;
-    Dictionary<string, CaptureTrace> _flatTree = [];
-    bool _captureTreeIsHydrated;
 
-    public CaptureTrace RootCaptureInfo { get; }
+    public RootCaptureTrace RootCaptureTrace { get; }
     public string SourceText { get; }
     public string FullMatch { get; }
 
@@ -19,8 +17,7 @@ public class CaptureContext
 
         SourceText = sourceText;
         FullMatch = match.Value;
-        RootCaptureInfo = new(this, rootNode, match);
-        _flatTree[rootNode.FullyQualifiedName] = RootCaptureInfo;
+        RootCaptureTrace = new(this, rootNode, match);
     }
 
     public CaptureTrace this[NamedGroupNode namedGroupNode]
@@ -37,38 +34,16 @@ public class CaptureContext
                 return new(this, namedGroupNode);
             }
 
-            //Debug.WriteLine(namedGroupNode.FullyQualifiedName + ": " + allCapturesForGroup[0].Value);
+            var captureTraces = allCapturesForGroup.Select((x, idx) => new CaptureTrace(this, namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx));
+            var captureTrace = captureTraces.First();
 
-            var captureInfos = allCapturesForGroup.Select((x, idx) => new CaptureTrace(this, namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx));
-            var captureInfo = captureInfos.First();
+            if (captureTraces.Count() > 1)
+                captureTrace.Siblings.AddRange(captureTraces.Skip(1));
 
-            if (captureInfos.Count() > 1)
-                captureInfo.Siblings.AddRange(captureInfos.Skip(1));
+            RootCaptureTrace.AddCaptureTrace(captureTrace);
 
-            _flatTree[captureInfo.FullyQualifiedName] = captureInfo;
-
-            return captureInfo;
+            return captureTrace;
         }
-    }
-
-    public CaptureTrace GetCaptureTree()
-    {
-        if (_captureTreeIsHydrated)
-            return RootCaptureInfo;
-
-        var children = _flatTree.Values.Except([RootCaptureInfo]);
-
-        foreach (var child in children)
-        {
-            if (!_flatTree.TryGetValue(child.ParentName, out var parentCaptureInfo))
-                continue;
-
-            parentCaptureInfo.Children.Add(child);
-        }
-
-        _captureTreeIsHydrated = true;
-
-        return RootCaptureInfo;
     }
 
     static Dictionary<string, Capture[]> GetNamedGroupCaptures(Match match)

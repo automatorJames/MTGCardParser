@@ -23,7 +23,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Siblings { get; } = [];
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Children { get; } = [];
     public object ClrValue { get; set; }
-    [JsonProperty] public bool IsUnmatchedString { get; }
     [JsonProperty] public bool IsTerminal { get; }
     [JsonProperty] public bool IsCollapsible => Children.Count > 0 && !Children.Any(x => x.IsTerminal);
 
@@ -60,7 +59,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
         NodeType = namedGroupNode.NodeType;
-        IsUnmatchedString = namedGroupNode is UnmatchedTokenUnitNode;
         IsTerminal = CheckNodeTypeIsTerminal(NodeType);
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
         Name = namedGroupNode.Name;

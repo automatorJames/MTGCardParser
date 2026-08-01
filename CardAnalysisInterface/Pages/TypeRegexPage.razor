@@ -57,9 +57,9 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    List<TokenUnitCapture> GetFilteredTokenUnitCaptures()
+    List<TokenCaptureTraceSummary> GetFilteredTokenUnitCaptures()
     {
-        List<TokenUnitCapture> filteredTokenUnitCaptures = DocumentAnalyzer.TokenCaptureSummary.TokenUnitCaptures.Values.ToList();
+        List<TokenCaptureTraceSummary> filteredTokenUnitCaptures = DocumentAnalyzer.RegexCaptureValueSets.Values.ToList();
 
         if (!RuntimeSettings.HideRegexesWithZeroCaptures)
             filteredTokenUnitCaptures.AddRange(DocumentAnalyzer.TokenCaptureSummary.UnmatchedTokenUnits.Values);

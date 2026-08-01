@@ -1,0 +1,46 @@
+﻿namespace MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+
+/// <summary>
+/// A centralized record to hold all the treatment rules for the generated regex,
+/// such as highlighting and lowlighting.
+/// </summary>
+internal record FormattedRegexTreatmentRules
+{
+    /// <summary>
+    /// Defines the lowlight treatment for all spans in the comment section (right of the '#').
+    /// </summary>
+    public SpanLowlightTreatment CommentLowlightTreatment { get; } = SpanLowlightTreatment.TextToHexDark;
+
+    /// <summary>
+    /// Determines the highlight treatment for the regex portion of a line (left of the '#').
+    /// </summary>
+    public SpanHighlightTreatment GetRegexHighlightTreatment(RegexBrick brick)
+    {
+        // Explicit Rule: AlternateValues on the regex side are ALWAYS TextToHexLight.
+        if (brick.Parent is ScalarSynonymSet)
+            return SpanHighlightTreatment.TextToHexLight;
+
+        // For all other line types, the regex side's text highlight mimics the comment side's text highlight.
+        return GetCommentHighlightTreatment(brick, isTextSpan: true);
+    }
+
+    /// <summary>
+    /// Determines the highlight treatment for a span within the comment section.
+    /// </summary>
+    /// <param name="line">The context of the entire line being processed.</param>
+    /// <param name="isTextSpan">True if the span is for comment text content; false for borders or fillers.</param>
+    public SpanHighlightTreatment GetCommentHighlightTreatment(RegexBrick brick, bool isTextSpan)
+    {
+        if (isTextSpan)
+        {
+            return brick switch
+            {
+                RegexBrickGroupBookend => SpanHighlightTreatment.TextToHexSat,
+                _ => SpanHighlightTreatment.TextToHexLight,
+            };
+        }
+
+        // Default for non-text spans (borders, fillers, etc.)
+        return SpanHighlightTreatment.TextToHexLight;
+    }
+}

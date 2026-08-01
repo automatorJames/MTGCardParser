@@ -13,6 +13,7 @@ global using MTGPlexer.SnippetHelpers;
 global using MTGPlexer.StaticRegistry;
 global using MTGPlexer.TokenAnalysisDTOs.SpanAnalysis;
 global using MTGPlexer.TokenAnalysisDTOs.WordTrees;
+global using MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
 global using MTGPlexer.TokenEditor;
 global using MTGPlexer.Tokenizers;
 global using MTGPlexer.TokenUnitPrimitives;

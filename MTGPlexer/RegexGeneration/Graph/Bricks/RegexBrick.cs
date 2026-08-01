@@ -6,10 +6,12 @@ public class RegexBrick
 
     public string Regex { get; }
     public string Comment { get; }
-    public string NamePath { get; }
+    public string FullyQualifiedName { get; }
     public int NestedDepth { get; }
     public RegexNode[] NodeLineage { get; }
     public RegexNode Parent => NodeLineage.LastOrDefault();
+    public NamedGroupNode[] NamedGroupNodeLineage => NodeLineage.OfType<NamedGroupNode>().ToArray();
+    public NamedGroupNode NamedGroupParent => NamedGroupNodeLineage.LastOrDefault();
 
     // Omits transparent root groups (includes root groups with quantifiers)
     public NamedGroupNode[] GroupLineage { get; }
@@ -28,7 +30,7 @@ public class RegexBrick
         Regex = regex;
         Comment = comment;
         NodeLineage = parentNode.Lineage;
-        NamePath = parentNode.NamePath;
+        FullyQualifiedName = parentNode.FullyQualifiedName;
         GroupLineage = parentNode.Lineage.OfType<NamedGroupNode>().Where(x => !x.IsTransparentRoot).Reverse().ToArray();
         GroupLineageNames = GroupLineage.Select(x => x.Name).ToArray();
         NestedDepth = CalculateNestedDepth();

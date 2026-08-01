@@ -1,4 +1,6 @@
-﻿namespace MTGPlexer.TokenAnalysisDTOs;
+﻿using MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
+
+namespace MTGPlexer.TokenAnalysisDTOs;
 
 /// <summary>
 /// A consolidated processor that tokenizes a corpus of documents and produces a complete
@@ -23,6 +25,8 @@ public class DocumentCorpusAnalyzer
     /// </summary>
     public DigestedText DigestedTextWithCaptureTokens { get; private set; }
 
+    //public Dictionary<Type, TokenCaptureTraceSummary> RegexCaptureValueSets { get; private set; }
+
     public DocumentCorpusAnalyzer(IDocumentRepository repository)
     {
         _repository = repository;
@@ -32,9 +36,12 @@ public class DocumentCorpusAnalyzer
     {
         if (_isInitialized) return;
 
+        // set ProcessedDocuments
         var documents = await _repository.GetDocumentsAsync();
         ProcessedDocuments = documents.Select(x => new ProcessedDocument(x)).ToList();
         DigestedTextWithCaptureTokens = new DigestedText(ProcessedDocuments);
+
+        // set RegexCaptureValueSets
 
         _isInitialized = true;
     }

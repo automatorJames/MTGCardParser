@@ -3,7 +3,7 @@
 public abstract class RegexNode
 {
     public string Name { get; }
-    public string NamePath { get; }
+    public string FullyQualifiedName { get; }
     public RegexNode ParentNode { get; }
     //public NamedGroupNode NamedGroupParentNode { get; }
     public RegexNode[] Lineage { get; }
@@ -13,12 +13,7 @@ public abstract class RegexNode
         Name = name;
         ParentNode = parentNode;
         Lineage = GetLineage();
-        NamePath = string.Join('.', Lineage.Select(x => x.Name));
-
-        //NamedGroupParentNode = Lineage
-        //    .Take(Lineage.Length - 1) // exclude self
-        //    .OfType<NamedGroupNode>()
-        //    .LastOrDefault();
+        FullyQualifiedName = string.Join('_', Lineage.Select(x => x.Name));
     }
 
     public abstract void AppendRegexBricks(RegexCollector collector);
@@ -38,5 +33,5 @@ public abstract class RegexNode
         return lineage.ToArray();
     }
 
-    public override string ToString() => NamePath;
+    public override string ToString() => FullyQualifiedName;
 }

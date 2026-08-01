@@ -36,7 +36,7 @@
 
     string GetClass()
     {
-        if (CaptureTrace.IsUnmatchedString)
+        if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
             return "";
 
         var classes = new List<string>();
@@ -58,7 +58,7 @@
 
     string GetStyle()
     {
-        if (CaptureTrace.IsUnmatchedString)
+        if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
             return "";
 
         if (CaptureTrace.Children.Any() && !CaptureTrace.IsCollapsible)

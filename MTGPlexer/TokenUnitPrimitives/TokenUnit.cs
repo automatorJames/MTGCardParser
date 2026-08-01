@@ -29,7 +29,7 @@ public abstract class TokenUnit
     }
 
     public SnippetAlternatives Alt(params string[] alternatives) =>
-    new SnippetAlternatives(alternatives);
+        new SnippetAlternatives(alternatives);
 
     public SnippetOptional Opt(string optionalText) =>
         new SnippetOptional(optionalText);
@@ -37,10 +37,13 @@ public abstract class TokenUnit
     public SnippetOptionalPlural Plural() =>
         new SnippetOptionalPlural();
 
-    public CaptureTrace CaptureTraceRoot => CaptureContext?.GetCaptureTree();
     public CaptureContext CaptureContext { get; set; }
-    public string CaptureValue => CaptureContext.FullMatch;
-    public string JsonDebug => CaptureContext?.GetCaptureTree().JsonDebug ?? "";
+
+    public string CaptureValue => 
+        CaptureContext.FullMatch;
+
+    public string JsonDebug =>
+        CaptureContext.RootCaptureTrace.JsonDebug ?? "";
 
     Type _type;
     public Type Type

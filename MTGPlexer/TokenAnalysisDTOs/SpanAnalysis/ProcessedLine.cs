@@ -24,8 +24,8 @@ public class ProcessedLine
     public Dictionary<CaptureTrace, int> CaptureTraceNestedDepths { get; } = [];
     public Dictionary<CaptureTrace, int> CaptureTraceDepthFirstPositions { get; } = [];
     public Dictionary<CaptureTrace, HexPalette> CaptureTracePositionalPalettes { get; } = [];
-    public List<CaptureTrace> CaptureTraceRoots => TokenUnits.Select(x => x.CaptureTraceRoot).ToList();
-    public List<CaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
+    public List<RootCaptureTrace> CaptureTraceRoots => TokenUnits.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
+    public List<RootCaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
 
     public ProcessedLine(SourceTextDTO sourceText, List<TokenUnit> tokenUnits, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
@@ -33,7 +33,7 @@ public class ProcessedLine
         TokenUnits = tokenUnits;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
-        tokenUnits.ForEach(x => RegisterPaletteAndDepthRecursive(x.CaptureTraceRoot));
+        tokenUnits.ForEach(x => RegisterPaletteAndDepthRecursive(x.CaptureContext.RootCaptureTrace));
         var paletteSet = DeterministicPalette.GetPositionalPaletteSet(CaptureTraceDepthFirstPositions.Count);
         CaptureTracePositionalPalettes = CaptureTraceDepthFirstPositions.ToDictionary(x => x.Key, x => paletteSet[x.Value]);
     }
@@ -56,7 +56,7 @@ public class ProcessedLine
             var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(document, lineTokenUnits, i);
             var dataPath = document.Name.Replace(' ', '_') + $"-line[{i}]";
             ProcessedLine processedLine = new(sourceText, lineTokenUnits, unmatchedTextOccurrences, dataPath);
-            lineTokenUnits.ForEach(x => processedLine.RegisterPaletteAndDepthRecursive(x.CaptureTraceRoot));
+            lineTokenUnits.ForEach(x => processedLine.RegisterPaletteAndDepthRecursive(x.CaptureContext.RootCaptureTrace));
             lines.Add(processedLine);
         }
 
@@ -94,5 +94,5 @@ public class ProcessedLine
         return occurrences;
     }
 
-    public int GetDeepestChildDepth() => TokenUnits.Max(x => x.CaptureTraceRoot.GetRecursiveDepth());
+    public int GetDeepestChildDepth() => TokenUnits.Max(x => x.CaptureContext.RootCaptureTrace.GetRecursiveDepth());
 }

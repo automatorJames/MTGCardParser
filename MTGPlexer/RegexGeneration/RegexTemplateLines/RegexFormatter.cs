@@ -142,7 +142,7 @@ public class RegexFormatter
 
     List<RegexElement> InsertVerticalBreathingRoom(List<RegexElement> elements)
     {
-        if (elements.Count == 0) 
+        if (elements.Count == 0)
             return elements;
 
         var result = new List<RegexElement> { elements[0] };
@@ -363,12 +363,12 @@ public class RegexFormatter
             var wall = BoxChars.Get(parent.Treatment).Wall.ToString();
             var palette = DeterministicPalette.GetStaticPalette(new HexColor(_colors.GetBorderColor(parent.Treatment, _enclosurePalettes[parent])));
 
-            if (isClosing) 
+            if (isClosing)
                 AddEnclosurePathSpan(line, spans, " ", white, scope);
 
             AddEnclosurePathSpan(line, spans, wall, palette, scope);
 
-            if (!isClosing) 
+            if (!isClosing)
                 AddEnclosurePathSpan(line, spans, " ", white, scope);
         }
     }
@@ -391,12 +391,12 @@ public class RegexFormatter
 
         if (line is NamedGroupOpen or AnonymousGroupClose) // Comments are left-aligned or right-aligned based on type
         {
-            if (line is NamedGroupOpen) 
+            if (line is NamedGroupOpen)
                 AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
 
             AddCurrentLineSpan(line, spans, new string(fill, Math.Max(0, width - comment.Length)), borderPal, false);
 
-            if (line is AnonymousGroupClose) 
+            if (line is AnonymousGroupClose)
                 AddCurrentLineSpan(line, spans, comment, DeterministicPalette.GetStaticPalette(new HexColor(color)), true);
         }
         else // NamedGroupClose has comment at the end
@@ -539,7 +539,7 @@ public class RegexFormatter
 
     string GetPrimaryContentColorForLine(RegexElement line)
     {
-        if (!line.VisibleEnclosures.Any()) 
+        if (!line.VisibleEnclosures.Any())
             return line switch
             {
                 TextLine => _colors.UnenclosedTextLineCommentColor,

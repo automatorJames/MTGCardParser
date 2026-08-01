@@ -24,37 +24,34 @@ public class EnumNode : ScalarContainerNode
             var scalarValue = scalarValues[i];
             var valueAsString = scalarValue.ToString();
             var field = enumType.GetField(valueAsString);
-            var patterns = field.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
+
+            List<string> patterns =
+                field.GetCustomAttribute<RegexPatternAttribute>()?.Patterns.ToList()
+                ?? [valueAsString.ToFriendlyCase()];
+
+            if (enumType.IsDefined(typeof(OptionalPluralAttribute)))
+            {
+                patterns = patterns
+                    .SelectMany(x => new[] { x, x.AddPluralization(makeOptional: false) })
+                    .ToList();
+            }
 
             bool isFirst = i == 0;
 
-            if (patterns != null && patterns.Length > 0)
-            {
-                if (patterns.Length == 1)
-                    // If there's only one "synonym", it's really just an alias for the scalar value
-                    children.Add(new ScalarNode(
-                        parentNode: this, 
-                        name: valueAsString, 
-                        scalarValue: scalarValue, 
-                        regex: patterns[0],
-                        positionAmongSiblings: i));
-                else
-                    // If there are two or more, they're true synonyms
-                    children.Add(new ScalarSynonymSet(
-                        parentNode: this, 
-                        name: valueAsString, 
-                        scalarValue: scalarValue, 
-                        scalarSynonyms: patterns, 
-                        positionAmongSiblings: i));
-            }
+            if (patterns.Count > 1)
+                children.Add(new ScalarSynonymSet(
+                    parentNode: this,
+                    name: valueAsString,
+                    scalarValue: scalarValue,
+                    scalarSynonyms: patterns,
+                    positionAmongSiblings: i));
             else
-                // This is a single scalar node whose regex is a formatted version of the enum member
                 children.Add(new ScalarNode(
-                    parentNode: this, 
-                    name: valueAsString, 
-                    scalarValue: scalarValue, 
-                    regex: valueAsString.ToFriendlyCase(), 
-                    positionAmongSiblings : i));
+                    parentNode: this,
+                    name: valueAsString,
+                    scalarValue: scalarValue,
+                    regex: patterns[0],
+                    positionAmongSiblings: i));
         }
     }
 
