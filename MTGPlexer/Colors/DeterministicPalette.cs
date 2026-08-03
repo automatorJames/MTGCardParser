@@ -1,9 +1,15 @@
-﻿using System.ComponentModel;
-using System.Globalization;
+using System.ComponentModel;
 
 namespace MTGPlexer.Colors;
 
-public record DeterministicPalette
+/// <summary>
+/// Centralized source of <see cref="HexPalette"/>s: equidistant-hue rainbow sets (positional, by type, or by
+/// arbitrary item), plus one-off palettes derived from a fixed <see cref="HexColor"/>. Despite the name, this
+/// class no longer promises a "same string in, same hue out" mapping anywhere in its public surface — every
+/// method here is either rainbow-positional or color-derived. Purely a static utility; nothing here is
+/// per-instance state.
+/// </summary>
+public static class DeterministicPalette
 {
     // --- Static Cache ---
     static readonly Dictionary<int, Dictionary<int, HexPalette>> _positionalPaletteSets = [];
@@ -11,25 +17,7 @@ public record DeterministicPalette
     static readonly Dictionary<HexColor, HexPalette> _staticColorPalettes = [];
 
     static Dictionary<Type, HexPalette> _typePaletteSet;
-    public static Dictionary<Type, HexPalette> TypePaletteSet
-    {
-        get
-        {
-            if (_typePaletteSet == null)
-                _typePaletteSet = GetTypePaletteSet();
-
-            return _typePaletteSet;
-        }
-    }
-
-    // --- Public Color Properties ---
-    public HexPalette Palette { get; private set; }
-
-
-    /// <summary>
-    /// The string used to generate this palette, typically a token Type name.
-    /// </summary>
-    public string Seed { get; private set; }
+    public static Dictionary<Type, HexPalette> TypePaletteSet => _typePaletteSet ??= GetTypePaletteSet();
 
     // --- Core Color Generation Constants ---
     const double BaseSaturation = 0.66;
@@ -39,42 +27,7 @@ public record DeterministicPalette
     const double LightLightness = 0.8;
     const double DarkLightness = 0.3;
 
-    // --- Constructors (Public Signatures Unchanged) ---
-
-    public DeterministicPalette(Type type, double? baseSaturation = null, double? baseLightness = null)
-    {
-        Seed = type.Name.ToFriendlyCase(TitleDisplayOption.Title);
-        var colorAttribute = type.GetCustomAttribute<ColorAttribute>();
-        if (colorAttribute != null)
-            InitializeFromColor(colorAttribute.Color);
-        else
-            InitializeFromHue(GetHueFromSeed(type.Name), baseSaturation, baseLightness);
-    }
-
-    public DeterministicPalette(string seed)
-    {
-        Seed = seed;
-        InitializeFromHue(GetHueFromSeed(seed));
-    }
-
-    public DeterministicPalette(HexColor color)
-    {
-        InitializeFromColor(color);
-    }
-
-    public DeterministicPalette(int rainbowIndex)
-    {
-        var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
-        InitializeFromColor(new HexColor(rainbowMember.GetDescription()));
-    }
-
-    // Private constructor for direct, consistent hue initialization.
-    private DeterministicPalette(double hue)
-    {
-        InitializeFromHue(hue);
-    }
-
-    // --- Static Factory ---
+    // --- Static Factories ---
 
     public static HexPalette GetFixedRainbowPalette(int rainbowIndex)
     {
@@ -83,36 +36,40 @@ public record DeterministicPalette
         if (_fixedRainbowPalettes.TryGetValue((int)rainbowMember, out var palette))
             return palette;
 
-        var newPalette = new DeterministicPalette(rainbowIndex).Palette;
+        var newPalette = BuildFromColor(new HexColor(rainbowMember.GetDescription()));
         _fixedRainbowPalettes[(int)rainbowMember] = newPalette;
 
         return newPalette;
     }
 
+    /// <summary>Builds the full type-to-palette map: types carrying a <see cref="ColorAttribute"/> get that fixed color, then every remaining registered token type gets an equidistant rainbow hue, hash-ordered for stability.</summary>
     static Dictionary<Type, HexPalette> GetTypePaletteSet()
     {
-        if (_typePaletteSet != null)
-            return _typePaletteSet;
-
-        _typePaletteSet = [];
-
         var allTokenTypes = TokenTypeRegistry.GetAllTypesExhaustive()
             .OrderBy(x => GetDeterministicHash(x.Name))
             .ToList();
 
-        var positionalPalettes = GetPositionalPaletteSet(allTokenTypes.Count);
+        var explicitlyColoredTypes = allTokenTypes
+            .Select(t => (Type: t, Attribute: t.GetCustomAttribute<ColorAttribute>()))
+            .Where(x => x.Attribute != null)
+            .ToList();
 
-        for (int i = 0; i < allTokenTypes.Count; i++)
-            _typePaletteSet[allTokenTypes[i]] = positionalPalettes[i];
+        var rainbowTypes = allTokenTypes.Except(explicitlyColoredTypes.Select(x => x.Type)).ToList();
 
-        return _typePaletteSet;
+        var typePaletteSet = new Dictionary<Type, HexPalette>();
+
+        foreach (var (type, attribute) in explicitlyColoredTypes)
+            typePaletteSet[type] = GetStaticPalette(attribute.Color);
+
+        var rainbowPalettes = GetPositionalPaletteSet(rainbowTypes.Count);
+        for (int i = 0; i < rainbowTypes.Count; i++)
+            typePaletteSet[rainbowTypes[i]] = rainbowPalettes[i];
+
+        return typePaletteSet;
     }
 
-    public static void RefreshTypePaletteSet()
-    {
-        _typePaletteSet = null;
+    public static void RefreshTypePaletteSet() =>
         _typePaletteSet = GetTypePaletteSet();
-    }
 
     public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount)
     {
@@ -123,10 +80,7 @@ public record DeterministicPalette
         var hues = GetRainbowHues(totalItemCount);
 
         for (int i = 0; i < totalItemCount; i++)
-        {
-            // Use the private constructor to create palettes directly and consistently from hues.
-            positionalPaletteSet[i] = new DeterministicPalette(hues[i]).Palette;
-        }
+            positionalPaletteSet[i] = BuildFromHue(hues[i]);
 
         _positionalPaletteSets[totalItemCount] = positionalPaletteSet;
         return positionalPaletteSet;
@@ -156,80 +110,50 @@ public record DeterministicPalette
         if (_staticColorPalettes.TryGetValue(color, out var palette))
             return palette;
 
-        var newPalette = new DeterministicPalette(color).Palette;
+        var newPalette = BuildFromColor(color);
         _staticColorPalettes[color] = newPalette;
 
         return newPalette;
     }
 
-    // --- Internal Initializers ---
+    // --- Palette Construction ---
 
-    /// <summary>
-    /// The single, authoritative method for generating all color properties from a hue.
-    /// </summary>
-    private void InitializeFromHue(double hue, double? baseSaturation = null, double? baseLightness = null)
+    /// <summary>The single, authoritative method for generating all color properties from a hue.</summary>
+    static HexPalette BuildFromHue(double hue, double? baseSaturation = null, double? baseLightness = null)
     {
         double saturation = baseSaturation ?? BaseSaturation;
         double lightness = baseLightness ?? BaseLightness;
 
-        // Create the base Hex color with the standard, slightly reduced saturation.
-        var hex = HslToHex(hue, saturation, lightness);
+        var hex = HslMath.ToHex(hue, saturation, lightness);
+        var light = HslMath.ToHex(hue, saturation, LightLightness);
+        var dark = HslMath.ToHex(hue, DarkSaturation, DarkLightness);
+        var sat = HslMath.ToHex(hue, FullSaturation, lightness);
 
-        // Create light and dark variants based on the standard saturation.
-        var light = HslToHex(hue, saturation, LightLightness);
-        var dark = HslToHex(hue, DarkSaturation, DarkLightness);
-
-        // Create the saturated version with full saturation for highlighting.
-        var sat = HslToHex(hue, FullSaturation, lightness);
-
-        Palette = new(hex, light, dark, sat);
+        return new(hex, light, dark, sat);
     }
 
-    /// <summary>
-    /// Initializes all properties based on a pre-existing color.
-    /// </summary>
-    private void InitializeFromColor(HexColor color)
+    static HexPalette BuildFromColor(HexColor color)
     {
         var hex = color.Value;
 
-        if (IsGrayscale(hex))
+        if (HslMath.IsGrayscale(hex))
         {
-            var light = AdjustLightness(hex, LightLightness);
-            var dark = AdjustLightness(hex, DarkLightness);
+            var light = HslMath.AdjustLightness(hex, LightLightness);
+            var dark = HslMath.AdjustLightness(hex, DarkLightness);
             var sat = hex; // No change for grayscale
 
-            Palette = new(hex, light, dark, sat);
+            return new(hex, light, dark, sat);
         }
-        else
-        {
-            // Deconstruct the given color to get its core components.
-            var (h, _, l) = HexToHsl(hex);
-            // Regenerate all variants from this hue to ensure consistency.
-            InitializeFromHue(h, baseLightness: l);
-        }
+
+        // Deconstruct the given color to get its core components, then regenerate all variants from
+        // this hue to ensure consistency.
+        var (h, _, l) = HslMath.FromHex(hex);
+        return BuildFromHue(h, baseLightness: l);
     }
 
+    // --- Hue Utilities ---
 
-    // --- Color Conversion & Utility Methods ---
-
-    private static double GetHueFromSeed(string seed)
-    {
-        int hash = GetDeterministicHash(seed);
-        uint unsignedHash = (uint)hash;
-        return unsignedHash / (double)uint.MaxValue;
-    }
-
-    private static bool IsGrayscale(string hex)
-    {
-        if (string.IsNullOrEmpty(hex) || !hex.StartsWith('#') || hex.Length != 7) return false;
-        try
-        {
-            return hex.AsSpan(1, 2).SequenceEqual(hex.AsSpan(3, 2)) && hex.AsSpan(3, 2).SequenceEqual(hex.AsSpan(5, 2));
-        }
-        catch { return false; }
-    }
-
-    private static int GetDeterministicHash(string text)
+    static int GetDeterministicHash(string text)
     {
         unchecked
         {
@@ -244,72 +168,10 @@ public record DeterministicPalette
         }
     }
 
-    private static string HslToHex(double h, double s, double l)
-    {
-        double r, g, b;
-        if (s == 0) { r = g = b = l; }
-        else
-        {
-            double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            double p = 2 * l - q;
-            r = HueToRgb(p, q, h + 1.0 / 3.0);
-            g = HueToRgb(p, q, h);
-            b = HueToRgb(p, q, h - 1.0 / 3.0);
-        }
-        return $"#{(int)(r * 255):X2}{(int)(g * 255):X2}{(int)(b * 255):X2}";
-    }
+    public static double HexToHue(string hex) => HslMath.FromHex(hex).h;
 
-    public static double HexToHue(string hex)
-    {
-        var (h, _, _) = HexToHsl(hex);
-        return h;
-    }
-
-    private static (double h, double s, double l) HexToHsl(string hex)
-    {
-        if (hex.StartsWith("#")) hex = hex[1..];
-        if (hex.Length != 6) throw new ArgumentException("Hex must be 6 characters long.", nameof(hex));
-
-        byte r = byte.Parse(hex[..2], NumberStyles.HexNumber);
-        byte g = byte.Parse(hex.AsSpan(2, 2), NumberStyles.HexNumber);
-        byte b = byte.Parse(hex.AsSpan(4, 2), NumberStyles.HexNumber);
-
-        double rn = r / 255.0, gn = g / 255.0, bn = b / 255.0;
-        double max = Math.Max(rn, Math.Max(gn, bn));
-        double min = Math.Min(rn, Math.Min(gn, bn));
-        double l = (max + min) / 2.0;
-        double h, s;
-
-        if (max == min) { h = s = 0; }
-        else
-        {
-            double d = max - min;
-            s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min);
-            if (max == rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
-            else if (max == gn) h = (bn - rn) / d + 2;
-            else h = (rn - gn) / d + 4;
-            h /= 6.0;
-        }
-        return (h, s, l);
-    }
-
-    private static double HueToRgb(double p, double q, double t)
-    {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
-        if (t < 1.0 / 2.0) return q;
-        if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
-        return p;
-    }
-
-    private static string AdjustLightness(string hex, double newLightness)
-    {
-        var (h, s, _) = HexToHsl(hex);
-        return HslToHex(h, s, newLightness);
-    }
-
-    private static double[] GetRainbowHues(int numberOfItems, ColorWheelOptions options = null)
+    /// <summary>Equidistant hues around the color wheel for <paramref name="numberOfItems"/>, in stable positional order.</summary>
+    static double[] GetRainbowHues(int numberOfItems, ColorWheelOptions options = null)
     {
         if (numberOfItems <= 0) return [];
 

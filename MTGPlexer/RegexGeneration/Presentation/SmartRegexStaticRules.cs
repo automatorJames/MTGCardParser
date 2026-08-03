@@ -36,10 +36,21 @@ public static class SmartRegexStaticRules
     /// </summary>
     public static string CenterPad(string text, int width)
     {
+        var (leftPad, rightPad) = CenterPadSplit(text, width);
+        return $"{leftPad}{text}{rightPad}";
+    }
+
+    /// <summary>
+    /// Same padding math as <see cref="CenterPad"/>, but returns the two pad strings separately instead of
+    /// a merged result — for callers that need to attach the padding to sub-pieces of <paramref name="text"/>
+    /// (e.g. coloring a centered comment's name/count fields differently) rather than to the whole string.
+    /// </summary>
+    public static (string LeftPad, string RightPad) CenterPadSplit(string text, int width)
+    {
         var extra = Math.Max(0, width - text.Length);
         var leftPad = extra / 2;
         var rightPad = extra - leftPad;
-        return $"{string.Empty.PadLeft(leftPad)}{text}{string.Empty.PadLeft(rightPad)}";
+        return (string.Empty.PadLeft(leftPad), string.Empty.PadLeft(rightPad));
     }
 
     // Unicode escape sequences for box-drawing characters.

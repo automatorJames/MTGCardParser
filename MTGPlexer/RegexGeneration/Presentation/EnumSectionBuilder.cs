@@ -76,6 +76,7 @@ internal class EnumSectionBuilder
                 bricks.Add(BuildSynonymSectionHeader(currentSynonymGroupParentNode, member, enumSummary, metrics));
             }
 
+            member.IsSynonymRow = isPartOfSynonymGroup;
             member.CommentFormatted = BuildMemberComment(member, enumSummary, metrics, isPartOfSynonymGroup);
             member.RegexFormatted = BuildMemberRegex(member, positionAmongOccurring: i);
             bricks.Add(member);
@@ -95,21 +96,42 @@ internal class EnumSectionBuilder
         return new RegexBrickSynonymSectionHeader(parent, namedCore) { CommentFormatted = SmartRegexStaticRules.CenterPad(namedCore, metrics.MaxCommentLength) };
     }
 
-    /// <summary>The centered "Name : count" comment for a standalone member, or "     : count" for one row of a synonym group.</summary>
+    /// <summary>
+    /// The centered "Name : count" comment for a standalone member, or "     : count" for one row of a
+    /// synonym group. Splits the result across <see cref="RegexBrickValue.NameCommentFormatted"/> and
+    /// <see cref="RegexBrickValue.CountCommentFormatted"/> (which together concatenate to the same string
+    /// this always returned) so the name and count can be colored as separate spans.
+    /// </summary>
     static string BuildMemberComment(RegexBrickValue member, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics, bool isPartOfSynonymGroup)
     {
-        var core = isPartOfSynonymGroup
-            ? metrics.FormatMinimalCore(enumSummary.EnumMemberSynonymOccurenceCounts[member.Value][member.Regex])
-            : metrics.FormatNamedCore(member.Value, enumSummary.EnumMemberOccurenceCounts[member.Value]);
+        var nameField = isPartOfSynonymGroup ? metrics.FormatBlankNameField() : metrics.FormatNameField(member.Value);
 
-        return SmartRegexStaticRules.CenterPad(core, metrics.MaxCommentLength);
+        var occurrenceCount = isPartOfSynonymGroup
+            ? enumSummary.EnumMemberSynonymOccurenceCounts[member.Value][member.Regex]
+            : enumSummary.EnumMemberOccurenceCounts[member.Value];
+        var countField = metrics.FormatCountField(occurrenceCount);
+
+        var (leftPad, rightPad) = SmartRegexStaticRules.CenterPadSplit(nameField + countField, metrics.MaxCommentLength);
+
+        member.NameCommentFormatted = leftPad + nameField;
+        member.CountCommentFormatted = countField + rightPad;
+
+        return member.NameCommentFormatted + member.CountCommentFormatted;
     }
 
-    /// <summary>The member's regex prefixed with a leading space (first row) or pipe (every subsequent row).</summary>
+    /// <summary>
+    /// The member's regex prefixed with a leading space (first row) or pipe (every subsequent row). Splits
+    /// the result across <see cref="RegexBrickValue.JoinerRegexFormatted"/> and <see cref="RegexBrickValue.MemberRegexFormatted"/>
+    /// so the joiner and pattern text can be colored as separate spans.
+    /// </summary>
     static string BuildMemberRegex(RegexBrickValue member, int positionAmongOccurring)
     {
         var pipeBuffer = string.Empty.PadLeft(SmartRegexStaticRules.EnumMemberBufferAfterPipe);
         var prefix = positionAmongOccurring == 0 ? " " : "|";
-        return $"{prefix}{pipeBuffer}{member.Regex}";
+
+        member.JoinerRegexFormatted = $"{prefix}{pipeBuffer}";
+        member.MemberRegexFormatted = member.Regex;
+
+        return member.JoinerRegexFormatted + member.MemberRegexFormatted;
     }
 }

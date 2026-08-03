@@ -7,6 +7,12 @@ public class RegexBrickGroupOpen : RegexBrickGroupBookend
     /// <summary>The group's fully qualified capture-group name, as used in the matching regex.</summary>
     public string GroupName { get; }
 
+    /// <summary>Display-only: the "Type" portion of this group's opening comment (e.g. "Enum"). Populated by <c>BrickCommentResolver</c>.</summary>
+    public string TypeLabel { get; set; } = "";
+
+    /// <summary>Display-only: the ": UnderlyingType" suffix appended when the group's name doesn't already say its type, or "" when not needed. Populated by <c>BrickCommentResolver</c>.</summary>
+    public string TypeDisambiguator { get; set; } = "";
+
     public RegexBrickGroupOpen(RegexNode parentNode, string groupName)
         : base(parentNode, GetRegex(groupName))
     {

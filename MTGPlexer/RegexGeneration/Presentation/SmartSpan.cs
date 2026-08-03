@@ -10,13 +10,13 @@ public record SmartSpan
     public string FullyQualifiedName { get; }
 
     /// <summary>The color palette this span is rendered with.</summary>
-    public HexPalette Palette { get; }
+    public SpanColorPalette Palette { get; }
 
-    public SmartSpan(string content, string fullyQualifiedName, HexPalette hexPalette)
+    public SmartSpan(string content, string fullyQualifiedName, SpanColorPalette palette)
     {
         Content = content;
         FullyQualifiedName = fullyQualifiedName;
-        Palette = hexPalette;
+        Palette = palette;
     }
 
     /// <summary>Returns a copy of this span with its text reversed, used to build the mirrored right-hand wall of a group box from its left-hand wall.</summary>

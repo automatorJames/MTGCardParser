@@ -20,23 +20,29 @@ internal static class BrickCommentResolver
             _ => ""
         };
 
-    /// <summary>"Type" (or "Type: UnderlyingType" when the group's own name doesn't already say its type).</summary>
+    /// <summary>"Type" (or "Type: UnderlyingType" when the group's own name doesn't already say its type). Also splits the result into <see cref="RegexBrickGroupOpen.TypeLabel"/>/<see cref="RegexBrickGroupOpen.TypeDisambiguator"/> so the two can be colored separately.</summary>
     static string ResolveGroupOpenComment(RegexBrickGroupOpen open)
     {
         var group = open.NamedGroupParent;
         var typeLabel = group.NodeType.ToString().ToFriendlyCase();
+        var disambiguator = group.Name == group.Navigation.UnderlyingType.Name ? "" : $": {group.Navigation.UnderlyingType.Name}";
 
-        return group.Name == group.Navigation.UnderlyingType.Name
-            ? typeLabel
-            : $"{typeLabel}: {group.Navigation.UnderlyingType.Name}";
+        open.TypeLabel = typeLabel;
+        open.TypeDisambiguator = disambiguator;
+
+        return typeLabel + disambiguator;
     }
 
-    /// <summary>"Name" (or "Name (quantifier)" when the group carries a non-default quantifier).</summary>
+    /// <summary>"Name" (or "Name (quantifier)" when the group carries a non-default quantifier). Also splits the result into <see cref="RegexBrickGroupClose.NameText"/>/<see cref="RegexBrickGroupClose.QuantifierReminder"/> so the two can be colored separately.</summary>
     static string ResolveGroupCloseComment(RegexBrickGroupClose close)
     {
         var group = close.NamedGroupParent;
         var quantifierComment = group.Navigation.Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+        var quantifierReminder = quantifierComment == null ? "" : $" ({quantifierComment})";
 
-        return quantifierComment == null ? group.Name : $"{group.Name} ({quantifierComment})";
+        close.NameText = group.Name;
+        close.QuantifierReminder = quantifierReminder;
+
+        return group.Name + quantifierReminder;
     }
 }

@@ -4,7 +4,7 @@
         {
             foreach (var span in line.Spans)
             {
-                var style = $"--hex: {span.Palette.Normal}; --hex-light: {span.Palette.Light}; --hex-dark: {span.Palette.Dark}; --hex-sat: {span.Palette.Sat}; color: {span.Palette.Normal};";
+                var style = $"{span.Palette.CssVariables()} color: {span.Palette.Default};";
                 <span style="@style" data-path="@span.FullyQualifiedName">@span.Content</span>
             }
             @("\n")

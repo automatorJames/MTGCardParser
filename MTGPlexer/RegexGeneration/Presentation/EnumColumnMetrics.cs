@@ -46,9 +46,21 @@ internal readonly struct EnumColumnMetrics
 
     /// <summary>"Name : count", with the name right-aligned and the count left-aligned so every row's colon lines up.</summary>
     public string FormatNamedCore(object memberValue, int occurrenceCount) =>
-        $"{memberValue.ToString().PadLeft(MaxNameLength)}{ColonBuffer}:{ColonBuffer}{occurrenceCount.ToString().PadRight(MaxDigitLength)}";
+        FormatNameField(memberValue) + FormatCountField(occurrenceCount);
 
     /// <summary>"     : count", with the name column blanked but still reserved, for a synonym row grouped under a header.</summary>
     public string FormatMinimalCore(int synonymOccurrenceCount) =>
-        $"{string.Empty.PadLeft(MaxNameLength)}{ColonBuffer}:{ColonBuffer}{synonymOccurrenceCount.ToString().PadRight(MaxDigitLength)}";
+        FormatBlankNameField() + FormatCountField(synonymOccurrenceCount);
+
+    /// <summary>The name field alone, right-aligned within <see cref="MaxNameLength"/>.</summary>
+    public string FormatNameField(object memberValue) =>
+        memberValue.ToString().PadLeft(MaxNameLength);
+
+    /// <summary>A blank name field, still reserving <see cref="MaxNameLength"/> columns, for a synonym row grouped under a header.</summary>
+    public string FormatBlankNameField() =>
+        string.Empty.PadLeft(MaxNameLength);
+
+    /// <summary>The " : count" field alone (including its leading colon buffer), left-aligned within <see cref="MaxDigitLength"/>.</summary>
+    public string FormatCountField(int occurrenceCount) =>
+        $"{ColonBuffer}:{ColonBuffer}{occurrenceCount.ToString().PadRight(MaxDigitLength)}";
 }
