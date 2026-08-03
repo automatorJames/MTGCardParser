@@ -1,44 +1,28 @@
-﻿namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+﻿namespace MTGPlexer.RegexGeneration.Graph;
 
+/// <summary>
+/// The compiled result of walking a <see cref="RegexNode"/> graph: the flat brick sequence, the
+/// concatenated matching pattern, and the compiled <see cref="System.Text.RegularExpressions.Regex"/>.
+/// Formatted/commented output is a separate concern — see <see cref="ToSmartRegex"/>.
+/// </summary>
 public class BuiltRegex
 {
-    List<RegexBrick> _regexBricks;
+    readonly List<RegexBrick> _regexBricks;
 
+    /// <summary>The concatenated raw regex text of every brick, used to compile <see cref="Regex"/>.</summary>
     public string MinifiedRegex { get; }
-    //public string FormattedRegex { get; }
-    //public List<string> FormattedLines { get; }
+
+    /// <summary>The compiled matching pattern.</summary>
     public Regex Regex { get; }
 
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
         _regexBricks = regexBricks;
         MinifiedRegex = string.Join("", _regexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
-        //FormatNamedGroups(_regexBricks);
-        //FormattedLines = _regexBricks.Select(x => new string(' ', x.NestedDepth * SmartRegexStaticRules.SpacesPerIndent) + x.RegexFormatted).ToList();
-        //FormattedRegex = string.Join(Environment.NewLine, FormattedLines);
         Regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
     }
 
-    //void FormatNamedGroups(List<RegexBrick> regexBricks)
-    //{
-    //    var groupOpenBricksPendingFormatting = regexBricks.OfType<RegexBrickGroupOpen>().ToList();
-    //    int minimumDepthForDistinctName = 1;
-    //
-    //    while (groupOpenBricksPendingFormatting.Any())
-    //    {
-    //        var nameGroups = groupOpenBricksPendingFormatting.ToList().GroupBy(x => string.Join("_", x.GroupLineageNames.Take(minimumDepthForDistinctName)));
-    //
-    //        foreach (var group in nameGroups.Where(x => x.Count() == 1))
-    //        {
-    //            var singularlyNamedBrick = group.First();
-    //            singularlyNamedBrick.SetFormattedGroupName(group.Key);
-    //            groupOpenBricksPendingFormatting.Remove(singularlyNamedBrick);
-    //        }
-    //
-    //        minimumDepthForDistinctName++;
-    //    }
-    //}
-
+    /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
     public SmartRegex ToSmartRegex(TokenOccurrenceSummary summary, RegexGraph regexGraph) =>
         new(_regexBricks, summary, regexGraph);
 

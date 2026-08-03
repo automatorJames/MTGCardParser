@@ -14,6 +14,7 @@ public class EnumNode : NamedGroupNode
     {
     }
 
+    /// <summary>Adds one <see cref="EnumMemberNode"/> per (member, synonym pattern) pair — including plural variants when <see cref="OptionalPluralAttribute"/> is declared on the enum type.</summary>
     protected override void AddReflectedChildren(List<RegexNode> children)
     {
         var enumType = Navigation.UnderlyingType;
@@ -47,6 +48,7 @@ public class EnumNode : NamedGroupNode
         }
     }
 
+    /// <summary>Finds which <see cref="EnumMemberNode"/> child's pattern matched the captured text, and returns its scalar enum value.</summary>
     protected override object GetValue(CaptureTrace captureTrace)
     {
         if (captureTrace.Count != 1)

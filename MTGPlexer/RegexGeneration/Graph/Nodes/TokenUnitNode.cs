@@ -1,11 +1,15 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
+/// <summary>
+/// Represents a <see cref="TokenUnit"/> type (root or nested): its children mirror the type's declared
+/// <see cref="Snippet"/>s, one child per literal text snippet or per property snippet's own node type.
+/// </summary>
 public class TokenUnitNode : NamedGroupNode
 {
     protected override Joiner Joiner { get; }
     public override CaptureNodeType NodeType => CaptureNodeType.TokenUnit;
 
-    public TokenUnitNode(RegexNode parentNode, Navigation navigation) 
+    public TokenUnitNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
         Joiner = Navigation.TokenTypeConfiguration.Joiner;
@@ -20,6 +24,7 @@ public class TokenUnitNode : NamedGroupNode
                 children.Add(new TextNode(this, snippet.Text));
     }
 
+    /// <summary>Picks the concrete <see cref="RegexNode"/> subtype for a property snippet, based on its underlying CLR type (enum, bool, int, nested token unit, etc.).</summary>
     protected static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)
     {
         Navigation navigation = new(propertySnippet);
@@ -37,6 +42,7 @@ public class TokenUnitNode : NamedGroupNode
         };
     }
 
+    /// <summary>Instantiates this node's <see cref="TokenUnit"/> type and hydrates every child named-group property from <paramref name="captureContext"/>. Returns false if any required child fails to hydrate.</summary>
     public virtual bool TryHydrate(CaptureContext captureContext, out TokenUnit tokenUnit)
     {
         tokenUnit = null;
@@ -57,6 +63,7 @@ public class TokenUnitNode : NamedGroupNode
         return true;
     }
 
+    /// <inheritdoc/>
     protected override object GetValue(CaptureTrace captureInfo)
     {
         TryHydrate(captureInfo.CaptureContext, out var tokenUnit);

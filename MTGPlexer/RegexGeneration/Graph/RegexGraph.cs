@@ -1,11 +1,22 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph;
 
+/// <summary>
+/// The compiled regex-matching representation of one root <see cref="TokenUnit"/> type: the
+/// <see cref="Graph.Nodes.RegexNode"/> tree walked from that type, the <see cref="BuiltRegex"/> compiled
+/// from it, and lookup tables (<see cref="NamedGroupFlatGraph"/>, <see cref="SimpleUniqueNames"/>) used
+/// to resolve captures and simplified display names.
+/// </summary>
 public class RegexGraph
 {
     static readonly char[] _boundaryChars = [' ', '.'];
 
+    /// <summary>The root <see cref="TokenUnit"/> type this graph was built from.</summary>
     public Type RootTokenUnitType { get; }
+
+    /// <summary>The root of the walked <see cref="Graph.Nodes.RegexNode"/> tree.</summary>
     public TokenUnitNode RootNode { get; }
+
+    /// <summary>The compiled matching regex produced by walking <see cref="RootNode"/>.</summary>
     public BuiltRegex BuiltRegex { get; }
 
     /// <summary>
@@ -31,6 +42,7 @@ public class RegexGraph
         PopulateSimpleUniqueNames();
     }
 
+    /// <summary>Builds the root <see cref="Graph.Nodes.RegexNode"/> for <paramref name="rootTokenUnitType"/> and compiles a full <see cref="RegexGraph"/> from it.</summary>
     public static RegexGraph Create(Type rootTokenUnitType)
     {
         Navigation navigation = new(rootTokenUnitType);
@@ -46,6 +58,7 @@ public class RegexGraph
         return new(rootTokenUnitType, root);
     }
 
+    /// <summary>Depth-first walk populating <see cref="NamedGroupFlatGraph"/> from every named group node in the tree.</summary>
     void PopulateFlatGraphRecursive(NamedGroupNode node = null)
     {
         node ??= RootNode;
@@ -55,6 +68,7 @@ public class RegexGraph
             PopulateFlatGraphRecursive(child);
     }
 
+    /// <summary>Computes <see cref="SimpleUniqueNames"/> by growing each name's suffix (shortest first) until it uniquely identifies that node among all others.</summary>
     void PopulateSimpleUniqueNames()
     {
         foreach (var fullyQualifiedName in NamedGroupFlatGraph.Keys)
@@ -69,7 +83,8 @@ public class RegexGraph
         }
     }
 
-    public bool TryMatch(string sourceText, out TokenUnit tokenUnit) => 
+    /// <summary>Attempts to match and hydrate <paramref name="sourceText"/> in full, from its start to its end.</summary>
+    public bool TryMatch(string sourceText, out TokenUnit tokenUnit) =>
         TryMatch(sourceText, 0, sourceText.Length, out tokenUnit);
 
     /// <summary>

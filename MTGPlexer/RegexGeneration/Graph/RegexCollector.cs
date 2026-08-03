@@ -1,25 +1,27 @@
-using MTGPlexer.RegexGeneration.Graph.Bricks;
-
-namespace MTGPlexer.RegexGeneration.RegexTemplateLines;
+namespace MTGPlexer.RegexGeneration.Graph;
 
 /// <summary>
-/// Manages the construction of a logical sequence of regular expression elements. Acts as the single interface to translate RegexSegmentBase
-/// components into properly-concatenated RegexElements, and ultimately composed Regex patterns. 
+/// Accumulates the flat sequence of <see cref="RegexBrick"/>s produced while walking a <see cref="RegexNode"/>
+/// graph, and compiles them into a <see cref="BuiltRegex"/> once the walk is complete.
 /// </summary>
 public class RegexCollector
 {
+    /// <summary>The bricks appended so far, in emission order.</summary>
     public List<RegexBrick> RegexBricks { get; } = [];
 
+    /// <summary>The last regex character emitted so far, ignoring group open/close bookends (used to decide whether a joiner is needed next).</summary>
     public char LastChar =>
         RegexBricks.LastOrDefault(x => x is not RegexBrickGroupBookend)
         .Regex.LastOrDefault();
 
+    /// <summary>Appends a brick to the sequence.</summary>
     public void Append(RegexBrick brick) =>
         RegexBricks.Add(brick);
 
-    public BuiltRegex GetBuiltRegex() => 
+    /// <summary>Compiles the accumulated bricks into a <see cref="BuiltRegex"/>.</summary>
+    public BuiltRegex GetBuiltRegex() =>
         new(RegexBricks);
 
-    public override string ToString() => 
+    public override string ToString() =>
         string.Join("", RegexBricks.Select(x => x.Regex));
 }

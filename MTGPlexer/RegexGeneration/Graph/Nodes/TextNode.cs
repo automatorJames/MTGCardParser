@@ -6,6 +6,7 @@
 /// </summary>
 public class TextNode : RegexNode
 {
+    /// <summary>The literal regex text to match, wrapped as optional (e.g. <c>(text )?</c>) if the source snippet was optional.</summary>
     public string Text { get; set; }
 
     public TextNode(RegexNode parentNode, Snippet snippet) 
@@ -20,5 +21,5 @@ public class TextNode : RegexNode
     }
 
     public override void AppendRegexBricks(RegexCollector collector) =>
-        collector.Append(new RegexBrick(this, Text, "literal match"));
+        collector.Append(new RegexBrick(this, Text));
 }

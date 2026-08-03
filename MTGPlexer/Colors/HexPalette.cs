@@ -6,7 +6,8 @@ public record HexPalette
     string Light,
     string Dark,
     string Sat,
-    string Seed = null
+    string Seed = null,
+    PaletteVariant? Variant = null
 )
 {
     public string GetVariant(PaletteVariant variant) =>
@@ -19,9 +20,11 @@ public record HexPalette
             _ => throw new NotImplementedException($"{variant} not supported")
         };
 
-    public string ToColorStyle(PaletteVariant baseVariant = PaletteVariant.Normal)
+    public string ToColorStyle(PaletteVariant? overrideVariant = null)
     {
-        string style = baseVariant switch
+        var variant = overrideVariant ?? Variant ?? PaletteVariant.Normal;
+
+        string style = variant switch
         {
             PaletteVariant.Dark =>
                 $"--color: {Dark}; --highlight-color: {Normal}; --lowlight-color: {Dark};",

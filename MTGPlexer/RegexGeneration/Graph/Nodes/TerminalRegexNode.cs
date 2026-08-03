@@ -1,7 +1,9 @@
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
+/// <summary>A leaf node wrapping one literal regex pattern string, with no children of its own.</summary>
 public class TerminalRegexNode : RegexNode
 {
+    /// <summary>The literal regex pattern this node contributes.</summary>
     public string RegexString { get; }
 
     public TerminalRegexNode(
@@ -14,5 +16,5 @@ public class TerminalRegexNode : RegexNode
     }
 
     public override void AppendRegexBricks(RegexCollector collector) =>
-        collector.Append(new RegexBrick(this, RegexString, null));
+        collector.Append(new RegexBrick(this, RegexString));
 }

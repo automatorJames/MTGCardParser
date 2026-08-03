@@ -11,13 +11,12 @@ public class IntNode : NamedGroupNode
     {
     }
 
+    /// <summary>The captured text parsed as an int, or (if it doesn't parse, e.g. a repeated marker like "+1/+1" counters) the number of times it occurred.</summary>
     protected override object GetValue(CaptureTrace captureInfo)
     {
-        // Check if the capture itself is a singular int
         if (captureInfo.Count == 1 && int.TryParse(captureInfo.CaptureValue, out int parsedInt))
             return parsedInt;
 
-        // Otherwise, return the count of occurrences of the match
         return captureInfo.Count;
     }
 }

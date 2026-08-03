@@ -16,13 +16,11 @@ public class BoolNode : NamedGroupNode
     {
     }
 
+    /// <summary>Always true: a successful capture of this optional group is itself proof the pattern matched.</summary>
     protected override object GetValue(CaptureTrace captureTrace)
     {
         if (captureTrace.Count != 1)
             throw new Exception($"{nameof(BoolNode)} expects exactly one capture");
-
-        // Simply return "true", because TerminalNode already validated that the
-        // named group exists, and therefore this bool check has already succeeded
 
         return true;
     }
