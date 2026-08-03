@@ -28,8 +28,15 @@ internal readonly struct EnumColumnMetrics
     /// <summary>Measures the columns needed for <paramref name="members"/>, accounting for the omitted-count brick's comment if one was built.</summary>
     public static EnumColumnMetrics Calculate(List<RegexBrickValue> members, EnumCaptureTraceSummary enumSummary, RegexBrickOmittedCount omittedCount)
     {
-        var maxNameLength = members.Max(x => x.Value.ToString().Length);
-        var maxDigitLength = members.Max(x => enumSummary.EnumMemberOccurenceCounts[x.Value].ToString().Length);
+        int maxNameLength = 0;
+        int maxDigitLength = 0;
+
+        if (members.Any())
+        {
+            maxNameLength = members.Max(x => x.Value.ToString().Length);
+            maxDigitLength = members.Max(x => enumSummary.EnumMemberOccurenceCounts[x.Value].ToString().Length);
+        }
+
         var colonBufferLength = SmartRegexStaticRules.EnumMemberOccurrenceCountColonBuffer;
         var coreLength = maxNameLength + colonBufferLength + 1 + colonBufferLength + maxDigitLength;
         var maxCommentLength = Math.Max(coreLength, omittedCount?.CommentFormatted.Length ?? 0);
