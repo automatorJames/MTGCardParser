@@ -38,7 +38,7 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
     group.setAttribute('class', 'node-group');
     group.id = isAdjacencyNode ? `group-node-${containerId}-${nodeData.id}` : `group-node-${containerId}-main-anchor`;
     if (isAdjacencyNode) {
-        group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceKeys || []);
+        group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceCardNames || []);
     }
 
     const baseShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -61,7 +61,7 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
     group.append(baseShape, highlightShape, anchorHoverShape);
 
     if (isAdjacencyNode) {
-        const sourceCardNames = nodeData.sourceOccurrenceKeys || [];
+        const sourceCardNames = nodeData.sourceOccurrenceCardNames || [];
         if (sourceCardNames.length > 0) {
             const defs = svg.querySelector('defs');
             if (defs) {
@@ -144,7 +144,6 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
                     subTspan.style.fill = activePalette.hexLight;
                     subTspan.style.fontWeight = 'bold';
                     subTspan.classList.add('interactive-subspan');
-                    if (activePalette.seed) subTspan.dataset.typeSeed = activePalette.seed;
                     subTspan.dataset.baseColor = activePalette.hexLight;
                     subTspan.dataset.hoverColor = activePalette.hex;
                 }

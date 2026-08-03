@@ -69,16 +69,14 @@
     white-space: nowrap;
 }
 
-.header-card-names,
-.header-type-names {
+.header-card-names {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
 }
 
-.card-name-item,
-.type-name-item {
+.card-name-item {
     font-size: 11px;
     font-weight: 300;
     padding: 2px 8px;
@@ -98,24 +96,6 @@
     color: var(--highlight-color);
     opacity: 1;
 }
-
-.word-trees-card.type-highlight-active .type-name-item.lowlight {
-    opacity: 0.2;
-}
-
-.word-trees-card.type-highlight-active .type-name-item.highlight {
-    color: var(--highlight-color);
-    opacity: 1;
-}
-
-.type-name-item.lowlight {
-    opacity: 0.2;
-    transition: all var(--transition-time);
-}
-
-    .type-name-item.lowlight.keep-border {
-        border-color: inherit;
-    }
 
 /* =================================================================== */
 /* == SVG & TOOLTIP STYLES                                          == */

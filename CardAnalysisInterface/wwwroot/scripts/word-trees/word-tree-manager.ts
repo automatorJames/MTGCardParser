@@ -30,18 +30,7 @@ export const wordTreeObservers = new Map<string, WordTreeObserver>();
 function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
     const traverseAndAugmentNodes = (nodes: AdjacencyNode[]): void => {
         for (const node of nodes) {
-            node.sourceKeysSet = new Set(node.sourceOccurrenceKeys);
-
-            // Collect all unique type seeds from this node's palettes
-            const typeSeeds = new Set<string>();
-            if (node.spanPalettes) {
-                for (const palette of Object.values(node.spanPalettes)) {
-                    if (palette?.seed) {
-                        typeSeeds.add((palette as any).seed as string);
-                    }
-                }
-            }
-            (node as any).typeSeedsSet = typeSeeds;
+            node.sourceKeysSet = new Set(node.sourceOccurrenceCardNames);
 
             if (node.children) {
                 traverseAndAugmentNodes(node.children);

@@ -24,17 +24,7 @@ export const wordTreeObservers = new Map();
 function processSpanForClient(rawSpan) {
     const traverseAndAugmentNodes = (nodes) => {
         for (const node of nodes) {
-            node.sourceKeysSet = new Set(node.sourceOccurrenceKeys);
-            // Collect all unique type seeds from this node's palettes
-            const typeSeeds = new Set();
-            if (node.spanPalettes) {
-                for (const palette of Object.values(node.spanPalettes)) {
-                    if (palette?.seed) {
-                        typeSeeds.add(palette.seed);
-                    }
-                }
-            }
-            node.typeSeedsSet = typeSeeds;
+            node.sourceKeysSet = new Set(node.sourceOccurrenceCardNames);
             if (node.children) {
                 traverseAndAugmentNodes(node.children);
             }

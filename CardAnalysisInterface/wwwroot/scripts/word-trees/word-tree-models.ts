@@ -5,7 +5,6 @@ export interface DeterministicPalette {
     hex: string;
     hexSat: string;
     hexLight: string;
-    seed?: string;
 }
 
 /**
@@ -17,7 +16,7 @@ export interface AdjacencyNode {
     id: string;
     text: string;
     spanPalettes: { [startIndex: number]: DeterministicPalette } | null;
-    sourceOccurrenceKeys: string[]; // Now contains CardNames
+    sourceOccurrenceCardNames: string[];
     children: AdjacencyNode[];
 
     // --- Properties added by Client ---

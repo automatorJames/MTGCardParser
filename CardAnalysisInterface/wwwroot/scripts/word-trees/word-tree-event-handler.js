@@ -5,8 +5,6 @@ const globalEventState = {
     lastHovered: {
         card: null,
         cardKeys: new Set(),
-        typeSeed: null,
-        textHighlightNodeContext: null,
         mainAnchorHover: false
     }
 };
@@ -18,110 +16,6 @@ function areSetsEqual(setA, setB) {
             return false;
     }
     return true;
-}
-/**
- * Gets all type seeds represented in the currently highlighted node path
- */
-function getHighlightedPathTypeSeeds(card, activeKeys) {
-    const highlightedSeeds = new Set();
-    const svg = card.querySelector('svg');
-    if (!svg)
-        return highlightedSeeds;
-    svg.querySelectorAll('[data-source-keys]').forEach(element => {
-        const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
-        const isHighlighted = activeKeys.size > 0 && sourceKeys.some((key) => activeKeys.has(key));
-        if (isHighlighted) {
-            element.querySelectorAll('.node-text-content').forEach(tspan => {
-                const tspanSeed = tspan.dataset.typeSeed;
-                if (tspanSeed) {
-                    highlightedSeeds.add(tspanSeed);
-                }
-            });
-        }
-    });
-    return highlightedSeeds;
-}
-/**
- * Applies type-based highlighting. It ONLY affects text and type header items.
- */
-function setTypeHighlight(card, activeSeed, contextNode, activeKeys) {
-    card.classList.toggle('type-highlight-active', !!activeSeed);
-    const highlightedPathSeeds = getHighlightedPathTypeSeeds(card, activeKeys);
-    card.querySelectorAll('.type-name-item').forEach(item => {
-        const seed = item.dataset.typeSeed || '';
-        const isDirectlyHighlighted = seed === activeSeed;
-        const isInHighlightedPath = highlightedPathSeeds.has(seed);
-        if (activeSeed) {
-            if (contextNode === null) {
-                item.classList.toggle('highlight', isDirectlyHighlighted);
-                item.classList.toggle('lowlight', !isDirectlyHighlighted);
-                item.style.color = isDirectlyHighlighted ? item.style.getPropertyValue('--highlight-color') : '';
-            }
-            else {
-                if (isDirectlyHighlighted) {
-                    item.classList.add('highlight');
-                    item.classList.remove('lowlight');
-                    item.style.color = item.style.getPropertyValue('--highlight-color');
-                }
-                else {
-                    item.classList.remove('highlight');
-                    item.classList.add('lowlight');
-                    item.style.color = '';
-                    if (isInHighlightedPath) {
-                        item.style.opacity = '1';
-                    }
-                }
-            }
-        }
-        else if (activeKeys.size > 0) {
-            item.classList.toggle('lowlight', !isInHighlightedPath);
-            item.classList.remove('highlight');
-            item.style.color = '';
-        }
-        else {
-            item.classList.remove('highlight', 'lowlight');
-            item.style.color = '';
-        }
-    });
-    const svg = card.querySelector('svg');
-    if (!svg)
-        return;
-    if (contextNode) {
-        svg.querySelectorAll('.node-group').forEach(node => {
-            if (node !== contextNode) {
-                node.querySelectorAll('.node-text-content').forEach(tspan => tspan.style.opacity = '1');
-            }
-        });
-        contextNode.querySelectorAll('.node-text-content').forEach(tspan => {
-            const tspanSeed = tspan.dataset.typeSeed;
-            tspan.style.opacity = (activeSeed && tspanSeed !== activeSeed) ? '0.2' : '1';
-            if (tspanSeed === activeSeed) {
-                tspan.style.fill = tspan.dataset.hoverColor;
-            }
-            else if (tspan.dataset.baseColor) {
-                tspan.style.fill = tspan.dataset.baseColor;
-            }
-        });
-    }
-    else if (activeSeed) {
-        svg.querySelectorAll('.node-text-content').forEach(tspan => {
-            const tspanSeed = tspan.dataset.typeSeed;
-            if (tspanSeed === activeSeed) {
-                tspan.style.fill = tspan.dataset.hoverColor;
-                tspan.style.opacity = '1';
-            }
-            else {
-                tspan.style.opacity = '0.2';
-            }
-        });
-    }
-    else {
-        svg.querySelectorAll('.node-text-content').forEach(tspan => {
-            tspan.style.opacity = '1';
-            if (tspan.dataset.baseColor)
-                tspan.style.fill = tspan.dataset.baseColor;
-        });
-    }
 }
 /**
  * Smoothly animates the white overlay for node borders and connectors on anchor hover.
@@ -148,7 +42,7 @@ function setAnchorHoverEffect(card, isHovering) {
 /**
  * Applies card-based highlighting. Affects node/connector structures and card header items.
  */
-function setCardHighlight(card, activeKeys, activeSeed) {
+function setCardHighlight(card, activeKeys) {
     const hasActiveKeys = activeKeys.size > 0;
     card.classList.toggle('highlight-active', hasActiveKeys);
     card.querySelectorAll('[data-card-name]').forEach(item => {
@@ -165,14 +59,11 @@ function setCardHighlight(card, activeKeys, activeSeed) {
     const defs = svg.querySelector('defs');
     svg.querySelectorAll('[data-source-keys]').forEach(element => {
         const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]');
-        let isHighlighted = hasActiveKeys && sourceKeys.some((key) => activeKeys.has(key));
-        if (activeSeed && !hasActiveKeys) {
-            isHighlighted = !!element.querySelector(`[data-type-seed="${activeSeed}"]`);
-        }
+        const isHighlighted = hasActiveKeys && sourceKeys.some((key) => activeKeys.has(key));
         const computed = getComputedStyle(element);
         const current = parseFloat(computed.opacity) || 1;
         let end = 1;
-        if ((activeSeed && !hasActiveKeys) || hasActiveKeys) {
+        if (hasActiveKeys) {
             end = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
         }
         if (Math.abs(current - end) > 0.001) {
@@ -206,8 +97,7 @@ function setCardHighlight(card, activeKeys, activeSeed) {
  * Resets all highlighting on a card.
  */
 function animateReset(card) {
-    setCardHighlight(card, new Set(), null);
-    setTypeHighlight(card, null, null, new Set());
+    setCardHighlight(card, new Set());
     setAnchorHoverEffect(card, false);
 }
 /**
@@ -225,32 +115,25 @@ export function setupGlobalEventHandlers() {
         if (last.card && last.card !== card) {
             animateReset(last.card);
             // Clear the state entirely now that we've left the old card's context.
-            globalEventState.lastHovered = { card: null, cardKeys: new Set(), typeSeed: null, textHighlightNodeContext: null, mainAnchorHover: false };
+            globalEventState.lastHovered = { card: null, cardKeys: new Set(), mainAnchorHover: false };
         }
         // If we are not on a card, our work is done.
         if (!card) {
             return;
         }
         // --- We are on a card. Determine the new state. ---
-        const interactiveEl = target.closest('[data-card-name], .type-name-item, .node-group, .interactive-subspan');
+        const interactiveEl = target.closest('[data-card-name], .node-group, .interactive-subspan');
         let newCardKeys = new Set();
-        let newTypeSeed = null;
-        let newTextHighlightNodeContext = null;
         let newMainAnchorHover = false;
         if (interactiveEl) {
             if (interactiveEl.matches('.main-anchor-span')) {
                 newMainAnchorHover = true;
             }
             else if (interactiveEl.matches('.interactive-subspan')) {
-                newTypeSeed = interactiveEl.dataset.typeSeed;
                 const parentNode = interactiveEl.closest('.node-group');
                 if (parentNode) {
                     newCardKeys = new Set(JSON.parse(parentNode.dataset.sourceKeys || '[]'));
-                    newTextHighlightNodeContext = parentNode;
                 }
-            }
-            else if (interactiveEl.matches('.type-name-item')) {
-                newTypeSeed = interactiveEl.dataset.typeSeed;
             }
             else if (interactiveEl.matches('[data-card-name]')) {
                 newCardKeys = new Set([interactiveEl.dataset.cardName]);
@@ -262,16 +145,14 @@ export function setupGlobalEventHandlers() {
         // Re-read the state as it may have been cleared above.
         const currentLastState = globalEventState.lastHovered;
         if (card === currentLastState.card &&
-            newTypeSeed === currentLastState.typeSeed &&
             areSetsEqual(newCardKeys, currentLastState.cardKeys) &&
             newMainAnchorHover === currentLastState.mainAnchorHover) {
             return;
         }
         // Apply new state and update the global tracker.
-        setCardHighlight(card, newCardKeys, newTypeSeed);
-        setTypeHighlight(card, newTypeSeed, newTextHighlightNodeContext, newCardKeys);
+        setCardHighlight(card, newCardKeys);
         setAnchorHoverEffect(card, newMainAnchorHover);
-        globalEventState.lastHovered = { card, cardKeys: newCardKeys, typeSeed: newTypeSeed, textHighlightNodeContext: newTextHighlightNodeContext, mainAnchorHover: newMainAnchorHover };
+        globalEventState.lastHovered = { card, cardKeys: newCardKeys, mainAnchorHover: newMainAnchorHover };
     });
 }
 //# sourceMappingURL=word-tree-event-handler.js.map

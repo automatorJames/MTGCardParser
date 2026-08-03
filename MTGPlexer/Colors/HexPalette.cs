@@ -6,7 +6,6 @@ public record HexPalette
     string Light,
     string Dark,
     string Sat,
-    string Seed = null,
     PaletteVariant? Variant = null
 )
 {

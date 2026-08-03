@@ -42,46 +42,6 @@ public record AnalyzedText
     [JsonIgnore]
     public Dictionary<string, int> OccurrencesPerCard { get; init; }
 
-    /// <summary>
-    /// Gets a distinct list of all palettes that have a non-null Seed (i.e., they represent a token type)
-    /// found within any node in the preceding or following adjacency trees. This is used by the
-    /// frontend to render the list of token types found in the tree.
-    /// </summary>
-    [JsonIgnore]
-    public List<HexPalette> DistinctSeedPalettes
-    {
-        get
-        {
-            var palettes = new Dictionary<string, HexPalette>();
-
-            void Traverse(IEnumerable<AdjacencyNode> nodes)
-            {
-                if (nodes == null) return;
-                foreach (var node in nodes)
-                {
-                    if (node.Segment?.Palettes != null)
-                    {
-                        foreach (var p in node.Segment.Palettes.Values)
-                        {
-                            // We only care about palettes with a seed, which identifies them as a token type.
-                            // We use a dictionary to ensure each seed is represented only once.
-                            if (p?.Seed != null && !palettes.ContainsKey(p.Seed))
-                            {
-                                palettes[p.Seed] = p;
-                            }
-                        }
-                    }
-                    Traverse(node.Children);
-                }
-            }
-
-            Traverse(PrecedingAdjacencies);
-            Traverse(FollowingAdjacencies);
-
-            return palettes.Values.OrderBy(p => p.Seed).ToList();
-        }
-    }
-
     public AnalyzedText(
         string text,
         int maximalSpanOccurrenceCount,
