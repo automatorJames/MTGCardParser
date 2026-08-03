@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 public class DrawOrDiscardCards : TokenUnit
 {
     public override Snippet[] Snippets => [Prop(CardVerb), Prop(Quantity), "cards?"];

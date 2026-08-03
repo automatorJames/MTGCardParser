@@ -66,7 +66,11 @@ internal class EnumSectionBuilder
             var member = members[i];
             bool isPartOfSynonymGroup = enumSummary.EnumMemberSynonymOccurenceCounts[member.Value].Count > 1;
 
-            if (enumSummary.MemberIsFirstAmongManyRepresentedSynonyms(member.Value, member.Regex))
+            bool isFirstRowOfSynonymGroup =
+                isPartOfSynonymGroup
+                && (i == 0 || !Equals(members[i - 1].Value, member.Value));
+
+            if (isFirstRowOfSynonymGroup)
             {
                 currentSynonymGroupParentNode = member.Parent;
                 bricks.Add(BuildSynonymSectionHeader(currentSynonymGroupParentNode, member, enumSummary, metrics));

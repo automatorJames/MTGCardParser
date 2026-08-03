@@ -90,14 +90,4 @@ public class EnumCaptureTraceSummary
 
         return dict;
     }
-
-    public bool MemberIsFirstAmongManyRepresentedSynonyms(object memberValue, string synonym)
-    {
-        if (!EnumMembersWithMultipleSynonyms.Contains(memberValue))
-            return false;
-
-        var synonymKeys = EnumMemberSynonymOccurenceCounts[memberValue].Keys.ToList();
-
-        return synonymKeys.IndexOf(synonym) == 0;
-    }
 }
