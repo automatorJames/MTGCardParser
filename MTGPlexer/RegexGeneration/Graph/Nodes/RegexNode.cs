@@ -5,7 +5,6 @@ public abstract class RegexNode
     public string Name { get; }
     public string FullyQualifiedName { get; }
     public RegexNode ParentNode { get; }
-    //public NamedGroupNode NamedGroupParentNode { get; }
     public RegexNode[] Lineage { get; }
 
     protected RegexNode(RegexNode parentNode, string name)

@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace MTGPlexer.TokenUnitPrimitives;
 
@@ -6,12 +7,11 @@ public abstract class TokenUnit
 {
     public virtual Snippet[] Snippets { get; } = [];
     public virtual Joiner Joiner => Joiner.Space;
-    public virtual GroupQuantifier? Quantifier => null;
 
-    public PropertySnippet Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
+    PropertyInfo MemberExpressionToProp (string memberExpression)
     {
-        var lastDot = expression.LastIndexOf('.');
-        var name = lastDot == -1 ? expression : expression;
+        var lastDot = memberExpression.LastIndexOf('.');
+        var name = lastDot == -1 ? memberExpression : memberExpression;
 
         // 1. Get the actual, fully resolved runtime type
         var actualType = this.GetType();
@@ -21,7 +21,14 @@ public abstract class TokenUnit
         PropertyInfo propInfo = actualType.GetProperty(name,
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 
-        return new PropertySnippet(name, propInfo, proptions)
+        return propInfo;
+    }
+
+    public PropertySnippet Prop(object member, Proptions proptions = Proptions.None, Quantifier? quantifier = null, [CallerArgumentExpression("member")] string expression = "")
+    {
+        var resolvedProp = MemberExpressionToProp(expression);
+
+        return new PropertySnippet(resolvedProp.Name, resolvedProp, proptions, quantifier)
         {
             IsPlural = proptions.HasFlag(Proptions.Plural),
             IsOptional = proptions.HasFlag(Proptions.Optional),

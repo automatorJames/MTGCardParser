@@ -6,15 +6,19 @@ public record PropertySnippet : Snippet
     public Type Type { get; }
     public string Name { get; }
     public Proptions Proptions { get; }
+    public Quantifier? Quantifier { get; }
 
-    public PropertySnippet(string text, PropertyInfo prop, Proptions proptions) : base(text)
+    public PropertySnippet(string text, PropertyInfo prop, Proptions proptions, Quantifier? quantifier = null) 
+        : base(text)
     {
         Prop = prop;
         Proptions = proptions;
         Type = prop.PropertyType;
         Name = prop.Name;
+        Quantifier = quantifier;
 
         // Extract metadata info from property attributes
+        // Todo: we should be using Quantifier to express quantifiers, not Proptions
 
         if (Prop.IsDefined(typeof(OneOrMoreAttribute)))
             Proptions |= Proptions.OneOrMore;

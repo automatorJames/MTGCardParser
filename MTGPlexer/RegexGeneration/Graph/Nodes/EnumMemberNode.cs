@@ -1,29 +1,27 @@
 ﻿namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public class ScalarNode : RegexNode, INamedScalarValue
+public class EnumMemberNode : TerminalRegexNode
 {
     public object ScalarValue { get; }
-    public string RegexString { get; }
     public Regex Regex { get; }
     public int PositionAmongSiblings { get; }
-    public int PositionAmongSynonyms { get; }
+    public int? PositionAmongSynonyms { get; }
 
-    public ScalarNode(
+    public EnumMemberNode(
         RegexNode parentNode, 
         string name,
         object scalarValue,
-        string regex,
+        string regexString,
         int positionAmongSiblings,
-        int positionAmongSynonyms = 0) 
-        : base(parentNode, name)
+        int? positionAmongSynonyms) 
+        : base(parentNode, name, regexString)
     {
         ScalarValue = scalarValue;
-        RegexString = regex;
-        Regex = new (RegexString);
+        Regex = new (regexString);
         PositionAmongSiblings = positionAmongSiblings;
         PositionAmongSynonyms = positionAmongSynonyms;
     }
 
     public override void AppendRegexBricks(RegexCollector collector) =>
-        collector.Append(new RegexBrickTerminal(this, RegexString, null, ScalarValue, PositionAmongSiblings, PositionAmongSynonyms));
+        collector.Append(new RegexBrickValue(this, RegexString, null, ScalarValue));
 }

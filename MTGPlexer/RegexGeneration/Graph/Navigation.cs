@@ -12,6 +12,7 @@ public class Navigation
     // Only used for navigations to properties
     public PropertyInfo Prop { get; private set; }
     public Proptions Proptions { get; private set; } = Proptions.None;
+    public Quantifier? Quantifier { get; private set; }
 
     // Only used for navigations to TokenUnit types
     public TokenTypeConfiguration TokenTypeConfiguration { get; private set; }
@@ -20,6 +21,7 @@ public class Navigation
     public bool IsTokenUnitType { get; private set; }
     public bool IsRoot { get; private set; }
     public bool IsList { get; private set; }
+    public bool IsOptional { get; private set; }
 
     public Navigation(Type type)
     {
@@ -40,6 +42,7 @@ public class Navigation
         Patterns = propertySnippet.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         Prop = propertySnippet.Prop;
         Proptions = propertySnippet.Proptions;
+        IsOptional = Prop.IsDefined(typeof(OptionalAttribute));
     }
 
     void SetTypeInfo(Type type)

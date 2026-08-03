@@ -3,26 +3,21 @@
 public class TokenUnitNode : NamedGroupNode
 {
     protected override Joiner Joiner { get; }
-    protected override GroupQuantifier? Quantifier { get; }
-
     public override CaptureNodeType NodeType => CaptureNodeType.TokenUnit;
 
     public TokenUnitNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
         Joiner = Navigation.TokenTypeConfiguration.Joiner;
-        Quantifier = Navigation.TokenTypeConfiguration.Quantifier;
     }
 
     protected override void AddReflectedChildren(List<RegexNode> children)
     {
         foreach (var snippet in Navigation.TokenTypeConfiguration.Snippets)
-        {
             if (snippet is PropertySnippet propertySnippet)
                 children.Add(GetNodeForPropertySnippetType(this, propertySnippet));
             else
                 children.Add(new TextNode(this, snippet.Text));
-        }
     }
 
     protected static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)

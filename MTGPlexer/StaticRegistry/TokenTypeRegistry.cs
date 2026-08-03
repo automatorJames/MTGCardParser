@@ -24,7 +24,7 @@ public static partial class TokenTypeRegistry
     static TokenTypeRegistry()
     {
         // Add a default configuration for type TokenUnit, since it's abstract and can't be instantiated directly to check its Snippets
-        TypeConfigurations[typeof(TokenUnit)] = new TokenTypeConfiguration(typeof(TokenUnit), [], Joiner.Space, null);
+        TypeConfigurations[typeof(TokenUnit)] = new TokenTypeConfiguration(typeof(TokenUnit), [], Joiner.Space);
 
         var allTokenTypes = GetAllTopLevelTokenTypes();
 
@@ -58,7 +58,7 @@ public static partial class TokenTypeRegistry
 
         // DynamicTokens have no snippets b/c it contains an Item object that will be resolved via the Tokenizer at runtime
         if (tokenUnitType.IsAssignableTo(typeof(DynamicToken)))
-            return new(tokenUnitType, [], Joiner.None, null)    ;
+            return new(tokenUnitType, [], Joiner.None)    ;
 
         var instance = (TokenUnit)Activator.CreateInstance(tokenUnitType);
 
@@ -76,7 +76,7 @@ public static partial class TokenTypeRegistry
                 snippets = [new Snippet(tokenUnitType.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
         }
 
-        configuration = new(tokenUnitType, snippets, instance.Joiner, instance.Quantifier);
+        configuration = new(tokenUnitType, snippets, instance.Joiner);
         TypeConfigurations[tokenUnitType] = configuration;
 
         return configuration;

@@ -3,26 +3,14 @@ namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
 public class DynamicTokenNode : TokenUnitNode
 {
-    const string _defaultCaptureAllCharsPattern = @"[^.]+";
-    string[] _dynamicPatterns;
+    protected override string DefaultPattern => @"[^.]+";
 
     public override CaptureNodeType NodeType => CaptureNodeType.DynamicOf;
 
     public DynamicTokenNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
     {
-        _dynamicPatterns = navigation.Patterns ?? [_defaultCaptureAllCharsPattern];
 	}
-
-    protected override void AddReflectedChildren(List<RegexNode> children) =>
-        children.AddRange(
-            _dynamicPatterns.Select((x, idx) => new ScalarNode(
-                    parentNode: this,
-                    name: $"{GetType().Name}_Pattern" + (idx > 0 ? $"_{idx}" : ""),
-                    scalarValue: true,
-                    regex: x,
-                    positionAmongSiblings: idx
-                )));
 
     public override bool TryHydrate(CaptureContext captureContext, out TokenUnit tokenUnit)
     {

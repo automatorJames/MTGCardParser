@@ -16,9 +16,9 @@ internal record FormattedRegexTreatmentRules
     /// </summary>
     public SpanHighlightTreatment GetRegexHighlightTreatment(RegexBrick brick)
     {
-        // Explicit Rule: AlternateValues on the regex side are ALWAYS TextToHexLight.
-        if (brick.Parent is ScalarSynonymSet)
-            return SpanHighlightTreatment.TextToHexLight;
+        //// Explicit Rule: AlternateValues on the regex side are ALWAYS TextToHexLight.
+        //if (brick.Parent is ScalarSynonymSet)
+        //    return SpanHighlightTreatment.TextToHexLight;
 
         // For all other line types, the regex side's text highlight mimics the comment side's text highlight.
         return GetCommentHighlightTreatment(brick, isTextSpan: true);

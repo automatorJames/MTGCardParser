@@ -2,16 +2,19 @@
 
 namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 
-public abstract class NamedGroupNode : RegexNode
+public abstract class NamedGroupNode : GroupNode
 {
+    protected virtual string DefaultPattern => null;
+
     static HashSet<char> _terminals = ['.', ';', ','];
-    public bool IsTransparentRoot => Navigation.IsRoot && Quantifier == null;
-
-    public Navigation Navigation { get; }
+    public bool IsTransparentRoot => Navigation.IsRoot && Navigation.Quantifier == null;
     public abstract CaptureNodeType NodeType { get; }
-    protected virtual GroupQuantifier? Quantifier => GetDefaultQuantifier();
-    protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
+    protected override Quantifier? Quantifier =>
+        Navigation.IsList ? MTGPlexer.Quantifier.AnyNumber
+        : base.Quantifier;
+
+    protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
     bool _childrenInitialized;
     List<RegexNode> _children;
@@ -30,25 +33,15 @@ public abstract class NamedGroupNode : RegexNode
     }
 
     protected string QuantifierComment =>
-        Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+        Navigation.Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
 
     protected virtual Joiner Joiner => Joiner.None;
 
     public NamedGroupNode(RegexNode parentNode, Navigation navigation) 
-        : base(parentNode, navigation.Name)
+        : base(parentNode, navigation)
     {
-        Navigation = navigation;
-
         if (OneOrMoreRegexPatternsRequired && (navigation.Patterns == null || navigation.Patterns.Length == 0))
             throw new Exception($"'{Name}' is required to have one or more patterns defined via {nameof(RegexPatternAttribute)}");
-    }
-
-    GroupQuantifier? GetDefaultQuantifier()
-    {
-        if (Navigation.IsList)
-            return Navigation.Proptions.HasFlag(Proptions.OneOrMore) ? GroupQuantifier.OneOrMore : GroupQuantifier.AnyNumber;
-        else
-            return null;
     }
 
     protected RegexBrickGroupOpen GetGroupOpenBrick() =>
@@ -60,7 +53,7 @@ public abstract class NamedGroupNode : RegexNode
     protected RegexBrickGroupClose GetGroupCloseBrick() =>
         new (
             parentNode: this, 
-            quantifier: Quantifier,
+            quantifier: Navigation.IsOptional ? MTGPlexer.Quantifier.Optional : Quantifier,
             comment: QuantifierComment);
 
     private void EnsureChildren()
@@ -75,6 +68,22 @@ public abstract class NamedGroupNode : RegexNode
 
     protected virtual void AddReflectedChildren(List<RegexNode> children)
     {
+        string[] patterns = Navigation.Patterns;
+
+        if (patterns == null)
+        {
+            if (DefaultPattern == null)
+                throw new Exception($"Either {nameof(Navigation.Patterns)} or {nameof(DefaultPattern)} must be non-null");
+            else
+                patterns = [DefaultPattern];
+        }
+
+        children.AddRange(
+        patterns.Select((x, idx) => new TerminalRegexNode(
+            parentNode: this,
+            name: $"{GetType().Name}-{idx}",
+            regexString: x
+        )));
     }
 
     public override void AppendRegexBricks(RegexCollector collector)
@@ -87,15 +96,16 @@ public abstract class NamedGroupNode : RegexNode
         for (int i = 0; i < Children.Count; i++)
         {
             Children[i].AppendRegexBricks(collector);
+            var joiner = Navigation.TokenTypeConfiguration?.Joiner ?? Joiner;
 
             bool shouldAddJoiner =
                 i < Children.Count - 1
-                && Joiner != Joiner.None
+                && joiner != Joiner.None
                 && collector.LastChar != ' '
                 && !_terminals.Contains(collector.LastChar);
 
             if (shouldAddJoiner)
-                collector.Append(new RegexBrickJoiner(this, Joiner));
+                collector.Append(new RegexBrickJoiner(this, joiner));
         }
 
         // close group

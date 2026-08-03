@@ -5,7 +5,7 @@
 /// Regex pattern emitted by an enum always comprises all enum members as alternatives, but the property value hydrated
 /// by a specific text match must be isolated to a single member value.
 /// </summary>
-public class EnumNode : ScalarContainerNode
+public class EnumNode : NamedGroupNode
 {
     protected override Joiner Joiner => Joiner.Pipe;
     public override CaptureNodeType NodeType => CaptureNodeType.Enum;
@@ -17,17 +17,17 @@ public class EnumNode : ScalarContainerNode
     protected override void AddReflectedChildren(List<RegexNode> children)
     {
         var enumType = Navigation.UnderlyingType;
-        var scalarValues = Enum.GetValues(enumType).Cast<object>().ToList();
+        var enumMembers = Enum.GetValues(enumType).Cast<object>().ToList();
 
-        for (int i = 0; i < scalarValues.Count; i++)
+        for (int i = 0; i < enumMembers.Count; i++)
         {
-            var scalarValue = scalarValues[i];
-            var valueAsString = scalarValue.ToString();
-            var field = enumType.GetField(valueAsString);
+            var enumMember = enumMembers[i];
+            var enumAsString = enumMember.ToString();
+            var field = enumType.GetField(enumAsString);
 
             List<string> patterns =
                 field.GetCustomAttribute<RegexPatternAttribute>()?.Patterns.ToList()
-                ?? [valueAsString.ToFriendlyCase()];
+                ?? [enumAsString.ToFriendlyCase()];
 
             if (enumType.IsDefined(typeof(OptionalPluralAttribute)))
             {
@@ -36,32 +36,26 @@ public class EnumNode : ScalarContainerNode
                     .ToList();
             }
 
-            bool isFirst = i == 0;
-
-            if (patterns.Count > 1)
-                children.Add(new ScalarSynonymSet(
+            for (int j = 0; j < patterns.Count; j++)
+                children.Add(new EnumMemberNode(
                     parentNode: this,
-                    name: valueAsString,
-                    scalarValue: scalarValue,
-                    scalarSynonyms: patterns,
-                    positionAmongSiblings: i));
-            else
-                children.Add(new ScalarNode(
-                    parentNode: this,
-                    name: valueAsString,
-                    scalarValue: scalarValue,
-                    regex: patterns[0],
-                    positionAmongSiblings: i));
+                    name: enumAsString,
+                    scalarValue: enumMember,
+                    regexString: patterns[j],
+                    positionAmongSiblings: i,
+                    positionAmongSynonyms: enumMembers.Count > 1 ? j : null));
         }
     }
 
-    public override object GetValueSingle(CaptureTrace captureInfo)
+    protected override object GetValue(CaptureTrace captureTrace)
     {
+        if (captureTrace.Count != 1)
+            throw new Exception($"{nameof(BoolNode)} expects exactly one capture");
+
         return Children
-            .OfType<INamedScalarValue>()
-            //.FirstOrDefault(x => x.Name.Equals(capture.Value, StringComparison.InvariantCultureIgnoreCase))?
-            .FirstOrDefault(x => x.Regex.IsMatch(captureInfo.CaptureValue))
+            .OfType<EnumMemberNode>()
+            .FirstOrDefault(x => x.Regex.IsMatch(captureTrace.CaptureValue))
             .ScalarValue
-            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{captureInfo.CaptureValue}'");
+            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{captureTrace.CaptureValue}'");
     }
 }

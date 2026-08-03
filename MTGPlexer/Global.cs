@@ -7,6 +7,7 @@ global using MTGPlexer.Data;
 global using MTGPlexer.Interfaces;
 global using MTGPlexer.RegexGeneration.Graph;
 global using MTGPlexer.RegexGeneration.Graph.Bricks;
+global using MTGPlexer.RegexGeneration.Graph.Bricks.PostFormatting;
 global using MTGPlexer.RegexGeneration.Graph.Nodes;
 global using MTGPlexer.RegexGeneration.RegexTemplateLines;
 global using MTGPlexer.SnippetHelpers;

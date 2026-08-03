@@ -4,6 +4,5 @@ public record TokenTypeConfiguration
 (
     Type Type,
     Snippet[] Snippets,
-    Joiner Joiner,
-    GroupQuantifier? Quantifier
+    Joiner Joiner
 );

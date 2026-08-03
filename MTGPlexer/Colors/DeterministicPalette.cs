@@ -132,12 +132,21 @@ public record DeterministicPalette
         return positionalPaletteSet;
     }
 
-    public static Dictionary<T, HexPalette> GetPositionalPaletteSet<T>(IEnumerable<T> items)
+    /// <summary>
+    /// Returns a dictionary where the keys are the items passed, and the HexPalettes are composed of
+    /// base colors that are rainbow-equidistant according to the number of items. If any positional override
+    /// colors are provided, these are associated with items first in order before rainbow-equidistant logic is
+    /// applies to the remaining items (useful for distinct first N colors, followed by a rainbow spread).
+    /// </summary>
+    public static Dictionary<T, HexPalette> GetPositionalPaletteSet<T>(IEnumerable<T> items, params HexColor[] positionalOverrideColors)
     {
         var itemsAsList = items.ToList();
-        var paletteSet = GetPositionalPaletteSet(itemsAsList.Count).Values.ToList();
+        var rainbowCount = itemsAsList.Count - positionalOverrideColors.Length;
+        var rainbowPaletteSet = GetPositionalPaletteSet(rainbowCount).Values.ToList();
+        var overridePaletteset = positionalOverrideColors.Select(GetStaticPalette);
+        var combinedPaletteSet = overridePaletteset.Concat(rainbowPaletteSet);
 
-        return paletteSet
+        return combinedPaletteSet
             .Select((palette, idx) => new { palette, idx })
             .ToDictionary(x => itemsAsList[x.idx], x => x.palette);
     }
@@ -152,7 +161,6 @@ public record DeterministicPalette
 
         return newPalette;
     }
-
 
     // --- Internal Initializers ---
 

@@ -36,6 +36,7 @@ public class EnumCaptureTraceSummary
     /// </summary>
     public int EnumTotalMemberCount { get; }
 
+
     public EnumCaptureTraceSummary(IEnumerable<CaptureTrace> enumCaptureTracesOfQualifiedName)
     {
         // Validity checks

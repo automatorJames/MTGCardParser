@@ -11,16 +11,6 @@ public class IntNode : NamedGroupNode
     {
     }
 
-    protected override void AddReflectedChildren(List<RegexNode> children) =>
-        children.AddRange(
-            Navigation.Patterns.Select((x, idx) => new ScalarNode(
-                    parentNode: this,
-                    name: $"Countable-Pattern" + (idx > 0 ? $"-{idx}" : ""),
-                    scalarValue: true,
-                    regex: x,
-                    positionAmongSiblings: idx
-                )));
-
     protected override object GetValue(CaptureTrace captureInfo)
     {
         // Check if the capture itself is a singular int

@@ -12,6 +12,7 @@ public class RegexBrick
     public RegexNode Parent => NodeLineage.LastOrDefault();
     public NamedGroupNode[] NamedGroupNodeLineage => NodeLineage.OfType<NamedGroupNode>().ToArray();
     public NamedGroupNode NamedGroupParent => NamedGroupNodeLineage.LastOrDefault();
+    public string[] NamedGroupLineageNames => NamedGroupNodeLineage.Select(x => x.FullyQualifiedName).ToArray();
 
     // Omits transparent root groups (includes root groups with quantifiers)
     public NamedGroupNode[] GroupLineage { get; }
@@ -21,14 +22,14 @@ public class RegexBrick
     string _regexFormatted;
     public string RegexFormatted
     {
-        get => _regexFormatted ?? Regex;
+        get => _regexFormatted ?? Regex ?? "";
         set => _regexFormatted = value;
     }
 
     public RegexBrick(RegexNode parentNode, string regex, string comment)
     {
         Regex = regex;
-        Comment = comment;
+        Comment = comment ?? "";
         NodeLineage = parentNode.Lineage;
         FullyQualifiedName = parentNode.FullyQualifiedName;
         GroupLineage = parentNode.Lineage.OfType<NamedGroupNode>().Where(x => !x.IsTransparentRoot).Reverse().ToArray();

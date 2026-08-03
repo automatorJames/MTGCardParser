@@ -3,16 +3,17 @@
 public class TokenUnitFused<T> : TokenUnit where T : TokenUnit
 {
     public override Snippet[] Snippets => GetSnippets();
-    public override GroupQuantifier? Quantifier => GroupQuantifier.OneOrMore;
 
     Snippet[] GetSnippets()
     {
+        var fusedPropertySnippet = Prop(FusedContent, quantifier: Quantifier.OneOrMore);
+
         return (BeforeContent, AfterContent) switch
         {
-            (null, null) =>         [Prop(FusedContent)],
-            (not null, null) =>     [BeforeContent, Prop(FusedContent)],
-            (null, not null) =>     [Prop(FusedContent), AfterContent],
-            (not null, not null) => [BeforeContent, Prop(FusedContent), AfterContent],
+            (null, null) =>         [fusedPropertySnippet],
+            (not null, null) =>     [BeforeContent, fusedPropertySnippet],
+            (null, not null) =>     [fusedPropertySnippet, AfterContent],
+            (not null, not null) => [BeforeContent, fusedPropertySnippet, AfterContent],
         };
     }
 

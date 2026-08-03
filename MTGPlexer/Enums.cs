@@ -60,7 +60,7 @@ public enum Conjunction
     Or
 }
 
-public enum GroupQuantifier
+public enum Quantifier
 {
     [Description("*")]
     AnyNumber,

@@ -29,25 +29,34 @@ internal class Program
 
     static void Main(string[] args)
     {
-        //TestSimple<ManaValue>("{12}{w}{w}{r}");
-        //var thing = TokenTypeRegistry.Tokenize("target creature gains flying until end of turn");
-        //var debug = thing[0].JsonDebug;
-        //var captureTree = thing[0].CaptureContext.GetCaptureTree();
-
-        TestSummary();
+        TestSmartLine();
     }
 
-    static void TestSimple<T>(string tryToMatchText = null)
+    static void TestSmartLine()
     {
-        var testGraph = RegexGraph.Create(typeof(T));
-        Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
+        var tokensByType = GetTokensByType();
 
-        if (tryToMatchText != null)
+        foreach ((var type, var tokens) in tokensByType)
         {
-            testGraph.TryMatch(tryToMatchText, out TokenUnit result);
+            TokenOccurrenceSummary summary = new(tokens);
+            var regexGraph = TokenTypeRegistry.RegexGraphs[type];
+            var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
+            Console.WriteLine(smartRegex);
             Debugger.Break();
         }
     }
+
+    //static void TestSimple<T>(string tryToMatchText = null)
+    //{
+    //    var testGraph = RegexGraph.Create(typeof(T));
+    //    Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
+    //
+    //    if (tryToMatchText != null)
+    //    {
+    //        testGraph.TryMatch(tryToMatchText, out TokenUnit result);
+    //        Debugger.Break();
+    //    }
+    //}
 
     static List<string> GetLines()
     {
