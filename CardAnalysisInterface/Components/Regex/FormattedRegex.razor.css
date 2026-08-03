@@ -33,22 +33,11 @@ pre.formatted-regex-fira code span {
     transition: color var(--transition-time), background-color 0.1s;
 }
 
-/* Highlight Treatments */
-span[highlight-active][data-highlight="TextToHexLight"] {
+/* Highlight/Lowlight Treatments */
+span[highlight-active] {
     color: var(--hex-light) !important;
 }
 
-span[highlight-active][data-highlight="TextToHexSat"] {
-    color: var(--hex-sat) !important;
-}
-
-span[highlight-active][data-highlight="BackgroundToHex"] {
-    background-color: var(--hex) !important;
-    color: #111 !important; /* High contrast dark text */
-    border-radius: 3px;
-}
-
-/* Lowlight Treatment */
-span[lowlight-active][data-lowlight="TextToHexDark"] {
+span[lowlight-active] {
     color: var(--hex-dark) !important;
 }

@@ -25,7 +25,11 @@ public class DocumentCorpusAnalyzer
     /// </summary>
     public DigestedText DigestedTextWithCaptureTokens { get; private set; }
 
-    //public Dictionary<Type, TokenCaptureTraceSummary> RegexCaptureValueSets { get; private set; }
+    /// <summary>
+    /// Per-type occurrence summaries built from every root TokenUnit matched across the corpus,
+    /// keyed by the TokenUnit type. Only types with at least one occurrence are represented.
+    /// </summary>
+    public Dictionary<Type, TokenOccurrenceSummary> TokenOccurrenceSummaries { get; private set; } = [];
 
     public DocumentCorpusAnalyzer(IDocumentRepository repository)
     {
@@ -41,7 +45,13 @@ public class DocumentCorpusAnalyzer
         ProcessedDocuments = documents.Select(x => new ProcessedDocument(x)).ToList();
         DigestedTextWithCaptureTokens = new DigestedText(ProcessedDocuments);
 
-        // set RegexCaptureValueSets
+        // set TokenOccurrenceSummaries
+        var rootTokenUnitsByType = ProcessedDocuments
+            .SelectMany(x => x.Lines)
+            .SelectMany(x => x.TokenUnits)
+            .GroupBy(x => x.Type);
+
+        TokenOccurrenceSummaries = rootTokenUnitsByType.ToDictionary(x => x.Key, x => new TokenOccurrenceSummary(x));
 
         _isInitialized = true;
     }

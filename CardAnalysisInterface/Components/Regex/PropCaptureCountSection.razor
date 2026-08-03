@@ -1,37 +1,36 @@
-﻿@* @if (TokenUnitCapture.PropPathVariantSets.Any())
+@if (Summary.EnumCaptureSummaries.Any())
 {
     <div class="properties-container">
-        @for (int i = 0; i < TokenUnitCapture.PropPathVariantSets.Count; i++)
+        @for (int i = 0; i < _orderedSummaries.Count; i++)
         {
-            var captureValueVariantSetWrapper = TokenUnitCapture.PropPathVariantSets.Skip(i).First();
-            var captureGroupPropPath = captureValueVariantSetWrapper.Value.ParentPath;
-            
+            var (fullyQualifiedName, enumSummary) = _orderedSummaries[i];
+            var friendlyName = Summary.RegexGraph.SimpleUniqueNames.GetValueOrDefault(fullyQualifiedName, fullyQualifiedName);
+
             var propSetPalette = _positionalPalettes[i];
             var propCardStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat}; border-color: {propSetPalette.Dark};";
 
-            <div class="property-capture-card" style="@propCardStyle" data-path=@captureGroupPropPath.PropPathRelativeToRoot>
+            <div class="property-capture-card" style="@propCardStyle" data-path=@fullyQualifiedName>
                 <div class="prop-card-header" style="color: @propSetPalette.Normal;">
-                    @captureGroupPropPath.PropPathFriendly
+                    @friendlyName.ToFriendlyCase(TitleDisplayOption.Sentence)
                     <br />
                 </div>
                 <div class="prop-card-body">
-                    @foreach (var valueSet in captureValueVariantSetWrapper.Value.SynonymSets.Values)
+                    @foreach (var member in enumSummary.EnumMemberOccurenceCounts.Keys)
                     {
                         var canonicalStyle = $"--hex: {propSetPalette.Normal}; --hex-light: {propSetPalette.Light}; --hex-dark: {propSetPalette.Dark}; --hex-sat: {propSetPalette.Sat};";
-                        var dataPath = valueSet.ManyOfRelatedPaths ?? captureGroupPropPath.PropPathRelativeToRoot.Dot(valueSet.CanonicalValue.ToString());
+                        var totalCount = enumSummary.EnumMemberOccurenceCounts[member];
 
-                        <div class="canonical-representation" style="@canonicalStyle" data-path=@dataPath>
-                            <span class="canonical-value">@valueSet.CanonicalValueDisplay</span>
-                            <span class="total-count" style=@($"color: {(valueSet.TotalCount == 0 ? "#9a3c3c" : "")}")>@valueSet.TotalCount</span>
+                        <div class="canonical-representation" style="@canonicalStyle" data-path=@fullyQualifiedName>
+                            <span class="canonical-value">@Extensions.ToFriendlyStringOrPattern(member)</span>
+                            <span class="total-count" style=@($"color: {(totalCount == 0 ? "#9a3c3c" : "")}")>@totalCount</span>
                         </div>
 
-                        @if (valueSet.SynonymCounts.Count > 1)
+                        @if (enumSummary.EnumMembersWithMultipleSynonyms.Contains(member))
                         {
                             <div class="variants-sub-table">
-                                @foreach (var synonym in valueSet.SynonymCounts.OrderByDescending(x => x.Value))
+                                @foreach (var synonym in enumSummary.EnumMemberSynonymOccurenceCounts[member].OrderByDescending(x => x.Value))
                                 {
-                                    var synonymPath = dataPath.Dot(synonym.Key);
-                                    <div class="capture-variant" data-path=@synonymPath>
+                                    <div class="capture-variant" data-path=@fullyQualifiedName>
                                         <span class="variant-value">@synonym.Key</span>
                                         <span class="variant-count">@synonym.Value</span>
                                     </div>
@@ -48,14 +47,15 @@
 @code {
 
     Dictionary<int, HexPalette> _positionalPalettes;
+    List<KeyValuePair<string, EnumCaptureTraceSummary>> _orderedSummaries;
 
     [Parameter]
-    public TokenUnitCapture TokenUnitCapture { get; set; }
+    public TokenOccurrenceSummary Summary { get; set; }
 
     protected override void OnInitialized()
     {
-        _positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(TokenUnitCapture.PropPathVariantSets.Count);
+        _orderedSummaries = Summary.EnumCaptureSummaries.ToList();
+        _positionalPalettes = DeterministicPalette.GetPositionalPaletteSet(_orderedSummaries.Count);
     }
 
 }
- *@
