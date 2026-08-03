@@ -62,7 +62,7 @@ public class SmartLineFactory
         foreach (var brick in _bricks)
         {
             int brickCommentLength =
-                brick.Comment.Length
+                brick.CommentFormatted.Length
                 + GetGroupBoxPaddingCount(brick);
 
             if (brick is RegexBrickGroupBookend)
@@ -138,6 +138,7 @@ public class SmartLineFactory
 
     void AddCommentContentSpansForGroupBookend(List<SmartSpan> spans, RegexBrickGroupBookend groupBookendBrick)
     {
+        string commentContent = groupBookendBrick.CommentFormatted;
         var boxCharSet = SmartRegexStaticRules.GetBoxCharsForBookendBrick(groupBookendBrick);
         char paddingLineChar = boxCharSet.Horizontal;
         char startCornerChar;
@@ -150,6 +151,12 @@ public class SmartLineFactory
                 startCornerChar = boxCharSet.TopLeft;
                 endCornerChar = boxCharSet.TopRight;
                 commentAppearsBeforePaddingLine = true;
+                var parent = groupBookendBrick.NamedGroupParent;
+
+                commentContent =
+                    parent.NodeType.ToString().ToFriendlyCase()
+                    + (parent.Name == parent.Navigation.UnderlyingType.Name ? "" : $": {parent.Navigation.UnderlyingType.Name}");
+
                 break;
 
             case RegexBrickGroupClose:
@@ -165,16 +172,16 @@ public class SmartLineFactory
         spans.Add(SpanFromBrick(groupBookendBrick, startCornerChar.ToString()));
 
         var commentBuffer = string.Empty.PadLeft(SmartRegexStaticRules.GroupBookendCommentBuffer);
-        var commentContent = $"{commentBuffer}{groupBookendBrick.Comment}{commentBuffer}";
+        var commentWithBuffer = $"{commentBuffer}{commentContent}{commentBuffer}";
 
         var paddingLineLength =
             _maxFormattedCommentLength
             - GetGroupBoxPaddingCount(groupBookendBrick)
-            - commentContent.Length;
+            - commentWithBuffer.Length;
 
         var paddingLine = string.Empty.PadLeft(paddingLineLength, paddingLineChar);
 
-        SmartSpan commentContentSpan = SpanFromBrick(groupBookendBrick, commentContent);
+        SmartSpan commentContentSpan = SpanFromBrick(groupBookendBrick, commentWithBuffer);
         SmartSpan paddingLineSpan = SpanFromBrick(groupBookendBrick, paddingLine);
 
         spans.AddRange(commentAppearsBeforePaddingLine
@@ -186,8 +193,20 @@ public class SmartLineFactory
 
     void AddRegularCommentContentSpan(List<SmartSpan> spans, RegexBrick brick)
     {
-        var commentContent = brick.Comment.PadRight(
-            _maxFormattedCommentLength - GetGroupBoxPaddingCount(brick));
+        var availableWidth = _maxFormattedCommentLength - GetGroupBoxPaddingCount(brick);
+
+        // Enum member / omitted-count / synonym-header comments are already colon-aligned or
+        // centered by SmartRegex and should stay centered within the surrounding group box,
+        // rather than left-anchored. The synonym-footer divider should span the box's full
+        // interior width with no gaps, so it's padded with its own divider char instead.
+        var commentContent = brick switch
+        {
+            RegexBrickValue or RegexBrickOmittedCount or RegexBrickSynonymSectionHeader =>
+                SmartRegexStaticRules.CenterPad(brick.CommentFormatted, availableWidth),
+            RegexBrickSynonymSectionFooter =>
+                brick.CommentFormatted.PadRight(availableWidth, RegexBrickSynonymSectionFooter.DividerChar),
+            _ => brick.CommentFormatted.PadRight(availableWidth),
+        };
 
         SmartSpan commentContentSpan = SpanFromBrick(brick, commentContent);
         spans.Add(commentContentSpan);

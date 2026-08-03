@@ -36,7 +36,6 @@ public class EnumCaptureTraceSummary
     /// </summary>
     public int EnumTotalMemberCount { get; }
 
-
     public EnumCaptureTraceSummary(IEnumerable<CaptureTrace> enumCaptureTracesOfQualifiedName)
     {
         // Validity checks
@@ -90,5 +89,15 @@ public class EnumCaptureTraceSummary
             dict[group.Key] = new(group);
 
         return dict;
+    }
+
+    public bool MemberIsFirstAmongManyRepresentedSynonyms(object memberValue, string synonym)
+    {
+        if (!EnumMembersWithMultipleSynonyms.Contains(memberValue))
+            return false;
+
+        var synonymKeys = EnumMemberSynonymOccurenceCounts[memberValue].Keys.ToList();
+
+        return synonymKeys.IndexOf(synonym) == 0;
     }
 }

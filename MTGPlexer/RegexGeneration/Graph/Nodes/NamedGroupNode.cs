@@ -54,7 +54,7 @@ public abstract class NamedGroupNode : GroupNode
         new (
             parentNode: this, 
             quantifier: Navigation.IsOptional ? MTGPlexer.Quantifier.Optional : Quantifier,
-            comment: QuantifierComment);
+            comment: $"{Navigation.Name}{(QuantifierComment == null ? "" : $" ({QuantifierComment})")}");
 
     private void EnsureChildren()
     {

@@ -6,9 +6,24 @@ public static class SmartRegexStaticRules
     public static int CommentBorderLineBuffer = 2;
     public static int GroupWallInnerBuffer = 1;
     public static int GroupBookendCommentBuffer = 1;
+    public static int EnumMemberOccurrenceCountColonBuffer = 1;
+    public static int EnumMemberBufferAfterPipe = 1;
 
     public static string CommentBorderLineWithBuffer =
         $"{string.Empty.PadLeft(CommentBorderLineBuffer)}#{string.Empty.PadLeft(CommentBorderLineBuffer)}";
+
+    /// <summary>
+    /// Centers text within the given width. Any odd leftover space goes to the right,
+    /// so repeated centering (e.g. centering an already-centered string within a wider
+    /// outer width) stays visually balanced.
+    /// </summary>
+    public static string CenterPad(string text, int width)
+    {
+        var extra = Math.Max(0, width - text.Length);
+        var leftPad = extra / 2;
+        var rightPad = extra - leftPad;
+        return $"{string.Empty.PadLeft(leftPad)}{text}{string.Empty.PadLeft(rightPad)}";
+    }
 
     // Unicode escape sequences for box-drawing characters.
     // This keeps the source file ASCII-safe and Git-friendly.

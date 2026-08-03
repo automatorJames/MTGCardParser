@@ -26,6 +26,14 @@ public class RegexBrick
         set => _regexFormatted = value;
     }
 
+    // Optionally set during formatting phase after all RegexBricks have been initially rendered
+    string _commentFormatted;
+    public string CommentFormatted
+    {
+        get => _commentFormatted ?? Comment ?? "";
+        set => _commentFormatted = value;
+    }
+
     public RegexBrick(RegexNode parentNode, string regex, string comment)
     {
         Regex = regex;

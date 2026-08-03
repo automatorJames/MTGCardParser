@@ -42,7 +42,6 @@ internal class Program
             var regexGraph = TokenTypeRegistry.RegexGraphs[type];
             var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
             Console.WriteLine(smartRegex);
-            Debugger.Break();
         }
     }
 
