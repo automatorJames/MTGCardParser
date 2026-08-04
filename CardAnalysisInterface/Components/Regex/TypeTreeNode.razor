@@ -1,0 +1,42 @@
+@{
+    var friendlyName = Node.Name.ToFriendlyCase(TitleDisplayOption.Title);
+    var palette = Palettes.GetValueOrDefault(Node);
+    var isEnum = Node.NodeType == CaptureNodeType.Enum;
+    var quantifierMark = Node.Quantifier?.GetDescription();
+    var children = Node.Children.OfType<NamedGroupNode>().ToList();
+
+    var boxClass = IsRoot ? "type-tree-box root" : "type-tree-box";
+    var boxStyle = palette == null ? "" :
+        $"--node-normal: {palette.Normal}; --node-light: {palette.Light}; --node-dark: {palette.Dark}; --node-sat: {palette.Sat}; border-style: {(isEnum ? "solid" : "dashed")};";
+}
+
+<li class="type-tree-li">
+    <div class="@boxClass" style="@boxStyle" data-path="@Node.FullyQualifiedName">
+        @if (quantifierMark != null)
+        {
+            <span class="quantifier-watermark left" aria-hidden="true">@quantifierMark</span>
+            <span class="quantifier-watermark right" aria-hidden="true">@quantifierMark</span>
+        }
+        <span class="type-tree-label">@friendlyName</span>
+    </div>
+    @if (children.Count > 0)
+    {
+        <ul class="type-tree-children">
+            @foreach (var child in children)
+            {
+                <TypeTreeNode @key=child.FullyQualifiedName Node=@child Palettes=@Palettes />
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired]
+    public NamedGroupNode Node { get; set; }
+
+    [Parameter, EditorRequired]
+    public Dictionary<NamedGroupNode, HexPalette> Palettes { get; set; }
+
+    [Parameter]
+    public bool IsRoot { get; set; }
+}

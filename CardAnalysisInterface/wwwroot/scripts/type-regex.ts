@@ -147,54 +147,24 @@ function applyTreatments(card: HTMLElement, activePaths: Set<string>): void {
         card.querySelectorAll('[lowlight-active]').forEach(el => el.removeAttribute('lowlight-active'));
     }
 
-    // --- Properties Section ---
-    const allPropCards = card.querySelectorAll<HTMLElement>('.property-capture-card');
-    const allPropElements = card.querySelectorAll<HTMLElement>('.properties-container [data-path], .properties-container [data-paths]');
+    // --- Type Tree Section ---
+    const treeBoxes = card.querySelectorAll<HTMLElement>('.type-tree-container [data-path], .type-tree-container [data-paths]');
+    treeBoxes.forEach(box => {
+        const boxPaths = (box.dataset.paths ?? box.dataset.path ?? '').split(' ');
+        const isMatch = boxPaths.some(p => p && activePaths.has(p));
 
-    // Pass 1: Handle highlights on all property elements
-    allPropElements.forEach(el => {
-        const elPaths = (el.dataset.paths ?? el.dataset.path ?? '').split(' ');
-        const isMatch = elPaths.some(p => p && activePaths.has(p));
         if (isMatch) {
-            el.setAttribute('highlight-active', '');
+            box.setAttribute('highlight-active', '');
         }
         else {
-            el.removeAttribute('highlight-active');
+            box.removeAttribute('highlight-active');
+        }
+
+        if (isAnyHighlighted && !isMatch) {
+            box.setAttribute('lowlight-active', '');
+        }
+        else {
+            box.removeAttribute('lowlight-active');
         }
     });
-
-    // Pass 2: Handle lowlights based on the results of the highlight pass
-    if (isAnyHighlighted) {
-        allPropCards.forEach(propCard => {
-            const hasHighlightedChild = propCard.querySelector('[highlight-active]');
-            if (!propCard.hasAttribute('highlight-active') && !hasHighlightedChild) {
-                propCard.setAttribute('lowlight-active', '');
-            }
-            else {
-                propCard.removeAttribute('lowlight-active');
-
-                const highlightedCanonical = propCard.querySelector('.canonical-representation[highlight-active]');
-                if (highlightedCanonical) {
-                    const allCanonicalsInCard = propCard.querySelectorAll('.canonical-representation');
-                    allCanonicalsInCard.forEach(c => {
-                        if (!c.hasAttribute('highlight-active')) {
-                            c.setAttribute('lowlight-active', '');
-                        }
-                        else {
-                            c.removeAttribute('lowlight-active');
-                        }
-                    });
-                }
-                else {
-                    propCard.querySelectorAll('.canonical-representation[lowlight-active]').forEach(c => c.removeAttribute('lowlight-active'));
-                }
-            }
-        });
-    }
-    else {
-        allPropCards.forEach(propCard => {
-            propCard.removeAttribute('lowlight-active');
-            propCard.querySelectorAll('.canonical-representation').forEach(c => c.removeAttribute('lowlight-active'));
-        });
-    }
 }

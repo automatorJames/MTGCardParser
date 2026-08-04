@@ -20,7 +20,7 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>What kind of capture this node represents (enum, bool, token unit, etc.), used by formatting and by <see cref="CaptureTrace"/>.</summary>
     public abstract CaptureNodeType NodeType { get; }
 
-    protected override Quantifier? Quantifier =>
+    public override Quantifier? Quantifier =>
         Navigation.IsList ? MTGPlexer.Quantifier.AnyNumber
         : base.Quantifier;
 

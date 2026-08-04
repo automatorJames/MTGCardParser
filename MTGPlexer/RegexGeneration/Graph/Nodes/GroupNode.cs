@@ -7,7 +7,7 @@ public abstract class GroupNode : RegexNode
     public Navigation Navigation { get; }
 
     /// <summary>The quantifier applied to this group's closing brick, if any.</summary>
-    protected virtual Quantifier? Quantifier => Navigation.Quantifier;
+    public virtual Quantifier? Quantifier => Navigation.Quantifier;
 
     protected GroupNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation.Name)

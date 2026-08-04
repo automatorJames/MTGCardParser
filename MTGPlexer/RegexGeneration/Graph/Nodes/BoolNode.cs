@@ -8,7 +8,7 @@
 public class BoolNode : NamedGroupNode
 {
     public override CaptureNodeType NodeType => CaptureNodeType.Bool;
-    protected override Quantifier? Quantifier => MTGPlexer.Quantifier.Optional;
+    public override Quantifier? Quantifier => MTGPlexer.Quantifier.Optional;
     protected override bool OneOrMoreRegexPatternsRequired => true;
 
     public BoolNode(RegexNode parentNode, Navigation navigation) 

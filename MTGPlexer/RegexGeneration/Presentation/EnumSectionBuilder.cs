@@ -20,10 +20,7 @@ internal class EnumSectionBuilder
         AppendMemberBricksWithSynonymSections(bricks, members, enumSummary, metrics);
 
         if (omittedCount != null)
-        {
-            omittedCount.CommentFormatted = SmartRegexStaticRules.CenterPad(omittedCount.CommentFormatted, metrics.MaxCommentLength);
             bricks.Add(omittedCount);
-        }
 
         return bricks;
     }
@@ -93,14 +90,16 @@ internal class EnumSectionBuilder
     static RegexBrickSynonymSectionHeader BuildSynonymSectionHeader(RegexNode parent, RegexBrickValue member, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics)
     {
         var namedCore = metrics.FormatNamedCore(member.Value, enumSummary.EnumMemberOccurenceCounts[member.Value]);
-        return new RegexBrickSynonymSectionHeader(parent, namedCore) { CommentFormatted = SmartRegexStaticRules.CenterPad(namedCore, metrics.MaxCommentLength) };
+        return new RegexBrickSynonymSectionHeader(parent, namedCore);
     }
 
     /// <summary>
-    /// The centered "Name : count" comment for a standalone member, or "     : count" for one row of a
-    /// synonym group. Splits the result across <see cref="RegexBrickValue.NameCommentFormatted"/> and
-    /// <see cref="RegexBrickValue.CountCommentFormatted"/> (which together concatenate to the same string
-    /// this always returned) so the name and count can be colored as separate spans.
+    /// The uncentered "Name : count" comment core for a standalone member, or "     : count" for one row of a
+    /// synonym group. Centering against the box's actual width happens later, in <see cref="SmartLineRenderer"/>,
+    /// once that width is known across the whole formatted regex. Splits the result across
+    /// <see cref="RegexBrickValue.NameCommentFormatted"/> and <see cref="RegexBrickValue.CountCommentFormatted"/>
+    /// (which together concatenate to the same string this always returned) so the name and count can be
+    /// colored as separate spans.
     /// </summary>
     static string BuildMemberComment(RegexBrickValue member, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics, bool isPartOfSynonymGroup)
     {
@@ -111,10 +110,8 @@ internal class EnumSectionBuilder
             : enumSummary.EnumMemberOccurenceCounts[member.Value];
         var countField = metrics.FormatCountField(occurrenceCount);
 
-        var (leftPad, rightPad) = SmartRegexStaticRules.CenterPadSplit(nameField + countField, metrics.MaxCommentLength);
-
-        member.NameCommentFormatted = leftPad + nameField;
-        member.CountCommentFormatted = countField + rightPad;
+        member.NameCommentFormatted = nameField;
+        member.CountCommentFormatted = countField;
 
         return member.NameCommentFormatted + member.CountCommentFormatted;
     }

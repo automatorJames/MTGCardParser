@@ -1,0 +1,17 @@
+<div class="type-tree-container">
+    <ul class="type-tree-root">
+        <TypeTreeNode Node=@RegexGraph.RootNode Palettes=@_palettes IsRoot="true" />
+    </ul>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public RegexGraph RegexGraph { get; set; }
+
+    Dictionary<NamedGroupNode, HexPalette> _palettes = [];
+
+    protected override void OnParametersSet()
+    {
+        _palettes = DeterministicPalette.GetPositionalPaletteSet(RegexGraph.NamedGroupFlatGraph.Values, HexColor.WhiteSmoke);
+    }
+}

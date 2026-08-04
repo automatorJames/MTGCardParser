@@ -1,0 +1,154 @@
+/* --- Tree structure (pure-CSS connector lines, flexbox-based so it reflows/resizes for free) --- */
+
+.type-tree-children {
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    margin: 0;
+    padding: 24px 0 0 0;
+    position: relative;
+}
+
+.type-tree-li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    list-style: none;
+    position: relative;
+    padding: 24px 14px 0 14px;
+}
+
+.type-tree-li::before,
+.type-tree-li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 50%;
+    width: 50%;
+    height: 24px;
+    border-top: 1px solid var(--outline-grey, #444);
+}
+
+.type-tree-li::after {
+    right: auto;
+    left: 50%;
+    border-left: 1px solid var(--outline-grey, #444);
+}
+
+.type-tree-li:only-child::before,
+.type-tree-li:only-child::after {
+    display: none;
+}
+
+.type-tree-li:only-child {
+    padding-top: 0;
+}
+
+.type-tree-li:first-child::before,
+.type-tree-li:last-child::after {
+    border-color: transparent;
+}
+
+.type-tree-li:last-child::before {
+    border-right: 1px solid var(--outline-grey, #444);
+    border-radius: 0 6px 0 0;
+}
+
+.type-tree-li:first-child::after {
+    border-radius: 6px 0 0 0;
+}
+
+/* Stub connecting a box down to its own children row — scoped to a direct li > ul
+   relationship so it works uniformly (including at the root, which has no incoming line). */
+.type-tree-li > .type-tree-children::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 0;
+    height: 24px;
+    border-left: 1px solid var(--outline-grey, #444);
+}
+
+/* --- The box itself --- */
+
+.type-tree-box {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 130px;
+    max-width: 240px;
+    padding: 10px 16px;
+    border-width: 2px;
+    border-radius: 8px;
+    background-color: #2a2a2a;
+    border-color: var(--node-dark, #555);
+    color: var(--node-normal, #ccc);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    transition: transform var(--transition-time), border-color var(--transition-time), box-shadow var(--transition-time), opacity var(--transition-time), color var(--transition-time);
+}
+
+.type-tree-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+.type-tree-box.root {
+    background-color: #333333;
+    color: #e8e8e8;
+    font-weight: 700;
+    font-size: 14px;
+    border-color: #6b6b6b;
+}
+
+.type-tree-label {
+    position: relative;
+    z-index: 1;
+    display: block;
+    max-width: 208px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* --- Quantifier watermark --- */
+
+.quantifier-watermark {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--node-light, #999);
+    opacity: 0.25;
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+}
+
+.quantifier-watermark.left {
+    left: 6px;
+}
+
+.quantifier-watermark.right {
+    right: 6px;
+}
+
+/* --- Highlight / lowlight (mirrors FormattedRegex's hover-cross-highlight treatment) --- */
+
+.type-tree-box[highlight-active] {
+    border-color: var(--node-light, #fff) !important;
+    color: var(--node-light, #fff) !important;
+    box-shadow: 0 0 0 2px var(--node-light, #fff);
+}
+
+.type-tree-box[lowlight-active] {
+    opacity: 0.35;
+}
