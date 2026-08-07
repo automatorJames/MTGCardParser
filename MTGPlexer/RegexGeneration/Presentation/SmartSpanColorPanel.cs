@@ -9,9 +9,9 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 /// regex output — that one governs layout, this one governs color.
 /// </summary>
 /// <remarks>
-/// Unless a row below declares its own <see cref="SpanColorSpec.HueDegrees"/>, a role's hue is whatever the
-/// caller passes into <see cref="Resolve"/> as <c>positionalHueDegrees</c> — in practice, the same rainbow
-/// hue <see cref="DeterministicPalette.GetPositionalPaletteSet{T}"/> already assigned to the span's enclosing
+/// A role's hue is always whatever the caller passes into <see cref="Resolve"/> as
+/// <c>positionalHueDegrees</c> — in practice, the same rainbow hue
+/// <see cref="DeterministicPalette.GetPositionalPaletteSet{T}"/> already assigned to the span's enclosing
 /// named group. That's deliberate for every role, including <see cref="TokenRegexSpanKind.GroupBorderWall"/>:
 /// nested boxes read best when each box's wall is its own container-meaningful color, so a border's hue
 /// should never be pinned regardless of which group it belongs to. Its per-<see cref="CaptureNodeType"/>
@@ -20,8 +20,8 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 /// </remarks>
 public static class SmartSpanColorPanel
 {
-    /// <summary>Per-role knobs. None of these declare a hue, so all of them take on their span's positional rainbow hue; only saturation/brightness (and their hi/lo ranges) are hand-tuned per role.</summary>
-    static readonly Dictionary<TokenRegexSpanKind, SpanColorSpec> _roleSpecs = new()
+    /// <summary>Per-role knobs. <see cref="ColorKnobs.HueDegrees"/> is ignored here — it's always overwritten with the span's positional rainbow hue in <see cref="Resolve"/> — so only saturation/brightness (and their hi/lo ranges) are hand-tuned per role.</summary>
+    static readonly Dictionary<TokenRegexSpanKind, ColorKnobs> _roleSpecs = new()
     {
         [TokenRegexSpanKind.EnumMemberRegex] = new(),
         [TokenRegexSpanKind.EnumMemberSynonymRegex] = new(Brightness: 0.45, BrightnessRange: 0.3),
@@ -43,11 +43,11 @@ public static class SmartSpanColorPanel
     };
 
     /// <summary>
-    /// Per-(role, NodeType) overrides, checked before <see cref="_roleSpecs"/>. Neither entry declares a hue
-    /// — a border's color always identifies its own container, never its kind — only saturation/brightness
-    /// vary: bolder for an Enum's solid box, more muted for a TokenUnit's dashed one.
+    /// Per-(role, NodeType) overrides, checked before <see cref="_roleSpecs"/>. Only saturation/brightness
+    /// vary here — a border's color always identifies its own container, never its kind — bolder for an
+    /// Enum's solid box, more muted for a TokenUnit's dashed one.
     /// </summary>
-    static readonly Dictionary<(TokenRegexSpanKind Kind, CaptureNodeType NodeType), SpanColorSpec> _roleNodeTypeSpecs = new()
+    static readonly Dictionary<(TokenRegexSpanKind Kind, CaptureNodeType NodeType), ColorKnobs> _roleNodeTypeSpecs = new()
     {
         [(TokenRegexSpanKind.GroupBorderWall, CaptureNodeType.Enum)] = new(Saturation: 0.75, Brightness: 0.6),
         [(TokenRegexSpanKind.GroupBorderWall, CaptureNodeType.TokenUnit)] = new(Saturation: 0.35, Brightness: 0.45),
@@ -55,11 +55,11 @@ public static class SmartSpanColorPanel
 
     /// <summary>
     /// The color treatment for <paramref name="kind"/>, refined by <paramref name="nodeType"/> when a more
-    /// specific entry exists. <paramref name="positionalHueDegrees"/> is used as this span's hue unless the
-    /// resolved spec declares a fixed <see cref="SpanColorSpec.HueDegrees"/> of its own. When
-    /// <paramref name="forceGrayscale"/> is set (the enclosing group itself has no hue — e.g. the transparent
-    /// root), saturation is pinned to zero so role-tagged spans render neutral instead of reinterpreting the
-    /// group's undefined hue as red.
+    /// specific entry exists. <paramref name="positionalHueDegrees"/> is always used as this span's hue —
+    /// the resolved spec's own <see cref="ColorKnobs.HueDegrees"/> is a placeholder and gets overwritten.
+    /// When <paramref name="forceGrayscale"/> is set (the enclosing group itself has no hue — e.g. the
+    /// transparent root), saturation is pinned to zero so role-tagged spans render neutral instead of
+    /// reinterpreting the group's undefined hue as red.
     /// </summary>
     public static SpanColorPalette Resolve(TokenRegexSpanKind kind, double positionalHueDegrees, CaptureNodeType? nodeType = null, bool forceGrayscale = false)
     {
@@ -67,21 +67,13 @@ public static class SmartSpanColorPanel
             ? nodeTypeSpec
             : _roleSpecs[kind];
 
-        var knobs = new ColorKnobs(
-            HueDegrees: spec.HueDegrees ?? positionalHueDegrees,
-            Saturation: forceGrayscale ? 0 : spec.Saturation,
-            Brightness: spec.Brightness,
-            SaturationRange: forceGrayscale ? 0 : spec.SaturationRange,
-            BrightnessRange: spec.BrightnessRange);
+        var knobs = spec with
+        {
+            HueDegrees = positionalHueDegrees,
+            Saturation = forceGrayscale ? 0 : spec.Saturation,
+            SaturationRange = forceGrayscale ? 0 : spec.SaturationRange,
+        };
 
         return SpanColorPalette.FromKnobs(knobs);
     }
 }
-
-/// <summary>Author-facing row of <see cref="SmartSpanColorPanel"/>'s tables: like <see cref="ColorKnobs"/>, but <see cref="HueDegrees"/> may be omitted to fall back to the span's own positional rainbow hue instead of hand-picking one.</summary>
-readonly record struct SpanColorSpec(
-    double? HueDegrees = null,
-    double? Saturation = null,
-    double? Brightness = null,
-    double? SaturationRange = null,
-    double? BrightnessRange = null);

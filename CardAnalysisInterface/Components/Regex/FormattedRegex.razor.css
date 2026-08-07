@@ -30,7 +30,9 @@ pre {
 
 /* --- Span Styling --- */
 pre.formatted-regex-fira code span {
-    transition: color var(--transition-time), background-color 0.1s;
+    transition: color var(--hover-fade-duration) ease-in-out,
+                opacity var(--hover-fade-duration) ease-in-out,
+                background-color 0.1s;
 }
 
 /* Highlight/Lowlight Treatments */
@@ -39,5 +41,9 @@ span[highlight-active] {
 }
 
 span[lowlight-active] {
+    /* --lowlight-opacity is the shared "how dim" default (also used by .type-tree-box); the
+       color swap to --hex-lo is an additional, span-only touch that keeps a dimmed span's own
+       hue visible instead of just fading it to gray. */
     color: var(--hex-lo) !important;
+    opacity: var(--lowlight-opacity);
 }

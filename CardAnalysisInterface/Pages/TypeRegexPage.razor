@@ -8,6 +8,13 @@
 @using MTGPlexer.RegexGeneration
 @using Microsoft.AspNetCore.Components
 
+<style>
+    :root {
+        --hover-fade-duration: @(HoverTreatmentConfig.FadeDurationMs)ms;
+        --lowlight-opacity: @(HoverTreatmentConfig.LowlightOpacity);
+    }
+</style>
+
 @if (!_isInitialized)
 {
     <LoadingIndicator Label="Analyzing cards..." />
@@ -71,7 +78,16 @@ else
         if (!_hoverInitialized)
         {
             _hoverInitialized = true;
-            await JSRuntime.InvokeVoidAsync("initializeTypeExpressionsHover");
+            await JSRuntime.InvokeVoidAsync("initializeTypeExpressionsHover", new
+            {
+                HoverTreatmentConfig.PathAncestorDimOpacity,
+                HoverTreatmentConfig.LowlightOpacity,
+                HoverTreatmentConfig.DebounceMs,
+                HoverTreatmentConfig.FadeDurationMs,
+                HoverTreatmentConfig.OvershootBrightnessBoost,
+                HoverTreatmentConfig.OvershootDurationMs,
+                HoverTreatmentConfig.OvershootSettleDurationMs,
+            });
         }
     }
 

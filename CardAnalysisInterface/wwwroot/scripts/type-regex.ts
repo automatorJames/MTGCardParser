@@ -1,8 +1,30 @@
-﻿/**
+/**
+ * Tuning knobs for the hover interaction. These have exactly one home — CardAnalysisInterface's
+ * HoverTreatmentConfig.cs — and arrive here as {@link initializeTypeExpressionsHover}'s config
+ * argument; nothing in this file should hardcode a fallback value for any of them.
+ */
+interface HoverTreatmentConfig {
+    pathAncestorDimOpacity: number;
+    lowlightOpacity: number;
+    debounceMs: number;
+    fadeDurationMs: number;
+    overshootBrightnessBoost: number;
+    overshootDurationMs: number;
+    overshootSettleDurationMs: number;
+}
+
+let hoverConfig: HoverTreatmentConfig;
+
+/**
  * Initializes the hover-highlighting functionality for the type expressions page.
  * It attaches mouseover and mouseout listeners to the main container.
+ * @param config Timing/opacity knobs, sourced from CardAnalysisInterface.HoverTreatmentConfig.
  */
-function initializeTypeExpressionsHover(): void {
+function initializeTypeExpressionsHover(config: HoverTreatmentConfig): void {
+    hoverConfig = config;
+    document.documentElement.style.setProperty('--hover-fade-duration', `${hoverConfig.fadeDurationMs}ms`);
+    document.documentElement.style.setProperty('--lowlight-opacity', `${hoverConfig.lowlightOpacity}`);
+
     const container = document.querySelector<HTMLElement>('.type-card-container');
     if (!container) return;
 
@@ -10,36 +32,65 @@ function initializeTypeExpressionsHover(): void {
     container.addEventListener('mouseout', handleMouseOut);
 }
 
+/** Per-card debounce/commit bookkeeping, so rapid mouseover churn doesn't spam treatment changes. */
+const pendingKeyByCard = new WeakMap<HTMLElement, string | null>();
+const debounceTimerByCard = new WeakMap<HTMLElement, number>();
+
 /**
- * Handles the mouseover event to apply highlighting and lowlighting treatments.
- * It determines the active data paths from the hovered element and updates the card's state.
- * If the mouse moves to a neutral element without a data-path, it clears existing highlights.
+ * Handles the mouseover event. Rather than committing a new highlight state immediately, this
+ * schedules the commit after {@link HoverTreatmentConfig.debounceMs}, re-debouncing on every
+ * subsequent mouseover — so a hover state only "lands" once the cursor actually rests on it,
+ * and the flicker of rapidly crossing many spans while traveling never gets rendered at all.
  */
 function handleMouseOver(event: MouseEvent): void {
-    const target = (event.target as HTMLElement).closest('[data-path], [data-paths]');
     const card = (event.target as HTMLElement).closest<HTMLElement>('.type-card');
     if (!card) return;
 
-    // If there's no target, we've moved to a neutral space.
-    // Clear any active highlights for this card and exit.
-    if (!target) {
-        if (card.dataset.activePath) {
-            clearAllTreatments(card);
-            delete card.dataset.activePath;
+    const target = (event.target as HTMLElement).closest('[data-path], [data-paths]');
+    const htmlTarget = target as HTMLElement | null;
+    const hoveredPathsString = htmlTarget?.dataset.paths ?? htmlTarget?.dataset.path ?? null;
+
+    const currentKey = pendingKeyByCard.has(card) ? pendingKeyByCard.get(card)! : (card.dataset.activePath ?? null);
+    if (hoveredPathsString === currentKey) {
+        return;
+    }
+
+    pendingKeyByCard.set(card, hoveredPathsString);
+
+    const existingTimer = debounceTimerByCard.get(card);
+    if (existingTimer) {
+        window.clearTimeout(existingTimer);
+    }
+
+    const timerId = window.setTimeout(() => {
+        debounceTimerByCard.delete(card);
+        commitHoverState(card, hoveredPathsString);
+    }, hoverConfig.debounceMs);
+    debounceTimerByCard.set(card, timerId);
+}
+
+/**
+ * Handles the mouseout event to clear all treatments when the mouse leaves a card. This happens
+ * immediately (no debounce) — the cursor has definitively left, so there's nothing left to
+ * debounce against, and lingering here is exactly the "too loose" feel we're avoiding.
+ */
+function handleMouseOut(event: MouseEvent): void {
+    const card = (event.target as HTMLElement).closest<HTMLElement>('.type-card');
+    const relatedTarget = event.relatedTarget as Node;
+
+    if (card && !card.contains(relatedTarget)) {
+        const existingTimer = debounceTimerByCard.get(card);
+        if (existingTimer) {
+            window.clearTimeout(existingTimer);
+            debounceTimerByCard.delete(card);
         }
-        return;
+        pendingKeyByCard.delete(card);
+        commitHoverState(card, null);
     }
+}
 
-    const htmlTarget = target as HTMLElement;
-    const hoveredPathsString = htmlTarget.dataset.paths ?? htmlTarget.dataset.path ?? null;
-    const currentActivePath = card.dataset.activePath;
-
-    // If we're still hovering over the same active path, do nothing.
-    if (hoveredPathsString === currentActivePath) {
-        return;
-    }
-
-    // Update the card's active path state.
+/** Applies the given hovered-paths state (or clears it, for null) as the card's committed state. */
+function commitHoverState(card: HTMLElement, hoveredPathsString: string | null): void {
     if (hoveredPathsString) {
         card.dataset.activePath = hoveredPathsString;
     } else {
@@ -51,28 +102,36 @@ function handleMouseOver(event: MouseEvent): void {
 }
 
 /**
- * Handles the mouseout event to clear all treatments when the mouse leaves a card.
+ * Applies (or clears) the fractional dim treatment used for path-ancestor elements.
  */
-function handleMouseOut(event: MouseEvent): void {
-    const card = (event.target as HTMLElement).closest<HTMLElement>('.type-card');
-    const relatedTarget = event.relatedTarget as Node;
-
-    if (card && !card.contains(relatedTarget)) {
-        clearAllTreatments(card);
-        delete card.dataset.activePath;
-    }
+function setDimTreatment(element: HTMLElement, isDimmed: boolean): void {
+    element.toggleAttribute('dim-active', isDimmed);
+    element.style.opacity = isDimmed ? String(hoverConfig.pathAncestorDimOpacity) : '';
 }
 
 /**
- * Removes all highlight and lowlight attributes and classes from elements within a card.
+ * Briefly "pops" an element's brightness above its resting highlighted brightness before easing
+ * back down — applied only to the exact-match hover target, so it visually reads as *the*
+ * target even while ancestor/lowlight elements around it are still mid-fade. Implemented as a
+ * `filter: brightness()` Web Animation layered on top of the element's color/border transition
+ * (driven separately by CSS via `--hover-fade-duration`), so it works the same way for a plain
+ * text span and a multi-property tree box alike, without needing a bespoke "overshoot color".
  */
-function clearAllTreatments(card: HTMLElement): void {
-    // Remove attributes from spans and property cards
-    card.querySelectorAll('[highlight-active]').forEach(el => el.removeAttribute('highlight-active'));
-    card.querySelectorAll('[lowlight-active]').forEach(el => el.removeAttribute('lowlight-active'));
+function popHoverTarget(element: HTMLElement): void {
+    const peakOffset = hoverConfig.overshootDurationMs / (hoverConfig.overshootDurationMs + hoverConfig.overshootSettleDurationMs);
 
-    // Remove the highlight class from the regex container
-    card.querySelector('.formatted-regex-fira')?.classList.remove('highlight-active');
+    element.animate(
+        [
+            { filter: 'brightness(1)', offset: 0 },
+            { filter: `brightness(${1 + hoverConfig.overshootBrightnessBoost})`, offset: peakOffset },
+            { filter: 'brightness(1)', offset: 1 },
+        ],
+        {
+            duration: hoverConfig.overshootDurationMs + hoverConfig.overshootSettleDurationMs,
+            easing: 'ease-out',
+            fill: 'none',
+        }
+    );
 }
 
 /**
@@ -88,13 +147,41 @@ function splitPaths(pathsString: string | null): string[] {
 }
 
 /**
- * Determines whether two data-path values should be treated as related for highlighting
- * purposes: paths are segment-delimited by '_', and one is related to the other if they're
- * equal, or one is an ancestor (or descendant) of the other along that segment chain.
- * e.g. "A_B_C" is related to "A_B_C", "A_B", and "A_B_C_Draw-draws".
+ * How a candidate element's data-path relates to one of the hovered (active) paths, along the
+ * '_'-delimited segment chain:
+ * - 'exact': the paths are identical — this is the direct hover target.
+ * - 'descendant': the candidate is nested under the active path (active path is a strict
+ *   prefix of the candidate) — e.g. candidate "A_B_C_Draw-draws" under active "A_B_C".
+ * - 'ancestor': the candidate is a strict prefix of the active path — e.g. candidate "A_B"
+ *   under active "A_B_C". The candidate's whole FQN matches only the *beginning* of the
+ *   active path, not the whole of it.
+ * - 'none': unrelated.
  */
-function arePathsRelated(a: string, b: string): boolean {
-    return a === b || a.startsWith(b + '_') || b.startsWith(a + '_');
+type PathRelation = 'exact' | 'descendant' | 'ancestor' | 'none';
+
+function classifyPathRelation(candidate: string, active: string): PathRelation {
+    if (candidate === active) return 'exact';
+    if (candidate.startsWith(active + '_')) return 'descendant';
+    if (active.startsWith(candidate + '_')) return 'ancestor';
+    return 'none';
+}
+
+/**
+ * The strongest relation between any of an element's paths and any of the active (hovered)
+ * paths, where strength is exact > descendant > ancestor > none.
+ */
+function bestPathRelation(candidatePaths: string[], activePaths: string[]): PathRelation {
+    let best: PathRelation = 'none';
+    for (const p of candidatePaths) {
+        if (!p) continue;
+        for (const ap of activePaths) {
+            const relation = classifyPathRelation(p, ap);
+            if (relation === 'exact') return 'exact';
+            if (relation === 'descendant') best = 'descendant';
+            else if (relation === 'ancestor' && best === 'none') best = 'ancestor';
+        }
+    }
+    return best;
 }
 
 /**
@@ -118,51 +205,43 @@ function applyTreatments(card: HTMLElement, activePaths: string[]): void {
     }
 
     // --- Regex Spans Section ---
+    // A span whose path is an ancestor of the hovered path (its whole FQN matches only the
+    // *beginning* of the target's) gets fractionally dimmed via pathAncestorDimOpacity rather
+    // than highlighted or fully lowlit. That leaves the true (exact-match) target as the only
+    // fully-highlighted span, while ancestor spans read as "still relevant" without competing
+    // with it for attention. The exact-match target additionally gets a brief brightness pop.
     const regexSpans = card.querySelectorAll<HTMLElement>('pre.formatted-regex-fira code span');
     regexSpans.forEach(span => {
         const spanPaths = (span.dataset.paths ?? span.dataset.path ?? '').split(' ');
-        const isMatch = spanPaths.some(p => p && activePaths.some(ap => arePathsRelated(p, ap)));
+        const relation = bestPathRelation(spanPaths, activePaths);
 
-        if (isMatch) {
-            span.setAttribute('highlight-active', '');
+        span.toggleAttribute('highlight-active', relation === 'exact' || relation === 'descendant');
+        setDimTreatment(span, relation === 'ancestor');
+
+        if (isAnyHighlighted && relation === 'none' && span.dataset.lowlight !== 'None') {
+            span.setAttribute('lowlight-active', '');
         }
         else {
-            span.removeAttribute('highlight-active');
+            span.removeAttribute('lowlight-active');
+        }
+
+        if (relation === 'exact') {
+            popHoverTarget(span);
         }
     });
-
-    if (isAnyHighlighted) {
-        regexSpans.forEach(span => {
-            if (!span.hasAttribute('highlight-active') && span.dataset.lowlight !== 'None') {
-                span.setAttribute('lowlight-active', '');
-            }
-            else {
-                span.removeAttribute('lowlight-active');
-            }
-        });
-    }
-    else {
-        card.querySelectorAll('[lowlight-active]').forEach(el => el.removeAttribute('lowlight-active'));
-    }
 
     // --- Type Tree Section ---
     const treeBoxes = card.querySelectorAll<HTMLElement>('.type-tree-container [data-path], .type-tree-container [data-paths]');
     treeBoxes.forEach(box => {
         const boxPaths = (box.dataset.paths ?? box.dataset.path ?? '').split(' ');
-        const isMatch = boxPaths.some(p => p && activePaths.some(ap => arePathsRelated(p, ap)));
+        const relation = bestPathRelation(boxPaths, activePaths);
 
-        if (isMatch) {
-            box.setAttribute('highlight-active', '');
-        }
-        else {
-            box.removeAttribute('highlight-active');
-        }
+        box.toggleAttribute('highlight-active', relation === 'exact' || relation === 'descendant');
+        box.toggleAttribute('lowlight-active', isAnyHighlighted && relation === 'none');
+        setDimTreatment(box, relation === 'ancestor');
 
-        if (isAnyHighlighted && !isMatch) {
-            box.setAttribute('lowlight-active', '');
-        }
-        else {
-            box.removeAttribute('lowlight-active');
+        if (relation === 'exact') {
+            popHoverTarget(box);
         }
     });
 }

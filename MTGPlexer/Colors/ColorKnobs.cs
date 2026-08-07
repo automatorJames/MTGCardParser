@@ -22,7 +22,7 @@ public static class ColorKnobDefaults
 /// rest. Any knob left null falls back to <see cref="ColorKnobDefaults"/>, so a caller who only cares about
 /// hue can write <c>new ColorKnobs(210)</c> and get a sensible, centrally-defined look.
 /// </summary>
-/// <param name="HueDegrees">Hue in degrees (0-360) around the color wheel.</param>
+/// <param name="HueDegrees">Hue in degrees (0-360) around the color wheel, or 0 for a caller (e.g. <see cref="MTGPlexer.RegexGeneration.Presentation.SmartSpanColorPanel"/>'s tables) that always overwrites it before use.</param>
 /// <param name="Saturation">Resting saturation (0..1), or null for <see cref="ColorKnobDefaults.Saturation"/>.</param>
 /// <param name="Brightness">Resting brightness (0..1), or null for <see cref="ColorKnobDefaults.Brightness"/>.</param>
 /// <param name="SaturationRange">
@@ -32,7 +32,7 @@ public static class ColorKnobDefaults
 /// </param>
 /// <param name="BrightnessRange">The brightness equivalent of <paramref name="SaturationRange"/>.</param>
 public readonly record struct ColorKnobs(
-    double HueDegrees,
+    double HueDegrees = 0,
     double? Saturation = null,
     double? Brightness = null,
     double? SaturationRange = null,

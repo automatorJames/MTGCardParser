@@ -90,7 +90,12 @@
     overflow: hidden;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
     cursor: pointer;
-    transition: transform var(--transition-time), border-color var(--transition-time), box-shadow var(--transition-time), opacity var(--transition-time), color var(--transition-time);
+    transition: transform var(--transition-time),
+                border-color var(--hover-fade-duration) ease-in-out,
+                box-shadow var(--hover-fade-duration) ease-in-out,
+                opacity var(--hover-fade-duration) ease-in-out,
+                color var(--hover-fade-duration) ease-in-out,
+                background-color var(--hover-fade-duration) ease-in-out;
 }
 
 .type-tree-box:hover {
@@ -157,5 +162,9 @@
 }
 
 .type-tree-box[lowlight-active] {
-    opacity: 0.35;
+    /* Mirrors FormattedRegex's span[lowlight-active]: shared --lowlight-opacity for "how dim",
+       plus a color swap to this box's own dark/desaturated variant so it dims toward its own
+       hue rather than just fading to gray. */
+    opacity: var(--lowlight-opacity);
+    color: var(--node-dark, #555);
 }
