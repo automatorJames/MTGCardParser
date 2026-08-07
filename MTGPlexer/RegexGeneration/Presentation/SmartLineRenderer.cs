@@ -16,6 +16,7 @@ public class SmartLineRenderer
     readonly List<RegexBrick> _bricks;
     readonly Dictionary<NamedGroupNode, SpanColorPalette> _namedGroupPalettes;
     readonly Dictionary<NamedGroupNode, double> _namedGroupHueDegrees;
+    readonly Dictionary<NamedGroupNode, bool> _namedGroupIsGrayscale;
     readonly CommentBoxMetrics _metrics;
     readonly GroupWallSpanTracker _wallTracker = new();
     readonly GroupBookendCommentRenderer _bookendRenderer;
@@ -26,10 +27,11 @@ public class SmartLineRenderer
         _metrics = new CommentBoxMetrics(bricks);
 
         var namedGroupHexPalettes = DeterministicPalette
-            .GetPositionalPaletteSet(regexGraph.NamedGroupFlatGraph.Values, positionalOverrideColors: HexColor.WhiteSmoke);
+            .GetPositionalPaletteSet(regexGraph.NamedGroupFlatGraph.Values, positionalOverrideColors: HexColor.Silver);
 
         _namedGroupPalettes = namedGroupHexPalettes.ToDictionary(x => x.Key, x => SpanColorPalette.FromHexPalette(x.Value));
         _namedGroupHueDegrees = namedGroupHexPalettes.ToDictionary(x => x.Key, x => DeterministicPalette.HexToHue(x.Value.Normal) * 360.0);
+        _namedGroupIsGrayscale = namedGroupHexPalettes.ToDictionary(x => x.Key, x => HslMath.IsGrayscale(x.Value.Normal));
 
         _bookendRenderer = new GroupBookendCommentRenderer(SpanFromBrick, _metrics.MaxCommentLength);
     }
@@ -194,7 +196,11 @@ public class SmartLineRenderer
     /// override) declares a fixed hue of its own — see <see cref="SmartSpanColorPanel"/>.
     /// </summary>
     SpanColorPalette ResolveRolePalette(RegexBrick brick, TokenRegexSpanKind kind) =>
-        SmartSpanColorPanel.Resolve(kind, _namedGroupHueDegrees[brick.NamedGroupParent], brick.NamedGroupParent?.NodeType);
+        SmartSpanColorPanel.Resolve(
+            kind,
+            _namedGroupHueDegrees[brick.NamedGroupParent],
+            brick.NamedGroupParent?.NodeType,
+            forceGrayscale: _namedGroupIsGrayscale[brick.NamedGroupParent]);
 
     SpanColorPalette ResolvePalette(RegexBrick brick, TokenRegexSpanKind? kind) =>
         kind is { } concreteKind ? ResolveRolePalette(brick, concreteKind) : _namedGroupPalettes[brick.NamedGroupParent];

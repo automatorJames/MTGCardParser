@@ -31,7 +31,7 @@ public static class SmartSpanColorPanel
         [TokenRegexSpanKind.EnumMemberSynonymHeader] = new(),
         [TokenRegexSpanKind.EnumMemberSynonymFooter] = new(Saturation: 0.3, Brightness: 0.4, SaturationRange: 0.1, BrightnessRange: 0.1),
         [TokenRegexSpanKind.OmittedCount] = new(Saturation: 0, Brightness: 0.4, SaturationRange: 0),
-        [TokenRegexSpanKind.ConnectiveSpace] = new(Saturation: 0, Brightness: 0.5, SaturationRange: 0),
+        [TokenRegexSpanKind.ConnectiveSpace] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0),
         [TokenRegexSpanKind.LiteralMatch] = new(),
         [TokenRegexSpanKind.RegexJoiner] = new(Saturation: 0.18, Brightness: 0.5, SaturationRange: 0.2, BrightnessRange: 0.2),
         [TokenRegexSpanKind.GroupOpenHeaderText] = new(),
@@ -56,9 +56,12 @@ public static class SmartSpanColorPanel
     /// <summary>
     /// The color treatment for <paramref name="kind"/>, refined by <paramref name="nodeType"/> when a more
     /// specific entry exists. <paramref name="positionalHueDegrees"/> is used as this span's hue unless the
-    /// resolved spec declares a fixed <see cref="SpanColorSpec.HueDegrees"/> of its own.
+    /// resolved spec declares a fixed <see cref="SpanColorSpec.HueDegrees"/> of its own. When
+    /// <paramref name="forceGrayscale"/> is set (the enclosing group itself has no hue — e.g. the transparent
+    /// root), saturation is pinned to zero so role-tagged spans render neutral instead of reinterpreting the
+    /// group's undefined hue as red.
     /// </summary>
-    public static SpanColorPalette Resolve(TokenRegexSpanKind kind, double positionalHueDegrees, CaptureNodeType? nodeType = null)
+    public static SpanColorPalette Resolve(TokenRegexSpanKind kind, double positionalHueDegrees, CaptureNodeType? nodeType = null, bool forceGrayscale = false)
     {
         var spec = nodeType is { } concreteNodeType && _roleNodeTypeSpecs.TryGetValue((kind, concreteNodeType), out var nodeTypeSpec)
             ? nodeTypeSpec
@@ -66,9 +69,9 @@ public static class SmartSpanColorPanel
 
         var knobs = new ColorKnobs(
             HueDegrees: spec.HueDegrees ?? positionalHueDegrees,
-            Saturation: spec.Saturation,
+            Saturation: forceGrayscale ? 0 : spec.Saturation,
             Brightness: spec.Brightness,
-            SaturationRange: spec.SaturationRange,
+            SaturationRange: forceGrayscale ? 0 : spec.SaturationRange,
             BrightnessRange: spec.BrightnessRange);
 
         return SpanColorPalette.FromKnobs(knobs);
