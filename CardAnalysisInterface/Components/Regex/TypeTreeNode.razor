@@ -6,6 +6,7 @@
     var children = Node.Children.OfType<NamedGroupNode>().ToList();
 
     var boxClass = IsRoot ? "type-tree-box root" : "type-tree-box";
+    var labelClass = IsRoot ? "type-tree-label root" : "type-tree-label";
     var boxStyle = palette == null ? "" :
         $"--node-normal: {palette.Normal}; --node-light: {palette.Light}; --node-dark: {palette.Dark}; --node-sat: {palette.Sat}; border-style: {(isEnum ? "solid" : "dashed")};";
 }
@@ -17,7 +18,7 @@
             <span class="quantifier-watermark left" aria-hidden="true">@quantifierMark</span>
             <span class="quantifier-watermark right" aria-hidden="true">@quantifierMark</span>
         }
-        <span class="type-tree-label">@friendlyName</span>
+        <span class="@labelClass">@friendlyName</span>
     </div>
     @if (children.Count > 0)
     {
