@@ -38,8 +38,14 @@ public enum TokenRegexSpanKind
     /// <summary>The non-space text of a literal-match brick (a <see cref="RegexNode"/> produced by a <see cref="TextNode"/>).</summary>
     LiteralMatch,
 
+    /// <summary>The comment-column text ("literal match") of a literal-match brick, as opposed to its regex-column text (see <see cref="LiteralMatch"/>).</summary>
+    LiteralMatchComment,
+
     /// <summary>A structural joiner between sibling bricks in the regex body (e.g. "-", "_", "."), excluding the space joiner (see <see cref="ConnectiveSpace"/>) and enum-internal pipes (see <see cref="EnumMemberJoiner"/>).</summary>
     RegexJoiner,
+
+    /// <summary>The comment-column text (e.g. "joiner -") of a <see cref="RegexBrickJoiner"/>, as opposed to its regex-column text (see <see cref="RegexJoiner"/>).</summary>
+    RegexJoinerComment,
 
     /// <summary>The "Type" (or "Type: UnderlyingType" base) label on a group's opening border.</summary>
     GroupOpenHeaderText,

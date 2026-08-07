@@ -12,10 +12,10 @@ public class SmartRegex
     /// <summary>The rendered lines, in display order.</summary>
     public List<SmartLine> Lines { get; }
 
-    public SmartRegex(List<RegexBrick> bricks, TokenOccurrenceSummary summary, RegexGraph regexGraph)
+    public SmartRegex(List<RegexBrick> bricks, TokenOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true)
     {
         var pipeline = new RegexBrickFormattingPipeline(regexGraph, summary);
-        var formattedBricks = pipeline.Format(bricks);
+        var formattedBricks = pipeline.Format(bricks, includeSupplementalLines);
         Lines = SmartLineRenderer.Render(formattedBricks, regexGraph);
     }
 

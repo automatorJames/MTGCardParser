@@ -5,7 +5,8 @@
             foreach (var span in line.Spans)
             {
                 var style = $"{span.Palette.CssVariables()} color: {span.Palette.Default};";
-                <span style="@style" data-path="@span.FullyQualifiedName">@span.Content</span>
+                var isInteractive = span.Kind is not { } kind || !HoverTreatmentConfig.NonInteractiveSpanKinds.Contains(kind);
+                <span style="@style" data-path="@(isInteractive ? span.FullyQualifiedName : null)">@span.Content</span>
             }
             @("\n")
         }

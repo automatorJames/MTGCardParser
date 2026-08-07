@@ -23,8 +23,8 @@ public class BuiltRegex
     }
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
-    public SmartRegex ToSmartRegex(TokenOccurrenceSummary summary, RegexGraph regexGraph) =>
-        new(_regexBricks, summary, regexGraph);
+    public SmartRegex ToSmartRegex(TokenOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true) =>
+        new(_regexBricks, summary, regexGraph, includeSupplementalLines);
 
     public override string ToString() => MinifiedRegex;
 }

@@ -34,7 +34,7 @@ else
                     </span>
                 </div>
 
-                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph).ToString())>
+                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines).ToString())>
                     @if (RuntimeSettings.ShowMinified)
                     {
                         <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
@@ -43,7 +43,7 @@ else
                     }
                     else
                     {
-                        var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph);
+                        var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines);
                         <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle />
                     }
                 </CopyButtonOverlay>

@@ -129,7 +129,7 @@ public class SmartLineRenderer
     }
 
     SmartSpan BuildCommentSeparatorSpan(RegexBrick brick) =>
-        new(SmartRegexStaticRules.CommentBorderLineWithBuffer, "", ResolveRolePalette(brick, TokenRegexSpanKind.RegexCommentSeparator));
+        new(SmartRegexStaticRules.CommentBorderLineWithBuffer, "", ResolveRolePalette(brick, TokenRegexSpanKind.RegexCommentSeparator), TokenRegexSpanKind.RegexCommentSeparator);
 
     /// <summary>The comment-column spans for a brick: enclosing left walls, the comment content itself, then mirrored right walls.</summary>
     List<SmartSpan> BuildCommentSpans(RegexBrick brick)
@@ -172,6 +172,10 @@ public class SmartLineRenderer
                 (SmartRegexStaticRules.CenterPad(brick.CommentFormatted, availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.EnumMemberSynonymHeader),
             RegexBrickSynonymSectionFooter =>
                 (brick.CommentFormatted.PadRight(availableWidth, RegexBrickSynonymSectionFooter.DividerChar), (TokenRegexSpanKind?)TokenRegexSpanKind.EnumMemberSynonymFooter),
+            RegexBrickJoiner =>
+                (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.RegexJoinerComment),
+            _ when brick.Parent is TextNode =>
+                (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.LiteralMatchComment),
             _ =>
                 (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)null),
         };
@@ -188,7 +192,7 @@ public class SmartLineRenderer
 
     /// <summary>Builds one colored span for <paramref name="brick"/>. With no <paramref name="kind"/>, falls back to the brick's enclosing named group's rainbow color (the older, coarser-grained coloring); with a <paramref name="kind"/>, colors it via <see cref="SmartSpanColorPanel"/> instead.</summary>
     SmartSpan SpanFromBrick(RegexBrick brick, string content, TokenRegexSpanKind? kind = null) =>
-        new(content, brick.FullyQualifiedName, ResolvePalette(brick, kind));
+        new(content, brick.FullyQualifiedName, ResolvePalette(brick, kind), kind);
 
     /// <summary>
     /// Resolves the palette for a role-tagged span: the role's saturation/brightness knobs, applied to this

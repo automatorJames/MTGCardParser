@@ -24,8 +24,8 @@ public static class SmartSpanColorPanel
     static readonly Dictionary<TokenRegexSpanKind, ColorKnobs> _roleSpecs = new()
     {
         [TokenRegexSpanKind.EnumMemberRegex] = new(),
-        [TokenRegexSpanKind.EnumMemberSynonymRegex] = new(Brightness: 0.45, BrightnessRange: 0.3),
-        [TokenRegexSpanKind.EnumMemberJoiner] = new(Saturation: 0.12, Brightness: 0.5, SaturationRange: 0.2, BrightnessRange: 0.2),
+        [TokenRegexSpanKind.EnumMemberSynonymRegex] = new(),
+        [TokenRegexSpanKind.EnumMemberJoiner] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0, BrightnessRange: 0),
         [TokenRegexSpanKind.EnumMemberName] = new(),
         [TokenRegexSpanKind.EnumMemberOccurrenceCount] = new(),
         [TokenRegexSpanKind.EnumMemberSynonymHeader] = new(),
@@ -33,7 +33,9 @@ public static class SmartSpanColorPanel
         [TokenRegexSpanKind.OmittedCount] = new(Saturation: 0, Brightness: 0.4, SaturationRange: 0),
         [TokenRegexSpanKind.ConnectiveSpace] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0),
         [TokenRegexSpanKind.LiteralMatch] = new(),
+        [TokenRegexSpanKind.LiteralMatchComment] = new(),
         [TokenRegexSpanKind.RegexJoiner] = new(Saturation: 0.18, Brightness: 0.5, SaturationRange: 0.2, BrightnessRange: 0.2),
+        [TokenRegexSpanKind.RegexJoinerComment] = new(Saturation: 0.18, Brightness: 0.3, SaturationRange: 0.2, BrightnessRange: 0.2),
         [TokenRegexSpanKind.GroupOpenHeaderText] = new(),
         [TokenRegexSpanKind.GroupOpenHeaderDisambiguator] = new(Saturation: 0.35, Brightness: 0.4, SaturationRange: 0.3, BrightnessRange: 0.25),
         [TokenRegexSpanKind.GroupFooterText] = new(),

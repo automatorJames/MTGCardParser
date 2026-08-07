@@ -1,3 +1,5 @@
+using MTGPlexer.RegexGeneration.Presentation;
+
 namespace CardAnalysisInterface;
 
 /// <summary>
@@ -56,4 +58,22 @@ public static class HoverTreatmentConfig
 
     /// <summary>How long the pop takes to ease back down from its peak to resting highlighted brightness.</summary>
     public const int OvershootSettleDurationMs = 400;
+
+    /// <summary>
+    /// <see cref="TokenRegexSpanKind"/>s that never participate in the hover highlight system at
+    /// all — a span tagged with one of these gets no <c>data-path</c>, so hovering it does
+    /// nothing: no highlight, no lowlight of everything else, as if it weren't there. Currently
+    /// excludes the structural "glue" of a formatted regex (joiners and literal-match text, both
+    /// their regex-column and comment-column renderings, plus the connective spaces between
+    /// them) — these rarely carry meaning worth cross-referencing against the type tree, and
+    /// constantly triggering highlight state while passing over them would be noise.
+    /// </summary>
+    public static readonly IReadOnlySet<TokenRegexSpanKind> NonInteractiveSpanKinds = new HashSet<TokenRegexSpanKind>
+    {
+        TokenRegexSpanKind.RegexJoiner,
+        TokenRegexSpanKind.RegexJoinerComment,
+        TokenRegexSpanKind.LiteralMatch,
+        TokenRegexSpanKind.LiteralMatchComment,
+        TokenRegexSpanKind.ConnectiveSpace,
+    };
 }

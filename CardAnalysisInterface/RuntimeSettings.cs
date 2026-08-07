@@ -81,6 +81,21 @@ namespace CardAnalysisInterface
             }
         }
 
+        private bool _hideBlankLines;
+        public bool HideBlankLines
+        {
+            get => _hideBlankLines;
+            set
+            {
+                if (_hideBlankLines != value)
+                {
+                    _hideBlankLines = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private bool _hideRegexesWithZeroCaptures;
         public bool HideRegexesWithZeroCaptures
         {
@@ -158,6 +173,7 @@ namespace CardAnalysisInterface
                     _showOriginalText = dto.ShowOriginalText;
                     _showMinified = dto.ShowMinified;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
+                    _hideBlankLines = dto.HideBlankLines;
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
                 }
@@ -209,6 +225,7 @@ namespace CardAnalysisInterface
         public bool ShowOriginalText { get; init; }
         public bool ShowMinified { get; init; }
         public bool HideRegexesWithZeroCaptures { get; init; }
+        public bool HideBlankLines { get; init; }
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
 
@@ -222,6 +239,7 @@ namespace CardAnalysisInterface
             ShowOriginalText = runtimeSettings.ShowOriginalText;
             ShowMinified = runtimeSettings.ShowMinified;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
+            HideBlankLines = runtimeSettings.HideBlankLines;
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;
         }

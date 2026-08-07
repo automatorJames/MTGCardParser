@@ -10,10 +10,11 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 internal class EnumSectionBuilder
 {
     /// <summary>Builds the full ordered sequence of member/synonym/omitted-count bricks for <paramref name="enumNode"/>.</summary>
-    public List<RegexBrick> Build(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary)
+    /// <param name="includeOmittedCount">Whether to append the trailing "N omitted" summary row at all.</param>
+    public List<RegexBrick> Build(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, bool includeOmittedCount = true)
     {
         var members = GetOccurringMembersOrderedByFrequency(enumNode, allBricks, enumSummary);
-        var omittedCount = BuildOmittedCountBrick(enumNode, enumSummary);
+        var omittedCount = includeOmittedCount ? BuildOmittedCountBrick(enumNode, enumSummary) : null;
         var metrics = EnumColumnMetrics.Calculate(members, enumSummary, omittedCount);
 
         List<RegexBrick> bricks = [];

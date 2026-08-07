@@ -21,7 +21,11 @@ internal class RegexBrickFormattingPipeline
     }
 
     /// <summary>Runs the full formatting pass over <paramref name="bricks"/> and returns the final, render-ready brick sequence.</summary>
-    public List<RegexBrick> Format(List<RegexBrick> bricks)
+    /// <param name="includeSupplementalLines">
+    /// Whether to include the purely-decorative/summary lines: <see cref="RegexBrickBlank"/> separators
+    /// between logical sections, and each enum group's trailing <see cref="RegexBrickOmittedCount"/> row.
+    /// </param>
+    public List<RegexBrick> Format(List<RegexBrick> bricks, bool includeSupplementalLines = true)
     {
         var sequence = RemoveRawEnumMemberBricks(bricks);
         List<RegexBrick> result = [];
@@ -30,14 +34,14 @@ internal class RegexBrickFormattingPipeline
         {
             var brick = sequence[i];
 
-            if (ShouldInsertBlankLineBefore(sequence, i))
+            if (includeSupplementalLines && ShouldInsertBlankLineBefore(sequence, i))
                 result.Add(new RegexBrickBlank(_regexGraph.RootNode));
 
             BrickCommentResolver.Apply(brick);
             result.Add(brick);
 
             if (brick is RegexBrickGroupOpen groupOpen)
-                ExpandGroupOpen(groupOpen, bricks, result);
+                ExpandGroupOpen(groupOpen, bricks, result, includeSupplementalLines);
         }
 
         return result;
@@ -64,7 +68,7 @@ internal class RegexBrickFormattingPipeline
         && !(sequence[index] is RegexBrickGroupClose && sequence[index - 1] is RegexBrickGroupClose);
 
     /// <summary>Simplifies a group-open brick's displayed name and, for enum groups, appends its member section.</summary>
-    void ExpandGroupOpen(RegexBrickGroupOpen groupOpen, List<RegexBrick> allBricks, List<RegexBrick> result)
+    void ExpandGroupOpen(RegexBrickGroupOpen groupOpen, List<RegexBrick> allBricks, List<RegexBrick> result, bool includeSupplementalLines)
     {
         groupOpen.SetFormattedGroupName(_regexGraph.SimpleUniqueNames[groupOpen.FullyQualifiedName]);
 
@@ -72,6 +76,6 @@ internal class RegexBrickFormattingPipeline
             return;
 
         var enumSummary = _summary.EnumCaptureSummaries[enumNode.FullyQualifiedName];
-        result.AddRange(_enumSectionBuilder.Build(enumNode, allBricks, enumSummary));
+        result.AddRange(_enumSectionBuilder.Build(enumNode, allBricks, enumSummary, includeOmittedCount: includeSupplementalLines));
     }
 }
