@@ -78,6 +78,10 @@ public static class SmartRegexStaticRules
     {
         [CaptureNodeType.Enum] = Closed,
         [CaptureNodeType.TokenUnit] = Dashed,
+        [CaptureNodeType.OneOf] = Dashed,
+        [CaptureNodeType.DynamicOf] = Dashed,
+        [CaptureNodeType.Int] = Dashed,
+        [CaptureNodeType.Bool] = Dashed,
     };
 
     /// <summary>Looks up the box-drawing character set for the group a bookend brick opens or closes.</summary>

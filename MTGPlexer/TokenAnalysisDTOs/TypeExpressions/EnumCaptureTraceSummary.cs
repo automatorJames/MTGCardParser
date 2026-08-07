@@ -36,6 +36,22 @@ public class EnumCaptureTraceSummary
     /// </summary>
     public int EnumTotalMemberCount { get; }
 
+    /// <summary>
+    /// Constructs a summary for an enum group that never occurred at all (its owning TokenUnit type
+    /// had zero matches across the corpus), so every member is recorded with a zero count.
+    /// </summary>
+    EnumCaptureTraceSummary(string fullyQualifiedName, Type enumType)
+    {
+        FullyQualifiedName = fullyQualifiedName;
+        var orderedEnumMembers = Enum.GetValues(enumType).Cast<object>().OrderBy(x => x.ToString());
+        EnumTotalMemberCount = orderedEnumMembers.Count();
+        EnumMemberOccurenceCounts = orderedEnumMembers.ToDictionary(x => x, x => 0);
+        EnumMemberSynonymOccurenceCounts = orderedEnumMembers.ToDictionary(x => x, x => new Dictionary<string, int>());
+        EnumMembersWithZeroOcurrences = [.. orderedEnumMembers];
+    }
+
+    public static EnumCaptureTraceSummary CreateEmpty(string fullyQualifiedName, Type enumType) => new(fullyQualifiedName, enumType);
+
     public EnumCaptureTraceSummary(IEnumerable<CaptureTrace> enumCaptureTracesOfQualifiedName)
     {
         // Validity checks

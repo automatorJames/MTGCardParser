@@ -16,23 +16,9 @@
 
             @if (RuntimeSettings.IsLoaded)
             {
-                var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
-                if (relativePath == "" || relativePath == "card-lines")
-                {
-                    <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
-                }
-                else if (relativePath == "type-regex")
-                {
-                    <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Show Minified" />
-                    <Switch @bind-Value=@RuntimeSettings.HideRegexesWithZeroCaptures Label="Hide Zero-Capture" />
-                }
-                else if (relativePath == "word-trees")
-                {
-                    <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
-                    <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
-                    <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
-                    <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
-                }
+                <button class="settings-button" title="Settings" @onclick="OpenSettingsDialog">
+                    <span class="oi oi-cog" aria-hidden="true"></span>
+                </button>
             }
 
             <SearchBar />
@@ -47,7 +33,17 @@
     </main>
 </div>
 
+@if (_isSettingsDialogOpen)
+{
+    <SettingsDialog OnClose="CloseSettingsDialog" />
+}
+
 @code {
+    bool _isSettingsDialogOpen;
+
+    void OpenSettingsDialog() => _isSettingsDialogOpen = true;
+    void CloseSettingsDialog() => _isSettingsDialogOpen = false;
+
     // Define the ordered list of page routes
     private readonly List<string> _pageRoutes = new()
     {

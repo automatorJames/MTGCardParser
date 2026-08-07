@@ -1,0 +1,30 @@
+.settings-section {
+    margin-bottom: 1.75rem;
+}
+
+    .settings-section:last-child {
+        margin-bottom: 0;
+    }
+
+.settings-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--subtext-grey);
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--outline-grey);
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0;
+}
+
+    /* Switch.razor's label carries an inline negative margin tuned for the cramped top nav bar;
+       !important is required here since inline styles otherwise always win. */
+    .settings-row ::deep .switch-label {
+        margin-left: 8px !important;
+    }

@@ -146,7 +146,10 @@ public class SmartLineRenderer
     /// <summary>Center- or right-padded comment span(s) for a non-bookend brick, sized to the shared comment box width. An enum member row splits into its name and occurrence-count fields; the other synthesized Presentation brick kinds get their own dedicated role.</summary>
     List<SmartSpan> BuildRegularCommentSpans(RegexBrick brick)
     {
-        var availableWidth = _metrics.MaxCommentLength - CommentBoxMetrics.GetGroupBoxPaddingCount(brick);
+        // Use the wall tracker's live depth rather than brick.NestedDepth: synthetic bricks (e.g. blank
+        // separator lines) don't carry an accurate NestedDepth of their own, but the tracker always
+        // reflects exactly how many group-box walls are actually open at this point in rendering.
+        var availableWidth = _metrics.MaxCommentLength - CommentBoxMetrics.GetGroupBoxPaddingCount(_wallTracker.Depth, isBookend: false);
 
         if (brick is RegexBrickValue member)
         {

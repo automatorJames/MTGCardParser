@@ -1,0 +1,49 @@
+@inject RuntimeSettings RuntimeSettings
+
+<CustomDialog OnBackdropClick="Close">
+    <TitleContent>Settings</TitleContent>
+    <DialogContent>
+        <div class="settings-section">
+            <h3 class="settings-section-title">Card Lines</h3>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedCards Label="Hide fully matched" />
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="settings-section-title">Type Regex</h3>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Show minified" />
+            </div>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.HideRegexesWithZeroCaptures Label="Hide zero-capture types" />
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="settings-section-title">Word Trees</h3>
+            <div class="settings-row">
+                <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
+            </div>
+            <div class="settings-row">
+                <IntInput @bind-Value=RuntimeSettings.MinSpanWords Color=@ThemeColor.DarkGrey Label="Min words" />
+            </div>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.OrderByWordCount Label="Order by word count" />
+            </div>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.ShowOriginalText Label="Show original text" />
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-primary" @onclick="Close">Done</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    Task Close() => OnClose.InvokeAsync();
+}

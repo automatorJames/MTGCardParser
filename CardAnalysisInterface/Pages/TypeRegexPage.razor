@@ -18,7 +18,7 @@ else
         @foreach (var summary in GetFilteredSummaries())
         {
             var borderColorStyle = "color: var(--grey);";
-            var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph);
+
             <div class="type-card" style=@borderColorStyle @key=summary.Type.Name>
                 <div class="card-header">
                     <TokenTypeName TokenType=@summary.Type />
@@ -27,7 +27,7 @@ else
                     </span>
                 </div>
 
-                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : smartRegex.ToString())>
+                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph).ToString())>
                     @if (RuntimeSettings.ShowMinified)
                     {
                         <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
@@ -36,6 +36,7 @@ else
                     }
                     else
                     {
+                        var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph);
                         <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle />
                     }
                 </CopyButtonOverlay>
@@ -82,6 +83,9 @@ else
     List<TokenOccurrenceSummary> GetFilteredSummaries()
     {
         List<TokenOccurrenceSummary> filteredSummaries = DocumentAnalyzer.TokenOccurrenceSummaries.Values.ToList();
+
+        if (RuntimeSettings.HideRegexesWithZeroCaptures)
+            filteredSummaries = filteredSummaries.Where(x => x.OccurrenceCount > 0).ToList();
 
         var searchTerm = RuntimeSettings.SearchTerm;
 

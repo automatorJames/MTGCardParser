@@ -74,6 +74,7 @@
 
 .type-tree-box {
     position: relative;
+    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -147,6 +148,7 @@
     border-color: var(--node-light, #fff) !important;
     color: var(--node-light, #fff) !important;
     box-shadow: 0 0 0 2px var(--node-light, #fff);
+    background-color: var(--near-black);
 }
 
 .type-tree-box[lowlight-active] {

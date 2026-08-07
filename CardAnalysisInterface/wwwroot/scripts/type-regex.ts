@@ -46,7 +46,7 @@ function handleMouseOver(event: MouseEvent): void {
         delete card.dataset.activePath;
     }
 
-    const activePaths = getAllActivePaths(hoveredPathsString);
+    const activePaths = splitPaths(hoveredPathsString);
     applyTreatments(card, activePaths);
 }
 
@@ -76,37 +76,35 @@ function clearAllTreatments(card: HTMLElement): void {
 }
 
 /**
- * Generates a Set of all relevant paths from a given string.
- * This includes the paths themselves and all their parent segments.
- * e.g., "a.b.c a.d" -> new Set("a.b.c", "a.b", "a", "a.d")
+ * Splits a space-separated data-path/data-paths value into its individual paths.
  * @param pathsString A single path or multiple paths separated by spaces.
- * @returns A Set containing all active paths.
+ * @returns The individual paths, with empty entries filtered out.
  */
-function getAllActivePaths(pathsString: string | null): Set<string> {
-    const paths = new Set<string>();
+function splitPaths(pathsString: string | null): string[] {
     if (!pathsString) {
-        return paths;
+        return [];
     }
+    return pathsString.split(' ').filter(p => p);
+}
 
-    const individualPaths = pathsString.split(' ').filter(p => p); // Filter out empty strings
-    for (const path of individualPaths) {
-        paths.add(path);
-        const parts = path.split('.');
-        for (let i = parts.length - 1; i > 0; i--) {
-            paths.add(parts.slice(0, i).join('.'));
-        }
-    }
-    return paths;
+/**
+ * Determines whether two data-path values should be treated as related for highlighting
+ * purposes: paths are segment-delimited by '_', and one is related to the other if they're
+ * equal, or one is an ancestor (or descendant) of the other along that segment chain.
+ * e.g. "A_B_C" is related to "A_B_C", "A_B", and "A_B_C_Draw-draws".
+ */
+function arePathsRelated(a: string, b: string): boolean {
+    return a === b || a.startsWith(b + '_') || b.startsWith(a + '_');
 }
 
 /**
  * Applies or removes 'highlight-active' and 'lowlight-active' attributes
  * to all relevant elements within a card based on the set of active paths.
  * @param card The parent .type-card element.
- * @param activePaths A Set of paths that should be highlighted.
+ * @param activePaths The paths (of the hovered element) that should be highlighted.
  */
-function applyTreatments(card: HTMLElement, activePaths: Set<string>): void {
-    const isAnyHighlighted = activePaths.size > 0;
+function applyTreatments(card: HTMLElement, activePaths: string[]): void {
+    const isAnyHighlighted = activePaths.length > 0;
 
     // --- Regex Container Section ---
     // Toggle the "highlight-active" CLASS on the pre element
@@ -123,7 +121,7 @@ function applyTreatments(card: HTMLElement, activePaths: Set<string>): void {
     const regexSpans = card.querySelectorAll<HTMLElement>('pre.formatted-regex-fira code span');
     regexSpans.forEach(span => {
         const spanPaths = (span.dataset.paths ?? span.dataset.path ?? '').split(' ');
-        const isMatch = spanPaths.some(p => p && activePaths.has(p));
+        const isMatch = spanPaths.some(p => p && activePaths.some(ap => arePathsRelated(p, ap)));
 
         if (isMatch) {
             span.setAttribute('highlight-active', '');
@@ -151,7 +149,7 @@ function applyTreatments(card: HTMLElement, activePaths: Set<string>): void {
     const treeBoxes = card.querySelectorAll<HTMLElement>('.type-tree-container [data-path], .type-tree-container [data-paths]');
     treeBoxes.forEach(box => {
         const boxPaths = (box.dataset.paths ?? box.dataset.path ?? '').split(' ');
-        const isMatch = boxPaths.some(p => p && activePaths.has(p));
+        const isMatch = boxPaths.some(p => p && activePaths.some(ap => arePathsRelated(p, ap)));
 
         if (isMatch) {
             box.setAttribute('highlight-active', '');

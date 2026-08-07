@@ -13,6 +13,9 @@ internal class GroupWallSpanTracker
     /// <summary>Left-hand wall spans, outermost first, for every group box currently open.</summary>
     public IEnumerable<SmartSpan> LeftWalls => _leftWalls.Reverse();
 
+    /// <summary>How many group boxes are currently open — the live nesting depth at this point in rendering.</summary>
+    public int Depth => _leftWalls.Count;
+
     /// <summary>Right-hand wall spans (mirrored copies of the left walls), innermost first, for every group box currently open.</summary>
     public IEnumerable<SmartSpan> RightWalls => _mirroredRightWalls;
 

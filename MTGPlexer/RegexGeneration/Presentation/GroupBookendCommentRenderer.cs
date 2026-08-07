@@ -30,7 +30,7 @@ internal class GroupBookendCommentRenderer
         var commentBuffer = string.Empty.PadLeft(SmartRegexStaticRules.GroupBookendCommentBuffer);
         var commentCoreLength = segments.Sum(x => x.Text.Length);
         var commentWithBufferLength = (commentBuffer.Length * 2) + commentCoreLength;
-        var paddingLineLength = _maxCommentLength - CommentBoxMetrics.GetGroupBoxPaddingCount(brick) - commentWithBufferLength;
+        var paddingLineLength = _maxCommentLength - CommentBoxMetrics.GetGroupBoxPaddingCount(brick.NestedDepth, isBookend: true) - commentWithBufferLength;
         var paddingLine = string.Empty.PadLeft(paddingLineLength, boxChars.Horizontal);
 
         var commentSpans = segments

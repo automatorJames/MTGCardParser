@@ -24,7 +24,7 @@ internal class CommentBoxMetrics
 
     static int GetCommentLengthIncludingGroupBoxPadding(RegexBrick brick)
     {
-        int length = brick.CommentFormatted.Length + GetGroupBoxPaddingCount(brick);
+        int length = brick.CommentFormatted.Length + GetGroupBoxPaddingCount(brick.NestedDepth, brick is RegexBrickGroupBookend);
 
         if (brick is RegexBrickGroupBookend)
             length += SmartRegexStaticRules.GroupBookendCommentBuffer * 2;
@@ -34,10 +34,13 @@ internal class CommentBoxMetrics
 
     /// <summary>
     /// Chars consumed by group-box wall structure around a brick's comment: one wall (plus inner buffer)
-    /// per level of nesting on each side, plus room for a bookend's corner glyph.
+    /// per level of nesting on each side, plus room for a bookend's corner glyph. <paramref name="nestedDepth"/>
+    /// should be the actual live nesting depth at the brick's rendered position — not necessarily the
+    /// brick's own <see cref="RegexBrick.NestedDepth"/>, which synthetic bricks (e.g. blank separator lines)
+    /// don't always track accurately.
     /// </summary>
-    public static int GetGroupBoxPaddingCount(RegexBrick brick) =>
-        (brick.NestedDepth * 2)
-        + (brick.NestedDepth * SmartRegexStaticRules.GroupWallInnerBuffer * 2)
-        + (brick is RegexBrickGroupBookend ? 2 : 0);
+    public static int GetGroupBoxPaddingCount(int nestedDepth, bool isBookend) =>
+        (nestedDepth * 2)
+        + (nestedDepth * SmartRegexStaticRules.GroupWallInnerBuffer * 2)
+        + (isBookend ? 2 : 0);
 }

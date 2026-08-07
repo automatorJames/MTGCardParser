@@ -26,8 +26,8 @@ public class DocumentCorpusAnalyzer
     public DigestedText DigestedTextWithCaptureTokens { get; private set; }
 
     /// <summary>
-    /// Per-type occurrence summaries built from every root TokenUnit matched across the corpus,
-    /// keyed by the TokenUnit type. Only types with at least one occurrence are represented.
+    /// Per-type occurrence summaries for every registered top-level TokenUnit type, keyed by type.
+    /// Types with no matches across the corpus are still represented, with OccurrenceCount == 0.
     /// </summary>
     public Dictionary<Type, TokenOccurrenceSummary> TokenOccurrenceSummaries { get; private set; } = [];
 
@@ -52,6 +52,14 @@ public class DocumentCorpusAnalyzer
             .GroupBy(x => x.Type);
 
         TokenOccurrenceSummaries = rootTokenUnitsByType.ToDictionary(x => x.Key, x => new TokenOccurrenceSummary(x));
+
+        // Registered types with zero matches are still represented, so "hide zero-capture" filtering
+        // has actual zero-occurrence entries to hide rather than the type disappearing outright.
+        var unmatchedTypes = TokenTypeRegistry.GetAllTopLevelTokenTypes()
+            .Where(x => x != typeof(DefaultUnmatchedString) && !TokenOccurrenceSummaries.ContainsKey(x));
+
+        foreach (var type in unmatchedTypes)
+            TokenOccurrenceSummaries[type] = new TokenOccurrenceSummary(type);
 
         _isInitialized = true;
     }

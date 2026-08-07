@@ -156,6 +156,8 @@ namespace CardAnalysisInterface
                     _hideFullyMatchedCards = dto.HideFullyMatchedCards;
                     _orderByWordCount = dto.OrderByWordCount;
                     _showOriginalText = dto.ShowOriginalText;
+                    _showMinified = dto.ShowMinified;
+                    _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
                 }
@@ -205,6 +207,8 @@ namespace CardAnalysisInterface
         public bool HideFullyMatchedCards { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool ShowOriginalText { get; init; }
+        public bool ShowMinified { get; init; }
+        public bool HideRegexesWithZeroCaptures { get; init; }
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
 
@@ -216,6 +220,8 @@ namespace CardAnalysisInterface
             HideFullyMatchedCards = runtimeSettings.HideFullyMatchedCards;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             ShowOriginalText = runtimeSettings.ShowOriginalText;
+            ShowMinified = runtimeSettings.ShowMinified;
+            HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;
         }

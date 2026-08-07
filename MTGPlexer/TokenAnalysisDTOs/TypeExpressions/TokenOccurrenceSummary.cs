@@ -8,6 +8,27 @@ public class TokenOccurrenceSummary
     public Dictionary<string, EnumCaptureTraceSummary> EnumCaptureSummaries { get; } = [];
     public RegexGraph RegexGraph { get; }
 
+    /// <summary>
+    /// Constructs a summary for a registered token type that had zero matches across the corpus,
+    /// so it can still be listed (e.g. on TypeRegexPage) rather than silently disappearing.
+    /// </summary>
+    public TokenOccurrenceSummary(Type zeroOccurrenceType)
+    {
+        Type = zeroOccurrenceType;
+
+        if (!TokenTypeRegistry.RegexGraphs.TryGetValue(Type, out var graph))
+            throw new Exception($"No {nameof(RegexGraph)} registered for {nameof(TokenUnit)} type {Type.Name}");
+
+        RegexGraph = graph;
+        TypeNameFriendly = Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
+        OccurrenceCount = 0;
+
+        var enumNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<EnumNode>();
+
+        foreach (var enumNode in enumNodes)
+            EnumCaptureSummaries[enumNode.FullyQualifiedName] = EnumCaptureTraceSummary.CreateEmpty(enumNode.FullyQualifiedName, enumNode.Navigation.UnderlyingType);
+    }
+
     public TokenOccurrenceSummary(IEnumerable<TokenUnit> rootTokenUnitsOfType)
     {
         if (rootTokenUnitsOfType == null || !rootTokenUnitsOfType.Any())
