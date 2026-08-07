@@ -285,7 +285,7 @@ public class EditorTokenUnit
         //    else
         //    {
         //        var span = LineMetadata.SpanRoots.FirstOrDefault(sr => i >= sr.RootToken.Match.RootMatch.Index && i < sr.RootToken.Match.RootMatch.Index + //sr.RootToken.Match.RootMatch.Length);
-        //        color = (span?.RootToken.Type == typeof(DefaultUnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
+        //        color = (span?.RootToken.Type == typeof(UnmatchedString)) ? "var(--unmatched-default)" : (span?.Palette.Normal ?? "var(--unmatched-default)");
         //    }
         //
         //    rawSegments.Add(new TextStyledRun(text[i].ToString(), color, underlineClass));

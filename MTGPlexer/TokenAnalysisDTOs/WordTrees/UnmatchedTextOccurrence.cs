@@ -12,7 +12,7 @@ public record UnmatchedTextOccurrence
     /// <summary>
     /// The complete array of tokens from the line where this unmatched span occurred.
     /// </summary>
-    public TokenUnit[] LineTokenUnits { get; }
+    public CaptureUnit[] LineTokenUnits { get; }
 
     /// <summary>
     /// The index of the specific token of interest within the LineTokens list.
@@ -22,17 +22,17 @@ public record UnmatchedTextOccurrence
     /// <summary>
     /// The full, original unmatched span token.
     /// </summary>
-    public DefaultUnmatchedString Anchor { get; }
+    public UnmatchedString Anchor { get; }
 
     public string Text { get; }
     public string[] Words { get; }
 
-    public UnmatchedTextOccurrence(string cardName, int lineIndex, IEnumerable<TokenUnit> lineTokenUnits, int unmatchedTokenIndex)
+    public UnmatchedTextOccurrence(string cardName, int lineIndex, IEnumerable<CaptureUnit> lineTokenUnits, int unmatchedTokenIndex)
     {
         LineIndex = lineIndex;
         LineTokenUnits = lineTokenUnits.ToArray();
         UnmatchedTokenIndex = unmatchedTokenIndex;
-        Anchor = (DefaultUnmatchedString)LineTokenUnits[UnmatchedTokenIndex];
+        Anchor = (UnmatchedString)LineTokenUnits[UnmatchedTokenIndex];
         Text = Anchor.CaptureValue;
         Words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         CardName = cardName;

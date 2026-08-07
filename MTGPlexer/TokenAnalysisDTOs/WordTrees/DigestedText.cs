@@ -192,7 +192,7 @@ public class DigestedText
                 for (int i = originalSpanOccurrence.UnmatchedTokenIndex - 1; i >= 0; i--)
                 {
                     var token = originalSpanOccurrence.LineTokenUnits[i];
-                    Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
+                    Type type = token is TokenUnit ? token.Type : null;
                     precedingSequence.Add(new(token.CaptureValue, type));
                 }
         
@@ -208,7 +208,7 @@ public class DigestedText
                 for (int i = originalSpanOccurrence.UnmatchedTokenIndex + 1; i < originalSpanOccurrence.LineTokenUnits.Length; i++)
                 {
                     var token = originalSpanOccurrence.LineTokenUnits[i];
-                    Type type = token.Type == typeof(DefaultUnmatchedString) ? null : token.Type;
+                    Type type = token is TokenUnit ? token.Type : null;
                     followingSequence.Add(new(token.CaptureValue, type));
                 }
         

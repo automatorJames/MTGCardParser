@@ -49,7 +49,7 @@ public class RegexGraph
 
         TokenUnitNode root = rootTokenUnitType switch
         {
-            { } t when t.IsAssignableTo(typeof(DefaultUnmatchedString)) => new UnmatchedTokenUnitNode(null, navigation),
+            { } t when t.IsAssignableTo(typeof(UnmatchedString)) => new UnmatchedTokenUnitNode(null, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(null, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(null, navigation),
             _ => throw new Exception($"'{rootTokenUnitType}' is not an enum or a {nameof(TokenUnit)} type, which are the only types that are valid named groups")
@@ -84,13 +84,13 @@ public class RegexGraph
     }
 
     /// <summary>Attempts to match and hydrate <paramref name="sourceText"/> in full, from its start to its end.</summary>
-    public bool TryMatch(string sourceText, out TokenUnit tokenUnit) =>
+    public bool TryMatch(string sourceText, out CaptureUnit tokenUnit) =>
         TryMatch(sourceText, 0, sourceText.Length, out tokenUnit);
 
     /// <summary>
     /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.
     /// </summary>
-    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out TokenUnit tokenUnit)
+    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out CaptureUnit tokenUnit)
     {
         tokenUnit = null;
         var match = BuiltRegex.Regex.Match(sourceText, currentIndex);

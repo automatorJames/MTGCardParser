@@ -32,7 +32,7 @@ public class TokenUnitNode : NamedGroupNode
         return navigation.NodeType switch
         {
             { IsEnum: true } => new EnumNode(parentNode, navigation),
-            { } t when t == typeof(DefaultUnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
+            { } t when t == typeof(UnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
             { } t when typeof(DynamicToken).IsAssignableFrom(t) => new DynamicTokenNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
@@ -43,10 +43,10 @@ public class TokenUnitNode : NamedGroupNode
     }
 
     /// <summary>Instantiates this node's <see cref="TokenUnit"/> type and hydrates every child named-group property from <paramref name="captureContext"/>. Returns false if any required child fails to hydrate.</summary>
-    public virtual bool TryHydrate(CaptureContext captureContext, out TokenUnit tokenUnit)
+    public virtual bool TryHydrate(CaptureContext captureContext, out CaptureUnit tokenUnit)
     {
         tokenUnit = null;
-        var instance = (TokenUnit)Activator.CreateInstance(Navigation.NodeType);
+        var instance = (CaptureUnit)Activator.CreateInstance(Navigation.NodeType);
         var namedGroupNodeChildren = Children.OfType<NamedGroupNode>().ToList();
 
         foreach (var child in namedGroupNodeChildren)

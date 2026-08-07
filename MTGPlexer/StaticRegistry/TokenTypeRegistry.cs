@@ -32,7 +32,7 @@ public static partial class TokenTypeRegistry
             SetRootNode(type);
 
         InitializeClassTokenizer();
-        OriginalTextTokenizer = new([typeof(DefaultUnmatchedString)]);
+        OriginalTextTokenizer = new([typeof(UnmatchedString)]);
     }
 
     public static RegexGraph GetRegexGraph(Type type) =>
@@ -60,7 +60,7 @@ public static partial class TokenTypeRegistry
         if (tokenUnitType.IsAssignableTo(typeof(DynamicToken)))
             return new(tokenUnitType, [], Joiner.None)    ;
 
-        var instance = (TokenUnit)Activator.CreateInstance(tokenUnitType);
+        var instance = (CaptureUnit)Activator.CreateInstance(tokenUnitType);
 
         var snippets = instance.Snippets.ToArray();
 
@@ -82,7 +82,7 @@ public static partial class TokenTypeRegistry
         return configuration;
     }
 
-    public static List<TokenUnit> Tokenize(string sourceText, bool originalTextOnly = false)
+    public static List<CaptureUnit> Tokenize(string sourceText, bool originalTextOnly = false)
     {
         var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(sourceText) : ClassTokenizer.Tokenize(sourceText);
         return tokens;
@@ -93,13 +93,13 @@ public static partial class TokenTypeRegistry
         var allTypes = _staticAssemblyTypes
             .Where(x =>
                 x.IsClass && !x.IsAbstract
-                && typeof(TokenUnit).IsAssignableFrom(x)
+                && typeof(CaptureUnit).IsAssignableFrom(x)
                 && !x.ContainsGenericParameters
                 && !x.IsDefined(typeof(DependentAttribute)))
             .Concat(_dynamicAssemblyTypes);
 
         if (allTypes.Any(x => x.IsDefined(typeof(IsolateForTestingAttribute))))
-            allTypes = allTypes.Where(x => x.IsDefined(typeof(IsolateForTestingAttribute)) || x == typeof(DefaultUnmatchedString));
+            allTypes = allTypes.Where(x => x.IsDefined(typeof(IsolateForTestingAttribute)) || x == typeof(UnmatchedString));
 
         return allTypes.ToList();
     }
@@ -110,7 +110,7 @@ public static partial class TokenTypeRegistry
             .Where(x =>
                 x.IsClass
                 && !x.IsAbstract
-                && typeof(TokenUnit).IsAssignableFrom(x))
+                && typeof(CaptureUnit).IsAssignableFrom(x))
             .Concat(_dynamicAssemblyTypes)
             .Concat(ReferencedEnumTypes)
             .Distinct()
@@ -123,8 +123,8 @@ public static partial class TokenTypeRegistry
         // Reset applied orders, since the order may change during runtime
         AppliedOrderTypes = [];
 
-        // Get all tokens except default unmatched string, which will be added last
-        var allTokenTypes = GetAllTopLevelTokenTypes().Where(x => x != typeof(DefaultUnmatchedString));
+        // Get all real TokenUnit types; UnmatchedString is not one, and is added last
+        var allTokenTypes = GetAllTopLevelTokenTypes().Where(x => typeof(TokenUnit).IsAssignableFrom(x));
 
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
         // each dictionary entry is a List, though each List should ideally only have one item.
@@ -165,7 +165,7 @@ public static partial class TokenTypeRegistry
             .ToList()
             .ForEach(AddClassTokenType);
 
-        TypeRegexes = RegexGraphs.Where(x => x.Key != typeof(DefaultUnmatchedString)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
+        TypeRegexes = RegexGraphs.Where(x => typeof(TokenUnit).IsAssignableFrom(x.Key)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
         ClassTokenizer = new(AppliedOrderTypes);
     }
 

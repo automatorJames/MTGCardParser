@@ -69,7 +69,7 @@ internal class Program
         var lines = GetLines();
 
         foreach (var line in lines)
-            tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line));
+            tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line).OfType<TokenUnit>());
 
         return tokens;
     }
@@ -80,7 +80,7 @@ internal class Program
         var lines = GetLines();
 
         foreach (var line in lines)
-            tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line));
+            tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line).OfType<TokenUnit>());
 
         return tokens.GroupBy(x => x.Type).ToDictionary(x => x.Key, x => x.ToList());
     }

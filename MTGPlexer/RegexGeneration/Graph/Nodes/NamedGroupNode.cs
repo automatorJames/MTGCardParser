@@ -126,7 +126,7 @@ public abstract class NamedGroupNode : GroupNode
     }
 
     /// <summary>Hydrates this node's captured value(s) from <paramref name="context"/> and assigns them to <paramref name="instance"/>'s corresponding property. Returns false if the capture was unsuccessful or hydrated to null.</summary>
-    public virtual bool SetPropertyValue(TokenUnit instance, CaptureContext context)
+    public virtual bool SetPropertyValue(CaptureUnit instance, CaptureContext context)
     {
         object value;
         var captureInfo = context[this];

@@ -12,7 +12,7 @@ public class ProcessedLine
     /// <summary>
     /// The hierarchical representation of matched tokens on this line. Each contains a root CaptureTrace.
     /// </summary>
-    public List<TokenUnit> TokenUnits { get; init; } = [];
+    public List<CaptureUnit> TokenUnits { get; init; } = [];
 
     /// <summary>
     /// A list of all full spans found on this specific line.
@@ -27,7 +27,7 @@ public class ProcessedLine
     public List<RootCaptureTrace> CaptureTraceRoots => TokenUnits.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
     public List<RootCaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
 
-    public ProcessedLine(SourceTextDTO sourceText, List<TokenUnit> tokenUnits, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
+    public ProcessedLine(SourceTextDTO sourceText, List<CaptureUnit> tokenUnits, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
         SourceText = sourceText;
         TokenUnits = tokenUnits;
@@ -77,7 +77,7 @@ public class ProcessedLine
             RegisterPaletteAndDepthRecursive(childTrace, depth + 1);
     }
 
-    static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(IDocument document, List<TokenUnit> lineTokenUnits, int lineIndex)
+    static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(IDocument document, List<CaptureUnit> lineTokenUnits, int lineIndex)
     {
         var occurrences = new List<UnmatchedTextOccurrence>();
 
@@ -87,7 +87,7 @@ public class ProcessedLine
 
             // Check for and record unmatched tokens
             // Create a new occurrence, giving it the context of the entire line's tokens.
-            if (tokenUnit.Type == typeof(DefaultUnmatchedString))
+            if (tokenUnit is UnmatchedString)
                 occurrences.Add(new UnmatchedTextOccurrence(document.Name, lineIndex, lineTokenUnits, i));
         }
 

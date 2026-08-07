@@ -49,6 +49,7 @@ public class DocumentCorpusAnalyzer
         var rootTokenUnitsByType = ProcessedDocuments
             .SelectMany(x => x.Lines)
             .SelectMany(x => x.TokenUnits)
+            .OfType<TokenUnit>()
             .GroupBy(x => x.Type);
 
         TokenOccurrenceSummaries = rootTokenUnitsByType.ToDictionary(x => x.Key, x => new TokenOccurrenceSummary(x));
@@ -56,7 +57,7 @@ public class DocumentCorpusAnalyzer
         // Registered types with zero matches are still represented, so "hide zero-capture" filtering
         // has actual zero-occurrence entries to hide rather than the type disappearing outright.
         var unmatchedTypes = TokenTypeRegistry.GetAllTopLevelTokenTypes()
-            .Where(x => x != typeof(DefaultUnmatchedString) && !TokenOccurrenceSummaries.ContainsKey(x));
+            .Where(x => typeof(TokenUnit).IsAssignableFrom(x) && !TokenOccurrenceSummaries.ContainsKey(x));
 
         foreach (var type in unmatchedTypes)
             TokenOccurrenceSummaries[type] = new TokenOccurrenceSummary(type);

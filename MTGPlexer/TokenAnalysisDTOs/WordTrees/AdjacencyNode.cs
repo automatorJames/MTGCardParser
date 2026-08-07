@@ -7,8 +7,8 @@
 public record AdjacencyNode
 {
     /// <summary>
-    /// The segment of text this node represents. For collapsed "DefaultUnmatchedString" nodes,
-    /// this contains the combined text, and its Palettes dictionary will be null.
+    /// The segment of text this node represents. For collapsed unmatched-text nodes (i.e. not backed
+    /// by a <see cref="TokenUnit"/>), this contains the combined text, and its Palettes dictionary will be null.
     /// </summary>
     public NodeSegment Segment { get; init; }
 

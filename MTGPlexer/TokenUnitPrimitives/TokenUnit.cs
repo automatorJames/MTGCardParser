@@ -3,11 +3,8 @@ using System.Runtime.CompilerServices;
 
 namespace MTGPlexer.TokenUnitPrimitives;
 
-public abstract class TokenUnit
+public abstract class TokenUnit : CaptureUnit
 {
-    public virtual Snippet[] Snippets { get; } = [];
-    public virtual Joiner Joiner => Joiner.Space;
-
     PropertyInfo MemberExpressionToProp (string memberExpression)
     {
         var lastDot = memberExpression.LastIndexOf('.');
@@ -43,26 +40,6 @@ public abstract class TokenUnit
 
     public SnippetOptionalPlural Plural() =>
         new SnippetOptionalPlural();
-
-    public CaptureContext CaptureContext { get; set; }
-
-    public string CaptureValue => 
-        CaptureContext.FullMatch;
-
-    public string JsonDebug =>
-        CaptureContext.RootCaptureTrace.JsonDebug ?? "";
-
-    Type _type;
-    public Type Type
-    {
-        get
-        {
-            if (_type is null)
-                _type = GetType();
-
-            return _type;
-        }
-    }
 
     /// <summary>
     /// Only intended to be called by TokenTypeRegistry once upon startup. May be overridden by
@@ -135,6 +112,4 @@ public abstract class TokenUnit
             }
         }
     }
-
-    public override string ToString() => $"{Type.Name}: \"{CaptureContext.ToString()}\"";
 }

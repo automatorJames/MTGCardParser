@@ -18,7 +18,7 @@ public class Navigation
     public TokenTypeConfiguration TokenTypeConfiguration { get; private set; }
 
     // Convenience bools to simplify logic in Node constructors
-    public bool IsTokenUnitType { get; private set; }
+    public bool IsCaptureUnitType { get; private set; }
     public bool IsRoot { get; private set; }
     public bool IsList { get; private set; }
     public bool IsOptional { get; private set; }
@@ -27,8 +27,8 @@ public class Navigation
     {
         SetTypeInfo(type);
 
-        if (!IsTokenUnitType)
-            throw new Exception($"This constructor may only be used for {nameof(TokenUnit)} types");
+        if (!IsCaptureUnitType)
+            throw new Exception($"This constructor may only be used for {nameof(CaptureUnit)} types");
 
         IsRoot = true;
         Name = UnderlyingType.Name;
@@ -52,9 +52,9 @@ public class Navigation
         GenericTypes = UnderlyingType.GenericTypeArguments;
         IsList = UnderlyingType.IsGenericType && UnderlyingType.GetGenericTypeDefinition() == typeof(List<>);
         NodeType = IsList ? GenericTypes[0] : UnderlyingType;
-        IsTokenUnitType = NodeType.IsAssignableTo(typeof(TokenUnit));
+        IsCaptureUnitType = NodeType.IsAssignableTo(typeof(CaptureUnit));
 
-        if (NodeType.IsAssignableTo(typeof(TokenUnit)))
+        if (IsCaptureUnitType)
             TokenTypeConfiguration = TokenTypeRegistry.GetTokenUnitTypeConfiguration(NodeType);
     }
 

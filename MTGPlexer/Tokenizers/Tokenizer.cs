@@ -10,12 +10,12 @@ public class Tokenizer
         _orderedTypes = orderedTypes;
     }
 
-    public List<TokenUnit> Tokenize(string sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
+    public List<CaptureUnit> Tokenize(string sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
     {
         if (string.IsNullOrEmpty(sourceText))
             throw new Exception("Source text may not be null or empty");
 
-        var tokens = new List<TokenUnit>();
+        var tokens = new List<CaptureUnit>();
         int currentIndex = scopeStart ?? 0;
         int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
@@ -70,7 +70,7 @@ public class Tokenizer
         return tokens;
     }
 
-    private void FlushUnmatched(string sourceText, List<TokenUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)
+    private void FlushUnmatched(string sourceText, List<CaptureUnit> tokens, ref int unmatchedStartIndex, int flushUntilIndex)
     {
         if (unmatchedStartIndex == -1 || unmatchedStartIndex >= flushUntilIndex)
         {
@@ -86,7 +86,7 @@ public class Tokenizer
             return;
         }
 
-        DefaultUnmatchedString defualtUnmatchedString = new(sourceText, unmatchedStartIndex, length);
+        UnmatchedString defualtUnmatchedString = new(sourceText, unmatchedStartIndex, length);
         tokens.Add(defualtUnmatchedString);
 
         unmatchedStartIndex = -1;
