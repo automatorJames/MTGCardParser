@@ -72,7 +72,7 @@ public static class SmartSpanControlPanel
 
         // Token Unit: Card Keyword
         // ^^^^^^^^^^
-        [TokenRegexSpanKind.CommentGroupOpenHeaderText] = new(),
+        [TokenRegexSpanKind.CommentGroupOpenHeaderText] = new(Brightness: .4, Saturation: .4),
 
         // Token Unit: Card Keyword
         //            ^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ public static class SmartSpanControlPanel
 
         // Card Keyword (any number)
         // ^^^^^^^^^^^^
-        [TokenRegexSpanKind.CommentGroupFooterText] = new(),
+        [TokenRegexSpanKind.CommentGroupFooterText] = new(IsItalic: true, Brightness: .4, Saturation: .4),
 
         // Card Keyword (any number)
         //              ^^^^^^^^^^^^
@@ -88,7 +88,7 @@ public static class SmartSpanControlPanel
 
         // ┌── Card Keyword ──┐
         // ^                  ^
-        [TokenRegexSpanKind.CommentGroupBorderWall] = new(Brightness: .33, Saturation: .33),
+        [TokenRegexSpanKind.CommentGroupBorderWall] = new(Brightness: .35, Saturation: .35),
     };
 
     /// <summary>

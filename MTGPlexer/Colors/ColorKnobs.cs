@@ -4,10 +4,10 @@ namespace MTGPlexer.Colors;
 public static class ColorKnobDefaults
 {
     /// <summary>Default saturation (0..1) for a span's resting, non-highlighted, non-lowlighted color.</summary>
-    public const double Saturation = 0.6;
+    public const double Saturation = 0.5;
 
     /// <summary>Default brightness (0..1) for a span's resting color.</summary>
-    public const double Brightness = 0.55;
+    public const double Brightness = 0.5;
 
     /// <summary>Default fraction (0..1) of the way from resting saturation to fully-saturated (Hi) / fully-desaturated (Lo).</summary>
     public const double SaturationRange = 0.6;
