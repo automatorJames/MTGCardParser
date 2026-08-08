@@ -15,12 +15,7 @@
     }
 </style>
 
-@if (!_isInitialized)
-{
-    <LoadingIndicator Label="Analyzing cards..." />
-}
-else
-{
+<DeferredContent OnReady="InitHoverAsync">
     <div class="type-card-container">
         @foreach (var summary in GetFilteredSummaries())
         {
@@ -56,43 +51,30 @@ else
 
         }
     </div>
-}
+</DeferredContent>
 
 @code {
-    bool _isInitialized;
-    bool _hoverInitialized;
-
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += OnSettingsChanged;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // See CardLinesPage for why this happens in OnAfterRenderAsync rather than OnInitializedAsync.
-        if (!_isInitialized)
-        {
-            await DocumentAnalyzer.EnsureInitializedAsync();
-            _isInitialized = true;
-            StateHasChanged();
-            return;
-        }
+    protected override Task OnInitializedAsync() =>
+        // The corpus is warmed at startup (see Program.cs), so this normally resolves
+        // immediately; awaiting it here just guards against the unlikely case a request
+        // comes in before that finishes.
+        DocumentAnalyzer.EnsureInitializedAsync();
 
-        if (!_hoverInitialized)
-        {
-            _hoverInitialized = true;
-            await JSRuntime.InvokeVoidAsync("initializeTypeExpressionsHover", new
-            {
-                HoverTreatmentConfig.PathAncestorDimOpacity,
-                HoverTreatmentConfig.LowlightOpacity,
-                HoverTreatmentConfig.DebounceMs,
-                HoverTreatmentConfig.FadeDurationMs,
-                HoverTreatmentConfig.OvershootBrightnessBoost,
-                HoverTreatmentConfig.OvershootDurationMs,
-                HoverTreatmentConfig.OvershootSettleDurationMs,
-            });
-        }
-    }
+    Task InitHoverAsync() => JSRuntime.InvokeVoidAsync("initializeTypeExpressionsHover", new
+    {
+        HoverTreatmentConfig.PathAncestorDimOpacity,
+        HoverTreatmentConfig.LowlightOpacity,
+        HoverTreatmentConfig.DebounceMs,
+        HoverTreatmentConfig.FadeDurationMs,
+        HoverTreatmentConfig.OvershootBrightnessBoost,
+        HoverTreatmentConfig.OvershootDurationMs,
+        HoverTreatmentConfig.OvershootSettleDurationMs,
+    }).AsTask();
 
     private async void OnSettingsChanged()
     {

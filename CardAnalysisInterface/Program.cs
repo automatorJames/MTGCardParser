@@ -6,7 +6,7 @@ using MTGPlexer.TokenAnalysisDTOs;
 namespace CardAnalysisInterface;
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +27,11 @@ public class Program
 
         var app = builder.Build();
 
+        // The corpus analyzer is app-wide data, not per-session state, so it's warmed
+        // once here rather than being lazily triggered by whichever page a user happens
+        // to land on first.
+        await app.Services.GetRequiredService<DocumentCorpusAnalyzer>().EnsureInitializedAsync();
+
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())
         {
@@ -44,6 +49,6 @@ public class Program
         app.MapBlazorHub();
         app.MapFallbackToPage("/_Host");
 
-        app.Run();
+        await app.RunAsync();
     }
 }

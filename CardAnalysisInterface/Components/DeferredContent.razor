@@ -1,0 +1,48 @@
+@* Renders a lightweight loading indicator on the first pass, then swaps in ChildContent
+   on the next. ChildContent isn't evaluated until it's actually rendered, so any expensive
+   synchronous work it contains (e.g. building a page full of regex graphs) is deferred past
+   the point where the indicator has already reached the browser - useful when the slow part
+   is rendering the page itself, not any async data fetch. *@
+
+@if (_ready)
+{
+    @ChildContent
+}
+else
+{
+    <LoadingIndicator Label=@Label />
+}
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Loading page...";
+
+    /// <summary>
+    /// Invoked once, after ChildContent has been rendered for the first time.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnReady { get; set; }
+
+    bool _ready;
+    bool _onReadyInvoked;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_ready)
+        {
+            _ready = true;
+            StateHasChanged();
+            return;
+        }
+
+        if (!_onReadyInvoked)
+        {
+            _onReadyInvoked = true;
+            if (OnReady.HasDelegate)
+                await OnReady.InvokeAsync();
+        }
+    }
+}

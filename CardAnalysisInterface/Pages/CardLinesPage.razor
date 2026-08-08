@@ -4,53 +4,28 @@
 @inject DocumentCorpusAnalyzer DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
 
-@if (!_isInitialized)
-{
-    <LoadingIndicator Label="Analyzing cards..." />
-}
-else
-{
+<DeferredContent OnReady="InitHoverAsync">
     <div class="analyzed-card-container" id="card-lines">
         @foreach (var card in GetFilteredCards())
         {
             <CardBlock ProcessedDocument=card />
         }
     </div>
-}
+</DeferredContent>
 
 @code {
-    bool _isInitialized;
-
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += StateHasChanged;
     }
 
-    bool _hoverInitialized;
+    protected override Task OnInitializedAsync() =>
+        // The corpus is warmed at startup (see Program.cs), so this normally resolves
+        // immediately; awaiting it here just guards against the unlikely case a request
+        // comes in before that finishes.
+        DocumentAnalyzer.EnsureInitializedAsync();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // OnInitializedAsync is fully awaited during static prerendering, so kicking off
-        // EnsureInitializedAsync there would block the initial HTTP response and the
-        // loading indicator would never actually reach the browser. OnAfterRenderAsync
-        // only runs against the live circuit, so it's used instead to load data after
-        // the loading indicator has already been rendered.
-        if (!_isInitialized)
-        {
-            await DocumentAnalyzer.EnsureInitializedAsync();
-            _isInitialized = true;
-            StateHasChanged();
-            return;
-        }
-
-        // The hover script attaches to #card-lines, which only exists once loading
-        // has finished, so wait for that render rather than relying on firstRender.
-        if (!_hoverInitialized)
-        {
-            _hoverInitialized = true;
-            await JSRuntime.InvokeVoidAsync("initCardCaptureHover");
-        }
-    }
+    Task InitHoverAsync() => JSRuntime.InvokeVoidAsync("initCardCaptureHover").AsTask();
 
     IEnumerable<ProcessedDocument> GetFilteredCards()
     {

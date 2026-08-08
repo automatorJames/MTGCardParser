@@ -41,8 +41,14 @@ public class DocumentCorpusAnalyzer
         if (_isInitialized) return;
 
         // set ProcessedDocuments
+        // Each document tokenizes independently, so this is CPU-bound and embarrassingly
+        // parallel; AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
         var documents = await _repository.GetDocumentsAsync();
-        ProcessedDocuments = documents.Select(x => new ProcessedDocument(x)).ToList();
+        ProcessedDocuments = documents
+            .AsParallel()
+            .AsOrdered()
+            .Select(x => new ProcessedDocument(x))
+            .ToList();
         DigestedTextWithCaptureTokens = new DigestedText(ProcessedDocuments);
 
         // set TokenOccurrenceSummaries

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.ComponentModel;
 
 namespace MTGPlexer.Colors;
@@ -12,9 +13,11 @@ namespace MTGPlexer.Colors;
 public static class DeterministicPalette
 {
     // --- Static Cache ---
-    static readonly Dictionary<int, Dictionary<int, HexPalette>> _positionalPaletteSets = [];
-    static readonly Dictionary<int, HexPalette> _fixedRainbowPalettes = [];
-    static readonly Dictionary<HexColor, HexPalette> _staticColorPalettes = [];
+    // ConcurrentDictionary because corpus processing builds many ProcessedLines (and therefore
+    // palettes) in parallel across documents; a plain Dictionary would race under that.
+    static readonly ConcurrentDictionary<int, Dictionary<int, HexPalette>> _positionalPaletteSets = [];
+    static readonly ConcurrentDictionary<int, HexPalette> _fixedRainbowPalettes = [];
+    static readonly ConcurrentDictionary<HexColor, HexPalette> _staticColorPalettes = [];
 
     static Dictionary<Type, HexPalette> _typePaletteSet;
     public static Dictionary<Type, HexPalette> TypePaletteSet => _typePaletteSet ??= GetTypePaletteSet();
@@ -33,13 +36,8 @@ public static class DeterministicPalette
     {
         var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
 
-        if (_fixedRainbowPalettes.TryGetValue((int)rainbowMember, out var palette))
-            return palette;
-
-        var newPalette = BuildFromColor(new HexColor(rainbowMember.GetDescription()));
-        _fixedRainbowPalettes[(int)rainbowMember] = newPalette;
-
-        return newPalette;
+        return _fixedRainbowPalettes.GetOrAdd((int)rainbowMember,
+            key => BuildFromColor(new HexColor(((RainbowMuted)key).GetDescription())));
     }
 
     /// <summary>Builds the full type-to-palette map: types carrying a <see cref="ColorAttribute"/> get that fixed color, then every remaining registered token type gets an equidistant rainbow hue, hash-ordered for stability.</summary>
@@ -71,20 +69,17 @@ public static class DeterministicPalette
     public static void RefreshTypePaletteSet() =>
         _typePaletteSet = GetTypePaletteSet();
 
-    public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount)
-    {
-        if (_positionalPaletteSets.TryGetValue(totalItemCount, out var positionalPaletteSet))
+    public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount) =>
+        _positionalPaletteSets.GetOrAdd(totalItemCount, count =>
+        {
+            var positionalPaletteSet = new Dictionary<int, HexPalette>();
+            var hues = GetRainbowHues(count);
+
+            for (int i = 0; i < count; i++)
+                positionalPaletteSet[i] = BuildFromHue(hues[i]);
+
             return positionalPaletteSet;
-
-        positionalPaletteSet = [];
-        var hues = GetRainbowHues(totalItemCount);
-
-        for (int i = 0; i < totalItemCount; i++)
-            positionalPaletteSet[i] = BuildFromHue(hues[i]);
-
-        _positionalPaletteSets[totalItemCount] = positionalPaletteSet;
-        return positionalPaletteSet;
-    }
+        });
 
     /// <summary>
     /// Returns a dictionary where the keys are the items passed, and the HexPalettes are composed of
@@ -105,16 +100,8 @@ public static class DeterministicPalette
             .ToDictionary(x => itemsAsList[x.idx], x => x.palette);
     }
 
-    public static HexPalette GetStaticPalette(HexColor color)
-    {
-        if (_staticColorPalettes.TryGetValue(color, out var palette))
-            return palette;
-
-        var newPalette = BuildFromColor(color);
-        _staticColorPalettes[color] = newPalette;
-
-        return newPalette;
-    }
+    public static HexPalette GetStaticPalette(HexColor color) =>
+        _staticColorPalettes.GetOrAdd(color, BuildFromColor);
 
     // --- Palette Construction ---
 

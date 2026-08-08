@@ -59,6 +59,11 @@ else
         RuntimeSettings.OnChanged += OnSettingsChanged;
     }
 
+    protected override Task OnInitializedAsync()
+        // The corpus is warmed at startup (see Program.cs), so it's already available
+        // by the time any page loads; no per-page initialization is needed here.
+        => CorpusAnalyzer.EnsureInitializedAsync();
+
     private async void OnSettingsChanged()
     {
         await InvokeAsync(StateHasChanged);
