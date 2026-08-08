@@ -4,7 +4,7 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 /// Renders the comment-column span sequence for a group open/close brick: a corner glyph, a padding
 /// line drawn in the group's border character, and the comment text itself — split into its constituent
 /// role-tagged pieces (e.g. a group open's "Type" label and its ": UnderlyingType" disambiguator) so each
-/// can be colored independently via <see cref="SmartSpanColorPanel"/>. Open bookends draw the box's top
+/// can be colored independently via <see cref="SmartSpanControlPanel"/>. Open bookends draw the box's top
 /// edge with the comment first; close bookends draw the bottom edge with the comment last.
 /// </summary>
 internal class GroupBookendCommentRenderer
@@ -42,11 +42,11 @@ internal class GroupBookendCommentRenderer
             })
             .ToList();
 
-        var paddingSpan = _spanFactory(brick, paddingLine, TokenRegexSpanKind.GroupBorderWall);
+        var paddingSpan = _spanFactory(brick, paddingLine, TokenRegexSpanKind.CommentGroupBorderWall);
 
-        List<SmartSpan> spans = [_spanFactory(brick, layout.StartCorner.ToString(), TokenRegexSpanKind.GroupBorderWall)];
+        List<SmartSpan> spans = [_spanFactory(brick, layout.StartCorner.ToString(), TokenRegexSpanKind.CommentGroupBorderWall)];
         spans.AddRange(layout.CommentBeforePadding ? [.. commentSpans, paddingSpan] : [paddingSpan, .. commentSpans]);
-        spans.Add(_spanFactory(brick, layout.EndCorner.ToString(), TokenRegexSpanKind.GroupBorderWall));
+        spans.Add(_spanFactory(brick, layout.EndCorner.ToString(), TokenRegexSpanKind.CommentGroupBorderWall));
 
         return spans;
     }
@@ -55,11 +55,11 @@ internal class GroupBookendCommentRenderer
     static (string Text, TokenRegexSpanKind Kind)[] GetCommentSegments(RegexBrickGroupBookend brick) => brick switch
     {
         RegexBrickGroupOpen open => BuildSegments(
-            (open.TypeLabel, TokenRegexSpanKind.GroupOpenHeaderText),
-            (open.TypeDisambiguator, TokenRegexSpanKind.GroupOpenHeaderDisambiguator)),
+            (open.TypeLabel, TokenRegexSpanKind.CommentGroupOpenHeaderText),
+            (open.TypeDisambiguator, TokenRegexSpanKind.CommentGroupOpenHeaderDisambiguator)),
         RegexBrickGroupClose close => BuildSegments(
-            (close.NameText, TokenRegexSpanKind.GroupFooterText),
-            (close.QuantifierReminder, TokenRegexSpanKind.GroupFooterQuantifierReminder)),
+            (close.NameText, TokenRegexSpanKind.CommentGroupFooterText),
+            (close.QuantifierReminder, TokenRegexSpanKind.CommentGroupFooterQuantifierReminder)),
         _ => throw new ArgumentOutOfRangeException(nameof(brick), brick, $"Unhandled {nameof(RegexBrickGroupBookend)} subtype")
     };
 

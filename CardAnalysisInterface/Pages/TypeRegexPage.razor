@@ -48,7 +48,10 @@ else
                     }
                 </CopyButtonOverlay>
 
-                <TypeTreeView RegexGraph=@summary.RegexGraph />
+                @if (!RuntimeSettings.HideTypeTree)
+                {
+                    <TypeTreeView RegexGraph=@summary.RegexGraph />
+                }
             </div>
 
         }

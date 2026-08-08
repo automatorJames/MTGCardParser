@@ -6,9 +6,6 @@ public class RegexBrickValue : RegexBrick
     /// <summary>The CLR value (e.g. enum member) this brick's pattern matches.</summary>
     public object Value { get; }
 
-    /// <summary>Display-only: true when this row is one of several occurring synonym patterns for its member, grouped under a shared header/footer, rather than a standalone row. Populated by <see cref="EnumSectionBuilder"/>.</summary>
-    public bool IsSynonymRow { get; set; }
-
     /// <summary>Display-only: the leading pipe/space (plus buffer) that joins this row's regex text to the row above, split out of <see cref="RegexBrick.RegexFormatted"/> so it can be colored separately. Populated by <see cref="EnumSectionBuilder"/>.</summary>
     public string JoinerRegexFormatted { get; set; } = "";
 

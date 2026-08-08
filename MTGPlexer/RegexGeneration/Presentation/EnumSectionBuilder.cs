@@ -74,7 +74,6 @@ internal class EnumSectionBuilder
                 bricks.Add(BuildSynonymSectionHeader(currentSynonymGroupParentNode, member, enumSummary, metrics));
             }
 
-            member.IsSynonymRow = isPartOfSynonymGroup;
             member.CommentFormatted = BuildMemberComment(member, enumSummary, metrics, isPartOfSynonymGroup);
             member.RegexFormatted = BuildMemberRegex(member, positionAmongOccurring: i);
             bricks.Add(member);
@@ -90,8 +89,9 @@ internal class EnumSectionBuilder
 
     static RegexBrickSynonymSectionHeader BuildSynonymSectionHeader(RegexNode parent, RegexBrickValue member, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics)
     {
-        var namedCore = metrics.FormatNamedCore(member.Value, enumSummary.EnumMemberOccurenceCounts[member.Value]);
-        return new RegexBrickSynonymSectionHeader(parent, namedCore);
+        var nameField = metrics.FormatNameField(member.Value);
+        var countField = metrics.FormatCountField(enumSummary.EnumMemberOccurenceCounts[member.Value]);
+        return new RegexBrickSynonymSectionHeader(parent, nameField, countField);
     }
 
     /// <summary>

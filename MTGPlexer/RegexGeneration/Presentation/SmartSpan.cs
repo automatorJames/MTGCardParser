@@ -9,8 +9,8 @@ public record SmartSpan
     /// <summary>The fully qualified name of the graph node this span represents, used to correlate rendered text back to the graph.</summary>
     public string FullyQualifiedName { get; }
 
-    /// <summary>The color palette this span is rendered with.</summary>
-    public SpanColorPalette Palette { get; }
+    /// <summary>The style palette (color plus bold/italic/alternate-font flags) this span is rendered with.</summary>
+    public SpanStylePalette Palette { get; }
 
     /// <summary>
     /// This span's rendering role, if it has one tagged (see <see cref="TokenRegexSpanKind"/>) — null for
@@ -20,7 +20,7 @@ public record SmartSpan
     /// </summary>
     public TokenRegexSpanKind? Kind { get; }
 
-    public SmartSpan(string content, string fullyQualifiedName, SpanColorPalette palette, TokenRegexSpanKind? kind = null)
+    public SmartSpan(string content, string fullyQualifiedName, SpanStylePalette palette, TokenRegexSpanKind? kind = null)
     {
         Content = content;
         FullyQualifiedName = fullyQualifiedName;

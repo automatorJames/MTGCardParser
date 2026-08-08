@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace MTGPlexer.Colors;
 
-/// <summary>Shared HSL/hex conversion math used by both <see cref="DeterministicPalette"/> (legacy positional/type palettes) and <see cref="SpanColorPalette"/> (per-role span colors).</summary>
+/// <summary>Shared HSL/hex conversion math used by both <see cref="DeterministicPalette"/> (legacy positional/type palettes) and <see cref="SpanStylePalette"/> (per-role span colors).</summary>
 internal static class HslMath
 {
     public static string ToHex(double h, double s, double l)

@@ -1,10 +1,10 @@
-<pre class="formatted-regex-fira" style=@BorderStyle>
+<pre class="formatted-regex-fira" style="@($"font-family: {SmartFontConfig.PrimaryFontFamily}; {BorderStyle}")">
     <code>
         @foreach (var line in Lines)
         {
             foreach (var span in line.Spans)
             {
-                var style = $"{span.Palette.CssVariables()} color: {span.Palette.Default};";
+                var style = BuildSpanStyle(span.Palette);
                 var isInteractive = span.Kind is not { } kind || !HoverTreatmentConfig.NonInteractiveSpanKinds.Contains(kind);
                 <span style="@style" data-path="@(isInteractive ? span.FullyQualifiedName : null)">@span.Content</span>
             }
@@ -20,5 +20,18 @@
 
     [Parameter]
     public string BorderStyle { get; set; }
+
+    static string BuildSpanStyle(SpanStylePalette palette)
+    {
+        var style = $"{palette.CssVariables()} color: {palette.Default};";
+
+        if (palette.IsBold)
+            style += " font-weight: bold;";
+
+        if (palette.IsItalic)
+            style += " font-style: italic;";
+
+        return style;
+    }
 
 }

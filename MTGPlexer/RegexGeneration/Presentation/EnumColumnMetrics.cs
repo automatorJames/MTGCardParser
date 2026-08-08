@@ -44,10 +44,6 @@ internal readonly struct EnumColumnMetrics
         return new(maxNameLength, maxDigitLength, maxCommentLength);
     }
 
-    /// <summary>"Name : count", with the name right-aligned and the count left-aligned so every row's colon lines up.</summary>
-    public string FormatNamedCore(object memberValue, int occurrenceCount) =>
-        FormatNameField(memberValue) + FormatCountField(occurrenceCount);
-
     /// <summary>"     : count", with the name column blanked but still reserved, for a synonym row grouped under a header.</summary>
     public string FormatMinimalCore(int synonymOccurrenceCount) =>
         FormatBlankNameField() + FormatCountField(synonymOccurrenceCount);

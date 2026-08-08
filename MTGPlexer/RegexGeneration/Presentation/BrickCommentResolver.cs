@@ -15,7 +15,7 @@ internal static class BrickCommentResolver
         {
             RegexBrickGroupOpen open => ResolveGroupOpenComment(open),
             RegexBrickGroupClose close => ResolveGroupCloseComment(close),
-            RegexBrickJoiner joiner => $"joiner {joiner.Joiner}",
+            RegexBrickJoiner joiner => $"joiner {joiner.Joiner.ToString().ToFriendlyCase(TitleDisplayOption.Lower)}",
             _ when brick.Parent is TextNode => "literal match",
             _ => ""
         };
@@ -25,12 +25,29 @@ internal static class BrickCommentResolver
     {
         var group = open.NamedGroupParent;
         var typeLabel = group.NodeType.ToString().ToFriendlyCase();
-        var disambiguator = group.Name == group.Navigation.UnderlyingType.Name ? "" : $": {group.Navigation.UnderlyingType.Name}";
+        var disambiguator = group.Name == group.Navigation.UnderlyingType.Name ? "" : $": {FormatTypeNameFriendly(group.Navigation.UnderlyingType)}";
 
         open.TypeLabel = typeLabel;
         open.TypeDisambiguator = disambiguator;
 
         return typeLabel + disambiguator;
+    }
+
+    /// <summary>
+    /// A type's friendly display name, e.g. "Card Keyword" for <c>CardKeyword</c>. For a generic type (e.g.
+    /// <c>CompoundOf&lt;CardType&gt;</c>, whose raw <see cref="Type.Name"/> is "CompoundOf`1"), renders the
+    /// friendly-cased open generic name followed by its friendly-cased type argument(s) in parentheses, e.g.
+    /// "Compound Of (Card Type)", instead of leaking the backtick-arity suffix.
+    /// </summary>
+    static string FormatTypeNameFriendly(Type type)
+    {
+        if (!type.IsGenericType)
+            return type.Name.ToFriendlyCase(TitleDisplayOption.Title);
+
+        var baseName = type.Name[..type.Name.IndexOf('`')].ToFriendlyCase(TitleDisplayOption.Title);
+        var typeArgs = string.Join(", ", type.GetGenericArguments().Select(FormatTypeNameFriendly));
+
+        return $"{baseName} ({typeArgs})";
     }
 
     /// <summary>"Name" (or "Name (quantifier)" when the group carries a non-default quantifier). Also splits the result into <see cref="RegexBrickGroupClose.NameText"/>/<see cref="RegexBrickGroupClose.QuantifierReminder"/> so the two can be colored separately.</summary>
@@ -40,9 +57,9 @@ internal static class BrickCommentResolver
         var quantifierComment = group.Navigation.Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
         var quantifierReminder = quantifierComment == null ? "" : $" ({quantifierComment})";
 
-        close.NameText = group.Name;
+        close.NameText = group.Name.ToFriendlyCase(TitleDisplayOption.Title);
         close.QuantifierReminder = quantifierReminder;
 
-        return group.Name + quantifierReminder;
+        return close.NameText + quantifierReminder;
     }
 }

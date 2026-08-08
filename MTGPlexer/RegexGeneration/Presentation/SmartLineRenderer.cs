@@ -6,7 +6,7 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 /// comment. Delegates group-box corner/padding-line rendering to <see cref="GroupBookendCommentRenderer"/>
 /// and nested-wall bookkeeping to <see cref="GroupWallSpanTracker"/>; this class owns per-line assembly,
 /// named-group palette lookup (the coloring fallback for bricks with no more specific role), and classifying
-/// bricks into the <see cref="TokenRegexSpanKind"/> roles that <see cref="SmartSpanColorPanel"/> knows how
+/// bricks into the <see cref="TokenRegexSpanKind"/> roles that <see cref="SmartSpanControlPanel"/> knows how
 /// to color. Replaces what used to be the monolithic <c>SmartLineFactory</c>.
 /// </summary>
 public class SmartLineRenderer
@@ -14,7 +14,7 @@ public class SmartLineRenderer
     static readonly Regex _spaceRunPattern = new("( +)", RegexOptions.Compiled);
 
     readonly List<RegexBrick> _bricks;
-    readonly Dictionary<NamedGroupNode, SpanColorPalette> _namedGroupPalettes;
+    readonly Dictionary<NamedGroupNode, SpanStylePalette> _namedGroupPalettes;
     readonly Dictionary<NamedGroupNode, double> _namedGroupHueDegrees;
     readonly Dictionary<NamedGroupNode, bool> _namedGroupIsGrayscale;
     readonly CommentBoxMetrics _metrics;
@@ -29,7 +29,7 @@ public class SmartLineRenderer
         var namedGroupHexPalettes = DeterministicPalette
             .GetPositionalPaletteSet(regexGraph.NamedGroupFlatGraph.Values, positionalOverrideColors: HexColor.Silver);
 
-        _namedGroupPalettes = namedGroupHexPalettes.ToDictionary(x => x.Key, x => SpanColorPalette.FromHexPalette(x.Value));
+        _namedGroupPalettes = namedGroupHexPalettes.ToDictionary(x => x.Key, x => SpanStylePalette.FromHexPalette(x.Value));
         _namedGroupHueDegrees = namedGroupHexPalettes.ToDictionary(x => x.Key, x => DeterministicPalette.HexToHue(x.Value.Normal) * 360.0);
         _namedGroupIsGrayscale = namedGroupHexPalettes.ToDictionary(x => x.Key, x => HslMath.IsGrayscale(x.Value.Normal));
 
@@ -75,18 +75,16 @@ public class SmartLineRenderer
 
         if (brick is RegexBrickValue member)
         {
-            var memberKind = member.IsSynonymRow ? TokenRegexSpanKind.EnumMemberSynonymRegex : TokenRegexSpanKind.EnumMemberRegex;
-
             return
             [
-                SpanFromBrick(brick, indent + member.JoinerRegexFormatted, TokenRegexSpanKind.EnumMemberJoiner),
-                SpanFromBrick(brick, member.MemberRegexFormatted + trailingPad, memberKind),
+                SpanFromBrick(brick, indent + member.JoinerRegexFormatted, TokenRegexSpanKind.RegexEnumMemberJoiner),
+                SpanFromBrick(brick, member.MemberRegexFormatted + trailingPad, TokenRegexSpanKind.RegexEnumMember),
             ];
         }
 
         if (brick is RegexBrickJoiner)
         {
-            var kind = brick.RegexFormatted == "[ ]" ? TokenRegexSpanKind.ConnectiveSpace : TokenRegexSpanKind.RegexJoiner;
+            var kind = brick.RegexFormatted == "[ ]" ? TokenRegexSpanKind.RegexConnectiveSpace : TokenRegexSpanKind.RegexJoiner;
             return [SpanFromBrick(brick, indented + trailingPad, kind)];
         }
 
@@ -98,7 +96,7 @@ public class SmartLineRenderer
 
     /// <summary>
     /// Splits a literal-match brick's text into alternating word/space-run spans, so plain spaces embedded
-    /// in a multi-word literal (e.g. "until end of turn") get the same <see cref="TokenRegexSpanKind.ConnectiveSpace"/>
+    /// in a multi-word literal (e.g. "until end of turn") get the same <see cref="TokenRegexSpanKind.RegexConnectiveSpace"/>
     /// treatment as a dedicated "[ ]" joiner brick — there's no strongly-typed node for "the space in the
     /// middle of a literal phrase", so this isolates it with a regex split instead.
     /// </summary>
@@ -107,7 +105,7 @@ public class SmartLineRenderer
         var text = brick.RegexFormatted;
 
         if (text == "[ ]")
-            return [SpanFromBrick(brick, indent + text + trailingPad, TokenRegexSpanKind.ConnectiveSpace)];
+            return [SpanFromBrick(brick, indent + text + trailingPad, TokenRegexSpanKind.RegexConnectiveSpace)];
 
         var fragments = _spaceRunPattern.Split(text).Where(x => x.Length > 0).ToList();
 
@@ -119,7 +117,7 @@ public class SmartLineRenderer
         for (int i = 0; i < fragments.Count; i++)
         {
             var fragment = fragments[i];
-            var kind = fragment.Trim().Length == 0 ? TokenRegexSpanKind.ConnectiveSpace : TokenRegexSpanKind.LiteralMatch;
+            var kind = fragment.Trim().Length == 0 ? TokenRegexSpanKind.RegexConnectiveSpace : TokenRegexSpanKind.RegexLiteralMatch;
             var prefix = i == 0 ? indent : "";
             var suffix = i == fragments.Count - 1 ? trailingPad : "";
             spans.Add(SpanFromBrick(brick, prefix + fragment + suffix, kind));
@@ -145,7 +143,7 @@ public class SmartLineRenderer
         return spans;
     }
 
-    /// <summary>Center- or right-padded comment span(s) for a non-bookend brick, sized to the shared comment box width. An enum member row splits into its name and occurrence-count fields; the other synthesized Presentation brick kinds get their own dedicated role.</summary>
+    /// <summary>Center- or right-padded comment span(s) for a non-bookend brick, sized to the shared comment box width. An enum member row (standalone or synonym-group header) splits into its name and occurrence-count fields; the other synthesized Presentation brick kinds get their own dedicated role.</summary>
     List<SmartSpan> BuildRegularCommentSpans(RegexBrick brick)
     {
         // Use the wall tracker's live depth rather than brick.NestedDepth: synthetic bricks (e.g. blank
@@ -154,28 +152,21 @@ public class SmartLineRenderer
         var availableWidth = _metrics.MaxCommentLength - CommentBoxMetrics.GetGroupBoxPaddingCount(_wallTracker.Depth, isBookend: false);
 
         if (brick is RegexBrickValue member)
-        {
-            var (leftPad, rightPad) = SmartRegexStaticRules.CenterPadSplit(brick.CommentFormatted, availableWidth);
+            return BuildNameCountSpans(brick, member.NameCommentFormatted, member.CountCommentFormatted, availableWidth);
 
-            return
-            [
-                SpanFromBrick(brick, leftPad + member.NameCommentFormatted, TokenRegexSpanKind.EnumMemberName),
-                SpanFromBrick(brick, member.CountCommentFormatted + rightPad, TokenRegexSpanKind.EnumMemberOccurrenceCount),
-            ];
-        }
+        if (brick is RegexBrickSynonymSectionHeader header)
+            return BuildNameCountSpans(brick, header.NameCommentFormatted, header.CountCommentFormatted, availableWidth);
 
         var (content, kind) = brick switch
         {
             RegexBrickOmittedCount =>
-                (SmartRegexStaticRules.CenterPad(brick.CommentFormatted, availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.OmittedCount),
-            RegexBrickSynonymSectionHeader =>
-                (SmartRegexStaticRules.CenterPad(brick.CommentFormatted, availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.EnumMemberSynonymHeader),
+                (SmartRegexStaticRules.CenterPad(brick.CommentFormatted, availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.CommentOmittedCount),
             RegexBrickSynonymSectionFooter =>
-                (brick.CommentFormatted.PadRight(availableWidth, RegexBrickSynonymSectionFooter.DividerChar), (TokenRegexSpanKind?)TokenRegexSpanKind.EnumMemberSynonymFooter),
+                (brick.CommentFormatted.PadRight(availableWidth, RegexBrickSynonymSectionFooter.DividerChar), (TokenRegexSpanKind?)TokenRegexSpanKind.CommentEnumMemberSynonymFooter),
             RegexBrickJoiner =>
-                (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.RegexJoinerComment),
+                (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.CommentJoiner),
             _ when brick.Parent is TextNode =>
-                (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.LiteralMatchComment),
+                (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)TokenRegexSpanKind.CommentLiteralMatch),
             _ =>
                 (brick.CommentFormatted.PadRight(availableWidth), (TokenRegexSpanKind?)null),
         };
@@ -183,29 +174,39 @@ public class SmartLineRenderer
         return [SpanFromBrick(brick, content, kind)];
     }
 
+    /// <summary>Splits a "Name : count" comment into its name and count spans, sharing the same two roles whether <paramref name="brick"/> is a standalone member row or a synonym-group header.</summary>
+    List<SmartSpan> BuildNameCountSpans(RegexBrick brick, string nameCommentFormatted, string countCommentFormatted, int availableWidth)
+    {
+        var (leftPad, rightPad) = SmartRegexStaticRules.CenterPadSplit(brick.CommentFormatted, availableWidth);
+
+        return
+        [
+            SpanFromBrick(brick, leftPad + nameCommentFormatted, TokenRegexSpanKind.CommentEnumMemberName),
+            SpanFromBrick(brick, countCommentFormatted + rightPad, TokenRegexSpanKind.CommentEnumMemberOccurrenceCount),
+        ];
+    }
+
     SmartSpan BuildLeftWallSpan(RegexBrickGroupOpen groupOpen)
     {
         var boxChars = SmartRegexStaticRules.GetBoxCharsForBookendBrick(groupOpen);
         var wall = $"{boxChars.Vertical}{string.Empty.PadLeft(SmartRegexStaticRules.GroupWallInnerBuffer)}";
-        return SpanFromBrick(groupOpen, wall, TokenRegexSpanKind.GroupBorderWall);
+        return SpanFromBrick(groupOpen, wall, TokenRegexSpanKind.CommentGroupBorderWall);
     }
 
-    /// <summary>Builds one colored span for <paramref name="brick"/>. With no <paramref name="kind"/>, falls back to the brick's enclosing named group's rainbow color (the older, coarser-grained coloring); with a <paramref name="kind"/>, colors it via <see cref="SmartSpanColorPanel"/> instead.</summary>
+    /// <summary>Builds one colored span for <paramref name="brick"/>. With no <paramref name="kind"/>, falls back to the brick's enclosing named group's rainbow color (the older, coarser-grained coloring); with a <paramref name="kind"/>, colors it via <see cref="SmartSpanControlPanel"/> instead.</summary>
     SmartSpan SpanFromBrick(RegexBrick brick, string content, TokenRegexSpanKind? kind = null) =>
         new(content, brick.FullyQualifiedName, ResolvePalette(brick, kind), kind);
 
     /// <summary>
     /// Resolves the palette for a role-tagged span: the role's saturation/brightness knobs, applied to this
-    /// brick's own positional rainbow hue unless the role (or its <see cref="CaptureNodeType"/>-specific
-    /// override) declares a fixed hue of its own — see <see cref="SmartSpanColorPanel"/>.
+    /// brick's own positional rainbow hue — see <see cref="SmartSpanControlPanel"/>.
     /// </summary>
-    SpanColorPalette ResolveRolePalette(RegexBrick brick, TokenRegexSpanKind kind) =>
-        SmartSpanColorPanel.Resolve(
+    SpanStylePalette ResolveRolePalette(RegexBrick brick, TokenRegexSpanKind kind) =>
+        SmartSpanControlPanel.Resolve(
             kind,
             _namedGroupHueDegrees[brick.NamedGroupParent],
-            brick.NamedGroupParent?.NodeType,
             forceGrayscale: _namedGroupIsGrayscale[brick.NamedGroupParent]);
 
-    SpanColorPalette ResolvePalette(RegexBrick brick, TokenRegexSpanKind? kind) =>
+    SpanStylePalette ResolvePalette(RegexBrick brick, TokenRegexSpanKind? kind) =>
         kind is { } concreteKind ? ResolveRolePalette(brick, concreteKind) : _namedGroupPalettes[brick.NamedGroupParent];
 }

@@ -57,7 +57,7 @@ public static class HoverTreatmentConfig
     public const int OvershootDurationMs = 40;
 
     /// <summary>How long the pop takes to ease back down from its peak to resting highlighted brightness.</summary>
-    public const int OvershootSettleDurationMs = 400;
+    public const int OvershootSettleDurationMs = 1500;
 
     /// <summary>
     /// <see cref="TokenRegexSpanKind"/>s that never participate in the hover highlight system at
@@ -71,9 +71,9 @@ public static class HoverTreatmentConfig
     public static readonly IReadOnlySet<TokenRegexSpanKind> NonInteractiveSpanKinds = new HashSet<TokenRegexSpanKind>
     {
         TokenRegexSpanKind.RegexJoiner,
-        TokenRegexSpanKind.RegexJoinerComment,
-        TokenRegexSpanKind.LiteralMatch,
-        TokenRegexSpanKind.LiteralMatchComment,
-        TokenRegexSpanKind.ConnectiveSpace,
+        TokenRegexSpanKind.CommentJoiner,
+        TokenRegexSpanKind.RegexLiteralMatch,
+        TokenRegexSpanKind.CommentLiteralMatch,
+        TokenRegexSpanKind.RegexConnectiveSpace,
     };
 }

@@ -17,12 +17,14 @@ public static class ColorKnobDefaults
 }
 
 /// <summary>
-/// The tunable "knobs" behind one <see cref="SpanColorPalette"/>: a hue, how saturated/bright that hue is
-/// at rest, and how far highlighting/lowlighting are allowed to swing saturation and brightness away from
-/// rest. Any knob left null falls back to <see cref="ColorKnobDefaults"/>, so a caller who only cares about
-/// hue can write <c>new ColorKnobs(210)</c> and get a sensible, centrally-defined look.
+/// The tunable "knobs" behind one <see cref="SpanStylePalette"/>: a hue, how saturated/bright that hue is
+/// at rest, how far highlighting/lowlighting are allowed to swing saturation and brightness away from
+/// rest, and the non-color style flags (<see cref="IsBold"/>, <see cref="IsItalic"/>) that carry straight
+/// through to the resulting palette. Any color knob left null falls back to <see cref="ColorKnobDefaults"/>,
+/// so a caller who only cares about hue can write <c>new ColorKnobs(210)</c> and get a sensible,
+/// centrally-defined look.
 /// </summary>
-/// <param name="HueDegrees">Hue in degrees (0-360) around the color wheel, or 0 for a caller (e.g. <see cref="MTGPlexer.RegexGeneration.Presentation.SmartSpanColorPanel"/>'s tables) that always overwrites it before use.</param>
+/// <param name="HueDegrees">Hue in degrees (0-360) around the color wheel, or 0 for a caller (e.g. <see cref="MTGPlexer.RegexGeneration.Presentation.SmartSpanControlPanel"/>'s tables) that always overwrites it before use.</param>
 /// <param name="Saturation">Resting saturation (0..1), or null for <see cref="ColorKnobDefaults.Saturation"/>.</param>
 /// <param name="Brightness">Resting brightness (0..1), or null for <see cref="ColorKnobDefaults.Brightness"/>.</param>
 /// <param name="SaturationRange">
@@ -31,12 +33,16 @@ public static class ColorKnobDefaults
 /// don't affect saturation at all. Null falls back to <see cref="ColorKnobDefaults.SaturationRange"/>.
 /// </param>
 /// <param name="BrightnessRange">The brightness equivalent of <paramref name="SaturationRange"/>.</param>
+/// <param name="IsBold">Whether the role renders in bold weight.</param>
+/// <param name="IsItalic">Whether the role renders in italic style.</param>
 public readonly record struct ColorKnobs(
     double HueDegrees = 0,
     double? Saturation = null,
     double? Brightness = null,
     double? SaturationRange = null,
-    double? BrightnessRange = null)
+    double? BrightnessRange = null,
+    bool IsBold = false,
+    bool IsItalic = false)
 {
     public double EffectiveSaturation => Saturation ?? ColorKnobDefaults.Saturation;
     public double EffectiveBrightness => Brightness ?? ColorKnobDefaults.Brightness;
