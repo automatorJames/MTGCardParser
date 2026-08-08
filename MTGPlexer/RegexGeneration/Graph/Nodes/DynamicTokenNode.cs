@@ -10,7 +10,7 @@ public class DynamicTokenNode : TokenUnitNode
 {
     protected override string DefaultPattern => @"[^.]+";
 
-    public override CaptureNodeType NodeType => CaptureNodeType.DynamicOf;
+    public override CaptureNodeType NodeType => CaptureNodeType.Dynamic;
 
     public DynamicTokenNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)

@@ -126,12 +126,12 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
 public enum CaptureNodeType
 {
-    TokenUnit,
+    Token,
     OneOf,
     ManyOf,
-    CompoundOf,
-    OptionalOf,
-    DynamicOf,
+    Compound,
+    Optional,
+    Dynamic,
     Enum,
     Int,
     Bool,

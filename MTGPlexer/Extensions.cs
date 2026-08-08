@@ -46,7 +46,7 @@ public static class Extensions
         return attr?.Description ?? value.ToString();
     }
 
-    public static string ToFriendlyCase(this string input, TitleDisplayOption option = TitleDisplayOption.Lower)
+    public static string ToFriendlyCase(this string input, TitleDisplayOption option = TitleDisplayOption.Title)
     {
         if (string.IsNullOrEmpty(input))
             return string.Empty;

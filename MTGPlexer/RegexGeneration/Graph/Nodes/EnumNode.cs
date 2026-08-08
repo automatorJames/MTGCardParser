@@ -28,7 +28,7 @@ public class EnumNode : NamedGroupNode
 
             List<string> patterns =
                 field.GetCustomAttribute<RegexPatternAttribute>()?.Patterns.ToList()
-                ?? [enumAsString.ToFriendlyCase()];
+                ?? [enumAsString.ToFriendlyCase(TitleDisplayOption.Lower)];
 
             if (enumType.IsDefined(typeof(OptionalPluralAttribute)))
             {

@@ -1,5 +1,5 @@
 @{
-    var friendlyName = Node.Name.ToFriendlyCase(TitleDisplayOption.Title);
+    var friendlyName = Node.Name.ToFriendlyCase();
     var palette = Palettes.GetValueOrDefault(Node);
     var isEnum = Node.NodeType == CaptureNodeType.Enum;
     var quantifierMark = Node.Quantifier?.GetDescription();

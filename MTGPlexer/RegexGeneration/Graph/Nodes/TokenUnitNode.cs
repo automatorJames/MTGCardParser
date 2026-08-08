@@ -7,7 +7,7 @@
 public class TokenUnitNode : NamedGroupNode
 {
     protected override Joiner Joiner { get; }
-    public override CaptureNodeType NodeType => CaptureNodeType.TokenUnit;
+    public override CaptureNodeType NodeType => CaptureNodeType.Token;
 
     public TokenUnitNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)

@@ -24,7 +24,7 @@ internal static class BrickCommentResolver
     static string ResolveGroupOpenComment(RegexBrickGroupOpen open)
     {
         var group = open.NamedGroupParent;
-        var typeLabel = group.NodeType.ToString().ToFriendlyCase();
+        var typeLabel = group.NodeType.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
         var disambiguator = group.Name == group.Navigation.UnderlyingType.Name ? "" : $": {FormatTypeNameFriendly(group.Navigation.UnderlyingType)}";
 
         open.TypeLabel = typeLabel;
@@ -42,9 +42,9 @@ internal static class BrickCommentResolver
     static string FormatTypeNameFriendly(Type type)
     {
         if (!type.IsGenericType)
-            return type.Name.ToFriendlyCase(TitleDisplayOption.Title);
+            return type.Name.ToFriendlyCase();
 
-        var baseName = type.Name[..type.Name.IndexOf('`')].ToFriendlyCase(TitleDisplayOption.Title);
+        var baseName = type.Name[..type.Name.IndexOf('`')].ToFriendlyCase();
         var typeArgs = string.Join(", ", type.GetGenericArguments().Select(FormatTypeNameFriendly));
 
         return $"{baseName} ({typeArgs})";
@@ -57,7 +57,7 @@ internal static class BrickCommentResolver
         var quantifierComment = group.Navigation.Quantifier?.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
         var quantifierReminder = quantifierComment == null ? "" : $" ({quantifierComment})";
 
-        close.NameText = group.Name.ToFriendlyCase(TitleDisplayOption.Title);
+        close.NameText = group.Name.ToFriendlyCase();
         close.QuantifierReminder = quantifierReminder;
 
         return close.NameText + quantifierReminder;

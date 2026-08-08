@@ -11,7 +11,7 @@ else
 {
     <div class="token-summary-branch" style="margin-top:16px" data-path=@BranchTrace.FullyQualifiedName>
         <div class="token-summary-header" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
-            <span class="token-type-name">@BranchTrace.Name.ToFriendlyCase(TitleDisplayOption.Title)</span>
+            <span class="token-type-name">@BranchTrace.Name.ToFriendlyCase()</span>
         </div>
 
         @if (BranchTrace.Children.Any())

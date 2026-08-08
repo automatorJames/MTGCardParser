@@ -77,9 +77,9 @@ public static class SmartRegexStaticRules
     public static Dictionary<CaptureNodeType, BoxCharSet> NodeTypeToBoxCharSet = new Dictionary<CaptureNodeType, BoxCharSet>
     {
         [CaptureNodeType.Enum] = Closed,
-        [CaptureNodeType.TokenUnit] = Dashed,
+        [CaptureNodeType.Token] = Dashed,
         [CaptureNodeType.OneOf] = Dashed,
-        [CaptureNodeType.DynamicOf] = Dashed,
+        [CaptureNodeType.Dynamic] = Dashed,
         [CaptureNodeType.Int] = Dashed,
         [CaptureNodeType.Bool] = Dashed,
     };
