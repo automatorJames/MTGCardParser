@@ -67,8 +67,6 @@ public class TokenUnitNode : NamedGroupNode
     protected override object GetValue(CaptureTrace captureInfo)
     {
         TryHydrate(captureInfo.CaptureContext, out var tokenUnit);
-        captureInfo.ClrValue = tokenUnit;
-
         return tokenUnit;
     }
 

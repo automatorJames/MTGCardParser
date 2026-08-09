@@ -3,6 +3,7 @@
 public class CaptureContext
 {
     IReadOnlyDictionary<string, Capture[]> _captureDictionary;
+    readonly Dictionary<string, CaptureTrace> _resolvedTraces = [];
 
     public RootCaptureTrace RootCaptureTrace { get; }
     public string SourceText { get; }
@@ -24,6 +25,12 @@ public class CaptureContext
     {
         get
         {
+            // Idempotent by design: multiple nodes in the hydration path (e.g. SetPropertyValue
+            // followed by a nested TryHydrate) may look up the same group. Re-resolving would
+            // re-register a second, duplicate child on the parent trace, so cache per FQN.
+            if (_resolvedTraces.TryGetValue(namedGroupNode.FullyQualifiedName, out var cached))
+                return cached;
+
             if (!_captureDictionary.TryGetValue(namedGroupNode.FullyQualifiedName, out var allCapturesForGroup))
                 // This should never happen; even if an FQN has no captures, it should still appear in the dictionary
                 throw new Exception($"Name '{namedGroupNode.FullyQualifiedName}' does not appear in the dictionary");
@@ -31,7 +38,9 @@ public class CaptureContext
             if (allCapturesForGroup.Length == 0)
             {
                 // Equivalent to "no capture found" (not necessarily an exception condition unless the caller expects one or more captures)
-                return new(this, namedGroupNode);
+                var emptyTrace = new CaptureTrace(this, namedGroupNode);
+                _resolvedTraces[namedGroupNode.FullyQualifiedName] = emptyTrace;
+                return emptyTrace;
             }
 
             var captureTraces = allCapturesForGroup.Select((x, idx) => new CaptureTrace(this, namedGroupNode, x, allCapturesForGroup.Length == 1 ? null : idx));
@@ -41,6 +50,7 @@ public class CaptureContext
                 captureTrace.Siblings.AddRange(captureTraces.Skip(1));
 
             RootCaptureTrace.AddCaptureTrace(captureTrace);
+            _resolvedTraces[namedGroupNode.FullyQualifiedName] = captureTrace;
 
             return captureTrace;
         }

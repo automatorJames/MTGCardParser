@@ -9,12 +9,21 @@ namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 public class DynamicTokenNode : TokenUnitNode
 {
     protected override string DefaultPattern => @"[^.]+";
+    protected override Joiner Joiner => Joiner.Pipe;
 
     public override CaptureNodeType NodeType => CaptureNodeType.Dynamic;
 
     public DynamicTokenNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
+    }
+
+    protected override void AddReflectedChildren(List<RegexNode> children)
+    {
+        if (Navigation.Patterns != null && Navigation.Patterns.Any())
+            Navigation.Patterns.ToList().ForEach(x => children.Add(new TextNode(this, x)));
+        else
+            children.Add(new TextNode(this, DefaultPattern));
     }
 
     /// <inheritdoc/>
@@ -30,6 +39,7 @@ public class DynamicTokenNode : TokenUnitNode
             return false;
 
         tokenUnit = new DynamicToken(dynamicMatchToken);
+        tokenUnit.CaptureContext = dynamicMatchToken.CaptureContext;
 
         return true;
     }
