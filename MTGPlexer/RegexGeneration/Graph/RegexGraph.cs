@@ -109,7 +109,7 @@ public class RegexGraph
             if (endsAtBoundary)
             {
                 CaptureContext captureContext = new(RootNode, match, sourceText);
-                var success = RootNode.TryHydrate(captureContext, out tokenUnit);
+                var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out tokenUnit);
 
                 if (!success)
                     return false;

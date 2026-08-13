@@ -42,8 +42,8 @@ public class TokenUnitNode : NamedGroupNode
         };
     }
 
-    /// <summary>Instantiates this node's <see cref="TokenUnit"/> type and hydrates every child named-group property from <paramref name="captureContext"/>. Returns false if any required child fails to hydrate.</summary>
-    public virtual bool TryHydrate(CaptureContext captureContext, out CaptureUnit tokenUnit)
+    /// <summary>Instantiates this node's <see cref="TokenUnit"/> type and hydrates every child named-group property from <paramref name="captureInfo"/>'s <see cref="CaptureTrace.CaptureContext"/>. Returns false if any required child fails to hydrate.</summary>
+    public virtual bool TryHydrate(CaptureTrace captureInfo, out CaptureUnit tokenUnit)
     {
         tokenUnit = null;
         var instance = (CaptureUnit)Activator.CreateInstance(Navigation.NodeType);
@@ -51,13 +51,13 @@ public class TokenUnitNode : NamedGroupNode
 
         foreach (var child in namedGroupNodeChildren)
         {
-            var setResult = child.SetPropertyValue(instance, captureContext);
+            var setResult = child.SetPropertyValue(instance, captureInfo.CaptureContext);
 
             if (!setResult)
                 return false;
         }
 
-        instance.CaptureContext = captureContext;
+        instance.CaptureContext = captureInfo.CaptureContext;
         tokenUnit = instance;
 
         return true;
@@ -66,7 +66,7 @@ public class TokenUnitNode : NamedGroupNode
     /// <inheritdoc/>
     protected override object GetValue(CaptureTrace captureInfo)
     {
-        TryHydrate(captureInfo.CaptureContext, out var tokenUnit);
+        TryHydrate(captureInfo, out var tokenUnit);
         return tokenUnit;
     }
 

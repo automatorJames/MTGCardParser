@@ -27,11 +27,11 @@ public class DynamicTokenNode : TokenUnitNode
     }
 
     /// <inheritdoc/>
-    public override bool TryHydrate(CaptureContext captureContext, out CaptureUnit tokenUnit)
+    public override bool TryHydrate(CaptureTrace captureInfo, out CaptureUnit tokenUnit)
     {
         tokenUnit = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(TokenUnit);
-        var captureValue = captureContext[this].CaptureValue;
+        var captureValue = captureInfo.CaptureValue;
         var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(captureValue, scopeToType: filterType);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
