@@ -7,7 +7,7 @@
 /// </summary>
 public class BoolNode : NamedGroupNode
 {
-    public override CaptureNodeType NodeType => CaptureNodeType.Bool;
+    public override CaptureNodeKind NodeType => CaptureNodeKind.Bool;
     public override Quantifier? Quantifier => MTGPlexer.Quantifier.Optional;
     protected override bool OneOrMoreRegexPatternsRequired => true;
 

@@ -7,7 +7,7 @@
 public class TokenUnitNode : NamedGroupNode
 {
     protected override Joiner Joiner { get; }
-    public override CaptureNodeType NodeType => CaptureNodeType.Token;
+    public override CaptureNodeKind NodeType => CaptureNodeKind.Token;
 
     public TokenUnitNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
@@ -42,8 +42,8 @@ public class TokenUnitNode : NamedGroupNode
         };
     }
 
-    /// <summary>Instantiates this node's <see cref="TokenUnit"/> type and hydrates every child named-group property from <paramref name="captureInfo"/>'s <see cref="CaptureTrace.CaptureContext"/>. Returns false if any required child fails to hydrate.</summary>
-    public virtual bool TryHydrate(CaptureTrace captureInfo, out CaptureUnit tokenUnit)
+    /// <summary>Instantiates this node's <see cref="TokenUnit"/> type and hydrates every child named-group property from <paramref name="captureTrace"/>'s <see cref="CaptureTrace.CaptureContext"/>. Returns false if any required child fails to hydrate.</summary>
+    public virtual bool TryHydrate(CaptureTrace captureTrace, out CaptureUnit tokenUnit)
     {
         tokenUnit = null;
         var instance = (CaptureUnit)Activator.CreateInstance(Navigation.NodeType);
@@ -51,22 +51,22 @@ public class TokenUnitNode : NamedGroupNode
 
         foreach (var child in namedGroupNodeChildren)
         {
-            var setResult = child.SetPropertyValue(instance, captureInfo.CaptureContext);
+            var setResult = child.SetPropertyValue(instance, captureTrace.CaptureContext);
 
             if (!setResult)
                 return false;
         }
 
-        instance.CaptureContext = captureInfo.CaptureContext;
+        instance.CaptureContext = captureTrace.CaptureContext;
         tokenUnit = instance;
 
         return true;
     }
 
     /// <inheritdoc/>
-    protected override object GetValue(CaptureTrace captureInfo)
+    protected override object GetValue(CaptureTrace captureTrace)
     {
-        TryHydrate(captureInfo, out var tokenUnit);
+        TryHydrate(captureTrace, out var tokenUnit);
         return tokenUnit;
     }
 

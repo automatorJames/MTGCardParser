@@ -14,7 +14,7 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 /// nested boxes read best when each box's wall is its own container-meaningful color, so a border's hue
 /// should never be pinned regardless of which group it belongs to; only its saturation/brightness are
 /// hand-tuned below, same as every other role, with no further distinction by the enclosing group's
-/// <see cref="CaptureNodeType"/> (box shape — solid vs. dashed — already carries that distinction; see
+/// <see cref="CaptureNodeKind"/> (box shape — solid vs. dashed — already carries that distinction; see
 /// <see cref="SmartRegexStaticRules.NodeTypeToBoxCharSet"/>).
 /// </remarks>
 public static class SmartSpanControlPanel

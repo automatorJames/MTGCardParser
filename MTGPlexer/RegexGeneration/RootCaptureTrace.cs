@@ -33,10 +33,10 @@ public class RootCaptureTrace : CaptureTrace
     {
         _flatCaptureTree[captureTrace.FullyQualifiedName] = captureTrace;
 
-        if (!_flatCaptureTree.TryGetValue(captureTrace.ParentName, out var parentCaptureInfo))
+        if (!_flatCaptureTree.TryGetValue(captureTrace.ParentName, out var parentCaptureTrace))
             throw new Exception($"Found no {nameof(CaptureTrace)} parent named \"{captureTrace.ParentName}\" for child \"{captureTrace.FullyQualifiedName}\"");
 
-        parentCaptureInfo.Children.Add(captureTrace);
+        parentCaptureTrace.Children.Add(captureTrace);
     }
 
     public Dictionary<string, CaptureTrace> GetFlatCaptureTree() => _flatCaptureTree;

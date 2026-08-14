@@ -11,7 +11,7 @@ public class DynamicTokenNode : TokenUnitNode
     protected override string DefaultPattern => @"[^.]+";
     protected override Joiner Joiner => Joiner.Pipe;
 
-    public override CaptureNodeType NodeType => CaptureNodeType.Dynamic;
+    public override CaptureNodeKind NodeType => CaptureNodeKind.Dynamic;
 
     public DynamicTokenNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
@@ -27,11 +27,11 @@ public class DynamicTokenNode : TokenUnitNode
     }
 
     /// <inheritdoc/>
-    public override bool TryHydrate(CaptureTrace captureInfo, out CaptureUnit tokenUnit)
+    public override bool TryHydrate(CaptureTrace captureTrace, out CaptureUnit tokenUnit)
     {
         tokenUnit = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(TokenUnit);
-        var captureValue = captureInfo.CaptureValue;
+        var captureValue = captureTrace.CaptureValue;
         var resolvedTokens = TokenTypeRegistry.ClassTokenizer.Tokenize(captureValue, scopeToType: filterType);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match

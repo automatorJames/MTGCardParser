@@ -74,14 +74,14 @@ public static class SmartRegexStaticRules
     );
 
     /// <summary>Which <see cref="BoxCharSet"/> to draw around a named group's border, keyed by the kind of node it represents.</summary>
-    public static Dictionary<CaptureNodeType, BoxCharSet> NodeTypeToBoxCharSet = new Dictionary<CaptureNodeType, BoxCharSet>
+    public static Dictionary<CaptureNodeKind, BoxCharSet> NodeTypeToBoxCharSet = new Dictionary<CaptureNodeKind, BoxCharSet>
     {
-        [CaptureNodeType.Enum] = Closed,
-        [CaptureNodeType.Token] = Dashed,
-        [CaptureNodeType.OneOf] = Dashed,
-        [CaptureNodeType.Dynamic] = Dashed,
-        [CaptureNodeType.Int] = Dashed,
-        [CaptureNodeType.Bool] = Dashed,
+        [CaptureNodeKind.Enum] = Closed,
+        [CaptureNodeKind.Token] = Dashed,
+        [CaptureNodeKind.OneOf] = Dashed,
+        [CaptureNodeKind.Dynamic] = Dashed,
+        [CaptureNodeKind.Int] = Dashed,
+        [CaptureNodeKind.Bool] = Dashed,
     };
 
     /// <summary>Looks up the box-drawing character set for the group a bookend brick opens or closes.</summary>

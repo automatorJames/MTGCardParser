@@ -4,7 +4,7 @@ public class IntNode : NamedGroupNode
 {
     protected override bool OneOrMoreRegexPatternsRequired => true;
 
-    public override CaptureNodeType NodeType => CaptureNodeType.Int;
+    public override CaptureNodeKind NodeType => CaptureNodeKind.Int;
 
     public IntNode(RegexNode parentNode, Navigation navigation) 
         : base(parentNode, navigation)
@@ -12,11 +12,11 @@ public class IntNode : NamedGroupNode
     }
 
     /// <summary>The captured text parsed as an int, or (if it doesn't parse, e.g. a repeated marker like "+1/+1" counters) the number of times it occurred.</summary>
-    protected override object GetValue(CaptureTrace captureInfo)
+    protected override object GetValue(CaptureTrace captureTrace)
     {
-        if (captureInfo.Count == 1 && int.TryParse(captureInfo.CaptureValue, out int parsedInt))
+        if (captureTrace.Count == 1 && int.TryParse(captureTrace.CaptureValue, out int parsedInt))
             return parsedInt;
 
-        return captureInfo.Count;
+        return captureTrace.Count;
     }
 }

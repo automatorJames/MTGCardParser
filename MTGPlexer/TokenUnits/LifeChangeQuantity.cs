@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 public class LifeChangeQuantity : TokenUnit
 {
     public override Snippet[] Snippets => [Prop(WhichPlayer), Prop(LifeVerb), Prop(Quantity), "life"];

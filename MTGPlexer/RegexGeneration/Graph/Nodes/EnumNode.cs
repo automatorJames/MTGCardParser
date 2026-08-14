@@ -8,7 +8,7 @@
 public class EnumNode : NamedGroupNode
 {
     protected override Joiner Joiner => Joiner.Pipe;
-    public override CaptureNodeType NodeType => CaptureNodeType.Enum;
+    public override CaptureNodeKind NodeType => CaptureNodeKind.Enum;
 
     public EnumNode(RegexNode parentNode, Navigation navigation) : base(parentNode, navigation)
     {

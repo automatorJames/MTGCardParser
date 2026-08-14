@@ -6,6 +6,7 @@ public class TokenOccurrenceSummary
     public string TypeNameFriendly { get; }
     public int OccurrenceCount { get; }
     public Dictionary<string, EnumCaptureTraceSummary> EnumCaptureSummaries { get; } = [];
+    public Dictionary<string, DynamicCaptureTraceSummary> DynamicCaptureSummaries { get; } = [];
     public RegexGraph RegexGraph { get; }
 
     /// <summary>
@@ -29,18 +30,12 @@ public class TokenOccurrenceSummary
             EnumCaptureSummaries[enumNode.FullyQualifiedName] = EnumCaptureTraceSummary.CreateEmpty(enumNode.FullyQualifiedName, enumNode.Navigation.UnderlyingType);
     }
 
-    public TokenOccurrenceSummary(IEnumerable<TokenUnit> rootTokenUnitsOfType)
+    public TokenOccurrenceSummary(Type type, IEnumerable<TokenUnit> rootTokenUnitsOfType)
     {
-        if (rootTokenUnitsOfType == null || !rootTokenUnitsOfType.Any())
-            throw new Exception($"Cannot construct {nameof(TokenOccurrenceSummary)} with null or empty collection");
+        if (rootTokenUnitsOfType.Any(x => x.Type != type))
+            throw new Exception($"All {nameof(rootTokenUnitsOfType)} must be of the specified type");
 
-        var distinctTypes = rootTokenUnitsOfType.Select(x => x.Type).Distinct();
-
-        if (distinctTypes.Count() > 1)
-            throw new Exception($"Expected exactly one distinct type among root {nameof(TokenUnit)} instances, but got {distinctTypes.Count()}");
-
-        var representativeTokenUnit = rootTokenUnitsOfType.First();
-        Type = representativeTokenUnit.Type;
+        Type = type;
 
         if (!TokenTypeRegistry.RegexGraphs.TryGetValue(Type, out var graph))
             throw new Exception($"No {nameof(RegexGraph)} registered for {nameof(TokenUnit)} type {Type.Name}");
@@ -52,9 +47,11 @@ public class TokenOccurrenceSummary
         var enumNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<EnumNode>();
 
         foreach (var enumNode in enumNodes)
-        {
-            var enumNodeCaptures = rootTokenUnitsOfType.Select(x => x.CaptureContext.RootCaptureTrace[enumNode.FullyQualifiedName]);
-            EnumCaptureSummaries[enumNode.FullyQualifiedName] = new(enumNodeCaptures);
-        }
+            EnumCaptureSummaries[enumNode.FullyQualifiedName] = new(enumNode.FullyQualifiedName, rootTokenUnitsOfType);
+
+        var dynamicNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<DynamicTokenNode>();
+
+        foreach (var dynamicNode in dynamicNodes)
+            DynamicCaptureSummaries[dynamicNode.FullyQualifiedName] = new(dynamicNode.FullyQualifiedName, rootTokenUnitsOfType);
     }
 }

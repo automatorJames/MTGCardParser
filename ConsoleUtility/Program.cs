@@ -38,7 +38,7 @@ internal class Program
 
         foreach ((var type, var tokens) in tokensByType)
         {
-            TokenOccurrenceSummary summary = new(tokens);
+            TokenOccurrenceSummary summary = new(type, tokens);
             var regexGraph = TokenTypeRegistry.RegexGraphs[type];
             var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
             Console.WriteLine(smartRegex);
@@ -97,7 +97,7 @@ internal class Program
 
         foreach ((var type, var tokens) in tokensByType)
         {
-            TokenOccurrenceSummary summary = new(tokens);
+            TokenOccurrenceSummary summary = new(type, tokens);
             Debugger.Break();
         }
     }

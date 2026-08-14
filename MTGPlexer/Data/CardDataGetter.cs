@@ -44,7 +44,12 @@ public class CardDataGetter : IDocumentRepository
         //result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
         //result = [new Card { Name = "feck you all", Text = "draw three cards" }, new Card { Name = "feck them all", Text = "draws seven cards" }];
         //result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
-        result = [new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }];
+        //result = [new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }];
+        result = [
+            new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }, 
+            new Card { Name = "Ancestrall Recall Deux", Text = "target opponent draws three cards." },
+            new Card { Name = "Ancestrall Recall Sevaughn", Text = "target opponent draws seven cards." },
+            new Card { Name = "Silly Salve", Text = "target player you gain three life." }];
         return result.Cast<IDocument>().ToList();
     }
 }

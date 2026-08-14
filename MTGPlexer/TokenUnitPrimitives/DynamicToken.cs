@@ -3,7 +3,8 @@
 [Dependent]
 public class DynamicToken : TokenUnit
 {
-    public object Item { get; set; }
+    public object Item { get; }
+    public Type ResolvedType { get; }
 
     public DynamicToken()
     {
@@ -12,5 +13,6 @@ public class DynamicToken : TokenUnit
     public DynamicToken(object item)
     {
         Item = item;
+        ResolvedType = item.GetType();
     }
 }

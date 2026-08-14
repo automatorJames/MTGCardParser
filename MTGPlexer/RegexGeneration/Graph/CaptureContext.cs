@@ -56,6 +56,14 @@ public class CaptureContext
         }
     }
 
+    public CaptureTrace GetResolvedTrace(string groupName)
+    {
+        if (_resolvedTraces.TryGetValue(groupName, out var trace))
+            return trace;
+
+        throw new Exception($"No resolved trace for grop name {groupName}");
+    }
+
     static Dictionary<string, Capture[]> GetNamedGroupCaptures(Match match)
     {
         if (match == null || !match.Success) return new();

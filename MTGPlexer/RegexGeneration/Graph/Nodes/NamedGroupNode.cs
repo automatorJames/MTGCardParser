@@ -18,7 +18,7 @@ public abstract class NamedGroupNode : GroupNode
     public bool IsTransparentRoot => Navigation.IsRoot && Navigation.Quantifier == null;
 
     /// <summary>What kind of capture this node represents (enum, bool, token unit, etc.), used by formatting and by <see cref="CaptureTrace"/>.</summary>
-    public abstract CaptureNodeType NodeType { get; }
+    public abstract CaptureNodeKind NodeType { get; }
 
     public override Quantifier? Quantifier =>
         Navigation.IsList ? MTGPlexer.Quantifier.AnyNumber
@@ -129,12 +129,12 @@ public abstract class NamedGroupNode : GroupNode
     public virtual bool SetPropertyValue(CaptureUnit instance, CaptureContext context)
     {
         object value;
-        var captureInfo = context[this];
+        var captureTrace = context[this];
 
         // todo: for certain navigations, scopedContext.Success should be required for (excepting OneOf, OptionalOf, etc.)
         // Therefore we should enforce this as necessary to avoid hard-to-isolate silent failure modes where hydration succeeds without
         // throwing an exception, but is missing most or all of its property values
-        if (!captureInfo.Success)
+        if (!captureTrace.Success)
             return false;
 
         if (Navigation.IsList)
@@ -142,7 +142,7 @@ public abstract class NamedGroupNode : GroupNode
             var listType = typeof(List<>).MakeGenericType(Navigation.GenericTypes[0]);
             var list = (IList)Activator.CreateInstance(listType);
             
-            foreach (var sibling in captureInfo)
+            foreach (var sibling in captureTrace)
             {
                 var itemValue = GetValue(sibling);
                 sibling.ClrValue = itemValue;
@@ -153,8 +153,8 @@ public abstract class NamedGroupNode : GroupNode
         }
         else
         {
-            value = GetValue(captureInfo);
-            captureInfo.ClrValue = value;
+            value = GetValue(captureTrace);
+            captureTrace.ClrValue = value;
         }
 
         if (value == null)
@@ -167,5 +167,5 @@ public abstract class NamedGroupNode : GroupNode
     }
 
     /// <summary>Converts one successful capture into the CLR value this node's property should hold.</summary>
-    protected abstract object GetValue(CaptureTrace captureInfo);
+    protected abstract object GetValue(CaptureTrace captureTrace);
 }

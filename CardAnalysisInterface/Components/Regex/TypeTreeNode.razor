@@ -1,7 +1,7 @@
 @{
     var friendlyName = Node.Name.ToFriendlyCase();
     var palette = Palettes.GetValueOrDefault(Node);
-    var isEnum = Node.NodeType == CaptureNodeType.Enum;
+    var isEnum = Node.NodeType == CaptureNodeKind.Enum;
     var quantifierMark = Node.Quantifier?.GetDescription();
     var children = Node.Children.OfType<NamedGroupNode>().ToList();
 

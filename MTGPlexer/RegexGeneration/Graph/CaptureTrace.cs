@@ -13,7 +13,9 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty] public string CaptureValue { get; set; }
     public string PrintValue => GetPrintValue();
     public bool Success { get; }
-    [JsonProperty] public CaptureNodeType NodeType { get; }
+    [JsonProperty] public CaptureNodeKind NodeKind { get; }
+    public Type ResolvedNodeType => GetResolvedNodeType();
+    [JsonProperty] public string ResolvedNodeTypeName => ResolvedNodeType.Name;
     public string ParentName { get; }
     [JsonProperty] public int Index { get; }
     [JsonProperty] public int Length { get; }
@@ -58,8 +60,8 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
-        NodeType = namedGroupNode.NodeType;
-        IsTerminal = CheckNodeTypeIsTerminal(NodeType);
+        NodeKind = namedGroupNode.NodeType;
+        IsTerminal = CheckNodeTypeIsTerminal(NodeKind);
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
         Name = namedGroupNode.Name;
 
@@ -109,22 +111,33 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         if (ClrValue == null)
             return null;
 
-        return NodeType.ToString() + ": " + ClrValue.ToString();
+        return NodeKind.ToString() + ": " + ClrValue.ToString();
     }
 
-    static bool CheckNodeTypeIsTerminal(CaptureNodeType nodeType) =>
-        nodeType switch
+    Type GetResolvedNodeType()
+    {
+        if (ClrValue == null)
+            return null;
+
+        if (ClrValue is DynamicToken dynamicToken)
+            return dynamicToken.ResolvedType;
+
+        return ClrValue.GetType();
+    }
+
+    static bool CheckNodeTypeIsTerminal(CaptureNodeKind nodeKind) =>
+        nodeKind switch
         {
-            CaptureNodeType.Enum => true,
-            CaptureNodeType.Int => true,
-            CaptureNodeType.Bool => true,
+            CaptureNodeKind.Enum => true,
+            CaptureNodeKind.Int => true,
+            CaptureNodeKind.Bool => true,
             _ => false
         };
 
     public override string ToString() => CaptureValue;
 }
 
-public enum CaptureNodeType
+public enum CaptureNodeKind
 {
     Token,
     OneOf,

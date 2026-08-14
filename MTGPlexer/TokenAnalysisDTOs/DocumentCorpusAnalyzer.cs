@@ -41,14 +41,15 @@ public class DocumentCorpusAnalyzer
         if (_isInitialized) return;
 
         // set ProcessedDocuments
-        // Each document tokenizes independently, so this is CPU-bound and embarrassingly
-        // parallel; AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
+        // Each document tokenizes independently, so this is CPU-bound and parallelizable.
+        // AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
         var documents = await _repository.GetDocumentsAsync();
         ProcessedDocuments = documents
             .AsParallel()
             .AsOrdered()
             .Select(x => new ProcessedDocument(x))
             .ToList();
+
         DigestedTextWithCaptureTokens = new DigestedText(ProcessedDocuments);
 
         // set TokenOccurrenceSummaries
@@ -58,7 +59,7 @@ public class DocumentCorpusAnalyzer
             .OfType<TokenUnit>()
             .GroupBy(x => x.Type);
 
-        TokenOccurrenceSummaries = rootTokenUnitsByType.ToDictionary(x => x.Key, x => new TokenOccurrenceSummary(x));
+        TokenOccurrenceSummaries = rootTokenUnitsByType.ToDictionary(x => x.Key, x => new TokenOccurrenceSummary(x.Key, x));
 
         // Registered types with zero matches are still represented, so "hide zero-capture" filtering
         // has actual zero-occurrence entries to hide rather than the type disappearing outright.
