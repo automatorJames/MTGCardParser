@@ -5,10 +5,11 @@ public class DynamicCaptureTraceSummary : NamedGroupCaptureTraceSummary
     protected override CaptureNodeKind NodeKind => CaptureNodeKind.Dynamic;
 
     /// <summary>
-    /// For each type resovled at runtime for this DynamicCaptureNode, the occurrence count per
-    /// distinct capture trace value encountered.
+    /// For each type resolved at runtime for this DynamicCaptureNode, the concrete hydrated <see cref="TokenUnit"/>
+    /// instances captured as that type — enough to build a real <see cref="TokenOccurrenceSummary"/> for it and
+    /// render its own full pretty regex (see <see cref="DynamicSectionBuilder"/>) instead of just a literal value.
     /// </summary>
-    public Dictionary<Type, Dictionary<string, int>> ResolvedTypeCaptureValueOccurrenceCounts { get; } = [];
+    public Dictionary<Type, List<TokenUnit>> ResolvedTypeCaptureUnits { get; } = [];
 
 
     /// <summary>
@@ -30,9 +31,11 @@ public class DynamicCaptureTraceSummary : NamedGroupCaptureTraceSummary
             if (captureTrace.ClrValue is not DynamicToken dynamicToken)
                 throw new Exception($"{captureTrace.FullyQualifiedName} is of type {captureTrace.ClrValue.GetType().Name}, but expected {nameof(DynamicToken)}");
 
-            ResolvedTypeCaptureValueOccurrenceCounts.TryAdd(dynamicToken.ResolvedType, []);
-            ResolvedTypeCaptureValueOccurrenceCounts[dynamicToken.ResolvedType].TryAdd(captureTrace.CaptureValue, 0);
-            ResolvedTypeCaptureValueOccurrenceCounts[dynamicToken.ResolvedType][captureTrace.CaptureValue]++;
+            if (dynamicToken.Item is not TokenUnit resolvedTokenUnit)
+                throw new Exception($"{captureTrace.FullyQualifiedName} resolved to a {dynamicToken.Item?.GetType().Name ?? "null"}, but expected a {nameof(TokenUnit)}");
+
+            ResolvedTypeCaptureUnits.TryAdd(dynamicToken.ResolvedType, []);
+            ResolvedTypeCaptureUnits[dynamicToken.ResolvedType].Add(resolvedTokenUnit);
         }
     }
 }

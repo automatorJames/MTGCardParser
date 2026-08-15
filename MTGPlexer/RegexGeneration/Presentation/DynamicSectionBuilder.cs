@@ -2,34 +2,37 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 
 /// <summary>
 /// Builds the bricks that represent one dynamic group's resolved captures once formatting reaches that
-/// group's opening brick: for each type resolved at runtime, its distinct captured values ranked by
-/// occurrence, with a shared header row (aggregate count) when a type has more than one distinct captured
-/// value. Analogous to <see cref="EnumSectionBuilder"/>, except a dynamic group's real matching pattern
-/// (<c>[^.]+</c>) can't itself be enumerated the way an enum's members can, so these rows are illustrative
-/// examples of what the group actually captured rather than the alternatives it could match. When nothing
-/// was captured (e.g. a zero-occurrence type), falls back to rendering the group's raw, unformatted bricks.
+/// group's opening brick: for each type resolved at runtime, a container bookended and commented the same
+/// way any other nested <see cref="TokenUnit"/> group is, wrapping that type's own bricks — built from the
+/// actual hydrated instances captured as that type, via the same <see cref="RegexBrickFormattingPipeline"/>
+/// every type's own page uses, then depth-shifted to sit one level inside the container. Because these are
+/// real bricks spliced into the outer sequence (not independently pre-rendered text), they share the outer
+/// render's comment-column alignment, group-box walls, and positional rainbow coloring, and recurse
+/// arbitrarily deep for free when a resolved type itself contains a nested dynamic group. When more than
+/// one type was resolved for this group, a divider separates each type's container from the next. When
+/// nothing was captured (e.g. a zero-occurrence type), falls back to rendering the group's raw bricks.
 /// </summary>
 internal class DynamicSectionBuilder
 {
-    /// <summary>Builds the full ordered sequence of resolved-type/capture-value rows for <paramref name="dynamicNode"/>.</summary>
-    public List<RegexBrick> Build(DynamicTokenNode dynamicNode, List<RegexBrick> allBricks, DynamicCaptureTraceSummary dynamicSummary)
+    /// <summary>Builds the full ordered sequence of embedded resolved-type sections for <paramref name="dynamicNode"/>.</summary>
+    public List<RegexBrick> Build(DynamicTokenNode dynamicNode, List<RegexBrick> allBricks, DynamicCaptureTraceSummary dynamicSummary, bool includeSupplementalLines)
     {
-        if (dynamicSummary.ResolvedTypeCaptureValueOccurrenceCounts.Count == 0)
+        if (dynamicSummary.ResolvedTypeCaptureUnits.Count == 0)
             return BuildFallbackBricks(dynamicNode, allBricks);
 
-        var typeGroups = dynamicSummary.ResolvedTypeCaptureValueOccurrenceCounts
-            .OrderByDescending(x => x.Value.Values.Sum())
+        var typeGroups = dynamicSummary.ResolvedTypeCaptureUnits
+            .OrderByDescending(x => x.Value.Count)
             .ToList();
-
-        var metrics = DynamicColumnMetrics.Calculate(dynamicSummary.ResolvedTypeCaptureValueOccurrenceCounts);
 
         List<RegexBrick> bricks = [];
 
         for (int i = 0; i < typeGroups.Count; i++)
         {
-            var (type, captureValueCounts) = typeGroups[i];
-            bool isLastGroup = i == typeGroups.Count - 1;
-            AppendTypeGroupBricks(bricks, dynamicNode, type, captureValueCounts, metrics, isLastGroup);
+            var (type, tokenUnits) = typeGroups[i];
+            bricks.AddRange(BuildResolvedTypeContainerBricks(dynamicNode, type, tokenUnits, includeSupplementalLines));
+
+            if (i != typeGroups.Count - 1)
+                bricks.Add(new RegexBrickSynonymSectionFooter(dynamicNode, 0));
         }
 
         return bricks;
@@ -52,38 +55,58 @@ internal class DynamicSectionBuilder
     }
 
     /// <summary>
-    /// Appends one resolved type's rows: a shared header row (name + aggregate count) when more than one
-    /// distinct captured value maps to this type, followed by each captured value ranked by occurrence, and
-    /// (when this is such a multi-value group and it isn't the last group in the section) a trailing divider
-    /// footer separating it from the next type's rows.
+    /// One resolved type's container: an open/close bookend pair labeled the same way a real nested token
+    /// group is, one level inside <paramref name="dynamicNode"/>, wrapping that type's own fully-formatted
+    /// bricks (from its actual captured instances) depth-shifted one level deeper still. Every brick's data
+    /// path is rebased onto <paramref name="dynamicNode"/>'s, and the container itself is given the resolved
+    /// type's own root as its coloring identity, so it reads (and colors) as a real nested group rather than
+    /// as more of the enclosing dynamic group.
     /// </summary>
-    static void AppendTypeGroupBricks(List<RegexBrick> bricks, DynamicTokenNode dynamicNode, Type type, Dictionary<string, int> captureValueCounts, DynamicColumnMetrics metrics, bool isLastGroup)
+    static List<RegexBrick> BuildResolvedTypeContainerBricks(DynamicTokenNode dynamicNode, Type resolvedType, List<TokenUnit> tokenUnits, bool includeSupplementalLines)
     {
-        var orderedValues = captureValueCounts.OrderByDescending(x => x.Value).ToList();
-        var totalCount = captureValueCounts.Values.Sum();
-        bool isMultiValue = orderedValues.Count > 1;
+        var resolvedGraph = TokenTypeRegistry.RegexGraphs[resolvedType];
+        var containerDepth = dynamicNode.Lineage.OfType<NamedGroupNode>().Count(x => !x.IsTransparentRoot);
+        var typeLabel = CaptureNodeKind.Token.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+        var friendlyName = resolvedType.Name.ToFriendlyCase();
+        var containerFullyQualifiedName = $"{dynamicNode.FullyQualifiedName}_{resolvedType.Name}";
 
-        if (isMultiValue)
-            bricks.Add(new RegexBrickSynonymSectionHeader(dynamicNode, metrics.FormatNameField(type.Name), metrics.FormatCountField(totalCount)));
+        var open = new RegexBrickGroupOpen(dynamicNode, resolvedType.Name) { TypeLabel = typeLabel, CommentFormatted = typeLabel };
+        var close = new RegexBrickGroupClose(dynamicNode, null) { NameText = friendlyName, CommentFormatted = friendlyName };
 
-        foreach (var (captureValue, count) in orderedValues)
-            bricks.Add(BuildValueBrick(dynamicNode, type, captureValue, isMultiValue ? count : totalCount, isMultiValue, metrics));
+        foreach (var bookend in new RegexBrick[] { open, close })
+        {
+            // A self-referencing bookend's own NestedDepthModifer (-1) assumes it's opening/closing the
+            // group it was built from (dynamicNode itself), landing its base depth one level shallower
+            // than containerDepth. It's actually nested one level inside that group, so restore that level.
+            bookend.OffsetNestedDepth(1);
+            bookend.OverrideFullyQualifiedName(containerFullyQualifiedName);
+            // Give the container its own coloring identity (the resolved type's own root) instead of
+            // inheriting dynamicNode's — otherwise it renders the same color as the group it's nested in.
+            bookend.OverrideNamedGroupParent(resolvedGraph.RootNode);
+        }
 
-        if (isMultiValue && !isLastGroup)
-            bricks.Add(new RegexBrickSynonymSectionFooter(dynamicNode, metrics.MaxCommentLength));
+        var content = RenderResolvedType(resolvedGraph, tokenUnits, includeSupplementalLines);
+        var resolvedRootFullyQualifiedName = resolvedGraph.RootNode.FullyQualifiedName;
+
+        foreach (var brick in content)
+        {
+            brick.OffsetNestedDepth(containerDepth + 1);
+            brick.OverrideFullyQualifiedName(containerFullyQualifiedName + brick.FullyQualifiedName[resolvedRootFullyQualifiedName.Length..]);
+        }
+
+        return [open, .. content, close];
     }
 
-    static RegexBrickValue BuildValueBrick(DynamicTokenNode dynamicNode, Type type, string captureValue, int occurrenceCount, bool isMultiValue, DynamicColumnMetrics metrics)
+    /// <summary>
+    /// Formats one resolved type's own bricks from the actual instances captured as that type — the same
+    /// <see cref="RegexBrickFormattingPipeline"/> every registered type's own page runs — without rendering
+    /// them yet, so they can be depth-shifted and spliced into the outer sequence for one shared render pass.
+    /// </summary>
+    static List<RegexBrick> RenderResolvedType(RegexGraph resolvedGraph, List<TokenUnit> tokenUnits, bool includeSupplementalLines)
     {
-        var nameField = isMultiValue ? metrics.FormatBlankNameField() : metrics.FormatNameField(type.Name);
-        var countField = metrics.FormatCountField(occurrenceCount);
+        var resolvedSummary = new TokenOccurrenceSummary(resolvedGraph.RootTokenUnitType, tokenUnits);
+        var pipeline = new RegexBrickFormattingPipeline(resolvedGraph, resolvedSummary);
 
-        return new RegexBrickValue(dynamicNode, captureValue, type)
-        {
-            NameCommentFormatted = nameField,
-            CountCommentFormatted = countField,
-            MemberRegexFormatted = captureValue,
-            CommentFormatted = nameField + countField,
-        };
+        return pipeline.Format(resolvedGraph.BuiltRegex.Bricks, includeSupplementalLines);
     }
 }

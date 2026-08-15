@@ -9,6 +9,9 @@ public class BuiltRegex
 {
     readonly List<RegexBrick> _regexBricks;
 
+    /// <summary>The flat, unformatted brick sequence this regex was compiled from — the raw input to <see cref="RegexBrickFormattingPipeline.Format"/>.</summary>
+    public List<RegexBrick> Bricks => _regexBricks;
+
     /// <summary>The concatenated raw regex text of every brick, used to compile <see cref="Regex"/>.</summary>
     public string MinifiedRegex { get; }
 

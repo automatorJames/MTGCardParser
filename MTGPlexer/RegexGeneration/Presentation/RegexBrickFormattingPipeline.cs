@@ -38,6 +38,12 @@ internal class RegexBrickFormattingPipeline
             if (includeSupplementalLines && ShouldInsertBlankLineBefore(sequence, i))
                 result.Add(new RegexBrickBlank(_regexGraph.RootNode));
 
+            // Bricks are shared/cached per type and re-formatted on every render. A brick embedded
+            // elsewhere by DynamicSectionBuilder leaves depth/identity overrides applied on these same
+            // shared objects, so a plain, non-embedded pass must clear them back to baseline here —
+            // otherwise a type rendered on its own page would inherit stale depth or a rebased data-path
+            // from the last time it was embedded inside some other type's dynamic capture.
+            brick.ResetEmbeddingOverrides();
             BrickCommentResolver.Apply(brick);
             result.Add(brick);
 
@@ -86,7 +92,7 @@ internal class RegexBrickFormattingPipeline
         if (groupOpen.NamedGroupParent is DynamicTokenNode dynamicNode)
         {
             var dynamicSummary = _summary.DynamicCaptureSummaries[dynamicNode.FullyQualifiedName];
-            result.AddRange(_dynamicSectionBuilder.Build(dynamicNode, allBricks, dynamicSummary));
+            result.AddRange(_dynamicSectionBuilder.Build(dynamicNode, allBricks, dynamicSummary, includeSupplementalLines));
         }
     }
 }
