@@ -9,32 +9,11 @@ public class TokenOccurrenceSummary
     public Dictionary<string, DynamicCaptureTraceSummary> DynamicCaptureSummaries { get; } = [];
     public RegexGraph RegexGraph { get; }
 
-    /// <summary>
-    /// Constructs a summary for a registered token type that had zero matches across the corpus,
-    /// so it can still be listed (e.g. on TypeRegexPage) rather than silently disappearing.
-    /// </summary>
-    public TokenOccurrenceSummary(Type zeroOccurrenceType)
+    private readonly IEnumerable<EnumNode> _enumNodes;
+    private readonly IEnumerable<DynamicTokenNode> _dynamicNodes;
+
+    private TokenOccurrenceSummary(Type type, int occurrenceCount)
     {
-        Type = zeroOccurrenceType;
-
-        if (!TokenTypeRegistry.RegexGraphs.TryGetValue(Type, out var graph))
-            throw new Exception($"No {nameof(RegexGraph)} registered for {nameof(TokenUnit)} type {Type.Name}");
-
-        RegexGraph = graph;
-        TypeNameFriendly = Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
-        OccurrenceCount = 0;
-
-        var enumNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<EnumNode>();
-
-        foreach (var enumNode in enumNodes)
-            EnumCaptureSummaries[enumNode.FullyQualifiedName] = EnumCaptureTraceSummary.CreateEmpty(enumNode.FullyQualifiedName, enumNode.Navigation.UnderlyingType);
-    }
-
-    public TokenOccurrenceSummary(Type type, IEnumerable<TokenUnit> rootTokenUnitsOfType)
-    {
-        if (rootTokenUnitsOfType.Any(x => x.Type != type))
-            throw new Exception($"All {nameof(rootTokenUnitsOfType)} must be of the specified type");
-
         Type = type;
 
         if (!TokenTypeRegistry.RegexGraphs.TryGetValue(Type, out var graph))
@@ -42,16 +21,41 @@ public class TokenOccurrenceSummary
 
         RegexGraph = graph;
         TypeNameFriendly = Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
-        OccurrenceCount = rootTokenUnitsOfType.Count();
+        OccurrenceCount = occurrenceCount;
 
-        var enumNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<EnumNode>();
+        _enumNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<EnumNode>();
+        _dynamicNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<DynamicTokenNode>();
+    }
 
-        foreach (var enumNode in enumNodes)
+    /// <summary>
+    /// Constructs a summary for a registered token type that had zero matches across the corpus,
+    /// so it can still be listed (e.g. on TypeRegexPage) rather than silently disappearing.
+    /// </summary>
+    public TokenOccurrenceSummary(Type zeroOccurrenceType) 
+        : this(zeroOccurrenceType, 0)
+    {
+        foreach (var enumNode in _enumNodes)
+            EnumCaptureSummaries[enumNode.FullyQualifiedName] = EnumCaptureTraceSummary.CreateEmpty(enumNode.FullyQualifiedName, enumNode.Navigation.UnderlyingType);
+
+        foreach (var dynamicNode in _dynamicNodes)
+            DynamicCaptureSummaries[dynamicNode.FullyQualifiedName] = DynamicCaptureTraceSummary.CreateEmpty(dynamicNode.FullyQualifiedName);
+    }
+
+    public TokenOccurrenceSummary(Type type, IEnumerable<TokenUnit> rootTokenUnitsOfType)
+        : this(type, ValidateAndCount(type, rootTokenUnitsOfType))
+    {
+        foreach (var enumNode in _enumNodes)
             EnumCaptureSummaries[enumNode.FullyQualifiedName] = new(enumNode.FullyQualifiedName, rootTokenUnitsOfType);
 
-        var dynamicNodes = RegexGraph.NamedGroupFlatGraph.Values.OfType<DynamicTokenNode>();
-
-        foreach (var dynamicNode in dynamicNodes)
+        foreach (var dynamicNode in _dynamicNodes)
             DynamicCaptureSummaries[dynamicNode.FullyQualifiedName] = new(dynamicNode.FullyQualifiedName, rootTokenUnitsOfType);
+    }
+
+    private static int ValidateAndCount(Type type, IEnumerable<TokenUnit> rootTokenUnitsOfType)
+    {
+        if (rootTokenUnitsOfType.Any(x => x.Type != type))
+            throw new Exception($"All {nameof(rootTokenUnitsOfType)} must be of the specified type");
+
+        return rootTokenUnitsOfType.Count();
     }
 }
