@@ -10,6 +10,13 @@ public static class SmartRegexStaticRules
     /// <summary>Spaces of indentation per level of group nesting in the regex column.</summary>
     public static int IndentSpaces = 4;
 
+    /// <summary>
+    /// Spaces of indentation for an enum member row (and its synonym header/footer/omitted-count siblings)
+    /// from its enclosing enum group's own bookends — narrower than <see cref="IndentSpaces"/> since these
+    /// rows don't themselves introduce another level of group nesting.
+    /// </summary>
+    public static int EnumMemberIndentSpaces = 2;
+
     /// <summary>Extra columns of padding before the '#' comment separator.</summary>
     public static int CommentBorderLineBuffer = 2;
 
@@ -90,7 +97,15 @@ public static class SmartRegexStaticRules
     );
 
     static readonly BoxCharSet Dashed = Closed with { Vertical = BoxVerticalDashed };
-    static readonly BoxCharSet BulletWall = Closed with { Vertical = Bullet };
+
+    static readonly BoxCharSet AllBullets = new(
+        TopLeft: Bullet,
+        TopRight: Bullet,
+        BottomLeft: Bullet,
+        BottomRight: Bullet,
+        Horizontal: Bullet,
+        Vertical: Bullet
+    );
 
     /// <summary>Which <see cref="BoxCharSet"/> to draw around a named group's border, keyed by the kind of node it represents.</summary>
     public static Dictionary<CaptureNodeKind, BoxCharSet> NodeTypeToBoxCharSet = new Dictionary<CaptureNodeKind, BoxCharSet>
@@ -98,7 +113,7 @@ public static class SmartRegexStaticRules
         [CaptureNodeKind.Enum] = Closed,
         [CaptureNodeKind.Token] = Dashed,
         [CaptureNodeKind.OneOf] = Dashed,
-        [CaptureNodeKind.Dynamic] = BulletWall,
+        [CaptureNodeKind.Dynamic] = AllBullets,
         [CaptureNodeKind.Int] = Dashed,
         [CaptureNodeKind.Bool] = Dashed,
     };
@@ -106,6 +121,17 @@ public static class SmartRegexStaticRules
     /// <summary>Looks up the box-drawing character set for the group a bookend brick opens or closes.</summary>
     public static BoxCharSet GetBoxCharsForBookendBrick(RegexBrickGroupBookend bookendBrick) =>
         NodeTypeToBoxCharSet[bookendBrick.NamedGroupParent.NodeType];
+
+    /// <summary>
+    /// The regex-column indent for <paramref name="brick"/>: <see cref="EnumMemberIndentSpaces"/> for its
+    /// last level of depth when it's a row directly inside an enum group (a member, synonym header/footer,
+    /// or omitted-count row — not the group's own bookends, which stay at the ordinary per-level indent),
+    /// <see cref="IndentSpaces"/> per level otherwise.
+    /// </summary>
+    public static int GetIndentSpaces(RegexBrick brick) =>
+        brick is not RegexBrickGroupBookend && brick.NamedGroupParent is EnumNode
+            ? ((brick.NestedDepth - 1) * IndentSpaces) + EnumMemberIndentSpaces
+            : brick.NestedDepth * IndentSpaces;
 }
 
 public record BoxCharSet(char TopLeft, char TopRight, char BottomLeft, char BottomRight, char Horizontal, char Vertical);

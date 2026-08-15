@@ -16,7 +16,7 @@ internal class CommentBoxMetrics
     public CommentBoxMetrics(List<RegexBrick> bricks)
     {
         CommentSeparatorColumn = bricks
-            .Max(x => x.RegexFormatted.Length + (x.NestedDepth * SmartRegexStaticRules.IndentSpaces))
+            .Max(x => x.RegexFormatted.Length + SmartRegexStaticRules.GetIndentSpaces(x))
             + SmartRegexStaticRules.CommentBorderLineBuffer;
 
         MaxCommentLength = bricks.Max(GetCommentLengthIncludingGroupBoxPadding);

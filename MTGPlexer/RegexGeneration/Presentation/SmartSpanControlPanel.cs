@@ -25,7 +25,7 @@ public static class SmartSpanControlPanel
         // --- Regex column ---
 
         // |tap
-        [TokenRegexSpanKind.RegexEnumMember] = new(Saturation: .75, Brightness: .75),
+        [TokenRegexSpanKind.RegexEnumMember] = new(Saturation: .35, Brightness: .8),
 
         // |tap
         // ^
@@ -36,7 +36,7 @@ public static class SmartSpanControlPanel
         [TokenRegexSpanKind.RegexConnectiveSpace] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0),
 
         // until end of turn
-        [TokenRegexSpanKind.RegexLiteralMatch] = new(Saturation: 0.3, Brightness: 0.45, SaturationRange: 0.2, BrightnessRange: 0.2),
+        [TokenRegexSpanKind.RegexLiteralMatch] = new(Saturation: 0.2, Brightness: 0.45, SaturationRange: 0.2, BrightnessRange: 0.2),
 
         // [ ]
         [TokenRegexSpanKind.RegexJoiner] = new(Saturation: 0.15, Brightness: 0.3, SaturationRange: 0.2, BrightnessRange: 0.2),
@@ -51,7 +51,7 @@ public static class SmartSpanControlPanel
 
         // Tap : 12
         // ^^^
-        [TokenRegexSpanKind.CommentEnumMemberName] = new(Saturation: .75, Brightness: .75),
+        [TokenRegexSpanKind.CommentEnumMemberName] = new(Saturation: .35, Brightness: .8),
 
         // Tap : 12
         //       ^^
@@ -65,14 +65,14 @@ public static class SmartSpanControlPanel
         [TokenRegexSpanKind.CommentOmittedCount] = new(Saturation: 0, Brightness: 0.4, SaturationRange: 0),
 
         // literal match
-        [TokenRegexSpanKind.CommentLiteralMatch] = new(Saturation: 0.3, Brightness: 0.45, SaturationRange: 0.2, BrightnessRange: 0.2),
+        [TokenRegexSpanKind.CommentLiteralMatch] = new(Saturation: 0.2, Brightness: 0.45, SaturationRange: 0.2, BrightnessRange: 0.2),
 
         // joiner Space
-        [TokenRegexSpanKind.CommentJoiner] = new(Saturation: 0.15, Brightness: 0.3, SaturationRange: 0.2, BrightnessRange: 0.2),
+        [TokenRegexSpanKind.CommentJoiner] = new(Saturation: 0.15, Brightness: 0.35, SaturationRange: 0.2, BrightnessRange: 0.2),
 
         // Token Unit: Card Keyword
         // ^^^^^^^^^^
-        [TokenRegexSpanKind.CommentGroupOpenHeaderText] = new(Brightness: .4, Saturation: .4),
+        [TokenRegexSpanKind.CommentGroupOpenHeaderText] = new(Brightness: .55, Saturation: .4),
 
         // Token Unit: Card Keyword
         //            ^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ public static class SmartSpanControlPanel
 
         // Card Keyword (any number)
         // ^^^^^^^^^^^^
-        [TokenRegexSpanKind.CommentGroupFooterText] = new(IsItalic: true, Brightness: .4, Saturation: .4),
+        [TokenRegexSpanKind.CommentGroupFooterText] = new(IsItalic: true, Brightness: .55, Saturation: .4),
 
         // Card Keyword (any number)
         //              ^^^^^^^^^^^^
@@ -88,7 +88,7 @@ public static class SmartSpanControlPanel
 
         // ┌── Card Keyword ──┐
         // ^                  ^
-        [TokenRegexSpanKind.CommentGroupBorderWall] = new(Brightness: .35, Saturation: .35),
+        [TokenRegexSpanKind.CommentGroupBorderWall] = new(Brightness: .4, Saturation: .4),
     };
 
     /// <summary>

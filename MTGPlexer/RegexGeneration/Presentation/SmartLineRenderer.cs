@@ -81,7 +81,7 @@ public class SmartLineRenderer
     /// </summary>
     List<SmartSpan> BuildRegexColumnSpans(RegexBrick brick)
     {
-        var indent = string.Empty.PadLeft(brick.NestedDepth * SmartRegexStaticRules.IndentSpaces);
+        var indent = string.Empty.PadLeft(SmartRegexStaticRules.GetIndentSpaces(brick));
         var indented = indent + brick.RegexFormatted;
         var trailingPad = string.Empty.PadRight(Math.Max(0, _metrics.CommentSeparatorColumn - indented.Length));
 

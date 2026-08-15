@@ -75,7 +75,7 @@ internal class EnumSectionBuilder
             }
 
             member.CommentFormatted = BuildMemberComment(member, enumSummary, metrics, isPartOfSynonymGroup);
-            member.RegexFormatted = BuildMemberRegex(member, positionAmongOccurring: i);
+            member.RegexFormatted = BuildMemberRegex(member, positionAmongOccurring: i, totalMemberCount: members.Count);
             bricks.Add(member);
 
             bool isLastRowOfSynonymGroup =
@@ -118,18 +118,28 @@ internal class EnumSectionBuilder
     }
 
     /// <summary>
-    /// The member's regex prefixed with a leading space (first row) or pipe (every subsequent row). Splits
-    /// the result across <see cref="RegexBrickValue.JoinerRegexFormatted"/> and <see cref="RegexBrickValue.MemberRegexFormatted"/>
+    /// The member's regex prefixed with a leading space (first row) or pipe (every subsequent row) — or no
+    /// joiner at all when it's the only occurring member, since there's no sibling for a "|" to separate it
+    /// from and reserving that space just leaves an awkward gap. Splits the result across
+    /// <see cref="RegexBrickValue.JoinerRegexFormatted"/> and <see cref="RegexBrickValue.MemberRegexFormatted"/>
     /// so the joiner and pattern text can be colored as separate spans.
     /// </summary>
-    static string BuildMemberRegex(RegexBrickValue member, int positionAmongOccurring)
+    static string BuildMemberRegex(RegexBrickValue member, int positionAmongOccurring, int totalMemberCount)
     {
-        var pipeBuffer = string.Empty.PadLeft(SmartRegexStaticRules.EnumMemberBufferAfterPipe);
-        var prefix = positionAmongOccurring == 0 ? " " : "|";
-
-        member.JoinerRegexFormatted = $"{prefix}{pipeBuffer}";
+        member.JoinerRegexFormatted = BuildJoinerPrefix(positionAmongOccurring, totalMemberCount);
         member.MemberRegexFormatted = member.Regex;
 
         return member.JoinerRegexFormatted + member.MemberRegexFormatted;
+    }
+
+    static string BuildJoinerPrefix(int positionAmongOccurring, int totalMemberCount)
+    {
+        if (totalMemberCount == 1)
+            return "";
+
+        var pipeBuffer = string.Empty.PadLeft(SmartRegexStaticRules.EnumMemberBufferAfterPipe);
+        var prefix = positionAmongOccurring == 0 ? " " : "|";
+
+        return $"{prefix}{pipeBuffer}";
     }
 }
