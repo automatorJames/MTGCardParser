@@ -8,9 +8,10 @@ namespace MTGPlexer.RegexGeneration.Presentation;
 /// every type's own page uses, then depth-shifted to sit one level inside the container. Because these are
 /// real bricks spliced into the outer sequence (not independently pre-rendered text), they share the outer
 /// render's comment-column alignment, group-box walls, and positional rainbow coloring, and recurse
-/// arbitrarily deep for free when a resolved type itself contains a nested dynamic group. When more than
-/// one type was resolved for this group, a divider separates each type's container from the next. When
-/// nothing was captured (e.g. a zero-occurrence type), falls back to rendering the group's raw bricks.
+/// arbitrarily deep for free when a resolved type itself contains a nested dynamic group. When multiple
+/// types were resolved for this group, their containers are separated by a pipe joiner — the same way any
+/// other set of sibling alternatives is — since each is one branch of what this capture could resolve to.
+/// When nothing was captured (e.g. a zero-occurrence type), falls back to rendering the group's raw bricks.
 /// </summary>
 internal class DynamicSectionBuilder
 {
@@ -29,13 +30,30 @@ internal class DynamicSectionBuilder
         for (int i = 0; i < typeGroups.Count; i++)
         {
             var (type, tokenUnits) = typeGroups[i];
-            bricks.AddRange(BuildResolvedTypeContainerBricks(dynamicNode, type, tokenUnits, includeSupplementalLines));
 
-            if (i != typeGroups.Count - 1)
-                bricks.Add(new RegexBrickSynonymSectionFooter(dynamicNode, 0));
+            if (i > 0)
+            {
+                if (includeSupplementalLines)
+                    bricks.Add(new RegexBrickBlank(dynamicNode));
+
+                bricks.Add(BuildPipeJoiner(dynamicNode));
+
+                if (includeSupplementalLines)
+                    bricks.Add(new RegexBrickBlank(dynamicNode));
+            }
+
+            bricks.AddRange(BuildResolvedTypeContainerBricks(dynamicNode, type, tokenUnits, includeSupplementalLines));
         }
 
         return bricks;
+    }
+
+    /// <summary>A pipe joiner between two resolved types' containers, one level inside <paramref name="dynamicNode"/> — each is a sibling alternative of what this capture could resolve to.</summary>
+    static RegexBrickJoiner BuildPipeJoiner(DynamicTokenNode dynamicNode)
+    {
+        var joiner = new RegexBrickJoiner(dynamicNode, Joiner.Pipe);
+        BrickCommentResolver.Apply(joiner);
+        return joiner;
     }
 
     /// <summary>

@@ -74,14 +74,3 @@ public enum Quantifier
     [Description("?")]
     Optional
 }
-
-public enum GroupBorderTreatment
-{
-    None,       //
-
-    ClosedBox,  // ─ │ ┌ ┐ └ ┘
-
-    DashedBox,  // ╌ ╎ ┌ ┐ └ ┘
-
-    Brace,      //   ┊ ╭ ╮ ╰ ╯
-}

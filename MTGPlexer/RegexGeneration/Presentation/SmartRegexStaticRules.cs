@@ -53,25 +53,44 @@ public static class SmartRegexStaticRules
         return (string.Empty.PadLeft(leftPad), string.Empty.PadLeft(rightPad));
     }
 
-    // Unicode escape sequences for box-drawing characters.
-    // This keeps the source file ASCII-safe and Git-friendly.
+    // Box-drawing characters
+    const char BoxTopLeft = '\u250C';        // ┌
+    const char BoxTopRight = '\u2510';       // ┐
+    const char BoxBottomLeft = '\u2514';     // └
+    const char BoxBottomRight = '\u2518';    // ┘
+    const char BoxHorizontal = '\u2500';     // ─
+    const char BoxVertical = '\u2502';       // │
+    const char BoxVerticalDashed = '\u250A'; // ┆
+
+    // Ordinary / distinguishing characters
+    const char Asterisk = '\u002A';          // *
+    const char Plus = '\u002B';              // +
+    const char Hyphen = '\u002D';            // -
+    const char Hash = '\u0023';              // #
+    const char Colon = '\u003A';             // :
+    const char Period = '\u002E';            // .
+    const char MiddleDot = '\u00B7';         // ·
+    const char Bullet = '\u2022';            // •
+    const char WhiteCircle = '\u25CB';       // ○
+    const char BlackCircle = '\u25CF';       // ●
+    const char WhiteDiamond = '\u25C7';      // ◇
+    const char BlackDiamond = '\u25C6';      // ◆
+    const char WhiteSquare = '\u25A1';       // □
+    const char BlackSquare = '\u25A0';       // ■
+    const char RightArrow = '\u2192';        // →
+    const char LeftArrow = '\u2190';         // ←
+    
     static readonly BoxCharSet Closed = new(
-        TopLeft: '\u250C', // ┌
-        TopRight: '\u2510', // ┐
-        BottomLeft: '\u2514', // └
-        BottomRight: '\u2518', // ┘
-        Horizontal: '\u2500', // ─
-        Vertical: '\u2502'  // │
+        TopLeft: BoxTopLeft,
+        TopRight: BoxTopRight,
+        BottomLeft: BoxBottomLeft,
+        BottomRight: BoxBottomRight,
+        Horizontal: BoxHorizontal,
+        Vertical: BoxVertical
     );
 
-    static readonly BoxCharSet Dashed = new(
-        TopLeft: '\u250C', // ┌
-        TopRight: '\u2510', // ┐
-        BottomLeft: '\u2514', // └
-        BottomRight: '\u2518', // ┘
-        Horizontal: '\u2500', // ─
-        Vertical: '\u250A'  // ┆
-    );
+    static readonly BoxCharSet Dashed = Closed with { Vertical = BoxVerticalDashed };
+    static readonly BoxCharSet BulletWall = Closed with { Vertical = Bullet };
 
     /// <summary>Which <see cref="BoxCharSet"/> to draw around a named group's border, keyed by the kind of node it represents.</summary>
     public static Dictionary<CaptureNodeKind, BoxCharSet> NodeTypeToBoxCharSet = new Dictionary<CaptureNodeKind, BoxCharSet>
@@ -79,7 +98,7 @@ public static class SmartRegexStaticRules
         [CaptureNodeKind.Enum] = Closed,
         [CaptureNodeKind.Token] = Dashed,
         [CaptureNodeKind.OneOf] = Dashed,
-        [CaptureNodeKind.Dynamic] = Dashed,
+        [CaptureNodeKind.Dynamic] = BulletWall,
         [CaptureNodeKind.Int] = Dashed,
         [CaptureNodeKind.Bool] = Dashed,
     };
