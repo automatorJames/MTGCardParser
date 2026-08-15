@@ -47,15 +47,12 @@ public class RegexGraph
     {
         Navigation navigation = new(rootTokenUnitType);
 
-        TokenUnitNode root = rootTokenUnitType switch
-        {
-            { } t when t.IsAssignableTo(typeof(UnmatchedString)) => new UnmatchedTokenUnitNode(null, navigation),
-            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(null, navigation),
-            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(null, navigation),
-            _ => throw new Exception($"'{rootTokenUnitType}' is not an enum or a {nameof(TokenUnit)} type, which are the only types that are valid named groups")
-        };
+        var root = TokenUnitNode.GetNodeForNavigaton(null, navigation);
 
-        return new(rootTokenUnitType, root);
+        if (root is not TokenUnitNode tokenUnitNodeRoot)
+            throw new Exception($"Expected a {nameof(TokenUnitNode)}, but got a {root.GetType().Name}");
+
+        return new(rootTokenUnitType, tokenUnitNodeRoot);
     }
 
     /// <summary>Depth-first walk populating <see cref="NamedGroupFlatGraph"/> from every named group node in the tree.</summary>

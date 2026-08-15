@@ -19,23 +19,24 @@ public class TokenUnitNode : NamedGroupNode
     {
         foreach (var snippet in Navigation.TokenTypeConfiguration.Snippets)
             if (snippet is PropertySnippet propertySnippet)
-                children.Add(GetNodeForPropertySnippetType(this, propertySnippet));
+            {
+                Navigation navigation = new(propertySnippet);
+                children.Add(GetNodeForNavigaton(this, navigation));
+            }
             else
                 children.Add(new TextNode(this, snippet.Text));
     }
 
     /// <summary>Picks the concrete <see cref="RegexNode"/> subtype for a property snippet, based on its underlying CLR type (enum, bool, int, nested token unit, etc.).</summary>
-    protected static RegexNode GetNodeForPropertySnippetType(RegexNode parentNode, PropertySnippet propertySnippet)
+    public static RegexNode GetNodeForNavigaton(RegexNode parentNode, Navigation navigation)
     {
-        Navigation navigation = new(propertySnippet);
-
         return navigation.NodeType switch
         {
-            { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(UnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
             { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
-            { } t when typeof(DynamicToken).IsAssignableFrom(t) => new DynamicTokenNode(parentNode, navigation),
             { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
+            { } t when typeof(DynamicToken).IsAssignableFrom(t) => new DynamicTokenNode(parentNode, navigation),
+            { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
             { } t when t == typeof(int) => new IntNode(parentNode, navigation),
             _ => throw new Exception($"'{navigation.NodeType}' is not a valid {nameof(PropertySnippet)} type")
