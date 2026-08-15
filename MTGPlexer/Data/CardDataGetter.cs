@@ -34,7 +34,7 @@ public class CardDataGetter : IDocumentRepository
         using var conn = new SqlConnection(_sqlConnString);
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
-        //result = result.Where(x => x.Name == "Ankh of Mishra");
+        result = result.Where(x => x.Name == "Ankh of Mishra");
         ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
         //result = result.Where(x => x.Name == "Animate Artifact");
         //result = [new Card { Name = "feckall", Text = "as long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value." }];
@@ -45,11 +45,13 @@ public class CardDataGetter : IDocumentRepository
         //result = [new Card { Name = "feck you all", Text = "draw three cards" }, new Card { Name = "feck them all", Text = "draws seven cards" }];
         //result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
         //result = [new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }];
-        result = [
-            new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }, 
-            new Card { Name = "Ancestrall Recall Deux", Text = "target opponent draws three cards." },
-            new Card { Name = "Ancestrall Recall Sevaughn", Text = "target opponent draws seven cards." },
-            new Card { Name = "Silly Salve", Text = "target player you gain three life." }];
+
+        //result = [
+        //    new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }, 
+        //    new Card { Name = "Ancestrall Recall Deux", Text = "target opponent draws three cards." },
+        //    new Card { Name = "Ancestrall Recall Sevaughn", Text = "target opponent draws seven cards." },
+        //    new Card { Name = "Silly Salve", Text = "target player you gain three life." }];
+
         return result.Cast<IDocument>().ToList();
     }
 }
