@@ -6,13 +6,11 @@
 /// </summary>
 public class TokenUnitNode : NamedGroupNode
 {
-    protected override Joiner Joiner { get; }
-    public override CaptureNodeKind NodeType => CaptureNodeKind.Token;
+    public override CaptureNodeKind NodeKind => CaptureNodeKind.Token;
 
     public TokenUnitNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
-        Joiner = Navigation.TokenTypeConfiguration.Joiner;
     }
 
     protected override void AddReflectedChildren(List<RegexNode> children)
@@ -33,9 +31,9 @@ public class TokenUnitNode : NamedGroupNode
         return navigation.NodeType switch
         {
             { } t when t == typeof(UnmatchedString) => new UnmatchedTokenUnitNode(parentNode, navigation),
-            { } t when typeof(TokenUnitOneOf).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
-            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
+            { } t when typeof(OneOfBase).IsAssignableFrom(t) => new TokenUnitOneOfNode(parentNode, navigation),
             { } t when typeof(DynamicToken).IsAssignableFrom(t) => new DynamicTokenNode(parentNode, navigation),
+            { } t when typeof(TokenUnit).IsAssignableFrom(t) => new TokenUnitNode(parentNode, navigation),
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
             { } t when t == typeof(int) => new IntNode(parentNode, navigation),
@@ -48,13 +46,13 @@ public class TokenUnitNode : NamedGroupNode
     {
         tokenUnit = null;
         var instance = (CaptureUnit)Activator.CreateInstance(Navigation.NodeType);
-        var namedGroupNodeChildren = Children.OfType<NamedGroupNode>().ToList();
 
-        foreach (var child in namedGroupNodeChildren)
+        foreach (var child in NamedGroupChildren)
         {
             var setResult = child.SetPropertyValue(instance, captureTrace.CaptureContext);
 
-            if (!setResult)
+            // In a normal TokenUnit, all non-optional children must be matched for the whole TokenUnit to match
+            if (!setResult && !child.Navigation.IsOptional)
                 return false;
         }
 

@@ -9,10 +9,15 @@ public class TextNode : RegexNode
     /// <summary>The literal regex text to match, wrapped as optional (e.g. <c>(text )?</c>) if the source snippet was optional.</summary>
     public string Text { get; set; }
 
+    public char FirstChar => Text.First();
+
     public TextNode(RegexNode parentNode, Snippet snippet) 
         : base(parentNode, snippet.Text)
     {
         var text = snippet.Text;
+
+        if (string.IsNullOrEmpty(text))
+            throw new Exception($"{nameof(TextNode)} text can't be null or empty");
 
         if (snippet.IsOptional)
             text = $"({text} )?";

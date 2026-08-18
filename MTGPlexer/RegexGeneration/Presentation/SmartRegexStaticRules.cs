@@ -120,7 +120,7 @@ public static class SmartRegexStaticRules
 
     /// <summary>Looks up the box-drawing character set for the group a bookend brick opens or closes.</summary>
     public static BoxCharSet GetBoxCharsForBookendBrick(RegexBrickGroupBookend bookendBrick) =>
-        NodeTypeToBoxCharSet[bookendBrick.NamedGroupParent.NodeType];
+        NodeTypeToBoxCharSet[bookendBrick.NamedGroupParent.NodeKind];
 
     /// <summary>
     /// The regex-column indent for <paramref name="brick"/>: <see cref="EnumMemberIndentSpaces"/> for its

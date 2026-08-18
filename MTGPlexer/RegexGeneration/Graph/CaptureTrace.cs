@@ -60,7 +60,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
-        NodeKind = namedGroupNode.NodeType;
+        NodeKind = namedGroupNode.NodeKind;
         IsTerminal = CheckNodeTypeIsTerminal(NodeKind);
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
         Name = namedGroupNode.Name;

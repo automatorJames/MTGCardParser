@@ -3,6 +3,8 @@
 [Dependent]
 public class DynamicToken : TokenUnit
 {
+    public override Joiner Joiner => Joiner.Pipe;
+
     public object Item { get; }
     public Type ResolvedType { get; }
 

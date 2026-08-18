@@ -24,7 +24,7 @@ internal static class BrickCommentResolver
     static string ResolveGroupOpenComment(RegexBrickGroupOpen open)
     {
         var group = open.NamedGroupParent;
-        var typeLabel = group.NodeType.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+        var typeLabel = group.NodeKind.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
         var disambiguator = group.Name == group.Navigation.UnderlyingType.Name ? "" : $": {FormatTypeNameFriendly(group.Navigation.UnderlyingType)}";
 
         open.TypeLabel = typeLabel;

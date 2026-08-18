@@ -52,7 +52,13 @@ public abstract class TokenUnit : CaptureUnit
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
-        var props = Type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly).ToArray();
+        // DeclaredOnly still includes properties that override a base virtual member (e.g. Snippets,
+        // Joiner), since C# generates a PropertyInfo on the derived type for those too. Excluding
+        // anything whose base definition lives on a different type leaves only genuinely new,
+        // capture-data properties like the derived type's own snippet-bound properties.
+        var props = Type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(x => x.GetMethod.GetBaseDefinition().DeclaringType == x.DeclaringType)
+            .ToArray();
 
         var missingProps = props
             .Select(x => x.Name)

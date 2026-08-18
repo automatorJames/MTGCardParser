@@ -13,7 +13,9 @@ public interface IDocument
             return [];
 
         var text = Text.ToLower();
-        text = text.Replace(Name, ThisToken);
+
+        if (!string.IsNullOrEmpty(Name))
+            text = text.Replace(Name.ToLower(), ThisToken);
         var lines = text.Split('\n').Select(x => x.Trim()).ToArray();
 
         return lines;

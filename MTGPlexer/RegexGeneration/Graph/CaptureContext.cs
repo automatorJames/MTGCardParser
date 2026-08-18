@@ -13,8 +13,8 @@ public class CaptureContext
     {
         _captureDictionary = GetNamedGroupCaptures(match);
 
-        var all = _captureDictionary.Values.SelectMany(x => x);
-        if (all.Any(x => x.Value == "")) Debugger.Break();
+        //var all = _captureDictionary.Values.SelectMany(x => x);
+        //if (all.Any(x => x.Value == "")) Debugger.Break();
 
         SourceText = sourceText;
         FullMatch = match.Value;

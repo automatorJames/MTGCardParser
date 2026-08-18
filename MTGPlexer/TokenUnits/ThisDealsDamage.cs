@@ -1,5 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnits;
 
+[IsolateForTesting]
 public class ThisDealsDamage : TokenUnit
 {
     public override Snippet[] Snippets => ["{this} deals", Prop(Quantity), "damage to", Prop(Recipient)];

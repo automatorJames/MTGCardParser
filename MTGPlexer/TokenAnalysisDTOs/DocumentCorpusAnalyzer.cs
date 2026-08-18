@@ -44,6 +44,7 @@ public class DocumentCorpusAnalyzer
         // Each document tokenizes independently, so this is CPU-bound and parallelizable.
         // AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
         var documents = await _repository.GetDocumentsAsync();
+
         ProcessedDocuments = documents
             .AsParallel()
             .AsOrdered()

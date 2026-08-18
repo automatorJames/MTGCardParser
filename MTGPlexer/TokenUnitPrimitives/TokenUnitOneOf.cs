@@ -1,8 +1,6 @@
-﻿using MTGPlexer.RegexGeneration.Graph.Nodes;
+﻿namespace MTGPlexer.TokenUnitPrimitives;
 
-namespace MTGPlexer.TokenUnitPrimitives;
-
-public abstract class TokenUnitOneOf : TokenUnit
+public abstract class TokenUnitOneOf : OneOfBase
 {
     public override string ValidateStructure()
     {

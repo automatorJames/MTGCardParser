@@ -18,7 +18,7 @@ public abstract class NamedGroupNode : GroupNode
     public bool IsTransparentRoot => Navigation.IsRoot && Navigation.Quantifier == null;
 
     /// <summary>What kind of capture this node represents (enum, bool, token unit, etc.), used by formatting and by <see cref="CaptureTrace"/>.</summary>
-    public abstract CaptureNodeKind NodeType { get; }
+    public abstract CaptureNodeKind NodeKind { get; }
 
     public override Quantifier? Quantifier =>
         Navigation.IsList ? MTGPlexer.Quantifier.AnyNumber
@@ -45,8 +45,10 @@ public abstract class NamedGroupNode : GroupNode
         }
     }
 
+    public List<NamedGroupNode> NamedGroupChildren => Children.OfType<NamedGroupNode>().ToList();
+
     /// <summary>How sibling children are joined together in the regex (e.g. concatenated, alternated with a pipe).</summary>
-    protected virtual Joiner Joiner => Joiner.None;
+    protected virtual Joiner? ChildJoiner => null;
 
     public NamedGroupNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
@@ -97,7 +99,7 @@ public abstract class NamedGroupNode : GroupNode
         )));
     }
 
-    /// <summary>Appends this group's open bookend, its children (joined per <see cref="Joiner"/>), and its close bookend.</summary>
+    /// <summary>Appends this group's open bookend, its children (joined per <see cref="ChildJoiner"/>), and its close bookend.</summary>
     public override void AppendRegexBricks(RegexCollector collector)
     {
         // open group
@@ -107,14 +109,16 @@ public abstract class NamedGroupNode : GroupNode
         // append all children and joiners
         for (int i = 0; i < Children.Count; i++)
         {
-            Children[i].AppendRegexBricks(collector);
-            var joiner = Navigation.TokenTypeConfiguration?.Joiner ?? Joiner;
+            var child = Children[i];
+            child.AppendRegexBricks(collector);
+            var joiner = Navigation.TokenTypeConfiguration?.ChildJoiner ?? ChildJoiner ?? Joiner.None;
 
             bool shouldAddJoiner =
                 i < Children.Count - 1
                 && joiner != Joiner.None
                 && collector.LastChar != ' '
-                && !_terminals.Contains(collector.LastChar);
+                && !(Children[i + 1] is TextNode textNode && textNode.FirstChar == '\'');
+                //&& !_terminals.Contains(collector.LastChar);
 
             if (shouldAddJoiner)
                 collector.Append(new RegexBrickJoiner(this, joiner));

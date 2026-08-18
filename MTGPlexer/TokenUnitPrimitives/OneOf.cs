@@ -1,6 +1,6 @@
 ﻿namespace MTGPlexer.TokenUnitPrimitives;
 
-public class OneOf<T1, T2> : TokenUnit
+public class OneOf<T1, T2> : OneOfBase
 {
     public T1 Item1 { get; set; }
     public T2 Item2 { get; set; }
@@ -17,7 +17,7 @@ public class OneOf<T1, T2> : TokenUnit
     }
 }
 
-public class OneOf<T1, T2, T3> : TokenUnit
+public class OneOf<T1, T2, T3> : OneOfBase
 {
     public T1 Item1 { get; set; }
     public T2 Item2 { get; set; }

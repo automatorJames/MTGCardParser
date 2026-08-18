@@ -17,7 +17,11 @@ public abstract class NamedGroupCaptureTraceSummary
     protected NamedGroupCaptureTraceSummary(string fullyQualifiedName, IEnumerable<TokenUnit> tokenUnits)
     {
         FullyQualifiedName = fullyQualifiedName;
-        CaptureTraces = tokenUnits.Select(x => x.CaptureContext.RootCaptureTrace[fullyQualifiedName]).ToList();
+
+        CaptureTraces = tokenUnits
+            .Select(x => x.CaptureContext.RootCaptureTrace[fullyQualifiedName])
+            .Where(x => x != null)
+            .ToList();
 
         if (CaptureTraces.Count == 0)
             return;

@@ -22,10 +22,10 @@ public class RootCaptureTrace : CaptureTrace
     {
         get
         {
-            if (!_flatCaptureTree.TryGetValue(fullyQualifiedName, out var captureTrace))
-                throw new Exception($"{this.CaptureValue} doesn't contain the name \"{fullyQualifiedName}\"");
+            if (_flatCaptureTree.TryGetValue(fullyQualifiedName, out var captureTrace))
+                return captureTrace;
 
-            return captureTrace;
+            return null;
         }
     }
 

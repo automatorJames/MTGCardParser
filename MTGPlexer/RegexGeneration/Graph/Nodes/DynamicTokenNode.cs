@@ -9,9 +9,7 @@ namespace MTGPlexer.RegexGeneration.Graph.Nodes;
 public class DynamicTokenNode : TokenUnitNode
 {
     protected override string DefaultPattern => @"[^.]+";
-    protected override Joiner Joiner => Joiner.Pipe;
-
-    public override CaptureNodeKind NodeType => CaptureNodeKind.Dynamic;
+    public override CaptureNodeKind NodeKind => CaptureNodeKind.Dynamic;
 
     public DynamicTokenNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)

@@ -4,5 +4,5 @@ public record TokenTypeConfiguration
 (
     Type Type,
     Snippet[] Snippets,
-    Joiner Joiner
+    Joiner ChildJoiner
 );

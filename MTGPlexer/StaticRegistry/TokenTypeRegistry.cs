@@ -31,6 +31,8 @@ public static partial class TokenTypeRegistry
         foreach (var type in allTokenTypes)
             SetRootNode(type);
 
+        ValidateAllStructures(allTokenTypes);
+
         InitializeClassTokenizer();
         OriginalTextTokenizer = new([typeof(UnmatchedString)]);
     }
@@ -49,6 +51,31 @@ public static partial class TokenTypeRegistry
         RegexGraphs[type] = regexGraph;
 
         return regexGraph;
+    }
+
+    /// <summary>
+    /// Runs TokenUnit.ValidateStructure() over every registered type in a single pass, after the
+    /// entire registry has already been populated via SetRootNode. Running it as a separate pass
+    /// (rather than inline within GetTokenUnitTypeConfiguration) avoids reentering the registry
+    /// mid-construction, which previously caused stack overflows from recursive validation calls.
+    /// </summary>
+    static void ValidateAllStructures(List<Type> types)
+    {
+        var errors = new List<string>();
+
+        foreach (var type in types)
+        {
+            if (!typeof(TokenUnit).IsAssignableFrom(type) || type.IsAssignableTo(typeof(DynamicToken)))
+                continue;
+
+            var instance = (TokenUnit)Activator.CreateInstance(type);
+
+            if (instance.ValidateStructure() is string error)
+                errors.Add($"{type.Name}: {error}");
+        }
+
+        if (errors.Count > 0)
+            throw new AggregateException("One or more TokenUnit types failed structural validation:\n" + string.Join("\n", errors));
     }
 
     public static TokenTypeConfiguration GetTokenUnitTypeConfiguration(Type tokenUnitType)
@@ -296,6 +323,7 @@ public static partial class TokenTypeRegistry
         // 5) Finalize
         var type = tb.CreateType()!;
         SetRootNode(type);
+        ValidateAllStructures([type]);
         _dynamicAssemblyTypes.Add(type);
         InitializeClassTokenizer();
 
