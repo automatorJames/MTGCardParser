@@ -1,0 +1,191 @@
+﻿/* SpanTrees.razor.css */
+
+/* =================================================================== */
+/* == CONTAINER & CARD STYLES                                       == */
+/* =================================================================== */
+
+.word-trees-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem;
+}
+
+.word-trees-card {
+    width: 90%;
+    background-color: #252525;
+    border-radius: 8px;
+    border: 1px solid #333;
+    overflow: hidden;
+}
+
+/* =================================================================== */
+/* == HEADER STYLES                                                 == */
+/* =================================================================== */
+
+.card-header {
+    display: grid;
+    grid-template-columns: 100px 1fr; /* label | list */
+    column-gap: 0.5rem;
+    row-gap: 0.75rem;
+    padding: 12px 16px;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #333;
+}
+
+    .card-header > .header-main-info {
+        grid-column: 1 / -1;
+    }
+
+.header-main-info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    font-size: 14px;
+    color: #e0e0e0;
+}
+
+.card-header > span {
+    justify-self: end;
+    align-self: start;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #a0a0a0;
+}
+
+.header-span-text {
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 400px;
+}
+
+.header-stat {
+    font-size: 12px;
+    color: #a0a0a0;
+    white-space: nowrap;
+}
+
+.header-document-names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.document-name-item {
+    font-size: 11px;
+    font-weight: 300;
+    padding: 2px 8px;
+    border: 1px solid;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    color: #e0e0e0;
+}
+
+.word-trees-card.highlight-active .document-name-item.lowlight {
+    opacity: 0.2;
+}
+
+.word-trees-card.highlight-active .document-name-item.highlight {
+    border-color: var(--sat-color);
+    color: var(--highlight-color);
+    opacity: 1;
+}
+
+/* =================================================================== */
+/* == SVG & TOOLTIP STYLES                                          == */
+/* =================================================================== */
+
+.word-tree-body {
+    width: 100%;
+    overflow: visible;
+}
+
+::deep .node-group {
+    cursor: pointer;
+}
+
+::deep .node-shape.base-layer {
+    stroke: var(--node-border-color, #666);
+    stroke-width: 2.5px;
+    fill: #2d2d2d;
+    transition: opacity var(--transition-time), fill var(--transition-time);
+}
+
+::deep .connector-path.base-layer {
+    stroke: var(--node-border-color, #444);
+    fill: none;
+    stroke-width: 2.5px;
+    transition: opacity var(--transition-time);
+}
+
+/* ADDED: Style for the new anchor hover overlay layer */
+::deep .anchor-hover-overlay {
+    stroke-width: 2.5px;
+    stroke: #ffffff;
+    fill: none;
+    opacity: 0;
+    pointer-events: none; /* Make sure it doesn't block mouse events */
+}
+
+
+::deep .main-anchor-span > .node-shape.base-layer {
+    fill: #e0e0e0;
+}
+
+::deep .node-group:not(.main-anchor-span):hover > .node-shape.base-layer {
+    fill: #202020;
+}
+
+::deep .main-anchor-span:hover > .node-shape.base-layer {
+    fill: #cccccc;
+}
+
+::deep .node-text {
+    font-size: 12px;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+::deep .node-text-content {
+    fill: #e0e0e0;
+    transition: fill var(--transition-time), opacity var(--transition-time);
+}
+
+::deep .interactive-subspan {
+    pointer-events: auto;
+}
+
+::deep .main-anchor-span .node-text-content {
+    fill: #000;
+}
+
+::deep .main-anchor-span {
+    transition: filter var(--transition-time);
+    color: #ffffff;
+}
+
+    ::deep .main-anchor-span:hover {
+        filter: url(#glow);
+    }
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 4px solid rgba(255,255,255,0.2);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 1rem auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

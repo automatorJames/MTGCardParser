@@ -1,0 +1,9 @@
+﻿global using Microsoft.AspNetCore.Components;
+global using Microsoft.AspNetCore.Components.Web;
+global using Microsoft.JSInterop;
+global using Glyphotype.Colors;
+global using Glyphotype.StaticRegistry;
+global using System.Text.RegularExpressions;
+global using Glyphotype.GlyphEditor;
+global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
+global using Glyphotype;

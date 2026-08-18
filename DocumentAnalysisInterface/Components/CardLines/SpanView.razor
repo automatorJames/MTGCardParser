@@ -1,0 +1,79 @@
+﻿@using Glyphotype.RegexGeneration.Graph.Nodes
+@if (CaptureTrace != null)
+{
+    <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.FullyQualifiedName>
+        @{
+            var cursor = 0;
+
+            foreach (var child in CaptureTrace.Children.OrderBy(c => c.Index))
+            {
+                var relativeChildStart = child.Index - CaptureTrace.Index;
+
+                if (relativeChildStart > cursor)
+                {
+                    <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, relativeChildStart - cursor)</text>
+                }
+
+                <SpanView CaptureTrace=@child />
+
+                cursor = child.End - CaptureTrace.Index;
+            }
+
+            if (cursor < CaptureTrace.Length)
+            {
+                <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, CaptureTrace.Length - cursor)</text>
+            }
+        }
+    </span>
+}
+
+@code {
+    [CascadingParameter]
+    public ProcessedLine ProcessedLine { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public CaptureTrace CaptureTrace { get; set; } = null!;
+
+    string GetClass()
+    {
+        if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
+            return "";
+
+        var classes = new List<string>();
+
+        if (CaptureTrace.Children.Any() && !CaptureTrace.IsCollapsible)
+            classes.Add("nested-underline");
+
+        if (CaptureTrace.IsTerminal)
+            classes.Add("prop-capture-overline");
+
+        //if (node is SpanSubLeaf spanSubLeaf)
+        //    classes.Add("dashed-line");
+
+        //if (node.ElementType == TokenAnalysisElementType.PlaceholderLeaf)
+        //    classes.Add("dotted-line");
+
+        return string.Join(" ", classes);
+    }
+
+    string GetStyle()
+    {
+        if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
+            return "";
+
+        if (CaptureTrace.Children.Any() && !CaptureTrace.IsCollapsible)
+            return "";
+
+        var style = new System.Text.StringBuilder();
+
+        //var palette = 
+        //    ProcessedLine.CaptureTracePositionalPalettes.TryGetValue(CaptureTrace, out var foundPalette) ? foundPalette 
+        //    : DeterministicPalette.GetStaticPalette(new HexColor("777777"));
+
+        style.Append(ProcessedLine.CaptureTracePositionalPalettes[CaptureTrace].ToColorStyle());
+        var paddingBottom = 2 + (ProcessedLine.CaptureTraceNestedDepths[CaptureTrace] * 6);
+        style.Append($" padding-bottom: {paddingBottom}px;");
+
+        return style.ToString();
+    }
+}

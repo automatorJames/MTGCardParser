@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
-using MTGPlexer;
-using MTGPlexer.Data;
-using MTGPlexer.RegexGeneration.Graph;
-using MTGPlexer.TokenAnalysisDTOs;
-using MTGPlexer.TokenAnalysisDTOs.TypeExpressions;
-using MTGPlexer.TokenUnitPrimitives;
-using MTGPlexer.TokenUnits;
+using Glyphotype;
+using MTGGlyphs.Data;
+using Glyphotype.RegexGeneration.Graph;
+using Glyphotype.StaticRegistry;
+using Glyphotype.GlyphAnalysisDTOs;
+using Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
+using Glyphotype.GlyphPrimitives;
+using MTGGlyphs;
 using Newtonsoft.Json;
 using System.Diagnostics;
 
@@ -29,17 +30,33 @@ internal class Program
 
     static void Main(string[] args)
     {
-        TestSmartLine();
+        PrintStructuralValidationErrors();
+    }
+
+    static void PrintStructuralValidationErrors()
+    {
+        var errors = GlyphTypeRegistry.GetStructuralValidationErrors();
+
+        if (errors.Count == 0)
+        {
+            Console.WriteLine("No structural validation errors found.");
+            return;
+        }
+
+        Console.WriteLine($"{errors.Count} structural validation error(s):");
+
+        foreach (var error in errors)
+            Console.WriteLine($"- {error}");
     }
 
     static void TestSmartLine()
     {
-        var tokensByType = GetTokensByType();
+        var glyphsByType = GetGlyphsByType();
 
-        foreach ((var type, var tokens) in tokensByType)
+        foreach ((var type, var tokens) in glyphsByType)
         {
-            TokenOccurrenceSummary summary = new(type, tokens);
-            var regexGraph = TokenTypeRegistry.RegexGraphs[type];
+            GlyphOccurrenceSummary summary = new(type, tokens);
+            var regexGraph = GlyphTypeRegistry.RegexGraphs[type];
             var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
             Console.WriteLine(smartRegex);
         }
@@ -52,7 +69,7 @@ internal class Program
     //
     //    if (tryToMatchText != null)
     //    {
-    //        testGraph.TryMatch(tryToMatchText, out TokenUnit result);
+    //        testGraph.TryMatch(tryToMatchText, out Glyph result);
     //        Debugger.Break();
     //    }
     //}
@@ -63,41 +80,41 @@ internal class Program
         return cards.SelectMany(x => x.GetFormattedLines()).ToList();
     }
 
-    static List<TokenUnit> GetTokens()
+    static List<Glyph> GetGlyphs()
     {
-        List<TokenUnit> tokens = [];
+        List<Glyph> tokens = [];
         var lines = GetLines();
 
         foreach (var line in lines)
-            tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line).OfType<TokenUnit>());
+            tokens.AddRange(GlyphTypeRegistry.ClassTokenizer.Tokenize(line).OfType<Glyph>());
 
         return tokens;
     }
 
-    static Dictionary<Type, List<TokenUnit>> GetTokensByType()
+    static Dictionary<Type, List<Glyph>> GetGlyphsByType()
     {
-        List<TokenUnit> tokens = [];
+        List<Glyph> tokens = [];
         var lines = GetLines();
 
         foreach (var line in lines)
-            tokens.AddRange(TokenTypeRegistry.ClassTokenizer.Tokenize(line).OfType<TokenUnit>());
+            tokens.AddRange(GlyphTypeRegistry.ClassTokenizer.Tokenize(line).OfType<Glyph>());
 
         return tokens.GroupBy(x => x.Type).ToDictionary(x => x.Key, x => x.ToList());
     }
 
     static void TestTokenization()
     {
-        var tokens = GetTokens();
+        var tokens = GetGlyphs();
         Debugger.Break();
     }
 
     static void TestSummary()
     {
-        var tokensByType = GetTokensByType();
+        var glyphsByType = GetGlyphsByType();
 
-        foreach ((var type, var tokens) in tokensByType)
+        foreach ((var type, var tokens) in glyphsByType)
         {
-            TokenOccurrenceSummary summary = new(type, tokens);
+            GlyphOccurrenceSummary summary = new(type, tokens);
             Debugger.Break();
         }
     }

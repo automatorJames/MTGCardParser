@@ -4,7 +4,7 @@ A modern, extensible parser and analyzer for Magic: The Gathering (MTG) card tex
 This project provides a robust backend for tokenizing and analyzing card rules text, and a rich interactive web interface for visualizing the parsing process, variable extraction, and card logic decomposition.
 
 ---
-![Preview](CardAnalysisInterface/SampleImages/sample.gif)
+![Preview](DocumentAnalysisInterface/SampleImages/sample.gif)
 ---
 
 ## Features
@@ -40,12 +40,12 @@ This project provides a robust backend for tokenizing and analyzing card rules t
 
 ## Customization & Extensibility
 
-- **Add new token types:**  
-  Implement new classes in `MTGPlexer/TokenUnits/` and register them in `TokenClassRegistry`.
+- **Add new glyph types:**  
+  Implement new classes in `MTGGlyphs/` and register them via `GlyphTypeRegistry`.
 - **Control analysis behavior:**  
   Use attributes like `[CollapseInAnalysis]`, `[IgnoreInAnalysis]`, etc., to fine-tune parsing and rendering.
 - **UI customization:**  
-  Modify or extend Razor components in `CardAnalysisInterface/Components/`.
+  Modify or extend Razor components in `DocumentAnalysisInterface/Components/`.
 
 ## Acknowledgments
 

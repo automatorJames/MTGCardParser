@@ -1,1 +1,1 @@
-﻿global using MTGPlexer.StaticRegistry;
+﻿global using Glyphotype.StaticRegistry;

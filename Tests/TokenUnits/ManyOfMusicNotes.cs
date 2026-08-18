@@ -1,8 +1,8 @@
-﻿namespace Tests.TokenUnits;
+﻿namespace Tests.Glyphs;
 
-public class ManyOfMusicNotes : TokenUnit
+public class ManyOfMusicNotes : Glyph
 {
-    public override Snippet[] Snippets => ["this melody contains the notes", Prop(MusicNotes)];
+    public override Nib[] Nibs => ["this melody contains the notes", Prop(MusicNotes)];
 
     public ManyOf<MusicNote> MusicNotes { get; set; }
 

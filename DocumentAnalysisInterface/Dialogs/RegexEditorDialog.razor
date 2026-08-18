@@ -1,0 +1,131 @@
+﻿@using Glyphotype.RegexGeneration.Graph
+@using Glyphotype.GlyphEditor
+@using Glyphotype.GlyphPrimitives
+@inject IJSRuntime JsRuntime
+@implements IAsyncDisposable
+
+<CustomDialog OnBackdropClick="HandleCancel">
+    <DialogContent>
+        <div class="header-row">
+            <span class="header-title">@Line.SourceText.CorpusMemberName</span>
+            <span class="small-box-label header-line-number">@($"Line #{Line.SourceText.LineIndex + 1}")</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="line-text-container">
+                <div class="text-layer-back">
+                    @foreach (var segment in _editorGlyph.TextRuns)
+                    {
+                        <span class="highlight-token @segment.UnderlineClass">@segment.Text</span>
+                    }
+                </div>
+                <div class="text-layer-front">
+                    @foreach (var segment in _editorGlyph.TextRuns)
+                    {
+                        <span style="color: @segment.Color">@segment.Text</span>
+                    }
+                </div>
+            </div>
+
+            <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
+
+            <div>
+                <div class="autocomplete-container">
+                    <label for="regex-input-field" style="color: #A0AEC0; margin-bottom: 4px; display: block;">Regular expression template</label>
+                    <div @ref="_editorElement"
+                         @key=@("regexInputField")
+                         id="regex-input-field"
+                         class="regex-input-composite form-control"
+                         contenteditable="true"
+                         spellcheck="false"
+                         @onkeydown="OnKeyDown"
+                         placeholder="@(_isEditorEmpty ? "Type text or @ to see templates" : "")">
+                    </div>
+
+                    @if (_isDropdownVisible)
+                    {
+                        <div id="autocomplete-dropdown-list" class="autocomplete-dropdown">
+                            @foreach (var (suggestedType, index) in _autocompleteSuggestions.Select((s, i) => (s, i)))
+                            {
+                                <div id="@($"autocomplete-item-{index}")"
+                                     class="autocomplete-item @(index == _selectedSuggestionIndex ? "selected" : "")"
+                                     @onclick="() => SelectSuggestionByKeyboard(suggestedType)">
+                                    <span class="type-name" style=@($"color: {DeterministicPalette.TypePaletteSet[suggestedType].Normal}; {(suggestedType.IsEnum ? "font-style: italic" : "")}")>
+                                        @suggestedType.Name
+                                    </span>
+                                    <span class="type-kind">@(suggestedType.IsEnum ? "Enum" : "Token Type")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <div style="border-top: 1px dashed var(--outline-grey); margin-bottom: 16px;" />
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div>
+                            <div class="small-box-label right">Rendered regex</div>
+                            <div class="rendered-regex-box">
+                                <pre>@foreach(var segment in _editorGlyph.RegexRuns) {
+                                <span style=@($"color: {segment.Color}")>@segment.Text</span>
+                                                                                                                                }
+</pre>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px;">
+                                <div class="class-name-wrapper">
+                                    @if (_isEditingClassName)
+                                    {
+                                        <div class="class-name-grid">
+                                            <span class="grid-sizer">@ClassName</span>
+                                            <input class="class-name-input"
+                                                   value="@ClassName"
+                                                   spellcheck="false"
+                                                   @oninput="(e) => ClassName = e.Value?.ToString() ?? ClassName"
+                                                   @onblur="StopEditingClassName"
+                                                   @onkeydown="HandleClassNameKeyDown" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="class-name-display" @onclick="StartEditingClassName">
+                                            <span class="name-text">@ClassName</span>
+                                            <i class="fas fa-pencil-alt edit-icon"></i>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="small-box-label right">C# class preview</div>
+                            </div>
+                            <div class="rendered-regex-box">
+                                <pre class="c-sharp">@(new MarkupString(_editorGlyph.ClassStringForDisplayingHtml))</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (_isPillMenuVisible)
+        {
+            <div class="pill-context-menu-shield" @onclick="CloseContextMenu" @oncontextmenu:preventDefault @oncontextmenu="CloseContextMenu"></div>
+            <div class="pill-context-menu" style="position:fixed; left:@(_menuX)px; top:@(_menuY)px; z-index:2001;">
+                <div class="pill-context-menu-header">@_targetPillTypeName</div>
+                @foreach (var action in NibContextAction.GetNibContextOptions(_targetPropertyNib))
+                {
+                    @if (action.AddSectionBreak)
+                    {
+                        <div class="pill-context-menu-divider"></div>
+                    }
+                    <button class="menu-item" @onclick="() => HandlePillAction(action)">@(new MarkupString(action.Html))</button>
+                }
+            </div>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="HandleCancel">Cancel</button>
+        <button class="btn btn-primary" @onclick="SaveClassToFile">Generate & Register Type</button>
+    </DialogActions>
+</CustomDialog>

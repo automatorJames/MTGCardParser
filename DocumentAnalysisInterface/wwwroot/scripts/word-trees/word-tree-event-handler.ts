@@ -1,0 +1,182 @@
+// word-tree-event-handler.ts
+import { CardElement } from "./word-tree-models.js";
+import { WordTree } from "./word-tree-animator.js";
+import { createGradientStops } from "./word-tree-svg-drawer.js";
+
+const globalEventState = {
+    initialized: false,
+    lastHovered: {
+        card: null as CardElement | null,
+        documentKeys: new Set<string>(),
+        mainAnchorHover: false
+    }
+};
+
+function areSetsEqual(setA: Set<string>, setB: Set<string>): boolean {
+    if (setA.size !== setB.size) return false;
+    for (const item of setA) {
+        if (!setB.has(item)) return false;
+    }
+    return true;
+}
+
+/**
+ * Smoothly animates the white overlay for node borders and connectors on anchor hover.
+ */
+function setAnchorHoverEffect(card: CardElement, isHovering: boolean): void {
+    const svg = card.querySelector('svg');
+    if (!svg) return;
+
+    const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
+    const overlays = svg.querySelectorAll<SVGPathElement | SVGRectElement>('.anchor-hover-overlay');
+
+    overlays.forEach(overlay => {
+        const current = parseFloat(getComputedStyle(overlay).opacity) || 0;
+        const end = isHovering ? 1 : 0;
+        if (Math.abs(current - end) > 0.001) {
+            elementsToAnimate.set(overlay as unknown as HTMLElement, { start: current, end });
+        }
+    });
+
+    const controller =
+        (card as any).__anchorHoverController ??
+        ((card as any).__anchorHoverController = { animationFrameId: null });
+
+    if (elementsToAnimate.size > 0) {
+        WordTree.Animator.animateOpacity(elementsToAnimate, controller);
+    }
+}
+
+
+/**
+ * Applies card-based highlighting. Affects node/connector structures and card header items.
+ */
+function setCardHighlight(card: CardElement, activeKeys: Set<string>) {
+    const hasActiveKeys = activeKeys.size > 0;
+    card.classList.toggle('highlight-active', hasActiveKeys);
+
+    card.querySelectorAll<HTMLElement>('[data-document-name]').forEach(item => {
+        const documentName = item.dataset.documentName || '';
+        const isHighlighted = hasActiveKeys && activeKeys.has(documentName);
+        item.classList.toggle('highlight', isHighlighted);
+        item.classList.toggle('lowlight', hasActiveKeys && !isHighlighted);
+    });
+
+    const svg = card.querySelector('svg');
+    const processedData = card.__data;
+    if (!svg || !processedData) return;
+
+    const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
+    const defs = svg.querySelector('defs');
+
+    svg.querySelectorAll<SVGGElement>('[data-source-keys]').forEach(element => {
+        const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]') as string[];
+        const isHighlighted = hasActiveKeys && sourceKeys.some((key: string) => activeKeys.has(key));
+
+        const computed = getComputedStyle(element);
+        const current = parseFloat(computed.opacity) || 1;
+        let end = 1;
+
+        if (hasActiveKeys) {
+            end = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
+        }
+
+        if (Math.abs(current - end) > 0.001) {
+            elementsToAnimate.set(element as unknown as HTMLElement, { start: current, end });
+        }
+
+        const highlightOverlay = element.querySelector<HTMLElement>('.highlight-overlay');
+        if (highlightOverlay) {
+            highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
+        }
+
+        if (isHighlighted && hasActiveKeys && defs) {
+            const idParts = element.id.split('-');
+            if (idParts.length >= 4) {
+                const elementType = idParts[1];
+                const elementIdSuffix = idParts.slice(2).join('-');
+                const highlightGradId = `grad-${elementType}-highlight-${elementIdSuffix}`;
+                const highlightGrad = defs.querySelector(`#${highlightGradId}`);
+
+                if (highlightGrad) {
+                    const keysForGradient = sourceKeys.filter((key: string) => activeKeys.has(key));
+                    const gradientTransitionRatio = 0.1;
+                    highlightGrad.innerHTML = createGradientStops(keysForGradient, processedData.documentPalettes, 'sat', gradientTransitionRatio);
+                }
+            }
+        }
+    });
+
+    const controller = (card as any).__cardHighlightController ?? ((card as any).__cardHighlightController = { animationFrameId: null });
+    if (elementsToAnimate.size > 0) {
+        WordTree.Animator.animateOpacity(elementsToAnimate, controller);
+    }
+}
+
+/**
+ * Resets all highlighting on a card.
+ */
+function animateReset(card: CardElement) {
+    setCardHighlight(card, new Set());
+    setAnchorHoverEffect(card, false);
+}
+
+/**
+ * Sets up the single, comprehensive global event listener.
+ */
+export function setupGlobalEventHandlers(): void {
+    if ((window as any).unifiedHighlighterInitialized) return;
+    (window as any).unifiedHighlighterInitialized = true;
+
+    document.addEventListener('mouseover', (event: MouseEvent) => {
+        const target = event.target as Element;
+        const card = target.closest<CardElement>('.word-trees-card');
+        const last = globalEventState.lastHovered;
+
+        // *** FIX: Explicitly reset the last card if we have moved to a different card or off all cards. ***
+        if (last.card && last.card !== card) {
+            animateReset(last.card);
+            // Clear the state entirely now that we've left the old card's context.
+            globalEventState.lastHovered = { card: null, documentKeys: new Set(), mainAnchorHover: false };
+        }
+
+        // If we are not on a card, our work is done.
+        if (!card) {
+            return;
+        }
+
+        // --- We are on a card. Determine the new state. ---
+        const interactiveEl = target.closest<HTMLElement>('[data-document-name], .node-group, .interactive-subspan');
+        let newDocumentKeys = new Set<string>();
+        let newMainAnchorHover = false;
+
+        if (interactiveEl) {
+            if (interactiveEl.matches('.main-anchor-span')) {
+                newMainAnchorHover = true;
+            } else if (interactiveEl.matches('.interactive-subspan')) {
+                const parentNode = interactiveEl.closest<SVGGElement>('.node-group');
+                if (parentNode) {
+                    newDocumentKeys = new Set(JSON.parse(parentNode.dataset.sourceKeys || '[]'));
+                }
+            } else if (interactiveEl.matches('[data-document-name]')) {
+                newDocumentKeys = new Set([interactiveEl.dataset.documentName!]);
+            } else if (interactiveEl.matches('.node-group')) {
+                newDocumentKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys || '[]'));
+            }
+        }
+
+        // Re-read the state as it may have been cleared above.
+        const currentLastState = globalEventState.lastHovered;
+        if (card === currentLastState.card &&
+            areSetsEqual(newDocumentKeys, currentLastState.documentKeys) &&
+            newMainAnchorHover === currentLastState.mainAnchorHover) {
+            return;
+        }
+
+        // Apply new state and update the global tracker.
+        setCardHighlight(card, newDocumentKeys);
+        setAnchorHoverEffect(card, newMainAnchorHover);
+
+        globalEventState.lastHovered = { card, documentKeys: newDocumentKeys, mainAnchorHover: newMainAnchorHover };
+    });
+}

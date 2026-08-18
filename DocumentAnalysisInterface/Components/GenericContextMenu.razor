@@ -1,0 +1,116 @@
+﻿@typeparam T where T : struct, Enum
+@using System.ComponentModel
+@using System.Reflection
+@using Glyphotype.GlyphPrimitives
+
+@if (IsVisible)
+{
+    <div class="pill-context-menu-backdrop"
+         @onclick="Close"
+         @oncontextmenu="Close"
+         @oncontextmenu:preventDefault="true">
+        <div class="pill-context-menu-container"
+             style="top: @(Y)px; left: @(X)px;"
+             @onclick:stopPropagation="true">
+
+            @foreach (var item in Enum.GetValues<T>())
+            {
+                <div class="pill-menu-item" @onclick="() => OnItemClick(item)">
+                    @GetDescription(item)
+                </div>
+            }
+
+            @if (ShowDelete)
+            {
+                <div class="pill-menu-divider"></div>
+                <div class="pill-menu-item pill-delete-item" @onclick="HandleDelete">
+                    <i class="fas fa-trash-alt" style="margin-right: 8px;"></i> Delete Token
+                </div>
+            }
+        </div>
+    </div>
+
+    <style>
+        .pill-context-menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 999998;
+            background: transparent;
+            cursor: default;
+        }
+
+        .pill-context-menu-container {
+            position: fixed;
+            z-index: 999999;
+            background: #2D3748;
+            border: 1px solid #4A5568;
+            border-radius: 4px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            min-width: 180px;
+            padding: 4px 0;
+            pointer-events: auto;
+            color: #E2E8F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .pill-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.1s;
+        }
+
+            .pill-menu-item:hover {
+                background: #4A5568;
+                color: white;
+            }
+
+        .pill-menu-divider {
+            height: 1px;
+            margin: 4px 0;
+            background: #4A5568;
+        }
+
+        .pill-delete-item {
+            color: #F87171;
+        }
+
+            .pill-delete-item:hover {
+                background: rgba(248, 113, 113, 0.15) !important;
+            }
+    </style>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+    [Parameter] public bool ShowDelete { get; set; } = false;
+    [Parameter] public EventCallback<T> OnClicked { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task OnItemClick(T item)
+    {
+        await OnClicked.InvokeAsync(item);
+        await Close();
+    }
+
+    private async Task HandleDelete()
+    {
+        await OnDelete.InvokeAsync();
+        await Close();
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+
+    private string GetDescription(T value)
+    {
+        var field = value.GetType().GetField(value.ToString());
+        var attribute = field?.GetCustomAttribute<DescriptionAttribute>();
+        return attribute?.Description ?? value.ToString();
+    }
+}

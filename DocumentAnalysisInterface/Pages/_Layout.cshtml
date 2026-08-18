@@ -1,0 +1,55 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@namespace DocumentAnalysisInterface.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="~/" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@100&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="DocumentAnalysisInterface.styles.css" rel="stylesheet" />
+    <link href="css/site.css" rel="stylesheet" />
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+</head>
+<body>
+    @RenderBody()
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            An error has occurred. This application may no longer respond until reloaded.
+        </environment>
+        <environment include="Development">
+            An unhandled exception has occurred. See browser dev tools for details.
+        </environment>
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.server.js"></script>
+    <!-- Your other scripts remain unchanged -->
+    <script src="general.js"></script>
+    <script src="scripts/card-lines.js"></script>
+    <script src="scripts/regex-editor.js"></script>
+    <script src="scripts/clipboard.js"></script>
+    <script src="scripts/search.js"></script>
+    <script src="scripts/main-layout.js"></script>
+    <script src="scripts/type-regex.js"></script>
+    <script type="module" src="scripts/word-trees/word-tree-animator.js"></script>
+    <script type="module" src="scripts/word-trees/word-tree-layout-calculator.js"></script>
+    <script type="module" src="scripts/word-trees/word-tree-svg-drawer.js"></script>
+    <script type="module" src="scripts/word-trees/word-tree-orchestrator.js"></script>
+    <script type="module" src="scripts/word-trees/word-tree-event-handler.js"></script>
+    <script type="module" src="scripts/word-trees/word-tree-manager.js"></script>
+
+</body>
+</html>
