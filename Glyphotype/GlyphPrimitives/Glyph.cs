@@ -5,6 +5,9 @@ namespace Glyphotype.GlyphPrimitives;
 
 public abstract class Glyph : CaptureUnit
 {
+    public virtual Nib[] Nibs { get; } = [];
+    public virtual Joiner Joiner => Joiner.Space;
+
     PropertyInfo MemberExpressionToProp (string memberExpression)
     {
         var lastDot = memberExpression.LastIndexOf('.');

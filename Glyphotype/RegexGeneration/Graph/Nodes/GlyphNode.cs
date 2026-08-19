@@ -42,10 +42,10 @@ public class GlyphNode : NamedGroupNode
     }
 
     /// <summary>Instantiates this node's <see cref="Glyph"/> type and hydrates every child named-group property from <paramref name="captureTrace"/>'s <see cref="CaptureTrace.CaptureContext"/>. Returns false if any required child fails to hydrate.</summary>
-    public virtual bool TryHydrate(CaptureTrace captureTrace, out CaptureUnit glyph)
+    public virtual bool TryHydrate(CaptureTrace captureTrace, out Glyph glyph)
     {
         glyph = null;
-        var instance = (CaptureUnit)Activator.CreateInstance(Navigation.NodeType);
+        var instance = (Glyph)Activator.CreateInstance(Navigation.NodeType);
 
         foreach (var child in NamedGroupChildren)
         {

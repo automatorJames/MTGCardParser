@@ -94,11 +94,7 @@ else
 
     private IEnumerable<AnalyzedText> GetFilteredSpans()
     {
-        // todo: re-implement support for this switch if it's desired
-        DigestedText corpus = RuntimeSettings.ShowOriginalText
-            //? throw new NotImplementedException("Support for showing word trees from original text has been temporarily paused")
-            ? CorpusAnalyzer.DigestedTextWithCaptureGlyphs
-            : CorpusAnalyzer.DigestedTextWithCaptureGlyphs;
+        DigestedText corpus = CorpusAnalyzer.DigestedTextWithCaptureGlyphs;
 
         var items = corpus.Spans
             .Where(x =>

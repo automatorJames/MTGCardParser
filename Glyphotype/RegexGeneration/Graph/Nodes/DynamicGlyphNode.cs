@@ -25,7 +25,7 @@ public class DynamicGlyphNode : GlyphNode
     }
 
     /// <inheritdoc/>
-    public override bool TryHydrate(CaptureTrace captureTrace, out CaptureUnit glyph)
+    public override bool TryHydrate(CaptureTrace captureTrace, out Glyph glyph)
     {
         glyph = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);

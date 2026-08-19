@@ -18,7 +18,7 @@ public class Navigation
     public GlyphTypeConfiguration GlyphTypeConfiguration { get; private set; }
 
     // Convenience bools to simplify logic in Node constructors
-    public bool IsCaptureUnitType { get; private set; }
+    public bool IsGlyphType { get; private set; }
     public bool IsRoot { get; private set; }
     public bool IsList { get; private set; }
     public bool IsOptional { get; private set; }
@@ -27,8 +27,12 @@ public class Navigation
     {
         SetTypeInfo(type);
 
-        if (!IsCaptureUnitType)
-            throw new Exception($"This constructor may only be used for {nameof(CaptureUnit)} types");
+        // UnmatchedString is the one deliberate exception: it never goes through the registry
+        // (GlyphTypeRegistry excludes it from top-level types, so it has no GlyphTypeConfiguration),
+        // but it still builds its own throwaway root Navigation/UnmatchedGlyphNode purely to seed a
+        // CaptureContext for its own instance - see UnmatchedString's own constructor.
+        if (!IsGlyphType && type != typeof(UnmatchedString))
+            throw new Exception($"This constructor may only be used for {nameof(Glyph)} types (or {nameof(UnmatchedString)})");
 
         IsRoot = true;
         Name = GetRegexSafeTypeName(UnderlyingType);
@@ -64,9 +68,9 @@ public class Navigation
         GenericTypes = UnderlyingType.GenericTypeArguments;
         IsList = UnderlyingType.IsGenericType && UnderlyingType.GetGenericTypeDefinition() == typeof(List<>);
         NodeType = IsList ? GenericTypes[0] : UnderlyingType;
-        IsCaptureUnitType = NodeType.IsAssignableTo(typeof(CaptureUnit));
+        IsGlyphType = NodeType.IsAssignableTo(typeof(Glyph));
 
-        if (IsCaptureUnitType)
+        if (IsGlyphType)
             GlyphTypeConfiguration = GlyphTypeRegistry.GetGlyphTypeConfiguration(NodeType);
     }
 

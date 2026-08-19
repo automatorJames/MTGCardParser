@@ -18,10 +18,10 @@ internal class DynamicSectionBuilder
     /// <summary>Builds the full ordered sequence of embedded resolved-type sections for <paramref name="dynamicNode"/>.</summary>
     public List<RegexBrick> Build(DynamicGlyphNode dynamicNode, List<RegexBrick> allBricks, DynamicCaptureTraceSummary dynamicSummary, bool includeSupplementalLines)
     {
-        if (dynamicSummary.ResolvedTypeCaptureUnits.Count == 0)
+        if (dynamicSummary.ResolvedTypeGlyphs.Count == 0)
             return BuildFallbackBricks(dynamicNode, allBricks);
 
-        var typeGroups = dynamicSummary.ResolvedTypeCaptureUnits
+        var typeGroups = dynamicSummary.ResolvedTypeGlyphs
             .OrderByDescending(x => x.Value.Count)
             .ToList();
 

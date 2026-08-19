@@ -51,21 +51,6 @@ namespace DocumentAnalysisInterface
             }
         }
 
-        private bool _showOriginalText;
-        public bool ShowOriginalText
-        {
-            get => _showOriginalText;
-            set
-            {
-                if (_showOriginalText != value)
-                {
-                    _showOriginalText = value;
-                    OnChanged?.Invoke();
-                    _ = DebouncedSaveAsync(); // Persist the change
-                }
-            }
-        }
-
         private bool _showMinified;
         public bool ShowMinified
         {
@@ -185,7 +170,6 @@ namespace DocumentAnalysisInterface
                 {
                     _hideFullyMatchedCards = dto.HideFullyMatchedCards;
                     _orderByWordCount = dto.OrderByWordCount;
-                    _showOriginalText = dto.ShowOriginalText;
                     _showMinified = dto.ShowMinified;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _hideBlankLines = dto.HideBlankLines;
@@ -238,7 +222,6 @@ namespace DocumentAnalysisInterface
     {
         public bool HideFullyMatchedCards { get; init; }
         public bool OrderByWordCount { get; init; }
-        public bool ShowOriginalText { get; init; }
         public bool ShowMinified { get; init; }
         public bool HideRegexesWithZeroCaptures { get; init; }
         public bool HideBlankLines { get; init; }
@@ -253,7 +236,6 @@ namespace DocumentAnalysisInterface
         {
             HideFullyMatchedCards = runtimeSettings.HideFullyMatchedCards;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
-            ShowOriginalText = runtimeSettings.ShowOriginalText;
             ShowMinified = runtimeSettings.ShowMinified;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             HideBlankLines = runtimeSettings.HideBlankLines;

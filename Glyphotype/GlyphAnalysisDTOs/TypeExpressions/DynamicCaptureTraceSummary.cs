@@ -9,7 +9,7 @@ public class DynamicCaptureTraceSummary : NamedGroupCaptureTraceSummary
     /// instances captured as that type — enough to build a real <see cref="GlyphOccurrenceSummary"/> for it and
     /// render its own full pretty regex (see <see cref="DynamicSectionBuilder"/>) instead of just a literal value.
     /// </summary>
-    public Dictionary<Type, List<Glyph>> ResolvedTypeCaptureUnits { get; } = [];
+    public Dictionary<Type, List<Glyph>> ResolvedTypeGlyphs { get; } = [];
 
 
     /// <summary>
@@ -34,8 +34,8 @@ public class DynamicCaptureTraceSummary : NamedGroupCaptureTraceSummary
             if (dynamicGlyph.Item is not Glyph resolvedGlyph)
                 throw new Exception($"{captureTrace.FullyQualifiedName} resolved to a {dynamicGlyph.Item?.GetType().Name ?? "null"}, but expected a {nameof(Glyph)}");
 
-            ResolvedTypeCaptureUnits.TryAdd(dynamicGlyph.ResolvedType, []);
-            ResolvedTypeCaptureUnits[dynamicGlyph.ResolvedType].Add(resolvedGlyph);
+            ResolvedTypeGlyphs.TryAdd(dynamicGlyph.ResolvedType, []);
+            ResolvedTypeGlyphs[dynamicGlyph.ResolvedType].Add(resolvedGlyph);
         }
     }
 }

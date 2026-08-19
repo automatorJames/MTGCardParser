@@ -3,8 +3,6 @@
 [RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class UnmatchedString : CaptureUnit
 {
-    public override Nib[] Nibs => [@"[^\s]+"];
-
     public UnmatchedString()
     {
     }

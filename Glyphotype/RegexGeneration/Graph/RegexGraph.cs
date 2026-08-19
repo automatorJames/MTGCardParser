@@ -81,13 +81,13 @@ public class RegexGraph
     }
 
     /// <summary>Attempts to match and hydrate <paramref name="sourceText"/> in full, from its start to its end.</summary>
-    public bool TryMatch(string sourceText, out CaptureUnit glyph) =>
+    public bool TryMatch(string sourceText, out Glyph glyph) =>
         TryMatch(sourceText, 0, sourceText.Length, out glyph);
 
     /// <summary>
     /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.
     /// </summary>
-    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out CaptureUnit glyph)
+    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph)
     {
         glyph = null;
         var match = BuiltRegex.Regex.Match(sourceText, currentIndex);

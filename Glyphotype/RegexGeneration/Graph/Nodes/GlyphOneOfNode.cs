@@ -8,10 +8,10 @@ public class GlyphOneOfNode : GlyphNode
     {
     }
 
-    public override bool TryHydrate(CaptureTrace captureTrace, out CaptureUnit glyph)
+    public override bool TryHydrate(CaptureTrace captureTrace, out Glyph glyph)
     {
         glyph = null;
-        var instance = (CaptureUnit)Activator.CreateInstance(Navigation.NodeType);
+        var instance = (Glyph)Activator.CreateInstance(Navigation.NodeType);
 
         // Counter to track successfully set children
         int childrenSuccessfullySet = 0;

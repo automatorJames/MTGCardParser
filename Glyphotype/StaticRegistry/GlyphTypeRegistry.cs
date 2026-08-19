@@ -19,7 +19,6 @@ public static partial class GlyphTypeRegistry
     public static List<Type> AppliedOrderTypes { get; set; } = [];
     public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
-    public static Tokenizer OriginalTextTokenizer { get; set; }
 
     static GlyphTypeRegistry()
     {
@@ -39,7 +38,6 @@ public static partial class GlyphTypeRegistry
         ValidateAllStructures(topLevelTypes);
 
         InitializeClassTokenizer();
-        OriginalTextTokenizer = new([typeof(UnmatchedString)]);
     }
 
     /// <summary>
@@ -159,7 +157,7 @@ public static partial class GlyphTypeRegistry
         if (glyphType.IsAssignableTo(typeof(DynamicGlyph)))
             return new(glyphType, [], Joiner.None)    ;
 
-        var instance = (CaptureUnit)Activator.CreateInstance(glyphType);
+        var instance = (Glyph)Activator.CreateInstance(glyphType);
 
         var nibs = instance.Nibs.ToArray();
 
@@ -181,18 +179,15 @@ public static partial class GlyphTypeRegistry
         return configuration;
     }
 
-    public static List<CaptureUnit> Tokenize(string sourceText, bool originalTextOnly = false)
-    {
-        var tokens = originalTextOnly ? OriginalTextTokenizer.Tokenize(sourceText) : ClassTokenizer.Tokenize(sourceText);
-        return tokens;
-    }
+    public static List<CaptureUnit> Tokenize(string sourceText) =>
+        ClassTokenizer.Tokenize(sourceText);
 
     public static List<Type> GetAllTopLevelGlyphTypes()
     {
         var allTypes = _staticAssemblyTypes
             .Where(x =>
                 x.IsClass && !x.IsAbstract
-                && typeof(CaptureUnit).IsAssignableFrom(x)
+                && typeof(Glyph).IsAssignableFrom(x)
                 && !x.ContainsGenericParameters
                 && !x.IsDefined(typeof(DependentAttribute)))
             .Concat(_dynamicAssemblyTypes)
@@ -206,7 +201,7 @@ public static partial class GlyphTypeRegistry
         if (isolatedTypes.Count > 0)
         {
             var isolatedClosure = GetTransitiveGlyphTypeClosure(isolatedTypes);
-            allTypes = allTypes.Where(x => isolatedClosure.Contains(x) || x == typeof(UnmatchedString)).ToList();
+            allTypes = allTypes.Where(x => isolatedClosure.Contains(x)).ToList();
         }
 
         return allTypes;
@@ -238,16 +233,16 @@ public static partial class GlyphTypeRegistry
     }
 
     /// <summary>The direct property-typed dependencies of <paramref name="type"/>: the underlying Glyph
-    /// (or other CaptureUnit) type behind each of its PropertyNib-backed nibs, unwrapping Nullable
+    /// type behind each of its PropertyNib-backed nibs, unwrapping Nullable
     /// and List&lt;T&gt; the same way Navigation does when building the actual regex graph.</summary>
     static IEnumerable<Type> GetDirectDependentGlyphTypes(Type type) =>
         GetGlyphTypeConfiguration(type).Nibs
             .OfType<PropertyNib>()
             .Select(x => Nullable.GetUnderlyingType(x.Type) ?? x.Type)
             .Select(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(List<>) ? x.GetGenericArguments()[0] : x)
-            .Where(x => x.IsAssignableTo(typeof(CaptureUnit)));
+            .Where(x => x.IsAssignableTo(typeof(Glyph)));
 
-    /// <summary>Walks the property dependency graph reachable from <paramref name="roots"/> (inclusive) and returns every CaptureUnit type found.</summary>
+    /// <summary>Walks the property dependency graph reachable from <paramref name="roots"/> (inclusive) and returns every Glyph type found.</summary>
     static HashSet<Type> GetTransitiveGlyphTypeClosure(IEnumerable<Type> roots)
     {
         HashSet<Type> visited = [];
@@ -287,8 +282,7 @@ public static partial class GlyphTypeRegistry
         // Reset applied orders, since the order may change during runtime
         AppliedOrderTypes = [];
 
-        // Get all real Glyph types; UnmatchedString is not one, and is added last
-        var allGlyphTypes = GetAllTopLevelGlyphTypes().Where(x => typeof(Glyph).IsAssignableFrom(x));
+        var allGlyphTypes = GetAllTopLevelGlyphTypes();
 
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
         // each dictionary entry is a List, though each List should ideally only have one item.
