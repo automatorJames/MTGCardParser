@@ -39,6 +39,13 @@ public class DynamicGlyphNode : GlyphNode
         glyph = new DynamicGlyph(dynamicMatchToken);
         glyph.CaptureContext = dynamicMatchToken.CaptureContext;
 
+        // The re-tokenization above ran against captureValue in isolation, producing its own
+        // disconnected CaptureContext/RootCaptureTrace. Without this, this node's CaptureTrace
+        // would stay childless — a flat leaf with no visibility into dynamicMatchToken's own
+        // resolved structure (e.g. a DynamicGlyph resolving to ThisDealsDamage would show no
+        // Quantity/Recipient nesting at all in the underline tree or corpus-wide lookups).
+        captureTrace.AdoptDynamicChildren(dynamicMatchToken.CaptureContext.RootCaptureTrace);
+
         return true;
     }
 }

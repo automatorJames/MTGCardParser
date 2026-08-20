@@ -1,17 +1,19 @@
-﻿
-@if (BranchTrace.IsCollapsible)
+﻿@inject RuntimeSettings RuntimeSettings
+
+@if (ShouldCollapse)
 {
-    <!-- Directly render branch children of the collapsed parent branch -->
+    <!-- Directly render branch children of the collapsed parent branch, carrying its name
+         forward so the next rendered header can show the collapsed lineage that led to it. -->
     @foreach (var child in BranchTrace.Children)
     {
-        <PropertyTable BranchTrace=@child />
+        <PropertyTable BranchTrace=@child CollapsedLineage=@ChildLineage />
     }
 }
 else
 {
     <div class="glyph-summary-branch" style="margin-top:16px" data-path=@BranchTrace.FullyQualifiedName>
         <div class="glyph-summary-header" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
-            <span class="glyph-type-name">@BranchTrace.Name.ToFriendlyCase()</span>
+            <span class="glyph-type-name">@HeaderText</span>
         </div>
 
         @if (BranchTrace.Children.Any())
@@ -70,5 +72,43 @@ else
     [Parameter, EditorRequired]
     public CaptureTrace BranchTrace { get; set; }
 
+    /// <summary>
+    /// Names of collapsed ancestor branches skipped on the way down to <see cref="BranchTrace"/>,
+    /// oldest first. Empty for a branch reached directly (not through a collapsed parent).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> CollapsedLineage { get; set; } = [];
+
     HexPalette RootPalette => ProcessedLine.CaptureTracePositionalPalettes[BranchTrace];
+
+    /// <summary>
+    /// Whether to skip <see cref="BranchTrace"/>'s own header/table and recurse straight into its
+    /// children instead — the default, noise-reducing behavior for a structurally collapsible
+    /// node. The "Show collapsed nodes" setting opts back into seeing every level explicitly.
+    /// </summary>
+    bool ShouldCollapse => BranchTrace.IsCollapsible && !RuntimeSettings.ShowCollapsedCaptureNodes;
+
+    List<string> ChildLineage => [.. CollapsedLineage, BranchTrace.Name];
+
+    /// <summary>
+    /// <see cref="BranchTrace"/>'s own name, plus — for a <see cref="CaptureNodeKind.Dynamic"/>
+    /// property — the resolved Glyph type it turned out to be (e.g. "Result: This Deals Damage").
+    /// A dynamic property's declared name only says what role it plays in its parent; which Glyph
+    /// it actually resolved to is equally load-bearing information and shouldn't be hidden.
+    /// </summary>
+    string OwnNameText =>
+        BranchTrace.NodeKind == CaptureNodeKind.Dynamic && BranchTrace.ResolvedNodeType != null
+        ? $"{BranchTrace.Name.ToFriendlyCase()}: {BranchTrace.ResolvedNodeTypeName.ToFriendlyCase()}"
+        : BranchTrace.Name.ToFriendlyCase();
+
+    /// <summary>
+    /// The header shown for a rendered (non-collapsed) branch. When it was only reached by
+    /// skipping past one or more collapsed ancestors, the header chains their names together
+    /// (e.g. "A: B: C") so the viewer can see there's a collapsed lineage behind it, rather than
+    /// silently showing just "C" as if it were a top-level property.
+    /// </summary>
+    string HeaderText =>
+        CollapsedLineage.Count == 0
+        ? OwnNameText
+        : string.Join(": ", CollapsedLineage.Select(x => x.ToFriendlyCase()).Append(OwnNameText));
 }

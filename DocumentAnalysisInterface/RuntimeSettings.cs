@@ -36,6 +36,21 @@ namespace DocumentAnalysisInterface
             }
         }
         
+        private bool _showCollapsedCaptureNodes;
+        public bool ShowCollapsedCaptureNodes
+        {
+            get => _showCollapsedCaptureNodes;
+            set
+            {
+                if (_showCollapsedCaptureNodes != value)
+                {
+                    _showCollapsedCaptureNodes = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private bool _orderByWordCount;
         public bool OrderByWordCount
         {
@@ -169,6 +184,7 @@ namespace DocumentAnalysisInterface
                 if (result.Success && result.Value is { } dto)
                 {
                     _hideFullyMatchedCards = dto.HideFullyMatchedCards;
+                    _showCollapsedCaptureNodes = dto.ShowCollapsedCaptureNodes;
                     _orderByWordCount = dto.OrderByWordCount;
                     _showMinified = dto.ShowMinified;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
@@ -221,6 +237,7 @@ namespace DocumentAnalysisInterface
     public record RuntimeSettingsDto
     {
         public bool HideFullyMatchedCards { get; init; }
+        public bool ShowCollapsedCaptureNodes { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool ShowMinified { get; init; }
         public bool HideRegexesWithZeroCaptures { get; init; }
@@ -235,6 +252,7 @@ namespace DocumentAnalysisInterface
         public RuntimeSettingsDto(RuntimeSettings runtimeSettings)
         {
             HideFullyMatchedCards = runtimeSettings.HideFullyMatchedCards;
+            ShowCollapsedCaptureNodes = runtimeSettings.ShowCollapsedCaptureNodes;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             ShowMinified = runtimeSettings.ShowMinified;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;

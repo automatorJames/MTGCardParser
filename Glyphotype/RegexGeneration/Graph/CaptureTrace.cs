@@ -7,8 +7,8 @@ namespace Glyphotype.RegexGeneration.Graph;
 [JsonObject(MemberSerialization.OptIn)]
 public class CaptureTrace : IEnumerable<CaptureTrace>
 {
-    public CaptureContext CaptureContext { get; }
-    [JsonProperty] public string FullyQualifiedName { get; }
+    public CaptureContext CaptureContext { get; private set; }
+    [JsonProperty] public string FullyQualifiedName { get; private set; }
     [JsonProperty] public string Name { get; }
     [JsonProperty] public string CaptureValue { get; set; }
     public string PrintValue => GetPrintValue();
@@ -16,17 +16,40 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty] public CaptureNodeKind NodeKind { get; }
     public Type ResolvedNodeType => GetResolvedNodeType();
     [JsonProperty] public string ResolvedNodeTypeName => ResolvedNodeType.Name;
-    public string ParentName { get; }
-    [JsonProperty] public int Index { get; }
+    public string ParentName { get; private set; }
+    [JsonProperty] public int Index { get; private set; }
     [JsonProperty] public int Length { get; }
-    [JsonProperty] public int End { get; }
+    [JsonProperty] public int End { get; private set; }
     [JsonProperty] public int? SiblingIndex { get; }
     [JsonProperty] public int Count => (Success ? 1 : 0) + Siblings.Count;
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Siblings { get; } = [];
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Children { get; } = [];
     public object ClrValue { get; set; }
     [JsonProperty] public bool IsTerminal { get; }
-    [JsonProperty] public bool IsCollapsible => Children.Count > 0 && !Children.Any(x => x.IsTerminal);
+
+    /// <summary>
+    /// Node kinds that always represent a meaningful resolution — a choice among named
+    /// alternatives (<see cref="CaptureNodeKind.OneOf"/>) or a re-tokenized dynamic match
+    /// (<see cref="CaptureNodeKind.Dynamic"/>) — even when what they resolve to isn't itself a
+    /// scalar. These never collapse, regardless of their children.
+    /// </summary>
+    static readonly HashSet<CaptureNodeKind> _alwaysMeaningfulKinds = [CaptureNodeKind.OneOf, CaptureNodeKind.Dynamic];
+
+    /// <summary>
+    /// True when this node is a pure pass-through: a single named child that itself carries no
+    /// direct scalar value, and this node isn't one of <see cref="_alwaysMeaningfulKinds"/>.
+    /// Displaying such a node's own underline level would be visual noise — it never resolved a
+    /// choice and never aggregated more than one property, it just forwards to its one child.
+    /// A node with two or more children is never collapsible (it's aggregating distinct named
+    /// properties, which is itself meaningful structure), and a node whose only child is
+    /// terminal is never collapsible (the terminal leaf's overline needs this level's underline
+    /// to pair with).
+    /// </summary>
+    [JsonProperty]
+    public bool IsCollapsible =>
+        Children.Count == 1
+        && !Children[0].IsTerminal
+        && !_alwaysMeaningfulKinds.Contains(NodeKind);
 
     public string JsonDebug => JsonConvert.SerializeObject(
         this,
@@ -104,6 +127,49 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
             return 0;
 
         return 1 + Children.Max(child => child.GetRecursiveDepth());
+    }
+
+    /// <summary>
+    /// Adopts <paramref name="innerRoot"/>'s children as this node's own children, in place of the
+    /// flat, structure-less capture a <see cref="Nodes.DynamicGlyphNode"/> otherwise produces.
+    /// <paramref name="innerRoot"/> is the <see cref="RootCaptureTrace"/> produced by re-tokenizing
+    /// this node's matched text in isolation (its own <see cref="CaptureContext"/>, with indexes
+    /// relative to that substring rather than to the original line) — so every adopted descendant
+    /// is rebased onto this node's own <see cref="CaptureContext"/> and index space, and re-parented
+    /// under this node's <see cref="FullyQualifiedName"/> (replacing <paramref name="innerRoot"/>'s
+    /// own name as the path prefix) so its data-path stays fully qualified from the line root and
+    /// its captures stay registered for corpus-wide lookups (<see cref="RootCaptureTrace.this[string]"/>).
+    /// </summary>
+    public void AdoptDynamicChildren(RootCaptureTrace innerRoot)
+    {
+        var outerRoot = CaptureContext.RootCaptureTrace;
+        var oldPrefix = innerRoot.FullyQualifiedName;
+        var newPrefix = FullyQualifiedName;
+
+        foreach (var child in innerRoot.Children)
+        {
+            child.Rebase(oldPrefix, newPrefix, Index, CaptureContext);
+            Children.Add(child);
+            outerRoot.RegisterSubtree(child);
+        }
+    }
+
+    void Rebase(string oldFullyQualifiedNamePrefix, string newFullyQualifiedNamePrefix, int indexOffset, CaptureContext newContext)
+    {
+        FullyQualifiedName = newFullyQualifiedNamePrefix + FullyQualifiedName[oldFullyQualifiedNamePrefix.Length..];
+
+        var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
+        ParentName = parentNameMatch.Success ? parentNameMatch.Value : null;
+
+        Index += indexOffset;
+        End += indexOffset;
+        CaptureContext = newContext;
+
+        foreach (var child in Children)
+            child.Rebase(oldFullyQualifiedNamePrefix, newFullyQualifiedNamePrefix, indexOffset, newContext);
+
+        foreach (var sibling in Siblings)
+            sibling.Rebase(oldFullyQualifiedNamePrefix, newFullyQualifiedNamePrefix, indexOffset, newContext);
     }
 
     string GetPrintValue()

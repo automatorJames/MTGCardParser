@@ -40,4 +40,19 @@ public class RootCaptureTrace : CaptureTrace
     }
 
     public Dictionary<string, CaptureTrace> GetFlatCaptureTree() => _flatCaptureTree;
+
+    /// <summary>
+    /// Registers <paramref name="node"/> and its descendants (but not its siblings — repeated
+    /// captures of the same named group all share one FQN, so only the representative trace is
+    /// registered) into the flat lookup table. Used after <see cref="CaptureTrace.AdoptDynamicChildren"/>
+    /// re-parents a re-tokenized subtree, since that subtree bypasses <see cref="AddCaptureTrace"/>
+    /// (its parent linkage is already known — it doesn't need to be resolved by name).
+    /// </summary>
+    public void RegisterSubtree(CaptureTrace node)
+    {
+        _flatCaptureTree[node.FullyQualifiedName] = node;
+
+        foreach (var child in node.Children)
+            RegisterSubtree(child);
+    }
 }

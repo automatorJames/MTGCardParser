@@ -1,4 +1,5 @@
 ﻿@using Glyphotype.RegexGeneration.Graph.Nodes
+@inject RuntimeSettings RuntimeSettings
 @if (CaptureTrace != null)
 {
     <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.FullyQualifiedName>
@@ -34,6 +35,15 @@
     [Parameter, EditorRequired]
     public CaptureTrace CaptureTrace { get; set; } = null!;
 
+    /// <summary>
+    /// Whether this node should render as a flat leaf instead of its own nested-underline level.
+    /// The model's own <see cref="CaptureTrace.IsCollapsible"/> is a structural fact (this node
+    /// is a pure pass-through with no scalar of its own) independent of display preference; the
+    /// "Show collapsed nodes" setting lets a viewer opt back into seeing those pass-through
+    /// levels when they want the full lineage instead of the noise-reduced default.
+    /// </summary>
+    bool IsEffectivelyCollapsible => CaptureTrace.IsCollapsible && !RuntimeSettings.ShowCollapsedCaptureNodes;
+
     string GetClass()
     {
         if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
@@ -41,7 +51,7 @@
 
         var classes = new List<string>();
 
-        if (CaptureTrace.Children.Any() && !CaptureTrace.IsCollapsible)
+        if (CaptureTrace.Children.Any() && !IsEffectivelyCollapsible)
             classes.Add("nested-underline");
 
         if (CaptureTrace.IsTerminal)
@@ -61,14 +71,13 @@
         if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
             return "";
 
-        if (CaptureTrace.Children.Any() && !CaptureTrace.IsCollapsible)
-            return "";
-
+        // Every node gets its own positional rainbow color and depth-scaled padding-bottom —
+        // including "nested-underline" containers, not just leaves/collapsed nodes. A container's
+        // border-bottom is what actually paints its underline level, so without its own --color
+        // it falls back to currentColor (indistinguishable from every other unstyled level), and
+        // without its own depth-scaled padding it sits at the CSS class's flat default instead of
+        // stacking below the levels nested inside it.
         var style = new System.Text.StringBuilder();
-
-        //var palette = 
-        //    ProcessedLine.CaptureTracePositionalPalettes.TryGetValue(CaptureTrace, out var foundPalette) ? foundPalette 
-        //    : DeterministicPalette.GetStaticPalette(new HexColor("777777"));
 
         style.Append(ProcessedLine.CaptureTracePositionalPalettes[CaptureTrace].ToColorStyle());
         var paddingBottom = 2 + (ProcessedLine.CaptureTraceNestedDepths[CaptureTrace] * 6);
