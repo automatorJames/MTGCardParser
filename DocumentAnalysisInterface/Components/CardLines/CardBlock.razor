@@ -2,6 +2,7 @@
 @using Glyphotype.GlyphEditor
 @inject DocumentCorpusAnalyzer CorpusAnalyzer
 @inject IJSRuntime JS
+@inject RuntimeSettings RuntimeSettings
 
 <Snackbar @ref="_snackbar" />
 
@@ -10,20 +11,19 @@
 
     @foreach (var line in ProcessedDocument.Lines)
     {
+        var displayContext = new CaptureTraceDisplayContext(line, RuntimeSettings);
+
         <CascadingValue Value=line>
+        <CascadingValue Value=displayContext>
             <div class="line-capture-block match-boundary">
                 <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
                 <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
-                    <pre class="nested-underline-container" style=@GetLineHeightStyle(line) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
+                    <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
                         @foreach (var root in line.CaptureTraceRoots)
                         {
                             <SpanView CaptureTrace=@root />
                         }
                     </pre>
-
-                    @{
-
-                    }
 
                     @foreach (var root in line.CaptureTraceRootsExceptUnmatchedStrings)
                     {
@@ -31,6 +31,7 @@
                     }
                 </div>
             </div>
+        </CascadingValue>
         </CascadingValue>
     }
 </div>
@@ -80,10 +81,10 @@
         }
     }
 
-    string GetLineHeightStyle(ProcessedLine line)
+    string GetLineHeightStyle(CaptureTraceDisplayContext displayContext)
     {
         int fontSize = 16;
-        int lh = 24 + (line.GetDeepestChildDepth() * 8);
+        int lh = 24 + (displayContext.MaxEffectiveDepth * 8);
 
         // Calculate only the top half of the extra space
         double topCrop = (lh - fontSize) / 2.0;

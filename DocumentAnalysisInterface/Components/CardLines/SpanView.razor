@@ -1,4 +1,5 @@
 ﻿@using Glyphotype.RegexGeneration.Graph.Nodes
+@using DocumentAnalysisInterface.Components.CardLines
 @inject RuntimeSettings RuntimeSettings
 @if (CaptureTrace != null)
 {
@@ -15,7 +16,7 @@
                     <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, relativeChildStart - cursor)</text>
                 }
 
-                <SpanView CaptureTrace=@child />
+                <SpanView CaptureTrace=@child EffectiveDepth=@ChildEffectiveDepth />
 
                 cursor = child.End - CaptureTrace.Index;
             }
@@ -30,10 +31,19 @@
 
 @code {
     [CascadingParameter]
-    public ProcessedLine ProcessedLine { get; set; } = null!;
+    public CaptureTraceDisplayContext DisplayContext { get; set; } = null!;
 
     [Parameter, EditorRequired]
     public CaptureTrace CaptureTrace { get; set; } = null!;
+
+    /// <summary>
+    /// How many effectively-visible (non-collapsed) ancestors sit above this node — used, not the
+    /// raw structural depth, so a collapsed ancestor contributes no vertical offset of its own and
+    /// the next visible level stacks directly beneath the previous one instead of leaving a gap.
+    /// Defaults to 0 for a root, since nothing above it was skipped.
+    /// </summary>
+    [Parameter]
+    public int EffectiveDepth { get; set; } = 0;
 
     /// <summary>
     /// Whether this node should render as a flat leaf instead of its own nested-underline level.
@@ -43,6 +53,13 @@
     /// levels when they want the full lineage instead of the noise-reduced default.
     /// </summary>
     bool IsEffectivelyCollapsible => CaptureTrace.IsCollapsible && !RuntimeSettings.ShowCollapsedCaptureNodes;
+
+    /// <summary>
+    /// The depth to hand down to children: incremented only when this node itself renders its own
+    /// level. A collapsed node passes its own received depth straight through unchanged, so an
+    /// arbitrarily long chain of collapsed nodes costs no vertical space at all.
+    /// </summary>
+    int ChildEffectiveDepth => IsEffectivelyCollapsible ? EffectiveDepth : EffectiveDepth + 1;
 
     string GetClass()
     {
@@ -71,16 +88,17 @@
         if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
             return "";
 
-        // Every node gets its own positional rainbow color and depth-scaled padding-bottom —
-        // including "nested-underline" containers, not just leaves/collapsed nodes. A container's
-        // border-bottom is what actually paints its underline level, so without its own --color
-        // it falls back to currentColor (indistinguishable from every other unstyled level), and
-        // without its own depth-scaled padding it sits at the CSS class's flat default instead of
-        // stacking below the levels nested inside it.
+        // A collapsed node paints no border of its own, so it gets no style at all — in
+        // particular no explicit --color, letting its descendants inherit the nearest visible
+        // ancestor's color straight through the CSS cascade instead of every collapsed node in a
+        // chain needing its own (unused) rainbow slot.
+        if (IsEffectivelyCollapsible)
+            return "";
+
         var style = new System.Text.StringBuilder();
 
-        style.Append(ProcessedLine.CaptureTracePositionalPalettes[CaptureTrace].ToColorStyle());
-        var paddingBottom = 2 + (ProcessedLine.CaptureTraceNestedDepths[CaptureTrace] * 6);
+        style.Append(DisplayContext.Palettes[CaptureTrace].ToColorStyle());
+        var paddingBottom = 2 + (EffectiveDepth * 6);
         style.Append($" padding-bottom: {paddingBottom}px;");
 
         return style.ToString();

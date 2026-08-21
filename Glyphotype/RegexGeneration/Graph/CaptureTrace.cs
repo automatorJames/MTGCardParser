@@ -121,12 +121,20 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int GetRecursiveDepth()
+    /// <summary>
+    /// The deepest count of "meaningful" nesting levels beneath (and including) this node, per
+    /// <paramref name="isCollapsed"/> — a node this predicate reports as collapsed doesn't count
+    /// as a level of its own (it contributes no visible underline/border of its own to stack),
+    /// but its children are still walked and may count. Passing a predicate that always returns
+    /// false recovers plain structural depth.
+    /// </summary>
+    public int GetEffectiveDepth(Func<CaptureTrace, bool> isCollapsed)
     {
         if (Children.Count == 0)
             return 0;
 
-        return 1 + Children.Max(child => child.GetRecursiveDepth());
+        var deepestChild = Children.Max(child => child.GetEffectiveDepth(isCollapsed));
+        return isCollapsed(this) ? deepestChild : 1 + deepestChild;
     }
 
     /// <summary>

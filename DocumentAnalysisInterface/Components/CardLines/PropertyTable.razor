@@ -1,4 +1,5 @@
-﻿@inject RuntimeSettings RuntimeSettings
+﻿@using DocumentAnalysisInterface.Components.CardLines
+@inject RuntimeSettings RuntimeSettings
 
 @if (ShouldCollapse)
 {
@@ -34,7 +35,7 @@ else
                                 <tbody>
                                     @foreach (var leaf in terminals)
                                     {
-                                        var leafPaletteStyle = ProcessedLine.CaptureTracePositionalPalettes[leaf].ToColorStyle();
+                                        var leafPaletteStyle = DisplayContext.Palettes[leaf].ToColorStyle();
 
                                         <tr data-path="@leaf.FullyQualifiedName">
                                             <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle)>
@@ -67,7 +68,7 @@ else
 @code {
 
     [CascadingParameter]
-    public ProcessedLine ProcessedLine { get; set; } = null!;
+    public CaptureTraceDisplayContext DisplayContext { get; set; } = null!;
 
     [Parameter, EditorRequired]
     public CaptureTrace BranchTrace { get; set; }
@@ -79,7 +80,7 @@ else
     [Parameter]
     public IReadOnlyList<string> CollapsedLineage { get; set; } = [];
 
-    HexPalette RootPalette => ProcessedLine.CaptureTracePositionalPalettes[BranchTrace];
+    HexPalette RootPalette => DisplayContext.Palettes[BranchTrace];
 
     /// <summary>
     /// Whether to skip <see cref="BranchTrace"/>'s own header/table and recurse straight into its

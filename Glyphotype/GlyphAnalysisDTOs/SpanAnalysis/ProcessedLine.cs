@@ -21,9 +21,6 @@ public class ProcessedLine
 
     public string DataPath { get; init; }
 
-    public Dictionary<CaptureTrace, int> CaptureTraceNestedDepths { get; } = [];
-    public Dictionary<CaptureTrace, int> CaptureTraceDepthFirstPositions { get; } = [];
-    public Dictionary<CaptureTrace, HexPalette> CaptureTracePositionalPalettes { get; } = [];
     public List<RootCaptureTrace> CaptureTraceRoots => Glyphs.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
     public List<RootCaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
 
@@ -33,9 +30,6 @@ public class ProcessedLine
         Glyphs = glyphs;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
-        glyphs.ForEach(x => RegisterPaletteAndDepthRecursive(x.CaptureContext.RootCaptureTrace));
-        var paletteSet = DeterministicPalette.GetPositionalPaletteSet(CaptureTraceDepthFirstPositions.Count);
-        CaptureTracePositionalPalettes = CaptureTraceDepthFirstPositions.ToDictionary(x => x.Key, x => paletteSet[x.Value]);
     }
 
     public static List<ProcessedLine> GetAll(IDocument document)
@@ -56,25 +50,43 @@ public class ProcessedLine
             var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(document, lineGlyphs, i);
             var dataPath = document.Name.Replace(' ', '_') + $"-line[{i}]";
             ProcessedLine processedLine = new(sourceText, lineGlyphs, unmatchedTextOccurrences, dataPath);
-            lineGlyphs.ForEach(x => processedLine.RegisterPaletteAndDepthRecursive(x.CaptureContext.RootCaptureTrace));
             lines.Add(processedLine);
         }
 
         return lines;
     }
 
-    void RegisterPaletteAndDepthRecursive(CaptureTrace captureTrace, int depth = 0)
+    /// <summary>
+    /// A depth-first, positionally-equidistant rainbow color per <see cref="CaptureTrace"/> on this
+    /// line, skipping any node <paramref name="isCollapsed"/> reports as collapsed when handing out
+    /// slots (its children are still walked and may themselves get one) — so a caller hiding
+    /// collapsed nodes gets the full spread of hues spent only on what's actually shown, instead of
+    /// losing slots to nodes with no border to paint. Deliberately uncached and recomputed on every
+    /// call: this line's data is shared, singleton-lifetime, and "which nodes are collapsed" is a
+    /// per-viewer display preference, not a fact about the document, so nothing here can be baked
+    /// in once and reused across viewers/settings.
+    /// </summary>
+    public Dictionary<CaptureTrace, HexPalette> GetPositionalPalettes(Func<CaptureTrace, bool> isCollapsed)
     {
-        //if (captureTrace.CaptureValue.Contains("if you do, you gain 1 life")) Debugger.Break();
+        var visibleOrder = new List<CaptureTrace>();
 
-        //if (!captureTrace.IsCollapsible)
-        //{
-            CaptureTraceDepthFirstPositions[captureTrace] = CaptureTraceDepthFirstPositions.Count;
-            CaptureTraceNestedDepths[captureTrace] = depth;
-        //}
+        void Walk(CaptureTrace captureTrace)
+        {
+            if (!isCollapsed(captureTrace))
+                visibleOrder.Add(captureTrace);
 
-        foreach (var childTrace in captureTrace.Children)
-            RegisterPaletteAndDepthRecursive(childTrace, depth + 1);
+            foreach (var child in captureTrace.Children)
+                Walk(child);
+        }
+
+        foreach (var root in CaptureTraceRoots)
+            Walk(root);
+
+        var paletteSet = DeterministicPalette.GetPositionalPaletteSet(visibleOrder.Count);
+
+        return visibleOrder
+            .Select((captureTrace, index) => (captureTrace, index))
+            .ToDictionary(x => x.captureTrace, x => paletteSet[x.index]);
     }
 
     static List<UnmatchedTextOccurrence> GetUnmatchedStringOccurrences(IDocument document, List<CaptureUnit> lineGlyphs, int lineIndex)
@@ -93,6 +105,4 @@ public class ProcessedLine
 
         return occurrences;
     }
-
-    public int GetDeepestChildDepth() => Glyphs.Max(x => x.CaptureContext.RootCaptureTrace.GetRecursiveDepth());
 }
