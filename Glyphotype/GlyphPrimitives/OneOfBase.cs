@@ -4,6 +4,23 @@ public abstract class OneOfBase : Glyph
 {
     public override Joiner Joiner => Joiner.Pipe;
 
+    /// <summary>
+    /// The CLR type of whichever alternative actually resolved on this instance (e.g. <c>CardType</c>
+    /// for a <see cref="OneOf{T1,T2}"/> whose first slot matched) — never the nullable wrapper, and
+    /// never this instance's own (often generic-mangled, e.g. "OneOf`2") type name. This isn't a
+    /// proper data-path citizen; it's a display-time fact about which choice a one-of resolved to,
+    /// surfaced by callers like the property table alongside the path step itself.
+    /// Found by scanning this exact instance's declared properties for the single one holding a
+    /// non-null value — the one alternative that matched — which is the same lookup whether the
+    /// slots are named Alternative1/2/3 (<see cref="OneOf{T1,T2}"/>) or given proper names by a
+    /// concrete <see cref="GlyphOneOf"/>.
+    /// </summary>
+    public Type GetResolvedType()
+    {
+        var winningProp = GetType().GetProps().FirstOrDefault(p => p.GetValue(this) != null);
+        return winningProp == null ? null : Nullable.GetUnderlyingType(winningProp.PropertyType) ?? winningProp.PropertyType;
+    }
+
     public override string ValidateStructure()
     {
         var graph = GlyphTypeRegistry.RegexGraphs[Type];

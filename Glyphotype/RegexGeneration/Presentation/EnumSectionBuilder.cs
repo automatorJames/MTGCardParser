@@ -35,7 +35,7 @@ internal class EnumSectionBuilder
             .OfType<RegexBrickValue>()
             .Where(x => x.NamedGroupLineageNames.Contains(enumNode.FullyQualifiedName))
             .Where(x => !enumSummary.EnumMembersWithZeroOcurrences.Contains(x.Value))
-            .Where(x => enumSummary.EnumMemberSynonymOccurenceCounts[x.Value].ContainsKey(x.Regex))
+            .Where(x => enumSummary.EnumMemberSynonymOccurenceCounts.ContainsKey(x.Value) && enumSummary.EnumMemberSynonymOccurenceCounts[x.Value].ContainsKey(x.Regex))
             .OrderByDescending(x => enumSummary.EnumMemberOccurenceCounts[x.Value])
             .ToList();
 

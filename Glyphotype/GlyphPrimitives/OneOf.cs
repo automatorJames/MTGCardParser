@@ -2,8 +2,8 @@
 
 public class OneOf<T1, T2> : OneOfBase
 {
-    public T1 Item1 { get; set; }
-    public T2 Item2 { get; set; }
+    public T1 Alternative1 { get; set; }
+    public T2 Alternative2 { get; set; }
 
     public OneOf()
     {
@@ -19,9 +19,9 @@ public class OneOf<T1, T2> : OneOfBase
 
 public class OneOf<T1, T2, T3> : OneOfBase
 {
-    public T1 Item1 { get; set; }
-    public T2 Item2 { get; set; }
-    public T3 Item3 { get; set; }
+    public T1 Alternative1 { get; set; }
+    public T2 Alternative2 { get; set; }
+    public T3 Alternative3 { get; set; }
 
     public OneOf()
     {

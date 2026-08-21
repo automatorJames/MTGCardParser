@@ -196,6 +196,9 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         if (ClrValue is DynamicGlyph dynamicGlyph)
             return dynamicGlyph.ResolvedType;
 
+        if (ClrValue is OneOfBase oneOf)
+            return oneOf.GetResolvedType();
+
         return ClrValue.GetType();
     }
 
