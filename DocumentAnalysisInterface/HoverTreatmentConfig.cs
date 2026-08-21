@@ -7,7 +7,7 @@ namespace DocumentAnalysisInterface;
 /// rendered from a positional rainbow palette (<see cref="Glyphotype.Colors.ColorKnobs"/> /
 /// <see cref="Glyphotype.Colors.HexPalette"/>) — currently the type-expressions page's regex
 /// spans and type-tree boxes (see type-regex.ts), and meant to be reused as-is by any future
-/// element of the same kind (e.g. a CardLines underline) rather than each inventing its own
+/// element of the same kind (e.g. a DocumentLines underline) rather than each inventing its own
 /// dim/fade/pop numbers. Covers: how dim an ancestor-of-target or unrelated element reads, how
 /// long a hover must rest before its highlight state commits, how long the resulting fade
 /// takes, and how the direct hover target briefly "pops" brighter before easing down to its

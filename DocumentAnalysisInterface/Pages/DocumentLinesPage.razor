@@ -1,14 +1,14 @@
-﻿@page "/"
-@page "/card-lines"
+@page "/"
+@page "/document-lines"
 @inject IJSRuntime JSRuntime
 @inject DocumentCorpusAnalyzer DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
 
 <DeferredContent OnReady="InitHoverAsync">
-    <div class="analyzed-card-container" id="card-lines">
-        @foreach (var card in GetFilteredCards())
+    <div class="analyzed-document-container" id="document-lines">
+        @foreach (var document in GetFilteredDocuments())
         {
-            <CardBlock ProcessedDocument=card />
+            <DocumentBlock ProcessedDocument=document />
         }
     </div>
 </DeferredContent>
@@ -25,18 +25,18 @@
         // comes in before that finishes.
         DocumentAnalyzer.EnsureInitializedAsync();
 
-    Task InitHoverAsync() => JSRuntime.InvokeVoidAsync("initCardCaptureHover").AsTask();
+    Task InitHoverAsync() => JSRuntime.InvokeVoidAsync("initDocumentCaptureHover").AsTask();
 
-    IEnumerable<ProcessedDocument> GetFilteredCards()
+    IEnumerable<ProcessedDocument> GetFilteredDocuments()
     {
-        IEnumerable<ProcessedDocument> cards = DocumentAnalyzer.ProcessedDocuments;
+        IEnumerable<ProcessedDocument> documents = DocumentAnalyzer.ProcessedDocuments;
 
-        if (RuntimeSettings.HideFullyMatchedCards)
-            cards = cards.Where(x => !x.IsFullyMatched);
+        if (RuntimeSettings.HideFullyMatchedDocuments)
+            documents = documents.Where(x => !x.IsFullyMatched);
 
         var searchTerm = RuntimeSettings.SearchTerm;
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return cards;
+            return documents;
 
         var term = searchTerm.Trim();
 
@@ -48,7 +48,7 @@
             x.Document.Name.StartsWith(term, StringComparison.OrdinalIgnoreCase) ||
             x.Lines.Any(line => line.Glyphs.Any(x => x.CaptureContext.SourceText.StartsWith(term, StringComparison.OrdinalIgnoreCase)));
 
-        return cards
+        return documents
             .Where(containsPredicate)
             .OrderByDescending(startsWithPredicate)
             .ThenBy(c => c.Document.Name);

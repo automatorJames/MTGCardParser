@@ -37,7 +37,7 @@ public readonly record struct SpanStylePalette(string Default, string Hi, string
     }
 
     /// <summary>
-    /// Bridges a legacy <see cref="HexPalette"/> (still the currency for CardLinesPage/WordTreesPage, and
+    /// Bridges a legacy <see cref="HexPalette"/> (still the currency for DocumentLinesPage/WordTreesPage, and
     /// for TypeRegexPage's own per-named-group rainbow fallback) into the 3-state model: <see cref="HexPalette.Normal"/>
     /// stays at rest, <see cref="HexPalette.Light"/> becomes Hi, <see cref="HexPalette.Dark"/> becomes Lo.
     /// Carries no style flags — <see cref="HexPalette"/>-sourced spans have never had bold/italic treatment.

@@ -21,15 +21,15 @@ namespace DocumentAnalysisInterface
 
         public RuntimeSettings(ProtectedLocalStorage pls) => _pls = pls;
 
-        private bool _hideFullyMatchedCards;
-        public bool HideFullyMatchedCards
+        private bool _hideFullyMatchedDocuments;
+        public bool HideFullyMatchedDocuments
         {
-            get => _hideFullyMatchedCards;
+            get => _hideFullyMatchedDocuments;
             set
             {
-                if (_hideFullyMatchedCards != value)
+                if (_hideFullyMatchedDocuments != value)
                 {
-                    _hideFullyMatchedCards = value;
+                    _hideFullyMatchedDocuments = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }
@@ -183,7 +183,7 @@ namespace DocumentAnalysisInterface
                 var result = await _pls.GetAsync<RuntimeSettingsDto>(Key);
                 if (result.Success && result.Value is { } dto)
                 {
-                    _hideFullyMatchedCards = dto.HideFullyMatchedCards;
+                    _hideFullyMatchedDocuments = dto.HideFullyMatchedDocuments;
                     _showCollapsedCaptureNodes = dto.ShowCollapsedCaptureNodes;
                     _orderByWordCount = dto.OrderByWordCount;
                     _showMinified = dto.ShowMinified;
@@ -236,7 +236,7 @@ namespace DocumentAnalysisInterface
     /// </summary>
     public record RuntimeSettingsDto
     {
-        public bool HideFullyMatchedCards { get; init; }
+        public bool HideFullyMatchedDocuments { get; init; }
         public bool ShowCollapsedCaptureNodes { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool ShowMinified { get; init; }
@@ -251,7 +251,7 @@ namespace DocumentAnalysisInterface
 
         public RuntimeSettingsDto(RuntimeSettings runtimeSettings)
         {
-            HideFullyMatchedCards = runtimeSettings.HideFullyMatchedCards;
+            HideFullyMatchedDocuments = runtimeSettings.HideFullyMatchedDocuments;
             ShowCollapsedCaptureNodes = runtimeSettings.ShowCollapsedCaptureNodes;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             ShowMinified = runtimeSettings.ShowMinified;

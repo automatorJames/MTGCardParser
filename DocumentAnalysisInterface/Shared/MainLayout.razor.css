@@ -25,6 +25,18 @@
     gap: 1.25rem;
 }
 
+.page-setting-icons {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.settings-separator {
+    width: 1px;
+    height: 1.5rem;
+    background-color: var(--outline-grey);
+}
+
 .settings-button {
     display: flex;
     align-items: center;

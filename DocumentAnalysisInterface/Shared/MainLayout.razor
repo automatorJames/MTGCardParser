@@ -7,7 +7,7 @@
 <div class="page">
     <nav class="top-row px-4">
         <div class="nav-links">
-            <NavLink href="/" Match="NavLinkMatch.All">Card Lines</NavLink>
+            <NavLink href="/" Match="NavLinkMatch.All">Document Lines</NavLink>
             <NavLink href="type-regex">Type Regex</NavLink>
             <NavLink href="word-trees">Word Trees</NavLink>
         </div>
@@ -16,6 +16,20 @@
 
             @if (RuntimeSettings.IsLoaded)
             {
+                var pageSettingIcons = GetPageSettingIcons();
+
+                @if (pageSettingIcons.Count > 0)
+                {
+                    <div class="page-setting-icons">
+                        @foreach (var settingIcon in pageSettingIcons)
+                        {
+                            <SettingIconToggle Icon="@settingIcon.Icon" Label="@settingIcon.Label" Value="@settingIcon.Value"
+                                                ValueChanged="@(v => settingIcon.OnChanged(v))" />
+                        }
+                    </div>
+                    <span class="settings-separator"></span>
+                }
+
                 <button class="settings-button" title="Settings" @onclick="OpenSettingsDialog">
                     <span class="oi oi-cog" aria-hidden="true"></span>
                 </button>
@@ -103,4 +117,41 @@
     {
         RuntimeSettings.OnChanged -= OnSettingsChanged;
     }
+
+    /// <summary>
+    /// The bool-setting quick-toggle icons shown to the left of the settings button, specific to
+    /// whichever of the three pages is currently active — lets a viewer flip a view-affecting
+    /// setting live without opening the settings dialog.
+    /// </summary>
+    List<PageSettingIcon> GetPageSettingIcons()
+    {
+        var currentRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (string.IsNullOrEmpty(currentRelativePath))
+        {
+            currentRelativePath = "/";
+        }
+
+        return currentRelativePath switch
+        {
+            "/" =>
+            [
+                new("circle-check", "Hide fully matched", RuntimeSettings.HideFullyMatchedDocuments, v => RuntimeSettings.HideFullyMatchedDocuments = v),
+                new("collapse-down", "Show collapsed nodes", RuntimeSettings.ShowCollapsedCaptureNodes, v => RuntimeSettings.ShowCollapsedCaptureNodes = v),
+            ],
+            "type-regex" =>
+            [
+                new("code", "Show minified", RuntimeSettings.ShowMinified, v => RuntimeSettings.ShowMinified = v),
+                new("ban", "Hide zero-capture types", RuntimeSettings.HideRegexesWithZeroCaptures, v => RuntimeSettings.HideRegexesWithZeroCaptures = v),
+                new("minus", "Hide blank lines", RuntimeSettings.HideBlankLines, v => RuntimeSettings.HideBlankLines = v),
+                new("fork", "Hide type tree", RuntimeSettings.HideTypeTree, v => RuntimeSettings.HideTypeTree = v),
+            ],
+            "word-trees" =>
+            [
+                new("sort-ascending", "Order by word count", RuntimeSettings.OrderByWordCount, v => RuntimeSettings.OrderByWordCount = v),
+            ],
+            _ => [],
+        };
+    }
+
+    record PageSettingIcon(string Icon, string Label, bool Value, Action<bool> OnChanged);
 }
