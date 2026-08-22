@@ -107,20 +107,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         CaptureContext = captureContext;
     }
 
-    public CaptureTrace this[int captureIndex]
-    {
-        get
-        {
-            if (captureIndex >= Count)
-                throw new ArgumentOutOfRangeException(nameof(captureIndex));
-
-            if (captureIndex == 0)
-                return this;
-
-            return Siblings[captureIndex - 1];
-        }
-    }
-
     public IEnumerator<CaptureTrace> GetEnumerator()
     {
         if (Success)
