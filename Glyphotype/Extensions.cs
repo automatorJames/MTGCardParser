@@ -115,8 +115,17 @@ public static class Extensions
         Title
     }
 
-    public static PropertyInfo[] GetProps(this Type type) => 
+    public static PropertyInfo[] GetProps(this Type type) =>
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+    /// <summary>
+    /// Like <see cref="GetProps"/>, but excludes properties that merely override a base member
+    /// (e.g. <see cref="Glyphotype.GlyphPrimitives.Glyph.Joiner"/>). DeclaredOnly still includes
+    /// those, since C# generates a PropertyInfo on the derived type for overrides too; this leaves
+    /// only genuinely new, capture-data properties like a derived type's own nib-bound properties.
+    /// </summary>
+    public static PropertyInfo[] GetOwnProps(this Type type) =>
+        type.GetProps().Where(x => x.GetMethod.GetBaseDefinition().DeclaringType == x.DeclaringType).ToArray();
 
     public static string Dot(this string parentPath, params string[] nextPathParts) =>
         nextPathParts == null || nextPathParts.Length == 0 ? parentPath

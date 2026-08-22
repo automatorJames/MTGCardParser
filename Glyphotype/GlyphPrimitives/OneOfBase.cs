@@ -24,7 +24,7 @@ public abstract class OneOfBase : Glyph
     public override string ValidateStructure()
     {
         var graph = GlyphTypeRegistry.RegexGraphs[Type];
-        var props = GetType().GetProps();
+        var props = GetType().GetOwnProps();
 
         if (props.Count() < 2)
             return $"Nibs for {Type.Name} must contain at least two property references";
