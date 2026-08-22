@@ -29,7 +29,7 @@
                     </span>
                 </div>
 
-                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.RegexFormat == RegexDisplayMode.Minified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat).ToString())>
+                <CopyButtonOverlay TextToCopy=@GetCopyText(summary)>
                     @if (RuntimeSettings.RegexFormat == RegexDisplayMode.Minified)
                     {
                         <FormattedRegex Lines=@summary.RegexGraph.BuiltRegex.ToRichMinifiedLines(summary.RegexGraph) BorderStyle=@(borderColorStyle + " white-space: pre-wrap;") />
@@ -77,6 +77,46 @@
     private async void OnSettingsChanged()
     {
         await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// What the card's copy button copies: the raw minified regex for the Minified format, or - for
+    /// every other format - the formatted regex with each line's "  #  "-style comment separator and
+    /// everything to its right stripped off, leaving the bare extended/whitespace regex a copy-paster
+    /// downstream typically wants without the commentary. Done here via plain string manipulation
+    /// (rather than a Glyphotype rendering option) since this is purely a "what the copy button copies"
+    /// GUI concern.
+    /// </summary>
+    string GetCopyText(GlyphOccurrenceSummary summary)
+    {
+        if (RuntimeSettings.RegexFormat == RegexDisplayMode.Minified)
+            return summary.RegexGraph.BuiltRegex.MinifiedRegex;
+
+        var formattedRegex = summary.RegexGraph.BuiltRegex
+            .ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat)
+            .ToString();
+
+        return StripCommentColumn(formattedRegex);
+    }
+
+    /// <summary>
+    /// Cuts each line at its first occurrence of <see cref="SmartRegexStaticRules.CommentBorderLineWithBuffer"/>
+    /// (dropping the comment separator and everything after it), then trims trailing padding spaces per
+    /// line - left indentation is kept, only the right-hand padding that lined the comment column up goes.
+    /// A line with no separator (e.g. a blank spacer line) is just trimmed as-is.
+    /// </summary>
+    static string StripCommentColumn(string formattedRegex)
+    {
+        var lines = formattedRegex.Split(["\r\n"], StringSplitOptions.None);
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var separatorIndex = lines[i].IndexOf(SmartRegexStaticRules.CommentBorderLineWithBuffer, StringComparison.Ordinal);
+            var line = separatorIndex >= 0 ? lines[i][..separatorIndex] : lines[i];
+            lines[i] = line.TrimEnd();
+        }
+
+        return string.Join("\r\n", lines);
     }
 
     List<GlyphOccurrenceSummary> GetFilteredSummaries()

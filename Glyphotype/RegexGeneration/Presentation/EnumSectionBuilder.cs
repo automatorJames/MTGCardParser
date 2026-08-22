@@ -47,8 +47,22 @@ internal class EnumSectionBuilder
     /// </summary>
     static List<RegexBrickValue> GetMembersToDisplay(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode)
     {
-        bool Occurred(object memberValue) => !enumSummary.EnumMembersWithZeroOcurrences.Contains(memberValue);
-        bool IsOccurringPattern(RegexBrickValue member) => enumSummary.EnumMemberSynonymOccurenceCounts[member.Value].ContainsKey(member.Regex);
+        // Checked via EnumCaptureTraceSummary's safe accessors rather than the raw dictionaries/
+        // EnumMembersWithZeroOcurrences: a member the graph declares but the summary has no entry for at
+        // all (e.g. a dynamically-generated enum whose member set has since moved on from what this
+        // RegexGraph was built against) isn't in either, and treating "not in the zero list" as "occurred"
+        // used to send it straight into a raw dictionary indexer with no entry there either - a
+        // KeyNotFoundException. Missing from the summary now just reads as "didn't occur," the same safe
+        // default as an explicit zero.
+        bool Occurred(object memberValue) => enumSummary.GetOccurrenceCount(memberValue) > 0;
+        bool IsOccurringPattern(RegexBrickValue member) => enumSummary.GetSynonymOccurrenceCounts(member.Value).ContainsKey(member.Regex);
+
+        // A member the summary counts as "occurred" isn't guaranteed to have a declared pattern brick
+        // whose raw Regex text exactly matches one of its recorded capture strings (e.g. a pattern with
+        // its own internal variability) - falling back to the group's first brick rather than demanding
+        // a match keeps this a representative-picker, not a filter that can come up empty.
+        RegexBrickValue PickRepresentative(IGrouping<object, RegexBrickValue> group) =>
+            group.FirstOrDefault(IsOccurringPattern) ?? group.First();
 
         var membersByValue = allBricks
             .OfType<RegexBrickValue>()
@@ -65,8 +79,8 @@ internal class EnumSectionBuilder
         {
             var occurring = membersByValue
                 .Where(group => Occurred(group.Key))
-                .Select(group => group.First(IsOccurringPattern))
-                .OrderByDescending(x => enumSummary.EnumMemberOccurenceCounts[x.Value])
+                .Select(PickRepresentative)
+                .OrderByDescending(x => enumSummary.GetOccurrenceCount(x.Value))
                 .ThenBy(x => x.Value.ToString(), StringComparer.OrdinalIgnoreCase)
                 .Take(3)
                 .ToList();
@@ -85,7 +99,7 @@ internal class EnumSectionBuilder
         return membersByValue
             .Where(group => Occurred(group.Key))
             .SelectMany(group => group.Where(IsOccurringPattern))
-            .OrderByDescending(x => enumSummary.EnumMemberOccurenceCounts[x.Value])
+            .OrderByDescending(x => enumSummary.GetOccurrenceCount(x.Value))
             .ToList();
     }
 
@@ -114,7 +128,7 @@ internal class EnumSectionBuilder
         for (int i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            bool isPartOfSynonymGroup = displayMode != RegexDisplayMode.Sample && enumSummary.EnumMemberSynonymOccurenceCounts[member.Value].Count > 1;
+            bool isPartOfSynonymGroup = displayMode != RegexDisplayMode.Sample && enumSummary.GetSynonymOccurrenceCounts(member.Value).Count > 1;
 
             bool isFirstRowOfSynonymGroup =
                 isPartOfSynonymGroup
@@ -142,7 +156,7 @@ internal class EnumSectionBuilder
     static RegexBrickSynonymSectionHeader BuildSynonymSectionHeader(RegexNode parent, RegexBrickValue member, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics)
     {
         var nameField = metrics.FormatNameField(member.Value);
-        var countField = metrics.FormatCountField(enumSummary.EnumMemberOccurenceCounts[member.Value]);
+        var countField = metrics.FormatCountField(enumSummary.GetOccurrenceCount(member.Value));
         return new RegexBrickSynonymSectionHeader(parent, nameField, countField);
     }
 
@@ -159,8 +173,8 @@ internal class EnumSectionBuilder
         var nameField = isPartOfSynonymGroup ? metrics.FormatBlankNameField() : metrics.FormatNameField(member.Value);
 
         var occurrenceCount = isPartOfSynonymGroup
-            ? enumSummary.EnumMemberSynonymOccurenceCounts[member.Value][member.Regex]
-            : enumSummary.EnumMemberOccurenceCounts[member.Value];
+            ? enumSummary.GetSynonymOccurrenceCounts(member.Value).GetValueOrDefault(member.Regex, 0)
+            : enumSummary.GetOccurrenceCount(member.Value);
         var countField = metrics.FormatCountField(occurrenceCount);
 
         member.NameCommentFormatted = nameField;

@@ -34,7 +34,7 @@ internal readonly struct EnumColumnMetrics
         if (members.Any())
         {
             maxNameLength = members.Max(x => x.Value.ToString().Length);
-            maxDigitLength = members.Max(x => enumSummary.EnumMemberOccurenceCounts[x.Value].ToString().Length);
+            maxDigitLength = members.Max(x => enumSummary.GetOccurrenceCount(x.Value).ToString().Length);
         }
 
         var colonBufferLength = SmartRegexStaticRules.EnumMemberOccurrenceCountColonBuffer;

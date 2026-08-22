@@ -32,6 +32,25 @@ public class EnumCaptureTraceSummary : NamedGroupCaptureTraceSummary
     /// </summary>
     public int EnumTotalMemberCount { get; private set; }
 
+    static readonly Dictionary<string, int> _emptySynonymOccurenceCounts = [];
+
+    /// <summary>
+    /// Occurrence count for <paramref name="memberValue"/>, or 0 if this summary has no entry for it at
+    /// all — safe against a member a caller's <c>RegexGraph</c> declares but this particular summary
+    /// never recorded (e.g. built against an earlier identity of a dynamically-generated enum type), where
+    /// the raw <see cref="EnumMemberOccurenceCounts"/> indexer would otherwise throw.
+    /// </summary>
+    public int GetOccurrenceCount(object memberValue) =>
+        EnumMemberOccurenceCounts.GetValueOrDefault(memberValue, 0);
+
+    /// <summary>
+    /// The synonym-pattern occurrence table for <paramref name="memberValue"/>, or an empty table if this
+    /// summary has no entry for it at all. See <see cref="GetOccurrenceCount"/> for why this doesn't just
+    /// index <see cref="EnumMemberSynonymOccurenceCounts"/> directly.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> GetSynonymOccurrenceCounts(object memberValue) =>
+        EnumMemberSynonymOccurenceCounts.TryGetValue(memberValue, out var counts) ? counts : _emptySynonymOccurenceCounts;
+
     /// <summary>
     /// Constructs a summary for an enum group that never occurred at all (its owning Glyph type
     /// had zero matches across the corpus), so every member is recorded with a zero count.
