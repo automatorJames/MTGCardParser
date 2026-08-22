@@ -66,6 +66,21 @@ namespace DocumentAnalysisInterface
             }
         }
 
+        private bool _orderByOccurrenceCount = true;
+        public bool OrderByOccurrenceCount
+        {
+            get => _orderByOccurrenceCount;
+            set
+            {
+                if (_orderByOccurrenceCount != value)
+                {
+                    _orderByOccurrenceCount = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private bool _showMinified;
         public bool ShowMinified
         {
@@ -186,6 +201,7 @@ namespace DocumentAnalysisInterface
                     _hideFullyMatchedDocuments = dto.HideFullyMatchedDocuments;
                     _showCollapsedCaptureNodes = dto.ShowCollapsedCaptureNodes;
                     _orderByWordCount = dto.OrderByWordCount;
+                    _orderByOccurrenceCount = dto.OrderByOccurrenceCount;
                     _showMinified = dto.ShowMinified;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _hideBlankLines = dto.HideBlankLines;
@@ -239,6 +255,7 @@ namespace DocumentAnalysisInterface
         public bool HideFullyMatchedDocuments { get; init; }
         public bool ShowCollapsedCaptureNodes { get; init; }
         public bool OrderByWordCount { get; init; }
+        public bool OrderByOccurrenceCount { get; init; } = true;
         public bool ShowMinified { get; init; }
         public bool HideRegexesWithZeroCaptures { get; init; }
         public bool HideBlankLines { get; init; }
@@ -254,6 +271,7 @@ namespace DocumentAnalysisInterface
             HideFullyMatchedDocuments = runtimeSettings.HideFullyMatchedDocuments;
             ShowCollapsedCaptureNodes = runtimeSettings.ShowCollapsedCaptureNodes;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
+            OrderByOccurrenceCount = runtimeSettings.OrderByOccurrenceCount;
             ShowMinified = runtimeSettings.ShowMinified;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             HideBlankLines = runtimeSettings.HideBlankLines;

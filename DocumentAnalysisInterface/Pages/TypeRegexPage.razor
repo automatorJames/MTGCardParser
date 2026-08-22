@@ -85,6 +85,10 @@
     {
         List<GlyphOccurrenceSummary> filteredSummaries = DocumentAnalyzer.GlyphOccurrenceSummaries.Values.ToList();
 
+        filteredSummaries = RuntimeSettings.OrderByOccurrenceCount
+            ? filteredSummaries.OrderByDescending(x => x.OccurrenceCount).ToList()
+            : filteredSummaries.OrderBy(x => x.TypeNameFriendly, StringComparer.OrdinalIgnoreCase).ToList();
+
         if (RuntimeSettings.HideRegexesWithZeroCaptures)
             filteredSummaries = filteredSummaries.Where(x => x.OccurrenceCount > 0).ToList();
 
