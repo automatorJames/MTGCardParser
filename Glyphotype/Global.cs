@@ -1,4 +1,5 @@
 ﻿global using Glyphotype.Attributes;
+global using Glyphotype.Attributes.Quantifiers;
 global using Glyphotype.Colors;
 global using Glyphotype.CommonDTOs;
 global using Glyphotype.Interfaces;

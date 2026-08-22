@@ -1,4 +1,6 @@
-﻿namespace Glyphotype.NibHelpers;
+﻿using Glyphotype.Attributes.Quantifiers;
+
+namespace Glyphotype.NibHelpers;
 
 public record PropertyNib : Nib
 {

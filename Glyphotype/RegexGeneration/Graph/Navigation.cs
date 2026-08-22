@@ -1,4 +1,6 @@
-﻿namespace Glyphotype.RegexGeneration.Graph;
+﻿using Glyphotype.Attributes.Quantifiers;
+
+namespace Glyphotype.RegexGeneration.Graph;
 
 public class Navigation
 {

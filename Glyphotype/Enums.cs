@@ -38,6 +38,9 @@ public enum Joiner
 
     [Description(".")]
     Dot,
+
+    [Description(", ")]
+    CommaSpace,
 }
 
 public enum MultiItemOrdinal
