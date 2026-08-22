@@ -1,6 +1,5 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-[IsolateForTesting]
 [MustMatchWholeLine]
 public class CardAbilityLine : CompoundOf<Keyword>
 {

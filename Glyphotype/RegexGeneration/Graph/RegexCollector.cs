@@ -15,12 +15,8 @@ public class RegexCollector
         .Regex.LastOrDefault();
 
     /// <summary>Appends a brick to the sequence.</summary>
-    public void Append(RegexBrick brick)
-    {
-        var thing = this.ToString();
-        if (brick.Regex == "[ ]" || brick.Regex == " ") Debugger.Break();
+    public void Append(RegexBrick brick) =>
         RegexBricks.Add(brick);
-    }
 
     /// <summary>Compiles the accumulated bricks into a <see cref="BuiltRegex"/>.</summary>
     public BuiltRegex GetBuiltRegex() =>
