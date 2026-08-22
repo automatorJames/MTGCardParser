@@ -71,6 +71,15 @@ public abstract class Glyph : CaptureUnit
         if (missingProps.Any())
             return $"the following properties are not represented among template nibs: {string.Join(", ", missingProps)}";
 
+        var misplacedQuantifierAttributeProps = props
+            .Where(x => x.IsDefined(typeof(OneOrMoreAttribute)) || x.IsDefined(typeof(AnyNumberAttribute)))
+            .Where(x => !Navigation.IsListType(x.PropertyType))
+            .Select(x => x.Name)
+            .ToList();
+
+        if (misplacedQuantifierAttributeProps.Any())
+            return $"{nameof(OneOrMoreAttribute)}/{nameof(AnyNumberAttribute)} may only appear on List<> properties, but found on: {string.Join(", ", misplacedQuantifierAttributeProps)}";
+
         if (CheckForReferenceLoops() is string referenceLoopException)
             return referenceLoopException;
 

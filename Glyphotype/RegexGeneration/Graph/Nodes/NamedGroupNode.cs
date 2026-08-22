@@ -21,7 +21,7 @@ public abstract class NamedGroupNode : GroupNode
     public abstract CaptureNodeKind NodeKind { get; }
 
     public override Quantifier? Quantifier =>
-        Navigation.IsList ? Glyphotype.Quantifier.AnyNumber
+        Navigation.IsList ? Navigation.ListQuantifier
         : base.Quantifier;
 
     /// <summary>True when this node's regex must come from one or more <see cref="RegexPatternAttribute"/>-declared patterns rather than falling back to <see cref="DefaultPattern"/>.</summary>

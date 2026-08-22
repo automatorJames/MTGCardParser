@@ -25,6 +25,14 @@ public class Navigation
     public bool IsList { get; private set; }
     public bool IsOptional { get; private set; }
 
+    /// <summary>
+    /// The quantifier a <see cref="IsList"/> property's group should carry: <see cref="Glyphotype.Quantifier.OneOrMore"/>
+    /// when declared with <see cref="OneOrMoreAttribute"/>, otherwise <see cref="Glyphotype.Quantifier.AnyNumber"/>
+    /// (the default, whether left implicit or made explicit via <see cref="AnyNumberAttribute"/>). Meaningless
+    /// when <see cref="IsList"/> is false.
+    /// </summary>
+    public Quantifier ListQuantifier { get; private set; } = Glyphotype.Quantifier.AnyNumber;
+
     public Navigation(Type type)
     {
         SetTypeInfo(type);
@@ -61,6 +69,16 @@ public class Navigation
         Prop = propertyNib.Prop;
         Proptions = propertyNib.Proptions;
         IsOptional = Prop.IsDefined(typeof(OptionalAttribute));
+
+        if (IsList && Prop.IsDefined(typeof(OneOrMoreAttribute)))
+            ListQuantifier = Glyphotype.Quantifier.OneOrMore;
+    }
+
+    /// <summary>Whether <paramref name="type"/> (or its nullable-unwrapped underlying type) is a closed <see cref="List{T}"/>.</summary>
+    public static bool IsListType(Type type)
+    {
+        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
+        return underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(List<>);
     }
 
     void SetTypeInfo(Type type)
@@ -68,7 +86,7 @@ public class Navigation
         Type = type;
         UnderlyingType = (Nullable.GetUnderlyingType(type) ?? type);
         GenericTypes = UnderlyingType.GenericTypeArguments;
-        IsList = UnderlyingType.IsGenericType && UnderlyingType.GetGenericTypeDefinition() == typeof(List<>);
+        IsList = IsListType(type);
         NodeType = IsList ? GenericTypes[0] : UnderlyingType;
         IsGlyphType = NodeType.IsAssignableTo(typeof(Glyph));
 
