@@ -25,8 +25,10 @@
                     <div class="page-setting-icons">
                         @if (isTypeRegexPage)
                         {
-                            <RegexFormatIconToggle Icon="code" Value="@RuntimeSettings.RegexFormat"
-                                                    ValueChanged="@(v => RuntimeSettings.RegexFormat = v)" />
+                            <EnumIconToggle TValue="RegexDisplayMode" Icon="code" Label="Regex format" Value="@RuntimeSettings.RegexFormat"
+                                            ValueChanged="@(v => RuntimeSettings.RegexFormat = v)" />
+                            <EnumIconToggle TValue="FooterTrayContent" Icon="layers" Label="Footer tray contents" Value="@RuntimeSettings.FooterTrayContent"
+                                            ValueChanged="@(v => RuntimeSettings.FooterTrayContent = v)" />
                         }
                         @foreach (var settingIcon in pageSettingIcons)
                         {
@@ -143,7 +145,6 @@
                 new("bar-chart", "Order by occurrence count", RuntimeSettings.OrderByOccurrenceCount, v => RuntimeSettings.OrderByOccurrenceCount = v),
                 new("ban", "Hide zero-capture types", RuntimeSettings.HideRegexesWithZeroCaptures, v => RuntimeSettings.HideRegexesWithZeroCaptures = v),
                 new("minus", "Hide blank lines", RuntimeSettings.HideBlankLines, v => RuntimeSettings.HideBlankLines = v),
-                new("fork", "Hide type tree", RuntimeSettings.HideTypeTree, v => RuntimeSettings.HideTypeTree = v),
             ],
             "word-trees" =>
             [

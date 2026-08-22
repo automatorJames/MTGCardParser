@@ -4,26 +4,15 @@
 @if (CaptureTrace != null)
 {
     <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.FullyQualifiedName>
-        @{
-            var cursor = 0;
-
-            foreach (var child in CaptureTrace.Children.OrderBy(c => c.Index))
+        @foreach (var segment in CaptureTraceWalker.GetSegments(CaptureTrace))
+        {
+            if (segment.Child is { } child)
             {
-                var relativeChildStart = child.Index - CaptureTrace.Index;
-
-                if (relativeChildStart > cursor)
-                {
-                    <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, relativeChildStart - cursor)</text>
-                }
-
                 <SpanView CaptureTrace=@child EffectiveDepth=@ChildEffectiveDepth />
-
-                cursor = child.End - CaptureTrace.Index;
             }
-
-            if (cursor < CaptureTrace.Length)
+            else
             {
-                <text>@CaptureTrace.CaptureContext.SourceText.Substring(CaptureTrace.Index + cursor, CaptureTrace.Length - cursor)</text>
+                <text>@segment.Text</text>
             }
         }
     </span>

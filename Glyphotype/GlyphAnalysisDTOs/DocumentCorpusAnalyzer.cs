@@ -54,13 +54,14 @@ public class DocumentCorpusAnalyzer
         DigestedTextWithCaptureGlyphs = new DigestedText(ProcessedDocuments);
 
         // set GlyphOccurrenceSummaries
-        var rootGlyphsByType = ProcessedDocuments
-            .SelectMany(x => x.Lines)
-            .SelectMany(x => x.Glyphs)
-            .OfType<Glyph>()
-            .GroupBy(x => x.Type);
+        var rootMatchOccurrencesByType = ProcessedDocuments
+            .SelectMany(document => document.Lines
+                .SelectMany(line => line.Glyphs)
+                .OfType<Glyph>()
+                .Select(glyph => new MatchOccurrence(document.Document.Name, glyph)))
+            .GroupBy(x => x.Glyph.Type);
 
-        GlyphOccurrenceSummaries = rootGlyphsByType.ToDictionary(x => x.Key, x => new GlyphOccurrenceSummary(x.Key, x));
+        GlyphOccurrenceSummaries = rootMatchOccurrencesByType.ToDictionary(x => x.Key, x => new GlyphOccurrenceSummary(x.Key, x));
 
         // Registered types with zero matches are still represented, so "hide zero-capture" filtering
         // has actual zero-occurrence entries to hide rather than the type disappearing outright.

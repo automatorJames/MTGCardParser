@@ -32,11 +32,40 @@ public class RegexGraph
     public Dictionary<string, NamedGroupNode> NamedGroupFlatGraph { get; } = [];
 
     /// <summary>
-    /// Maps each NamedGroupNode FullyQualifiedName to a minimum unique simplified 
+    /// Maps each NamedGroupNode FullyQualifiedName to a minimum unique simplified
     /// name. The simplified name is typically the name of the node itself
     /// disambiguation is required. For example, "My_Path_To_Node" -> "Node".
     /// </summary>
     public Dictionary<string, string> SimpleUniqueNames { get; } = [];
+
+    /// <summary>
+    /// The positional rainbow palette for every named group in this graph, in <see cref="NamedGroupFlatGraph"/>'s
+    /// declaration order (transparent root first) - with the leading <paramref name="positionalOverrideColors"/>
+    /// positions pinned to a fixed color instead of a rainbow hue (e.g. a neutral color for the never-boxed
+    /// root). The one place every "one fixed color per named group" consumer (the formatted regex's own
+    /// coloring, TypeTreeView's boxes) gets its base ordering from, so they only ever differ by choice of
+    /// override color, never by a re-derived named-group ordering.
+    /// </summary>
+    public Dictionary<NamedGroupNode, HexPalette> GetNamedGroupPaletteSet(params HexColor[] positionalOverrideColors) =>
+        DeterministicPalette.GetPositionalPaletteSet(NamedGroupFlatGraph.Values, positionalOverrideColors);
+
+    /// <summary>
+    /// Same as <see cref="GetNamedGroupPaletteSet(HexColor[])"/>, but appended with any further named
+    /// groups that only show up via <paramref name="extraBricks"/> - typically a dynamic capture's
+    /// resolved sub-type, spliced in by <see cref="Presentation.DynamicSectionBuilder"/> once actual
+    /// occurrence data is available to expand it, which this static graph never declared on its own. Each
+    /// gets its own further rainbow slot, in first-appearance order, joining the same rainbow as the base
+    /// set rather than starting a new one - the exact named-group ordering <see cref="Presentation.SmartLineRenderer"/>
+    /// colors a formatted regex with.
+    /// </summary>
+    public Dictionary<NamedGroupNode, HexPalette> GetNamedGroupPaletteSet(IEnumerable<RegexBrick> extraBricks, params HexColor[] positionalOverrideColors)
+    {
+        var namedGroupsInDisplayOrder = NamedGroupFlatGraph.Values
+            .Concat(extraBricks.Select(x => x.NamedGroupParent).Where(x => x is not null))
+            .Distinct();
+
+        return DeterministicPalette.GetPositionalPaletteSet(namedGroupsInDisplayOrder, positionalOverrideColors);
+    }
 
     public RegexGraph(Type rootGlyphType, GlyphNode rootNode)
     {

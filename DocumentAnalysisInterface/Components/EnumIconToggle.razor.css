@@ -1,4 +1,4 @@
-.regex-format-icon {
+.enum-icon-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -12,6 +12,6 @@
     transition: color var(--transition-time), background-color var(--transition-time);
 }
 
-    .regex-format-icon:hover {
+    .enum-icon-toggle:hover {
         background-color: rgba(255, 255, 255, 0.08);
     }

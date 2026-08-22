@@ -1,0 +1,40 @@
+@if (Summary.MatchOccurrences.Count > 0)
+{
+    <table class="matches-table">
+        <thead>
+            <tr>
+                <th>Document</th>
+                <th>Match</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var occurrence in Summary.MatchOccurrences)
+            {
+                <tr>
+                    <td class="match-document">@occurrence.DocumentName</td>
+                    <td class="match-content">
+                        @foreach (var span in MatchContentRenderer.Build(occurrence.CaptureTrace, _namedGroupPalettes))
+                        {
+                            <span style="@BuildSpanStyle(span.Palette)" data-path="@span.FullyQualifiedName">@span.Content</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public GlyphOccurrenceSummary Summary { get; set; }
+
+    IReadOnlyDictionary<NamedGroupNode, SpanStylePalette> _namedGroupPalettes = new Dictionary<NamedGroupNode, SpanStylePalette>();
+
+    protected override void OnParametersSet()
+    {
+        _namedGroupPalettes = MatchContentRenderer.GetNamedGroupPalettes(Summary);
+    }
+
+    static string BuildSpanStyle(SpanStylePalette palette) =>
+        $"{palette.CssVariables()} color: {palette.Default};";
+}

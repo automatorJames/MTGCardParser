@@ -32,8 +32,16 @@
             <div class="settings-row">
                 <Switch @bind-Value=@RuntimeSettings.HideBlankLines Label="Hide blank lines" />
             </div>
-            <div class="settings-row">
-                <Switch @bind-Value=@RuntimeSettings.HideTypeTree Label="Hide type tree" />
+            <div class="settings-row radio-group">
+                <span class="settings-row-label">Footer tray contents</span>
+                @foreach (var content in Enum.GetValues<FooterTrayContent>())
+                {
+                    <label class="radio-option">
+                        <input type="radio" name="footer-tray-content" checked="@(RuntimeSettings.FooterTrayContent == content)"
+                               @onchange="() => RuntimeSettings.FooterTrayContent = content" />
+                        @content.GetDescription()
+                    </label>
+                }
             </div>
         </div>
 

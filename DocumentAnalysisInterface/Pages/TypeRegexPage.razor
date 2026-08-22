@@ -37,9 +37,14 @@
                     }
                 </CopyButtonOverlay>
 
-                @if (!RuntimeSettings.HideTypeTree)
+                @switch (RuntimeSettings.FooterTrayContent)
                 {
-                    <TypeTreeView RegexGraph=@summary.RegexGraph />
+                    case FooterTrayContent.Matches:
+                        <MatchesTable Summary=@summary />
+                        break;
+                    case FooterTrayContent.TypeTree:
+                        <TypeTreeView RegexGraph=@summary.RegexGraph />
+                        break;
                 }
             </div>
 

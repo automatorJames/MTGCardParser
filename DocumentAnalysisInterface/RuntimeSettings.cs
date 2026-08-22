@@ -111,15 +111,15 @@ namespace DocumentAnalysisInterface
             }
         }
 
-        private bool _hideTypeTree;
-        public bool HideTypeTree
+        private FooterTrayContent _footerTrayContent = FooterTrayContent.Hidden;
+        public FooterTrayContent FooterTrayContent
         {
-            get => _hideTypeTree;
+            get => _footerTrayContent;
             set
             {
-                if (_hideTypeTree != value)
+                if (_footerTrayContent != value)
                 {
-                    _hideTypeTree = value;
+                    _footerTrayContent = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }
@@ -205,7 +205,7 @@ namespace DocumentAnalysisInterface
                     _regexFormat = dto.RegexFormat;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _hideBlankLines = dto.HideBlankLines;
-                    _hideTypeTree = dto.HideTypeTree;
+                    _footerTrayContent = dto.FooterTrayContent;
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
                 }
@@ -259,7 +259,7 @@ namespace DocumentAnalysisInterface
         public RegexDisplayMode RegexFormat { get; init; } = RegexDisplayMode.MatchedOnly;
         public bool HideRegexesWithZeroCaptures { get; init; }
         public bool HideBlankLines { get; init; }
-        public bool HideTypeTree { get; init; }
+        public FooterTrayContent FooterTrayContent { get; init; } = FooterTrayContent.Hidden;
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
 
@@ -275,7 +275,7 @@ namespace DocumentAnalysisInterface
             RegexFormat = runtimeSettings.RegexFormat;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             HideBlankLines = runtimeSettings.HideBlankLines;
-            HideTypeTree = runtimeSettings.HideTypeTree;
+            FooterTrayContent = runtimeSettings.FooterTrayContent;
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;
         }

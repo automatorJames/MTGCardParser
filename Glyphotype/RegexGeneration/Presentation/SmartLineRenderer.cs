@@ -26,20 +26,14 @@ public class SmartLineRenderer
         _bricks = bricks;
         _metrics = new CommentBoxMetrics(bricks);
 
-        // Seed with regexGraph's own declared named groups first, in their normal declaration order —
-        // this includes its (never rendered as a box) transparent root, so the reserved neutral color at
+        // regexGraph's own declared named groups seed the palette first, in their normal declaration order
+        // — this includes its (never rendered as a box) transparent root, so the reserved neutral color at
         // position 0 stays reserved even for a graph with no bricks that reference the root directly, and
-        // every other type's own page keeps exactly the coloring it always had. Then append any further
-        // named groups that only show up via a dynamic capture's resolved sub-type — spliced into this
-        // same brick sequence by DynamicSectionBuilder — in first-appearance order, so those join the same
-        // rainbow instead of each restarting their own.
-        var namedGroupsInDisplayOrder = regexGraph.NamedGroupFlatGraph.Values
-            .Concat(bricks.Select(x => x.NamedGroupParent).Where(x => x is not null))
-            .Distinct()
-            .ToList();
-
-        var namedGroupHexPalettes = DeterministicPalette
-            .GetPositionalPaletteSet(namedGroupsInDisplayOrder, positionalOverrideColors: HexColor.Silver);
+        // every other type's own page keeps exactly the coloring it always had. GetNamedGroupPaletteSet then
+        // appends any further named groups that only show up via a dynamic capture's resolved sub-type —
+        // spliced into this same brick sequence by DynamicSectionBuilder — in first-appearance order, so
+        // those join the same rainbow instead of each restarting their own.
+        var namedGroupHexPalettes = regexGraph.GetNamedGroupPaletteSet(bricks, HexColor.Silver);
 
         _namedGroupPalettes = namedGroupHexPalettes.ToDictionary(x => x.Key, x => SpanStylePalette.FromHexPalette(x.Value));
         _namedGroupHueDegrees = namedGroupHexPalettes.ToDictionary(x => x.Key, x => DeterministicPalette.HexToHue(x.Value.Normal) * 360.0);

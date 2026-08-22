@@ -86,7 +86,10 @@ internal class DynamicSectionBuilder
         var containerDepth = dynamicNode.Lineage.OfType<NamedGroupNode>().Count(x => !x.IsTransparentRoot);
         var typeLabel = CaptureNodeKind.Token.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
         var friendlyName = resolvedType.Name.ToFriendlyCase();
-        var containerFullyQualifiedName = $"{dynamicNode.FullyQualifiedName}_{resolvedType.Name}";
+        // Must match the prefix CaptureTrace.AdoptDynamicChildren rebases this same resolved type's real
+        // captured descendants onto, so a data-path built from one lines up with a data-path built from
+        // the other (e.g. MatchContentRenderer's spans hovering the right line here).
+        var containerFullyQualifiedName = $"{dynamicNode.FullyQualifiedName}_{resolvedGraph.RootNode.FullyQualifiedName}";
 
         var open = new RegexBrickGroupOpen(dynamicNode, resolvedType.Name) { TypeLabel = typeLabel, CommentFormatted = typeLabel };
         var close = new RegexBrickGroupClose(dynamicNode, null) { NameText = friendlyName, CommentFormatted = friendlyName };
@@ -122,7 +125,7 @@ internal class DynamicSectionBuilder
     /// </summary>
     static List<RegexBrick> RenderResolvedType(RegexGraph resolvedGraph, List<Glyph> glyphs, bool includeSupplementalLines, RegexDisplayMode displayMode)
     {
-        var resolvedSummary = new GlyphOccurrenceSummary(resolvedGraph.RootGlyphType, glyphs);
+        var resolvedSummary = new GlyphOccurrenceSummary(resolvedGraph.RootGlyphType, glyphs.Select(g => new MatchOccurrence(null, g)));
         var pipeline = new RegexBrickFormattingPipeline(resolvedGraph, resolvedSummary, displayMode);
 
         return pipeline.Format(resolvedGraph.BuiltRegex.Bricks, includeSupplementalLines);

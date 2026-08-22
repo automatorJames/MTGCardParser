@@ -10,6 +10,17 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     public CaptureContext CaptureContext { get; private set; }
     [JsonProperty] public string FullyQualifiedName { get; private set; }
     [JsonProperty] public string Name { get; }
+
+    /// <summary>
+    /// The graph node that produced this capture - unlike <see cref="FullyQualifiedName"/>, this is never
+    /// touched by <see cref="Rebase"/>, so it stays a stable, reliable identity for a dynamic capture's
+    /// re-tokenized, rebased descendants (see <see cref="AdoptDynamicChildren"/>) even after their display
+    /// name has been rewritten to read as part of the outer graph's path. <see cref="RegexGraph.NamedGroupFlatGraph"/>
+    /// only knows this node by its own (un-rebased) graph, so consumers that need to color a capture the
+    /// same way its origin type's own formatted regex does (e.g. <see cref="Presentation.MatchContentRenderer"/>)
+    /// should key off this instead of the display-only FullyQualifiedName.
+    /// </summary>
+    public NamedGroupNode SourceNode { get; }
     [JsonProperty] public string CaptureValue { get; set; }
     public string PrintValue => GetPrintValue();
     public bool Success { get; }
@@ -98,6 +109,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         IsTerminal = CheckNodeTypeIsTerminal(NodeKind);
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
         Name = namedGroupNode.Name;
+        SourceNode = namedGroupNode;
 
         var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
 
@@ -141,15 +153,21 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// this node's matched text in isolation (its own <see cref="CaptureContext"/>, with indexes
     /// relative to that substring rather than to the original line) — so every adopted descendant
     /// is rebased onto this node's own <see cref="CaptureContext"/> and index space, and re-parented
-    /// under this node's <see cref="FullyQualifiedName"/> (replacing <paramref name="innerRoot"/>'s
-    /// own name as the path prefix) so its data-path stays fully qualified from the line root and
-    /// its captures stay registered for corpus-wide lookups (<see cref="RootCaptureTrace.this[string]"/>).
+    /// under this node's <see cref="FullyQualifiedName"/> plus the resolved type's own root name
+    /// (replacing <paramref name="innerRoot"/>'s own name as the path prefix, but keeping it as a
+    /// trailing segment rather than dropping it) so its data-path stays fully qualified from the line
+    /// root, its captures stay registered for corpus-wide lookups (<see cref="RootCaptureTrace.this[string]"/>),
+    /// and - the reason the resolved type's name is kept rather than dropped - it lines up exactly
+    /// with the container path <see cref="Presentation.DynamicSectionBuilder"/> independently builds
+    /// for this same resolved type's embedded section in the formatted regex output, so a
+    /// <see cref="Presentation.MatchContentRenderer"/> span's data-path matches the pre's for the same
+    /// capture instead of the two diverging.
     /// </summary>
     public void AdoptDynamicChildren(RootCaptureTrace innerRoot)
     {
         var outerRoot = CaptureContext.RootCaptureTrace;
         var oldPrefix = innerRoot.FullyQualifiedName;
-        var newPrefix = FullyQualifiedName;
+        var newPrefix = $"{FullyQualifiedName}_{oldPrefix}";
 
         foreach (var child in innerRoot.Children)
         {

@@ -1,0 +1,27 @@
+@typeparam TValue where TValue : struct, Enum
+
+<button type="button" class="enum-icon-toggle" style="color: @Value.GetColor();" data-tooltip="@($"{Label}: {Value.GetDescription()}")" aria-label="@($"{Label}: {Value.GetDescription()}")" @onclick="Cycle">
+    <span class="oi oi-@Icon" aria-hidden="true"></span>
+</button>
+
+@code {
+    static readonly TValue[] _values = Enum.GetValues<TValue>();
+
+    [Parameter, EditorRequired]
+    public string Icon { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; }
+
+    [Parameter]
+    public TValue Value { get; set; }
+
+    [Parameter]
+    public EventCallback<TValue> ValueChanged { get; set; }
+
+    Task Cycle()
+    {
+        var nextValue = _values[(Array.IndexOf(_values, Value) + 1) % _values.Length];
+        return ValueChanged.InvokeAsync(nextValue);
+    }
+}

@@ -195,5 +195,20 @@ function applyTreatments(card, activePaths) {
             popHoverTarget(box);
         }
     });
+    // --- Matches Table Section ---
+    // Every span in a match's content participates, including the grey surrounding-context spans
+    // (which carry no data-path of their own, so they can only ever read as "unrelated" and dim
+    // along with everything else) - same treatment as the regex column's own non-interactive spans.
+    const matchSpans = card.querySelectorAll('.matches-table .match-content span');
+    matchSpans.forEach(span => {
+        const spanPaths = (span.dataset.paths ?? span.dataset.path ?? '').split(' ');
+        const relation = bestPathRelation(spanPaths, activePaths);
+        span.toggleAttribute('highlight-active', relation === 'exact' || relation === 'descendant');
+        setDimTreatment(span, relation === 'ancestor');
+        span.toggleAttribute('lowlight-active', isAnyHighlighted && relation === 'none');
+        if (relation === 'exact') {
+            popHoverTarget(span);
+        }
+    });
 }
 //# sourceMappingURL=type-regex.js.map

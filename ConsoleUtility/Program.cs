@@ -55,7 +55,7 @@ internal class Program
 
         foreach ((var type, var tokens) in glyphsByType)
         {
-            GlyphOccurrenceSummary summary = new(type, tokens);
+            GlyphOccurrenceSummary summary = new(type, tokens.Select(t => new MatchOccurrence(null, t)));
             var regexGraph = GlyphTypeRegistry.RegexGraphs[type];
             var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
             Console.WriteLine(smartRegex);
@@ -114,7 +114,7 @@ internal class Program
 
         foreach ((var type, var tokens) in glyphsByType)
         {
-            GlyphOccurrenceSummary summary = new(type, tokens);
+            GlyphOccurrenceSummary summary = new(type, tokens.Select(t => new MatchOccurrence(null, t)));
             Debugger.Break();
         }
     }
