@@ -52,6 +52,19 @@ public class SmartLineRenderer
     public static List<SmartLine> Render(List<RegexBrick> bricks, RegexGraph regexGraph) =>
         new SmartLineRenderer(bricks, regexGraph).RenderLines();
 
+    /// <summary>
+    /// Renders <paramref name="bricks"/> (typically <see cref="BuiltRegex.Bricks"/>, the raw, unranked/
+    /// unfiltered sequence) as a single line of its own raw <see cref="RegexBrick.Regex"/> text, colored
+    /// per named group the same way <see cref="Render"/> colors an ordinary brick with no more specific
+    /// <see cref="RegexSpanKind"/> - just without the padding, box comments, or enum member ranking that a
+    /// formatted line carries.
+    /// </summary>
+    public static SmartLine RenderMinifiedLine(List<RegexBrick> bricks, RegexGraph regexGraph)
+    {
+        var renderer = new SmartLineRenderer(bricks, regexGraph);
+        return new(bricks.Select(brick => renderer.SpanFromBrick(brick, brick.Regex)).ToList());
+    }
+
     List<SmartLine> RenderLines()
     {
         List<SmartLine> lines = [];

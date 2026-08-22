@@ -16,7 +16,7 @@ namespace Glyphotype.RegexGeneration.Presentation;
 internal class DynamicSectionBuilder
 {
     /// <summary>Builds the full ordered sequence of embedded resolved-type sections for <paramref name="dynamicNode"/>.</summary>
-    public List<RegexBrick> Build(DynamicGlyphNode dynamicNode, List<RegexBrick> allBricks, DynamicCaptureTraceSummary dynamicSummary, bool includeSupplementalLines)
+    public List<RegexBrick> Build(DynamicGlyphNode dynamicNode, List<RegexBrick> allBricks, DynamicCaptureTraceSummary dynamicSummary, bool includeSupplementalLines, RegexDisplayMode displayMode)
     {
         if (dynamicSummary.ResolvedTypeGlyphs.Count == 0)
             return BuildFallbackBricks(dynamicNode, allBricks);
@@ -42,7 +42,7 @@ internal class DynamicSectionBuilder
                     bricks.Add(new RegexBrickBlank(dynamicNode));
             }
 
-            bricks.AddRange(BuildResolvedTypeContainerBricks(dynamicNode, type, glyphs, includeSupplementalLines));
+            bricks.AddRange(BuildResolvedTypeContainerBricks(dynamicNode, type, glyphs, includeSupplementalLines, displayMode));
         }
 
         return bricks;
@@ -80,7 +80,7 @@ internal class DynamicSectionBuilder
     /// type's own root as its coloring identity, so it reads (and colors) as a real nested group rather than
     /// as more of the enclosing dynamic group.
     /// </summary>
-    static List<RegexBrick> BuildResolvedTypeContainerBricks(DynamicGlyphNode dynamicNode, Type resolvedType, List<Glyph> glyphs, bool includeSupplementalLines)
+    static List<RegexBrick> BuildResolvedTypeContainerBricks(DynamicGlyphNode dynamicNode, Type resolvedType, List<Glyph> glyphs, bool includeSupplementalLines, RegexDisplayMode displayMode)
     {
         var resolvedGraph = GlyphTypeRegistry.RegexGraphs[resolvedType];
         var containerDepth = dynamicNode.Lineage.OfType<NamedGroupNode>().Count(x => !x.IsTransparentRoot);
@@ -103,7 +103,7 @@ internal class DynamicSectionBuilder
             bookend.OverrideNamedGroupParent(resolvedGraph.RootNode);
         }
 
-        var content = RenderResolvedType(resolvedGraph, glyphs, includeSupplementalLines);
+        var content = RenderResolvedType(resolvedGraph, glyphs, includeSupplementalLines, displayMode);
         var resolvedRootFullyQualifiedName = resolvedGraph.RootNode.FullyQualifiedName;
 
         foreach (var brick in content)
@@ -120,10 +120,10 @@ internal class DynamicSectionBuilder
     /// <see cref="RegexBrickFormattingPipeline"/> every registered type's own page runs — without rendering
     /// them yet, so they can be depth-shifted and spliced into the outer sequence for one shared render pass.
     /// </summary>
-    static List<RegexBrick> RenderResolvedType(RegexGraph resolvedGraph, List<Glyph> glyphs, bool includeSupplementalLines)
+    static List<RegexBrick> RenderResolvedType(RegexGraph resolvedGraph, List<Glyph> glyphs, bool includeSupplementalLines, RegexDisplayMode displayMode)
     {
         var resolvedSummary = new GlyphOccurrenceSummary(resolvedGraph.RootGlyphType, glyphs);
-        var pipeline = new RegexBrickFormattingPipeline(resolvedGraph, resolvedSummary);
+        var pipeline = new RegexBrickFormattingPipeline(resolvedGraph, resolvedSummary, displayMode);
 
         return pipeline.Format(resolvedGraph.BuiltRegex.Bricks, includeSupplementalLines);
     }

@@ -11,14 +11,19 @@ internal class EnumSectionBuilder
 {
     /// <summary>Builds the full ordered sequence of member/synonym/omitted-count bricks for <paramref name="enumNode"/>.</summary>
     /// <param name="includeOmittedCount">Whether to append the trailing "N omitted" summary row at all.</param>
-    public List<RegexBrick> Build(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, bool includeOmittedCount = true)
+    public List<RegexBrick> Build(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode, bool includeOmittedCount = true)
     {
-        var members = GetOccurringMembersOrderedByFrequency(enumNode, allBricks, enumSummary);
-        var omittedCount = includeOmittedCount ? BuildOmittedCountBrick(enumNode, enumSummary) : null;
+        var members = GetMembersToDisplay(enumNode, allBricks, enumSummary, displayMode);
+
+        // Full already shows every member with its real (possibly zero) count, so there's nothing left
+        // for an "N omitted" row to summarize.
+        var omittedCount = includeOmittedCount && displayMode != RegexDisplayMode.Full
+            ? BuildOmittedCountBrick(enumNode, enumSummary)
+            : null;
         var metrics = EnumColumnMetrics.Calculate(members, enumSummary, omittedCount);
 
         List<RegexBrick> bricks = [];
-        AppendMemberBricksWithSynonymSections(bricks, members, enumSummary, metrics);
+        AppendMemberBricksWithSynonymSections(bricks, members, enumSummary, metrics, displayMode);
 
         if (omittedCount != null)
             bricks.Add(omittedCount);
@@ -27,17 +32,62 @@ internal class EnumSectionBuilder
     }
 
     /// <summary>
-    /// The enum's member value bricks that actually occurred in the analyzed data (excluding
-    /// synonym patterns that never occurred), ordered by total occurrence count, most frequent first.
+    /// The enum's member value bricks to render, selected and ordered per <paramref name="displayMode"/>:
+    /// <list type="bullet">
+    /// <item><see cref="RegexDisplayMode.Full"/> - every declared member, alphabetically; a member that
+    /// never occurred gets a single representative row (its first declared pattern) standing in for the
+    /// whole (empty) synonym set, since there's no occurrence data to break it down by pattern.</item>
+    /// <item><see cref="RegexDisplayMode.Sample"/> - up to three members, favoring ones that occurred
+    /// (ranked by occurrence count then alphabetically, one representative row per member regardless of
+    /// how many of its synonym patterns occurred), then backfilled alphabetically from members that never
+    /// occurred if fewer than three did.</item>
+    /// <item>Anything else (<see cref="RegexDisplayMode.MatchedOnly"/>) - every occurring member, full
+    /// synonym breakdown included, ranked by occurrence count - today's default view.</item>
+    /// </list>
     /// </summary>
-    static List<RegexBrickValue> GetOccurringMembersOrderedByFrequency(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary) =>
-        allBricks
+    static List<RegexBrickValue> GetMembersToDisplay(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode)
+    {
+        bool Occurred(object memberValue) => !enumSummary.EnumMembersWithZeroOcurrences.Contains(memberValue);
+        bool IsOccurringPattern(RegexBrickValue member) => enumSummary.EnumMemberSynonymOccurenceCounts[member.Value].ContainsKey(member.Regex);
+
+        var membersByValue = allBricks
             .OfType<RegexBrickValue>()
             .Where(x => x.NamedGroupLineageNames.Contains(enumNode.FullyQualifiedName))
-            .Where(x => !enumSummary.EnumMembersWithZeroOcurrences.Contains(x.Value))
-            .Where(x => enumSummary.EnumMemberSynonymOccurenceCounts.ContainsKey(x.Value) && enumSummary.EnumMemberSynonymOccurenceCounts[x.Value].ContainsKey(x.Regex))
+            .GroupBy(x => x.Value);
+
+        if (displayMode == RegexDisplayMode.Full)
+            return membersByValue
+                .SelectMany(group => Occurred(group.Key) ? group.Where(IsOccurringPattern) : [group.First()])
+                .OrderBy(x => x.Value.ToString(), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        if (displayMode == RegexDisplayMode.Sample)
+        {
+            var occurring = membersByValue
+                .Where(group => Occurred(group.Key))
+                .Select(group => group.First(IsOccurringPattern))
+                .OrderByDescending(x => enumSummary.EnumMemberOccurenceCounts[x.Value])
+                .ThenBy(x => x.Value.ToString(), StringComparer.OrdinalIgnoreCase)
+                .Take(3)
+                .ToList();
+
+            // Nothing occurred at all (or fewer than three members did) - rather than show an
+            // emptier-than-necessary sample, backfill alphabetically from members that never occurred.
+            var backfill = membersByValue
+                .Where(group => !Occurred(group.Key))
+                .Select(group => group.First())
+                .OrderBy(x => x.Value.ToString(), StringComparer.OrdinalIgnoreCase)
+                .Take(3 - occurring.Count);
+
+            return [.. occurring, .. backfill];
+        }
+
+        return membersByValue
+            .Where(group => Occurred(group.Key))
+            .SelectMany(group => group.Where(IsOccurringPattern))
             .OrderByDescending(x => enumSummary.EnumMemberOccurenceCounts[x.Value])
             .ToList();
+    }
 
     /// <summary>Builds the "N omitted" / "All N omitted" summary brick, or null if every member occurred at least once.</summary>
     static RegexBrickOmittedCount BuildOmittedCountBrick(EnumNode enumNode, EnumCaptureTraceSummary enumSummary)
@@ -54,15 +104,17 @@ internal class EnumSectionBuilder
     /// <summary>
     /// Walks <paramref name="members"/> in frequency order, inserting a synonym section header before the
     /// first row of any member with multiple represented synonyms, and a divider footer after its last row.
+    /// Sample never groups by synonym - it already reduced every member to one representative row, so
+    /// every row renders as if standalone regardless of how many synonyms the member actually has.
     /// </summary>
-    static void AppendMemberBricksWithSynonymSections(List<RegexBrick> bricks, List<RegexBrickValue> members, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics)
+    static void AppendMemberBricksWithSynonymSections(List<RegexBrick> bricks, List<RegexBrickValue> members, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics, RegexDisplayMode displayMode)
     {
         RegexNode currentSynonymGroupParentNode = null;
 
         for (int i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            bool isPartOfSynonymGroup = enumSummary.EnumMemberSynonymOccurenceCounts[member.Value].Count > 1;
+            bool isPartOfSynonymGroup = displayMode != RegexDisplayMode.Sample && enumSummary.EnumMemberSynonymOccurenceCounts[member.Value].Count > 1;
 
             bool isFirstRowOfSynonymGroup =
                 isPartOfSynonymGroup

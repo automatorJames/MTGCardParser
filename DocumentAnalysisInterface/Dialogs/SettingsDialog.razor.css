@@ -28,3 +28,21 @@
     .settings-row ::deep .switch-label {
         margin-left: 8px !important;
     }
+
+.radio-group {
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+}
+
+.settings-row-label {
+    width: 100%;
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+}

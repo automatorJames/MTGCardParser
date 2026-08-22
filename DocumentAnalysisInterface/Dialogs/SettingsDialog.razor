@@ -15,8 +15,16 @@
 
         <div class="settings-section">
             <h3 class="settings-section-title">Type Regex</h3>
-            <div class="settings-row">
-                <Switch @bind-Value=@RuntimeSettings.ShowMinified Label="Show minified" />
+            <div class="settings-row radio-group">
+                <span class="settings-row-label">Regex format</span>
+                @foreach (var mode in Enum.GetValues<RegexDisplayMode>())
+                {
+                    <label class="radio-option">
+                        <input type="radio" name="regex-format" checked="@(RuntimeSettings.RegexFormat == mode)"
+                               @onchange="() => RuntimeSettings.RegexFormat = mode" />
+                        @mode.GetDescription()
+                    </label>
+                }
             </div>
             <div class="settings-row">
                 <Switch @bind-Value=@RuntimeSettings.HideRegexesWithZeroCaptures Label="Hide zero-capture types" />

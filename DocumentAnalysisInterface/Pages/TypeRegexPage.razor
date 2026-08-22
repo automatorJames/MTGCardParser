@@ -29,16 +29,14 @@
                     </span>
                 </div>
 
-                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.ShowMinified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines).ToString())>
-                    @if (RuntimeSettings.ShowMinified)
+                <CopyButtonOverlay TextToCopy=@(RuntimeSettings.RegexFormat == RegexDisplayMode.Minified ? summary.RegexGraph.BuiltRegex.MinifiedRegex : summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat).ToString())>
+                    @if (RuntimeSettings.RegexFormat == RegexDisplayMode.Minified)
                     {
-                        <pre style=@(borderColorStyle + " white-space: pre-wrap;")>
-                    <code>@summary.RegexGraph.BuiltRegex.MinifiedRegex</code>
-                            </pre>
+                        <FormattedRegex Lines=@summary.RegexGraph.BuiltRegex.ToRichMinifiedLines(summary.RegexGraph) BorderStyle=@(borderColorStyle + " white-space: pre-wrap;") />
                     }
                     else
                     {
-                        var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines);
+                        var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat);
                         <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle />
                     }
                 </CopyButtonOverlay>

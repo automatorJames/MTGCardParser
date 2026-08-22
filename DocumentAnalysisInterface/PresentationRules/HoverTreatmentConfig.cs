@@ -1,6 +1,6 @@
 using Glyphotype.RegexGeneration.Presentation;
 
-namespace DocumentAnalysisInterface;
+namespace DocumentAnalysisInterface.PresentationRules;
 
 /// <summary>
 /// The single, centralized set of tuning knobs for hover-driven color treatment on any element
@@ -29,7 +29,7 @@ public static class HoverTreatmentConfig
     /// type's lowlight treatment. Each element type may *additionally* swap toward its own
     /// darker/desaturated palette variant to keep its own hue visible while dimmed (a regex
     /// span swaps to its precomputed Lo color, a type-tree box to its Dark variant — see
-    /// <see cref="Glyphotype.Colors.ColorKnobDefaults"/> and
+    /// <see cref="ColorKnobDefaults"/> and
     /// <see cref="Glyphotype.Colors.DeterministicPalette"/> respectively for how those colors
     /// themselves are computed), but the "how dim" opacity itself is this one shared value.
     /// </summary>
@@ -40,7 +40,7 @@ public static class HoverTreatmentConfig
     /// the flicker that would otherwise result from the cursor rapidly entering/leaving spans as
     /// it travels across rows of them.
     /// </summary>
-    public const int DebounceMs = 30;
+    public const int DebounceMs = 5;
 
     /// <summary>How long the color/opacity crossfade takes once a new highlight state commits.</summary>
     public const int FadeDurationMs = 150;

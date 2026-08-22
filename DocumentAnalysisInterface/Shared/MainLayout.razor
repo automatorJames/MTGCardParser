@@ -16,11 +16,18 @@
 
             @if (RuntimeSettings.IsLoaded)
             {
-                var pageSettingIcons = GetPageSettingIcons();
+                var currentRelativePath = GetCurrentRelativePath();
+                var pageSettingIcons = GetPageSettingIcons(currentRelativePath);
+                var isTypeRegexPage = currentRelativePath == "type-regex";
 
-                @if (pageSettingIcons.Count > 0)
+                @if (pageSettingIcons.Count > 0 || isTypeRegexPage)
                 {
                     <div class="page-setting-icons">
+                        @if (isTypeRegexPage)
+                        {
+                            <RegexFormatIconToggle Icon="code" Value="@RuntimeSettings.RegexFormat"
+                                                    ValueChanged="@(v => RuntimeSettings.RegexFormat = v)" />
+                        }
                         @foreach (var settingIcon in pageSettingIcons)
                         {
                             <SettingIconToggle Icon="@settingIcon.Icon" Label="@settingIcon.Label" Value="@settingIcon.Value"
@@ -77,18 +84,17 @@
             await RuntimeSettings.EnsureLoadedAsync();
     }
 
+    /// <summary>The current page's route, normalized so the root path ("" from the router) reads as "/".</summary>
+    string GetCurrentRelativePath()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        return string.IsNullOrEmpty(path) ? "/" : path;
+    }
+
     [JSInvokable]
     public void CyclePage(string direction)
     {
-        // Get the current page's relative path
-        var currentRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
-
-        // The root path "/" is returned as an empty string, so normalize it
-        if (string.IsNullOrEmpty(currentRelativePath))
-        {
-            currentRelativePath = "/";
-        }
-
+        var currentRelativePath = GetCurrentRelativePath();
         var currentIndex = _pageRoutes.IndexOf(currentRelativePath);
         if (currentIndex == -1) return; // Current page not in our list, do nothing
 
@@ -123,14 +129,8 @@
     /// whichever of the three pages is currently active — lets a viewer flip a view-affecting
     /// setting live without opening the settings dialog.
     /// </summary>
-    List<PageSettingIcon> GetPageSettingIcons()
+    List<PageSettingIcon> GetPageSettingIcons(string currentRelativePath)
     {
-        var currentRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
-        if (string.IsNullOrEmpty(currentRelativePath))
-        {
-            currentRelativePath = "/";
-        }
-
         return currentRelativePath switch
         {
             "/" =>
@@ -141,7 +141,6 @@
             "type-regex" =>
             [
                 new("bar-chart", "Order by occurrence count", RuntimeSettings.OrderByOccurrenceCount, v => RuntimeSettings.OrderByOccurrenceCount = v),
-                new("code", "Show minified", RuntimeSettings.ShowMinified, v => RuntimeSettings.ShowMinified = v),
                 new("ban", "Hide zero-capture types", RuntimeSettings.HideRegexesWithZeroCaptures, v => RuntimeSettings.HideRegexesWithZeroCaptures = v),
                 new("minus", "Hide blank lines", RuntimeSettings.HideBlankLines, v => RuntimeSettings.HideBlankLines = v),
                 new("fork", "Hide type tree", RuntimeSettings.HideTypeTree, v => RuntimeSettings.HideTypeTree = v),

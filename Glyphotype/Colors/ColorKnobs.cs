@@ -1,20 +1,6 @@
+using Glyphotype.RegexGeneration.Presentation;
+
 namespace Glyphotype.Colors;
-
-/// <summary>Centralized fallback values for any <see cref="ColorKnobs"/> field left unspecified, so "default" has exactly one definition instead of being re-guessed at every call site.</summary>
-public static class ColorKnobDefaults
-{
-    /// <summary>Default saturation (0..1) for a span's resting, non-highlighted, non-lowlighted color.</summary>
-    public const double Saturation = 0.5;
-
-    /// <summary>Default brightness (0..1) for a span's resting color.</summary>
-    public const double Brightness = 0.5;
-
-    /// <summary>Default fraction (0..1) of the way from resting saturation to fully-saturated (Hi) / fully-desaturated (Lo).</summary>
-    public const double SaturationRange = 0.6;
-
-    /// <summary>Default fraction (0..1) of the way from resting brightness to maximum (Hi) / minimum (Lo) brightness.</summary>
-    public const double BrightnessRange = 0.45;
-}
 
 /// <summary>
 /// The tunable "knobs" behind one <see cref="SpanStylePalette"/>: a hue, how saturated/bright that hue is

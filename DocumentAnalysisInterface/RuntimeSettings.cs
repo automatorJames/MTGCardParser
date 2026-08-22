@@ -81,15 +81,15 @@ namespace DocumentAnalysisInterface
             }
         }
 
-        private bool _showMinified;
-        public bool ShowMinified
+        private RegexDisplayMode _regexFormat = RegexDisplayMode.MatchedOnly;
+        public RegexDisplayMode RegexFormat
         {
-            get => _showMinified;
+            get => _regexFormat;
             set
             {
-                if (_showMinified != value)
+                if (_regexFormat != value)
                 {
-                    _showMinified = value;
+                    _regexFormat = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }
@@ -202,7 +202,7 @@ namespace DocumentAnalysisInterface
                     _showCollapsedCaptureNodes = dto.ShowCollapsedCaptureNodes;
                     _orderByWordCount = dto.OrderByWordCount;
                     _orderByOccurrenceCount = dto.OrderByOccurrenceCount;
-                    _showMinified = dto.ShowMinified;
+                    _regexFormat = dto.RegexFormat;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _hideBlankLines = dto.HideBlankLines;
                     _hideTypeTree = dto.HideTypeTree;
@@ -256,7 +256,7 @@ namespace DocumentAnalysisInterface
         public bool ShowCollapsedCaptureNodes { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool OrderByOccurrenceCount { get; init; } = true;
-        public bool ShowMinified { get; init; }
+        public RegexDisplayMode RegexFormat { get; init; } = RegexDisplayMode.MatchedOnly;
         public bool HideRegexesWithZeroCaptures { get; init; }
         public bool HideBlankLines { get; init; }
         public bool HideTypeTree { get; init; }
@@ -272,7 +272,7 @@ namespace DocumentAnalysisInterface
             ShowCollapsedCaptureNodes = runtimeSettings.ShowCollapsedCaptureNodes;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             OrderByOccurrenceCount = runtimeSettings.OrderByOccurrenceCount;
-            ShowMinified = runtimeSettings.ShowMinified;
+            RegexFormat = runtimeSettings.RegexFormat;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             HideBlankLines = runtimeSettings.HideBlankLines;
             HideTypeTree = runtimeSettings.HideTypeTree;

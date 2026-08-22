@@ -26,8 +26,16 @@ public class BuiltRegex
     }
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
-    public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true) =>
-        new(_regexBricks, summary, regexGraph, includeSupplementalLines);
+    public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly) =>
+        new(_regexBricks, summary, regexGraph, includeSupplementalLines, displayMode);
+
+    /// <summary>
+    /// Builds a single unpadded, uncommented line of this regex's raw text (the same characters as
+    /// <see cref="MinifiedRegex"/>), colored per named group like the formatted view but with no line
+    /// breaks, box comments, or enum member ranking/filtering applied.
+    /// </summary>
+    public List<SmartLine> ToRichMinifiedLines(RegexGraph regexGraph) =>
+        [SmartLineRenderer.RenderMinifiedLine(_regexBricks, regexGraph)];
 
     public override string ToString() => MinifiedRegex;
 }

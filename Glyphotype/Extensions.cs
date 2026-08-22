@@ -46,6 +46,13 @@ public static class Extensions
         return attr?.Description ?? value.ToString();
     }
 
+    public static string GetColor(this Enum value)
+    {
+        var field = value.GetType().GetField(value.ToString());
+        var attr = field?.GetCustomAttribute<ColorAttribute>();
+        return attr?.Color.Value;
+    }
+
     public static string ToFriendlyCase(this string input, TitleDisplayOption option = TitleDisplayOption.Title)
     {
         if (string.IsNullOrEmpty(input))

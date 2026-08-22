@@ -12,13 +12,15 @@ internal class RegexBrickFormattingPipeline
 {
     readonly RegexGraph _regexGraph;
     readonly GlyphOccurrenceSummary _summary;
+    readonly RegexDisplayMode _displayMode;
     readonly EnumSectionBuilder _enumSectionBuilder = new();
     readonly DynamicSectionBuilder _dynamicSectionBuilder = new();
 
-    public RegexBrickFormattingPipeline(RegexGraph regexGraph, GlyphOccurrenceSummary summary)
+    public RegexBrickFormattingPipeline(RegexGraph regexGraph, GlyphOccurrenceSummary summary, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly)
     {
         _regexGraph = regexGraph;
         _summary = summary;
+        _displayMode = displayMode;
     }
 
     /// <summary>Runs the full formatting pass over <paramref name="bricks"/> and returns the final, render-ready brick sequence.</summary>
@@ -90,14 +92,14 @@ internal class RegexBrickFormattingPipeline
         if (groupOpen.NamedGroupParent is EnumNode enumNode)
         {
             var enumSummary = _summary.EnumCaptureSummaries[enumNode.FullyQualifiedName];
-            result.AddRange(_enumSectionBuilder.Build(enumNode, allBricks, enumSummary, includeOmittedCount: includeSupplementalLines));
+            result.AddRange(_enumSectionBuilder.Build(enumNode, allBricks, enumSummary, _displayMode, includeOmittedCount: includeSupplementalLines));
             return;
         }
 
         if (groupOpen.NamedGroupParent is DynamicGlyphNode dynamicNode)
         {
             var dynamicSummary = _summary.DynamicCaptureSummaries[dynamicNode.FullyQualifiedName];
-            result.AddRange(_dynamicSectionBuilder.Build(dynamicNode, allBricks, dynamicSummary, includeSupplementalLines));
+            result.AddRange(_dynamicSectionBuilder.Build(dynamicNode, allBricks, dynamicSummary, includeSupplementalLines, _displayMode));
         }
     }
 }
