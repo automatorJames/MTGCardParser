@@ -1,4 +1,4 @@
-<button type="button" class="setting-icon-toggle @(Value ? "active" : "")" title="@Label" @onclick="Toggle">
+<button type="button" class="setting-icon-toggle @(Value ? "active" : "")" data-tooltip="@Label" aria-label="@Label" @onclick="Toggle">
     <span class="oi oi-@Icon" aria-hidden="true"></span>
 </button>
 

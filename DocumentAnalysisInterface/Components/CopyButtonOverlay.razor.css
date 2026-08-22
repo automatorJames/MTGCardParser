@@ -1,7 +1,6 @@
 ﻿.pre-container {
     position: relative;
     margin: 0 12px;
-    cursor: copy;
 }
 
     .pre-container:hover pre {
@@ -12,25 +11,29 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    background: rgba(90, 90, 90, 0.90);
-    color: #eee;
-    border: 1px solid #777;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: #888888;
+    font-size: 13px;
     z-index: 10;
-    pointer-events: none;
+    cursor: copy;
     opacity: 0;
-    transition: opacity var(--transition-time), background-color var(--transition-time);
+    transition: opacity var(--transition-time), color var(--transition-time);
 }
 
 .pre-container:hover .copy-prompt {
     opacity: 1;
 }
 
+.copy-prompt:hover {
+    color: #bbbbbb;
+}
+
 .copy-prompt.copied {
-    background-color: #2a9d8f;
-    border-color: #238378;
+    color: #2a9d8f;
     opacity: 1;
 }
 
