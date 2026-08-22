@@ -1,6 +1,4 @@
-﻿using Glyphotype.Attributes.Quantifiers;
-
-namespace Glyphotype.RegexGeneration.Graph;
+﻿namespace Glyphotype.RegexGeneration.Graph;
 
 public class Navigation
 {
@@ -31,7 +29,7 @@ public class Navigation
     /// (the default, whether left implicit or made explicit via <see cref="AnyNumberAttribute"/>). Meaningless
     /// when <see cref="IsList"/> is false.
     /// </summary>
-    public Quantifier ListQuantifier { get; private set; } = Glyphotype.Quantifier.AnyNumber;
+    public Quantifier? ListQuantifier { get; private set; }
 
     public Navigation(Type type)
     {
@@ -70,8 +68,11 @@ public class Navigation
         Proptions = propertyNib.Proptions;
         IsOptional = Prop.IsDefined(typeof(OptionalAttribute));
 
-        if (IsList && Prop.IsDefined(typeof(OneOrMoreAttribute)))
-            ListQuantifier = Glyphotype.Quantifier.OneOrMore;
+        if (IsList)
+            ListQuantifier =
+                Prop.IsDefined(typeof(OneOrMoreAttribute))
+                ? Glyphotype.Quantifier.OneOrMore
+                : Glyphotype.Quantifier.AnyNumber;
     }
 
     /// <summary>Whether <paramref name="type"/> (or its nullable-unwrapped underlying type) is a closed <see cref="List{T}"/>.</summary>

@@ -20,6 +20,13 @@ public class RegexGraph
     public BuiltRegex BuiltRegex { get; }
 
     /// <summary>
+    /// Whether <see cref="RootGlyphType"/> carries <see cref="MustMatchWholeLineAttribute"/> - if so,
+    /// <see cref="TryMatch(string, int, int, out Glyph)"/> only accepts a match that consumes the entire
+    /// requested scope, rather than the usual "ends at a boundary char" allowance for a partial match.
+    /// </summary>
+    public bool MustMatchWholeLine { get; }
+
+    /// <summary>
     /// Maps NamedGroupNode FullyQualifiedName -> RegexNode.
     /// </summary>
     public Dictionary<string, NamedGroupNode> NamedGroupFlatGraph { get; } = [];
@@ -35,6 +42,7 @@ public class RegexGraph
     {
         RootGlyphType = rootGlyphType;
         RootNode = rootNode;
+        MustMatchWholeLine = rootGlyphType.IsDefined(typeof(MustMatchWholeLineAttribute));
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
         BuiltRegex = collector.GetBuiltRegex();
@@ -91,31 +99,33 @@ public class RegexGraph
     {
         glyph = null;
         var match = BuiltRegex.Regex.Match(sourceText, currentIndex);
-        
-        // 1. Regex Success
-        // 2. Anchoring: Match must start exactly at currentIndex
-        // 3. Length: Match must be non-empty
-        // 4. Scope: Match must not exceed endIndex
-        if (match.Success && match.Index == currentIndex && match.Length > 0 && (match.Index + match.Length <= endIndex))
-        {
-            int matchEndIndex = match.Index + match.Length;
-        
-            // 5. Boundary Check: End of scope OR followed by a boundary char
-            bool endsAtBoundary = matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
-        
-            if (endsAtBoundary)
-            {
-                CaptureContext captureContext = new(RootNode, match, sourceText);
-                var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
+        int matchEndIndex = match.Index + match.Length;
 
-                if (!success)
-                    return false;
+        // A MustMatchWholeLine type is a special case: nothing else may share its tokenization pass, so
+        // it must consume the entire requested scope - ending at a boundary char partway through isn't
+        // good enough. Every other type keeps the normal "end of scope, or followed by a boundary char"
+        // partial-match allowance.
+        bool endsAtBoundary = MustMatchWholeLine
+            ? matchEndIndex == endIndex
+            : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
 
-                captureContext.RootCaptureTrace.ClrValue = glyph;
-                return true;
-            }
-        }
+        bool matchIsValid =
+            match.Success                   // 1. Regex:        Match must be successful
+            && match.Index == currentIndex  // 2. Anchoring:    Must start exactly at currentIndex
+            && match.Length > 0             // 3. Length:       Must be non-empty
+            && matchEndIndex <= endIndex    // 4. Scope:        Must not exceed endIndex
+            && endsAtBoundary;              // 5. Boundary:     Must end at end index, or a boundary char, or if applicable match whole line
 
-        return false;
+        if (!matchIsValid)
+            return false;
+
+        CaptureContext captureContext = new(RootNode, match, sourceText);
+        var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
+
+        if (!success)
+            return false;
+
+        captureContext.RootCaptureTrace.ClrValue = glyph;
+        return true;
     }
 }

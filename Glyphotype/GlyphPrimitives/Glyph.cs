@@ -55,6 +55,15 @@ public abstract class Glyph : CaptureUnit
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
+        // A dependent only ever matches as a subgraph nested inside some parent's own pattern - its
+        // parent must match first for the dependent to even be reached. MustMatchWholeLine, on the other
+        // hand, means the type is only ever a candidate when its match consumes an entire tokenization
+        // pass by itself (see Tokenizer/RegexGraph.TryMatch). A type can't be both: by the time a
+        // dependent is reached, it's already partway through its parent's own line-spanning match, so it
+        // can never independently be "the whole line" itself.
+        if (Type.IsDefined(typeof(DependentAttribute)) && Type.IsDefined(typeof(MustMatchWholeLineAttribute)))
+            return $"{Type.Name} cannot be both {nameof(DependentAttribute)} and {nameof(MustMatchWholeLineAttribute)} - a dependent is always matched as a subgraph of a parent, so it can never independently match a whole line";
+
         // DeclaredOnly still includes properties that override a base virtual member (e.g. Nibs,
         // Joiner), since C# generates a PropertyInfo on the derived type for those too. Excluding
         // anything whose base definition lives on a different type leaves only genuinely new,

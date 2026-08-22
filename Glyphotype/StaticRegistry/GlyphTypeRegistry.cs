@@ -158,7 +158,6 @@ public static partial class GlyphTypeRegistry
             return new(glyphType, [], Joiner.None)    ;
 
         var instance = (Glyph)Activator.CreateInstance(glyphType);
-
         var nibs = instance.Nibs.ToArray();
 
         if (nibs.Length == 0)

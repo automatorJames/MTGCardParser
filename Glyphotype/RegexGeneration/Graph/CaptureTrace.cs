@@ -51,6 +51,17 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         && !Children[0].IsTerminal
         && !_alwaysMeaningfulKinds.Contains(NodeKind);
 
+    /// <summary>
+    /// True when this node should draw its own underline: it has children of its own to bracket, or (as
+    /// a <see cref="RootCaptureTrace"/>) has no enclosing parent to draw one on its behalf. A non-root
+    /// leaf paints none of its own, relying on its parent's underline to show it matched - but a leaf
+    /// root has no such parent, so nothing else in the tree would ever represent it (e.g. a top-level
+    /// Glyph whose only Nib is a literal string). Collapsing (see <see cref="IsCollapsible"/>) is a
+    /// separate, display-preference-dependent concern layered on top by the viewer.
+    /// </summary>
+    public bool HasOwnBoundary =>
+        Children.Count > 0 || this is RootCaptureTrace;
+
     public string JsonDebug => JsonConvert.SerializeObject(
         this,
         Formatting.Indented,

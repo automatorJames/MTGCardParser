@@ -68,7 +68,7 @@
 
         var classes = new List<string>();
 
-        if (CaptureTrace.Children.Any() && !IsEffectivelyCollapsible)
+        if (CaptureTrace.HasOwnBoundary && !IsEffectivelyCollapsible)
             classes.Add("nested-underline");
 
         if (CaptureTrace.IsTerminal)

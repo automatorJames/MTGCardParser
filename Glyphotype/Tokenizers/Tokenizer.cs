@@ -20,6 +20,13 @@ public class Tokenizer
         int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
 
+        // Fixed anchor for the scope this call is tokenizing, used below to gate MustMatchWholeLine
+        // types: currentIndex advances as tokens get committed or unmatched text gets skipped, but a
+        // MustMatchWholeLine type is only a valid candidate on the very first attempt at this scope's own
+        // start - once anything (a token or a ratchet skip) has consumed part of the scope, no match
+        // starting after that point could still be "the whole line" by itself.
+        int scopeStartIndex = currentIndex;
+
         // Pre-filter types to avoid repeating logic inside the while loop
         var filteredTypes = 
             (scopeToType != null && scopeToType != typeof(Glyph)) ? _orderedTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
@@ -32,6 +39,9 @@ public class Tokenizer
             foreach (var type in filteredTypes)
             {
                 var rootNode = GlyphTypeRegistry.RegexGraphs[type];
+
+                if (rootNode.MustMatchWholeLine && currentIndex != scopeStartIndex)
+                    continue;
 
                 if (rootNode.TryMatch(sourceText, currentIndex, endIndex, out var token))
                 {

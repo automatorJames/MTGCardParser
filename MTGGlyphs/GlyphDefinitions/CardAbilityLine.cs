@@ -1,8 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-public class CardAbilityLine : Glyph
+[IsolateForTesting]
+[MustMatchWholeLine]
+public class CardAbilityLine : CompoundOf<Keyword>
 {
-    public override Nib[] Nibs => ["^", Prop(Keyword), "$"];
     public override Joiner Joiner => Joiner.CommaSpace;
-    public Keyword Keyword { get; set; }
 }

@@ -1,6 +1,4 @@
-﻿using Glyphotype.Attributes.Quantifiers;
-
-namespace Glyphotype.NibHelpers;
+﻿namespace Glyphotype.NibHelpers;
 
 public record PropertyNib : Nib
 {
@@ -30,8 +28,22 @@ public record PropertyNib : Nib
     }
 
     public static PropertyNib[] GetPropertyNibs(Type type) =>
-        type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+        type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(x => x.GetSetMethod() != null) // Ignore get-only props like Joiner overrides
+            .Where(x => IsRelevantPropertyType(x.PropertyType))
             .Select(x => new PropertyNib(x.Name, x, Proptions.None))
             .ToArray();
+
+    /// <summary>
+    /// Whether a property belongs among a type's nib-bound properties: its type - or, for a
+    /// <see cref="List{T}"/>, its element type, nullable-unwrapped either way - is a <see cref="Glyph"/>
+    /// or an enum.
+    /// </summary>
+    static bool IsRelevantPropertyType(Type propertyType)
+    {
+        var elementType = Navigation.IsListType(propertyType) ? propertyType.GetGenericArguments()[0] : propertyType;
+        var underlyingElementType = Nullable.GetUnderlyingType(elementType) ?? elementType;
+
+        return underlyingElementType.IsAssignableTo(typeof(Glyph)) || underlyingElementType.IsEnum;
+    }
 }

@@ -1,5 +1,11 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+//[MustMatchWholeLine]
+//public class MustMatchWholeLineTest : Glyph
+//{
+//    public override Nib[] Nibs => ["enchanted wall can attack as though it didn't have defender."];
+//}
+
 //public class _TestGlyphStuff : Glyph
 //{
 //    //public override Nib[] Nibs => ["destroy all", Prop(CardType), NoSpace("s")];

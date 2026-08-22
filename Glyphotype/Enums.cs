@@ -39,7 +39,7 @@ public enum Joiner
     [Description(".")]
     Dot,
 
-    [Description(", ")]
+    [Description(",[ ]")]
     CommaSpace,
 }
 
