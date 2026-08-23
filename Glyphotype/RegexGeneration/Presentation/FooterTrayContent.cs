@@ -23,4 +23,9 @@ public enum FooterTrayContent
     [Description("Type tree")]
     [Color("#7d9e5b")]
     TypeTree,
+
+    /// <summary>This type's declared C# source, reflected fresh and colored per named group - navigable into its own properties' types via breadcrumbs.</summary>
+    [Description("C# class")]
+    [Color("#c77e59")]
+    CSharpClass,
 }

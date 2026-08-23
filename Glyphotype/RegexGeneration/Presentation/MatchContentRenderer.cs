@@ -14,7 +14,7 @@ namespace Glyphotype.RegexGeneration.Presentation;
 public static class MatchContentRenderer
 {
     /// <summary>How many whole words of surrounding source text to show, uncolored, on either side of a match.</summary>
-    public const int ContextWordCount = 2;
+    public const int ContextWordCount = 4;
 
     static readonly Regex _wordPattern = new(@"\S+", RegexOptions.Compiled);
     static readonly SpanStylePalette _contextPalette = SpanStylePalette.FromHexPalette(DeterministicPalette.GetStaticPalette(HexColor.DimGrey));
@@ -26,15 +26,25 @@ public static class MatchContentRenderer
     /// (see <see cref="RegexGraph.GetNamedGroupPaletteSet(IEnumerable{RegexBrick}, HexColor[])"/>) - computed
     /// against <see cref="RegexDisplayMode.MatchedOnly"/>'s bricks specifically, so the Matches view's
     /// coloring stays the richest, most-differentiated one available regardless of which display mode the
-    /// card's own pre currently happens to show.
+    /// card's own pre currently happens to show. Just <see cref="GetNamedGroupHexPalettes"/> converted to
+    /// <see cref="SpanStylePalette"/>.
     /// </summary>
-    public static IReadOnlyDictionary<NamedGroupNode, SpanStylePalette> GetNamedGroupPalettes(GlyphOccurrenceSummary summary)
+    public static IReadOnlyDictionary<NamedGroupNode, SpanStylePalette> GetNamedGroupPalettes(GlyphOccurrenceSummary summary) =>
+        GetNamedGroupHexPalettes(summary).ToDictionary(x => x.Key, x => SpanStylePalette.FromHexPalette(x.Value));
+
+    /// <summary>
+    /// The raw <see cref="HexPalette"/> flavor of <see cref="GetNamedGroupPalettes"/> - the public entry
+    /// point for any other caller (e.g. <c>CSharpClassView</c>, outside this assembly) that needs this same
+    /// dynamic-resolution-expanded palette but, unlike the Matches view, isn't just going to hand every span's
+    /// color straight to a <c>SpanStylePalette</c>-shaped consumer - <see cref="GlyphClassRenderer"/> resolves
+    /// several of its own roles (a class header, a Nibs-array literal) from the raw hex first.
+    /// </summary>
+    public static Dictionary<NamedGroupNode, HexPalette> GetNamedGroupHexPalettes(GlyphOccurrenceSummary summary)
     {
         var pipeline = new RegexBrickFormattingPipeline(summary.RegexGraph, summary, RegexDisplayMode.MatchedOnly);
         var formattedBricks = pipeline.Format(summary.RegexGraph.BuiltRegex.Bricks);
 
-        return summary.RegexGraph.GetNamedGroupPaletteSet(formattedBricks, HexColor.Silver)
-            .ToDictionary(x => x.Key, x => SpanStylePalette.FromHexPalette(x.Value));
+        return summary.RegexGraph.GetNamedGroupPaletteSet(formattedBricks, HexColor.Silver);
     }
 
     public static List<MatchContentSpan> Build(RootCaptureTrace matchTrace, IReadOnlyDictionary<NamedGroupNode, SpanStylePalette> namedGroupPalettes)

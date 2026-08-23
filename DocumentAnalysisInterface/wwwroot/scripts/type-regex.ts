@@ -262,4 +262,22 @@ function applyTreatments(card: HTMLElement, activePaths: string[]): void {
             popHoverTarget(span);
         }
     });
+
+    // --- C# Class Section ---
+    // Same treatment as the regex column's spans - a span with no data-path at all (neutral C#
+    // syntax, a Nibs-array literal) never carries highlight-active/lowlight-active either way, so
+    // it just reads as plain, unhighlighted text regardless of what else is hovered.
+    const classSpans = card.querySelectorAll<HTMLElement>('.csharp-class-view [data-path], .csharp-class-view [data-paths]');
+    classSpans.forEach(span => {
+        const spanPaths = (span.dataset.paths ?? span.dataset.path ?? '').split(' ');
+        const relation = bestPathRelation(spanPaths, activePaths);
+
+        span.toggleAttribute('highlight-active', relation === 'exact' || relation === 'descendant');
+        setDimTreatment(span, relation === 'ancestor');
+        span.toggleAttribute('lowlight-active', isAnyHighlighted && relation === 'none');
+
+        if (relation === 'exact') {
+            popHoverTarget(span);
+        }
+    });
 }

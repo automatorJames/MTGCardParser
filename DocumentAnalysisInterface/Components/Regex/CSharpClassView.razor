@@ -1,0 +1,152 @@
+@inject DocumentCorpusAnalyzer DocumentAnalyzer
+
+<div class="csharp-class-view">
+    @if (_path.Count > 1)
+    {
+        <div class="class-breadcrumbs">
+            @for (int i = 0; i < _path.Count; i++)
+            {
+                var index = i;
+                var node = _path[index].Node;
+                var isCurrent = index == _path.Count - 1;
+                var crumbStyle = $"--crumb-color: {ResolveCrumbColor(node)};";
+
+                @if (index > 0)
+                {
+                    <span class="breadcrumb-sep" aria-hidden="true">&rsaquo;</span>
+                }
+                <span class="breadcrumb-item @(isCurrent ? "current" : "")" style="@crumbStyle"
+                      @onclick="() => NavigateToBreadcrumb(index)">@node.Navigation.NodeType.Name</span>
+            }
+            <span class="breadcrumb-clear" title="Back to root" @onclick="ResetToRoot">&#10005;</span>
+        </div>
+    }
+
+    <pre class="csharp-class-pre"><code @key="_path[^1].Node">
+        @foreach (var line in _lines)
+        {
+            foreach (var span in line.Spans)
+            {
+                var isClickable = span.NavigateTo != null || span.Resolutions is { Count: > 0 };
+                <span class="@(isClickable ? "navigable" : "")" style="@BuildSpanStyle(span.Palette)"
+                      data-path="@span.DataPath" @onclick="(MouseEventArgs e) => OnSpanClicked(span, e)">@span.Content</span>
+            }
+            @("\n")
+        }
+    </code></pre>
+
+    @if (_openMenu != null)
+    {
+        <div class="dynamic-menu-backdrop" @onclick="CloseDynamicMenu"></div>
+        <div class="dynamic-menu" style="left: @(_openMenuX)px; top: @(_openMenuY)px;">
+            @foreach (var option in _openMenu)
+            {
+                <div class="dynamic-menu-item" style="@BuildSpanStyle(option.Palette)"
+                     @onclick="() => NavigateToResolution(option)">@option.Node.Navigation.NodeType.Name</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public GlyphOccurrenceSummary Summary { get; set; }
+
+    GlyphOccurrenceSummary _lastSummary;
+    Dictionary<NamedGroupNode, HexPalette> _palette = [];
+    List<(NamedGroupNode Node, string Path)> _path = [];
+    List<ClassLine> _lines = [];
+    IReadOnlyList<DynamicResolutionOption> _openMenu;
+    double _openMenuX;
+    double _openMenuY;
+
+    protected override void OnParametersSet()
+    {
+        if (Summary == _lastSummary)
+            return;
+
+        _lastSummary = Summary;
+
+        // Same expansion MatchContentRenderer.GetNamedGroupPalettes uses for the "Matches" tab: the card's
+        // own named groups plus every resolved dynamic sub-type's own subtree, recursively - so a resolution
+        // reached through any depth of dynamic-capture navigation already has a color to look up.
+        _palette = MatchContentRenderer.GetNamedGroupHexPalettes(Summary);
+
+        _path = [(Summary.RegexGraph.RootNode, Summary.RegexGraph.RootNode.FullyQualifiedName)];
+        CloseDynamicMenu();
+        RebuildLines();
+    }
+
+    void OnSpanClicked(ClassSpan span, MouseEventArgs e)
+    {
+        if (span.Resolutions is { Count: > 0 } resolutions)
+        {
+            _openMenu = resolutions;
+            _openMenuX = e.ClientX;
+            _openMenuY = e.ClientY;
+            return;
+        }
+
+        if (span.NavigateTo == null)
+            return;
+
+        _path.Add((span.NavigateTo, span.DataPath));
+        CloseDynamicMenu();
+        RebuildLines();
+    }
+
+    void NavigateToResolution(DynamicResolutionOption option)
+    {
+        _path.Add((option.Node, option.DataPath));
+        CloseDynamicMenu();
+        RebuildLines();
+    }
+
+    void CloseDynamicMenu() =>
+        _openMenu = null;
+
+    void NavigateToBreadcrumb(int index)
+    {
+        if (index >= _path.Count - 1)
+            return;
+
+        _path.RemoveRange(index + 1, _path.Count - index - 1);
+        CloseDynamicMenu();
+        RebuildLines();
+    }
+
+    void ResetToRoot()
+    {
+        if (_path.Count <= 1)
+            return;
+
+        _path.RemoveRange(1, _path.Count - 1);
+        CloseDynamicMenu();
+        RebuildLines();
+    }
+
+    void RebuildLines()
+    {
+        var (node, path) = _path[^1];
+        _lines = node.NodeKind == CaptureNodeKind.Enum
+            ? GlyphClassRenderer.RenderEnum(node, _palette, path)
+            : GlyphClassRenderer.Render(node, _palette, DocumentAnalyzer.GlyphOccurrenceSummaries, path);
+    }
+
+    /// <summary>A breadcrumb's own resting color: its node's plain positional color, same grayscale/role treatment as the class header it represents.</summary>
+    string ResolveCrumbColor(NamedGroupNode node) =>
+        _palette.TryGetValue(node, out var hex) ? hex.Normal : "var(--outline-grey)";
+
+    static string BuildSpanStyle(SpanStylePalette palette)
+    {
+        var style = $"{palette.CssVariables()} color: {palette.Default};";
+
+        if (palette.IsBold)
+            style += " font-weight: bold;";
+
+        if (palette.IsItalic)
+            style += " font-style: italic;";
+
+        return style;
+    }
+}

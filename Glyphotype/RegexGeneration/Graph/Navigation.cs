@@ -54,15 +54,15 @@ public class Navigation
     /// "OneOfCardTypeCreatureType"), since the backtick and any punctuation from a friendly display name
     /// would otherwise produce an invalid .NET regex named-capture-group identifier.
     /// </summary>
-    static string GetRegexSafeTypeName(Type type) =>
+    public static string GetRegexSafeTypeName(Type type) =>
         !type.IsGenericType
             ? type.Name
             : type.Name[..type.Name.IndexOf('`')] + string.Concat(type.GetGenericArguments().Select(GetRegexSafeTypeName));
 
-    public Navigation(PropertyNib propertyNib)
+    public Navigation(PropertyNib propertyNib, string nameOverride = null)
     {
         SetTypeInfo(propertyNib.Type);
-        Name = propertyNib.Name;
+        Name = nameOverride ?? propertyNib.Name;
         Patterns = propertyNib.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         Prop = propertyNib.Prop;
         Proptions = propertyNib.Proptions;
