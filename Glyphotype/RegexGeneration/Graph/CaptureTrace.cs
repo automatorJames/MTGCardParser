@@ -234,10 +234,11 @@ public enum CaptureNodeKind
     Token,
     OneOf,
     ManyOf,
-    Compound,
+    CompoundOf,
     Optional,
     Dynamic,
     Enum,
     Int,
     Bool,
+    Internals
 }

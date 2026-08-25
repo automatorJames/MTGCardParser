@@ -2,14 +2,12 @@
 
 namespace Glyphotype.GlyphPrimitives;
 
-public class CompoundOf<T> : Glyph
+public class CompoundOf<T> : CompoundOfBase
 {
-    public override Joiner Joiner => Joiner.None;
-
     public T FirstItem { get; set; }
 
     [AnyNumber] 
     public List<CompoundOfSecondItem<T>> SecondPlus { get; set; } = [];
 
-    public List<T> Items => [FirstItem, ..SecondPlus.Select(x => x.Item)];
+    public List<T> Items => [FirstItem, .. SecondPlus.Select(x => x.Item)];
 }

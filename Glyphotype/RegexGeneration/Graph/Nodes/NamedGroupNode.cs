@@ -118,7 +118,6 @@ public abstract class NamedGroupNode : GroupNode
                 && joiner != Joiner.None
                 && collector.LastChar != ' '
                 && !(Children[i + 1] is TextNode textNode && textNode.FirstChar == '\'');
-                //&& !_terminals.Contains(collector.LastChar);
 
             if (shouldAddJoiner)
                 collector.Append(new RegexBrickJoiner(this, joiner));

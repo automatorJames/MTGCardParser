@@ -69,6 +69,7 @@ public class GlyphNode : NamedGroupNode
         {
             { } t when t == typeof(UnmatchedString) => new UnmatchedGlyphNode(parentNode, navigation),
             { } t when typeof(OneOfBase).IsAssignableFrom(t) => new GlyphOneOfNode(parentNode, navigation),
+            { } t when typeof(CompoundOfBase).IsAssignableFrom(t) => new GlyphCompoundOfNode(parentNode, navigation),
             { } t when typeof(DynamicGlyph).IsAssignableFrom(t) => new DynamicGlyphNode(parentNode, navigation),
             { } t when typeof(Glyph).IsAssignableFrom(t) => new GlyphNode(parentNode, navigation),
             { IsEnum: true } => new EnumNode(parentNode, navigation),
