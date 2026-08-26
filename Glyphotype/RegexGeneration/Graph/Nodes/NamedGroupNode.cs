@@ -20,10 +20,6 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>What kind of capture this node represents (enum, bool, token unit, etc.), used by formatting and by <see cref="CaptureTrace"/>.</summary>
     public abstract CaptureNodeKind NodeKind { get; }
 
-    public override Quantifier? Quantifier =>
-        Navigation.IsList ? Navigation.ListQuantifier
-        : base.Quantifier;
-
     /// <summary>True when this node's regex must come from one or more <see cref="RegexPatternAttribute"/>-declared patterns rather than falling back to <see cref="DefaultPattern"/>.</summary>
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
@@ -63,7 +59,7 @@ public abstract class NamedGroupNode : GroupNode
 
     /// <summary>Builds this group's closing brick (e.g. <c>)</c> or <c>)*</c>). Display comment text is assigned later by the Presentation layer.</summary>
     protected RegexBrickGroupClose GetGroupCloseBrick() =>
-        new(parentNode: this, quantifier: Navigation.IsOptional ? Glyphotype.Quantifier.Optional : Quantifier);
+        new(parentNode: this, quantifier: Quantifier);
 
     private void EnsureChildren()
     {
@@ -99,14 +95,21 @@ public abstract class NamedGroupNode : GroupNode
         )));
     }
 
-    /// <summary>Appends this group's open bookend, its children (joined per <see cref="ChildJoiner"/>), and its close bookend.</summary>
+    /// <summary>Appends this group's open bookend, its content (see <see cref="AppendInnerContentBricks"/>), and its close bookend.</summary>
     public override void AppendRegexBricks(RegexCollector collector)
     {
-        // open group
         if (!IsTransparentRoot)
             collector.Append(GetGroupOpenBrick());
 
-        // append all children and joiners
+        AppendInnerContentBricks(collector);
+
+        if (!IsTransparentRoot)
+            collector.Append(GetGroupCloseBrick());
+    }
+
+    /// <summary>Appends everything between this group's open and close bookends. Default implementation appends each child (joined per <see cref="ChildJoiner"/>); override to inject additional content, e.g. a leading separator.</summary>
+    protected virtual void AppendInnerContentBricks(RegexCollector collector)
+    {
         for (int i = 0; i < Children.Count; i++)
         {
             var child = Children[i];
@@ -122,10 +125,6 @@ public abstract class NamedGroupNode : GroupNode
             if (shouldAddJoiner)
                 collector.Append(new RegexBrickJoiner(this, joiner));
         }
-
-        // close group
-        if (!IsTransparentRoot)
-            collector.Append(GetGroupCloseBrick());
     }
 
     /// <summary>Hydrates this node's captured value(s) from <paramref name="context"/> and assigns them to <paramref name="instance"/>'s corresponding property. Returns false if the capture was unsuccessful or hydrated to null.</summary>

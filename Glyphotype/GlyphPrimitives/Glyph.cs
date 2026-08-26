@@ -50,6 +50,12 @@ public abstract class Glyph : CaptureUnit
     /// </summary>
     public virtual string ValidateStructure()
     {
+        // Checked first, and via pure Type reflection rather than by building anything: unlike every
+        // check below, a genuine reference loop makes GetRegexGraph's own tree-walk recurse forever
+        // (it has no cycle guard), so this must run before GetRegexGraph is ever called, not after.
+        if (CheckForReferenceLoops() is string referenceLoopException)
+            return referenceLoopException;
+
         var regexGraph = GlyphTypeRegistry.GetRegexGraph(Type);
 
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
@@ -89,17 +95,23 @@ public abstract class Glyph : CaptureUnit
         if (misplacedQuantifierAttributeProps.Any())
             return $"{nameof(OneOrMoreAttribute)}/{nameof(AnyNumberAttribute)} may only appear on List<> properties, but found on: {string.Join(", ", misplacedQuantifierAttributeProps)}";
 
-        if (CheckForReferenceLoops() is string referenceLoopException)
-            return referenceLoopException;
-
         return null;
     }
 
-    public string CheckForReferenceLoops()
-    {
-        return FindLoop(GetType(), new Stack<Type>());
+    public string CheckForReferenceLoops() => CheckForReferenceLoops(GetType());
 
-        string FindLoop(Type current, Stack<Type> path)
+    /// <summary>
+    /// Whether <paramref name="type"/>'s property graph contains a cycle - impossible for it to
+    /// legitimately arise (a cyclic property graph could never produce a finite regex), so any
+    /// hit here is an authoring mistake. Static and Type-only (no instantiation) so callers can run
+    /// it before building anything for the type - notably before <see cref="GlyphTypeRegistry.GetRegexGraph"/>,
+    /// whose own tree-walk has no cycle guard and would recurse forever on a genuine loop.
+    /// </summary>
+    public static string CheckForReferenceLoops(Type type)
+    {
+        return FindLoop(type, new Stack<Type>());
+
+        static string FindLoop(Type current, Stack<Type> path)
         {
             if (path.Contains(current))
             {
@@ -123,7 +135,7 @@ public abstract class Glyph : CaptureUnit
             return null;
         }
 
-        IEnumerable<Type> GetUnderlyingGlyphs(Type type)
+        static IEnumerable<Type> GetUnderlyingGlyphs(Type type)
         {
             // If it is a Glyph, that is a direct dependency
             if (typeof(Glyph).IsAssignableFrom(type))

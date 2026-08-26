@@ -21,15 +21,9 @@ public class Navigation
     public bool IsGlyphType { get; private set; }
     public bool IsRoot { get; private set; }
     public bool IsList { get; private set; }
-    public bool IsOptional { get; private set; }
 
-    /// <summary>
-    /// The quantifier a <see cref="IsList"/> property's group should carry: <see cref="Glyphotype.Quantifier.OneOrMore"/>
-    /// when declared with <see cref="OneOrMoreAttribute"/>, otherwise <see cref="Glyphotype.Quantifier.AnyNumber"/>
-    /// (the default, whether left implicit or made explicit via <see cref="AnyNumberAttribute"/>). Meaningless
-    /// when <see cref="IsList"/> is false.
-    /// </summary>
-    public Quantifier? ListQuantifier { get; private set; }
+    /// <summary>Whether hydration should tolerate this navigation matching nothing - true exactly when <see cref="Quantifier"/> permits zero occurrences (<see cref="Glyphotype.Quantifier.AnyNumber"/> or <see cref="Glyphotype.Quantifier.Optional"/>).</summary>
+    public bool IsOptional { get; private set; }
 
     public Navigation(Type type)
     {
@@ -66,13 +60,16 @@ public class Navigation
         Patterns = propertyNib.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         Prop = propertyNib.Prop;
         Proptions = propertyNib.Proptions;
-        IsOptional = Prop.IsDefined(typeof(OptionalAttribute));
 
-        if (IsList)
-            ListQuantifier =
-                Prop.IsDefined(typeof(OneOrMoreAttribute))
-                ? Glyphotype.Quantifier.OneOrMore
-                : Glyphotype.Quantifier.AnyNumber;
+        // A list's own quantifier (OneOrMore/AnyNumber) always wins, since it's what the *group* itself
+        // must carry to match repeated occurrences; otherwise fall back to whatever quantifier was
+        // declared explicitly (e.g. GlyphFused's OneOrMore on FusedContent), then [Optional].
+        Quantifier =
+            IsList
+                ? (Prop.IsDefined(typeof(OneOrMoreAttribute)) ? Glyphotype.Quantifier.OneOrMore : Glyphotype.Quantifier.AnyNumber)
+                : propertyNib.Quantifier ?? (Prop.IsDefined(typeof(OptionalAttribute)) ? Glyphotype.Quantifier.Optional : null);
+
+        IsOptional = Quantifier is Glyphotype.Quantifier.AnyNumber or Glyphotype.Quantifier.Optional;
     }
 
     /// <summary>Whether <paramref name="type"/> (or its nullable-unwrapped underlying type) is a closed <see cref="List{T}"/>.</summary>

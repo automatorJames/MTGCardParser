@@ -122,20 +122,26 @@ public static class SmartRegexStaticRules
         Vertical: Bullet
     );
 
-    /// <summary>Which <see cref="BoxCharSet"/> to draw around a named group's border, keyed by the kind of node it represents.</summary>
-    public static Dictionary<CaptureNodeKind, BoxCharSet> NodeTypeToBoxCharSet = new Dictionary<CaptureNodeKind, BoxCharSet>
-    {
-        [CaptureNodeKind.Enum] = Closed,
-        [CaptureNodeKind.Token] = Dashed,
-        [CaptureNodeKind.OneOf] = Dashed,
-        [CaptureNodeKind.Dynamic] = AllBullets,
-        [CaptureNodeKind.Int] = Dashed,
-        [CaptureNodeKind.Bool] = Dashed,
-    };
+    /// <summary>Which <see cref="BoxCharSet"/> to draw around a named group's border, based on the kind of node it represents.</summary>
+    public static BoxCharSet NodeTypeToBoxCharSet(CaptureNodeKind nodeKind) =>
+        nodeKind switch
+        {
+            CaptureNodeKind.Enum => Closed,
+            CaptureNodeKind.Token => Dashed,
+            CaptureNodeKind.OneOf => Dashed,
+            CaptureNodeKind.ManyOf => Dashed,
+            CaptureNodeKind.CompoundOf => Dashed,
+            CaptureNodeKind.Optional => Dashed,
+            CaptureNodeKind.Dynamic => AllBullets,
+            CaptureNodeKind.Int => Dashed,
+            CaptureNodeKind.Bool => Dashed,
+            CaptureNodeKind.Internals => Dashed,
+            _ => throw new ArgumentOutOfRangeException(nameof(nodeKind), nodeKind, null)
+        };
 
     /// <summary>Looks up the box-drawing character set for the group a bookend brick opens or closes.</summary>
     public static BoxCharSet GetBoxCharsForBookendBrick(RegexBrickGroupBookend bookendBrick) =>
-        NodeTypeToBoxCharSet[bookendBrick.NamedGroupParent.NodeKind];
+        NodeTypeToBoxCharSet(bookendBrick.NamedGroupParent.NodeKind);
 
     /// <summary>
     /// The regex-column indent for <paramref name="brick"/>: <see cref="EnumMemberIndentSpaces"/> for its

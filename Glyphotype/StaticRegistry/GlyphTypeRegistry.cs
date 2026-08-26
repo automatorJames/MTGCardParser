@@ -25,16 +25,34 @@ public static partial class GlyphTypeRegistry
         // Add a default configuration for type Glyph, since it's abstract and can't be instantiated directly to check its Nibs
         TypeConfigurations[typeof(Glyph)] = new GlyphTypeConfiguration(typeof(Glyph), [], Joiner.Space);
 
+        // 1) Discover every Glyph type: the assembly scan plus everything only reachable by walking
+        // property nibs (e.g. a closed generic OneOf<T1,T2>). Safe to do eagerly - see GetAllTypesForValidation.
+        var allTypes = GetAllTypesForValidation();
+
+        // 2) Validate: rule out reference loops across the *entire* discovered set before building
+        // anything. CheckForReferenceLoops is pure Type reflection with its own proper cycle guard
+        // (tracks the current DFS path), so unlike GetRegexGraph's tree-walk (no guard of its own) it
+        // can never itself recurse forever - it's what makes it safe to eagerly build everything next.
+        ValidateNoReferenceLoops(allTypes);
+
+        // 3) Cache: now that the whole graph is proven acyclic, populate every type's
+        // GlyphTypeConfiguration (Nibs/Joiner) up front - not just top-level ones - so nothing
+        // downstream needs to worry about when/whether a given type's configuration has been built yet.
+        foreach (var type in allTypes)
+            EnsureGlyphTypeConfiguration(type);
+
         var topLevelTypes = GetAllTopLevelGlyphTypes();
 
         foreach (var type in topLevelTypes)
             SetRootNode(type);
 
-        // Only the top-level types are validated automatically at startup; the exhaustive sweep over
-        // every type discoverable via property nibs (GetAllTypesForValidation) is deliberately left
-        // for callers to opt into via GetStructuralValidationErrors(), since some of what it finds today
-        // (e.g. OneOf<CardType, CreatureType>'s non-nullable enums) is a known, not-yet-fixed issue that
-        // would otherwise prevent the registry - and everything built on it - from initializing at all.
+        // Only the top-level types get the *full* structural validation automatically at startup; the
+        // exhaustive sweep over every type discoverable via property nibs (GetAllTypesForValidation) is
+        // deliberately left for callers to opt into via GetStructuralValidationErrors(), since some of
+        // what it finds today (e.g. OneOf<CardType, CreatureType>'s non-nullable enums) is a known,
+        // not-yet-fixed issue that would otherwise prevent the registry - and everything built on it -
+        // from initializing at all. Reference loops (the one check that could crash rather than just
+        // report an error) are already ruled out above for the full set, regardless of this scoping.
         ValidateAllStructures(topLevelTypes);
 
         InitializeClassTokenizer();
@@ -90,13 +108,32 @@ public static partial class GlyphTypeRegistry
     static RegexGraph SetRootNode(Type type)
     {
         // Ensure TypeConfiguration is set (not strictly necessary, but convenient)
-        _ = GetGlyphTypeConfiguration(type);
+        EnsureGlyphTypeConfiguration(type);
 
         NameToType[type.Name] = type;
         var regexGraph = RegexGraph.Create(type);
         RegexGraphs[type] = regexGraph;
 
         return regexGraph;
+    }
+
+    /// <summary>
+    /// Throws if any of <paramref name="types"/> has a circular property reference. Must run before
+    /// anything calls <see cref="GetRegexGraph"/> for any of them (directly or via <see cref="Glyph.ValidateStructure"/>) -
+    /// that tree-walk has no cycle guard of its own and would recurse forever on a genuine loop, whereas
+    /// <see cref="Glyph.CheckForReferenceLoops(Type)"/> is pure Type reflection with its own proper DFS
+    /// cycle guard, so it can't itself overflow the stack.
+    /// </summary>
+    static void ValidateNoReferenceLoops(List<Type> types)
+    {
+        var errors = types
+            .Where(t => typeof(Glyph).IsAssignableFrom(t) && !t.IsAssignableTo(typeof(DynamicGlyph)))
+            .Select(Glyph.CheckForReferenceLoops)
+            .Where(error => error != null)
+            .ToList();
+
+        if (errors.Count > 0)
+            throw new AggregateException("One or more Glyph types have a circular property reference:\n" + string.Join("\n", errors));
     }
 
     /// <summary>
@@ -150,12 +187,20 @@ public static partial class GlyphTypeRegistry
 
     public static GlyphTypeConfiguration GetGlyphTypeConfiguration(Type glyphType)
     {
-        if (TypeConfigurations.TryGetValue(glyphType, out var configuration))
-            return configuration;
-
         // DynamicGlyphs have no nibs b/c it contains an Item object that will be resolved via the Tokenizer at runtime
         if (glyphType.IsAssignableTo(typeof(DynamicGlyph)))
-            return new(glyphType, [], Joiner.None)    ;
+            return new(glyphType, [], Joiner.None);
+
+        EnsureGlyphTypeConfiguration(glyphType);
+
+        return TypeConfigurations[glyphType];
+    }
+
+    /// <summary>Builds and caches <paramref name="glyphType"/>'s <see cref="GlyphTypeConfiguration"/> if it isn't cached yet - a no-op otherwise. Exists separately from <see cref="GetGlyphTypeConfiguration"/> for callers that only want the configuration populated (e.g. an eager warm-up pass) without an unused return value to discard. A no-op for a <see cref="DynamicGlyph"/> type too, since those are never cached (see <see cref="GetGlyphTypeConfiguration"/>).</summary>
+    static void EnsureGlyphTypeConfiguration(Type glyphType)
+    {
+        if (TypeConfigurations.ContainsKey(glyphType) || glyphType.IsAssignableTo(typeof(DynamicGlyph)))
+            return;
 
         var instance = (Glyph)Activator.CreateInstance(glyphType);
         var nibs = instance.Nibs.ToArray();
@@ -172,10 +217,7 @@ public static partial class GlyphTypeRegistry
                 nibs = [new Nib(glyphType.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
         }
 
-        configuration = new(glyphType, nibs, instance.Joiner);
-        TypeConfigurations[glyphType] = configuration;
-
-        return configuration;
+        TypeConfigurations[glyphType] = new(glyphType, nibs, instance.Joiner);
     }
 
     public static List<CaptureUnit> Tokenize(string sourceText) =>

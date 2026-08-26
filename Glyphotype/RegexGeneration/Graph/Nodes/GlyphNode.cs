@@ -19,48 +19,10 @@ public class GlyphNode : NamedGroupNode
     {
         foreach (var nib in Navigation.GlyphTypeConfiguration.Nibs)
             if (nib is PropertyNib propertyNib)
-            {
-                Navigation navigation = new(propertyNib, GetDescriptiveChildName(propertyNib));
-                children.Add(GetNodeForNavigaton(this, navigation));
-            }
+                children.Add(GetNodeForNavigaton(this, propertyNib.Navigation));
             else
                 children.Add(new TextNode(this, nib.Text));
     }
-
-    /// <summary>
-    /// Several container <see cref="Glyph"/> types declare structurally-named properties
-    /// (Alternative1, FirstItem, Item, FusedContent, ...) that are boring on their own - the useful
-    /// name is either the property's own CLR type (<see cref="OneOfBase"/>, <see cref="GlyphFused{T}"/>,
-    /// since each holds exactly one distinctly-typed value) or this node's own capture-group name,
-    /// which the property's value merely elaborates on (<see cref="CompoundOf{T}"/>/<see cref="ManyOf{T}"/>
-    /// and their internal "second item" helpers). Returns null for anything else, which keeps the
-    /// property's own declared name.
-    /// </summary>
-    string GetDescriptiveChildName(PropertyNib propertyNib)
-    {
-        if (typeof(OneOfBase).IsAssignableFrom(Navigation.NodeType) || IsClosedGeneric(Navigation.NodeType, typeof(GlyphFused<>)))
-            return Navigation.GetRegexSafeTypeName(Nullable.GetUnderlyingType(propertyNib.Type) ?? propertyNib.Type);
-
-        if (IsClosedGeneric(Navigation.NodeType, typeof(CompoundOf<>)) && propertyNib.Name == nameof(CompoundOf<object>.FirstItem))
-            return $"{Name}Primary";
-
-        if (IsClosedGeneric(Navigation.NodeType, typeof(CompoundOfSecondItem<>)) && propertyNib.Name == nameof(CompoundOfSecondItem<object>.Item))
-            return $"{ParentNode.Name}Secondary";
-
-        if (IsClosedGeneric(Navigation.NodeType, typeof(ManyOf<>)) && propertyNib.Name == nameof(ManyOf<object>.FirstItem))
-            return $"{Name}First";
-
-        if (IsClosedGeneric(Navigation.NodeType, typeof(ManyOf<>)) && propertyNib.Name == nameof(ManyOf<object>.LastItem))
-            return $"{Name}Last";
-
-        if (IsClosedGeneric(Navigation.NodeType, typeof(ManyOfSecondItem<>)) && propertyNib.Name == nameof(ManyOfSecondItem<object>.Item))
-            return $"{ParentNode.Name}Middle";
-
-        return null;
-    }
-
-    static bool IsClosedGeneric(Type type, Type openGeneric) =>
-        type.IsGenericType && type.GetGenericTypeDefinition() == openGeneric;
 
     /// <summary>Picks the concrete <see cref="RegexNode"/> subtype for a property nib, based on its underlying CLR type (enum, bool, int, nested token unit, etc.).</summary>
     public static RegexNode GetNodeForNavigaton(RegexNode parentNode, Navigation navigation)
@@ -71,6 +33,7 @@ public class GlyphNode : NamedGroupNode
             { } t when typeof(OneOfBase).IsAssignableFrom(t) => new GlyphOneOfNode(parentNode, navigation),
             { } t when typeof(CompoundOfBase).IsAssignableFrom(t) => new GlyphCompoundOfNode(parentNode, navigation),
             { } t when typeof(DynamicGlyph).IsAssignableFrom(t) => new DynamicGlyphNode(parentNode, navigation),
+            { } t when IsClosedGeneric(t, typeof(CompoundOfSecondItem<>)) => new GlyphCompoundOfSecondItemNode(parentNode, navigation),
             { } t when typeof(Glyph).IsAssignableFrom(t) => new GlyphNode(parentNode, navigation),
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
@@ -78,6 +41,9 @@ public class GlyphNode : NamedGroupNode
             _ => throw new Exception($"'{navigation.NodeType}' is not a valid {nameof(PropertyNib)} type")
         };
     }
+
+    static bool IsClosedGeneric(Type type, Type openGeneric) =>
+        type.IsGenericType && type.GetGenericTypeDefinition() == openGeneric;
 
     /// <summary>Instantiates this node's <see cref="Glyph"/> type and hydrates every child named-group property from <paramref name="captureTrace"/>'s <see cref="CaptureTrace.CaptureContext"/>. Returns false if any required child fails to hydrate.</summary>
     public virtual bool TryHydrate(CaptureTrace captureTrace, out Glyph glyph)

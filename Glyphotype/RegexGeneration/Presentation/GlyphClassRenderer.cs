@@ -317,7 +317,7 @@ public static class GlyphClassRenderer
     /// <paramref name="declaredType"/>'s spans, recursively unwrapping <c>List&lt;&gt;</c>/nullable wrappers
     /// and, for a generic Glyph wrapper like <c>OneOf&lt;T1,T2&gt;</c>, coloring the wrapper name via
     /// <paramref name="node"/>'s own hue and each type argument via its own matching child node's - see
-    /// <see cref="GlyphNode.GetDescriptiveChildName"/>, which is what gives each such argument its own
+    /// <see cref="PropertyNib.DescriptiveName"/>, which is what gives each such argument its own
     /// distinct child node in the first place. Every type-name occurrence built here (the wrapper name and
     /// each leaf type name) uses <see cref="TypePalette"/> rather than <see cref="PropertyPalette"/>, so a
     /// property's type reads as visually distinct from its name even though both share the same node/hue.
