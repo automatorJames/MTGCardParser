@@ -36,6 +36,21 @@ namespace DocumentAnalysisInterface
             }
         }
         
+        private bool _showCoverageStats;
+        public bool ShowCoverageStats
+        {
+            get => _showCoverageStats;
+            set
+            {
+                if (_showCoverageStats != value)
+                {
+                    _showCoverageStats = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private bool _showCollapsedCaptureNodes;
         public bool ShowCollapsedCaptureNodes
         {
@@ -199,6 +214,7 @@ namespace DocumentAnalysisInterface
                 if (result.Success && result.Value is { } dto)
                 {
                     _hideFullyMatchedDocuments = dto.HideFullyMatchedDocuments;
+                    _showCoverageStats = dto.ShowCoverageStats;
                     _showCollapsedCaptureNodes = dto.ShowCollapsedCaptureNodes;
                     _orderByWordCount = dto.OrderByWordCount;
                     _orderByOccurrenceCount = dto.OrderByOccurrenceCount;
@@ -253,6 +269,7 @@ namespace DocumentAnalysisInterface
     public record RuntimeSettingsDto
     {
         public bool HideFullyMatchedDocuments { get; init; }
+        public bool ShowCoverageStats { get; init; }
         public bool ShowCollapsedCaptureNodes { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool OrderByOccurrenceCount { get; init; } = true;
@@ -269,6 +286,7 @@ namespace DocumentAnalysisInterface
         public RuntimeSettingsDto(RuntimeSettings runtimeSettings)
         {
             HideFullyMatchedDocuments = runtimeSettings.HideFullyMatchedDocuments;
+            ShowCoverageStats = runtimeSettings.ShowCoverageStats;
             ShowCollapsedCaptureNodes = runtimeSettings.ShowCollapsedCaptureNodes;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             OrderByOccurrenceCount = runtimeSettings.OrderByOccurrenceCount;

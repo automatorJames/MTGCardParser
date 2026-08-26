@@ -1,5 +1,12 @@
 <button type="button" class="setting-icon-toggle @(Value ? "active" : "")" data-tooltip="@Label" aria-label="@Label" @onclick="Toggle">
-    <span class="oi oi-@Icon" aria-hidden="true"></span>
+    @if (Icon == "percent")
+    {
+        <span class="text-icon" aria-hidden="true">%</span>
+    }
+    else
+    {
+        <span class="oi oi-@Icon" aria-hidden="true"></span>
+    }
 </button>
 
 @code {

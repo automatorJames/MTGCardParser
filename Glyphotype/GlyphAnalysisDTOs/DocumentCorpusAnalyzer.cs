@@ -17,6 +17,15 @@ public class DocumentCorpusAnalyzer
     /// </summary>
     public List<ProcessedDocument> ProcessedDocuments { get; private set; }
 
+    /// <summary>
+    /// Total count of all words across every document in the corpus.
+    /// </summary>
+    public int WordCount { get; private set; }
+
+    /// <summary>
+    /// Count of all words captured by a matched RootCaptureTrace across every document in the corpus.
+    /// </summary>
+    public int CapturedWordCount { get; private set; }
 
     /// <summary>
     /// Word trees build around all maximal repeated spans across the corpus
@@ -51,6 +60,9 @@ public class DocumentCorpusAnalyzer
             .Select(x => new ProcessedDocument(x))
             .ToList();
 
+        WordCount = ProcessedDocuments.Sum(x => x.WordCount);
+        CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
+
         DigestedTextWithCaptureGlyphs = new DigestedText(ProcessedDocuments);
 
         // set GlyphOccurrenceSummaries
@@ -80,6 +92,9 @@ public class DocumentCorpusAnalyzer
         var index = ProcessedDocuments.IndexOf(oldProcessedDocument);
         ProcessedDocument reprocessedDocument = new(document);
         ProcessedDocuments[index] = reprocessedDocument;
+
+        WordCount = ProcessedDocuments.Sum(x => x.WordCount);
+        CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
 
         return reprocessedDocument;
     }

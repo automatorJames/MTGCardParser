@@ -11,6 +11,16 @@ public class ProcessedDocument
     public List<ProcessedLine> Lines { get; init; }
     public bool IsFullyMatched { get; init; }
 
+    /// <summary>
+    /// Total count of all words across every line in this document.
+    /// </summary>
+    public int WordCount { get; init; }
+
+    /// <summary>
+    /// Count of all words captured by a matched RootCaptureTrace across every line in this document.
+    /// </summary>
+    public int CapturedWordCount { get; init; }
+
     public ProcessedDocument(IDocument document)
     {
         Document = document;
@@ -20,5 +30,8 @@ public class ProcessedDocument
         IsFullyMatched = Lines
             .SelectMany(x => x.UnmatchedTextOccurrences.Where(y => !_irrelevantUnmatchedStrings.Contains(y.Text)))
             .Count() == 0;
+
+        WordCount = Lines.Sum(x => x.WordCount);
+        CapturedWordCount = Lines.Sum(x => x.CapturedWordCount);
     }
 }

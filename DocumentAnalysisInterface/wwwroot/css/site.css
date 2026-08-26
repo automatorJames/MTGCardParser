@@ -127,6 +127,18 @@ pre.c-sharp {
     stroke: var(--highlight-color-4);
 }
 
+.coverage-full {
+    color: #3fb950;
+}
+
+.coverage-none {
+    color: #7a1f1f;
+}
+
+.coverage-partial {
+    color: #d4a72c;
+}
+
 [data-tooltip] {
     position: relative;
 }

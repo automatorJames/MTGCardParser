@@ -24,13 +24,32 @@ public class ProcessedLine
     public List<RootCaptureTrace> CaptureTraceRoots => Glyphs.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
     public List<RootCaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
 
+    /// <summary>
+    /// Total count of all words on this line.
+    /// </summary>
+    public int WordCount { get; }
+
+    /// <summary>
+    /// Count of all words captured by a matched <see cref="RootCaptureTrace"/> on this line
+    /// (i.e. excluding words belonging to <see cref="UnmatchedString"/> spans).
+    /// </summary>
+    public int CapturedWordCount { get; }
+
     public ProcessedLine(SourceTextDTO sourceText, List<CaptureUnit> glyphs, List<UnmatchedTextOccurrence> unmatchedTextOccurrences, string dataPath)
     {
         SourceText = sourceText;
         Glyphs = glyphs;
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
+
+        WordCount = CountWords(sourceText.FormattedText);
+        CapturedWordCount = glyphs
+            .Where(x => !x.CaptureContext.RootCaptureTrace.IsUnmatchedString)
+            .Sum(x => CountWords(x.CaptureValue));
     }
+
+    static int CountWords(string text) =>
+        text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
     public static List<ProcessedLine> GetAll(IDocument document)
     {

@@ -24,3 +24,9 @@
         .setting-icon-toggle.active:hover {
             background-color: rgba(0, 122, 204, 0.15);
         }
+
+.setting-icon-toggle .text-icon {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+}

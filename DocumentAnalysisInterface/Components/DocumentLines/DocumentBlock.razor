@@ -7,7 +7,19 @@
 <Snackbar @ref="_snackbar" />
 
 <div class="document-capture-block">
-    <div class="document-title">@ProcessedDocument.Document.Name</div>
+    <div class="document-title-row">
+        <div class="document-title @(RuntimeSettings.ShowCoverageStats ? "with-coverage" : "")">@ProcessedDocument.Document.Name</div>
+
+        @if (RuntimeSettings.ShowCoverageStats)
+        {
+            var documentPercent = GetCoveragePercent(ProcessedDocument.CapturedWordCount, ProcessedDocument.WordCount);
+
+            <div class="coverage-callout">
+                <span class="callout-key">Coverage:</span>
+                <span class="callout-value @CoverageDisplay.GetColorClass(documentPercent)">@CoverageDisplay.FormatPercent(documentPercent)</span>
+            </div>
+        }
+    </div>
 
     @foreach (var line in ProcessedDocument.Lines)
     {
@@ -16,7 +28,19 @@
         <CascadingValue Value=line>
         <CascadingValue Value=displayContext>
             <div class="line-capture-block match-boundary">
-                <div class="line-label dashed-border">Line #@(line.SourceText.LineIndex + 1)</div>
+                <div class="line-label dashed-border">
+                    <span>Line #@(line.SourceText.LineIndex + 1)</span>
+
+                    @if (RuntimeSettings.ShowCoverageStats)
+                    {
+                        var linePercent = GetCoveragePercent(line.CapturedWordCount, line.WordCount);
+
+                        <span class="coverage-callout">
+                            <span class="callout-key">Coverage:</span>
+                            <span class="callout-value @CoverageDisplay.GetColorClass(linePercent)">@CoverageDisplay.FormatPercent(linePercent)</span>
+                        </span>
+                    }
+                </div>
                 <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
                     <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
                         @foreach (var root in line.CaptureTraceRoots)
@@ -80,6 +104,9 @@
             StateHasChanged();
         }
     }
+
+    static double GetCoveragePercent(int capturedWordCount, int wordCount) =>
+        wordCount == 0 ? 0 : 100.0 * capturedWordCount / wordCount;
 
     string GetLineHeightStyle(CaptureTraceDisplayContext displayContext)
     {

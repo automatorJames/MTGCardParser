@@ -19,6 +19,33 @@
     padding-right: 1.5rem;
 }
 
+.corpus-coverage-callout {
+    flex: 1;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #d4d4d4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+    .corpus-coverage-callout .callout-key {
+        font-weight: 700;
+    }
+
+    .corpus-coverage-callout .callout-value {
+        color: #4dabf7;
+    }
+
+    .corpus-coverage-callout .callout-subtext {
+        color: var(--subtext-grey);
+    }
+
+    .corpus-coverage-callout .callout-separator {
+        margin: 0 0.75rem;
+        color: var(--outline-grey);
+    }
+
 .top-row-right-items {
     display: flex;
     align-items: center;

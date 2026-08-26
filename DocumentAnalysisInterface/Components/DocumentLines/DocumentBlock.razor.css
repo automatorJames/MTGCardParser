@@ -1,10 +1,33 @@
-﻿.document-title {
+﻿.document-title-row {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.document-title {
     font-family: 'Inter Tight', sans-serif;
     color: var(--grey);
     font-weight: 100;
     font-size: 28px;
-    margin-bottom: 24px;
+    line-height: 1.2;
 }
+
+    .document-title.with-coverage {
+        padding-right: 140px;
+    }
+
+.coverage-callout {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    color: var(--subtext-grey);
+    white-space: nowrap;
+}
+
+    .coverage-callout .callout-key {
+        font-weight: 700;
+    }
 
 .document-capture-block {
     width: 65%;
@@ -22,6 +45,7 @@
 }
 
 .line-label {
+    position: relative;
     font-size: 0.8em;
     color: var(--subtext-grey);
     width: 100%;
@@ -32,6 +56,10 @@
         padding-top: 9px;
         border-top: 1px dashed;
     }
+
+.line-capture-block:first-of-type .line-label.dashed-border {
+    margin-top: 0.5rem;
+}
 
 pre.nested-underline-container {
     background-color: var(--dark-grey);

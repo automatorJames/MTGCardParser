@@ -3,6 +3,7 @@
 @inject RuntimeSettings RuntimeSettings
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject DocumentCorpusAnalyzer CorpusAnalyzer
 
 <div class="page">
     <nav class="top-row px-4">
@@ -11,6 +12,15 @@
             <NavLink href="type-regex">Type Regex</NavLink>
             <NavLink href="word-trees">Word Trees</NavLink>
         </div>
+
+        @if (RuntimeSettings.IsLoaded && RuntimeSettings.ShowCoverageStats && GetCurrentRelativePath() == "/" && CorpusAnalyzer.ProcessedDocuments is not null)
+        {
+            <div class="corpus-coverage-callout">
+                <span class="callout-key">Documents:</span> <span class="callout-value">@CorpusAnalyzer.ProcessedDocuments.Count.ToString("N0")</span>
+                <span class="callout-separator">|</span>
+                <span class="callout-key">Capture Coverage:</span> <span class="callout-value">@CoverageDisplay.FormatPercent(GetCorpusCoveragePercent())</span> <span class="callout-subtext">@CorpusAnalyzer.CapturedWordCount.ToString("N0")/@CorpusAnalyzer.WordCount.ToString("N0") words</span>
+            </div>
+        }
 
         <div class="top-row-right-items">
 
@@ -93,6 +103,9 @@
         return string.IsNullOrEmpty(path) ? "/" : path;
     }
 
+    double GetCorpusCoveragePercent() =>
+        CorpusAnalyzer.WordCount == 0 ? 0 : 100.0 * CorpusAnalyzer.CapturedWordCount / CorpusAnalyzer.WordCount;
+
     [JSInvokable]
     public void CyclePage(string direction)
     {
@@ -139,6 +152,7 @@
             [
                 new("circle-check", "Hide fully matched", RuntimeSettings.HideFullyMatchedDocuments, v => RuntimeSettings.HideFullyMatchedDocuments = v),
                 new("collapse-down", "Show collapsed nodes", RuntimeSettings.ShowCollapsedCaptureNodes, v => RuntimeSettings.ShowCollapsedCaptureNodes = v),
+                new("percent", "Show coverage stats", RuntimeSettings.ShowCoverageStats, v => RuntimeSettings.ShowCoverageStats = v),
             ],
             "type-regex" =>
             [
