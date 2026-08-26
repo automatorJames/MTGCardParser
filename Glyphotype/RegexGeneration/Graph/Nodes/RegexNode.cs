@@ -20,6 +20,15 @@ public abstract class RegexNode
     /// <summary>This node's full ancestor chain, root-to-self (inclusive of this node).</summary>
     public RegexNode[] Lineage { get; }
 
+    /// <summary>
+    /// True for a node whose own group must contain the joiner that would otherwise separate it from its
+    /// preceding sibling - because the group might not render at all (e.g. it's optional, or it's a
+    /// quantified repeat standing in for zero-or-more siblings), so a joiner placed outside it by the
+    /// parent's own sibling-joining loop would render unconditionally. See
+    /// <see cref="NamedGroupNode.AppendInnerContentBricks"/>.
+    /// </summary>
+    public virtual bool OwnsLeadingJoiner => false;
+
     protected RegexNode(RegexNode parentNode, string name)
     {
         Name = name;

@@ -46,6 +46,9 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>How sibling children are joined together in the regex (e.g. concatenated, alternated with a pipe).</summary>
     protected virtual Joiner? ChildJoiner => null;
 
+    /// <summary>The joiner this group actually renders between its own children: a Glyph type's declared <see cref="GlyphTypeConfiguration.ChildJoiner"/> if this is a Glyph-typed navigation, else this node type's own <see cref="ChildJoiner"/> override.</summary>
+    public Joiner EffectiveChildJoiner => Navigation.GlyphTypeConfiguration?.ChildJoiner ?? ChildJoiner ?? Joiner.None;
+
     public NamedGroupNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
@@ -107,23 +110,26 @@ public abstract class NamedGroupNode : GroupNode
             collector.Append(GetGroupCloseBrick());
     }
 
-    /// <summary>Appends everything between this group's open and close bookends. Default implementation appends each child (joined per <see cref="ChildJoiner"/>); override to inject additional content, e.g. a leading separator.</summary>
+    /// <summary>Appends everything between this group's open and close bookends. Default implementation appends each child (joined per <see cref="EffectiveChildJoiner"/>); override to inject additional content, e.g. a leading separator.</summary>
     protected virtual void AppendInnerContentBricks(RegexCollector collector)
     {
         for (int i = 0; i < Children.Count; i++)
         {
             var child = Children[i];
             child.AppendRegexBricks(collector);
-            var joiner = Navigation.GlyphTypeConfiguration?.ChildJoiner ?? ChildJoiner ?? Joiner.None;
 
+            // When the next child owns its own leading joiner (e.g. it's optional, or a quantified
+            // repeat), it embeds this same joiner as its own first content brick instead - see
+            // RegexNode.OwnsLeadingJoiner.
             bool shouldAddJoiner =
                 i < Children.Count - 1
-                && joiner != Joiner.None
+                && EffectiveChildJoiner != Joiner.None
                 && collector.LastChar != ' '
+                && !Children[i + 1].OwnsLeadingJoiner
                 && !(Children[i + 1] is TextNode textNode && textNode.FirstChar == '\'');
 
             if (shouldAddJoiner)
-                collector.Append(new RegexBrickJoiner(this, joiner));
+                collector.Append(new RegexBrickJoiner(this, EffectiveChildJoiner));
         }
     }
 

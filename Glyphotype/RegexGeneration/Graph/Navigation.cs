@@ -63,11 +63,13 @@ public class Navigation
 
         // A list's own quantifier (OneOrMore/AnyNumber) always wins, since it's what the *group* itself
         // must carry to match repeated occurrences; otherwise fall back to whatever quantifier was
-        // declared explicitly (e.g. GlyphFused's OneOrMore on FusedContent), then [Optional].
+        // declared explicitly (e.g. GlyphFused's OneOrMore on FusedContent), then [Optional] - or,
+        // equivalently, being wrapped in OptionalOf<T> - the wrapper generic is just an alternate,
+        // structural way of declaring the same optionality [Optional] declares by attribute.
         Quantifier =
             IsList
                 ? (Prop.IsDefined(typeof(OneOrMoreAttribute)) ? Glyphotype.Quantifier.OneOrMore : Glyphotype.Quantifier.AnyNumber)
-                : propertyNib.Quantifier ?? (Prop.IsDefined(typeof(OptionalAttribute)) ? Glyphotype.Quantifier.Optional : null);
+                : propertyNib.Quantifier ?? (Prop.IsDefined(typeof(OptionalAttribute)) || IsOptionalOfType(UnderlyingType) ? Glyphotype.Quantifier.Optional : null);
 
         IsOptional = Quantifier is Glyphotype.Quantifier.AnyNumber or Glyphotype.Quantifier.Optional;
     }
@@ -78,6 +80,10 @@ public class Navigation
         var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
         return underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(List<>);
     }
+
+    /// <summary>Whether <paramref name="type"/> is a closed <see cref="OptionalOf{T}"/>.</summary>
+    static bool IsOptionalOfType(Type type) =>
+        type.IsGenericType && type.GetGenericTypeDefinition() == typeof(OptionalOf<>);
 
     void SetTypeInfo(Type type)
     {

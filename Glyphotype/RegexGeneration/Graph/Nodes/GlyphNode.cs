@@ -34,6 +34,8 @@ public class GlyphNode : NamedGroupNode
             { } t when typeof(CompoundOfBase).IsAssignableFrom(t) => new GlyphCompoundOfNode(parentNode, navigation),
             { } t when typeof(DynamicGlyph).IsAssignableFrom(t) => new DynamicGlyphNode(parentNode, navigation),
             { } t when IsClosedGeneric(t, typeof(CompoundOfSecondItem<>)) => new GlyphCompoundOfSecondItemNode(parentNode, navigation),
+            { } t when IsClosedGeneric(t, typeof(OptionalOf<>)) => new OptionalGlyphNode(parentNode, navigation),
+            { } t when typeof(Glyph).IsAssignableFrom(t) && navigation.Quantifier == Glyphotype.Quantifier.Optional => new OptionalGlyphNode(parentNode, navigation),
             { } t when typeof(Glyph).IsAssignableFrom(t) => new GlyphNode(parentNode, navigation),
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),

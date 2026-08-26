@@ -4,6 +4,9 @@ public class GlyphCompoundOfSecondItemNode : GlyphNode
 {
     public override CaptureNodeKind NodeKind => CaptureNodeKind.Internals;
 
+    /// <summary>The leading comma this node prepends below is its own content, not a sibling joiner - so nothing outside it should also try to join before it.</summary>
+    public override bool OwnsLeadingJoiner => true;
+
     public GlyphCompoundOfSecondItemNode(RegexNode parentNode, Navigation navigation)
     : base(parentNode, navigation)
     {
