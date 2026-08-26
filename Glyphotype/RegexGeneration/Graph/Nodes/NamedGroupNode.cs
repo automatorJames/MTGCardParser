@@ -98,11 +98,20 @@ public abstract class NamedGroupNode : GroupNode
         )));
     }
 
-    /// <summary>Appends this group's open bookend, its content (see <see cref="AppendInnerContentBricks"/>), and its close bookend.</summary>
-    public override void AppendRegexBricks(RegexCollector collector)
+    /// <summary>
+    /// Appends this group's open bookend, its content (see <see cref="AppendInnerContentBricks"/>), and its
+    /// close bookend. When this group is <see cref="RegexNode.IsNullable"/>, its own leading joiner (skipped
+    /// by <see cref="RegexNode.AppendRegexBricks"/> for a nullable node) is appended here instead, as the
+    /// group's own first inner content - inside its bookends - so the joiner's presence is coupled to
+    /// whichever conditional match already governs this group, rather than rendering unconditionally.
+    /// </summary>
+    protected override void AppendOwnRegexBricks(RegexCollector collector)
     {
         if (!IsTransparentRoot)
             collector.Append(GetGroupOpenBrick());
+
+        if (IsNullable)
+            AppendLeadingJoinerBrick(collector);
 
         AppendInnerContentBricks(collector);
 
@@ -110,27 +119,11 @@ public abstract class NamedGroupNode : GroupNode
             collector.Append(GetGroupCloseBrick());
     }
 
-    /// <summary>Appends everything between this group's open and close bookends. Default implementation appends each child (joined per <see cref="EffectiveChildJoiner"/>); override to inject additional content, e.g. a leading separator.</summary>
+    /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="GlyphCompoundOfSecondItemNode"/>).</summary>
     protected virtual void AppendInnerContentBricks(RegexCollector collector)
     {
-        for (int i = 0; i < Children.Count; i++)
-        {
-            var child = Children[i];
+        foreach (var child in Children)
             child.AppendRegexBricks(collector);
-
-            // When the next child owns its own leading joiner (e.g. it's optional, or a quantified
-            // repeat), it embeds this same joiner as its own first content brick instead - see
-            // RegexNode.OwnsLeadingJoiner.
-            bool shouldAddJoiner =
-                i < Children.Count - 1
-                && EffectiveChildJoiner != Joiner.None
-                && collector.LastChar != ' '
-                && !Children[i + 1].OwnsLeadingJoiner
-                && !(Children[i + 1] is TextNode textNode && textNode.FirstChar == '\'');
-
-            if (shouldAddJoiner)
-                collector.Append(new RegexBrickJoiner(this, EffectiveChildJoiner));
-        }
     }
 
     /// <summary>Hydrates this node's captured value(s) from <paramref name="context"/> and assigns them to <paramref name="instance"/>'s corresponding property. Returns false if the capture was unsuccessful or hydrated to null.</summary>

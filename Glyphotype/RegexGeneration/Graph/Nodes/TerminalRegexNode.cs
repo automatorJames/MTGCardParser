@@ -15,6 +15,6 @@ public class TerminalRegexNode : RegexNode
         RegexString = regexString;
     }
 
-    public override void AppendRegexBricks(RegexCollector collector) =>
+    protected override void AppendOwnRegexBricks(RegexCollector collector) =>
         collector.Append(new RegexBrick(this, RegexString));
 }

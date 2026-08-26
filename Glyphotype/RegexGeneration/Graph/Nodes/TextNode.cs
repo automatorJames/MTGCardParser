@@ -25,6 +25,6 @@ public class TextNode : RegexNode
         Text = text;
     }
 
-    public override void AppendRegexBricks(RegexCollector collector) =>
+    protected override void AppendOwnRegexBricks(RegexCollector collector) =>
         collector.Append(new RegexBrick(this, Text));
 }

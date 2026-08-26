@@ -30,6 +30,6 @@ public class EnumMemberNode : TerminalRegexNode
         PositionAmongSynonyms = positionAmongSynonyms;
     }
 
-    public override void AppendRegexBricks(RegexCollector collector) =>
+    protected override void AppendOwnRegexBricks(RegexCollector collector) =>
         collector.Append(new RegexBrickValue(this, RegexString, ScalarValue));
 }
