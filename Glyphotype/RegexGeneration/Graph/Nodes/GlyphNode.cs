@@ -55,7 +55,7 @@ public class GlyphNode : NamedGroupNode
     static bool IsClosedGeneric(Type type, Type openGeneric) =>
         type.IsGenericType && type.GetGenericTypeDefinition() == openGeneric;
 
-    /// <summary>Instantiates this node's <see cref="Glyph"/> type and hydrates every child named-group property from <paramref name="captureTrace"/>'s <see cref="CaptureTrace.CaptureContext"/>. Returns false if any required child fails to hydrate.</summary>
+    /// <summary>Instantiates this node's <see cref="Glyph"/> type and hydrates every child named-group property, scoped to <paramref name="captureTrace"/> (see <see cref="NamedGroupNode.SetPropertyValue"/>). Returns false if any required child fails to hydrate.</summary>
     public virtual bool TryHydrate(CaptureTrace captureTrace, out Glyph glyph)
     {
         glyph = null;
@@ -63,7 +63,7 @@ public class GlyphNode : NamedGroupNode
 
         foreach (var child in NamedGroupChildren)
         {
-            var setResult = child.SetPropertyValue(instance, captureTrace.CaptureContext);
+            var setResult = child.SetPropertyValue(instance, captureTrace);
 
             // In a normal Glyph, all non-nullable children must be matched for the whole Glyph to match.
             // Checked via the child's own IsNullable (not child.Navigation.IsOptional) because a node type

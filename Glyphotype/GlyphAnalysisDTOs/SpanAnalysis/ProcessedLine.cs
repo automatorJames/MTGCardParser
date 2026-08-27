@@ -94,6 +94,10 @@ public class ProcessedLine
             if (!isCollapsed(captureTrace))
                 visibleOrder.Add(captureTrace);
 
+            // One slot per distinct named group (Children), not per repeat occurrence - every
+            // occurrence of a group nested inside a repeated ancestor is the same semantic capture
+            // slot, just at a different text position, so they all share this one hue (see
+            // CaptureTrace.Representative and its use in SpanView/PropertyTable's own palette lookups).
             foreach (var child in captureTrace.Children)
                 Walk(child);
         }

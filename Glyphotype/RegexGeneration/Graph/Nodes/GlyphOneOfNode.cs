@@ -17,7 +17,7 @@ public class GlyphOneOfNode : GlyphNode
 
         foreach (var child in NamedGroupChildren)
         {
-            var setResult = child.SetPropertyValue(instance, captureTrace.CaptureContext);
+            var setResult = child.SetPropertyValue(instance, captureTrace);
 
             if (setResult)
                 childrenSuccessfullySet++;

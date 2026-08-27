@@ -128,11 +128,17 @@ public abstract class NamedGroupNode : GroupNode
             child.AppendRegexBricks(collector);
     }
 
-    /// <summary>Hydrates this node's captured value(s) from <paramref name="context"/> and assigns them to <paramref name="instance"/>'s corresponding property. Returns false if the capture was unsuccessful or hydrated to null.</summary>
-    public virtual bool SetPropertyValue(Glyph instance, CaptureContext context)
+    /// <summary>
+    /// Hydrates this node's captured value(s) from <paramref name="scope"/>'s own <see cref="CaptureTrace.CaptureContext"/>
+    /// and assigns them to <paramref name="instance"/>'s corresponding property. Returns false if the
+    /// capture was unsuccessful or hydrated to null. <paramref name="scope"/> is the specific ancestor
+    /// repetition currently being hydrated (see <see cref="CaptureTrace.WithinScope"/>) - for a node whose
+    /// own group never sits inside a repeated ancestor, this is simply whatever ancestor trace called in.
+    /// </summary>
+    public virtual bool SetPropertyValue(Glyph instance, CaptureTrace scope)
     {
         object value;
-        var captureTrace = context[this];
+        var captureTrace = scope.CaptureContext[this].WithinScope(scope);
 
         // todo: for certain navigations, scopedContext.Success should be required for (excepting OneOf, OptionalOf, etc.)
         // Therefore we should enforce this as necessary to avoid hard-to-isolate silent failure modes where hydration succeeds without

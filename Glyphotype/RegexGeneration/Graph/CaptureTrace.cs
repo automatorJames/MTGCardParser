@@ -34,8 +34,99 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty] public int Count => (Success ? 1 : 0) + Siblings.Count;
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Siblings { get; } = [];
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Children { get; } = [];
-    public object ClrValue { get; set; }
+
+    /// <summary>
+    /// The one trace among this FQN's occurrences that hydration actually recursed into and gave real,
+    /// registered <see cref="Children"/> - null when this trace IS that one. Hydration only ever resolves
+    /// and recurses into a named group's FIRST-seen occurrence for a given FQN (see
+    /// <see cref="CaptureContext.this[NamedGroupNode]"/>); every later occurrence - a true
+    /// <see cref="Siblings"/> entry, or a <see cref="WithinScope"/> view narrowed from one - shares that
+    /// exact same nested structure, just scoped down to its own span, so <see cref="EffectiveChildren"/>
+    /// reads it from here instead of finding its own (always-empty) <see cref="Children"/>.
+    /// </summary>
+    public CaptureTrace Representative { get; private set; }
+
+    /// <summary>Sets <see cref="Representative"/> - called only by <see cref="CaptureContext"/> when wiring up a true <see cref="Siblings"/> entry.</summary>
+    internal void SetRepresentative(CaptureTrace representative) => Representative = representative;
+
+    /// <summary>
+    /// This occurrence's own children, each narrowed (via <see cref="WithinScope"/>) down to just the
+    /// portion that actually falls within this occurrence's own span - reading from
+    /// <see cref="Representative"/>'s <see cref="Children"/> when this trace has none of its own, so a
+    /// repeat occurrence (a <see cref="Siblings"/> entry, or a view derived from one) presents the exact
+    /// same nested structure a display walk finds on the representative, just scoped to itself. The one
+    /// source of children every display-time walk (<see cref="CaptureTraceWalker"/> and friends) should
+    /// use instead of raw <see cref="Children"/>, so a node nested inside a repeated ancestor renders
+    /// once per real repetition instead of only for the first.
+    /// </summary>
+    public IEnumerable<CaptureTrace> EffectiveChildren =>
+        (Representative ?? this).Children
+            .Select(c => c.WithinScope(this))
+            .Where(c => c.Success);
+
+    /// <summary>
+    /// The un-narrowed trace this instance was copied from, when this instance is a throwaway
+    /// single-repetition view produced by <see cref="WithinScope"/> - null for every other trace,
+    /// including <see cref="Siblings"/> entries (themselves original, un-copied captures). Lets
+    /// <see cref="ClrValue"/>'s setter also reach the shared, cached trace that
+    /// <see cref="CaptureContext.this[NamedGroupNode]"/> registers into <see cref="RootCaptureTrace"/> -
+    /// the one corpus-wide analysis (e.g. <see cref="GlyphAnalysisDTOs.TypeExpressions.NamedGroupCaptureTraceSummary"/>)
+    /// looks up directly by <see cref="FullyQualifiedName"/> - since that shared trace would otherwise
+    /// never itself get hydrated once a descendant of a repeated ancestor is always resolved via a view.
+    /// </summary>
+    CaptureTrace Origin { get; }
+
+    object _clrValue;
+    public object ClrValue
+    {
+        get => _clrValue;
+        set
+        {
+            _clrValue = value;
+
+            if (Origin != null)
+                Origin.ClrValue = value;
+        }
+    }
+
     [JsonProperty] public bool IsTerminal { get; }
+
+    /// <summary>
+    /// True when this trace's own named group sits beneath (or is) a <c>List&lt;&gt;</c>-typed ancestor
+    /// property, checked via <see cref="SourceNode"/>'s own <see cref="RegexNode.Lineage"/> in the regex
+    /// graph - not the capture tree, since "listable" is a structural fact about the property's declared
+    /// shape (it could always have zero, one, or many occurrences), independent of how many times it
+    /// actually occurred in this specific match.
+    /// </summary>
+    public bool IsListPosition => SourceNode.Lineage.OfType<GroupNode>().Any(n => n.Navigation.IsList);
+
+    /// <summary>
+    /// <see cref="FullyQualifiedName"/>, suffixed with something that distinguishes this specific
+    /// occurrence, for every node along a repeated occurrence's own span - not just its terminal leaf -
+    /// when <see cref="IsListPosition"/>: a terminal's own resolved value (e.g. distinguishing "flying"
+    /// from "first strike" even though both otherwise share one FullyQualifiedName), or this occurrence's
+    /// 1-based position for a non-terminal node in between (e.g. the <c>BuffMiddle</c> and <c>SecondPlus</c>
+    /// wrapper spans <c>SpanView</c> renders around each occurrence), which has no scalar value of its own
+    /// to read. Every node in one occurrence's own span needs disambiguating, not just its leaf, because
+    /// <c>document-lines.js</c>'s hover highlighting collects every ancestor's own <c>data-path</c> up to
+    /// the match boundary - an un-disambiguated wrapper shared by both occurrences would cross-highlight
+    /// the other one's text even with its own leaf correctly told apart. Used purely for that kind of
+    /// display-only identity; every other consumer (hydration caching, corpus-wide lookups) needs
+    /// <see cref="FullyQualifiedName"/> itself to stay the one stable, shared identity for the group -
+    /// including the property table's own single, combined branch header for a listable position, which
+    /// deliberately keeps using the plain, shared name (only its own per-occurrence rows use this).
+    /// </summary>
+    public string HoverPath
+    {
+        get
+        {
+            if (!IsListPosition)
+                return FullyQualifiedName;
+
+            var suffix = IsTerminal && ClrValue != null ? ClrValue.ToString() : ((SiblingIndex ?? 0) + 1).ToString();
+            return $"{FullyQualifiedName}_{suffix}";
+        }
+    }
 
     /// <summary>
     /// True when this node's own source node always represents a meaningful resolution — a choice among
@@ -56,10 +147,14 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// to pair with).
     /// </summary>
     [JsonProperty]
-    public bool IsCollapsible =>
-        Children.Count == 1
-        && !Children[0].IsTerminal
-        && !IsAlwaysMeaningful;
+    public bool IsCollapsible
+    {
+        get
+        {
+            var children = EffectiveChildren.ToList();
+            return children.Count == 1 && !children[0].IsTerminal && !IsAlwaysMeaningful;
+        }
+    }
 
     /// <summary>
     /// True when this node should draw its own underline: it has children of its own to bracket, or (as
@@ -70,7 +165,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// separate, display-preference-dependent concern layered on top by the viewer.
     /// </summary>
     public bool HasOwnBoundary =>
-        Children.Count > 0 || this is RootCaptureTrace;
+        EffectiveChildren.Any() || this is RootCaptureTrace;
 
     public string JsonDebug => JsonConvert.SerializeObject(
         this,
@@ -100,6 +195,31 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         Length = capture.Length;
         End = Index + Length;
         SiblingIndex = siblingIndex;
+    }
+
+    /// <summary>
+    /// Creates a standalone view onto a single already-resolved occurrence of <paramref name="source"/>
+    /// (either <paramref name="source"/> itself or one of its own <see cref="Siblings"/>) - used by
+    /// <see cref="WithinScope"/> to narrow a trace merged across every repetition of an enclosing list
+    /// down to just the one repetition currently being hydrated, without mutating the shared, cached
+    /// trace other callers (and other repetitions) still rely on.
+    /// </summary>
+    CaptureTrace(CaptureTrace source)
+        : this(source.CaptureContext, source.SourceNode)
+    {
+        Success = source.Success;
+        CaptureValue = source.CaptureValue;
+        Index = source.Index;
+        Length = source.Length;
+        End = source.End;
+        SiblingIndex = source.SiblingIndex;
+        Origin = source;
+
+        // source is either the true representative (Representative == null on it, so this view must
+        // point back to source itself) or another view/Sibling one hop closer to it already
+        // (Representative already points at the real one) - either way this collapses to exactly one
+        // hop, so EffectiveChildren never has to chase more than one Representative link.
+        Representative = source.Representative ?? source;
     }
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
@@ -137,10 +257,12 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// </summary>
     public int GetEffectiveDepth(Func<CaptureTrace, bool> isCollapsed)
     {
-        if (Children.Count == 0)
+        var children = EffectiveChildren.ToList();
+
+        if (children.Count == 0)
             return 0;
 
-        var deepestChild = Children.Max(child => child.GetEffectiveDepth(isCollapsed));
+        var deepestChild = children.Max(child => child.GetEffectiveDepth(isCollapsed));
         return isCollapsed(this) ? deepestChild : 1 + deepestChild;
     }
 
@@ -193,6 +315,41 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
             sibling.Rebase(oldFullyQualifiedNamePrefix, newFullyQualifiedNamePrefix, indexOffset, newContext);
     }
 
+    /// <summary>
+    /// Narrows this trace down to just the occurrence(s) that fall within <paramref name="scope"/>'s own
+    /// matched span. A group nested inside a repeated ("*"-quantified) ancestor produces one .NET capture
+    /// per ancestor repetition, all sharing this node's one <see cref="FullyQualifiedName"/> - so resolving
+    /// it (see <see cref="CaptureContext.this[NamedGroupNode]"/>) merges every repetition's occurrence
+    /// together via <see cref="Siblings"/>. Called with the specific ancestor repetition currently being
+    /// hydrated as <paramref name="scope"/>, this picks out only the occurrence(s) actually nested inside
+    /// that one repetition, so a descendant of repetition N never sees repetition M's capture.
+    /// </summary>
+    public CaptureTrace WithinScope(CaptureTrace scope)
+    {
+        if (!Success)
+            return this;
+
+        var contained = this.Where(t => t.Index >= scope.Index && t.End <= scope.End).ToList();
+
+        if (contained.Count == Count)
+            return this;
+
+        // Memoized (by value equality on child+scope, not by these particular object references) so
+        // repeated narrowing of the same child to the same repetition - from hydration, then again from
+        // one or more independent display-time walks - always lands on the one object that actually
+        // carries whatever gets written onto it (e.g. ClrValue), instead of a fresh, disconnected copy.
+        return CaptureContext.GetOrCreateScopedView(this, scope, () =>
+        {
+            if (contained.Count == 0)
+                return new CaptureTrace(CaptureContext, SourceNode);
+
+            var view = new CaptureTrace(contained[0]);
+            view.Siblings.AddRange(contained.Skip(1));
+
+            return view;
+        });
+    }
+
     string GetPrintValue()
     {
         if (ClrValue == null)
@@ -216,4 +373,23 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     }
 
     public override string ToString() => CaptureValue;
+
+    /// <summary>
+    /// Value equality by (<see cref="CaptureContext"/>, <see cref="SourceNode"/>, <see cref="Index"/>) -
+    /// the same "stable, reliable identity" <see cref="SourceNode"/> already documents itself by for
+    /// surviving <see cref="Rebase"/>, plus the text position that distinguishes one repetition's
+    /// occurrence from another's. Needed because <see cref="WithinScope"/> (and so
+    /// <see cref="EffectiveChildren"/>) freshly allocates a new view every time it's called, even for the
+    /// exact same underlying occurrence - so two objects representing that one occurrence, built from
+    /// two separate calls (e.g. once while computing a line's palette, again while rendering it), must
+    /// still compare equal for either to be usable as a <c>Dictionary&lt;CaptureTrace, _&gt;</c> key.
+    /// </summary>
+    public override bool Equals(object obj) =>
+        obj is CaptureTrace other
+        && ReferenceEquals(CaptureContext, other.CaptureContext)
+        && ReferenceEquals(SourceNode, other.SourceNode)
+        && Index == other.Index;
+
+    public override int GetHashCode() =>
+        HashCode.Combine(CaptureContext, SourceNode, Index);
 }

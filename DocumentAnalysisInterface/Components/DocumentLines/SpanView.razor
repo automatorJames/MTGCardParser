@@ -3,7 +3,7 @@
 @inject RuntimeSettings RuntimeSettings
 @if (CaptureTrace != null)
 {
-    <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.FullyQualifiedName>
+    <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.HoverPath>
         @foreach (var segment in CaptureTraceWalker.GetSegments(CaptureTrace))
         {
             if (segment.Child is { } child)
@@ -71,7 +71,7 @@
         var trace = CaptureTrace;
 
         while (trace.IsCollapsible)
-            trace = trace.Children[0];
+            trace = trace.EffectiveChildren.First();
 
         return trace.HasOwnBoundary ? trace : null;
     }
@@ -83,10 +83,20 @@
     /// the emergent descendant itself will render at, so the extension lines up with its underline
     /// instead of drifting to a different row.
     /// </summary>
+    /// <summary>
+    /// The key to look <see cref="CaptureTraceDisplayContext.Palettes"/> up by: <see cref="CaptureTrace.Representative"/>
+    /// when set, since <see cref="DocumentAnalysisInterface.Components.DocumentLines.CaptureTraceDisplayContext"/>
+    /// hands out one palette slot per distinct named group, not per repeat occurrence - every occurrence
+    /// of a group nested inside a repeated ancestor (e.g. "flying" and "first strike" both under
+    /// <c>SecondPlus &gt;&gt; Keyword</c>) is the same semantic capture slot, just at a different text
+    /// position, so they share the one hue assigned to that slot's representative.
+    /// </summary>
+    static CaptureTrace PaletteKey(CaptureTrace trace) => trace.Representative ?? trace;
+
     string GetEmergentExtensionStyle(CaptureTrace emergent)
     {
         var style = new System.Text.StringBuilder();
-        style.Append(DisplayContext.Palettes[emergent].ToColorStyle());
+        style.Append(DisplayContext.Palettes[PaletteKey(emergent)].ToColorStyle());
         var paddingBottom = 2 + (EffectiveDepth * 6);
         style.Append($" padding-bottom: {paddingBottom}px;");
         return style.ToString();
@@ -128,7 +138,7 @@
 
         var style = new System.Text.StringBuilder();
 
-        style.Append(DisplayContext.Palettes[CaptureTrace].ToColorStyle());
+        style.Append(DisplayContext.Palettes[PaletteKey(CaptureTrace)].ToColorStyle());
         var paddingBottom = 2 + (EffectiveDepth * 6);
         style.Append($" padding-bottom: {paddingBottom}px;");
 

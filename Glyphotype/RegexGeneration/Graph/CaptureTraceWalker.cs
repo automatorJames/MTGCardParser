@@ -25,7 +25,11 @@ public static class CaptureTraceWalker
     {
         var cursor = 0;
 
-        foreach (var child in trace.Children.OrderBy(c => c.Index))
+        // EffectiveChildren (rather than raw Children) both surfaces every real repeat occurrence of a
+        // child nested inside a repeated ("*"-quantified) ancestor list - not just the first - and
+        // scopes each one down to just the portion that falls within this specific trace's own span, so
+        // a sibling repetition's own children don't leak into a different repetition's segments too.
+        foreach (var child in trace.EffectiveChildren.SelectMany(c => c).OrderBy(c => c.Index))
         {
             var relativeChildStart = child.Index - trace.Index;
 

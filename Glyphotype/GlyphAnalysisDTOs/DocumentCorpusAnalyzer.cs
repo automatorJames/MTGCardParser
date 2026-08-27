@@ -62,7 +62,6 @@ public class DocumentCorpusAnalyzer
 
         WordCount = ProcessedDocuments.Sum(x => x.WordCount);
         CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
-
         DigestedTextWithCaptureGlyphs = new DigestedText(ProcessedDocuments);
 
         // set GlyphOccurrenceSummaries
