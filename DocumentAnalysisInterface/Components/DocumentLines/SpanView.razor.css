@@ -22,6 +22,12 @@
     border-top-style: dotted;
 }
 
+/* A collapsed level's flanking text, borrowing the emergent descendant's underline color/row but
+   marked dotted to show it's tunneling through a hidden level rather than its own capture. */
+.nested-underline.dotted-underline {
+    border-bottom-style: dotted;
+}
+
 /* Highlight/Mute logic for the spans themselves */
 .nested-underline.highlight-active {
     border-bottom-color: var(--highlight-color);

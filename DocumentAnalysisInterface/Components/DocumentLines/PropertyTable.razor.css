@@ -10,6 +10,26 @@
     transition: color var(--transition-time);
 }
 
+/* Alternating brightness lets each part of a multi-part header (collapsed lineage, a one-of
+   choice, a dynamic resolution) read as visually distinct at a glance, with the rightmost -
+   the most specific, most important part - always shown at full brightness. */
+.header-part-dim {
+    opacity: var(--header-part-dim-opacity);
+    transition: opacity var(--transition-time);
+}
+
+/* Highlight/mute already recolor every part uniformly, so alternating dimness on top of that
+   would just muddy the intended highlight/mute color instead of adding useful distinction. */
+.glyph-summary-header.highlight-active .header-part-dim,
+.glyph-summary-header.mute-active .header-part-dim {
+    opacity: 1;
+}
+
+.header-separator {
+    color: var(--header-separator-color);
+    font-weight: 700;
+}
+
 .content-box {
     border-top: 1px solid var(--color);
     border-left: 1px solid var(--color);

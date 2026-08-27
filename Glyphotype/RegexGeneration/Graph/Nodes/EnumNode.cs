@@ -51,7 +51,7 @@ public class EnumNode : NamedGroupNode
     protected override object GetValue(CaptureTrace captureTrace)
     {
         if (captureTrace.Count != 1)
-            throw new Exception($"{nameof(BoolNode)} expects exactly one capture");
+            throw new Exception($"{nameof(EnumNode)} expects exactly one capture");
 
         return Children
             .OfType<EnumMemberNode>()

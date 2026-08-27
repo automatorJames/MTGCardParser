@@ -17,6 +17,8 @@
     --dark-gold: #9e7621;
     --highlight-inset: 4px;
     --underline-width: 2px;
+    --header-part-dim-opacity: 0.66;
+    --header-separator-color: #888888;
 }
 
 body {

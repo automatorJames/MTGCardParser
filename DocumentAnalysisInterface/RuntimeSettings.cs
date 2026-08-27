@@ -51,15 +51,15 @@ namespace DocumentAnalysisInterface
             }
         }
 
-        private bool _showCollapsedCaptureNodes;
-        public bool ShowCollapsedCaptureNodes
+        private bool _hideCollapsibleCaptureNodes;
+        public bool HideCollapsibleCaptureNodes
         {
-            get => _showCollapsedCaptureNodes;
+            get => _hideCollapsibleCaptureNodes;
             set
             {
-                if (_showCollapsedCaptureNodes != value)
+                if (_hideCollapsibleCaptureNodes != value)
                 {
-                    _showCollapsedCaptureNodes = value;
+                    _hideCollapsibleCaptureNodes = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }
@@ -215,7 +215,7 @@ namespace DocumentAnalysisInterface
                 {
                     _hideFullyMatchedDocuments = dto.HideFullyMatchedDocuments;
                     _showCoverageStats = dto.ShowCoverageStats;
-                    _showCollapsedCaptureNodes = dto.ShowCollapsedCaptureNodes;
+                    _hideCollapsibleCaptureNodes = dto.HideCollapsibleCaptureNodes;
                     _orderByWordCount = dto.OrderByWordCount;
                     _orderByOccurrenceCount = dto.OrderByOccurrenceCount;
                     _regexFormat = dto.RegexFormat;
@@ -270,7 +270,7 @@ namespace DocumentAnalysisInterface
     {
         public bool HideFullyMatchedDocuments { get; init; }
         public bool ShowCoverageStats { get; init; }
-        public bool ShowCollapsedCaptureNodes { get; init; }
+        public bool HideCollapsibleCaptureNodes { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool OrderByOccurrenceCount { get; init; } = true;
         public RegexDisplayMode RegexFormat { get; init; } = RegexDisplayMode.MatchedOnly;
@@ -287,7 +287,7 @@ namespace DocumentAnalysisInterface
         {
             HideFullyMatchedDocuments = runtimeSettings.HideFullyMatchedDocuments;
             ShowCoverageStats = runtimeSettings.ShowCoverageStats;
-            ShowCollapsedCaptureNodes = runtimeSettings.ShowCollapsedCaptureNodes;
+            HideCollapsibleCaptureNodes = runtimeSettings.HideCollapsibleCaptureNodes;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             OrderByOccurrenceCount = runtimeSettings.OrderByOccurrenceCount;
             RegexFormat = runtimeSettings.RegexFormat;

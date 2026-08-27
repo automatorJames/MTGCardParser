@@ -14,7 +14,20 @@ else
 {
     <div class="glyph-summary-branch" style="margin-top:16px" data-path=@BranchTrace.FullyQualifiedName>
         <div class="glyph-summary-header" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
-            <span class="glyph-type-name">@HeaderText</span>
+            <span class="glyph-type-name">
+                @{ var segments = HeaderSegments; }
+                @for (var i = 0; i < segments.Count; i++)
+                {
+                    var segment = segments[i];
+                    var isDim = (segments.Count - 1 - i) % 2 != 0;
+
+                    if (segment.SeparatorBefore is { } separatorKind)
+                    {
+                        @(" ")<span class="header-separator">@SeparatorGlyph(separatorKind)</span>@(" ")
+                    }
+                    <span class="header-part @(isDim ? "header-part-dim" : "")">@segment.Text</span>
+                }
+            </span>
         </div>
 
         @if (BranchTrace.Children.Any())
@@ -84,26 +97,71 @@ else
 
     /// <summary>
     /// Whether to skip <see cref="BranchTrace"/>'s own header/table and recurse straight into its
-    /// children instead — the default, noise-reducing behavior for a structurally collapsible
-    /// node. The "Show collapsed nodes" setting opts back into seeing every level explicitly.
+    /// children instead, for a structurally collapsible node. Off by default (every level shown
+    /// explicitly); the "Hide collapsible nodes" setting opts into this noise-reducing behavior.
     /// </summary>
-    bool ShouldCollapse => BranchTrace.IsCollapsible && !RuntimeSettings.ShowCollapsedCaptureNodes;
+    bool ShouldCollapse => BranchTrace.IsCollapsible && RuntimeSettings.HideCollapsibleCaptureNodes;
 
     List<string> ChildLineage => [.. CollapsedLineage, BranchTrace.Name];
 
     /// <summary>
-    /// <see cref="BranchTrace"/>'s own name, plus — for a <see cref="DynamicGlyphNode"/>
-    /// property or a <see cref="GlyphOneOfNode"/> choice — the resolved type it turned out
-    /// to be (e.g. "Result: This Deals Damage", or "Card or Creature Type: Card Type"). A dynamic
-    /// property's declared name only says what role it plays in its parent, and a one-of's declared
-    /// name only says it's a choice among alternatives; which type either actually resolved to is
-    /// equally load-bearing information and shouldn't be hidden. Not a proper data-path step in
-    /// either case, just a display-time fact appended to the step that already exists.
+    /// The three distinct reasons two adjacent parts of a header can be joined, each rendered with
+    /// its own separator glyph so a viewer isn't left guessing which relationship a bare ":" means:
+    /// skipping past a collapsed ancestor, a <see cref="GlyphOneOfNode"/> choice resolving to one of
+    /// its named alternatives, or a <see cref="DynamicGlyphNode"/> property resolving to its concrete
+    /// runtime type.
     /// </summary>
-    string OwnNameText =>
-        BranchTrace.SourceNode is DynamicGlyphNode or GlyphOneOfNode && BranchTrace.ResolvedNodeType != null
-        ? $"{BranchTrace.Name.ToFriendlyCase()}: {BranchTrace.ResolvedNodeTypeName.ToFriendlyCase()}"
-        : BranchTrace.Name.ToFriendlyCase();
+    enum HeaderSeparatorKind { Collapsed, OneOf, Dynamic }
+
+    /// <summary>One rendered header part, and (for every part but the first) which kind of relationship joins it to the part before it.</summary>
+    readonly record struct HeaderSegment(string Text, HeaderSeparatorKind? SeparatorBefore);
+
+    static string SeparatorGlyph(HeaderSeparatorKind kind) => kind switch
+    {
+        HeaderSeparatorKind.Collapsed => ":",
+        HeaderSeparatorKind.OneOf => "»",
+        HeaderSeparatorKind.Dynamic => "⇢",
+        _ => ":",
+    };
+
+    /// <summary>
+    /// Which kind of separator joins <see cref="BranchTrace"/>'s own name to the type it resolved
+    /// to — null when it didn't resolve to anything (an ordinary named branch, no second part to show).
+    /// </summary>
+    HeaderSeparatorKind? OwnResolutionSeparatorKind =>
+        BranchTrace.ResolvedNodeType == null ? null :
+        BranchTrace.SourceNode is GlyphOneOfNode ? HeaderSeparatorKind.OneOf :
+        BranchTrace.SourceNode is DynamicGlyphNode ? HeaderSeparatorKind.Dynamic :
+        null;
+
+    /// <summary>
+    /// The header broken into its individually-styled parts: each collapsed ancestor skipped on the
+    /// way down (joined by ":"), then <see cref="BranchTrace"/>'s own name, then — for a
+    /// <see cref="DynamicGlyphNode"/> property or a <see cref="GlyphOneOfNode"/> choice — the resolved
+    /// type it turned out to be (e.g. "Result ⇢ This Deals Damage", or "Card or Creature Type »
+    /// Card Type"), joined by whichever glyph names that relationship. A dynamic property's declared
+    /// name only says what role it plays in its parent, and a one-of's declared name only says it's a
+    /// choice among alternatives; which type either actually resolved to is equally load-bearing
+    /// information and shouldn't be hidden. Not a proper data-path step in either case, just a
+    /// display-time fact appended to the step that already exists.
+    /// </summary>
+    List<HeaderSegment> HeaderSegments
+    {
+        get
+        {
+            var segments = new List<HeaderSegment>();
+
+            foreach (var name in CollapsedLineage)
+                segments.Add(new HeaderSegment(name.ToFriendlyCase(), segments.Count == 0 ? null : HeaderSeparatorKind.Collapsed));
+
+            segments.Add(new HeaderSegment(BranchTrace.Name.ToFriendlyCase(), segments.Count == 0 ? null : HeaderSeparatorKind.Collapsed));
+
+            if (OwnResolutionSeparatorKind is { } kind)
+                segments.Add(new HeaderSegment(BranchTrace.ResolvedNodeTypeName.ToFriendlyCase(), kind));
+
+            return segments;
+        }
+    }
 
     /// <summary>
     /// A terminal leaf's displayed name. Ordinarily this is just the leaf's own declared property
@@ -125,14 +183,4 @@ else
             _ => leaf.SourceNode.GetType().Name,
         };
 
-    /// <summary>
-    /// The header shown for a rendered (non-collapsed) branch. When it was only reached by
-    /// skipping past one or more collapsed ancestors, the header chains their names together
-    /// (e.g. "A: B: C") so the viewer can see there's a collapsed lineage behind it, rather than
-    /// silently showing just "C" as if it were a top-level property.
-    /// </summary>
-    string HeaderText =>
-        CollapsedLineage.Count == 0
-        ? OwnNameText
-        : string.Join(": ", CollapsedLineage.Select(x => x.ToFriendlyCase()).Append(OwnNameText));
 }

@@ -3,7 +3,7 @@ using Glyphotype.RegexGeneration.Graph;
 namespace DocumentAnalysisInterface.Components.DocumentLines;
 
 /// <summary>
-/// The per-line, per-viewer rendering facts that depend on <see cref="RuntimeSettings.ShowCollapsedCaptureNodes"/>:
+/// The per-line, per-viewer rendering facts that depend on <see cref="RuntimeSettings.HideCollapsibleCaptureNodes"/>:
 /// which rainbow color each visible <see cref="CaptureTrace"/> gets, and how deep the visible
 /// (non-collapsed) nesting actually goes. Built fresh by <c>DocumentBlock</c> on every render of a
 /// line rather than cached on <see cref="ProcessedLine"/> itself, since that line is shared,
@@ -18,7 +18,7 @@ public class CaptureTraceDisplayContext
     public CaptureTraceDisplayContext(ProcessedLine line, RuntimeSettings runtimeSettings)
     {
         bool IsEffectivelyCollapsed(CaptureTrace trace) =>
-            trace.IsCollapsible && !runtimeSettings.ShowCollapsedCaptureNodes;
+            trace.IsCollapsible && runtimeSettings.HideCollapsibleCaptureNodes;
 
         Palettes = line.GetPositionalPalettes(IsEffectivelyCollapsed);
 

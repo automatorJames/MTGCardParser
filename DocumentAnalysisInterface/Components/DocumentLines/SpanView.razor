@@ -10,6 +10,10 @@
             {
                 <SpanView CaptureTrace=@child EffectiveDepth=@ChildEffectiveDepth />
             }
+            else if (IsEffectivelyCollapsible && FindEmergentDescendant() is { } emergent)
+            {
+                <span class="nested-underline dotted-underline" style=@GetEmergentExtensionStyle(emergent)>@segment.Text</span>
+            }
             else
             {
                 <text>@segment.Text</text>
@@ -38,10 +42,10 @@
     /// Whether this node should render as a flat leaf instead of its own nested-underline level.
     /// The model's own <see cref="CaptureTrace.IsCollapsible"/> is a structural fact (this node
     /// is a pure pass-through with no scalar of its own) independent of display preference; the
-    /// "Show collapsed nodes" setting lets a viewer opt back into seeing those pass-through
-    /// levels when they want the full lineage instead of the noise-reduced default.
+    /// "Hide collapsible nodes" setting defaults off (showing the full lineage) and lets a viewer
+    /// opt into the noise-reduced, collapsed view when they want it.
     /// </summary>
-    bool IsEffectivelyCollapsible => CaptureTrace.IsCollapsible && !RuntimeSettings.ShowCollapsedCaptureNodes;
+    bool IsEffectivelyCollapsible => CaptureTrace.IsCollapsible && RuntimeSettings.HideCollapsibleCaptureNodes;
 
     /// <summary>
     /// The depth to hand down to children: incremented only when this node itself renders its own
@@ -49,6 +53,44 @@
     /// arbitrarily long chain of collapsed nodes costs no vertical space at all.
     /// </summary>
     int ChildEffectiveDepth => IsEffectivelyCollapsible ? EffectiveDepth : EffectiveDepth + 1;
+
+    /// <summary>
+    /// Walks down this (collapsed) node's single-child collapse chain, past every intermediate
+    /// pass-through, to the first descendant that will actually render its own underline — the
+    /// "emergent level" that a collapsed node's own flanking plain text visually belongs to, even
+    /// though no capture of its own justifies a color for that text. Every node along the chain
+    /// resolves to the same emergent descendant (each step is deterministic and shared), so the
+    /// leading and trailing text contributed by each collapsed level in turn all borrow the same
+    /// color/depth and read as one continuous extension once rendered. Returns null when the chain
+    /// bottoms out in a leaf with nothing to show (<see cref="CaptureTrace.HasOwnBoundary"/> false),
+    /// in which case there's no level to borrow a color from and the flanking text stays plain,
+    /// exactly as it already did.
+    /// </summary>
+    CaptureTrace FindEmergentDescendant()
+    {
+        var trace = CaptureTrace;
+
+        while (trace.IsCollapsible)
+            trace = trace.Children[0];
+
+        return trace.HasOwnBoundary ? trace : null;
+    }
+
+    /// <summary>
+    /// Style for a dotted extension segment: the emergent descendant's own color, at this node's own
+    /// <see cref="EffectiveDepth"/> — which, because every collapsed node in the chain passes its
+    /// received depth through unchanged (see <see cref="ChildEffectiveDepth"/>), is exactly the depth
+    /// the emergent descendant itself will render at, so the extension lines up with its underline
+    /// instead of drifting to a different row.
+    /// </summary>
+    string GetEmergentExtensionStyle(CaptureTrace emergent)
+    {
+        var style = new System.Text.StringBuilder();
+        style.Append(DisplayContext.Palettes[emergent].ToColorStyle());
+        var paddingBottom = 2 + (EffectiveDepth * 6);
+        style.Append($" padding-bottom: {paddingBottom}px;");
+        return style.ToString();
+    }
 
     string GetClass()
     {
