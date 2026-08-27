@@ -2,8 +2,7 @@
 
 public class GlyphOneOfNode : GlyphNode
 {
-    public override CaptureNodeKind NodeKind => CaptureNodeKind.OneOf;
-    public GlyphOneOfNode(RegexNode parentNode, Navigation navigation) 
+    public GlyphOneOfNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
     }

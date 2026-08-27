@@ -4,7 +4,8 @@ public abstract class NamedGroupCaptureTraceSummary
 {
     protected CaptureTrace _representativeCaptureTrace;
 
-    protected abstract CaptureNodeKind NodeKind { get; }
+    /// <summary>The concrete graph node type this summary expects its <see cref="CaptureTrace"/>s to come from - checked in the constructor as a sanity check against a mismatched summary/trace pairing.</summary>
+    protected abstract Type ExpectedSourceNodeType { get; }
 
     /// <summary>
     /// The fully qualified name that represents the path from the RegexGraph root node
@@ -28,7 +29,7 @@ public abstract class NamedGroupCaptureTraceSummary
 
         _representativeCaptureTrace = CaptureTraces.First();
 
-        if (_representativeCaptureTrace.NodeKind != NodeKind)
-            throw new Exception($"Expected {nameof(CaptureTrace.NodeKind)} {NodeKind}, but got {_representativeCaptureTrace.NodeKind}");
+        if (!ExpectedSourceNodeType.IsInstanceOfType(_representativeCaptureTrace.SourceNode))
+            throw new Exception($"Expected {nameof(CaptureTrace.SourceNode)} of type {ExpectedSourceNodeType.Name}, but got {_representativeCaptureTrace.SourceNode.GetType().Name}");
     }
 }

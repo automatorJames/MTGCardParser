@@ -60,26 +60,77 @@ public abstract class RegexNode
     protected abstract void AppendOwnRegexBricks(RegexCollector collector);
 
     /// <summary>
-    /// Appends the joiner that belongs between this node and its preceding sibling, per the parent's own
-    /// <see cref="NamedGroupNode.EffectiveChildJoiner"/> - or nothing, if there's no preceding sibling, the
-    /// parent doesn't join its children at all, the collector already ends in a space, or this node is text
-    /// starting with a literal apostrophe (e.g. <c>'s</c>, which should hug the token before it).
+    /// Appends the joiner between this node and whatever precedes it - unless there's no preceding sibling,
+    /// or this node isn't itself <see cref="IsNullable"/> and nothing anywhere in its prefix (every sibling
+    /// back to index 0) is guaranteed to render (see <see cref="HasAnchorBefore"/>). That second case is the
+    /// one place this node can't safely place its joiner externally: with no guaranteed "anchor" anywhere
+    /// before it, this node could end up being the literal start of the match, so an unconditional joiner
+    /// here would render even when the whole prefix matched nothing. When that happens, the nearest
+    /// preceding nullable sibling takes over instead, embedding this same joiner as its own trailing content
+    /// (see <see cref="AppendTrailingJoinerBrickIfOwned"/>) - it's the only place left that can legitimately
+    /// hide the joiner precisely when the prefix does render something.
     /// </summary>
     protected void AppendLeadingJoinerBrick(RegexCollector collector)
     {
         if (ParentNode is not NamedGroupNode parent)
             return;
 
+        var index = parent.Children.IndexOf(this);
+
+        if (index <= 0)
+            return;
+
+        if (!IsNullable && !HasAnchorBefore(parent, index))
+            return;
+
+        AppendJoinerBrickIfWarranted(collector, parent, after: this);
+    }
+
+    /// <summary>
+    /// For a nullable node immediately followed by a non-nullable sibling that has no other guaranteed
+    /// anchor earlier in its own prefix (see <see cref="HasAnchorBefore"/>), appends the joiner that belongs
+    /// between them here, as this node's own trailing content. That successor can't place an unconditional
+    /// joiner of its own - nothing before it is guaranteed to render - so this node, being the last thing in
+    /// an otherwise all-nullable prefix, is the one place left that can render the joiner exactly when it's
+    /// actually needed. (A run of several nullable siblings all sharing an all-nullable prefix isn't fully
+    /// covered by this - only the one immediately before the non-nullable node ever takes over - but that's
+    /// the shape every case in this codebase actually takes.)
+    /// </summary>
+    protected void AppendTrailingJoinerBrickIfOwned(RegexCollector collector)
+    {
+        if (ParentNode is not NamedGroupNode parent)
+            return;
+
+        var siblings = parent.Children;
+        var index = siblings.IndexOf(this);
+
+        if (index < 0 || index >= siblings.Count - 1)
+            return;
+
+        var next = siblings[index + 1];
+
+        if (next.IsNullable || HasAnchorBefore(parent, index + 1))
+            return;
+
+        AppendJoinerBrickIfWarranted(collector, parent, after: next);
+    }
+
+    /// <summary>Whether any of <paramref name="parent"/>'s children before <paramref name="index"/> is guaranteed to render something (i.e. isn't <see cref="IsNullable"/>) - see <see cref="AppendLeadingJoinerBrick"/>.</summary>
+    static bool HasAnchorBefore(NamedGroupNode parent, int index) =>
+        parent.Children.Take(index).Any(sibling => !sibling.IsNullable);
+
+    /// <summary>Appends the parent's joiner, attributed to <paramref name="after"/> (the node it precedes) - unless the parent doesn't join its children, the collector already ends in a space, or <paramref name="after"/> is text starting with a literal apostrophe (e.g. <c>'s</c>, which should hug the token before it).</summary>
+    static void AppendJoinerBrickIfWarranted(RegexCollector collector, NamedGroupNode parent, RegexNode after)
+    {
         var joiner = parent.EffectiveChildJoiner;
 
         bool shouldJoin =
-            parent.Children.IndexOf(this) > 0
-            && joiner != Joiner.None
+            joiner != Joiner.None
             && collector.LastChar != ' '
-            && !(this is TextNode textNode && textNode.FirstChar == '\'');
+            && !(after is TextNode textNode && textNode.FirstChar == '\'');
 
         if (shouldJoin)
-            collector.Append(new RegexBrickJoiner(this, joiner));
+            collector.Append(new RegexBrickJoiner(after, joiner));
     }
 
     RegexNode[] GetLineage()

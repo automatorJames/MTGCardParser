@@ -24,7 +24,7 @@ internal static class BrickCommentResolver
     static string ResolveGroupOpenComment(RegexBrickGroupOpen open)
     {
         var group = open.NamedGroupParent;
-        var typeLabel = group.NodeKind.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+        var typeLabel = ResolveTypeLabel(group);
         var disambiguator = group.Name == group.Navigation.UnderlyingType.Name ? "" : $": {FormatTypeNameFriendly(group.Navigation.UnderlyingType)}";
 
         open.TypeLabel = typeLabel;
@@ -32,6 +32,27 @@ internal static class BrickCommentResolver
 
         return typeLabel + disambiguator;
     }
+
+    /// <summary>
+    /// The friendly "kind" label shown in a group's open-comment - by node type for the cases with a real
+    /// behavioral difference, else by <see cref="Navigation"/> data for a plain <see cref="GlyphNode"/> that
+    /// merely wraps a <see cref="CompoundOfBase"/> or carries an <see cref="Glyphotype.Quantifier.Optional"/>
+    /// quantifier - neither of which needs (or has) a node type of its own to tell apart from an ordinary
+    /// nested token group.
+    /// </summary>
+    static string ResolveTypeLabel(NamedGroupNode group) =>
+        group switch
+        {
+            EnumNode => "enum",
+            BoolNode => "bool",
+            IntNode => "int",
+            GlyphOneOfNode => "one of",
+            DynamicGlyphNode => "dynamic",
+            CommaSeparatedItemNode => "internals",
+            GlyphNode glyphNode when typeof(CompoundOfBase).IsAssignableFrom(glyphNode.Navigation.NodeType) => "compound of",
+            GlyphNode glyphNode when glyphNode.Quantifier == Glyphotype.Quantifier.Optional => "optional",
+            _ => "token",
+        };
 
     /// <summary>
     /// A type's friendly display name, e.g. "Card Keyword" for <c>CardKeyword</c>. For a generic type (e.g.

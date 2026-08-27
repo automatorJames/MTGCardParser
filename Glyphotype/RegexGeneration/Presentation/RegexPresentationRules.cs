@@ -123,25 +123,17 @@ public static class SmartRegexStaticRules
     );
 
     /// <summary>Which <see cref="BoxCharSet"/> to draw around a named group's border, based on the kind of node it represents.</summary>
-    public static BoxCharSet NodeTypeToBoxCharSet(CaptureNodeKind nodeKind) =>
-        nodeKind switch
+    public static BoxCharSet NodeTypeToBoxCharSet(NamedGroupNode node) =>
+        node switch
         {
-            CaptureNodeKind.Enum => Closed,
-            CaptureNodeKind.Token => Dashed,
-            CaptureNodeKind.OneOf => Dashed,
-            CaptureNodeKind.ManyOf => Dashed,
-            CaptureNodeKind.CompoundOf => Dashed,
-            CaptureNodeKind.Optional => Dashed,
-            CaptureNodeKind.Dynamic => AllBullets,
-            CaptureNodeKind.Int => Dashed,
-            CaptureNodeKind.Bool => Dashed,
-            CaptureNodeKind.Internals => Dashed,
-            _ => throw new ArgumentOutOfRangeException(nameof(nodeKind), nodeKind, null)
+            EnumNode => Closed,
+            DynamicGlyphNode => AllBullets,
+            _ => Dashed,
         };
 
     /// <summary>Looks up the box-drawing character set for the group a bookend brick opens or closes.</summary>
     public static BoxCharSet GetBoxCharsForBookendBrick(RegexBrickGroupBookend bookendBrick) =>
-        NodeTypeToBoxCharSet(bookendBrick.NamedGroupParent.NodeKind);
+        NodeTypeToBoxCharSet(bookendBrick.NamedGroupParent);
 
     /// <summary>
     /// The regex-column indent for <paramref name="brick"/>: <see cref="EnumMemberIndentSpaces"/> for its
@@ -190,8 +182,8 @@ public static class ColorKnobDefaults
 /// named group. That's deliberate for every role, including <see cref="RegexSpanKind.CommentGroupBorderWall"/>:
 /// nested boxes read best when each box's wall is its own container-meaningful color, so a border's hue
 /// should never be pinned regardless of which group it belongs to; only its saturation/brightness are
-/// hand-tuned below, same as every other role, with no further distinction by the enclosing group's
-/// <see cref="CaptureNodeKind"/> (box shape — solid vs. dashed — already carries that distinction; see
+/// hand-tuned below, same as every other role, with no further distinction by the enclosing group's own
+/// node type (box shape — solid vs. dashed — already carries that distinction; see
 /// <see cref="SmartRegexStaticRules.NodeTypeToBoxCharSet"/>).
 /// </remarks>
 public static class SmartSpanControlPanel

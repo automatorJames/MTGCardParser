@@ -17,9 +17,6 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>True for the graph's root node when it has no quantifier — its own group wrapper is skipped since it would be redundant with the compiled regex's own boundaries.</summary>
     public bool IsTransparentRoot => Navigation.IsRoot && Navigation.Quantifier == null;
 
-    /// <summary>What kind of capture this node represents (enum, bool, token unit, etc.), used by formatting and by <see cref="CaptureTrace"/>.</summary>
-    public abstract CaptureNodeKind NodeKind { get; }
-
     /// <summary>True when this node's regex must come from one or more <see cref="RegexPatternAttribute"/>-declared patterns rather than falling back to <see cref="DefaultPattern"/>.</summary>
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
@@ -100,9 +97,11 @@ public abstract class NamedGroupNode : GroupNode
 
     /// <summary>
     /// Appends this group's open bookend, its content (see <see cref="AppendInnerContentBricks"/>), and its
-    /// close bookend. When this group is <see cref="RegexNode.IsNullable"/>, its own leading joiner (skipped
-    /// by <see cref="RegexNode.AppendRegexBricks"/> for a nullable node) is appended here instead, as the
-    /// group's own first inner content - inside its bookends - so the joiner's presence is coupled to
+    /// close bookend. When this group is <see cref="RegexNode.IsNullable"/>, its own leading and/or trailing
+    /// joiner (skipped by <see cref="RegexNode.AppendRegexBricks"/> and the following sibling respectively,
+    /// for a nullable node - see <see cref="RegexNode.AppendLeadingJoinerBrick"/> and
+    /// <see cref="RegexNode.AppendTrailingJoinerBrickIfOwned"/>) are appended here instead, as this group's
+    /// own first/last inner content - inside its bookends - so either joiner's presence is coupled to
     /// whichever conditional match already governs this group, rather than rendering unconditionally.
     /// </summary>
     protected override void AppendOwnRegexBricks(RegexCollector collector)
@@ -115,11 +114,14 @@ public abstract class NamedGroupNode : GroupNode
 
         AppendInnerContentBricks(collector);
 
+        if (IsNullable)
+            AppendTrailingJoinerBrickIfOwned(collector);
+
         if (!IsTransparentRoot)
             collector.Append(GetGroupCloseBrick());
     }
 
-    /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="GlyphCompoundOfSecondItemNode"/>).</summary>
+    /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="CommaSeparatedItemNode"/>).</summary>
     protected virtual void AppendInnerContentBricks(RegexCollector collector)
     {
         foreach (var child in Children)

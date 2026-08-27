@@ -8,8 +8,6 @@ namespace Glyphotype.RegexGeneration.Graph.Nodes;
 /// </summary>
 public class GlyphNode : NamedGroupNode
 {
-    public override CaptureNodeKind NodeKind => CaptureNodeKind.Token;
-
     public GlyphNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
@@ -21,21 +19,31 @@ public class GlyphNode : NamedGroupNode
             if (nib is PropertyNib propertyNib)
                 children.Add(GetNodeForNavigaton(this, propertyNib.Navigation));
             else
-                children.Add(new TextNode(this, nib.Text));
+                // Pass nib itself, not nib.Text - TextNode's own optional-wrapping depends on nib's actual
+                // runtime type (e.g. OptionalNib), which passing just the string would silently discard via
+                // the implicit string->Nib conversion (producing a fresh, always-non-optional plain Nib).
+                children.Add(new TextNode(this, nib));
     }
 
-    /// <summary>Picks the concrete <see cref="RegexNode"/> subtype for a property nib, based on its underlying CLR type (enum, bool, int, nested token unit, etc.).</summary>
+    /// <summary>
+    /// Picks the concrete <see cref="RegexNode"/> subtype for a property nib, based on its underlying CLR
+    /// type (enum, bool, int, nested token unit, etc.). Every arm here reflects a genuine behavioral
+    /// difference (how children are reflected, how hydration validates, how a leading separator renders);
+    /// a CLR shape with no such difference - a plain nested <see cref="Glyph"/>, whether or not it's
+    /// wrapped in <see cref="OptionalOf{T}"/>, decorated with <see cref="OptionalAttribute"/>, or a
+    /// <see cref="CompoundOfBase"/> - falls through to the plain <see cref="GlyphNode"/> case, since
+    /// <see cref="GroupNode.IsNullable"/> (driven by <see cref="Navigation.Quantifier"/>) and
+    /// <see cref="Navigation"/> itself already carry everything else about it needs.
+    /// </summary>
     public static RegexNode GetNodeForNavigaton(RegexNode parentNode, Navigation navigation)
     {
         return navigation.NodeType switch
         {
             { } t when t == typeof(UnmatchedString) => new UnmatchedGlyphNode(parentNode, navigation),
             { } t when typeof(OneOfBase).IsAssignableFrom(t) => new GlyphOneOfNode(parentNode, navigation),
-            { } t when typeof(CompoundOfBase).IsAssignableFrom(t) => new GlyphCompoundOfNode(parentNode, navigation),
             { } t when typeof(DynamicGlyph).IsAssignableFrom(t) => new DynamicGlyphNode(parentNode, navigation),
-            { } t when IsClosedGeneric(t, typeof(CompoundOfSecondItem<>)) => new GlyphCompoundOfSecondItemNode(parentNode, navigation),
-            { } t when IsClosedGeneric(t, typeof(OptionalOf<>)) => new OptionalGlyphNode(parentNode, navigation),
-            { } t when typeof(Glyph).IsAssignableFrom(t) && navigation.Quantifier == Glyphotype.Quantifier.Optional => new OptionalGlyphNode(parentNode, navigation),
+            { } t when IsClosedGeneric(t, typeof(CompoundOfSecondItem<>)) => new CommaSeparatedItemNode(parentNode, navigation),
+            { } t when IsClosedGeneric(t, typeof(ManyOfSecondItem<>)) => new CommaSeparatedItemNode(parentNode, navigation),
             { } t when typeof(Glyph).IsAssignableFrom(t) => new GlyphNode(parentNode, navigation),
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
@@ -57,8 +65,12 @@ public class GlyphNode : NamedGroupNode
         {
             var setResult = child.SetPropertyValue(instance, captureTrace.CaptureContext);
 
-            // In a normal Glyph, all non-optional children must be matched for the whole Glyph to match
-            if (!setResult && !child.Navigation.IsOptional)
+            // In a normal Glyph, all non-nullable children must be matched for the whole Glyph to match.
+            // Checked via the child's own IsNullable (not child.Navigation.IsOptional) because a node type
+            // can be structurally optional independent of its Navigation - e.g. BoolNode hardcodes its own
+            // Quantifier rather than deriving it from Navigation, so Navigation.IsOptional would be false
+            // even though the node itself is perfectly capable of matching nothing.
+            if (!setResult && !child.IsNullable)
                 return false;
         }
 

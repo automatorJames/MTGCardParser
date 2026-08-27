@@ -42,7 +42,7 @@ else
                                                 @LeafDisplayName(leaf)
                                             </td>
                                             <td class="prop-capture-table-cell type-column" style=@(leafPaletteStyle)>
-                                                @leaf.NodeKind
+                                                @TerminalTypeLabel(leaf)
                                             </td>
                                             <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
                                                 @leaf.ClrValue.ToString()
@@ -92,8 +92,8 @@ else
     List<string> ChildLineage => [.. CollapsedLineage, BranchTrace.Name];
 
     /// <summary>
-    /// <see cref="BranchTrace"/>'s own name, plus — for a <see cref="CaptureNodeKind.Dynamic"/>
-    /// property or a <see cref="CaptureNodeKind.OneOf"/> choice — the resolved type it turned out
+    /// <see cref="BranchTrace"/>'s own name, plus — for a <see cref="DynamicGlyphNode"/>
+    /// property or a <see cref="GlyphOneOfNode"/> choice — the resolved type it turned out
     /// to be (e.g. "Result: This Deals Damage", or "Card or Creature Type: Card Type"). A dynamic
     /// property's declared name only says what role it plays in its parent, and a one-of's declared
     /// name only says it's a choice among alternatives; which type either actually resolved to is
@@ -101,19 +101,29 @@ else
     /// either case, just a display-time fact appended to the step that already exists.
     /// </summary>
     string OwnNameText =>
-        BranchTrace.NodeKind is CaptureNodeKind.Dynamic or CaptureNodeKind.OneOf && BranchTrace.ResolvedNodeType != null
+        BranchTrace.SourceNode is DynamicGlyphNode or GlyphOneOfNode && BranchTrace.ResolvedNodeType != null
         ? $"{BranchTrace.Name.ToFriendlyCase()}: {BranchTrace.ResolvedNodeTypeName.ToFriendlyCase()}"
         : BranchTrace.Name.ToFriendlyCase();
 
     /// <summary>
     /// A terminal leaf's displayed name. Ordinarily this is just the leaf's own declared property
-    /// name, but a direct child of a <see cref="CaptureNodeKind.OneOf"/> may be an anonymously-named
+    /// name, but a direct child of a <see cref="GlyphOneOfNode"/> may be an anonymously-named
     /// alternative slot (e.g. "Alternative1" on a generic <see cref="OneOf{T1,T2}"/>) rather than a
     /// meaningful property name — so under a one-of, show the resolved type's own (non-title-cased)
     /// name instead, which is what actually matched.
     /// </summary>
     string LeafDisplayName(CaptureTrace leaf) =>
-        BranchTrace.NodeKind == CaptureNodeKind.OneOf ? leaf.ResolvedNodeTypeName : leaf.Name;
+        BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name;
+
+    /// <summary>A terminal leaf's displayed "Type" column text - always an <see cref="EnumNode"/>, <see cref="IntNode"/>, or <see cref="BoolNode"/>, since those are the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for.</summary>
+    static string TerminalTypeLabel(CaptureTrace leaf) =>
+        leaf.SourceNode switch
+        {
+            EnumNode => "Enum",
+            IntNode => "Int",
+            BoolNode => "Bool",
+            _ => leaf.SourceNode.GetType().Name,
+        };
 
     /// <summary>
     /// The header shown for a rendered (non-collapsed) branch. When it was only reached by

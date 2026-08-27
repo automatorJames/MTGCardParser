@@ -14,7 +14,7 @@ namespace Glyphotype.RegexGeneration.Presentation;
 /// <remarks>
 /// <c>contextNode</c> is always a <see cref="NamedGroupNode"/> - a <see cref="GlyphNode"/>/<see cref="GlyphOneOfNode"/>
 /// for <see cref="Render"/>, an <see cref="EnumNode"/> for <see cref="RenderEnum"/> (the caller picks which to
-/// call based on <see cref="NamedGroupNode.NodeKind"/>) - reached one of two ways: the graph's own
+/// call based on whether it's an <see cref="EnumNode"/>) - reached one of two ways: the graph's own
 /// <see cref="RegexGraph.RootNode"/> for a card's own top-level type, or navigating into one of its properties
 /// (see <see cref="IsNavigable"/>), including into a resolved <see cref="Glyphotype.GlyphPrimitives.DynamicGlyph"/>
 /// capture's own (separate) <see cref="RegexGraph"/> (see <see cref="ClassSpan.Resolutions"/>). Either way, an
@@ -52,18 +52,20 @@ public static class GlyphClassRenderer
     /// <summary>
     /// Whether <paramref name="node"/> names a type with its own declared source to navigate to directly: any
     /// enum (see <see cref="RenderEnum"/>), or a concrete (non-generic) <see cref="Glyph"/> subtype (see
-    /// <see cref="Render"/>). Excludes primitives (<see cref="BoolNode"/>/<see cref="IntNode"/>), unbound
-    /// generic wrappers like <c>OneOf&lt;,&gt;</c>/<c>ManyOf&lt;&gt;</c> (no source file of their own - only
-    /// their closed-over type arguments might have one), and <see cref="DynamicGlyphNode"/> - a
+    /// <see cref="Render"/>) - including one that's optional or wraps a <see cref="Glyphotype.GlyphPrimitives.CompoundOfBase"/>,
+    /// since those are still real, concrete declared types with their own source to jump to. Excludes
+    /// primitives (<see cref="BoolNode"/>/<see cref="IntNode"/>), unbound generic wrappers like
+    /// <c>OneOf&lt;,&gt;</c>/<c>ManyOf&lt;&gt;</c> (no source file of their own - only their closed-over type
+    /// arguments might have one), and <see cref="DynamicGlyphNode"/> - a
     /// <see cref="Glyphotype.GlyphPrimitives.DynamicGlyph"/> capture has no *one* fixed type to jump straight
     /// to, so it's offered as a <see cref="ClassSpan.Resolutions"/> menu instead (see <see cref="GetDynamicResolutions"/>).
     /// </summary>
     public static bool IsNavigable(NamedGroupNode node) =>
-        node.NodeKind switch
+        node switch
         {
-            CaptureNodeKind.Enum => true,
-            CaptureNodeKind.Token or CaptureNodeKind.OneOf => !node.Navigation.NodeType.IsGenericType,
-            _ => false,
+            EnumNode => true,
+            BoolNode or IntNode or DynamicGlyphNode => false,
+            _ => !node.Navigation.NodeType.IsGenericType,
         };
 
     /// <summary>Renders <paramref name="contextNode"/>'s type as a whitespace-formatted C# class, colored per <paramref name="palette"/>.</summary>
@@ -393,7 +395,7 @@ public static class GlyphClassRenderer
     /// </summary>
     static List<DynamicResolutionOption> GetDynamicResolutions(NamedGroupNode node, RenderContext ctx)
     {
-        if (node.NodeKind != CaptureNodeKind.Dynamic || ctx.AllSummaries == null)
+        if (node is not DynamicGlyphNode || ctx.AllSummaries == null)
             return null;
 
         var owningType = ((GroupNode)node.Lineage[0]).Navigation.NodeType;

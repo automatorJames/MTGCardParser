@@ -7,7 +7,6 @@
 /// </summary>
 public class BoolNode : NamedGroupNode
 {
-    public override CaptureNodeKind NodeKind => CaptureNodeKind.Bool;
     public override Quantifier? Quantifier => Glyphotype.Quantifier.Optional;
     protected override bool OneOrMoreRegexPatternsRequired => true;
 

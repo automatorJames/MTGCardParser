@@ -92,7 +92,7 @@ public static class MatchContentRenderer
     /// capture kind has no such finer-grained row of its own, so its plain FullyQualifiedName is used as-is.
     /// </summary>
     static string GetTargetFullyQualifiedName(CaptureTrace colorSource) =>
-        colorSource.NodeKind == CaptureNodeKind.Enum && colorSource.ClrValue != null
+        colorSource.SourceNode is EnumNode && colorSource.ClrValue != null
             ? $"{colorSource.FullyQualifiedName}_{colorSource.ClrValue}"
             : colorSource.FullyQualifiedName;
 

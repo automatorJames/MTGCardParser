@@ -9,7 +9,6 @@ namespace Glyphotype.RegexGeneration.Graph.Nodes;
 public class DynamicGlyphNode : GlyphNode
 {
     protected override string DefaultPattern => @"[^.]+";
-    public override CaptureNodeKind NodeKind => CaptureNodeKind.Dynamic;
 
     public DynamicGlyphNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)

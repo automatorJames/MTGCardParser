@@ -24,7 +24,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty] public string CaptureValue { get; set; }
     public string PrintValue => GetPrintValue();
     public bool Success { get; }
-    [JsonProperty] public CaptureNodeKind NodeKind { get; }
     public Type ResolvedNodeType => GetResolvedNodeType();
     [JsonProperty] public string ResolvedNodeTypeName => ResolvedNodeType.Name;
     public string ParentName { get; private set; }
@@ -39,16 +38,16 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     [JsonProperty] public bool IsTerminal { get; }
 
     /// <summary>
-    /// Node kinds that always represent a meaningful resolution — a choice among named
-    /// alternatives (<see cref="CaptureNodeKind.OneOf"/>) or a re-tokenized dynamic match
-    /// (<see cref="CaptureNodeKind.Dynamic"/>) — even when what they resolve to isn't itself a
-    /// scalar. These never collapse, regardless of their children.
+    /// True when this node's own source node always represents a meaningful resolution — a choice among
+    /// named alternatives (<see cref="GlyphOneOfNode"/>) or a re-tokenized dynamic match
+    /// (<see cref="DynamicGlyphNode"/>) — even when what they resolve to isn't itself a scalar. These never
+    /// collapse, regardless of their children.
     /// </summary>
-    static readonly HashSet<CaptureNodeKind> _alwaysMeaningfulKinds = [CaptureNodeKind.OneOf, CaptureNodeKind.Dynamic];
+    bool IsAlwaysMeaningful => SourceNode is GlyphOneOfNode or DynamicGlyphNode;
 
     /// <summary>
     /// True when this node is a pure pass-through: a single named child that itself carries no
-    /// direct scalar value, and this node isn't one of <see cref="_alwaysMeaningfulKinds"/>.
+    /// direct scalar value, and this node isn't <see cref="IsAlwaysMeaningful"/>.
     /// Displaying such a node's own underline level would be visual noise — it never resolved a
     /// choice and never aggregated more than one property, it just forwards to its one child.
     /// A node with two or more children is never collapsible (it's aggregating distinct named
@@ -60,7 +59,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     public bool IsCollapsible =>
         Children.Count == 1
         && !Children[0].IsTerminal
-        && !_alwaysMeaningfulKinds.Contains(NodeKind);
+        && !IsAlwaysMeaningful;
 
     /// <summary>
     /// True when this node should draw its own underline: it has children of its own to bracket, or (as
@@ -105,8 +104,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
-        NodeKind = namedGroupNode.NodeKind;
-        IsTerminal = CheckNodeTypeIsTerminal(NodeKind);
+        IsTerminal = namedGroupNode is EnumNode or IntNode or BoolNode;
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
         Name = namedGroupNode.Name;
         SourceNode = namedGroupNode;
@@ -200,7 +198,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         if (ClrValue == null)
             return null;
 
-        return NodeKind.ToString() + ": " + ClrValue.ToString();
+        return SourceNode.GetType().Name + ": " + ClrValue.ToString();
     }
 
     Type GetResolvedNodeType()
@@ -217,28 +215,5 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         return ClrValue.GetType();
     }
 
-    static bool CheckNodeTypeIsTerminal(CaptureNodeKind nodeKind) =>
-        nodeKind switch
-        {
-            CaptureNodeKind.Enum => true,
-            CaptureNodeKind.Int => true,
-            CaptureNodeKind.Bool => true,
-            _ => false
-        };
-
     public override string ToString() => CaptureValue;
-}
-
-public enum CaptureNodeKind
-{
-    Token,
-    OneOf,
-    ManyOf,
-    CompoundOf,
-    Optional,
-    Dynamic,
-    Enum,
-    Int,
-    Bool,
-    Internals
 }

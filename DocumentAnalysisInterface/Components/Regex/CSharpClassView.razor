@@ -128,7 +128,7 @@
     void RebuildLines()
     {
         var (node, path) = _path[^1];
-        _lines = node.NodeKind == CaptureNodeKind.Enum
+        _lines = node is EnumNode
             ? GlyphClassRenderer.RenderEnum(node, _palette, path)
             : GlyphClassRenderer.Render(node, _palette, DocumentAnalyzer.GlyphOccurrenceSummaries, path);
     }

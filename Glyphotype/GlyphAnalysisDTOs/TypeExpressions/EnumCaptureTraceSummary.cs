@@ -2,7 +2,7 @@ namespace Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
 
 public class EnumCaptureTraceSummary : NamedGroupCaptureTraceSummary
 {
-    protected override CaptureNodeKind NodeKind => CaptureNodeKind.Enum;
+    protected override Type ExpectedSourceNodeType => typeof(EnumNode);
 
     /// <summary>
     /// Occurrence count for each enum member among all CaptureTraces. Ordered by enum 

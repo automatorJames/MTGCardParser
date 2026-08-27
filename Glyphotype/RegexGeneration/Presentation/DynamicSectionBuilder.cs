@@ -84,7 +84,7 @@ internal class DynamicSectionBuilder
     {
         var resolvedGraph = GlyphTypeRegistry.RegexGraphs[resolvedType];
         var containerDepth = dynamicNode.Lineage.OfType<NamedGroupNode>().Count(x => !x.IsTransparentRoot);
-        var typeLabel = CaptureNodeKind.Token.ToString().ToFriendlyCase(TitleDisplayOption.Lower);
+        var typeLabel = "token"; // always rendered as an ordinary nested token group, like GlyphNode's own default
         var friendlyName = resolvedType.Name.ToFriendlyCase();
         // Must match the prefix CaptureTrace.AdoptDynamicChildren rebases this same resolved type's real
         // captured descendants onto, so a data-path built from one lines up with a data-path built from

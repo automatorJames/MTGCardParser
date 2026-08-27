@@ -2,7 +2,7 @@ namespace Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
 
 public class DynamicCaptureTraceSummary : NamedGroupCaptureTraceSummary
 {
-    protected override CaptureNodeKind NodeKind => CaptureNodeKind.Dynamic;
+    protected override Type ExpectedSourceNodeType => typeof(DynamicGlyphNode);
 
     /// <summary>
     /// For each type resolved at runtime for this DynamicCaptureNode, the concrete hydrated <see cref="Glyph"/>
