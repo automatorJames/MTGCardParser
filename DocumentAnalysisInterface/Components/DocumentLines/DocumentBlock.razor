@@ -4,7 +4,10 @@
 @inject IJSRuntime JS
 @inject RuntimeSettings RuntimeSettings
 
+@* Regex-editor-on-click is disabled for now (see OpenRegexEditorDialog/HandleDialogClose below) —
+   the Snackbar was only ever driven from its close handler. Revisit together when it comes back.
 <Snackbar @ref="_snackbar" />
+*@
 
 <div class="document-capture-block">
     <div class="document-title-row">
@@ -23,9 +26,9 @@
 
     @foreach (var line in ProcessedDocument.Lines)
     {
-        var displayContext = new CaptureTraceDisplayContext(line, RuntimeSettings);
+        var displayContext = new CaptureTraceDisplayContext(line, RuntimeSettings, CorpusAnalyzer.DigestedTextWithCaptureGlyphs);
 
-        <CascadingValue Value=line>
+        <CascadingValue @key=line.DataPath Value=line>
         <CascadingValue Value=displayContext>
             <div class="line-capture-block match-boundary">
                 <div class="line-label dashed-border">
@@ -41,8 +44,9 @@
                         </span>
                     }
                 </div>
-                <div class="line-container-parent" style="cursor: pointer" data-path=@line.DataPath>
-                    <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) @onclick=@(() => OpenRegexEditorDialog(line)) data-path=@line.DataPath>
+                <div class="line-container-parent" data-path=@line.DataPath>
+                    @* @onclick=@(() => OpenRegexEditorDialog(line)) — disabled, it fights with clicking Echo underlines. *@
+                    <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) data-path=@line.DataPath>
                         @foreach (var root in line.CaptureTraceRoots)
                         {
                             <SpanView CaptureTrace=@root />
@@ -60,21 +64,26 @@
     }
 </div>
 
+@* Disabled alongside the click-to-open handler above.
 @if (_isDialogOpen)
 {
     <RegexEditorDialog Line="_selectedLine" OnClose="HandleDialogClose" />
 }
+*@
 
 @code {
+    /* Regex-editor-on-click state — disabled for now, see markup above.
     bool _isDialogOpen = false;
     ProcessedLine _selectedLine;
     Snackbar _snackbar;
+    */
 
     [Parameter]
     public ProcessedDocument ProcessedDocument { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 
+    /* Regex-editor-on-click handlers — disabled for now, see markup above.
     void OpenRegexEditorDialog(ProcessedLine line)
     {
         _selectedLine = line;
@@ -104,6 +113,7 @@
             StateHasChanged();
         }
     }
+    */
 
     static double GetCoveragePercent(int capturedWordCount, int wordCount) =>
         wordCount == 0 ? 0 : 100.0 * capturedWordCount / wordCount;
@@ -116,6 +126,11 @@
         // Calculate only the top half of the extra space
         double topCrop = (lh - fontSize) / 2.0;
 
-        return $"line-height: {lh}px; --top-crop: -{topCrop}px;";
+        // --captured-text-color/--unmatched-text-color set once here so every SpanView in this
+        // line's <pre> can just read them — the two text colors are static C# tuning
+        // (DocumentTextPresentation), not per-capture like the rainbow underline color is.
+        return $"line-height: {lh}px; --top-crop: -{topCrop}px; " +
+               $"--captured-text-color: {DocumentTextPresentation.CapturedTextColorHex}; " +
+               $"--unmatched-text-color: {DocumentTextPresentation.UnmatchedTextColorHex};";
     }
 }

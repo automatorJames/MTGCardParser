@@ -1,0 +1,50 @@
+@* Recursively wraps its content in one <span> per remaining lane entry — reusing the exact same
+   ".nested-underline" border-bottom/padding-bottom technique (and depth formula) captures use, so
+   an echo at lane N sits at the same visual offset as a capture at EffectiveDepth N. Nesting order
+   doesn't affect that offset (inline padding-bottom paints relative to the shared line baseline,
+   not cumulatively through ancestors) — nesting exists only so one run of text can carry several
+   simultaneous underlines, one border-bottom per element. Each level owns its own click target,
+   so a click always resolves to whichever echo is nested innermost at that point — deterministic,
+   even where two echoes' word ranges genuinely overlap.
+
+   Every word/space segment belonging to the same echo carries the same data-echo-key, so hovering
+   any one of them (see initEchoHover in document-lines.js) highlights the whole line together —
+   selection is "which line," driven by the hovered segment's own lane, not "which word column." *@
+@if (Entries == null || Entries.Count == 0)
+{
+    @ChildContent
+}
+else
+{
+    var entry = Entries[0];
+    <span class="echo-underline" style=@GetLaneStyle(entry.Lane) data-echo-key=@GetEchoKey(entry.Echo)
+          @onclick="() => OnEchoClick.InvokeAsync(entry.Echo.Span)" @onclick:stopPropagation="true">
+        <EchoUnderline Entries=@Entries.GetRange(1, Entries.Count - 1) OnEchoClick=@OnEchoClick>@ChildContent</EchoUnderline>
+        @if (entry.IsBadgeAnchor)
+        {
+            <span class="echo-badge">@entry.Echo.DisplayCount</span>
+        }
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public List<EchoLaneEntry> Entries { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<AnalyzedText> OnEchoClick { get; set; }
+
+    static string GetLaneStyle(int lane) =>
+        $"--color: {EchoPresentation.UnderlineColorHex}; padding-bottom: {2 + lane * 6}px; --lane-index: {lane};";
+
+    /// <summary>
+    /// (start, length) uniquely identifies an echo within one occurrence — two different corpus
+    /// spans can never match at the exact same word range, since that range's text is fixed by
+    /// the occurrence itself. Scoped further to this UnmatchedString's own container by the hover
+    /// script, so it doesn't need to be unique page-wide.
+    /// </summary>
+    static string GetEchoKey(EchoMatch echo) => $"{echo.WordStartIndex}_{echo.Span.WordCount}";
+}

@@ -86,6 +86,126 @@ function disposeDocumentCaptureHover() {
     }
 }
 
+// --- ECHO GROUP HOVER/CLICK — Y-DISTANCE DISAMBIGUATION ---
+// A single echo's underline is drawn as several separate per-word/per-space segments, one <span>
+// per lane nested inside the next (so it can wrap and stack like normal text, and carry several
+// simultaneous underlines on one word). That nesting turns out to defeat the browser's native
+// hit-testing for our purposes: for stacked inline elements sharing one line, elementFromPoint
+// (and therefore native :hover/click target resolution) always resolves to whichever is nested
+// deepest, at *every* Y within the shared line — never the one geometrically under the cursor.
+// Confirmed by sampling elementFromPoint down a real 3-lane stack: same element at every offset.
+//
+// So selection can't be native. Instead: on every mousemove/click, take whichever lane the browser
+// DID resolve to (always reachable — it's some element in the right stack, just not necessarily
+// the right lane) and walk its own .echo-underline ancestor chain — each ancestor is one more lane
+// at this exact word — comparing each one's own getBoundingClientRect() (a real per-element
+// measurement, unaffected by the hit-testing quirk) against the pointer's Y. Closest bottom wins.
+
+let echoMouseMoveHandler;
+let echoMouseleaveHandler;
+let echoClickHandler;
+let lastHoveredEchoElement = null;
+
+const echoHoverActiveClass = 'echo-hover-active';
+const echoKeySelector = '[data-echo-key]';
+const echoResolvedFlag = 'echoResolvedClick';
+
+/// Walks from `hitElement` up through its own chain of .echo-underline ancestors (every lane
+/// stacked at this word) and returns whichever one's own bottom edge is closest to clientY.
+function resolveEchoLane(hitElement, clientY) {
+    let best = hitElement;
+    let bestDistance = Infinity;
+    let current = hitElement;
+
+    while (current && current.matches && current.matches(echoKeySelector)) {
+        const rect = current.getBoundingClientRect();
+        const distance = Math.abs(clientY - rect.bottom);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            best = current;
+        }
+        current = current.parentElement;
+    }
+
+    return best;
+}
+
+function initEchoHover() {
+    const mainContent = document.getElementById('document-lines');
+    if (!mainContent) {
+        return;
+    }
+
+    const clearEchoHighlight = () => {
+        document.querySelectorAll(`.${echoHoverActiveClass}`).forEach(el => {
+            el.classList.remove(echoHoverActiveClass);
+        });
+    };
+
+    echoMouseMoveHandler = (event) => {
+        const hitElement = event.target.closest(echoKeySelector);
+
+        if (!hitElement) {
+            if (lastHoveredEchoElement === null) return;
+            lastHoveredEchoElement = null;
+            clearEchoHighlight();
+            return;
+        }
+
+        const resolved = resolveEchoLane(hitElement, event.clientY);
+        if (resolved === lastHoveredEchoElement) return;
+
+        lastHoveredEchoElement = resolved;
+        clearEchoHighlight();
+
+        const container = resolved.closest('.echo-container');
+        const key = resolved.dataset.echoKey;
+        if (!container || !key) return;
+
+        container.querySelectorAll(`[data-echo-key="${key}"]`).forEach(el => {
+            el.classList.add(echoHoverActiveClass);
+        });
+    };
+
+    echoMouseleaveHandler = () => {
+        lastHoveredEchoElement = null;
+        clearEchoHighlight();
+    };
+
+    // Capture phase, so this runs (and can redirect) before Blazor's own delegated click
+    // handling sees the event. Without redirecting, a click always lands on whichever lane is
+    // nested deepest at that word, same as hover — see the comment above.
+    echoClickHandler = (event) => {
+        const hitElement = event.target.closest(echoKeySelector);
+        if (!hitElement) return;
+
+        if (hitElement.dataset[echoResolvedFlag]) {
+            delete hitElement.dataset[echoResolvedFlag];
+            return; // our own re-dispatched click, let it through to Blazor untouched
+        }
+
+        const resolved = resolveEchoLane(hitElement, event.clientY);
+        if (resolved === hitElement) return; // the natively-hit lane was already the right one
+
+        event.preventDefault();
+        event.stopPropagation();
+        resolved.dataset[echoResolvedFlag] = '1';
+        resolved.click();
+    };
+
+    mainContent.addEventListener('mousemove', echoMouseMoveHandler);
+    mainContent.addEventListener('mouseleave', echoMouseleaveHandler);
+    mainContent.addEventListener('click', echoClickHandler, true);
+}
+
+function disposeEchoHover() {
+    const mainContent = document.getElementById('document-lines');
+    if (!mainContent) return;
+    if (echoMouseMoveHandler) mainContent.removeEventListener('mousemove', echoMouseMoveHandler);
+    if (echoMouseleaveHandler) mainContent.removeEventListener('mouseleave', echoMouseleaveHandler);
+    if (echoClickHandler) mainContent.removeEventListener('click', echoClickHandler, true);
+}
+
 function flashLineHighlight(dataPath) {
     // Select the specific container by class and data-path
     const selector = `.line-container-parent[data-path="${dataPath}"]`;

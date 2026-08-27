@@ -186,6 +186,21 @@ namespace DocumentAnalysisInterface
             }
         }
 
+        private bool _showEchoes;
+        public bool ShowEchoes
+        {
+            get => _showEchoes;
+            set
+            {
+                if (_showEchoes != value)
+                {
+                    _showEchoes = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private string _searchTerm = string.Empty;
         public string SearchTerm
         {
@@ -224,6 +239,7 @@ namespace DocumentAnalysisInterface
                     _footerTrayContent = dto.FooterTrayContent;
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
+                    _showEchoes = dto.ShowEchoes;
                 }
             }
             catch
@@ -279,6 +295,7 @@ namespace DocumentAnalysisInterface
         public FooterTrayContent FooterTrayContent { get; init; } = FooterTrayContent.Hidden;
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
+        public bool ShowEchoes { get; init; }
 
         // Parameterless constructor for deserialization
         public RuntimeSettingsDto() { }
@@ -296,6 +313,7 @@ namespace DocumentAnalysisInterface
             FooterTrayContent = runtimeSettings.FooterTrayContent;
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;
+            ShowEchoes = runtimeSettings.ShowEchoes;
         }
     }
 }

@@ -219,17 +219,167 @@ public class DigestedText
             //Reverse collapsed text for PRECEDING so phrases read left→right (farthest→nearest)
             var precedingAdjacencyTree = BuildAdjacencyTree(precedingSequencesWithKeys, reverseCollapsedText: true);
             var followingAdjacencyTree = BuildAdjacencyTree(followingSequencesWithKeys, reverseCollapsedText: false);
-        
+
             result.Add(new AnalyzedText(
                 text: spanText,
                 maximalSpanOccurrenceCount: count,
                 occurrences: subSpanContexts,
                 precedingAdjacencies: precedingAdjacencyTree,
-                followingAdjacencies: followingAdjacencyTree
+                followingAdjacencies: followingAdjacencyTree,
+                isLeftMaximal: ComputeIsLeftMaximal(subSpanContexts)
             ));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// A span is left-maximal unless every occurrence shares one identical immediately-preceding
+    /// word. An occurrence with no preceding word at all (it starts its source occurrence) is a
+    /// boundary — a distinct context in its own right — so it always makes the span left-maximal,
+    /// the same way reaching the end of an occurrence is vacuously right-maximal.
+    /// </summary>
+    private static bool ComputeIsLeftMaximal(List<SubSpanContext> occurrences)
+    {
+        string dominantPrecedingWord = null;
+        bool hasDominantWord = false;
+
+        foreach (var occurrence in occurrences)
+        {
+            if (occurrence.WordStartIndex == 0)
+                return true;
+
+            var precedingWord = occurrence.OriginalOccurrence.Words[occurrence.WordStartIndex - 1];
+
+            if (!hasDominantWord)
+            {
+                dominantPrecedingWord = precedingWord;
+                hasDominantWord = true;
+            }
+            else if (!string.Equals(dominantPrecedingWord, precedingWord, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Finds every fully-maximal (right- and left-maximal) corpus span that occurs as a contiguous
+    /// word sequence somewhere within <paramref name="occurrence"/>, excluding spans whose only
+    /// occurrences are in this same document (nothing external to point to). Sorted by word count
+    /// descending then start index ascending — the stacking priority order, closest-to-text first.
+    /// </summary>
+    public List<EchoMatch> FindEchoes(UnmatchedTextOccurrence occurrence, int minWords, int minOccurrences)
+    {
+        var matches = new List<EchoMatch>();
+        var words = occurrence.Words;
+
+        foreach (var span in Spans)
+        {
+            if (!span.IsLeftMaximal) continue;
+            if (span.WordCount < minWords) continue;
+            if (span.MaximalSpanOccurrenceCount < minOccurrences) continue;
+
+            var occurrencesElsewhere = span.TotalOccurrenceCount -
+                span.OccurrencesPerDocument.GetValueOrDefault(occurrence.DocumentName, 0);
+
+            // Never underline a span this document alone accounts for — nothing external to
+            // point to. The badge itself shows the full total (this document included), so the
+            // lowest number ever displayed is 2: at least one occurrence here, at least one
+            // elsewhere for the span to have passed this check at all.
+            if (occurrencesElsewhere < 1) continue;
+
+            var spanWords = span.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (spanWords.Length == 0 || spanWords.Length > words.Length) continue;
+
+            for (int i = 0; i <= words.Length - spanWords.Length; i++)
+            {
+                bool isMatch = true;
+                for (int j = 0; j < spanWords.Length; j++)
+                {
+                    if (!string.Equals(words[i + j], spanWords[j], StringComparison.Ordinal))
+                    {
+                        isMatch = false;
+                        break;
+                    }
+                }
+
+                if (isMatch)
+                    matches.Add(new EchoMatch(span, i, span.TotalOccurrenceCount));
+            }
+        }
+
+        return matches
+            .OrderByDescending(m => m.Span.WordCount)
+            .ThenBy(m => m.WordStartIndex)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Packs echoes into the fewest non-overlapping lanes (rows), greedily, by word range —
+    /// classic interval-graph coloring: sort by start (ties broken by longer-first), then place
+    /// each echo in the first lane whose last-placed echo already ends at or before this one's
+    /// start, opening a new lane only when none does. This is a decluttering choice, not a
+    /// priority ranking — two short, disjoint echoes sharing one lane is preferred over spending
+    /// a whole extra row on each, so lane order no longer reflects occurrence count or length.
+    /// Static and side-effect-free (no dependency on this corpus instance's own Spans) so both the
+    /// per-occurrence renderer (SpanView) and the per-line space reservation below
+    /// (GetMaxEchoLaneCount) can share one packing without duplicating it.
+    /// </summary>
+    public static List<List<EchoMatch>> PackEchoLanes(List<EchoMatch> echoes)
+    {
+        var sorted = echoes
+            .OrderBy(e => e.WordStartIndex)
+            .ThenByDescending(e => e.Span.WordCount)
+            .ToList();
+
+        var laneEnds = new List<int>();
+        var lanes = new List<List<EchoMatch>>();
+
+        foreach (var echo in sorted)
+        {
+            int start = echo.WordStartIndex;
+            int end = echo.WordStartIndex + echo.Span.WordCount;
+
+            int lane = laneEnds.FindIndex(laneEnd => laneEnd <= start);
+            if (lane == -1)
+            {
+                lane = lanes.Count;
+                lanes.Add([]);
+                laneEnds.Add(0);
+            }
+
+            lanes[lane].Add(echo);
+            laneEnds[lane] = end;
+        }
+
+        return lanes;
+    }
+
+    /// <summary>
+    /// The most lanes any single UnmatchedString occurrence on this line would need to render its
+    /// own echoes — the echo-underline equivalent of a line's deepest capture-trace depth. Used to
+    /// make sure a line reserves enough vertical room that a dense stack of echo underlines
+    /// doesn't run into the next physically-wrapped line of text, the same way capture depth
+    /// already does for colored underlines (see CaptureTraceDisplayContext.MaxEffectiveDepth,
+    /// which takes the max of that and this).
+    /// </summary>
+    public int GetMaxEchoLaneCount(ProcessedLine line, int minWords, int minOccurrences)
+    {
+        int max = 0;
+
+        foreach (var occurrence in line.UnmatchedTextOccurrences)
+        {
+            var echoes = FindEchoes(occurrence, minWords, minOccurrences);
+            if (echoes.Count == 0) continue;
+
+            var laneCount = PackEchoLanes(echoes).Count;
+            if (laneCount > max) max = laneCount;
+        }
+
+        return max;
     }
 
     /// <summary>

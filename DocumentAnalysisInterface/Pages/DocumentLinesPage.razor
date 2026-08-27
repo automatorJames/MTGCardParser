@@ -8,7 +8,7 @@
     <div class="analyzed-document-container" id="document-lines">
         @foreach (var document in GetFilteredDocuments())
         {
-            <DocumentBlock ProcessedDocument=document />
+            <DocumentBlock @key=document.Document.Name ProcessedDocument=document />
         }
     </div>
 </DeferredContent>
@@ -25,7 +25,23 @@
         // comes in before that finishes.
         DocumentAnalyzer.EnsureInitializedAsync();
 
-    Task InitHoverAsync() => JSRuntime.InvokeVoidAsync("initDocumentCaptureHover").AsTask();
+    async Task InitHoverAsync()
+    {
+        // Wrapped defensively: if the SignalR circuit has gone stale (e.g. the tab sat idle long
+        // enough for it to drop), these JS calls can throw TaskCanceledException. Letting that
+        // escape unhandled from a component lifecycle method takes the whole circuit down: the
+        // viewer gets the "an unhandled error has occurred" reload prompt over something that's
+        // just going to reconnect and re-run this anyway. Not fixable from here — it's the circuit
+        // itself timing out, not this call's logic — just not worth crashing over.
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("initDocumentCaptureHover");
+            await JSRuntime.InvokeVoidAsync("initEchoHover");
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
 
     IEnumerable<ProcessedDocument> GetFilteredDocuments()
     {

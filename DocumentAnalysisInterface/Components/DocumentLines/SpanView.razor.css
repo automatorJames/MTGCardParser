@@ -2,6 +2,11 @@
     border-bottom-width: var(--underline-width);
     border-bottom-style: solid;
     border-bottom-color: var(--color);
+    /* Base text color lives here, not as an inline style on the element (SpanView used to do
+       that) — an inline style always wins over .highlight-active below regardless of its
+       specificity, which silently broke hover-to-hue highlighting for captured text. As a class
+       rule it cascades normally: .highlight-active's color wins only while actually hovered. */
+    color: var(--captured-text-color);
     padding-bottom: 2px;
 }
 
@@ -36,6 +41,19 @@
 
 .nested-underline.mute-active {
     border-bottom-color: var(--lowlight-color);
+}
+
+/* A leaf capture's overline is the innermost, most specific thing wrapping its text — nested
+   inside whatever group boundary(ies) contain it, or sharing one span with its own boundary. This
+   rule must come after .nested-underline.highlight-active above: when both classes land on the
+   same span (a leaf that's also its own boundary), source order breaks the specificity tie in the
+   overline's favor; when they're on separate nested spans instead, the overline is already the
+   nearer ancestor and wins color by ordinary inheritance regardless. Either way the leaf's own hue
+   governs its text, not the enclosing group's — text captured by a group but not itself a leaf has
+   no overline at all, so it's untouched and still just takes the group's hue as before. */
+.prop-capture-overline.highlight-active {
+    border-top-color: var(--highlight-color);
+    color: var(--highlight-color);
 }
 
 .prop-capture-overline.mute-active {

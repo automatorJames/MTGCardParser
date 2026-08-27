@@ -1,0 +1,76 @@
+@inject IJSRuntime JS
+
+<CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(1600px, 90vw);">
+    <DialogContent>
+        @* word-trees-card: not for styling (that's CustomDialog's own container) — the word-tree
+           JS specifically does container.closest('.word-trees-card') to find where to stash the
+           span data for the tree it renders (see word-tree-manager.js). *@
+        <div class="echo-tree-body word-trees-card">
+            <div class="card-header">
+                <span class="header-label">Document Names:</span>
+                <div class="header-document-names">
+                    @foreach (var documentName in OrderedDocumentNames())
+                    {
+                        var isCurrent = documentName == CurrentDocumentName;
+                        var palette = Span.DocumentPalettes[documentName];
+                        <span class="document-name-item"
+                              data-document-name="@documentName"
+                              style="@(isCurrent
+                                  ? "border-color: #ffffff; color: #ffffff; --highlight-color: #ffffff; --sat-color: #ffffff;"
+                                  : $"border-color: {palette.Normal}; --highlight-color: {palette.Light}; --sat-color: {palette.Sat};")">
+                            @documentName
+                        </span>
+                    }
+                </div>
+            </div>
+            <div id="spinner-0" class="spinner"></div>
+            <div id="word-tree-container-0"></div>
+        </div>
+    </DialogContent>
+</CustomDialog>
+
+@code {
+    [Parameter, EditorRequired]
+    public AnalyzedText Span { get; set; } = null!;
+
+    /// <summary>
+    /// The document the echo was clicked from — listed first in the key, and always shown in
+    /// white rather than its assigned palette hue, so it's easy to pick out among the (possibly
+    /// many) other documents sharing this span.
+    /// </summary>
+    [Parameter]
+    public string CurrentDocumentName { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    IEnumerable<string> OrderedDocumentNames() =>
+        Span.ContainingDocuments.OrderBy(name => name == CurrentDocumentName ? 0 : 1);
+
+    static readonly HexPalette WhitePalette = new("#ffffff", "#ffffff", "#ffffff", "#ffffff");
+
+    /// <summary>
+    /// The same span, but with the current document's palette entry swapped for solid white
+    /// before it's handed to the word-tree JS — the tree's own node/connector gradients are drawn
+    /// straight from <see cref="AnalyzedText.DocumentPalettes"/> (see word-tree-svg-drawer.ts's
+    /// paletteMap), so this is what makes the tree's borders for the current document match the
+    /// white key entry above, not just the key itself.
+    /// </summary>
+    AnalyzedText RenderSpan => Span with
+    {
+        DocumentPalettes = Span.DocumentPalettes.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Key == CurrentDocumentName ? WhitePalette : kv.Value)
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await JS.InvokeVoidAsync("clearAllTreesAndShowSpinners", 1);
+        await Task.Yield();
+        await JS.InvokeVoidAsync("renderAllTrees", new List<AnalyzedText> { RenderSpan });
+    }
+
+    Task Close() => OnClose.InvokeAsync();
+}

@@ -1,0 +1,67 @@
+/* Self-contained rather than sharing SpanView's ".nested-underline" — Blazor CSS isolation scopes
+   a .razor.css file's rules to elements its own component renders, and this markup is rendered by
+   EchoUnderline, not SpanView, so a shared class there would never match here. Same border-bottom
+   technique and depth formula (padding-bottom is set inline per lane in the component), so it
+   still lines up with capture underlines at the same depth. */
+.echo-underline {
+    position: relative;
+    cursor: pointer;
+    border-bottom-width: var(--underline-width);
+    border-bottom-style: solid;
+    border-bottom-color: var(--color);
+    /* Same shared ease-in-out timing the rest of the app's hover states use. */
+    transition: border-bottom-width var(--transition-time), border-bottom-color var(--transition-time), color var(--transition-time);
+}
+
+/* JS-driven (initEchoHover in document-lines.js), not :hover — every word/space segment sharing
+   this echo's data-echo-key gets the class together, so the whole line lights up as one unit
+   regardless of which specific segment the cursor is over. A direct border-bottom-color change,
+   not filter: brightness() — filter brightens an element's whole rendered subtree, and lanes at
+   one word nest one inside another, so a filter on the hovered lane would bleed into whichever
+   unrelated lanes happen to be nested inside or around it too.
+
+   color is set the same direct way for the same reason, but it's safe to let it inherit down to
+   the actual word text: color (unlike border-bottom-color) is an inherited property, and no
+   .echo-underline sets its own base color, so the only elements it can reach are the hovered
+   lane's own descendants — the word text itself, plus any other echo's lanes that happen to be
+   nested inside this one at the same word. That's the same "shared word lights up" outcome the
+   old filter bleed produced for text specifically, which is what looked right before; it's the
+   border bleeding onto *unrelated lines* that was the actual bug, and border-bottom-color still
+   doesn't inherit, so that fix stands.
+
+   Two separate variables, not one: --echo-hover-color brightens off the underline's own dim base
+   (EchoPresentation.UnderlineColorHex), --echo-hover-text-color brightens off the word text's own,
+   much lighter base (DocumentTextPresentation.UnmatchedTextColorHex) — same starting-point split
+   SpanView already uses for the non-hover colors, carried through to their hover factors too
+   (EchoPresentation.UnderlineHoverBrightnessFactor vs. TextHoverBrightnessFactor) so each can be
+   tuned to actually look brighter relative to its own resting color. */
+.echo-underline.echo-hover-active {
+    border-bottom-width: 3px;
+    border-bottom-color: var(--echo-hover-color, var(--color));
+    color: var(--echo-hover-text-color, var(--unmatched-text-color));
+}
+
+/* Dead center on its underline (top:100% lands on the border-bottom line itself, since padding
+   pushes it there). No background card: with several echoes able to anchor on the same word,
+   stacked translucent boxes compounded into an opaque blob — bare text with a text-shadow reads
+   fine against anything underneath without that. Always a bit brighter than the underline itself
+   (--echo-badge-brightness), so the number reads as distinct from the line under it. */
+.echo-badge {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    /* A small per-lane stagger on top of the word-uniqueness pass in BuildEchoRenderPlan — that
+       pass avoids anchoring two echoes on the same word whenever a free word exists nearby, but a
+       short, very densely-overlapped span can run out of words entirely; when it does, this still
+       keeps two same-word badges from landing in the exact same pixels. */
+    transform: translate(calc(-50% + var(--lane-index, 0) * 2px), -50%);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.85em;
+    font-weight: 700;
+    color: var(--color);
+    filter: brightness(var(--echo-badge-brightness, 1));
+    text-shadow: 0 0 3px var(--near-black, #000), 0 0 3px var(--near-black, #000);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+}

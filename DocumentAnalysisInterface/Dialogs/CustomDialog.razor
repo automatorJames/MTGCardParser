@@ -1,5 +1,5 @@
 ﻿<div class="custom-dialog-backdrop" @onclick="HandleBackdropClick">
-    <div class="custom-dialog-container" @onclick:stopPropagation="true">
+    <div class="custom-dialog-container" style="@ContainerStyle" @onclick:stopPropagation="true">
         @if (TitleContent != null)
         {
             <div class="custom-dialog-header">
@@ -27,6 +27,18 @@
 
     [Parameter]
     public EventCallback OnBackdropClick { get; set; }
+
+    /// <summary>
+    /// Raw CSS appended to the container's own inline style, e.g. to override its default
+    /// max-width for one particular dialog without touching the shared default every other
+    /// CustomDialog caller gets. Deliberately an inline style rather than a caller-supplied CSS
+    /// class: .custom-dialog-container is rendered here, by CustomDialog, wrapping the caller's
+    /// DialogContent — never a descendant of the caller's own scoped markup — so a caller's
+    /// .razor.css ::deep rule (which only ever compiles to "[caller-scope] .selector", a
+    /// descendant combinator) can never structurally match it, no matter the class name.
+    /// </summary>
+    [Parameter]
+    public string ContainerStyle { get; set; }
 
     private Task HandleBackdropClick() => OnBackdropClick.InvokeAsync();
 }

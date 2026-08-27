@@ -1,30 +1,86 @@
 ﻿@using Glyphotype.RegexGeneration.Graph.Nodes
 @using DocumentAnalysisInterface.Components.DocumentLines
 @inject RuntimeSettings RuntimeSettings
+@inject DocumentCorpusAnalyzer CorpusAnalyzer
 @if (CaptureTrace != null)
 {
-    <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.HoverPath>
-        @foreach (var segment in CaptureTraceWalker.GetSegments(CaptureTrace))
-        {
-            if (segment.Child is { } child)
+    var (echoOccurrence, echoes) = GetEchoData();
+
+    @if (echoes.Count > 0)
+    {
+        var plan = BuildEchoRenderPlan(echoOccurrence.Words.Length, DigestedText.PackEchoLanes(echoes));
+        @* CaptureTrace.HoverPath is the literal constant "UnmatchedString" for every occurrence —
+           fine for the old plain-text rendering (nothing else read it), but this data-path is also
+           what the existing capture-hover system (document-lines.js) walks up to when a click/hover
+           inside here bubbles past our own nested spans. Left generic, every UnmatchedString on the
+           page would share one "path", so hovering one would cross-highlight/mute every other one
+           too. CaptureTrace.Index alone isn't enough either — it's an offset into this *line's* own
+           source text, and plenty of differently-templated lines start their unmatched tail at the
+           same offset — Line.DataPath (unique per line) plus that offset is unique page-wide. *@
+        <span class="echo-container" style=@GetEchoContainerStyle() data-path=@($"{Line?.DataPath}-{CaptureTrace.HoverPath}-{CaptureTrace.Index}")>
+            @* Words.Split(' ', RemoveEmptyEntries) drops any leading/trailing space the raw gap
+               text had (e.g. a captured word immediately before this UnmatchedString) — restore it
+               here so there's still a gap between "creature" and "card" once Echoes is on. *@
+            @GetBoundaryWhitespace(echoOccurrence.Text, leading: true)
+            @for (int i = 0; i < echoOccurrence.Words.Length; i++)
             {
-                <SpanView CaptureTrace=@child EffectiveDepth=@ChildEffectiveDepth />
+                var wordIndex = i;
+                @if (plan.WordEntries[wordIndex].Count == 0)
+                {
+                    @echoOccurrence.Words[wordIndex]
+                }
+                else
+                {
+                    <EchoUnderline Entries=@plan.WordEntries[wordIndex] OnEchoClick="OpenEchoDialog">@echoOccurrence.Words[wordIndex]</EchoUnderline>
+                }
+                @if (wordIndex < echoOccurrence.Words.Length - 1)
+                {
+                    if (plan.SpaceEntries[wordIndex].Count == 0)
+                    {
+                        @(" ")
+                    }
+                    else
+                    {
+                        <EchoUnderline Entries=@plan.SpaceEntries[wordIndex] OnEchoClick="OpenEchoDialog">@(" ")</EchoUnderline>
+                    }
+                }
             }
-            else if (IsEffectivelyCollapsible && FindEmergentDescendant() is { } emergent)
+            @GetBoundaryWhitespace(echoOccurrence.Text, leading: false)
+        </span>
+    }
+    else
+    {
+        <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.HoverPath>
+            @foreach (var segment in CaptureTraceWalker.GetSegments(CaptureTrace))
             {
-                <span class="nested-underline dotted-underline" style=@GetEmergentExtensionStyle(emergent)>@segment.Text</span>
+                if (segment.Child is { } child)
+                {
+                    <SpanView CaptureTrace=@child EffectiveDepth=@ChildEffectiveDepth />
+                }
+                else if (IsEffectivelyCollapsible && FindEmergentDescendant() is { } emergent)
+                {
+                    <span class="nested-underline dotted-underline" style=@GetEmergentExtensionStyle(emergent)>@segment.Text</span>
+                }
+                else
+                {
+                    <text>@segment.Text</text>
+                }
             }
-            else
-            {
-                <text>@segment.Text</text>
-            }
-        }
-    </span>
+        </span>
+    }
+}
+
+@if (_isEchoDialogOpen)
+{
+    <EchoTreeDialog Span=@_selectedEchoSpan CurrentDocumentName=@Line?.SourceText.CorpusMemberName OnClose="CloseEchoDialog" />
 }
 
 @code {
     [CascadingParameter]
     public CaptureTraceDisplayContext DisplayContext { get; set; } = null!;
+
+    [CascadingParameter]
+    public ProcessedLine Line { get; set; }
 
     [Parameter, EditorRequired]
     public CaptureTrace CaptureTrace { get; set; } = null!;
@@ -127,12 +183,13 @@
     string GetStyle()
     {
         if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
-            return "";
+            return "color: var(--unmatched-text-color);";
 
         // A collapsed node paints no border of its own, so it gets no style at all — in
         // particular no explicit --color, letting its descendants inherit the nearest visible
         // ancestor's color straight through the CSS cascade instead of every collapsed node in a
-        // chain needing its own (unused) rainbow slot.
+        // chain needing its own (unused) rainbow slot. The text color is the same one value at
+        // every captured level regardless, so leaving it unset here is fine too — it inherits.
         if (IsEffectivelyCollapsible)
             return "";
 
@@ -143,5 +200,146 @@
         style.Append($" padding-bottom: {paddingBottom}px;");
 
         return style.ToString();
+    }
+
+    // --- Echoes: jagged corpus-shared-subspan underlines on UnmatchedString roots ---
+
+    AnalyzedText _selectedEchoSpan;
+    bool _isEchoDialogOpen;
+
+    void OpenEchoDialog(AnalyzedText span)
+    {
+        _selectedEchoSpan = span;
+        _isEchoDialogOpen = true;
+    }
+
+    void CloseEchoDialog()
+    {
+        _isEchoDialogOpen = false;
+        _selectedEchoSpan = null;
+    }
+
+    /// <summary>
+    /// Correlates this node (when it's an UnmatchedString root) back to its source
+    /// <see cref="UnmatchedTextOccurrence"/> on the cascaded <see cref="Line"/>, and finds every
+    /// echo within it. Returns an empty match list (and a null occurrence) for every other case —
+    /// setting off, non-root nodes, matched captures, or a line not yet available.
+    /// </summary>
+    (UnmatchedTextOccurrence Occurrence, List<EchoMatch> Echoes) GetEchoData()
+    {
+        if (!RuntimeSettings.ShowEchoes) return (null, []);
+        if (CaptureTrace is not RootCaptureTrace root || !root.IsUnmatchedString) return (null, []);
+        if (Line == null) return (null, []);
+
+        var occurrence = Line.UnmatchedTextOccurrences
+            .FirstOrDefault(o => ReferenceEquals(o.Anchor.CaptureContext.RootCaptureTrace, root));
+
+        if (occurrence == null) return (null, []);
+
+        var corpus = CorpusAnalyzer.DigestedTextWithCaptureGlyphs;
+        if (corpus == null) return (occurrence, []);
+
+        var echoes = corpus.FindEchoes(occurrence, RuntimeSettings.MinSpanWords, RuntimeSettings.MinSpanOccurences);
+        return (occurrence, echoes);
+    }
+
+    /// <summary>
+    /// The run of literal spaces <see cref="UnmatchedTextOccurrence.Words"/> silently drops off
+    /// either end of its raw text (<c>Split(' ', RemoveEmptyEntries)</c> discards the empty tokens
+    /// a leading/trailing space produces) — needed back so an UnmatchedString rendered word-by-word
+    /// still has a gap from whatever capture immediately precedes or follows it.
+    /// </summary>
+    static string GetBoundaryWhitespace(string text, bool leading)
+    {
+        var trimmed = leading ? text.TrimStart(' ') : text.TrimEnd(' ');
+        var count = text.Length - trimmed.Length;
+        return count > 0 ? new string(' ', count) : "";
+    }
+
+    // Lane packing itself now lives on DigestedText (DigestedText.PackEchoLanes) — shared with
+    // CaptureTraceDisplayContext, which needs the same packing just to size the line, not render it.
+
+    /// <summary>
+    /// Sets the hover- and badge-brightness custom properties once, for every nested echo
+    /// underline/badge in this UnmatchedString to inherit — plain inline text otherwise, so normal
+    /// word-wrapping applies.
+    /// </summary>
+    static string GetEchoContainerStyle()
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        return $"--echo-hover-color: {EchoPresentation.UnderlineHoverColorHex}; " +
+               $"--echo-hover-text-color: {EchoPresentation.TextHoverColorHex}; " +
+               $"--echo-badge-brightness: {EchoPresentation.BadgeBrightnessFactor.ToString(culture)}; " +
+               $"color: var(--unmatched-text-color);";
+    }
+
+    /// <summary>
+    /// Builds, per word index, the set of active lane entries for that word's own text and for the
+    /// single space following it (if any) — kept separate so an echo's underline bridges the gaps
+    /// between its own words but stops cleanly at its last word rather than bleeding into whatever
+    /// comes next. Each echo's badge is anchored to its own midpoint word (integer division), which
+    /// approximates centering over its full span without needing pixel measurement — nudged off
+    /// that midpoint when another echo already claimed it, so two badges on different lanes don't
+    /// land at the same horizontal position with only ~6px of vertical clearance between them.
+    /// </summary>
+    static (List<List<EchoLaneEntry>> WordEntries, List<List<EchoLaneEntry>> SpaceEntries) BuildEchoRenderPlan(
+        int wordCount, List<List<EchoMatch>> lanes)
+    {
+        var wordEntries = Enumerable.Range(0, wordCount).Select(_ => new List<EchoLaneEntry>()).ToList();
+        var spaceEntries = Enumerable.Range(0, wordCount).Select(_ => new List<EchoLaneEntry>()).ToList();
+        var anchors = ChooseNonCollidingAnchors(lanes);
+
+        for (int laneIndex = 0; laneIndex < lanes.Count; laneIndex++)
+        {
+            foreach (var echo in lanes[laneIndex])
+            {
+                int start = echo.WordStartIndex;
+                int end = echo.WordStartIndex + echo.Span.WordCount;
+                int anchor = anchors[echo];
+
+                for (int w = start; w < end; w++)
+                {
+                    wordEntries[w].Add(new EchoLaneEntry(laneIndex, echo, w == anchor));
+                    if (w < end - 1)
+                        spaceEntries[w].Add(new EchoLaneEntry(laneIndex, echo, false));
+                }
+            }
+        }
+
+        return (wordEntries, spaceEntries);
+    }
+
+    /// <summary>
+    /// One badge-anchor word per echo, preferring each echo's own midpoint but claiming the
+    /// nearest still-free word within its own span (walking outward) when the midpoint is already
+    /// taken by an echo on a different lane. Lane-mates never collide on their own — lane-packing
+    /// already keeps same-lane echoes non-overlapping — this is purely for echoes on different
+    /// lanes whose midpoints happen to fall on the same word.
+    /// </summary>
+    static Dictionary<EchoMatch, int> ChooseNonCollidingAnchors(List<List<EchoMatch>> lanes)
+    {
+        var anchors = new Dictionary<EchoMatch, int>();
+        var claimed = new HashSet<int>();
+
+        foreach (var echo in lanes.SelectMany(lane => lane))
+        {
+            int start = echo.WordStartIndex;
+            int end = echo.WordStartIndex + echo.Span.WordCount;
+            int midpoint = start + echo.Span.WordCount / 2;
+
+            int anchor = midpoint;
+            for (int delta = 0; claimed.Contains(anchor) && delta < echo.Span.WordCount; delta++)
+            {
+                if (midpoint + delta < end && !claimed.Contains(midpoint + delta))
+                    anchor = midpoint + delta;
+                else if (midpoint - delta >= start && !claimed.Contains(midpoint - delta))
+                    anchor = midpoint - delta;
+            }
+
+            claimed.Add(anchor);
+            anchors[echo] = anchor;
+        }
+
+        return anchors;
     }
 }

@@ -42,18 +42,30 @@ public record AnalyzedText
     [JsonIgnore]
     public Dictionary<string, int> OccurrencesPerDocument { get; init; }
 
+    /// <summary>
+    /// True unless every occurrence of this (already right-maximal) span shares one identical
+    /// immediately-preceding word — i.e. this span is not simply the tail end of some longer,
+    /// equally-frequent phrase. A span reaching the start of its source occurrence (no preceding
+    /// word at all) always counts as left-maximal, mirroring how reaching the end of an occurrence
+    /// is treated as maximal on the right.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsLeftMaximal { get; init; }
+
     public AnalyzedText(
         string text,
         int maximalSpanOccurrenceCount,
         List<SubSpanContext> occurrences,
         List<AdjacencyNode> precedingAdjacencies,
-        List<AdjacencyNode> followingAdjacencies)
+        List<AdjacencyNode> followingAdjacencies,
+        bool isLeftMaximal)
     {
         // --- Standard Initializations ---
         Text = text;
         MaximalSpanOccurrenceCount = maximalSpanOccurrenceCount;
         PrecedingAdjacencies = precedingAdjacencies;
         FollowingAdjacencies = followingAdjacencies;
+        IsLeftMaximal = isLeftMaximal;
         WordCount = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
         TotalOccurrenceCount = occurrences.Count;
 
