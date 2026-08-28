@@ -1,12 +1,23 @@
-// The single home for every tunable knob behind TypeRegexPage's formatted/commented regex output.
-// Previously scattered across SmartRegexStaticRules.cs, SmartSpanControlPanel.cs, SmartFontConfig.cs,
-// and Colors/ColorKnobs.cs (ColorKnobDefaults) - consolidated here so a human retuning how formatted
-// regex looks has exactly one file to open: layout (SmartRegexStaticRules), per-role color
-// (SmartSpanControlPanel), the color-knob fallback defaults it and every other ColorKnobs caller falls
-// back to (ColorKnobDefaults), and font (SmartRegexStaticRules.PrimaryFontFamily). Nothing outside this
-// file should hardcode a layout, color, or font constant for formatted regex output.
+// The single home for every presentation knob that Glyphotype's OWN renderers read while building
+// their output (formatted regex, the C# class view, rainbow palettes). Consolidated here from
+// RegexGeneration/Presentation/RegexPresentationRules.cs, RegexGeneration/Presentation/GlyphClassRenderRules.cs,
+// Colors/GlyphKeyPaletteKnobs.cs, and the private constants that used to sit inside
+// Colors/DeterministicPalette.cs and Colors/ColorWheelOptions.cs.
+//
+// This is one of exactly two knob files in the solution. The other is
+// DocumentAnalysisInterface/PresentationRules/InterfacePresentationRules.cs, which holds every knob
+// only the Blazor UI reads. The split is not stylistic — it's the project reference direction:
+// DocumentAnalysisInterface references Glyphotype, never the reverse, so anything Glyphotype's own
+// render pipeline consumes (SmartLineRenderer, GlyphClassRenderer, EnumSectionBuilder,
+// CommentBoxMetrics, DeterministicPalette, ColorKnobs, AnalyzedText) has to live on this side of the
+// line. Knobs that only ever reach a .razor file or a CSS custom property belong in the interface
+// file instead.
+//
+// Nothing outside these two files should hardcode a layout, color, font, or spacing constant.
 
-namespace Glyphotype.RegexGeneration.Presentation;
+using Glyphotype.RegexGeneration.Presentation;
+
+namespace Glyphotype.PresentationRules;
 
 /// <summary>
 /// Layout knobs for the formatted/commented regex output: spacing, buffer widths, the font family, and
@@ -45,7 +56,7 @@ public static class SmartRegexStaticRules
 
     /// <summary>
     /// The font family for all formatted regex output, applied to the whole block. There is deliberately
-    /// no per-role alternate font: <see cref="CommentBoxMetrics"/> and every padding/column calculation
+    /// no per-role alternate font: <c>CommentBoxMetrics</c> and every padding/column calculation
     /// around it measure text by character count, which only lines up on screen if every span shares one
     /// truly monospace font.
     /// </summary>
@@ -280,4 +291,104 @@ public static class SmartSpanControlPanel
 
         return SpanStylePalette.FromKnobs(knobs);
     }
+}
+
+/// <summary>
+/// Tunable knobs for <see cref="RegexGeneration.Presentation.GlyphClassRenderer"/>'s output - the "C# Class"
+/// footer tray view's own small knobs class, alongside <see cref="SmartRegexStaticRules"/> (formatted regex
+/// layout) and <see cref="SmartSpanControlPanel"/> (formatted regex color).
+/// </summary>
+public static class GlyphClassRenderRules
+{
+    /// <summary>Spaces of indentation for a class body's members (the Nibs line, attribute lines, property lines) from the class's own braces.</summary>
+    public const int BodyIndentSpaces = 4;
+
+    /// <summary>
+    /// Resting brightness (0..1) for neutral C# keyword text - <c>public</c>, <c>class</c>, <c>override</c>,
+    /// <c>Prop(</c>, <c>get</c>, <c>set</c> - the lightest of the three neutral shades, since keywords read
+    /// as the most "sentence-like" of the uninteresting text.
+    /// </summary>
+    public const double NeutralKeywordBrightness = 0.62;
+
+    /// <summary>Resting brightness (0..1) for neutral brace/bracket/generic-angle-bracket text (<c>{ } [ ] &lt; &gt; ( )</c>), including the quotes around a Nibs-array literal.</summary>
+    public const double NeutralBraceBrightness = 0.45;
+
+    /// <summary>Resting brightness (0..1) for neutral fine punctuation (<c>; :</c>) - the darkest of the three neutral shades, since it's the least meaningful.</summary>
+    public const double NeutralPunctuationBrightness = 0.32;
+}
+
+/// <summary>
+/// The base HSL values every <see cref="Colors.HexPalette"/> that <see cref="DeterministicPalette"/> hands
+/// out is built from, plus the defaults of the <see cref="Colors.ColorWheelOptions"/> that decide where on
+/// the wheel a rainbow starts and how far it travels. Previously private constants inside
+/// <see cref="DeterministicPalette"/> and inline defaults on <see cref="Colors.ColorWheelOptions"/>; hoisted
+/// here so the "what does a rainbow actually look like" numbers sit next to
+/// <see cref="GlyphKeyPaletteKnobs"/>, which is defined purely as multipliers against them.
+/// </summary>
+public static class RainbowPaletteKnobs
+{
+    /// <summary>Resting saturation (0..1) of a rainbow hue's <see cref="Colors.HexPalette.Normal"/> variant.</summary>
+    public const double BaseSaturation = 0.66;
+
+    /// <summary>Full saturation — both the ceiling any saturation factor clamps to, and the fixed saturation of the <see cref="Colors.HexPalette.Sat"/> hover-pop variant.</summary>
+    public const double FullSaturation = 1.0;
+
+    /// <summary>Saturation of the <see cref="Colors.HexPalette.Dark"/> lowlight variant — desaturated so a dimmed element reads as receding rather than merely darker.</summary>
+    public const double DarkSaturation = 0.3;
+
+    /// <summary>Resting lightness (0..1) of a rainbow hue's <see cref="Colors.HexPalette.Normal"/> variant.</summary>
+    public const double BaseLightness = 0.6;
+
+    /// <summary>Lightness of the <see cref="Colors.HexPalette.Light"/> highlight variant.</summary>
+    public const double LightLightness = 0.8;
+
+    /// <summary>Lightness of the <see cref="Colors.HexPalette.Dark"/> lowlight variant.</summary>
+    public const double DarkLightness = 0.3;
+
+    /// <summary>
+    /// Ceiling for any lightness a caller-supplied factor scales up to. Past this a hue is
+    /// indistinguishable from white, which would defeat the point of a rainbow.
+    /// </summary>
+    public const double MaxLightness = 0.92;
+
+    /// <summary>Where on the color wheel a rainbow's first hue sits, in degrees.</summary>
+    public const double WheelStartingDegree = 280.0;
+
+    /// <summary>
+    /// Cap on the wheel arc a rainbow may span, in degrees. Below the full 360 so a set with only two
+    /// or three items doesn't land on near-opposite hues that read as unrelated.
+    /// </summary>
+    public const double WheelMaxDegreesPerRotation = 180.0;
+}
+
+/// <summary>
+/// The tuning knobs for the *second* rainbow a word tree card renders: the one keyed by top-level
+/// <see cref="Glyph"/> type (the captured, bolded sub-spans inside node text, plus the glyph key
+/// strip below the tree), as opposed to the document-keyed rainbow above it.
+/// <para>
+/// Both key strips draw equidistant hues from the same
+/// <see cref="DeterministicPalette.GetPositionalPaletteSet(int, double, double)"/> wheel, so hue
+/// alone can't tell the reader which of the two signals they're looking at — a green document
+/// border and a green glyph border would read as related when they aren't. These factors pull the
+/// glyph rainbow off the document rainbow on the other two HSL axes instead: brighter and less
+/// saturated, so glyph color reads as a lighter "wash" over text while document color stays the
+/// heavier, more saturated signal on node outlines.
+/// </para>
+/// </summary>
+public static class GlyphKeyPaletteKnobs
+{
+    /// <summary>
+    /// Multiplier applied to <see cref="RainbowPaletteKnobs.BaseSaturation"/> when building a
+    /// glyph-keyed palette. Below 1 softens the hue so bolded capture text doesn't compete with the
+    /// document-keyed node outlines drawn around it.
+    /// </summary>
+    public const double SaturationFactor = 0.72;
+
+    /// <summary>
+    /// Multiplier applied to <see cref="RainbowPaletteKnobs.BaseLightness"/> and
+    /// <see cref="RainbowPaletteKnobs.LightLightness"/> when building a glyph-keyed palette. Above 1
+    /// lifts the hue toward white, which is what keeps capture text legible against the dark node fill
+    /// at the reduced saturation above.
+    /// </summary>
+    public const double LightnessFactor = 1.2;
 }

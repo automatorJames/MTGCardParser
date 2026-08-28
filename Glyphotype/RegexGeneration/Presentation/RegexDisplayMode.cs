@@ -7,6 +7,12 @@ namespace Glyphotype.RegexGeneration.Presentation;
 /// regex renders unformatted at all - the four states TypeRegexPage's format toggle cycles through.
 /// <see cref="Description"/> gives the toggle's tooltip text; <see cref="ColorAttribute"/> gives its icon
 /// color for that state.
+/// <para>
+/// These four colors are the one pocket of presentation tuning that deliberately does NOT live in
+/// <see cref="Glyphotype.PresentationRules"/> or DocumentAnalysisInterface's InterfacePresentationRules:
+/// they're attribute arguments, so they can only be written on the members they describe. Everything
+/// else — layout, spacing, font, palette, hover — belongs in one of those two files.
+/// </para>
 /// </summary>
 public enum RegexDisplayMode
 {

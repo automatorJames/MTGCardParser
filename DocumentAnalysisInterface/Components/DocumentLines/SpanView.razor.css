@@ -7,6 +7,9 @@
        specificity, which silently broke hover-to-hue highlighting for captured text. As a class
        rule it cascades normally: .highlight-active's color wins only while actually hovered. */
     color: var(--captured-text-color);
+    /* Fallback only — SpanView sets padding-bottom inline from
+       DocumentLineMetrics.GetUnderlinePaddingPx on every element that actually paints a border.
+       Kept equal to DocumentLineMetrics.UnderlineBasePaddingPx (its depth-0 result). */
     padding-bottom: 2px;
 }
 

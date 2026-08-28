@@ -23,18 +23,15 @@ public static class DeterministicPalette
     public static Dictionary<Type, HexPalette> TypePaletteSet => _typePaletteSet ??= GetTypePaletteSet();
 
     // --- Core Color Generation Constants ---
-    const double BaseSaturation = 0.66;
-    const double FullSaturation = 1.0;
-    const double DarkSaturation = 0.3;
-    const double BaseLightness = 0.6;
-    const double LightLightness = 0.8;
-    const double DarkLightness = 0.3;
-
-    /// <summary>
-    /// Ceiling for any lightness a caller-supplied factor scales up to. Past this a hue is
-    /// indistinguishable from white, which would defeat the point of a rainbow.
-    /// </summary>
-    const double MaxLightness = 0.92;
+    // Tuned in one place for the whole solution - see RainbowPaletteKnobs. Aliased here purely so the
+    // formulas below stay readable; the values themselves live nowhere else.
+    const double BaseSaturation = RainbowPaletteKnobs.BaseSaturation;
+    const double FullSaturation = RainbowPaletteKnobs.FullSaturation;
+    const double DarkSaturation = RainbowPaletteKnobs.DarkSaturation;
+    const double BaseLightness = RainbowPaletteKnobs.BaseLightness;
+    const double LightLightness = RainbowPaletteKnobs.LightLightness;
+    const double DarkLightness = RainbowPaletteKnobs.DarkLightness;
+    const double MaxLightness = RainbowPaletteKnobs.MaxLightness;
 
     // --- Static Factories ---
 

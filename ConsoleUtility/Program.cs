@@ -62,18 +62,6 @@ internal class Program
         }
     }
 
-    //static void TestSimple<T>(string tryToMatchText = null)
-    //{
-    //    var testGraph = RegexGraph.Create(typeof(T));
-    //    Console.WriteLine(testGraph.BuiltRegex.FormattedRegex);
-    //
-    //    if (tryToMatchText != null)
-    //    {
-    //        testGraph.TryMatch(tryToMatchText, out Glyph result);
-    //        Debugger.Break();
-    //    }
-    //}
-
     static List<string> GetLines()
     {
         var cards = _cardDataGetter.GetDocumentsAsync().Result;

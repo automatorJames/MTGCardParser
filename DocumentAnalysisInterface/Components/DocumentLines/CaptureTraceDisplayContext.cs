@@ -29,9 +29,9 @@ public class CaptureTraceDisplayContext
             .Max();
 
         // Echo underlines share the exact same depth-to-pixel-offset scale as capture underlines
-        // (see EchoUnderline's own padding-bottom formula), so the same MaxEffectiveDepth the line
-        // already uses to reserve vertical space for the deepest capture nesting can just as well
-        // reserve room for the deepest echo lane stack too — whichever is taller wins.
+        // (both go through DocumentLineMetrics.GetUnderlinePaddingPx), so the same MaxEffectiveDepth
+        // the line already uses to reserve vertical space for the deepest capture nesting can just as
+        // well reserve room for the deepest echo lane stack too — whichever is taller wins.
         var echoLaneCount = runtimeSettings.ShowEchoes && echoCorpus != null
             ? echoCorpus.GetMaxEchoLaneCount(line, runtimeSettings.MinSpanWords, runtimeSettings.MinSpanOccurences)
             : 0;

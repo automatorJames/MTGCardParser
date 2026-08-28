@@ -13,10 +13,6 @@ public class CaptureContext
     public CaptureContext(GlyphNode rootNode, Match match, string sourceText)
     {
         _captureDictionary = GetNamedGroupCaptures(match);
-
-        //var all = _captureDictionary.Values.SelectMany(x => x);
-        //if (all.Any(x => x.Value == "")) Debugger.Break();
-
         SourceText = sourceText;
         FullMatch = match.Value;
         RootCaptureTrace = new(this, rootNode, match);

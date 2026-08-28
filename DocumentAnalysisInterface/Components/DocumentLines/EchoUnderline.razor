@@ -38,7 +38,8 @@ else
     public EventCallback<AnalyzedText> OnEchoClick { get; set; }
 
     static string GetLaneStyle(int lane) =>
-        $"--color: {EchoPresentation.UnderlineColorHex}; padding-bottom: {2 + lane * 6}px; --lane-index: {lane};";
+        $"--color: {EchoPresentation.UnderlineColorHex}; " +
+        $"padding-bottom: {DocumentLineMetrics.GetUnderlinePaddingPx(lane)}px; --lane-index: {lane};";
 
     /// <summary>
     /// (start, length) uniquely identifies an echo within one occurrence — two different corpus

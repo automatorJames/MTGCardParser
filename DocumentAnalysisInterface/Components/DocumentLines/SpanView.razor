@@ -153,8 +153,7 @@
     {
         var style = new System.Text.StringBuilder();
         style.Append(DisplayContext.Palettes[PaletteKey(emergent)].ToColorStyle());
-        var paddingBottom = 2 + (EffectiveDepth * 6);
-        style.Append($" padding-bottom: {paddingBottom}px;");
+        style.Append($" padding-bottom: {DocumentLineMetrics.GetUnderlinePaddingPx(EffectiveDepth)}px;");
         return style.ToString();
     }
 
@@ -196,8 +195,7 @@
         var style = new System.Text.StringBuilder();
 
         style.Append(DisplayContext.Palettes[PaletteKey(CaptureTrace)].ToColorStyle());
-        var paddingBottom = 2 + (EffectiveDepth * 6);
-        style.Append($" padding-bottom: {paddingBottom}px;");
+        style.Append($" padding-bottom: {DocumentLineMetrics.GetUnderlinePaddingPx(EffectiveDepth)}px;");
 
         return style.ToString();
     }
@@ -280,7 +278,8 @@
     /// comes next. Each echo's badge is anchored to its own midpoint word (integer division), which
     /// approximates centering over its full span without needing pixel measurement — nudged off
     /// that midpoint when another echo already claimed it, so two badges on different lanes don't
-    /// land at the same horizontal position with only ~6px of vertical clearance between them.
+    /// land at the same horizontal position with only one
+    /// <see cref="DocumentLineMetrics.UnderlineDepthStepPx"/> of vertical clearance between them.
     /// </summary>
     static (List<List<EchoLaneEntry>> WordEntries, List<List<EchoLaneEntry>> SpaceEntries) BuildEchoRenderPlan(
         int wordCount, List<List<EchoMatch>> lanes)

@@ -1,7 +1,8 @@
 /**
- * Tuning knobs for the hover interaction. These have exactly one home — DocumentAnalysisInterface's
- * HoverTreatmentConfig.cs — and arrive here as {@link initializeTypeExpressionsHover}'s config
- * argument; nothing in this file should hardcode a fallback value for any of them.
+ * Tuning knobs for the hover interaction. These have exactly one home — HoverTreatmentConfig in
+ * DocumentAnalysisInterface/PresentationRules/InterfacePresentationRules.cs — and arrive here as
+ * {@link initializeTypeExpressionsHover}'s config argument; nothing in this file should hardcode a
+ * fallback value for any of them.
  */
 interface HoverTreatmentConfig {
     pathAncestorDimOpacity: number;

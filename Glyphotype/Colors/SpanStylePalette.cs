@@ -6,7 +6,7 @@ namespace Glyphotype.Colors;
 /// plus the non-color style flags (<see cref="IsBold"/>, <see cref="IsItalic"/>) that round it out into a
 /// general-purpose span style, not just a color. Deliberately excludes any per-span font-family override:
 /// mixing font families within one formatted regex breaks the fixed-column-width math the whole rendering
-/// pipeline depends on (see <see cref="Glyphotype.RegexGeneration.Presentation.SmartRegexStaticRules.PrimaryFontFamily"/>). Replaces
+/// pipeline depends on (see <see cref="Glyphotype.PresentationRules.SmartRegexStaticRules.PrimaryFontFamily"/>). Replaces
 /// the older pattern of calling a method with a variant enum at render time — every consumer just reads the
 /// properties it needs.
 /// </summary>

@@ -1,4 +1,4 @@
-using Glyphotype.RegexGeneration.Presentation;
+using Glyphotype.PresentationRules;
 
 namespace Glyphotype.Colors;
 
@@ -10,7 +10,7 @@ namespace Glyphotype.Colors;
 /// so a caller who only cares about hue can write <c>new ColorKnobs(210)</c> and get a sensible,
 /// centrally-defined look.
 /// </summary>
-/// <param name="HueDegrees">Hue in degrees (0-360) around the color wheel, or 0 for a caller (e.g. <see cref="Glyphotype.RegexGeneration.Presentation.SmartSpanControlPanel"/>'s tables) that always overwrites it before use.</param>
+/// <param name="HueDegrees">Hue in degrees (0-360) around the color wheel, or 0 for a caller (e.g. <see cref="Glyphotype.PresentationRules.SmartSpanControlPanel"/>'s tables) that always overwrites it before use.</param>
 /// <param name="Saturation">Resting saturation (0..1), or null for <see cref="ColorKnobDefaults.Saturation"/>.</param>
 /// <param name="Brightness">Resting brightness (0..1), or null for <see cref="ColorKnobDefaults.Brightness"/>.</param>
 /// <param name="SaturationRange">

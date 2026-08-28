@@ -1,5 +1,10 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
+/* The palette below is the CSS half of the app's presentation rules; the C# half lives in
+   DocumentAnalysisInterface/PresentationRules/InterfacePresentationRules.cs. A value belongs here
+   when only CSS ever reads it, and there when C# has to compute with it or hand it to JS.
+   ThemeColor in that file is the name list for these custom properties, so a component can pass one
+   as a parameter without restating the var() string — keep the two in step when adding a color. */
 :root {
     --global-transition-duration: 0.1;
     --transition-time: calc(var(--global-transition-duration) * 1s) ease-in-out;
@@ -23,12 +28,17 @@
 
 body {
     background-color: var(--dark-grey);
+    /* Kept equal to DocumentTextPresentation.CapturedTextColorHex — that constant is documented as
+       "the app's ordinary body text color", so leaving it untouched changes nothing. */
     color: #d4d4d4;
     /* Apply Inter here */
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     /* Optional: Improves rendering on modern browsers */
     font-feature-settings: "cv02", "cv05", "cv11";
     margin: 0;
+    /* Kept equal to DocumentLineMetrics.BaseLineHeightPx — a document line with no visible capture
+       nesting gets exactly this height from DocumentBlock's inline override, so an un-nested line
+       and ordinary body text sit on the same rhythm. */
     line-height: 24px;
 }
 
