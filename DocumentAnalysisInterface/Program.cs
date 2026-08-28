@@ -23,14 +23,14 @@ public class Program
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();
-        builder.Services.AddSingleton<DocumentCorpusAnalyzer>();
+        builder.Services.AddSingleton<CorpusAnalyzer>();
 
         var app = builder.Build();
 
         // The corpus analyzer is app-wide data, not per-session state, so it's warmed
         // once here rather than being lazily triggered by whichever page a user happens
         // to land on first.
-        await app.Services.GetRequiredService<DocumentCorpusAnalyzer>().EnsureInitializedAsync();
+        await app.Services.GetRequiredService<CorpusAnalyzer>().EnsureInitializedAsync();
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())

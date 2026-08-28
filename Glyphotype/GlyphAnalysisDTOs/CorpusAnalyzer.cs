@@ -6,7 +6,7 @@ namespace Glyphotype.GlyphAnalysisDTOs;
 /// A consolidated processor that tokenizes a corpus of documents and produces a complete
 /// analysis of both matched tokens (as GlyphCaptureSummary) and word span trees in a single workflow.
 /// </summary>
-public class DocumentCorpusAnalyzer
+public class CorpusAnalyzer
 {
     IDocumentRepository _repository;
     bool _isInitialized;
@@ -40,7 +40,7 @@ public class DocumentCorpusAnalyzer
     /// </summary>
     public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries { get; private set; } = [];
 
-    public DocumentCorpusAnalyzer(IDocumentRepository repository)
+    public CorpusAnalyzer(IDocumentRepository repository)
     {
         _repository = repository;
     }

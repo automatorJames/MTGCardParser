@@ -26,7 +26,7 @@ internal class Program
 
     static CardDataGetter _cardDataGetter = new(_globalSettings);
 
-    static DocumentCorpusAnalyzer _analyzer = new(_cardDataGetter);
+    static CorpusAnalyzer _analyzer = new(_cardDataGetter);
 
     static void Main(string[] args)
     {

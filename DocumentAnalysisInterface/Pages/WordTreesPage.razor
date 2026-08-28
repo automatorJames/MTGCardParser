@@ -1,7 +1,7 @@
 ﻿@page "/word-trees"
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
-@inject DocumentCorpusAnalyzer CorpusAnalyzer
+@inject CorpusAnalyzer CorpusAnalyzer
 
 @* Only render the body of the page after settings are loaded to avoid incorrect filtering *@
 @if (RuntimeSettings.IsLoaded)
