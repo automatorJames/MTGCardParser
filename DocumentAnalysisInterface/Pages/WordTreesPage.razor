@@ -23,23 +23,20 @@
                             <span class="header-stat">Occurrences: @span.MaximalSpanOccurrenceCount</span>
                             <span class="header-stat">Word Count: @span.WordCount</span>
                         </div>
-                        <span style="width: 100px;">Document Names:</span>
-                        <div class="header-document-names">
-                            @foreach (var documentName in span.ContainingDocuments)
-                            {
-                                var documentPalette = span.DocumentPalettes[documentName];
-                                <span class="document-name-item"
-                                      data-document-name="@documentName"
-                                      style="border-color: @documentPalette.Normal; --highlight-color: @documentPalette.Light; --sat-color: @documentPalette.Sat;">
-                                    @documentName
-                                </span>
-                            }
-                        </div>
+                        <span class="header-label">Documents:</span>
+                        <WordTreeKeyStrip Items="span.ContainingDocuments" Palettes="span.DocumentPalettes" KeyAttribute="data-document-name" />
                     </div>
                     <div class="word-tree-body">
                         <div id="@($"spinner-{index}")" class="spinner"></div>
                         <div id="@($"word-tree-container-{index}")"></div>
                     </div>
+                    @if (span.ContainingGlyphTypes.Length > 0)
+                    {
+                        <div class="card-footer">
+                            <span class="header-label">Glyphs:</span>
+                            <WordTreeKeyStrip Items="span.ContainingGlyphTypes" Palettes="span.GlyphPalettes" KeyAttribute="data-glyph-type" />
+                        </div>
+                    }
                 </div>
             }
         </div>

@@ -4,27 +4,27 @@
     <DialogContent>
         @* word-trees-card: not for styling (that's CustomDialog's own container) — the word-tree
            JS specifically does container.closest('.word-trees-card') to find where to stash the
-           span data for the tree it renders (see word-tree-manager.js). *@
+           span data for the tree it renders (see word-tree-manager.js), and the shared
+           wwwroot/css/word-tree.css hover rules are scoped to it too. *@
         <div class="echo-tree-body word-trees-card">
             <div class="card-header">
-                <span class="header-label">Document Names:</span>
-                <div class="header-document-names">
-                    @foreach (var documentName in OrderedDocumentNames())
-                    {
-                        var isCurrent = documentName == CurrentDocumentName;
-                        var palette = Span.DocumentPalettes[documentName];
-                        <span class="document-name-item"
-                              data-document-name="@documentName"
-                              style="@(isCurrent
-                                  ? "border-color: #ffffff; color: #ffffff; --highlight-color: #ffffff; --sat-color: #ffffff;"
-                                  : $"border-color: {palette.Normal}; --highlight-color: {palette.Light}; --sat-color: {palette.Sat};")">
-                            @documentName
-                        </span>
-                    }
-                </div>
+                <span class="header-label">Reference Document:</span>
+                <WordTreeKeyStrip Items="ReferenceDocument" Palettes="RenderSpan.DocumentPalettes" KeyAttribute="data-document-name" />
+
+                <span class="header-label">Related Documents:</span>
+                <WordTreeKeyStrip Items="RelatedDocuments" Palettes="RenderSpan.DocumentPalettes" KeyAttribute="data-document-name" />
             </div>
+
             <div id="spinner-0" class="spinner"></div>
             <div id="word-tree-container-0"></div>
+
+            @if (Span.ContainingGlyphTypes.Length > 0)
+            {
+                <div class="card-footer">
+                    <span class="header-label">Glyphs:</span>
+                    <WordTreeKeyStrip Items="Span.ContainingGlyphTypes" Palettes="Span.GlyphPalettes" KeyAttribute="data-glyph-type" />
+                </div>
+            }
         </div>
     </DialogContent>
 </CustomDialog>
@@ -34,9 +34,9 @@
     public AnalyzedText Span { get; set; } = null!;
 
     /// <summary>
-    /// The document the echo was clicked from — listed first in the key, and always shown in
-    /// white rather than its assigned palette hue, so it's easy to pick out among the (possibly
-    /// many) other documents sharing this span.
+    /// The document the echo was clicked from — keyed on its own "Reference Document" line above
+    /// the rest, and always shown in white rather than a palette hue, so it's easy to pick out
+    /// among the (possibly many) other documents sharing this span.
     /// </summary>
     [Parameter]
     public string CurrentDocumentName { get; set; }
@@ -44,24 +44,52 @@
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    IEnumerable<string> OrderedDocumentNames() =>
-        Span.ContainingDocuments.OrderBy(name => name == CurrentDocumentName ? 0 : 1);
+    string[] _referenceDocument = [];
+    string[] _relatedDocuments = [];
+    AnalyzedText _renderSpan;
 
-    static readonly HexPalette WhitePalette = new("#ffffff", "#ffffff", "#ffffff", "#ffffff");
+    IReadOnlyList<string> ReferenceDocument => _referenceDocument;
+    IReadOnlyList<string> RelatedDocuments => _relatedDocuments;
 
     /// <summary>
-    /// The same span, but with the current document's palette entry swapped for solid white
-    /// before it's handed to the word-tree JS — the tree's own node/connector gradients are drawn
-    /// straight from <see cref="AnalyzedText.DocumentPalettes"/> (see word-tree-svg-drawer.ts's
-    /// paletteMap), so this is what makes the tree's borders for the current document match the
-    /// white key entry above, not just the key itself.
+    /// The same span, but with the document palettes rebuilt around the reference document rather
+    /// than reused from <see cref="AnalyzedText.DocumentPalettes"/>. Two things change: white is
+    /// assigned positionally (so the remaining documents get the full rainbow starting from its
+    /// first hue, instead of one of them inheriting whichever hue white displaced), and the
+    /// related documents are re-keyed in the alphabetical order they're listed in. The word-tree
+    /// JS draws every node/connector gradient straight from this map, so it's what makes the
+    /// tree's borders agree with the key strips above.
     /// </summary>
-    AnalyzedText RenderSpan => Span with
+    AnalyzedText RenderSpan => _renderSpan;
+
+    /// <summary>
+    /// Solid white, rather than what <see cref="DeterministicPalette.GetStaticPalette"/> derives
+    /// from <see cref="HexColor.White"/> — a grayscale color's Light variant is a *dimmer* grey,
+    /// which would make the reference document's key chip fade on hover instead of brightening.
+    /// White is still passed as the positional override so the hue distribution is right.
+    /// </summary>
+    static readonly HexPalette WhitePalette = new("#ffffff", "#ffffff", "#8a8a8a", "#ffffff");
+
+    protected override void OnParametersSet()
     {
-        DocumentPalettes = Span.DocumentPalettes.ToDictionary(
-            kv => kv.Key,
-            kv => kv.Key == CurrentDocumentName ? WhitePalette : kv.Value)
-    };
+        var hasReference = CurrentDocumentName is not null && Span.ContainingDocuments.Contains(CurrentDocumentName);
+
+        _referenceDocument = hasReference ? [CurrentDocumentName] : [];
+        _relatedDocuments = Span.ContainingDocuments
+            .Where(name => name != CurrentDocumentName)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var orderedDocuments = _referenceDocument.Concat(_relatedDocuments);
+        var palettes = hasReference
+            ? DeterministicPalette.GetPositionalPaletteSet(orderedDocuments, HexColor.White)
+            : DeterministicPalette.GetPositionalPaletteSet(orderedDocuments);
+
+        if (hasReference)
+            palettes[CurrentDocumentName] = WhitePalette;
+
+        _renderSpan = Span with { DocumentPalettes = palettes };
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

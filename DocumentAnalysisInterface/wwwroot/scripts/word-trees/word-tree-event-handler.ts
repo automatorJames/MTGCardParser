@@ -1,124 +1,262 @@
 // word-tree-event-handler.ts
-import { CardElement } from "./word-tree-models.js";
-import { WordTree } from "./word-tree-animator.js";
+//
+// All hover treatment for a word tree card. Every visual change here is expressed as a class the
+// stylesheet transitions (see wwwroot/css/word-tree.css) rather than as a per-frame opacity
+// animation, so this module only decides *which* elements are in which state.
+//
+// There are two distinct highlight axes, driven by the two key strips around the tree:
+//
+//   documents - hovering a document chip, a node, or a captured sub-span. Whole node/connector
+//               groups fade out except those the active documents pass through.
+//   glyph     - hovering a Glyph type chip. Only *outlines* fade, because node text gets its own
+//               treatment: everything not captured by the hovered Glyph type dims, and everything
+//               that is captured by it saturates.
+
+import { CardElement, CardHoverIndex, KeyedGroupElement } from "./word-tree-models.js";
 import { createGradientStops } from "./word-tree-svg-drawer.js";
 
-const globalEventState = {
-    initialized: false,
-    lastHovered: {
-        card: null as CardElement | null,
-        documentKeys: new Set<string>(),
-        mainAnchorHover: false
-    }
+/** How the active document set was arrived at, which decides what the fade applies to. */
+type HighlightMode = 'none' | 'documents' | 'glyph';
+
+/**
+ * The captured run under the pointer, identified by where it lives rather than by the tspan the
+ * pointer happens to be over: a run wide enough to wrap is drawn as one tspan per line, and all of
+ * those pieces are the same capture, so emphasis has to cover the node's whole run.
+ */
+interface SpanEmphasis {
+    nodeGroup: Element;
+    glyphType: string;
+}
+
+interface HoverState {
+    mode: HighlightMode;
+    /** Documents whose throughlines stay lit; everything else fades. */
+    activeKeys: Set<string>;
+    /** Glyph type name highlighted in the lower key strip, if any. */
+    glyphType: string | null;
+    emphasis: SpanEmphasis | null;
+    anchorHover: boolean;
+    /** Whether the hover originated at a node, which is what the participation labels report on. */
+    showStats: boolean;
+}
+
+const RESET_STATE: HoverState = {
+    mode: 'none', activeKeys: new Set(), glyphType: null,
+    emphasis: null, anchorHover: false, showStats: false
 };
 
-function areSetsEqual(setA: Set<string>, setB: Set<string>): boolean {
-    if (setA.size !== setB.size) return false;
-    for (const item of setA) {
-        if (!setB.has(item)) return false;
-    }
-    return true;
-}
+let lastHoveredCard: CardElement | null = null;
+
+const GRADIENT_TRANSITION_RATIO = 0.1;
 
 /**
- * Smoothly animates the white overlay for node borders and connectors on anchor hover.
+ * Collects the elements hover treatment touches. Called once per render (the tree is rebuilt from
+ * scratch on every resize), so hovering never has to re-query the DOM.
  */
-function setAnchorHoverEffect(card: CardElement, isHovering: boolean): void {
+export function indexCardHoverTargets(card: CardElement): void {
     const svg = card.querySelector('svg');
-    if (!svg) return;
+    const textSpans = svg ? Array.from(svg.querySelectorAll<SVGElement>('.node-text-content')) : [];
 
-    const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
-    const overlays = svg.querySelectorAll<SVGPathElement | SVGRectElement>('.anchor-hover-overlay');
+    // Each run remembers its node, so emphasis can span every line a wrapped run was broken across.
+    textSpans.forEach(span => (span as any).__nodeGroup = span.closest('.node-group'));
 
-    overlays.forEach(overlay => {
-        const current = parseFloat(getComputedStyle(overlay).opacity) || 0;
-        const end = isHovering ? 1 : 0;
-        if (Math.abs(current - end) > 0.001) {
-            elementsToAnimate.set(overlay as unknown as HTMLElement, { start: current, end });
-        }
-    });
+    card.__hoverIndex = {
+        keyedGroups: svg ? Array.from(svg.querySelectorAll<KeyedGroupElement>('.wt-keyed')) : [],
+        textSpans,
+        documentChips: Array.from(card.querySelectorAll<HTMLElement>('[data-document-name]')),
+        glyphChips: Array.from(card.querySelectorAll<HTMLElement>('.key-item[data-glyph-type]')),
+        statAbove: svg?.querySelector<SVGTextElement>('.tree-stat-above') ?? null,
+        statBelow: svg?.querySelector<SVGTextElement>('.tree-stat-below') ?? null
+    };
 
-    const controller =
-        (card as any).__anchorHoverController ??
-        ((card as any).__anchorHoverController = { animationFrameId: null });
-
-    if (elementsToAnimate.size > 0) {
-        WordTree.Animator.animateOpacity(elementsToAnimate, controller);
-    }
+    card.__hoverSignature = undefined;
 }
 
+function intersects(candidate: Set<string>, active: Set<string>): boolean {
+    for (const key of candidate)
+        if (active.has(key)) return true;
+
+    return false;
+}
 
 /**
- * Applies card-based highlighting. Affects node/connector structures and card header items.
+ * A stable description of a hover state, so re-entering the same target (which fires a fresh
+ * mouseover for every child element crossed) doesn't re-apply identical classes.
  */
-function setCardHighlight(card: CardElement, activeKeys: Set<string>) {
+function signatureOf(state: HoverState): string {
+    return [
+        state.mode,
+        [...state.activeKeys].sort().join(''),
+        state.glyphType ?? '',
+        state.emphasis ? `${state.emphasis.nodeGroup.id}:${state.emphasis.glyphType}` : '',
+        state.anchorHover ? 'a' : '',
+        state.showStats ? 's' : ''
+    ].join('');
+}
+
+/** Whether a text run is one of the pieces of the capture the pointer is resting on. */
+function isEmphasized(span: SVGElement, emphasis: SpanEmphasis | null): boolean {
+    return emphasis !== null
+        && span.dataset.glyphType === emphasis.glyphType
+        && (span as any).__nodeGroup === emphasis.nodeGroup;
+}
+
+/**
+ * How many visually distinct throughlines the highlighted nodes form. Nodes are slotted into
+ * vertical columns, and a column is where throughlines are at their most spread out - so the
+ * busiest highlighted column is exactly the number of separate paths the eye can trace. It falls
+ * below the document count wherever documents share a node ("overloading"), which is the case
+ * worth calling out.
+ */
+function countThroughlines(index: CardHoverIndex): number {
+    const perColumn = new Map<string, number>();
+
+    for (const group of index.keyedGroups) {
+        if (group.__column === undefined || !group.classList.contains('wt-highlight')) continue;
+        perColumn.set(group.__column, (perColumn.get(group.__column) ?? 0) + 1);
+    }
+
+    let max = 0;
+    for (const count of perColumn.values())
+        max = Math.max(max, count);
+
+    return max;
+}
+
+const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+function setStatLabel(label: SVGTextElement | null, text: string | null): void {
+    if (!label) return;
+    if (text) label.textContent = text;
+    label.classList.toggle('visible', text !== null);
+}
+
+/**
+ * Rebuilds a highlighted group's saturated gradient from only the documents currently active, so a
+ * node shared by four documents shows just the one band that's actually being pointed at.
+ */
+function refreshHighlightGradient(card: CardElement, group: KeyedGroupElement, activeKeys: Set<string>): void {
+    if (!group.__highlightGradient || !card.__data) return;
+
+    const keysForGradient = group.__sourceKeys.filter(key => activeKeys.has(key));
+    const signature = keysForGradient.join('');
+    if (group.__gradientKeys === signature) return;
+
+    group.__gradientKeys = signature;
+    group.__highlightGradient.innerHTML =
+        createGradientStops(keysForGradient, card.__data.documentPalettes, 'sat', GRADIENT_TRANSITION_RATIO);
+}
+
+function applyHoverState(card: CardElement, state: HoverState): void {
+    const index = card.__hoverIndex;
+    if (!index) return;
+
+    const signature = signatureOf(state);
+    if (card.__hoverSignature === signature) return;
+    card.__hoverSignature = signature;
+
+    const { activeKeys, glyphType } = state;
     const hasActiveKeys = activeKeys.size > 0;
+    const glyphMode = state.mode === 'glyph';
+
     card.classList.toggle('highlight-active', hasActiveKeys);
+    card.classList.toggle('glyph-hover', glyphMode);
+    card.classList.toggle('anchor-hover', state.anchorHover);
 
-    card.querySelectorAll<HTMLElement>('[data-document-name]').forEach(item => {
-        const documentName = item.dataset.documentName || '';
-        const isHighlighted = hasActiveKeys && activeKeys.has(documentName);
-        item.classList.toggle('highlight', isHighlighted);
-        item.classList.toggle('lowlight', hasActiveKeys && !isHighlighted);
-    });
-
-    const svg = card.querySelector('svg');
-    const processedData = card.__data;
-    if (!svg || !processedData) return;
-
-    const elementsToAnimate = new Map<HTMLElement, { start: number; end: number }>();
-    const defs = svg.querySelector('defs');
-
-    svg.querySelectorAll<SVGGElement>('[data-source-keys]').forEach(element => {
-        const sourceKeys = JSON.parse(element.dataset.sourceKeys || '[]') as string[];
-        const isHighlighted = hasActiveKeys && sourceKeys.some((key: string) => activeKeys.has(key));
-
-        const computed = getComputedStyle(element);
-        const current = parseFloat(computed.opacity) || 1;
-        let end = 1;
-
-        if (hasActiveKeys) {
-            end = isHighlighted ? 1 : WordTree.Animator.config.lowlightOpacity;
-        }
-
-        if (Math.abs(current - end) > 0.001) {
-            elementsToAnimate.set(element as unknown as HTMLElement, { start: current, end });
-        }
-
-        const highlightOverlay = element.querySelector<HTMLElement>('.highlight-overlay');
-        if (highlightOverlay) {
-            highlightOverlay.style.opacity = isHighlighted ? '1' : '0';
-        }
-
-        if (isHighlighted && hasActiveKeys && defs) {
-            const idParts = element.id.split('-');
-            if (idParts.length >= 4) {
-                const elementType = idParts[1];
-                const elementIdSuffix = idParts.slice(2).join('-');
-                const highlightGradId = `grad-${elementType}-highlight-${elementIdSuffix}`;
-                const highlightGrad = defs.querySelector(`#${highlightGradId}`);
-
-                if (highlightGrad) {
-                    const keysForGradient = sourceKeys.filter((key: string) => activeKeys.has(key));
-                    const gradientTransitionRatio = 0.1;
-                    highlightGrad.innerHTML = createGradientStops(keysForGradient, processedData.documentPalettes, 'sat', gradientTransitionRatio);
-                }
-            }
-        }
-    });
-
-    const controller = (card as any).__cardHighlightController ?? ((card as any).__cardHighlightController = { animationFrameId: null });
-    if (elementsToAnimate.size > 0) {
-        WordTree.Animator.animateOpacity(elementsToAnimate, controller);
+    // --- Key strips ---
+    for (const chip of index.documentChips) {
+        const isHighlighted = hasActiveKeys && activeKeys.has(chip.dataset.documentName || '');
+        chip.classList.toggle('highlight', isHighlighted);
+        chip.classList.toggle('lowlight', hasActiveKeys && !isHighlighted);
     }
+
+    for (const chip of index.glyphChips) {
+        const isHighlighted = glyphType !== null && chip.dataset.glyphType === glyphType;
+        chip.classList.toggle('highlight', isHighlighted);
+        chip.classList.toggle('lowlight', glyphType !== null && !isHighlighted);
+    }
+
+    // --- Node and connector outlines ---
+    for (const group of index.keyedGroups) {
+        const isHighlighted = hasActiveKeys && intersects(group.__sourceKeysSet, activeKeys);
+        group.classList.toggle('wt-highlight', isHighlighted);
+        group.classList.toggle('wt-lowlight', hasActiveKeys && !isHighlighted);
+
+        if (isHighlighted) refreshHighlightGradient(card, group, activeKeys);
+    }
+
+    // --- Node text ---
+    for (const span of index.textSpans) {
+        const referencesGlyph = glyphMode && span.dataset.glyphType === glyphType;
+        span.classList.toggle('glyph-dim', glyphMode && !referencesGlyph);
+        span.classList.toggle('glyph-match', referencesGlyph);
+        span.classList.toggle('glyph-emphasis', isEmphasized(span, state.emphasis));
+    }
+
+    // --- Participation labels ---
+    const documentCount = state.showStats ? activeKeys.size : 0;
+    const throughlineCount = state.showStats ? countThroughlines(index) : 0;
+
+    setStatLabel(index.statAbove, documentCount > 0 ? pluralize(documentCount, 'document') : null);
+    setStatLabel(index.statBelow,
+        documentCount > 0 && throughlineCount > 0 && throughlineCount !== documentCount
+            ? pluralize(throughlineCount, 'throughline')
+            : null);
 }
 
 /**
- * Resets all highlighting on a card.
+ * Reads the pointer's target and decides which of the two highlight axes it engages.
  */
-function animateReset(card: CardElement) {
-    setCardHighlight(card, new Set());
-    setAnchorHoverEffect(card, false);
+function resolveHoverState(card: CardElement, target: Element): HoverState {
+    const data = card.__data;
+    if (!data) return RESET_STATE;
+
+    const subspan = target.closest<SVGElement>('.interactive-subspan');
+    if (subspan) {
+        // A captured run: the node's own document highlighting, plus emphasis on the run itself and
+        // on its Glyph type in the lower key strip.
+        const nodeGroup = subspan.closest<KeyedGroupElement>('.node-group');
+        const glyphType = subspan.dataset.glyphType ?? null;
+        return {
+            mode: 'documents',
+            activeKeys: nodeGroup?.__sourceKeysSet ?? new Set(),
+            glyphType,
+            emphasis: nodeGroup && glyphType ? { nodeGroup, glyphType } : null,
+            anchorHover: false,
+            showStats: true
+        };
+    }
+
+    const glyphChip = target.closest<HTMLElement>('.key-item[data-glyph-type]');
+    if (glyphChip) {
+        const glyph = glyphChip.dataset.glyphType!;
+        return {
+            ...RESET_STATE,
+            mode: 'glyph',
+            activeKeys: data.glyphTypeDocuments.get(glyph) ?? new Set(),
+            glyphType: glyph
+        };
+    }
+
+    const documentChip = target.closest<HTMLElement>('[data-document-name]');
+    if (documentChip)
+        return { ...RESET_STATE, mode: 'documents', activeKeys: new Set([documentChip.dataset.documentName!]) };
+
+    const nodeGroup = target.closest<KeyedGroupElement>('.node-group');
+    if (nodeGroup) {
+        // The anchor belongs to every document by definition, so hovering it lights the whole tree.
+        const isAnchor = nodeGroup.classList.contains('main-anchor-span');
+        return {
+            mode: 'documents',
+            activeKeys: isAnchor ? data.allDocumentsSet : (nodeGroup.__sourceKeysSet ?? new Set()),
+            glyphType: null,
+            emphasis: null,
+            anchorHover: isAnchor,
+            showStats: true
+        };
+    }
+
+    return RESET_STATE;
 }
 
 /**
@@ -131,52 +269,17 @@ export function setupGlobalEventHandlers(): void {
     document.addEventListener('mouseover', (event: MouseEvent) => {
         const target = event.target as Element;
         const card = target.closest<CardElement>('.word-trees-card');
-        const last = globalEventState.lastHovered;
 
-        // *** FIX: Explicitly reset the last card if we have moved to a different card or off all cards. ***
-        if (last.card && last.card !== card) {
-            animateReset(last.card);
-            // Clear the state entirely now that we've left the old card's context.
-            globalEventState.lastHovered = { card: null, documentKeys: new Set(), mainAnchorHover: false };
+        // Leaving a card (for another card, or for nothing) must clear it explicitly - no further
+        // mouseover will ever fire inside it to do so.
+        if (lastHoveredCard && lastHoveredCard !== card) {
+            applyHoverState(lastHoveredCard, RESET_STATE);
+            lastHoveredCard = null;
         }
 
-        // If we are not on a card, our work is done.
-        if (!card) {
-            return;
-        }
+        if (!card) return;
 
-        // --- We are on a card. Determine the new state. ---
-        const interactiveEl = target.closest<HTMLElement>('[data-document-name], .node-group, .interactive-subspan');
-        let newDocumentKeys = new Set<string>();
-        let newMainAnchorHover = false;
-
-        if (interactiveEl) {
-            if (interactiveEl.matches('.main-anchor-span')) {
-                newMainAnchorHover = true;
-            } else if (interactiveEl.matches('.interactive-subspan')) {
-                const parentNode = interactiveEl.closest<SVGGElement>('.node-group');
-                if (parentNode) {
-                    newDocumentKeys = new Set(JSON.parse(parentNode.dataset.sourceKeys || '[]'));
-                }
-            } else if (interactiveEl.matches('[data-document-name]')) {
-                newDocumentKeys = new Set([interactiveEl.dataset.documentName!]);
-            } else if (interactiveEl.matches('.node-group')) {
-                newDocumentKeys = new Set(JSON.parse(interactiveEl.dataset.sourceKeys || '[]'));
-            }
-        }
-
-        // Re-read the state as it may have been cleared above.
-        const currentLastState = globalEventState.lastHovered;
-        if (card === currentLastState.card &&
-            areSetsEqual(newDocumentKeys, currentLastState.documentKeys) &&
-            newMainAnchorHover === currentLastState.mainAnchorHover) {
-            return;
-        }
-
-        // Apply new state and update the global tracker.
-        setCardHighlight(card, newDocumentKeys);
-        setAnchorHoverEffect(card, newMainAnchorHover);
-
-        globalEventState.lastHovered = { card, documentKeys: newDocumentKeys, mainAnchorHover: newMainAnchorHover };
+        applyHoverState(card, resolveHoverState(card, target));
+        lastHoveredCard = card;
     });
 }

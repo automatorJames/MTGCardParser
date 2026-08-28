@@ -1,13 +1,13 @@
-/* SVG node styling duplicated from WordTreesPage.razor.css (Blazor CSS isolation scopes ::deep
-   rules per-component, so the word-tree JS's injected SVG needs these here too — see the fork
-   report for why this wasn't extracted into a shared stylesheet). */
-
 /* No title/count/close button — just a plain, larger dark rounded rectangle holding the tree.
    Background-click-to-close already comes from CustomDialog's own OnBackdropClick. Sizing (like
    max-width) goes through CustomDialog's own ContainerStyle parameter (set in EchoTreeDialog.razor)
    instead of a ::deep rule here: .custom-dialog-container/-content are CustomDialog's own elements
    wrapping this content, never a descendant of it, so a ::deep rule here can never actually match
-   them — a max-width rule that used to sit here never actually applied, for exactly that reason. */
+   them — a max-width rule that used to sit here never actually applied, for exactly that reason.
+
+   The tree's SVG styling is no longer duplicated here either: it lives in
+   wwwroot/css/word-tree.css, shared with WordTreesPage. Key chip styling comes from the
+   WordTreeKeyStrip component's own stylesheet. */
 
 .echo-tree-body {
     width: 100%;
@@ -15,118 +15,35 @@
     overflow: visible;
 }
 
-/* Document-names key, duplicated from WordTreesPage.razor.css for the same CSS-isolation reason
-   as the SVG styling above — same markup/classes too, so word-tree-event-handler.js's global
-   [data-document-name] hover highlighting (scoped generically to the nearest .word-trees-card,
-   which this dialog's body already carries) picks it up with no JS changes needed. */
-.card-header {
-    display: flex;
+/* Two label/list rows whose lists must start at the same x, so the reference document's chip sits
+   directly above the related ones. A max-content first column sizes itself to the longer of the
+   two labels and both rows then share that width. */
+.card-header,
+.card-footer {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
+}
+
+.card-header {
     padding: 0 0 0.75rem;
     margin-bottom: 0.75rem;
     border-bottom: 1px solid #333;
 }
 
+.card-footer {
+    padding: 0.75rem 0 0;
+    margin-top: 0.75rem;
+    border-top: 1px solid #333;
+}
+
 .header-label {
+    justify-self: end;
     white-space: nowrap;
     font-size: 12px;
     color: #a0a0a0;
-}
-
-.header-document-names {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.document-name-item {
-    font-size: 11px;
-    font-weight: 300;
-    padding: 2px 8px;
-    border: 1px solid;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease-in-out;
-    color: #e0e0e0;
-}
-
-.word-trees-card.highlight-active .document-name-item.lowlight {
-    opacity: 0.2;
-}
-
-.word-trees-card.highlight-active .document-name-item.highlight {
-    border-color: var(--sat-color);
-    color: var(--highlight-color);
-    opacity: 1;
-}
-
-::deep .node-group {
-    cursor: pointer;
-}
-
-::deep .node-shape.base-layer {
-    stroke: var(--node-border-color, #666);
-    stroke-width: 2.5px;
-    fill: #2d2d2d;
-    transition: opacity var(--transition-time), fill var(--transition-time);
-}
-
-::deep .connector-path.base-layer {
-    stroke: var(--node-border-color, #444);
-    fill: none;
-    stroke-width: 2.5px;
-    transition: opacity var(--transition-time);
-}
-
-::deep .anchor-hover-overlay {
-    stroke-width: 2.5px;
-    stroke: #ffffff;
-    fill: none;
-    opacity: 0;
-    pointer-events: none;
-}
-
-::deep .main-anchor-span > .node-shape.base-layer {
-    fill: #e0e0e0;
-}
-
-::deep .node-group:not(.main-anchor-span):hover > .node-shape.base-layer {
-    fill: #202020;
-}
-
-::deep .main-anchor-span:hover > .node-shape.base-layer {
-    fill: #cccccc;
-}
-
-::deep .node-text {
-    font-size: 12px;
-    text-anchor: middle;
-    pointer-events: none;
-}
-
-::deep .node-text-content {
-    fill: #e0e0e0;
-    transition: fill var(--transition-time), opacity var(--transition-time);
-}
-
-::deep .interactive-subspan {
-    pointer-events: auto;
-}
-
-::deep .main-anchor-span .node-text-content {
-    fill: #000;
-}
-
-::deep .main-anchor-span {
-    transition: filter var(--transition-time);
-    color: #ffffff;
-}
-
-::deep .main-anchor-span:hover {
-    filter: url(#glow);
 }
 
 .spinner {

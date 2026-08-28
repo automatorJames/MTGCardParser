@@ -1,6 +1,14 @@
 // word-tree-orchestrator.ts
 import * as Layout from "./word-tree-layout-calculator.js";
 import * as Drawer from "./word-tree-svg-drawer.js";
+import { indexCardHoverTargets } from "./word-tree-event-handler.js";
+const SVG_NS = "http://www.w3.org/2000/svg";
+const config = {
+    nodeWidth: 200, nodePadding: 8, nodeHeight: 40, hGap: 40, vGap: 20,
+    cornerRadius: 10, mainSpanFill: '#e0e0e0', mainSpanColor: "#e0e0e0",
+    horizontalPadding: 20, gradientTransitionRatio: 0.1, fanGap: 24,
+    statLabelGap: 18
+};
 /**
  * Builds a cumulative map of layout offsets. For each column, the offset is the
  * sum of its own required push plus all pushes from columns closer to the center.
@@ -21,9 +29,9 @@ function buildCumulativeOffsets(rawPushMap, maxColumn) {
  * Creates SVG filter definitions, such as for a glow effect.
  */
 function createSvgDefs(svg) {
-    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const defs = document.createElementNS(SVG_NS, "defs");
     // Create the glow filter
-    const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    const filter = document.createElementNS(SVG_NS, "filter");
     filter.id = "glow";
     filter.setAttribute("x", "-50%");
     filter.setAttribute("y", "-50%");
@@ -38,6 +46,7 @@ function createSvgDefs(svg) {
     `;
     defs.appendChild(filter);
     svg.appendChild(defs);
+    return defs;
 }
 /**
  * Orchestrates the entire process of calculating layout and drawing a word tree SVG.
@@ -49,27 +58,23 @@ export function orchestrateWordTreeRender(container) {
     if (!processedData || !svg)
         return;
     svg.innerHTML = ''; // Clear previous render
-    createSvgDefs(svg); // ADDED: Create filters and other definitions
-    const config = {
-        nodeWidth: 200, nodePadding: 8, nodeHeight: 40, hGap: 40, vGap: 20,
-        cornerRadius: 10, mainSpanFill: '#e0e0e0', mainSpanColor: "#e0e0e0",
-        horizontalPadding: 20, gradientTransitionRatio: 0.1, fanGap: 24
-    };
-    const { documentPalettes, allDocumentsSet, text, precedingAdjacencies, followingAdjacencies } = processedData;
+    const defs = createSvgDefs(svg);
+    const ctx = { svg, defs, config, containerId: container.id, data: processedData };
+    const { text, precedingAdjacencies, followingAdjacencies } = processedData;
     const { width: availableWidth } = container.getBoundingClientRect();
     if (availableWidth <= 0)
         return;
     // 1. Pre-calculate metrics for all nodes
-    const mainSpanObject = { text, id: 'main-anchor', layout: { x: 0, y: 0 } };
-    Layout.preCalculateAllNodeMetrics(mainSpanObject, config, svg);
+    const anchor = { id: 'main-anchor', text, spanGlyphTypes: null, layout: { x: 0, y: 0 } };
+    Layout.preCalculateAllNodeMetrics(anchor, config, svg);
     [...precedingAdjacencies, ...followingAdjacencies].forEach(node => Layout.preCalculateAllNodeMetrics(node, config, svg));
     // 2. Calculate initial layout for both trees
     const precedingResult = Layout.calculateLayout(precedingAdjacencies, 0, 0, 0, -1, config);
     const followingResult = Layout.calculateLayout(followingAdjacencies, 0, 0, 0, 1, config);
     // 3. Center the layout vertically
-    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, mainSpanObject.dynamicHeight) + config.vGap * 2;
+    const totalHeight = Math.max(precedingResult.totalHeight, followingResult.totalHeight, anchor.dynamicHeight) + config.vGap * 2;
     const mainSpanY = totalHeight / 2;
-    mainSpanObject.layout.y = mainSpanY;
+    anchor.layout.y = mainSpanY;
     [...precedingResult.layout, ...followingResult.layout].forEach(node => node.layout.y += mainSpanY);
     // 4. Calculate fanning deltas and the required push for each column
     const precedingRawPush = Layout.computeFanDeltasAndColumnPush(precedingAdjacencies, 0, mainSpanY, config);
@@ -105,8 +110,12 @@ export function orchestrateWordTreeRender(container) {
         svg.setAttribute('viewBox', `${minX - margin} 0 ${availableWidth} ${totalHeight}`);
     }
     // 7. Draw the final SVG elements
-    Drawer.drawNodesAndConnectors(svg, precedingAdjacencies, mainSpanObject, -1, config, documentPalettes, allDocumentsSet, container.id);
-    Drawer.drawNodesAndConnectors(svg, followingAdjacencies, mainSpanObject, 1, config, documentPalettes, allDocumentsSet, container.id);
-    Drawer.createNode(svg, mainSpanObject, false, config, documentPalettes, container.id);
+    Drawer.drawNodesAndConnectors(ctx, precedingAdjacencies, anchor, -1);
+    Drawer.drawNodesAndConnectors(ctx, followingAdjacencies, anchor, 1);
+    Drawer.createNode(ctx, anchor, null);
+    Drawer.createAnchorStatLabels(ctx, anchor);
+    // The tree is rebuilt wholesale on every resize, so hover handling re-indexes here rather than
+    // querying the DOM on each pointer move.
+    indexCardHoverTargets(card);
 }
 //# sourceMappingURL=word-tree-orchestrator.js.map

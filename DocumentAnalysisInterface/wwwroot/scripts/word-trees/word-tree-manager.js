@@ -18,13 +18,26 @@ let scrollListenerAttached = false;
 /** Manages ResizeObserver instances for each tree container. */
 export const wordTreeObservers = new Map();
 /**
- * Processes raw span data from the server, augmenting it for efficient client-side use.
- * This converts key arrays into Sets for faster lookups.
+ * Processes raw span data from the server, augmenting it for efficient client-side use: key arrays
+ * become Sets, and the glyph-type -> documents index hovering a Glyph key needs is built up front
+ * in the same single walk of the tree.
  */
 function processSpanForClient(rawSpan) {
+    const glyphTypeDocuments = new Map();
     const traverseAndAugmentNodes = (nodes) => {
         for (const node of nodes) {
             node.sourceKeysSet = new Set(node.sourceOccurrenceDocumentNames);
+            if (node.spanGlyphTypes) {
+                for (const glyphType of Object.values(node.spanGlyphTypes)) {
+                    if (!glyphType)
+                        continue;
+                    let documents = glyphTypeDocuments.get(glyphType);
+                    if (!documents)
+                        glyphTypeDocuments.set(glyphType, documents = new Set());
+                    for (const documentName of node.sourceOccurrenceDocumentNames)
+                        documents.add(documentName);
+                }
+            }
             if (node.children) {
                 traverseAndAugmentNodes(node.children);
             }
@@ -35,7 +48,9 @@ function processSpanForClient(rawSpan) {
     return {
         ...rawSpan,
         documentPalettes: new Map(Object.entries(rawSpan.documentPalettes)),
+        glyphPalettes: new Map(Object.entries(rawSpan.glyphPalettes)),
         allDocumentsSet: new Set(rawSpan.containingDocuments),
+        glyphTypeDocuments
     };
 }
 /**

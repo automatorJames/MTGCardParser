@@ -401,10 +401,12 @@ public class DigestedText
             var initialToken = group.Key;
             var sourceOccurrenceDocumentNames = group.Select(g => g.Key).Distinct().ToList();
 
-            // Collect the collapsed linear segment
-            var segmentsToCollapse = new List<(string Text, HexPalette Palette)>
+            // Collect the collapsed linear segment. A null glyph name means "raw unmatched word" -
+            // the type comes straight off the CaptureUnit that produced the token (see the
+            // GlyphInfo construction above), so no text-keyed lookup is needed to recover it.
+            var segmentsToCollapse = new List<(string Text, string GlyphTypeName)>
             {
-                (initialToken.Text, initialToken.GlyphType is null ? null : DeterministicPalette.TypePaletteSet[initialToken.GlyphType])
+                (initialToken.Text, initialToken.GlyphType?.ToFriendlyGlyphName())
             };
 
             var remainingSequences = group.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
@@ -422,7 +424,7 @@ public class DigestedText
                 if (!continuations.All(c => c.Sequence.First().Equals(nextToken)))
                     break;
 
-                segmentsToCollapse.Add((nextToken.Text, nextToken.GlyphType is null ? null : DeterministicPalette.TypePaletteSet[nextToken.GlyphType]));
+                segmentsToCollapse.Add((nextToken.Text, nextToken.GlyphType?.ToFriendlyGlyphName()));
 
                 // consume one token
                 remainingSequences = remainingSequences.Select(x => (Sequence: x.Sequence.Skip(1).ToList(), x.Key)).ToList();
@@ -431,28 +433,40 @@ public class DigestedText
             // Recurse on what remains after collapsing
             var children = BuildAdjacencyTree(remainingSequences, reverseCollapsedText);
 
-            // Build the final combined text and palette map.
+            // Build the final combined text and glyph-type map.
             // For PRECEDING trees we reverse the collapsed segment order so the phrase reads farthest→nearest.
             var finalTextBuilder = new StringBuilder();
-            var palettes = new Dictionary<int, HexPalette>();
+            var glyphTypeNames = new Dictionary<int, string>();
+            string previousGlyphTypeName = null;
+            bool hasAnyGlyph = false;
 
             var segmentIter = reverseCollapsedText
                 ? segmentsToCollapse.AsEnumerable().Reverse()
                 : segmentsToCollapse;
 
-            foreach (var (segmentText, segmentPalette) in segmentIter)
+            foreach (var (segmentText, segmentGlyphTypeName) in segmentIter)
             {
                 if (finalTextBuilder.Length > 0)
                     finalTextBuilder.Append(' ');
 
+                // Only record a boundary where the capturing type actually changes: consecutive
+                // words captured by the same type (or by nothing) read as one stretch, and emitting
+                // a redundant entry per word would just make the client re-split text it can render
+                // as a single tspan.
                 int startIndex = finalTextBuilder.Length;
-                palettes[startIndex] = segmentPalette;
+                if (startIndex == 0 || segmentGlyphTypeName != previousGlyphTypeName)
+                    glyphTypeNames[startIndex] = segmentGlyphTypeName;
+
+                previousGlyphTypeName = segmentGlyphTypeName;
+                hasAnyGlyph |= segmentGlyphTypeName is not null;
                 finalTextBuilder.Append(segmentText);
             }
 
+            // A node made entirely of uncaptured words carries no map at all, so the client can skip
+            // its whole per-chunk splitting path and emit one plain tspan per wrapped line.
             var finalSegment = new NodeSegment(
                 Text: finalTextBuilder.ToString(),
-                Palettes: palettes.Count > 0 ? palettes : null
+                GlyphTypeNames: hasAnyGlyph ? glyphTypeNames : null
             );
 
             nodes.Add(new AdjacencyNode(

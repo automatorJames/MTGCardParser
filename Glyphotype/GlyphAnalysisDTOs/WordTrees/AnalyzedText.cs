@@ -1,4 +1,4 @@
-﻿namespace Glyphotype.GlyphAnalysisDTOs.WordTrees;
+namespace Glyphotype.GlyphAnalysisDTOs.WordTrees;
 
 /// <summary>
 /// Enriched analysis of a single unique span of text.
@@ -24,9 +24,27 @@ public record AnalyzedText
     [JsonPropertyName("documentPalettes")]
     public Dictionary<string, HexPalette> DocumentPalettes { get; init; }
 
-    /// <summary>An array of all document names that contain this span, ordered for the UI.</summary>
+    /// <summary>All document names that contain this span, alphabetized - the order the key strip above the tree renders in.</summary>
     [JsonPropertyName("containingDocuments")]
     public string[] ContainingDocuments { get; init; }
+
+    /// <summary>
+    /// The friendly names of every top-level <see cref="Glyph"/> type that captured at least one
+    /// stretch of text somewhere in this tree, alphabetized - the order the key strip below the tree
+    /// renders in. Empty when nothing adjacent to this span was captured by any Glyph.
+    /// </summary>
+    [JsonPropertyName("containingGlyphTypes")]
+    public string[] ContainingGlyphTypes { get; init; }
+
+    /// <summary>
+    /// Maps each name in <see cref="ContainingGlyphTypes"/> to its assigned palette. Drawn from the
+    /// same equidistant-hue wheel as <see cref="DocumentPalettes"/> but brightened and desaturated
+    /// (see <see cref="GlyphKeyPaletteKnobs"/>) so the two color signals stay tellable apart. Like
+    /// the document palettes these are positional and therefore only meaningful within this one
+    /// card - the same Glyph type gets a different hue in the next tree.
+    /// </summary>
+    [JsonPropertyName("glyphPalettes")]
+    public Dictionary<string, HexPalette> GlyphPalettes { get; init; }
 
     // --- Ignored Properties (Server-Side Only) ---
 
@@ -75,12 +93,17 @@ public record AnalyzedText
             .ThenBy(x => x.Key)
             .ToDictionary(x => x.Key, x => x.Count());
 
-        ContainingDocuments = OccurrencesPerDocument.Keys.ToArray();
-        var positionalPalette = DeterministicPalette.GetPositionalPaletteSet(ContainingDocuments.Length);
+        // Alphabetical, not occurrence-ordered: hues here are positional and carry no meaning
+        // outside this one card, so the only thing the order can usefully buy the reader is being
+        // able to find a document name in the key.
+        ContainingDocuments = OccurrencesPerDocument.Keys
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        DocumentPalettes = new Dictionary<string, HexPalette>();
-        for (int i = 0; i < ContainingDocuments.Length; i++)
-            DocumentPalettes[ContainingDocuments[i]] = positionalPalette[i];
+        DocumentPalettes = DeterministicPalette.GetPositionalPaletteSet(ContainingDocuments);
+
+        ContainingGlyphTypes = CollectGlyphTypeNames();
+        GlyphPalettes = BuildGlyphPalettes(ContainingGlyphTypes);
 
         // --- HYDRATION STEP ---
         int nodeIdCounter = 0;
@@ -96,6 +119,39 @@ public record AnalyzedText
         TraverseAndHydrateIds(PrecedingAdjacencies);
         TraverseAndHydrateIds(FollowingAdjacencies);
     }
+
+    /// <summary>
+    /// The distinct glyph type names appearing anywhere in either adjacency tree, alphabetized.
+    /// Null entries in a node's map mark uncaptured stretches and are skipped.
+    /// </summary>
+    string[] CollectGlyphTypeNames()
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+
+        void Walk(IEnumerable<AdjacencyNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.SpanGlyphTypes is { } glyphTypes)
+                    foreach (var name in glyphTypes.Values)
+                        if (name is not null)
+                            names.Add(name);
+
+                Walk(node.Children);
+            }
+        }
+
+        Walk(PrecedingAdjacencies);
+        Walk(FollowingAdjacencies);
+
+        return names.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    static Dictionary<string, HexPalette> BuildGlyphPalettes(string[] glyphTypeNames) =>
+        DeterministicPalette.GetPositionalPaletteSet(
+            glyphTypeNames,
+            GlyphKeyPaletteKnobs.SaturationFactor,
+            GlyphKeyPaletteKnobs.LightnessFactor);
 
     public override string ToString() => $"'{Text}' (Total: {TotalOccurrenceCount} | Maximal: {MaximalSpanOccurrenceCount})";
 }

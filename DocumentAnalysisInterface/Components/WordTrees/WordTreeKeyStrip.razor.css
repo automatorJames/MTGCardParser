@@ -1,0 +1,30 @@
+.key-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.key-item {
+    font-size: 11px;
+    font-weight: 300;
+    padding: 2px 8px;
+    border: 1px solid;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity var(--transition-time), border-color var(--transition-time), color var(--transition-time);
+    color: #e0e0e0;
+}
+
+/* .highlight-active lives on the enclosing .word-trees-card, which the word-tree hover handler
+   toggles - the ancestor is outside this component, but Blazor only scopes the *last* compound
+   selector, so an ancestor written this way still matches. */
+.word-trees-card.highlight-active .key-item.lowlight {
+    opacity: 0.2;
+}
+
+.word-trees-card.highlight-active .key-item.highlight {
+    border-color: var(--sat-color);
+    color: var(--highlight-color);
+    opacity: 1;
+}

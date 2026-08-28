@@ -1,14 +1,23 @@
-﻿import { AdjacencyNode, DeterministicPalette, NodeConfig } from './word-tree-models.js';
+import {
+    AdjacencyNode, AnchorNode, HexPalette, KeyedGroupElement, LayoutNode, NodeConfig,
+    PaletteVariant, RenderContext
+} from './word-tree-models.js';
 import { getFanDelta } from './word-tree-layout-calculator.js';
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const svgElement = <K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] =>
+    document.createElementNS(SVG_NS, name) as SVGElementTagNameMap[K];
+
 /**
- * Generates the SVG <stop> elements for a gradient.
+ * Generates the SVG <stop> elements for a gradient: one equal-width band per source document, so
+ * a node shared by three documents reads as three colors around its border.
  */
-export function createGradientStops(sourceDocumentNames: string[], paletteMap: Map<string, DeterministicPalette>, colorProperty: 'normal' | 'sat', transitionRatio: number): string {
+export function createGradientStops(sourceDocumentNames: string[], paletteMap: Map<string, HexPalette>, variant: PaletteVariant, transitionRatio: number): string {
     const numKeys = sourceDocumentNames.length;
     if (numKeys === 0) return '';
     if (numKeys === 1) {
-        const color = paletteMap.get(sourceDocumentNames[0])?.[colorProperty] ?? '#ccc';
+        const color = paletteMap.get(sourceDocumentNames[0])?.[variant] ?? '#ccc';
         return `<stop offset="0%" stop-color="${color}" /><stop offset="100%" stop-color="${color}" />`;
     }
 
@@ -18,7 +27,7 @@ export function createGradientStops(sourceDocumentNames: string[], paletteMap: M
     let stopsHtml = '';
 
     sourceDocumentNames.forEach((key, index) => {
-        const color = paletteMap.get(key)?.[colorProperty] ?? '#ccc';
+        const color = paletteMap.get(key)?.[variant] ?? '#ccc';
         const bandStart = index * step;
         const bandEnd = bandStart + step;
         const solidStartOffset = (index === 0) ? bandStart : bandStart + halfTransition;
@@ -30,18 +39,115 @@ export function createGradientStops(sourceDocumentNames: string[], paletteMap: M
 }
 
 /**
- * Creates and appends a styled SVG group representing a single node.
+ * Tags a group with the documents it belongs to and builds its two stroke gradients: the resting
+ * one painted straight onto the base layer, and the saturated one on the overlay that hover fades
+ * in. Both the key set and the highlight gradient are attached to the element itself so the hover
+ * handler can reach them without parsing attributes or reconstructing ids.
  */
-export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: boolean, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, containerId: string): void {
-    const { dynamicHeight, layout } = nodeData;
-    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    group.setAttribute('class', 'node-group');
-    group.id = isAdjacencyNode ? `group-node-${containerId}-${nodeData.id}` : `group-node-${containerId}-main-anchor`;
-    if (isAdjacencyNode) {
-        group.dataset.sourceKeys = JSON.stringify(nodeData.sourceOccurrenceDocumentNames || []);
-    }
+function attachSourceKeys(
+    ctx: RenderContext,
+    group: SVGGElement,
+    sourceKeys: string[],
+    baseTarget: SVGElement,
+    highlightTarget: SVGElement,
+    gradientId: string,
+    configureGradient?: (gradient: SVGLinearGradientElement) => void
+): KeyedGroupElement {
+    const keyed = group as KeyedGroupElement;
+    keyed.classList.add('wt-keyed');
+    keyed.__sourceKeys = sourceKeys;
+    keyed.__sourceKeysSet = new Set(sourceKeys);
+    keyed.__highlightGradient = null;
 
-    const baseShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    if (sourceKeys.length === 0) return keyed;
+
+    const buildGradient = (id: string, variant: PaletteVariant) => {
+        const gradient = svgElement('linearGradient');
+        gradient.id = id;
+        configureGradient?.(gradient);
+        gradient.innerHTML = createGradientStops(sourceKeys, ctx.data.documentPalettes, variant, ctx.config.gradientTransitionRatio);
+        ctx.defs.appendChild(gradient);
+        return gradient;
+    };
+
+    const baseGradient = buildGradient(`grad-${gradientId}-base`, 'normal');
+    const highlightGradient = buildGradient(`grad-${gradientId}-highlight`, 'sat');
+
+    baseTarget.style.stroke = `url(#${baseGradient.id})`;
+    highlightTarget.style.stroke = `url(#${highlightGradient.id})`;
+    keyed.__highlightGradient = highlightGradient;
+
+    return keyed;
+}
+
+/**
+ * Clones the two stroke overlays that stack on top of every node's and connector's resting layer:
+ * the saturated highlight that fades in for the hovered documents, and the white one used for
+ * anchor hover. Both are geometrically identical to the base layer, so they're cloned from it.
+ */
+function createOverlayLayers(baseLayer: SVGElement): [SVGElement, SVGElement] {
+    const highlight = baseLayer.cloneNode() as SVGElement;
+    highlight.setAttribute('class', 'highlight-overlay');
+
+    const anchorHover = baseLayer.cloneNode() as SVGElement;
+    anchorHover.setAttribute('class', 'anchor-hover-overlay');
+
+    return [highlight, anchorHover];
+}
+
+/**
+ * Renders a node's text as one tspan per wrapped line, sub-split into one tspan per glyph-typed
+ * run. Captured runs carry their Glyph type name plus that type's palette as CSS variables, which
+ * is what lets stylesheet rules - not inline fills - drive their hover treatment.
+ */
+function createNodeText(ctx: RenderContext, nodeData: LayoutNode): SVGTextElement {
+    const textElement = svgElement('text');
+    textElement.setAttribute('class', 'node-text');
+
+    const { wrappedLines, lineHeight } = nodeData;
+    const startY = -(wrappedLines.length * lineHeight) / 2 + lineHeight * 0.8;
+
+    wrappedLines.forEach((line, lineIndex) => {
+        const lineTspan = svgElement('tspan');
+        lineTspan.setAttribute('x', '0');
+        lineTspan.setAttribute('dy', lineIndex === 0 ? `${startY}` : `${lineHeight}`);
+
+        for (const chunk of line.chunks) {
+            const chunkTspan = svgElement('tspan');
+            chunkTspan.textContent = chunk.text;
+            chunkTspan.classList.add('node-text-content');
+
+            const palette = chunk.glyphType ? ctx.data.glyphPalettes.get(chunk.glyphType) : undefined;
+            if (chunk.glyphType && palette) {
+                chunkTspan.classList.add('interactive-subspan');
+                chunkTspan.dataset.glyphType = chunk.glyphType;
+                chunkTspan.style.setProperty('--glyph-color', palette.light);
+                chunkTspan.style.setProperty('--glyph-sat-color', palette.sat);
+            }
+
+            lineTspan.appendChild(chunkTspan);
+        }
+
+        textElement.appendChild(lineTspan);
+    });
+
+    return textElement;
+}
+
+/**
+ * Creates and appends a styled SVG group representing a single node.
+ * @param column `${direction}:${depth}` for an adjacency node, or null for the central anchor.
+ */
+export function createNode(ctx: RenderContext, nodeData: LayoutNode, column: string | null): void {
+    const { config, containerId } = ctx;
+    const { dynamicHeight, layout } = nodeData;
+    const isAnchor = column === null;
+
+    const group = svgElement('g');
+    group.setAttribute('class', 'node-group');
+    group.id = `group-node-${containerId}-${nodeData.id}`;
+
+    const baseShape = svgElement('rect');
     baseShape.setAttribute('class', 'node-shape base-layer');
     baseShape.setAttribute('x', `${-config.nodeWidth / 2}`);
     baseShape.setAttribute('y', `${-dynamicHeight / 2}`);
@@ -49,179 +155,30 @@ export function createNode(svg: SVGSVGElement, nodeData: any, isAdjacencyNode: b
     baseShape.setAttribute('height', `${dynamicHeight}`);
     baseShape.setAttribute('rx', `${config.cornerRadius}`);
 
-    const highlightShape = baseShape.cloneNode() as SVGRectElement;
-    highlightShape.classList.remove('base-layer');
-    highlightShape.setAttribute('class', 'highlight-overlay');
-
-    // ADDED: Create a third layer specifically for the white anchor-hover effect
-    const anchorHoverShape = baseShape.cloneNode() as SVGRectElement;
-    anchorHoverShape.classList.remove('base-layer');
-    anchorHoverShape.setAttribute('class', 'anchor-hover-overlay');
-
+    const [highlightShape, anchorHoverShape] = createOverlayLayers(baseShape);
     group.append(baseShape, highlightShape, anchorHoverShape);
 
-    if (isAdjacencyNode) {
-        const sourceDocumentNames = nodeData.sourceOccurrenceDocumentNames || [];
-        if (sourceDocumentNames.length > 0) {
-            const defs = svg.querySelector('defs');
-            if (defs) {
-                const baseGradientId = `grad-node-base-${containerId}-${nodeData.id}`;
-                const baseGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                baseGradient.id = baseGradientId;
-                baseGradient.innerHTML = createGradientStops(sourceDocumentNames, paletteMap, 'normal', config.gradientTransitionRatio);
-                defs.appendChild(baseGradient);
-                baseShape.style.stroke = `url(#${baseGradientId})`;
-
-                const highlightGradientId = `grad-node-highlight-${containerId}-${nodeData.id}`;
-                const highlightGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                highlightGradient.id = highlightGradientId;
-                highlightGradient.innerHTML = createGradientStops(sourceDocumentNames, paletteMap, 'sat', config.gradientTransitionRatio);
-                defs.appendChild(highlightGradient);
-                highlightShape.style.stroke = `url(#${highlightGradientId})`;
-            }
-        }
-    } else {
+    if (isAnchor) {
         group.classList.add('main-anchor-span');
         baseShape.style.setProperty('--node-border-color', config.mainSpanColor);
-    }
-
-    const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    textElement.setAttribute('class', 'node-text');
-
-    const { text, spanPalettes, wrappedLines, lineHeight } = nodeData;
-    const totalTextHeight = wrappedLines.length * lineHeight;
-    const startY = -totalTextHeight / 2 + lineHeight * 0.8;
-
-    const paletteEntries = spanPalettes ? Object.entries(spanPalettes) : [];
-
-    if (paletteEntries.length === 0) {
-        wrappedLines.forEach((line: string, index: number) => {
-            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-            tspan.setAttribute('x', '0');
-            tspan.setAttribute('dy', index === 0 ? `${startY}` : `${lineHeight}`);
-            tspan.textContent = line;
-            tspan.classList.add('node-text-content');
-            textElement.appendChild(tspan);
-        });
     } else {
-        const colorStops = paletteEntries
-            .map(([index, palette]) => ({ index: parseInt(index, 10), palette: palette as DeterministicPalette }))
-            .sort((a, b) => a.index - b.index);
-
-        let charCursor = 0;
-        wrappedLines.forEach((lineText: string, lineIndex: number) => {
-            const lineTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-            lineTspan.setAttribute('x', '0');
-            lineTspan.setAttribute('dy', lineIndex === 0 ? `${startY}` : `${lineHeight}`);
-
-            const lineStartIndex = text.indexOf(lineText, charCursor);
-            let lineCursor = 0;
-
-            while (lineCursor < lineText.length) {
-                const absoluteCursor = lineStartIndex + lineCursor;
-                let activePalette: DeterministicPalette | null = null;
-                for (const stop of colorStops) {
-                    if (stop.index <= absoluteCursor) activePalette = stop.palette;
-                    else break;
-                }
-
-                let nextStopAbsoluteIndex = lineStartIndex + lineText.length;
-                for (const stop of colorStops) {
-                    if (stop.index > absoluteCursor) {
-                        nextStopAbsoluteIndex = stop.index;
-                        break;
-                    }
-                }
-
-                const chunkEndIndexInLine = Math.min(lineText.length, nextStopAbsoluteIndex - lineStartIndex);
-                const chunkText = lineText.substring(lineCursor, chunkEndIndexInLine);
-
-                const subTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                subTspan.textContent = chunkText;
-                subTspan.classList.add('node-text-content');
-
-                if (activePalette) {
-                    subTspan.style.fill = activePalette.hexLight;
-                    subTspan.style.fontWeight = 'bold';
-                    subTspan.classList.add('interactive-subspan');
-                    subTspan.dataset.baseColor = activePalette.hexLight;
-                    subTspan.dataset.hoverColor = activePalette.hex;
-                }
-
-                lineTspan.appendChild(subTspan);
-                lineCursor = chunkEndIndexInLine;
-            }
-            textElement.appendChild(lineTspan);
-            charCursor = lineStartIndex + lineText.length;
-        });
+        const keyed = attachSourceKeys(
+            ctx, group, (nodeData as AdjacencyNode).sourceOccurrenceDocumentNames || [],
+            baseShape, highlightShape, `node-${containerId}-${nodeData.id}`);
+        keyed.__column = column;
     }
 
-    group.appendChild(textElement);
+    group.appendChild(createNodeText(ctx, nodeData));
     group.setAttribute('transform', `translate(${layout.x}, ${layout.y})`);
-    svg.appendChild(group);
-}
-
-
-/**
- * Low-level function to create the SVG connector elements (base and highlight paths).
- */
-function emitConnector(svg: SVGSVGElement, pathData: string, childData: AdjacencyNode, commonDocumentNames: string[], startX: number, startY: number, endX: number, endY: number, paletteMap: Map<string, DeterministicPalette>, containerId: string): void {
-    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    group.dataset.sourceKeys = JSON.stringify(commonDocumentNames);
-    group.id = `group-conn-${containerId}-${childData.id}`;
-
-    const basePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    basePath.setAttribute('class', 'connector-path base-layer');
-    basePath.setAttribute('d', pathData);
-
-    const highlightPath = basePath.cloneNode() as SVGPathElement;
-    highlightPath.classList.remove('base-layer');
-    highlightPath.setAttribute('class', 'highlight-overlay');
-
-    // ADDED: Create a third layer specifically for the white anchor-hover effect
-    const anchorHoverPath = basePath.cloneNode() as SVGPathElement;
-    anchorHoverPath.classList.remove('base-layer');
-    anchorHoverPath.setAttribute('class', 'anchor-hover-overlay');
-
-    if (commonDocumentNames.length > 0) {
-        const defs = svg.querySelector('defs');
-        if (defs) {
-            const idSuffix = `${containerId}-${childData.id}`;
-            const baseGradientId = `grad-conn-base-${idSuffix}`;
-            const highlightGradientId = `grad-conn-highlight-${idSuffix}`;
-
-            const createGradient = (id: string, colorProp: 'normal' | 'sat') => {
-                const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-                gradient.id = id;
-                gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
-                gradient.setAttribute('x1', `${startX}`);
-                gradient.setAttribute('y1', `${startY}`);
-                gradient.setAttribute('x2', `${endX}`);
-                gradient.setAttribute('y2', `${endY}`);
-                gradient.innerHTML = createGradientStops(commonDocumentNames, paletteMap, colorProp, 0.1);
-                return gradient;
-            };
-
-            if (!defs.querySelector(`#${baseGradientId}`)) {
-                defs.appendChild(createGradient(baseGradientId, 'normal'));
-            }
-            if (!defs.querySelector(`#${highlightGradientId}`)) {
-                defs.appendChild(createGradient(highlightGradientId, 'sat'));
-            }
-
-            basePath.style.stroke = `url(#${baseGradientId})`;
-            highlightPath.style.stroke = `url(#${highlightGradientId})`;
-        }
-    }
-
-    group.append(basePath, highlightPath, anchorHoverPath);
-    svg.insertBefore(group, svg.firstChild);
+    ctx.svg.appendChild(group);
 }
 
 /**
- * Creates and appends a rounded SVG path to connect a parent and child node.
+ * Creates and appends a rounded SVG path connecting a parent and child node, colored by the
+ * documents the two have in common.
  */
-export function createRoundedConnector(svg: SVGSVGElement, parentData: any, childData: AdjacencyNode, direction: number, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, allDocuments: Set<string>, containerId: string): void {
+function createRoundedConnector(ctx: RenderContext, parentData: LayoutNode, childData: AdjacencyNode, direction: number): void {
+    const { config, containerId } = ctx;
     const { x: x1, y: y1 } = parentData.layout;
     const { x: x2, y: y2 } = childData.layout;
 
@@ -253,23 +210,70 @@ export function createRoundedConnector(svg: SVGSVGElement, parentData: any, chil
             ` L ${endX} ${y2}`;
     }
 
-    const parentKeys = parentData.id === 'main-anchor' ? allDocuments : (parentData.sourceKeysSet || new Set<string>());
-    const childKeys = childData.sourceKeysSet || new Set<string>();
+    const parentKeys = parentData.id === 'main-anchor'
+        ? ctx.data.allDocumentsSet
+        : ((parentData as AdjacencyNode).sourceKeysSet ?? new Set<string>());
+    const childKeys = childData.sourceKeysSet ?? new Set<string>();
     const commonKeys = [...childKeys].filter(key => parentKeys.has(key));
 
-    emitConnector(svg, pathData, childData, commonKeys, startX, y1, endX, y2, paletteMap, containerId);
+    const group = svgElement('g');
+    group.id = `group-conn-${containerId}-${childData.id}`;
+
+    const basePath = svgElement('path');
+    basePath.setAttribute('class', 'connector-path base-layer');
+    basePath.setAttribute('d', pathData);
+
+    const [highlightPath, anchorHoverPath] = createOverlayLayers(basePath);
+
+    attachSourceKeys(
+        ctx, group, commonKeys, basePath, highlightPath, `conn-${containerId}-${childData.id}`,
+        gradient => {
+            gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+            gradient.setAttribute('x1', `${startX}`);
+            gradient.setAttribute('y1', `${y1}`);
+            gradient.setAttribute('x2', `${endX}`);
+            gradient.setAttribute('y2', `${y2}`);
+        });
+
+    group.append(basePath, highlightPath, anchorHoverPath);
+
+    // Connectors go behind every node so a path never crosses over a node's fill.
+    ctx.svg.insertBefore(group, ctx.svg.firstChild);
 }
 
 /**
- * Recursively draws all nodes and their connectors for a given tree.
+ * Recursively draws all nodes and their connectors for one side of the tree.
+ * @param direction -1 for the preceding (leftward) tree, +1 for the following (rightward) tree.
  */
-export function drawNodesAndConnectors(svg: SVGSVGElement, nodes: AdjacencyNode[], parentData: any, direction: number, config: NodeConfig, paletteMap: Map<string, DeterministicPalette>, allDocuments: Set<string>, containerId: string): void {
+export function drawNodesAndConnectors(ctx: RenderContext, nodes: AdjacencyNode[], parentData: LayoutNode, direction: number, depth = 1): void {
     if (!nodes) return;
+
     for (const node of nodes) {
-        createRoundedConnector(svg, parentData, node, direction, config, paletteMap, allDocuments, containerId);
-        createNode(svg, node, true, config, paletteMap, containerId);
-        if (node.children) {
-            drawNodesAndConnectors(svg, node.children, node, direction, config, paletteMap, allDocuments, containerId);
-        }
+        createRoundedConnector(ctx, parentData, node, direction);
+        createNode(ctx, node, `${direction}:${depth}`);
+        drawNodesAndConnectors(ctx, node.children, node, direction, depth + 1);
+    }
+}
+
+/**
+ * Draws the two participation-count labels that fade in above and below the anchor on node hover
+ * (how many documents pass through the hovered node, and - when they don't map one-to-one - how
+ * many visually distinct throughlines those documents form). Empty and invisible until the hover
+ * handler fills them in.
+ */
+export function createAnchorStatLabels(ctx: RenderContext, anchor: AnchorNode): void {
+    const { config } = ctx;
+
+    for (const placement of ['above', 'below'] as const) {
+        const label = svgElement('text');
+        label.setAttribute('class', `tree-stat tree-stat-${placement}`);
+        label.setAttribute('x', `${anchor.layout.x}`);
+        label.setAttribute('text-anchor', 'middle');
+
+        const edge = anchor.dynamicHeight / 2 + config.statLabelGap;
+        label.setAttribute('y', `${anchor.layout.y + (placement === 'above' ? -edge : edge)}`);
+        label.setAttribute('dominant-baseline', placement === 'above' ? 'auto' : 'hanging');
+
+        ctx.svg.appendChild(label);
     }
 }

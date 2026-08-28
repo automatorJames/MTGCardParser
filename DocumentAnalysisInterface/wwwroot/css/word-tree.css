@@ -1,0 +1,165 @@
+/* =================================================================== */
+/* == WORD TREE SVG                                                 == */
+/* =================================================================== */
+
+/* Global rather than component-isolated on purpose: the tree's SVG is built by
+   word-tree-svg-drawer.ts at runtime, so its elements never carry a Blazor scope attribute and
+   can only be reached from a component's own stylesheet via ::deep - which meant every host of a
+   word tree (WordTreesPage and EchoTreeDialog) had to keep its own copy of these rules in sync.
+   One stylesheet, linked from _Layout.cshtml, instead.
+
+   Everything hover-related here is a class the handler toggles plus a CSS transition; see
+   word-tree-event-handler.ts for which state means what. */
+
+.word-trees-card {
+    /* How far a non-participating node, connector or text run fades. Single source of truth -
+       nothing in TypeScript reads or duplicates it. */
+    --wt-lowlight-opacity: 0.15;
+}
+
+/* --- Node and connector outlines --- */
+
+.node-group {
+    cursor: pointer;
+    transition: opacity var(--transition-time);
+}
+
+.wt-keyed {
+    transition: opacity var(--transition-time);
+}
+
+.node-shape.base-layer {
+    stroke: var(--node-border-color, #666);
+    stroke-width: 2.5px;
+    fill: #2d2d2d;
+    transition: opacity var(--transition-time), fill var(--transition-time);
+}
+
+.connector-path.base-layer {
+    stroke: var(--node-border-color, #444);
+    fill: none;
+    stroke-width: 2.5px;
+    transition: opacity var(--transition-time);
+}
+
+/* The saturated stroke that fades in over the resting one for participating documents. */
+.highlight-overlay {
+    fill: none;
+    stroke-width: 2.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-time);
+}
+
+.word-trees-card.highlight-active .wt-highlight > .highlight-overlay {
+    opacity: 1;
+}
+
+/* The white stroke used while the central anchor is hovered. */
+.anchor-hover-overlay {
+    stroke-width: 2.5px;
+    stroke: #ffffff;
+    fill: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-time);
+}
+
+.word-trees-card.anchor-hover .anchor-hover-overlay {
+    opacity: 1;
+}
+
+/* Document-axis hover fades the whole group - outline and text together. */
+.word-trees-card.highlight-active:not(.glyph-hover) .wt-lowlight {
+    opacity: var(--wt-lowlight-opacity);
+}
+
+/* Glyph-axis hover fades outlines only: a throughline can be worth following even when almost
+   none of its text was captured by the hovered Glyph, so the text is dimmed separately below. */
+.word-trees-card.glyph-hover .wt-lowlight > .node-shape.base-layer,
+.word-trees-card.glyph-hover .wt-lowlight > .connector-path.base-layer {
+    opacity: var(--wt-lowlight-opacity);
+}
+
+/* --- Anchor --- */
+
+.main-anchor-span > .node-shape.base-layer {
+    fill: #e0e0e0;
+}
+
+.node-group:not(.main-anchor-span):hover > .node-shape.base-layer {
+    fill: #202020;
+}
+
+.main-anchor-span:hover > .node-shape.base-layer {
+    fill: #cccccc;
+}
+
+.main-anchor-span {
+    transition: filter var(--transition-time);
+    color: #ffffff;
+}
+
+    .main-anchor-span:hover {
+        filter: url(#glow);
+    }
+
+/* --- Node text --- */
+
+.node-text {
+    font-size: 12px;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.node-text-content {
+    fill: #e0e0e0;
+    transition: fill var(--transition-time), opacity var(--transition-time);
+}
+
+.main-anchor-span .node-text-content {
+    fill: #000;
+}
+
+/* A run captured by a top-level Glyph. --glyph-color / --glyph-sat-color come from that Glyph
+   type's entry in the card's lower key strip, set inline by the drawer; the fills themselves stay
+   in the stylesheet so the hover states below can win without !important. */
+.interactive-subspan {
+    pointer-events: auto;
+    font-weight: bold;
+    fill: var(--glyph-color);
+}
+
+.word-trees-card.glyph-hover .node-text-content.glyph-dim {
+    opacity: var(--wt-lowlight-opacity);
+}
+
+.interactive-subspan.glyph-match {
+    fill: var(--glyph-sat-color);
+}
+
+/* The run directly under the pointer: same saturation boost, plus a hair of stroke so it reads as
+   heavier without a font-weight change (which would re-flow the text). */
+.interactive-subspan.glyph-emphasis {
+    fill: var(--glyph-sat-color);
+    stroke: var(--glyph-sat-color);
+    stroke-width: 0.4px;
+}
+
+/* --- Participation labels above/below the anchor --- */
+
+.tree-stat {
+    font-family: 'Inter Tight', 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 100;
+    letter-spacing: 0.04em;
+    fill: #8a8a8a;
+    text-anchor: middle;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-time);
+}
+
+    .tree-stat.visible {
+        opacity: 1;
+    }

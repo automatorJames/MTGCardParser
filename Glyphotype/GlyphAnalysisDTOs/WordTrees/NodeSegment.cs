@@ -1,9 +1,14 @@
-﻿namespace Glyphotype.GlyphAnalysisDTOs.WordTrees;
+namespace Glyphotype.GlyphAnalysisDTOs.WordTrees;
 
 /// <summary>
-/// Represents a single, non-divisible segment within a consolidated AdjacencyNode.
-/// This preserves the original text and token type for future inline coloring.
-/// The Palettes dictionary maps a character start index within the Text to a color,
-/// which should apply from that point forward until the next defined start index.
+/// The consolidated text of one <see cref="AdjacencyNode"/> plus the map of which top-level
+/// <see cref="Glyph"/> type (if any) captured each stretch of it.
+/// <para>
+/// <paramref name="GlyphTypeNames"/> keys are character start indices within
+/// <paramref name="Text"/>; each entry's value applies from that index forward until the next
+/// entry's index. A null value marks the start of a stretch nothing captured (raw unmatched
+/// words), which is what lets a run of glyph-captured text be terminated without an entry per
+/// character. Null for the whole dictionary means the node is entirely uncaptured text.
+/// </para>
 /// </summary>
-public record NodeSegment(string Text, Dictionary<int, HexPalette> Palettes);
+public record NodeSegment(string Text, Dictionary<int, string> GlyphTypeNames);

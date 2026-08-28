@@ -1,4 +1,4 @@
-﻿namespace Glyphotype.GlyphAnalysisDTOs.WordTrees;
+namespace Glyphotype.GlyphAnalysisDTOs.WordTrees;
 
 /// <summary>
 /// Represents a node in an adjacency tree. Each node corresponds to a single logical segment,
@@ -7,9 +7,11 @@
 public record AdjacencyNode
 {
     /// <summary>
-    /// The segment of text this node represents. For collapsed unmatched-text nodes (i.e. not backed
-    /// by a <see cref="Glyph"/>), this contains the combined text, and its Palettes dictionary will be null.
+    /// The segment of text this node represents. Server-side only: <see cref="Text"/> and
+    /// <see cref="SpanGlyphTypes"/> are the projections the client actually consumes, so
+    /// serializing the segment as well would just duplicate both over the wire.
     /// </summary>
+    [JsonIgnore]
     public NodeSegment Segment { get; init; }
 
     public List<string> SourceOccurrenceDocumentNames { get; init; }
@@ -26,10 +28,12 @@ public record AdjacencyNode
     public string Text { get; init; }
 
     /// <summary>
-    /// The map of palettes for this node, derived directly from its segment.
-    /// The keys are character start indices within the Text property.
+    /// Which top-level <see cref="Glyph"/> type captured each stretch of <see cref="Text"/>, keyed
+    /// by character start index (see <see cref="NodeSegment.GlyphTypeNames"/>). The names index into
+    /// <see cref="AnalyzedText.GlyphPalettes"/>, so the tree carries one short name per captured
+    /// stretch rather than a repeated copy of the palette itself.
     /// </summary>
-    public Dictionary<int, HexPalette> SpanPalettes => Segment.Palettes;
+    public Dictionary<int, string> SpanGlyphTypes => Segment.GlyphTypeNames;
 
     /// <summary>
     /// The simplified constructor that was a primary goal of this refactoring.

@@ -1,10 +1,22 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Glyphotype;
 
 public static class Extensions
 {
+    static readonly ConcurrentDictionary<Type, string> _friendlyGlyphTypeNames = [];
+
+    /// <summary>
+    /// The display name for a <see cref="Glyph"/> type - the same sentence-cased rendering
+    /// <see cref="GlyphAnalysisDTOs.TypeExpressions.GlyphOccurrenceSummary.TypeNameFriendly"/> uses,
+    /// so a name shown in one view matches the same type's name in another. Memoized because the
+    /// word-tree builder resolves it once per collapsed token across the whole corpus.
+    /// </summary>
+    public static string ToFriendlyGlyphName(this Type glyphType) =>
+        _friendlyGlyphTypeNames.GetOrAdd(glyphType, x => x.Name.ToFriendlyCase(TitleDisplayOption.Sentence));
+
     public static string AddPluralization(this string word, bool makeOptional)
     {
         if (string.IsNullOrWhiteSpace(word))

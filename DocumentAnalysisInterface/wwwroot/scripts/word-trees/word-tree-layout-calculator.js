@@ -13,67 +13,90 @@ export function getFanDelta(node) {
     return fanDeltaMap.get(node) || 0;
 }
 /**
- * Populates an SVG <text> element with styled <tspan> children for measurement.
- * This is a helper function to determine the rendered width of text that may contain bold sections.
+ * The node's glyph-type boundaries as a sorted list. Empty when nothing in the node was captured,
+ * which lets every caller take a single-chunk fast path.
  */
-function populateTspansForMeasurement(textEl, lineStr, fullText, lineStartIndex, colorStops) {
-    textEl.innerHTML = ''; // Clear previous content
-    let lineCursor = 0;
-    while (lineCursor < lineStr.length) {
-        const absoluteCursor = lineStartIndex + lineCursor;
-        let activePalette = null;
-        for (const stop of colorStops) {
+function getGlyphStops(node) {
+    const spanGlyphTypes = node.spanGlyphTypes;
+    if (!spanGlyphTypes)
+        return [];
+    return Object.entries(spanGlyphTypes)
+        .map(([index, glyphType]) => ({ index: parseInt(index, 10), glyphType }))
+        .sort((a, b) => a.index - b.index);
+}
+/**
+ * Splits one physically-wrapped line into runs of uniform glyph type. The single place that walks
+ * the stop list, shared by measurement (where captured runs render bold and so measure wider) and
+ * by drawing (where each run becomes its own tspan).
+ * @param lineText The line's text.
+ * @param lineStartIndex The line's start index within the node's full text - stops are absolute.
+ */
+export function chunkLine(lineText, lineStartIndex, stops) {
+    if (stops.length === 0 || lineText.length === 0)
+        return [{ text: lineText, glyphType: null }];
+    const chunks = [];
+    let cursor = 0;
+    while (cursor < lineText.length) {
+        const absoluteCursor = lineStartIndex + cursor;
+        let activeGlyphType = null;
+        let nextStopAbsoluteIndex = lineStartIndex + lineText.length;
+        for (const stop of stops) {
             if (stop.index <= absoluteCursor)
-                activePalette = stop.palette;
-            else
-                break;
-        }
-        let nextStopAbsoluteIndex = lineStartIndex + lineStr.length;
-        for (const stop of colorStops) {
-            if (stop.index > absoluteCursor) {
+                activeGlyphType = stop.glyphType;
+            else {
                 nextStopAbsoluteIndex = stop.index;
                 break;
             }
         }
-        const chunkEndIndexInLine = Math.min(lineStr.length, nextStopAbsoluteIndex - lineStartIndex);
-        const chunkText = lineStr.substring(lineCursor, chunkEndIndexInLine);
-        const subTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        subTspan.textContent = chunkText;
-        if (activePalette) {
-            subTspan.style.fontWeight = 'bold';
-        }
-        textEl.appendChild(subTspan);
-        lineCursor = chunkEndIndexInLine;
+        // Guaranteed to advance: nextStopAbsoluteIndex is strictly past absoluteCursor.
+        const chunkEnd = Math.min(lineText.length, nextStopAbsoluteIndex - lineStartIndex);
+        chunks.push({ text: lineText.substring(cursor, chunkEnd), glyphType: activeGlyphType });
+        cursor = chunkEnd;
+    }
+    return chunks;
+}
+/**
+ * Fills a scratch <text> element with one tspan per chunk so it can be measured. Only the bold
+ * flag matters here - captured runs render bold and are therefore wider than the same characters
+ * unstyled, which is exactly what the wrap point depends on.
+ */
+function populateTspansForMeasurement(textEl, chunks) {
+    textEl.innerHTML = '';
+    for (const chunk of chunks) {
+        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        tspan.textContent = chunk.text;
+        if (chunk.glyphType)
+            tspan.style.fontWeight = 'bold';
+        textEl.appendChild(tspan);
     }
 }
 /**
  * Calculates display metrics for a single node based on its text content,
  * accounting for bold styling which affects text width.
+ *
+ * Each wrapped line keeps the glyph-typed chunks it was measured from, so the drawing pass reuses
+ * that split instead of recovering each line's offset with an indexOf of its own text (which
+ * silently picks the wrong offset whenever a line repeats earlier in the node).
  */
 export function getNodeMetrics(node, config, svg) {
     const tempText = document.createElementNS("http://www.w3.org/2000/svg", "text");
     tempText.setAttribute('class', 'node-text');
     svg.appendChild(tempText);
     const text = String(node.text || '');
-    const { spanPalettes } = node;
-    const colorStops = (spanPalettes && Object.keys(spanPalettes).length > 0)
-        ? Object.entries(spanPalettes)
-            .map(([index, palette]) => ({ index: parseInt(index, 10), palette: palette }))
-            .sort((a, b) => a.index - b.index)
-        : [];
+    const stops = getGlyphStops(node);
     const words = text.split(' ');
     const availableWidth = config.nodeWidth - config.nodePadding * 2;
     const lineHeight = 14;
-    let currentLine = '';
     const wrappedLines = [];
+    let currentLine = '';
     let lineStartIndex = 0;
     let currentWordAbsoluteIndex = 0;
+    const pushLine = (lineText, startIndex) => wrappedLines.push({ text: lineText, chunks: chunkLine(lineText, startIndex, stops) });
     for (const word of words) {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
-        // Use the helper to populate the tempText with styled tspans for accurate measurement
-        populateTspansForMeasurement(tempText, testLine, text, lineStartIndex, colorStops);
+        populateTspansForMeasurement(tempText, chunkLine(testLine, lineStartIndex, stops));
         if (tempText.getComputedTextLength() > availableWidth && currentLine) {
-            wrappedLines.push(currentLine);
+            pushLine(currentLine, lineStartIndex);
             lineStartIndex = currentWordAbsoluteIndex;
             currentLine = word;
         }
@@ -83,7 +106,7 @@ export function getNodeMetrics(node, config, svg) {
         // Advance the absolute index by word length plus a space
         currentWordAbsoluteIndex += word.length + 1;
     }
-    wrappedLines.push(currentLine);
+    pushLine(currentLine, lineStartIndex);
     svg.removeChild(tempText); // Clean up
     const totalTextHeight = wrappedLines.length * lineHeight;
     const dynamicHeight = Math.max(config.nodeHeight, totalTextHeight + config.nodePadding * 2);
@@ -95,12 +118,10 @@ export function getNodeMetrics(node, config, svg) {
 export function preCalculateAllNodeMetrics(node, config, svg) {
     if (!node)
         return;
-    // MODIFIED: Pass the entire node object to getNodeMetrics
-    const metrics = getNodeMetrics(node, config, svg);
-    Object.assign(node, metrics); // Assign metrics to the node
-    if (node.children) {
-        node.children.forEach((child) => preCalculateAllNodeMetrics(child, config, svg));
-    }
+    Object.assign(node, getNodeMetrics(node, config, svg));
+    const children = node.children;
+    if (children)
+        children.forEach(child => preCalculateAllNodeMetrics(child, config, svg));
 }
 /**
  * Recursively calculates the layout positions for a tree of nodes.

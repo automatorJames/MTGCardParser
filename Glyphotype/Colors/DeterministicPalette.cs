@@ -15,7 +15,7 @@ public static class DeterministicPalette
     // --- Static Cache ---
     // ConcurrentDictionary because corpus processing builds many ProcessedLines (and therefore
     // palettes) in parallel across documents; a plain Dictionary would race under that.
-    static readonly ConcurrentDictionary<int, Dictionary<int, HexPalette>> _positionalPaletteSets = [];
+    static readonly ConcurrentDictionary<(int Count, double SaturationFactor, double LightnessFactor), Dictionary<int, HexPalette>> _positionalPaletteSets = [];
     static readonly ConcurrentDictionary<int, HexPalette> _fixedRainbowPalettes = [];
     static readonly ConcurrentDictionary<HexColor, HexPalette> _staticColorPalettes = [];
 
@@ -29,6 +29,12 @@ public static class DeterministicPalette
     const double BaseLightness = 0.6;
     const double LightLightness = 0.8;
     const double DarkLightness = 0.3;
+
+    /// <summary>
+    /// Ceiling for any lightness a caller-supplied factor scales up to. Past this a hue is
+    /// indistinguishable from white, which would defeat the point of a rainbow.
+    /// </summary>
+    const double MaxLightness = 0.92;
 
     // --- Static Factories ---
 
@@ -69,14 +75,24 @@ public static class DeterministicPalette
     public static void RefreshTypePaletteSet() =>
         _typePaletteSet = GetTypePaletteSet();
 
-    public static Dictionary<int, HexPalette> GetPositionalPaletteSet(int totalItemCount) =>
-        _positionalPaletteSets.GetOrAdd(totalItemCount, count =>
+    /// <summary>
+    /// Equidistant rainbow hues for <paramref name="totalItemCount"/> items, keyed by position.
+    /// <paramref name="saturationFactor"/>/<paramref name="lightnessFactor"/> scale the shared base
+    /// saturation/lightness, which is how a second rainbow keyed to a different dimension can be
+    /// told apart from the first at a glance despite reusing the same hues (see
+    /// <see cref="GlyphKeyPaletteKnobs"/>).
+    /// </summary>
+    public static Dictionary<int, HexPalette> GetPositionalPaletteSet(
+        int totalItemCount,
+        double saturationFactor = 1.0,
+        double lightnessFactor = 1.0) =>
+        _positionalPaletteSets.GetOrAdd((totalItemCount, saturationFactor, lightnessFactor), key =>
         {
             var positionalPaletteSet = new Dictionary<int, HexPalette>();
-            var hues = GetRainbowHues(count);
+            var hues = GetRainbowHues(key.Count);
 
-            for (int i = 0; i < count; i++)
-                positionalPaletteSet[i] = BuildFromHue(hues[i]);
+            for (int i = 0; i < key.Count; i++)
+                positionalPaletteSet[i] = BuildFromHue(hues[i], saturationFactor: key.SaturationFactor, lightnessFactor: key.LightnessFactor);
 
             return positionalPaletteSet;
         });
@@ -100,20 +116,48 @@ public static class DeterministicPalette
             .ToDictionary(x => itemsAsList[x.idx], x => x.palette);
     }
 
+    /// <summary>
+    /// The item-keyed form of
+    /// <see cref="GetPositionalPaletteSet(int, double, double)"/> - same equidistant hues, scaled
+    /// off the shared base saturation/lightness so a second rainbow keyed to a different dimension
+    /// reads as a distinct signal from the first.
+    /// </summary>
+    public static Dictionary<T, HexPalette> GetPositionalPaletteSet<T>(
+        IEnumerable<T> items,
+        double saturationFactor,
+        double lightnessFactor)
+    {
+        var itemsAsList = items.ToList();
+        var paletteSet = GetPositionalPaletteSet(itemsAsList.Count, saturationFactor, lightnessFactor);
+
+        return itemsAsList
+            .Select((item, idx) => (item, palette: paletteSet[idx]))
+            .ToDictionary(x => x.item, x => x.palette);
+    }
+
     public static HexPalette GetStaticPalette(HexColor color) =>
         _staticColorPalettes.GetOrAdd(color, BuildFromColor);
 
     // --- Palette Construction ---
 
     /// <summary>The single, authoritative method for generating all color properties from a hue.</summary>
-    static HexPalette BuildFromHue(double hue, double? baseSaturation = null, double? baseLightness = null)
+    static HexPalette BuildFromHue(
+        double hue,
+        double? baseSaturation = null,
+        double? baseLightness = null,
+        double saturationFactor = 1.0,
+        double lightnessFactor = 1.0)
     {
-        double saturation = baseSaturation ?? BaseSaturation;
-        double lightness = baseLightness ?? BaseLightness;
+        double saturation = Math.Clamp((baseSaturation ?? BaseSaturation) * saturationFactor, 0, FullSaturation);
+        double lightness = Math.Clamp((baseLightness ?? BaseLightness) * lightnessFactor, 0, MaxLightness);
+        double lightLightness = Math.Clamp(LightLightness * lightnessFactor, 0, MaxLightness);
 
         var hex = HslMath.ToHex(hue, saturation, lightness);
-        var light = HslMath.ToHex(hue, saturation, LightLightness);
+        var light = HslMath.ToHex(hue, saturation, lightLightness);
         var dark = HslMath.ToHex(hue, DarkSaturation, DarkLightness);
+
+        // Sat deliberately ignores saturationFactor: it's the "pop" variant a hover swaps to, so it
+        // stays fully saturated no matter how softened the resting color is.
         var sat = HslMath.ToHex(hue, FullSaturation, lightness);
 
         return new(hex, light, dark, sat);
