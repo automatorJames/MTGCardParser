@@ -15,8 +15,6 @@
 //
 // Nothing outside these two files should hardcode a layout, color, font, or spacing constant.
 
-using Glyphotype.RegexGeneration.Presentation;
-
 namespace Glyphotype.PresentationRules;
 
 /// <summary>
@@ -370,9 +368,9 @@ public static class RainbowPaletteKnobs
 /// <see cref="DeterministicPalette.GetPositionalPaletteSet(int, double, double)"/> wheel, so hue
 /// alone can't tell the reader which of the two signals they're looking at — a green document
 /// border and a green glyph border would read as related when they aren't. These factors pull the
-/// glyph rainbow off the document rainbow on the other two HSL axes instead: brighter and less
-/// saturated, so glyph color reads as a lighter "wash" over text while document color stays the
-/// heavier, more saturated signal on node outlines.
+/// glyph rainbow off the document rainbow on the other two HSL axes instead: a touch brighter and
+/// somewhat less saturated, so glyph color reads as a lighter tint over text while document color
+/// stays the heavier, more saturated signal on node outlines.
 /// </para>
 /// </summary>
 public static class GlyphKeyPaletteKnobs
@@ -382,13 +380,14 @@ public static class GlyphKeyPaletteKnobs
     /// glyph-keyed palette. Below 1 softens the hue so bolded capture text doesn't compete with the
     /// document-keyed node outlines drawn around it.
     /// </summary>
-    public const double SaturationFactor = 0.72;
+    public const double SaturationFactor = 0.85;
 
     /// <summary>
     /// Multiplier applied to <see cref="RainbowPaletteKnobs.BaseLightness"/> and
     /// <see cref="RainbowPaletteKnobs.LightLightness"/> when building a glyph-keyed palette. Above 1
     /// lifts the hue toward white, which is what keeps capture text legible against the dark node fill
-    /// at the reduced saturation above.
+    /// at the reduced saturation above. Kept only slightly above 1 so the light variant doesn't sit on
+    /// the near-white lightness ceiling, where any saturation the factor above adds would be invisible.
     /// </summary>
-    public const double LightnessFactor = 1.2;
+    public const double LightnessFactor = 1.05;
 }
