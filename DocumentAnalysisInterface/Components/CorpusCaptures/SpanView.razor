@@ -153,7 +153,7 @@
     {
         var style = new System.Text.StringBuilder();
         style.Append(DisplayContext.Palettes[PaletteKey(emergent)].ToColorStyle());
-        style.Append($" padding-bottom: {DocumentLineMetrics.GetUnderlinePaddingPx(EffectiveDepth)}px;");
+        style.Append($" padding-bottom: {CorpusCapturesFormatting.GetUnderlinePaddingPx(EffectiveDepth)}px;");
         return style.ToString();
     }
 
@@ -195,7 +195,7 @@
         var style = new System.Text.StringBuilder();
 
         style.Append(DisplayContext.Palettes[PaletteKey(CaptureTrace)].ToColorStyle());
-        style.Append($" padding-bottom: {DocumentLineMetrics.GetUnderlinePaddingPx(EffectiveDepth)}px;");
+        style.Append($" padding-bottom: {CorpusCapturesFormatting.GetUnderlinePaddingPx(EffectiveDepth)}px;");
 
         return style.ToString();
     }
@@ -279,7 +279,7 @@
     /// approximates centering over its full span without needing pixel measurement — nudged off
     /// that midpoint when another echo already claimed it, so two badges on different lanes don't
     /// land at the same horizontal position with only one
-    /// <see cref="DocumentLineMetrics.UnderlineDepthStepPx"/> of vertical clearance between them.
+    /// <see cref="CorpusCapturesFormatting.UnderlineDepthStepPx"/> of vertical clearance between them.
     /// </summary>
     static (List<List<EchoLaneEntry>> WordEntries, List<List<EchoLaneEntry>> SpaceEntries) BuildEchoRenderPlan(
         int wordCount, List<List<EchoMatch>> lanes)

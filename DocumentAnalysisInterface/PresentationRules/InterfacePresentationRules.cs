@@ -74,7 +74,7 @@ public static class CorpusCapturesLayout
 /// lets <c>CaptureTraceDisplayContext</c> reserve a line's vertical space from a single
 /// <c>MaxEffectiveDepth</c> covering both. Changing the step here moves both together, as it should.
 /// </summary>
-public static class DocumentLineMetrics
+public static class CorpusCapturesFormatting
 {
     /// <summary>Gap in px between the text baseline and the first (depth/lane 0) underline.</summary>
     public const int UnderlineBasePaddingPx = 2;
@@ -116,7 +116,7 @@ public static class DocumentLineMetrics
 /// Static display tuning for Echoes — the corpus-shared-subspan underlines CorpusCapturesPage draws
 /// under UnmatchedString spans (see SpanView.GetEchoContainerStyle and EchoUnderline.GetLaneStyle).
 /// Not user-configurable at runtime; tune here and redeploy. Lane offsets are not here — they come
-/// off the shared <see cref="DocumentLineMetrics"/> scale, since an echo lane and a capture depth
+/// off the shared <see cref="CorpusCapturesFormatting"/> scale, since an echo lane and a capture depth
 /// have to land on the same rows.
 /// </summary>
 public static class EchoPresentation

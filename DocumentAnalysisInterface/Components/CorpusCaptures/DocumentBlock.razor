@@ -123,8 +123,8 @@
         // Line height, and the top-half crop of the extra space it adds, both off the shared
         // depth-to-pixel scale in DocumentLineMetrics — the same one SpanView's and EchoUnderline's
         // underline offsets come from, so the reserved space always matches what's drawn in it.
-        int lh = DocumentLineMetrics.GetLineHeightPx(displayContext.MaxEffectiveDepth);
-        double topCrop = DocumentLineMetrics.GetTopCropPx(displayContext.MaxEffectiveDepth);
+        int lh = CorpusCapturesFormatting.GetLineHeightPx(displayContext.MaxEffectiveDepth);
+        double topCrop = CorpusCapturesFormatting.GetTopCropPx(displayContext.MaxEffectiveDepth);
 
         // --captured-text-color/--unmatched-text-color set once here so every SpanView in this
         // line's <pre> can just read them — the two text colors are static C# tuning
