@@ -1,7 +1,7 @@
-// word-tree-event-handler.ts
+// echo-tree-event-handler.ts
 //
-// All hover treatment for a word tree card. Every visual change here is expressed as a class the
-// stylesheet transitions (see wwwroot/css/word-tree.css) rather than as a per-frame opacity
+// All hover treatment for a echo tree card. Every visual change here is expressed as a class the
+// stylesheet transitions (see wwwroot/css/echo-tree.css) rather than as a per-frame opacity
 // animation, so this module only decides *which* elements are in which state.
 //
 // There are two distinct highlight axes, driven by the two key strips around the tree:
@@ -12,8 +12,8 @@
 //               treatment: everything not captured by the hovered Glyph type dims, and everything
 //               that is captured by it saturates.
 
-import { CardElement, CardHoverIndex, KeyedGroupElement } from "./word-tree-models.js";
-import { createGradientStops } from "./word-tree-svg-drawer.js";
+import { CardElement, CardHoverIndex, KeyedGroupElement } from "./echo-tree-models.js";
+import { createGradientStops } from "./echo-tree-svg-drawer.js";
 
 /** How the active document set was arrived at, which decides what the fade applies to. */
 type HighlightMode = 'none' | 'documents' | 'glyph';
@@ -268,7 +268,7 @@ export function setupGlobalEventHandlers(): void {
 
     document.addEventListener('mouseover', (event: MouseEvent) => {
         const target = event.target as Element;
-        const card = target.closest<CardElement>('.word-trees-card');
+        const card = target.closest<CardElement>('.echo-trees-card');
 
         // Leaving a card (for another card, or for nothing) must clear it explicitly - no further
         // mouseover will ever fire inside it to do so.

@@ -1,5 +1,5 @@
 ﻿@using Glyphotype.RegexGeneration.Graph.Nodes
-@using DocumentAnalysisInterface.Components.DocumentLines
+@using DocumentAnalysisInterface.Components.CorpusCaptures
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
 @if (CaptureTrace != null)
@@ -11,7 +11,7 @@
         var plan = BuildEchoRenderPlan(echoOccurrence.Words.Length, DigestedText.PackEchoLanes(echoes));
         @* CaptureTrace.HoverPath is the literal constant "UnmatchedString" for every occurrence —
            fine for the old plain-text rendering (nothing else read it), but this data-path is also
-           what the existing capture-hover system (document-lines.js) walks up to when a click/hover
+           what the existing capture-hover system (corpus-captures.js) walks up to when a click/hover
            inside here bubbles past our own nested spans. Left generic, every UnmatchedString on the
            page would share one "path", so hovering one would cross-highlight/mute every other one
            too. CaptureTrace.Index alone isn't enough either — it's an offset into this *line's* own
@@ -141,7 +141,7 @@
     /// </summary>
     /// <summary>
     /// The key to look <see cref="CaptureTraceDisplayContext.Palettes"/> up by: <see cref="CaptureTrace.Representative"/>
-    /// when set, since <see cref="DocumentAnalysisInterface.Components.DocumentLines.CaptureTraceDisplayContext"/>
+    /// when set, since <see cref="DocumentAnalysisInterface.Components.CorpusCaptures.CaptureTraceDisplayContext"/>
     /// hands out one palette slot per distinct named group, not per repeat occurrence - every occurrence
     /// of a group nested inside a repeated ancestor (e.g. "flying" and "first strike" both under
     /// <c>SecondPlus &gt;&gt; Keyword</c>) is the same semantic capture slot, just at a different text

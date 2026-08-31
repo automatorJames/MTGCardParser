@@ -1,5 +1,5 @@
 // The single home for every presentation knob that only the Blazor UI reads — theme colors, document
-// text colors, echo underline treatment, the depth-to-pixel scales behind DocumentLinesPage's nested
+// text colors, echo underline treatment, the depth-to-pixel scales behind CorpusCapturesPage's nested
 // underlines, hover behavior, and coverage formatting. Consolidated here from ThemeColor.cs,
 // CoverageDisplay.cs, PresentationRules/HoverTreatmentConfig.cs, Glyphotype's
 // RegexGeneration/Presentation/EchoPresentation.cs and DocumentTextPresentation.cs, and a scattering of
@@ -39,7 +39,7 @@ public static class ThemeColor
 }
 
 /// <summary>
-/// Static display tuning for DocumentLinesPage's own body text color — captured text and
+/// Static display tuning for CorpusCapturesPage's own body text color — captured text and
 /// unmatched text independently, both distinct from the per-capture rainbow underline color in
 /// <see cref="Glyphotype.Colors.HexPalette"/>. Not user-configurable at runtime; tune here and redeploy.
 /// Both default to the app's ordinary body text color (site.css's <c>body { color }</c>), so
@@ -53,7 +53,22 @@ public static class DocumentTextPresentation
 }
 
 /// <summary>
-/// The depth-to-pixel scales behind DocumentLinesPage's stacked underlines. Capture underlines
+/// Layout knobs for CorpusCapturesPage's content column — the vertical stack of <c>DocumentBlock</c>s
+/// inside <c>.corpus-captures-container</c>. Not user-configurable at runtime; tune here and redeploy.
+/// Reaches the page as CSS custom properties the page sets on that container.
+/// </summary>
+public static class CorpusCapturesLayout
+{
+    /// <summary>
+    /// Maximum width in px of the content column. The container is centered (<c>margin-inline: auto</c>)
+    /// in whatever horizontal space is left, so narrowing this just tightens the measure without
+    /// shifting it off-center. Surfaces as the <c>--corpus-captures-max-width</c> custom property.
+    /// </summary>
+    public const int ContentMaxWidthPx = 1920;
+}
+
+/// <summary>
+/// The depth-to-pixel scales behind CorpusCapturesPage's stacked underlines. Capture underlines
 /// (SpanView) and echo underlines (EchoUnderline) deliberately share one scale so an echo at lane N
 /// sits at exactly the same vertical offset as a capture at effective depth N — which is also what
 /// lets <c>CaptureTraceDisplayContext</c> reserve a line's vertical space from a single
@@ -98,7 +113,7 @@ public static class DocumentLineMetrics
 }
 
 /// <summary>
-/// Static display tuning for Echoes — the corpus-shared-subspan underlines DocumentLinesPage draws
+/// Static display tuning for Echoes — the corpus-shared-subspan underlines CorpusCapturesPage draws
 /// under UnmatchedString spans (see SpanView.GetEchoContainerStyle and EchoUnderline.GetLaneStyle).
 /// Not user-configurable at runtime; tune here and redeploy. Lane offsets are not here — they come
 /// off the shared <see cref="DocumentLineMetrics"/> scale, since an echo lane and a capture depth
@@ -171,8 +186,8 @@ public static class EchoPresentation
 /// The single, centralized set of tuning knobs for hover-driven color treatment on any element
 /// rendered from a positional rainbow palette (<see cref="Glyphotype.Colors.ColorKnobs"/> /
 /// <see cref="Glyphotype.Colors.HexPalette"/>) — currently the type-expressions page's regex
-/// spans and type-tree boxes (see type-regex.ts), and meant to be reused as-is by any future
-/// element of the same kind (e.g. a DocumentLines underline) rather than each inventing its own
+/// spans and type-tree boxes (see glyph-regex.ts), and meant to be reused as-is by any future
+/// element of the same kind (e.g. a CorpusCaptures underline) rather than each inventing its own
 /// dim/fade/pop numbers. Covers: how dim an ancestor-of-target or unrelated element reads, how
 /// long a hover must rest before its highlight state commits, how long the resulting fade
 /// takes, and how the direct hover target briefly "pops" brighter before easing down to its
@@ -244,7 +259,7 @@ public static class HoverTreatmentConfig
 }
 
 /// <summary>
-/// Shared formatting for capture-coverage percentages shown across the Document Lines page:
+/// Shared formatting for capture-coverage percentages shown across the Corpus Captures page:
 /// whole-number at the 0%/100% extremes (no visual noise implying more precision than "none"/"all"
 /// actually carries), two decimals everywhere in between.
 /// </summary>

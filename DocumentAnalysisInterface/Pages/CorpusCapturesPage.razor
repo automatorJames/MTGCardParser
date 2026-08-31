@@ -1,11 +1,12 @@
 @page "/"
-@page "/document-lines"
+@page "/corpus-captures"
 @inject IJSRuntime JSRuntime
 @inject CorpusAnalyzer DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
 
 <DeferredContent OnReady="InitHoverAsync">
-    <div class="analyzed-document-container" id="document-lines">
+    <div class="corpus-captures-container" id="corpus-captures"
+         style="--corpus-captures-max-width: @(CorpusCapturesLayout.ContentMaxWidthPx)px">
         @foreach (var document in GetFilteredDocuments())
         {
             <DocumentBlock @key=document.Document.Name ProcessedDocument=document />

@@ -1,7 +1,7 @@
-﻿// word-tree-manager.ts
-import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement, WordTreeObserver } from "./word-tree-models.js";
-import { setupGlobalEventHandlers } from "./word-tree-event-handler.js";
-import { orchestrateWordTreeRender } from "./word-tree-orchestrator.js";
+﻿// echo-tree-manager.ts
+import { AnalyzedSpan, ProcessedAnalyzedSpan, AdjacencyNode, CardElement, EchoTreeObserver } from "./echo-tree-models.js";
+import { setupGlobalEventHandlers } from "./echo-tree-event-handler.js";
+import { orchestrateEchoTreeRender } from "./echo-tree-orchestrator.js";
 
 // --- Virtualization Configuration ---
 const virtualizationConfig = {
@@ -21,7 +21,7 @@ let isLoadingMore = false;
 let scrollListenerAttached = false;
 
 /** Manages ResizeObserver instances for each tree container. */
-export const wordTreeObservers = new Map<string, WordTreeObserver>();
+export const echoTreeObservers = new Map<string, EchoTreeObserver>();
 
 /**
  * Processes raw span data from the server, augmenting it for efficient client-side use: key arrays
@@ -65,33 +65,33 @@ function processSpanForClient(rawSpan: AnalyzedSpan): ProcessedAnalyzedSpan {
 }
 
 /**
- * Renders a single word tree into its designated container.
+ * Renders a single echo tree into its designated container.
  * @param spanData The raw data for the tree to render.
  * @param index The global index of the tree, used to find the correct container.
  */
 function renderSingleTree(spanData: AnalyzedSpan, index: number): void {
-    const containerId = `word-tree-container-${index}`;
+    const containerId = `echo-tree-container-${index}`;
     const spinnerId = `spinner-${index}`;
     const container = document.getElementById(containerId);
     const spinner = document.getElementById(spinnerId);
 
     if (!container) return;
 
-    const card = container.closest<CardElement>('.word-trees-card');
+    const card = container.closest<CardElement>('.echo-trees-card');
     if (card) {
         card.__data = processSpanForClient(spanData);
     }
 
-    if (!wordTreeObservers.has(containerId)) {
-        const resizeObserver = new ResizeObserver(() => orchestrateWordTreeRender(container));
+    if (!echoTreeObservers.has(containerId)) {
+        const resizeObserver = new ResizeObserver(() => orchestrateEchoTreeRender(container));
         resizeObserver.observe(container);
-        wordTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
+        echoTreeObservers.set(containerId, { observer: resizeObserver, animationFrameId: null });
     }
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
     container.appendChild(svg);
 
-    orchestrateWordTreeRender(container);
+    orchestrateEchoTreeRender(container);
 
     if (spinner) {
         spinner.style.display = 'none';
@@ -99,7 +99,7 @@ function renderSingleTree(spanData: AnalyzedSpan, index: number): void {
 }
 
 /**
- * Renders the next available batch of word trees from the full dataset.
+ * Renders the next available batch of echo trees from the full dataset.
  */
 function renderNextBatch(): void {
     if (isLoadingMore || nextItemToRender >= fullDataset.length) {
@@ -133,7 +133,7 @@ function handleScroll(): void {
     const lastRenderedIndex = nextItemToRender - 1;
     if (lastRenderedIndex < 0) return;
 
-    const lastContainer = document.getElementById(`word-tree-container-${lastRenderedIndex}`);
+    const lastContainer = document.getElementById(`echo-tree-container-${lastRenderedIndex}`);
     if (!lastContainer) return;
 
     const rect = lastContainer.getBoundingClientRect();
@@ -149,14 +149,14 @@ function handleScroll(): void {
 // === Blazor Interop Functions ===
 
 /**
- * Clears all word tree containers and displays loading spinners in their place.
+ * Clears all echo tree containers and displays loading spinners in their place.
  * This prepares the DOM for a fresh render.
  */
 export function clearAllTreesAndShowSpinners(count: number): void {
     setupGlobalEventHandlers();
 
-    for (const id of wordTreeObservers.keys()) {
-        const observerData = wordTreeObservers.get(id);
+    for (const id of echoTreeObservers.keys()) {
+        const observerData = echoTreeObservers.get(id);
         if (observerData) {
             observerData.observer.disconnect();
             if (observerData.animationFrameId) {
@@ -164,10 +164,10 @@ export function clearAllTreesAndShowSpinners(count: number): void {
             }
         }
     }
-    wordTreeObservers.clear();
+    echoTreeObservers.clear();
 
     for (let i = 0; i < count; i++) {
-        const containerId = `word-tree-container-${i}`;
+        const containerId = `echo-tree-container-${i}`;
         const spinnerId = `spinner-${i}`;
         const container = document.getElementById(containerId);
         const spinner = document.getElementById(spinnerId);

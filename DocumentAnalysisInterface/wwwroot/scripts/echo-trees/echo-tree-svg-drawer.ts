@@ -1,8 +1,8 @@
 import {
     AdjacencyNode, AnchorNode, HexPalette, KeyedGroupElement, LayoutNode, NodeConfig,
     PaletteVariant, RenderContext
-} from './word-tree-models.js';
-import { getFanDelta } from './word-tree-layout-calculator.js';
+} from './echo-tree-models.js';
+import { getFanDelta } from './echo-tree-layout-calculator.js';
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

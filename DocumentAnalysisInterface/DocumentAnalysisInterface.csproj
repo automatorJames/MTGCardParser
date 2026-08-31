@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <Folder Include="SampleImages\" />
-    <Folder Include="wwwroot\scripts\type-regex\" />
+    <Folder Include="wwwroot\scripts\glyph-regex\" />
   </ItemGroup>
 
 </Project>

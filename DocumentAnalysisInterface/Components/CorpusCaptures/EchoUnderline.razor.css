@@ -13,7 +13,7 @@
     transition: border-bottom-width var(--transition-time), border-bottom-color var(--transition-time), color var(--transition-time);
 }
 
-/* JS-driven (initEchoHover in document-lines.js), not :hover — every word/space segment sharing
+/* JS-driven (initEchoHover in corpus-captures.js), not :hover — every word/space segment sharing
    this echo's data-echo-key gets the class together, so the whole line lights up as one unit
    regardless of which specific segment the cursor is over. A direct border-bottom-color change,
    not filter: brightness() — filter brightens an element's whole rendered subtree, and lanes at

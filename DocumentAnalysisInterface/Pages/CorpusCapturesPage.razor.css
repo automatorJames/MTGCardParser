@@ -1,9 +1,13 @@
-﻿.analyzed-document-container {
+﻿.corpus-captures-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2rem;
     padding: 1rem;
+    /* Ceiling set from InterfacePresentationRules.CorpusCapturesLayout.ContentMaxWidthPx, passed in
+       as an inline custom property by CorpusCapturesPage.razor. */
+    max-width: var(--corpus-captures-max-width);
+    margin-inline: auto;
 }
 
 h1, h2, h3, h4, h5 {

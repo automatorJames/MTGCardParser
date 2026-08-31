@@ -2,27 +2,27 @@
 
 <CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(1600px, 90vw);">
     <DialogContent>
-        @* word-trees-card: not for styling (that's CustomDialog's own container) — the word-tree
-           JS specifically does container.closest('.word-trees-card') to find where to stash the
-           span data for the tree it renders (see word-tree-manager.js), and the shared
-           wwwroot/css/word-tree.css hover rules are scoped to it too. *@
-        <div class="echo-tree-body word-trees-card">
+        @* echo-trees-card: not for styling (that's CustomDialog's own container) — the echo-tree
+           JS specifically does container.closest('.echo-trees-card') to find where to stash the
+           span data for the tree it renders (see echo-tree-manager.js), and the shared
+           wwwroot/css/echo-tree.css hover rules are scoped to it too. *@
+        <div class="echo-tree-body echo-trees-card">
             <div class="card-header">
                 <span class="header-label">Reference Document:</span>
-                <WordTreeKeyStrip Items="ReferenceDocument" Palettes="RenderSpan.DocumentPalettes" KeyAttribute="data-document-name" />
+                <EchoTreeKeyStrip Items="ReferenceDocument" Palettes="RenderSpan.DocumentPalettes" KeyAttribute="data-document-name" />
 
                 <span class="header-label">Related Documents:</span>
-                <WordTreeKeyStrip Items="RelatedDocuments" Palettes="RenderSpan.DocumentPalettes" KeyAttribute="data-document-name" />
+                <EchoTreeKeyStrip Items="RelatedDocuments" Palettes="RenderSpan.DocumentPalettes" KeyAttribute="data-document-name" />
             </div>
 
             <div id="spinner-0" class="spinner"></div>
-            <div id="word-tree-container-0"></div>
+            <div id="echo-tree-container-0"></div>
 
             @if (Span.ContainingGlyphTypes.Length > 0)
             {
                 <div class="card-footer">
                     <span class="header-label">Glyphs:</span>
-                    <WordTreeKeyStrip Items="Span.ContainingGlyphTypes" Palettes="Span.GlyphPalettes" KeyAttribute="data-glyph-type" />
+                    <EchoTreeKeyStrip Items="Span.ContainingGlyphTypes" Palettes="Span.GlyphPalettes" KeyAttribute="data-glyph-type" />
                 </div>
             }
         </div>
@@ -56,7 +56,7 @@
     /// than reused from <see cref="AnalyzedText.DocumentPalettes"/>. Two things change: white is
     /// assigned positionally (so the remaining documents get the full rainbow starting from its
     /// first hue, instead of one of them inheriting whichever hue white displaced), and the
-    /// related documents are re-keyed in the alphabetical order they're listed in. The word-tree
+    /// related documents are re-keyed in the alphabetical order they're listed in. The echo-tree
     /// JS draws every node/connector gradient straight from this map, so it's what makes the
     /// tree's borders agree with the key strips above.
     /// </summary>

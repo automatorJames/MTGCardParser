@@ -1,8 +1,8 @@
-@* One row of color-coded key chips for a word tree card: the document names above the tree, or
+@* One row of color-coded key chips for a echo tree card: the document names above the tree, or
    the Glyph type names below it. Both strips are identical apart from which data attribute the
-   chips carry, and word-tree-event-handler.ts drives their highlight/lowlight purely off that
+   chips carry, and echo-tree-event-handler.ts drives their highlight/lowlight purely off that
    attribute, so keeping them one component means the two key strips can never drift apart
-   visually - and means WordTreesPage and EchoTreeDialog share the markup and (thanks to CSS
+   visually - and means EchoTreesPage and EchoTreeDialog share the markup and (thanks to CSS
    isolation scoping to this component rather than to its host) the styling too. *@
 
 <div class="key-strip">

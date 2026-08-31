@@ -1,6 +1,6 @@
 using Glyphotype.GlyphAnalysisDTOs.WordTrees;
 
-namespace DocumentAnalysisInterface.Components.DocumentLines;
+namespace DocumentAnalysisInterface.Components.CorpusCaptures;
 
 /// <summary>
 /// One active echo lane at a specific word (or inter-word gap) position — which packed lane it's

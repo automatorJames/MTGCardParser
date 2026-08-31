@@ -1,4 +1,4 @@
-import { AdjacencyNode, LayoutNode, NodeConfig, TextChunk, WrappedLine } from './word-tree-models.js';
+import { AdjacencyNode, LayoutNode, NodeConfig, TextChunk, WrappedLine } from './echo-tree-models.js';
 
 const columnIndexMap = new WeakMap<LayoutNode, number>();
 const fanDeltaMap = new WeakMap<AdjacencyNode, number>();

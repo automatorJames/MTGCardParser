@@ -1,17 +1,17 @@
 /* =================================================================== */
-/* == WORD TREE SVG                                                 == */
+/* == ECHO TREE SVG                                                 == */
 /* =================================================================== */
 
 /* Global rather than component-isolated on purpose: the tree's SVG is built by
-   word-tree-svg-drawer.ts at runtime, so its elements never carry a Blazor scope attribute and
+   echo-tree-svg-drawer.ts at runtime, so its elements never carry a Blazor scope attribute and
    can only be reached from a component's own stylesheet via ::deep - which meant every host of a
-   word tree (WordTreesPage and EchoTreeDialog) had to keep its own copy of these rules in sync.
+   echo tree (EchoTreesPage and EchoTreeDialog) had to keep its own copy of these rules in sync.
    One stylesheet, linked from _Layout.cshtml, instead.
 
    Everything hover-related here is a class the handler toggles plus a CSS transition; see
-   word-tree-event-handler.ts for which state means what. */
+   echo-tree-event-handler.ts for which state means what. */
 
-.word-trees-card {
+.echo-trees-card {
     /* How far a non-participating node, connector or text run fades. Single source of truth -
        nothing in TypeScript reads or duplicates it. */
     --wt-lowlight-opacity: 0.15;
@@ -51,7 +51,7 @@
     transition: opacity var(--transition-time);
 }
 
-.word-trees-card.highlight-active .wt-highlight > .highlight-overlay {
+.echo-trees-card.highlight-active .wt-highlight > .highlight-overlay {
     opacity: 1;
 }
 
@@ -65,19 +65,19 @@
     transition: opacity var(--transition-time);
 }
 
-.word-trees-card.anchor-hover .anchor-hover-overlay {
+.echo-trees-card.anchor-hover .anchor-hover-overlay {
     opacity: 1;
 }
 
 /* Document-axis hover fades the whole group - outline and text together. */
-.word-trees-card.highlight-active:not(.glyph-hover) .wt-lowlight {
+.echo-trees-card.highlight-active:not(.glyph-hover) .wt-lowlight {
     opacity: var(--wt-lowlight-opacity);
 }
 
 /* Glyph-axis hover fades outlines only: a throughline can be worth following even when almost
    none of its text was captured by the hovered Glyph, so the text is dimmed separately below. */
-.word-trees-card.glyph-hover .wt-lowlight > .node-shape.base-layer,
-.word-trees-card.glyph-hover .wt-lowlight > .connector-path.base-layer {
+.echo-trees-card.glyph-hover .wt-lowlight > .node-shape.base-layer,
+.echo-trees-card.glyph-hover .wt-lowlight > .connector-path.base-layer {
     opacity: var(--wt-lowlight-opacity);
 }
 
@@ -130,7 +130,7 @@
     fill: var(--glyph-color);
 }
 
-.word-trees-card.glyph-hover .node-text-content.glyph-dim {
+.echo-trees-card.glyph-hover .node-text-content.glyph-dim {
     opacity: var(--wt-lowlight-opacity);
 }
 

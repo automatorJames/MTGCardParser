@@ -8,9 +8,9 @@
 <div class="page">
     <nav class="top-row px-4">
         <div class="nav-links">
-            <NavLink href="/" Match="NavLinkMatch.All">Document Lines</NavLink>
-            <NavLink href="type-regex">Type Regex</NavLink>
-            <NavLink href="word-trees">Word Trees</NavLink>
+            <NavLink href="/" Match="NavLinkMatch.All">Corpus Captures</NavLink>
+            <NavLink href="glyph-regex">Glyph Regex</NavLink>
+            <NavLink href="echo-trees">Echo Trees</NavLink>
         </div>
 
         @if (RuntimeSettings.IsLoaded && RuntimeSettings.ShowCoverageStats && GetCurrentRelativePath() == "/" && CorpusAnalyzer.ProcessedDocuments is not null)
@@ -28,12 +28,12 @@
             {
                 var currentRelativePath = GetCurrentRelativePath();
                 var pageSettingIcons = GetPageSettingIcons(currentRelativePath);
-                var isTypeRegexPage = currentRelativePath == "type-regex";
+                var isGlyphRegexPage = currentRelativePath == "glyph-regex";
 
-                @if (pageSettingIcons.Count > 0 || isTypeRegexPage)
+                @if (pageSettingIcons.Count > 0 || isGlyphRegexPage)
                 {
                     <div class="page-setting-icons">
-                        @if (isTypeRegexPage)
+                        @if (isGlyphRegexPage)
                         {
                             <EnumIconToggle TValue="RegexDisplayMode" Icon="code" Label="Regex format" Value="@RuntimeSettings.RegexFormat"
                                             ValueChanged="@(v => RuntimeSettings.RegexFormat = v)" />
@@ -81,8 +81,8 @@
     private readonly List<string> _pageRoutes = new()
     {
         "/",
-        "type-regex",
-        "word-trees"
+        "glyph-regex",
+        "echo-trees"
     };
 
     protected override void OnInitialized()
@@ -155,13 +155,13 @@
                 new("percent", "Show coverage stats", RuntimeSettings.ShowCoverageStats, v => RuntimeSettings.ShowCoverageStats = v),
                 new("loop-circular", "Echoes", RuntimeSettings.ShowEchoes, v => RuntimeSettings.ShowEchoes = v),
             ],
-            "type-regex" =>
+            "glyph-regex" =>
             [
                 new("bar-chart", "Order by occurrence count", RuntimeSettings.OrderByOccurrenceCount, v => RuntimeSettings.OrderByOccurrenceCount = v),
                 new("ban", "Hide zero-capture types", RuntimeSettings.HideRegexesWithZeroCaptures, v => RuntimeSettings.HideRegexesWithZeroCaptures = v),
                 new("minus", "Hide blank lines", RuntimeSettings.HideBlankLines, v => RuntimeSettings.HideBlankLines = v),
             ],
-            "word-trees" =>
+            "echo-trees" =>
             [
                 new("sort-ascending", "Order by word count", RuntimeSettings.OrderByWordCount, v => RuntimeSettings.OrderByWordCount = v),
             ],

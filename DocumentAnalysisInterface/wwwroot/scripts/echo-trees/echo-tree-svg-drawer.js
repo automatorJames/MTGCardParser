@@ -1,4 +1,4 @@
-import { getFanDelta } from './word-tree-layout-calculator.js';
+import { getFanDelta } from './echo-tree-layout-calculator.js';
 const SVG_NS = "http://www.w3.org/2000/svg";
 const svgElement = (name) => document.createElementNS(SVG_NS, name);
 /**
@@ -219,4 +219,4 @@ export function createAnchorStatLabels(ctx, anchor) {
         ctx.svg.appendChild(label);
     }
 }
-//# sourceMappingURL=word-tree-svg-drawer.js.map
+//# sourceMappingURL=echo-tree-svg-drawer.js.map

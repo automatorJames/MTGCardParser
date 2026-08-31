@@ -1,4 +1,4 @@
-﻿// document-lines.js
+﻿// corpus-captures.js
 
 // --- DATA-PATH HIERARCHICAL HOVER HIGHLIGHTING ---
 
@@ -12,7 +12,7 @@ const dataPathSelector = '[data-path]';
 const boundaryClass = 'match-boundary';
 
 function initDocumentCaptureHover() {
-    const mainContent = document.getElementById('document-lines');
+    const mainContent = document.getElementById('corpus-captures');
     if (!mainContent) {
         return;
     }
@@ -79,7 +79,7 @@ function initDocumentCaptureHover() {
 }
 
 function disposeDocumentCaptureHover() {
-    const mainContent = document.getElementById('document-lines');
+    const mainContent = document.getElementById('corpus-captures');
     if (mainContent && mouseoverHandler && mouseleaveHandler) {
         mainContent.removeEventListener('mouseover', mouseoverHandler);
         mainContent.removeEventListener('mouseleave', mouseleaveHandler);
@@ -131,7 +131,7 @@ function resolveEchoLane(hitElement, clientY) {
 }
 
 function initEchoHover() {
-    const mainContent = document.getElementById('document-lines');
+    const mainContent = document.getElementById('corpus-captures');
     if (!mainContent) {
         return;
     }
@@ -199,7 +199,7 @@ function initEchoHover() {
 }
 
 function disposeEchoHover() {
-    const mainContent = document.getElementById('document-lines');
+    const mainContent = document.getElementById('corpus-captures');
     if (!mainContent) return;
     if (echoMouseMoveHandler) mainContent.removeEventListener('mousemove', echoMouseMoveHandler);
     if (echoMouseleaveHandler) mainContent.removeEventListener('mouseleave', echoMouseleaveHandler);

@@ -4,7 +4,7 @@
     <TitleContent>Settings</TitleContent>
     <DialogContent>
         <div class="settings-section">
-            <h3 class="settings-section-title">Document Lines</h3>
+            <h3 class="settings-section-title">Corpus Captures</h3>
             <div class="settings-row">
                 <Switch @bind-Value=@RuntimeSettings.HideFullyMatchedDocuments Label="Hide fully matched" />
             </div>
@@ -17,7 +17,7 @@
         </div>
 
         <div class="settings-section">
-            <h3 class="settings-section-title">Type Regex</h3>
+            <h3 class="settings-section-title">Glyph Regex</h3>
             <div class="settings-row radio-group">
                 <span class="settings-row-label">Regex format</span>
                 @foreach (var mode in Enum.GetValues<RegexDisplayMode>())
@@ -49,7 +49,7 @@
         </div>
 
         <div class="settings-section">
-            <h3 class="settings-section-title">Word Trees</h3>
+            <h3 class="settings-section-title">Echo Trees</h3>
             <div class="settings-row">
                 <IntInput @bind-Value=RuntimeSettings.MinSpanOccurences Color=@ThemeColor.DarkGrey Label="Min occurr." />
             </div>

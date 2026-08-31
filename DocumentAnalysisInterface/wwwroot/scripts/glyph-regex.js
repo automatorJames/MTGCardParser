@@ -226,4 +226,4 @@ function applyTreatments(card, activePaths) {
         }
     });
 }
-//# sourceMappingURL=type-regex.js.map
+//# sourceMappingURL=glyph-regex.js.map

@@ -137,15 +137,15 @@ export type KeyedGroupElement = SVGGElement & {
     /**
      * Which vertical slot this group sits in, as `${direction}:${depth}` - node groups only.
      * Counting highlighted groups per column is what yields a throughline count (see
-     * word-tree-event-handler.ts).
+     * echo-tree-event-handler.ts).
      */
     __column?: string;
 };
 
 /**
- * Manages the state for a ResizeObserver instance tied to a word tree container.
+ * Manages the state for a ResizeObserver instance tied to a echo tree container.
  */
-export interface WordTreeObserver {
+export interface EchoTreeObserver {
     observer: ResizeObserver;
     animationFrameId: number | null;
 }

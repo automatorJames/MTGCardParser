@@ -1,7 +1,7 @@
-// word-tree-orchestrator.ts
-import * as Layout from "./word-tree-layout-calculator.js";
-import * as Drawer from "./word-tree-svg-drawer.js";
-import { indexCardHoverTargets } from "./word-tree-event-handler.js";
+// echo-tree-orchestrator.ts
+import * as Layout from "./echo-tree-layout-calculator.js";
+import * as Drawer from "./echo-tree-svg-drawer.js";
+import { indexCardHoverTargets } from "./echo-tree-event-handler.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const config = {
     nodeWidth: 200, nodePadding: 8, nodeHeight: 40, hGap: 40, vGap: 20,
@@ -49,10 +49,10 @@ function createSvgDefs(svg) {
     return defs;
 }
 /**
- * Orchestrates the entire process of calculating layout and drawing a word tree SVG.
+ * Orchestrates the entire process of calculating layout and drawing a echo tree SVG.
  */
-export function orchestrateWordTreeRender(container) {
-    const card = container.closest('.word-trees-card');
+export function orchestrateEchoTreeRender(container) {
+    const card = container.closest('.echo-trees-card');
     const processedData = card?.__data;
     const svg = container.querySelector('svg');
     if (!processedData || !svg)
@@ -118,4 +118,4 @@ export function orchestrateWordTreeRender(container) {
     // querying the DOM on each pointer move.
     indexCardHoverTargets(card);
 }
-//# sourceMappingURL=word-tree-orchestrator.js.map
+//# sourceMappingURL=echo-tree-orchestrator.js.map

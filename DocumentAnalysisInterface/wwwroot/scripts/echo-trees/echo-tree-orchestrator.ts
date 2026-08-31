@@ -1,9 +1,9 @@
-// word-tree-orchestrator.ts
+// echo-tree-orchestrator.ts
 
-import { AnchorNode, CardElement, NodeConfig, RenderContext } from "./word-tree-models.js";
-import * as Layout from "./word-tree-layout-calculator.js";
-import * as Drawer from "./word-tree-svg-drawer.js";
-import { indexCardHoverTargets } from "./word-tree-event-handler.js";
+import { AnchorNode, CardElement, NodeConfig, RenderContext } from "./echo-tree-models.js";
+import * as Layout from "./echo-tree-layout-calculator.js";
+import * as Drawer from "./echo-tree-svg-drawer.js";
+import { indexCardHoverTargets } from "./echo-tree-event-handler.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -58,10 +58,10 @@ function createSvgDefs(svg: SVGSVGElement): SVGDefsElement {
 }
 
 /**
- * Orchestrates the entire process of calculating layout and drawing a word tree SVG.
+ * Orchestrates the entire process of calculating layout and drawing a echo tree SVG.
  */
-export function orchestrateWordTreeRender(container: HTMLElement): void {
-    const card = container.closest<CardElement>('.word-trees-card');
+export function orchestrateEchoTreeRender(container: HTMLElement): void {
+    const card = container.closest<CardElement>('.echo-trees-card');
     const processedData = card?.__data;
     const svg = container.querySelector('svg');
     if (!processedData || !svg) return;

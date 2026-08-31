@@ -1,4 +1,4 @@
-﻿@page "/word-trees"
+﻿@page "/echo-trees"
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
 @inject CorpusAnalyzer CorpusAnalyzer
@@ -13,10 +13,10 @@
     }
     else
     {
-        <div class="word-trees-container">
+        <div class="echo-trees-container">
             @foreach (var (span, index) in filteredSpans.Select((value, i) => (value, i)))
             {
-                <div class="word-trees-card">
+                <div class="echo-trees-card">
                     <div class="card-header">
                         <div class="header-main-info">
                             <span class="header-span-text" title="@span.Text">@span.Text</span>
@@ -24,17 +24,17 @@
                             <span class="header-stat">Word Count: @span.WordCount</span>
                         </div>
                         <span class="header-label">Documents:</span>
-                        <WordTreeKeyStrip Items="span.ContainingDocuments" Palettes="span.DocumentPalettes" KeyAttribute="data-document-name" />
+                        <EchoTreeKeyStrip Items="span.ContainingDocuments" Palettes="span.DocumentPalettes" KeyAttribute="data-document-name" />
                     </div>
-                    <div class="word-tree-body">
+                    <div class="echo-tree-body">
                         <div id="@($"spinner-{index}")" class="spinner"></div>
-                        <div id="@($"word-tree-container-{index}")"></div>
+                        <div id="@($"echo-tree-container-{index}")"></div>
                     </div>
                     @if (span.ContainingGlyphTypes.Length > 0)
                     {
                         <div class="card-footer">
                             <span class="header-label">Glyphs:</span>
-                            <WordTreeKeyStrip Items="span.ContainingGlyphTypes" Palettes="span.GlyphPalettes" KeyAttribute="data-glyph-type" />
+                            <EchoTreeKeyStrip Items="span.ContainingGlyphTypes" Palettes="span.GlyphPalettes" KeyAttribute="data-glyph-type" />
                         </div>
                     }
                 </div>

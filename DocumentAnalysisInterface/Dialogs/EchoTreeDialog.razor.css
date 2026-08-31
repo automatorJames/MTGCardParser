@@ -6,8 +6,8 @@
    them — a max-width rule that used to sit here never actually applied, for exactly that reason.
 
    The tree's SVG styling is no longer duplicated here either: it lives in
-   wwwroot/css/word-tree.css, shared with WordTreesPage. Key chip styling comes from the
-   WordTreeKeyStrip component's own stylesheet. */
+   wwwroot/css/echo-tree.css, shared with EchoTreesPage. Key chip styling comes from the
+   EchoTreeKeyStrip component's own stylesheet. */
 
 .echo-tree-body {
     width: 100%;

@@ -1,7 +1,7 @@
 using Glyphotype.RegexGeneration.Graph;
 using Glyphotype.GlyphAnalysisDTOs.WordTrees;
 
-namespace DocumentAnalysisInterface.Components.DocumentLines;
+namespace DocumentAnalysisInterface.Components.CorpusCaptures;
 
 /// <summary>
 /// The per-line, per-viewer rendering facts that depend on <see cref="RuntimeSettings.HideCollapsibleCaptureNodes"/>:

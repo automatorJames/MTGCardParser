@@ -220,4 +220,4 @@ export function computeFanDeltasAndColumnPush(rootNodes, anchorX, anchorY, confi
     });
     return columnPush;
 }
-//# sourceMappingURL=word-tree-layout-calculator.js.map
+//# sourceMappingURL=echo-tree-layout-calculator.js.map

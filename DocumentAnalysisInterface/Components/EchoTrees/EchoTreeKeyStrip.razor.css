@@ -16,14 +16,14 @@
     color: #e0e0e0;
 }
 
-/* .highlight-active lives on the enclosing .word-trees-card, which the word-tree hover handler
+/* .highlight-active lives on the enclosing .echo-trees-card, which the echo-tree hover handler
    toggles - the ancestor is outside this component, but Blazor only scopes the *last* compound
    selector, so an ancestor written this way still matches. */
-.word-trees-card.highlight-active .key-item.lowlight {
+.echo-trees-card.highlight-active .key-item.lowlight {
     opacity: 0.2;
 }
 
-.word-trees-card.highlight-active .key-item.highlight {
+.echo-trees-card.highlight-active .key-item.highlight {
     border-color: var(--sat-color);
     color: var(--highlight-color);
     opacity: 1;

@@ -1,14 +1,14 @@
-/* WordTreesPage.razor.css
-   The tree's own SVG styling lives in wwwroot/css/word-tree.css - it's built at runtime by
-   word-tree-svg-drawer.ts and so carries no CSS-isolation scope attribute, which is why it can't
+/* EchoTreesPage.razor.css
+   The tree's own SVG styling lives in wwwroot/css/echo-tree.css - it's built at runtime by
+   echo-tree-svg-drawer.ts and so carries no CSS-isolation scope attribute, which is why it can't
    live here (and used to have to be duplicated into EchoTreeDialog.razor.css). The key strips'
-   chip styling likewise lives with the WordTreeKeyStrip component. */
+   chip styling likewise lives with the EchoTreeKeyStrip component. */
 
 /* =================================================================== */
 /* == CONTAINER & CARD STYLES                                       == */
 /* =================================================================== */
 
-.word-trees-container {
+.echo-trees-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -16,7 +16,7 @@
     padding: 1rem;
 }
 
-.word-trees-card {
+.echo-trees-card {
     width: 90%;
     background-color: #252525;
     border-radius: 8px;
@@ -85,7 +85,7 @@
 /* == TREE BODY                                                     == */
 /* =================================================================== */
 
-.word-tree-body {
+.echo-tree-body {
     width: 100%;
     overflow: visible;
 }
