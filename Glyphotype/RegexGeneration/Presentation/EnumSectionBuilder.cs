@@ -193,7 +193,10 @@ internal class EnumSectionBuilder
     static string BuildMemberRegex(RegexBrickValue member, int positionAmongOccurring, int totalMemberCount)
     {
         member.JoinerRegexFormatted = BuildJoinerPrefix(positionAmongOccurring, totalMemberCount);
-        member.MemberRegexFormatted = member.Regex;
+        // Escaped for display only - member.Regex itself must stay raw, since it's the key looked up against
+        // EnumCaptureTraceSummary's synonym table (see IsOccurringPattern), which is keyed by matched
+        // document text rather than by pattern text.
+        member.MemberRegexFormatted = BuiltRegex.EscapeSpaces(member.Regex);
 
         return member.JoinerRegexFormatted + member.MemberRegexFormatted;
     }

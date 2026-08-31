@@ -9,10 +9,28 @@ public class RegexCollector
     /// <summary>The bricks appended so far, in emission order.</summary>
     public List<RegexBrick> RegexBricks { get; } = [];
 
-    /// <summary>The last regex character emitted so far, ignoring group open/close bookends (used to decide whether a joiner is needed next).</summary>
-    public char LastChar =>
-        RegexBricks.LastOrDefault(x => x is not RegexBrickGroupBookend)
-        .Regex.LastOrDefault();
+    /// <summary>
+    /// A trailing space - raw (e.g. from an unescaped <see cref="RegexPatternAttribute"/> pattern) or written
+    /// as <see cref="BuiltRegex.EscapedSpace"/> - optionally sitting just inside a closing group that may
+    /// itself be quantified. That last case is what catches an optional nib like <c>(an[ ])?</c> or
+    /// <c>((in|from)[ ])*</c>, whose space is only emitted when the optional actually matches.
+    /// </summary>
+    static readonly Regex _trailingSpacePattern = new(@"(?: |\[ \])\)?[?*+]?$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Whether the regex emitted so far already accounts for the separation a joiner would add, so appending
+    /// one would double it up. True for a plain trailing space, and also for a trailing *optional* group that
+    /// ends in a space (see <see cref="_trailingSpacePattern"/>) - there the space only renders when the
+    /// optional matches, which is exactly the case that needs it: when the optional matches nothing, the
+    /// unconditional joiner that already preceded it is what separates its neighbours. Adding another joiner
+    /// after it would space the matched case twice. (This reads the last emitted brick, so it assumes that
+    /// preceding joiner was in fact emitted - true whenever the optional isn't the first thing in its group,
+    /// which is the shape every case in this codebase takes.) Group open/close bookends are ignored, since
+    /// they contribute no matchable text of their own.
+    /// </summary>
+    public bool AlreadySeparated =>
+        RegexBricks.LastOrDefault(x => x is not RegexBrickGroupBookend)?.Regex is string regex
+        && _trailingSpacePattern.IsMatch(regex);
 
     /// <summary>Appends a brick to the sequence.</summary>
     public void Append(RegexBrick brick) =>

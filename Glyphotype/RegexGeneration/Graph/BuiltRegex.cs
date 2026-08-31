@@ -7,6 +7,26 @@
 /// </summary>
 public class BuiltRegex
 {
+    /// <summary>
+    /// The token a literal space is written as throughout the graph's brick text (see
+    /// <see cref="Nodes.TextNode"/>) - the same text <see cref="Joiner.Space"/> itself renders as, so a
+    /// space that came from a nib and one that came from a joiner are indistinguishable downstream. Every
+    /// occurrence is unescaped back to a plain space in <see cref="MinifiedRegex"/> before compiling, so
+    /// this is currently a display/authoring convention only; escaping it here is what would let
+    /// <see cref="RegexOptions.IgnorePatternWhitespace"/> be turned on later (drop the unescape, add the
+    /// flag) without every literal space silently vanishing from the pattern.
+    /// </summary>
+    public static readonly string EscapedSpace = Joiner.Space.GetDescription();
+
+    /// <summary>
+    /// Rewrites every literal space in <paramref name="regexText"/> as <see cref="EscapedSpace"/>. Idempotent
+    /// (it unescapes first), so text that already spells some or all of its spaces that way lands on exactly
+    /// the same result as text written with plain spaces - which is what lets a nib authored <c>","</c>,
+    /// <c>", "</c> and <c>",[ ]"</c> all come out identically.
+    /// </summary>
+    public static string EscapeSpaces(string regexText) =>
+        regexText?.Replace(EscapedSpace, " ").Replace(" ", EscapedSpace);
+
     readonly List<RegexBrick> _regexBricks;
 
     /// <summary>The flat, unformatted brick sequence this regex was compiled from — the raw input to <see cref="RegexBrickFormattingPipeline.Format"/>.</summary>
@@ -21,7 +41,7 @@ public class BuiltRegex
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
         _regexBricks = regexBricks;
-        MinifiedRegex = string.Join("", _regexBricks.Select(x => x.Regex)).Replace("[ ]", " ");
+        MinifiedRegex = string.Join("", _regexBricks.Select(x => x.Regex)).Replace(EscapedSpace, " ");
         Regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
     }
 

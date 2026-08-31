@@ -70,7 +70,13 @@ public abstract class RegexNode
     /// (see <see cref="AppendTrailingJoinerBrickIfOwned"/>) - it's the only place left that can legitimately
     /// hide the joiner precisely when the prefix does render something.
     /// </summary>
-    protected void AppendLeadingJoinerBrick(RegexCollector collector)
+    /// <param name="insideOwnGroup">
+    /// Whether this call is emitting the joiner within this node's own group bookends (the
+    /// <see cref="IsNullable"/> path, called from <see cref="NamedGroupNode.AppendOwnRegexBricks"/>) rather
+    /// than immediately before them. Decides only which node <em>owns</em> the resulting brick - see the
+    /// <c>owner</c> parameter on <see cref="AppendJoinerBrickIfWarranted"/>.
+    /// </param>
+    protected void AppendLeadingJoinerBrick(RegexCollector collector, bool insideOwnGroup = false)
     {
         if (ParentNode is not NamedGroupNode parent)
             return;
@@ -83,7 +89,7 @@ public abstract class RegexNode
         if (!IsNullable && !HasAnchorBefore(parent, index))
             return;
 
-        AppendJoinerBrickIfWarranted(collector, parent, after: this);
+        AppendJoinerBrickIfWarranted(collector, parent, after: this, owner: insideOwnGroup ? this : parent);
     }
 
     /// <summary>
@@ -112,25 +118,40 @@ public abstract class RegexNode
         if (next.IsNullable || HasAnchorBefore(parent, index + 1))
             return;
 
-        AppendJoinerBrickIfWarranted(collector, parent, after: next);
+        AppendJoinerBrickIfWarranted(collector, parent, after: next, owner: this);
     }
 
     /// <summary>Whether any of <paramref name="parent"/>'s children before <paramref name="index"/> is guaranteed to render something (i.e. isn't <see cref="IsNullable"/>) - see <see cref="AppendLeadingJoinerBrick"/>.</summary>
     static bool HasAnchorBefore(NamedGroupNode parent, int index) =>
         parent.Children.Take(index).Any(sibling => !sibling.IsNullable);
 
-    /// <summary>Appends the parent's joiner, attributed to <paramref name="after"/> (the node it precedes) - unless the parent doesn't join its children, the collector already ends in a space, or <paramref name="after"/> is text starting with a literal apostrophe (e.g. <c>'s</c>, which should hug the token before it).</summary>
-    static void AppendJoinerBrickIfWarranted(RegexCollector collector, NamedGroupNode parent, RegexNode after)
+    /// <summary>
+    /// Appends <paramref name="parent"/>'s joiner - unless the parent doesn't join its children, the
+    /// collector already ends in a space, or <paramref name="after"/> is text that absorbs the joiner itself -
+    /// by opening with punctuation that binds to the token before it (e.g. <c>'s</c> or a <c>","</c> nib) or
+    /// by already supplying the space (see <see cref="TextNode.AbsorbsPrecedingJoiner"/>).
+    /// </summary>
+    /// <param name="after">The node this joiner immediately precedes. Only consulted to decide <em>whether</em> to join; it is deliberately not the brick's owner, since a joiner sitting before a group's open bookend is not inside that group.</param>
+    /// <param name="owner">
+    /// The node in whose rendered scope this brick actually sits, and therefore the node it's attributed to.
+    /// For a joiner emitted before a sibling that's the enclosing <paramref name="parent"/> group; for one
+    /// emitted within a nullable node's own bookends it's that node itself. Everything downstream keys off
+    /// this - a brick's indent depth (<c>RegexBrick.NestedDepth</c>), its rainbow color
+    /// (<c>RegexBrick.NamedGroupParent</c>), and the "which bricks belong to my group" queries that
+    /// <c>RegexBrickFormattingPipeline</c> and the section builders run - so attributing a joiner to the
+    /// group it merely precedes makes it render as (and be harvested as) that group's own inner content.
+    /// </param>
+    static void AppendJoinerBrickIfWarranted(RegexCollector collector, NamedGroupNode parent, RegexNode after, RegexNode owner)
     {
         var joiner = parent.EffectiveChildJoiner;
 
         bool shouldJoin =
             joiner != Joiner.None
-            && collector.LastChar != ' '
-            && !(after is TextNode textNode && textNode.FirstChar == '\'');
+            && !collector.AlreadySeparated
+            && !(after is TextNode textNode && textNode.AbsorbsPrecedingJoiner);
 
         if (shouldJoin)
-            collector.Append(new RegexBrickJoiner(after, joiner));
+            collector.Append(new RegexBrickJoiner(owner, joiner));
     }
 
     RegexNode[] GetLineage()

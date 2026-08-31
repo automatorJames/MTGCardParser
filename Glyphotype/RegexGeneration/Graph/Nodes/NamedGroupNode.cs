@@ -12,8 +12,6 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>The regex pattern to use when no <see cref="RegexPatternAttribute"/> patterns are declared for this node.</summary>
     protected virtual string DefaultPattern => null;
 
-    static HashSet<char> _terminals = ['.', ';', ','];
-
     /// <summary>True for the graph's root node when it has no quantifier — its own group wrapper is skipped since it would be redundant with the compiled regex's own boundaries.</summary>
     public bool IsTransparentRoot => Navigation.IsRoot && Navigation.Quantifier == null;
 
@@ -110,7 +108,7 @@ public abstract class NamedGroupNode : GroupNode
             collector.Append(GetGroupOpenBrick());
 
         if (IsNullable)
-            AppendLeadingJoinerBrick(collector);
+            AppendLeadingJoinerBrick(collector, insideOwnGroup: true);
 
         AppendInnerContentBricks(collector);
 

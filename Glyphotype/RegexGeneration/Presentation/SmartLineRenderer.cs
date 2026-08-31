@@ -11,7 +11,7 @@ namespace Glyphotype.RegexGeneration.Presentation;
 /// </summary>
 public class SmartLineRenderer
 {
-    static readonly Regex _spaceRunPattern = new("( +)", RegexOptions.Compiled);
+    static readonly Regex _connectiveSpacePattern = new(@"(\[ \])", RegexOptions.Compiled);
 
     readonly List<RegexBrick> _bricks;
     readonly Dictionary<NamedGroupNode, SpanStylePalette> _namedGroupPalettes;
@@ -114,19 +114,23 @@ public class SmartLineRenderer
     }
 
     /// <summary>
-    /// Splits a literal-match brick's text into alternating word/space-run spans, so plain spaces embedded
-    /// in a multi-word literal (e.g. "until end of turn") get the same <see cref="RegexSpanKind.RegexConnectiveSpace"/>
-    /// treatment as a dedicated "[ ]" joiner brick — there's no strongly-typed node for "the space in the
-    /// middle of a literal phrase", so this isolates it with a regex split instead.
+    /// Splits a literal-match brick's text into alternating word/space spans, so a space embedded in a
+    /// multi-word literal (e.g. "until end of turn") gets the same <see cref="RegexSpanKind.RegexConnectiveSpace"/>
+    /// treatment as a dedicated joiner brick — there's no strongly-typed node for "the space in the middle of
+    /// a literal phrase", so this isolates it with a regex split instead. Splits on
+    /// <see cref="BuiltRegex.EscapedSpace"/> rather than on raw spaces, since that's how
+    /// <see cref="TextNode"/> writes every space it carries — including a joiner folded onto this brick's own
+    /// line by <c>RegexBrickFormattingPipeline.FoldAdheringJoiners</c>, which lands here as the trailing
+    /// fragment of e.g. <c>,[ ]</c> and so gets colored as the connective space it is.
     /// </summary>
     List<SmartSpan> BuildLiteralMatchSpans(RegexBrick brick, string indent, string trailingPad)
     {
         var text = brick.RegexFormatted;
 
-        if (text == "[ ]")
+        if (text == BuiltRegex.EscapedSpace)
             return [SpanFromBrick(brick, indent + text + trailingPad, RegexSpanKind.RegexConnectiveSpace)];
 
-        var fragments = _spaceRunPattern.Split(text).Where(x => x.Length > 0).ToList();
+        var fragments = _connectiveSpacePattern.Split(text).Where(x => x.Length > 0).ToList();
 
         if (fragments.Count == 0)
             return [SpanFromBrick(brick, indent + trailingPad)];
@@ -136,7 +140,7 @@ public class SmartLineRenderer
         for (int i = 0; i < fragments.Count; i++)
         {
             var fragment = fragments[i];
-            var kind = fragment.Trim().Length == 0 ? RegexSpanKind.RegexConnectiveSpace : RegexSpanKind.RegexLiteralMatch;
+            var kind = fragment == BuiltRegex.EscapedSpace ? RegexSpanKind.RegexConnectiveSpace : RegexSpanKind.RegexLiteralMatch;
             var prefix = i == 0 ? indent : "";
             var suffix = i == fragments.Count - 1 ? trailingPad : "";
             spans.Add(SpanFromBrick(brick, prefix + fragment + suffix, kind));
