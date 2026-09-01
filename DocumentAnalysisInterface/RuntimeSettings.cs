@@ -66,6 +66,27 @@ namespace DocumentAnalysisInterface
             }
         }
 
+        /// <summary>
+        /// Whether Corpus Captures spells declared class and property names out as prose ("Card
+        /// Type") instead of showing them exactly as declared ("CardType"). Cosmetic only - the
+        /// data-paths hover highlighting keys off are always built from the declared names. Off by
+        /// default, so what's on screen matches what's in the glyph definitions.
+        /// </summary>
+        private bool _useFriendlyCaseNames;
+        public bool UseFriendlyCaseNames
+        {
+            get => _useFriendlyCaseNames;
+            set
+            {
+                if (_useFriendlyCaseNames != value)
+                {
+                    _useFriendlyCaseNames = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private bool _orderByWordCount;
         public bool OrderByWordCount
         {
@@ -231,6 +252,7 @@ namespace DocumentAnalysisInterface
                     _hideFullyMatchedDocuments = dto.HideFullyMatchedDocuments;
                     _showCoverageStats = dto.ShowCoverageStats;
                     _hideCollapsibleCaptureNodes = dto.HideCollapsibleCaptureNodes;
+                    _useFriendlyCaseNames = dto.UseFriendlyCaseNames;
                     _orderByWordCount = dto.OrderByWordCount;
                     _orderByOccurrenceCount = dto.OrderByOccurrenceCount;
                     _regexFormat = dto.RegexFormat;
@@ -287,6 +309,7 @@ namespace DocumentAnalysisInterface
         public bool HideFullyMatchedDocuments { get; init; }
         public bool ShowCoverageStats { get; init; }
         public bool HideCollapsibleCaptureNodes { get; init; }
+        public bool UseFriendlyCaseNames { get; init; }
         public bool OrderByWordCount { get; init; }
         public bool OrderByOccurrenceCount { get; init; } = true;
         public RegexDisplayMode RegexFormat { get; init; } = RegexDisplayMode.MatchedOnly;
@@ -305,6 +328,7 @@ namespace DocumentAnalysisInterface
             HideFullyMatchedDocuments = runtimeSettings.HideFullyMatchedDocuments;
             ShowCoverageStats = runtimeSettings.ShowCoverageStats;
             HideCollapsibleCaptureNodes = runtimeSettings.HideCollapsibleCaptureNodes;
+            UseFriendlyCaseNames = runtimeSettings.UseFriendlyCaseNames;
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             OrderByOccurrenceCount = runtimeSettings.OrderByOccurrenceCount;
             RegexFormat = runtimeSettings.RegexFormat;

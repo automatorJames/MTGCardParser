@@ -59,7 +59,12 @@
                 }
                 else if (IsEffectivelyCollapsible && FindEmergentDescendant() is { } emergent)
                 {
-                    <span class="nested-underline dotted-underline" style=@GetEmergentExtensionStyle(emergent)>@segment.Text</span>
+                    @* Same data-path as the level it borrows its color from, so hover
+                       highlighting/muting (corpus-captures.js keys entirely off data-path) treats the
+                       extension as part of that level rather than skipping it - without one it never
+                       matches anything and is left stuck at its default styling while everything
+                       around it highlights or lowlights. *@
+                    <span class="nested-underline dotted-underline" style=@GetEmergentExtensionStyle(emergent) data-path=@emergent.HoverPath>@segment.Text</span>
                 }
                 else
                 {

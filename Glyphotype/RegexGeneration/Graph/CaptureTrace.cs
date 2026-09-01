@@ -129,22 +129,18 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     }
 
     /// <summary>
-    /// True when this node's own source node always represents a meaningful resolution — a choice among
-    /// named alternatives (<see cref="GlyphOneOfNode"/>) or a re-tokenized dynamic match
-    /// (<see cref="DynamicGlyphNode"/>) — even when what they resolve to isn't itself a scalar. These never
-    /// collapse, regardless of their children.
-    /// </summary>
-    bool IsAlwaysMeaningful => SourceNode is GlyphOneOfNode or DynamicGlyphNode;
-
-    /// <summary>
-    /// True when this node is a pure pass-through: a single named child that itself carries no
-    /// direct scalar value, and this node isn't <see cref="IsAlwaysMeaningful"/>.
-    /// Displaying such a node's own underline level would be visual noise — it never resolved a
-    /// choice and never aggregated more than one property, it just forwards to its one child.
-    /// A node with two or more children is never collapsible (it's aggregating distinct named
-    /// properties, which is itself meaningful structure), and a node whose only child is
-    /// terminal is never collapsible (the terminal leaf's overline needs this level's underline
-    /// to pair with).
+    /// True when this node is a pure pass-through: a single named child that itself carries no direct
+    /// scalar value. Displaying such a node's own underline level would be visual noise — it never
+    /// aggregated more than one property, it just forwards to its one child, bracketing the exact same
+    /// stretch of text that child already brackets. A node with two or more children is never
+    /// collapsible (it's aggregating distinct named properties, which is itself meaningful structure),
+    /// and a node whose only child is terminal is never collapsible (the terminal leaf's overline needs
+    /// this level's underline to pair with).
+    /// A <see cref="GlyphOneOfNode"/> choice or a <see cref="DynamicGlyphNode"/> resolution is no
+    /// exception, even though which alternative/type it resolved to is genuinely meaningful: that fact
+    /// is the collapsed-into child's own identity, so the property table folds it into the header it
+    /// builds for that child (as the "»"/"⇢" separator joining the two names) rather than needing a
+    /// redundant level of its own to carry it.
     /// </summary>
     [JsonProperty]
     public bool IsCollapsible
@@ -152,7 +148,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         get
         {
             var children = EffectiveChildren.ToList();
-            return children.Count == 1 && !children[0].IsTerminal && !IsAlwaysMeaningful;
+            return children.Count == 1 && !children[0].IsTerminal;
         }
     }
 

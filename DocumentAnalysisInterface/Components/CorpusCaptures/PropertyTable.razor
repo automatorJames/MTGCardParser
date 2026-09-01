@@ -3,23 +3,25 @@
 
 @if (ShouldCollapse)
 {
-    <!-- Directly render branch children of the collapsed parent branch, carrying its name
-         forward so the next rendered header can show the collapsed lineage that led to it. One
-         child per distinct named group - a repeated child's own repeat occurrences are rendered
-         as multiple rows within its own table (see the terminals loop below), not as separate
-         branches of their own. -->
-    @foreach (var child in BranchTrace.Children)
+    <!-- Directly render branch children of the collapsed parent branch, carrying its own header
+         segments forward so the next rendered header can show the collapsed lineage that led to it.
+         EffectiveChildren, not Children, so this walks the exact same one child IsCollapsible counted
+         (a repeat occurrence reads its structure off its representative and has no Children of its
+         own, which would otherwise silently render nothing at all here). -->
+    @foreach (var child in BranchTrace.EffectiveChildren)
     {
-        <PropertyTable BranchTrace=@child CollapsedLineage=@ChildLineage />
+        <PropertyTable BranchTrace=@child CollapsedLineage=@LineageFor(child) SeparatorFromLineage=@SeparatorFor(child) />
     }
 }
 else
 {
-    <!-- Deliberately BranchTrace.FullyQualifiedName here, not .HoverPath: a listable position's branch
-         is one single, combined header/table for every occurrence (see the terminals row loop below),
-         so it has no one specific occurrence's identity to narrow its own data-path down to. -->
-    <div class="glyph-summary-branch" style="margin-top:16px" data-path=@BranchTrace.FullyQualifiedName>
-        <div class="glyph-summary-header" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
+    <!-- No data-path on the branch or header wrapper: each header part below carries its own, and
+         corpus-captures.js collects every data-path ancestor of whatever's hovered - a wrapper path
+         here (always the deepest, most specific one) would be swept up by hovering ANY part, so the
+         leading parts could never highlight without the trailing ones coming along too. The
+         content-box inside still carries the same path, so hovering the table body is unchanged. -->
+    <div class="glyph-summary-branch" style="margin-top:16px">
+        <div class="glyph-summary-header" style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
             <span class="glyph-type-name">
                 @{ var segments = HeaderSegments; }
                 @for (var i = 0; i < segments.Count; i++)
@@ -29,9 +31,9 @@ else
 
                     if (segment.SeparatorBefore is { } separatorKind)
                     {
-                        @(" ")<span class="header-separator">@SeparatorGlyph(separatorKind)</span>@(" ")
+                        @(" ")<span class="header-separator" data-path=@segment.DataPath>@SeparatorGlyph(separatorKind)</span>@(" ")
                     }
-                    <span class="header-part @(isDim ? "header-part-dim" : "")">@segment.Text</span>
+                    <span class="header-part @(isDim ? "header-part-dim" : "")" data-path=@segment.DataPath>@segment.Text</span>
                 }
             </span>
         </div>
@@ -97,11 +99,23 @@ else
     public CaptureTrace BranchTrace { get; set; }
 
     /// <summary>
-    /// Names of collapsed ancestor branches skipped on the way down to <see cref="BranchTrace"/>,
-    /// oldest first. Empty for a branch reached directly (not through a collapsed parent).
+    /// The header parts contributed by the collapsed ancestor branches skipped on the way down to
+    /// <see cref="BranchTrace"/>, oldest first — each already carrying the separator that joins it to
+    /// the part before it and the data-path it stands for. Empty for a branch reached directly (not
+    /// through a collapsed parent).
     /// </summary>
     [Parameter]
-    public IReadOnlyList<string> CollapsedLineage { get; set; } = [];
+    public IReadOnlyList<HeaderSegment> CollapsedLineage { get; set; } = [];
+
+    /// <summary>
+    /// Which separator joins <see cref="BranchTrace"/>'s own name to the last of
+    /// <see cref="CollapsedLineage"/> — normally ":", but the one-of/dynamic glyph that collapsed
+    /// straight into this branch hands down its own "»"/"⇢" instead, so the header still says which
+    /// relationship led here (see <see cref="LineageFor"/>). Meaningless, and ignored, when
+    /// <see cref="CollapsedLineage"/> is empty.
+    /// </summary>
+    [Parameter]
+    public HeaderSeparatorKind SeparatorFromLineage { get; set; } = HeaderSeparatorKind.Collapsed;
 
     HexPalette RootPalette => DisplayContext.Palettes[PaletteKey(BranchTrace)];
 
@@ -135,7 +149,33 @@ else
     /// </summary>
     bool ShouldCollapse => BranchTrace.IsCollapsible && RuntimeSettings.HideCollapsibleCaptureNodes;
 
-    List<string> ChildLineage => [.. CollapsedLineage, BranchTrace.Name];
+    /// <summary>
+    /// <see cref="CollapsedLineage"/> with this (collapsed) branch's own part appended, to hand down to
+    /// <paramref name="child"/>. A one-of/dynamic branch's resolved type normally earns a part of its
+    /// own here too — but when the single child it collapses into IS that resolution (a one-of
+    /// alternative declared under its own type's name), naming it twice in a row reads as a stutter, so
+    /// it's left out and <see cref="SeparatorFor"/> folds it into the separator instead: "Buff »
+    /// Transformed Type", not "Buff » Transformed Type : Transformed Type".
+    /// </summary>
+    List<HeaderSegment> LineageFor(CaptureTrace child)
+    {
+        var lineage = new List<HeaderSegment>(CollapsedLineage)
+        {
+            new(DisplayName(BranchTrace.Name), OwnSeparatorBefore, BranchTrace.FullyQualifiedName)
+        };
+
+        if (OwnResolutionSeparatorKind is { } kind && !ResolvesTo(child))
+            lineage.Add(new(DisplayName(BranchTrace.ResolvedNodeTypeName), kind, BranchTrace.FullyQualifiedName));
+
+        return lineage;
+    }
+
+    /// <summary>The <see cref="SeparatorFromLineage"/> to hand down to <paramref name="child"/> — see <see cref="LineageFor"/>.</summary>
+    HeaderSeparatorKind SeparatorFor(CaptureTrace child) =>
+        OwnResolutionSeparatorKind is { } kind && ResolvesTo(child) ? kind : HeaderSeparatorKind.Collapsed;
+
+    /// <summary>Whether the type <see cref="BranchTrace"/> resolved to is the very thing <paramref name="child"/> is named for.</summary>
+    bool ResolvesTo(CaptureTrace child) => BranchTrace.ResolvedNodeTypeName == child.Name;
 
     /// <summary>
     /// The three distinct reasons two adjacent parts of a header can be joined, each rendered with
@@ -144,10 +184,16 @@ else
     /// its named alternatives, or a <see cref="DynamicGlyphNode"/> property resolving to its concrete
     /// runtime type.
     /// </summary>
-    enum HeaderSeparatorKind { Collapsed, OneOf, Dynamic }
+    public enum HeaderSeparatorKind { Collapsed, OneOf, Dynamic }
 
-    /// <summary>One rendered header part, and (for every part but the first) which kind of relationship joins it to the part before it.</summary>
-    readonly record struct HeaderSegment(string Text, HeaderSeparatorKind? SeparatorBefore);
+    /// <summary>
+    /// One rendered header part: its display text, (for every part but the first) which kind of
+    /// relationship joins it to the part before it, and the data-path of the capture it names — so
+    /// each part highlights and lowlights on its own, in step with that capture's own span in the
+    /// line above. A resolution part, which is a display-time fact rather than a step of its own,
+    /// shares the path of the part it resolves.
+    /// </summary>
+    public readonly record struct HeaderSegment(string Text, HeaderSeparatorKind? SeparatorBefore, string DataPath);
 
     static string SeparatorGlyph(HeaderSeparatorKind kind) => kind switch
     {
@@ -182,29 +228,39 @@ else
     {
         get
         {
-            var segments = new List<HeaderSegment>();
-
-            foreach (var name in CollapsedLineage)
-                segments.Add(new HeaderSegment(name.ToFriendlyCase(), segments.Count == 0 ? null : HeaderSeparatorKind.Collapsed));
-
-            segments.Add(new HeaderSegment(BranchTrace.Name.ToFriendlyCase(), segments.Count == 0 ? null : HeaderSeparatorKind.Collapsed));
+            var segments = new List<HeaderSegment>(CollapsedLineage)
+            {
+                new(DisplayName(BranchTrace.Name), OwnSeparatorBefore, BranchTrace.FullyQualifiedName)
+            };
 
             if (OwnResolutionSeparatorKind is { } kind)
-                segments.Add(new HeaderSegment(BranchTrace.ResolvedNodeTypeName.ToFriendlyCase(), kind));
+                segments.Add(new HeaderSegment(DisplayName(BranchTrace.ResolvedNodeTypeName), kind, BranchTrace.FullyQualifiedName));
 
             return segments;
         }
     }
 
+    /// <summary>Which separator (if any) precedes <see cref="BranchTrace"/>'s own name part — none when it's the first part of its header.</summary>
+    HeaderSeparatorKind? OwnSeparatorBefore => CollapsedLineage.Count == 0 ? null : SeparatorFromLineage;
+
+    /// <summary>
+    /// A class or property name as displayed. Left exactly as declared by default, so what's on screen
+    /// matches what's in the glyph definitions (and in the data-paths beside it); the "Friendly case"
+    /// setting spaces both out into prose instead. Purely cosmetic either way - data-paths are always
+    /// built from the declared names.
+    /// </summary>
+    string DisplayName(string declaredName) =>
+        RuntimeSettings.UseFriendlyCaseNames ? declaredName.ToFriendlyCase() : declaredName;
+
     /// <summary>
     /// A terminal leaf's displayed name. Ordinarily this is just the leaf's own declared property
     /// name, but a direct child of a <see cref="GlyphOneOfNode"/> may be an anonymously-named
     /// alternative slot (e.g. "Alternative1" on a generic <see cref="OneOf{T1,T2}"/>) rather than a
-    /// meaningful property name — so under a one-of, show the resolved type's own (non-title-cased)
-    /// name instead, which is what actually matched.
+    /// meaningful property name — so under a one-of, show the resolved type's own name instead, which
+    /// is what actually matched.
     /// </summary>
     string LeafDisplayName(CaptureTrace leaf) =>
-        BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name;
+        DisplayName(BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name);
 
     /// <summary>A terminal leaf's displayed "Type" column text - always an <see cref="EnumNode"/>, <see cref="IntNode"/>, or <see cref="BoolNode"/>, since those are the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for.</summary>
     static string TerminalTypeLabel(CaptureTrace leaf) =>

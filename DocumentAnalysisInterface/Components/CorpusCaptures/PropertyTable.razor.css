@@ -10,19 +10,34 @@
     transition: color var(--transition-time);
 }
 
+/* Each part carries its own data-path and so highlights/lowlights on its own, independently of
+   its neighbours - hovering one lights up it and the less specific parts leading to it, leaving
+   the more specific ones to its right muted. */
+.header-part {
+    color: var(--color);
+    transition: color var(--transition-time), opacity var(--transition-time);
+}
+
 /* Alternating brightness lets each part of a multi-part header (collapsed lineage, a one-of
    choice, a dynamic resolution) read as visually distinct at a glance, with the rightmost -
    the most specific, most important part - always shown at full brightness. */
 .header-part-dim {
     opacity: var(--header-part-dim-opacity);
-    transition: opacity var(--transition-time);
 }
 
-/* Highlight/mute already recolor every part uniformly, so alternating dimness on top of that
-   would just muddy the intended highlight/mute color instead of adding useful distinction. */
-.glyph-summary-header.highlight-active .header-part-dim,
-.glyph-summary-header.mute-active .header-part-dim {
+/* Highlight/mute already recolor a part distinctly, so alternating dimness on top of that would
+   just muddy the intended highlight/mute color instead of adding useful distinction. */
+.header-part.highlight-active,
+.header-part.mute-active {
     opacity: 1;
+}
+
+.header-part.highlight-active {
+    color: var(--highlight-color);
+}
+
+.header-part.mute-active {
+    color: var(--lowlight-color);
 }
 
 .header-separator {
@@ -82,10 +97,6 @@ thead tr {
 
 /* --- ACTIVE STATES --- */
 
-.glyph-summary-header.highlight-active .glyph-type-name {
-    color: var(--highlight-color);
-}
-
 .content-box.highlight-active {
     border-top: 1px solid var(--highlight-color);
     border-left: 1px solid var(--highlight-color);
@@ -102,10 +113,6 @@ tr.highlight-active .prop-capture-table-cell {
 
 /* --- MUTE STATES --- */
 
-.glyph-summary-header.mute-active .glyph-type-name {
-    color: var(--lowlight-color);
-}
-
 tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--lowlight-color);
 }
@@ -120,27 +127,31 @@ tr.mute-active .prop-capture-table-cell.value-column {
 
 /* --- COMPLEX OVERRIDES (Parent state affecting children) --- */
 
-.glyph-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.first-column {
+/* "This branch itself is the highlighted one." Read off its own content-box rather than the branch
+   element, which no longer carries a data-path of its own for the hover script to mark up (see the
+   header markup) - the content-box carries the identical path, so this matches exactly the same
+   branches it always did. The child combinators keep it to the branch's OWN box, not a nested one's. */
+.glyph-summary-branch:has(> .property-table-wrapper > .content-box.highlight-active) tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--color);
 }
 
-.glyph-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.type-column {
+.glyph-summary-branch:has(> .property-table-wrapper > .content-box.highlight-active) tr.mute-active .prop-capture-table-cell.type-column {
     color: grey;
 }
 
-.glyph-summary-branch.highlight-active tr.mute-active .prop-capture-table-cell.value-column {
+.glyph-summary-branch:has(> .property-table-wrapper > .content-box.highlight-active) tr.mute-active .prop-capture-table-cell.value-column {
     color: white;
 }
 
 /* If a table has a specific highlighted row, the other rows should be fully muted */
-.glyph-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.first-column {
+.glyph-summary-branch:has(> .property-table-wrapper > .content-box.highlight-active) tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.first-column {
     color: var(--lowlight-color);
 }
 
-.glyph-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.type-column {
+.glyph-summary-branch:has(> .property-table-wrapper > .content-box.highlight-active) tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.type-column {
     color: dimgrey;
 }
 
-.glyph-summary-branch.highlight-active tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.value-column {
+.glyph-summary-branch:has(> .property-table-wrapper > .content-box.highlight-active) tbody:has(tr.highlight-active) tr.mute-active .prop-capture-table-cell.value-column {
     color: gray;
 }

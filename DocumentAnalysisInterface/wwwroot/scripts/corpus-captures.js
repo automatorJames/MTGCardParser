@@ -11,6 +11,25 @@ const muteActiveClass = 'mute-active';
 const dataPathSelector = '[data-path]';
 const boundaryClass = 'match-boundary';
 
+/// Whether `path` is one of `collectedPaths`, or an ancestor of one of them. A data-path is the
+/// underscore-joined chain of named groups from the line's root down to one capture, so a path that
+/// is another's prefix at an underscore boundary IS its ancestor - and the DOM ancestor walk in
+/// PHASE 1 doesn't find every such ancestor on its own. Most of the time it does (a capture's span
+/// really is nested inside its parent's span), but the property table's own multi-part header
+/// renders the collapsed chain that led to a capture as a flat row of sibling parts - "Buff »
+/// Transformed Type : Card Type" - each carrying its own path. Matching by lineage rather than by
+/// DOM position is what lets hovering the middle part light up itself and everything above it while
+/// leaving the more specific parts to its right muted.
+function isSelfOrAncestorPath(path, collectedPaths) {
+    if (collectedPaths.has(path)) return true;
+
+    for (const collected of collectedPaths) {
+        if (collected.startsWith(path + '_')) return true;
+    }
+
+    return false;
+}
+
 function initDocumentCaptureHover() {
     const mainContent = document.getElementById('corpus-captures');
     if (!mainContent) {
@@ -60,7 +79,7 @@ function initDocumentCaptureHover() {
         if (pathsToHighlight.size > 0) {
             const allPathElementsInBoundary = boundary.querySelectorAll(dataPathSelector);
             allPathElementsInBoundary.forEach(el => {
-                if (pathsToHighlight.has(el.dataset.path)) {
+                if (isSelfOrAncestorPath(el.dataset.path, pathsToHighlight)) {
                     el.classList.add(highlightActiveClass);
                 } else {
                     el.classList.add(muteActiveClass);
