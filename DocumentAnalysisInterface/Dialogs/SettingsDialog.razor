@@ -38,6 +38,9 @@
             <div class="settings-row">
                 <Switch @bind-Value=@RuntimeSettings.HideBlankLines Label="Hide blank lines" />
             </div>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.ShowLineNumbers Label="Show line numbers" />
+            </div>
             <div class="settings-row radio-group">
                 <span class="settings-row-label">Footer tray contents</span>
                 @foreach (var content in Enum.GetValues<FooterTrayContent>())

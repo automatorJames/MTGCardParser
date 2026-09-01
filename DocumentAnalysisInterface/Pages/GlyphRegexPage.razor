@@ -33,7 +33,7 @@
                     else
                     {
                         var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat);
-                        <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle />
+                        <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle ShowLineNumbers=@RuntimeSettings.ShowLineNumbers />
                     }
                 </CopyButtonOverlay>
 

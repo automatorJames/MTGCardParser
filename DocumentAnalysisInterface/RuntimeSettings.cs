@@ -147,6 +147,26 @@ namespace DocumentAnalysisInterface
             }
         }
 
+        /// <summary>
+        /// Whether the formatted regex blocks carry a line-number gutter. Only meaningful for the
+        /// multi-line formats - <see cref="RegexDisplayMode.Minified"/> renders a single wrapped
+        /// line, so numbering it says nothing.
+        /// </summary>
+        private bool _showLineNumbers;
+        public bool ShowLineNumbers
+        {
+            get => _showLineNumbers;
+            set
+            {
+                if (_showLineNumbers != value)
+                {
+                    _showLineNumbers = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private FooterTrayContent _footerTrayContent = FooterTrayContent.Hidden;
         public FooterTrayContent FooterTrayContent
         {
@@ -258,6 +278,7 @@ namespace DocumentAnalysisInterface
                     _regexFormat = dto.RegexFormat;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _hideBlankLines = dto.HideBlankLines;
+                    _showLineNumbers = dto.ShowLineNumbers;
                     _footerTrayContent = dto.FooterTrayContent;
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
@@ -315,6 +336,7 @@ namespace DocumentAnalysisInterface
         public RegexDisplayMode RegexFormat { get; init; } = RegexDisplayMode.MatchedOnly;
         public bool HideRegexesWithZeroCaptures { get; init; }
         public bool HideBlankLines { get; init; }
+        public bool ShowLineNumbers { get; init; }
         public FooterTrayContent FooterTrayContent { get; init; } = FooterTrayContent.Hidden;
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
@@ -334,6 +356,7 @@ namespace DocumentAnalysisInterface
             RegexFormat = runtimeSettings.RegexFormat;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             HideBlankLines = runtimeSettings.HideBlankLines;
+            ShowLineNumbers = runtimeSettings.ShowLineNumbers;
             FooterTrayContent = runtimeSettings.FooterTrayContent;
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;

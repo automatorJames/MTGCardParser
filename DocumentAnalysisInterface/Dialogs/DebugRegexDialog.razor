@@ -1,5 +1,6 @@
 @using DocumentAnalysisInterface.Components.Regex
 @inject CorpusAnalyzer CorpusAnalyzer
+@inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
 <CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(1600px, 95vw);">
@@ -69,7 +70,9 @@
         <DialogContent>
             <div class="preview-scroll">
                 <CopyButtonOverlay TextToCopy=@_previewCopyText>
-                    <FormattedRegex Lines=@_previewLines BorderStyle="color: var(--grey);" />
+                    @* Always full-mode formatting here, so the gutter follows the setting alone -
+                       and lines up with the table's "Failed Line #" column. *@
+                    <FormattedRegex Lines=@_previewLines BorderStyle="color: var(--grey);" ShowLineNumbers=@RuntimeSettings.ShowLineNumbers />
                 </CopyButtonOverlay>
             </div>
         </DialogContent>

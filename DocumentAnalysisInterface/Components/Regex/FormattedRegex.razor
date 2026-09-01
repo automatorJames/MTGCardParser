@@ -1,8 +1,15 @@
 <pre class="formatted-regex-fira" style="@($"font-family: {SmartRegexStaticRules.PrimaryFontFamily}; {BorderStyle}")">
     <code>
-        @foreach (var line in Lines)
+        @for (var i = 0; i < Lines.Count; i++)
         {
-            foreach (var span in line.Spans)
+            if (ShowLineNumbers)
+            {
+                @* data-lowlight="None" keeps the gutter out of the hover highlight/lowlight pass -
+                   it's chrome, not part of the expression. *@
+                <span class="regex-line-number" style="@_lineNumberStyle" data-lowlight="None">@(i + 1)</span>
+            }
+
+            foreach (var span in Lines[i].Spans)
             {
                 var style = BuildSpanStyle(span.Palette);
                 var isInteractive = span.Kind is not { } kind || !HoverTreatmentConfig.NonInteractiveSpanKinds.Contains(kind);
@@ -20,6 +27,23 @@
 
     [Parameter]
     public string BorderStyle { get; set; }
+
+    /// <summary>
+    /// Whether to prefix each line with a dim, right-aligned line number. Callers suppress this for
+    /// the single-line minified format.
+    /// </summary>
+    [Parameter]
+    public bool ShowLineNumbers { get; set; }
+
+    /// <summary>
+    /// Gutter width, sized to the widest line number so the code column stays flush. This is the
+    /// digits only - the gap separating the gutter from the expression is content-box padding in
+    /// the stylesheet, so the two never compete for the same space.
+    /// </summary>
+    string _lineNumberStyle;
+
+    protected override void OnParametersSet() =>
+        _lineNumberStyle = $"width: {(Lines?.Count ?? 0).ToString().Length}ch;";
 
     static string BuildSpanStyle(SpanStylePalette palette)
     {

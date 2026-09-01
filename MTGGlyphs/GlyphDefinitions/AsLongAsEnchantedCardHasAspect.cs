@@ -13,7 +13,7 @@
 
 public class AsLongAsThing : Glyph
 {
-    public override Nib[] Nibs => ["as long as", Prop(EnchantedCardHasAspect), Prop(ItGetsOrLosesBuff)];
+    public override Nib[] Nibs => ["as long as", Prop(EnchantedCardHasAspect), ",", Prop(ItGetsOrLosesBuff)];
     public EnchantedCardHasAspect EnchantedCardHasAspect { get; set; }
     public ItGetsOrLosesBuff ItGetsOrLosesBuff { get; set; }
 }

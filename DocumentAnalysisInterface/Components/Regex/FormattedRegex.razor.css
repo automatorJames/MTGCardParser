@@ -28,6 +28,23 @@ pre {
     transition: background-color var(--transition-time);
 }
 
+/* --- Line Number Gutter --- */
+/* Deliberately quiet: the numbers are a locating aid (they pair with DebugRegexDialog's "Failed
+   Line #" column), so they sit well behind the expression itself and never react to hover. */
+.regex-line-number {
+    display: inline-block;
+    /* Overrides Bootstrap's global border-box. The inline width is sized to the digit count alone,
+       so the padding has to sit outside it - under border-box the widest number eats the gap and
+       ends up flush against the expression. */
+    box-sizing: content-box;
+    text-align: right;
+    padding-right: 1.5ch;
+    color: var(--outline-grey);
+    opacity: 0.55;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 /* --- Span Styling --- */
 pre.formatted-regex-fira code span {
     transition: color var(--hover-fade-duration) ease-in-out,
