@@ -259,6 +259,36 @@ public static class HoverTreatmentConfig
 }
 
 /// <summary>
+/// Static display tuning for the regex-debug workflow on the Corpus Captures page: the custom color the
+/// left-click-drag text highlight renders in (reaching the browser as the
+/// <c>--regex-debug-selection-bg</c> custom property regex-debug.js sets from these values), and the
+/// grey treatment the Debug Regex dialog paints over the non-matching tail of an "Original Regex"
+/// preview. Not user-configurable at runtime; tune here and redeploy. Lives on this side of the knob-file
+/// split (not <see cref="Glyphotype.PresentationRules"/>) because only the Blazor UI and its JS ever read
+/// these — nothing in Glyphotype's own render pipeline does.
+/// </summary>
+public static class RegexDebugPresentation
+{
+    /// <summary>
+    /// The selection highlight's color — a warm amber, deliberately off every hue family already in play
+    /// on the page (the rainbow capture underlines, the grey echo underlines), so a debug selection reads
+    /// as its own kind of mark rather than another capture.
+    /// </summary>
+    public const string SelectionHighlightColorHex = "#ffb454";
+
+    /// <summary>The selection highlight's background transparency (0..1) — low enough that the rainbow underlines stay legible through it.</summary>
+    public const double SelectionHighlightOpacity = 0.30;
+
+    /// <summary>
+    /// The single grey the dialog's "Original Regex" preview substitutes for every rainbow palette on
+    /// lines at/after the first failure — the not-reached portion recedes while the matched portion keeps
+    /// its normal coloring. One flat trio (rest/hi/lo all similar) since greyed lines shouldn't respond
+    /// to hover emphasis the way live ones do.
+    /// </summary>
+    public static readonly Glyphotype.Colors.SpanStylePalette UnmatchedRegexGreyPalette = new("#5c6262", "#7a8282", "#454a4a");
+}
+
+/// <summary>
 /// Shared formatting for capture-coverage percentages shown across the Corpus Captures page:
 /// whole-number at the 0%/100% extremes (no visual noise implying more precision than "none"/"all"
 /// actually carries), two decimals everywhere in between.

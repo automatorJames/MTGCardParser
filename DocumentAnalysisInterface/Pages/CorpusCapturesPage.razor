@@ -3,6 +3,7 @@
 @inject IJSRuntime JSRuntime
 @inject CorpusAnalyzer DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
+@implements IAsyncDisposable
 
 <DeferredContent OnReady="InitHoverAsync">
     <div class="corpus-captures-container" id="corpus-captures"
@@ -14,7 +15,15 @@
     </div>
 </DeferredContent>
 
+@if (_debugTextSegment != null)
+{
+    <DebugRegexDialog TextSegment=@_debugTextSegment OnClose="CloseDebugRegexDialog" />
+}
+
 @code {
+    string _debugTextSegment;
+    DotNetObjectReference<CorpusCapturesPage> _selfRef;
+
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += StateHasChanged;
@@ -38,9 +47,51 @@
         {
             await JSRuntime.InvokeVoidAsync("initDocumentCaptureHover");
             await JSRuntime.InvokeVoidAsync("initEchoHover");
+
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("initRegexDebugSelection", _selfRef, new
+            {
+                RegexDebugPresentation.SelectionHighlightColorHex,
+                RegexDebugPresentation.SelectionHighlightOpacity,
+            });
         }
         catch (TaskCanceledException)
         {
+        }
+    }
+
+    /// <summary>
+    /// Called from regex-debug.js when the "Debug regex" button over a word-boundary-corrected drag
+    /// selection is clicked — opens the analysis dialog for that text.
+    /// </summary>
+    [JSInvokable]
+    public Task OpenDebugRegexDialog(string textSegment)
+    {
+        _debugTextSegment = textSegment;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    void CloseDebugRegexDialog()
+    {
+        _debugTextSegment = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        RuntimeSettings.OnChanged -= StateHasChanged;
+
+        if (_selfRef != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("disposeRegexDebugSelection");
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException)
+            {
+                // Circuit already gone; nothing to clean up client-side.
+            }
+
+            _selfRef.Dispose();
         }
     }
 

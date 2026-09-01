@@ -1,0 +1,241 @@
+@using DocumentAnalysisInterface.Components.Regex
+@inject CorpusAnalyzer CorpusAnalyzer
+@implements IDisposable
+
+<CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(1600px, 95vw);">
+    <TitleContent>
+        <span>Debug regex</span>
+        <span class="segment-echo">&ldquo;@TextSegment&rdquo;</span>
+    </TitleContent>
+    <DialogContent>
+        @if (!_analysisComplete)
+        {
+            <div class="debug-progress">
+                <div class="debug-progress-track">
+                    <div class="debug-progress-fill" style="width: @GetProgressPercent()%"></div>
+                </div>
+                <div class="debug-progress-label">Analyzed @_analyzedCount of @_totalCount glyph regex graphs&hellip;</div>
+            </div>
+        }
+        else if (_results.Count == 0)
+        {
+            <div class="no-results">No glyph's regex matched even one word of the highlighted text.</div>
+        }
+        else
+        {
+            <div class="debug-results-scroll">
+                <table class="debug-results-table">
+                    <thead>
+                        <tr>
+                            <th>Glyph Type</th>
+                            <th>Match Score</th>
+                            <th>First Failure</th>
+                            <th>Failed Line #</th>
+                            <th>Max Match</th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in _results)
+                        {
+                            <tr @key=result.GlyphType>
+                                <td><GlyphTypeName GlyphType=@result.GlyphType /></td>
+                                <td class="score-cell @(result.IsFullMatch ? "full-match" : "")">@CoverageDisplay.FormatPercent(result.MatchScorePercent)</td>
+                                <td class="failure-cell">@result.FirstFailureDisplay</td>
+                                <td class="line-number-cell">@(GetFailedLineNumber(result) is int line ? line.ToString() : "")</td>
+                                <td class="max-match-cell">
+                                    <span class="matched-part">@result.TextSegment[..Math.Min(result.MatchedCharCount, result.TextSegment.Length)]</span><span class="unmatched-part">@result.TextSegment[Math.Min(result.MatchedCharCount, result.TextSegment.Length)..]</span>
+                                </td>
+                                <td><button class="btn btn-secondary preview-btn" @onclick="() => OpenOriginalPreview(result)">Original Regex</button></td>
+                                <td><button class="btn btn-secondary preview-btn" @onclick="() => OpenStemPreview(result)">Max Match Regex</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="Close">Close</button>
+    </DialogActions>
+</CustomDialog>
+
+@if (_previewLines != null)
+{
+    @* Rendered after (and therefore on top of) the main dialog; its own backdrop click closes just the preview. *@
+    <CustomDialog OnBackdropClick="ClosePreview" ContainerStyle="max-width: min(1400px, 90vw);">
+        <TitleContent>@_previewTitle</TitleContent>
+        <DialogContent>
+            <div class="preview-scroll">
+                <CopyButtonOverlay TextToCopy=@_previewCopyText>
+                    <FormattedRegex Lines=@_previewLines BorderStyle="color: var(--grey);" />
+                </CopyButtonOverlay>
+            </div>
+        </DialogContent>
+        <DialogActions>
+            <button class="btn btn-secondary" @onclick="ClosePreview">Close</button>
+        </DialogActions>
+    </CustomDialog>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string TextSegment { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    List<KeyValuePair<Type, RegexGraph>> _graphEntries = [];
+    List<RegexDebugResult> _results = [];
+    readonly Dictionary<RegexDebugResult, int> _failureLineIndexes = [];
+    readonly Dictionary<Type, GlyphOccurrenceSummary> _zeroOccurrenceSummaries = [];
+    readonly CancellationTokenSource _cts = new();
+
+    int _analyzedCount;
+    int _totalCount;
+    bool _analysisComplete;
+
+    // Preview state (null lines = no preview open)
+    List<SmartLine> _previewLines;
+    string _previewCopyText;
+    string _previewTitle;
+
+    protected override void OnInitialized()
+    {
+        _graphEntries = GlyphTypeRegistry.RegexGraphs.ToList();
+        _totalCount = _graphEntries.Count;
+        _ = RunAnalysisAsync();
+    }
+
+    /// <summary>
+    /// Analyzes every registered graph against the segment off the UI thread, ticking the determinate
+    /// progress bar per graph, then ranks the survivors (anything that matched at least one word) by
+    /// Match Score and resolves each one's failed-line number against the same Full-mode formatting the
+    /// preview windows render with.
+    /// </summary>
+    async Task RunAnalysisAsync()
+    {
+        var results = new List<RegexDebugResult>();
+
+        try
+        {
+            await Task.Run(async () =>
+            {
+                foreach (var (type, graph) in _graphEntries)
+                {
+                    _cts.Token.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        results.Add(RegexMatchDebugger.Analyze(graph, TextSegment));
+                    }
+                    catch
+                    {
+                        // One misbehaving graph (e.g. a structurally-invalid type that only ever gets
+                        // flagged by the opt-in validation sweep) shouldn't kill the whole analysis run.
+                    }
+
+                    _analyzedCount++;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }, _cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (ObjectDisposedException)
+        {
+            // Dialog was closed mid-analysis; the circuit-side InvokeAsync can land after disposal.
+            return;
+        }
+
+        _results = results
+            .Where(x => x.MatchedWordCount > 0)
+            .OrderByDescending(x => x.MatchScorePercent)
+            .ThenByDescending(x => x.UnitMatchPercent)
+            .ThenBy(x => x.GlyphType.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var result in _results)
+            _failureLineIndexes[result] = RegexDebugRenderer.GetFailureLineIndex(result, GetSummary(result.GlyphType));
+
+        _analysisComplete = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    double GetProgressPercent() =>
+        _totalCount == 0 ? 100 : Math.Round(100.0 * _analyzedCount / _totalCount, 1);
+
+    /// <summary>1-based display line number of the first failure, or null for a full match / unresolvable brick.</summary>
+    int? GetFailedLineNumber(RegexDebugResult result) =>
+        _failureLineIndexes.TryGetValue(result, out var idx) && idx >= 0 ? idx + 1 : null;
+
+    /// <summary>
+    /// The occurrence summary the formatting pipeline needs for a type: the corpus-wide one when the type
+    /// is a registered top-level glyph, else a synthesized zero-occurrence summary (nested-only graph
+    /// types never appear in CorpusAnalyzer's per-type map).
+    /// </summary>
+    GlyphOccurrenceSummary GetSummary(Type type)
+    {
+        if (CorpusAnalyzer.GlyphOccurrenceSummaries.TryGetValue(type, out var summary))
+            return summary;
+
+        if (!_zeroOccurrenceSummaries.TryGetValue(type, out var zeroSummary))
+            _zeroOccurrenceSummaries[type] = zeroSummary = new GlyphOccurrenceSummary(type);
+
+        return zeroSummary;
+    }
+
+    /// <summary>
+    /// The full original graph, formatted exactly as the Glyph Regex page renders it with "Regex format:
+    /// full" — except every line at/after the first failure swaps its rainbow palette for the flat
+    /// not-reached grey, so the eye lands straight on where matching stopped.
+    /// </summary>
+    void OpenOriginalPreview(RegexDebugResult result)
+    {
+        var (lines, failureLineIndex) = RegexDebugRenderer.RenderOriginal(result, GetSummary(result.GlyphType));
+
+        if (failureLineIndex >= 0)
+        {
+            var grey = RegexDebugPresentation.UnmatchedRegexGreyPalette;
+
+            for (int i = failureLineIndex; i < lines.Count; i++)
+                lines[i] = new SmartLine(lines[i].Spans
+                    .Select(s => new SmartSpan(s.Content, s.FullyQualifiedName, grey, s.Kind))
+                    .ToList());
+        }
+
+        ShowPreview($"Original regex — {result.GlyphType.Name}", lines);
+    }
+
+    /// <summary>The max-matching stemmed permutation, formatted/colored identically to the Glyph Regex page's full mode.</summary>
+    void OpenStemPreview(RegexDebugResult result)
+    {
+        var lines = RegexDebugRenderer.RenderMaxMatchStem(result, GetSummary(result.GlyphType));
+        ShowPreview($"Max match regex — {result.GlyphType.Name}", lines);
+    }
+
+    void ShowPreview(string title, List<SmartLine> lines)
+    {
+        _previewTitle = title;
+        _previewLines = lines;
+        _previewCopyText = FormattedRegexCopy.GetCopyText(lines);
+    }
+
+    void ClosePreview()
+    {
+        _previewLines = null;
+        _previewCopyText = null;
+        _previewTitle = null;
+    }
+
+    Task Close() => OnClose.InvokeAsync();
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

@@ -180,3 +180,45 @@ pre.c-sharp {
         opacity: 1;
         visibility: visible;
     }
+
+/* --- Regex debug selection + button (Corpus Captures; see scripts/regex-debug.js) --- */
+
+/* The custom highlight color for a debug drag-selection. --regex-debug-selection-bg is set by
+   regex-debug.js from RegexDebugPresentation's C# knobs (hex + opacity); the fallback here only
+   covers the instant before that init runs. */
+pre.nested-underline-container ::selection {
+    background-color: var(--regex-debug-selection-bg, rgba(255, 180, 84, 0.3));
+}
+
+/* Once armed (mouseup snapped the selection to word boundaries), the highlighted text reads as bold.
+   Faux-bold via text-shadow rather than font-weight: ::selection can't carry font-weight, and a real
+   bold would need the selected text wrapped in new elements — fighting Blazor's DOM diffing and
+   reflowing the underline layout. The shadow thickens glyphs in place with zero width change. */
+pre.nested-underline-container.regex-debug-armed ::selection {
+    text-shadow: 0 0 0.85px currentColor, 0 0 0.85px currentColor;
+}
+
+.regex-debug-button {
+    position: fixed;
+    z-index: 900;
+    display: none;
+    padding: 3px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--outline-grey);
+    background-color: #2d3748; /* opaque, per the overlay's job of standing off the text */
+    color: var(--lightest-blue);
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+    .regex-debug-button:hover {
+        background-color: #3b4a63;
+        color: #ffffff;
+        border-color: #718096;
+    }
