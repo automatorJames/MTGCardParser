@@ -2,15 +2,22 @@
 
 public class Tokenizer
 {
-    private readonly List<Type> _orderedTypes;
+    private readonly List<Type> _orderedTopLevelTypes;
+    private readonly List<Type> _dependentTypes;
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
 
-    public Tokenizer(List<Type> orderedTypes)
+    public Tokenizer(List<Type> orderedTopLevelTypes, List<Type> dependentTypes)
     {
-        _orderedTypes = orderedTypes;
+        _orderedTopLevelTypes = orderedTopLevelTypes;
+        _dependentTypes = dependentTypes;
     }
 
-    public List<CaptureUnit> Tokenize(string sourceText, int? scopeStart = null, int? scopeEnd = null, Type scopeToType = null)
+    public List<CaptureUnit> Tokenize(
+        string sourceText, 
+        int? scopeStart = null, int? 
+        scopeEnd = null, 
+        Type scopeToType = null,
+        bool includeDependentTypes = false)
     {
         if (string.IsNullOrEmpty(sourceText))
             throw new Exception("Source text may not be null or empty");
@@ -27,10 +34,15 @@ public class Tokenizer
         // starting after that point could still be "the whole line" by itself.
         int scopeStartIndex = currentIndex;
 
+        var candidateTypes = _orderedTopLevelTypes.ToList();
+
+        if (includeDependentTypes)
+            candidateTypes.AddRange(_dependentTypes);
+
         // Pre-filter types to avoid repeating logic inside the while loop
         var filteredTypes = 
-            (scopeToType != null && scopeToType != typeof(Glyph)) ? _orderedTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
-            : _orderedTypes;
+            (scopeToType != null && scopeToType != typeof(Glyph)) ? candidateTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
+            : candidateTypes;
 
         while (currentIndex < endIndex)
         {
@@ -38,7 +50,7 @@ public class Tokenizer
 
             foreach (var type in filteredTypes)
             {
-                var rootNode = GlyphTypeRegistry.RegexGraphs[type];
+                var rootNode = GlyphTypeRegistry.RegexGraphIncludingDependents[type];
 
                 if (rootNode.MustMatchWholeLine && currentIndex != scopeStartIndex)
                     continue;

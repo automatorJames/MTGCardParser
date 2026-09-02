@@ -29,20 +29,21 @@ public class DynamicGlyphNode : GlyphNode
         glyph = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);
         var captureValue = captureTrace.CaptureValue;
-        var resolvedTokens = GlyphTypeRegistry.ClassTokenizer.Tokenize(captureValue, scopeToType: filterType);
+        var resolvedTokens = GlyphTypeRegistry.ClassTokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
         if (resolvedTokens.FirstOrDefault() is UnmatchedString || resolvedTokens.OfType<Glyph>().FirstOrDefault() is not Glyph dynamicMatchToken)
             return false;
 
-        glyph = new DynamicGlyph(dynamicMatchToken);
-        glyph.CaptureContext = dynamicMatchToken.CaptureContext;
+        glyph = new DynamicGlyph(dynamicMatchToken)
+        {
+            CaptureContext = dynamicMatchToken.CaptureContext
+        };
 
         // The re-tokenization above ran against captureValue in isolation, producing its own
         // disconnected CaptureContext/RootCaptureTrace. Without this, this node's CaptureTrace
         // would stay childless — a flat leaf with no visibility into dynamicMatchToken's own
-        // resolved structure (e.g. a DynamicGlyph resolving to ThisDealsDamage would show no
-        // Quantity/Recipient nesting at all in the underline tree or corpus-wide lookups).
+        // resolved structure
         captureTrace.AdoptDynamicChildren(dynamicMatchToken.CaptureContext.RootCaptureTrace);
 
         return true;

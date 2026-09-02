@@ -780,7 +780,6 @@ public enum GainOrLose
     Gain
 }
 
-[OptionalPrefix("it")]
 public enum PermanentVerb
 {
     [RegexPattern("get(s)?")]

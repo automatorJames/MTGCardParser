@@ -82,7 +82,7 @@ internal class DynamicSectionBuilder
     /// </summary>
     static List<RegexBrick> BuildResolvedTypeContainerBricks(DynamicGlyphNode dynamicNode, Type resolvedType, List<Glyph> glyphs, bool includeSupplementalLines, RegexDisplayMode displayMode)
     {
-        var resolvedGraph = GlyphTypeRegistry.RegexGraphs[resolvedType];
+        var resolvedGraph = GlyphTypeRegistry.RegexGraphIncludingDependents[resolvedType];
         var containerDepth = dynamicNode.Lineage.OfType<NamedGroupNode>().Count(x => !x.IsTransparentRoot);
         var typeLabel = "token"; // always rendered as an ordinary nested token group, like GlyphNode's own default
         var friendlyName = resolvedType.Name.ToFriendlyCase();

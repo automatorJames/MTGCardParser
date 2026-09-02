@@ -1,5 +1,4 @@
-﻿using Glyphotype.NibHelpers;
-using System.Reflection.Emit;
+﻿using System.Reflection.Emit;
 
 namespace Glyphotype.StaticRegistry;
 
@@ -13,6 +12,7 @@ public static partial class GlyphTypeRegistry
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MTGGlyphs"));
 
     public static Dictionary<Type, RegexGraph> RegexGraphs { get; set; } = [];
+    public static Dictionary<Type, RegexGraph> RegexGraphIncludingDependents { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<Type, GlyphTypeConfiguration> TypeConfigurations { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
@@ -45,6 +45,10 @@ public static partial class GlyphTypeRegistry
 
         foreach (var type in topLevelTypes)
             SetRootNode(type);
+
+        // Register full dictionary of all dependant and non-dependant Glyph type graphs
+        RegexGraphIncludingDependents = RegexGraphs.ToDictionary(x => x.Key, x => x.Value);
+        GetAllNonDynamicDependentGlyphTypes().ForEach(x => RegexGraphIncludingDependents.Add(x, RegexGraph.Create(x)));
 
         // Only the top-level types get the *full* structural validation automatically at startup; the
         // exhaustive sweep over every type discoverable via property nibs (GetAllTypesForValidation) is
@@ -248,6 +252,16 @@ public static partial class GlyphTypeRegistry
         return allTypes;
     }
 
+    static List<Type> GetAllNonDynamicDependentGlyphTypes() =>
+        _staticAssemblyTypes
+            .Where(x =>
+                x.IsClass && !x.IsAbstract
+                && typeof(Glyph).IsAssignableFrom(x)
+                && !x.ContainsGenericParameters
+                && x.IsDefined(typeof(DependentAttribute))
+                && x != typeof(DynamicGlyph))
+            .ToList();
+
     /// <summary>
     /// Every type ValidateStructure() should run against: every non-generic, non-abstract Glyph
     /// type found by the assembly scan - including Dependent-only types, which GetAllTopLevelGlyphTypes
@@ -365,7 +379,9 @@ public static partial class GlyphTypeRegistry
             .ForEach(AddClassGlyphType);
 
         TypeRegexes = RegexGraphs.Where(x => typeof(Glyph).IsAssignableFrom(x.Key)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
-        ClassTokenizer = new(AppliedOrderTypes);
+
+        var dependentTypes = GetAllNonDynamicDependentGlyphTypes();
+        ClassTokenizer = new(AppliedOrderTypes, dependentTypes);
     }
 
     static void AddClassGlyphType(Type glyphType)
