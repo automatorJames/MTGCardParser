@@ -10,6 +10,25 @@ public class CaptureContext
     public string SourceText { get; }
     public string FullMatch { get; }
 
+    /// <summary>
+    /// The <see cref="SourceText"/> index this match should be retried against as its new end, because a
+    /// trailing <see cref="Nodes.DynamicGlyphNode"/> resolved less text than it captured (see
+    /// <see cref="RequestNarrowedScopeEnd"/>) - or -1 when no narrowing was requested. Read by
+    /// <see cref="RegexGraph.TryMatch(string, int, int, out Glyph)"/> once hydration against this context
+    /// has run.
+    /// </summary>
+    public int NarrowedScopeEnd { get; private set; } = -1;
+
+    /// <summary>
+    /// Records that this match only genuinely accounts for source text up to <paramref name="scopeEnd"/>.
+    /// Hydration against this context is already doomed by the time this is called; the request outlives
+    /// that precisely because it's recorded here on the context rather than on the abandoned hydration
+    /// result. The smallest request wins, so multiple trailing shortfalls in one pass narrow to the
+    /// shortest span all of them agree on.
+    /// </summary>
+    public void RequestNarrowedScopeEnd(int scopeEnd) =>
+        NarrowedScopeEnd = NarrowedScopeEnd < 0 ? scopeEnd : Math.Min(NarrowedScopeEnd, scopeEnd);
+
     public CaptureContext(GlyphNode rootNode, Match match, string sourceText)
     {
         _captureDictionary = GetNamedGroupCaptures(match);

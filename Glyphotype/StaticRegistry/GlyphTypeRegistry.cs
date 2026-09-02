@@ -17,7 +17,6 @@ public static partial class GlyphTypeRegistry
     public static Dictionary<Type, GlyphTypeConfiguration> TypeConfigurations { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
-    public static HashSet<Type> ReferencedEnumTypes { get; set; } = [];
     public static Tokenizer ClassTokenizer { get; set; }
 
     static GlyphTypeRegistry()
@@ -326,7 +325,6 @@ public static partial class GlyphTypeRegistry
                 && !x.IsAbstract
                 && typeof(CaptureUnit).IsAssignableFrom(x))
             .Concat(_dynamicAssemblyTypes)
-            .Concat(ReferencedEnumTypes)
             .Distinct()
             .OrderBy(x => x.Name)
             .ToList();
@@ -346,16 +344,6 @@ public static partial class GlyphTypeRegistry
             allGlyphTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
             .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
             .ToDictionary(x => x.Key, x => x.ToList());
-        
-        var typeOrderedItems = TypeOrderList
-            .Select((type, idx) => (type, idx))
-            .ToList();
-
-        // Add types defined in the static TypeOrderList next.
-        // Here, "idx" refers to the 0-based order of appearance in TypeOrderList,
-        // which of course might be the same value as a defined order type above.
-        // This means defined order type position takes precedence over TypeOrderList position.
-        typeOrderedItems.ForEach(x => { if (!orderedTypes.TryAdd(x.idx, [x.type])) orderedTypes[x.idx].Add(x.type); });
 
         // Add all remaining types (i.e. those the user didn't bother to define anywhere).
         // Order by descending length, which is a rough approximate of complexity/match length (not exact)
@@ -546,10 +534,5 @@ public static partial class GlyphTypeRegistry
             propertyBuilder.SetSetMethod(setter);
         }
     }
-
-    static List<Type> TypeOrderList =
-    [
-    
-    ];
 }
 

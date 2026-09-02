@@ -126,8 +126,48 @@ public class RegexGraph
     /// </summary>
     public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph)
     {
+        // Retried against a progressively shorter scope whenever hydration discovers that a trailing
+        // DynamicGlyph resolved less text than its greedy pattern captured (see
+        // DynamicGlyphNode.TryHydrate) - so what this returns is a match whose whole span really is
+        // accounted for, which is what lets Tokenizer safely resume at the first character past it.
+        // Re-running the entire match, rather than trimming back the capture tree already built from the
+        // longer one, is what keeps the resulting CaptureContext internally consistent: the compiled
+        // Match, every capture under it, and every index they carry all describe the same span. Each
+        // retry strictly shortens the scope, so this terminates.
+        int scopeEnd = endIndex;
+
+        while (true)
+        {
+            if (TryMatchWithinScope(sourceText, currentIndex, endIndex, scopeEnd, out glyph, out int narrowedScopeEnd))
+                return true;
+
+            // Either no narrowing was requested (an ordinary failed match, leaving -1) or the one that
+            // was wouldn't actually make progress - nothing further to try in both cases.
+            if (narrowedScopeEnd <= currentIndex || narrowedScopeEnd >= scopeEnd)
+                return false;
+
+            scopeEnd = narrowedScopeEnd;
+        }
+    }
+
+    /// <summary>One attempt of <see cref="TryMatch(string, int, int, out Glyph)"/>.</summary>
+    /// <param name="scopeEnd">
+    /// The end of the window the regex itself may consume. Equal to <paramref name="endIndex"/> on the
+    /// first attempt - where the match runs unbounded and is then range-checked against
+    /// <paramref name="endIndex"/>, exactly as it always has - and shorter only on a narrowed retry,
+    /// where the window has to be bounded up front so a greedy pattern can't just re-take the very text
+    /// the retry exists to exclude.
+    /// </param>
+    /// <param name="narrowedScopeEnd">The scope end to retry at, or -1 if no narrowing was requested.</param>
+    bool TryMatchWithinScope(string sourceText, int currentIndex, int endIndex, int scopeEnd, out Glyph glyph, out int narrowedScopeEnd)
+    {
         glyph = null;
-        var match = BuiltRegex.Regex.Match(sourceText, currentIndex);
+        narrowedScopeEnd = -1;
+
+        var match = scopeEnd == endIndex
+            ? BuiltRegex.Regex.Match(sourceText, currentIndex)
+            : BuiltRegex.Regex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
+
         int matchEndIndex = match.Index + match.Length;
 
         // A MustMatchWholeLine type is a special case: nothing else may share its tokenization pass, so
@@ -150,9 +190,16 @@ public class RegexGraph
 
         CaptureContext captureContext = new(RootNode, match, sourceText);
         var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
+        narrowedScopeEnd = captureContext.NarrowedScopeEnd;
 
-        if (!success)
+        // A narrowing request outranks hydration's own verdict: a Glyph that hydrated fine despite one
+        // (because the shortfalling DynamicGlyph sat on a nullable property, so its own failure didn't
+        // fail its parent) would still be claiming text that no DynamicGlyph ever accounted for.
+        if (!success || narrowedScopeEnd >= 0)
+        {
+            glyph = null;
             return false;
+        }
 
         captureContext.RootCaptureTrace.ClrValue = glyph;
         return true;
