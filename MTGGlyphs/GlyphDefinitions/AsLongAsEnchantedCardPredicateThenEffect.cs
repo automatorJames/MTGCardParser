@@ -12,7 +12,6 @@
 //    public TestThing TestThing { get; set; }
 //}
 
-[IsolateForTesting]
 public class AsLongAsEnchantedCardPredicateThenEffect : Glyph
 {
     public override Nib[] Nibs => ["as long as enchanted", Prop(CardType), Prop(Assertion), Opt("an?"), Prop(CardAspect), ",", Prop(Effect)];

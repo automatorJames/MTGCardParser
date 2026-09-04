@@ -1,4 +1,6 @@
-﻿namespace Glyphotype.RegexGeneration.Graph;
+﻿using System.Diagnostics;
+
+namespace Glyphotype.RegexGeneration.Graph;
 
 /// <summary>
 /// The compiled regex-matching representation of one root <see cref="Glyph"/> type: the
@@ -12,6 +14,12 @@ public class RegexGraph
 
     /// <summary>The root <see cref="Glyph"/> type this graph was built from.</summary>
     public Type RootGlyphType { get; }
+
+    /// <summary>
+    /// Flag indicating whether the Glyph type has the [Dependent] attribute, meaning it should only be considered
+    /// as part of top level Glyph graph instead of being a top level graph itself.
+    /// </summary>
+    public bool IsDependent { get; }
 
     /// <summary>The root of the walked <see cref="Graph.Nodes.RegexNode"/> tree.</summary>
     public GlyphNode RootNode { get; }
@@ -37,6 +45,31 @@ public class RegexGraph
     /// disambiguation is required. For example, "My_Path_To_Node" -> "Node".
     /// </summary>
     public Dictionary<string, string> SimpleUniqueNames { get; } = [];
+
+    public RegexGraph(Type rootGlyphType, GlyphNode rootNode)
+    {
+        RootGlyphType = rootGlyphType;
+        IsDependent = rootGlyphType.IsDefined(typeof(DependentAttribute));
+        RootNode = rootNode;
+        MustMatchWholeLine = rootGlyphType.IsDefined(typeof(MustMatchWholeLineAttribute));
+        RegexCollector collector = new();
+        RootNode.AppendRegexBricks(collector);
+        BuiltRegex = collector.GetBuiltRegex();
+        PopulateFlatGraphRecursive();
+        PopulateSimpleUniqueNames();
+    }
+
+    /// <summary>Builds the root <see cref="Graph.Nodes.RegexNode"/> for <paramref name="rootGlyphType"/> and compiles a full <see cref="RegexGraph"/> from it.</summary>
+    public static RegexGraph Create(Type rootGlyphType)
+    {
+        Navigation navigation = new(rootGlyphType);
+        var root = GlyphNode.GetNodeForNavigaton(null, navigation);
+
+        if (root is not GlyphNode glyphNodeRoot)
+            throw new Exception($"Expected a {nameof(GlyphNode)}, but got a {root.GetType().Name}");
+
+        return new(rootGlyphType, glyphNodeRoot);
+    }
 
     /// <summary>
     /// The positional rainbow palette for every named group in this graph, in <see cref="NamedGroupFlatGraph"/>'s
@@ -65,31 +98,6 @@ public class RegexGraph
             .Distinct();
 
         return DeterministicPalette.GetPositionalPaletteSet(namedGroupsInDisplayOrder, positionalOverrideColors);
-    }
-
-    public RegexGraph(Type rootGlyphType, GlyphNode rootNode)
-    {
-        RootGlyphType = rootGlyphType;
-        RootNode = rootNode;
-        MustMatchWholeLine = rootGlyphType.IsDefined(typeof(MustMatchWholeLineAttribute));
-        RegexCollector collector = new();
-        RootNode.AppendRegexBricks(collector);
-        BuiltRegex = collector.GetBuiltRegex();
-        PopulateFlatGraphRecursive();
-        PopulateSimpleUniqueNames();
-    }
-
-    /// <summary>Builds the root <see cref="Graph.Nodes.RegexNode"/> for <paramref name="rootGlyphType"/> and compiles a full <see cref="RegexGraph"/> from it.</summary>
-    public static RegexGraph Create(Type rootGlyphType)
-    {
-        Navigation navigation = new(rootGlyphType);
-
-        var root = GlyphNode.GetNodeForNavigaton(null, navigation);
-
-        if (root is not GlyphNode glyphNodeRoot)
-            throw new Exception($"Expected a {nameof(GlyphNode)}, but got a {root.GetType().Name}");
-
-        return new(rootGlyphType, glyphNodeRoot);
     }
 
     /// <summary>Depth-first walk populating <see cref="NamedGroupFlatGraph"/> from every named group node in the tree.</summary>

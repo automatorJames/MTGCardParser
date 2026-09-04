@@ -410,7 +410,7 @@ public static class GlyphClassRenderer
             .OrderByDescending(x => x.Value.Count)
             .Select(x =>
             {
-                var resolvedGraph = GlyphTypeRegistry.RegexGraphIncludingDependents[x.Key];
+                var resolvedGraph = GlyphTypeRegistry.RegexGraphs[x.Key];
                 // Must match DynamicSectionBuilder.BuildResolvedTypeContainerBricks's own containerFullyQualifiedName,
                 // just rebased through ctx.Fqn instead of node's raw FullyQualifiedName - so navigating here via
                 // this menu lands on the exact data-path that same resolved instance's own bricks use there.

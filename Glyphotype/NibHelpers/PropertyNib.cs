@@ -84,6 +84,10 @@ public record PropertyNib : Nib
         var elementType = Navigation.IsListType(propertyType) ? propertyType.GetGenericArguments()[0] : propertyType;
         var underlyingElementType = Nullable.GetUnderlyingType(elementType) ?? elementType;
 
-        return underlyingElementType.IsAssignableTo(typeof(Glyph)) || underlyingElementType.IsEnum;
+        return
+            underlyingElementType.IsAssignableTo(typeof(Glyph)) // Glyphs are the building blocks of non-terminal regex graphs
+            || underlyingElementType.IsEnum // Enums are the primary terminals of regex graphs
+            || underlyingElementType == typeof(bool) // Bools are also allowable terminals in regex graphs
+            || propertyType == typeof(int?); // Nullable ints are allowable terminals in the "T" of GlyphFused<T> (the fused content, comprised of countable properties)
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace Glyphotype.StaticRegistry;
 
@@ -10,9 +11,7 @@ public static partial class GlyphTypeRegistry
     static Type[] _staticAssemblyTypes = LoadAllAssemblyTypes();
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MTGGlyphs"));
-
     public static Dictionary<Type, RegexGraph> RegexGraphs { get; set; } = [];
-    public static Dictionary<Type, RegexGraph> RegexGraphIncludingDependents { get; set; } = [];
     public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<Type, GlyphTypeConfiguration> TypeConfigurations { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
@@ -42,12 +41,8 @@ public static partial class GlyphTypeRegistry
 
         var topLevelTypes = GetAllTopLevelGlyphTypes();
 
-        foreach (var type in topLevelTypes)
+        foreach (var type in allTypes)
             SetRootNode(type);
-
-        // Register full dictionary of all dependant and non-dependant Glyph type graphs
-        RegexGraphIncludingDependents = RegexGraphs.ToDictionary(x => x.Key, x => x.Value);
-        GetAllNonDynamicDependentGlyphTypes().ForEach(x => RegexGraphIncludingDependents.Add(x, RegexGraph.Create(x)));
 
         // Only the top-level types get the *full* structural validation automatically at startup; the
         // exhaustive sweep over every type discoverable via property nibs (GetAllTypesForValidation) is
@@ -56,7 +51,7 @@ public static partial class GlyphTypeRegistry
         // not-yet-fixed issue that would otherwise prevent the registry - and everything built on it -
         // from initializing at all. Reference loops (the one check that could crash rather than just
         // report an error) are already ruled out above for the full set, regardless of this scoping.
-        ValidateAllStructures(topLevelTypes);
+        ValidateAllStructures(allTypes);
 
         InitializeClassTokenizer();
     }
@@ -105,14 +100,11 @@ public static partial class GlyphTypeRegistry
     }
 
     public static RegexGraph GetRegexGraph(Type type) =>
-        RegexGraphs.TryGetValue(type, out var regexGraph)
-            ? regexGraph : SetRootNode(type);
+        RegexGraphs.TryGetValue(type, out var regexGraph) ? regexGraph 
+        : SetRootNode(type);
 
     static RegexGraph SetRootNode(Type type)
     {
-        // Ensure TypeConfiguration is set (not strictly necessary, but convenient)
-        EnsureGlyphTypeConfiguration(type);
-
         NameToType[type.Name] = type;
         var regexGraph = RegexGraph.Create(type);
         RegexGraphs[type] = regexGraph;

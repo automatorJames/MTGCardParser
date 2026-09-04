@@ -50,7 +50,7 @@ public class Tokenizer
 
             foreach (var type in filteredTypes)
             {
-                var rootNode = GlyphTypeRegistry.RegexGraphIncludingDependents[type];
+                var rootNode = GlyphTypeRegistry.RegexGraphs[type];
 
                 if (rootNode.MustMatchWholeLine && currentIndex != scopeStartIndex)
                     continue;

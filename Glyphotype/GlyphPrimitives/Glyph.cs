@@ -50,12 +50,6 @@ public abstract class Glyph : CaptureUnit
     /// </summary>
     public virtual string ValidateStructure()
     {
-        // Checked first, and via pure Type reflection rather than by building anything: unlike every
-        // check below, a genuine reference loop makes GetRegexGraph's own tree-walk recurse forever
-        // (it has no cycle guard), so this must run before GetRegexGraph is ever called, not after.
-        if (CheckForReferenceLoops() is string referenceLoopException)
-            return referenceLoopException;
-
         var regexGraph = GlyphTypeRegistry.GetRegexGraph(Type);
 
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
@@ -76,11 +70,11 @@ public abstract class Glyph : CaptureUnit
         // capture-data properties like the derived type's own nib-bound properties.
         var props = Type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
             .Where(x => x.GetMethod.GetBaseDefinition().DeclaringType == x.DeclaringType)
+            .Where(x => x.CanWrite)
             .ToArray();
 
         var missingProps = props
-            .Select(x => x.Name)
-            .Except(regexGraph.RootNode.Children.OfType<NamedGroupNode>().Select(y => y.Name))
+            .Except(regexGraph.RootNode.Children.OfType<NamedGroupNode>().Select(y => y.Navigation.Prop))
             .ToList();
 
         if (missingProps.Any())
