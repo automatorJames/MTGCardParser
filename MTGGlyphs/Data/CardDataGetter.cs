@@ -34,7 +34,7 @@ public class CardDataGetter : IDocumentRepository
         using var conn = new SqlConnection(_sqlConnString);
         var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
 
-        //result = result.Where(x => x.Name == "Urza's Avenger");
+        result = result.Where(x => x.Name == "Animate Artifact");
 
         ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
         //result = result.Where(x => x.Name == "Animate Artifact");
