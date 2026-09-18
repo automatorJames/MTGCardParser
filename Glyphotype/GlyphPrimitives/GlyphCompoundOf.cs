@@ -1,6 +1,4 @@
-﻿using Glyphotype.GlyphPrimitives.Internal;
-
-namespace Glyphotype.GlyphPrimitives;
+﻿namespace Glyphotype.GlyphPrimitives;
 
 public class CompoundOf<T> : CompoundOfBase
 {
