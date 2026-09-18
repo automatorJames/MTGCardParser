@@ -361,7 +361,7 @@ public static partial class GlyphTypeRegistry
         TypeRegexes = RegexGraphs.Where(x => typeof(Glyph).IsAssignableFrom(x.Key)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
 
         var dependentTypes = GetAllNonDynamicDependentGlyphTypes();
-        ClassTokenizer = new(AppliedOrderTypes, dependentTypes);
+        ClassTokenizer = new(AppliedOrderTypes, dependentTypes, GlobalSettings.Current.AllowPartialSegmentMatches);
     }
 
     static void AddClassGlyphType(Type glyphType)

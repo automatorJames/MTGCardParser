@@ -1,23 +1,12 @@
 ﻿using Glyphotype;
 using Glyphotype.GlyphAnalysisDTOs;
-using Microsoft.Extensions.Configuration;
 using MTGGlyphs.Data;
 
 namespace ConsoleUtility;
 
 internal class Program
 {
-    static IConfiguration _conf = new ConfigurationBuilder()
-        .SetBasePath(AppContext.BaseDirectory)
-        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-        .Build();
-
-    static GlobalSettings _globalSettings = _conf
-        .GetSection(nameof(GlobalSettings))
-        .Get<GlobalSettings>()
-        ?? throw new InvalidOperationException("GlobalSettings is missing from appsettings.json.");
-
-    static CardDataGetter _cardDataGetter = new(_globalSettings);
+    static CardDataGetter _cardDataGetter = new(GlobalSettings.Current);
 
     static CorpusAnalyzer _analyzer = new(_cardDataGetter);
 

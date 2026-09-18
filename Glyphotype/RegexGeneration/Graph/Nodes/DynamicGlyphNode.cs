@@ -29,7 +29,12 @@ public class DynamicGlyphNode : GlyphNode
         glyph = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);
         var captureValue = captureTrace.CaptureValue;
-        var resolvedTokens = GlyphTypeRegistry.ClassTokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true);
+        // allowPartialSegmentMatches is forced on regardless of the global setting: captureValue is a
+        // fragment carved out of one segment, not a segment of its own, so there's no whole-segment rule
+        // that could sensibly apply to it - and the shortfall handling just below depends on getting back
+        // the shorter resolved prefix that such a rule would reject outright, leaving nothing to narrow to.
+        var resolvedTokens = GlyphTypeRegistry.ClassTokenizer.Tokenize(
+            captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialSegmentMatches: true);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
         if (resolvedTokens.FirstOrDefault() is UnmatchedString || resolvedTokens.OfType<Glyph>().FirstOrDefault() is not Glyph dynamicMatchToken)
@@ -62,7 +67,7 @@ public class DynamicGlyphNode : GlyphNode
 
     /// <summary>
     /// Handles a resolution that stopped short of this node's own capture, by asking
-    /// <see cref="RegexGraph.TryMatch(string, int, int, out Glyph)"/> to retry the whole enclosing match
+    /// <see cref="RegexGraph.TryMatch(string, int, int, out Glyph, bool)"/> to retry the whole enclosing match
     /// against a scope ending exactly where the resolution did - but only when this capture is the last
     /// thing in that match, since only then is the shortfall a trailing remainder the Tokenizer can pick
     /// up again at the next whole word. A shortfall anywhere else leaves a hole with already-matched text

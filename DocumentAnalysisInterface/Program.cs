@@ -14,12 +14,10 @@ public class Program
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
 
-        var globalSettings = builder.Configuration
-            .GetSection(nameof(GlobalSettings))
-            .Get<GlobalSettings>()
-            ?? throw new InvalidOperationException("GlobalSettings is missing from configuration.");
-
-        builder.Services.AddSingleton(globalSettings);
+        // Registered from GlobalSettings.Current rather than bound off builder.Configuration, so that
+        // everything in the process - this container and Glyphotype's static registry alike, the latter
+        // initializing whenever something first touches it - reads one already-resolved instance.
+        builder.Services.AddSingleton(GlobalSettings.Current);
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();

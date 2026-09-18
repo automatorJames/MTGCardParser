@@ -64,6 +64,16 @@ public abstract class Glyph : CaptureUnit
         if (Type.IsDefined(typeof(DependentAttribute)) && Type.IsDefined(typeof(MustMatchWholeLineAttribute)))
             return $"{Type.Name} cannot be both {nameof(DependentAttribute)} and {nameof(MustMatchWholeLineAttribute)} - a dependent is always matched as a subgraph of a parent, so it can never independently match a whole line";
 
+        // AllowPartialSegmentMatch exists solely to exempt a top-level type from the Tokenizer's
+        // whole-segment requirement. A dependent is never a top-level candidate in the first place, and a
+        // MustMatchWholeLine type is held to a rule strictly stricter than the one being opted out of -
+        // so in either pairing the attribute is dead weight that reads like it's doing something.
+        if (Type.IsDefined(typeof(AllowPartialSegmentMatchAttribute)) && Type.IsDefined(typeof(DependentAttribute)))
+            return $"{Type.Name} cannot be both {nameof(AllowPartialSegmentMatchAttribute)} and {nameof(DependentAttribute)} - a dependent is only ever matched as a subgraph of a parent, so it is never subject to the whole-segment requirement this opts out of";
+
+        if (Type.IsDefined(typeof(AllowPartialSegmentMatchAttribute)) && Type.IsDefined(typeof(MustMatchWholeLineAttribute)))
+            return $"{Type.Name} cannot be both {nameof(AllowPartialSegmentMatchAttribute)} and {nameof(MustMatchWholeLineAttribute)} - requiring a whole line is strictly stricter than requiring a whole segment, so opting out of the latter would have no effect";
+
         // DeclaredOnly still includes properties that override a base virtual member (e.g. Nibs,
         // Joiner), since C# generates a PropertyInfo on the derived type for those too. Excluding
         // anything whose base definition lives on a different type leaves only genuinely new,

@@ -29,10 +29,19 @@ public class RegexGraph
 
     /// <summary>
     /// Whether <see cref="RootGlyphType"/> carries <see cref="MustMatchWholeLineAttribute"/> - if so,
-    /// <see cref="TryMatch(string, int, int, out Glyph)"/> only accepts a match that consumes the entire
+    /// <see cref="TryMatch(string, int, int, out Glyph, bool)"/> only accepts a match that consumes the entire
     /// requested scope, rather than the usual "ends at a boundary char" allowance for a partial match.
     /// </summary>
     public bool MustMatchWholeLine { get; }
+
+    /// <summary>
+    /// Whether <see cref="RootGlyphType"/> carries <see cref="AllowPartialSegmentMatchAttribute"/> - if so,
+    /// the Tokenizer exempts it from the whole-segment requirement it otherwise imposes when
+    /// <see cref="GlobalSettings.AllowPartialSegmentMatches"/> is false. Purely a Tokenizer-level
+    /// candidacy concern: nothing in this class reads it, since exempting a type just means it gets
+    /// matched against the ordinary scope with the ordinary boundary rule.
+    /// </summary>
+    public bool AllowsPartialSegmentMatch { get; }
 
     /// <summary>
     /// Maps NamedGroupNode FullyQualifiedName -> RegexNode.
@@ -52,6 +61,7 @@ public class RegexGraph
         IsDependent = rootGlyphType.IsDefined(typeof(DependentAttribute));
         RootNode = rootNode;
         MustMatchWholeLine = rootGlyphType.IsDefined(typeof(MustMatchWholeLineAttribute));
+        AllowsPartialSegmentMatch = rootGlyphType.IsDefined(typeof(AllowPartialSegmentMatchAttribute));
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
         BuiltRegex = collector.GetBuiltRegex();
@@ -132,7 +142,13 @@ public class RegexGraph
     /// <summary>
     /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.
     /// </summary>
-    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph)
+    /// <param name="mustConsumeWholeScope">
+    /// Forces the whole-scope rule described on <see cref="MustMatchWholeLine"/> onto this one call, for a
+    /// type that doesn't carry <see cref="MustMatchWholeLineAttribute"/> itself. How the Tokenizer imposes
+    /// its whole-segment requirement: it narrows <paramref name="endIndex"/> to the end of the current
+    /// segment and then demands the match fill it, which is the same shape of rule against a smaller scope.
+    /// </param>
+    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph, bool mustConsumeWholeScope = false)
     {
         // Retried against a progressively shorter scope whenever hydration discovers that a trailing
         // DynamicGlyph resolved less text than its greedy pattern captured (see
@@ -146,7 +162,7 @@ public class RegexGraph
 
         while (true)
         {
-            if (TryMatchWithinScope(sourceText, currentIndex, endIndex, scopeEnd, out glyph, out int narrowedScopeEnd))
+            if (TryMatchWithinScope(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, out glyph, out int narrowedScopeEnd))
                 return true;
 
             // Either no narrowing was requested (an ordinary failed match, leaving -1) or the one that
@@ -166,8 +182,9 @@ public class RegexGraph
     /// where the window has to be bounded up front so a greedy pattern can't just re-take the very text
     /// the retry exists to exclude.
     /// </param>
+    /// <param name="mustConsumeWholeScope"><inheritdoc cref="TryMatch(string, int, int, out Glyph, bool)" path="/param[@name='mustConsumeWholeScope']"/></param>
     /// <param name="narrowedScopeEnd">The scope end to retry at, or -1 if no narrowing was requested.</param>
-    bool TryMatchWithinScope(string sourceText, int currentIndex, int endIndex, int scopeEnd, out Glyph glyph, out int narrowedScopeEnd)
+    bool TryMatchWithinScope(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Glyph glyph, out int narrowedScopeEnd)
     {
         glyph = null;
         narrowedScopeEnd = -1;
@@ -180,9 +197,10 @@ public class RegexGraph
 
         // A MustMatchWholeLine type is a special case: nothing else may share its tokenization pass, so
         // it must consume the entire requested scope - ending at a boundary char partway through isn't
-        // good enough. Every other type keeps the normal "end of scope, or followed by a boundary char"
-        // partial-match allowance.
-        bool endsAtBoundary = MustMatchWholeLine
+        // good enough. mustConsumeWholeScope asks for that same treatment per-call, which is how the
+        // Tokenizer enforces its whole-segment requirement against a segment-sized endIndex. Every other
+        // type keeps the normal "end of scope, or followed by a boundary char" partial-match allowance.
+        bool endsAtBoundary = (MustMatchWholeLine || mustConsumeWholeScope)
             ? matchEndIndex == endIndex
             : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
 
