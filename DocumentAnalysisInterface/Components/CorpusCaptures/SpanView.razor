@@ -164,7 +164,9 @@
 
     string GetClass()
     {
-        if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
+        // Neither synthesized root takes boxes or underlines - there's no matched structure to draw, and
+        // no palette slot of their own to look up.
+        if (CaptureTrace is RootCaptureTrace root && root.IsSynthesized)
             return "";
 
         var classes = new List<string>();
@@ -186,7 +188,10 @@
 
     string GetStyle()
     {
-        if (CaptureTrace is RootCaptureTrace root && root.IsUnmatchedString)
+        if (CaptureTrace is RootCaptureTrace root && root.IsClauseBreak)
+            return "";
+
+        if (CaptureTrace is RootCaptureTrace unmatchedRoot && unmatchedRoot.IsUnmatchedString)
             return "color: var(--unmatched-text-color);";
 
         // A collapsed node paints no border of its own, so it gets no style at all — in

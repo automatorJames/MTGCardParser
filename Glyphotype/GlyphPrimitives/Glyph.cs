@@ -99,7 +99,90 @@ public abstract class Glyph : CaptureUnit
         if (misplacedQuantifierAttributeProps.Any())
             return $"{nameof(OneOrMoreAttribute)}/{nameof(AnyNumberAttribute)} may only appear on List<> properties, but found on: {string.Join(", ", misplacedQuantifierAttributeProps)}";
 
+        if (GetUnanchoredDynamicError() is string unanchoredDynamicError)
+            return unanchoredDynamicError;
+
         return null;
+    }
+
+    /// <summary>
+    /// Guards the one shape of <see cref="DynamicGlyph"/> authoring that can't terminate: a type whose
+    /// dynamic capture is able to span the type's own entire match.
+    /// <para>
+    /// Resolving a dynamic re-enters the Tokenizer on the captured text (see
+    /// <see cref="Nodes.DynamicGlyphNode.TryHydrate"/>), and that resolution only counts if a single Glyph
+    /// consumes the capture end to end - so the recursion is "tokenize this text, which may pick this very
+    /// type again". What normally makes that terminate is that every level is strictly shorter than the
+    /// last: the type's other nibs eat at least one character before its dynamic gets the remainder. Take
+    /// those away - as in a type whose nibs are nothing but <c>[Prop(SomeDynamic)]</c> - and the capture
+    /// equals the whole match, the next level is handed the identical string, and it recurses until the
+    /// stack dies. That's an uncatchable process kill, not an exception, so it has to be refused up front
+    /// rather than caught later.
+    /// </para>
+    /// <para>
+    /// So: a type carrying a dynamic nib must also carry at least one nib that is guaranteed to contribute
+    /// at least one character - see <see cref="AlwaysConsumesText"/>. Note this bounds the recursion, it
+    /// doesn't forbid it: a dynamic resolving to a type that itself has a dynamic is perfectly fine, and
+    /// works today, precisely because each such level is anchored and so strictly shrinks.
+    /// </para>
+    /// </summary>
+    string GetUnanchoredDynamicError()
+    {
+        var nibs = GlyphTypeRegistry.GetGlyphTypeConfiguration(Type).Nibs;
+
+        var dynamicNibNames = nibs
+            .OfType<PropertyNib>()
+            .Where(x => x.Navigation.NodeType.IsAssignableTo(typeof(DynamicGlyph)))
+            .Select(x => x.Name)
+            .ToList();
+
+        if (dynamicNibNames.Count == 0 || nibs.Any(x => AlwaysConsumesText(x)))
+            return null;
+
+        return $"{Type.Name} declares a {nameof(DynamicGlyph)} nib ({string.Join(", ", dynamicNibNames)}) but nothing that is guaranteed to match at least one character alongside it, so the dynamic's capture can span the type's entire match - resolving it would re-tokenize the identical text, re-pick this type, and recurse until the stack overflows. Add a non-optional literal nib (or another non-optional, non-dynamic property) so every level of the resolution consumes something";
+    }
+
+    /// <summary>
+    /// Whether <paramref name="nib"/> is guaranteed to contribute at least one character to any match of
+    /// the type that declares it - i.e. whether it can serve as the anchor
+    /// <see cref="GetUnanchoredDynamicError"/> requires. Conservative by design: anything that might match
+    /// nothing answers false, so a doubtful case is refused rather than allowed to recurse.
+    /// </summary>
+    static bool AlwaysConsumesText(Nib nib, HashSet<Type> visitedTypes = null)
+    {
+        // A plain literal text nib always emits its text; an OptionalNib wraps it in "( )?" and may not.
+        if (nib is not PropertyNib propertyNib)
+            return !nib.IsOptional;
+
+        // "?" or "*" - permits zero occurrences by construction.
+        if (propertyNib.Navigation.IsOptional)
+            return false;
+
+        var nodeType = propertyNib.Navigation.NodeType;
+
+        // The thing being anchored against, so never itself the anchor.
+        if (nodeType.IsAssignableTo(typeof(DynamicGlyph)))
+            return false;
+
+        // BoolNode hardcodes its own Optional quantifier rather than deriving it from Navigation, so
+        // Navigation.IsOptional above reads false for a bool even though it matches nothing when absent.
+        if (nodeType == typeof(bool))
+            return false;
+
+        // Enum and int terminals always emit one of their alternatives.
+        if (!nodeType.IsAssignableTo(typeof(Glyph)))
+            return true;
+
+        // A nested Glyph only anchors if it has an anchor of its own - it contributes nothing on its own
+        // account, only whatever its own nibs guarantee. Startup rules out reference loops before any of
+        // this runs (see CheckForReferenceLoops), but a dynamically emitted type is validated on its own
+        // without that sweep, so the visited set keeps this walk safe regardless.
+        visitedTypes ??= [];
+
+        if (!visitedTypes.Add(nodeType))
+            return false;
+
+        return GlyphTypeRegistry.GetGlyphTypeConfiguration(nodeType).Nibs.Any(x => AlwaysConsumesText(x, visitedTypes));
     }
 
     public string CheckForReferenceLoops() => CheckForReferenceLoops(GetType());

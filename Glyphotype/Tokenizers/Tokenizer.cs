@@ -69,8 +69,12 @@ public class Tokenizer
         // - a MustMatchWholeLine type is even stricter than the requirement, so it's already ruled out
         // anywhere past the scope start. With none of them in the candidate set, a segment that didn't
         // match at its own start can't match anywhere within itself, which the ratchet below exploits.
+        // Read off the type rather than its RegexGraph: this runs eagerly over every candidate, and
+        // the dependent types added above aren't guaranteed to have a graph registered (under
+        // IsolateForTesting they're discovered unfiltered while the graphs are built only for the
+        // isolated closure). The loop below only ever indexes a graph for a type it actually reaches.
         bool anyCandidateAllowsPartialSegment = filteredTypes
-            .Any(x => GlyphTypeRegistry.RegexGraphs[x].AllowsPartialSegmentMatch);
+            .Any(x => x.IsDefined(typeof(AllowPartialSegmentMatchAttribute)));
 
         int segmentStartIndex = scopeStartIndex;
         int segmentEndIndex = FindSegmentEnd(sourceText, segmentStartIndex, endIndex);
@@ -105,14 +109,19 @@ public class Tokenizer
                 if (mustConsumeSegment && !atSegmentStart)
                     continue;
 
-                // A whole-segment match is just the whole-scope rule applied to a segment-sized scope:
-                // cap the scope at the segment end so a greedy pattern can't reach past the period, then
-                // require the match to fill it. MustMatchWholeLine keeps the full scope - it demands the
-                // entire line, which is strictly more than any one segment of it.
-                int typeEndIndex = mustConsumeSegment ? segmentEndIndex : endIndex;
-
-                if (rootNode.TryMatch(sourceText, currentIndex, typeEndIndex, out var token, mustConsumeSegment))
+                // The rule is "cover a whole number of segments, at least one" - so a type is offered each
+                // successive clause boundary as a candidate end, shortest first, and must fill whichever
+                // one it takes. Only a type that declares a clause break of its own (SpansClauses) is
+                // offered more than the first: everything else is capped at one segment, which is what
+                // stops a greedy wildcard from swallowing clauses it never said it wanted.
+                // MustMatchWholeLine and the exempt types skip all this and run against the full scope, as
+                // before - the former still has to fill it (RegexGraph applies that itself), the latter
+                // still may end partway through it.
+                foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, segmentEndIndex, mustConsumeSegment, rootNode.SpansClauses))
                 {
+                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, mustConsumeSegment))
+                        continue;
+
                     // --- COMMIT PHASE ---
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
@@ -126,10 +135,31 @@ public class Tokenizer
                     matched = true;
                     break;
                 }
+
+                if (matched)
+                    break;
             }
 
             if (!matched)
             {
+                // Nothing matched here because the cursor is sitting on a clause-separating period. That
+                // period is modeled punctuation, not text still awaiting a Glyph, so it gets a token of its
+                // own rather than being folded into the surrounding unmatched span - see ClauseBreak.
+                if (currentIndex == segmentEndIndex && currentIndex < endIndex && sourceText[currentIndex] == '.')
+                {
+                    FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
+                    tokens.Add(new ClauseBreak(sourceText, currentIndex, 1));
+
+                    // Step past the period and the whitespace trailing it, so the next clause opens on its
+                    // first real character rather than on a space that would read as unmatched text.
+                    currentIndex++;
+
+                    while (currentIndex < endIndex && sourceText[currentIndex] == ' ')
+                        currentIndex++;
+
+                    continue;
+                }
+
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
@@ -155,12 +185,53 @@ public class Tokenizer
                     currentIndex = endIndex;
                 else
                     currentIndex = nextSpaceIndex + 1;
+
+                // ...but never past this clause's terminating period. A period is a hard delimiter, so
+                // stopping on it is what keeps the run of unmatched text this ratchet is accumulating from
+                // spanning one - the next pass then emits it as its own ClauseBreak. Without this, whether
+                // a period became a token or got swallowed into unmatched text would depend on the
+                // accident of whether the preceding clause happened to match.
+                if (currentIndex > segmentEndIndex && segmentEndIndex < endIndex)
+                    currentIndex = segmentEndIndex;
             }
         }
 
         FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, endIndex);
 
         return tokens;
+    }
+
+    /// <summary>
+    /// The scope ends a type may be matched against at the current position, in the order they should be
+    /// tried. A type not held to the whole-segment rule gets the full scope and nothing else (it either
+    /// fills the line or may end partway, both of which <see cref="RegexGraph.TryMatch"/> decides on its
+    /// own). A type held to it gets the first clause boundary, and - only if it declares a clause break of
+    /// its own - each later one in turn, shortest first, so it settles on the fewest clauses that satisfy
+    /// it rather than the most.
+    /// </summary>
+    static IEnumerable<int> GetCandidateEnds(
+        string sourceText, int endIndex, int segmentEndIndex, bool mustConsumeSegment, bool spansClauses)
+    {
+        if (!mustConsumeSegment)
+        {
+            yield return endIndex;
+            yield break;
+        }
+
+        yield return segmentEndIndex;
+
+        if (!spansClauses)
+            yield break;
+
+        int candidateEnd = segmentEndIndex;
+
+        // Each step moves past the period just offered and out to the next boundary, so the sequence
+        // strictly increases and terminates at endIndex.
+        while (candidateEnd < endIndex)
+        {
+            candidateEnd = FindSegmentEnd(sourceText, candidateEnd + 1, endIndex);
+            yield return candidateEnd;
+        }
     }
 
     /// <summary>

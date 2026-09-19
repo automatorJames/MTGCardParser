@@ -243,15 +243,39 @@ public static partial class GlyphTypeRegistry
         return allTypes;
     }
 
-    static List<Type> GetAllNonDynamicDependentGlyphTypes() =>
-        _staticAssemblyTypes
+    /// <summary>
+    /// The dependent types the Tokenizer may consider when resolving a <see cref="DynamicGlyph"/>
+    /// (see <see cref="Tokenizers.Tokenizer.Tokenize"/>'s includeDependentTypes).
+    /// <para>
+    /// Scoped to <see cref="GetAllTypesForValidation"/> for the same reason - and by the same isolation
+    /// rule - that <see cref="GetAllTopLevelGlyphTypes"/> is: those two sets are what the Tokenizer hands
+    /// to <see cref="RegexGraphs"/>, and a graph only exists for a type inside that scope. Left unscoped,
+    /// an <see cref="IsolateForTestingAttribute"/> run would discover every dependent in the assembly
+    /// while building graphs for only the isolated closure, and the first dynamic resolution that had to
+    /// look past the isolated types would throw KeyNotFoundException out of the Tokenizer's own loop.
+    /// </para>
+    /// <para>
+    /// Consequence worth knowing while testing: under isolation a dynamic can only resolve to types in
+    /// the isolated closure. A payload type that's only ever reached *through* a dynamic has no static
+    /// property reference to pull it in, so isolating a dynamic-bearing type means marking its intended
+    /// payload types with <see cref="IsolateForTestingAttribute"/> too - they're roots of the closure in
+    /// their own right (see <see cref="GetAllTypesForValidation"/>), dependent or not.
+    /// </para>
+    /// </summary>
+    static List<Type> GetAllNonDynamicDependentGlyphTypes()
+    {
+        var typesInScope = GetAllTypesForValidation().ToHashSet();
+
+        return _staticAssemblyTypes
             .Where(x =>
                 x.IsClass && !x.IsAbstract
                 && typeof(Glyph).IsAssignableFrom(x)
                 && !x.ContainsGenericParameters
                 && x.IsDefined(typeof(DependentAttribute))
-                && x != typeof(DynamicGlyph))
+                && x != typeof(DynamicGlyph)
+                && typesInScope.Contains(x))
             .ToList();
+    }
 
     /// <summary>
     /// Every type ValidateStructure() should run against: every non-generic, non-abstract Glyph

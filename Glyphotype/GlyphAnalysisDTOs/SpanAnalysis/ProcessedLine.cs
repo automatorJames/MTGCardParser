@@ -22,7 +22,13 @@ public class ProcessedLine
     public string DataPath { get; init; }
 
     public List<RootCaptureTrace> CaptureTraceRoots => Glyphs.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
-    public List<RootCaptureTrace> CaptureTraceRootsExceptUnmatchedStrings => CaptureTraceRoots.Where(x => !x.IsUnmatchedString).ToList();
+    /// <summary>
+    /// Just the roots that came from actually matching a Glyph type - what a consumer displaying captures
+    /// as captures wants, as opposed to <see cref="CaptureTraceRoots"/>, which includes the Tokenizer's
+    /// own synthesized fillers (see <see cref="RootCaptureTrace.IsSynthesized"/>) because rendering the
+    /// line's text needs every span, matched or not.
+    /// </summary>
+    public List<RootCaptureTrace> MatchedCaptureTraceRoots => CaptureTraceRoots.Where(x => !x.IsSynthesized).ToList();
 
     /// <summary>
     /// Total count of all words on this line.
@@ -43,8 +49,13 @@ public class ProcessedLine
         DataPath = dataPath;
 
         WordCount = CountWords(sourceText.FormattedText);
+        // Clause breaks are excluded alongside unmatched text, for the opposite reason: a period is
+        // modeled, but it isn't a word. WordCount counts it as part of whatever word it trails ("flying."
+        // is one word), so counting the ClauseBreak token as a captured word too would credit coverage
+        // that the denominator never had.
         CapturedWordCount = glyphs
             .Where(x => !x.CaptureContext.RootCaptureTrace.IsUnmatchedString)
+            .Where(x => !x.CaptureContext.RootCaptureTrace.IsClauseBreak)
             .Sum(x => CountWords(x.CaptureValue));
     }
 

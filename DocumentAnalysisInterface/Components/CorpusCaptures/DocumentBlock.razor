@@ -53,7 +53,7 @@
                         }
                     </pre>
 
-                    @foreach (var root in line.CaptureTraceRootsExceptUnmatchedStrings)
+                    @foreach (var root in line.MatchedCaptureTraceRoots)
                     {
                         <PropertyTable BranchTrace=@root />
                     }

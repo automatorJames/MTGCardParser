@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace Glyphotype.RegexGeneration.Graph;
 
@@ -10,12 +10,25 @@ public class RootCaptureTrace : CaptureTrace
     public GlyphNode RootNode { get; }
     [JsonProperty] public bool IsUnmatchedString { get; }
 
+    /// <summary>Whether this root is a <see cref="ClauseBreak"/> - a synthesized clause-separating period rather than a matched Glyph. Distinct from <see cref="IsUnmatchedString"/>: a clause break is modeled punctuation, not text still awaiting a Glyph.</summary>
+    [JsonProperty] public bool IsClauseBreak { get; }
+
+    /// <summary>
+    /// Whether this root was manufactured by the Tokenizer to account for a span of source text, rather
+    /// than produced by matching a Glyph type - <see cref="IsUnmatchedString"/> or
+    /// <see cref="IsClauseBreak"/>. Neither has nibs, a property graph, or a registered type, so anything
+    /// presenting captures *as* captures (the property tables, per-type corpus analysis) should skip them;
+    /// they still carry a real span, so anything rendering the line's text still walks them.
+    /// </summary>
+    public bool IsSynthesized => IsUnmatchedString || IsClauseBreak;
+
     public RootCaptureTrace(CaptureContext captureContext, GlyphNode rootNode, Capture capture)
         : base(captureContext, rootNode, capture)
     {
         RootNode = rootNode;
         _flatCaptureTree[rootNode.FullyQualifiedName] = this;
         IsUnmatchedString = rootNode is UnmatchedGlyphNode;
+        IsClauseBreak = rootNode is ClauseBreakNode;
     }
 
     public CaptureTrace this[string fullyQualifiedName]

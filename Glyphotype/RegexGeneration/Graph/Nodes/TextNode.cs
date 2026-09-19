@@ -24,7 +24,15 @@ public class TextNode : RegexNode
     public char LastChar => Text.Last();
 
     /// <summary>Whether this node's text opens with <see cref="_tightPunctuation"/> - e.g. <c>'s</c>, or a bare <c>","</c> nib - and so must hug the token before it rather than be separated from it by a joiner.</summary>
-    public bool StartsWithTightPunctuation => _tightPunctuation.Contains(FirstChar);
+    public bool StartsWithTightPunctuation => IsClauseBreak || _tightPunctuation.Contains(FirstChar);
+
+    /// <summary>
+    /// Whether this nib was authored as a bare period - the one way a Glyph type declares that it
+    /// deliberately spans a clause boundary (see <see cref="RegexGraph.SpansClauses"/>). Checked against
+    /// the authored nib text rather than <see cref="Text"/>, since by then the period has been escaped to
+    /// <c>\.</c> and a pattern nib like <c>zzg.*</c> would otherwise look the same as a literal period.
+    /// </summary>
+    public bool IsClauseBreak { get; }
 
     /// <summary>Whether this node's text closes with <see cref="_tightPunctuation"/>, so the joiner that follows it belongs on this node's own line rather than a line of its own.</summary>
     public bool EndsWithTightPunctuation => _tightPunctuation.Contains(LastChar);
@@ -47,6 +55,13 @@ public class TextNode : RegexNode
 
         if (string.IsNullOrEmpty(text))
             throw new Exception($"{nameof(TextNode)} text can't be null or empty");
+
+        // A bare "." nib means a literal period, but "." is regex for "any character" - left unescaped a
+        // clause-spanning type would happily match any character where it declared a clause break.
+        IsClauseBreak = text == ".";
+
+        if (IsClauseBreak)
+            text = @"\.";
 
         if (nib.IsOptional)
             text = $"({text} )?";

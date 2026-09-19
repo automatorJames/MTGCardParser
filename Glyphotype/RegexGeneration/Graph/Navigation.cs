@@ -29,12 +29,12 @@ public class Navigation
     {
         SetTypeInfo(type);
 
-        // UnmatchedString is the one deliberate exception: it never goes through the registry
-        // (GlyphTypeRegistry excludes it from top-level types, so it has no GlyphTypeConfiguration),
-        // but it still builds its own throwaway root Navigation/UnmatchedGlyphNode purely to seed a
-        // CaptureContext for its own instance - see UnmatchedString's own constructor.
-        if (!IsGlyphType && type != typeof(UnmatchedString))
-            throw new Exception($"This constructor may only be used for {nameof(Glyph)} types (or {nameof(UnmatchedString)})");
+        // UnmatchedString and ClauseBreak are the deliberate exceptions: neither goes through the registry
+        // (both are CaptureUnits rather than Glyphs, so neither is a top-level type and neither has a
+        // GlyphTypeConfiguration), but each still builds its own throwaway root Navigation and node purely
+        // to seed a CaptureContext for its own instance - see those two types' own constructors.
+        if (!IsGlyphType && type != typeof(UnmatchedString) && type != typeof(ClauseBreak))
+            throw new Exception($"This constructor may only be used for {nameof(Glyph)} types (or {nameof(UnmatchedString)}/{nameof(ClauseBreak)})");
 
         IsRoot = true;
         Name = GetRegexSafeTypeName(UnderlyingType);
