@@ -10,6 +10,25 @@ namespace Glyphotype.GlyphPrimitives;
 /// </summary>
 public abstract class CaptureUnit
 {
+    /// <summary>Run within a bounded window, matches exactly that window, whatever its length.</summary>
+    static readonly Regex _wholeWindow = new(".+", RegexOptions.Singleline);
+
+    /// <summary>
+    /// A <see cref="CaptureContext"/> spanning exactly <paramref name="length"/> characters of
+    /// <paramref name="sourceText"/> from <paramref name="index"/> - for a unit the Tokenizer constructs directly
+    /// (e.g. <see cref="UnmatchedString"/>) rather than matching with a graph. <paramref name="rootNode"/> is
+    /// shared by every instance of the unit, just as a matched Glyph type's graph nodes are.
+    /// </summary>
+    protected static CaptureContext CreateSpanContext(GlyphNode rootNode, string sourceText, int index, int length) =>
+        new(rootNode, _wholeWindow.Match(sourceText, index, length), sourceText);
+
+    /// <summary>A root node for a directly constructed unit, with its (lazily built) children forced up front, since one instance is shared across threads.</summary>
+    protected static TNode CreateSharedRootNode<TNode>(TNode node) where TNode : GlyphNode
+    {
+        _ = node.Children;
+        return node;
+    }
+
     public CaptureContext CaptureContext { get; set; }
 
     public string CaptureValue =>

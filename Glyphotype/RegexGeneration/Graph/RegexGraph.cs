@@ -93,6 +93,9 @@ public class RegexGraph
     /// </summary>
     public Dictionary<string, NamedGroupNode> NamedGroupFlatGraph { get; } = [];
 
+    /// <summary>The characters a match of this graph can begin with - see <see cref="StartCharSet"/>.</summary>
+    public StartCharSet StartChars { get; }
+
     /// <summary>
     /// Maps each NamedGroupNode FullyQualifiedName to a minimum unique simplified
     /// name. The simplified name is typically the name of the node itself
@@ -111,6 +114,7 @@ public class RegexGraph
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
         BuiltRegex = collector.GetBuiltRegex();
+        StartChars = StartCharSet.Of(RootNode);
         PopulateFlatGraphRecursive();
         PopulateSimpleUniqueNames();
     }

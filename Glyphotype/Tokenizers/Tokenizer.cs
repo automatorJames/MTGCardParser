@@ -1,11 +1,26 @@
-﻿namespace Glyphotype.Tokenizers;
+﻿using System.Collections.Concurrent;
+
+namespace Glyphotype.Tokenizers;
 
 public class Tokenizer
 {
     private readonly List<Type> _orderedTopLevelTypes;
     private readonly List<Type> _dependentTypes;
     private readonly bool _allowPartialSegmentMatches;
-    private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
+
+    /// <summary>
+    /// The types one <see cref="Tokenize"/> call tries, as their graphs in the order tried - and whether any of
+    /// them may match partway into a segment (see <see cref="RegexGraph.AllowsPartialSegmentMatch"/>).
+    /// </summary>
+    sealed record CandidateSet(RegexGraph[] Graphs, bool AnyAllowsPartialSegment);
+
+    /// <summary>
+    /// <see cref="CandidateSet"/>s by (scope type, dependents included?) - the only inputs they depend on, and a
+    /// handful of distinct combinations in practice. Resolved once rather than per call: every line of a corpus
+    /// is a call, and resolving the set (filtering types, looking up graphs) would otherwise cost more than
+    /// tokenizing the line.
+    /// </summary>
+    readonly ConcurrentDictionary<(Type ScopeToType, bool IncludeDependentTypes), CandidateSet> _candidateSets = new();
 
     /// <param name="allowPartialSegmentMatches">
     /// The default for <see cref="Tokenize"/>'s parameter of the same name, supplied by the
@@ -54,26 +69,13 @@ public class Tokenizer
         // gated by the segment bookkeeping maintained across the loop below.
         bool requireWholeSegments = !(allowPartialSegmentMatches ?? _allowPartialSegmentMatches);
 
-        var candidateTypes = _orderedTopLevelTypes.ToList();
-
-        if (includeDependentTypes)
-            candidateTypes.AddRange(_dependentTypes);
-
-        // Pre-filter types to avoid repeating logic inside the while loop
-        var filteredTypes =
-            (scopeToType != null && scopeToType != typeof(Glyph)) ? candidateTypes.Where(x => x.IsAssignableTo(scopeToType)).ToList()
-            : candidateTypes;
+        var candidates = GetCandidateSet(scopeToType, includeDependentTypes);
 
         // AllowPartialSegmentMatch is the only thing that keeps a type a candidate partway into a segment
         // - a MustMatchWholeLine type is even stricter than the requirement, so it's already ruled out
         // anywhere past the scope start. With none of them in the candidate set, a segment that didn't
         // match at its own start can't match anywhere within itself, which the ratchet below exploits.
-        // Read off the type rather than its RegexGraph: this runs eagerly over every candidate, and
-        // the dependent types added above aren't guaranteed to have a graph registered (under
-        // IsolateForTesting they're discovered unfiltered while the graphs are built only for the
-        // isolated closure). The loop below only ever indexes a graph for a type it actually reaches.
-        bool anyCandidateAllowsPartialSegment = filteredTypes
-            .Any(x => x.IsDefined(typeof(AllowPartialSegmentMatchAttribute)));
+        bool anyCandidateAllowsPartialSegment = candidates.AnyAllowsPartialSegment;
 
         int segmentStartIndex = scopeStartIndex;
         int segmentEndIndex = FindSegmentEnd(sourceText, segmentStartIndex, endIndex);
@@ -92,9 +94,11 @@ public class Tokenizer
             bool matched = false;
             bool atSegmentStart = currentIndex == segmentStartIndex;
 
-            foreach (var type in filteredTypes)
+            foreach (var rootNode in candidates.Graphs)
             {
-                var rootNode = GlyphTypeCache.GetRegexGraph(type);
+                // Can't match here at all, so skip it without paying for a regex call (see StartCharSet).
+                if (!rootNode.StartChars.CanStartWith(sourceText[currentIndex]))
+                    continue;
 
                 if (rootNode.MustMatchWholeLine && currentIndex != scopeStartIndex)
                     continue;
@@ -205,6 +209,19 @@ public class Tokenizer
 
         return tokens;
     }
+
+    CandidateSet GetCandidateSet(Type scopeToType, bool includeDependentTypes) =>
+        _candidateSets.GetOrAdd((scopeToType ?? typeof(Glyph), includeDependentTypes), key =>
+        {
+            var types = includeDependentTypes ? _orderedTopLevelTypes.Concat(_dependentTypes) : _orderedTopLevelTypes;
+
+            if (key.ScopeToType != typeof(Glyph))
+                types = types.Where(x => x.IsAssignableTo(key.ScopeToType));
+
+            var graphs = types.Select(GlyphTypeCache.GetRegexGraph).ToArray();
+
+            return new(graphs, graphs.Any(x => x.AllowsPartialSegmentMatch));
+        });
 
     /// <summary>
     /// The scope ends a type may be matched against at the current position, in the order they should be

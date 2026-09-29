@@ -7,15 +7,10 @@ public class UnmatchedString : CaptureUnit
     {
     }
 
+    static readonly UnmatchedGlyphNode _rootNode = CreateSharedRootNode(new UnmatchedGlyphNode(null, new(typeof(UnmatchedString))));
+
     public UnmatchedString(string sourceText, int unmatchedStart, int unmatchedLength)
     {
-        var regexForLength = new Regex($".{{{unmatchedLength}}}", RegexOptions.Singleline);
-        var match = regexForLength.Match(sourceText, unmatchedStart, unmatchedLength);
-
-        // Should always match
-        if (!match.Success)
-            throw new Exception();
-
-        CaptureContext = new(new UnmatchedGlyphNode(null, new(typeof(UnmatchedString))), match, sourceText);
+        CaptureContext = CreateSpanContext(_rootNode, sourceText, unmatchedStart, unmatchedLength);
     }
 }

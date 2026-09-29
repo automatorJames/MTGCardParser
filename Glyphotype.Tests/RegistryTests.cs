@@ -83,6 +83,40 @@ public class RegistryTests(CorpusFixture corpus)
         Assert.DoesNotContain(publicPropOverloads, x => x.GetParameters().Any(p => p.ParameterType == typeof(Quantifier) || p.ParameterType == typeof(Quantifier?)));
     }
 
+    [Fact]
+    public void Start_char_sets_never_rule_out_a_position_where_a_match_begins()
+    {
+        // The Tokenizer skips a type wherever its StartChars says a match can't begin, without running its
+        // regex - so a set missing a character would silently lose matches. Checked exhaustively: every test
+        // type's regex, anchored at every position of every corpus line.
+        var violations = new List<string>();
+
+        foreach (var type in corpus.Grammar.Types)
+        {
+            var graph = GlyphTypeCache.GetRegexGraph(type);
+            var anchored = new System.Text.RegularExpressions.Regex($@"\G({graph.BuiltRegex.MinifiedRegex})", System.Text.RegularExpressions.RegexOptions.ExplicitCapture);
+
+            foreach (var text in corpus.ProcessedDocuments.SelectMany(x => x.Lines).Select(x => x.SourceText.FormattedText))
+                for (int i = 0; i < text.Length; i++)
+                    if (!graph.StartChars.CanStartWith(text[i]) && anchored.Match(text, i) is { Success: true, Length: > 0 })
+                        violations.Add($"{type.Name} (starts: {graph.StartChars}) matches at \"{text[i..]}\"");
+        }
+
+        Assert.Empty(violations);
+    }
+
+    [Theory]
+    [InlineData(typeof(AnimalRests), "t")]              // literal first nib
+    [InlineData(typeof(FruitInBowl), "t")]
+    [InlineData(typeof(KnocksOnTheDoor), "ot")]         // one-of over glyphs: "our neighbor", "the ..."
+    [InlineData(typeof(ShoppingList), "befs")]          // compound of an enum: its members' initials
+    [InlineData(typeof(PressToAct), "p")]
+    [InlineData(typeof(IfWeather), "i")]                // a dynamic later in the sequence doesn't matter
+    public void Start_char_sets_are_selective(Type type, string expected)
+    {
+        Assert.Equal(expected, GlyphTypeCache.GetRegexGraph(type).StartChars.ToString());
+    }
+
     [Theory]
     [InlineData(typeof(DayHeading), new[] { "Alternative1", "Alternative2" })]
     [InlineData(typeof(OneOf<Animal?, Person?>), new[] { "Alternative1", "Alternative2" })]

@@ -23,15 +23,10 @@ public class ClauseBreak : CaptureUnit
     {
     }
 
+    static readonly ClauseBreakNode _rootNode = CreateSharedRootNode(new ClauseBreakNode(null, new(typeof(ClauseBreak))));
+
     public ClauseBreak(string sourceText, int index, int length)
     {
-        var regexForLength = new Regex($".{{{length}}}", RegexOptions.Singleline);
-        var match = regexForLength.Match(sourceText, index, length);
-
-        // Should always match
-        if (!match.Success)
-            throw new Exception();
-
-        CaptureContext = new(new ClauseBreakNode(null, new(typeof(ClauseBreak))), match, sourceText);
+        CaptureContext = CreateSpanContext(_rootNode, sourceText, index, length);
     }
 }
