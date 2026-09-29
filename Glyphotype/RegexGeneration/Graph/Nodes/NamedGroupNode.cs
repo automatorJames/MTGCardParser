@@ -44,6 +44,9 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>The joiner this group actually renders between its own children: a Glyph type's declared <see cref="GlyphTypeConfiguration.ChildJoiner"/> if this is a Glyph-typed navigation, else this node type's own <see cref="ChildJoiner"/> override.</summary>
     public Joiner EffectiveChildJoiner => Navigation.GlyphTypeConfiguration?.ChildJoiner ?? ChildJoiner ?? Joiner.None;
 
+    /// <summary>The joiner rendered between two adjacent children, <paramref name="before"/> then <paramref name="after"/>. <see cref="EffectiveChildJoiner"/> for every pair by default; overridden where a group joins different kinds of child differently (see <see cref="GlyphOneOfNode"/>).</summary>
+    public virtual Joiner JoinerBetween(RegexNode before, RegexNode after) => EffectiveChildJoiner;
+
     public NamedGroupNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {

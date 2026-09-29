@@ -45,7 +45,7 @@ internal static class BrickCommentResolver
         {
             EnumNode => "enum",
             BoolNode => "bool",
-            IntNode => "int",
+            PrimitiveNode primitive => primitive.Terminal.DisplayName,
             GlyphOneOfNode => "one of",
             DynamicGlyphNode => "dynamic",
             JoinedItemNode => "internals",

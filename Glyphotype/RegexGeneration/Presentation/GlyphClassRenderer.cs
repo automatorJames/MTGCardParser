@@ -54,7 +54,7 @@ public static class GlyphClassRenderer
     /// enum (see <see cref="RenderEnum"/>), or a concrete (non-generic) <see cref="Glyph"/> subtype (see
     /// <see cref="Render"/>) - including one that's optional or wraps a <see cref="Glyphotype.GlyphPrimitives.CompoundOfBase"/>,
     /// since those are still real, concrete declared types with their own source to jump to. Excludes
-    /// primitives (<see cref="BoolNode"/>/<see cref="IntNode"/>), unbound generic wrappers like
+    /// primitives (<see cref="BoolNode"/>/<see cref="PrimitiveNode"/>), unbound generic wrappers like
     /// <c>OneOf&lt;,&gt;</c>/<c>ManyOf&lt;&gt;</c> (no source file of their own - only their closed-over type
     /// arguments might have one), and <see cref="DynamicGlyphNode"/> - a
     /// <see cref="Glyphotype.GlyphPrimitives.DynamicGlyph"/> capture has no *one* fixed type to jump straight
@@ -64,7 +64,7 @@ public static class GlyphClassRenderer
         node switch
         {
             EnumNode => true,
-            BoolNode or IntNode or DynamicGlyphNode => false,
+            BoolNode or PrimitiveNode or DynamicGlyphNode => false,
             _ => !node.Navigation.NodeType.IsGenericType,
         };
 

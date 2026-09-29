@@ -1,43 +1,47 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
-[Dependent]
-[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
-public class ManaValueItem : Glyph
+/// <summary>A run of mana symbols written with nothing between them, e.g. "{2}{w}{w}".</summary>
+[JoinedBy(Joiner.None)]
+public class ManaValue : CompoundOf<ManaSymbol>
 {
-    public override Joiner Joiner => Joiner.Pipe;
-
-    [RegexPattern(@"\d+")] public int? Colorless { get; set; }
-
-    [RegexPattern("w")] public int? White { get; set; }
-    [RegexPattern("u")] public int? Blue { get; set; }
-    [RegexPattern("b")] public int? Black { get; set; }
-    [RegexPattern("r")] public int? Red { get; set; }
-    [RegexPattern("g")] public int? Green { get; set; }
-
-    [RegexPattern("w/u")] public int? HybridWhiteBlue { get; set; }
-    [RegexPattern("w/b")] public int? HybridWhiteBlack { get; set; }
-    [RegexPattern("u/b")] public int? HybridBlueBlack { get; set; }
-    [RegexPattern("u/r")] public int? HybridBlueRed { get; set; }
-    [RegexPattern("b/r")] public int? HybridBlackRed { get; set; }
-    [RegexPattern("b/g")] public int? HybridBlackGreen { get; set; }
-    [RegexPattern("r/g")] public int? HybridRedGreen { get; set; }
-    [RegexPattern("r/w")] public int? HybridRedWhite { get; set; }
-    [RegexPattern("g/w")] public int? HybridGreenWhite { get; set; }
-    [RegexPattern("g/u")] public int? HybridGreenBlue { get; set; }
-    [RegexPattern("2/w")] public int? TwoOrWhite { get; set; }
-    [RegexPattern("2/u")] public int? TwoOrBlue { get; set; }
-    [RegexPattern("2/b")] public int? TwoOrBlack { get; set; }
-    [RegexPattern("2/r")] public int? TwoOrRed { get; set; }
-    [RegexPattern("2/g")] public int? TwoOrGreen { get; set; }
-
-    [RegexPattern("x")] public int? X { get; set; }
-    [RegexPattern("p")] public int? Phyrexian { get; set; }
-    [RegexPattern("s")] public int? Snow { get; set; }
-    [RegexPattern("∞")] public int? Infinite { get; set; }
 }
 
-public class ManaValue : GlyphFused<ManaValueItem>
+/// <summary>One braced mana symbol: an amount of colorless mana ("{2}"), or a symbol ("{w}", "{w/u}", "{x}").</summary>
+[Dependent]
+public class ManaSymbol : GlyphOneOf
 {
-    public override Nib BeforeContent => "{";
-    public override Nib AfterContent => "}";
+    public override Nib[] Nibs => [@"\{", Prop(Colorless), Prop(Symbol), @"\}"];
+
+    public int? Colorless { get; set; }
+    public ManaSymbolKind? Symbol { get; set; }
+}
+
+public enum ManaSymbolKind
+{
+    [RegexPattern("w")] White,
+    [RegexPattern("u")] Blue,
+    [RegexPattern("b")] Black,
+    [RegexPattern("r")] Red,
+    [RegexPattern("g")] Green,
+
+    [RegexPattern("w/u")] HybridWhiteBlue,
+    [RegexPattern("w/b")] HybridWhiteBlack,
+    [RegexPattern("u/b")] HybridBlueBlack,
+    [RegexPattern("u/r")] HybridBlueRed,
+    [RegexPattern("b/r")] HybridBlackRed,
+    [RegexPattern("b/g")] HybridBlackGreen,
+    [RegexPattern("r/g")] HybridRedGreen,
+    [RegexPattern("r/w")] HybridRedWhite,
+    [RegexPattern("g/w")] HybridGreenWhite,
+    [RegexPattern("g/u")] HybridGreenBlue,
+    [RegexPattern("2/w")] TwoOrWhite,
+    [RegexPattern("2/u")] TwoOrBlue,
+    [RegexPattern("2/b")] TwoOrBlack,
+    [RegexPattern("2/r")] TwoOrRed,
+    [RegexPattern("2/g")] TwoOrGreen,
+
+    [RegexPattern("x")] X,
+    [RegexPattern("p")] Phyrexian,
+    [RegexPattern("s")] Snow,
+    [RegexPattern("∞")] Infinite,
 }

@@ -1,0 +1,14 @@
+global using Glyphotype;
+global using Glyphotype.Attributes;
+global using Glyphotype.Attributes.Quantifiers;
+global using Glyphotype.GlyphAnalysisDTOs;
+global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
+global using Glyphotype.GlyphPrimitives;
+global using Glyphotype.Interfaces;
+global using Glyphotype.NibHelpers;
+global using Glyphotype.StaticRegistry;
+global using Glyphotype.Tests.Corpus;
+global using Glyphotype.Tests.Grammar;
+global using Glyphotype.Tests.Infrastructure;
+global using System.Reflection;
+global using Xunit;

@@ -8,7 +8,6 @@ public record PropertyNib : Nib
     public Type Type { get; }
     public string Name { get; }
     public Proptions Proptions { get; }
-    public Quantifier? Quantifier { get; }
 
     /// <summary>A better name than <see cref="Name"/> for "XOf" wrapper properties (FirstItem, Item, ...) - based on the wrapped type T instead. Null outside that hierarchy.</summary>
     public string DescriptiveName { get; }
@@ -16,21 +15,17 @@ public record PropertyNib : Nib
     /// <summary>This property's own <see cref="Navigation"/>, cached so every graph position sharing this <see cref="PropertyNib"/> reuses the same instance. Must be built last - its constructor snapshots <see cref="Proptions"/>.</summary>
     public Navigation Navigation { get; }
 
-    public PropertyNib(string text, PropertyInfo prop, Proptions proptions, Quantifier? quantifier = null)
+    public PropertyNib(string text, PropertyInfo prop, Proptions proptions)
         : base(text)
     {
         Prop = prop;
         Proptions = proptions;
         Type = prop.PropertyType;
         Name = prop.Name;
-        Quantifier = quantifier;
         DescriptiveName = ComputeDescriptiveName();
 
         // Extract metadata info from property attributes
         // Todo: we should be using Quantifier to express quantifiers, not Proptions
-
-        if (Prop.IsDefined(typeof(OneOrMoreAttribute)))
-            Proptions |= Proptions.OneOrMore;
 
         if (Prop.IsDefined(typeof(OptionalAttribute)))
             Proptions |= Proptions.Optional;
@@ -43,7 +38,10 @@ public record PropertyNib : Nib
         var declaringType = Prop.DeclaringType;
         var safeTypeName = Navigation.GetRegexSafeTypeName(Nullable.GetUnderlyingType(Type) ?? Type);
 
-        if (typeof(OneOfBase).IsAssignableFrom(declaringType) || IsClosedGeneric(declaringType, typeof(GlyphFused<>)))
+        // A generic OneOf's alternatives are only named Alternative1..N, so its type arguments are the meaningful
+        // labels (unambiguous: a generic OneOf may not repeat a type - see Glyph.GetOneOfTypeArgumentError). A
+        // GlyphOneOf names its alternatives itself, so it keeps those names.
+        if (IsClosedGeneric(declaringType, typeof(OneOf<,>)) || IsClosedGeneric(declaringType, typeof(OneOf<,,>)))
             return safeTypeName;
 
         if (IsClosedGeneric(declaringType, typeof(CompoundOf<>)) && Name == nameof(CompoundOf<object>.FirstItem))
@@ -75,19 +73,23 @@ public record PropertyNib : Nib
             .ToArray();
 
     /// <summary>
-    /// Whether a property belongs among a type's nib-bound properties: its type - or, for a
-    /// <see cref="List{T}"/>, its element type, nullable-unwrapped either way - is a <see cref="Glyph"/>
-    /// or an enum.
+    /// Whether a property belongs among a type's nib-bound properties: its nullable-unwrapped type is a
+    /// <see cref="Glyph"/>, an enum, a bool, or a supported primitive (see <see cref="PrimitiveTerminal"/>) -
+    /// or it's a <see cref="List{T}"/> of Glyphs.
     /// </summary>
     static bool IsRelevantPropertyType(Type propertyType)
     {
-        var elementType = Navigation.IsListType(propertyType) ? propertyType.GetGenericArguments()[0] : propertyType;
-        var underlyingElementType = Nullable.GetUnderlyingType(elementType) ?? elementType;
+        // A List<> only ever belongs to an internal primitive (see Glyph.GetListPropertyError), and those only
+        // ever hold lists of Glyphs - their repeated items (e.g. CompoundOf<T>.SecondPlus).
+        if (Navigation.IsListType(propertyType))
+            return propertyType.GetGenericArguments()[0].IsAssignableTo(typeof(Glyph));
+
+        var underlyingElementType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
 
         return
             underlyingElementType.IsAssignableTo(typeof(Glyph)) // Glyphs are the building blocks of non-terminal regex graphs
             || underlyingElementType.IsEnum // Enums are the primary terminals of regex graphs
             || underlyingElementType == typeof(bool) // Bools are also allowable terminals in regex graphs
-            || propertyType == typeof(int?); // Nullable ints are allowable terminals in the "T" of GlyphFused<T> (the fused content, comprised of countable properties)
+            || PrimitiveTerminal.IsSupported(underlyingElementType); // As are parsed primitives, e.g. int
     }
 }

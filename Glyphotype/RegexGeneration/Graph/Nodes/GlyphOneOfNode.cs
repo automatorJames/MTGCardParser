@@ -1,10 +1,48 @@
-﻿namespace Glyphotype.RegexGeneration.Graph.Nodes;
+namespace Glyphotype.RegexGeneration.Graph.Nodes;
 
+/// <summary>
+/// A <see cref="OneOfBase"/>: its properties are alternatives, exactly one of which matches.
+/// <para>
+/// Its <see cref="Glyph.Nibs"/> may also put literal text around the alternatives - one contiguous run of
+/// properties with text before and/or after it, as <see cref="OneOfBase.ValidateStructure"/> enforces - e.g.
+/// <c>[@"\{", Prop(Colorless), Prop(Symbol), @"\}"]</c> for a braced symbol. That renders as
+/// <c>\{(colorless|symbol)\}</c>: the pipe only ever sits between two alternatives, the alternatives are
+/// grouped so the text binds to all of them rather than to the first and last alone (a plain group, which
+/// captures nothing under <see cref="RegexOptions.ExplicitCapture"/>), and nothing is inserted between the
+/// text and the alternatives - any space wanted there belongs in the text itself.
+/// </para>
+/// </summary>
 public class GlyphOneOfNode : GlyphNode
 {
     public GlyphOneOfNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
+    }
+
+    public override Joiner JoinerBetween(RegexNode before, RegexNode after) =>
+        before is NamedGroupNode && after is NamedGroupNode ? EffectiveChildJoiner : Joiner.None;
+
+    protected override void AppendInnerContentBricks(RegexCollector collector)
+    {
+        if (!Children.OfType<TextNode>().Any())
+        {
+            base.AppendInnerContentBricks(collector);
+            return;
+        }
+
+        var firstAlternative = Children.FindIndex(x => x is NamedGroupNode);
+        var lastAlternative = Children.FindLastIndex(x => x is NamedGroupNode);
+
+        for (int i = 0; i < Children.Count; i++)
+        {
+            if (i == firstAlternative)
+                collector.Append(new RegexBrick(this, "("));
+
+            Children[i].AppendRegexBricks(collector);
+
+            if (i == lastAlternative)
+                collector.Append(new RegexBrick(this, ")"));
+        }
     }
 
     public override bool TryHydrate(CaptureTrace captureTrace, out Glyph glyph)

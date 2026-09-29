@@ -248,9 +248,10 @@ public class RegexGraph
         // out by the range check instead of being backtracked into filling the line.
         bool mustFillScope = MustMatchWholeLine || mustConsumeWholeScope;
 
-        var match = scopeEnd == endIndex && !mustFillScope
-            ? BuiltRegex.Regex.Match(sourceText, currentIndex)
-            : BuiltRegex.Regex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
+        var match =
+            mustFillScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
+            : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex)
+            : BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
 
         int matchEndIndex = match.Index + match.Length;
 

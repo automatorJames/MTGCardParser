@@ -25,7 +25,7 @@ MTGGlyphs (declarations: ~50 Glyph classes + attributes + SQL repo)
         ^ discovered by AppDomain scan, not project reference
 Glyphotype (library)
    |- StaticRegistry ----- GlyphTypeRegistry: static ctor builds everything
-   |- GlyphPrimitives ---- Glyph / OneOf / ManyOf / CompoundOf / GlyphFused / DynamicGlyph
+   |- GlyphPrimitives ---- Glyph / OneOf / ManyOf / CompoundOf / DynamicGlyph
    |- RegexGeneration
    |    |- Graph --------- Navigation -> RegexNode tree -> RegexBrick[] -> compiled Regex
    |    |- CaptureContext/CaptureTrace -- hydration + display tree

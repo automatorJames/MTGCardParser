@@ -47,7 +47,7 @@ public class GlyphNode : NamedGroupNode
             { } t when typeof(Glyph).IsAssignableFrom(t) => new GlyphNode(parentNode, navigation),
             { IsEnum: true } => new EnumNode(parentNode, navigation),
             { } t when t == typeof(bool) => new BoolNode(parentNode, navigation),
-            { } t when t == typeof(int) => new IntNode(parentNode, navigation),
+            { } t when PrimitiveTerminal.IsSupported(t) => new PrimitiveNode(parentNode, navigation),
             _ => throw new Exception($"'{navigation.NodeType}' is not a valid {nameof(PropertyNib)} type")
         };
     }

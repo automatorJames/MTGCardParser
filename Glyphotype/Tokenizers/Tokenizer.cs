@@ -131,6 +131,12 @@ public class Tokenizer
                     // Assuming Glyph contains the length or the raw text
                     currentIndex += token.CaptureValue.Length;
 
+                    // Step past the whitespace separating this token from whatever follows, just as after a
+                    // ClauseBreak - otherwise an unmatched remainder would open with that space (and a space
+                    // between two consecutive tokens would be flushed as unmatched text of its own).
+                    while (currentIndex < endIndex && sourceText[currentIndex] == ' ')
+                        currentIndex++;
+
                     unmatchedStartIndex = -1;
                     matched = true;
                     break;

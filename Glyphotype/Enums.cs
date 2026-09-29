@@ -5,11 +5,10 @@ namespace Glyphotype;
 [Flags]
 public enum Proptions
 {
-    None,
-    Plural,
-    Optional,
-    OneOrMore,
-    NoPrecedingSpace,
+    None = 0,
+    Plural = 1,
+    Optional = 2,
+    NoPrecedingSpace = 4,
 }
 
 public enum CaptureGroupJoinStrategy

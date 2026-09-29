@@ -12,7 +12,6 @@ public static partial class GlyphTypeRegistry
     static List<Type> _dynamicAssemblyTypes = [];
     static string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MTGGlyphs"));
     public static Dictionary<Type, RegexGraph> RegexGraphs { get; set; } = [];
-    public static Dictionary<Type, Regex> TypeRegexes { get; set; } = [];
     public static Dictionary<Type, GlyphTypeConfiguration> TypeConfigurations { get; set; } = [];
     public static Dictionary<string, Type> NameToType { get; set; } = [];
     public static List<Type> AppliedOrderTypes { get; set; } = [];
@@ -32,6 +31,10 @@ public static partial class GlyphTypeRegistry
         // (tracks the current DFS path), so unlike GetRegexGraph's tree-walk (no guard of its own) it
         // can never itself recurse forever - it's what makes it safe to eagerly build everything next.
         ValidateNoReferenceLoops(allTypes);
+
+        // Likewise the Type-only shape rules (e.g. no List<> properties), since some violations - a
+        // List<enum> property - would otherwise crash graph building below before step 4 could report them.
+        ValidateTypeShapes(allTypes);
 
         // 3) Cache: now that the whole graph is proven acyclic, populate every type's
         // GlyphTypeConfiguration (Nibs/Joiner) up front - not just top-level ones - so nothing
@@ -126,6 +129,19 @@ public static partial class GlyphTypeRegistry
             throw new AggregateException("One or more Glyph types have a circular property reference:\n" + string.Join("\n", errors));
     }
 
+    /// <summary>Throws if any of <paramref name="types"/> breaks a Type-only shape rule (see <see cref="Glyph.GetTypeShapeError"/>). Like <see cref="ValidateNoReferenceLoops"/>, must run before anything builds a regex graph.</summary>
+    static void ValidateTypeShapes(List<Type> types)
+    {
+        var errors = types
+            .Where(t => typeof(Glyph).IsAssignableFrom(t) && !t.IsAssignableTo(typeof(DynamicGlyph)))
+            .Select(t => Glyph.GetTypeShapeError(t) is string error ? $"{t.Name}: {error}" : null)
+            .Where(error => error != null)
+            .ToList();
+
+        if (errors.Count > 0)
+            throw new AggregateException("One or more Glyph types failed structural validation:\n" + string.Join("\n", errors));
+    }
+
     /// <summary>
     /// Runs Glyph.ValidateStructure() over every registered type in a single pass, after the
     /// entire registry has already been populated via SetRootNode. Running it as a separate pass
@@ -161,6 +177,13 @@ public static partial class GlyphTypeRegistry
             if (!typeof(Glyph).IsAssignableFrom(type) || type.IsAssignableTo(typeof(DynamicGlyph)))
                 continue;
 
+            // Checked first, and without a graph: a type-shape violation can break graph building itself.
+            if (Glyph.GetTypeShapeError(type) is string typeShapeError)
+            {
+                errors.Add($"{type.Name}: {typeShapeError}");
+                continue;
+            }
+
             // Some ValidateStructure overrides (e.g. OneOfBase) index RegexGraphs directly rather than
             // going through the lazy GetRegexGraph accessor, so a graph must already exist here - which
             // matters for types (like a closed OneOf<T1,T2>) only ever discovered as a property.
@@ -168,7 +191,7 @@ public static partial class GlyphTypeRegistry
 
             var instance = (Glyph)Activator.CreateInstance(type);
 
-            if ((Glyph.GetPrimitiveExtensionError(type) ?? instance.ValidateStructure()) is string error)
+            if (instance.ValidateStructure() is string error)
                 errors.Add($"{type.Name}: {error}");
         }
 
@@ -376,8 +399,6 @@ public static partial class GlyphTypeRegistry
             .Distinct()
             .ToList()
             .ForEach(AddClassGlyphType);
-
-        TypeRegexes = RegexGraphs.Where(x => typeof(Glyph).IsAssignableFrom(x.Key)).ToDictionary(x => x.Key, x => x.Value.BuiltRegex.Regex);
 
         var dependentTypes = GetAllNonDynamicDependentGlyphTypes();
         ClassTokenizer = new(AppliedOrderTypes, dependentTypes, GlobalSettings.Current.AllowPartialSegmentMatches);

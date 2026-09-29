@@ -62,14 +62,13 @@ public class Navigation
         Proptions = propertyNib.Proptions;
 
         // A list's own quantifier (OneOrMore/AnyNumber) always wins, since it's what the *group* itself
-        // must carry to match repeated occurrences; otherwise fall back to whatever quantifier was
-        // declared explicitly (e.g. GlyphFused's OneOrMore on FusedContent), then [Optional] - or,
-        // equivalently, being wrapped in OptionalOf<T> - the wrapper generic is just an alternate,
-        // structural way of declaring the same optionality [Optional] declares by attribute.
+        // must carry to match repeated occurrences; otherwise [Optional] - or, equivalently, being wrapped
+        // in OptionalOf<T> - the wrapper generic is just an alternate, structural way of declaring the same
+        // optionality [Optional] declares by attribute.
         Quantifier =
             IsList
                 ? (Prop.IsDefined(typeof(OneOrMoreAttribute)) ? Glyphotype.Quantifier.OneOrMore : Glyphotype.Quantifier.AnyNumber)
-                : propertyNib.Quantifier ?? (Prop.IsDefined(typeof(OptionalAttribute)) || IsOptionalOfType(UnderlyingType) ? Glyphotype.Quantifier.Optional : null);
+                : Prop.IsDefined(typeof(OptionalAttribute)) || IsOptionalOfType(UnderlyingType) ? Glyphotype.Quantifier.Optional : null;
 
         IsOptional = Quantifier is Glyphotype.Quantifier.AnyNumber or Glyphotype.Quantifier.Optional;
     }

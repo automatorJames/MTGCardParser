@@ -2,8 +2,8 @@
 
 /// <summary>
 /// The compiled result of walking a <see cref="RegexNode"/> graph: the flat brick sequence, the
-/// concatenated matching pattern, and the compiled <see cref="System.Text.RegularExpressions.Regex"/>.
-/// Formatted/commented output is a separate concern — see <see cref="ToSmartRegex"/>.
+/// concatenated pattern, and the anchored <see cref="System.Text.RegularExpressions.Regex"/>es the engine
+/// runs it with. Formatted/commented output is a separate concern — see <see cref="ToSmartRegex"/>.
 /// </summary>
 public class BuiltRegex
 {
@@ -32,18 +32,48 @@ public class BuiltRegex
     /// <summary>The flat, unformatted brick sequence this regex was compiled from — the raw input to <see cref="RegexBrickFormattingPipeline.Format"/>.</summary>
     public List<RegexBrick> Bricks => _regexBricks;
 
-    /// <summary>The concatenated raw regex text of every brick, used to compile <see cref="Regex"/>.</summary>
+    /// <summary>
+    /// The pattern itself: the concatenated raw regex text of every brick. This is the grammar - what's shown
+    /// for analysis - and deliberately carries none of the anchors the engine adds to run it (see
+    /// <see cref="AnchoredRegex"/>/<see cref="ScopeFillingRegex"/>). Those change how fast a match is found,
+    /// never what it captures, so showing them on every type would be noise.
+    /// </summary>
     public string MinifiedRegex { get; }
 
-    /// <summary>The compiled matching pattern.</summary>
-    public Regex Regex { get; }
+    readonly Lazy<Regex> _anchoredRegex;
+    readonly Lazy<Regex> _scopeFillingRegex;
+
+    /// <summary>
+    /// <see cref="MinifiedRegex"/> anchored (<c>\G</c>) to the position it's run from - the window's start, or
+    /// <c>startat</c>. A match is only ever wanted right there, so without the anchor a failed attempt would
+    /// go on searching every later position to the window's end, for a match that would be thrown away.
+    /// Execution-only; see <see cref="MinifiedRegex"/>.
+    /// </summary>
+    internal Regex AnchoredRegex => _anchoredRegex.Value;
+
+    /// <summary>
+    /// <see cref="AnchoredRegex"/>, also anchored (<c>\z</c>) to the end of the window it's run against - for a
+    /// match that must fill its scope. Bounding the window alone doesn't make a match fill it: the regex engine
+    /// settles on the first successful alternative, not the longest, so given "fish sticks" an alternation
+    /// <c>fish|fish sticks</c> would stop at "fish", fall short of the window, and be rejected with the longer
+    /// alternative never tried. The anchor makes falling short a failure the engine backtracks out of instead.
+    /// Execution-only; see <see cref="MinifiedRegex"/>.
+    /// </summary>
+    internal Regex ScopeFillingRegex => _scopeFillingRegex.Value;
 
     public BuiltRegex(List<RegexBrick> regexBricks)
     {
         _regexBricks = regexBricks;
         MinifiedRegex = string.Join("", _regexBricks.Select(x => x.Regex)).Replace(EscapedSpace, " ");
-        Regex = new(MinifiedRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+
+        // Each built on first use: a type may only ever be matched one way (with the whole-segment rule on,
+        // nearly every top-level type only ever has to fill its scope).
+        _anchoredRegex = new(() => Compile($@"\G({MinifiedRegex})"));
+        _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));
     }
+
+    static Regex Compile(string pattern) =>
+        new(pattern, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
     public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly) =>

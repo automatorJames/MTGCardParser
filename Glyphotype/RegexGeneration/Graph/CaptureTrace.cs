@@ -220,7 +220,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode)
     {
-        IsTerminal = namedGroupNode is EnumNode or IntNode or BoolNode;
+        IsTerminal = namedGroupNode is EnumNode or PrimitiveNode or BoolNode;
         FullyQualifiedName = namedGroupNode.FullyQualifiedName;
         Name = namedGroupNode.Name;
         SourceNode = namedGroupNode;

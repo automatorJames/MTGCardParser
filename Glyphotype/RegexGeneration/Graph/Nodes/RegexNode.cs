@@ -143,7 +143,7 @@ public abstract class RegexNode
     /// </param>
     static void AppendJoinerBrickIfWarranted(RegexCollector collector, NamedGroupNode parent, RegexNode after, RegexNode owner)
     {
-        var joiner = parent.EffectiveChildJoiner;
+        var joiner = parent.JoinerBetween(parent.Children[parent.Children.IndexOf(after) - 1], after);
 
         bool shouldJoin =
             joiner != Joiner.None

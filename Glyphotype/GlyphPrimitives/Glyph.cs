@@ -24,11 +24,11 @@ public abstract class Glyph : CaptureUnit
         return propInfo;
     }
 
-    public PropertyNib Prop(object member, Proptions proptions = Proptions.None, Quantifier? quantifier = null, [CallerArgumentExpression("member")] string expression = "")
+    public PropertyNib Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
     {
         var resolvedProp = MemberExpressionToProp(expression);
 
-        return new PropertyNib(resolvedProp.Name, resolvedProp, proptions, quantifier)
+        return new PropertyNib(resolvedProp.Name, resolvedProp, proptions)
         {
             IsPlural = proptions.HasFlag(Proptions.Plural),
             IsOptional = proptions.HasFlag(Proptions.Optional),
@@ -102,6 +102,11 @@ public abstract class Glyph : CaptureUnit
         if (GetJoinedByError(props) is string joinedByError)
             return joinedByError;
 
+        // A pipe-joined Glyph is a one-of in all but name - its properties are alternatives, exactly one of which
+        // matches - but only a OneOfBase is built, hydrated and validated as one.
+        if (Joiner == Joiner.Pipe && this is not OneOfBase)
+            return $"{Type.Name} overrides {nameof(Joiner)} to {nameof(Joiner)}.{nameof(Joiner.Pipe)}, which makes its properties alternatives - derive it from {nameof(GlyphOneOf)} instead, which is built, hydrated and validated as exactly that";
+
         if (GetUnanchoredDynamicError() is string unanchoredDynamicError)
             return unanchoredDynamicError;
 
@@ -148,9 +153,8 @@ public abstract class Glyph : CaptureUnit
     /// <summary>
     /// The fixed-shape primitives: generic building blocks whose regex layout is defined entirely by the
     /// primitive itself (or by the framework's handling of it), with no seam for a subclass to add to it.
-    /// Contrast the deliberate extension points - <see cref="GlyphFused{T}"/> (via
-    /// <see cref="GlyphFused{T}.BeforeContent"/>/<see cref="GlyphFused{T}.AfterContent"/>) and
-    /// <see cref="GlyphOneOf"/> - which exist to be subclassed and extended, and so aren't listed.
+    /// Contrast the deliberate extension point <see cref="GlyphOneOf"/>, which exists to be subclassed and
+    /// extended (with named alternatives), and so isn't listed.
     /// </summary>
     static readonly Type[] _fixedShapePrimitives =
     [
@@ -164,8 +168,10 @@ public abstract class Glyph : CaptureUnit
     ];
 
     /// <summary>
-    /// Refuses a subclass of a fixed-shape primitive (see <see cref="_fixedShapePrimitives"/>) that declares any
-    /// property of its own - a new nib-bound property, or an override of <see cref="Nibs"/>/<see cref="Joiner"/>.
+    /// Refuses a subclass of a fixed-shape primitive (see <see cref="_fixedShapePrimitives"/>) that declares a
+    /// settable property of its own, or overrides <see cref="Nibs"/>/<see cref="Joiner"/>. A get-only property
+    /// of its own (e.g. a convenience computed from <c>Items</c>) is the author's business: it's never bound to
+    /// the regex, so none of the below applies to it.
     /// <para>
     /// Subclassing one as a pure alias is fine, and is how a primitive becomes top-level: e.g.
     /// <c>[MustMatchWholeLine] class CardAbilityLine : CompoundOf&lt;Keyword&gt;</c> just gives a
@@ -196,7 +202,9 @@ public abstract class Glyph : CaptureUnit
         var declaredProps = new List<string>();
 
         for (var current = type; current != primitive; current = current.BaseType)
-            declaredProps.AddRange(current.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly).Select(x => x.Name));
+            declaredProps.AddRange(current.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Where(x => x.CanWrite || x.GetMethod.GetBaseDefinition().DeclaringType != x.DeclaringType)
+                .Select(x => x.Name));
 
         if (declaredProps.Count == 0)
             return null;
@@ -211,9 +219,141 @@ public abstract class Glyph : CaptureUnit
             $"Instead, derive {type.Name} from {nameof(Glyph)} and compose: declare a {primitiveName} property alongside the new ones, and order them all explicitly in {nameof(Nibs)}";
     }
 
+    /// <summary>
+    /// Refuses a <see cref="List{T}"/> property on any Glyph type other than Glyphotype's own internal
+    /// primitives. Repetition is what the primitives exist to express - <see cref="CompoundOf{T}"/> for a
+    /// joined run, <see cref="ManyOf{T}"/> for a list with a conjunction, made optional by
+    /// <see cref="OptionalAttribute"/> or <see cref="OptionalOf{T}"/> - and a raw list bypasses all of it: it
+    /// has no joiner between its items, no conjunction, and (for a list of enums) no regex support at all.
+    /// Inherited primitive properties (e.g. <see cref="CompoundOf{T}"/>'s own <c>SecondPlus</c> on an alias
+    /// subclass) are the primitive's, so they pass.
+    /// </summary>
+    public static string GetListPropertyError(Type type)
+    {
+        var listProps = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(x => x.DeclaringType.Assembly != typeof(Glyph).Assembly && Navigation.IsListType(x.PropertyType))
+            .Select(x => $"{x.Name} ({FormatTypeName(x.PropertyType)})")
+            .ToList();
+
+        if (listProps.Count == 0)
+            return null;
+
+        return $"{type.Name} declares List<> properties: {string.Join(", ", listProps)}. " +
+            $"Only Glyphotype's internal primitives may hold a raw list - express repetition with one of them instead: " +
+            $"CompoundOf<T> for a joined run (\"a, b, c\", or \"a b c\" with [JoinedBy(Joiner.Space)]), " +
+            $"or ManyOf<T> for a list with a conjunction (\"a, b, and c\"). " +
+            $"If the items may be absent altogether, mark the property [Optional] or wrap it in OptionalOf<T>";
+    }
+
+    /// <summary>
+    /// Refuses a nib-bound (publicly settable) property whose type the engine can't capture. Every captured
+    /// word is either grammatical scaffolding (literal nib text) or a terminal of interest, so a property must be
+    /// a <see cref="Glyph"/> (nested structure), an enum (a closed vocabulary), a bool (a phrase's presence) or a
+    /// supported primitive (an open-vocabulary value parsed from the text - see <see cref="PrimitiveTerminal"/>).
+    /// Lists are <see cref="GetListPropertyError"/>'s concern.
+    /// </summary>
+    public static string GetPropertyTypeError(Type type)
+    {
+        var unsupported = NibBoundProps(type)
+            .Where(x => !Navigation.IsListType(x.PropertyType) && !IsCapturableType(x.PropertyType))
+            .Select(x => $"{x.Name} ({FormatTypeName(x.PropertyType)})")
+            .ToList();
+
+        if (unsupported.Count == 0)
+            return null;
+
+        return $"{FormatTypeName(type)} declares properties of types the engine can't capture: {string.Join(", ", unsupported)}. " +
+            $"A Glyph property must be a Glyph, an enum, a bool, or a supported primitive ({string.Join(", ", PrimitiveTerminal.SupportedDisplayNames)})";
+    }
+
+    /// <summary>
+    /// Refuses a non-nullable value-type property that can be absent after a successful match - one marked
+    /// <see cref="OptionalAttribute"/>, or one of a <see cref="OneOfBase"/>'s alternatives, all but one of which
+    /// are always absent. Left non-nullable, an absent value would be indistinguishable from a matched default
+    /// (an int that "matched" 0, an enum that "matched" its first member). Where a property is required, either
+    /// is fine: it's always set when its glyph matches. A bool is exempt - absent means false, by design.
+    /// </summary>
+    public static string GetNullabilityError(Type type)
+    {
+        var alternatives = typeof(OneOfBase).IsAssignableFrom(type) ? OneOfBase.GetAlternativeProps(type) : [];
+
+        var offenders = NibBoundProps(type)
+            .Where(x => x.IsDefined(typeof(OptionalAttribute)) || alternatives.Contains(x))
+            .Where(x => x.PropertyType.IsValueType && x.PropertyType != typeof(bool) && Nullable.GetUnderlyingType(x.PropertyType) == null)
+            .Select(x => $"{x.Name} ({FormatTypeName(x.PropertyType)} → {FormatTypeName(x.PropertyType)}?)")
+            .ToList();
+
+        if (offenders.Count == 0)
+            return null;
+
+        return $"{FormatTypeName(type)} has value-type properties that can be absent after a match (being [Optional], or one-of alternatives) but aren't nullable: {string.Join(", ", offenders)}. " +
+            $"Make them nullable, so an absent value reads as null rather than as a matched default";
+    }
+
+    /// <summary>
+    /// Refuses a generic <see cref="OneOf{T1,T2}"/>/<see cref="OneOf{T1,T2,T3}"/> that repeats a type argument
+    /// (nullable-unwrapped), e.g. <c>OneOf&lt;int?, int?&gt;</c>. Its alternatives are distinguished only by type,
+    /// so two of the same type are the same alternative twice: nothing could say which one matched. (It's also
+    /// what names its capture groups - see <see cref="PropertyNib"/>.) Alternatives that genuinely differ in
+    /// meaning but share a type want names of their own: a <see cref="GlyphOneOf"/>.
+    /// </summary>
+    public static string GetOneOfTypeArgumentError(Type type)
+    {
+        var oneOf = type;
+
+        while (oneOf is not null && !(oneOf.IsGenericType && oneOf.GetGenericTypeDefinition() is var definition && (definition == typeof(OneOf<,>) || definition == typeof(OneOf<,,>))))
+            oneOf = oneOf.BaseType;
+
+        if (oneOf is null)
+            return null;
+
+        var repeated = oneOf.GetGenericArguments()
+            .GroupBy(x => Nullable.GetUnderlyingType(x) ?? x)
+            .Where(x => x.Count() > 1)
+            .Select(x => FormatTypeName(x.Key))
+            .ToList();
+
+        if (repeated.Count == 0)
+            return null;
+
+        return $"{FormatTypeName(oneOf)} repeats {string.Join(", ", repeated)} among its alternatives, which a generic OneOf distinguishes only by type - so nothing could tell which of them matched. " +
+            $"If they mean different things, derive from {nameof(GlyphOneOf)} and give each alternative its own name";
+    }
+
+    /// <summary>
+    /// The Type-only rules - <see cref="GetPrimitiveExtensionError"/>, <see cref="GetListPropertyError"/>,
+    /// <see cref="GetPropertyTypeError"/>, <see cref="GetNullabilityError"/> and
+    /// <see cref="GetOneOfTypeArgumentError"/> - which
+    /// <see cref="GlyphTypeRegistry"/> checks before building any regex graph, since a violation can break
+    /// graph building itself (an unsupported property type does) before <see cref="ValidateStructure"/> gets the
+    /// chance to report it.
+    /// </summary>
+    public static string GetTypeShapeError(Type type) =>
+        GetPrimitiveExtensionError(type)
+        ?? GetListPropertyError(type)
+        ?? GetPropertyTypeError(type)
+        ?? GetNullabilityError(type)
+        ?? GetOneOfTypeArgumentError(type);
+
+    /// <summary>A Glyph type's publicly settable properties below <see cref="Glyph"/> itself (so not, e.g., <see cref="CaptureUnit.CaptureContext"/>) - the ones that are nib-bound.</summary>
+    static IEnumerable<PropertyInfo> NibBoundProps(Type type) =>
+        type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(x => x.GetSetMethod() != null && x.DeclaringType.IsSubclassOf(typeof(Glyph)));
+
+    static bool IsCapturableType(Type type)
+    {
+        var underlying = Nullable.GetUnderlyingType(type) ?? type;
+
+        return underlying.IsAssignableTo(typeof(Glyph))
+            || underlying.IsEnum
+            || underlying == typeof(bool)
+            || PrimitiveTerminal.IsSupported(underlying);
+    }
+
     static string FormatTypeName(Type type) =>
-        !type.IsGenericType
-            ? type.Name
+        Nullable.GetUnderlyingType(type) is Type underlying ? $"{FormatTypeName(underlying)}?"
+        : !type.IsGenericType
+            ? (PrimitiveTerminal.TryGet(type, out var primitive) ? primitive.DisplayName : type.Name)
             : $"{type.Name[..type.Name.IndexOf('`')]}<{string.Join(", ", type.GetGenericArguments().Select(FormatTypeName))}>";
 
     /// <summary>

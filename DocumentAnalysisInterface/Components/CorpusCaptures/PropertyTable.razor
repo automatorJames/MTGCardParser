@@ -262,12 +262,12 @@ else
     string LeafDisplayName(CaptureTrace leaf) =>
         DisplayName(BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name);
 
-    /// <summary>A terminal leaf's displayed "Type" column text - always an <see cref="EnumNode"/>, <see cref="IntNode"/>, or <see cref="BoolNode"/>, since those are the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for.</summary>
+    /// <summary>A terminal leaf's displayed "Type" column text - always an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/>, or <see cref="BoolNode"/>, since those are the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for.</summary>
     static string TerminalTypeLabel(CaptureTrace leaf) =>
         leaf.SourceNode switch
         {
             EnumNode => "Enum",
-            IntNode => "Int",
+            PrimitiveNode primitive => char.ToUpperInvariant(primitive.Terminal.DisplayName[0]) + primitive.Terminal.DisplayName[1..],
             BoolNode => "Bool",
             _ => leaf.SourceNode.GetType().Name,
         };

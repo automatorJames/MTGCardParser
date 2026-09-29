@@ -34,6 +34,9 @@ public class TextNode : RegexNode
     /// </summary>
     public bool IsClauseBreak { get; }
 
+    /// <summary>Whether this nib is an <see cref="OptionalPluralNib"/> - a suffix of the word before it (e.g. the "s" of "dogs"), so never separated from that word.</summary>
+    public bool IsPluralSuffix { get; }
+
     /// <summary>Whether this node's text closes with <see cref="_tightPunctuation"/>, so the joiner that follows it belongs on this node's own line rather than a line of its own.</summary>
     public bool EndsWithTightPunctuation => _tightPunctuation.Contains(LastChar);
 
@@ -42,11 +45,12 @@ public class TextNode : RegexNode
 
     /// <summary>
     /// Whether the joiner that would otherwise precede this node should be dropped - because the node opens
-    /// with punctuation that binds to the token before it, or because it already supplies that space itself.
-    /// Together with <see cref="RegexCollector.AlreadySeparated"/> this is what makes a comma nib authored as
-    /// <c>","</c>, <c>", "</c> or <c>" , "</c> all come out as the same single-spaced pattern.
+    /// with punctuation that binds to the token before it, is a plural suffix of the word before it, or
+    /// already supplies that space itself. Together with <see cref="RegexCollector.AlreadySeparated"/> this is
+    /// what makes a comma nib authored as <c>","</c>, <c>", "</c> or <c>" , "</c> all come out as the same
+    /// single-spaced pattern.
     /// </summary>
-    public bool AbsorbsPrecedingJoiner => StartsWithTightPunctuation || StartsWithSpace;
+    public bool AbsorbsPrecedingJoiner => StartsWithTightPunctuation || IsPluralSuffix || StartsWithSpace;
 
     public TextNode(RegexNode parentNode, Nib nib)
         : base(parentNode, nib.Text)
@@ -59,6 +63,7 @@ public class TextNode : RegexNode
         // A bare "." nib means a literal period, but "." is regex for "any character" - left unescaped a
         // clause-spanning type would happily match any character where it declared a clause break.
         IsClauseBreak = text == ".";
+        IsPluralSuffix = nib is OptionalPluralNib;
 
         if (IsClauseBreak)
             text = @"\.";
