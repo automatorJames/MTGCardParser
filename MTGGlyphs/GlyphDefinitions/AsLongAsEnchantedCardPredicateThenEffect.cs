@@ -23,10 +23,12 @@ public class AsLongAsEnchantedCardPredicateThenEffect : Glyph
 }
 
 
-[Dependent]
+//[Dependent]
 public class TestThing : Glyph
 {
-    public override Nib[] Nibs => [Prop(CardType), "it's an artifact creature with power and toughness each equal to its mana value."];
-    public CardType CardType{ get; set; }
+    public override Nib[] Nibs => ["it's an?", Prop(CardType), "with power and toughness each equal to its mana value"];
+
+    [JoinedBy(Joiner.Space)]
+    public CompoundOf<CardType> CardType { get; set; }
 
 }

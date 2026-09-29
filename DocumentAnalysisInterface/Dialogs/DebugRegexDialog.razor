@@ -41,7 +41,7 @@
                         @foreach (var result in _results)
                         {
                             <tr @key=result.GlyphType>
-                                <td><GlyphTypeName GlyphType=@result.GlyphType /></td>
+                                <td>@result.GlyphType.Name</td>
                                 <td class="score-cell @(result.IsFullMatch ? "full-match" : "")">@CoverageDisplay.FormatPercent(result.MatchScorePercent)</td>
                                 <td class="failure-cell">@result.FirstFailureDisplay</td>
                                 <td class="line-number-cell">@(GetFailedLineNumber(result) is int line ? line.ToString() : "")</td>

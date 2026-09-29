@@ -39,18 +39,13 @@ public static partial class GlyphTypeRegistry
         foreach (var type in allTypes)
             EnsureGlyphTypeConfiguration(type);
 
-        var topLevelTypes = GetAllTopLevelGlyphTypes();
-
         foreach (var type in allTypes)
             SetRootNode(type);
 
-        // Only the top-level types get the *full* structural validation automatically at startup; the
-        // exhaustive sweep over every type discoverable via property nibs (GetAllTypesForValidation) is
-        // deliberately left for callers to opt into via GetStructuralValidationErrors(), since some of
-        // what it finds today (e.g. OneOf<CardType, CreatureType>'s non-nullable enums) is a known,
-        // not-yet-fixed issue that would otherwise prevent the registry - and everything built on it -
-        // from initializing at all. Reference loops (the one check that could crash rather than just
-        // report an error) are already ruled out above for the full set, regardless of this scoping.
+        // 4) Validate structure across the same full set - not just top-level types, but dependents and
+        // everything only reachable via property nibs (e.g. a closed OneOf<T1,T2>) - so an authoring
+        // mistake anywhere in the graph stops initialization rather than surfacing later as a bad match.
+        // Runs as its own pass, after every graph is built - see ValidateAllStructures for why.
         ValidateAllStructures(allTypes);
 
         InitializeClassTokenizer();
@@ -149,10 +144,10 @@ public static partial class GlyphTypeRegistry
     /// Runs Glyph.ValidateStructure() over every type reachable via GetAllTypesForValidation() -
     /// every scanned Glyph type plus everything discoverable by walking property nibs, such as a
     /// closed generic OneOf&lt;T1,T2&gt; that never appears in the assembly scan on its own - and returns
-    /// each failure as a "TypeName: message" string instead of throwing. Unlike the automatic startup
-    /// check (which only covers top-level types and stops the registry from initializing on failure),
-    /// this is meant to be called deliberately - e.g. by a diagnostic tool that wants the full list of
-    /// everything currently broken, without needing every issue fixed first just to run it.
+    /// each failure as a "TypeName: message" string instead of throwing. The automatic startup check covers
+    /// this same set but throws, stopping the registry from initializing on any failure; this is meant to be
+    /// called deliberately - e.g. by a diagnostic tool that wants the full list of everything currently
+    /// broken as data rather than as an exception.
     /// </summary>
     public static List<string> GetStructuralValidationErrors() =>
         GetStructuralValidationErrors(GetAllTypesForValidation());
@@ -173,7 +168,7 @@ public static partial class GlyphTypeRegistry
 
             var instance = (Glyph)Activator.CreateInstance(type);
 
-            if (instance.ValidateStructure() is string error)
+            if ((Glyph.GetPrimitiveExtensionError(type) ?? instance.ValidateStructure()) is string error)
                 errors.Add($"{type.Name}: {error}");
         }
 

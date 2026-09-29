@@ -119,7 +119,7 @@ public abstract class NamedGroupNode : GroupNode
             collector.Append(GetGroupCloseBrick());
     }
 
-    /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="CommaSeparatedItemNode"/>).</summary>
+    /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="JoinedItemNode"/>).</summary>
     protected virtual void AppendInnerContentBricks(RegexCollector collector)
     {
         foreach (var child in Children)

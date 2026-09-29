@@ -48,7 +48,7 @@ internal static class BrickCommentResolver
             IntNode => "int",
             GlyphOneOfNode => "one of",
             DynamicGlyphNode => "dynamic",
-            CommaSeparatedItemNode => "internals",
+            JoinedItemNode => "internals",
             GlyphNode glyphNode when typeof(CompoundOfBase).IsAssignableFrom(glyphNode.Navigation.NodeType) => "compound of",
             GlyphNode glyphNode when glyphNode.Quantifier == Glyphotype.Quantifier.Optional => "optional",
             _ => "token",

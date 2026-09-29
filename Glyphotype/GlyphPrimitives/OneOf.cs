@@ -12,7 +12,7 @@ public class OneOf<T1, T2> : OneOfBase
     public OneOf(object item, int capturePropOrdinal)
     {
         var capturedItemType = GetType().GetGenericArguments()[capturePropOrdinal];
-        var propToSet = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturePropOrdinal];
+        var propToSet = typeof(OneOf<T1, T2>).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturePropOrdinal];
         propToSet.SetValue(this, item);
     }
 }
@@ -30,7 +30,7 @@ public class OneOf<T1, T2, T3> : OneOfBase
     public OneOf(object capture, int capturedItemTypeOrdinal)
     {
         var capturedItemType = GetType().GetGenericArguments()[capturedItemTypeOrdinal];
-        var propToSet = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturedItemTypeOrdinal];
+        var propToSet = typeof(OneOf<T1, T2, T3>).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)[capturedItemTypeOrdinal];
         propToSet.SetValue(this, capture);
     }
 }

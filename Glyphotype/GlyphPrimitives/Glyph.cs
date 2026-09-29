@@ -99,11 +99,122 @@ public abstract class Glyph : CaptureUnit
         if (misplacedQuantifierAttributeProps.Any())
             return $"{nameof(OneOrMoreAttribute)}/{nameof(AnyNumberAttribute)} may only appear on List<> properties, but found on: {string.Join(", ", misplacedQuantifierAttributeProps)}";
 
+        if (GetJoinedByError(props) is string joinedByError)
+            return joinedByError;
+
         if (GetUnanchoredDynamicError() is string unanchoredDynamicError)
             return unanchoredDynamicError;
 
         return null;
     }
+
+    /// <summary>
+    /// <see cref="JoinedByAttribute"/> only means anything to a <see cref="CompoundOf{T}"/> (the only thing whose
+    /// items it separates), so it's refused anywhere else rather than silently ignored - on this type itself, or
+    /// on any of <paramref name="props"/> (this type's own nib-bound properties). <see cref="Joiner.Pipe"/> is
+    /// refused outright: as a separator inside the repeated item group it would turn "item, then more items" into
+    /// an alternation.
+    /// </summary>
+    string GetJoinedByError(PropertyInfo[] props)
+    {
+        static bool IsCompoundOf(Type type) => typeof(CompoundOfBase).IsAssignableFrom(type);
+
+        if (Type.GetCustomAttribute<JoinedByAttribute>() is JoinedByAttribute typeJoinedBy)
+        {
+            if (!IsCompoundOf(Type))
+                return $"{Type.Name} declares [JoinedBy] but isn't a {nameof(CompoundOf<object>)}<T> subclass - the attribute only sets the separator between a {nameof(CompoundOf<object>)}'s items, so it would have no effect here";
+
+            if (typeJoinedBy.Joiner == Joiner.Pipe)
+                return $"{Type.Name} declares [JoinedBy({nameof(Joiner)}.{nameof(Joiner.Pipe)})], which would turn the item repetition into an alternation - use a {nameof(OneOf<object, object>)} for alternatives";
+        }
+
+        foreach (var prop in props)
+        {
+            if (prop.GetCustomAttribute<JoinedByAttribute>() is not JoinedByAttribute propJoinedBy)
+                continue;
+
+            var propType = Navigation.IsListType(prop.PropertyType) ? prop.PropertyType.GetUnderlyingType().GenericTypeArguments[0] : prop.PropertyType;
+
+            if (!IsCompoundOf(propType))
+                return $"{Type.Name}.{prop.Name} declares [JoinedBy] but isn't a {nameof(CompoundOf<object>)}<T> property - the attribute only sets the separator between a {nameof(CompoundOf<object>)}'s items, so it would have no effect here";
+
+            if (propJoinedBy.Joiner == Joiner.Pipe)
+                return $"{Type.Name}.{prop.Name} declares [JoinedBy({nameof(Joiner)}.{nameof(Joiner.Pipe)})], which would turn the item repetition into an alternation - use a {nameof(OneOf<object, object>)} for alternatives";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The fixed-shape primitives: generic building blocks whose regex layout is defined entirely by the
+    /// primitive itself (or by the framework's handling of it), with no seam for a subclass to add to it.
+    /// Contrast the deliberate extension points - <see cref="GlyphFused{T}"/> (via
+    /// <see cref="GlyphFused{T}.BeforeContent"/>/<see cref="GlyphFused{T}.AfterContent"/>) and
+    /// <see cref="GlyphOneOf"/> - which exist to be subclassed and extended, and so aren't listed.
+    /// </summary>
+    static readonly Type[] _fixedShapePrimitives =
+    [
+        typeof(CompoundOf<>),
+        typeof(ManyOf<>),
+        typeof(OptionalOf<>),
+        typeof(OneOf<,>),
+        typeof(OneOf<,,>),
+        typeof(CompoundOfSecondItem<>),
+        typeof(ManyOfSecondItem<>),
+    ];
+
+    /// <summary>
+    /// Refuses a subclass of a fixed-shape primitive (see <see cref="_fixedShapePrimitives"/>) that declares any
+    /// property of its own - a new nib-bound property, or an override of <see cref="Nibs"/>/<see cref="Joiner"/>.
+    /// <para>
+    /// Subclassing one as a pure alias is fine, and is how a primitive becomes top-level: e.g.
+    /// <c>[MustMatchWholeLine] class CardAbilityLine : CompoundOf&lt;Keyword&gt;</c> just gives a
+    /// <see cref="CompoundOf{T}"/> a name and class-level attributes. Extending one is valid C# but not a valid
+    /// Glyph composition. With no <see cref="Nibs"/> override, the added properties are laid out in reflection
+    /// order - unspecified, and in practice ahead of the inherited ones - so the regex silently expects them in
+    /// the wrong place. With one, the subclass has to restate the primitive's internal layout (e.g.
+    /// <see cref="CompoundOf{T}"/>'s <c>FirstItem</c>/<c>SecondPlus</c> split) and nothing checks it did so
+    /// correctly. Either way the primitive stops being a black box.
+    /// </para>
+    /// <para>
+    /// Static and Type-only, and run by <see cref="GlyphTypeRegistry"/> before <see cref="ValidateStructure"/>,
+    /// since an override's own checks can otherwise misread the violation first - e.g.
+    /// <see cref="OneOfBase.ValidateStructure"/> would happily count a property added to a
+    /// <see cref="OneOf{T1,T2}"/> subclass as a third alternative (see <see cref="OneOfBase.GetAlternativeProps"/>).
+    /// </para>
+    /// </summary>
+    public static string GetPrimitiveExtensionError(Type type)
+    {
+        var primitive = type.BaseType;
+
+        while (primitive is not null && !(primitive.IsGenericType && _fixedShapePrimitives.Contains(primitive.GetGenericTypeDefinition())))
+            primitive = primitive.BaseType;
+
+        if (primitive is null)
+            return null;
+
+        var declaredProps = new List<string>();
+
+        for (var current = type; current != primitive; current = current.BaseType)
+            declaredProps.AddRange(current.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly).Select(x => x.Name));
+
+        if (declaredProps.Count == 0)
+            return null;
+
+        var primitiveName = FormatTypeName(primitive);
+        var primitiveKind = primitive.Name[..primitive.Name.IndexOf('`')];
+
+        return $"{type.Name} subclasses {primitiveName} but declares its own members ({string.Join(", ", declaredProps)}). " +
+            $"A {primitiveKind} subclass may only alias it - giving it a name and class-level attributes such as [MustMatchWholeLine] - because a {primitiveKind}'s regex layout is fixed by the primitive itself. " +
+            $"Added properties would be laid out in reflection order (unspecified, and in practice ahead of the inherited ones), so the regex would silently expect them in the wrong place; " +
+            $"overriding {nameof(Nibs)} instead would mean restating {primitiveKind}'s internal layout by hand, which nothing validates. " +
+            $"Instead, derive {type.Name} from {nameof(Glyph)} and compose: declare a {primitiveName} property alongside the new ones, and order them all explicitly in {nameof(Nibs)}";
+    }
+
+    static string FormatTypeName(Type type) =>
+        !type.IsGenericType
+            ? type.Name
+            : $"{type.Name[..type.Name.IndexOf('`')]}<{string.Join(", ", type.GetGenericArguments().Select(FormatTypeName))}>";
 
     /// <summary>
     /// Guards the one shape of <see cref="DynamicGlyph"/> authoring that can't terminate: a type whose
