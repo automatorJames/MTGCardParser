@@ -11,6 +11,6 @@ public class UnmatchedString : CaptureUnit
 
     public UnmatchedString(string sourceText, int unmatchedStart, int unmatchedLength)
     {
-        CaptureContext = CreateSpanContext(_rootNode, sourceText, unmatchedStart, unmatchedLength);
+        InitializeSpanContext(_rootNode, sourceText, unmatchedStart, unmatchedLength);
     }
 }

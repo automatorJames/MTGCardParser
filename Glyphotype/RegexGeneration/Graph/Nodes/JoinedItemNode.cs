@@ -36,20 +36,20 @@ public class JoinedItemNode : GlyphNode
     }
 
     /// <summary>
-    /// The owning <see cref="CompoundOf{T}"/>'s <see cref="JoinedByAttribute"/> - from the property it's bound
-    /// to first (the more specific site), else from its own type (a <see cref="CompoundOf{T}"/> subclass, e.g. a
-    /// top-level alias with no property to decorate) - else <see cref="Joiner.CommaSpace"/>. Always the latter
-    /// for a <see cref="ManyOf{T}"/>. The owner is always the direct parent: a <c>List&lt;&gt;</c> property's
+    /// The owning X-Of's separator between items (see <see cref="JoinerRules.ForRepetition"/>), from the facts
+    /// about it: whether it's a <see cref="CompoundOf{T}"/>, and the <see cref="JoinedByAttribute"/> on the
+    /// property it's bound to and on its own type (a <see cref="CompoundOf{T}"/> subclass, e.g. a top-level alias
+    /// with no property to decorate). The owner is always the direct parent: a <c>List&lt;&gt;</c> property's
     /// navigation targets its element type, so <c>SecondPlus</c> contributes no intermediate node.
     /// </summary>
     Joiner ResolveJoiner()
     {
-        if (ParentNode is not GlyphNode { Navigation: var ownerNavigation } || !typeof(CompoundOfBase).IsAssignableFrom(ownerNavigation.NodeType))
-            return Joiner.CommaSpace;
+        var ownerNavigation = (ParentNode as GlyphNode)?.Navigation;
+        bool ownerIsCompoundOf = ownerNavigation is not null && typeof(CompoundOfBase).IsAssignableFrom(ownerNavigation.NodeType);
 
-        var joinedBy = ownerNavigation.Prop?.GetCustomAttribute<JoinedByAttribute>()
-            ?? ownerNavigation.NodeType.GetCustomAttribute<JoinedByAttribute>();
-
-        return joinedBy?.Joiner ?? Joiner.CommaSpace;
+        return JoinerRules.ForRepetition(
+            ownerIsCompoundOf,
+            propertyJoinedBy: ownerNavigation?.Prop?.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
+            typeJoinedBy: ownerNavigation?.NodeType.GetCustomAttribute<JoinedByAttribute>()?.Joiner);
     }
 }

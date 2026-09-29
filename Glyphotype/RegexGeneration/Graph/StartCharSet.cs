@@ -111,7 +111,7 @@ public sealed class StartCharSet
             // joiner can begin the match too. Adding it when it isn't actually emitted only widens the set.
             if (i > 0)
             {
-                var joinerStart = JoinerStart(group.JoinerBetween(children[i - 1], children[i]));
+                var joinerStart = JoinerStart(JoinerRules.Intended(JoinSite.Of(group, children[i])));
 
                 if (joinerStart.Chars is null)
                     return Starts.Anything;

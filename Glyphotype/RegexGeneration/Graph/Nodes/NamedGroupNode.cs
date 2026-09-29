@@ -44,9 +44,6 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>The joiner this group actually renders between its own children: a Glyph type's declared <see cref="GlyphTypeConfiguration.ChildJoiner"/> if this is a Glyph-typed navigation, else this node type's own <see cref="ChildJoiner"/> override.</summary>
     public Joiner EffectiveChildJoiner => Navigation.GlyphTypeConfiguration?.ChildJoiner ?? ChildJoiner ?? Joiner.None;
 
-    /// <summary>The joiner rendered between two adjacent children, <paramref name="before"/> then <paramref name="after"/>. <see cref="EffectiveChildJoiner"/> for every pair by default; overridden where a group joins different kinds of child differently (see <see cref="GlyphOneOfNode"/>).</summary>
-    public virtual Joiner JoinerBetween(RegexNode before, RegexNode after) => EffectiveChildJoiner;
-
     public NamedGroupNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)
     {
@@ -99,24 +96,23 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>
     /// Appends this group's open bookend, its content (see <see cref="AppendInnerContentBricks"/>), and its
     /// close bookend. When this group is <see cref="RegexNode.IsNullable"/>, its own leading and/or trailing
-    /// joiner (skipped by <see cref="RegexNode.AppendRegexBricks"/> and the following sibling respectively,
-    /// for a nullable node - see <see cref="RegexNode.AppendLeadingJoinerBrick"/> and
-    /// <see cref="RegexNode.AppendTrailingJoinerBrickIfOwned"/>) are appended here instead, as this group's
-    /// own first/last inner content - inside its bookends - so either joiner's presence is coupled to
-    /// whichever conditional match already governs this group, rather than rendering unconditionally.
+    /// joiner (see <see cref="JoinerRules.PlaceLeadingJoiner"/> and <see cref="JoinerRules.OwnsTrailingJoiner"/>)
+    /// are appended here, as this group's own first/last inner content - inside its bookends - so either
+    /// joiner's presence is coupled to whichever conditional match already governs this group, rather than
+    /// rendering unconditionally.
     /// </summary>
     protected override void AppendOwnRegexBricks(RegexCollector collector)
     {
         if (!IsTransparentRoot)
             collector.Append(GetGroupOpenBrick());
 
-        if (IsNullable)
-            AppendLeadingJoinerBrick(collector, insideOwnGroup: true);
+        if (LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading)
+            AppendJoinerBefore(this, collector, owner: this);
 
         AppendInnerContentBricks(collector);
 
-        if (IsNullable)
-            AppendTrailingJoinerBrickIfOwned(collector);
+        if (TrailingJoinerSuccessor is RegexNode successor)
+            AppendJoinerBefore(successor, collector, owner: this);
 
         if (!IsTransparentRoot)
             collector.Append(GetGroupCloseBrick());

@@ -84,6 +84,21 @@ public class RegistryTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void Every_token_serializes_for_debugging()
+    {
+        // JsonDebug once threw for every UnmatchedString and ClauseBreak: their synthesized root traces had no
+        // hydrated value, and naming its type dereferenced null.
+        var failures = corpus.ProcessedDocuments
+            .SelectMany(x => x.Lines)
+            .SelectMany(x => x.Glyphs)
+            .Select(unit => { try { _ = unit.JsonDebug; return null; } catch (Exception e) { return $"{unit.GetType().Name} \"{unit.CaptureValue}\": {e.Message}"; } })
+            .Where(x => x != null)
+            .ToList();
+
+        Assert.Empty(failures);
+    }
+
+    [Fact]
     public void Start_char_sets_never_rule_out_a_position_where_a_match_begins()
     {
         // The Tokenizer skips a type wherever its StartChars says a match can't begin, without running its

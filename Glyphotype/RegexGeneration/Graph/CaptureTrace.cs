@@ -25,7 +25,8 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     public string PrintValue => GetPrintValue();
     public bool Success { get; }
     public Type ResolvedNodeType => GetResolvedNodeType();
-    [JsonProperty] public string ResolvedNodeTypeName => ResolvedNodeType.Name;
+    /// <summary><see cref="ResolvedNodeType"/>'s name, or null for a trace with no hydrated value (e.g. an optional group that matched nothing).</summary>
+    [JsonProperty] public string ResolvedNodeTypeName => ResolvedNodeType?.Name;
     public string ParentName { get; private set; }
     [JsonProperty] public int Index { get; private set; }
     [JsonProperty] public int Length { get; }

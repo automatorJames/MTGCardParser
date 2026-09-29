@@ -79,7 +79,7 @@ internal class RegexBrickFormattingPipeline
     /// or reinstated verbatim when there's no captured data) once their parent group is reached.
     /// Both joiner predicates rely on a joiner brick being attributed to the group it sits <em>inside</em>
     /// rather than the one it merely precedes (see the <c>owner</c> parameter on
-    /// <c>RegexNode.AppendJoinerBrickIfWarranted</c>) - otherwise the ordinary sibling joiner in front of an
+    /// <c>RegexNode.AppendJoinerBefore</c>) - otherwise the ordinary sibling joiner in front of an
     /// enum/dynamic group reads as that group's own synthesized content and gets dropped here.
     /// </summary>
     static List<RegexBrick> RemoveRawSynthesizedSectionBricks(List<RegexBrick> bricks) =>
@@ -94,7 +94,7 @@ internal class RegexBrickFormattingPipeline
     /// it stand as a line of its own - so a <c>","</c> nib reads as <c>,[ ]</c>, the way the space is
     /// actually written when the nib is authored as <c>", "</c>. Purely positional: the joiner is still one
     /// brick's worth of pattern text in exactly the same place, it just shares a row. This is the mirror of
-    /// <see cref="TextNode.StartsWithTightPunctuation"/> suppressing the joiner on the other side, and it
+    /// <see cref="JoinerRules.Between"/> suppressing the joiner on the other side, and it
     /// reuses the same one-brick/two-span layout an enum member row already uses for its own leading joiner.
     /// Assigns <see cref="RegexBrick.RegexFormatted"/> absolutely (never appends to it), since bricks are
     /// shared per type and re-formatted on every render.
@@ -107,7 +107,7 @@ internal class RegexBrickFormattingPipeline
         {
             if (brick is RegexBrickJoiner
                 && result.LastOrDefault() is RegexBrick preceding
-                && preceding.Parent is TextNode { EndsWithTightPunctuation: true })
+                && preceding.Parent is TextNode text && JoinerRules.AdheresToPrecedingText(text.Text))
             {
                 preceding.RegexFormatted = BuiltRegex.EscapeSpaces(preceding.Regex) + brick.Regex;
                 continue;

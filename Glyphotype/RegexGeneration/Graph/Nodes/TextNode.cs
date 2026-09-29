@@ -6,25 +6,8 @@
 /// </summary>
 public class TextNode : RegexNode
 {
-    /// <summary>
-    /// Punctuation that binds tight to whatever token sits next to it, so no space is ever written on that
-    /// side of it. Drives both halves of how a joiner is placed around a text nib, from this one set:
-    /// <see cref="StartsWithTightPunctuation"/> suppresses the joiner that would otherwise come *before* the
-    /// nib (nothing separates a token from the comma or <c>'s</c> that follows it), and
-    /// <see cref="EndsWithTightPunctuation"/> makes the joiner *after* the nib adhere to it rather than
-    /// standing on its own (see <c>RegexBrickFormattingPipeline.FoldAdheringJoiners</c>) - so a nib written
-    /// <c>","</c> renders and reads as <c>,[ ]</c>, exactly as if it had been written <c>", "</c>.
-    /// </summary>
-    static readonly HashSet<char> _tightPunctuation = ['\'', ',', '.', ';', ':', '!', '?'];
-
     /// <summary>The literal regex text to match, wrapped as optional (e.g. <c>(text )?</c>) if the source nib was optional, with every literal space escaped to <see cref="BuiltRegex.EscapedSpace"/>.</summary>
     public string Text { get; set; }
-
-    public char FirstChar => Text.First();
-    public char LastChar => Text.Last();
-
-    /// <summary>Whether this node's text opens with <see cref="_tightPunctuation"/> - e.g. <c>'s</c>, or a bare <c>","</c> nib - and so must hug the token before it rather than be separated from it by a joiner.</summary>
-    public bool StartsWithTightPunctuation => IsClauseBreak || _tightPunctuation.Contains(FirstChar);
 
     /// <summary>
     /// Whether this nib was authored as a bare period - the one way a Glyph type declares that it
@@ -34,23 +17,8 @@ public class TextNode : RegexNode
     /// </summary>
     public bool IsClauseBreak { get; }
 
-    /// <summary>Whether this nib is an <see cref="OptionalPluralNib"/> - a suffix of the word before it (e.g. the "s" of "dogs"), so never separated from that word.</summary>
+    /// <summary>Whether this nib is an <see cref="OptionalPluralNib"/> - a suffix of the word before it (e.g. the "s" of "dogs"), so never separated from that word (see <see cref="JoinerRules.Between"/>).</summary>
     public bool IsPluralSuffix { get; }
-
-    /// <summary>Whether this node's text closes with <see cref="_tightPunctuation"/>, so the joiner that follows it belongs on this node's own line rather than a line of its own.</summary>
-    public bool EndsWithTightPunctuation => _tightPunctuation.Contains(LastChar);
-
-    /// <summary>Whether this node's text already opens with a space of its own, which a joiner in front of it would double up with. The mirror of <see cref="RegexCollector.AlreadySeparated"/>, which guards the same thing from the other side.</summary>
-    public bool StartsWithSpace => Text.StartsWith(BuiltRegex.EscapedSpace) || FirstChar == ' ';
-
-    /// <summary>
-    /// Whether the joiner that would otherwise precede this node should be dropped - because the node opens
-    /// with punctuation that binds to the token before it, is a plural suffix of the word before it, or
-    /// already supplies that space itself. Together with <see cref="RegexCollector.AlreadySeparated"/> this is
-    /// what makes a comma nib authored as <c>","</c>, <c>", "</c> or <c>" , "</c> all come out as the same
-    /// single-spaced pattern.
-    /// </summary>
-    public bool AbsorbsPrecedingJoiner => StartsWithTightPunctuation || IsPluralSuffix || StartsWithSpace;
 
     public TextNode(RegexNode parentNode, Nib nib)
         : base(parentNode, nib.Text)

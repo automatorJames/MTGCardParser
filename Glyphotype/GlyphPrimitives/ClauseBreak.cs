@@ -27,6 +27,6 @@ public class ClauseBreak : CaptureUnit
 
     public ClauseBreak(string sourceText, int index, int length)
     {
-        CaptureContext = CreateSpanContext(_rootNode, sourceText, index, length);
+        InitializeSpanContext(_rootNode, sourceText, index, length);
     }
 }

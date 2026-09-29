@@ -14,13 +14,17 @@ public abstract class CaptureUnit
     static readonly Regex _wholeWindow = new(".+", RegexOptions.Singleline);
 
     /// <summary>
-    /// A <see cref="CaptureContext"/> spanning exactly <paramref name="length"/> characters of
+    /// Sets this unit's <see cref="CaptureContext"/> to span exactly <paramref name="length"/> characters of
     /// <paramref name="sourceText"/> from <paramref name="index"/> - for a unit the Tokenizer constructs directly
     /// (e.g. <see cref="UnmatchedString"/>) rather than matching with a graph. <paramref name="rootNode"/> is
-    /// shared by every instance of the unit, just as a matched Glyph type's graph nodes are.
+    /// shared by every instance of the unit, just as a matched Glyph type's graph nodes are. The root trace's
+    /// value is this unit, just as a matched Glyph's root trace holds that Glyph.
     /// </summary>
-    protected static CaptureContext CreateSpanContext(GlyphNode rootNode, string sourceText, int index, int length) =>
-        new(rootNode, _wholeWindow.Match(sourceText, index, length), sourceText);
+    protected void InitializeSpanContext(GlyphNode rootNode, string sourceText, int index, int length)
+    {
+        CaptureContext = new(rootNode, _wholeWindow.Match(sourceText, index, length), sourceText);
+        CaptureContext.RootCaptureTrace.ClrValue = this;
+    }
 
     /// <summary>A root node for a directly constructed unit, with its (lazily built) children forced up front, since one instance is shared across threads.</summary>
     protected static TNode CreateSharedRootNode<TNode>(TNode node) where TNode : GlyphNode

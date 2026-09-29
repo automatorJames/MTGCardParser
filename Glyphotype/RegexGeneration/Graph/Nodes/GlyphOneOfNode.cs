@@ -6,10 +6,10 @@ namespace Glyphotype.RegexGeneration.Graph.Nodes;
 /// Its <see cref="Glyph.Nibs"/> may also put literal text around the alternatives - one contiguous run of
 /// properties with text before and/or after it, as <see cref="OneOfBase.ValidateStructure"/> enforces - e.g.
 /// <c>[@"\{", Prop(Colorless), Prop(Symbol), @"\}"]</c> for a braced symbol. That renders as
-/// <c>\{(colorless|symbol)\}</c>: the pipe only ever sits between two alternatives, the alternatives are
-/// grouped so the text binds to all of them rather than to the first and last alone (a plain group, which
-/// captures nothing under <see cref="RegexOptions.ExplicitCapture"/>), and nothing is inserted between the
-/// text and the alternatives - any space wanted there belongs in the text itself.
+/// <c>\{(colorless|symbol)\}</c>: the pipe only ever sits between two alternatives, and nothing is inserted
+/// between the text and the alternatives - any space wanted there belongs in the text itself (see
+/// <see cref="JoinerRules.Between"/>). The alternatives are grouped so the text binds to all of them rather than
+/// to the first and last alone - a plain group, which captures nothing under <see cref="RegexOptions.ExplicitCapture"/>.
 /// </para>
 /// </summary>
 public class GlyphOneOfNode : GlyphNode
@@ -18,9 +18,6 @@ public class GlyphOneOfNode : GlyphNode
         : base(parentNode, navigation)
     {
     }
-
-    public override Joiner JoinerBetween(RegexNode before, RegexNode after) =>
-        before is NamedGroupNode && after is NamedGroupNode ? EffectiveChildJoiner : Joiner.None;
 
     protected override void AppendInnerContentBricks(RegexCollector collector)
     {
