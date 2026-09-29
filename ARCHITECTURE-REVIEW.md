@@ -24,7 +24,7 @@ This is an analysis-only document. Nothing here has been implemented.
 MTGGlyphs (declarations: ~50 Glyph classes + attributes + SQL repo)
         ^ discovered by AppDomain scan, not project reference
 Glyphotype (library)
-   |- StaticRegistry ----- GlyphTypeRegistry: static ctor builds everything
+   |- StaticRegistry ----- GlyphGrammar (instance: types, validation, tokenizer) + GlyphTypeCache (per-type graphs)
    |- GlyphPrimitives ---- Glyph / OneOf / ManyOf / CompoundOf / DynamicGlyph
    |- RegexGeneration
    |    |- Graph --------- Navigation -> RegexNode tree -> RegexBrick[] -> compiled Regex
@@ -252,6 +252,8 @@ Every one of these is publicly reassignable and publicly mutable. Combined with 
 
 **Fix (highest maintainability leverage):** extract an `IGlyphRegistry` interface with an instance implementation built by an explicit `GlyphRegistryBuilder(params Assembly[])`. Register the singleton in DI and inject it. Keep a thin static facade during migration if needed. This single change unlocks testability for everything below it.
 
+**Status: resolved.** `GlyphTypeRegistry` was split into `GlyphGrammar` - an instance built from explicit types (`new GlyphGrammar(types, settings)` / `GlyphGrammar.FromAssemblies`), injected via DI, with `GlyphGrammar.Default` as the app's scanned grammar - and `GlyphTypeCache`, a thread-safe memo of the per-type state that's identical in every grammar. `Glyphotype.Tests` builds its own grammar, and runs grammars with different settings side by side. Still open: the editor's save path to `../../../../MTGGlyphs`.
+
 ---
 
 ### 16. There are no tests at all
@@ -303,7 +305,7 @@ The GlyphEditor is a real feature mid-flight, so it is a judgment call — but i
 
 - **TFM split:** `Glyphotype` targets `net8.0`, `DocumentAnalysisInterface` targets `net10.0`. It works, but it leaves two major versions of runtime/regex/LINQ improvements on the floor in the library that does all the work.
 - **`<Nullable>disable</Nullable>`** in both projects. For a codebase this dense in reflection and nullable-by-design capture results (`GetValue` returning null to signal "did not match"), NRTs would be genuinely load-bearing. `SpanView.razor` already uses `= null!` annotations, so the intent is there.
-- **Implicit assembly coupling:** `Glyphotype` has no reference to `MTGGlyphs`, but `LoadAllAssemblyTypes()` (`GlyphTypeRegistry.cs:60-98`) calls `Assembly.LoadFrom` on every DLL in the output directory and swallows failures. It works only because `DocumentAnalysisInterface` happens to reference both. Making registry construction take explicit assemblies (item 15) fixes this too.
+- **Implicit assembly coupling:** `Glyphotype` has no reference to `MTGGlyphs`, but `LoadAllAssemblyTypes()` (`GlyphTypeRegistry.cs:60-98`) calls `Assembly.LoadFrom` on every DLL in the output directory and swallows failures. It works only because `DocumentAnalysisInterface` happens to reference both. Making registry construction take explicit assemblies (item 15) fixes this too. **Status:** explicit construction now exists (`GlyphGrammar.FromAssemblies`); only `GlyphGrammar.Default` still scans.
 - **Build artifacts in source control:** `.js` and `.js.map` are committed next to their `.ts` sources, while `corpus-captures.js`, `regex-debug.js`, `search.js`, and `general.js` are hand-authored JS with no TS twin. Pick one authoring model; gitignore the outputs.
 
 ---

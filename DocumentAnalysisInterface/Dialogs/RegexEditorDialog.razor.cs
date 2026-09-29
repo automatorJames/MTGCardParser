@@ -3,6 +3,7 @@
 public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 {
     [Parameter] public ProcessedLine Line { get; set; } = default!;
+    [Inject] GlyphGrammar Grammar { get; set; } = default!;
     [Parameter] public EventCallback<EditorGlyph> OnClose { get; set; }
 
     string ClassName
@@ -45,8 +46,8 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
     protected override void OnInitialized()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
-        _editorGlyph = new EditorGlyph(Line);
-        _allGlyphTypes = GlyphTypeRegistry.GetAllTypesExhaustive();
+        _editorGlyph = new EditorGlyph(Line, Grammar);
+        _allGlyphTypes = Grammar.GetAllCaptureUnitTypes();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -213,7 +214,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task SaveClassToFile()
     {
-        GlyphTypeRegistry.CreateAndRegisterNewTypeAndSaveToDisk(_editorGlyph);
+        Grammar.CreateAndRegisterNewTypeAndSaveToDisk(_editorGlyph);
         await OnClose.InvokeAsync(_editorGlyph);
     }
 

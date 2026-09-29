@@ -1,5 +1,6 @@
 @using DocumentAnalysisInterface.Components.Regex
 @inject CorpusAnalyzer CorpusAnalyzer
+@inject GlyphGrammar Grammar
 @inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
@@ -106,7 +107,7 @@
 
     protected override void OnInitialized()
     {
-        _graphEntries = GlyphTypeRegistry.RegexGraphs.ToList();
+        _graphEntries = Grammar.Types.Select(x => KeyValuePair.Create(x, GlyphTypeCache.GetRegexGraph(x))).ToList();
         _totalCount = _graphEntries.Count;
         _ = RunAnalysisAsync();
     }
@@ -131,7 +132,7 @@
 
                     try
                     {
-                        results.Add(RegexMatchDebugger.Analyze(graph, TextSegment));
+                        results.Add(RegexMatchDebugger.Analyze(graph, TextSegment, Grammar));
                     }
                     catch
                     {

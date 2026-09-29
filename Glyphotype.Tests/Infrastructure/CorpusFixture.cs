@@ -8,6 +8,9 @@ public sealed class CorpusFixture
 {
     readonly Dictionary<string, ProcessedDocument> _processedByText;
 
+    /// <summary>The test grammar: every Glyph type in this assembly, under the whole-segment rule the app runs with.</summary>
+    public GlyphGrammar Grammar { get; } = GlyphGrammar.FromAssemblies([typeof(CorpusFixture).Assembly], allowPartialSegmentMatches: false);
+
     public IReadOnlyList<ProcessedDocument> ProcessedDocuments { get; }
 
     public CorpusFixture()
@@ -17,7 +20,7 @@ public sealed class CorpusFixture
         if (duplicateTexts.Count > 0)
             throw new InvalidOperationException($"Corpus document texts must be unique (they identify test cases), but these repeat: {string.Join(" | ", duplicateTexts)}");
 
-        var analyzer = new CorpusAnalyzer(new Repository());
+        var analyzer = new CorpusAnalyzer(new Repository(), Grammar);
         analyzer.EnsureInitializedAsync().GetAwaiter().GetResult();
 
         ProcessedDocuments = analyzer.ProcessedDocuments;

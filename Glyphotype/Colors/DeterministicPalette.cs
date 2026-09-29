@@ -46,7 +46,7 @@ public static class DeterministicPalette
     /// <summary>Builds the full type-to-palette map: types carrying a <see cref="ColorAttribute"/> get that fixed color, then every remaining registered token type gets an equidistant rainbow hue, hash-ordered for stability.</summary>
     static Dictionary<Type, HexPalette> GetTypePaletteSet()
     {
-        var allGlyphTypes = GlyphTypeRegistry.GetAllTypesExhaustive()
+        var allGlyphTypes = GlyphGrammar.Default.GetAllCaptureUnitTypes()
             .OrderBy(x => GetDeterministicHash(x.Name))
             .ToList();
 

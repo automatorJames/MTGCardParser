@@ -16,18 +16,12 @@
   </ItemGroup>
 
   <!--
-    Deliberately references Glyphotype only - never MTGGlyphs. GlyphTypeRegistry discovers Glyph types by
-    loading every assembly in the output directory, so any glyph assembly referenced here would join the
-    test grammar and compete with it during tokenization.
+    The test grammar is built explicitly from this assembly (see CorpusFixture), so nothing else referenced here
+    joins it. There's deliberately no appsettings.json: only GlyphGrammar.Default reads one, so any test that
+    silently fell back to the app's global grammar fails loudly instead.
   -->
   <ItemGroup>
     <ProjectReference Include="..\Glyphotype\Glyphotype.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
 </Project>

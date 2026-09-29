@@ -94,7 +94,7 @@ public class Navigation
         IsGlyphType = NodeType.IsAssignableTo(typeof(Glyph));
 
         if (IsGlyphType)
-            GlyphTypeConfiguration = GlyphTypeRegistry.GetGlyphTypeConfiguration(NodeType);
+            GlyphTypeConfiguration = GlyphTypeCache.GetConfiguration(NodeType);
     }
 
     public override string ToString() => Name;

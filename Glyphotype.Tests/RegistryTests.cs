@@ -9,18 +9,32 @@ public class RegistryTests(CorpusFixture corpus)
     [Fact]
     public void Every_discovered_glyph_type_passes_structural_validation()
     {
-        Assert.Empty(GlyphTypeRegistry.GetStructuralValidationErrors());
+        Assert.Empty(corpus.Grammar.GetStructuralValidationErrors());
     }
 
     [Fact]
-    public void Only_test_glyphs_are_registered()
+    public void The_grammar_holds_only_the_types_it_was_built_from()
     {
-        // Guards the test project's one hard rule: reference Glyphotype only, so no other glyph assembly
-        // (e.g. MTGGlyphs) joins the test grammar.
-        var foreignTypes = GlyphTypeRegistry.GetAllTopLevelGlyphTypes().Where(x => x.Assembly != _testAssembly).ToList();
+        // Every top-level type comes from this assembly: nothing else loaded in the process (e.g. another glyph
+        // assembly) leaks into a grammar built from an explicit type set.
+        var foreignTypes = corpus.Grammar.TopLevelTypes.Where(x => x.Assembly != _testAssembly).ToList();
 
         Assert.Empty(foreignTypes);
     }
+
+    [Fact]
+    public void AllowPartialSegmentMatches_is_a_setting_of_each_grammar()
+    {
+        // Two grammars over the same types, differing only in this setting, coexisting in one process.
+        var lenient = GlyphGrammar.FromAssemblies([_testAssembly], allowPartialSegmentMatches: true);
+        const string text = "the dog sleeps in the kitchen all day.";
+
+        Assert.Equal("«the dog sleeps in the kitchen all day» .", Signature(corpus.Grammar.Tokenize(text)));
+        Assert.Equal("AnimalRests{Animal=Dog, Place=Kitchen} «all day» .", Signature(lenient.Tokenize(text)));
+    }
+
+    static string Signature(IEnumerable<CaptureUnit> units) =>
+        string.Join(" ", units.Select(GlyphSignature.Of));
 
     [Fact]
     public void Every_test_glyph_type_is_matched_somewhere_in_the_corpus()
@@ -48,8 +62,8 @@ public class RegistryTests(CorpusFixture corpus)
         // The corpus shows BakerOpensTheShop winning "the baker opens the shop". That only proves
         // [TokenizationOrder] if OpensBuilding - tried first by default, having the longer regex - would
         // otherwise have matched the same sentence.
-        var opensBuilding = GlyphTypeRegistry.GetRegexGraph(typeof(OpensBuilding));
-        var bakerOpensTheShop = GlyphTypeRegistry.GetRegexGraph(typeof(BakerOpensTheShop));
+        var opensBuilding = GlyphTypeCache.GetRegexGraph(typeof(OpensBuilding));
+        var bakerOpensTheShop = GlyphTypeCache.GetRegexGraph(typeof(BakerOpensTheShop));
 
         Assert.True(opensBuilding.TryMatch("the baker opens the shop", out _));
         Assert.True(opensBuilding.BuiltRegex.MinifiedRegex.Length > bakerOpensTheShop.BuiltRegex.MinifiedRegex.Length);

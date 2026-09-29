@@ -8,9 +8,8 @@ public class Tokenizer
     private static readonly Dictionary<int, Regex> _unmatchedRegexCache = [];
 
     /// <param name="allowPartialSegmentMatches">
-    /// The default for <see cref="Tokenize"/>'s parameter of the same name, supplied from
-    /// <see cref="GlobalSettings.AllowPartialSegmentMatches"/> by
-    /// <see cref="GlyphTypeRegistry"/> when it builds <see cref="GlyphTypeRegistry.ClassTokenizer"/>.
+    /// The default for <see cref="Tokenize"/>'s parameter of the same name, supplied by the
+    /// <see cref="GlyphGrammar"/> that builds this Tokenizer (see <see cref="GlyphGrammar.AllowPartialSegmentMatches"/>).
     /// </param>
     public Tokenizer(List<Type> orderedTopLevelTypes, List<Type> dependentTypes, bool allowPartialSegmentMatches)
     {
@@ -95,7 +94,7 @@ public class Tokenizer
 
             foreach (var type in filteredTypes)
             {
-                var rootNode = GlyphTypeRegistry.RegexGraphs[type];
+                var rootNode = GlyphTypeCache.GetRegexGraph(type);
 
                 if (rootNode.MustMatchWholeLine && currentIndex != scopeStartIndex)
                     continue;
@@ -119,7 +118,7 @@ public class Tokenizer
                 // still may end partway through it.
                 foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, segmentEndIndex, mustConsumeSegment, rootNode.SpansClauses))
                 {
-                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, mustConsumeSegment))
+                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, mustConsumeSegment, tokenizer: this))
                         continue;
 
                     // --- COMMIT PHASE ---

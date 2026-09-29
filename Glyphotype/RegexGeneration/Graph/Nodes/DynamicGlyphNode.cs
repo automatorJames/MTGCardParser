@@ -33,7 +33,9 @@ public class DynamicGlyphNode : GlyphNode
         // fragment carved out of one segment, not a segment of its own, so there's no whole-segment rule
         // that could sensibly apply to it - and the shortfall handling just below depends on getting back
         // the shorter resolved prefix that such a rule would reject outright, leaving nothing to narrow to.
-        var resolvedTokens = GlyphTypeRegistry.ClassTokenizer.Tokenize(
+        // Resolved through the same Tokenizer (so the same grammar) that made the enclosing match.
+        var tokenizer = captureTrace.CaptureContext.Tokenizer ?? GlyphGrammar.Default.Tokenizer;
+        var resolvedTokens = tokenizer.Tokenize(
             captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialSegmentMatches: true);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match

@@ -9,6 +9,7 @@ namespace Glyphotype.GlyphAnalysisDTOs;
 public class CorpusAnalyzer
 {
     IDocumentRepository _repository;
+    readonly GlyphGrammar _grammar;
     bool _isInitialized;
 
     /// <summary>
@@ -40,9 +41,11 @@ public class CorpusAnalyzer
     /// </summary>
     public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries { get; private set; } = [];
 
-    public CorpusAnalyzer(IDocumentRepository repository)
+    /// <summary>Analyzes <paramref name="repository"/>'s documents as tokenized by <paramref name="grammar"/>.</summary>
+    public CorpusAnalyzer(IDocumentRepository repository, GlyphGrammar grammar)
     {
         _repository = repository;
+        _grammar = grammar;
     }
 
     public async Task EnsureInitializedAsync()
@@ -57,7 +60,7 @@ public class CorpusAnalyzer
         ProcessedDocuments = documents
             .AsParallel()
             .AsOrdered()
-            .Select(x => new ProcessedDocument(x))
+            .Select(x => new ProcessedDocument(x, _grammar))
             .ToList();
 
         WordCount = ProcessedDocuments.Sum(x => x.WordCount);
@@ -76,7 +79,7 @@ public class CorpusAnalyzer
 
         // Registered types with zero matches are still represented, so "hide zero-capture" filtering
         // has actual zero-occurrence entries to hide rather than the type disappearing outright.
-        var unmatchedTypes = GlyphTypeRegistry.GetAllTopLevelGlyphTypes()
+        var unmatchedTypes = _grammar.TopLevelTypes
             .Where(x => typeof(Glyph).IsAssignableFrom(x) && !GlyphOccurrenceSummaries.ContainsKey(x));
 
         foreach (var type in unmatchedTypes)
@@ -89,7 +92,7 @@ public class CorpusAnalyzer
     {
         var oldProcessedDocument = ProcessedDocuments.FirstOrDefault(x => x.Document == document);
         var index = ProcessedDocuments.IndexOf(oldProcessedDocument);
-        ProcessedDocument reprocessedDocument = new(document);
+        ProcessedDocument reprocessedDocument = new(document, _grammar);
         ProcessedDocuments[index] = reprocessedDocument;
 
         WordCount = ProcessedDocuments.Sum(x => x.WordCount);

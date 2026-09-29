@@ -38,14 +38,12 @@ public class GlobalSettings
     /// <summary>
     /// The settings this process is running under, resolved on first access and fixed thereafter.
     /// <para>
-    /// Self-loading rather than host-injected because the things that need it are reached statically -
-    /// <see cref="GlyphTypeRegistry"/> and the <see cref="Tokenizers.Tokenizer"/> it owns are built by a
-    /// static constructor that runs at whatever moment some caller first touches the registry. Nothing can
-    /// reliably run *before* that to hand settings in, so the alternative is building with defaults and
-    /// having a host apply the real values afterwards - which leaves a window where the registry is
-    /// initialized but misconfigured, and silently wrong if a host ever forgets to close it. Reading the
-    /// same appsettings the host reads is the same move the registry already makes for Glyph types: go
-    /// look at what shipped next to the executing assembly and work it out.
+    /// Self-loading rather than host-injected because it's what <see cref="GlyphGrammar.Default"/> is built
+    /// under, and that's reached statically - built at whatever moment some caller first touches it, with
+    /// nothing reliably able to run *before* that to hand settings in. Reading the same appsettings the host
+    /// reads is the same move <see cref="GlyphGrammar.Default"/> makes for Glyph types: go look at what shipped
+    /// next to the executing assembly and work it out. Any other <see cref="GlyphGrammar"/> takes its settings
+    /// explicitly, and never reads this.
     /// </para>
     /// </summary>
     public static GlobalSettings Current { get; } = Load();

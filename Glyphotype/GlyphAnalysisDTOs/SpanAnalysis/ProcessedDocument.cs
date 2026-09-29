@@ -21,10 +21,10 @@ public class ProcessedDocument
     /// </summary>
     public int CapturedWordCount { get; init; }
 
-    public ProcessedDocument(IDocument document)
+    public ProcessedDocument(IDocument document, GlyphGrammar grammar)
     {
         Document = document;
-        Lines = ProcessedLine.GetAll(document);
+        Lines = ProcessedLine.GetAll(document, grammar);
 
         // "Fully matched" means no unmatched text occurrences (except isolated periods) exist
         IsFullyMatched = Lines

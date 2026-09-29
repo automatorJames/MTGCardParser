@@ -41,7 +41,7 @@ This project provides a robust backend for tokenizing and analyzing card rules t
 ## Customization & Extensibility
 
 - **Add new glyph types:**  
-  Implement new classes in `MTGGlyphs/` and register them via `GlyphTypeRegistry`.
+  Implement new classes in `MTGGlyphs/` and they're picked up by `GlyphGrammar.Default`, which discovers every Glyph type in the assemblies alongside the app.
 - **Control analysis behavior:**  
   Use attributes like `[CollapseInAnalysis]`, `[IgnoreInAnalysis]`, etc., to fine-tune parsing and rendering.
 - **UI customization:**  

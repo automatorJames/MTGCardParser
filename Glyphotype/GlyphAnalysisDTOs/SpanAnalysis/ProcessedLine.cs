@@ -62,7 +62,7 @@ public class ProcessedLine
     static int CountWords(string text) =>
         text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
-    public static List<ProcessedLine> GetAll(IDocument document)
+    public static List<ProcessedLine> GetAll(IDocument document, GlyphGrammar grammar)
     {
         var formattedLines = document.GetFormattedLines();
         List<ProcessedLine> lines = [];
@@ -76,7 +76,7 @@ public class ProcessedLine
 
             SourceTextDTO sourceText = new(formattedText, document.Name, i);
 
-            var lineGlyphs = GlyphTypeRegistry.Tokenize(sourceText.FormattedText);
+            var lineGlyphs = grammar.Tokenize(sourceText.FormattedText);
             var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(document, lineGlyphs, i);
             var dataPath = document.Name.Replace(' ', '_') + $"-line[{i}]";
             ProcessedLine processedLine = new(sourceText, lineGlyphs, unmatchedTextOccurrences, dataPath);

@@ -15,9 +15,10 @@ public class Program
         builder.Services.AddServerSideBlazor();
 
         // Registered from GlobalSettings.Current rather than bound off builder.Configuration, so that
-        // everything in the process - this container and Glyphotype's static registry alike, the latter
-        // initializing whenever something first touches it - reads one already-resolved instance.
+        // everything in the process - this container and GlyphGrammar.Default alike, the latter
+        // built whenever something first touches it - reads one already-resolved instance.
         builder.Services.AddSingleton(GlobalSettings.Current);
+        builder.Services.AddSingleton(_ => GlyphGrammar.Default);
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();

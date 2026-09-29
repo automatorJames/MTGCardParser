@@ -29,8 +29,12 @@ public class CaptureContext
     public void RequestNarrowedScopeEnd(int scopeEnd) =>
         NarrowedScopeEnd = NarrowedScopeEnd < 0 ? scopeEnd : Math.Min(NarrowedScopeEnd, scopeEnd);
 
-    public CaptureContext(GlyphNode rootNode, Match match, string sourceText)
+    /// <summary>The Tokenizer this match was made by, which any <see cref="Nodes.DynamicGlyphNode"/> in it resolves through - or null for a match made outside any tokenization.</summary>
+    public Tokenizer Tokenizer { get; }
+
+    public CaptureContext(GlyphNode rootNode, Match match, string sourceText, Tokenizer tokenizer = null)
     {
+        Tokenizer = tokenizer;
         _captureDictionary = GetNamedGroupCaptures(match);
         SourceText = sourceText;
         FullMatch = match.Value;

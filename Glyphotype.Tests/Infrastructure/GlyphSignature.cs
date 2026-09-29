@@ -105,7 +105,7 @@ public static class GlyphSignature
         if (IsClosedGeneric(type, typeof(OptionalOf<>)))
             return [(nameof(OptionalOf<Glyph>.Item), type.GetProperty(nameof(OptionalOf<Glyph>.Item)).GetValue(glyph))];
 
-        return GlyphTypeRegistry.GetGlyphTypeConfiguration(type).Nibs
+        return GlyphTypeCache.GetConfiguration(type).Nibs
             .OfType<PropertyNib>()
             .Select(x => (x.Name, type.GetProperty(x.Name).GetValue(glyph)));
     }

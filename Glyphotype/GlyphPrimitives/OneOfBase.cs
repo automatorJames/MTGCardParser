@@ -41,7 +41,7 @@ public abstract class OneOfBase : Glyph
 
     public override string ValidateStructure()
     {
-        var graph = GlyphTypeRegistry.RegexGraphs[Type];
+        var graph = GlyphTypeCache.GetRegexGraph(Type);
         var props = GetAlternativeProps(Type);
 
         if (props.Count() < 2)

@@ -45,12 +45,12 @@ public abstract class Glyph : CaptureUnit
         new OptionalPluralNib();
 
     /// <summary>
-    /// Only intended to be called by GlyphTypeRegistry once upon startup. May be overridden by
+    /// Only intended to be called by <see cref="GlyphGrammar"/> while it validates. May be overridden by
     /// inheriting abstract classes who want to specify their own validation requirements.
     /// </summary>
     public virtual string ValidateStructure()
     {
-        var regexGraph = GlyphTypeRegistry.GetRegexGraph(Type);
+        var regexGraph = GlyphTypeCache.GetRegexGraph(Type);
 
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
@@ -183,7 +183,7 @@ public abstract class Glyph : CaptureUnit
     /// correctly. Either way the primitive stops being a black box.
     /// </para>
     /// <para>
-    /// Static and Type-only, and run by <see cref="GlyphTypeRegistry"/> before <see cref="ValidateStructure"/>,
+    /// Static and Type-only, and run by <see cref="GlyphGrammar"/> before <see cref="ValidateStructure"/>,
     /// since an override's own checks can otherwise misread the violation first - e.g.
     /// <see cref="OneOfBase.ValidateStructure"/> would happily count a property added to a
     /// <see cref="OneOf{T1,T2}"/> subclass as a third alternative (see <see cref="OneOfBase.GetAlternativeProps"/>).
@@ -324,7 +324,7 @@ public abstract class Glyph : CaptureUnit
     /// The Type-only rules - <see cref="GetPrimitiveExtensionError"/>, <see cref="GetListPropertyError"/>,
     /// <see cref="GetPropertyTypeError"/>, <see cref="GetNullabilityError"/> and
     /// <see cref="GetOneOfTypeArgumentError"/> - which
-    /// <see cref="GlyphTypeRegistry"/> checks before building any regex graph, since a violation can break
+    /// <see cref="GlyphGrammar"/> checks before building any regex graph, since a violation can break
     /// graph building itself (an unsupported property type does) before <see cref="ValidateStructure"/> gets the
     /// chance to report it.
     /// </summary>
@@ -379,7 +379,7 @@ public abstract class Glyph : CaptureUnit
     /// </summary>
     string GetUnanchoredDynamicError()
     {
-        var nibs = GlyphTypeRegistry.GetGlyphTypeConfiguration(Type).Nibs;
+        var nibs = GlyphTypeCache.GetConfiguration(Type).Nibs;
 
         var dynamicNibNames = nibs
             .OfType<PropertyNib>()
@@ -433,7 +433,7 @@ public abstract class Glyph : CaptureUnit
         if (!visitedTypes.Add(nodeType))
             return false;
 
-        return GlyphTypeRegistry.GetGlyphTypeConfiguration(nodeType).Nibs.Any(x => AlwaysConsumesText(x, visitedTypes));
+        return GlyphTypeCache.GetConfiguration(nodeType).Nibs.Any(x => AlwaysConsumesText(x, visitedTypes));
     }
 
     public string CheckForReferenceLoops() => CheckForReferenceLoops(GetType());
@@ -442,7 +442,7 @@ public abstract class Glyph : CaptureUnit
     /// Whether <paramref name="type"/>'s property graph contains a cycle - impossible for it to
     /// legitimately arise (a cyclic property graph could never produce a finite regex), so any
     /// hit here is an authoring mistake. Static and Type-only (no instantiation) so callers can run
-    /// it before building anything for the type - notably before <see cref="GlyphTypeRegistry.GetRegexGraph"/>,
+    /// it before building anything for the type - notably before <see cref="GlyphTypeCache.GetRegexGraph"/>,
     /// whose own tree-walk has no cycle guard and would recurse forever on a genuine loop.
     /// </summary>
     public static string CheckForReferenceLoops(Type type)

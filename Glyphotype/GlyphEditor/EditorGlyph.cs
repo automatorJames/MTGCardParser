@@ -23,9 +23,13 @@ public class EditorGlyph
     IEnumerable<EditorNib> _nonEmptyNibs =>
         Nibs.Where(x => x is not EditorTextNib textNib || !string.IsNullOrWhiteSpace(textNib.RawText));
 
-    public EditorGlyph(ProcessedLine lineMetadata)
+    /// <summary>The grammar this glyph is being authored for: its type names resolve against it.</summary>
+    readonly GlyphGrammar _grammar;
+
+    public EditorGlyph(ProcessedLine lineMetadata, GlyphGrammar grammar)
     {
         LineMetadata = lineMetadata;
+        _grammar = grammar;
         _suggestedClassName = $"New{GlyphType.Name}";
         Update([]);
     }
@@ -96,7 +100,7 @@ public class EditorGlyph
                 return new EditorMethodNib(methodType, frag.Args ?? [], frag.Id);
 
         if (!string.IsNullOrEmpty(frag.TypeName))
-            if (GlyphTypeRegistry.NameToType.TryGetValue(frag.TypeName, out Type parsedBaseType))
+            if (_grammar.TryGetType(frag.TypeName, out Type parsedBaseType))
                 return new EditorPropertyNib(parsedBaseType, XOfType.None, frag.Id);
 
         return new EditorTextNib(frag.Text, frag.Id);
@@ -193,7 +197,7 @@ public class EditorGlyph
                     if (match.Success)
                     {
                         var name = match.Groups["name"].Value;
-                        if (GlyphTypeRegistry.NameToType.TryGetValue(name, out var type))
+                        if (_grammar.TryGetType(name, out var type))
                             color = DeterministicPalette.TypePaletteSet[type].Normal;
                     }
 

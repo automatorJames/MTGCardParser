@@ -8,7 +8,7 @@ internal class Program
 {
     static CardDataGetter _cardDataGetter = new(GlobalSettings.Current);
 
-    static CorpusAnalyzer _analyzer = new(_cardDataGetter);
+    static CorpusAnalyzer _analyzer = new(_cardDataGetter, GlyphGrammar.Default);
 
     static void Main(string[] args)
     {
@@ -17,7 +17,7 @@ internal class Program
 
     static void PrintStructuralValidationErrors()
     {
-        var errors = GlyphTypeRegistry.GetStructuralValidationErrors();
+        var errors = GlyphGrammar.Default.GetStructuralValidationErrors();
 
         if (errors.Count == 0)
         {
@@ -38,7 +38,7 @@ internal class Program
     //    foreach ((var type, var tokens) in glyphsByType)
     //    {
     //        GlyphOccurrenceSummary summary = new(type, tokens.Select(t => new MatchOccurrence(null, t)));
-    //        var regexGraph = GlyphTypeRegistry.RegexGraphs[type];
+    //        var regexGraph = GlyphTypeCache.GetRegexGraph(type);
     //        var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
     //        Console.WriteLine(smartRegex);
     //    }
@@ -56,7 +56,7 @@ internal class Program
     //    var lines = GetLines();
     //
     //    foreach (var line in lines)
-    //        tokens.AddRange(GlyphTypeRegistry.ClassTokenizer.Tokenize(line).OfType<Glyph>());
+    //        tokens.AddRange(GlyphGrammar.Default.Tokenize(line).OfType<Glyph>());
     //
     //    return tokens;
     //}
@@ -67,7 +67,7 @@ internal class Program
     //    var lines = GetLines();
     //
     //    foreach (var line in lines)
-    //        tokens.AddRange(GlyphTypeRegistry.ClassTokenizer.Tokenize(line).OfType<Glyph>());
+    //        tokens.AddRange(GlyphGrammar.Default.Tokenize(line).OfType<Glyph>());
     //
     //    return tokens.GroupBy(x => x.Type).ToDictionary(x => x.Key, x => x.ToList());
     //}

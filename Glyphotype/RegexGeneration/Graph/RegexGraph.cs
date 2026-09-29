@@ -187,8 +187,9 @@ public class RegexGraph
     }
 
     /// <summary>Attempts to match and hydrate <paramref name="sourceText"/> in full, from its start to its end.</summary>
-    public bool TryMatch(string sourceText, out Glyph glyph) =>
-        TryMatch(sourceText, 0, sourceText.Length, out glyph);
+    /// <param name="tokenizer"><inheritdoc cref="TryMatch(string, int, int, out Glyph, bool, Tokenizer)" path="/param[@name='tokenizer']"/></param>
+    public bool TryMatch(string sourceText, out Glyph glyph, Tokenizer tokenizer = null) =>
+        TryMatch(sourceText, 0, sourceText.Length, out glyph, tokenizer: tokenizer);
 
     /// <summary>
     /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.
@@ -199,7 +200,12 @@ public class RegexGraph
     /// its whole-segment requirement: it narrows <paramref name="endIndex"/> to the end of the current
     /// segment and then demands the match fill it, which is the same shape of rule against a smaller scope.
     /// </param>
-    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph, bool mustConsumeWholeScope = false)
+    /// <param name="tokenizer">
+    /// The Tokenizer this match is part of, which any <see cref="DynamicGlyph"/> in it resolves through - so a
+    /// dynamic only ever resolves to types of the same <see cref="GlyphGrammar"/>. Null (a match made outside any
+    /// tokenization) falls back to <see cref="GlyphGrammar.Default"/>'s.
+    /// </param>
+    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph, bool mustConsumeWholeScope = false, Tokenizer tokenizer = null)
     {
         // Retried against a progressively shorter scope whenever hydration discovers that a trailing
         // DynamicGlyph resolved less text than its greedy pattern captured (see
@@ -213,7 +219,7 @@ public class RegexGraph
 
         while (true)
         {
-            if (TryMatchWithinScope(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, out glyph, out int narrowedScopeEnd))
+            if (TryMatchWithinScope(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, tokenizer, out glyph, out int narrowedScopeEnd))
                 return true;
 
             // Either no narrowing was requested (an ordinary failed match, leaving -1) or the one that
@@ -238,7 +244,7 @@ public class RegexGraph
     /// </param>
     /// <param name="mustConsumeWholeScope"><inheritdoc cref="TryMatch(string, int, int, out Glyph, bool)" path="/param[@name='mustConsumeWholeScope']"/></param>
     /// <param name="narrowedScopeEnd">The scope end to retry at, or -1 if no narrowing was requested.</param>
-    bool TryMatchWithinScope(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Glyph glyph, out int narrowedScopeEnd)
+    bool TryMatchWithinScope(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, Tokenizer tokenizer, out Glyph glyph, out int narrowedScopeEnd)
     {
         glyph = null;
         narrowedScopeEnd = -1;
@@ -274,7 +280,7 @@ public class RegexGraph
         if (!matchIsValid)
             return false;
 
-        CaptureContext captureContext = new(RootNode, match, sourceText);
+        CaptureContext captureContext = new(RootNode, match, sourceText, tokenizer);
         var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
         narrowedScopeEnd = captureContext.NarrowedScopeEnd;
 

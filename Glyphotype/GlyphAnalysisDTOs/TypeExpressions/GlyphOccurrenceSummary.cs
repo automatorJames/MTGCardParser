@@ -24,10 +24,7 @@ public class GlyphOccurrenceSummary
     {
         Type = type;
 
-        if (!GlyphTypeRegistry.RegexGraphs.TryGetValue(Type, out var graph))
-            throw new Exception($"No {nameof(RegexGraph)} registered for {nameof(Glyph)} type {Type.Name}");
-
-        RegexGraph = graph;
+        RegexGraph = GlyphTypeCache.GetRegexGraph(Type);
         TypeNameFriendly = Type.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
         OccurrenceCount = occurrenceCount;
 

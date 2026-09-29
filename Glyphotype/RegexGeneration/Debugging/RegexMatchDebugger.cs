@@ -25,14 +25,15 @@ public static class RegexMatchDebugger
     /// <summary>Per-stem match timeout, so one pathological backtracking case can't hang the whole analysis pass.</summary>
     static readonly TimeSpan _matchTimeout = TimeSpan.FromSeconds(1);
 
-    /// <summary>Analyzes one graph against <paramref name="textSegment"/> (which must already be trimmed to word boundaries).</summary>
-    public static RegexDebugResult Analyze(RegexGraph graph, string textSegment) =>
-        new StemWalk(graph, textSegment).Run();
+    /// <summary>Analyzes one graph against <paramref name="textSegment"/> (which must already be trimmed to word boundaries), resolving any dynamic group against <paramref name="grammar"/>'s types (<see cref="GlyphGrammar.Default"/>'s if null).</summary>
+    public static RegexDebugResult Analyze(RegexGraph graph, string textSegment, GlyphGrammar grammar = null) =>
+        new StemWalk(graph, textSegment, grammar ?? GlyphGrammar.Default).Run();
 
     class StemWalk
     {
         readonly RegexGraph _graph;
         readonly string _text;
+        readonly GlyphGrammar _grammar;
         readonly List<RegexBrick> _bricks;
 
         /// <summary>The committed (known-matching) regex text so far — brick text with spaces still escaped.</summary>
@@ -50,10 +51,11 @@ public static class RegexMatchDebugger
         RegexNode _failureNode;
         RegexBrick _failureBrick;
 
-        public StemWalk(RegexGraph graph, string textSegment)
+        public StemWalk(RegexGraph graph, string textSegment, GlyphGrammar grammar)
         {
             _graph = graph;
             _text = textSegment;
+            _grammar = grammar;
             _bricks = graph.BuiltRegex.Bricks;
         }
 
@@ -229,8 +231,8 @@ public static class RegexMatchDebugger
             var filterType = dynamicNode.Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);
 
             var candidateTypes = filterType == typeof(Glyph)
-                ? GlyphTypeRegistry.AppliedOrderTypes
-                : GlyphTypeRegistry.AppliedOrderTypes.Where(x => x.IsAssignableTo(filterType)).ToList();
+                ? _grammar.TopLevelTypes
+                : _grammar.TopLevelTypes.Where(x => x.IsAssignableTo(filterType)).ToList();
 
             var openText = _bricks[openIdx].Regex;
             var closeText = _bricks[closeIdx].Regex;
@@ -240,9 +242,7 @@ public static class RegexMatchDebugger
 
             foreach (var type in candidateTypes)
             {
-                if (!GlyphTypeRegistry.RegexGraphs.TryGetValue(type, out var substitutedGraph))
-                    continue;
-
+                var substitutedGraph = GlyphTypeCache.GetRegexGraph(type);
                 var unitText = openText + substitutedGraph.BuiltRegex.MinifiedRegex + closeText;
 
                 if (TestCandidate(_stem.ToString() + unitText + Closers(), out int length) && length > bestLength)
