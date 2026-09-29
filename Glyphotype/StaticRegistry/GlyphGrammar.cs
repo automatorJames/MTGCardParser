@@ -404,6 +404,13 @@ public sealed class GlyphGrammar
                         string val = methodNib.Args.Length > 0 ? methodNib.Args[0] : "";
                         il.Emit(OpCodes.Ldstr, val);
                     }
+                    else if (pType == typeof(Nib))
+                    {
+                        // e.g. Opt(Nib): the editor's text argument, as a literal-text Nib
+                        string val = methodNib.Args.Length > 0 ? methodNib.Args[0] : "";
+                        il.Emit(OpCodes.Ldstr, val);
+                        il.Emit(OpCodes.Call, nibFromString);
+                    }
                     else il.Emit(OpCodes.Ldnull);
                 }
                 il.Emit(OpCodes.Call, method);

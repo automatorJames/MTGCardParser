@@ -18,9 +18,9 @@ public class DynamicGlyphNode : GlyphNode
     protected override void AddReflectedChildren(List<RegexNode> children)
     {
         if (Navigation.Patterns != null && Navigation.Patterns.Any())
-            Navigation.Patterns.ToList().ForEach(x => children.Add(new TextNode(this, x)));
+            Navigation.Patterns.ToList().ForEach(x => children.Add(new TextNode(this, new PatternNib(x))));
         else
-            children.Add(new TextNode(this, DefaultPattern));
+            children.Add(new TextNode(this, new PatternNib(DefaultPattern)));
     }
 
     /// <inheritdoc/>

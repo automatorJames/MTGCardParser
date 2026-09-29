@@ -19,6 +19,7 @@ public class JoinerRulesTests
     [InlineData(Joiner.Space,      false, true,  true,  NoText,     false, false, true,  Joiner.None)]       // the regex so far already ends in a space
     [InlineData(Joiner.Space,      false, true,  false, ",",        false, false, false, Joiner.None)]       // tight punctuation binds to the token before
     [InlineData(Joiner.Space,      false, true,  false, "'s",       false, false, false, Joiner.None)]
+    [InlineData(Joiner.Space,      false, true,  false, @"\?",      false, false, false, Joiner.None)]       // ...read through the escape a literal "?" arrives with
     [InlineData(Joiner.Space,      false, true,  false, @"\.",      false, true,  false, Joiner.None)]       // a clause break hugs the clause it ends
     [InlineData(Joiner.Space,      false, true,  false, "(s|es|ies)?", true, false, false, Joiner.None)]     // a plural suffix is part of the word before
     [InlineData(Joiner.Space,      false, true,  false, "[ ]and",   false, false, false, Joiner.None)]       // text supplying its own leading space

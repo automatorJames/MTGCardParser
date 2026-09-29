@@ -39,6 +39,12 @@ public class FruitInBowl : Glyph
     public Fruit Fruit { get; set; }
 }
 
+/// <summary>Literal text full of regex metacharacters: matched exactly as written, since a string nib is literal (see <see cref="Nib"/>).</summary>
+public class AsksARiddle : Glyph
+{
+    public override Nib[] Nibs => ["the teacher asks what is 2+2?"];
+}
+
 /// <summary><c>Plural()</c>: an optional plural suffix on the preceding nib.</summary>
 public class FeedAll : Glyph
 {

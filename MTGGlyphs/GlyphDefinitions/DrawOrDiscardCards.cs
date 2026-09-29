@@ -2,7 +2,7 @@
 
 public class DrawOrDiscardCards : Glyph
 {
-    public override Nib[] Nibs => [Prop(CardVerb), Prop(Quantity), "cards?"];
+    public override Nib[] Nibs => [Prop(CardVerb), Prop(Quantity), Pattern("cards?")];
 
     public CardVerb CardVerb { get; set; }
     public Quantity Quantity { get; set; }

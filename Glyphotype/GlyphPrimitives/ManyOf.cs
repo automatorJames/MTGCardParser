@@ -4,7 +4,7 @@ namespace Glyphotype.GlyphPrimitives;
 
 public class ManyOf<T> : Glyph
 {
-    public override Nib[] Nibs => [Prop(FirstItem), Prop(SecondPlus), ",?[ ]", Prop(Conjunction), "[ ]", Prop(LastItem)];
+    public override Nib[] Nibs => [Prop(FirstItem), Prop(SecondPlus), Pattern(",? "), Prop(Conjunction), " ", Prop(LastItem)];
 
     public override Joiner Joiner => Joiner.None;
 

@@ -21,7 +21,7 @@ public class TraitList : CompoundOf<Trait>
 /// <summary>Uses <see cref="TraitList"/> as declared: space-joined.</summary>
 public class WeHaveAn : Glyph
 {
-    public override Nib[] Nibs => ["we have an?", Prop(Traits), Prop(Animal)];
+    public override Nib[] Nibs => ["we have", Pattern("an?"), Prop(Traits), Prop(Animal)];
 
     public TraitList Traits { get; set; }
     public Animal Animal { get; set; }
@@ -30,7 +30,7 @@ public class WeHaveAn : Glyph
 /// <summary>A property-level <see cref="JoinedByAttribute"/> overriding <see cref="TraitList"/>'s class-level one: comma-joined ("big, friendly").</summary>
 public class FamilyAdopts : Glyph
 {
-    public override Nib[] Nibs => ["the family adopts an?", Prop(Traits), Prop(Animal)];
+    public override Nib[] Nibs => ["the family adopts", Pattern("an?"), Prop(Traits), Prop(Animal)];
 
     [JoinedBy(Joiner.CommaSpace)] public TraitList Traits { get; set; }
     public Animal Animal { get; set; }

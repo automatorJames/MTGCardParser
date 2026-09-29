@@ -250,8 +250,12 @@ public static class GlyphClassRenderer
 
                 case OptionalNib optional:
                     spans.Add(Keyword("Opt("));
-                    spans.AddRange(LiteralSpans(optional.Text, contextNode, ctx));
+                    spans.AddRange(NibTextSpans(optional.Inner, contextNode, ctx));
                     spans.Add(Keyword(")"));
+                    break;
+
+                case PatternNib pattern:
+                    spans.AddRange(NibTextSpans(pattern, contextNode, ctx));
                     break;
 
                 case var plain:
@@ -279,6 +283,12 @@ public static class GlyphClassRenderer
             Punctuation(";"),
         ]);
     }
+
+    /// <summary>A text-bearing nib's spans as authored: a plain quoted literal, or <c>Pattern("...")</c> for a <see cref="PatternNib"/>.</summary>
+    static List<ClassSpan> NibTextSpans(Nib nib, NamedGroupNode contextNode, RenderContext ctx) =>
+        nib is PatternNib
+            ? [Keyword("Pattern("), .. LiteralSpans(nib.Text, contextNode, ctx), Keyword(")")]
+            : LiteralSpans(nib.Text, contextNode, ctx);
 
     /// <summary>A quoted literal's spans: neutral quote marks (verbatim <c>@"</c> when <paramref name="text"/> contains a backslash - see <see cref="FormatStringLiteral"/>) around content colored via <see cref="LiteralPalette"/>.</summary>
     static List<ClassSpan> LiteralSpans(string text, NamedGroupNode contextNode, RenderContext ctx)

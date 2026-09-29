@@ -6,14 +6,14 @@
 /// </summary>
 public class TextNode : RegexNode
 {
-    /// <summary>The literal regex text to match, wrapped as optional (e.g. <c>(text )?</c>) if the source nib was optional, with every literal space escaped to <see cref="BuiltRegex.EscapedSpace"/>.</summary>
+    /// <summary>The nib's regex (see <see cref="Nib.Regex"/> - escaped literal text, or a pattern as written), wrapped as optional (e.g. <c>(text )?</c>) if the source nib was optional, with every literal space escaped to <see cref="BuiltRegex.EscapedSpace"/>.</summary>
     public string Text { get; set; }
 
     /// <summary>
-    /// Whether this nib was authored as a bare period - the one way a Glyph type declares that it
+    /// Whether this nib was authored as a bare literal period - the one way a Glyph type declares that it
     /// deliberately spans a clause boundary (see <see cref="RegexGraph.SpansClauses"/>). Checked against
-    /// the authored nib text rather than <see cref="Text"/>, since by then the period has been escaped to
-    /// <c>\.</c> and a pattern nib like <c>zzg.*</c> would otherwise look the same as a literal period.
+    /// the authored nib rather than <see cref="Text"/>, where the period is already escaped to <c>\.</c>, and
+    /// never true of a <see cref="PatternNib"/> (for which <c>"."</c> means any character).
     /// </summary>
     public bool IsClauseBreak { get; }
 
@@ -23,18 +23,15 @@ public class TextNode : RegexNode
     public TextNode(RegexNode parentNode, Nib nib)
         : base(parentNode, nib.Text)
     {
-        var text = nib.Text;
-
-        if (string.IsNullOrEmpty(text))
+        if (string.IsNullOrEmpty(nib.Text))
             throw new Exception($"{nameof(TextNode)} text can't be null or empty");
 
-        // A bare "." nib means a literal period, but "." is regex for "any character" - left unescaped a
-        // clause-spanning type would happily match any character where it declared a clause break.
-        IsClauseBreak = text == ".";
+        // A bare literal "." nib is how a Glyph declares a clause break. Its regex is already the escaped
+        // "\." - "." alone would be regex for "any character" - since literal nib text is escaped (see Nib).
+        IsClauseBreak = nib is not PatternNib && nib.Text == ".";
         IsPluralSuffix = nib is OptionalPluralNib;
 
-        if (IsClauseBreak)
-            text = @"\.";
+        var text = nib.Regex;
 
         if (nib.IsOptional)
             text = $"({text} )?";

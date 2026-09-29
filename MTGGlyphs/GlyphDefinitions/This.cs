@@ -4,6 +4,6 @@
 [Dependent]
 public class This : Glyph
 {
-    public override Nib[] Nibs => [@"{this}"];
+    public override Nib[] Nibs => ["{this}"];
 
 }

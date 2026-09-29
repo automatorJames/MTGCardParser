@@ -36,7 +36,7 @@ public enum LetterKey
 [Dependent]
 public class KeyCap : GlyphOneOf
 {
-    public override Nib[] Nibs => [@"\[", Prop(Modifier), Prop(Letter), Prop(Digit), @"\]"];
+    public override Nib[] Nibs => ["[", Prop(Modifier), Prop(Letter), Prop(Digit), "]"];
 
     public ModifierKey? Modifier { get; set; }
     public LetterKey? Letter { get; set; }
@@ -65,7 +65,7 @@ public class PressToAct : Glyph
 public class Price : Glyph
 {
     public override Joiner Joiner => Joiner.None;
-    public override Nib[] Nibs => [@"\$", Prop(Dollars)];
+    public override Nib[] Nibs => ["$", Prop(Dollars)];
 
     public int Dollars { get; set; }
 }

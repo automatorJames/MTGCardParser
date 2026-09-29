@@ -14,7 +14,7 @@
 
 public class AsLongAsEnchantedCardPredicateThenEffect : Glyph
 {
-    public override Nib[] Nibs => ["as long as enchanted", Prop(CardType), Prop(Assertion), Opt("an?"), Prop(CardAspect), ",", Prop(Effect)];
+    public override Nib[] Nibs => ["as long as enchanted", Prop(CardType), Prop(Assertion), Opt(Pattern("an?")), Prop(CardAspect), ",", Prop(Effect)];
 
     public CardType CardType{ get; set; }
     public Assertion Assertion { get; set; }
@@ -26,7 +26,7 @@ public class AsLongAsEnchantedCardPredicateThenEffect : Glyph
 //[Dependent]
 public class TestThing : Glyph
 {
-    public override Nib[] Nibs => ["it's an?", Prop(CardType), "with power and toughness each equal to its mana value"];
+    public override Nib[] Nibs => ["it's", Pattern("an?"), Prop(CardType), "with power and toughness each equal to its mana value"];
 
     [JoinedBy(Joiner.Space)]
     public CompoundOf<CardType> CardType { get; set; }

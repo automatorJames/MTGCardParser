@@ -10,7 +10,7 @@ public class ManaValue : CompoundOf<ManaSymbol>
 [Dependent]
 public class ManaSymbol : GlyphOneOf
 {
-    public override Nib[] Nibs => [@"\{", Prop(Colorless), Prop(Symbol), @"\}"];
+    public override Nib[] Nibs => ["{", Prop(Colorless), Prop(Symbol), "}"];
 
     public int? Colorless { get; set; }
     public ManaSymbolKind? Symbol { get; set; }

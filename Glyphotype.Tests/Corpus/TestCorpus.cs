@@ -43,6 +43,11 @@ public static class TestCorpus
             Doc("there are 12 cherries in the bowl.", "FruitInBowl{Count=12, Fruit=Cherry} ."),
             Doc("there are three apples in the bowl.", "«there are three apples in the bowl» .")),
 
+        .. Section("Literal nib text",
+            Doc("the teacher asks what is 2+2?", "AsksARiddle"),
+            Doc("the teacher asks what is 22?", "«the teacher asks what is 22?»"),
+            Doc("the teacher asks what is 2+2", "«the teacher asks what is 2+2»")),
+
         .. Section("Plural()",
             Doc("feed all the dogs before noon.", "FeedAll{Animal=Dog} ."),
             Doc("feed all the horses before noon.", "FeedAll{Animal=Horse} ."),

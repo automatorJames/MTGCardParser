@@ -67,7 +67,7 @@ public static class GlyphTypeCache
             if (propertyNibs.Length > 0)
                 nibs = propertyNibs;
             else if (glyphType.GetCustomAttribute<RegexPatternAttribute>() is RegexPatternAttribute attr)
-                nibs = attr.Patterns.Select(x => new Nib(x)).ToArray();
+                nibs = attr.Patterns.Select(x => new PatternNib(x)).ToArray();
             else
                 nibs = [new Nib(glyphType.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
         }

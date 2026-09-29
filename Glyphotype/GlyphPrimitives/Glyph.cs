@@ -35,14 +35,24 @@ public abstract class Glyph : CaptureUnit
         };
     }
 
+    /// <summary>Exactly one of several literal texts, e.g. <c>Alt("sleeps", "naps")</c>.</summary>
     public NibAlternatives Alt(params string[] alternatives) =>
         new NibAlternatives(alternatives);
 
-    public OptionalNib Opt(string optionalText) =>
-        new OptionalNib(optionalText);
+    /// <summary>A nib that may be absent: literal text, e.g. <c>Opt("some")</c>, or a pattern, e.g. <c>Opt(Pattern("an?"))</c>.</summary>
+    public OptionalNib Opt(Nib optional) =>
+        new OptionalNib(optional);
 
+    /// <summary>An optional plural suffix on the word before it: <c>"dog", Plural()</c> matches "dog" and "dogs".</summary>
     public OptionalPluralNib Plural() =>
         new OptionalPluralNib();
+
+    /// <summary>
+    /// A regex rather than literal text - the explicit opt-in, for what literal text and the other helpers can't
+    /// express, e.g. <c>Pattern("an?")</c>. Every other nib is matched exactly as written.
+    /// </summary>
+    public PatternNib Pattern(string regex) =>
+        new PatternNib(regex);
 
     /// <summary>
     /// Only intended to be called by <see cref="GlyphGrammar"/> while it validates. May be overridden by
@@ -401,9 +411,16 @@ public abstract class Glyph : CaptureUnit
     /// </summary>
     static bool AlwaysConsumesText(Nib nib, HashSet<Type> visitedTypes = null)
     {
-        // A plain literal text nib always emits its text; an OptionalNib wraps it in "( )?" and may not.
+        // Literal text always matches itself (non-empty, as TextNode requires); Alt's literal alternatives do as
+        // long as none is empty. An OptionalNib may match nothing, as may Plural()'s suffix, and a pattern is
+        // opaque - it might (e.g. "(on)?") - so none of those can anchor.
         if (nib is not PropertyNib propertyNib)
-            return !nib.IsOptional;
+            return nib switch
+            {
+                OptionalNib or OptionalPluralNib or PatternNib => false,
+                NibAlternatives alternatives => alternatives.Alternatives.All(x => !string.IsNullOrEmpty(x)),
+                _ => true,
+            };
 
         // "?" or "*" - permits zero occurrences by construction.
         if (propertyNib.Navigation.IsOptional)

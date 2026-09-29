@@ -101,9 +101,13 @@ public static class JoinerRules
         site.AfterText is string text
         && (site.AfterIsClauseBreak
             || site.AfterIsPluralSuffix
-            || _tightPunctuation.Contains(text[0])
+            || _tightPunctuation.Contains(FirstMatchedChar(text))
             || text.StartsWith(BuiltRegex.EscapedSpace)
             || text[0] == ' ');
+
+    /// <summary>The first character <paramref name="regexText"/> matches literally - reading through a leading escape, since literal nib text arrives escaped (e.g. a <c>"?"</c> nib as <c>\?</c>; see <see cref="Nib.EscapeLiteral"/>).</summary>
+    static char FirstMatchedChar(string regexText) =>
+        regexText.Length > 1 && regexText[0] == '\\' ? regexText[1] : regexText[0];
 
     /// <summary>
     /// Where the joiner separating a node from its preceding sibling goes:
