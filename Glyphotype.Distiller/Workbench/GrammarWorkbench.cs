@@ -46,9 +46,8 @@ public sealed class GrammarWorkbench
 
         _committedGrammar = committedGrammar;
         _committedDocuments = committedDocuments;
-        CommittedDefinition = committedGrammar.ToDefinition();
-
-        WorkingDefinition = LoadWorkingDefinition() ?? CommittedDefinition;
+        var committed = committedGrammar.ToDefinition();
+        SetDefinitions(committed, LoadWorkingDefinition() ?? committed);
 
         if (HasChanges)
             _ = RescoreAsync();
@@ -73,9 +72,17 @@ public sealed class GrammarWorkbench
     public string SourceDirectory => _options.SourceDirectory;
 
     /// <summary>What the working definition changes relative to the committed one.</summary>
-    public IReadOnlyList<DefinitionChange> Changes => DefinitionDiff.Compare(CommittedDefinition, WorkingDefinition);
+    /// <remarks>Recomputed only when either definition changes (see <see cref="SetDefinitions"/>) - diffing compares every definition, and callers read this freely.</remarks>
+    public IReadOnlyList<DefinitionChange> Changes { get; private set; } = [];
 
     public bool HasChanges => Changes.Count > 0;
+
+    void SetDefinitions(GrammarDefinition committed, GrammarDefinition working)
+    {
+        CommittedDefinition = committed;
+        WorkingDefinition = working;
+        Changes = DefinitionDiff.Compare(committed, working);
+    }
 
     /// <summary>The committed grammar's own score, computed on first request.</summary>
     public Task<MdlScore> GetCommittedScoreAsync()
@@ -140,7 +147,7 @@ public sealed class GrammarWorkbench
     {
         lock (_gate)
         {
-            WorkingDefinition = edit(WorkingDefinition);
+            SetDefinitions(CommittedDefinition, edit(WorkingDefinition));
             SaveWorkingDefinition();
         }
 
@@ -273,7 +280,7 @@ public sealed class GrammarWorkbench
             var definition = WorkingDefinition;
             _committedScore = workingScore is not null ? Task.FromResult(workingScore) : Task.Run(() => Score(definition, CancellationToken.None)?.Score);
 
-            CommittedDefinition = WorkingDefinition;
+            SetDefinitions(WorkingDefinition, WorkingDefinition);
             SaveWorkingDefinition();
         }
 

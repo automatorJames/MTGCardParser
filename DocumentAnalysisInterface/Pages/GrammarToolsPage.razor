@@ -1,6 +1,6 @@
 @page "/grammar-tools"
 @implements IDisposable
-@inject GrammarWorkbench Workbench
+@inject IServiceProvider Services
 
 @if (_committed is null)
 {
@@ -74,7 +74,7 @@ else
                     <span class="panel-subtext">saved to @Workbench.WorkingDefinitionPath</span>
                     <div class="panel-actions">
                         <button class="btn btn-sm btn-secondary" @onclick="() => Try(Workbench.RevertAll)">Revert all</button>
-                        <button class="btn btn-sm btn-primary" @onclick="OpenCommit">Commit to C#…</button>
+                        <button class="btn btn-sm btn-primary" @onclick="OpenCommit">Commit to C#</button>
                     </div>
                 </div>
 
@@ -97,7 +97,7 @@ else
                 <h3>Glyphs</h3>
                 <label class="panel-option"><input type="checkbox" @bind="_showNestedOnly" /> include nested-only glyphs</label>
                 <div class="panel-actions">
-                    <button class="btn btn-sm btn-secondary" @onclick="NewGlyph">New glyph…</button>
+                    <button class="btn btn-sm btn-secondary" @onclick="NewGlyph">New glyph</button>
                 </div>
             </div>
 
@@ -150,13 +150,13 @@ else
             <div class="panel-header">
                 <h3>Vocabularies</h3>
                 <div class="panel-actions">
-                    <button class="btn btn-sm btn-secondary" @onclick="NewVocabulary">New vocabulary…</button>
+                    <button class="btn btn-sm btn-secondary" @onclick="NewVocabulary">New vocabulary</button>
                 </div>
             </div>
 
             <table class="data-table">
                 <thead>
-                    <tr><th>Vocabulary</th><th>Members</th><th>Definition bits</th><th>Used by</th><th></th></tr>
+                    <tr><th class="name-column">Vocabulary</th><th>Members</th><th>Definition bits</th><th class="centered">Used by</th><th></th></tr>
                 </thead>
                 <tbody>
                     @foreach (var vocabulary in Workbench.WorkingDefinition.Vocabularies.OrderByDescending(VocabularyBits))
@@ -243,13 +243,27 @@ else
     IReadOnlyList<string> WorkingErrors =>
         Workbench.LatestWorkingScore is { Succeeded: false } latest && latest.Definition == Workbench.WorkingDefinition ? latest.Errors : null;
 
-    protected override async Task OnInitializedAsync()
+    /// <summary>Resolved once the page is showing its loading indicator (see <see cref="OnAfterRenderAsync"/>), not injected: building it reads the whole committed grammar.</summary>
+    GrammarWorkbench Workbench;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+            return;
+
+        // Off the render thread, after the loading indicator has reached the browser: the first visit builds the
+        // workbench and scores the committed grammar, both of which take a moment.
+        Workbench = await Task.Run(() => Services.GetRequiredService<GrammarWorkbench>());
         Workbench.Changed += OnWorkbenchChanged;
         await RefreshScoresAsync();
+        StateHasChanged();
     }
 
-    public void Dispose() => Workbench.Changed -= OnWorkbenchChanged;
+    public void Dispose()
+    {
+        if (Workbench is not null)
+            Workbench.Changed -= OnWorkbenchChanged;
+    }
 
     void OnWorkbenchChanged() =>
         _ = InvokeAsync(async () =>

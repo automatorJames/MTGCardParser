@@ -94,6 +94,10 @@
     color: var(--subtext-grey);
 }
 
+    .metrics td.unchanged {
+        text-align: center;
+    }
+
 .status {
     margin-top: 0.75rem;
     font-size: 0.9rem;
@@ -274,4 +278,8 @@
 
     .data-table th.name-column {
         text-align: left;
+    }
+
+    .data-table th.centered {
+        text-align: center;
     }
