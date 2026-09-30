@@ -21,17 +21,21 @@ else
                 <thead>
                     <tr><th></th><th>Committed</th><th>Working</th><th>Change</th></tr>
                 </thead>
-                <tbody>
-                    @foreach (var metric in GetMetrics())
-                    {
-                        <tr class="@(metric.Indented ? "sub-metric" : "")">
-                            <td class="metric-name" title="@metric.Tooltip">@metric.Name</td>
-                            <td>@metric.Format(metric.Committed)</td>
-                            <td>@(metric.Working is double working ? metric.Format(working) : "…")</td>
-                            <td class="@DeltaClass(metric)">@FormatDelta(metric)</td>
-                        </tr>
-                    }
-                </tbody>
+                @foreach (var group in GetMetricGroups())
+                {
+                    <tbody>
+                        <tr class="group-row"><td colspan="4" title="@group.Tooltip">@group.Title</td></tr>
+                        @foreach (var metric in group.Metrics)
+                        {
+                            <tr class="level-@metric.Level">
+                                <td class="metric-name" title="@metric.Tooltip">@metric.Name</td>
+                                <td>@metric.Format(metric.Committed)</td>
+                                <td>@(metric.Working is double working ? metric.Format(working) : "…")</td>
+                                <td class="@DeltaClass(metric)">@FormatDelta(metric)</td>
+                            </tr>
+                        }
+                    </tbody>
+                }
             </table>
 
             <div class="status">
@@ -243,7 +247,11 @@ else
     /// <summary>A definition open for editing: its kind, the name it had (null for a new one), and its JSON.</summary>
     record EditorState(DefinitionKind Kind, string OriginalName, string Title, string Json);
 
-    record Metric(string Name, double Committed, double? Working, Func<double, string> Format, string Tooltip, bool LowerIsBetter = true, bool Indented = false);
+    /// <summary>One scorecard row. <paramref name="Level"/> is its nesting: a row is the sum of the rows nested beneath it.</summary>
+    record Metric(string Name, double Committed, double? Working, Func<double, string> Format, string Tooltip, bool LowerIsBetter = true, int Level = 0);
+
+    /// <summary>A run of scorecard rows sharing one unit, under a heading saying what they measure.</summary>
+    record MetricGroup(string Title, string Tooltip, IReadOnlyList<Metric> Metrics);
 
     record GlyphRow(string Name, bool InWorking, ChangeType? Change, IReadOnlyList<string> Referrers, GlyphContribution Stats, double? NetDelta);
 
@@ -290,34 +298,44 @@ else
 
     // ---- Scorecard ----
 
-    IEnumerable<Metric> GetMetrics()
+    IEnumerable<MetricGroup> GetMetricGroups()
     {
         var working = _working;
-        static string BitsFormat(double x) => x.ToString("N0");
-        static string PercentFormat(double x) => x.ToString("P1");
+        static string Count(double x) => x.ToString("N0");
+        static string Percent(double x) => x.ToString("P1");
 
-        yield return new("Total bits", _committed.TotalBits, working?.TotalBits, BitsFormat,
-            "Bits to describe the grammar plus the corpus given it - lower is better");
-        yield return new("vs. empty grammar", _committed.CompressionRatio, working?.CompressionRatio, PercentFormat,
-            "Total bits as a share of the same corpus's cost with no grammar at all - below 100% means the grammar pays for itself");
-        yield return new("Grammar bits", _committed.GrammarBits, working?.GrammarBits, BitsFormat,
-            "Bits to write down the glyph and vocabulary definitions");
-        yield return new("Data bits", _committed.DataBits, working?.DataBits, BitsFormat,
-            "Bits to write down the corpus given the grammar - the four rows below");
+        yield return new("Bits", "What it costs to write the corpus down with this grammar - every figure in this group is a number of bits, and lower is better",
+        [
+            new("Total bits", _committed.TotalBits, working?.TotalBits, Count,
+                "Bits to describe the grammar plus the corpus given it - the sum of the two rows below"),
+            new("Bits attributable to grammar", _committed.GrammarBits, working?.GrammarBits, Count,
+                "Bits to write down the glyph and vocabulary definitions", Level: 1),
+            new("Bits attributable to data", _committed.DataBits, working?.DataBits, Count,
+                "Bits to write down the corpus given the grammar - the sum of the four rows below", Level: 1),
+            .. _committed.ComponentBits.Select(x => new Metric(ComponentLabels[x.Key].Name, x.Value, working?.ComponentBits[x.Key], Count, ComponentLabels[x.Key].Tooltip, Level: 2)),
+        ]);
 
-        foreach (var (component, bits) in _committed.ComponentBits)
-            yield return new(ComponentLabels[component].Name, bits, working?.ComponentBits[component], BitsFormat, ComponentLabels[component].Tooltip, Indented: true);
+        yield return new("Compared with no grammar", "The same corpus written down with no glyphs at all - every word as unmatched text",
+        [
+            new("Total bits with no grammar", _committed.BaselineBits, working?.BaselineBits, Count,
+                "What the corpus costs with an empty grammar - the yardstick for the row below"),
+            new("Total bits as a share of that", _committed.CompressionRatio, working?.CompressionRatio, Percent,
+                "Below 100%: the grammar makes the corpus cheaper to describe than no grammar does. Above: it costs more than it saves"),
+        ]);
 
-        yield return new("Coverage", _committed.Coverage, working?.Coverage, PercentFormat,
-            "The share of the corpus's words inside a matched glyph", LowerIsBetter: false);
-        yield return new("Captured words", _committed.CapturedWords, working?.CapturedWords, BitsFormat,
-            "How many of the corpus's words are inside a matched glyph (a count of words, not bits)", LowerIsBetter: false, Indented: true);
+        yield return new("Coverage", "How much of the corpus's text falls inside matched glyphs",
+        [
+            new("Words inside matched glyphs", _committed.CapturedWords, working?.CapturedWords, Count,
+                "A count of words, not bits", LowerIsBetter: false),
+            new("Share of all words", _committed.Coverage, working?.Coverage, Percent,
+                $"Of the corpus's {_committed.Words:N0} words", LowerIsBetter: false),
+        ]);
     }
 
-    /// <summary>What each data component is called here - named for what its bits pay for, since a bare "Tokens" beside a number reads as a count.</summary>
+    /// <summary>What each data component is called here, with what its bits pay for.</summary>
     static readonly Dictionary<DataComponent, (string Name, string Tooltip)> ComponentLabels = new()
     {
-        [DataComponent.Tokens] = ("Line structure", "Bits to record what each line is made of, in order: which glyph, unmatched text or period comes next, and where the line ends"),
+        [DataComponent.Tokens] = ("Tokens", "Bits to record what each line is made of, in order: which glyph, unmatched text or period comes next, and where the line ends"),
         [DataComponent.Frames] = ("Uncaptured variation", "Bits to record which variant each match used where no property captures it: an Alt or Opt choice, a synonym, a list's length"),
         [DataComponent.Values] = ("Captured values", "Bits to record what properties captured: which enum member, which number, which glyph a dynamic resolved to"),
         [DataComponent.Residual] = ("Unmatched text", "Bits to record the text no glyph matched, word by word"),

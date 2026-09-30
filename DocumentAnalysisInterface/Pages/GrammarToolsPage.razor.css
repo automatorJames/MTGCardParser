@@ -73,13 +73,37 @@
         color: var(--lightest-blue);
     }
 
-    .metrics .sub-metric .metric-name {
+    .metrics tr.level-0 .metric-name {
+        font-weight: 600;
+    }
+
+    .metrics tr.level-1 .metric-name {
         padding-left: 1.25rem;
+    }
+
+    .metrics tr.level-2 .metric-name {
+        padding-left: 2.5rem;
         color: var(--subtext-grey);
     }
 
-    .metrics .sub-metric td {
+    .metrics tr.level-2 td {
         font-size: 0.9rem;
+    }
+
+    .metrics .group-row td {
+        padding-top: 0.9rem;
+        padding-bottom: 0.25rem;
+        text-align: left;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #569cd6;
+        border-bottom: 1px solid #333;
+    }
+
+    .metrics tbody:first-of-type .group-row td {
+        padding-top: 0.35rem;
     }
 
 .better {

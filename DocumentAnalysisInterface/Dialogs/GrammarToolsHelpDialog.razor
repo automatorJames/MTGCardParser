@@ -92,30 +92,42 @@
         </div>
         <p>A good grammar sits between: a modest definition that makes most of the corpus cheap to describe.</p>
 
-        <h4>The rows</h4>
-        <div class="callout">
-            <span class="callout-label">Every number is bits</span>
-            Apart from the two percentages and <em>Captured words</em>, every figure in the table is a number of bits - never a count of glyphs, tokens or anything else.
-            "Line structure: @N(bits[DataComponent.Tokens])" means @N(bits[DataComponent.Tokens]) bits were spent recording how lines are put together.
+        <h4>How the table is laid out</h4>
+        <p>
+            The rows come in three groups, one per unit, each under its own heading. Within a group, an indented row is part of the row above it:
+            the indented rows beneath a row add up to it.
+        </p>
+        <div class="compare three">
+            <div class="compare-item">
+                <span class="compare-label">Bits</span>
+                <p>The score itself, and what it's made of. Every figure here is a number of bits - never a count of tokens, glyphs or anything else.</p>
+            </div>
+            <div class="compare-item">
+                <span class="compare-label">Compared with no grammar</span>
+                <p>The same corpus's cost with an empty grammar, and the score as a share of it - the one-number verdict.</p>
+            </div>
+            <div class="compare-item">
+                <span class="compare-label">Coverage</span>
+                <p>How much text sits inside matched glyphs, in words - not bits.</p>
+            </div>
         </div>
-        <dl class="terms">
-            <dt>vs. empty grammar</dt>
-            <dd>
-                This score as a share of what the same corpus costs with no grammar at all. Below 100% means the grammar pays for itself overall;
-                above means it currently costs more to describe than it saves. Right now: <strong>@P(Score.CompressionRatio)</strong>.
-            </dd>
 
-            <dt>Grammar bits</dt>
+        <h4>The Bits group</h4>
+        <dl class="terms">
+            <dt>Total bits</dt>
+            <dd>The score: the two rows below it added together. Right now <strong>@N(Score.TotalBits)</strong>.</dd>
+
+            <dt>Bits attributable to grammar</dt>
             <dd>
                 Bits to write down every glyph and vocabulary: literal text is spelled at about <strong>@Score.CharBits.ToString("F1") bits per character</strong>,
                 each structural choice (which kind of nib, which property, which attribute) costs a few bits, and every vocabulary member is spelled once.
                 Names are free - they're labels, not grammar.
             </dd>
 
-            <dt>Data bits</dt>
-            <dd>Bits to write down the corpus given the grammar - the sum of the four rows beneath it.</dd>
+            <dt>Bits attributable to data</dt>
+            <dd>Bits to write down the corpus given the grammar - the four rows beneath it added together.</dd>
 
-            <dt>Line structure</dt>
+            <dt>Tokens</dt>
             <dd>
                 The bits to record what each line is made of, piece by piece: which top-level glyph comes first, then what follows it (another glyph, unmatched text,
                 a period), and where the line ends. Each piece is one choice among all the top-level glyphs plus those three, and costs less the more often that
@@ -123,7 +135,7 @@
                 <div class="example">
                     <span class="example-label">Example</span>
                     The line <code>enchant creature.</code> is three pieces: <code>EnchantPermanent</code> → <code>«.»</code> → <code>«end of line»</code>.
-                    Recording those three choices costs a few bits. Summed over all @N(Score.Lines) lines, that's the <strong>@N(bits[DataComponent.Tokens])</strong>
+                    Recording those three choices costs a few bits. Summed over all @N(Score.Lines) lines, that's the <strong>@N(bits[DataComponent.Tokens])</strong> bits
                     in this row - about <strong>@perLine.ToString("F1") bits per line</strong>.
                 </div>
             </dd>
@@ -162,8 +174,22 @@
                 See <em>Residual hot spots</em> for where it comes from.
             </dd>
 
+        </dl>
+
+        <h4>The other two groups</h4>
+        <dl class="terms">
+            <dt>Compared with no grammar</dt>
+            <dd>
+                <em>Total bits with no grammar</em> is what the same corpus costs with no glyphs at all - every word unmatched text
+                (@N(Score.BaselineBits) bits). <em>Total bits as a share of that</em> divides the score by it: below 100% means the grammar makes the corpus
+                cheaper to describe than having no grammar; above means it currently costs more than it saves. Right now: <strong>@P(Score.CompressionRatio)</strong>.
+            </dd>
+
             <dt>Coverage</dt>
-            <dd>The share of the corpus's words inside a matched glyph: @N(Score.CapturedWords) of @N(Score.Words).</dd>
+            <dd>
+                <em>Words inside matched glyphs</em> counts words, not bits: @N(Score.CapturedWords) of the corpus's @N(Score.Words).
+                <em>Share of all words</em> is that as a percentage: <strong>@P(Score.Coverage)</strong>.
+            </dd>
         </dl>
 
         <h4>Committed, Working and Change</h4>
@@ -175,7 +201,7 @@
 
         <div class="callout tip">
             <span class="callout-label">The whole game</span>
-            Move bits out of <strong>Unmatched text</strong> and into <strong>Captured values</strong>, spending fewer <strong>Grammar bits</strong> than you save.
+            Move bits out of <strong>Unmatched text</strong> and into <strong>Captured values</strong>, spending fewer <strong>bits attributable to grammar</strong> than you save.
         </div>
     };
 

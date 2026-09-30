@@ -100,7 +100,7 @@
 
 .terms {
     display: grid;
-    grid-template-columns: 11rem 1fr;
+    grid-template-columns: 13rem 1fr;
     gap: 0.9rem 1.25rem;
     margin: 0;
 }
@@ -249,4 +249,8 @@
 
     .steps li {
         margin-bottom: 0.55rem;
+    }
+
+    .compare.three {
+        grid-template-columns: 1fr 1fr 1fr;
     }
