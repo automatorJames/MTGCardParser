@@ -1,0 +1,12 @@
+global using System.Globalization;
+global using System.Reflection;
+global using System.Text;
+global using Glyphotype;
+global using Glyphotype.Definitions;
+global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
+global using Glyphotype.GlyphPrimitives;
+global using Glyphotype.RegexGeneration.Graph;
+global using Glyphotype.RegexGeneration.Graph.Nodes;
+global using Glyphotype.StaticRegistry;
+global using static Glyphotype.Extensions;
+global using Glyphotype.Interfaces;

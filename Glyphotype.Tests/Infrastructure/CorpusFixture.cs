@@ -24,10 +24,10 @@ public sealed class CorpusFixture
         _processedByText = ProcessedDocuments.ToDictionary(x => x.Document.Text);
     }
 
-    /// <summary>The whole corpus, run through <paramref name="grammar"/> by the real pipeline.</summary>
-    public static IReadOnlyList<ProcessedDocument> Process(GlyphGrammar grammar)
+    /// <summary><paramref name="documents"/> (by default, the whole corpus), run through <paramref name="grammar"/> by the real pipeline.</summary>
+    public static IReadOnlyList<ProcessedDocument> Process(GlyphGrammar grammar, IEnumerable<IDocument> documents = null)
     {
-        var analyzer = new CorpusAnalyzer(new Repository(), grammar);
+        var analyzer = new CorpusAnalyzer(new Repository(documents ?? TestCorpus.Documents), grammar);
         analyzer.EnsureInitializedAsync().GetAwaiter().GetResult();
 
         return analyzer.ProcessedDocuments;
@@ -37,10 +37,10 @@ public sealed class CorpusFixture
     public string[] ActualLines(string text) =>
         _processedByText[text].Lines.Select(GlyphSignature.Of).ToArray();
 
-    sealed class Repository : IDocumentRepository
+    sealed class Repository(IEnumerable<IDocument> documents) : IDocumentRepository
     {
         public Task<List<IDocument>> GetDocumentsAsync() =>
-            Task.FromResult(TestCorpus.Documents.Cast<IDocument>().ToList());
+            Task.FromResult(documents.ToList());
     }
 }
 

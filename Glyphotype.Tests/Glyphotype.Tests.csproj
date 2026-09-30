@@ -23,6 +23,7 @@
   -->
   <ItemGroup>
     <ProjectReference Include="..\Glyphotype\Glyphotype.csproj" />
+    <ProjectReference Include="..\Glyphotype.Distiller\Glyphotype.Distiller.csproj" />
   </ItemGroup>
 
 </Project>

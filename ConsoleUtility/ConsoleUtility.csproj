@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Glyphotype\Glyphotype.csproj" />
     <ProjectReference Include="..\MTGGlyphs\MTGGlyphs.csproj" />
+    <ProjectReference Include="..\Glyphotype.Distiller\Glyphotype.Distiller.csproj" />
   </ItemGroup>
 
 </Project>
