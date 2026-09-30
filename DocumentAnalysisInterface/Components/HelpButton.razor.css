@@ -1,0 +1,22 @@
+.help-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    padding: 0;
+    border: 1px solid var(--outline-grey);
+    border-radius: 50%;
+    background: none;
+    color: var(--subtext-grey);
+    font-size: 0.6rem;
+    cursor: pointer;
+    align-self: center;
+    transition: color var(--transition-time), border-color var(--transition-time), background-color var(--transition-time);
+}
+
+    .help-button:hover {
+        color: var(--teal);
+        border-color: var(--teal);
+        background-color: rgba(145, 186, 170, 0.08);
+    }

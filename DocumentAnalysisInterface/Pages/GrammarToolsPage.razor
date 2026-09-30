@@ -13,6 +13,7 @@ else
         <section class="panel scorecard">
             <div class="panel-header">
                 <h3>Score</h3>
+                <HelpButton Label="About the score" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Score" />
                 <span class="panel-subtext">minimum description length: bits to describe the grammar plus the corpus given it - lower is better</span>
             </div>
 
@@ -95,6 +96,7 @@ else
         <section class="panel">
             <div class="panel-header">
                 <h3>Glyphs</h3>
+                <HelpButton Label="About the glyph table" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Glyphs" />
                 <label class="panel-option"><input type="checkbox" @bind="_showNestedOnly" /> include nested-only glyphs</label>
                 <div class="panel-actions">
                     <button class="btn btn-sm btn-secondary" @onclick="NewGlyph">New glyph</button>
@@ -149,6 +151,7 @@ else
         <section class="panel">
             <div class="panel-header">
                 <h3>Vocabularies</h3>
+                <HelpButton Label="About the vocabulary table" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Vocabularies" />
                 <div class="panel-actions">
                     <button class="btn btn-sm btn-secondary" @onclick="NewVocabulary">New vocabulary</button>
                 </div>
@@ -183,6 +186,7 @@ else
         <section class="panel">
             <div class="panel-header">
                 <h3>Residual hot spots</h3>
+                <HelpButton Label="About residual hot spots" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Residuals" />
                 <span class="panel-subtext">unmatched text, by what it costs across the corpus - where the next glyph would save the most</span>
             </div>
 
@@ -211,6 +215,11 @@ else
     <DefinitionEditorDialog Title="@_editor.Title" Json="@_editor.Json" Preview="PreviewDefinition" OnApply="ApplyDefinition" OnClose="() => _editor = null" />
 }
 
+@if (_help is GrammarToolsHelpDialog.HelpTopic topic && _committed is not null)
+{
+    <GrammarToolsHelpDialog Topic="topic" Score="CurrentScore" Working="Workbench.WorkingDefinition" OnClose="() => _help = null" />
+}
+
 @if (_commitPlan is not null)
 {
     <CommitDialog Plan="_commitPlan" SourceDirectory="@Workbench.SourceDirectory" OnCommit="Commit" OnClose="() => _commitPlan = null" />
@@ -227,6 +236,7 @@ else
     bool _sortDescending = true;
     EditorState _editor;
     SourceCommitPlan _commitPlan;
+    GrammarToolsHelpDialog.HelpTopic? _help;
 
     enum GlyphSort { Name, Net, Saves, Data, Definition, Matches, Words }
 

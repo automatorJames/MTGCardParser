@@ -1,0 +1,252 @@
+/* Title */
+
+.help-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.help-kicker {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--teal);
+}
+
+/* Body */
+
+.help-body {
+    max-height: 68vh;
+    overflow-y: auto;
+    padding-right: 0.75rem;
+    color: #cbd5e0;
+    font-size: 0.93rem;
+    line-height: 1.6;
+}
+
+    .help-body p {
+        margin: 0 0 0.85rem 0;
+    }
+
+    .help-body h4 {
+        margin: 1.6rem 0 0.6rem 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #569cd6;
+    }
+
+    .help-body strong {
+        color: #f0f4f8;
+        font-weight: 600;
+    }
+
+    .help-body code {
+        padding: 0.05rem 0.35rem;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.06);
+        color: #ce9178;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.82rem;
+    }
+
+.lead {
+    font-size: 1.02rem;
+    color: #e2e8f0;
+}
+
+.good {
+    color: #9fe0b5;
+}
+
+.bad {
+    color: #f28b82;
+}
+
+/* Live figures */
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin: 1.1rem 0 0.5rem 0;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--outline-grey);
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.025);
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #f0f4f8;
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+    font-size: 0.78rem;
+    color: var(--subtext-grey);
+}
+
+/* Terms */
+
+.terms {
+    display: grid;
+    grid-template-columns: 11rem 1fr;
+    gap: 0.9rem 1.25rem;
+    margin: 0;
+}
+
+    .terms dt {
+        font-weight: 600;
+        color: var(--lightest-blue);
+    }
+
+    .terms dd {
+        margin: 0;
+    }
+
+.aka {
+    display: block;
+    font-weight: 400;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--subtext-grey);
+}
+
+.reference {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .reference th,
+    .reference td {
+        padding: 0.45rem 0.6rem;
+        border-bottom: 1px solid #333;
+        vertical-align: top;
+        text-align: left;
+    }
+
+    .reference th {
+        width: 8.5rem;
+        font-weight: 600;
+        color: var(--lightest-blue);
+        white-space: nowrap;
+    }
+
+/* Examples and callouts */
+
+.example {
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid #3a4150;
+    border-radius: 8px;
+    background-color: rgba(86, 156, 214, 0.05);
+}
+
+    .example p:last-child {
+        margin-bottom: 0;
+    }
+
+.example-label,
+.callout-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faded-blue);
+}
+
+.quoted {
+    display: block;
+    margin: 0.2rem 0 0.6rem 0;
+    padding: 0.5rem 0.7rem !important;
+    white-space: pre-wrap;
+}
+
+.arithmetic {
+    margin-top: 0.5rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.88rem;
+    color: #e2e8f0;
+}
+
+.callout {
+    margin: 0.9rem 0;
+    padding: 0.7rem 1rem;
+    border-left: 3px solid var(--faded-blue);
+    border-radius: 0 8px 8px 0;
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+    .callout.tip {
+        border-left-color: var(--teal);
+    }
+
+        .callout.tip .callout-label {
+            color: var(--teal);
+        }
+
+    .callout.caution {
+        border-left-color: var(--gold);
+    }
+
+        .callout.caution .callout-label {
+            color: var(--gold);
+        }
+
+.compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.compare-item {
+    padding: 0.7rem 0.9rem;
+    border: 1px dashed var(--outline-grey);
+    border-radius: 8px;
+}
+
+    .compare-item p {
+        margin: 0.3rem 0 0 0 !important;
+        font-size: 0.88rem;
+    }
+
+.compare-label {
+    font-weight: 600;
+    color: var(--gold);
+}
+
+.formula {
+    margin: 1rem 0;
+    padding: 0.8rem;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.04);
+    text-align: center;
+    font-size: 1.05rem;
+    color: #e2e8f0;
+}
+
+.formula-term {
+    font-weight: 600;
+}
+
+.steps {
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+    .steps li {
+        margin-bottom: 0.55rem;
+    }

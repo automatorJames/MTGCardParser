@@ -1,0 +1,12 @@
+<button type="button" class="help-button" data-tooltip="@Label" aria-label="@Label" @onclick="() => OnClick.InvokeAsync()">
+    <span class="oi oi-question-mark" aria-hidden="true"></span>
+</button>
+
+@code {
+    /// <summary>What the help explains, e.g. "About the score" - the button's tooltip and accessible name.</summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+}

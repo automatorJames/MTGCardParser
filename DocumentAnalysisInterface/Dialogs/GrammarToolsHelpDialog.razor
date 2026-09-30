@@ -1,0 +1,351 @@
+<CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(920px, 94vw); padding: 1.75rem 2rem;">
+    <TitleContent>
+        <div class="help-title">
+            <span class="help-kicker">Grammar Tools</span>
+            <span>@Title</span>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="help-body">
+            @(Topic switch
+            {
+                HelpTopic.Score => ScoreHelp,
+                HelpTopic.Glyphs => GlyphsHelp,
+                HelpTopic.Vocabularies => VocabulariesHelp,
+                _ => ResidualsHelp,
+            })
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-primary" @onclick="Close">Got it</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    public enum HelpTopic { Score, Glyphs, Vocabularies, Residuals }
+
+    [Parameter, EditorRequired] public HelpTopic Topic { get; set; }
+
+    /// <summary>The score the page is showing - the source of every live figure and example here.</summary>
+    [Parameter, EditorRequired] public MdlScore Score { get; set; }
+
+    /// <summary>The working grammar, for what the score doesn't carry (e.g. vocabulary member counts).</summary>
+    [Parameter, EditorRequired] public GrammarDefinition Working { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    string Title => Topic switch
+    {
+        HelpTopic.Score => "Reading the score",
+        HelpTopic.Glyphs => "Reading the glyph table",
+        HelpTopic.Vocabularies => "Reading the vocabulary table",
+        _ => "Reading the residual hot spots",
+    };
+
+    Task Close() => OnClose.InvokeAsync();
+
+    static string N(double value) => value.ToString("N0");
+    static string P(double value) => value.ToString("P1");
+
+    /// <summary>Roughly what a glyph made of one literal of <paramref name="text"/> would cost to define: its characters spelled, plus the structure around them.</summary>
+    double LiteralGlyphBits(string text) => (text.Length + 1) * Score.CharBits + 20;
+
+    // ---- Score ----
+
+    RenderFragment ScoreHelp => __builder =>
+    {
+        var bits = Score.ComponentBits;
+        var perLine = Score.Lines == 0 ? 0 : bits[DataComponent.Tokens] / Score.Lines;
+
+        <p class="lead">
+            The score is how many <strong>bits</strong> it takes to write the whole corpus down using this grammar -
+            with the grammar's own definition counted too. <strong>Lower is better.</strong> A grammar earns a lower score by
+            making the corpus predictable: every word it captures is cheaper to write down as "this glyph, this value"
+            than as raw text.
+        </p>
+
+        <div class="stat-grid">
+            <div class="stat"><span class="stat-value">@N(Score.TotalBits)</span><span class="stat-label">total bits</span></div>
+            <div class="stat"><span class="stat-value">@N(Score.GrammarBits)</span><span class="stat-label">for the grammar</span></div>
+            <div class="stat"><span class="stat-value">@N(Score.DataBits)</span><span class="stat-label">for the corpus, given the grammar</span></div>
+            <div class="stat"><span class="stat-value">@P(Score.CompressionRatio)</span><span class="stat-label">of the empty grammar's score</span></div>
+        </div>
+
+        <h4>What a bit is</h4>
+        <p>
+            One bit is one yes-or-no answer. Choosing one of 8 equally likely options costs 3 bits; one of 1,000 costs about 10.
+            Choosing something that's almost always chosen costs almost nothing - which is why repetition is cheap and surprise is expensive.
+            Every number on this page is a count of bits, never a count of things.
+        </p>
+
+        <h4>Why the grammar is part of the score</h4>
+        <p>Without it, there'd be two ways to cheat, and the score catches both:</p>
+        <div class="compare">
+            <div class="compare-item">
+                <span class="compare-label">One literal glyph per card</span>
+                <p>Every card matches perfectly, so the data costs almost nothing - but the grammar <em>is</em> the corpus, spelled out letter by letter.</p>
+            </div>
+            <div class="compare-item">
+                <span class="compare-label">No glyphs at all</span>
+                <p>The grammar costs nothing - but every word is unmatched text, paid for in full.</p>
+            </div>
+        </div>
+        <p>A good grammar sits between: a modest definition that makes most of the corpus cheap to describe.</p>
+
+        <h4>The rows</h4>
+        <dl class="terms">
+            <dt>vs. empty grammar</dt>
+            <dd>
+                This score as a share of what the same corpus costs with no grammar at all. Below 100% means the grammar pays for itself overall;
+                above means it currently costs more to describe than it saves. Right now: <strong>@P(Score.CompressionRatio)</strong>.
+            </dd>
+
+            <dt>Grammar</dt>
+            <dd>
+                Bits to write down every glyph and vocabulary: literal text is spelled at about <strong>@Score.CharBits.ToString("F1") bits per character</strong>,
+                each structural choice (which kind of nib, which property, which attribute) costs a few bits, and every vocabulary member is spelled once.
+                Names are free - they're labels, not grammar.
+            </dd>
+
+            <dt>Data</dt>
+            <dd>Bits to write down the corpus given the grammar - the sum of the four rows beneath it.</dd>
+
+            <dt>Tokens <span class="aka">line structure</span></dt>
+            <dd>
+                For every line, the sequence of what it's made of: which top-level glyph comes first, then what follows it (another glyph, unmatched text, a period),
+                and where the line ends. Each step is one choice among all the top-level glyphs plus those three.
+                <div class="example">
+                    <span class="example-label">Example</span>
+                    <code>enchant creature.</code> is three choices: <code>EnchantPermanent</code> → <code>«.»</code> → <code>«end of line»</code>.
+                    Sequences that recur across the corpus get cheap; here it averages <strong>@perLine.ToString("F1") bits per line</strong> over @N(Score.Lines) lines.
+                </div>
+            </dd>
+
+            <dt>Frames <span class="aka">uncaptured variation</span></dt>
+            <dd>
+                A glyph's <em>frame</em> is the text it matched with every captured property blanked out - its scaffold, like the "sentence frame" of linguistics.
+                When a glyph allows several scaffolds (an <code>Alt(...)</code>, an <code>Opt(...)</code>, a list of 2 or 3 items, one enum member spelled several ways),
+                the text had to pick one, and that pick costs bits here. A glyph that always matches the same scaffold costs nothing.
+                <div class="example">
+                    <span class="example-label">Example</span>
+                    <code>CardOutsideBattlefield</code> is <code>Alt("card", "spell"), Opt(Alt("in", "from")), Whose, Zone</code>. Its frames include
+                    <code>card in {Whose} {Zone}</code> and <code>spell from {Whose} {Zone}</code>: which one appeared is information the glyph lets through
+                    without capturing into a property. Likewise <code>Quantity.One</code> matches "1", "one" or "a" - which spelling was used is a frame choice too.
+                </div>
+                <div class="callout">
+                    This row is what keeps vague glyphs honest. A glyph that accepted anything would match everything - but every match would pay here to say
+                    what the text actually was. Currently <strong>@N(bits[DataComponent.Frames]) bits</strong>: the glyphs let very little through uncaptured.
+                </div>
+            </dd>
+
+            <dt>Values <span class="aka">captured information</span></dt>
+            <dd>
+                What matches captured into properties: which enum member, which number, which glyph a dynamic property resolved to. This is the information your grammar
+                has <em>structured</em> - the part a program reading the glyphs gets.
+                <div class="example">
+                    <span class="example-label">Example</span>
+                    A <code>CreatureType</code> property choosing among its members costs about 8 bits the first few times, and less for members that keep coming up.
+                </div>
+            </dd>
+
+            <dt>Residual <span class="aka">unmatched text</span></dt>
+            <dd>
+                Text no glyph matched, written as words: each word is a choice from the words seen so far, and each new word is spelled once.
+                Usually the biggest row by far - right now <strong>@P(Score.DataBits == 0 ? 0 : bits[DataComponent.Residual] / Score.DataBits)</strong> of the data.
+                See <em>Residual hot spots</em> for where it comes from.
+            </dd>
+
+            <dt>Coverage</dt>
+            <dd>The share of the corpus's words inside a matched glyph: @N(Score.CapturedWords) of @N(Score.Words).</dd>
+        </dl>
+
+        <h4>Committed, Working and Change</h4>
+        <p>
+            <strong>Committed</strong> is the grammar your C# sources declare. <strong>Working</strong> is your experiment: toggle, edit or add glyphs and it's re-scored
+            against the same corpus within a second or so. <strong>Change</strong> is working minus committed -
+            <span class="good">green</span> is better, <span class="bad">red</span> is worse (for bits, lower; for coverage, higher), and a grey dash means no change.
+        </p>
+
+        <div class="callout tip">
+            <span class="callout-label">The whole game</span>
+            Move bits out of <strong>Residual</strong> and into <strong>Values</strong>, spending fewer <strong>Grammar</strong> bits than you save.
+        </div>
+    };
+
+    // ---- Glyphs ----
+
+    RenderFragment GlyphsHelp => __builder =>
+    {
+        var topLevel = Score.Glyphs.Where(x => x.IsTopLevel).ToList();
+        var best = topLevel.Where(x => x.Occurrences > 0).OrderByDescending(x => x.NetBits).FirstOrDefault();
+        var unused = topLevel.Where(x => x.Occurrences == 0).OrderBy(x => x.NetBits).FirstOrDefault();
+        var paying = topLevel.Count(x => x.NetBits > 0);
+
+        <p class="lead">
+            Each row is one glyph: what it costs to define, what its matches cost to write down, and what it saves by keeping that text out of the residual.
+            <strong>@paying of @topLevel.Count</strong> top-level glyphs currently pay for themselves.
+        </p>
+
+        <div class="formula">
+            <span class="formula-term good">Net</span> = <span class="formula-term">Saves</span> − <span class="formula-term">Data</span> − <span class="formula-term">Definition</span>
+        </div>
+
+        @if (best is not null)
+        {
+            <div class="example">
+                <span class="example-label">A glyph that pays: @best.Name</span>
+                Its @N(best.Occurrences) matches cover @N(best.Words) words. As unmatched text they'd cost <strong>@N(best.ResidualEquivalentBits)</strong> bits;
+                as matches they cost <strong>@N(best.DataBits)</strong>; defining the glyph costs <strong>@N(best.DefinitionBits)</strong>.
+                <div class="arithmetic">@N(best.ResidualEquivalentBits) − @N(best.DataBits) − @N(best.DefinitionBits) = <span class="good">@N(best.NetBits)</span></div>
+            </div>
+        }
+
+        @if (unused is not null)
+        {
+            <div class="example">
+                <span class="example-label">A glyph that doesn't (yet): @unused.Name</span>
+                It matches nothing in this corpus, so it saves nothing and its matches cost nothing - its net is minus its own definition,
+                <span class="bad">@N(unused.NetBits)</span>. Unticking it would lower the total by exactly @N(unused.DefinitionBits) bits and change nothing else.
+                That doesn't make it wrong: it means it isn't earning its keep <em>on this corpus</em>. Making it match may be the better fix than removing it.
+            </div>
+        }
+
+        <h4>The columns</h4>
+        <table class="reference">
+            <tr><th>On</th><td>Whether the glyph is in the working grammar. Untick to try the grammar without it; tick to restore it. Greyed out while another glyph uses it - hover to see which.</td></tr>
+            <tr><th>Net bits</th><td>Saves − Data − Definition. <span class="good">Positive</span>: the glyph pays for itself. <span class="bad">Negative</span>: it costs more than it saves.</td></tr>
+            <tr><th>Δ net</th><td>How the glyph's net changed from the committed grammar - blank until the working grammar differs.</td></tr>
+            <tr><th>Saves</th><td>What its matched text would cost as unmatched text instead. An estimate - see below.</td></tr>
+            <tr><th>Data</th><td>What its top-level matches cost to write down: which frame, which values - nested glyphs' choices included.</td></tr>
+            <tr><th>Definition</th><td>What the glyph costs to define: its literal text spelled out, plus its structure.</td></tr>
+            <tr><th>Matches</th><td>How many times it matched as a whole clause (top-level). Matches nested inside other glyphs count toward those glyphs.</td></tr>
+            <tr><th>Words</th><td>How many of the corpus's words those matches cover.</td></tr>
+        </table>
+
+        <h4>Net bits is an estimate; the checkbox is the truth</h4>
+        <p>
+            <em>Saves</em> prices a glyph's text as if it became unmatched on its own. Really removing it changes more than that: another glyph might claim some of the text,
+            and unmatched text gets cheaper the more it repeats. So when a decision matters, untick the glyph and read the scorecard's <strong>Change</strong> column -
+            that's the exact effect. The real effect is usually smaller than the estimate.
+        </p>
+
+        <h4>Why a glyph matches nothing</h4>
+        <p>
+            A top-level glyph has to match a <strong>whole clause</strong> - everything between two periods - unless it's marked <code>[AllowPartialSegmentMatch]</code>.
+            A glyph describing only part of a sentence never gets to match, and shows 0. The residual hot spots show exactly which clause texts went unmatched.
+        </p>
+
+        <h4>Nested-only glyphs</h4>
+        <p>
+            Some glyphs only ever match inside other glyphs (e.g. <code>CardOutsideBattlefield</code> inside <code>EnchantPermanent</code>). They always show 0 matches and a
+            negative net - their value is counted in their parents' <em>Data</em> - so they're hidden by default. Judge one by what happens to its parents when you change it.
+        </p>
+
+        <div class="callout tip">
+            <span class="callout-label">Editing</span>
+            <em>edit</em> opens the glyph's definition as JSON with a live C# preview; <em>New glyph</em> starts from a template. Changes go to the working grammar only,
+            and are scored as soon as they're applied. If a change doesn't build, the scorecard lists why.
+        </div>
+    };
+
+    // ---- Vocabularies ----
+
+    RenderFragment VocabulariesHelp => __builder =>
+    {
+        var costliest = Score.Vocabularies.OrderByDescending(x => x.Value).FirstOrDefault();
+        var members = Working.Vocabularies.FirstOrDefault(x => x.Name == costliest.Key)?.Members.Count ?? 0;
+        var total = Score.Vocabularies.Values.Sum();
+
+        <p class="lead">
+            Vocabularies are the closed word lists properties choose from - the enums. They're often the biggest part of the grammar's cost:
+            right now <strong>@N(total)</strong> of its <strong>@N(Score.GrammarBits)</strong> bits.
+        </p>
+
+        <h4>What a vocabulary costs</h4>
+        <p>
+            Every member is spelled out once - its <code>[RegexPattern]</code> texts, or its friendly-cased name if it has none - at about
+            @Score.CharBits.ToString("F1") bits per character. The cost is paid whether a member is used once, a thousand times, or never.
+        </p>
+
+        @if (costliest.Key is not null)
+        {
+            <div class="example">
+                <span class="example-label">The costliest: @costliest.Key</span>
+                @N(members) members cost <strong>@N(costliest.Value)</strong> bits to define - about
+                <strong>@((members == 0 ? 0 : costliest.Value / members).ToString("F0")) bits per member</strong>.
+            </div>
+        }
+
+        <h4>When a member pays</h4>
+        <p>
+            Each time a member is matched, its word leaves the residual (where it cost several bits every time) and becomes a <em>Values</em> choice instead, which gets
+            cheaper the more often that member comes up. So frequently used members pay for their spelling many times over; members that never appear are pure cost.
+        </p>
+
+        <div class="callout caution">
+            <span class="callout-label">Mind the corpus</span>
+            A vocabulary written for a whole domain looks expensive against a small slice of it. If this page is scoring a subset of your documents,
+            a big vocabulary may be worth it on all of them - check against the full corpus before cutting members.
+        </div>
+
+        <h4>The columns</h4>
+        <table class="reference">
+            <tr><th>Members</th><td>How many values it has.</td></tr>
+            <tr><th>Definition bits</th><td>What it costs to define - every member spelled once.</td></tr>
+            <tr><th>Used by</th><td>The glyphs with a property of this type. A vocabulary no glyph uses is left out of the score (it costs nothing until something uses it), and can be removed.</td></tr>
+        </table>
+
+        <h4>Synonyms</h4>
+        <p>
+            A member with several patterns (e.g. <code>Quantity.One</code> matching "1", "one" or "a") costs each spelling once in its definition, and a
+            <em>Frames</em> choice each time it matches, to say which spelling was used - variation the property doesn't capture.
+        </p>
+    };
+
+    // ---- Residual hot spots ----
+
+    RenderFragment ResidualsHelp => __builder =>
+    {
+        var top = Score.Residuals.OrderByDescending(x => x.Bits).FirstOrDefault();
+
+        <p class="lead">
+            Text no glyph matched, grouped by exact text and ranked by what it costs across the whole corpus. It's the to-do list: the rows at the top are where
+            a new or better glyph would save the most.
+        </p>
+
+        <h4>How unmatched text is priced</h4>
+        <p>
+            Each unmatched span pays for how many words it has, then for each word - chosen from the words unmatched text has used so far, so common words are
+            cheap and rare ones dear. Each distinct word is also spelled out once, the first time it's needed. A row's <em>Bits</em> is the total over all its occurrences.
+        </p>
+
+        @if (top is not null)
+        {
+            var perOccurrence = top.Bits / Math.Max(1, top.Occurrences);
+            var glyphCost = LiteralGlyphBits(top.Text);
+
+            <div class="example">
+                <span class="example-label">The top hot spot</span>
+                <code class="quoted">@top.Text</code>
+                <p>
+                    appears <strong>@N(top.Occurrences)</strong> time@(top.Occurrences == 1 ? "" : "s"), @N(top.Words) words each, costing
+                    <strong>@N(top.Bits)</strong> bits - about @N(perOccurrence) per occurrence.
+                </p>
+                <p>
+                    A glyph matching it word for word would cost roughly <strong>@N(glyphCost)</strong> bits to define
+                    (@N(top.Text.Length) characters at @Score.CharBits.ToString("F1") bits each, plus structure),
+                    and a few bits per match - so it would
+                    <span class="@(top.Bits > glyphCost ? "good" : "bad")">@(top.Bits > glyphCost ? $"save around {N(top.Bits - glyphCost)} bits" : "cost more than it saves")</span>.
+                </p>
+            </div>
+        }
+
+        <h4>Using it</h4>
+        <ul class="steps">
+            <li><strong>Write glyphs for whole clauses.</strong> The text shown is exactly the clause that went unmatched; a top-level glyph must match all of it.</li>
+            <li><strong>Look for shared shapes, not single rows.</strong> A literal glyph per row is the "memorize the corpus" extreme. When several rows differ only in a word or two, one glyph with a property covers them all for far less.</li>
+            <li><strong>It follows the working grammar.</strong> Untick a glyph and the text it was covering shows up here - a quick way to see what a glyph does.</li>
+            <li><strong>Text is normalized.</strong> Lines are lowercased, and each document's own name is replaced with <code>{this}</code>.</li>
+        </ul>
+    };
+}
