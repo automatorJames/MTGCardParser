@@ -290,7 +290,7 @@
     RenderFragment VocabulariesHelp => __builder =>
     {
         var costliest = Score.Vocabularies.OrderByDescending(x => x.Value).FirstOrDefault();
-        var members = Working.Vocabularies.FirstOrDefault(x => x.Name == costliest.Key)?.Members.Count ?? 0;
+        var members = costliest.Key is null ? 0 : Score.VocabularyMembersUsed?.GetValueOrDefault(costliest.Key) ?? 0;
         var total = Score.Vocabularies.Values.Sum();
 
         <p class="lead">
@@ -300,15 +300,17 @@
 
         <h4>What a vocabulary costs</h4>
         <p>
-            Every member is spelled out once - its <code>[RegexPattern]</code> texts, or its friendly-cased name if it has none - at about
-            @Score.CharBits.ToString("F1") bits per character. The cost is paid whether a member is used once, a thousand times, or never.
+            Every member the corpus <em>uses</em> is spelled out once - its <code>[RegexPattern]</code> texts that matched something, or its friendly-cased
+            name if it has none - at about @Score.CharBits.ToString("F1") bits per character. Members that never match cost nothing: a vocabulary is a list
+            of words that <em>might</em> match, and once the grammar is settled the unused ones can simply be culled. So a big vocabulary is never a reason
+            to spell its few needed words out as literals instead.
         </p>
 
         @if (costliest.Key is not null)
         {
             <div class="example">
                 <span class="example-label">The costliest: @costliest.Key</span>
-                @N(members) members cost <strong>@N(costliest.Value)</strong> bits to define - about
+                The @N(members) members the corpus uses cost <strong>@N(costliest.Value)</strong> bits to define - about
                 <strong>@((members == 0 ? 0 : costliest.Value / members).ToString("F0")) bits per member</strong>.
             </div>
         }
@@ -316,25 +318,20 @@
         <h4>When a member pays</h4>
         <p>
             Each time a member is matched, its word leaves <em>Unmatched text</em> (where it cost several bits every time) and becomes a <em>Captured values</em> choice instead, which gets
-            cheaper the more often that member comes up. So frequently used members pay for their spelling many times over; members that never appear are pure cost.
+            cheaper the more often that member comes up. So frequently used members pay for their spelling many times over.
         </p>
 
-        <div class="callout caution">
-            <span class="callout-label">Mind the corpus</span>
-            A vocabulary written for a whole domain looks expensive against a small slice of it. If this page is scoring a subset of your documents,
-            a big vocabulary may be worth it on all of them - check against the full corpus before cutting members.
-        </div>
 
         <h4>The columns</h4>
         <table class="reference">
-            <tr><th>Members</th><td>How many values it has.</td></tr>
-            <tr><th>Definition bits</th><td>What it costs to define - every member spelled once.</td></tr>
+            <tr><th>Members used</th><td>How many of its values the corpus matched, of how many it has. Only these count.</td></tr>
+            <tr><th>Definition bits</th><td>What it costs to define - every used member spelled once.</td></tr>
             <tr><th>Used by</th><td>The glyphs with a property of this type. A vocabulary no glyph uses is left out of the score (it costs nothing until something uses it), and can be removed.</td></tr>
         </table>
 
         <h4>Synonyms</h4>
         <p>
-            A member with several patterns (e.g. <code>Quantity.One</code> matching "1", "one" or "a") costs each spelling once in its definition, and a
+            A member with several patterns (e.g. <code>Quantity.One</code> matching "1", "one" or "a") costs each spelling the corpus uses once in its definition, and a
             <em>Uncaptured variation</em> choice each time it matches, to say which spelling was used - variation the property doesn't capture.
         </p>
     };

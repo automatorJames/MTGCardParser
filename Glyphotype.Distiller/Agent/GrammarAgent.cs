@@ -159,14 +159,15 @@ public sealed class GrammarAgent
 
         report.AppendLine();
         report.AppendLine($"Vocabularies ({definition.Vocabularies.Count}):");
-        report.AppendLine($"  {"cost",7} {"members",8}  vocabulary  (used by)");
+        report.AppendLine($"  {"cost",7} {"members used",13}  vocabulary  (used by) - only used members cost anything");
 
         foreach (var vocabulary in definition.Vocabularies.OrderByDescending(x => trial.Score.Vocabularies.GetValueOrDefault(x.Name)))
         {
             var users = definition.GetReferrers(vocabulary.Name);
             var changed = status.TryGetValue((DefinitionKind.Vocabulary, vocabulary.Name), out var change) ? $", {change.ToString().ToLowerInvariant()} since commit" : "";
 
-            report.AppendLine($"  {trial.Score.Vocabularies.GetValueOrDefault(vocabulary.Name),7:N0} {vocabulary.Members.Count,8}  {vocabulary.Name}  ({(users.Count > 0 ? string.Join(", ", users) : "unused")}{changed})");
+            var used = $"{trial.Score.VocabularyMembersUsed.GetValueOrDefault(vocabulary.Name)} of {vocabulary.Members.Count}";
+            report.AppendLine($"  {trial.Score.Vocabularies.GetValueOrDefault(vocabulary.Name),7:N0} {used,13}  {vocabulary.Name}  ({(users.Count > 0 ? string.Join(", ", users) : "unused")}{changed})");
         }
 
         return report.ToString();

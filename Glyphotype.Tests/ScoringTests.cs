@@ -96,6 +96,44 @@ public class ScoringTests(CorpusFixture corpus)
         Assert.True(literal.TotalBits < none.TotalBits, $"literals {literal.TotalBits:N0} vs none {none.TotalBits:N0}");
     }
 
+    [Fact]
+    public void Vocabulary_members_and_synonyms_the_corpus_never_uses_are_free()
+    {
+        // A vocabulary is a list of words that might match: a finished grammar culls what never did, so it costs nothing.
+        string[] parasites = ["fleas", "lice"];
+        var documents = Enumerable.Range(0, 20)
+            .Select(i => new TestDocument(TestDocument.Unnamed, $"my dog has {parasites[i % parasites.Length]}.", []))
+            .ToList();
+
+        GrammarDefinition Template(IReadOnlyList<VocabularyMemberDefinition> members) => new()
+        {
+            Glyphs =
+            [
+                new()
+                {
+                    Name = "MyDogHas",
+                    Nibs = [new NibDefinition.Literal("my dog has"), new NibDefinition.Property("Parasite")],
+                    Properties = [new() { Name = "Parasite", Type = TypeReference.Vocabulary("Parasite") }],
+                },
+            ],
+            Vocabularies = [new() { Name = "Parasite", Members = members }],
+        };
+
+        var used = Template([new() { Name = "Fleas", Patterns = ["fleas"] }, new() { Name = "Lice" }]);
+        var padded = Template(
+        [
+            new() { Name = "Fleas", Patterns = ["fleas", "flea infestation"] },
+            new() { Name = "Lice" },
+            .. Enumerable.Range(0, 40).Select(i => new VocabularyMemberDefinition { Name = $"Unused{i}", Patterns = [$"unused parasite number {i}"] }),
+        ]);
+
+        var lean = Score(GlyphGrammar.FromDefinition(used, allowPartialSegmentMatches: false), documents);
+        var full = Score(GlyphGrammar.FromDefinition(padded, allowPartialSegmentMatches: false), documents);
+
+        Assert.Equal(lean.TotalBits, full.TotalBits, precision: 6);
+        Assert.Equal(2, full.VocabularyMembersUsed["Parasite"]);
+    }
+
     static MdlScore Score(GlyphGrammar grammar, IEnumerable<IDocument> documents) =>
         MdlScorer.Score(grammar, CorpusFixture.Process(grammar, documents));
 }

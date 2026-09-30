@@ -31,8 +31,9 @@ public enum DataComponent
 /// <item>per glyph type, its frame - the text it matched with every child capture replaced by a placeholder -
 /// which absorbs every choice a match makes that no property captures: Alt/Opt/Plural/Pattern nibs, which
 /// optional parts are present, how many items a list holds, which one-of alternative matched;</item>
-/// <item>per property slot, its value: the enum member (among all the enum's members), the number (a universal
-/// integer code), or the type a dynamic resolved to - and per enum member, the synonym that spelled it;</item>
+/// <item>per property slot, its value: the enum member (among the members the corpus uses - unused ones would be
+/// culled from a finished grammar, see <see cref="VocabularyUsage"/>), the number (a universal integer code), or the
+/// type a dynamic resolved to - and per enum member, the synonym that spelled it;</item>
 /// <item>unmatched text: its word count, then each word from a residual lexicon, whose distinct words are
 /// spelled once - including text a dynamic left unresolved (see <see cref="AllowUnmatchedAttribute"/>), which is
 /// unmatched text held in place;</item>
@@ -68,6 +69,9 @@ public sealed class CorpusEncoding
 
     /// <summary>Every top-level token of the corpus and the choices it was encoded as.</summary>
     public IReadOnlyList<TokenEncoding> Tokens => _tokens;
+
+    /// <summary>The vocabulary members the corpus used, and how each was spelled - what the grammar's cost counts (see <see cref="GrammarCost.Of"/>).</summary>
+    public VocabularyUsage VocabularyUsage { get; } = new();
 
     /// <summary>
     /// Matches whose open-ended pattern text couldn't be located (see <see cref="BuiltRegex.FindPatternCaptures"/>),
@@ -164,7 +168,10 @@ public sealed class CorpusEncoding
             var member = trace.ClrValue?.ToString() ?? throw new InvalidOperationException($"Enum capture '{trace.CaptureValue}' ({trace.FullyQualifiedName}) has no hydrated value");
             var memberPatterns = enumType.GetField(member)?.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
 
-            Choose(token, GetContext($"value {Slot(node)}", DataComponent.Values, Enum.GetValues(enumType).Length), member);
+            VocabularyUsage.Add(enumType.Name, member, trace.CaptureValue);
+
+            // Among the members seen, not all the enum's: a member that never matches would be culled from the grammar.
+            Choose(token, GetContext($"value {Slot(node)}", DataComponent.Values, alphabetSize: null), member);
             ChooseSpelling(token, GetContext($"spelling {enumType.Name}.{member}", DataComponent.Frames, alphabetSize: null), trace.CaptureValue, memberPatterns);
             return;
         }

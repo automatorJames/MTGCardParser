@@ -225,7 +225,7 @@ else
 
             <table class="data-table">
                 <thead>
-                    <tr><th class="name-column">Vocabulary</th><th>Members</th><th>Definition bits</th><th class="centered">Used by</th><th></th></tr>
+                    <tr><th class="name-column">Vocabulary</th><th title="Members the corpus used, of all the vocabulary's members - only used ones cost anything">Members used</th><th>Definition bits</th><th class="centered">Used by</th><th></th></tr>
                 </thead>
                 <tbody>
                     @foreach (var vocabulary in Workbench.WorkingDefinition.Vocabularies.OrderByDescending(VocabularyBits))
@@ -233,7 +233,7 @@ else
                         var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
                         <tr class="@(referrers.Count == 0 ? "excluded" : "")">
                             <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
-                            <td>@vocabulary.Members.Count.ToString("N0")</td>
+                            <td>@(CurrentScore.VocabularyMembersUsed?.GetValueOrDefault(vocabulary.Name) ?? 0) of @vocabulary.Members.Count.ToString("N0")</td>
                             <td>@Bits(VocabularyBits(vocabulary))</td>
                             <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
                             <td>

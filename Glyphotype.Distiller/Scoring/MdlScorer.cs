@@ -17,8 +17,10 @@ public static class MdlScorer
         var charBits = CodeLength.Uniform(lines.SelectMany(x => x.SourceText.FormattedText).Distinct().Count() + 1);
 
         var definition = grammar.ToDefinition();
-        var grammarCost = GrammarCost.Of(definition, charBits);
         var encoding = CorpusEncoding.Encode(lines, grammar.TopLevelTypes.Count, charBits);
+
+        // Priced as the grammar culled to what the corpus uses: vocabulary members that never matched are free.
+        var grammarCost = GrammarCost.Of(definition, charBits, encoding.VocabularyUsage);
         var componentBits = encoding.GetComponentBits();
 
         // The baseline: the same corpus with no grammar at all, every segment unmatched.
@@ -72,6 +74,7 @@ public static class MdlScorer
             CapturedWords = documents.Sum(x => x.CapturedWordCount),
             Glyphs = glyphs,
             Vocabularies = grammarCost.VocabularyBits,
+            VocabularyMembersUsed = definition.Vocabularies.ToDictionary(x => x.Name, x => encoding.VocabularyUsage.UsedMemberCount(x.Name)),
             Residuals = residuals,
             UnlocatedPatternMatches = encoding.UnlocatedPatternMatches,
         };
@@ -124,7 +127,11 @@ public sealed record MdlScore
     public double Coverage => Words == 0 ? 1 : (double)CapturedWords / Words;
 
     public IReadOnlyList<GlyphContribution> Glyphs { get; init; }
+    /// <summary>What each vocabulary costs to define: only the members the corpus used (see <see cref="VocabularyUsage"/>).</summary>
     public IReadOnlyDictionary<string, double> Vocabularies { get; init; }
+
+    /// <summary>How many of each vocabulary's members the corpus used - the ones its cost counts.</summary>
+    public IReadOnlyDictionary<string, int> VocabularyMembersUsed { get; init; }
     public IReadOnlyList<ResidualSpan> Residuals { get; init; }
 
     /// <summary>Matches whose open-ended pattern text went uncharged because it couldn't be located (see <see cref="CorpusEncoding.UnlocatedPatternMatches"/>) - expected to be zero.</summary>

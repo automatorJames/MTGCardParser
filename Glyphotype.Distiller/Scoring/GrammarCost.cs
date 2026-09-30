@@ -19,10 +19,15 @@ public sealed record GrammarCost(
     /// name the engine matches as text (a vocabulary member with no patterns, a glyph with nothing else to
     /// match), which is spelled like any literal.
     /// </para>
+    /// <para>
+    /// Given <paramref name="usage"/>, a vocabulary costs only the members the corpus used, and each of those only
+    /// the synonyms that spelled something: the rest would be culled from a finished grammar, so they're free to
+    /// keep around. A vocabulary nothing matched costs nothing.
+    /// </para>
     /// </summary>
-    public static GrammarCost Of(GrammarDefinition grammar, double charBits)
+    public static GrammarCost Of(GrammarDefinition grammar, double charBits, VocabularyUsage usage = null)
     {
-        var coder = new Coder(grammar, charBits);
+        var coder = new Coder(grammar, charBits, usage);
 
         return new(
             grammar.Glyphs.ToDictionary(x => x.Name, coder.Glyph),
@@ -30,8 +35,10 @@ public sealed record GrammarCost(
             CodeLength.Count(grammar.Glyphs.Count) + CodeLength.Count(grammar.Vocabularies.Count) + CodeLength.Count(grammar.Markers.Count));
     }
 
-    sealed class Coder(GrammarDefinition grammar, double charBits)
+    sealed class Coder(GrammarDefinition grammar, double charBits, VocabularyUsage usage)
     {
+        static readonly TimeSpan _patternTimeout = TimeSpan.FromMilliseconds(250);
+
         static readonly int _glyphKinds = Enum.GetValues<GlyphKind>().Length;
         static readonly int _spanRules = Enum.GetValues<SpanRule>().Length;
         static readonly int _joiners = Enum.GetValues<Joiner>().Length;
@@ -63,14 +70,48 @@ public sealed record GrammarCost(
             return bits;
         }
 
-        public double Vocabulary(VocabularyDefinition vocabulary) =>
-            CodeLength.Count(vocabulary.Members.Count)
-            + 1 // IsOptionalPlural
-            + vocabulary.Members.Sum(member =>
-                Optional(member.Value is not null, CodeLength.SignedInteger(member.Value ?? 0))
-                + (member.Patterns.Count > 0
-                    ? Texts(member.Patterns)
-                    : CodeLength.Count(0) + Text(member.Name.ToFriendlyCase(TitleDisplayOption.Lower))));
+        public double Vocabulary(VocabularyDefinition vocabulary)
+        {
+            var members = usage is null ? vocabulary.Members : vocabulary.Members.Where(x => usage.IsUsed(vocabulary.Name, x.Name)).ToList();
+
+            if (usage is not null && members.Count == 0)
+                return 0;
+
+            return CodeLength.Count(members.Count)
+                + 1 // IsOptionalPlural
+                + members.Sum(member =>
+                    Optional(member.Value is not null, CodeLength.SignedInteger(member.Value ?? 0))
+                    + (member.Patterns.Count > 0
+                        ? Texts(UsedPatterns(vocabulary, member))
+                        : CodeLength.Count(0) + Text(member.Name.ToFriendlyCase(TitleDisplayOption.Lower))));
+        }
+
+        /// <summary>The member's patterns that spelled something in the corpus - all of them, without usage to go by (or if none can be told apart).</summary>
+        IReadOnlyList<string> UsedPatterns(VocabularyDefinition vocabulary, VocabularyMemberDefinition member)
+        {
+            if (usage is null)
+                return member.Patterns;
+
+            var spellings = usage.Spellings(vocabulary.Name, member.Name);
+            var plural = vocabulary.IsOptionalPlural ? "(?:e?s)?" : "";
+            var used = member.Patterns.Where(pattern => spellings.Any(spelling => Spells(pattern + plural, spelling))).ToList();
+
+            return used.Count > 0 ? used : member.Patterns;
+        }
+
+        static bool Spells(string pattern, string text)
+        {
+            try
+            {
+                return System.Text.RegularExpressions.Regex.IsMatch(text, $"^(?:{pattern})$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant, _patternTimeout);
+            }
+            catch (Exception exception) when (exception is ArgumentException or System.Text.RegularExpressions.RegexMatchTimeoutException)
+            {
+                // Can't tell: count it as used, which only ever overcharges.
+                return true;
+            }
+        }
 
         double Nib(NibDefinition nib, GlyphDefinition glyph) =>
             CodeLength.Uniform(_nibKinds) + nib switch

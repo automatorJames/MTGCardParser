@@ -65,8 +65,12 @@ write down the corpus using it. Lower is better. The baseline is the same corpus
 
 - **Unmatched text** is expensive: every word is coded from a residual lexicon, and each distinct word is spelled
   out once. Covering recurring text is how bits are saved.
-- **A glyph costs its own definition:** every literal character, property and vocabulary synonym. A glyph that
-  matches once rarely pays for itself.
+- **A glyph costs its own definition:** every literal character and property. A glyph that matches once rarely pays
+  for itself.
+- **A vocabulary costs only the members the corpus uses.** Members that never match, and synonyms that never spell
+  anything, are free, because a finished grammar would cull them. So never spell out an `Alt` of words an existing
+  vocabulary already covers (`Alt("creature", "land", "artifact")` instead of a `CardType` property) to "save" the
+  members you don't need. Those cost nothing, and the property is the better grammar: named, captured, reusable.
 - **Each match costs the choices it makes.** Those are:
   - which glyph it is;
   - which *frame* it took (its text with captures masked out; every `Alt`/`Opt`/`Pattern` variation creates
