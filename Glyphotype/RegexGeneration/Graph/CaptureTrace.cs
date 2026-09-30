@@ -212,6 +212,14 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         SiblingIndex = source.SiblingIndex;
         Origin = source;
 
+        // The node's name and no value is only right until a dynamic's resolution is adopted into an enclosing match
+        // (see AdoptDynamicChildren): that renames and moves the source, and a view made afterwards - in the enclosing
+        // match's context, where none was cached - must carry the source's own name, and the value hydration already
+        // wrote onto it, rather than starting over from the node.
+        FullyQualifiedName = source.FullyQualifiedName;
+        ParentName = source.ParentName;
+        _clrValue = source.ClrValue;
+
         // source is either the true representative (Representative == null on it, so this view must
         // point back to source itself) or another view/Sibling one hop closer to it already
         // (Representative already points at the real one) - either way this collapses to exactly one
@@ -338,7 +346,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         return CaptureContext.GetOrCreateScopedView(this, scope, () =>
         {
             if (contained.Count == 0)
-                return new CaptureTrace(CaptureContext, SourceNode);
+                return new CaptureTrace(CaptureContext, SourceNode) { FullyQualifiedName = FullyQualifiedName, ParentName = ParentName };
 
             var view = new CaptureTrace(contained[0]);
             view.Siblings.AddRange(contained.Skip(1));

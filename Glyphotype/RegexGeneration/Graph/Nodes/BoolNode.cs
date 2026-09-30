@@ -7,7 +7,13 @@
 /// </summary>
 public class BoolNode : NamedGroupNode
 {
-    public override Quantifier? Quantifier => Glyphotype.Quantifier.Optional;
+    /// <summary>
+    /// Optional - a bool is whether its pattern is present - except as one of a one-of's alternatives, where the
+    /// one-of already makes it a choice. Optional there, it would take the pipe separating it from the alternative
+    /// before it inside its own group (see <see cref="JoinerRules.PlaceLeadingJoiner"/>), making it
+    /// <c>(|pattern)?</c>: a match of nothing, which counts as a second alternative matching.
+    /// </summary>
+    public override Quantifier? Quantifier => ParentNode is GlyphOneOfNode ? null : Glyphotype.Quantifier.Optional;
     protected override bool OneOrMoreRegexPatternsRequired => true;
 
     public BoolNode(RegexNode parentNode, Navigation navigation) 
