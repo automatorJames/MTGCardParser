@@ -3,6 +3,8 @@ using MTGGlyphs.Data;
 using Glyphotype.Interfaces;
 using Glyphotype.GlyphAnalysisDTOs;
 using Glyphotype.Distiller.Workbench;
+using Glyphotype.Distiller.Agent;
+using DocumentAnalysisInterface.Agent;
 
 namespace DocumentAnalysisInterface;
 public class Program
@@ -43,6 +45,18 @@ public class Program
                 SourceNamespace: glyphSources.Namespace,
                 AllowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches)));
 
+        // An agent's tools over that same workbench, served at /mcp: whatever an agent does there shows up live in
+        // the Grammar Tools tab, and vice versa.
+        var maxSetSequence = GlobalSettings.Current.MaxSetSequence;
+        builder.Services.AddSingleton(services => new GrammarAgent(
+            services.GetRequiredService<GrammarWorkbench>(),
+            corpusDescription: "the text of cards in the card database" + (maxSetSequence is int sets ? (sets == 1 ? ", from the first set" : $", from the first {sets} sets") : "")));
+
+        builder.Services
+            .AddMcpServer(options => options.ServerInstructions = GrammarAgent.Instructions)
+            .WithHttpTransport()
+            .WithTools<GrammarAgentTools>();
+
         var app = builder.Build();
 
         // The corpus analyzer is app-wide data, not per-session state, so it's warmed
@@ -58,12 +72,14 @@ public class Program
             app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
+        // Local agent clients connect to /mcp over plain http, and don't follow a redirect to the dev certificate.
+        app.UseWhen(context => !context.Request.Path.StartsWithSegments("/mcp"), branch => branch.UseHttpsRedirection());
 
         app.UseStaticFiles();
 
         app.UseRouting();
 
+        app.MapMcp("/mcp");
         app.MapBlazorHub();
         app.MapFallbackToPage("/_Host");
 

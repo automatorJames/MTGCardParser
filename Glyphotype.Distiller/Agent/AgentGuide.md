@@ -1,0 +1,164 @@
+# Grammar workbench: a guide for agents
+
+You're composing a **grammar** for a corpus of short documents, one glyph at a time. A glyph is a small C# class
+describing one construction of the text, e.g. "the {animal} naps on {weekday}". The grammar is *solved* when its
+glyphs describe the corpus well: most words fall inside matches, and each glyph earns its keep.
+
+You work on a shared **working definition** that the person you're collaborating with can see and edit live in the
+app's Grammar Tools tab. Nothing you do touches the C# source files. Committing working changes to source is
+the person's decision, made in the app. Never ask for it as part of your loop.
+
+## The loop
+
+1. **Orient.** `overview` shows the score, coverage and biggest unmatched text. `list_glyphs` shows what exists,
+   and `show` shows any definition's C# source.
+2. **Find a target.** Look for recurring unmatched text:
+   - `residual_phrases` lists repeated word runs;
+   - `residuals` lists whole unmatched spans by cost;
+   - `search_lines` finds lines by regex, and `scope=unmatched` searches only the text nothing covers.
+
+   Prefer text that recurs with *variation* (the same frame, different words in a slot). That's where a glyph with
+   a property beats literals.
+3. **Draft a glyph.** Write it in C#. Check it on real lines with `tokenize` (pass your draft as `source`). If it
+   doesn't match, `explain_mismatch` shows how far its pattern got and which part failed.
+4. **Measure.** `evaluate` scores the working grammar with your change applied, without making it. You get the
+   bit delta, the coverage delta, per-glyph contribution changes, and the lines whose tokenization changed:
+   - gained: more words covered;
+   - lost: fewer;
+   - reshaped: same coverage, different parse.
+
+   Read the lost and reshaped lines. A glyph that steals text from a better one, or breaks another glyph's
+   matches, shows up there.
+5. **Commit to the working definition.** `apply` makes the change as one step, with a short description of *why*.
+   `undo` takes back the latest step; `history` lists them.
+6. **Repeat**, generalizing as patterns emerge:
+   - merge near-duplicate glyphs into one with a property;
+   - promote repeated literal alternatives into a vocabulary;
+   - extract a shared sub-phrase into a `[Dependent]` glyph used by several others.
+
+   Removing or rewriting a glyph is as valid a step as adding one.
+
+Work in small steps, and state what you're trying before each one. The person may be editing too. Always read the
+current state rather than assuming it.
+
+## How the score works
+
+The score is a **minimum description length** in bits: the bits to write down the grammar, plus the bits to
+write down the corpus using it. Lower is better. The baseline is the same corpus with no grammar at all.
+
+- **Unmatched text** is expensive: every word is coded from a residual lexicon, and each distinct word is spelled
+  out once. Covering recurring text is how bits are saved.
+- **A glyph costs its own definition:** every literal character, property and vocabulary synonym. A glyph that
+  matches once rarely pays for itself.
+- **Each match costs the choices it makes.** Those are:
+  - which glyph it is;
+  - which *frame* it took (its text with captures masked out; every `Alt`/`Opt`/`Pattern` variation creates
+    frames);
+  - what each property captured.
+
+  Choices that are always the same cost nothing, and a very variable frame costs more.
+- A glyph's **net bits** = what its matches would cost as unmatched text − what they cost as matches − its own
+  definition. Positive means it pays for itself. A nested-only glyph's net is minus its definition cost; the glyphs
+  using it are credited instead.
+
+So the score rewards the grammar a person would call *right*: general templates with slots for what varies,
+vocabularies for closed word sets, and nothing that matches too little to justify itself. **Coverage** (the share
+of words inside matches) is the other headline number. The score is the judge when the two disagree.
+
+## Notation in tool output
+
+- `⟦GlyphName: matched text⟧` is a top-level match.
+- `«text»` is unmatched text.
+- Nested renderings also show captures:
+  - `⟦Property: …⟧` is a nested glyph;
+  - `⟦Property→Glyph: …⟧` is what a `DynamicGlyph` property resolved to;
+  - `⟦Property=text⟧` is a terminal (vocabulary member, bool, or number).
+- A *frame* such as `the {Animal} naps on {Day}` is a match's text with its captures masked out.
+
+Corpus text is lower-cased before tokenizing, and a document's own name is replaced with `{this}`.
+
+## Writing glyphs
+
+Send one or more declarations as C# source, without a namespace or usings. They are read as definitions, not
+compiled, so they may refer to anything in the working grammar. Declaring a name that already exists replaces
+it. Remove definitions by name with `remove`.
+
+```csharp
+public class AnimalNaps : Glyph
+{
+    public override Nib[] Nibs => ["the", Prop(Animal), Alt("naps", "sleeps"), Opt("soundly"), Prop(Day)];
+
+    public Animal Animal { get; set; }   // a vocabulary (enum)
+    public OnDay Day { get; set; }       // another glyph, nested
+}
+```
+
+**Nibs** are the glyph's parts, in order. By default they're joined by a single space.
+
+| Nib | Matches |
+|---|---|
+| `"text"` | the text exactly, as literal characters (no regex) |
+| `Alt("a", "b")` | exactly one of the texts |
+| `Opt(nib)` | the nib, or nothing |
+| `Plural()` | an optional plural suffix on the word before it: `"card", Plural()` matches card and cards |
+| `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern("an?")` |
+| `Prop(Name)` | the property `Name`; `Prop(Name, Proptions.Plural)` and `Proptions.NoPrecedingSpace` adjust it |
+
+With no `Nibs` override, a glyph matches its properties in declaration order. With no properties either, it
+matches `[RegexPattern("…")]` if given, else its own name, friendly-cased (`WeSweepTheFloor` → "we sweep the
+floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing instead of a space.
+
+**Property types:**
+- **A glyph**, nested.
+- **A vocabulary** (an enum): a closed set of words. By default each member matches its friendly-cased name; give
+  synonyms with `[RegexPattern("dog", "hound")]` on the member. `[OptionalPlural]` on the enum accepts plurals of
+  every member. Declare a new enum in the same source as the glyph that first uses it.
+- **`bool`**, a presence flag: `[RegexPattern("soundly")] public bool Soundly { get; set; }` is true when the text
+  is there.
+- **`int`**: digits, or a custom `[RegexPattern]`.
+- **`DynamicGlyph`**: whatever glyph matches the captured text, resolved at match time. `[TypeFilter(typeof(IMarker))]`
+  restricts it to glyphs implementing an empty marker interface (`public interface IMarker { }`, listed after the
+  base class: `class X : Glyph, IMarker`). Use it for "if …, {any effect}" constructions.
+- **`OneOf<A, B>` / `OneOf<A, B, C>`**: exactly one of two or three types. Value types must be nullable:
+  `OneOf<Animal?, Person?>`.
+- **`ManyOf<T>`**: a list with a conjunction ("x, y, and z", "x or y").
+- **`CompoundOf<T>`**: a joined run without a conjunction. It's comma-joined by default;
+  `[JoinedBy(Joiner.Space)]` changes that.
+- **`OptionalOf<T>`**: an optional glyph.
+
+`[Optional]` makes a property optional; an optional value type must be nullable (`Animal?`).
+
+**Other kinds of glyph:**
+- `class Treat : GlyphOneOf` has properties that are named alternatives, exactly one of which matches.
+- `class TraitList : CompoundOf<Trait>;` is a named alias of a primitive, so it can carry class attributes.
+
+**Class attributes:**
+
+| Attribute | Effect |
+|---|---|
+| `[Dependent]` | only matched inside another glyph, never on its own |
+| `[MustMatchWholeLine]` | must cover the whole line |
+| `[AllowPartialSegmentMatch]` | see the rule below |
+| `[TokenizationOrder(n)]` | changes which glyph is tried first: n ≥ 0 goes before glyphs without one (lowest first), n < 0 goes after all of them |
+
+Without an order, glyphs with longer patterns are tried first, and the first glyph to match a clause wins it.
+
+**The whole-clause rule.** A top-level glyph must match an entire clause: everything between line starts and
+periods. Otherwise it doesn't match at all, so "the dog naps" won't match inside "the dog naps on monday".
+`[AllowPartialSegmentMatch]` relaxes this for one glyph. Use it sparingly, since partial matches hide unmodeled
+text. For shared fragments, prefer `[Dependent]` glyphs nested inside whole-clause ones.
+
+## Habits that work
+
+- **Look at real lines before writing.** Use `search_lines` for the phrase and look at the variation around it.
+  Write the glyph for the family of lines, not for one line.
+- **Check the reshaped and lost lines after every evaluate.** A score win that breaks another glyph's matches
+  usually means a pattern is too broad.
+- **Prefer properties to `Alt`** when the choice means something: a vocabulary's members are named, reusable, and
+  cheaper once shared.
+- **Reuse before adding.** Check `list_glyphs` and `show` for an existing glyph or vocabulary that already says
+  what you need.
+- **Name things for what they mean in the corpus's domain.** Names are the part only you can supply, and the
+  person reads them.
+- **When a change is worse, say so and undo it** rather than piling fixes on top. When the score stalls, try
+  refactoring (merge, generalize, extract) before adding more glyphs.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "glyphotype": {
+      "type": "http",
+      "url": "http://localhost:5253/mcp"
+    }
+  }
+}

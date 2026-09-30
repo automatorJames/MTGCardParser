@@ -1,0 +1,140 @@
+using System.ComponentModel;
+using Glyphotype.Distiller.Agent;
+using Glyphotype.Distiller.Inspection;
+using ModelContextProtocol;
+using ModelContextProtocol.Server;
+
+namespace DocumentAnalysisInterface.Agent;
+
+/// <summary>
+/// The <see cref="GrammarAgent"/>'s methods as MCP tools, served from this app at <c>/mcp</c> - so an agent works on
+/// the same live workbench the Grammar Tools tab shows, and a person there sees each step as it lands. No tool
+/// commits to C#: that stays the person's decision, in the app.
+/// </summary>
+[McpServerToolType]
+public sealed class GrammarAgentTools(GrammarAgent agent)
+{
+    const string _sourceDescription =
+        "C# declarations, without namespace or usings: glyph classes, vocabulary enums, marker interfaces. " +
+        "A declaration replaces the working definition of the same name, or adds one. See `guide` for the syntax.";
+
+    const string _removeDescription = "Names of glyphs, vocabularies or markers to remove, comma-separated.";
+
+    [McpServerTool(Name = "overview", ReadOnly = true), Description("The corpus, the working grammar's score and coverage, glyphs that cost more than they save, and the costliest unmatched text. Start here.")]
+    public Task<string> Overview(CancellationToken cancellation) =>
+        Run(() => agent.OverviewAsync(cancellation));
+
+    [McpServerTool(Name = "guide", ReadOnly = true, Idempotent = true), Description("How to work: the loop, how the score works, how to write glyphs in C#, and habits that work. Read once before the first change.")]
+    public static string Guide() => GrammarAgent.Guide;
+
+    [McpServerTool(Name = "list_glyphs", ReadOnly = true), Description("Every glyph with its net bits, top-level matches, words covered and definition cost; every vocabulary with its cost and the glyphs using it.")]
+    public Task<string> ListGlyphs(
+        [Description("Sort glyphs by: net (default), matches, cost or name.")] string sort = "net",
+        CancellationToken cancellation = default) =>
+        Run(() => agent.ListGlyphsAsync(sort, cancellation));
+
+    [McpServerTool(Name = "show", ReadOnly = true), Description("The C# source of glyphs, vocabularies or markers in the working definition.")]
+    public Task<string> Show([Description("Names, comma-separated.")] string names) =>
+        Run(() => Task.FromResult(agent.Show(names)));
+
+    [McpServerTool(Name = "evaluate", ReadOnly = true), Description(
+        "Scores the working grammar with a change set applied, without applying it: the bit and coverage deltas, per-glyph contribution changes, " +
+        "and the lines whose tokenization changed (gained, lost, reshaped). Takes as long as scoring the corpus.")]
+    public Task<string> Evaluate(
+        [Description(_sourceDescription)] string source = null,
+        [Description(_removeDescription)] string remove = null,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.EvaluateAsync(source, remove, cancellation));
+
+    [McpServerTool(Name = "apply", Destructive = false), Description(
+        "Makes a change set as one step of the working definition, reporting what it did as `evaluate` does. Refused if the result wouldn't build. " +
+        "The person sees the step in the app; `undo` takes it back.")]
+    public Task<string> Apply(
+        [Description(_sourceDescription)] string source = null,
+        [Description(_removeDescription)] string remove = null,
+        [Description("Why you're making this change, in a short phrase - shown in the step history.")] string description = null,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.ApplyAsync(source, remove, description, cancellation));
+
+    [McpServerTool(Name = "undo"), Description("Takes back the latest step of the working definition (whoever made it), and reports what that did.")]
+    public Task<string> Undo(CancellationToken cancellation) =>
+        Run(() => agent.UndoAsync(cancellation));
+
+    [McpServerTool(Name = "revert"), Description("Returns one glyph or vocabulary to its committed state, as a step.")]
+    public Task<string> Revert([Description("The glyph or vocabulary name.")] string name, CancellationToken cancellation) =>
+        Run(() => agent.RevertAsync(name, cancellation));
+
+    [McpServerTool(Name = "history", ReadOnly = true), Description("The steps made this session, newest first, and what's uncommitted.")]
+    public Task<string> History([Description("How many steps to list.")] int limit = 20) =>
+        Run(() => Task.FromResult(agent.History(limit)));
+
+    [McpServerTool(Name = "search_lines", ReadOnly = true), Description("Distinct corpus lines matching a regex, most frequent first, as the working grammar tokenizes them.")]
+    public Task<string> SearchLines(
+        [Description("A case-insensitive .NET regex; omit to match every line in scope.")] string pattern = null,
+        [Description("all (default): test the whole line. unmatched: test only text no glyph covers. unparsed: whole lines no glyph matched any of.")] string scope = "all",
+        [Description("Only lines where this glyph or vocabulary matched, at any depth.")] string glyph = null,
+        [Description("How many distinct lines to list.")] int limit = 20,
+        [Description("Show captures inside matches, not just the top-level glyphs.")] bool nested = false,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.SearchLinesAsync(pattern, ParseScope(scope), glyph, limit, nested, cancellation));
+
+    [McpServerTool(Name = "matches", ReadOnly = true), Description("Where and how a glyph or vocabulary matched: counts, the shapes its matches took (frames, or a vocabulary's words), and example lines.")]
+    public Task<string> Matches(
+        [Description("The glyph or vocabulary name.")] string name,
+        [Description("How many shapes to list.")] int shapes = 15,
+        [Description("How many example lines to list.")] int lines = 8,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.MatchesAsync(name, shapes, lines, cancellation));
+
+    [McpServerTool(Name = "residuals", ReadOnly = true), Description("The costliest distinct spans of unmatched text.")]
+    public Task<string> Residuals(
+        [Description("How many spans to list.")] int limit = 30,
+        [Description("How many of the costliest to skip, to page further down.")] int offset = 0,
+        [Description("Only spans of at least this many words.")] int minWords = 1,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.ResidualsAsync(limit, offset, minWords, cancellation));
+
+    [McpServerTool(Name = "residual_phrases", ReadOnly = true), Description("Word runs that recur in unmatched text, at their longest form, ranked by the words they'd account for: where the next glyph probably is.")]
+    public Task<string> ResidualPhrases(
+        [Description("Shortest phrase, in words.")] int minWords = 2,
+        [Description("Longest phrase, in words.")] int maxWords = 8,
+        [Description("Only phrases occurring at least this often.")] int minOccurrences = 3,
+        [Description("How many phrases to list.")] int limit = 40,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.ResidualPhrasesAsync(minWords, maxWords, minOccurrences, limit, cancellation));
+
+    [McpServerTool(Name = "tokenize", ReadOnly = true), Description("How text tokenizes under the working grammar - or with a draft change set applied on top - with captures shown. Instant: nothing is scored.")]
+    public Task<string> Tokenize(
+        [Description("The text; one line per line. Lower-cased, as corpus lines are.")] string text,
+        [Description("Optional draft: " + _sourceDescription)] string source = null,
+        [Description("Optional: " + _removeDescription)] string remove = null,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.TokenizeAsync(text, source, remove, cancellation));
+
+    [McpServerTool(Name = "explain_mismatch", ReadOnly = true), Description("How far one glyph's pattern gets through a piece of text on its own, which part of it fails first, and how the whole grammar tokenizes the text instead.")]
+    public Task<string> ExplainMismatch(
+        [Description("The glyph whose pattern to test.")] string glyph,
+        [Description("The text it should match - one clause.")] string text,
+        [Description("Optional draft: " + _sourceDescription)] string source = null,
+        [Description("Optional: " + _removeDescription)] string remove = null,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.ExplainMismatchAsync(glyph, text, source, remove, cancellation));
+
+    static LineScope ParseScope(string scope) =>
+        Enum.TryParse<LineScope>(scope, ignoreCase: true, out var parsed)
+            ? parsed
+            : throw new AgentRequestException($"Unknown scope '{scope}': use all, unmatched or unparsed.");
+
+    /// <summary>Surfaces a bad request's message to the agent as a tool error - the SDK hides other exceptions' messages.</summary>
+    static async Task<string> Run(Func<Task<string>> tool)
+    {
+        try
+        {
+            return await tool();
+        }
+        catch (AgentRequestException exception)
+        {
+            throw new McpException(exception.Message, exception);
+        }
+    }
+}
