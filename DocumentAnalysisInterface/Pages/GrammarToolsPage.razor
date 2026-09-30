@@ -25,7 +25,7 @@ else
                     @foreach (var metric in GetMetrics())
                     {
                         <tr class="@(metric.Indented ? "sub-metric" : "")">
-                            <td class="metric-name">@metric.Name</td>
+                            <td class="metric-name" title="@metric.Tooltip">@metric.Name</td>
                             <td>@metric.Format(metric.Committed)</td>
                             <td>@(metric.Working is double working ? metric.Format(working) : "…")</td>
                             <td class="@DeltaClass(metric)">@FormatDelta(metric)</td>
@@ -243,7 +243,7 @@ else
     /// <summary>A definition open for editing: its kind, the name it had (null for a new one), and its JSON.</summary>
     record EditorState(DefinitionKind Kind, string OriginalName, string Title, string Json);
 
-    record Metric(string Name, double Committed, double? Working, Func<double, string> Format, bool LowerIsBetter = true, bool Indented = false);
+    record Metric(string Name, double Committed, double? Working, Func<double, string> Format, string Tooltip, bool LowerIsBetter = true, bool Indented = false);
 
     record GlyphRow(string Name, bool InWorking, ChangeType? Change, IReadOnlyList<string> Referrers, GlyphContribution Stats, double? NetDelta);
 
@@ -296,17 +296,32 @@ else
         static string BitsFormat(double x) => x.ToString("N0");
         static string PercentFormat(double x) => x.ToString("P1");
 
-        yield return new("Total bits", _committed.TotalBits, working?.TotalBits, BitsFormat);
-        yield return new("vs. empty grammar", _committed.CompressionRatio, working?.CompressionRatio, PercentFormat);
-        yield return new("Grammar", _committed.GrammarBits, working?.GrammarBits, BitsFormat);
-        yield return new("Data", _committed.DataBits, working?.DataBits, BitsFormat);
+        yield return new("Total bits", _committed.TotalBits, working?.TotalBits, BitsFormat,
+            "Bits to describe the grammar plus the corpus given it - lower is better");
+        yield return new("vs. empty grammar", _committed.CompressionRatio, working?.CompressionRatio, PercentFormat,
+            "Total bits as a share of the same corpus's cost with no grammar at all - below 100% means the grammar pays for itself");
+        yield return new("Grammar bits", _committed.GrammarBits, working?.GrammarBits, BitsFormat,
+            "Bits to write down the glyph and vocabulary definitions");
+        yield return new("Data bits", _committed.DataBits, working?.DataBits, BitsFormat,
+            "Bits to write down the corpus given the grammar - the four rows below");
 
-        foreach (var component in _committed.ComponentBits.Keys)
-            yield return new(component.ToString(), _committed.ComponentBits[component], working?.ComponentBits[component], BitsFormat, Indented: true);
+        foreach (var (component, bits) in _committed.ComponentBits)
+            yield return new(ComponentLabels[component].Name, bits, working?.ComponentBits[component], BitsFormat, ComponentLabels[component].Tooltip, Indented: true);
 
-        yield return new("Coverage", _committed.Coverage, working?.Coverage, PercentFormat, LowerIsBetter: false);
-        yield return new("Captured words", _committed.CapturedWords, working?.CapturedWords, BitsFormat, LowerIsBetter: false, Indented: true);
+        yield return new("Coverage", _committed.Coverage, working?.Coverage, PercentFormat,
+            "The share of the corpus's words inside a matched glyph", LowerIsBetter: false);
+        yield return new("Captured words", _committed.CapturedWords, working?.CapturedWords, BitsFormat,
+            "How many of the corpus's words are inside a matched glyph (a count of words, not bits)", LowerIsBetter: false, Indented: true);
     }
+
+    /// <summary>What each data component is called here - named for what its bits pay for, since a bare "Tokens" beside a number reads as a count.</summary>
+    static readonly Dictionary<DataComponent, (string Name, string Tooltip)> ComponentLabels = new()
+    {
+        [DataComponent.Tokens] = ("Line structure", "Bits to record what each line is made of, in order: which glyph, unmatched text or period comes next, and where the line ends"),
+        [DataComponent.Frames] = ("Uncaptured variation", "Bits to record which variant each match used where no property captures it: an Alt or Opt choice, a synonym, a list's length"),
+        [DataComponent.Values] = ("Captured values", "Bits to record what properties captured: which enum member, which number, which glyph a dynamic resolved to"),
+        [DataComponent.Residual] = ("Unmatched text", "Bits to record the text no glyph matched, word by word"),
+    };
 
     /// <summary>The working value's change from the committed one: blank while it's unknown (scoring), a dash when there's none.</summary>
     static string FormatDelta(Metric metric) =>

@@ -1,5 +1,6 @@
 ﻿<div class="custom-dialog-backdrop" @onclick="HandleBackdropClick">
-    <div class="custom-dialog-container" style="@ContainerStyle" @onclick:stopPropagation="true">
+    <div class="custom-dialog-container" style="@ContainerStyle" @onclick:stopPropagation="true"
+         tabindex="-1" @ref="_container" @onkeydown="HandleKeyDown">
         @if (TitleContent != null)
         {
             <div class="custom-dialog-header">
@@ -40,5 +41,24 @@
     [Parameter]
     public string ContainerStyle { get; set; }
 
+    /// <summary>
+    /// Whether Escape dismisses the dialog, the same way a backdrop click does (<see cref="OnBackdropClick"/>). Opt-in, since
+    /// a dialog holding unsaved input (an editor) shouldn't lose it to a stray keypress. The dialog takes focus when it opens,
+    /// so Escape works straight away.
+    /// </summary>
+    [Parameter]
+    public bool CloseOnEscape { get; set; }
+
+    ElementReference _container;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && CloseOnEscape)
+            await _container.FocusAsync();
+    }
+
     private Task HandleBackdropClick() => OnBackdropClick.InvokeAsync();
+
+    private Task HandleKeyDown(KeyboardEventArgs e) =>
+        CloseOnEscape && e.Key == "Escape" ? OnBackdropClick.InvokeAsync() : Task.CompletedTask;
 }

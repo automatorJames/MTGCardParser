@@ -18,6 +18,8 @@
 
 /* The main dialog window */
 .custom-dialog-container {
+    /* Focusable (so Escape can close it - see CloseOnEscape), but never drawn with a focus ring. */
+    outline: none;
     /* A deep charcoal color, easier on the eyes than pure black */
     background-color: var(--navy);
     /* Light gray text for high contrast and readability */

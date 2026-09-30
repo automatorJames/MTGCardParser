@@ -1,4 +1,4 @@
-<CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(920px, 94vw); padding: 1.75rem 2rem;">
+<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(1120px, 94vw); padding: 1.75rem 2.25rem;">
     <TitleContent>
         <div class="help-title">
             <span class="help-kicker">Grammar Tools</span>
@@ -93,6 +93,11 @@
         <p>A good grammar sits between: a modest definition that makes most of the corpus cheap to describe.</p>
 
         <h4>The rows</h4>
+        <div class="callout">
+            <span class="callout-label">Every number is bits</span>
+            Apart from the two percentages and <em>Captured words</em>, every figure in the table is a number of bits - never a count of glyphs, tokens or anything else.
+            "Line structure: @N(bits[DataComponent.Tokens])" means @N(bits[DataComponent.Tokens]) bits were spent recording how lines are put together.
+        </div>
         <dl class="terms">
             <dt>vs. empty grammar</dt>
             <dd>
@@ -100,28 +105,30 @@
                 above means it currently costs more to describe than it saves. Right now: <strong>@P(Score.CompressionRatio)</strong>.
             </dd>
 
-            <dt>Grammar</dt>
+            <dt>Grammar bits</dt>
             <dd>
                 Bits to write down every glyph and vocabulary: literal text is spelled at about <strong>@Score.CharBits.ToString("F1") bits per character</strong>,
                 each structural choice (which kind of nib, which property, which attribute) costs a few bits, and every vocabulary member is spelled once.
                 Names are free - they're labels, not grammar.
             </dd>
 
-            <dt>Data</dt>
+            <dt>Data bits</dt>
             <dd>Bits to write down the corpus given the grammar - the sum of the four rows beneath it.</dd>
 
-            <dt>Tokens <span class="aka">line structure</span></dt>
+            <dt>Line structure</dt>
             <dd>
-                For every line, the sequence of what it's made of: which top-level glyph comes first, then what follows it (another glyph, unmatched text, a period),
-                and where the line ends. Each step is one choice among all the top-level glyphs plus those three.
+                The bits to record what each line is made of, piece by piece: which top-level glyph comes first, then what follows it (another glyph, unmatched text,
+                a period), and where the line ends. Each piece is one choice among all the top-level glyphs plus those three, and costs less the more often that
+                choice is made.
                 <div class="example">
                     <span class="example-label">Example</span>
-                    <code>enchant creature.</code> is three choices: <code>EnchantPermanent</code> → <code>«.»</code> → <code>«end of line»</code>.
-                    Sequences that recur across the corpus get cheap; here it averages <strong>@perLine.ToString("F1") bits per line</strong> over @N(Score.Lines) lines.
+                    The line <code>enchant creature.</code> is three pieces: <code>EnchantPermanent</code> → <code>«.»</code> → <code>«end of line»</code>.
+                    Recording those three choices costs a few bits. Summed over all @N(Score.Lines) lines, that's the <strong>@N(bits[DataComponent.Tokens])</strong>
+                    in this row - about <strong>@perLine.ToString("F1") bits per line</strong>.
                 </div>
             </dd>
 
-            <dt>Frames <span class="aka">uncaptured variation</span></dt>
+            <dt>Uncaptured variation</dt>
             <dd>
                 A glyph's <em>frame</em> is the text it matched with every captured property blanked out - its scaffold, like the "sentence frame" of linguistics.
                 When a glyph allows several scaffolds (an <code>Alt(...)</code>, an <code>Opt(...)</code>, a list of 2 or 3 items, one enum member spelled several ways),
@@ -138,7 +145,7 @@
                 </div>
             </dd>
 
-            <dt>Values <span class="aka">captured information</span></dt>
+            <dt>Captured values</dt>
             <dd>
                 What matches captured into properties: which enum member, which number, which glyph a dynamic property resolved to. This is the information your grammar
                 has <em>structured</em> - the part a program reading the glyphs gets.
@@ -148,7 +155,7 @@
                 </div>
             </dd>
 
-            <dt>Residual <span class="aka">unmatched text</span></dt>
+            <dt>Unmatched text</dt>
             <dd>
                 Text no glyph matched, written as words: each word is a choice from the words seen so far, and each new word is spelled once.
                 Usually the biggest row by far - right now <strong>@P(Score.DataBits == 0 ? 0 : bits[DataComponent.Residual] / Score.DataBits)</strong> of the data.
@@ -168,7 +175,7 @@
 
         <div class="callout tip">
             <span class="callout-label">The whole game</span>
-            Move bits out of <strong>Residual</strong> and into <strong>Values</strong>, spending fewer <strong>Grammar</strong> bits than you save.
+            Move bits out of <strong>Unmatched text</strong> and into <strong>Captured values</strong>, spending fewer <strong>Grammar bits</strong> than you save.
         </div>
     };
 
@@ -278,7 +285,7 @@
 
         <h4>When a member pays</h4>
         <p>
-            Each time a member is matched, its word leaves the residual (where it cost several bits every time) and becomes a <em>Values</em> choice instead, which gets
+            Each time a member is matched, its word leaves <em>Unmatched text</em> (where it cost several bits every time) and becomes a <em>Captured values</em> choice instead, which gets
             cheaper the more often that member comes up. So frequently used members pay for their spelling many times over; members that never appear are pure cost.
         </p>
 
@@ -298,7 +305,7 @@
         <h4>Synonyms</h4>
         <p>
             A member with several patterns (e.g. <code>Quantity.One</code> matching "1", "one" or "a") costs each spelling once in its definition, and a
-            <em>Frames</em> choice each time it matches, to say which spelling was used - variation the property doesn't capture.
+            <em>Uncaptured variation</em> choice each time it matches, to say which spelling was used - variation the property doesn't capture.
         </p>
     };
 
