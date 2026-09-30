@@ -4,7 +4,9 @@ namespace Glyphotype.RegexGeneration.Graph.Nodes;
 /// <summary>
 /// Represents a <see cref="DynamicGlyph"/> property: matches greedily against anything up to the next
 /// sentence boundary, then re-tokenizes the matched text (optionally scoped by <see cref="TypeFilterAttribute"/>)
-/// to resolve which concrete <see cref="Glyph"/> type it actually represents.
+/// to resolve which concrete <see cref="Glyph"/> type it actually represents. A property marked
+/// <see cref="AllowUnmatchedAttribute"/> that nothing resolves keeps its text as an <see cref="UnmatchedString"/>
+/// instead of failing.
 /// </summary>
 public class DynamicGlyphNode : GlyphNode
 {
@@ -40,7 +42,11 @@ public class DynamicGlyphNode : GlyphNode
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
         if (resolvedTokens.FirstOrDefault() is UnmatchedString || resolvedTokens.OfType<Glyph>().FirstOrDefault() is not Glyph dynamicMatchToken)
-            return false;
+            return TryKeepUnmatched(captureValue, out glyph);
+
+        // Allowed to keep what it can't resolve, it keeps all of it: a partial resolution is no resolution.
+        if (dynamicMatchToken.CaptureValue.Length < captureValue.Length && AllowsUnmatched)
+            return TryKeepUnmatched(captureValue, out glyph);
 
         // This node's pattern is greedy (see DefaultPattern), so the text it captured routinely runs well
         // past the single Glyph the re-tokenization above actually resolved out of it. Accepting that
@@ -64,6 +70,24 @@ public class DynamicGlyphNode : GlyphNode
         // resolved structure
         captureTrace.AdoptDynamicChildren(dynamicMatchToken.CaptureContext.RootCaptureTrace);
 
+        return true;
+    }
+
+    bool AllowsUnmatched => Navigation.Prop?.IsDefined(typeof(AllowUnmatchedAttribute)) == true;
+
+    /// <summary>
+    /// For a property marked <see cref="AllowUnmatchedAttribute"/>, resolves <paramref name="captureValue"/> to an
+    /// <see cref="UnmatchedString"/> spanning all of it - so the enclosing match stands, with this part unresolved.
+    /// </summary>
+    bool TryKeepUnmatched(string captureValue, out Glyph glyph)
+    {
+        glyph = null;
+
+        if (!AllowsUnmatched)
+            return false;
+
+        var unmatched = new UnmatchedString(captureValue, 0, captureValue.Length);
+        glyph = new DynamicGlyph(unmatched) { CaptureContext = unmatched.CaptureContext };
         return true;
     }
 

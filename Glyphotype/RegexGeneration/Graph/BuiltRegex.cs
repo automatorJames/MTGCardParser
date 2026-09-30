@@ -1,5 +1,8 @@
 ﻿namespace Glyphotype.RegexGeneration.Graph;
 
+/// <summary>What one authored pattern (see <see cref="Nodes.TextNode.AuthoredPattern"/>) matched, within a match: its regex, and where in the source text.</summary>
+public sealed record PatternCapture(string Pattern, int Index, int Length);
+
 /// <summary>
 /// The compiled result of walking a <see cref="RegexNode"/> graph: the flat brick sequence, the
 /// concatenated pattern, and the anchored <see cref="System.Text.RegularExpressions.Regex"/>es the engine
@@ -42,6 +45,17 @@ public class BuiltRegex
 
     readonly Lazy<Regex> _anchoredRegex;
     readonly Lazy<Regex> _scopeFillingRegex;
+    readonly Lazy<PatternRegex> _patternRegex;
+
+    /// <summary>
+    /// <see cref="MinifiedRegex"/> with every authored pattern inside a named group of its own, and those patterns
+    /// in group order - null when the graph has none. Analysis-only, and never what the engine matches with:
+    /// adding groups changes nothing about what matches, but <see cref="MinifiedRegex"/>'s own text and length are
+    /// read elsewhere (e.g. to order top-level types).
+    /// </summary>
+    sealed record PatternRegex(Regex ScopeFilling, Regex Anchored, IReadOnlyList<string> Patterns);
+
+    const string _patternGroupPrefix = "__pattern";
 
     /// <summary>
     /// <see cref="MinifiedRegex"/> anchored (<c>\G</c>) to the position it's run from - the window's start, or
@@ -70,6 +84,65 @@ public class BuiltRegex
         // nearly every top-level type only ever has to fill its scope).
         _anchoredRegex = new(() => Compile($@"\G({MinifiedRegex})"));
         _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));
+        _patternRegex = new(BuildPatternRegex);
+    }
+
+    /// <summary>Whether any part of this regex is a pattern an author wrote, rather than literal text or structure (see <see cref="Nodes.TextNode.AuthoredPattern"/>).</summary>
+    public bool HasAuthoredPatterns => _patternRegex.Value is not null;
+
+    /// <summary>
+    /// What each authored pattern matched, in a match of this regex spanning exactly <paramref name="length"/>
+    /// characters of <paramref name="sourceText"/> from <paramref name="index"/> - found by matching that span
+    /// again with each pattern in a group of its own. The same regex over the same span backtracks the same way,
+    /// so the groups report the very match the engine made. Empty-length captures (an optional pattern that
+    /// matched nothing) are left out; null if the span can't be matched again.
+    /// </summary>
+    public IReadOnlyList<PatternCapture> FindPatternCaptures(string sourceText, int index, int length)
+    {
+        if (_patternRegex.Value is not PatternRegex patternRegex)
+            return [];
+
+        var match = patternRegex.ScopeFilling.Match(sourceText, index, length);
+
+        // The engine may have matched against the whole text (so lookarounds saw past the span) rather than a window.
+        if (!match.Success)
+            match = patternRegex.Anchored.Match(sourceText, index);
+
+        if (!match.Success || match.Index != index || match.Length != length)
+            return null;
+
+        return patternRegex.Patterns
+            .SelectMany((pattern, i) => match.Groups[_patternGroupPrefix + i].Captures
+                .Where(x => x.Length > 0)
+                .Select(x => new PatternCapture(pattern, x.Index, x.Length)))
+            .OrderBy(x => x.Index)
+            .ToList();
+    }
+
+    PatternRegex BuildPatternRegex()
+    {
+        List<string> patterns = [];
+        var text = new StringBuilder();
+
+        foreach (var brick in _regexBricks)
+        {
+            if (brick.Parent is Nodes.TextNode { AuthoredPattern: not null } node && brick.Regex == node.Text)
+            {
+                text.Append(node.WithPatternGroup(_patternGroupPrefix + patterns.Count));
+                patterns.Add(node.AuthoredPattern);
+            }
+            else
+            {
+                text.Append(brick.Regex);
+            }
+        }
+
+        if (patterns.Count == 0)
+            return null;
+
+        var regex = text.ToString().Replace(EscapedSpace, " ");
+
+        return new(Compile($@"\G({regex})\z"), Compile($@"\G({regex})"), patterns);
     }
 
     /// <summary>

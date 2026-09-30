@@ -30,7 +30,7 @@ public static class SourceCommitter
 {
     /// <summary>The attributes a definition expresses: any other on a rewritten declaration is lost.</summary>
     static readonly HashSet<string> _expressedAttributes =
-        ["Dependent", "MustMatchWholeLine", "AllowPartialSegmentMatch", "TokenizationOrder", "RegexPattern", "JoinedBy", "OptionalPlural", "Optional", "TypeFilter", "Color"];
+        ["Dependent", "MustMatchWholeLine", "AllowPartialSegmentMatch", "TokenizationOrder", "RegexPattern", "JoinedBy", "OptionalPlural", "Optional", "AllowUnmatched", "TypeFilter", "Color"];
 
     /// <summary>
     /// Plans the edits that turn the sources under <paramref name="sourceDirectory"/> (which declare

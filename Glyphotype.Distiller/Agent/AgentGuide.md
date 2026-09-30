@@ -38,6 +38,11 @@ the person's decision, made in the app. Never ask for it as part of your loop.
 
    Removing or rewriting a glyph is as valid a step as adding one.
 
+**Starting from scratch.** If you're asked to ignore the existing glyphs, remove them all in one `apply`: pass
+every glyph name from `list_glyphs` as `remove`, and describe the step as starting over. Vocabularies stay. An unused
+vocabulary costs nothing, and new glyphs can use it right away, so check the vocabularies before writing a new enum.
+After that step the score is exactly the no-grammar baseline.
+
 Work in small steps, and state what you're trying before each one. The person may be editing too. Always read the
 current state rather than assuming it.
 
@@ -57,6 +62,10 @@ write down the corpus using it. Lower is better. The baseline is the same corpus
   - what each property captured.
 
   Choices that are always the same cost nothing, and a very variable frame costs more.
+- **An open-ended regex pays to spell what it swallows.** Text matched by a `Pattern` with `+`, `*` or a character
+  class (`[^.]+`, `\w+`, `.`) is masked out of the frame and spelled out the first time each distinct text appears.
+  A catch-all costs about what writing its texts out would, so it never beats modeling them. Use patterns for
+  small closed variations (`an?`, `cards?`), not to hide text.
 - A glyph's **net bits** = what its matches would cost as unmatched text − what they cost as matches − its own
   definition. Positive means it pays for itself. A nested-only glyph's net is minus its definition cost; the glyphs
   using it are credited instead.
@@ -72,6 +81,7 @@ of words inside matches) is the other headline number. The score is the judge wh
 - Nested renderings also show captures:
   - `⟦Property: …⟧` is a nested glyph;
   - `⟦Property→Glyph: …⟧` is what a `DynamicGlyph` property resolved to;
+  - `⟦Property: «…»⟧` is text a `[AllowUnmatched]` dynamic holds unresolved;
   - `⟦Property=text⟧` is a terminal (vocabulary member, bool, or number).
 - A *frame* such as `the {Animal} naps on {Day}` is a match's text with its captures masked out.
 
@@ -118,7 +128,14 @@ floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing
 - **`int`**: digits, or a custom `[RegexPattern]`.
 - **`DynamicGlyph`**: whatever glyph matches the captured text, resolved at match time. `[TypeFilter(typeof(IMarker))]`
   restricts it to glyphs implementing an empty marker interface (`public interface IMarker { }`, listed after the
-  base class: `class X : Glyph, IMarker`). Use it for "if …, {any effect}" constructions.
+  base class: `class X : Glyph, IMarker`). Use it for "if …, {any effect}" constructions. By default, when no glyph
+  matches the captured text, the whole match fails.
+
+  `[AllowUnmatched]` on the property changes that: the text is kept as unmatched text inside the match (shown as
+  `⟦Effect: «…»⟧`) instead of failing it. It's still charged and counted as unmatched text, but the surrounding
+  frame is paid for immediately, and the held text resolves by itself once some glyph matches it. This is how to
+  model an outer construction (a trigger, a condition, a cost) before its inner parts. `residuals` and
+  `search_lines scope=unmatched` include held text, so they show which inner parts to model next.
 - **`OneOf<A, B>` / `OneOf<A, B, C>`**: exactly one of two or three types. Value types must be nullable:
   `OneOf<Animal?, Person?>`.
 - **`ManyOf<T>`**: a list with a conjunction ("x, y, and z", "x or y").

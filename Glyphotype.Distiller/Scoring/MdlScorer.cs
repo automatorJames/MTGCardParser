@@ -42,16 +42,22 @@ public static class MdlScorer
                     IsTopLevel: topLevelNames.Contains(glyph.Name),
                     DefinitionBits: grammarCost.GlyphBits[glyph.Name],
                     Occurrences: tokens.Count,
-                    Words: tokens.Sum(x => CountWords(x.Unit.CaptureValue)),
+                    Words: tokens.Sum(x => CountWords(x.Unit.CaptureValue) - x.Unit.UnresolvedTraces.Sum(y => CountWords(y.CaptureValue))),
                     DataBits: tokens.Sum(encoding.GetBits),
                     ResidualEquivalentBits: tokens.Sum(x => encoding.GetResidualBits(x.Unit.CaptureValue)));
             })
             .ToList();
 
+        // Unmatched tokens, and text matches hold unresolved (see AllowUnmatchedAttribute) - priced as unmatched text alone would be.
         var residuals = encoding.Tokens
             .Where(x => x.Unit is UnmatchedString)
-            .GroupBy(x => x.Unit.CaptureValue.Trim())
-            .Select(x => new ResidualSpan(x.Key, x.Count(), CountWords(x.Key), x.Sum(encoding.GetBits)))
+            .Select(x => (Text: x.Unit.CaptureValue.Trim(), Bits: encoding.GetBits(x)))
+            .Concat(encoding.Tokens
+                .Where(x => x.Unit is Glyph)
+                .SelectMany(x => x.Unit.UnresolvedTraces)
+                .Select(x => (Text: x.CaptureValue.Trim(), Bits: encoding.GetResidualBits(x.CaptureValue))))
+            .GroupBy(x => x.Text)
+            .Select(x => new ResidualSpan(x.Key, x.Count(), CountWords(x.Key), x.Sum(y => y.Bits)))
             .ToList();
 
         return new MdlScore
@@ -67,6 +73,7 @@ public static class MdlScorer
             Glyphs = glyphs,
             Vocabularies = grammarCost.VocabularyBits,
             Residuals = residuals,
+            UnlocatedPatternMatches = encoding.UnlocatedPatternMatches,
         };
     }
 
@@ -120,6 +127,9 @@ public sealed record MdlScore
     public IReadOnlyDictionary<string, double> Vocabularies { get; init; }
     public IReadOnlyList<ResidualSpan> Residuals { get; init; }
 
+    /// <summary>Matches whose open-ended pattern text went uncharged because it couldn't be located (see <see cref="CorpusEncoding.UnlocatedPatternMatches"/>) - expected to be zero.</summary>
+    public int UnlocatedPatternMatches { get; init; }
+
     public string ToReport(int rows = 25)
     {
         var report = new StringBuilder();
@@ -128,6 +138,10 @@ public sealed record MdlScore
         report.AppendLine($"  data: {string.Join(" · ", ComponentBits.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {Bits(x.Value)}"))}");
         report.AppendLine($"  grammar: {Bits(Glyphs.Sum(x => x.DefinitionBits))} in {Glyphs.Count} glyphs, {Bits(Vocabularies.Values.Sum())} in {Vocabularies.Count} vocabularies ({CharBits:F2} bits/char)");
         report.AppendLine($"Coverage: {CapturedWords:N0} of {Words:N0} words ({Coverage:P1}), {Documents:N0} documents, {Lines:N0} lines");
+
+        if (UnlocatedPatternMatches > 0)
+            report.AppendLine($"Warning: {UnlocatedPatternMatches:N0} matches had open-ended pattern text the scorer couldn't locate, so didn't charge");
+
         report.AppendLine();
 
         var topLevel = Glyphs.Where(x => x.IsTopLevel).OrderByDescending(x => x.NetBits).ToList();

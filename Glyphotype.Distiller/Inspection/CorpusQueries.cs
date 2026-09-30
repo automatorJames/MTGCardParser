@@ -10,7 +10,7 @@ public enum LineScope
     /// <summary>The whole text of every line.</summary>
     All,
 
-    /// <summary>Only the unmatched spans of each line - so a hit is text no glyph covers.</summary>
+    /// <summary>Only the unmatched spans of each line - so a hit is text no glyph covers (including text a match holds unresolved).</summary>
     Unmatched,
 
     /// <summary>The whole text of lines no glyph matched any of.</summary>
@@ -249,8 +249,11 @@ public static class CorpusQueries
     static IEnumerable<(string Document, ProcessedLine Line)> Lines(IReadOnlyList<ProcessedDocument> documents) =>
         documents.SelectMany(x => x.Lines.Select(y => (x.Document.Name, y)));
 
+    /// <summary>A line's unmatched text: its unmatched spans, and the text its matches hold unresolved (see <see cref="CaptureUnit.UnresolvedTraces"/>).</summary>
     static IEnumerable<string> Unmatched(ProcessedLine line) =>
-        line.Glyphs.Where(x => x.CaptureContext.RootCaptureTrace.IsUnmatchedString).Select(x => x.CaptureValue.Trim());
+        line.Glyphs.SelectMany(x => x.CaptureContext.RootCaptureTrace.IsUnmatchedString
+            ? [x.CaptureValue.Trim()]
+            : x.UnresolvedTraces.Select(y => y.CaptureValue.Trim()));
 
     static bool Mentions(ProcessedLine line, string name) =>
         line.Glyphs

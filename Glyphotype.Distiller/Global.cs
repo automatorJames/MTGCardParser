@@ -10,3 +10,4 @@ global using Glyphotype.RegexGeneration.Graph.Nodes;
 global using Glyphotype.StaticRegistry;
 global using static Glyphotype.Extensions;
 global using Glyphotype.Interfaces;
+global using Glyphotype.Attributes;

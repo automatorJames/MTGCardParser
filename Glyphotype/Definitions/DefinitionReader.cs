@@ -98,6 +98,7 @@ static class DefinitionReader
             Name = prop.Name,
             Type = ReadTypeReference(prop.PropertyType),
             IsOptional = prop.IsDefined(typeof(OptionalAttribute)),
+            AllowsUnmatched = prop.IsDefined(typeof(AllowUnmatchedAttribute)),
             Patterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [],
             JoinedBy = prop.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
             TypeFilter = GetTypeFilter(prop)?.Name,

@@ -37,7 +37,8 @@ public class ProcessedLine
 
     /// <summary>
     /// Count of all words captured by a matched <see cref="RootCaptureTrace"/> on this line
-    /// (i.e. excluding words belonging to <see cref="UnmatchedString"/> spans).
+    /// (i.e. excluding words belonging to <see cref="UnmatchedString"/> spans - including those a match holds
+    /// unresolved, see <see cref="CaptureUnit.UnresolvedTraces"/>).
     /// </summary>
     public int CapturedWordCount { get; }
 
@@ -56,7 +57,7 @@ public class ProcessedLine
         CapturedWordCount = glyphs
             .Where(x => !x.CaptureContext.RootCaptureTrace.IsUnmatchedString)
             .Where(x => !x.CaptureContext.RootCaptureTrace.IsClauseBreak)
-            .Sum(x => CountWords(x.CaptureValue));
+            .Sum(x => CountWords(x.CaptureValue) - x.UnresolvedTraces.Sum(y => CountWords(y.CaptureValue)));
     }
 
     static int CountWords(string text) =>

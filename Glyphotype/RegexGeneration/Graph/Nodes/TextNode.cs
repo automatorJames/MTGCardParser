@@ -17,6 +17,16 @@ public class TextNode : RegexNode
     /// </summary>
     public bool IsClauseBreak { get; }
 
+    /// <summary>
+    /// The regex an author wrote, when this nib is one - a <see cref="PatternNib"/> (optional or not), or a
+    /// class-level <see cref="RegexPatternAttribute"/> pattern - else null. Null for a <see cref="DynamicGlyphNode"/>'s
+    /// own placeholder pattern: what that captures is resolved into a glyph of its own, not left as regex-matched text.
+    /// See <see cref="BuiltRegex.FindPatternCaptures"/>.
+    /// </summary>
+    public string AuthoredPattern { get; }
+
+    readonly bool _isOptional;
+
     /// <summary>Whether this nib is an <see cref="OptionalPluralNib"/> - a suffix of the word before it (e.g. the "s" of "dogs"), so never separated from that word (see <see cref="JoinerRules.Between"/>).</summary>
     public bool IsPluralSuffix { get; }
 
@@ -30,6 +40,10 @@ public class TextNode : RegexNode
         // "\." - "." alone would be regex for "any character" - since literal nib text is escaped (see Nib).
         IsClauseBreak = nib is not PatternNib && nib.Text == ".";
         IsPluralSuffix = nib is OptionalPluralNib;
+        _isOptional = nib.IsOptional;
+
+        if (parentNode is not DynamicGlyphNode && nib is PatternNib or OptionalNib { Inner: PatternNib })
+            AuthoredPattern = nib.Regex;
 
         var text = nib.Regex;
 
@@ -45,6 +59,10 @@ public class TextNode : RegexNode
         // have if it had been written with a plain space.
         Text = BuiltRegex.EscapeSpaces(text);
     }
+
+    /// <summary><see cref="Text"/> with <see cref="AuthoredPattern"/> inside a named group, so a match records what the pattern itself matched.</summary>
+    internal string WithPatternGroup(string groupName) =>
+        BuiltRegex.EscapeSpaces(_isOptional ? $"((?<{groupName}>{AuthoredPattern}) )?" : $"(?<{groupName}>{AuthoredPattern})");
 
     protected override void AppendOwnRegexBricks(RegexCollector collector) =>
         collector.Append(new RegexBrick(this, Text));

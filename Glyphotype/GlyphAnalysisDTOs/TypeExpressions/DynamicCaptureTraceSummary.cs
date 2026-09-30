@@ -31,6 +31,10 @@ public class DynamicCaptureTraceSummary : NamedGroupCaptureTraceSummary
             if (captureTrace.ClrValue is not DynamicGlyph dynamicGlyph)
                 throw new Exception($"{captureTrace.FullyQualifiedName} is of type {captureTrace.ClrValue.GetType().Name}, but expected {nameof(DynamicGlyph)}");
 
+            // Left unresolved (see AllowUnmatchedAttribute): there's no glyph to summarize.
+            if (dynamicGlyph.Item is UnmatchedString)
+                continue;
+
             if (dynamicGlyph.Item is not Glyph resolvedGlyph)
                 throw new Exception($"{captureTrace.FullyQualifiedName} resolved to a {dynamicGlyph.Item?.GetType().Name ?? "null"}, but expected a {nameof(Glyph)}");
 

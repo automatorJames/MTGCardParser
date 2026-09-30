@@ -38,6 +38,16 @@ public abstract class CaptureUnit
     public string CaptureValue =>
         CaptureContext.FullMatch;
 
+    /// <summary>
+    /// The places in this match a dynamic left unresolved (see <see cref="AllowUnmatchedAttribute"/>): text the match
+    /// holds a place for but doesn't model, which is unmatched text in every sense but position.
+    /// </summary>
+    public IEnumerable<CaptureTrace> UnresolvedTraces =>
+        CaptureContext.RootCaptureTrace.GetFlatCaptureTree().Values
+            .SelectMany(x => x)
+            .Where(x => x.ClrValue is DynamicGlyph { Item: UnmatchedString })
+            .Distinct();
+
     public string JsonDebug =>
         CaptureContext.RootCaptureTrace.JsonDebug ?? "";
 

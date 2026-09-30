@@ -89,7 +89,14 @@ else
                         <li>
                             <span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span>
                             <span class="change-kind">@change.Kind.ToString().ToLowerInvariant()</span>
-                            <span class="change-name">@change.Name</span>
+                            @if (change.Kind == DefinitionKind.Marker)
+                            {
+                                <span class="change-name">@change.Name</span>
+                            }
+                            else
+                            {
+                                <button class="change-name name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
+                            }
                             <button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button>
                         </li>
                     }
@@ -132,7 +139,7 @@ else
                                        title="@(row.Referrers.Count > 0 ? "Used by " + string.Join(", ", row.Referrers) : "")"
                                        @onchange="e => ToggleGlyph(row, (bool)e.Value)" />
                             </td>
-                            <td class="name-column">@row.Name</td>
+                            <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
                             <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
                             <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
                             <td>@Bits(stats?.ResidualEquivalentBits)</td>
@@ -170,7 +177,7 @@ else
                     {
                         var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
                         <tr class="@(referrers.Count == 0 ? "excluded" : "")">
-                            <td class="name-column">@vocabulary.Name</td>
+                            <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
                             <td>@vocabulary.Members.Count.ToString("N0")</td>
                             <td>@Bits(VocabularyBits(vocabulary))</td>
                             <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
@@ -219,6 +226,11 @@ else
     <DefinitionEditorDialog Title="@_editor.Title" Json="@_editor.Json" Preview="PreviewDefinition" OnApply="ApplyDefinition" OnClose="() => _editor = null" />
 }
 
+@if (_viewer is not null)
+{
+    <DefinitionViewerDialog Name="@_viewer.Name" Kind="_viewer.Kind" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working" OnClose="() => _viewer = null" />
+}
+
 @if (_help is GrammarToolsHelpDialog.HelpTopic topic && _committed is not null)
 {
     <GrammarToolsHelpDialog Topic="topic" Score="CurrentScore" Working="Workbench.WorkingDefinition" OnClose="() => _help = null" />
@@ -239,6 +251,7 @@ else
     GlyphSort _sort = GlyphSort.Net;
     bool _sortDescending = true;
     EditorState _editor;
+    ViewerState _viewer;
     SourceCommitPlan _commitPlan;
     GrammarToolsHelpDialog.HelpTopic? _help;
 
@@ -252,6 +265,9 @@ else
 
     /// <summary>A run of scorecard rows sharing one unit, under a heading saying what they measure.</summary>
     record MetricGroup(string Title, string Tooltip, IReadOnlyList<Metric> Metrics);
+
+    /// <summary>A definition open for viewing: its committed and working versions (either null where it doesn't exist), captured as the dialog opens.</summary>
+    record ViewerState(DefinitionKind Kind, string Name, ChangeType? Change, object Committed, object Working);
 
     record GlyphRow(string Name, bool InWorking, ChangeType? Change, IReadOnlyList<string> Referrers, GlyphContribution Stats, double? NetDelta);
 
@@ -418,6 +434,19 @@ else
 
     double VocabularyBits(VocabularyDefinition vocabulary) =>
         CurrentScore.Vocabularies.TryGetValue(vocabulary.Name, out var bits) ? bits : 0;
+
+    // ---- Viewing ----
+
+    void View(DefinitionKind kind, string name)
+    {
+        object Find(GrammarDefinition grammar) =>
+            kind == DefinitionKind.Glyph
+                ? grammar.Glyphs.FirstOrDefault(x => x.Name == name)
+                : grammar.Vocabularies.FirstOrDefault(x => x.Name == name);
+
+        var change = Workbench.Changes.FirstOrDefault(x => x.Kind == kind && x.Name == name)?.Change;
+        _viewer = new(kind, name, change, Find(Workbench.CommittedDefinition), Find(Workbench.WorkingDefinition));
+    }
 
     // ---- Editing ----
 

@@ -126,6 +126,9 @@ public static class GlyphSourceWriter
         if (property.IsOptional)
             yield return _indent + "[Optional]";
 
+        if (property.AllowsUnmatched)
+            yield return _indent + "[AllowUnmatched]";
+
         if (property.Patterns.Count > 0)
             yield return _indent + RegexPatternAttribute(property.Patterns);
 

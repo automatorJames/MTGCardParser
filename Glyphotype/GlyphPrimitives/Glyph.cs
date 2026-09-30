@@ -112,6 +112,9 @@ public abstract class Glyph : CaptureUnit
         if (GetJoinedByError(props) is string joinedByError)
             return joinedByError;
 
+        if (props.FirstOrDefault(x => x.IsDefined(typeof(AllowUnmatchedAttribute)) && x.PropertyType != typeof(DynamicGlyph)) is PropertyInfo misplacedAllowUnmatched)
+            return $"{Type.Name}.{misplacedAllowUnmatched.Name} declares [AllowUnmatched] but isn't a {nameof(DynamicGlyph)} - only a dynamic resolves its text, so only a dynamic can leave it unresolved";
+
         // A pipe-joined Glyph is a one-of in all but name - its properties are alternatives, exactly one of which
         // matches - but only a OneOfBase is built, hydrated and validated as one.
         if (Joiner == Joiner.Pipe && this is not OneOfBase)

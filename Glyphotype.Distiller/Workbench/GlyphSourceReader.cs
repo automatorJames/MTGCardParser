@@ -227,10 +227,11 @@ public static class GlyphSourceReader
                 definition = AttributeName(attribute) switch
                 {
                     "Optional" => definition with { IsOptional = true },
+                    "AllowUnmatched" => definition with { AllowsUnmatched = true },
                     "RegexPattern" => definition with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => definition with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
                     "TypeFilter" when arguments is [TypeOfExpressionSyntax typeOf] => definition with { TypeFilter = typeOf.Type.ToString() },
-                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)))"),
+                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)))"),
                 };
             }
 

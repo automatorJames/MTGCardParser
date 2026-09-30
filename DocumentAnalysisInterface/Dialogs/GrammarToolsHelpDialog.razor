@@ -152,8 +152,11 @@
                     without capturing into a property. Likewise <code>Quantity.One</code> matches "1", "one" or "a" - which spelling was used is a frame choice too.
                 </div>
                 <div class="callout">
-                    This row is what keeps vague glyphs honest. A glyph that accepted anything would match everything - but every match would pay here to say
-                    what the text actually was. Currently <strong>@N(bits[DataComponent.Frames]) bits</strong>: the glyphs let very little through uncaptured.
+                    This row is what keeps vague glyphs honest. A regex that can match text it never spells out - a <code>Pattern(@@"[^.]+")</code>, a <code>\w+</code>,
+                    anything with <code>+</code>, <code>*</code> or a character class - is masked out of the frame as <code>{~}</code>, and each distinct text it
+                    swallows is spelled out here the first time it appears. So a catch-all pattern costs about what writing its texts out would, and never
+                    beats modeling them. Closed patterns like <code>an?</code> only choose among texts the grammar already wrote, and cost just the choice.
+                    Currently <strong>@N(bits[DataComponent.Frames]) bits</strong>.
                 </div>
             </dd>
 
@@ -169,7 +172,8 @@
 
             <dt>Unmatched text</dt>
             <dd>
-                Text no glyph matched, written as words: each word is a choice from the words seen so far, and each new word is spelled once.
+                Text no glyph matched, written as words: each word is a choice from the words seen so far, and each new word is spelled once. That includes text
+                a glyph holds a place for without resolving it - a <code>DynamicGlyph</code> property marked <code>[AllowUnmatched]</code> that nothing matched.
                 Usually the biggest row by far - right now <strong>@P(Score.DataBits == 0 ? 0 : bits[DataComponent.Residual] / Score.DataBits)</strong> of the data.
                 See <em>Residual hot spots</em> for where it comes from.
             </dd>

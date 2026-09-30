@@ -180,4 +180,23 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         Assert.Contains("OnDay  (dependent)", list);
         Assert.Contains("Vocabularies", list);
     }
+
+    [Fact]
+    public async Task Every_glyph_can_be_removed_at_once_leaving_the_vocabularies_to_build_on()
+    {
+        var (agent, workbench) = CreateAgent();
+
+        var applied = await agent.ApplyAsync(null, remove: string.Join(",", workbench.WorkingDefinition.Glyphs.Select(x => x.Name)), description: "start from scratch");
+
+        Assert.Contains("Applied as step 1", applied);
+        Assert.Empty(workbench.WorkingDefinition.Glyphs);
+        Assert.NotEmpty(workbench.WorkingDefinition.Vocabularies);
+
+        // Unused vocabularies cost nothing, so the score is the no-grammar baseline's...
+        var trial = await workbench.GetCurrentTrialAsync();
+        Assert.Equal(trial.Score.BaselineBits, trial.Score.TotalBits, precision: 6);
+
+        // ...and a new glyph can use them straight away.
+        Assert.Contains("Applied as step 2", await agent.ApplyAsync(_animalSnores));
+    }
 }

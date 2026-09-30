@@ -10,6 +10,9 @@ public sealed record PropertyDefinition
     /// <summary><see cref="OptionalAttribute"/>: the property may be absent from a match.</summary>
     public bool IsOptional { get; init; }
 
+    /// <summary><see cref="AllowUnmatchedAttribute"/>: a <see cref="DynamicGlyph"/> property that keeps text nothing resolves as unmatched text, rather than failing the match.</summary>
+    public bool AllowsUnmatched { get; init; }
+
     /// <summary><see cref="RegexPatternAttribute"/>: overrides the default pattern (a bool's or primitive's).</summary>
     public IReadOnlyList<string> Patterns { get; init; } = [];
 

@@ -4,7 +4,8 @@ namespace Glyphotype.Distiller.Inspection;
 /// Renders tokenized text as one line of plain text, for reading rather than display: each match as
 /// <c>⟦Glyph: text⟧</c>, each unmatched span as <c>«text»</c>, clause breaks as themselves. Nested, a match
 /// shows its captures too - <c>⟦Property: …⟧</c> for a glyph, <c>⟦Property→Glyph: …⟧</c> for what a dynamic
-/// resolved to, <c>⟦Property=text⟧</c> for a terminal (vocabulary, bool, number).
+/// resolved to (<c>⟦Property: «…»⟧</c> for one left unresolved), <c>⟦Property=text⟧</c> for a terminal (vocabulary,
+/// bool, number).
 /// </summary>
 public static class ParseRenderer
 {
@@ -40,6 +41,9 @@ public static class ParseRenderer
 
         if (trace.IsTerminal)
             return $"{leading}⟦{trace.Name}={text.Trim()}⟧{trailing}";
+
+        if (trace.SourceNode is DynamicGlyphNode && trace.ResolvedNodeType == typeof(UnmatchedString))
+            return $"{leading}⟦{trace.Name}: «{text.Trim()}»⟧{trailing}";
 
         var resolved = trace.SourceNode is DynamicGlyphNode ? $"→{trace.ResolvedNodeType?.Name}" : "";
 

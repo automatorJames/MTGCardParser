@@ -1,0 +1,122 @@
+<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(1100px, 94vw);">
+    <TitleContent>
+        <div class="viewer-title">
+            <span class="viewer-kind">@Kind.ToString().ToLowerInvariant()</span>
+            <span>@Name</span>
+            @if (Change is ChangeType change)
+            {
+                <span class="change-badge @change.ToString().ToLowerInvariant()">@change.ToString().ToLowerInvariant()</span>
+            }
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="viewer-tabs" role="tablist">
+            @foreach (var tab in Tabs)
+            {
+                <button class="viewer-tab @(tab == _tab ? "active" : "")" role="tab" aria-selected="@(tab == _tab)" @onclick="() => _tab = tab">
+                    @TabLabel(tab)
+                    @if (tab == Tab.Diff)
+                    {
+                        <span class="diff-stat added">+@_diff.Count(x => x.Kind == LineDiff.LineKind.Added)</span>
+                        <span class="diff-stat removed">−@_diff.Count(x => x.Kind == LineDiff.LineKind.Removed)</span>
+                    }
+                </button>
+            }
+        </div>
+
+        <div class="viewer-body">
+            @switch (_tab)
+            {
+                case Tab.CSharp:
+                    <pre class="code-view">@_csharp</pre>
+                    break;
+
+                case Tab.Json:
+                    <pre class="code-view">@_json</pre>
+                    break;
+
+                case Tab.Diff:
+                    <div class="diff-header">committed → working</div>
+                    <table class="diff-view">
+                        <tbody>
+                            @foreach (var line in _diff)
+                            {
+                                var kind = line.Kind.ToString().ToLowerInvariant();
+                                <tr class="diff-line @kind">
+                                    <td class="line-number">@line.OldNumber</td>
+                                    <td class="line-number">@line.NewNumber</td>
+                                    <td class="line-marker">@(line.Kind switch { LineDiff.LineKind.Added => "+", LineDiff.LineKind.Removed => "−", _ => "" })</td>
+                                    <td class="line-text">@line.Text</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    break;
+            }
+        </div>
+
+        @if (Change == ChangeType.Removed)
+        {
+            <p class="viewer-note">Removed from the working grammar: this is the committed definition.</p>
+        }
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="Close">Close</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    public enum Tab { CSharp, Json, Diff }
+
+    [Parameter, EditorRequired] public string Name { get; set; }
+
+    [Parameter, EditorRequired] public DefinitionKind Kind { get; set; }
+
+    /// <summary>How the working definition differs from the committed one, or null if it doesn't.</summary>
+    [Parameter] public ChangeType? Change { get; set; }
+
+    /// <summary>The committed definition (a <see cref="GlyphDefinition"/> or <see cref="VocabularyDefinition"/>), or null if there's none.</summary>
+    [Parameter] public object Committed { get; set; }
+
+    /// <summary>The working definition, or null if it's been removed.</summary>
+    [Parameter] public object Working { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    Tab _tab;
+    string _csharp;
+    string _json;
+    IReadOnlyList<LineDiff.Line> _diff = [];
+
+    /// <summary>The diff tab only means something for a definition changed in place.</summary>
+    IEnumerable<Tab> Tabs => Change == ChangeType.Modified ? [Tab.CSharp, Tab.Json, Tab.Diff] : [Tab.CSharp, Tab.Json];
+
+    protected override void OnParametersSet()
+    {
+        var shown = Working ?? Committed;
+        _csharp = Write(shown);
+        _json = DefinitionJson.Serialize(shown);
+        _diff = Change == ChangeType.Modified ? LineDiff.Compare(Write(Committed), _csharp) : [];
+
+        if (!Tabs.Contains(_tab))
+            _tab = Tab.CSharp;
+    }
+
+    static string Write(object definition) =>
+        definition switch
+        {
+            GlyphDefinition glyph => GlyphSourceWriter.WriteGlyph(glyph),
+            VocabularyDefinition vocabulary => GlyphSourceWriter.WriteVocabulary(vocabulary),
+            _ => "",
+        };
+
+    static string TabLabel(Tab tab) =>
+        tab switch
+        {
+            Tab.CSharp => "C#",
+            Tab.Json => "JSON",
+            _ => "Diff",
+        };
+
+    Task Close() => OnClose.InvokeAsync();
+}
