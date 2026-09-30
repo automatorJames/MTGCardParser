@@ -9,6 +9,13 @@ public sealed record GrammarCost(
     public double TotalBits => GlyphBits.Values.Sum() + VocabularyBits.Values.Sum() + OverheadBits;
 
     /// <summary>
+    /// Every word the grammar spells out as literal text - in literal and <c>Alt</c> nibs, and in the names and plain
+    /// synonyms of the vocabulary members it's charged for. Unmatched text can refer to these rather than spell them
+    /// again (see <see cref="CorpusEncoding.UseGrammarWords"/>): whoever reads the corpus's description has the grammar already.
+    /// </summary>
+    public IReadOnlySet<string> SpelledWords { get; init; } = new HashSet<string>();
+
+    /// <summary>
     /// The description length of <paramref name="grammar"/>: the bits to transmit its definitions, given the
     /// engine (whose conventions - default nibs, friendly-cased names, joiners - are free). Literal text is
     /// spelled at <paramref name="charBits"/> per character plus a terminator; every other choice is coded
@@ -32,12 +39,19 @@ public sealed record GrammarCost(
         return new(
             grammar.Glyphs.ToDictionary(x => x.Name, coder.Glyph),
             grammar.Vocabularies.ToDictionary(x => x.Name, coder.Vocabulary),
-            CodeLength.Count(grammar.Glyphs.Count) + CodeLength.Count(grammar.Vocabularies.Count) + CodeLength.Count(grammar.Markers.Count));
+            CodeLength.Count(grammar.Glyphs.Count) + CodeLength.Count(grammar.Vocabularies.Count) + CodeLength.Count(grammar.Markers.Count))
+        {
+            SpelledWords = coder.SpelledWords,
+        };
     }
 
     sealed class Coder(GrammarDefinition grammar, double charBits, VocabularyUsage usage)
     {
         static readonly TimeSpan _patternTimeout = TimeSpan.FromMilliseconds(250);
+        static readonly char[] _regexMetacharacters = ['\\', '*', '+', '?', '|', '{', '[', '(', ')', '^', '$', '.'];
+
+        /// <summary>The words of every text <see cref="Text"/> spelled - collected as they're charged, so only what's paid for counts.</summary>
+        public HashSet<string> SpelledWords { get; } = [];
 
         static readonly int _glyphKinds = Enum.GetValues<GlyphKind>().Length;
         static readonly int _spanRules = Enum.GetValues<SpanRule>().Length;
@@ -60,7 +74,7 @@ public sealed record GrammarCost(
             bits += CodeLength.Count(glyph.Markers.Count) + glyph.Markers.Count * CodeLength.Uniform(grammar.Markers.Count);
             bits += 1 + CodeLength.Uniform(_spanRules); // IsDependent, SpanRule
             bits += Optional(glyph.TokenizationOrder is not null, CodeLength.SignedInteger(glyph.TokenizationOrder ?? 0));
-            bits += Texts(glyph.Patterns);
+            bits += Texts(glyph.Patterns, literal: false);
             bits += Optional(glyph.JoinedBy is not null, CodeLength.Uniform(_joiners));
 
             // With no nibs, properties or patterns, the engine matches the glyph's friendly-cased name.
@@ -82,7 +96,7 @@ public sealed record GrammarCost(
                 + members.Sum(member =>
                     Optional(member.Value is not null, CodeLength.SignedInteger(member.Value ?? 0))
                     + (member.Patterns.Count > 0
-                        ? Texts(UsedPatterns(vocabulary, member))
+                        ? Texts(UsedPatterns(vocabulary, member), literal: false)
                         : CodeLength.Count(0) + Text(member.Name.ToFriendlyCase(TitleDisplayOption.Lower))));
         }
 
@@ -117,7 +131,7 @@ public sealed record GrammarCost(
             CodeLength.Uniform(_nibKinds) + nib switch
             {
                 NibDefinition.Literal literal => Text(literal.Text),
-                NibDefinition.Pattern pattern => Text(pattern.Regex),
+                NibDefinition.Pattern pattern => Text(pattern.Regex, literal: false),
                 NibDefinition.Alternatives alternatives => Texts(alternatives.Texts),
                 NibDefinition.Optional optional => Nib(optional.Inner, glyph),
                 NibDefinition.Plural => 0,
@@ -128,7 +142,7 @@ public sealed record GrammarCost(
         double Property(PropertyDefinition property) =>
             TypeReference(property.Type)
             + 1 // IsOptional
-            + Texts(property.Patterns)
+            + Texts(property.Patterns, literal: false)
             + Optional(property.JoinedBy is not null, CodeLength.Uniform(_joiners))
             + Optional(property.TypeFilter is not null, CodeLength.Uniform(grammar.Markers.Count));
 
@@ -145,9 +159,19 @@ public sealed record GrammarCost(
             }
             + reference.Arguments.Sum(TypeReference);
 
-        double Text(string text) => (text.Length + 1) * charBits;
+        /// <summary>
+        /// Spells <paramref name="text"/>. Literal text's words join <see cref="SpelledWords"/>; a regex's do only when
+        /// it has no metacharacters, so it matches just what it spells (many a synonym is plain text written as a pattern).
+        /// </summary>
+        double Text(string text, bool literal = true)
+        {
+            if (literal || text.IndexOfAny(_regexMetacharacters) < 0)
+                SpelledWords.UnionWith(text.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-        double Texts(IReadOnlyList<string> texts) => CodeLength.Count(texts.Count) + texts.Sum(Text);
+            return (text.Length + 1) * charBits;
+        }
+
+        double Texts(IReadOnlyList<string> texts, bool literal = true) => CodeLength.Count(texts.Count) + texts.Sum(x => Text(x, literal));
 
         static double Optional(bool present, double bitsIfPresent) => 1 + (present ? bitsIfPresent : 0);
     }

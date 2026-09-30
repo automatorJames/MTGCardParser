@@ -35,7 +35,7 @@ public enum DataComponent
 /// culled from a finished grammar, see <see cref="VocabularyUsage"/>), the number (a universal integer code), or the
 /// type a dynamic resolved to - and per enum member, the synonym that spelled it;</item>
 /// <item>unmatched text: its word count, then each word from a residual lexicon, whose distinct words are
-/// spelled once - including text a dynamic left unresolved (see <see cref="AllowUnmatchedAttribute"/>), which is
+/// spelled once - unless the grammar already spells them (see <see cref="UseGrammarWords"/>) - including text a dynamic left unresolved (see <see cref="AllowUnmatchedAttribute"/>), which is
 /// unmatched text held in place;</item>
 /// <item>text matched by an open-ended regex (see <see cref="RegexOpenness"/>) - a pattern nib's, or a terminal's
 /// own pattern: masked out of its frame as <c>{~}</c>, drawn from a context of its own, and spelled out the first
@@ -101,10 +101,20 @@ public sealed class CorpusEncoding
         foreach (var context in _contexts.Values)
             bits[context.Component] += context.TotalBits;
 
-        bits[DataComponent.Residual] += _residualWordCounts.Keys.Sum(SpellingBits);
+        bits[DataComponent.Residual] += _residualWordCounts.Keys.Where(x => !_grammarWords.Contains(x)).Sum(SpellingBits);
 
         return bits;
     }
+
+    IReadOnlySet<string> _grammarWords = new HashSet<string>();
+
+    /// <summary>
+    /// Words the grammar already spells (see <see cref="GrammarCost.SpelledWords"/>), which the residual lexicon can
+    /// refer to instead of spelling again. Without this, a word defined in a vocabulary but still unmatched somewhere
+    /// else is paid for twice - once in the grammar, once in the lexicon - until its last unmatched occurrence is
+    /// covered, which makes every new vocabulary look like a loss while most of the corpus is still unmatched.
+    /// </summary>
+    public void UseGrammarWords(IReadOnlySet<string> words) => _grammarWords = words;
 
     /// <summary>The bits <paramref name="token"/>'s own choices cost, each at its share of its context's code (see <see cref="CodeLength.AdaptiveShare"/>).</summary>
     public double GetBits(TokenEncoding token) =>
@@ -124,7 +134,7 @@ public sealed class CorpusEncoding
         foreach (var word in words)
             bits += residual is not null && residual.Counts.ContainsKey(word)
                 ? residual.ShareOf(word)
-                : CodeLength.Uniform((residual?.Total ?? 0) + (residual?.AlphabetSize ?? 0) + 1) + SpellingBits(word);
+                : CodeLength.Uniform((residual?.Total ?? 0) + (residual?.AlphabetSize ?? 0) + 1) + (_grammarWords.Contains(word) ? 0 : SpellingBits(word));
 
         return bits;
     }

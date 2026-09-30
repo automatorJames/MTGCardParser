@@ -21,6 +21,9 @@ public static class MdlScorer
 
         // Priced as the grammar culled to what the corpus uses: vocabulary members that never matched are free.
         var grammarCost = GrammarCost.Of(definition, charBits, encoding.VocabularyUsage);
+
+        // Unmatched text can use the grammar's words without spelling them again.
+        encoding.UseGrammarWords(grammarCost.SpelledWords);
         var componentBits = encoding.GetComponentBits();
 
         // The baseline: the same corpus with no grammar at all, every segment unmatched.

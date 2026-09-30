@@ -64,7 +64,11 @@ The score is a **minimum description length** in bits: the bits to write down th
 write down the corpus using it. Lower is better. The baseline is the same corpus with no grammar at all.
 
 - **Unmatched text** is expensive: every word is coded from a residual lexicon, and each distinct word is spelled
-  out once. Covering recurring text is how bits are saved.
+  out once. Words the grammar already spells (its literals, and the vocabulary members it uses) don't need spelling
+  again, so defining a word in a vocabulary is never paid for twice. Covering recurring text is how bits are saved.
+- **Every top-level glyph is also a token choice.** A match has to say which glyph it is. For a construction that
+  is only a word or two long and rare in the corpus, that can cost about what leaving it unmatched does, so it may
+  not pay until the corpus is bigger. That isn't a verdict on the glyph.
 - **A glyph costs its own definition:** every literal character and property. A glyph that matches once rarely pays
   for itself.
 - **A vocabulary costs only the members the corpus uses.** Members that never match, and synonyms that never spell

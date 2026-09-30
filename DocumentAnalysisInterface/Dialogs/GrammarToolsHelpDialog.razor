@@ -172,7 +172,8 @@
 
             <dt>Unmatched text</dt>
             <dd>
-                Text no glyph matched, written as words: each word is a choice from the words seen so far, and each new word is spelled once. That includes text
+                Text no glyph matched, written as words: each word is a choice from the words seen so far, and each new word is spelled once - unless the grammar
+                already spells it (in a literal, or a vocabulary member it uses), since whoever reads this has the grammar already. That includes text
                 a glyph holds a place for without resolving it - a <code>DynamicGlyph</code> property marked <code>[AllowUnmatched]</code> that nothing matched.
                 Usually the biggest row by far - right now <strong>@P(Score.DataBits == 0 ? 0 : bits[DataComponent.Residual] / Score.DataBits)</strong> of the data.
                 See <em>Residual hot spots</em> for where it comes from.

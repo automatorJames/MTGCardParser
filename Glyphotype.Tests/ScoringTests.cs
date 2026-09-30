@@ -134,6 +134,35 @@ public class ScoringTests(CorpusFixture corpus)
         Assert.Equal(2, full.VocabularyMembersUsed["Parasite"]);
     }
 
+    [Fact]
+    public void Unmatched_text_reuses_the_grammars_words_rather_than_spelling_them_again()
+    {
+        // "fleas" is spelled by the vocabulary; while it's also unmatched elsewhere, the residual lexicon shouldn't
+        // spell it a second time. Its anagram "leafs" (same letters, so the same character code) is unknown, and is.
+        var grammar = GlyphGrammar.FromDefinition(new GrammarDefinition
+        {
+            Glyphs =
+            [
+                new()
+                {
+                    Name = "MyDogHas",
+                    Nibs = [new NibDefinition.Literal("my dog has"), new NibDefinition.Property("Parasite")],
+                    Properties = [new() { Name = "Parasite", Type = TypeReference.Vocabulary("Parasite") }],
+                },
+            ],
+            Vocabularies = [new() { Name = "Parasite", Members = [new() { Name = "Fleas" }] }],
+        }, allowPartialSegmentMatches: false);
+
+        IEnumerable<TestDocument> Corpus(string leftover) => Enumerable.Range(0, 20)
+            .Select(i => new TestDocument(TestDocument.Unnamed, $"my dog has fleas.\n{leftover} everywhere.", []));
+
+        var known = Score(grammar, Corpus("fleas"));
+        var unknown = Score(grammar, Corpus("leafs"));
+
+        Assert.Equal(known.CharBits, unknown.CharBits, precision: 9);
+        Assert.Equal(("leafs".Length + 1) * known.CharBits, unknown.TotalBits - known.TotalBits, precision: 6);
+    }
+
     static MdlScore Score(GlyphGrammar grammar, IEnumerable<IDocument> documents) =>
         MdlScorer.Score(grammar, CorpusFixture.Process(grammar, documents));
 }
