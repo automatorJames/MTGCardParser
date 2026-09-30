@@ -1,0 +1,273 @@
+.grammar-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    color: #E2E8F0;
+}
+
+.panel {
+    background-color: var(--light-grey);
+    border: 1px solid var(--outline-grey);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+}
+
+.panel-header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+    .panel-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #569cd6;
+    }
+
+.panel-subtext {
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.panel-option {
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.panel-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Scorecard */
+
+.metrics {
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+    .metrics th,
+    .metrics td {
+        padding: 0.2rem 1.25rem 0.2rem 0;
+        text-align: right;
+    }
+
+    .metrics th {
+        color: var(--subtext-grey);
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .metrics .metric-name {
+        text-align: left;
+        color: var(--lightest-blue);
+    }
+
+    .metrics .sub-metric .metric-name {
+        padding-left: 1.25rem;
+        color: var(--subtext-grey);
+    }
+
+    .metrics .sub-metric td {
+        font-size: 0.9rem;
+    }
+
+.better {
+    color: #9fe0b5;
+}
+
+.worse {
+    color: #f28b82;
+}
+
+.status {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.status-scoring {
+    color: var(--gold);
+}
+
+.status-quiet {
+    color: var(--subtext-grey);
+}
+
+.status-errors {
+    color: #f28b82;
+}
+
+    .status-errors ul {
+        margin: 0.4rem 0 0 0;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.8rem;
+    }
+
+.notice {
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--dark-gold);
+    border-radius: 8px;
+    color: var(--gold);
+    cursor: pointer;
+}
+
+.notice-dismiss {
+    float: right;
+}
+
+/* Changes */
+
+.change-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+    .change-list li {
+        padding: 0.2rem 0;
+    }
+
+.change-badge {
+    display: inline-block;
+    min-width: 4.5rem;
+    margin-right: 0.5rem;
+    padding: 0 0.4rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-align: center;
+    text-transform: lowercase;
+}
+
+    .change-badge.added {
+        color: #9fe0b5;
+        background-color: rgba(62, 224, 137, 0.12);
+    }
+
+    .change-badge.modified {
+        color: var(--gold);
+        background-color: rgba(189, 157, 89, 0.15);
+    }
+
+    .change-badge.removed {
+        color: #f28b82;
+        background-color: rgba(242, 139, 130, 0.12);
+    }
+
+.change-kind {
+    color: var(--subtext-grey);
+    margin-right: 0.4rem;
+}
+
+.change-name {
+    margin-right: 0.75rem;
+}
+
+/* Tables */
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+}
+
+    .data-table th,
+    .data-table td {
+        padding: 0.3rem 0.6rem;
+        text-align: right;
+        border-bottom: 1px solid #333;
+    }
+
+    .data-table th {
+        color: var(--subtext-grey);
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+        .data-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+            .data-table th.sortable:hover,
+            .data-table th.sorted {
+                color: var(--lightest-blue);
+            }
+
+    .data-table .name-column,
+    .data-table .text-column,
+    .data-table .referrers {
+        text-align: left;
+    }
+
+    .data-table .name-column {
+        color: var(--lightest-blue);
+    }
+
+    .data-table .text-column {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.8rem;
+        color: #ce9178;
+    }
+
+    .data-table .referrers {
+        color: var(--subtext-grey);
+        font-size: 0.85rem;
+    }
+
+    .data-table .toggle-column {
+        width: 2.5rem;
+        text-align: center;
+    }
+
+    .data-table tr.excluded td {
+        opacity: 0.45;
+    }
+
+    .data-table tr.changed-added .name-column,
+    .data-table tr.changed-modified .name-column {
+        color: var(--gold);
+    }
+
+    .data-table td.positive {
+        color: #9fe0b5;
+    }
+
+    .data-table td.negative {
+        color: #f28b82;
+    }
+
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--faded-blue);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+    .link-button + .link-button {
+        margin-left: 0.6rem;
+    }
+
+    .link-button:hover {
+        color: var(--lightest-blue);
+        text-decoration: underline;
+    }
+
+    .data-table th.name-column {
+        text-align: left;
+    }

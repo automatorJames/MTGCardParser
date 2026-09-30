@@ -1,0 +1,97 @@
+.commit-summary {
+    color: var(--lightest-blue);
+}
+
+    .commit-summary code {
+        color: var(--faded-blue);
+    }
+
+.file-list {
+    margin-bottom: 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+}
+
+.file-row {
+    padding: 0.15rem 0;
+}
+
+.file-badge,
+.change-badge {
+    display: inline-block;
+    min-width: 4.5rem;
+    margin-right: 0.5rem;
+    padding: 0 0.4rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-align: center;
+    text-transform: lowercase;
+}
+
+.new, .added {
+    color: #9fe0b5;
+    background-color: rgba(62, 224, 137, 0.12);
+}
+
+.edited, .modified {
+    color: var(--gold);
+    background-color: rgba(189, 157, 89, 0.15);
+}
+
+.deleted, .removed {
+    color: #f28b82;
+    background-color: rgba(242, 139, 130, 0.12);
+}
+
+.declarations {
+    max-height: 55vh;
+    overflow: auto;
+}
+
+.declaration {
+    border-top: 1px solid var(--outline-grey);
+    padding: 0.5rem 0;
+}
+
+    .declaration summary {
+        cursor: pointer;
+    }
+
+.declaration-file {
+    margin-left: 0.75rem;
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.declaration-note {
+    margin: 0.4rem 0 0 1rem;
+    font-size: 0.85rem;
+    color: var(--gold);
+}
+
+.before-after {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+    .before-after pre {
+        margin: 0;
+        padding: 0.6rem;
+        max-height: 30vh;
+        overflow: auto;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.8rem;
+        color: #E2E8F0;
+        background-color: var(--dark-grey);
+        border: 1px solid var(--outline-grey);
+        border-radius: 6px;
+    }
+
+.column-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--subtext-grey);
+}

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MTGGlyphs.Data;
 using Glyphotype.Interfaces;
 using Glyphotype.GlyphAnalysisDTOs;
+using Glyphotype.Distiller.Workbench;
 
 namespace DocumentAnalysisInterface;
 public class Program
@@ -23,6 +24,17 @@ public class Program
         builder.Services.AddScoped<RuntimeSettings>();
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();
         builder.Services.AddSingleton<CorpusAnalyzer>();
+
+        // The Grammar Tools tab's working definition: edits are scored against the corpus the analyzer already
+        // tokenized, saved outside the repo until committed, and committed into the glyph sources.
+        builder.Services.AddSingleton(services => new GrammarWorkbench(
+            GlyphGrammar.Default,
+            services.GetRequiredService<CorpusAnalyzer>().ProcessedDocuments,
+            new WorkbenchOptions(
+                WorkingDefinitionPath: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glyphotype", "working-grammar.json"),
+                SourceDirectory: Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "MTGGlyphs", "GlyphDefinitions")),
+                SourceNamespace: "MTGGlyphs.GlyphDefinitions",
+                AllowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches)));
 
         var app = builder.Build();
 

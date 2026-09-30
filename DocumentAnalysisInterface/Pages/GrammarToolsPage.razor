@@ -1,0 +1,460 @@
+@page "/grammar-tools"
+@implements IDisposable
+@inject GrammarWorkbench Workbench
+
+@if (_committed is null)
+{
+    <LoadingIndicator Label="Scoring the committed grammar..." />
+}
+else
+{
+    <div class="grammar-tools">
+
+        <section class="panel scorecard">
+            <div class="panel-header">
+                <h3>Score</h3>
+                <span class="panel-subtext">minimum description length: bits to describe the grammar plus the corpus given it - lower is better</span>
+            </div>
+
+            <table class="metrics">
+                <thead>
+                    <tr><th></th><th>Committed</th><th>Working</th><th>Change</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var metric in GetMetrics())
+                    {
+                        <tr class="@(metric.Indented ? "sub-metric" : "")">
+                            <td class="metric-name">@metric.Name</td>
+                            <td>@metric.Format(metric.Committed)</td>
+                            <td>@(metric.Working is double working ? metric.Format(working) : "…")</td>
+                            <td class="@DeltaClass(metric)">@FormatDelta(metric)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="status">
+                @if (Workbench.IsScoring)
+                {
+                    <span class="status-scoring">Scoring the working grammar against @_committed.Documents.ToString("N0") documents…</span>
+                }
+                else if (WorkingErrors is { Count: > 0 } errors)
+                {
+                    <div class="status-errors">
+                        <span>The working grammar doesn't build:</span>
+                        <ul>
+                            @foreach (var error in errors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                else if (!Workbench.HasChanges)
+                {
+                    <span class="status-quiet">The working grammar matches the committed grammar. Toggle or edit glyphs below to try changes.</span>
+                }
+                else if (Workbench.LatestWorkingScore is { Succeeded: true } latest)
+                {
+                    <span class="status-quiet">Scored in @latest.Elapsed.TotalSeconds.ToString("N1")s.</span>
+                }
+            </div>
+        </section>
+
+        @if (_notice is not null)
+        {
+            <div class="notice" @onclick="() => _notice = null">@_notice <span class="notice-dismiss">×</span></div>
+        }
+
+        @if (Workbench.HasChanges)
+        {
+            <section class="panel changes">
+                <div class="panel-header">
+                    <h3>Working changes</h3>
+                    <span class="panel-subtext">saved to @Workbench.WorkingDefinitionPath</span>
+                    <div class="panel-actions">
+                        <button class="btn btn-sm btn-secondary" @onclick="() => Try(Workbench.RevertAll)">Revert all</button>
+                        <button class="btn btn-sm btn-primary" @onclick="OpenCommit">Commit to C#…</button>
+                    </div>
+                </div>
+
+                <ul class="change-list">
+                    @foreach (var change in Workbench.Changes)
+                    {
+                        <li>
+                            <span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span>
+                            <span class="change-kind">@change.Kind.ToString().ToLowerInvariant()</span>
+                            <span class="change-name">@change.Name</span>
+                            <button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <section class="panel">
+            <div class="panel-header">
+                <h3>Glyphs</h3>
+                <label class="panel-option"><input type="checkbox" @bind="_showNestedOnly" /> include nested-only glyphs</label>
+                <div class="panel-actions">
+                    <button class="btn btn-sm btn-secondary" @onclick="NewGlyph">New glyph…</button>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="toggle-column" title="Whether the glyph is in the working grammar">on</th>
+                        @SortHeader("Glyph", GlyphSort.Name, cssClass: "name-column")
+                        @SortHeader("Net bits", GlyphSort.Net, "Bits saved net of the glyph's own definition: what its matches would cost as unmatched text, less what they cost as matches, less its definition")
+                        <th title="Change in net bits from the committed grammar">Δ net</th>
+                        @SortHeader("Saves", GlyphSort.Saves, "What its matched text would cost as unmatched text instead (approximate)")
+                        @SortHeader("Data", GlyphSort.Data, "What its matches cost to encode, nested captures included")
+                        @SortHeader("Definition", GlyphSort.Definition, "What its definition costs to describe")
+                        @SortHeader("Matches", GlyphSort.Matches)
+                        @SortHeader("Words", GlyphSort.Words)
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in GetGlyphRows())
+                    {
+                        var stats = row.Stats;
+                        <tr class="@(row.InWorking ? "" : "excluded") @(row.Change is ChangeType change ? "changed-" + change.ToString().ToLowerInvariant() : "")">
+                            <td class="toggle-column">
+                                <input type="checkbox" checked="@row.InWorking" disabled="@(row.InWorking && row.Referrers.Count > 0)"
+                                       title="@(row.Referrers.Count > 0 ? "Used by " + string.Join(", ", row.Referrers) : "")"
+                                       @onchange="e => ToggleGlyph(row, (bool)e.Value)" />
+                            </td>
+                            <td class="name-column">@row.Name</td>
+                            <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
+                            <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
+                            <td>@Bits(stats?.ResidualEquivalentBits)</td>
+                            <td>@Bits(stats?.DataBits)</td>
+                            <td>@Bits(stats?.DefinitionBits)</td>
+                            <td>@stats?.Occurrences.ToString("N0")</td>
+                            <td>@stats?.Words.ToString("N0")</td>
+                            <td>
+                                @if (row.InWorking)
+                                {
+                                    <button class="link-button" @onclick="() => EditGlyph(row.Name)">edit</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h3>Vocabularies</h3>
+                <div class="panel-actions">
+                    <button class="btn btn-sm btn-secondary" @onclick="NewVocabulary">New vocabulary…</button>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr><th>Vocabulary</th><th>Members</th><th>Definition bits</th><th>Used by</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var vocabulary in Workbench.WorkingDefinition.Vocabularies.OrderByDescending(VocabularyBits))
+                    {
+                        var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
+                        <tr class="@(referrers.Count == 0 ? "excluded" : "")">
+                            <td class="name-column">@vocabulary.Name</td>
+                            <td>@vocabulary.Members.Count.ToString("N0")</td>
+                            <td>@Bits(VocabularyBits(vocabulary))</td>
+                            <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
+                            <td>
+                                <button class="link-button" @onclick="() => EditVocabulary(vocabulary.Name)">edit</button>
+                                @if (referrers.Count == 0)
+                                {
+                                    <button class="link-button" @onclick="() => Try(() => Workbench.RemoveVocabulary(vocabulary.Name))">remove</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h3>Residual hot spots</h3>
+                <span class="panel-subtext">unmatched text, by what it costs across the corpus - where the next glyph would save the most</span>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr><th>Bits</th><th>Occurrences</th><th>Words</th><th class="text-column">Text</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var span in CurrentScore.Residuals.OrderByDescending(x => x.Bits).Take(ResidualRows))
+                    {
+                        <tr>
+                            <td>@Bits(span.Bits)</td>
+                            <td>@span.Occurrences.ToString("N0")</td>
+                            <td>@span.Words.ToString("N0")</td>
+                            <td class="text-column">@span.Text</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    </div>
+}
+
+@if (_editor is not null)
+{
+    <DefinitionEditorDialog Title="@_editor.Title" Json="@_editor.Json" Preview="PreviewDefinition" OnApply="ApplyDefinition" OnClose="() => _editor = null" />
+}
+
+@if (_commitPlan is not null)
+{
+    <CommitDialog Plan="_commitPlan" SourceDirectory="@Workbench.SourceDirectory" OnCommit="Commit" OnClose="() => _commitPlan = null" />
+}
+
+@code {
+    const int ResidualRows = 40;
+
+    MdlScore _committed;
+    MdlScore _working;
+    string _notice;
+    bool _showNestedOnly;
+    GlyphSort _sort = GlyphSort.Net;
+    bool _sortDescending = true;
+    EditorState _editor;
+    SourceCommitPlan _commitPlan;
+
+    enum GlyphSort { Name, Net, Saves, Data, Definition, Matches, Words }
+
+    /// <summary>A definition open for editing: its kind, the name it had (null for a new one), and its JSON.</summary>
+    record EditorState(DefinitionKind Kind, string OriginalName, string Title, string Json);
+
+    record Metric(string Name, double Committed, double? Working, Func<double, string> Format, bool LowerIsBetter = true, bool Indented = false);
+
+    record GlyphRow(string Name, bool InWorking, ChangeType? Change, IReadOnlyList<string> Referrers, GlyphContribution Stats, double? NetDelta);
+
+    /// <summary>The score the tables show: the working grammar's when there is one, else the committed grammar's.</summary>
+    MdlScore CurrentScore => _working ?? _committed;
+
+    IReadOnlyList<string> WorkingErrors =>
+        Workbench.LatestWorkingScore is { Succeeded: false } latest && latest.Definition == Workbench.WorkingDefinition ? latest.Errors : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Workbench.Changed += OnWorkbenchChanged;
+        await RefreshScoresAsync();
+    }
+
+    public void Dispose() => Workbench.Changed -= OnWorkbenchChanged;
+
+    void OnWorkbenchChanged() =>
+        _ = InvokeAsync(async () =>
+        {
+            await RefreshScoresAsync();
+            StateHasChanged();
+        });
+
+    async Task RefreshScoresAsync()
+    {
+        _committed = await Workbench.GetCommittedScoreAsync();
+        _working = await Workbench.GetCurrentWorkingScoreAsync();
+    }
+
+    // ---- Scorecard ----
+
+    IEnumerable<Metric> GetMetrics()
+    {
+        var working = _working;
+        static string BitsFormat(double x) => x.ToString("N0");
+        static string PercentFormat(double x) => x.ToString("P1");
+
+        yield return new("Total bits", _committed.TotalBits, working?.TotalBits, BitsFormat);
+        yield return new("vs. empty grammar", _committed.CompressionRatio, working?.CompressionRatio, PercentFormat);
+        yield return new("Grammar", _committed.GrammarBits, working?.GrammarBits, BitsFormat);
+        yield return new("Data", _committed.DataBits, working?.DataBits, BitsFormat);
+
+        foreach (var component in _committed.ComponentBits.Keys)
+            yield return new(component.ToString(), _committed.ComponentBits[component], working?.ComponentBits[component], BitsFormat, Indented: true);
+
+        yield return new("Coverage", _committed.Coverage, working?.Coverage, PercentFormat, LowerIsBetter: false);
+        yield return new("Captured words", _committed.CapturedWords, working?.CapturedWords, BitsFormat, LowerIsBetter: false, Indented: true);
+    }
+
+    static string FormatDelta(Metric metric) =>
+        metric.Working is not double working || Math.Abs(working - metric.Committed) < 1e-9 ? "" : (working > metric.Committed ? "+" : "") + metric.Format(working - metric.Committed);
+
+    static string DeltaClass(Metric metric) =>
+        metric.Working is not double working || Math.Abs(working - metric.Committed) < 1e-9 ? ""
+        : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
+
+    // ---- Glyphs ----
+
+    IEnumerable<GlyphRow> GetGlyphRows()
+    {
+        var working = Workbench.WorkingDefinition;
+        var changes = Workbench.Changes.Where(x => x.Kind == DefinitionKind.Glyph).ToDictionary(x => x.Name, x => x.Change);
+        var workingStats = _working?.Glyphs.ToDictionary(x => x.Name) ?? [];
+        var committedStats = _committed.Glyphs.ToDictionary(x => x.Name);
+        var workingNames = working.Glyphs.Select(x => x.Name).ToHashSet();
+
+        var rows = working.Glyphs.Select(x => x.Name)
+            .Concat(Workbench.CommittedDefinition.Glyphs.Select(x => x.Name))
+            .Distinct()
+            .Select(name =>
+            {
+                var inWorking = workingNames.Contains(name);
+                var committed = committedStats.GetValueOrDefault(name);
+                var scored = inWorking ? workingStats.GetValueOrDefault(name) : null;
+
+                // Until the working grammar is scored (or while it's re-scoring), rows show their committed stats.
+                var stats = scored ?? committed;
+                var delta = scored is not null && Workbench.HasChanges
+                    ? scored.NetBits - (committed?.NetBits ?? 0)
+                    : (double?)null;
+
+                return new GlyphRow(name, inWorking, changes.TryGetValue(name, out var change) ? change : null,
+                    inWorking ? working.GetReferrers(name) : [], stats, delta);
+            })
+            .Where(x => _showNestedOnly || x.Stats is null || x.Stats.IsTopLevel || x.Change is not null);
+
+        Func<GlyphRow, object> key = _sort switch
+        {
+            GlyphSort.Name => x => x.Name,
+            GlyphSort.Saves => x => x.Stats?.ResidualEquivalentBits ?? double.MinValue,
+            GlyphSort.Data => x => x.Stats?.DataBits ?? double.MinValue,
+            GlyphSort.Definition => x => x.Stats?.DefinitionBits ?? double.MinValue,
+            GlyphSort.Matches => x => x.Stats?.Occurrences ?? -1,
+            GlyphSort.Words => x => x.Stats?.Words ?? -1,
+            _ => x => x.Stats?.NetBits ?? double.MinValue,
+        };
+
+        return _sortDescending ? rows.OrderByDescending(key) : rows.OrderBy(key);
+    }
+
+    RenderFragment SortHeader(string label, GlyphSort sort, string title = null, string cssClass = null) =>
+        @<th class="sortable @(_sort == sort ? "sorted" : "") @cssClass" title="@title" @onclick="() => SortBy(sort)">
+            @label@(_sort == sort ? (_sortDescending ? " ▾" : " ▴") : "")
+        </th>;
+
+    void SortBy(GlyphSort sort)
+    {
+        _sortDescending = _sort == sort ? !_sortDescending : sort != GlyphSort.Name;
+        _sort = sort;
+    }
+
+    void ToggleGlyph(GlyphRow row, bool include) =>
+        Try(() =>
+        {
+            if (include)
+                Workbench.Revert(DefinitionKind.Glyph, row.Name);
+            else
+                Workbench.RemoveGlyph(row.Name);
+        });
+
+    double VocabularyBits(VocabularyDefinition vocabulary) =>
+        CurrentScore.Vocabularies.TryGetValue(vocabulary.Name, out var bits) ? bits : 0;
+
+    // ---- Editing ----
+
+    void EditGlyph(string name) =>
+        _editor = new(DefinitionKind.Glyph, name, $"Edit glyph {name}",
+            DefinitionJson.Serialize(Workbench.WorkingDefinition.Glyphs.Single(x => x.Name == name)));
+
+    void NewGlyph() =>
+        _editor = new(DefinitionKind.Glyph, null, "New glyph", DefinitionJson.Serialize(new GlyphDefinition
+        {
+            Name = "NewGlyph",
+            Nibs = [new NibDefinition.Literal("some literal text")],
+        }));
+
+    void EditVocabulary(string name) =>
+        _editor = new(DefinitionKind.Vocabulary, name, $"Edit vocabulary {name}",
+            DefinitionJson.Serialize(Workbench.WorkingDefinition.Vocabularies.Single(x => x.Name == name)));
+
+    void NewVocabulary() =>
+        _editor = new(DefinitionKind.Vocabulary, null, "New vocabulary", DefinitionJson.Serialize(new VocabularyDefinition
+        {
+            Name = "NewVocabulary",
+            Members = [new() { Name = "FirstMember" }, new() { Name = "SecondMember", Patterns = ["second", "2nd"] }],
+        }));
+
+    /// <summary>The C# the editor's JSON would commit as - or why it can't be read.</summary>
+    string PreviewDefinition(string json) =>
+        _editor.Kind == DefinitionKind.Glyph
+            ? GlyphSourceWriter.WriteGlyph(ReadGlyph(json))
+            : GlyphSourceWriter.WriteVocabulary(ReadVocabulary(json));
+
+    /// <summary>Applies the editor's JSON to the working grammar; returns an error to show in the editor, or null once applied.</summary>
+    string ApplyDefinition(string json)
+    {
+        try
+        {
+            var name = _editor.Kind == DefinitionKind.Glyph ? ReadGlyph(json).Name : ReadVocabulary(json).Name;
+            var names = _editor.Kind == DefinitionKind.Glyph
+                ? Workbench.WorkingDefinition.Glyphs.Select(x => x.Name)
+                : Workbench.WorkingDefinition.Vocabularies.Select(x => x.Name);
+
+            if (name != _editor.OriginalName && names.Contains(name))
+                return $"The working grammar already has a {_editor.Kind.ToString().ToLowerInvariant()} named {name}";
+
+            if (_editor.Kind == DefinitionKind.Glyph)
+                Workbench.SetGlyph(ReadGlyph(json), _editor.OriginalName);
+            else
+                Workbench.SetVocabulary(ReadVocabulary(json), _editor.OriginalName);
+
+            _editor = null;
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return exception.Message;
+        }
+    }
+
+    static GlyphDefinition ReadGlyph(string json) =>
+        DefinitionJson.Deserialize<GlyphDefinition>(json) is { Name: { Length: > 0 } } glyph ? glyph : throw new InvalidOperationException("A glyph needs a Name");
+
+    static VocabularyDefinition ReadVocabulary(string json) =>
+        DefinitionJson.Deserialize<VocabularyDefinition>(json) is { Name: { Length: > 0 } } vocabulary ? vocabulary : throw new InvalidOperationException("A vocabulary needs a Name");
+
+    // ---- Committing ----
+
+    void OpenCommit() => Try(() => _commitPlan = Workbench.PlanCommit());
+
+    void Commit()
+    {
+        var plan = _commitPlan;
+        _commitPlan = null;
+
+        Try(() =>
+        {
+            Workbench.Commit(plan);
+            _notice = $"Committed {plan.Declarations.Count} declaration change{(plan.Declarations.Count == 1 ? "" : "s")} to {plan.Files.Count} file{(plan.Files.Count == 1 ? "" : "s")}. Rebuild and restart to compile them; until then, scores reflect the working grammar.";
+        });
+    }
+
+    /// <summary>Runs a workbench operation, showing why it was refused rather than letting it take down the page.</summary>
+    void Try(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or NotSupportedException)
+        {
+            _notice = exception.Message;
+        }
+    }
+
+    // ---- Formatting ----
+
+    static string Bits(double? bits) => bits?.ToString("N0") ?? "";
+
+    static string Delta(double? bits) => bits is double x && Math.Abs(x) >= 0.5 ? (x > 0 ? "+" : "") + x.ToString("N0") : "";
+
+    static string Sign(double? bits) => bits is double x && Math.Abs(x) >= 0.5 ? (x > 0 ? "positive" : "negative") : "";
+}

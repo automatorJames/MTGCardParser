@@ -1,6 +1,4 @@
 using Glyphotype.Definitions;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 
 namespace Glyphotype.Tests;
 
@@ -33,7 +31,7 @@ public class DefinitionTests(CorpusFixture corpus)
     [Fact]
     public void Written_source_compiles_back_to_the_same_definition()
     {
-        var compiled = Compile(GlyphSourceWriter.Write(Definition, "Written"));
+        var compiled = SourceCompiler.Compile(GlyphSourceWriter.Write(Definition, "Written"));
 
         Assert.Equal(Definition.ToJson(), GrammarDefinition.FromTypes(compiled.GetTypes()).ToJson());
     }
@@ -154,39 +152,4 @@ public class DefinitionTests(CorpusFixture corpus)
         Assert.Equal(
             expected.ReplaceLineEndings().Trim(),
             GlyphSourceWriter.WriteGlyph(Definition.Glyphs.Single(x => x.Name == glyphName)).ReplaceLineEndings().Trim());
-
-    /// <summary>Compiles <paramref name="source"/> the way a glyph project would - with Glyphotype's namespaces as global usings, and warnings as errors - and loads it.</summary>
-    static Assembly Compile(string source)
-    {
-        const string globalUsings = """
-            global using System;
-            global using System.Collections.Generic;
-            global using Glyphotype;
-            global using Glyphotype.Attributes;
-            global using Glyphotype.Attributes.Quantifiers;
-            global using Glyphotype.GlyphPrimitives;
-            global using Glyphotype.NibHelpers;
-            """;
-
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
-
-        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")).Split(Path.PathSeparator)
-            .Append(typeof(Glyph).Assembly.Location)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(x => MetadataReference.CreateFromFile(x));
-
-        var compilation = CSharpCompilation.Create(
-            $"Written{Guid.NewGuid():N}",
-            [CSharpSyntaxTree.ParseText(globalUsings, parseOptions), CSharpSyntaxTree.ParseText(source, parseOptions)],
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
-        using var stream = new MemoryStream();
-        var result = compilation.Emit(stream);
-        var problems = result.Diagnostics.Where(x => x.Severity >= DiagnosticSeverity.Warning).ToList();
-
-        Assert.True(result.Success && problems.Count == 0, string.Join("\n", problems) + "\n\n" + source);
-
-        return Assembly.Load(stream.ToArray());
-    }
 }

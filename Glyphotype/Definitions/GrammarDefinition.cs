@@ -1,6 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 namespace Glyphotype.Definitions;
 
 /// <summary>
@@ -25,30 +22,7 @@ public sealed record GrammarDefinition
     public static GrammarDefinition FromTypes(IEnumerable<Type> glyphTypes) =>
         DefinitionReader.ReadGrammar(glyphTypes);
 
-    static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
-        Converters = { new JsonStringEnumConverter() },
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { OmitEmptyLists } },
-    };
+    public string ToJson() => DefinitionJson.Serialize(this);
 
-    public string ToJson() => JsonSerializer.Serialize(this, _jsonOptions);
-
-    public static GrammarDefinition FromJson(string json) => JsonSerializer.Deserialize<GrammarDefinition>(json, _jsonOptions);
-
-    /// <summary>
-    /// Leaves empty lists out of the JSON, as <see cref="JsonIgnoreCondition.WhenWritingDefault"/> does for other
-    /// defaults: a list property left out reads back as its <c>[]</c> initializer. Positional records (the
-    /// <see cref="NibDefinition"/> cases) are exempt, since a constructor parameter left out would read back null.
-    /// </summary>
-    static void OmitEmptyLists(JsonTypeInfo typeInfo)
-    {
-        if (typeInfo.Kind != JsonTypeInfoKind.Object || typeInfo.Type.IsAssignableTo(typeof(NibDefinition)))
-            return;
-
-        foreach (var property in typeInfo.Properties)
-            if (property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(IReadOnlyList<>))
-                property.ShouldSerialize = (_, value) => value is System.Collections.IEnumerable list && list.Cast<object>().Any();
-    }
+    public static GrammarDefinition FromJson(string json) => DefinitionJson.Deserialize<GrammarDefinition>(json);
 }

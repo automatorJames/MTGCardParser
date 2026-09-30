@@ -1,0 +1,66 @@
+<CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(1500px, 94vw);">
+    <TitleContent>Commit working grammar to C#</TitleContent>
+    <DialogContent>
+        <p class="commit-summary">
+            @Plan.Declarations.Count declaration change@(Plan.Declarations.Count == 1 ? "" : "s") across @Plan.Files.Count file@(Plan.Files.Count == 1 ? "" : "s") under <code>@SourceDirectory</code>.
+            Only the changed declarations are rewritten; the rest of each file, and each declaration's doc comment, stay as they are.
+        </p>
+
+        <div class="file-list">
+            @foreach (var file in Plan.Files)
+            {
+                var action = file.OriginalText is null ? "new" : file.NewText is null ? "deleted" : "edited";
+                <div class="file-row"><span class="file-badge @action">@action</span> @Relative(file.Path)</div>
+            }
+        </div>
+
+        <div class="declarations">
+            @foreach (var edit in Plan.Declarations)
+            {
+                <details class="declaration" open="@(Plan.Declarations.Count <= 3)">
+                    <summary>
+                        <span class="change-badge @edit.Change.Change.ToString().ToLowerInvariant()">@edit.Change.Change</span>
+                        @edit.Change.Kind.ToString().ToLowerInvariant() <strong>@edit.Change.Name</strong>
+                        @if (edit.FilePath is not null)
+                        {
+                            <span class="declaration-file">@Relative(edit.FilePath)</span>
+                        }
+                    </summary>
+
+                    @foreach (var note in edit.Notes)
+                    {
+                        <div class="declaration-note">@note</div>
+                    }
+
+                    <div class="before-after">
+                        <div>
+                            <span class="column-label">Before</span>
+                            <pre>@(edit.Before ?? "(none)")</pre>
+                        </div>
+                        <div>
+                            <span class="column-label">After</span>
+                            <pre>@(edit.After ?? "(removed)")</pre>
+                        </div>
+                    </div>
+                </details>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="Close">Cancel</button>
+        <button class="btn btn-primary" @onclick="Commit">Write files</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    [Parameter, EditorRequired] public SourceCommitPlan Plan { get; set; }
+    [Parameter, EditorRequired] public string SourceDirectory { get; set; }
+    [Parameter] public EventCallback OnCommit { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    string Relative(string path) => Path.GetRelativePath(SourceDirectory, path);
+
+    Task Commit() => OnCommit.InvokeAsync();
+
+    Task Close() => OnClose.InvokeAsync();
+}

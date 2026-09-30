@@ -11,6 +11,7 @@
             <NavLink href="/" Match="NavLinkMatch.All">Corpus Captures</NavLink>
             <NavLink href="glyph-regex">Glyph Regex</NavLink>
             <NavLink href="echo-trees">Echo Trees</NavLink>
+            <NavLink href="grammar-tools">Grammar Tools</NavLink>
         </div>
 
         @if (RuntimeSettings.IsLoaded && RuntimeSettings.ShowCoverageStats && GetCurrentRelativePath() == "/" && CorpusAnalyzer.ProcessedDocuments is not null)
@@ -82,7 +83,8 @@
     {
         "/",
         "glyph-regex",
-        "echo-trees"
+        "echo-trees",
+        "grammar-tools",
     };
 
     protected override void OnInitialized()
@@ -141,7 +143,7 @@
 
     /// <summary>
     /// The bool-setting quick-toggle icons shown to the left of the settings button, specific to
-    /// whichever of the three pages is currently active — lets a viewer flip a view-affecting
+    /// whichever page is currently active — lets a viewer flip a view-affecting
     /// setting live without opening the settings dialog.
     /// </summary>
     List<PageSettingIcon> GetPageSettingIcons(string currentRelativePath)

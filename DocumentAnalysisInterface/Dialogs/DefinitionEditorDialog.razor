@@ -1,0 +1,86 @@
+<CustomDialog OnBackdropClick="Close" ContainerStyle="max-width: min(1500px, 94vw);">
+    <TitleContent>@Title</TitleContent>
+    <DialogContent>
+        <div class="editor-columns">
+            <div class="editor-column">
+                <span class="column-label">Definition (JSON)</span>
+                <textarea class="json-input" spellcheck="false" value="@_json" @oninput="OnInput"></textarea>
+            </div>
+            <div class="editor-column">
+                <span class="column-label">As C#</span>
+                @if (_previewError is null)
+                {
+                    <pre class="csharp-preview">@_preview</pre>
+                }
+                else
+                {
+                    <pre class="csharp-preview preview-error">@_previewError</pre>
+                }
+            </div>
+        </div>
+        <p class="editor-help">
+            Nibs are <code>{ "$nib": "literal", "Text": ... }</code>, <code>"pattern"</code> (<code>Regex</code>), <code>"alt"</code> (<code>Texts</code>),
+            <code>"opt"</code> (<code>Inner</code>), <code>"plural"</code> or <code>"prop"</code> (<code>Name</code>, <code>Proptions</code>).
+            Property types are <code>{ "Kind": "Vocabulary", "Name": ... }</code>, or Glyph, Bool, Primitive (<code>"int"</code>), Dynamic, and OneOf/CompoundOf/ManyOf/OptionalOf with <code>Arguments</code>.
+            Changes go to the working grammar only, and are scored as soon as they're applied.
+        </p>
+        @if (_applyError is not null)
+        {
+            <div class="apply-error">@_applyError</div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="Close">Cancel</button>
+        <button class="btn btn-primary" disabled="@(_previewError is not null)" @onclick="Apply">Apply to working grammar</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; }
+
+    /// <summary>The definition's JSON as the dialog opens.</summary>
+    [Parameter, EditorRequired] public string Json { get; set; }
+
+    /// <summary>The C# the given JSON would commit as; throws if the JSON can't be read.</summary>
+    [Parameter, EditorRequired] public Func<string, string> Preview { get; set; }
+
+    /// <summary>Applies the given JSON, returning an error to show, or null once it's applied.</summary>
+    [Parameter, EditorRequired] public Func<string, string> OnApply { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    string _json;
+    string _preview;
+    string _previewError;
+    string _applyError;
+
+    protected override void OnInitialized()
+    {
+        _json = Json;
+        UpdatePreview();
+    }
+
+    void OnInput(ChangeEventArgs e)
+    {
+        _json = e.Value?.ToString() ?? "";
+        _applyError = null;
+        UpdatePreview();
+    }
+
+    void UpdatePreview()
+    {
+        try
+        {
+            _preview = Preview(_json);
+            _previewError = null;
+        }
+        catch (Exception exception)
+        {
+            _previewError = exception.Message;
+        }
+    }
+
+    void Apply() => _applyError = OnApply(_json);
+
+    Task Close() => OnClose.InvokeAsync();
+}
