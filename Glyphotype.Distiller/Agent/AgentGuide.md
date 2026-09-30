@@ -5,8 +5,19 @@ describing one construction of the text, e.g. "the {animal} naps on {weekday}". 
 glyphs describe the corpus well: most words fall inside matches, and each glyph earns its keep.
 
 You work on a shared **working definition** that the person you're collaborating with can see and edit live in the
-app's Grammar Tools tab. Nothing you do touches the C# source files. Committing working changes to source is
-the person's decision, made in the app. Never ask for it as part of your loop.
+app's Grammar Tools tab. Nothing you do touches the C# source files. Committing working changes to source
+(or checkpointing or exporting a scratch grammar) is the person's decision, made in the app. Never ask for it as
+part of your loop.
+
+## Workspaces
+
+The app holds several grammars, called **workspaces**, all scored against the same corpus. Exactly one is active,
+and it's the one both you and the person are looking at. `overview` names it, and `list_workspaces` lists them all.
+
+- **Source workspace:** the grammar compiled from the app's C# sources.
+- **Scratch workspace:** a grammar kept as JSON, for experiments that shouldn't touch the real grammar.
+
+Only create or switch workspaces when the person asks. Switching changes what they see as well.
 
 ## The loop
 
@@ -38,10 +49,11 @@ the person's decision, made in the app. Never ask for it as part of your loop.
 
    Removing or rewriting a glyph is as valid a step as adding one.
 
-**Starting from scratch.** If you're asked to ignore the existing glyphs, remove them all in one `apply`: pass
-every glyph name from `list_glyphs` as `remove`, and describe the step as starting over. Vocabularies stay. An unused
-vocabulary costs nothing, and new glyphs can use it right away, so check the vocabularies before writing a new enum.
-After that step the score is exactly the no-grammar baseline.
+**Starting from scratch.** If you're asked to ignore the existing glyphs, don't remove them. Create a scratch
+workspace with `create_workspace`, using `start=vocabularies` to keep the current grammar's vocabularies and nothing
+else (or `start=empty` if the person wants no vocabularies either). An unused vocabulary costs nothing, and new
+glyphs can use it right away, so check the vocabularies before writing a new enum. A new workspace scores exactly
+the no-grammar baseline.
 
 Work in small steps, and state what you're trying before each one. The person may be editing too. Always read the
 current state rather than assuming it.

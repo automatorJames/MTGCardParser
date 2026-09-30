@@ -1,0 +1,194 @@
+@inject IJSRuntime JS
+
+<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(560px, 94vw);">
+    <TitleContent>@Title</TitleContent>
+    <DialogContent>
+        @switch (Action)
+        {
+            case WorkspaceAction.Create:
+                <label class="field">
+                    <span class="field-label">Name</span>
+                    <input class="form-control" @ref="_nameInput" @bind="_name" @bind:event="oninput" />
+                </label>
+
+                <div class="field">
+                    <span class="field-label">Start from</span>
+                    @foreach (var seed in Enum.GetValues<WorkspaceSeed>())
+                    {
+                        <label class="choice">
+                            <input type="radio" name="seed" checked="@(_seed == seed)" @onchange="() => _seed = seed" />
+                            <span>
+                                <strong>@SeedLabel(seed)</strong>
+                                <span class="choice-help">@SeedHelp(seed)</span>
+                            </span>
+                        </label>
+                    }
+                </div>
+
+                @if (_seed != WorkspaceSeed.Empty)
+                {
+                    <label class="field">
+                        <span class="field-label">@(_seed == WorkspaceSeed.Copy ? "Copy" : "Take vocabularies from")</span>
+                        <select class="form-control" @bind="_from">
+                            @foreach (var workspace in Workspaces.Workspaces)
+                            {
+                                <option value="@workspace.Name">@workspace.Name</option>
+                            }
+                        </select>
+                    </label>
+                }
+
+                <p class="dialog-note">
+                    A scratch workspace is a grammar of its own, kept as JSON in app data and scored against the same corpus. Nothing you do
+                    in it touches the C# sources: checkpoint it to save a baseline, and export it to take it out as C#.
+                </p>
+                break;
+
+            case WorkspaceAction.Rename:
+                <label class="field">
+                    <span class="field-label">New name</span>
+                    <input class="form-control" @ref="_nameInput" @bind="_name" @bind:event="oninput" />
+                </label>
+                break;
+
+            case WorkspaceAction.Delete:
+                <p>
+                    Delete the workspace <strong>@Workspaces.ActiveWorkspace.Name</strong>, with its checkpoint, working changes and step history?
+                    This can't be undone. Export it first to keep a copy.
+                </p>
+                break;
+
+            case WorkspaceAction.Export:
+                <label class="field">
+                    <span class="field-label">Namespace</span>
+                    <input class="form-control" @bind="_namespace" @bind:event="oninput" />
+                </label>
+                <p class="dialog-note">
+                    Downloads <strong>@FileName</strong>: the grammar as it stands (working changes included), with one C# file per glyph,
+                    vocabulary and marker declared in this namespace, plus the whole grammar as <code>grammar.json</code>.
+                </p>
+                break;
+        }
+
+        @if (_error is not null)
+        {
+            <div class="dialog-error">@_error</div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="Close">Cancel</button>
+        <button class="btn @(Action == WorkspaceAction.Delete ? "btn-danger" : "btn-primary")" @onclick="Confirm">@ConfirmLabel</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    public enum WorkspaceAction { Create, Rename, Delete, Export }
+
+    [Parameter, EditorRequired] public WorkspaceAction Action { get; set; }
+
+    [Parameter, EditorRequired] public WorkspaceManager Workspaces { get; set; }
+
+    /// <summary>Called with a message to show once the action is done.</summary>
+    [Parameter] public EventCallback<string> OnDone { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    string _name;
+    ElementReference _nameInput;
+    string _from;
+    string _namespace;
+    WorkspaceSeed _seed = WorkspaceSeed.Vocabularies;
+    string _error;
+
+    string ActiveName => Workspaces.ActiveWorkspace.Name;
+
+    protected override void OnInitialized()
+    {
+        _name = Action == WorkspaceAction.Rename ? ActiveName : DefaultName();
+        _from = ActiveName;
+        _namespace = WorkspaceManager.SuggestNamespace(ActiveName);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Action is WorkspaceAction.Create or WorkspaceAction.Rename)
+            await JS.InvokeVoidAsync("focusAndSelect", _nameInput);
+    }
+
+    /// <summary>"Scratch 1", or the first number after it no workspace is named with.</summary>
+    string DefaultName()
+    {
+        var names = Workspaces.Workspaces.Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return Enumerable.Range(1, int.MaxValue - 1).Select(x => $"Scratch {x}").First(x => !names.Contains(x));
+    }
+
+    string Title => Action switch
+    {
+        WorkspaceAction.Create => "New workspace",
+        WorkspaceAction.Rename => $"Rename {ActiveName}",
+        WorkspaceAction.Delete => $"Delete {ActiveName}",
+        _ => $"Export {ActiveName}",
+    };
+
+    string ConfirmLabel => Action switch
+    {
+        WorkspaceAction.Create => "Create and switch to it",
+        WorkspaceAction.Rename => "Rename",
+        WorkspaceAction.Delete => "Delete",
+        _ => "Download",
+    };
+
+    string FileName => $"{WorkspaceManager.SuggestNamespace(ActiveName)}.zip";
+
+    static string SeedLabel(WorkspaceSeed seed) => seed switch
+    {
+        WorkspaceSeed.Vocabularies => "Vocabularies only",
+        WorkspaceSeed.Copy => "A copy",
+        _ => "Nothing",
+    };
+
+    static string SeedHelp(WorkspaceSeed seed) => seed switch
+    {
+        WorkspaceSeed.Vocabularies => "Start from scratch, keeping another grammar's enums to build on. Unused vocabularies cost nothing.",
+        WorkspaceSeed.Copy => "Everything another grammar has as it stands, to try a variation on it.",
+        _ => "An empty grammar: no glyphs, no vocabularies.",
+    };
+
+    async Task Confirm()
+    {
+        try
+        {
+            switch (Action)
+            {
+                case WorkspaceAction.Create:
+                    var created = Workspaces.Create(_name, _seed, _from);
+                    await OnDone.InvokeAsync($"Created and switched to {created.Name}.");
+                    break;
+
+                case WorkspaceAction.Rename:
+                    var from = ActiveName;
+                    Workspaces.Rename(from, _name);
+                    await OnDone.InvokeAsync($"Renamed {from} to {Workspaces.ActiveWorkspace.Name}.");
+                    break;
+
+                case WorkspaceAction.Delete:
+                    var deleted = ActiveName;
+                    Workspaces.Delete(deleted);
+                    await OnDone.InvokeAsync($"Deleted {deleted}; switched to {Workspaces.ActiveWorkspace.Name}.");
+                    break;
+
+                case WorkspaceAction.Export:
+                    var zip = Workspaces.Export(ActiveName, _namespace?.Trim());
+                    await JS.InvokeVoidAsync("downloadFile", FileName, "application/zip", Convert.ToBase64String(zip));
+                    await OnDone.InvokeAsync(null);
+                    break;
+            }
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException)
+        {
+            _error = exception.Message;
+        }
+    }
+
+    Task Close() => OnClose.InvokeAsync();
+}

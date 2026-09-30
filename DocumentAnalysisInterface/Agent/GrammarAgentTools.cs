@@ -8,8 +8,8 @@ namespace DocumentAnalysisInterface.Agent;
 
 /// <summary>
 /// The <see cref="GrammarAgent"/>'s methods as MCP tools, served from this app at <c>/mcp</c> - so an agent works on
-/// the same live workbench the Grammar Tools tab shows, and a person there sees each step as it lands. No tool
-/// commits to C#: that stays the person's decision, in the app.
+/// the same live workbench the Grammar Tools tab shows (whichever workspace is active), and a person there sees each
+/// step as it lands. No tool commits to C#, checkpoints or exports: those stay the person's decisions, in the app.
 /// </summary>
 [McpServerToolType]
 public sealed class GrammarAgentTools(GrammarAgent agent)
@@ -26,6 +26,24 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
 
     [McpServerTool(Name = "guide", ReadOnly = true, Idempotent = true), Description("How to work: the loop, how the score works, how to write glyphs in C#, and habits that work. Read once before the first change.")]
     public static string Guide() => GrammarAgent.Guide;
+
+    [McpServerTool(Name = "list_workspaces", ReadOnly = true), Description("The grammars (workspaces) the app holds, which one is active - the one you and the person both see - and what each kind is.")]
+    public Task<string> ListWorkspaces() =>
+        Run(() => Task.FromResult(agent.ListWorkspaces()));
+
+    [McpServerTool(Name = "create_workspace"), Description(
+        "Creates a scratch workspace - a grammar kept as JSON, apart from the app's C# sources - and makes it active for you and the person. " +
+        "Only when the person asks, e.g. to start from scratch.")]
+    public Task<string> CreateWorkspace(
+        [Description("A name for it.")] string name,
+        [Description("empty: nothing. vocabularies (for starting from scratch): another workspace's vocabularies and nothing else. copy: everything another workspace has.")] string start = "empty",
+        [Description("The workspace to take vocabularies from, or copy - the active one by default.")] string from = null,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.CreateWorkspaceAsync(name, start, from, cancellation));
+
+    [McpServerTool(Name = "switch_workspace"), Description("Makes another workspace active - for the person too, so only when they ask.")]
+    public Task<string> SwitchWorkspace([Description("The workspace's name.")] string name, CancellationToken cancellation = default) =>
+        Run(() => agent.SwitchWorkspaceAsync(name, cancellation));
 
     [McpServerTool(Name = "list_glyphs", ReadOnly = true), Description("Every glyph with its net bits, top-level matches, words covered and definition cost; every vocabulary with its cost and the glyphs using it.")]
     public Task<string> ListGlyphs(

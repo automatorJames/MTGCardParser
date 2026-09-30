@@ -1,4 +1,6 @@
-﻿<div class="custom-dialog-backdrop" @onclick="HandleBackdropClick">
+﻿@inject IJSRuntime JS
+
+<div class="custom-dialog-backdrop" @onclick="HandleBackdropClick">
     <div class="custom-dialog-container" style="@ContainerStyle" @onclick:stopPropagation="true"
          tabindex="-1" @ref="_container" @onkeydown="HandleKeyDown">
         @if (TitleContent != null)
@@ -44,7 +46,7 @@
     /// <summary>
     /// Whether Escape dismisses the dialog, the same way a backdrop click does (<see cref="OnBackdropClick"/>). Opt-in, since
     /// a dialog holding unsaved input (an editor) shouldn't lose it to a stray keypress. The dialog takes focus when it opens,
-    /// so Escape works straight away.
+    /// so Escape works straight away - unless something inside it (a field the caller focused) already has it.
     /// </summary>
     [Parameter]
     public bool CloseOnEscape { get; set; }
@@ -54,7 +56,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && CloseOnEscape)
-            await _container.FocusAsync();
+            await JS.InvokeVoidAsync("focusUnlessWithin", _container);
     }
 
     private Task HandleBackdropClick() => OnBackdropClick.InvokeAsync();

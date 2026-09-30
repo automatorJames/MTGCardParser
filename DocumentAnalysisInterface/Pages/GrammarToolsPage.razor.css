@@ -325,3 +325,52 @@
     .data-table th.centered {
         text-align: center;
     }
+
+/* Workspace bar: which grammar the whole page (and any agent) is working on */
+
+.workspace-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background-color: var(--light-grey);
+    border: 1px solid var(--outline-grey);
+    border-radius: 10px;
+}
+
+.workspace-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--subtext-grey);
+}
+
+.workspace-select {
+    min-width: 14rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--outline-grey);
+    border-radius: 6px;
+    background-color: var(--dark-grey);
+    color: #f0f4f8;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.workspace-kind {
+    padding: 0.05rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+    .workspace-kind.source {
+        color: #569cd6;
+        background-color: rgba(86, 156, 214, 0.12);
+    }
+
+    .workspace-kind.scratch {
+        color: var(--teal);
+        background-color: rgba(145, 186, 170, 0.14);
+    }

@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Glyphotype.Distiller.Inspection;
 using Glyphotype.Distiller.Scoring;
 using Glyphotype.Distiller.Workbench;
+using Glyphotype.Distiller.Workspaces;
 
 namespace Glyphotype.Distiller.Agent;
 
@@ -12,15 +13,38 @@ public sealed class AgentRequestException(string message, Exception inner = null
 /// Everything an agent needs to compose a grammar over one <see cref="GrammarWorkbench"/>, as plain-text reports:
 /// orientation (score, glyphs, definitions), inspection (lines, matches, residual text), probing (tokenize and
 /// explain a draft on any text), and stepping (evaluate a change set without making it, apply it as a step,
-/// undo). The workbench is shared - a person editing the same one sees every step, and the agent sees theirs.
+/// undo) - and, given a <see cref="WorkspaceManager"/>, choosing which grammar to work on. The workbench is shared - a
+/// person editing the same one sees every step, and the agent sees theirs.
 /// <para>
 /// Host-independent: a tool server (or anything else) exposes these methods as they are. Every method reads the
 /// workbench's state afresh, and waits for a re-score under way. Requests that can't be carried out throw
 /// <see cref="AgentRequestException"/>, with a message saying what to do instead.
 /// </para>
 /// </summary>
-public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescription)
+public sealed class GrammarAgent
 {
+    readonly Func<GrammarWorkbench> _workbench;
+    readonly WorkspaceManager _workspaces;
+    readonly string _corpusDescription;
+
+    /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
+    public GrammarAgent(WorkspaceManager workspaces, string corpusDescription)
+    {
+        _workspaces = workspaces;
+        _workbench = () => workspaces.Active;
+        _corpusDescription = corpusDescription;
+    }
+
+    /// <summary>An agent working on <paramref name="workbench"/> alone.</summary>
+    public GrammarAgent(GrammarWorkbench workbench, string corpusDescription)
+    {
+        _workbench = () => workbench;
+        _corpusDescription = corpusDescription;
+    }
+
+    /// <summary>The workbench of the active workspace - read afresh by every request, so a switch takes effect at once.</summary>
+    GrammarWorkbench Workbench => _workbench();
+
     /// <summary>The guide to the workbench, its scoring, and writing glyphs - see <c>AgentGuide.md</c>.</summary>
     public static string Guide { get; } = LoadGuide();
 
@@ -29,7 +53,8 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
         "Tools for composing a grammar over a text corpus, glyph by glyph, on a working definition shared live with a person. " +
         "Start with `overview`, then read `guide` once: it explains the loop (find recurring unmatched text, draft a glyph in C#, " +
         "`tokenize`/`explain_mismatch` it, `evaluate` it, `apply` it), how the score works, and how to write glyphs. " +
-        "Committing to C# source is the person's decision, made in the app - never part of the loop.";
+        "The active workspace (named in `overview`) is the grammar both you and the person see; create or switch workspaces only when asked. " +
+        "Committing to C# source, or checkpointing or exporting a scratch workspace, is the person's decision, made in the app - never part of the loop.";
 
     static string LoadGuide()
     {
@@ -43,13 +68,16 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
 
     public async Task<string> OverviewAsync(CancellationToken cancellation = default)
     {
-        var trial = await workbench.GetCurrentTrialAsync(cancellation);
+        var trial = await Workbench.GetCurrentTrialAsync(cancellation);
         var definition = trial.Definition;
         var report = new StringBuilder();
 
-        report.AppendLine($"Corpus: {corpusDescription} ({workbench.Documents.Count:N0} documents).");
+        if (_workspaces is not null)
+            report.AppendLine($"Workspace: {DescribeWorkspace(_workspaces.ActiveWorkspace)}.");
+
+        report.AppendLine($"Corpus: {_corpusDescription} ({Workbench.Documents.Count:N0} documents).");
         report.AppendLine($"Working grammar: {definition.Glyphs.Count} glyphs, {definition.Vocabularies.Count} vocabularies. "
-            + $"{workbench.Changes.Count} uncommitted change{S(workbench.Changes.Count)}, {workbench.History.Count} step{S(workbench.History.Count)} this session.");
+            + $"{Workbench.Changes.Count} uncommitted change{S(Workbench.Changes.Count)}, {Workbench.History.Count} step{S(Workbench.History.Count)} this session.");
 
         if (!trial.Succeeded)
         {
@@ -73,7 +101,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
         report.AppendLine("Costliest unmatched text:");
         AppendResiduals(report, score.Residuals.OrderByDescending(x => x.Bits).Take(10), score);
 
-        if (workbench.Changes.Count == 0 && workbench.History.Count == 0)
+        if (Workbench.Changes.Count == 0 && Workbench.History.Count == 0)
         {
             report.AppendLine();
             report.AppendLine("New here? Read `guide` before your first change.");
@@ -89,7 +117,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
         var trial = await GetScoredTrialAsync(cancellation);
         var definition = trial.Definition;
         var contributions = trial.Score.Glyphs.ToDictionary(x => x.Name);
-        var status = workbench.Changes.ToDictionary(x => (x.Kind, x.Name), x => x.Change);
+        var status = Workbench.Changes.ToDictionary(x => (x.Kind, x.Name), x => x.Change);
 
         var glyphs = definition.Glyphs.Select(x => (Glyph: x, Contribution: contributions.GetValueOrDefault(x.Name))).ToList();
 
@@ -140,8 +168,8 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
     /// <param name="names">Comma- or space-separated names.</param>
     public string Show(string names)
     {
-        var definition = workbench.WorkingDefinition;
-        var status = workbench.Changes.ToDictionary(x => x.Name, x => x.Change);
+        var definition = Workbench.WorkingDefinition;
+        var status = Workbench.Changes.ToDictionary(x => x.Name, x => x.Change);
         var report = new StringBuilder();
 
         foreach (var name in SplitNames(names))
@@ -160,6 +188,53 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
 
         return report.ToString().TrimEnd() + Environment.NewLine;
     }
+
+    // ---- Workspaces ----
+
+    /// <summary>Every workspace, which one is active, and what each kind means.</summary>
+    public string ListWorkspaces()
+    {
+        var workspaces = RequireWorkspaces();
+        var report = new StringBuilder();
+
+        report.AppendLine("Workspaces (* is active - it's what you and the person are both looking at):");
+
+        foreach (var workspace in workspaces.Workspaces)
+            report.AppendLine($"  {(workspace == workspaces.ActiveWorkspace ? "*" : " ")} {DescribeWorkspace(workspace)}");
+
+        report.AppendLine();
+        report.AppendLine("A source workspace's grammar is the app's C# sources; a scratch workspace's is kept as JSON and exported as C# by the person.");
+        return report.ToString();
+    }
+
+    /// <summary>Creates a scratch workspace and makes it active - only when the person asked for one.</summary>
+    /// <param name="start">"empty", "vocabularies" (another workspace's vocabularies and nothing else) or "copy".</param>
+    /// <param name="from">The workspace to take vocabularies from, or copy - the active one by default.</param>
+    public async Task<string> CreateWorkspaceAsync(string name, string start = "empty", string from = null, CancellationToken cancellation = default)
+    {
+        var workspaces = RequireWorkspaces();
+
+        if (!Enum.TryParse<WorkspaceSeed>(start, ignoreCase: true, out var seed))
+            throw new AgentRequestException($"Unknown start '{start}': use empty, vocabularies or copy.");
+
+        var workspace = Try(() => workspaces.Create(name, seed, NullIfBlank(from)));
+        return $"Created and switched to {DescribeWorkspace(workspace)}.{Environment.NewLine}{Environment.NewLine}{await OverviewAsync(cancellation)}";
+    }
+
+    /// <summary>Makes another workspace active - only when the person asked for it, since it changes what they see too.</summary>
+    public async Task<string> SwitchWorkspaceAsync(string name, CancellationToken cancellation = default)
+    {
+        var workspaces = RequireWorkspaces();
+        Try(() => workspaces.Switch(name));
+
+        return $"Switched to {DescribeWorkspace(workspaces.ActiveWorkspace)}.{Environment.NewLine}{Environment.NewLine}{await OverviewAsync(cancellation)}";
+    }
+
+    WorkspaceManager RequireWorkspaces() =>
+        _workspaces ?? throw new AgentRequestException("This host serves one grammar, without workspaces.");
+
+    static string DescribeWorkspace(WorkspaceInfo workspace) =>
+        $"{workspace.Name} ({(workspace.Kind == WorkspaceKind.Source ? "source - the app's C# sources" : "scratch - kept as JSON")})";
 
     // ---- Stepping ----
 
@@ -185,7 +260,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
         if (!evaluation.After.Succeeded)
             return $"Not applied - the result wouldn't build: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
 
-        var step = Try(() => workbench.Apply(changes, description))
+        var step = Try(() => Workbench.Apply(changes, description))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
         return $"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
@@ -194,9 +269,9 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
     /// <summary>Takes back the latest step, whoever made it.</summary>
     public async Task<string> UndoAsync(CancellationToken cancellation = default)
     {
-        var before = await workbench.GetCurrentTrialAsync(cancellation);
-        var step = Try(workbench.Undo);
-        var after = await workbench.GetCurrentTrialAsync(cancellation);
+        var before = await Workbench.GetCurrentTrialAsync(cancellation);
+        var step = Try(Workbench.Undo);
+        var after = await Workbench.GetCurrentTrialAsync(cancellation);
 
         return $"Undid step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(new(new ChangeSet(), before, after), lineLimit: 5)}";
     }
@@ -204,12 +279,12 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
     /// <summary>Returns the named glyph or vocabulary to its committed state, as one step.</summary>
     public async Task<string> RevertAsync(string name, CancellationToken cancellation = default)
     {
-        var before = await workbench.GetCurrentTrialAsync(cancellation);
-        var kind = workbench.Changes.FirstOrDefault(x => x.Name == name)?.Kind
-            ?? throw new AgentRequestException($"{name} has no uncommitted changes to revert{Suggest(name, workbench.WorkingDefinition)}");
+        var before = await Workbench.GetCurrentTrialAsync(cancellation);
+        var kind = Workbench.Changes.FirstOrDefault(x => x.Name == name)?.Kind
+            ?? throw new AgentRequestException($"{name} has no uncommitted changes to revert{Suggest(name, Workbench.WorkingDefinition)}");
 
-        Try(() => workbench.Revert(kind, name));
-        var after = await workbench.GetCurrentTrialAsync(cancellation);
+        Try(() => Workbench.Revert(kind, name));
+        var after = await Workbench.GetCurrentTrialAsync(cancellation);
 
         return $"Reverted {kind.ToString().ToLowerInvariant()} {name} to its committed state{Environment.NewLine}{DescribeEvaluation(new(new ChangeSet(), before, after), lineLimit: 5)}";
     }
@@ -217,7 +292,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
     /// <summary>The steps made this session, newest first, and what's uncommitted.</summary>
     public string History(int limit = 20)
     {
-        var history = workbench.History;
+        var history = Workbench.History;
         var report = new StringBuilder();
 
         report.AppendLine(history.Count == 0
@@ -231,9 +306,9 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
             report.AppendLine($"  … {history.Count - limit} older");
 
         report.AppendLine();
-        report.AppendLine(workbench.Changes.Count == 0
+        report.AppendLine(Workbench.Changes.Count == 0
             ? "The working definition matches the committed grammar."
-            : $"Uncommitted changes against the committed grammar: {string.Join(", ", workbench.Changes.Select(x => $"{x.Name} ({x.Change.ToString().ToLowerInvariant()})"))}");
+            : $"Uncommitted changes against the committed grammar: {string.Join(", ", Workbench.Changes.Select(x => $"{x.Name} ({x.Change.ToString().ToLowerInvariant()})"))}");
 
         return report.ToString();
     }
@@ -349,7 +424,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
 
     ChangeSet ReadChanges(string source, string remove)
     {
-        var changes = Try(() => ChangeSet.FromSource(source, SplitNames(remove), workbench.WorkingDefinition));
+        var changes = Try(() => ChangeSet.FromSource(source, SplitNames(remove), Workbench.WorkingDefinition));
 
         if (changes.IsEmpty)
             throw new AgentRequestException("The change set is empty: pass C# declarations as source, names to remove, or both.");
@@ -359,7 +434,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
 
     async Task<Evaluation> Evaluate(ChangeSet changes, CancellationToken cancellation)
     {
-        var evaluation = await TryAsync(() => workbench.EvaluateAsync(changes, cancellation));
+        var evaluation = await TryAsync(() => Workbench.EvaluateAsync(changes, cancellation));
 
         if (!evaluation.Before.Succeeded)
             throw new AgentRequestException("The working definition doesn't build, so there's nothing to compare against. Fix it or undo the breaking step first:"
@@ -438,7 +513,7 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
 
     async Task<WorkingScore> GetScoredTrialAsync(CancellationToken cancellation)
     {
-        var trial = await workbench.GetCurrentTrialAsync(cancellation);
+        var trial = await Workbench.GetCurrentTrialAsync(cancellation);
 
         if (!trial.Succeeded)
             throw new AgentRequestException("The working definition doesn't build, so the corpus can't be inspected. Fix it (`apply`) or `undo` the breaking step:"
@@ -452,11 +527,11 @@ public sealed class GrammarAgent(GrammarWorkbench workbench, string corpusDescri
         if (string.IsNullOrWhiteSpace(source) && string.IsNullOrWhiteSpace(remove))
             return (await GetScoredTrialAsync(cancellation)).Grammar;
 
-        var definition = Try(() => ReadChanges(source, remove).ApplyTo(workbench.WorkingDefinition));
+        var definition = Try(() => ReadChanges(source, remove).ApplyTo(Workbench.WorkingDefinition));
 
         try
         {
-            return workbench.BuildGrammar(definition);
+            return Workbench.BuildGrammar(definition);
         }
         catch (AggregateException exception)
         {

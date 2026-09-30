@@ -2,7 +2,7 @@
 @implements IDisposable
 @inject IServiceProvider Services
 
-@if (_committed is null)
+@if (Workspaces is null)
 {
     <LoadingIndicator Label="Scoring the committed grammar..." />
 }
@@ -10,6 +10,59 @@ else
 {
     <div class="grammar-tools">
 
+        <section class="workspace-bar">
+            <span class="workspace-label">Workspace</span>
+            <select class="workspace-select" value="@Workspaces.ActiveWorkspace.Name" @onchange="e => Try(() => Workspaces.Switch((string)e.Value))">
+                @foreach (var workspace in Workspaces.Workspaces)
+                {
+                    <option value="@workspace.Name">@workspace.Name</option>
+                }
+            </select>
+            <span class="workspace-kind @(Workbench.IsSourceBacked ? "source" : "scratch")">@(Workbench.IsSourceBacked ? "C# sources" : "scratch")</span>
+            <span class="panel-subtext">
+                @(Workbench.IsSourceBacked
+                    ? "the grammar compiled from the app's C# sources - committing writes to them"
+                    : "a grammar of its own, kept as JSON - checkpoint to save a baseline, export to take it out as C#")
+            </span>
+            <div class="panel-actions">
+                <button class="btn btn-sm btn-secondary" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Create">New workspace</button>
+                @if (!Workbench.IsSourceBacked)
+                {
+                    <button class="btn btn-sm btn-secondary" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Rename">Rename</button>
+                    <button class="btn btn-sm btn-secondary" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Delete">Delete</button>
+                }
+                <button class="btn btn-sm btn-secondary" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Export">Export</button>
+            </div>
+        </section>
+
+        @if (_notice is not null)
+        {
+            <div class="notice" @onclick="() => _notice = null">@_notice <span class="notice-dismiss">×</span></div>
+        }
+
+        @if (_committed is null)
+        {
+            @if (_committedErrors is { Count: > 0 } committedErrors)
+            {
+                <section class="panel">
+                    <div class="status-errors">
+                        <span>@Workspaces.ActiveWorkspace.Name's @BaselineNoun doesn't build:</span>
+                        <ul>
+                            @foreach (var error in committedErrors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </div>
+                </section>
+            }
+            else
+            {
+                <LoadingIndicator Label="@($"Scoring {Workspaces.ActiveWorkspace.Name}...")" />
+            }
+        }
+        else
+        {
         <section class="panel scorecard">
             <div class="panel-header">
                 <h3>Score</h3>
@@ -19,7 +72,7 @@ else
 
             <table class="metrics">
                 <thead>
-                    <tr><th></th><th>Committed</th><th>Working</th><th>Change</th></tr>
+                    <tr><th></th><th title="@BaselineTooltip">@(Workbench.IsSourceBacked ? "Committed" : "Checkpoint")</th><th>Working</th><th>Change</th></tr>
                 </thead>
                 @foreach (var group in GetMetricGroups())
                 {
@@ -57,7 +110,7 @@ else
                 }
                 else if (!Workbench.HasChanges)
                 {
-                    <span class="status-quiet">The working grammar matches the committed grammar. Toggle or edit glyphs below to try changes.</span>
+                    <span class="status-quiet">The working grammar matches the @BaselineNoun. Toggle or edit glyphs below to try changes.</span>
                 }
                 else if (Workbench.LatestWorkingScore is { Succeeded: true } latest)
                 {
@@ -65,11 +118,6 @@ else
                 }
             </div>
         </section>
-
-        @if (_notice is not null)
-        {
-            <div class="notice" @onclick="() => _notice = null">@_notice <span class="notice-dismiss">×</span></div>
-        }
 
         @if (Workbench.HasChanges)
         {
@@ -79,7 +127,14 @@ else
                     <span class="panel-subtext">saved to @Workbench.WorkingDefinitionPath</span>
                     <div class="panel-actions">
                         <button class="btn btn-sm btn-secondary" @onclick="() => Try(Workbench.RevertAll)">Revert all</button>
-                        <button class="btn btn-sm btn-primary" @onclick="OpenCommit">Commit to C#</button>
+                        @if (Workbench.IsSourceBacked)
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="OpenCommit">Commit to C#</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-primary" title="Save the working grammar as this workspace's baseline" @onclick="Checkpoint">Checkpoint</button>
+                        }
                     </div>
                 </div>
 
@@ -218,7 +273,13 @@ else
                 </tbody>
             </table>
         </section>
+        }
     </div>
+}
+
+@if (_workspaceAction is WorkspaceDialog.WorkspaceAction action)
+{
+    <WorkspaceDialog Action="action" Workspaces="Workspaces" OnDone="WorkspaceActionDone" OnClose="() => _workspaceAction = null" />
 }
 
 @if (_editor is not null)
@@ -245,7 +306,9 @@ else
     const int ResidualRows = 40;
 
     MdlScore _committed;
+    IReadOnlyList<string> _committedErrors;
     MdlScore _working;
+    WorkspaceDialog.WorkspaceAction? _workspaceAction;
     string _notice;
     bool _showNestedOnly;
     GlyphSort _sort = GlyphSort.Net;
@@ -278,7 +341,20 @@ else
         Workbench.LatestWorkingScore is { Succeeded: false } latest && latest.Definition == Workbench.WorkingDefinition ? latest.Errors : null;
 
     /// <summary>Resolved once the page is showing its loading indicator (see <see cref="OnAfterRenderAsync"/>), not injected: building it reads the whole committed grammar.</summary>
-    GrammarWorkbench Workbench;
+    WorkspaceManager Workspaces;
+
+    /// <summary>The active workspace's workbench - whichever that is right now, whoever switched to it.</summary>
+    GrammarWorkbench Workbench => Workspaces.Active;
+
+    /// <summary>The workbench whose <see cref="GrammarWorkbench.Changed"/> this page is listening to.</summary>
+    GrammarWorkbench _listeningTo;
+
+    /// <summary>What the committed column is, for this workspace's kind.</summary>
+    string BaselineNoun => Workbench.IsSourceBacked ? "committed grammar" : "last checkpoint";
+
+    string BaselineTooltip => Workbench.IsSourceBacked
+        ? "The grammar the C# sources compile to"
+        : "The workspace's baseline: what it started as, or was last checkpointed as";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -287,17 +363,50 @@ else
 
         // Off the render thread, after the loading indicator has reached the browser: the first visit builds the
         // workbench and scores the committed grammar, both of which take a moment.
-        Workbench = await Task.Run(() => Services.GetRequiredService<GrammarWorkbench>());
-        Workbench.Changed += OnWorkbenchChanged;
+        Workspaces = await Task.Run(() => Services.GetRequiredService<WorkspaceManager>());
+        Workspaces.ActiveChanged += OnActiveChanged;
+        Listen();
+        StateHasChanged();
         await RefreshScoresAsync();
         StateHasChanged();
     }
 
     public void Dispose()
     {
-        if (Workbench is not null)
-            Workbench.Changed -= OnWorkbenchChanged;
+        if (Workspaces is not null)
+            Workspaces.ActiveChanged -= OnActiveChanged;
+
+        if (_listeningTo is not null)
+            _listeningTo.Changed -= OnWorkbenchChanged;
     }
+
+    void Listen()
+    {
+        if (_listeningTo is not null)
+            _listeningTo.Changed -= OnWorkbenchChanged;
+
+        _listeningTo = Workbench;
+        _listeningTo.Changed += OnWorkbenchChanged;
+    }
+
+    void OnActiveChanged() =>
+        _ = InvokeAsync(async () =>
+        {
+            if (_listeningTo != Workbench)
+            {
+                // Another grammar entirely: nothing shown for the last one applies.
+                Listen();
+                _committed = _working = null;
+                _committedErrors = null;
+                _viewer = null;
+                _editor = null;
+                _commitPlan = null;
+            }
+
+            StateHasChanged();
+            await RefreshScoresAsync();
+            StateHasChanged();
+        });
 
     void OnWorkbenchChanged() =>
         _ = InvokeAsync(async () =>
@@ -308,8 +417,23 @@ else
 
     async Task RefreshScoresAsync()
     {
-        _committed = await Workbench.GetCommittedScoreAsync();
-        _working = await Workbench.GetCurrentWorkingScoreAsync();
+        var workbench = Workbench;
+        var committed = await workbench.GetCommittedTrialAsync();
+        var working = await workbench.GetCurrentWorkingScoreAsync();
+
+        // A switch while this was scoring: the other workspace's refresh owns the page now.
+        if (workbench != Workbench)
+            return;
+
+        _committed = committed.Score;
+        _committedErrors = committed.Errors;
+        _working = working;
+    }
+
+    void WorkspaceActionDone(string notice)
+    {
+        _workspaceAction = null;
+        _notice = notice;
     }
 
     // ---- Scorecard ----
@@ -514,6 +638,13 @@ else
     // ---- Committing ----
 
     void OpenCommit() => Try(() => _commitPlan = Workbench.PlanCommit());
+
+    void Checkpoint() =>
+        Try(() =>
+        {
+            Workbench.Checkpoint();
+            _notice = $"Checkpointed {Workspaces.ActiveWorkspace.Name}: the working grammar is its baseline now.";
+        });
 
     void Commit()
     {

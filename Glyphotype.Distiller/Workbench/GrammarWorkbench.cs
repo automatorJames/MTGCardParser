@@ -4,10 +4,21 @@ namespace Glyphotype.Distiller.Workbench;
 
 /// <summary>Where a <see cref="GrammarWorkbench"/> keeps its working definition, and where and how it commits.</summary>
 /// <param name="WorkingDefinitionPath">The JSON file the working definition is saved to after every edit, and restored from on startup.</param>
-/// <param name="SourceDirectory">The directory holding the committed grammar's C# sources - declarations are found anywhere beneath it, and new ones written into it.</param>
+/// <param name="SourceDirectory">
+/// The directory holding the committed grammar's C# sources - declarations are found anywhere beneath it, and new ones
+/// written into it. Null for a workbench whose baseline is kept as JSON instead (see <paramref name="BaselinePath"/>).
+/// </param>
 /// <param name="SourceNamespace">The namespace new source files declare.</param>
 /// <param name="AllowPartialSegmentMatches">The setting working grammars are tokenized under - the committed grammar's own.</param>
-public sealed record WorkbenchOptions(string WorkingDefinitionPath, string SourceDirectory, string SourceNamespace, bool AllowPartialSegmentMatches);
+/// <param name="BaselinePath">For a workbench with no C# sources: the JSON file its baseline (see <see cref="GrammarWorkbench.Checkpoint"/>) is kept in.</param>
+/// <param name="HistoryPath">The JSON file <see cref="GrammarWorkbench.History"/> is saved to after every step, so undo survives a restart - or null to keep it in memory only.</param>
+public sealed record WorkbenchOptions(
+    string WorkingDefinitionPath,
+    string SourceDirectory,
+    string SourceNamespace,
+    bool AllowPartialSegmentMatches,
+    string BaselinePath = null,
+    string HistoryPath = null);
 
 /// <summary>The outcome of scoring one working definition: a score, or the reasons it couldn't be built.</summary>
 public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, IReadOnlyList<string> Errors, TimeSpan Elapsed)
@@ -32,7 +43,8 @@ public sealed record Evaluation(ChangeSet Changes, WorkingScore Before, WorkingS
 /// <summary>
 /// A committed grammar, and a working definition to experiment on top of it: edits go to the working definition
 /// only - saved as JSON, and re-scored against the same corpus in the background after each one - until
-/// <see cref="Commit"/> writes them into the committed grammar's C# sources.
+/// <see cref="Commit"/> writes them into the committed grammar's C# sources. A workbench with no sources keeps its
+/// committed grammar (its baseline) as JSON, and <see cref="Checkpoint"/>s into that instead.
 /// <para>
 /// Thread-safe: edits are serialized, and a re-score that an edit makes stale is cancelled and its result
 /// discarded - so several editors (a person in a UI, an agent through tools) can work on one workbench, each
@@ -41,7 +53,7 @@ public sealed record Evaluation(ChangeSet Changes, WorkingScore Before, WorkingS
 /// which <see cref="Undo"/> walks back.
 /// </para>
 /// </summary>
-public sealed class GrammarWorkbench
+public sealed class GrammarWorkbench : IDisposable
 {
     readonly IReadOnlyList<IDocument> _documents;
     readonly WorkbenchOptions _options;
@@ -55,7 +67,7 @@ public sealed class GrammarWorkbench
     const int _recentScoreCapacity = 2;
 
     readonly List<WorkbenchStep> _history = [];
-    const int _historyCapacity = 500;
+    const int _historyCapacity = 100;
     int _stepNumber;
 
     CancellationTokenSource _scoring;
@@ -71,11 +83,40 @@ public sealed class GrammarWorkbench
 
         _committedGrammar = committedGrammar;
         _committedDocuments = committedDocuments;
-        var committed = committedGrammar.ToDefinition();
+        Initialize(committedGrammar.ToDefinition());
+    }
+
+    /// <summary>
+    /// A workbench with no C# sources behind it: its committed grammar is <paramref name="baseline"/> (kept at
+    /// <see cref="WorkbenchOptions.BaselinePath"/>), built and scored against <paramref name="documents"/> on first request.
+    /// </summary>
+    public GrammarWorkbench(GrammarDefinition baseline, IReadOnlyList<IDocument> documents, WorkbenchOptions options)
+    {
+        if (options.SourceDirectory is not null || options.BaselinePath is null)
+            throw new ArgumentException("A workbench without a compiled grammar keeps its baseline as JSON: give it a BaselinePath, and no SourceDirectory");
+
+        _documents = documents;
+        _options = options;
+        Initialize(baseline);
+    }
+
+    void Initialize(GrammarDefinition committed)
+    {
         SetDefinitions(committed, LoadWorkingDefinition() ?? committed);
+        LoadHistory();
 
         if (HasChanges)
             _ = RescoreAsync();
+    }
+
+    /// <summary>Whether the committed grammar is C# sources, which <see cref="Commit"/> writes to - else a JSON baseline, which <see cref="Checkpoint"/> writes to.</summary>
+    public bool IsSourceBacked => _options.SourceDirectory is not null;
+
+    /// <summary>Stops any re-score under way.</summary>
+    public void Dispose()
+    {
+        lock (_gate)
+            _scoring?.Cancel();
     }
 
     public event Action Changed;
@@ -129,6 +170,13 @@ public sealed class GrammarWorkbench
     public Task<WorkingScore> GetCommittedTrialAsync()
     {
         lock (_gate)
+        {
+            if (_committedGrammar is null)
+            {
+                var baseline = CommittedDefinition;
+                return _committedTrial ??= Task.Run(() => Score(baseline, CancellationToken.None));
+            }
+
             return _committedTrial ??= Task.Run(() =>
             {
                 var started = DateTime.UtcNow;
@@ -136,6 +184,7 @@ public sealed class GrammarWorkbench
 
                 return new WorkingScore(CommittedDefinition, score, [], DateTime.UtcNow - started) { Grammar = _committedGrammar, Documents = _committedDocuments };
             });
+        }
     }
 
     /// <summary>
@@ -247,6 +296,7 @@ public sealed class GrammarWorkbench
 
             SetDefinitions(CommittedDefinition, step.Before);
             SaveWorkingDefinition();
+            SaveHistory();
         }
 
         Changed?.Invoke();
@@ -274,6 +324,7 @@ public sealed class GrammarWorkbench
 
             SetDefinitions(CommittedDefinition, after);
             SaveWorkingDefinition();
+            SaveHistory();
         }
 
         Changed?.Invoke();
@@ -430,7 +481,9 @@ public sealed class GrammarWorkbench
 
     /// <summary>The source edits committing the working definition would make, for review.</summary>
     public SourceCommitPlan PlanCommit() =>
-        SourceCommitter.Plan(CommittedDefinition, WorkingDefinition, _options.SourceDirectory, _options.SourceNamespace);
+        IsSourceBacked
+            ? SourceCommitter.Plan(CommittedDefinition, WorkingDefinition, _options.SourceDirectory, _options.SourceNamespace)
+            : throw new InvalidOperationException("This grammar has no C# sources to commit to - checkpoint it instead, or export it");
 
     /// <summary>
     /// Writes <paramref name="plan"/> (from <see cref="PlanCommit"/>) into the sources, after which the working
@@ -453,6 +506,36 @@ public sealed class GrammarWorkbench
 
             SetDefinitions(WorkingDefinition, WorkingDefinition);
             SaveWorkingDefinition();
+            SaveHistory();
+        }
+
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// For a workbench without C# sources: makes the working definition the committed one, saved as its baseline -
+    /// what <see cref="Commit"/> does for sources. Refused until the working definition has been scored and builds,
+    /// so a baseline always does. <see cref="History"/> starts over.
+    /// </summary>
+    public void Checkpoint()
+    {
+        if (IsSourceBacked)
+            throw new InvalidOperationException("This grammar's committed form is its C# sources - commit to them instead");
+
+        lock (_gate)
+        {
+            if (HasChanges && (LatestWorkingScore is not { Succeeded: true } latest || latest.Definition != WorkingDefinition))
+                throw new InvalidOperationException("Only a working grammar that's been scored and builds can be checkpointed - wait for scoring to finish, or fix what doesn't build");
+
+            if (HasChanges)
+                _committedTrial = Task.FromResult(LatestWorkingScore);
+
+            _history.Clear();
+
+            SetDefinitions(WorkingDefinition, WorkingDefinition);
+            WriteFile(_options.BaselinePath, WorkingDefinition.ToJson());
+            SaveWorkingDefinition();
+            SaveHistory();
         }
 
         Changed?.Invoke();
@@ -484,7 +567,51 @@ public sealed class GrammarWorkbench
             return;
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(_options.WorkingDefinitionPath));
-        File.WriteAllText(_options.WorkingDefinitionPath, WorkingDefinition.ToJson());
+        WriteFile(_options.WorkingDefinitionPath, WorkingDefinition.ToJson());
+    }
+
+    /// <summary>One step as saved: what came after it is the next step's <see cref="Before"/>, or the working definition.</summary>
+    sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before);
+
+    void SaveHistory()
+    {
+        if (_options.HistoryPath is null)
+            return;
+
+        if (_history.Count == 0)
+        {
+            File.Delete(_options.HistoryPath);
+            return;
+        }
+
+        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before)).ToList()));
+    }
+
+    void LoadHistory()
+    {
+        if (_options.HistoryPath is null || !File.Exists(_options.HistoryPath))
+            return;
+
+        try
+        {
+            var saved = DefinitionJson.Deserialize<List<SavedStep>>(File.ReadAllText(_options.HistoryPath));
+
+            for (int i = 0; i < saved.Count; i++)
+                _history.Add(new(saved[i].Number, saved[i].Description, saved[i].Before, i + 1 < saved.Count ? saved[i + 1].Before : WorkingDefinition, saved[i].At));
+
+            _stepNumber = _history.Count > 0 ? _history.Max(x => x.Number) : 0;
+        }
+        catch (Exception)
+        {
+            // History is a convenience: an unreadable file is set aside, and the working definition stands as it is.
+            _history.Clear();
+            File.Move(_options.HistoryPath, _options.HistoryPath + $".unreadable-{DateTime.Now:yyyyMMddHHmmss}");
+        }
+    }
+
+    static void WriteFile(string path, string text)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        File.WriteAllText(path, text);
     }
 }

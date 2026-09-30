@@ -35,3 +35,19 @@ function stopRainbowSpinner(gradientId) {
         rainbowSpinnerHandles.delete(gradientId);
     }
 }
+
+// Focuses an input and selects all its text, so the next keystroke replaces it. Deferred a tick so it lands after
+// anything else claiming focus as the same render completes (e.g. a dialog focusing itself for Escape).
+function focusAndSelect(element) {
+    setTimeout(() => {
+        element?.focus();
+        element?.select();
+    }, 0);
+}
+
+// Focuses an element unless focus is already somewhere inside it - so a container can take focus without taking it
+// away from a field within it that asked for it first.
+function focusUnlessWithin(element) {
+    if (element && !element.contains(document.activeElement))
+        element.focus();
+}

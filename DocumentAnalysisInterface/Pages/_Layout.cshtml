@@ -37,15 +37,16 @@
     </div>
 
     <script src="_framework/blazor.server.js"></script>
-    <!-- Your other scripts remain unchanged -->
-    <script src="general.js"></script>
-    <script src="scripts/corpus-captures.js"></script>
-    <script src="scripts/regex-debug.js"></script>
-    <script src="scripts/regex-editor.js"></script>
-    <script src="scripts/clipboard.js"></script>
-    <script src="scripts/search.js"></script>
-    <script src="scripts/main-layout.js"></script>
-    <script src="scripts/glyph-regex.js"></script>
+    <!-- Versioned, so a browser never runs a stale copy against newer server code that calls into it -->
+    <script src="~/general.js" asp-append-version="true"></script>
+    <script src="~/scripts/corpus-captures.js" asp-append-version="true"></script>
+    <script src="~/scripts/regex-debug.js" asp-append-version="true"></script>
+    <script src="~/scripts/regex-editor.js" asp-append-version="true"></script>
+    <script src="~/scripts/clipboard.js" asp-append-version="true"></script>
+    <script src="~/scripts/download.js" asp-append-version="true"></script>
+    <script src="~/scripts/search.js" asp-append-version="true"></script>
+    <script src="~/scripts/main-layout.js" asp-append-version="true"></script>
+    <script src="~/scripts/glyph-regex.js" asp-append-version="true"></script>
     <script type="module" src="scripts/echo-trees/echo-tree-layout-calculator.js"></script>
     <script type="module" src="scripts/echo-trees/echo-tree-svg-drawer.js"></script>
     <script type="module" src="scripts/echo-trees/echo-tree-orchestrator.js"></script>

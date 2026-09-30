@@ -4,6 +4,7 @@ using Glyphotype.Interfaces;
 using Glyphotype.GlyphAnalysisDTOs;
 using Glyphotype.Distiller.Workbench;
 using Glyphotype.Distiller.Agent;
+using Glyphotype.Distiller.Workspaces;
 using DocumentAnalysisInterface.Agent;
 
 namespace DocumentAnalysisInterface;
@@ -34,22 +35,27 @@ public class Program
 
         builder.Services.AddSingleton(glyphSources);
 
-        // The Grammar Tools tab's working definition: edits are scored against the corpus the analyzer already
-        // tokenized, saved outside the repo until committed, and committed into the glyph sources.
-        builder.Services.AddSingleton(services => new GrammarWorkbench(
-            GlyphGrammar.Default,
-            services.GetRequiredService<CorpusAnalyzer>().ProcessedDocuments,
-            new WorkbenchOptions(
-                WorkingDefinitionPath: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glyphotype", "working-grammar.json"),
-                SourceDirectory: glyphSources.Directory,
-                SourceNamespace: glyphSources.Namespace,
-                AllowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches)));
+        // The Grammar Tools tab's grammars: the one compiled from the glyph sources, plus any scratch grammars, each
+        // scored against the corpus the analyzer already tokenized and kept outside the repo - the source one until
+        // it's committed into the glyph sources, the scratch ones until they're exported.
+        var appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glyphotype");
 
-        // An agent's tools over that same workbench, served at /mcp: whatever an agent does there shows up live in
+        builder.Services.AddSingleton(services => new WorkspaceManager(
+            new SourceWorkspace(
+                Name: "MTGGlyphs",
+                Grammar: GlyphGrammar.Default,
+                Documents: services.GetRequiredService<CorpusAnalyzer>().ProcessedDocuments,
+                SourceDirectory: glyphSources.Directory,
+                SourceNamespace: glyphSources.Namespace),
+            root: Path.Combine(appData, "workspaces"),
+            allowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches,
+            legacyWorkingDefinitionPath: Path.Combine(appData, "working-grammar.json")));
+
+        // An agent's tools over those same workspaces, served at /mcp: whatever an agent does there shows up live in
         // the Grammar Tools tab, and vice versa.
         var maxSetSequence = GlobalSettings.Current.MaxSetSequence;
         builder.Services.AddSingleton(services => new GrammarAgent(
-            services.GetRequiredService<GrammarWorkbench>(),
+            services.GetRequiredService<WorkspaceManager>(),
             corpusDescription: "the text of cards in the card database" + (maxSetSequence is int sets ? (sets == 1 ? ", from the first set" : $", from the first {sets} sets") : "")));
 
         builder.Services
