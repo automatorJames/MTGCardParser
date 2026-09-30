@@ -43,28 +43,18 @@ public static class DeterministicPalette
             key => BuildFromColor(new HexColor(((RainbowMuted)key).GetDescription())));
     }
 
-    /// <summary>Builds the full type-to-palette map: types carrying a <see cref="ColorAttribute"/> get that fixed color, then every remaining registered token type gets an equidistant rainbow hue, hash-ordered for stability.</summary>
+    /// <summary>Builds the full type-to-palette map: every registered token type gets an equidistant rainbow hue, hash-ordered for stability.</summary>
     static Dictionary<Type, HexPalette> GetTypePaletteSet()
     {
         var allGlyphTypes = GlyphGrammar.Default.GetAllCaptureUnitTypes()
             .OrderBy(x => GetDeterministicHash(x.Name))
             .ToList();
 
-        var explicitlyColoredTypes = allGlyphTypes
-            .Select(t => (Type: t, Attribute: t.GetCustomAttribute<ColorAttribute>()))
-            .Where(x => x.Attribute != null)
-            .ToList();
-
-        var rainbowTypes = allGlyphTypes.Except(explicitlyColoredTypes.Select(x => x.Type)).ToList();
-
         var typePaletteSet = new Dictionary<Type, HexPalette>();
 
-        foreach (var (type, attribute) in explicitlyColoredTypes)
-            typePaletteSet[type] = GetStaticPalette(attribute.Color);
-
-        var rainbowPalettes = GetPositionalPaletteSet(rainbowTypes.Count);
-        for (int i = 0; i < rainbowTypes.Count; i++)
-            typePaletteSet[rainbowTypes[i]] = rainbowPalettes[i];
+        var rainbowPalettes = GetPositionalPaletteSet(allGlyphTypes.Count);
+        for (int i = 0; i < allGlyphTypes.Count; i++)
+            typePaletteSet[allGlyphTypes[i]] = rainbowPalettes[i];
 
         return typePaletteSet;
     }

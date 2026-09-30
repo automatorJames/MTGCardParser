@@ -214,7 +214,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task SaveClassToFile()
     {
-        Grammar.CreateAndRegisterNewTypeAndSaveToDisk(_editorGlyph);
+        Grammar.CreateAndRegisterNewTypeAndSaveToDisk(_editorGlyph.ToDefinition());
         await OnClose.InvokeAsync(_editorGlyph);
     }
 

@@ -16,7 +16,6 @@ namespace Glyphotype.GlyphPrimitives;
 /// text still needs a Glyph written for it.
 /// </para>
 /// </summary>
-[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class ClauseBreak : CaptureUnit
 {
     public ClauseBreak()

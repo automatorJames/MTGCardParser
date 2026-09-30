@@ -1,6 +1,5 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class WhereVariableIs : Glyph
 {
     public override Nib[] Nibs => [", where", Prop(VariableName), "is "];

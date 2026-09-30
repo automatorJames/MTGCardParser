@@ -40,5 +40,12 @@ public sealed record PrimitiveTerminal(string DisplayName, string DefaultPattern
 
     public static bool IsSupported(Type type) => TryGet(type, out _);
 
+    /// <summary>The supported primitive whose <see cref="DisplayName"/> is <paramref name="displayName"/> (e.g. "int").</summary>
+    public static bool TryGetType(string displayName, out Type type)
+    {
+        type = _byType.FirstOrDefault(x => x.Value.DisplayName == displayName).Key;
+        return type is not null;
+    }
+
     public static IEnumerable<string> SupportedDisplayNames => _byType.Values.Select(x => x.DisplayName);
 }

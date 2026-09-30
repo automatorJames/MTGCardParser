@@ -1,6 +1,5 @@
 ﻿namespace Glyphotype.GlyphPrimitives;
 
-[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class UnmatchedString : CaptureUnit
 {
     public UnmatchedString()

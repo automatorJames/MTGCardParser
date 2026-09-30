@@ -1,6 +1,5 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 public class PowerToughnessMod : Glyph
 {
     public override Nib[] Nibs => [Prop(PowerSign), Prop(PowerValue), "/", Prop(ToughnessSign), Prop(ToughnessValue)];

@@ -12,19 +12,10 @@
     public string DataPath { get; set; }
 
     [Parameter]
-    public int? ManyIndex { get; set; }
-
-    [Parameter]
     public string DisplayName { get; set; }
 
     protected override void OnInitialized()
     {
-        if (DisplayName == null)
-        {
-            DisplayName = GlyphType.Name.Replace("_Many", " (many)").ToFriendlyCase(TitleDisplayOption.Sentence);
-
-            if (ManyIndex.HasValue)
-                DisplayName += $" #{ManyIndex.Value + 1}";
-        }
+        DisplayName ??= GlyphType.Name.ToFriendlyCase(TitleDisplayOption.Sentence);
     }
 }

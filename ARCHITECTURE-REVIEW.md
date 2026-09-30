@@ -280,7 +280,6 @@ For a system whose behavior is "reflection produces a regex, which produces a ca
 
 | Item | Status |
 |---|---|
-| `DynamicTypeEmitter.cs` (285 LOC, IL opcode parsing/rewriting) | **Zero references anywhere.** |
 | `EditorGlyph.Update()` | Entire body commented out — the glyph editor is inert. |
 | `RegexEditorDialog` + `regex-editor.ts/.js` (~800 LOC) | Reachable only from the commented-out click handler in `DocumentBlock.razor`. |
 | `MTGPlexer/`, `MTGTokenUnits/`, `CardAnalysisInterface/` | Empty directories, not in the solution. |

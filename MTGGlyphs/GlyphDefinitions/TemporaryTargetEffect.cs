@@ -1,6 +1,5 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-[Color("#ff00ff")]
 public class TemporaryTargetEffect : Glyph
 {
     public override Nib[] Nibs => ["target", Prop(CardType), Prop(PermanentVerb), Prop(GainedOrLostBuffs), "until", Prop(Phase)];

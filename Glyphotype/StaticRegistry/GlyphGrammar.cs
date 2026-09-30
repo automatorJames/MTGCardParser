@@ -1,6 +1,4 @@
-using System.Reflection.Emit;
-
-namespace Glyphotype.StaticRegistry;
+﻿namespace Glyphotype.StaticRegistry;
 
 /// <summary>
 /// A set of Glyph types and the settings they're tokenized under: discovery (including
@@ -79,6 +77,17 @@ public sealed class GlyphGrammar
 
     public bool TryGetType(string name, out Type type) =>
         _typesByName.TryGetValue(name, out type);
+
+    /// <summary>This grammar's glyph types - and the vocabularies and markers they refer to - as a <see cref="GrammarDefinition"/>.</summary>
+    public GrammarDefinition ToDefinition() =>
+        GrammarDefinition.FromTypes(Types);
+
+    /// <summary>
+    /// Builds and validates a grammar from <paramref name="definition"/>, emitting its types first (see
+    /// <see cref="GrammarEmitter.Emit"/>, which also describes <paramref name="knownTypes"/>).
+    /// </summary>
+    public static GlyphGrammar FromDefinition(GrammarDefinition definition, bool allowPartialSegmentMatches, IEnumerable<Type> knownTypes = null) =>
+        new(GrammarEmitter.Emit(definition, knownTypes), allowPartialSegmentMatches);
 
     /// <summary>
     /// Runs every validation rule over <see cref="Types"/> and returns each failure as a "TypeName: message" string
@@ -292,19 +301,17 @@ public sealed class GlyphGrammar
         }
     }
 
-    // ---- Types created at runtime by the Glyph editor ----
+    // ---- Glyphs defined at runtime by the Glyph editor ----
 
-    const string _dynamicAssemblyName = "Glyphotype.DynamicGlyphs";
-    static readonly ModuleBuilder _moduleBuilder = AssemblyBuilder
-        .DefineDynamicAssembly(new AssemblyName(_dynamicAssemblyName), AssemblyBuilderAccess.Run)
-        .DefineDynamicModule("MainModule");
+    const string _sourceCodeNamespace = "MTGGlyphs";
     static readonly string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MTGGlyphs"));
 
-    /// <summary>Emits <paramref name="editorGlyph"/> as a new type, adds it to this grammar (rebuilding and revalidating it), and saves its source alongside MTGGlyphs' own.</summary>
-    public void CreateAndRegisterNewTypeAndSaveToDisk(EditorGlyph editorGlyph)
+    /// <summary>Emits <paramref name="glyph"/> as a new type, adds it to this grammar (rebuilding and revalidating it), and saves its source alongside MTGGlyphs' own.</summary>
+    public void CreateAndRegisterNewTypeAndSaveToDisk(GlyphDefinition glyph)
     {
-        var newType = CreateDynamicGlyphType(editorGlyph);
-        _candidateTypes.Add(newType);
+        var definition = new GrammarDefinition { Glyphs = [glyph] };
+        var newTypes = GrammarEmitter.Emit(definition, knownTypes: Types);
+        _candidateTypes.AddRange(newTypes);
 
         try
         {
@@ -313,159 +320,13 @@ public sealed class GlyphGrammar
         catch
         {
             // An invalid new type is rejected whole: rebuild without it, leaving the grammar as it was.
-            _candidateTypes.Remove(newType);
+            _candidateTypes.RemoveAll(newTypes.Contains);
             Build();
             throw;
         }
 
         DeterministicPalette.RefreshTypePaletteSet();
-        var outputPath = Path.Combine(_sourceCodeDir, editorGlyph.ClassName + ".cs");
-        File.WriteAllText(outputPath, editorGlyph.ClassStringForSavingToFile);
-    }
-
-    static Type CreateDynamicGlyphType(EditorGlyph editorGlyph)
-    {
-        var baseType = typeof(Glyph);
-        var nibType = typeof(Nib);
-
-        var tb = _moduleBuilder.DefineType(
-            editorGlyph.ClassName,
-            TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.BeforeFieldInit,
-            baseType
-        );
-
-        // 1) Set TokenizationOrder Attribute
-        var orderCtor = typeof(TokenizationOrderAttribute).GetConstructor([typeof(int)])!;
-        var orderAttr = new CustomAttributeBuilder(orderCtor, [-1]);
-        tb.SetCustomAttribute(orderAttr);
-
-        // 2) Define Auto-Properties (Non-Virtual)
-        foreach (var nib in editorGlyph.Nibs.OfType<EditorPropertyNib>())
-        {
-            DefineAutoProperty(tb, nib.PropertyNameRepresentation, nib.ResolvedType);
-        }
-
-        // 3) Override "protected virtual Nib[] Nibs" (This one MUST be virtual to override)
-        var getNibsMethod = tb.DefineMethod(
-            "get_Nibs",
-            MethodAttributes.Family | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.SpecialName,
-            nibType.MakeArrayType(),
-            Type.EmptyTypes);
-
-        var il = getNibsMethod.GetILGenerator();
-        var nibs = editorGlyph.Nibs;
-
-        il.Emit(OpCodes.Ldc_I4, nibs.Count);
-        il.Emit(OpCodes.Newarr, nibType);
-
-        var nibFromString = nibType.GetMethod("op_Implicit", BindingFlags.Public | BindingFlags.Static, null, [typeof(string)], null)
-            ?? throw new InvalidOperationException("Nib.op_Implicit(string) not found.");
-
-        for (int i = 0; i < nibs.Count; i++)
-        {
-            var nib = nibs[i];
-            il.Emit(OpCodes.Dup);
-            il.Emit(OpCodes.Ldc_I4, i);
-
-            if (nib is EditorPropertyNib propNib)
-            {
-                var propMethod = typeof(Glyph).GetMethod(nameof(Glyph.Prop))
-                    ?? throw new Exception("Glyph.Prop not found.");
-
-                il.Emit(OpCodes.Ldnull);
-                il.Emit(OpCodes.Ldc_I4, (int)propNib.Proptions);
-                il.Emit(OpCodes.Ldstr, propNib.PropertyNameRepresentation);
-
-                il.Emit(OpCodes.Call, propMethod);
-            }
-            else if (nib is EditorMethodNib methodNib)
-            {
-                var method = methodNib.Method;
-                var paras = method.GetParameters();
-
-                for (int pIdx = 0; pIdx < paras.Length; pIdx++)
-                {
-                    var pType = paras[pIdx].ParameterType;
-                    if (pType == typeof(string[]))
-                    {
-                        var args = methodNib.Args;
-                        il.Emit(OpCodes.Ldc_I4, args.Length);
-                        il.Emit(OpCodes.Newarr, typeof(string));
-                        for (int j = 0; j < args.Length; j++)
-                        {
-                            il.Emit(OpCodes.Dup);
-                            il.Emit(OpCodes.Ldc_I4, j);
-                            il.Emit(OpCodes.Ldstr, args[j]);
-                            il.Emit(OpCodes.Stelem_Ref);
-                        }
-                    }
-                    else if (pType == typeof(string))
-                    {
-                        string val = methodNib.Args.Length > 0 ? methodNib.Args[0] : "";
-                        il.Emit(OpCodes.Ldstr, val);
-                    }
-                    else if (pType == typeof(Nib))
-                    {
-                        // e.g. Opt(Nib): the editor's text argument, as a literal-text Nib
-                        string val = methodNib.Args.Length > 0 ? methodNib.Args[0] : "";
-                        il.Emit(OpCodes.Ldstr, val);
-                        il.Emit(OpCodes.Call, nibFromString);
-                    }
-                    else il.Emit(OpCodes.Ldnull);
-                }
-                il.Emit(OpCodes.Call, method);
-            }
-            else if (nib is EditorTextNib textNib)
-            {
-                il.Emit(OpCodes.Ldstr, textNib.TrimmedText);
-                il.Emit(OpCodes.Call, nibFromString);
-            }
-
-            il.Emit(OpCodes.Stelem_Ref);
-        }
-
-        il.Emit(OpCodes.Ret);
-
-        var propNibs = tb.DefineProperty("Nibs", PropertyAttributes.None, nibType.MakeArrayType(), null);
-        propNibs.SetGetMethod(getNibsMethod);
-
-        // 4) Constructor
-        var ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
-        var ctorIl = ctor.GetILGenerator();
-        ctorIl.Emit(OpCodes.Ldarg_0);
-        var baseDefaultCtor = baseType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null)!;
-        ctorIl.Emit(OpCodes.Call, baseDefaultCtor);
-        ctorIl.Emit(OpCodes.Ret);
-
-        return tb.CreateType()!;
-
-        // Corrected helper: Removed MethodAttributes.Virtual
-        void DefineAutoProperty(TypeBuilder typeBuilder, string propertyName, Type propertyType)
-        {
-            var fieldBuilder = typeBuilder.DefineField($"<{propertyName}>k__BackingField", propertyType, FieldAttributes.Private);
-            var propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
-
-            // Standard Public, Non-Virtual Getter
-            var getter = typeBuilder.DefineMethod($"get_{propertyName}",
-                MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                propertyType, Type.EmptyTypes);
-            var gIl = getter.GetILGenerator();
-            gIl.Emit(OpCodes.Ldarg_0);
-            gIl.Emit(OpCodes.Ldfld, fieldBuilder);
-            gIl.Emit(OpCodes.Ret);
-
-            // Standard Public, Non-Virtual Setter
-            var setter = typeBuilder.DefineMethod($"set_{propertyName}",
-                MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                null, [propertyType]);
-            var sIl = setter.GetILGenerator();
-            sIl.Emit(OpCodes.Ldarg_0);
-            sIl.Emit(OpCodes.Ldarg_1);
-            sIl.Emit(OpCodes.Stfld, fieldBuilder);
-            sIl.Emit(OpCodes.Ret);
-
-            propertyBuilder.SetGetMethod(getter);
-            propertyBuilder.SetSetMethod(setter);
-        }
+        var outputPath = Path.Combine(_sourceCodeDir, glyph.Name + ".cs");
+        File.WriteAllText(outputPath, GlyphSourceWriter.Write(definition, _sourceCodeNamespace));
     }
 }

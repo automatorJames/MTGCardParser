@@ -20,11 +20,17 @@ public sealed class CorpusFixture
         if (duplicateTexts.Count > 0)
             throw new InvalidOperationException($"Corpus document texts must be unique (they identify test cases), but these repeat: {string.Join(" | ", duplicateTexts)}");
 
-        var analyzer = new CorpusAnalyzer(new Repository(), Grammar);
+        ProcessedDocuments = Process(Grammar);
+        _processedByText = ProcessedDocuments.ToDictionary(x => x.Document.Text);
+    }
+
+    /// <summary>The whole corpus, run through <paramref name="grammar"/> by the real pipeline.</summary>
+    public static IReadOnlyList<ProcessedDocument> Process(GlyphGrammar grammar)
+    {
+        var analyzer = new CorpusAnalyzer(new Repository(), grammar);
         analyzer.EnsureInitializedAsync().GetAwaiter().GetResult();
 
-        ProcessedDocuments = analyzer.ProcessedDocuments;
-        _processedByText = analyzer.ProcessedDocuments.ToDictionary(x => x.Document.Text);
+        return analyzer.ProcessedDocuments;
     }
 
     /// <summary>What <paramref name="text"/>'s document actually tokenized into, one signature per line.</summary>

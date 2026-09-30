@@ -1,6 +1,5 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-[RegexBoundaryOptionAtrribute(BoundaryOption.None)]
 [Dependent]
 public class This : Glyph
 {

@@ -2,8 +2,6 @@
 
 public class EditorGlyph
 {
-    const string SaveFileInNamespace = "MTGGlyphs";
-
     public ProcessedLine LineMetadata { get; }
     public Type GlyphType { get; } = typeof(Glyph);
     public List<EditorNib> Nibs { get; private set; } = [];
@@ -14,7 +12,6 @@ public class EditorGlyph
 
     public string RawTemplate => string.Concat(Nibs.Select(s => s.EditorRepresentation));
     public string RenderedRegex { get; private set; } = "";
-    public string ClassStringForSavingToFile { get; private set; } = "";
     public string ClassStringForDisplayingHtml { get; private set; } = "";
     public List<RegexStyledRun> RegexRuns { get; private set; } = [];
     public List<TextStyledRun> TextRuns { get; private set; } = [];
@@ -54,7 +51,6 @@ public class EditorGlyph
         //PerformMatching();
         //GenerateTextStyledRuns();
         //
-        //ClassStringForSavingToFile = GetClassStringForSavingToFile();
         //ClassStringForDisplayingHtml = GetClassStringForDisplayingHtml();
     }
 
@@ -368,17 +364,30 @@ public class EditorGlyph
         Update();
     }
 
-    string GetClassStringForSavingToFile() =>
-        $$"""
-        namespace {{SaveFileInNamespace}};
-
-        public class {{ClassName}} : {{nameof(Glyph)}}
+    /// <summary>The glyph being authored, as a definition: a plain <see cref="Glyph"/>, tried after every type with a declared <see cref="TokenizationOrderAttribute"/>.</summary>
+    public GlyphDefinition ToDefinition() =>
+        new()
         {
-            public override Nib[] Nibs => [{{string.Join(", ", _nonEmptyNibs.Select(x => x.ParameterRepresentation))}}];
+            Name = ClassName,
+            TokenizationOrder = -1,
+            Nibs = _nonEmptyNibs.Select(ToNibDefinition).ToList(),
+            Properties = _nonEmptyNibs
+                .OfType<EditorPropertyNib>()
+                .Select(x => new PropertyDefinition { Name = x.PropertyNameRepresentation, Type = TypeReference.FromType(x.ResolvedType) })
+                .ToList(),
+        };
 
-            {{string.Join("\r\n    ", _nonEmptyNibs.OfType<EditorPropertyNib>().Select(x => x.GetPropertyLineRepresentation()))}}
-        }
-        """;
+    static NibDefinition ToNibDefinition(EditorNib nib) =>
+        nib switch
+        {
+            EditorTextNib textNib => new NibDefinition.Literal(textNib.TrimmedText),
+            EditorPropertyNib propertyNib => new NibDefinition.Property(propertyNib.PropertyNameRepresentation, propertyNib.Proptions),
+            EditorMethodNib { MethodType: ShortcutNibMethod.Alt } methodNib => new NibDefinition.Alternatives(methodNib.Args),
+            EditorMethodNib { MethodType: ShortcutNibMethod.Opt } methodNib => new NibDefinition.Optional(new NibDefinition.Literal(methodNib.Args.FirstOrDefault() ?? "")),
+            EditorMethodNib { MethodType: ShortcutNibMethod.Plural } => new NibDefinition.Plural(),
+            EditorMethodNib methodNib => throw new NotSupportedException($"{methodNib.MethodType} has no nib definition counterpart"),
+            _ => throw new NotSupportedException($"Editor nib {nib.GetType().Name} has no nib definition counterpart"),
+        };
 
     string GetClassStringForDisplayingHtml()
     {
