@@ -20,6 +20,9 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
     readonly string _directory = Directory.CreateTempSubdirectory("agent-tests-").FullName;
 
+    /// <summary>Session settings that let any step through and never call for a check-in.</summary>
+    internal static readonly AgentSessionSettings AnySteps = new() { StepsBeforeCheckIn = 0, AttemptsBeforeCheckIn = 0, MinimumGainBits = double.NegativeInfinity, AllowLostLines = true };
+
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
     (GrammarAgent Agent, GrammarWorkbench Workbench) CreateAgent()
@@ -27,7 +30,8 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
             new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialSegmentMatches: false));
 
-        return (new GrammarAgent(workbench, "the test corpus"), workbench);
+        // These tests exercise the tools themselves, so the session's step rules are off.
+        return (new GrammarAgent(workbench, "the test corpus", AnySteps), workbench);
     }
 
     [Fact]

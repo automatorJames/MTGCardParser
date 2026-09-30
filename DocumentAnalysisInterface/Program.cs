@@ -54,14 +54,19 @@ public class Program
         // An agent's tools over those same workspaces, served at /mcp: whatever an agent does there shows up live in
         // the Grammar Tools tab, and vice versa.
         var maxSetSequence = GlobalSettings.Current.MaxSetSequence;
+        // How agent sessions run: when to check in, and what a step must achieve. Optional - each setting has a default.
+        var agentSettings = builder.Configuration.GetSection("GrammarAgent").Get<AgentSessionSettings>() ?? new();
+
         builder.Services.AddSingleton(services => new GrammarAgent(
             services.GetRequiredService<WorkspaceManager>(),
+            settings: agentSettings,
             corpusDescription: "the text of cards in the card database" + (maxSetSequence is int sets ? (sets == 1 ? ", from the first set" : $", from the first {sets} sets") : "")));
 
         builder.Services
             .AddMcpServer(options => options.ServerInstructions = GrammarAgent.Instructions)
             .WithHttpTransport()
-            .WithTools<GrammarAgentTools>();
+            .WithTools<GrammarAgentTools>()
+            .WithPrompts<GrammarAgentPrompts>();
 
         var app = builder.Build();
 

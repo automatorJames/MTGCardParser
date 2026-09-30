@@ -160,7 +160,7 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
     public async Task An_agent_works_on_the_active_workspace_and_can_start_one_from_scratch()
     {
         var workspaces = CreateManager();
-        var agent = new GrammarAgent(workspaces, "the test corpus");
+        var agent = new GrammarAgent(workspaces, "the test corpus", AgentTests.AnySteps);
 
         Assert.Contains("Workspace: TestGrammar (source", await agent.OverviewAsync());
 

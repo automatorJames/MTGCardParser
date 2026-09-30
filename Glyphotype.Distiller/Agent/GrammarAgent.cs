@@ -27,20 +27,28 @@ public sealed class GrammarAgent
     readonly WorkspaceManager _workspaces;
     readonly string _corpusDescription;
 
+    /// <summary>Steps applied, and evaluations made since the last applied step, since the session (re)started.</summary>
+    int _stepsSinceCheckIn;
+    int _attemptsSinceStep;
+
     /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
-    public GrammarAgent(WorkspaceManager workspaces, string corpusDescription)
+    public GrammarAgent(WorkspaceManager workspaces, string corpusDescription, AgentSessionSettings settings = null)
     {
         _workspaces = workspaces;
         _workbench = () => workspaces.Active;
         _corpusDescription = corpusDescription;
+        Settings = settings ?? new();
     }
 
     /// <summary>An agent working on <paramref name="workbench"/> alone.</summary>
-    public GrammarAgent(GrammarWorkbench workbench, string corpusDescription)
+    public GrammarAgent(GrammarWorkbench workbench, string corpusDescription, AgentSessionSettings settings = null)
     {
         _workbench = () => workbench;
         _corpusDescription = corpusDescription;
+        Settings = settings ?? new();
     }
+
+    public AgentSessionSettings Settings { get; }
 
     /// <summary>The workbench of the active workspace - read afresh by every request, so a switch takes effect at once.</summary>
     GrammarWorkbench Workbench => _workbench();
@@ -51,7 +59,7 @@ public sealed class GrammarAgent
     /// <summary>A short description of the tools and where to start, for a tool server's instructions.</summary>
     public const string Instructions =
         "Tools for composing a grammar over a text corpus, glyph by glyph, on a working definition shared live with a person. " +
-        "Start with `overview`, then read `guide` once: it explains the loop (find recurring unmatched text, draft a glyph in C#, " +
+        "Start with `start_session` (passing the person's instructions): it returns the session's rules and where the grammar stands. Read `guide` once: it explains the loop (find recurring unmatched text, draft a glyph in C#, " +
         "`tokenize`/`explain_mismatch` it, `evaluate` it, `apply` it), how the score works, and how to write glyphs. " +
         "The active workspace (named in `overview`) is the grammar both you and the person see; create or switch workspaces only when asked. " +
         "Committing to C# source, or checkpointing or exporting a scratch workspace, is the person's decision, made in the app - never part of the loop.";
@@ -189,6 +197,69 @@ public sealed class GrammarAgent
         return report.ToString().TrimEnd() + Environment.NewLine;
     }
 
+    // ---- Sessions ----
+
+    /// <summary>
+    /// Starts (or, after a check-in, resumes) a working session: everything the agent needs in one brief - the person's
+    /// instructions, the session's rules as the app configures them, and where the grammar stands. Resets the counts
+    /// that decide when to check in.
+    /// </summary>
+    /// <param name="instructions">What the person asked for this session, in their words - may be empty.</param>
+    public async Task<string> StartSessionAsync(string instructions = null, CancellationToken cancellation = default)
+    {
+        Interlocked.Exchange(ref _stepsSinceCheckIn, 0);
+        Interlocked.Exchange(ref _attemptsSinceStep, 0);
+
+        var report = new StringBuilder();
+
+        report.AppendLine("Session started.");
+        report.AppendLine($"The person's instructions: {(string.IsNullOrWhiteSpace(instructions) ? "none given - improve the grammar in the active workspace as it stands." : instructions.Trim())}");
+        report.AppendLine();
+        report.AppendLine("How this session works (set in the app, and enforced by the tools):");
+        report.AppendLine($"- The loop: find recurring unmatched text, draft a glyph, check it with `tokenize`/`explain_mismatch`, `evaluate` it, then `apply` it with a one-line description of why. Before each step, say in one line what you're targeting. If you haven't read `guide` in this conversation, read it first.");
+
+        var checkIn = new List<string>();
+
+        if (Settings.StepsBeforeCheckIn > 0)
+            checkIn.Add($"after {Settings.StepsBeforeCheckIn} applied step{S(Settings.StepsBeforeCheckIn)}");
+
+        if (Settings.AttemptsBeforeCheckIn > 0)
+            checkIn.Add($"after {Settings.AttemptsBeforeCheckIn} evaluations in a row without an applied step");
+
+        report.AppendLine(checkIn.Count > 0
+            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, say what you'd try next, and wait. When the person says to continue, call `start_session` again."
+            : "- There's no check-in limit: keep going until you run out of improvements, then summarize and wait.");
+
+        report.AppendLine($"- A step must take at least {Settings.MinimumGainBits:N0} bit{(Settings.MinimumGainBits == 1 ? "" : "s")} off the total{(Settings.AllowLostLines ? "" : " and lose no lines")}. `apply` refuses anything else unless you pass `override_reason` - for a deliberate refactor, never to force a loss through.");
+        report.AppendLine("- Stay in the active workspace. Create or switch workspaces only if the instructions ask - to start from scratch, `create_workspace` with start=vocabularies.");
+        report.AppendLine("- Never commit, checkpoint or export: the person does that in the app.");
+        report.AppendLine();
+        report.Append(await OverviewAsync(cancellation));
+
+        return report.ToString();
+    }
+
+    /// <summary>The session's progress toward a check-in, for a report's last lines - or a check-in, when it's due.</summary>
+    string SessionStatus(bool applied)
+    {
+        if (applied && Settings.StepsBeforeCheckIn > 0)
+        {
+            var steps = _stepsSinceCheckIn;
+
+            return steps >= Settings.StepsBeforeCheckIn
+                ? $"Check-in due ({steps} step{S(steps)} applied): stop now, summarize the steps for the person, and wait. When they say to continue, call `start_session`."
+                : $"Session: step {steps} of {Settings.StepsBeforeCheckIn} before checking in.";
+        }
+
+        if (!applied && Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn)
+            return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it paid off, and wait. When they say to continue, call `start_session`.";
+
+        return null;
+    }
+
+    static string WithStatus(string report, string status) =>
+        status is null ? report : report.TrimEnd() + Environment.NewLine + Environment.NewLine + status + Environment.NewLine;
+
     // ---- Workspaces ----
 
     /// <summary>Every workspace, which one is active, and what each kind means.</summary>
@@ -245,25 +316,69 @@ public sealed class GrammarAgent
     {
         var changes = ReadChanges(source, remove);
         var evaluation = await Evaluate(changes, cancellation);
+        Interlocked.Increment(ref _attemptsSinceStep);
 
-        return $"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}"
-            + (evaluation.After.Succeeded ? $"{Environment.NewLine}To make this change, `apply` the same source and removals." : "");
+        var report = $"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
+
+        if (evaluation.After.Succeeded)
+            report += RuleViolations(evaluation) is { Count: > 0 } violations
+                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}."
+                : $"{Environment.NewLine}To make this change, `apply` the same source and removals.";
+
+        return WithStatus(report, SessionStatus(applied: false));
     }
 
-    /// <summary>Makes a change set as one step of the working definition - refused if the result wouldn't build.</summary>
+    /// <summary>
+    /// Makes a change set as one step of the working definition - refused if the result wouldn't build, if the session's
+    /// check-in is due, or if it breaks the session's step rules (see <see cref="Settings"/>) without an override reason.
+    /// </summary>
     /// <param name="description">Why: shown to the person in the step history.</param>
-    public async Task<string> ApplyAsync(string source, string remove = null, string description = null, CancellationToken cancellation = default)
+    /// <param name="overrideReason">Why a step that breaks the step rules should be applied anyway - recorded in its description.</param>
+    public async Task<string> ApplyAsync(string source, string remove = null, string description = null, string overrideReason = null, CancellationToken cancellation = default)
     {
+        if (Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
+            throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
+
         var changes = ReadChanges(source, remove);
         var evaluation = await Evaluate(changes, cancellation);
+        Interlocked.Increment(ref _attemptsSinceStep);
 
         if (!evaluation.After.Succeeded)
-            return $"Not applied - the result wouldn't build: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
+            return WithStatus($"Not applied - the result wouldn't build: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}", SessionStatus(applied: false));
+
+        var violations = RuleViolations(evaluation);
+
+        if (violations.Count > 0 && string.IsNullOrWhiteSpace(overrideReason))
+            return WithStatus($"Not applied - {string.Join("; ", violations)}: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}"
+                + $"{Environment.NewLine}Rework it, or undo toward something better. Pass `override_reason` only for a deliberate refactor.", SessionStatus(applied: false));
+
+        description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+        if (violations.Count > 0)
+            description = $"{description ?? changes.Describe()} (override: {overrideReason.Trim()})";
 
         var step = Try(() => Workbench.Apply(changes, description))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
-        return $"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
+        Interlocked.Increment(ref _stepsSinceCheckIn);
+        Interlocked.Exchange(ref _attemptsSinceStep, 0);
+
+        return WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}", SessionStatus(applied: true));
+    }
+
+    /// <summary>How <paramref name="evaluation"/> falls short of the session's step rules - empty when it doesn't.</summary>
+    List<string> RuleViolations(Evaluation evaluation)
+    {
+        List<string> violations = [];
+        var gain = evaluation.Before.Score.TotalBits - evaluation.After.Score.TotalBits;
+
+        if (gain < Settings.MinimumGainBits)
+            violations.Add($"it takes {gain:N1} bits off the total, and a step must take at least {Settings.MinimumGainBits:N0}");
+
+        if (!Settings.AllowLostLines && CorpusQueries.CompareTokenizations(evaluation.Before.Documents, evaluation.After.Documents, limit: 0).LostLines is int lost and > 0)
+            violations.Add($"it loses {lost} line{S(lost)}, and a step must lose none");
+
+        return violations;
     }
 
     /// <summary>Takes back the latest step, whoever made it.</summary>

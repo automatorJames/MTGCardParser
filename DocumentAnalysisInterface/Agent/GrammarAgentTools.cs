@@ -20,6 +20,14 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
 
     const string _removeDescription = "Names of glyphs, vocabularies or markers to remove, comma-separated.";
 
+    [McpServerTool(Name = "start_session"), Description(
+        "Starts (or resumes, after a check-in) a working session: returns the person's instructions, the session's rules as the app configures them " +
+        "(when to check in, what a step must achieve), and where the grammar stands. Call this first, and again whenever the person says to continue.")]
+    public Task<string> StartSession(
+        [Description("What the person asked for this session, in their words - e.g. \"from scratch\" or \"focus on triggers\". Empty if nothing.")] string instructions = null,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.StartSessionAsync(instructions, cancellation));
+
     [McpServerTool(Name = "overview", ReadOnly = true), Description("The corpus, the working grammar's score and coverage, glyphs that cost more than they save, and the costliest unmatched text. Start here.")]
     public Task<string> Overview(CancellationToken cancellation) =>
         Run(() => agent.OverviewAsync(cancellation));
@@ -65,14 +73,16 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         Run(() => agent.EvaluateAsync(source, remove, cancellation));
 
     [McpServerTool(Name = "apply", Destructive = false), Description(
-        "Makes a change set as one step of the working definition, reporting what it did as `evaluate` does. Refused if the result wouldn't build. " +
+        "Makes a change set as one step of the working definition, reporting what it did as `evaluate` does. Refused if the result wouldn't build, " +
+        "if a check-in is due, or if it breaks the session's step rules (see `start_session`) without an override reason. " +
         "The person sees the step in the app; `undo` takes it back.")]
     public Task<string> Apply(
         [Description(_sourceDescription)] string source = null,
         [Description(_removeDescription)] string remove = null,
         [Description("Why you're making this change, in a short phrase - shown in the step history.")] string description = null,
+        [Description("Only for a deliberate refactor that breaks the step rules (e.g. a merge that costs a few bits now): why it's worth it. Recorded in the step.")] string override_reason = null,
         CancellationToken cancellation = default) =>
-        Run(() => agent.ApplyAsync(source, remove, description, cancellation));
+        Run(() => agent.ApplyAsync(source, remove, description, override_reason, cancellation));
 
     [McpServerTool(Name = "undo"), Description("Takes back the latest step of the working definition (whoever made it), and reports what that did.")]
     public Task<string> Undo(CancellationToken cancellation) =>
