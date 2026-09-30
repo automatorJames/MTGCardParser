@@ -13,16 +13,32 @@ public sealed record WorkbenchOptions(string WorkingDefinitionPath, string Sourc
 public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, IReadOnlyList<string> Errors, TimeSpan Elapsed)
 {
     public bool Succeeded => Score is not null;
+
+    /// <summary>The grammar built from <see cref="Definition"/> - null when it couldn't be built.</summary>
+    public GlyphGrammar Grammar { get; init; }
+
+    /// <summary>The corpus as <see cref="Grammar"/> tokenized it - null when it couldn't be built.</summary>
+    public IReadOnlyList<ProcessedDocument> Documents { get; init; }
 }
+
+/// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
+public sealed record WorkbenchStep(int Number, string Description, GrammarDefinition Before, GrammarDefinition After, DateTimeOffset At);
+
+/// <summary>A change set scored against the working definition without being made (see <see cref="GrammarWorkbench.EvaluateAsync"/>).</summary>
+/// <param name="Before">The working definition's own score, which the change set was applied on top of.</param>
+/// <param name="After">The score with the change set applied.</param>
+public sealed record Evaluation(ChangeSet Changes, WorkingScore Before, WorkingScore After);
 
 /// <summary>
 /// A committed grammar, and a working definition to experiment on top of it: edits go to the working definition
 /// only - saved as JSON, and re-scored against the same corpus in the background after each one - until
 /// <see cref="Commit"/> writes them into the committed grammar's C# sources.
 /// <para>
-/// Thread-safe for one editor at a time: edits are serialized, and a re-score that an edit makes stale is
-/// cancelled and its result discarded. <see cref="Changed"/> fires, from whatever thread, whenever the working
-/// definition, its score or the scoring state changes.
+/// Thread-safe: edits are serialized, and a re-score that an edit makes stale is cancelled and its result
+/// discarded - so several editors (a person in a UI, an agent through tools) can work on one workbench, each
+/// seeing the other's edits. <see cref="Changed"/> fires, from whatever thread, whenever the working definition,
+/// its score or the scoring state changes. Every edit is a <see cref="WorkbenchStep"/> in <see cref="History"/>,
+/// which <see cref="Undo"/> walks back.
 /// </para>
 /// </summary>
 public sealed class GrammarWorkbench
@@ -32,9 +48,18 @@ public sealed class GrammarWorkbench
     readonly object _gate = new();
     readonly GlyphGrammar _committedGrammar;
     readonly IReadOnlyList<ProcessedDocument> _committedDocuments;
-    Task<MdlScore> _committedScore;
+    Task<WorkingScore> _committedTrial;
+
+    /// <summary>The latest scores of definitions, newest last, keyed by their JSON: so applying a change set that was just evaluated doesn't score it again.</summary>
+    readonly List<(string Json, WorkingScore Score)> _recentScores = [];
+    const int _recentScoreCapacity = 2;
+
+    readonly List<WorkbenchStep> _history = [];
+    const int _historyCapacity = 500;
+    int _stepNumber;
 
     CancellationTokenSource _scoring;
+    Task _rescore = Task.CompletedTask;
     int _version;
 
     /// <param name="committedGrammar">The grammar the sources under <see cref="WorkbenchOptions.SourceDirectory"/> compile to.</param>
@@ -71,11 +96,24 @@ public sealed class GrammarWorkbench
 
     public string SourceDirectory => _options.SourceDirectory;
 
+    /// <summary>The documents every definition is scored against.</summary>
+    public IReadOnlyList<IDocument> Documents => _documents;
+
     /// <summary>What the working definition changes relative to the committed one.</summary>
     /// <remarks>Recomputed only when either definition changes (see <see cref="SetDefinitions"/>) - diffing compares every definition, and callers read this freely.</remarks>
     public IReadOnlyList<DefinitionChange> Changes { get; private set; } = [];
 
     public bool HasChanges => Changes.Count > 0;
+
+    /// <summary>The edits made since the workbench started or last committed, oldest first.</summary>
+    public IReadOnlyList<WorkbenchStep> History
+    {
+        get
+        {
+            lock (_gate)
+                return _history.ToList();
+        }
+    }
 
     void SetDefinitions(GrammarDefinition committed, GrammarDefinition working)
     {
@@ -85,10 +123,19 @@ public sealed class GrammarWorkbench
     }
 
     /// <summary>The committed grammar's own score, computed on first request.</summary>
-    public Task<MdlScore> GetCommittedScoreAsync()
+    public async Task<MdlScore> GetCommittedScoreAsync() => (await GetCommittedTrialAsync()).Score;
+
+    /// <summary>The committed grammar, the corpus as it tokenized it, and its score, computed on first request.</summary>
+    public Task<WorkingScore> GetCommittedTrialAsync()
     {
         lock (_gate)
-            return _committedScore ??= Task.Run(() => MdlScorer.Score(_committedGrammar, _committedDocuments));
+            return _committedTrial ??= Task.Run(() =>
+            {
+                var started = DateTime.UtcNow;
+                var score = MdlScorer.Score(_committedGrammar, _committedDocuments);
+
+                return new WorkingScore(CommittedDefinition, score, [], DateTime.UtcNow - started) { Grammar = _committedGrammar, Documents = _committedDocuments };
+            });
     }
 
     /// <summary>
@@ -104,23 +151,58 @@ public sealed class GrammarWorkbench
         return latest is not null && latest.Definition == WorkingDefinition ? latest.Score : null;
     }
 
+    /// <summary>
+    /// The working definition as it stands, scored: the committed trial while they match, else the working
+    /// definition's own - waiting for it if a re-score is under way. Unlike <see cref="GetCurrentWorkingScoreAsync"/>,
+    /// never null: a definition that couldn't be built comes back with its <see cref="WorkingScore.Errors"/>.
+    /// </summary>
+    public async Task<WorkingScore> GetCurrentTrialAsync(CancellationToken cancellation = default)
+    {
+        while (true)
+        {
+            GrammarDefinition definition = null;
+            Task pending = null;
+
+            lock (_gate)
+            {
+                if (HasChanges)
+                {
+                    definition = WorkingDefinition;
+                    pending = _rescore;
+                }
+            }
+
+            if (definition is null)
+                return await GetCommittedTrialAsync().WaitAsync(cancellation);
+
+            if (LatestWorkingScore is WorkingScore latest && latest.Definition == definition)
+                return latest;
+
+            // Either this definition's re-score is running, or the edit that made it hasn't started one yet.
+            if (pending.IsCompleted)
+                await Task.Delay(10, cancellation);
+            else
+                await pending.WaitAsync(cancellation);
+        }
+    }
+
     // ---- Edits ----
 
     /// <summary>Adds <paramref name="glyph"/>, or replaces the glyph named <paramref name="replacing"/> (by default, its own name) with it.</summary>
     public void SetGlyph(GlyphDefinition glyph, string replacing = null) =>
-        Edit(x => x.WithGlyph(glyph, replacing));
+        Edit(x => x.WithGlyph(glyph, replacing), replacing is null || replacing == glyph.Name ? $"set glyph {glyph.Name}" : $"replace glyph {replacing} with {glyph.Name}");
 
     /// <summary>Adds <paramref name="vocabulary"/>, or replaces the vocabulary named <paramref name="replacing"/> (by default, its own name) with it.</summary>
     public void SetVocabulary(VocabularyDefinition vocabulary, string replacing = null) =>
-        Edit(x => x.WithVocabulary(vocabulary, replacing));
+        Edit(x => x.WithVocabulary(vocabulary, replacing), replacing is null || replacing == vocabulary.Name ? $"set vocabulary {vocabulary.Name}" : $"replace vocabulary {replacing} with {vocabulary.Name}");
 
     /// <summary>Removes a glyph - refused while another glyph refers to it.</summary>
     public void RemoveGlyph(string name) =>
-        Edit(x => ThrowIfReferenced(x, name).WithoutGlyph(name));
+        Edit(x => ThrowIfReferenced(x, name).WithoutGlyph(name), $"remove glyph {name}");
 
     /// <summary>Removes a vocabulary - refused while a glyph refers to it.</summary>
     public void RemoveVocabulary(string name) =>
-        Edit(x => ThrowIfReferenced(x, name).WithoutVocabulary(name));
+        Edit(x => ThrowIfReferenced(x, name).WithoutVocabulary(name), $"remove vocabulary {name}");
 
     /// <summary>
     /// Returns the named definition to its committed state: restoring it if removed (along with any committed
@@ -138,21 +220,65 @@ public sealed class GrammarWorkbench
             _ => CommittedDefinition.Markers.Contains(name)
                 ? working with { Markers = working.Markers.Union([name]).ToList() }
                 : working with { Markers = working.Markers.Where(x => x != name).ToList() },
-        });
+        }, $"revert {kind.ToString().ToLowerInvariant()} {name}");
 
     /// <summary>Discards every working change.</summary>
-    public void RevertAll() => Edit(_ => CommittedDefinition);
+    public void RevertAll() => Edit(_ => CommittedDefinition, "revert all");
 
-    void Edit(Func<GrammarDefinition, GrammarDefinition> edit)
+    /// <summary>Makes <paramref name="changes"/> as one step, described as <paramref name="description"/> (by default, the change set's own summary).</summary>
+    /// <returns>The step, or null if the change set changed nothing.</returns>
+    /// <exception cref="InvalidOperationException">The change set can't be applied (see <see cref="ChangeSet.ApplyTo"/>).</exception>
+    public WorkbenchStep Apply(ChangeSet changes, string description = null) =>
+        Edit(changes.ApplyTo, string.IsNullOrWhiteSpace(description) ? changes.Describe() : description);
+
+    /// <summary>Takes back the latest step in <see cref="History"/>, returning the working definition to what it was before it.</summary>
+    /// <returns>The step taken back.</returns>
+    public WorkbenchStep Undo()
     {
+        WorkbenchStep step;
+
         lock (_gate)
         {
-            SetDefinitions(CommittedDefinition, edit(WorkingDefinition));
+            if (_history.Count == 0)
+                throw new InvalidOperationException("There's nothing to undo");
+
+            step = _history[^1];
+            _history.RemoveAt(_history.Count - 1);
+
+            SetDefinitions(CommittedDefinition, step.Before);
             SaveWorkingDefinition();
         }
 
         Changed?.Invoke();
         _ = RescoreAsync();
+        return step;
+    }
+
+    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description)
+    {
+        WorkbenchStep step;
+
+        lock (_gate)
+        {
+            var before = WorkingDefinition;
+            var after = edit(before);
+
+            if (DefinitionDiff.Compare(before, after).Count == 0)
+                return null;
+
+            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now);
+            _history.Add(step);
+
+            if (_history.Count > _historyCapacity)
+                _history.RemoveAt(0);
+
+            SetDefinitions(CommittedDefinition, after);
+            SaveWorkingDefinition();
+        }
+
+        Changed?.Invoke();
+        _ = RescoreAsync();
+        return step;
     }
 
     GrammarDefinition RestoreReferences(GrammarDefinition working, GlyphDefinition glyph)
@@ -189,27 +315,26 @@ public sealed class GrammarWorkbench
     /// Scores the working definition in the background: builds a grammar from it, tokenizes the corpus with it and
     /// scores the result. Cancels any re-score still running for an older definition.
     /// </summary>
-    public async Task RescoreAsync()
+    public Task RescoreAsync()
     {
-        CancellationTokenSource scoring;
-        GrammarDefinition definition;
-        int version;
+        Task rescore;
 
         lock (_gate)
         {
             _scoring?.Cancel();
-            _scoring = scoring = new CancellationTokenSource();
-            definition = WorkingDefinition;
-            version = ++_version;
+            _scoring = new CancellationTokenSource();
             IsScoring = HasChanges;
+            var version = ++_version;
+            _rescore = rescore = HasChanges ? RescoreInBackgroundAsync(WorkingDefinition, version, _scoring.Token) : Task.CompletedTask;
         }
 
         Changed?.Invoke();
+        return rescore;
+    }
 
-        if (!HasChanges)
-            return;
-
-        var result = await Task.Run(() => Score(definition, scoring.Token));
+    async Task RescoreInBackgroundAsync(GrammarDefinition definition, int version, CancellationToken cancellation)
+    {
+        var result = await Task.Run(() => Score(definition, cancellation));
 
         lock (_gate)
         {
@@ -224,13 +349,56 @@ public sealed class GrammarWorkbench
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Scores the working definition with <paramref name="changes"/> applied, without making them: what
+    /// <see cref="Apply"/> would do to the score. Runs alongside any re-score, and doesn't touch the workbench's state.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The change set can't be applied (see <see cref="ChangeSet.ApplyTo"/>).</exception>
+    public async Task<Evaluation> EvaluateAsync(ChangeSet changes, CancellationToken cancellation = default)
+    {
+        var before = await GetCurrentTrialAsync(cancellation);
+        var candidate = changes.ApplyTo(before.Definition);
+        var after = await Task.Run(() => Score(candidate, cancellation), cancellation)
+            ?? throw new OperationCanceledException(cancellation);
+
+        return new(changes, before, after);
+    }
+
+    /// <summary>Builds the grammar <paramref name="definition"/> describes, as the workbench scores it - without tokenizing anything.</summary>
+    /// <exception cref="AggregateException">The grammar's validation failed: one inner exception per problem.</exception>
+    public GlyphGrammar BuildGrammar(GrammarDefinition definition) =>
+        GlyphGrammar.FromDefinition(definition.WithoutUnreferencedTerminals(), _options.AllowPartialSegmentMatches);
+
+    /// <summary>Scores <paramref name="definition"/> - or returns its recent score, if it was scored lately. Null if cancelled.</summary>
     WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation)
+    {
+        var json = definition.ToJson();
+
+        lock (_gate)
+            if (_recentScores.FirstOrDefault(x => x.Json == json).Score is WorkingScore recent)
+                return recent with { Definition = definition };
+
+        var score = ScoreUncached(definition, cancellation);
+
+        if (score is not null)
+            lock (_gate)
+            {
+                _recentScores.Add((json, score));
+
+                if (_recentScores.Count > _recentScoreCapacity)
+                    _recentScores.RemoveAt(0);
+            }
+
+        return score;
+    }
+
+    WorkingScore ScoreUncached(GrammarDefinition definition, CancellationToken cancellation)
     {
         var started = DateTime.UtcNow;
 
         try
         {
-            var grammar = GlyphGrammar.FromDefinition(definition.WithoutUnreferencedTerminals(), _options.AllowPartialSegmentMatches);
+            var grammar = BuildGrammar(definition);
 
             var documents = _documents
                 .AsParallel()
@@ -239,7 +407,7 @@ public sealed class GrammarWorkbench
                 .Select(x => new ProcessedDocument(x, grammar))
                 .ToList();
 
-            return new(definition, MdlScorer.Score(grammar, documents), [], DateTime.UtcNow - started);
+            return new(definition, MdlScorer.Score(grammar, documents), [], DateTime.UtcNow - started) { Grammar = grammar, Documents = documents };
         }
         catch (OperationCanceledException)
         {
@@ -266,8 +434,8 @@ public sealed class GrammarWorkbench
 
     /// <summary>
     /// Writes <paramref name="plan"/> (from <see cref="PlanCommit"/>) into the sources, after which the working
-    /// definition is the committed one. The running process's compiled grammar is unchanged until it's rebuilt;
-    /// until then the committed score is the working one's.
+    /// definition is the committed one and <see cref="History"/> starts over. The running process's compiled grammar
+    /// is unchanged until it's rebuilt; until then the committed trial is the working one's.
     /// </summary>
     public void Commit(SourceCommitPlan plan)
     {
@@ -275,10 +443,13 @@ public sealed class GrammarWorkbench
 
         lock (_gate)
         {
-            // The compiled grammar still predates the commit, so the committed score is now the working one's.
-            var workingScore = LatestWorkingScore is { Succeeded: true } latest && latest.Definition == WorkingDefinition ? latest.Score : null;
+            // The compiled grammar still predates the commit, so the committed trial is now the working one's.
+            var workingTrial = LatestWorkingScore is { Succeeded: true } latest && latest.Definition == WorkingDefinition ? latest : null;
             var definition = WorkingDefinition;
-            _committedScore = workingScore is not null ? Task.FromResult(workingScore) : Task.Run(() => Score(definition, CancellationToken.None)?.Score);
+            _committedTrial = workingTrial is not null ? Task.FromResult(workingTrial) : Task.Run(() => Score(definition, CancellationToken.None));
+
+            // Steps from before the commit would take back committed work.
+            _history.Clear();
 
             SetDefinitions(WorkingDefinition, WorkingDefinition);
             SaveWorkingDefinition();
