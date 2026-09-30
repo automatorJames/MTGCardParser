@@ -110,3 +110,36 @@
 .form-control {
     background-color: var(--lightest-blue);
 }
+
+/*
+ * Minimal scrollbars for anything that scrolls inside a dialog (the dialog's content comes from its caller, hence
+ * ::deep): thin, no track, and a faint rounded thumb that brightens while the scrolling element is hovered.
+ * The standard properties are what Chromium and Firefox use; the -webkit- rules cover Safari.
+ */
+.custom-dialog-container ::deep * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+    .custom-dialog-container ::deep *:hover {
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
+.custom-dialog-container ::deep *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-dialog-container ::deep *::-webkit-scrollbar-track,
+.custom-dialog-container ::deep *::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+.custom-dialog-container ::deep *::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+    .custom-dialog-container ::deep *::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
