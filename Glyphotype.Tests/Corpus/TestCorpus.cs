@@ -156,7 +156,10 @@ public static class TestCorpus
             Doc("the dog wakes up. then it eats bread.", "MorningRoutine{Animal=Dog, Food=Bread} ."),
             Doc("the cat wakes up. then it eats fish. the bird sings loudly.", "MorningRoutine{Animal=Cat, Food=Fish} . AnimalSings{Animal=Bird} ."),
             Doc("the dog wakes up! then it eats bread.", "«the dog wakes up! then it eats bread» ."),
-            Doc("the dog wakes up.", "«the dog wakes up» .")),
+            Doc("the dog wakes up.", "«the dog wakes up» ."),
+            Doc("the dog sleeps in the kitchen (the cat eats fish.)", "«the dog sleeps in the kitchen (the cat eats fish» ."),
+            Doc("the dog sleeps in the kitchen. (the cat eats fish.) the bird sings loudly.", "AnimalRests{Animal=Dog, Place=Kitchen} . «(the cat eats fish» . AnimalSings{Animal=Bird} ."),
+            Doc("the dog sleeps in the kitchen (quietly).", "«the dog sleeps in the kitchen (quietly)» .")),
 
         .. Section("Whole-segment rule and [AllowPartialSegmentMatch]",
             Doc("good morning to everyone.", "Greeting{TimeOfDay=Morning} «to everyone» ."),

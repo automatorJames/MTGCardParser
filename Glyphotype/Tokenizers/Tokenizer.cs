@@ -157,11 +157,20 @@ public class Tokenizer
                 if (currentIndex == segmentEndIndex && currentIndex < endIndex && sourceText[currentIndex] == '.')
                 {
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
-                    tokens.Add(new ClauseBreak(sourceText, currentIndex, 1));
 
-                    // Step past the period and the whitespace trailing it, so the next clause opens on its
+                    // A closing parenthesis straight after the period ends the same clause the period does
+                    // ("the dog sleeps (the cat eats fish.)"), so it belongs to the break - left behind,
+                    // it would open the next segment as a lone ")" of unmatched text.
+                    int breakLength = 1;
+
+                    while (currentIndex + breakLength < endIndex && sourceText[currentIndex + breakLength] == ')')
+                        breakLength++;
+
+                    tokens.Add(new ClauseBreak(sourceText, currentIndex, breakLength));
+
+                    // Step past the break and the whitespace trailing it, so the next clause opens on its
                     // first real character rather than on a space that would read as unmatched text.
-                    currentIndex++;
+                    currentIndex += breakLength;
 
                     while (currentIndex < endIndex && sourceText[currentIndex] == ' ')
                         currentIndex++;

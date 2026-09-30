@@ -1,7 +1,8 @@
 namespace Glyphotype.GlyphPrimitives;
 
 /// <summary>
-/// The period that separates one clause from the next, as a first-class token rather than leftover text.
+/// The period that separates one clause from the next, as a first-class token rather than leftover text -
+/// along with any closing parentheses straight after it, which end the same clause (".)" closing a parenthetical).
 /// <para>
 /// Synthesized directly by the <see cref="Tokenizers.Tokenizer"/> (like <see cref="UnmatchedString"/>,
 /// and for the same reason) instead of competing as a top-level type: a clause break sits *between*
