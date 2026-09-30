@@ -26,8 +26,8 @@ public class EnumMemberNode : TerminalRegexNode
     {
         ScalarValue = scalarValue;
         // Anchored: it's used to work out which member a captured value *is*, so it must match all of it. A bare
-        // pattern matches anywhere within the value, so e.g. "w" would claim a captured "w/u", and "flash" a
-        // captured "flashback", whenever that member happens to be declared first.
+        // pattern matches anywhere within the value, so e.g. "fish" would claim a captured "fish sticks", and
+        // "cat" a captured "catfish", whenever that member happens to be declared first.
         Regex = new ($"^(?:{regexString})$");
         PositionAmongSiblings = positionAmongSiblings;
         PositionAmongSynonyms = positionAmongSynonyms;

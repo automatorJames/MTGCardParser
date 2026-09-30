@@ -202,18 +202,18 @@ public static class SmartSpanControlPanel
     {
         // --- Regex column ---
 
-        // |tap
+        // |dog
         [RegexSpanKind.RegexEnumMember] = new(Saturation: .35, Brightness: .8),
 
-        // |tap
+        // |dog
         // ^
         [RegexSpanKind.RegexEnumMemberJoiner] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0, BrightnessRange: 0),
 
-        // until[ ]end
-        //      ^^^
+        // sleeps[ ]in
+        //       ^^^
         [RegexSpanKind.RegexConnectiveSpace] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0),
 
-        // until end of turn
+        // sleeps in the
         [RegexSpanKind.RegexLiteralMatch] = new(Saturation: 0.2, Brightness: 0.45, SaturationRange: 0.2, BrightnessRange: 0.2),
 
         // [ ]
@@ -221,22 +221,22 @@ public static class SmartSpanControlPanel
 
         // --- Regex/comment separator ---
 
-        // (?<CardKeyword>tap)  #  Card Keyword
-        //                    ^^^^^
+        // (?<Animal>dog)  #  Animal
+        //               ^^^^^
         [RegexSpanKind.RegexCommentSeparator] = new(Saturation: 0, Brightness: 0.25, SaturationRange: 0.2, BrightnessRange: 0.2),
 
         // --- Comment column ---
 
-        // Tap : 12
+        // Dog : 12
         // ^^^
         [RegexSpanKind.CommentEnumMemberName] = new(Saturation: .35, Brightness: .8),
 
-        // Tap : 12
+        // Dog : 12
         //       ^^
         [RegexSpanKind.CommentEnumMemberOccurrenceCount] = new(Saturation: .3, Brightness: .35, IsBold: true),
 
-        // ───────Power and Toughness─
-        //        ^^^^^^^^^^^^^^^^^^^
+        // ───────Living Room─
+        //        ^^^^^^^^^^^
         [RegexSpanKind.CommentEnumMemberSynonymFooter] = new(Saturation: 0.3, Brightness: 0.4, SaturationRange: 0.1, BrightnessRange: 0.1, IsItalic: true),
 
         // 3 omitted
@@ -248,23 +248,23 @@ public static class SmartSpanControlPanel
         // joiner Space
         [RegexSpanKind.CommentJoiner] = new(Saturation: 0.15, Brightness: 0.35, SaturationRange: 0.2, BrightnessRange: 0.2),
 
-        // Token Unit: Card Keyword
+        // Token Unit: Animal Rests
         // ^^^^^^^^^^
         [RegexSpanKind.CommentGroupOpenHeaderText] = new(Brightness: .55, Saturation: .4),
 
-        // Token Unit: Card Keyword
+        // Token Unit: Animal Rests
         //            ^^^^^^^^^^^^^
         [RegexSpanKind.CommentGroupOpenHeaderDisambiguator] = new(Saturation: 0.35, Brightness: 0.4, SaturationRange: 0.3, BrightnessRange: 0.25),
 
-        // Card Keyword (any number)
+        // Animal Rests (any number)
         // ^^^^^^^^^^^^
         [RegexSpanKind.CommentGroupFooterText] = new(IsItalic: true, Brightness: .55, Saturation: .4),
 
-        // Card Keyword (any number)
+        // Animal Rests (any number)
         //              ^^^^^^^^^^^^
         [RegexSpanKind.CommentGroupFooterQuantifierReminder] = new(Saturation: 0.35, Brightness: 0.4, SaturationRange: 0.3, BrightnessRange: 0.25),
 
-        // ┌── Card Keyword ──┐
+        // ┌── Animal Rests ──┐
         // ^                  ^
         [RegexSpanKind.CommentGroupBorderWall] = new(Brightness: .4, Saturation: .4),
     };

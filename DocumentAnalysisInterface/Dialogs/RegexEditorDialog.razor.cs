@@ -4,6 +4,7 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 {
     [Parameter] public ProcessedLine Line { get; set; } = default!;
     [Inject] GlyphGrammar Grammar { get; set; } = default!;
+    [Inject] GlyphSourceLocation GlyphSources { get; set; } = default!;
     [Parameter] public EventCallback<EditorGlyph> OnClose { get; set; }
 
     string ClassName
@@ -214,7 +215,10 @@ public partial class RegexEditorDialog : ComponentBase, IAsyncDisposable
 
     private async Task SaveClassToFile()
     {
-        Grammar.CreateAndRegisterNewTypeAndSaveToDisk(_editorGlyph.ToDefinition());
+        // Registered first: an invalid glyph throws there, before anything is written.
+        var glyph = _editorGlyph.ToDefinition();
+        Grammar.RegisterGlyph(glyph);
+        File.WriteAllText(GlyphSources.PathFor(glyph.Name), GlyphSourceWriter.Write(new GrammarDefinition { Glyphs = [glyph] }, GlyphSources.Namespace));
         await OnClose.InvokeAsync(_editorGlyph);
     }
 

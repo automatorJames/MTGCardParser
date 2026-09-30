@@ -86,7 +86,7 @@ public static class MatchContentRenderer
 
     /// <summary>
     /// <paramref name="colorSource"/>'s FullyQualifiedName, extended with its captured enum member's own
-    /// name (e.g. "EnchantedCard_Buff_Keyword_Protection") when it's an enum capture - matching exactly how
+    /// name (e.g. "AnimalRests_Place_Kitchen") when it's an enum capture - matching exactly how
     /// <see cref="EnumMemberNode"/> names that member's own row in the formatted regex output, so
     /// hovering a matched enum value's word here highlights that specific member line there. Any other
     /// capture kind has no such finer-grained row of its own, so its plain FullyQualifiedName is used as-is.

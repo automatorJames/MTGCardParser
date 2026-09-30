@@ -115,7 +115,7 @@ public class SmartLineRenderer
 
     /// <summary>
     /// Splits a literal-match brick's text into alternating word/space spans, so a space embedded in a
-    /// multi-word literal (e.g. "until end of turn") gets the same <see cref="RegexSpanKind.RegexConnectiveSpace"/>
+    /// multi-word literal (e.g. "sleeps in the") gets the same <see cref="RegexSpanKind.RegexConnectiveSpace"/>
     /// treatment as a dedicated joiner brick — there's no strongly-typed node for "the space in the middle of
     /// a literal phrase", so this isolates it with a regex split instead. Splits on
     /// <see cref="BuiltRegex.EscapedSpace"/> rather than on raw spaces, since that's how

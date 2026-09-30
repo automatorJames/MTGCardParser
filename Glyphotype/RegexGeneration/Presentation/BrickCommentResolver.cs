@@ -55,10 +55,10 @@ internal static class BrickCommentResolver
         };
 
     /// <summary>
-    /// A type's friendly display name, e.g. "Card Keyword" for <c>CardKeyword</c>. For a generic type (e.g.
-    /// <c>CompoundOf&lt;CardType&gt;</c>, whose raw <see cref="Type.Name"/> is "CompoundOf`1"), renders the
+    /// A type's friendly display name, e.g. "Animal Rests" for <c>AnimalRests</c>. For a generic type (e.g.
+    /// <c>CompoundOf&lt;ClockSound&gt;</c>, whose raw <see cref="Type.Name"/> is "CompoundOf`1"), renders the
     /// friendly-cased open generic name followed by its friendly-cased type argument(s) in parentheses, e.g.
-    /// "Compound Of (Card Type)", instead of leaking the backtick-arity suffix.
+    /// "Compound Of (Clock Sound)", instead of leaking the backtick-arity suffix.
     /// </summary>
     static string FormatTypeNameFriendly(Type type)
     {

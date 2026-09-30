@@ -25,6 +25,13 @@ public class Program
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();
         builder.Services.AddSingleton<CorpusAnalyzer>();
 
+        // Where glyph sources are read from and written to - by the Glyph editor, and by Grammar Tools commits.
+        var glyphSources = new GlyphSourceLocation(
+            Directory: Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "MTGGlyphs", "GlyphDefinitions")),
+            Namespace: "MTGGlyphs.GlyphDefinitions");
+
+        builder.Services.AddSingleton(glyphSources);
+
         // The Grammar Tools tab's working definition: edits are scored against the corpus the analyzer already
         // tokenized, saved outside the repo until committed, and committed into the glyph sources.
         builder.Services.AddSingleton(services => new GrammarWorkbench(
@@ -32,8 +39,8 @@ public class Program
             services.GetRequiredService<CorpusAnalyzer>().ProcessedDocuments,
             new WorkbenchOptions(
                 WorkingDefinitionPath: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glyphotype", "working-grammar.json"),
-                SourceDirectory: Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "MTGGlyphs", "GlyphDefinitions")),
-                SourceNamespace: "MTGGlyphs.GlyphDefinitions",
+                SourceDirectory: glyphSources.Directory,
+                SourceNamespace: glyphSources.Namespace,
                 AllowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches)));
 
         var app = builder.Build();

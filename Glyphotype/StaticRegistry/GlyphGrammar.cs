@@ -21,7 +21,7 @@ public sealed class GlyphGrammar
 
     /// <summary>
     /// The grammar of every Glyph type in the assemblies alongside the running one - Glyph types are defined by
-    /// consumer assemblies (e.g. MTGGlyphs), not by this library - tokenized under
+    /// consumer assemblies (a domain's own glyph library), not by this library - tokenized under
     /// <see cref="GlobalSettings.Current"/>. Built on first use.
     /// </summary>
     public static GlyphGrammar Default => _default.Value;
@@ -37,7 +37,7 @@ public sealed class GlyphGrammar
     /// <summary>
     /// Every Glyph type in play: each non-generic, non-abstract Glyph type given - dependents included - plus every
     /// type reachable by walking their property nibs, which is what surfaces a closed generic like
-    /// <c>OneOf&lt;CardType, CreatureType&gt;</c> that only ever appears as a property type. When any are marked
+    /// <c>OneOf&lt;Animal, Person&gt;</c> that only ever appears as a property type. When any are marked
     /// <see cref="IsolateForTestingAttribute"/>, just their dependency closures.
     /// </summary>
     public IReadOnlyList<Type> Types { get; private set; }
@@ -151,8 +151,8 @@ public sealed class GlyphGrammar
         var isolatedTypes = givenTypes.Where(x => x.IsDefined(typeof(IsolateForTestingAttribute))).ToList();
 
         // When one or more types opt into isolated testing, don't just keep those exact types - pull in their whole
-        // property dependency graph too, so a type like WheneverACardEntersTheBattlefield still finds every Glyph
-        // type it depends on (e.g. OneOf<CardType, CreatureType>).
+        // property dependency graph too, so a type like GreetsUs still finds every Glyph type it depends on
+        // (e.g. OneOf<Animal, Person>).
         return GetTransitiveGlyphTypeClosure(isolatedTypes.Count > 0 ? isolatedTypes : givenTypes)
             .Where(t => !t.IsAssignableTo(typeof(DynamicGlyph)))
             .ToList();
@@ -301,16 +301,17 @@ public sealed class GlyphGrammar
         }
     }
 
-    // ---- Glyphs defined at runtime by the Glyph editor ----
+    // ---- Glyphs defined at runtime ----
 
-    const string _sourceCodeNamespace = "MTGGlyphs";
-    static readonly string _sourceCodeDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MTGGlyphs"));
-
-    /// <summary>Emits <paramref name="glyph"/> as a new type, adds it to this grammar (rebuilding and revalidating it), and saves its source alongside MTGGlyphs' own.</summary>
-    public void CreateAndRegisterNewTypeAndSaveToDisk(GlyphDefinition glyph)
+    /// <summary>
+    /// Emits <paramref name="glyph"/> as a new type (resolving its references against this grammar's types) and
+    /// adds it to this grammar, rebuilding and revalidating it. Throws, leaving the grammar as it was, if the glyph
+    /// is invalid. Only this process's grammar changes: persisting the glyph as source (see
+    /// <see cref="GlyphSourceWriter"/>) is the caller's business.
+    /// </summary>
+    public void RegisterGlyph(GlyphDefinition glyph)
     {
-        var definition = new GrammarDefinition { Glyphs = [glyph] };
-        var newTypes = GrammarEmitter.Emit(definition, knownTypes: Types);
+        var newTypes = GrammarEmitter.Emit(new GrammarDefinition { Glyphs = [glyph] }, knownTypes: Types);
         _candidateTypes.AddRange(newTypes);
 
         try
@@ -326,7 +327,5 @@ public sealed class GlyphGrammar
         }
 
         DeterministicPalette.RefreshTypePaletteSet();
-        var outputPath = Path.Combine(_sourceCodeDir, glyph.Name + ".cs");
-        File.WriteAllText(outputPath, GlyphSourceWriter.Write(definition, _sourceCodeNamespace));
     }
 }

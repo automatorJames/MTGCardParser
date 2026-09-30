@@ -104,9 +104,9 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// <summary>
     /// <see cref="FullyQualifiedName"/>, suffixed with something that distinguishes this specific
     /// occurrence, for every node along a repeated occurrence's own span - not just its terminal leaf -
-    /// when <see cref="IsListPosition"/>: a terminal's own resolved value (e.g. distinguishing "flying"
-    /// from "first strike" even though both otherwise share one FullyQualifiedName), or this occurrence's
-    /// 1-based position for a non-terminal node in between (e.g. the <c>BuffMiddle</c> and <c>SecondPlus</c>
+    /// when <see cref="IsListPosition"/>: a terminal's own resolved value (e.g. distinguishing "fish"
+    /// from "milk" even though both otherwise share one FullyQualifiedName), or this occurrence's
+    /// 1-based position for a non-terminal node in between (e.g. the <c>FoodMiddle</c> and <c>SecondPlus</c>
     /// wrapper spans <c>SpanView</c> renders around each occurrence), which has no scalar value of its own
     /// to read. Every node in one occurrence's own span needs disambiguating, not just its leaf, because
     /// <c>document-lines.js</c>'s hover highlighting collects every ancestor's own <c>data-path</c> up to

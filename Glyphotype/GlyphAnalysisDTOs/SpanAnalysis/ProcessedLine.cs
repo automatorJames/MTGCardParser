@@ -50,7 +50,7 @@ public class ProcessedLine
 
         WordCount = CountWords(sourceText.FormattedText);
         // Clause breaks are excluded alongside unmatched text, for the opposite reason: a period is
-        // modeled, but it isn't a word. WordCount counts it as part of whatever word it trails ("flying."
+        // modeled, but it isn't a word. WordCount counts it as part of whatever word it trails ("kitchen."
         // is one word), so counting the ClauseBreak token as a captured word too would credit coverage
         // that the denominator never had.
         CapturedWordCount = glyphs

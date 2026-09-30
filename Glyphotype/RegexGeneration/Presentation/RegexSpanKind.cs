@@ -34,7 +34,7 @@ public enum RegexSpanKind
 
     // --- Comment column ---
 
-    /// <summary>The member-name portion of an enum member row's comment (e.g. "Tap" in "Tap : 12"), whether a standalone row or a synonym-group header — the two aren't visually distinguished.</summary>
+    /// <summary>The member-name portion of an enum member row's comment (e.g. "Dog" in "Dog : 12"), whether a standalone row or a synonym-group header — the two aren't visually distinguished.</summary>
     CommentEnumMemberName,
 
     /// <summary>The occurrence-count portion of any enum member row's comment, standalone or grouped (e.g. "12" in "Tap : 12").</summary>

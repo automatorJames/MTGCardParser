@@ -5,7 +5,7 @@ public abstract class OneOfBase : Glyph
     public override Joiner Joiner => Joiner.Pipe;
 
     /// <summary>
-    /// The CLR type of whichever alternative actually resolved on this instance (e.g. <c>CardType</c>
+    /// The CLR type of whichever alternative actually resolved on this instance (e.g. <c>Animal</c>
     /// for a <see cref="OneOf{T1,T2}"/> whose first slot matched) — never the nullable wrapper, and
     /// never this instance's own (often generic-mangled, e.g. "OneOf`2") type name. This isn't a
     /// proper data-path citizen; it's a display-time fact about which choice a one-of resolved to,

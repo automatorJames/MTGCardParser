@@ -476,7 +476,7 @@ public static class GlyphClassRenderer
         _builtInAliases.TryGetValue(type, out var alias) ? alias : type.Name;
 
     /// <summary>
-    /// A type's full plain-text name, recursively expanding generic type arguments (e.g. <c>CompoundOf&lt;Keyword&gt;</c>
+    /// A type's full plain-text name, recursively expanding generic type arguments (e.g. <c>CompoundOf&lt;Trait&gt;</c>
     /// instead of the raw <c>CompoundOf`1</c>) - used where a type name is rendered as plain neutral text with no
     /// per-argument coloring of its own (a base-type declaration, or a generic type argument with no matching
     /// child node to color it from).

@@ -196,7 +196,7 @@ public class RegexGraph
         TryMatch(sourceText, 0, sourceText.Length, out glyph, tokenizer: tokenizer);
 
     /// <summary>
-    /// Evaluates if the source text at the current index satisfies the regex and MTG boundary rules.
+    /// Evaluates if the source text at the current index satisfies the regex and the scope's boundary rules.
     /// </summary>
     /// <param name="mustConsumeWholeScope">
     /// Forces the whole-scope rule described on <see cref="MustMatchWholeLine"/> onto this one call, for a

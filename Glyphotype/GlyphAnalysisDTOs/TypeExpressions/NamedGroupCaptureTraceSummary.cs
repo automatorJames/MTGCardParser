@@ -21,7 +21,7 @@ public abstract class NamedGroupCaptureTraceSummary
 
         // RootCaptureTrace[fullyQualifiedName] returns one representative trace per glyph - but a group
         // nested inside a repeated ("*"-quantified) ancestor list can capture more than once within a
-        // single glyph's match (e.g. two keywords in one ManyOf<Buff> list), with every occurrence past
+        // single glyph's match (e.g. two foods in one ManyOf<Food> list), with every occurrence past
         // the first hanging off that representative's own Siblings rather than getting a separate entry
         // here. Expanding each representative via its own enumeration (self + Siblings - see
         // CaptureTrace.GetEnumerator) counts every real occurrence, not just one per glyph.

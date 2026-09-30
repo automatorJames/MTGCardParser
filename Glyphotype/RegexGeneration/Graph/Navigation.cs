@@ -43,9 +43,9 @@ public class Navigation
 
     /// <summary>
     /// A regex-group-name-safe rendering of <paramref name="type"/>'s name: plain for an ordinary type, but
-    /// for a closed generic (e.g. <c>OneOf&lt;CardType, CreatureType&gt;</c>, whose raw <see cref="Type.Name"/>
+    /// for a closed generic (e.g. <c>OneOf&lt;Animal, Person&gt;</c>, whose raw <see cref="Type.Name"/>
     /// is "OneOf`2") strips the backtick-arity suffix and appends each type argument's own safe name (e.g.
-    /// "OneOfCardTypeCreatureType"), since the backtick and any punctuation from a friendly display name
+    /// "OneOfAnimalPerson"), since the backtick and any punctuation from a friendly display name
     /// would otherwise produce an invalid .NET regex named-capture-group identifier.
     /// </summary>
     public static string GetRegexSafeTypeName(Type type) =>

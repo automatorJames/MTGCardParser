@@ -184,7 +184,7 @@ public abstract class Glyph : CaptureUnit
     /// the regex, so none of the below applies to it.
     /// <para>
     /// Subclassing one as a pure alias is fine, and is how a primitive becomes top-level: e.g.
-    /// <c>[MustMatchWholeLine] class CardAbilityLine : CompoundOf&lt;Keyword&gt;</c> just gives a
+    /// <c>[MustMatchWholeLine] class ShoppingList : CompoundOf&lt;Ingredient&gt;</c> just gives a
     /// <see cref="CompoundOf{T}"/> a name and class-level attributes. Extending one is valid C# but not a valid
     /// Glyph composition. With no <see cref="Nibs"/> override, the added properties are laid out in reflection
     /// order - unspecified, and in practice ahead of the inherited ones - so the regex silently expects them in

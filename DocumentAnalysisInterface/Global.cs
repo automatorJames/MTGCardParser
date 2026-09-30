@@ -9,3 +9,4 @@ global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
 global using Glyphotype.PresentationRules;
 global using Glyphotype.RegexGeneration.Presentation;
 global using Glyphotype;
+global using Glyphotype.Definitions;
