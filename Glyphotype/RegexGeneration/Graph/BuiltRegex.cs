@@ -72,8 +72,15 @@ public class BuiltRegex
         _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));
     }
 
+    /// <summary>
+    /// Interpreted, not <see cref="RegexOptions.Compiled"/>: compiling these patterns to IL - some are large
+    /// alternations over a whole vocabulary - costs far more up front than it saves per pass (measured on a
+    /// ~15k-document corpus: 10.4s first pass then 376ms compiled, vs 444ms then 417ms interpreted). A grammar is
+    /// rarely matched more than a few passes' worth - and every what-if grammar built from a definition is new
+    /// types, so would pay the compile again.
+    /// </summary>
     static Regex Compile(string pattern) =>
-        new(pattern, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+        new(pattern, RegexOptions.ExplicitCapture);
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
     public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly) =>
