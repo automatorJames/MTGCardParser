@@ -284,11 +284,15 @@ else
         yield return new("Captured words", _committed.CapturedWords, working?.CapturedWords, BitsFormat, LowerIsBetter: false, Indented: true);
     }
 
+    /// <summary>The working value's change from the committed one: blank while it's unknown (scoring), a dash when there's none.</summary>
     static string FormatDelta(Metric metric) =>
-        metric.Working is not double working || Math.Abs(working - metric.Committed) < 1e-9 ? "" : (working > metric.Committed ? "+" : "") + metric.Format(working - metric.Committed);
+        metric.Working is not double working ? ""
+        : Math.Abs(working - metric.Committed) < 1e-9 ? "—"
+        : (working > metric.Committed ? "+" : "") + metric.Format(working - metric.Committed);
 
     static string DeltaClass(Metric metric) =>
-        metric.Working is not double working || Math.Abs(working - metric.Committed) < 1e-9 ? ""
+        metric.Working is not double working ? ""
+        : Math.Abs(working - metric.Committed) < 1e-9 ? "unchanged"
         : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
 
     // ---- Glyphs ----

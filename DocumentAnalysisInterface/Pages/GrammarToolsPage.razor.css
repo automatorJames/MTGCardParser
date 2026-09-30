@@ -90,6 +90,10 @@
     color: #f28b82;
 }
 
+.unchanged {
+    color: var(--subtext-grey);
+}
+
 .status {
     margin-top: 0.75rem;
     font-size: 0.9rem;
