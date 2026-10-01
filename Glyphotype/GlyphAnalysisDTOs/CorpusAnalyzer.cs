@@ -48,6 +48,17 @@ public class CorpusAnalyzer
         _grammar = grammar;
     }
 
+    /// <summary>The grammar the corpus is tokenized by.</summary>
+    public GlyphGrammar Grammar => _grammar;
+
+    /// <summary>An analysis of a corpus <paramref name="grammar"/> has already tokenized - nothing is tokenized again.</summary>
+    public static CorpusAnalyzer FromProcessedDocuments(IReadOnlyList<ProcessedDocument> documents, GlyphGrammar grammar)
+    {
+        var analyzer = new CorpusAnalyzer(repository: null, grammar);
+        analyzer.Analyze(documents.ToList());
+        return analyzer;
+    }
+
     public async Task EnsureInitializedAsync()
     {
         if (_isInitialized) return;
@@ -57,11 +68,16 @@ public class CorpusAnalyzer
         // AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
         var documents = await _repository.GetDocumentsAsync();
 
-        ProcessedDocuments = documents
+        Analyze(documents
             .AsParallel()
             .AsOrdered()
             .Select(x => new ProcessedDocument(x, _grammar))
-            .ToList();
+            .ToList());
+    }
+
+    void Analyze(List<ProcessedDocument> processedDocuments)
+    {
+        ProcessedDocuments = processedDocuments;
 
         WordCount = ProcessedDocuments.Sum(x => x.WordCount);
         CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
@@ -86,18 +102,5 @@ public class CorpusAnalyzer
             GlyphOccurrenceSummaries[type] = new GlyphOccurrenceSummary(type);
 
         _isInitialized = true;
-    }
-
-    public ProcessedDocument ReprocessDocument(IDocument document)
-    {
-        var oldProcessedDocument = ProcessedDocuments.FirstOrDefault(x => x.Document == document);
-        var index = ProcessedDocuments.IndexOf(oldProcessedDocument);
-        ProcessedDocument reprocessedDocument = new(document, _grammar);
-        ProcessedDocuments[index] = reprocessedDocument;
-
-        WordCount = ProcessedDocuments.Sum(x => x.WordCount);
-        CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
-
-        return reprocessedDocument;
     }
 }

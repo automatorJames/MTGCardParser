@@ -4,7 +4,6 @@ global using Microsoft.JSInterop;
 global using Glyphotype.Colors;
 global using Glyphotype.StaticRegistry;
 global using System.Text.RegularExpressions;
-global using Glyphotype.GlyphEditor;
 global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
 global using Glyphotype.PresentationRules;
 global using Glyphotype.RegexGeneration.Presentation;

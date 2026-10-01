@@ -3,7 +3,8 @@
 @inject RuntimeSettings RuntimeSettings
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
-@inject CorpusAnalyzer CorpusAnalyzer
+@inject ActiveCorpus CorpusAnalyzer
+@inject WorkspaceManager Workspaces
 
 <div class="page">
     <nav class="top-row px-4">
@@ -13,6 +14,16 @@
             <NavLink href="echo-trees">Echo Trees</NavLink>
             <NavLink href="grammar-tools">Grammar Tools</NavLink>
         </div>
+
+        <label class="workspace-switcher" data-tooltip="The grammar every tab shows - switch to inspect another workspace's">
+            <span class="workspace-switcher-label">Workspace</span>
+            <select value="@Workspaces.ActiveWorkspace.Name" @onchange="e => Workspaces.Switch((string)e.Value)">
+                @foreach (var workspace in Workspaces.Workspaces)
+                {
+                    <option value="@workspace.Name">@workspace.Name</option>
+                }
+            </select>
+        </label>
 
         @if (RuntimeSettings.IsLoaded && RuntimeSettings.ShowCoverageStats && GetCurrentRelativePath() == "/" && CorpusAnalyzer.ProcessedDocuments is not null)
         {
@@ -90,7 +101,19 @@
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += OnSettingsChanged;
+        Workspaces.ActiveChanged += OnWorkspaceChanged;
+        CorpusAnalyzer.Changed += OnCorpusChanged;
     }
+
+    void OnWorkspaceChanged() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>Keeps the coverage figures in step with the grammar the tabs show.</summary>
+    void OnCorpusChanged() =>
+        _ = InvokeAsync(async () =>
+        {
+            await CorpusAnalyzer.EnsureInitializedAsync();
+            StateHasChanged();
+        });
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -139,6 +162,8 @@
     public void Dispose()
     {
         RuntimeSettings.OnChanged -= OnSettingsChanged;
+        Workspaces.ActiveChanged -= OnWorkspaceChanged;
+        CorpusAnalyzer.Changed -= OnCorpusChanged;
     }
 
     /// <summary>

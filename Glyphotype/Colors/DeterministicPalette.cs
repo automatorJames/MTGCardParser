@@ -59,9 +59,6 @@ public static class DeterministicPalette
         return typePaletteSet;
     }
 
-    public static void RefreshTypePaletteSet() =>
-        _typePaletteSet = GetTypePaletteSet();
-
     /// <summary>
     /// Equidistant rainbow hues for <paramref name="totalItemCount"/> items, keyed by position.
     /// <paramref name="saturationFactor"/>/<paramref name="lightnessFactor"/> scale the shared base

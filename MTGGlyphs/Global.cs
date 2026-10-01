@@ -13,7 +13,6 @@ global using Glyphotype.StaticRegistry;
 global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
 global using Glyphotype.GlyphAnalysisDTOs.WordTrees;
 global using Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
-global using Glyphotype.GlyphEditor;
 global using Glyphotype.Tokenizers;
 global using Glyphotype.GlyphPrimitives;
 global using static Glyphotype.Extensions;

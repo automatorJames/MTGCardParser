@@ -62,6 +62,9 @@ public sealed class GrammarWorkbench : IDisposable
     readonly IReadOnlyList<ProcessedDocument> _committedDocuments;
     Task<WorkingScore> _committedTrial;
 
+    /// <summary>Whether a commit has made the compiled grammar out of date (it stays so until the app restarts).</summary>
+    bool _compiledGrammarSuperseded;
+
     /// <summary>The latest scores of definitions, newest last, keyed by their JSON: so applying a change set that was just evaluated doesn't score it again.</summary>
     readonly List<(string Json, WorkingScore Score)> _recentScores = [];
     const int _recentScoreCapacity = 2;
@@ -233,6 +236,19 @@ public sealed class GrammarWorkbench : IDisposable
             else
                 await pending.WaitAsync(cancellation);
         }
+    }
+
+    /// <summary>
+    /// The grammar as it stands and the corpus as it tokenized it - straight away while that's still the compiled grammar
+    /// (nothing needs scoring), else once the working definition is scored. Null if the working definition doesn't build.
+    /// </summary>
+    public async Task<(GlyphGrammar Grammar, IReadOnlyList<ProcessedDocument> Documents)?> GetCurrentCorpusAsync(CancellationToken cancellation = default)
+    {
+        if (!HasChanges && _committedGrammar is not null && !_compiledGrammarSuperseded)
+            return (_committedGrammar, _committedDocuments);
+
+        var trial = await GetCurrentTrialAsync(cancellation);
+        return trial.Succeeded ? (trial.Grammar, trial.Documents) : null;
     }
 
     // ---- Edits ----
@@ -497,6 +513,7 @@ public sealed class GrammarWorkbench : IDisposable
         lock (_gate)
         {
             // The compiled grammar still predates the commit, so the committed trial is now the working one's.
+            _compiledGrammarSuperseded = true;
             var workingTrial = LatestWorkingScore is { Succeeded: true } latest && latest.Definition == WorkingDefinition ? latest : null;
             var definition = WorkingDefinition;
             _committedTrial = workingTrial is not null ? Task.FromResult(workingTrial) : Task.Run(() => Score(definition, CancellationToken.None));

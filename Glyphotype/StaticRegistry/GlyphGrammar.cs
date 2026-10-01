@@ -300,32 +300,4 @@ public sealed class GlyphGrammar
             return e.Types.Where(t => t != null);
         }
     }
-
-    // ---- Glyphs defined at runtime ----
-
-    /// <summary>
-    /// Emits <paramref name="glyph"/> as a new type (resolving its references against this grammar's types) and
-    /// adds it to this grammar, rebuilding and revalidating it. Throws, leaving the grammar as it was, if the glyph
-    /// is invalid. Only this process's grammar changes: persisting the glyph as source (see
-    /// <see cref="GlyphSourceWriter"/>) is the caller's business.
-    /// </summary>
-    public void RegisterGlyph(GlyphDefinition glyph)
-    {
-        var newTypes = GrammarEmitter.Emit(new GrammarDefinition { Glyphs = [glyph] }, knownTypes: Types);
-        _candidateTypes.AddRange(newTypes);
-
-        try
-        {
-            Build();
-        }
-        catch
-        {
-            // An invalid new type is rejected whole: rebuild without it, leaving the grammar as it was.
-            _candidateTypes.RemoveAll(newTypes.Contains);
-            Build();
-            throw;
-        }
-
-        DeterministicPalette.RefreshTypePaletteSet();
-    }
 }

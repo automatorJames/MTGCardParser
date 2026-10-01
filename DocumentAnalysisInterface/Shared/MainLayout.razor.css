@@ -19,6 +19,34 @@
     padding-right: 1.5rem;
 }
 
+/* Which workspace's grammar every tab shows */
+.workspace-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0 1.5rem;
+    white-space: nowrap;
+}
+
+.workspace-switcher-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--subtext-grey);
+}
+
+    .workspace-switcher select {
+        max-width: 14rem;
+        padding: 0.2rem 0.5rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 6px;
+        background-color: var(--dark-grey);
+        color: #f0f4f8;
+        font-size: 0.88rem;
+        font-weight: 600;
+    }
+
 .corpus-coverage-callout {
     flex: 1;
     text-align: center;

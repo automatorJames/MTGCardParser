@@ -1,16 +1,19 @@
 @page "/"
 @page "/corpus-captures"
 @inject IJSRuntime JSRuntime
-@inject CorpusAnalyzer DocumentAnalyzer
+@inject ActiveCorpus DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
 @implements IAsyncDisposable
 
 <DeferredContent OnReady="InitHoverAsync">
     <div class="corpus-captures-container" id="corpus-captures"
          style="--corpus-captures-max-width: @(CorpusCapturesLayout.ContentMaxWidthPx)px">
+        @* Keyed by the processed document itself, not its name: a new analysis (another workspace's grammar, or a re-score)
+           brings new documents, and their blocks are built fresh - patching the old ones in place would cascade the new
+           line's display context into spans still holding the old grammar's captures. *@
         @foreach (var document in GetFilteredDocuments())
         {
-            <DocumentBlock @key=document.Document.Name ProcessedDocument=document />
+            <DocumentBlock @key=document ProcessedDocument=document />
         }
     </div>
 </DeferredContent>
@@ -27,13 +30,21 @@
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += StateHasChanged;
+        DocumentAnalyzer.Changed += OnCorpusChanged;
     }
 
     protected override Task OnInitializedAsync() =>
-        // The corpus is warmed at startup (see Program.cs), so this normally resolves
-        // immediately; awaiting it here just guards against the unlikely case a request
-        // comes in before that finishes.
+        // Resolves at once while the grammar shown is the one the corpus was analyzed with at startup (see
+        // Program.cs); for another workspace's grammar, it waits for that to be scored and analyzed.
         DocumentAnalyzer.EnsureInitializedAsync();
+
+    /// <summary>The active workspace's grammar changed (see <see cref="ActiveCorpus"/>): show the corpus as it tokenizes now.</summary>
+    void OnCorpusChanged() =>
+        _ = InvokeAsync(async () =>
+        {
+            await DocumentAnalyzer.EnsureInitializedAsync();
+            StateHasChanged();
+        });
 
     async Task InitHoverAsync()
     {
@@ -79,6 +90,7 @@
     public async ValueTask DisposeAsync()
     {
         RuntimeSettings.OnChanged -= StateHasChanged;
+        DocumentAnalyzer.Changed -= OnCorpusChanged;
 
         if (_selfRef != null)
         {

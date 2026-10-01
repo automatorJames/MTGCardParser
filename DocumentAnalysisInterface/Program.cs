@@ -22,13 +22,15 @@ public class Program
         // everything in the process - this container and GlyphGrammar.Default alike, the latter
         // built whenever something first touches it - reads one already-resolved instance.
         builder.Services.AddSingleton(GlobalSettings.Current);
-        builder.Services.AddSingleton(_ => GlyphGrammar.Default);
         builder.Services.AddScoped<ProtectedLocalStorage>();
         builder.Services.AddScoped<RuntimeSettings>();
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();
-        builder.Services.AddSingleton<CorpusAnalyzer>();
 
-        // Where glyph sources are read from and written to - by the Glyph editor, and by Grammar Tools commits.
+        // The corpus as the compiled grammar tokenizes it. Pages don't read it directly: they read ActiveCorpus (below),
+        // which starts from this and follows whichever workspace's grammar is active.
+        builder.Services.AddSingleton(services => new CorpusAnalyzer(services.GetRequiredService<IDocumentRepository>(), GlyphGrammar.Default));
+
+        // Where glyph sources are read from and written to - by Grammar Tools commits.
         var glyphSources = new GlyphSourceLocation(
             Directory: Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "MTGGlyphs", "GlyphDefinitions")),
             Namespace: "MTGGlyphs.GlyphDefinitions");
@@ -50,6 +52,11 @@ public class Program
             root: Path.Combine(appData, "workspaces"),
             allowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches,
             legacyWorkingDefinitionPath: Path.Combine(appData, "working-grammar.json")));
+
+        // What every tab shows: the corpus as the active workspace's grammar tokenizes it.
+        builder.Services.AddSingleton(services => new ActiveCorpus(
+            services.GetRequiredService<WorkspaceManager>(),
+            services.GetRequiredService<CorpusAnalyzer>()));
 
         // An agent's tools over those same workspaces, served at /mcp: whatever an agent does there shows up live in
         // the Grammar Tools tab, and vice versa.

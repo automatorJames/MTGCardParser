@@ -1,6 +1,5 @@
 @using DocumentAnalysisInterface.Components.Regex
-@inject CorpusAnalyzer CorpusAnalyzer
-@inject GlyphGrammar Grammar
+@inject ActiveCorpus CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
 @implements IDisposable
 
@@ -102,12 +101,16 @@
 
     // Preview state (null lines = no preview open)
     List<SmartLine> _previewLines;
+
+    /// <summary>The grammar the tabs showed as the dialog opened - analyzed throughout, even if another workspace becomes active meanwhile.</summary>
+    GlyphGrammar _grammar;
     string _previewCopyText;
     string _previewTitle;
 
     protected override void OnInitialized()
     {
-        _graphEntries = Grammar.Types.Select(x => KeyValuePair.Create(x, GlyphTypeCache.GetRegexGraph(x))).ToList();
+        _grammar = CorpusAnalyzer.Grammar;
+        _graphEntries = _grammar.Types.Select(x => KeyValuePair.Create(x, GlyphTypeCache.GetRegexGraph(x))).ToList();
         _totalCount = _graphEntries.Count;
         _ = RunAnalysisAsync();
     }
@@ -132,7 +135,7 @@
 
                     try
                     {
-                        results.Add(RegexMatchDebugger.Analyze(graph, TextSegment, Grammar));
+                        results.Add(RegexMatchDebugger.Analyze(graph, TextSegment, _grammar));
                     }
                     catch
                     {

@@ -1,7 +1,8 @@
 ﻿@page "/echo-trees"
 @inject IJSRuntime JSRuntime
 @inject RuntimeSettings RuntimeSettings
-@inject CorpusAnalyzer CorpusAnalyzer
+@inject ActiveCorpus CorpusAnalyzer
+@implements IDisposable
 
 @* Only render the body of the page after settings are loaded to avoid incorrect filtering *@
 @if (RuntimeSettings.IsLoaded)
@@ -54,12 +55,27 @@ else
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += OnSettingsChanged;
+        CorpusAnalyzer.Changed += OnCorpusChanged;
     }
 
     protected override Task OnInitializedAsync()
-        // The corpus is warmed at startup (see Program.cs), so it's already available
-        // by the time any page loads; no per-page initialization is needed here.
+        // Resolves at once while the grammar shown is the one the corpus was analyzed with at startup (see
+        // Program.cs); for another workspace's grammar, it waits for that to be scored and analyzed.
         => CorpusAnalyzer.EnsureInitializedAsync();
+
+    public void Dispose()
+    {
+        RuntimeSettings.OnChanged -= OnSettingsChanged;
+        CorpusAnalyzer.Changed -= OnCorpusChanged;
+    }
+
+    /// <summary>The active workspace's grammar changed (see <see cref="ActiveCorpus"/>): show the corpus as it tokenizes now.</summary>
+    void OnCorpusChanged() =>
+        _ = InvokeAsync(async () =>
+        {
+            await CorpusAnalyzer.EnsureInitializedAsync();
+            StateHasChanged();
+        });
 
     private async void OnSettingsChanged()
     {

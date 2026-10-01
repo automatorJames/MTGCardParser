@@ -55,7 +55,7 @@ public class DefinitionTests(CorpusFixture corpus)
     [Fact]
     public void A_glyph_can_be_defined_on_top_of_an_existing_grammar()
     {
-        // What the Glyph editor does: one new glyph, referring to existing types by name.
+        // One new glyph, referring to existing types by name - as a definition built on a working grammar does.
         var glyph = new GlyphDefinition
         {
             Name = "AnimalHides",

@@ -1,13 +1,6 @@
 ﻿@using Glyphotype.RegexGeneration.Graph
-@using Glyphotype.GlyphEditor
-@inject CorpusAnalyzer CorpusAnalyzer
-@inject IJSRuntime JS
+@inject ActiveCorpus CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
-
-@* Regex-editor-on-click is disabled for now (see OpenRegexEditorDialog/HandleDialogClose below) —
-   the Snackbar was only ever driven from its close handler. Revisit together when it comes back.
-<Snackbar @ref="_snackbar" />
-*@
 
 <div class="document-capture-block">
     <div class="document-title-row">
@@ -45,7 +38,6 @@
                     }
                 </div>
                 <div class="line-container-parent" data-path=@line.DataPath>
-                    @* @onclick=@(() => OpenRegexEditorDialog(line)) — disabled, it fights with clicking Echo underlines. *@
                     <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) data-path=@line.DataPath>
                         @foreach (var root in line.CaptureTraceRoots)
                         {
@@ -64,56 +56,11 @@
     }
 </div>
 
-@* Disabled alongside the click-to-open handler above.
-@if (_isDialogOpen)
-{
-    <RegexEditorDialog Line="_selectedLine" OnClose="HandleDialogClose" />
-}
-*@
-
 @code {
-    /* Regex-editor-on-click state — disabled for now, see markup above.
-    bool _isDialogOpen = false;
-    ProcessedLine _selectedLine;
-    Snackbar _snackbar;
-    */
-
     [Parameter]
     public ProcessedDocument ProcessedDocument { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
-
-    /* Regex-editor-on-click handlers — disabled for now, see markup above.
-    void OpenRegexEditorDialog(ProcessedLine line)
-    {
-        _selectedLine = line;
-        _isDialogOpen = true;
-        StateHasChanged();
-    }
-
-    async Task HandleDialogClose(EditorGlyph editorGlyph)
-    {
-        _isDialogOpen = false;
-
-        if (editorGlyph != null)
-        {
-            ProcessedDocument = CorpusAnalyzer.ReprocessDocument(ProcessedDocument.Document);
-            StateHasChanged();
-
-            await Task.Yield();
-
-            if (editorGlyph.LineMetadata?.DataPath is string pathToHighlight)
-                await JS.InvokeVoidAsync("flashLineHighlight", pathToHighlight);
-
-            if (_snackbar != null)
-                _ = _snackbar.Show(new MarkupString($"Added type <b>{editorGlyph.ClassName}</b>!"));
-        }
-        else
-        {
-            StateHasChanged();
-        }
-    }
-    */
 
     static double GetCoveragePercent(int capturedWordCount, int wordCount) =>
         wordCount == 0 ? 0 : 100.0 * capturedWordCount / wordCount;
