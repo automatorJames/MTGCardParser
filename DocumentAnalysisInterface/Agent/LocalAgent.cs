@@ -11,11 +11,11 @@ public sealed record LocalAgentSettings
     /// <summary>The full path of the claude executable, when it isn't on the PATH.</summary>
     public string ClaudePath { get; init; }
 
-    /// <summary>The model a conversation starts out set to, as the CLI's <c>--model</c> takes it (an alias like "sonnet", or a full id) - the CLI's own default when blank.</summary>
-    public string Model { get; init; }
+    /// <summary>The model a conversation is set to where nothing has been chosen before, as the CLI's <c>--model</c> takes it (an alias like "sonnet", or a full id).</summary>
+    public string Model { get; init; } = "sonnet";
 
-    /// <summary>The effort level a conversation starts out set to, as the CLI's <c>--effort</c> takes it - the CLI's own default when blank.</summary>
-    public string Effort { get; init; }
+    /// <summary>The effort level a conversation is set to where nothing has been chosen before, as the CLI's <c>--effort</c> takes it.</summary>
+    public string Effort { get; init; } = "medium";
 }
 
 public sealed record LocalAgentStatus(bool IsAvailable, string Reason)
@@ -37,6 +37,27 @@ public sealed record AgentToolCall(string ToolUseId, string Tool, JsonElement Ar
 public sealed record AgentToolResult(string ToolUseId, bool Failed, string Text) : LocalAgentEvent;
 
 public sealed record AgentTurnFailed(string Message) : LocalAgentEvent;
+
+/// <summary>How many tokens the conversation so far comes to - what the next request would carry in.</summary>
+public sealed record AgentContextSize(long Tokens) : LocalAgentEvent;
+
+/// <summary>What one request to the model used: tokens read in new, written to and read from the cache, and written out.</summary>
+public sealed record AgentTokens(long Input, long CacheWrite, long CacheRead, long Output) : LocalAgentEvent
+{
+    /// <summary>Everything the request carried in, cached or not.</summary>
+    public long In => Input + CacheWrite + CacheRead;
+}
+
+/// <summary>A message has been answered in full.</summary>
+/// <param name="CostUsd">What its requests would cost at list prices.</param>
+/// <param name="ContextWindow">How many tokens the model can hold - null if the CLI didn't say.</param>
+public sealed record AgentTurnCompleted(double CostUsd, long? ContextWindow) : LocalAgentEvent;
+
+/// <summary>How much of a usage allowance is spent (0 to 1), and when it starts over.</summary>
+public sealed record UsageWindow(double Utilization, DateTimeOffset? ResetsAt);
+
+/// <summary>Where the account stands against its allowances - either null where the CLI didn't say.</summary>
+public sealed record AgentUsageLimits(UsageWindow FiveHour, UsageWindow SevenDay) : LocalAgentEvent;
 
 /// <summary>
 /// The local agent: the Claude Code CLI, run headless. It only exists where someone has it installed and signed in,
@@ -337,8 +358,12 @@ public sealed class LocalAgentSession
                         break;
 
                     case "stream_event" when root.TryGetProperty("event", out var streamEvent):
-                        if (ReadStreamEvent(streamEvent) is LocalAgentEvent delta)
-                            yield return delta;
+                        foreach (var agentEvent in ReadStreamEvent(streamEvent))
+                            yield return agentEvent;
+                        break;
+
+                    case "rate_limit_event" when root.TryGetProperty("rate_limit_info", out var limits) && limits.TryGetProperty("unifiedWindows", out var windows):
+                        yield return new AgentUsageLimits(ReadWindow(windows, "five_hour"), ReadWindow(windows, "seven_day"));
                         break;
 
                     case "assistant" when TryGetContent(root, out var blocks):
@@ -372,6 +397,10 @@ public sealed class LocalAgentSession
                     case "result":
                         TurnCompleted = true;
 
+                        yield return new AgentTurnCompleted(
+                            root.TryGetProperty("total_cost_usd", out var cost) && cost.ValueKind == JsonValueKind.Number ? cost.GetDouble() : 0,
+                            ReadContextWindow(root));
+
                         if (root.TryGetProperty("is_error", out var turnFailed) && turnFailed.ValueKind == JsonValueKind.True)
                             yield return new AgentTurnFailed(GetString(root, "result") ?? "The agent could not complete the request.");
                         break;
@@ -379,13 +408,23 @@ public sealed class LocalAgentSession
             }
         }
 
-        LocalAgentEvent ReadStreamEvent(JsonElement streamEvent)
+        IEnumerable<LocalAgentEvent> ReadStreamEvent(JsonElement streamEvent)
         {
             switch (GetString(streamEvent, "type"))
             {
                 case "message_start":
                     _textStreamedForMessage = false;
                     _messageHasText = false;
+
+                    // What a request carries in is the conversation so far.
+                    if (streamEvent.TryGetProperty("message", out var message) && message.TryGetProperty("usage", out var carried))
+                        yield return new AgentContextSize(ReadTokens(carried).In);
+                    break;
+
+                case "message_delta" when streamEvent.TryGetProperty("usage", out var usage):
+                    var tokens = ReadTokens(usage);
+                    yield return tokens;
+                    yield return new AgentContextSize(tokens.In + tokens.Output);
                     break;
 
                 case "content_block_delta"
@@ -393,11 +432,33 @@ public sealed class LocalAgentSession
                     // What the agent says before a tool call and after it are separate messages.
                     var text = new AgentText(GetString(delta, "text"), StartsMessage: !_messageHasText);
                     _textStreamedForMessage = _messageHasText = true;
-                    return text;
+                    yield return text;
+                    break;
             }
-
-            return null;
         }
+
+        static AgentTokens ReadTokens(JsonElement usage) =>
+            new(GetNumber(usage, "input_tokens") ?? 0, GetNumber(usage, "cache_creation_input_tokens") ?? 0, GetNumber(usage, "cache_read_input_tokens") ?? 0, GetNumber(usage, "output_tokens") ?? 0);
+
+        static UsageWindow ReadWindow(JsonElement windows, string name) =>
+            windows.ValueKind == JsonValueKind.Object && windows.TryGetProperty(name, out var window) && window.TryGetProperty("utilization", out var utilization) && utilization.ValueKind == JsonValueKind.Number
+                ? new(utilization.GetDouble(), GetNumber(window, "resetsAt") is long resetsAt ? DateTimeOffset.FromUnixTimeSeconds(resetsAt) : null)
+                : null;
+
+        /// <summary>The context window of the model the turn ran on - the largest, should it have run on several.</summary>
+        static long? ReadContextWindow(JsonElement result)
+        {
+            if (!result.TryGetProperty("modelUsage", out var models) || models.ValueKind != JsonValueKind.Object)
+                return null;
+
+            var windows = models.EnumerateObject().Select(x => GetNumber(x.Value, "contextWindow")).OfType<long>().ToList();
+            return windows.Count > 0 ? windows.Max() : null;
+        }
+
+        static long? GetNumber(JsonElement element, string name) =>
+            element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number)
+                ? number
+                : null;
 
         static bool TryGetContent(JsonElement root, out JsonElement content)
         {

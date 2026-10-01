@@ -9,6 +9,7 @@
     var entries = GetEntries();
     var running = Chat.IsRunning;
     var steps = Chat.StepsPerRound;
+    var stats = Chat.Stats;
 
     <aside class="chat-pane @(_open ? "open" : "")">
         <button class="chat-handle @(running ? "running" : "")" title="@(_open ? "Hide the agent" : "Work on the grammar with the local agent")" @onclick="Toggle">
@@ -22,26 +23,65 @@
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
         </header>
 
-        <div class="chat-options" title="@(entries.Count > 0 ? "Settled for this conversation - start a new chat to change them" : "What the agent runs on, for the whole conversation")">
-            <label>
-                Model
-                <select disabled="@(entries.Count > 0)" value="@(Chat.Model ?? "")" @onchange="e => Chat.Model = (string)e.Value">
-                    @foreach (var model in Options(_models, Chat.Model))
-                    {
-                        <option value="@model">@(model.Length == 0 ? "default" : model)</option>
-                    }
-                </select>
-            </label>
-            <label>
-                Effort
-                <select disabled="@(entries.Count > 0)" value="@(Chat.Effort ?? "")" @onchange="e => Chat.Effort = (string)e.Value">
-                    @foreach (var effort in Options(_efforts, Chat.Effort))
-                    {
-                        <option value="@effort">@(effort.Length == 0 ? "default" : effort)</option>
-                    }
-                </select>
-            </label>
-        </div>
+        @if (entries.Count == 0)
+        {
+            <div class="chat-options" title="What the agent runs on, for the whole conversation">
+                <label>
+                    <span class="chat-label">Model</span>
+                    <select value="@Chat.Model" @onchange="e => Chat.Model = (string)e.Value">
+                        @foreach (var model in Options(_models, Chat.Model))
+                        {
+                            <option value="@model">@Name(model)</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    <span class="chat-label">Effort</span>
+                    <select value="@Chat.Effort" @onchange="e => Chat.Effort = (string)e.Value">
+                        @foreach (var effort in Options(_efforts, Chat.Effort))
+                        {
+                            <option value="@effort">@Name(effort)</option>
+                        }
+                    </select>
+                </label>
+            </div>
+        }
+        else
+        {
+            <div class="chat-options settled" title="What this conversation runs on - start a new chat to choose again">
+                <span><span class="chat-label">Model</span> @Name(Chat.Model)</span>
+                <span><span class="chat-label">Effort</span> @Name(Chat.Effort)</span>
+            </div>
+        }
+
+        @if (stats.TotalTokens > 0 || stats.FiveHour is not null || stats.SevenDay is not null)
+        {
+            <div class="chat-stats">
+                @Stat("Context",
+                    stats.ContextWindow is long window ? Percent((double)stats.ContextTokens / window) : Compact(stats.ContextTokens),
+                    stats.ContextWindow is long size ? $"{Compact(stats.ContextTokens)} of {Compact(size)}" : "tokens",
+                    stats.ContextWindow is long capacity ? (double)stats.ContextTokens / capacity : null,
+                    "How much of what the model can hold the conversation takes up")
+
+                @Stat("Tokens",
+                    Compact(stats.TotalTokens),
+                    $"{Compact(stats.OutputTokens)} written",
+                    null,
+                    $"This conversation's requests, added up: {stats.InputTokens:N0} read in new, {stats.CacheReadTokens:N0} read from cache, {stats.CacheWriteTokens:N0} written to cache, {stats.OutputTokens:N0} written out. At list prices, {stats.CostUsd:C2}.")
+
+                @if (stats.FiveHour is UsageWindow fiveHour)
+                {
+                    @Stat("5-hour limit", Percent(fiveHour.Utilization), Resets(fiveHour), fiveHour.Utilization,
+                        "How much of the account's five-hour allowance is spent - by everything that uses it, not only this chat")
+                }
+
+                @if (stats.SevenDay is UsageWindow sevenDay)
+                {
+                    @Stat("Weekly limit", Percent(sevenDay.Utilization), Resets(sevenDay), sevenDay.Utilization,
+                        "How much of the account's weekly allowance is spent - by everything that uses it, not only this chat")
+                }
+            </div>
+        }
 
         <div class="chat-entries" @ref="_entriesElement">
             @if (entries.Count == 0)
@@ -115,13 +155,62 @@
 }
 
 @code {
-    /// <summary>What the CLI takes for its model and effort: blank is its own default.</summary>
-    static readonly string[] _models = ["", "fable", "opus", "sonnet", "haiku"];
-    static readonly string[] _efforts = ["", "low", "medium", "high", "xhigh", "max"];
+    /// <summary>What the CLI takes for its model and effort.</summary>
+    static readonly string[] _models = ["fable", "opus", "sonnet", "haiku"];
+    static readonly string[] _efforts = ["low", "medium", "high", "xhigh", "max"];
 
     /// <summary>The choices on offer, with the current one among them even when it came from settings as something else (a full model id, say).</summary>
     static IEnumerable<string> Options(string[] offered, string current) =>
-        current is null || offered.Contains(current) ? offered : offered.Append(current);
+        offered.Contains(current) ? offered : offered.Append(current);
+
+    /// <summary>A model or effort as it reads: "sonnet" as Sonnet, "xhigh" as Extra high, a full model id as it is.</summary>
+    static string Name(string option) =>
+        option == "xhigh" ? "Extra high"
+        : _models.Contains(option) || _efforts.Contains(option) ? char.ToUpperInvariant(option[0]) + option[1..]
+        : option;
+
+    /// <summary>One figure of the conversation's stats: what it is, the figure, a line under it, and - for a share of something - a bar filled that far.</summary>
+    RenderFragment Stat(string label, string value, string caption, double? share, string title) =>
+        @<div class="chat-stat @Level(share)" title="@title">
+            <span class="chat-label">@label</span>
+            <span class="chat-stat-value">@value</span>
+            <span class="chat-stat-bar @(share is null ? "none" : "")">
+                @if (share is double filled)
+                {
+                    <span style="width: @(Math.Clamp(filled, 0, 1).ToString("P1", System.Globalization.CultureInfo.InvariantCulture).Replace(" ", ""))"></span>
+                }
+            </span>
+            <span class="chat-stat-caption">@caption</span>
+        </div>;
+
+    /// <summary>How near its end a share is: worth a look past three quarters, pressing past nine tenths.</summary>
+    static string Level(double? share) => share switch
+    {
+        >= 0.9 => "high",
+        >= 0.75 => "raised",
+        _ => "",
+    };
+
+    static string Percent(double share) => share.ToString("P0");
+
+    /// <summary>A count of tokens in a few characters: 950, 24.1k, 1.2M.</summary>
+    static string Compact(long tokens) => tokens switch
+    {
+        < 1_000 => tokens.ToString(),
+        < 100_000 => (tokens / 1_000.0).ToString("0.#") + "k",
+        < 1_000_000 => (tokens / 1_000.0).ToString("0") + "k",
+        _ => (tokens / 1_000_000.0).ToString("0.#") + "M",
+    };
+
+    /// <summary>When an allowance starts over: the time if that's within a day, the day as well if it's further off.</summary>
+    static string Resets(UsageWindow window)
+    {
+        if (window.ResetsAt is not DateTimeOffset resetsAt)
+            return "";
+
+        var local = resetsAt.ToLocalTime();
+        return "resets " + local.ToString(local - DateTimeOffset.Now < TimeSpan.FromHours(20) ? "h:mm tt" : "ddd h tt");
+    }
 
     bool _available;
     bool _open;
@@ -129,6 +218,7 @@
     /// <summary>Tells the page the pane slid in or out, so it can make room for it.</summary>
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
+
     string _draft;
     ElementReference _entriesElement;
 

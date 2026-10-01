@@ -119,11 +119,15 @@ else
             </div>
         </section>
 
+        <div class="sections-bar">
+            <button class="link-button" @onclick="ToggleAllSections">@(AllCollapsed ? "expand all" : "collapse all")</button>
+        </div>
+
         @if (Workbench.HasChanges)
         {
-            <section class="panel changes">
+            <section class="panel changes @CollapsedClass(Section.Changes)">
                 <div class="panel-header">
-                    <h3>Working changes</h3>
+                    @SectionTitle(Section.Changes, "Working changes")
                     <span class="panel-subtext">saved to @Workbench.WorkingDefinitionPath</span>
                     <div class="panel-actions">
                         <button class="btn btn-sm btn-secondary" @onclick="() => Try(Workbench.RevertAll)">Revert all</button>
@@ -138,38 +142,41 @@ else
                     </div>
                 </div>
 
-                <table class="data-table changes-table">
-                    <thead>
-                        <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th class="change-round" title="For a change an agent began: which of its rounds of steps it began in">AI round</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var change in Workbench.Changes)
-                        {
-                            <tr>
-                                <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
-                                <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
-                                <td class="name-column">
-                                    @if (change.Kind == DefinitionKind.Marker)
-                                    {
-                                        @change.Name
-                                    }
-                                    else
-                                    {
-                                        <button class="name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
-                                    }
-                                </td>
-                                <td class="change-round">@(Workbench.ChangeRounds.TryGetValue((change.Kind, change.Name), out var round) ? round : null)</td>
-                                <td><button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                @if (!_collapsed.Contains(Section.Changes))
+                {
+                    <table class="data-table changes-table">
+                        <thead>
+                            <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th class="change-round" title="For a change an agent began: which of its rounds of steps it began in">AI round</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var change in Workbench.Changes)
+                            {
+                                <tr>
+                                    <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
+                                    <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
+                                    <td class="name-column">
+                                        @if (change.Kind == DefinitionKind.Marker)
+                                        {
+                                            @change.Name
+                                        }
+                                        else
+                                        {
+                                            <button class="name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
+                                        }
+                                    </td>
+                                    <td class="change-round">@(Workbench.ChangeRounds.TryGetValue((change.Kind, change.Name), out var round) ? round.ToString() : "-")</td>
+                                    <td><button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
             </section>
         }
 
-        <section class="panel">
+        <section class="panel @CollapsedClass(Section.Glyphs)">
             <div class="panel-header">
-                <h3>Glyphs</h3>
+                @SectionTitle(Section.Glyphs, "Glyphs")
                 <HelpButton Label="About the glyph table" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Glyphs" />
                 <label class="panel-option"><input type="checkbox" @bind="_showNestedOnly" /> include nested-only glyphs</label>
                 <div class="panel-actions">
@@ -177,115 +184,128 @@ else
                 </div>
             </div>
 
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="toggle-column" title="Whether the glyph is in the working grammar">on</th>
-                        @SortHeader("Glyph", GlyphSort.Name, cssClass: "name-column")
-                        @SortHeader("Net bits", GlyphSort.Net, "Bits saved net of the glyph's own definition: what its matches would cost as unmatched text, less what they cost as matches, less its definition")
-                        <th title="Change in net bits from the committed grammar">Δ net</th>
-                        @SortHeader("Saves", GlyphSort.Saves, "What its matched text would cost as unmatched text instead (approximate)")
-                        @SortHeader("Data", GlyphSort.Data, "What its matches cost to encode, nested captures included")
-                        @SortHeader("Definition", GlyphSort.Definition, "What its definition costs to describe")
-                        @SortHeader("Matches", GlyphSort.Matches)
-                        @SortHeader("Words", GlyphSort.Words)
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in GetGlyphRows())
-                    {
-                        var stats = row.Stats;
-                        <tr class="@(row.InWorking ? "" : "excluded") @(row.Change is ChangeType change ? "changed-" + change.ToString().ToLowerInvariant() : "")">
-                            <td class="toggle-column">
-                                <input type="checkbox" checked="@row.InWorking" disabled="@(row.InWorking && row.Referrers.Count > 0)"
-                                       title="@(row.Referrers.Count > 0 ? "Used by " + string.Join(", ", row.Referrers) : "")"
-                                       @onchange="e => ToggleGlyph(row, (bool)e.Value)" />
-                            </td>
-                            <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
-                            <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
-                            <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
-                            <td>@Bits(stats?.ResidualEquivalentBits)</td>
-                            <td>@Bits(stats?.DataBits)</td>
-                            <td>@Bits(stats?.DefinitionBits)</td>
-                            <td>@stats?.Occurrences.ToString("N0")</td>
-                            <td>@stats?.Words.ToString("N0")</td>
-                            <td>
-                                @if (row.InWorking)
-                                {
-                                    <button class="link-button" @onclick="() => EditGlyph(row.Name)">edit</button>
-                                }
-                            </td>
+            @if (!_collapsed.Contains(Section.Glyphs))
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="toggle-column" title="Whether the glyph is in the working grammar">on</th>
+                            @SortHeader("Glyph", GlyphSort.Name, cssClass: "name-column")
+                            @SortHeader("Net bits", GlyphSort.Net, "Bits saved net of the glyph's own definition: what its matches would cost as unmatched text, less what they cost as matches, less its definition")
+                            <th title="Change in net bits from the committed grammar">Δ net</th>
+                            @SortHeader("Saves", GlyphSort.Saves, "What its matched text would cost as unmatched text instead (approximate)")
+                            @SortHeader("Data", GlyphSort.Data, "What its matches cost to encode, nested captures included")
+                            @SortHeader("Definition", GlyphSort.Definition, "What its definition costs to describe")
+                            @SortHeader("Matches", GlyphSort.Matches)
+                            @SortHeader("Words", GlyphSort.Words)
+                            <th></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in GetGlyphRows())
+                        {
+                            var stats = row.Stats;
+                            <tr class="@(row.InWorking ? "" : "excluded") @(row.Change is ChangeType change ? "changed-" + change.ToString().ToLowerInvariant() : "")">
+                                <td class="toggle-column">
+                                    <input type="checkbox" checked="@row.InWorking" disabled="@(row.InWorking && row.Referrers.Count > 0)"
+                                           title="@(row.Referrers.Count > 0 ? "Used by " + string.Join(", ", row.Referrers) : "")"
+                                           @onchange="e => ToggleGlyph(row, (bool)e.Value)" />
+                                </td>
+                                <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
+                                <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
+                                <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
+                                <td>@Bits(stats?.ResidualEquivalentBits)</td>
+                                <td>@Bits(stats?.DataBits)</td>
+                                <td>@Bits(stats?.DefinitionBits)</td>
+                                <td>@stats?.Occurrences.ToString("N0")</td>
+                                <td>@stats?.Words.ToString("N0")</td>
+                                <td>
+                                    @if (row.InWorking)
+                                    {
+                                        <button class="link-button" @onclick="() => EditGlyph(row.Name)">edit</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
         </section>
 
-        <section class="panel">
+        <section class="panel @CollapsedClass(Section.Vocabularies)">
             <div class="panel-header">
-                <h3>Vocabularies</h3>
+                @SectionTitle(Section.Vocabularies, "Vocabularies")
                 <HelpButton Label="About the vocabulary table" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Vocabularies" />
                 <div class="panel-actions">
                     <button class="btn btn-sm btn-secondary" @onclick="NewVocabulary">New vocabulary</button>
                 </div>
             </div>
 
-            <table class="data-table">
-                <thead>
-                    <tr><th class="name-column">Vocabulary</th><th title="Members the corpus used, of all the vocabulary's members - only used ones cost anything">Members used</th><th>Definition bits</th><th class="centered">Used by</th><th></th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var vocabulary in Workbench.WorkingDefinition.Vocabularies.OrderByDescending(VocabularyBits))
-                    {
-                        var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
-                        <tr class="@(referrers.Count == 0 ? "excluded" : "")">
-                            <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
-                            <td>@(CurrentScore.VocabularyMembersUsed?.GetValueOrDefault(vocabulary.Name) ?? 0) of @vocabulary.Members.Count.ToString("N0")</td>
-                            <td>@Bits(VocabularyBits(vocabulary))</td>
-                            <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
-                            <td>
-                                <button class="link-button" @onclick="() => EditVocabulary(vocabulary.Name)">edit</button>
-                                @if (referrers.Count == 0)
-                                {
-                                    <button class="link-button" @onclick="() => Try(() => Workbench.RemoveVocabulary(vocabulary.Name))">remove</button>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            @if (!_collapsed.Contains(Section.Vocabularies))
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr><th class="name-column">Vocabulary</th><th title="Members the corpus used, of all the vocabulary's members - only used ones cost anything">Members used</th><th>Definition bits</th><th class="centered">Used by</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var vocabulary in Workbench.WorkingDefinition.Vocabularies.OrderByDescending(VocabularyBits))
+                        {
+                            var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
+                            <tr class="@(referrers.Count == 0 ? "excluded" : "")">
+                                <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
+                                <td>@(CurrentScore.VocabularyMembersUsed?.GetValueOrDefault(vocabulary.Name) ?? 0) of @vocabulary.Members.Count.ToString("N0")</td>
+                                <td>@Bits(VocabularyBits(vocabulary))</td>
+                                <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
+                                <td>
+                                    <button class="link-button" @onclick="() => EditVocabulary(vocabulary.Name)">edit</button>
+                                    @if (referrers.Count == 0)
+                                    {
+                                        <button class="link-button" @onclick="() => Try(() => Workbench.RemoveVocabulary(vocabulary.Name))">remove</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
         </section>
 
-        <section class="panel">
+        <section class="panel @CollapsedClass(Section.Residuals)">
             <div class="panel-header">
-                <h3>Residual hot spots</h3>
+                @SectionTitle(Section.Residuals, "Residual hot spots")
                 <HelpButton Label="About residual hot spots" OnClick="() => _help = GrammarToolsHelpDialog.HelpTopic.Residuals" />
                 <span class="panel-subtext">unmatched text, by what it costs across the corpus - where the next glyph would save the most</span>
             </div>
 
-            <table class="data-table">
-                <thead>
-                    <tr><th>Bits</th><th>Occurrences</th><th>Words</th><th class="text-column">Text</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var span in CurrentScore.Residuals.OrderByDescending(x => x.Bits).Take(ResidualRows))
-                    {
-                        <tr>
-                            <td>@Bits(span.Bits)</td>
-                            <td>@span.Occurrences.ToString("N0")</td>
-                            <td>@span.Words.ToString("N0")</td>
-                            <td class="text-column">@span.Text</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            @if (!_collapsed.Contains(Section.Residuals))
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Bits</th><th>Occurrences</th><th>Words</th><th class="text-column">Text</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var span in CurrentScore.Residuals.OrderByDescending(x => x.Bits).Take(ResidualRows))
+                        {
+                            <tr>
+                                <td>@Bits(span.Bits)</td>
+                                <td>@span.Occurrences.ToString("N0")</td>
+                                <td>@span.Words.ToString("N0")</td>
+                                <td class="text-column">@span.Text</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
         </section>
         }
     </div>
 }
 
-<GrammarChatPane OpenChanged="open => _agentOpen = open" />
+@* Once the page has loaded: the chat's services are built on the workspaces, which the loading indicator is there to wait for. *@
+@if (Workspaces is not null)
+{
+    <GrammarChatPane OpenChanged="open => _agentOpen = open" />
+}
 
 @if (_workspaceAction is WorkspaceDialog.WorkspaceAction action)
 {
@@ -322,6 +342,7 @@ else
     string _notice;
     bool _showNestedOnly;
     bool _agentOpen;
+    readonly HashSet<Section> _collapsed = [];
     GlyphSort _sort = GlyphSort.Net;
     bool _sortDescending = true;
     EditorState _editor;
@@ -330,6 +351,9 @@ else
     GrammarToolsHelpDialog.HelpTopic? _help;
 
     enum GlyphSort { Name, Net, Saves, Data, Definition, Matches, Words }
+
+    /// <summary>The panels under the scorecard, each of which collapses to its header.</summary>
+    enum Section { Changes, Glyphs, Vocabularies, Residuals }
 
     /// <summary>A definition open for editing: its kind, the name it had (null for a new one), and its JSON.</summary>
     record EditorState(DefinitionKind Kind, string OriginalName, string Title, string Json);
@@ -445,6 +469,36 @@ else
     {
         _workspaceAction = null;
         _notice = notice;
+    }
+
+    // ---- Sections ----
+
+    /// <summary>The sections on the page now: working changes only while there are some.</summary>
+    IEnumerable<Section> ShownSections => Enum.GetValues<Section>().Where(x => x != Section.Changes || Workbench.HasChanges);
+
+    bool AllCollapsed => ShownSections.All(_collapsed.Contains);
+
+    string CollapsedClass(Section section) => _collapsed.Contains(section) ? "collapsed" : "";
+
+    RenderFragment SectionTitle(Section section, string title) =>
+        @<h3>
+            <button class="section-toggle" title="@(_collapsed.Contains(section) ? "Expand" : "Collapse")" @onclick="() => ToggleSection(section)">
+                <span class="section-chevron">@(_collapsed.Contains(section) ? "▸" : "▾")</span>@title
+            </button>
+        </h3>;
+
+    void ToggleSection(Section section)
+    {
+        if (!_collapsed.Remove(section))
+            _collapsed.Add(section);
+    }
+
+    void ToggleAllSections()
+    {
+        if (AllCollapsed)
+            _collapsed.Clear();
+        else
+            _collapsed.UnionWith(Enum.GetValues<Section>());
     }
 
     // ---- Scorecard ----

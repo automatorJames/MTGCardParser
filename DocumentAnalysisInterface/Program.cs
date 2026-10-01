@@ -76,6 +76,7 @@ public class Program
         builder.Services.AddSingleton(services => new GrammarChat(
             services.GetRequiredService<LocalAgent>(),
             services.GetRequiredService<GrammarAgent>(),
+            services.GetRequiredService<WorkspaceManager>(),
             services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>(),
             workingDirectory: Path.Combine(appData, "agent")));
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Glyphotype.Distiller.Agent;
+using Glyphotype.Distiller.Workspaces;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 
@@ -30,14 +31,40 @@ public sealed record ChatEntry(ChatEntryKind Kind, string Text, bool Streaming =
     public bool Failed { get; init; }
 }
 
+/// <summary>What a conversation has used so far, and where the account stands against its allowances.</summary>
+public sealed record ChatStats
+{
+    /// <summary>How many tokens the conversation comes to now, of the <see cref="ContextWindow"/> the model can hold (null until the CLI has said).</summary>
+    public long ContextTokens { get; init; }
+    public long? ContextWindow { get; init; }
+
+    /// <summary>Tokens every request of the conversation used, added up: read in new, written to and read from the cache, and written out.</summary>
+    public long InputTokens { get; init; }
+    public long CacheWriteTokens { get; init; }
+    public long CacheReadTokens { get; init; }
+    public long OutputTokens { get; init; }
+
+    public long TotalTokens => InputTokens + CacheWriteTokens + CacheReadTokens + OutputTokens;
+
+    /// <summary>What the conversation's requests would cost at list prices.</summary>
+    public double CostUsd { get; init; }
+
+    /// <summary>The account's allowances, as last heard - null until then, and for an account without them.</summary>
+    public UsageWindow FiveHour { get; init; }
+    public UsageWindow SevenDay { get; init; }
+}
+
 /// <summary>
 /// The Grammar Tools tab's chat with a local agent (see <see cref="LocalAgent"/>), which works through the same tools
 /// this app serves at <c>/mcp</c> - so running a round here is what <c>/grammar</c> is in a terminal. One conversation
 /// for the whole app, running apart from any browser tab: every tab shows it, and closing one doesn't stop it.
 /// <see cref="Changed"/> fires, from whatever thread, whenever anything a tab shows changes.
 /// </summary>
-public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServer server, string workingDirectory)
+public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, WorkspaceManager workspaces, IServer server, string workingDirectory)
 {
+    /// <summary>What a conversation runs on, as the CLI names them.</summary>
+    sealed record ChatOptions(string Model, string Effort);
+
     const string _mcpServerName = "glyphotype";
 
     const string _systemPrompt = """
@@ -54,8 +81,13 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
     LocalAgentSession _session;
     CancellationTokenSource _turn;
     string _instructions;
-    string _model = NullIfBlank(localAgent.Settings.Model);
-    string _effort = NullIfBlank(localAgent.Settings.Effort);
+    ChatStats _stats = new();
+
+    /// <summary>The options of the conversation under way - null before it begins.</summary>
+    ChatOptions _settled;
+
+    /// <summary>The options set for a conversation to come, by the folder of the workspace they were set in.</summary>
+    readonly Dictionary<string, ChatOptions> _chosen = [];
 
     public event Action Changed;
 
@@ -77,34 +109,92 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
     /// <summary>Whether a round has been run in this conversation - so the next is a continuation.</summary>
     public bool HasRound { get; private set; }
 
-    /// <summary>The model the conversation runs on, as the CLI names it (an alias like "sonnet", or a full id) - null for the CLI's own default. Settable until the conversation begins, and settled from then until <see cref="Reset"/>.</summary>
+    /// <summary>What the conversation has used so far.</summary>
+    public ChatStats Stats => _stats;
+
+    /// <summary>
+    /// The model the conversation runs on, as the CLI names it (an alias like "sonnet", or a full id). Settable until
+    /// the conversation begins, and settled from then until <see cref="Reset"/>. Before it begins, it's what the
+    /// active workspace's last conversation ran on - or the settings' model, where there hasn't been one.
+    /// </summary>
     public string Model
     {
-        get => _model;
-        set => SetOption(ref _model, value);
+        get => Options.Model;
+        set => Choose(value, x => x with { Model = value.Trim() });
     }
 
-    /// <summary>The effort level the conversation runs at, as the CLI names it - null for the CLI's own default. Settable until the conversation begins, as <see cref="Model"/> is.</summary>
+    /// <summary>The effort level the conversation runs at, as the CLI names it. Settable until the conversation begins, as <see cref="Model"/> is.</summary>
     public string Effort
     {
-        get => _effort;
-        set => SetOption(ref _effort, value);
+        get => Options.Effort;
+        set => Choose(value, x => x with { Effort = value.Trim() });
     }
 
-    void SetOption(ref string option, string value)
+    ChatOptions Options
+    {
+        get
+        {
+            lock (_gate)
+            {
+                if (_settled is not null)
+                    return _settled;
+
+                var folder = workspaces.ActiveWorkspace.Folder;
+
+                if (!_chosen.TryGetValue(folder, out var options))
+                    _chosen[folder] = options = ReadLastUsed().GetValueOrDefault(folder)
+                        ?? new(NullIfBlank(localAgent.Settings.Model) ?? "sonnet", NullIfBlank(localAgent.Settings.Effort) ?? "medium");
+
+                return options;
+            }
+        }
+    }
+
+    void Choose(string value, Func<ChatOptions, ChatOptions> change)
     {
         lock (_gate)
         {
-            if (_entries.Count > 0)
+            if (_settled is not null || string.IsNullOrWhiteSpace(value))
                 return;
 
-            option = NullIfBlank(value);
+            _chosen[workspaces.ActiveWorkspace.Folder] = change(Options);
         }
 
         Changed?.Invoke();
     }
 
     static string NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    string LastUsedPath => Path.Combine(workingDirectory, "last-used.json");
+
+    /// <summary>What each workspace's last conversation ran on, by the workspace's folder - nothing, where that can't be read.</summary>
+    Dictionary<string, ChatOptions> ReadLastUsed()
+    {
+        try
+        {
+            return File.Exists(LastUsedPath) ? JsonSerializer.Deserialize<Dictionary<string, ChatOptions>>(File.ReadAllText(LastUsedPath)) ?? [] : [];
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    void SaveLastUsed(string folder, ChatOptions options)
+    {
+        try
+        {
+            var lastUsed = ReadLastUsed();
+            lastUsed[folder] = options;
+
+            Directory.CreateDirectory(workingDirectory);
+            File.WriteAllText(LastUsedPath, JsonSerializer.Serialize(lastUsed));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Remembering is a convenience: the conversation runs on what was chosen either way.
+        }
+    }
 
     /// <summary>Steps the agent applies in a round before it checks in (0 for no limit) - the session setting itself, so it holds for an agent in a terminal too.</summary>
     public int StepsPerRound
@@ -156,8 +246,12 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
 
             _entries.Clear();
             _session = null;
+            _settled = null;
             _instructions = null;
             HasRound = false;
+
+            // The allowances are the account's, not the conversation's.
+            _stats = new() { FiveHour = _stats.FiveHour, SevenDay = _stats.SevenDay };
         }
 
         Changed?.Invoke();
@@ -171,6 +265,13 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
         {
             if (_turn is not null)
                 return false;
+
+            // The conversation begins: what it runs on is settled, and remembered for the workspace's next one.
+            if (_settled is null)
+            {
+                _settled = Options;
+                SaveLastUsed(workspaces.ActiveWorkspace.Folder, _settled);
+            }
 
             _turn = turn = new();
             _entries.Add(new(ChatEntryKind.Person, said));
@@ -248,6 +349,28 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
                 EndStreaming();
                 _entries.Add(new(ChatEntryKind.Error, failed.Message));
                 break;
+
+            case AgentContextSize context:
+                _stats = _stats with { ContextTokens = context.Tokens };
+                break;
+
+            case AgentTokens tokens:
+                _stats = _stats with
+                {
+                    InputTokens = _stats.InputTokens + tokens.Input,
+                    CacheWriteTokens = _stats.CacheWriteTokens + tokens.CacheWrite,
+                    CacheReadTokens = _stats.CacheReadTokens + tokens.CacheRead,
+                    OutputTokens = _stats.OutputTokens + tokens.Output,
+                };
+                break;
+
+            case AgentTurnCompleted completed:
+                _stats = _stats with { CostUsd = _stats.CostUsd + completed.CostUsd, ContextWindow = completed.ContextWindow ?? _stats.ContextWindow };
+                break;
+
+            case AgentUsageLimits limits:
+                _stats = _stats with { FiveHour = limits.FiveHour ?? _stats.FiveHour, SevenDay = limits.SevenDay ?? _stats.SevenDay };
+                break;
         }
     }
 
@@ -305,7 +428,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
             "--permission-mode", "dontAsk",
             "--setting-sources", "",
             "--disable-slash-commands",
-        ], _model, _effort);
+        ], _settled.Model, _settled.Effort);
     }
 
     /// <summary>Where this app serves its tools, as a local client reaches it: over plain http where there's a choice, since a CLI doesn't trust the dev certificate.</summary>

@@ -88,6 +88,125 @@
     font-size: 0.85rem;
 }
 
+/* The small uppercase caption every figure here goes under */
+.chat-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--subtext-grey);
+}
+
+/* What the conversation runs on: chosen before it begins, simply stated from then on */
+.chat-options {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--outline-grey);
+    font-size: 0.85rem;
+    color: var(--lightest-blue);
+}
+
+    .chat-options label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .chat-options .chat-label {
+        margin-right: 0.3rem;
+    }
+
+    .chat-options select {
+        padding: 0.1rem 0.3rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 4px;
+        background-color: var(--near-black);
+        color: #f0f4f8;
+        font-size: 0.8rem;
+    }
+
+/* What the conversation has used: a row of figures, each over a hairline bar where it's a share of something */
+.chat-stats {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 1rem;
+    padding: 0.6rem 1rem 0.7rem;
+    border-bottom: 1px solid var(--outline-grey);
+    background-color: var(--near-black);
+}
+
+.chat-stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    cursor: default;
+}
+
+.chat-stat-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    color: var(--lightest-blue);
+}
+
+.chat-stat-bar {
+    height: 3px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+}
+
+    .chat-stat-bar span {
+        display: block;
+        height: 100%;
+        border-radius: 2px;
+        background-color: var(--teal);
+        transition: width 0.4s ease-out;
+    }
+
+/* A figure that's no share of anything keeps its place in the row, without a track */
+.chat-stat-bar.none {
+    background: none;
+}
+
+.chat-stat-caption {
+    margin-top: 0.3rem;
+    font-size: 0.7rem;
+    color: var(--subtext-grey);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-stat.raised .chat-stat-value {
+    color: var(--gold);
+}
+
+.chat-stat.raised .chat-stat-bar span {
+    background-color: var(--gold);
+}
+
+.chat-stat.high .chat-stat-value {
+    color: #f28b82;
+}
+
+.chat-stat.high .chat-stat-bar span {
+    background-color: #f28b82;
+}
+
+.link-button {
+        margin-left: auto;
+    }
+
+.chat-state {
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
 /* What the conversation runs on: chosen before it begins, fixed from then on */
 .chat-options {
     display: flex;
