@@ -7,7 +7,7 @@
     z-index: 500;
     display: flex;
     flex-direction: column;
-    width: min(30rem, 92vw);
+    width: var(--agent-pane-width);
     background-color: var(--dark-grey);
     border-left: 1px solid var(--outline-grey);
     color: #E2E8F0;

@@ -8,7 +8,7 @@
 }
 else
 {
-    <div class="grammar-tools">
+    <div class="grammar-tools @(_agentOpen ? "beside-agent" : "")">
 
         <section class="workspace-bar">
             <span class="workspace-label">Workspace</span>
@@ -285,7 +285,7 @@ else
     </div>
 }
 
-<GrammarChatPane />
+<GrammarChatPane OpenChanged="open => _agentOpen = open" />
 
 @if (_workspaceAction is WorkspaceDialog.WorkspaceAction action)
 {
@@ -321,6 +321,7 @@ else
     WorkspaceDialog.WorkspaceAction? _workspaceAction;
     string _notice;
     bool _showNestedOnly;
+    bool _agentOpen;
     GlyphSort _sort = GlyphSort.Net;
     bool _sortDescending = true;
     EditorState _editor;

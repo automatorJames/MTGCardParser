@@ -96,6 +96,10 @@
 @code {
     bool _available;
     bool _open;
+
+    /// <summary>Tells the page the pane slid in or out, so it can make room for it.</summary>
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
     string _draft;
     ElementReference _entriesElement;
 
@@ -111,7 +115,8 @@
             Chat.Changed += OnChatChanged;
 
             // A conversation under way is worth seeing at once.
-            _open = Chat.IsRunning;
+            if (Chat.IsRunning)
+                await SetOpen(true);
         }
     }
 
@@ -136,7 +141,13 @@
         return entries;
     }
 
-    void Toggle() => _open = !_open;
+    Task Toggle() => SetOpen(!_open);
+
+    Task SetOpen(bool open)
+    {
+        _open = open;
+        return OpenChanged.InvokeAsync(open);
+    }
 
     void RunRound()
     {

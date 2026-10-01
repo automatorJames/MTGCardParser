@@ -3,10 +3,17 @@
     flex-direction: column;
     gap: 1.5rem;
     max-width: 1400px;
-    margin: 0 auto;
+    /* Centered in whatever width the agent pane leaves: all of it, until the pane slides in. */
+    --beside: 0px;
+    margin: 0 calc(var(--beside) + max(0px, (100% - var(--beside) - 1400px) / 2)) 0 auto;
     padding: 1rem;
     color: #E2E8F0;
+    transition: margin-right 0.2s ease-in-out;
 }
+
+    .grammar-tools.beside-agent {
+        --beside: var(--agent-pane-width);
+    }
 
 .panel {
     background-color: var(--light-grey);
