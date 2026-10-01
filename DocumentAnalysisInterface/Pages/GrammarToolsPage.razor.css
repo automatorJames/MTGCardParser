@@ -159,20 +159,25 @@
 
 /* Changes */
 
-.change-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+/* Each column as wide as its contents, the name taking the rest */
+.changes-table th,
+.changes-table td {
+    width: 1%;
+    text-align: left;
+    white-space: nowrap;
 }
 
-    .change-list li {
-        padding: 0.2rem 0;
-    }
+.changes-table .name-column {
+    width: auto;
+}
+
+.changes-table .change-round {
+    text-align: center;
+}
 
 .change-badge {
     display: inline-block;
     min-width: 4.5rem;
-    margin-right: 0.5rem;
     padding: 0 0.4rem;
     border-radius: 4px;
     font-size: 0.75rem;
@@ -197,11 +202,6 @@
 
 .change-kind {
     color: var(--subtext-grey);
-    margin-right: 0.4rem;
-}
-
-.change-name {
-    margin-right: 0.75rem;
 }
 
 /* Tables */

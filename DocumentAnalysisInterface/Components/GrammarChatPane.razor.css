@@ -1,0 +1,302 @@
+/* Slides in from the right edge, under the top row; only its handle shows while closed. */
+.chat-pane {
+    position: fixed;
+    top: 3.5rem;
+    right: 0;
+    bottom: 0;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    width: min(30rem, 92vw);
+    background-color: var(--dark-grey);
+    border-left: 1px solid var(--outline-grey);
+    color: #E2E8F0;
+    transform: translateX(100%);
+    transition: transform 0.2s ease-in-out;
+}
+
+    .chat-pane.open {
+        transform: none;
+        box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+    }
+
+.chat-handle {
+    position: absolute;
+    top: 6rem;
+    right: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.7rem 0.35rem;
+    border: 1px solid var(--outline-grey);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    background-color: var(--light-grey);
+    color: #569cd6;
+    cursor: pointer;
+}
+
+    .chat-handle:hover {
+        color: var(--lightest-blue);
+    }
+
+    .chat-handle.running {
+        color: var(--gold);
+        border-color: var(--dark-gold);
+    }
+
+        .chat-handle.running .material-symbols-outlined {
+            animation: chat-pulse 1.2s ease-in-out infinite;
+        }
+
+.chat-handle-label {
+    writing-mode: vertical-rl;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+@keyframes chat-pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.chat-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--outline-grey);
+}
+
+    .chat-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #569cd6;
+    }
+
+    .chat-header .link-button {
+        margin-left: auto;
+    }
+
+.chat-state {
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+    .chat-state.running {
+        color: var(--gold);
+    }
+
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--faded-blue);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+    .link-button:hover:not(:disabled) {
+        color: var(--lightest-blue);
+        text-decoration: underline;
+    }
+
+    .link-button:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+
+/* The conversation */
+
+.chat-entries {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1rem;
+    overflow-y: auto;
+    font-size: 0.9rem;
+}
+
+.chat-hint {
+    margin: 0;
+    color: var(--subtext-grey);
+}
+
+.chat-entry.person {
+    align-self: flex-end;
+    max-width: 85%;
+    padding: 0.4rem 0.75rem;
+    border-radius: 10px 10px 2px 10px;
+    background-color: rgba(86, 156, 214, 0.18);
+    color: var(--lightest-blue);
+    white-space: pre-wrap;
+}
+
+.chat-entry.error {
+    color: #f28b82;
+    white-space: pre-wrap;
+}
+
+.chat-entry.agent ::deep > :last-child {
+    margin-bottom: 0;
+}
+
+.chat-entry.agent ::deep p,
+.chat-entry.agent ::deep ul,
+.chat-entry.agent ::deep ol {
+    margin-bottom: 0.5rem;
+}
+
+.chat-entry.agent ::deep ul,
+.chat-entry.agent ::deep ol {
+    padding-left: 1.25rem;
+}
+
+.chat-entry.agent ::deep h1,
+.chat-entry.agent ::deep h2,
+.chat-entry.agent ::deep h3,
+.chat-entry.agent ::deep h4 {
+    margin: 0.75rem 0 0.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--lightest-blue);
+}
+
+.chat-entry.agent ::deep code,
+.chat-entry pre {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    color: #ce9178;
+}
+
+.chat-entry.agent ::deep pre,
+.chat-entry pre {
+    margin: 0.4rem 0;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    background-color: var(--near-black);
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.chat-entry.agent ::deep table {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.chat-entry.agent ::deep th,
+.chat-entry.agent ::deep td {
+    padding: 0.2rem 0.5rem;
+    border-bottom: 1px solid #333;
+    text-align: left;
+}
+
+.chat-entry.agent ::deep th {
+    color: var(--subtext-grey);
+    font-weight: 500;
+}
+
+/* A tool call: one line, opening to what was passed and what came back */
+
+.chat-entry.tool {
+    font-size: 0.8rem;
+    color: var(--subtext-grey);
+}
+
+    .chat-entry.tool summary {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        cursor: pointer;
+    }
+
+    .chat-entry.tool[open] summary {
+        white-space: normal;
+    }
+
+    .chat-entry.tool pre {
+        max-height: 18rem;
+        color: #b5bfcc;
+    }
+
+.tool-name {
+    margin-right: 0.4rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--teal);
+}
+
+.chat-entry.tool.pending .tool-name {
+    color: var(--gold);
+    animation: chat-pulse 1.2s ease-in-out infinite;
+}
+
+.chat-entry.tool.failed .tool-name,
+.chat-entry.tool.failed .tool-summary {
+    color: #f28b82;
+}
+
+/* Saying something, and running rounds */
+
+.chat-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem 1rem;
+    border-top: 1px solid var(--outline-grey);
+}
+
+.chat-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--outline-grey);
+    border-radius: 6px;
+    background-color: var(--near-black);
+    color: #f0f4f8;
+    font-size: 0.9rem;
+}
+
+    .chat-input:focus {
+        outline: none;
+        border-color: #569cd6;
+    }
+
+.chat-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+/* One control: the button runs a round, the number beside it is how many steps a round is */
+.round-button {
+    display: flex;
+}
+
+    .round-button .btn {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .round-button input {
+        width: 3.4rem;
+        padding: 0 0.3rem 0 0.5rem;
+        border: 1px solid #1861ac;
+        border-left: none;
+        border-radius: 0 4px 4px 0;
+        background-color: var(--near-black);
+        color: #f0f4f8;
+        font-size: 0.85rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+        .round-button input:focus {
+            outline: none;
+        }

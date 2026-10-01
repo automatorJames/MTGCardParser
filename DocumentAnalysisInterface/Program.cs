@@ -69,6 +69,16 @@ public class Program
             settings: agentSettings,
             corpusDescription: "the text of cards in the card database" + (maxSetSequence is int sets ? (sets == 1 ? ", from the first set" : $", from the first {sets} sets") : "")));
 
+        // The same tools, worked by an agent the app runs itself where there's a local one (the Claude Code CLI) to run:
+        // the Grammar Tools tab's chat pane.
+        builder.Services.AddSingleton(new LocalAgent(builder.Configuration.GetSection("LocalAgent").Get<LocalAgentSettings>() ?? new()));
+
+        builder.Services.AddSingleton(services => new GrammarChat(
+            services.GetRequiredService<LocalAgent>(),
+            services.GetRequiredService<GrammarAgent>(),
+            services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>(),
+            workingDirectory: Path.Combine(appData, "agent")));
+
         builder.Services
             .AddMcpServer(options => options.ServerInstructions = GrammarAgent.Instructions)
             .WithHttpTransport()

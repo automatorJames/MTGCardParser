@@ -1,0 +1,186 @@
+@using DocumentAnalysisInterface.Agent
+@implements IDisposable
+@inject GrammarChat Chat
+@inject IJSRuntime JS
+
+@* Nothing at all unless there's a local agent to chat with. *@
+@if (_available)
+{
+    var entries = GetEntries();
+    var running = Chat.IsRunning;
+    var steps = Chat.StepsPerRound;
+
+    <aside class="chat-pane @(_open ? "open" : "")">
+        <button class="chat-handle @(running ? "running" : "")" title="@(_open ? "Hide the agent" : "Work on the grammar with the local agent")" @onclick="Toggle">
+            <span class="material-symbols-outlined">@(_open ? "chevron_right" : "smart_toy")</span>
+            <span class="chat-handle-label">Agent</span>
+        </button>
+
+        <header class="chat-header">
+            <h3>Grammar agent</h3>
+            <span class="chat-state @(running ? "running" : "")">@(running ? "working…" : "idle")</span>
+            <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
+        </header>
+
+        <div class="chat-entries" @ref="_entriesElement">
+            @if (entries.Count == 0)
+            {
+                <p class="chat-hint">
+                    The agent works on the active workspace through the app's own tools, as <code>/grammar</code> does in a terminal:
+                    a round of steps, then it stops to check in. Each step it applies shows up under Working changes as it lands.
+                </p>
+            }
+
+            @foreach (var entry in entries)
+            {
+                switch (entry.Kind)
+                {
+                    case ChatEntryKind.Person:
+                        <div class="chat-entry person">@entry.Text</div>
+                        break;
+
+                    case ChatEntryKind.Agent:
+                        <div class="chat-entry agent">@Html(entry)</div>
+                        break;
+
+                    case ChatEntryKind.Tool:
+                        <details class="chat-entry tool @(entry.Result is null ? "pending" : entry.Failed ? "failed" : "")">
+                            <summary>
+                                <span class="tool-name">@entry.Tool</span>
+                                <span class="tool-summary">@(Outcome(entry) ?? entry.Text)</span>
+                            </summary>
+                            @if (!string.IsNullOrWhiteSpace(entry.Source))
+                            {
+                                <pre>@entry.Source</pre>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(entry.Result))
+                            {
+                                <pre>@entry.Result</pre>
+                            }
+                        </details>
+                        break;
+
+                    default:
+                        <div class="chat-entry error">@entry.Text</div>
+                        break;
+                }
+            }
+        </div>
+
+        <footer class="chat-footer">
+            <form @onsubmit="Send">
+                <input class="chat-input" type="text" placeholder="A message - or instructions for the next round" @bind="_draft" @bind:event="oninput" />
+            </form>
+
+            <div class="chat-actions">
+                <div class="round-button" title="Steps the agent applies before it stops to check in - 0 for no limit. The session's setting, so it holds for an agent in a terminal too.">
+                    <button class="btn btn-sm btn-primary" disabled="@running" @onclick="RunRound">
+                        @(Chat.HasRound ? "Next" : "Start") @(steps > 0 ? $"{steps} glyph{(steps == 1 ? "" : "s")}" : "round")
+                    </button>
+                    <input type="number" min="0" max="99" value="@steps" @onchange="SetSteps" />
+                </div>
+
+                @if (running)
+                {
+                    <button class="btn btn-sm btn-secondary" @onclick="Chat.Stop">Stop</button>
+                }
+                else
+                {
+                    <button class="btn btn-sm btn-secondary" disabled="@string.IsNullOrWhiteSpace(_draft)" @onclick="Send">Send</button>
+                }
+            </div>
+        </footer>
+    </aside>
+}
+
+@code {
+    bool _available;
+    bool _open;
+    string _draft;
+    ElementReference _entriesElement;
+
+    /// <summary>The agent's finished entries as HTML, so only the one still arriving is rendered again.</summary>
+    readonly Dictionary<ChatEntry, MarkupString> _html = new(ReferenceEqualityComparer.Instance);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _available = (await Chat.GetStatusAsync()).IsAvailable;
+
+        if (_available)
+        {
+            Chat.Changed += OnChatChanged;
+
+            // A conversation under way is worth seeing at once.
+            _open = Chat.IsRunning;
+        }
+    }
+
+    public void Dispose() => Chat.Changed -= OnChatChanged;
+
+    void OnChatChanged() => _ = InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_available && _open)
+            await JS.InvokeVoidAsync("grammarChat.follow", _entriesElement, false);
+    }
+
+    IReadOnlyList<ChatEntry> GetEntries()
+    {
+        var entries = Chat.Entries;
+
+        // A new conversation: nothing rendered for the last one is shown again.
+        if (entries.Count == 0)
+            _html.Clear();
+
+        return entries;
+    }
+
+    void Toggle() => _open = !_open;
+
+    void RunRound()
+    {
+        Chat.RunRound(_draft);
+        _draft = null;
+    }
+
+    void Send()
+    {
+        if (Chat.IsRunning)
+            return;
+
+        Chat.Send(_draft);
+        _draft = null;
+    }
+
+    void SetSteps(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var steps))
+            Chat.StepsPerRound = Math.Clamp(steps, 0, 99);
+    }
+
+    MarkupString Html(ChatEntry entry)
+    {
+        if (entry.Streaming)
+            return (MarkupString)ChatMarkdown.ToHtml(entry.Text);
+
+        if (!_html.TryGetValue(entry, out var html))
+            _html[entry] = html = (MarkupString)ChatMarkdown.ToHtml(entry.Text);
+
+        return html;
+    }
+
+    /// <summary>What a tool call came to, in a line: the first line of its report - null while it's still running.</summary>
+    static string Outcome(ChatEntry entry)
+    {
+        if (entry.Result is null)
+            return null;
+
+        // Only a step's outcome is news; for the rest, what was asked says more than the report's heading.
+        if (!entry.Failed && entry.Tool is not ("apply" or "evaluate" or "undo" or "revert"))
+            return entry.Text;
+
+        var line = entry.Result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "";
+        return line.Length > 160 ? line[..160] + "…" : line;
+    }
+}

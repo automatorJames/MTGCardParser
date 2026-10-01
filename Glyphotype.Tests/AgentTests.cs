@@ -97,6 +97,42 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_change_is_marked_with_the_round_an_agent_began_it_in()
+    {
+        static string Glyph(string name, string verb) => $$"""
+            public class {{name}} : Glyph
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "{{verb}} in the", Prop(Place)];
+
+                public Animal Animal { get; set; }
+                public Place Place { get; set; }
+            }
+            """;
+
+        var (agent, workbench) = CreateAgent();
+
+        // A person's own edit belongs to no round.
+        workbench.Apply(ChangeSet.FromSource(Glyph("AnimalNaps", "naps"), [], workbench.WorkingDefinition));
+
+        await agent.StartSessionAsync();
+        await agent.ApplyAsync(_animalSnores);
+
+        // Each session is a round of its own.
+        await agent.StartSessionAsync();
+        await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"));
+        await agent.ApplyAsync(Glyph("AnimalNaps", "dozes"));
+
+        Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
+        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
+        Assert.DoesNotContain((DefinitionKind.Glyph, "AnimalNaps"), workbench.ChangeRounds.Keys);
+
+        // Taking a round's steps back takes its marks with them.
+        workbench.Undo();
+        workbench.Undo();
+        Assert.Equal([(DefinitionKind.Glyph, "AnimalSnores")], workbench.ChangeRounds.Keys);
+    }
+
+    [Fact]
     public async Task A_change_that_wouldnt_build_is_refused()
     {
         var (agent, workbench) = CreateAgent();

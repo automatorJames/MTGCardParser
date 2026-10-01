@@ -31,6 +31,9 @@ public sealed class GrammarAgent
     int _stepsSinceCheckIn;
     int _attemptsSinceStep;
 
+    /// <summary>The round the session's steps are applied in (see <see cref="WorkbenchStep.Round"/>), and the workbench that counts it - null until the session's first step.</summary>
+    (GrammarWorkbench Workbench, int Number)? _round;
+
     /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
     public GrammarAgent(WorkspaceManager workspaces, string corpusDescription, AgentSessionSettings settings = null)
     {
@@ -48,7 +51,8 @@ public sealed class GrammarAgent
         Settings = settings ?? new();
     }
 
-    public AgentSessionSettings Settings { get; }
+    /// <summary>How sessions run. Settable while one runs: a new value holds from the next request on.</summary>
+    public AgentSessionSettings Settings { get; set; }
 
     /// <summary>The workbench of the active workspace - read afresh by every request, so a switch takes effect at once.</summary>
     GrammarWorkbench Workbench => _workbench();
@@ -210,6 +214,7 @@ public sealed class GrammarAgent
     {
         Interlocked.Exchange(ref _stepsSinceCheckIn, 0);
         Interlocked.Exchange(ref _attemptsSinceStep, 0);
+        _round = null;
 
         var report = new StringBuilder();
 
@@ -358,7 +363,13 @@ public sealed class GrammarAgent
         if (violations.Count > 0)
             description = $"{description ?? changes.Describe()} (override: {overrideReason.Trim()})";
 
-        var step = Try(() => Workbench.Apply(changes, description))
+        var workbench = Workbench;
+
+        // A session's steps are one round, numbered after the last round the workbench's history holds.
+        if (_round?.Workbench != workbench)
+            _round = (workbench, (workbench.History.Max(x => x.Round) ?? 0) + 1);
+
+        var step = Try(() => workbench.Apply(changes, description, _round.Value.Number))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
         Interlocked.Increment(ref _stepsSinceCheckIn);
