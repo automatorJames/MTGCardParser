@@ -54,6 +54,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
     LocalAgentSession _session;
     CancellationTokenSource _turn;
     string _instructions;
+    string _model = NullIfBlank(localAgent.Settings.Model);
+    string _effort = NullIfBlank(localAgent.Settings.Effort);
 
     public event Action Changed;
 
@@ -74,6 +76,35 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
 
     /// <summary>Whether a round has been run in this conversation - so the next is a continuation.</summary>
     public bool HasRound { get; private set; }
+
+    /// <summary>The model the conversation runs on, as the CLI names it (an alias like "sonnet", or a full id) - null for the CLI's own default. Settable until the conversation begins, and settled from then until <see cref="Reset"/>.</summary>
+    public string Model
+    {
+        get => _model;
+        set => SetOption(ref _model, value);
+    }
+
+    /// <summary>The effort level the conversation runs at, as the CLI names it - null for the CLI's own default. Settable until the conversation begins, as <see cref="Model"/> is.</summary>
+    public string Effort
+    {
+        get => _effort;
+        set => SetOption(ref _effort, value);
+    }
+
+    void SetOption(ref string option, string value)
+    {
+        lock (_gate)
+        {
+            if (_entries.Count > 0)
+                return;
+
+            option = NullIfBlank(value);
+        }
+
+        Changed?.Invoke();
+    }
+
+    static string NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>Steps the agent applies in a round before it checks in (0 for no limit) - the session setting itself, so it holds for an agent in a terminal too.</summary>
     public int StepsPerRound
@@ -274,7 +305,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, IServ
             "--permission-mode", "dontAsk",
             "--setting-sources", "",
             "--disable-slash-commands",
-        ]);
+        ], _model, _effort);
     }
 
     /// <summary>Where this app serves its tools, as a local client reaches it: over plain http where there's a choice, since a CLI doesn't trust the dev certificate.</summary>

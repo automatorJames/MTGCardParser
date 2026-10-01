@@ -88,6 +88,35 @@
     font-size: 0.85rem;
 }
 
+/* What the conversation runs on: chosen before it begins, fixed from then on */
+.chat-options {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--outline-grey);
+    color: var(--subtext-grey);
+    font-size: 0.8rem;
+}
+
+    .chat-options label {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .chat-options select {
+        padding: 0.1rem 0.3rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 4px;
+        background-color: var(--near-black);
+        color: #f0f4f8;
+        font-size: 0.8rem;
+    }
+
+        .chat-options select:disabled {
+            opacity: 0.6;
+        }
+
     .chat-state.running {
         color: var(--gold);
     }

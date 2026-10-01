@@ -22,6 +22,27 @@
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
         </header>
 
+        <div class="chat-options" title="@(entries.Count > 0 ? "Settled for this conversation - start a new chat to change them" : "What the agent runs on, for the whole conversation")">
+            <label>
+                Model
+                <select disabled="@(entries.Count > 0)" value="@(Chat.Model ?? "")" @onchange="e => Chat.Model = (string)e.Value">
+                    @foreach (var model in Options(_models, Chat.Model))
+                    {
+                        <option value="@model">@(model.Length == 0 ? "default" : model)</option>
+                    }
+                </select>
+            </label>
+            <label>
+                Effort
+                <select disabled="@(entries.Count > 0)" value="@(Chat.Effort ?? "")" @onchange="e => Chat.Effort = (string)e.Value">
+                    @foreach (var effort in Options(_efforts, Chat.Effort))
+                    {
+                        <option value="@effort">@(effort.Length == 0 ? "default" : effort)</option>
+                    }
+                </select>
+            </label>
+        </div>
+
         <div class="chat-entries" @ref="_entriesElement">
             @if (entries.Count == 0)
             {
@@ -94,6 +115,14 @@
 }
 
 @code {
+    /// <summary>What the CLI takes for its model and effort: blank is its own default.</summary>
+    static readonly string[] _models = ["", "fable", "opus", "sonnet", "haiku"];
+    static readonly string[] _efforts = ["", "low", "medium", "high", "xhigh", "max"];
+
+    /// <summary>The choices on offer, with the current one among them even when it came from settings as something else (a full model id, say).</summary>
+    static IEnumerable<string> Options(string[] offered, string current) =>
+        current is null || offered.Contains(current) ? offered : offered.Append(current);
+
     bool _available;
     bool _open;
 

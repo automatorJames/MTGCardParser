@@ -11,10 +11,10 @@ public sealed record LocalAgentSettings
     /// <summary>The full path of the claude executable, when it isn't on the PATH.</summary>
     public string ClaudePath { get; init; }
 
-    /// <summary>The model the agent runs on, as the CLI's <c>--model</c> takes it (an alias like "sonnet", or a full id) - the CLI's own default when blank.</summary>
+    /// <summary>The model a conversation starts out set to, as the CLI's <c>--model</c> takes it (an alias like "sonnet", or a full id) - the CLI's own default when blank.</summary>
     public string Model { get; init; }
 
-    /// <summary>The effort level, as the CLI's <c>--effort</c> takes it - the CLI's own default when blank.</summary>
+    /// <summary>The effort level a conversation starts out set to, as the CLI's <c>--effort</c> takes it - the CLI's own default when blank.</summary>
     public string Effort { get; init; }
 }
 
@@ -80,18 +80,20 @@ public sealed class LocalAgent(LocalAgentSettings settings)
     }
 
     /// <summary>Starts a new conversation, run with <paramref name="arguments"/> from <paramref name="workingDirectory"/>. Call only when <see cref="GetStatusAsync"/> says the agent is available.</summary>
-    public LocalAgentSession CreateSession(string workingDirectory, IEnumerable<string> arguments)
+    /// <param name="model">The model the whole conversation runs on, as the CLI's <c>--model</c> takes it - the CLI's own default when blank.</param>
+    /// <param name="effort">Its effort level, as the CLI's <c>--effort</c> takes it - the CLI's own default when blank.</param>
+    public LocalAgentSession CreateSession(string workingDirectory, IEnumerable<string> arguments, string model = null, string effort = null)
     {
         if (_path is null)
             throw new InvalidOperationException("No local agent is available.");
 
         List<string> all = ["--print", "--output-format", "stream-json", "--verbose", "--include-partial-messages", .. arguments];
 
-        if (!string.IsNullOrWhiteSpace(settings.Model))
-            all.AddRange(["--model", settings.Model.Trim()]);
+        if (!string.IsNullOrWhiteSpace(model))
+            all.AddRange(["--model", model.Trim()]);
 
-        if (!string.IsNullOrWhiteSpace(settings.Effort))
-            all.AddRange(["--effort", settings.Effort.Trim()]);
+        if (!string.IsNullOrWhiteSpace(effort))
+            all.AddRange(["--effort", effort.Trim()]);
 
         return new LocalAgentSession(_path, workingDirectory, all);
     }
