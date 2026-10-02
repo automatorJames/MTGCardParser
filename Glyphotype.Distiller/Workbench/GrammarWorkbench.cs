@@ -312,7 +312,47 @@ public sealed class GrammarWorkbench : IDisposable
     /// glyphs and vocabularies it refers to that are missing), reverting it if modified, removing it if added.
     /// </summary>
     public void Revert(DefinitionKind kind, string name) =>
-        Edit(working => kind switch
+        Edit(working => RevertIn(working, kind, name), $"revert {kind.ToString().ToLowerInvariant()} {name}");
+
+    /// <summary>Reverts (as <see cref="Revert"/> does) every change an agent began in <paramref name="round"/> (see <see cref="ChangeRounds"/>), as one step.</summary>
+    public void RevertRound(int round) =>
+        Edit(working =>
+        {
+            var pending = ChangeRounds.Where(x => x.Value == round).Select(x => x.Key).ToList();
+
+            if (pending.Count == 0)
+                throw new InvalidOperationException($"No working change began in AI round {round}");
+
+            // A change the round added may be referred to by another it added: keep going round until each
+            // revert goes through, or none of those left can.
+            while (pending.Count > 0)
+            {
+                var left = pending.Count;
+                InvalidOperationException refusal = null;
+
+                foreach (var (kind, name) in pending.ToList())
+                {
+                    try
+                    {
+                        working = RevertIn(working, kind, name);
+                        pending.Remove((kind, name));
+                    }
+                    catch (InvalidOperationException exception)
+                    {
+                        refusal = exception;
+                    }
+                }
+
+                // Nothing went through this time round, so nothing would next time either.
+                if (pending.Count == left)
+                    throw refusal;
+            }
+
+            return working;
+        }, $"revert AI round {round}");
+
+    GrammarDefinition RevertIn(GrammarDefinition working, DefinitionKind kind, string name) =>
+        kind switch
         {
             DefinitionKind.Glyph => CommittedDefinition.Glyphs.FirstOrDefault(x => x.Name == name) is GlyphDefinition glyph
                 ? RestoreReferences(working.WithGlyph(glyph), glyph)
@@ -323,7 +363,11 @@ public sealed class GrammarWorkbench : IDisposable
             _ => CommittedDefinition.Markers.Contains(name)
                 ? working with { Markers = working.Markers.Union([name]).ToList() }
                 : working with { Markers = working.Markers.Where(x => x != name).ToList() },
-        }, $"revert {kind.ToString().ToLowerInvariant()} {name}");
+        };
+
+    /// <summary>Makes <paramref name="definition"/> the working definition, as one step - how a caller takes back, or redoes, steps of its own.</summary>
+    public void Restore(GrammarDefinition definition, string description) =>
+        Edit(_ => definition, description);
 
     /// <summary>Discards every working change.</summary>
     public void RevertAll() => Edit(_ => CommittedDefinition, "revert all");

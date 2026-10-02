@@ -228,6 +228,12 @@
     padding-top: 0.35rem;
 }
 
+.changes-table .group-row .link-button {
+    font-weight: normal;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
 .change-badge {
     display: inline-block;
     min-width: 4.5rem;
@@ -348,9 +354,14 @@
         margin-left: 0.6rem;
     }
 
-    .link-button:hover {
+    .link-button:hover:not(:disabled) {
         color: var(--lightest-blue);
         text-decoration: underline;
+    }
+
+    .link-button:disabled {
+        opacity: 0.4;
+        cursor: default;
     }
 
 /* A definition's name, opening its viewer: reads as the name it is, and shows it's a link on hover. */

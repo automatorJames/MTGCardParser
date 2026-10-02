@@ -133,6 +133,39 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task Reverting_a_round_reverts_only_the_changes_it_began()
+    {
+        static string Glyph(string name, string verb) => $$"""
+            public class {{name}} : Glyph
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "{{verb}} in the", Prop(Place)];
+
+                public Animal Animal { get; set; }
+                public Place Place { get; set; }
+            }
+            """;
+
+        var (agent, workbench) = CreateAgent();
+
+        await agent.StartSessionAsync();
+        await agent.ApplyAsync(_animalSnores);
+
+        await agent.StartSessionAsync();
+        await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"));
+        await agent.ApplyAsync(Glyph("AnimalNaps", "naps"));
+
+        var beforeRevert = workbench.WorkingDefinition;
+        workbench.RevertRound(2);
+
+        Assert.Equal([(DefinitionKind.Glyph, "AnimalSnores")], workbench.Changes.Select(x => (x.Kind, x.Name)));
+        Assert.Throws<InvalidOperationException>(() => workbench.RevertRound(2));
+
+        // Restoring the earlier working grammar brings the round back, as a page's undo does.
+        workbench.Restore(beforeRevert, "undo revert AI round 2");
+        Assert.Equal(3, workbench.Changes.Count);
+    }
+
+    [Fact]
     public async Task A_change_that_wouldnt_build_is_refused()
     {
         var (agent, workbench) = CreateAgent();

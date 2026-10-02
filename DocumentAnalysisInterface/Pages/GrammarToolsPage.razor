@@ -1,6 +1,7 @@
 @page "/grammar-tools"
 @implements IDisposable
 @inject IServiceProvider Services
+@inject IJSRuntime JS
 
 @if (Workspaces is null)
 {
@@ -120,6 +121,8 @@ else
         </section>
 
         <div class="sections-bar">
+            <button class="link-button" disabled="@(_undo.Count == 0)" title="@(_undo.TryPeek(out var nextUndo) ? $"Undo {nextUndo.Description} (Ctrl+Z)" : "Nothing to undo")" @onclick="Undo">undo</button>
+            <button class="link-button" disabled="@(_redo.Count == 0)" title="@(_redo.TryPeek(out var nextRedo) ? $"Redo {nextRedo.Description} (Ctrl+Y)" : "Nothing to redo")" @onclick="Redo">redo</button>
             <button class="link-button" @onclick="ToggleAllSections">@(AllCollapsed ? "expand all" : "collapse all")</button>
         </div>
 
@@ -130,7 +133,7 @@ else
                     @SectionTitle(Section.Changes, "Working changes")
                     <span class="panel-subtext">saved to @Workbench.WorkingDefinitionPath</span>
                     <div class="panel-actions">
-                        <button class="btn btn-sm btn-secondary" @onclick="() => Try(Workbench.RevertAll)">Revert all</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="@(() => Record("revert all", Workbench.RevertAll))">Revert all</button>
                         @if (Workbench.IsSourceBacked)
                         {
                             <button class="btn btn-sm btn-primary" @onclick="OpenCommit">Commit to C#</button>
@@ -153,7 +156,15 @@ else
                             <tbody>
                                 @if (group.Title is not null)
                                 {
-                                    <tr class="group-row"><td colspan="4" title="@group.Tooltip">@group.Title</td></tr>
+                                    <tr class="group-row">
+                                        <td colspan="3" title="@group.Tooltip">@group.Title</td>
+                                        <td>
+                                            @if (group.Round is int round)
+                                            {
+                                                <button class="link-button" title="Revert every change in this round" @onclick="@(() => Record($"revert AI round {round}", () => Workbench.RevertRound(round)))">revert round</button>
+                                            }
+                                        </td>
+                                    </tr>
                                 }
                                 @foreach (var change in group.Changes)
                                 {
@@ -170,7 +181,7 @@ else
                                                 <button class="name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
                                             }
                                         </td>
-                                        <td><button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button></td>
+                                        <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
                                     </tr>
                                 }
                             </tbody>
@@ -266,7 +277,7 @@ else
                                     <button class="link-button" @onclick="() => EditVocabulary(vocabulary.Name)">edit</button>
                                     @if (referrers.Count == 0)
                                     {
-                                        <button class="link-button" @onclick="() => Try(() => Workbench.RemoveVocabulary(vocabulary.Name))">remove</button>
+                                        <button class="link-button" @onclick="@(() => Record($"remove {vocabulary.Name}", () => Workbench.RemoveVocabulary(vocabulary.Name)))">remove</button>
                                     }
                                 </td>
                             </tr>
@@ -355,6 +366,12 @@ else
     ViewerState _viewer;
     SourceCommitPlan _commitPlan;
     GrammarToolsHelpDialog.HelpTopic? _help;
+    readonly Stack<PageStep> _undo = new();
+    readonly Stack<PageStep> _redo = new();
+    DotNetObjectReference<GrammarToolsPage> _self;
+
+    /// <summary>A change made on this page, for undo and redo: the working grammar either side of it.</summary>
+    record PageStep(string Description, GrammarDefinition Before, GrammarDefinition After);
 
     enum GlyphSort { Name, Net, Saves, Data, Definition, Matches, Words }
 
@@ -407,6 +424,8 @@ else
         Workspaces = await Task.Run(() => Services.GetRequiredService<WorkspaceManager>());
         Workspaces.ActiveChanged += OnActiveChanged;
         Listen();
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("grammarTools.listenForUndo", _self);
         StateHasChanged();
         await RefreshScoresAsync();
         StateHasChanged();
@@ -419,6 +438,24 @@ else
 
         if (_listeningTo is not null)
             _listeningTo.Changed -= OnWorkbenchChanged;
+
+        if (_self is not null)
+        {
+            _ = StopListeningForUndoAsync();
+            _self.Dispose();
+        }
+    }
+
+    async Task StopListeningForUndoAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("grammarTools.stopListeningForUndo");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit's gone, and the page's listener with it.
+        }
     }
 
     void Listen()
@@ -442,6 +479,7 @@ else
                 _viewer = null;
                 _editor = null;
                 _commitPlan = null;
+                ForgetSteps();
             }
 
             StateHasChanged();
@@ -563,7 +601,7 @@ else
         : Math.Abs(working - metric.Committed) < 1e-9 ? "unchanged"
         : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
 
-    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes);
+    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes, int? Round = null);
 
     /// <summary>The working changes grouped by the agent round each began in, earliest first, then the rest; a single untitled group when no agent round began any.</summary>
     IEnumerable<ChangeGroup> GetChangeGroups()
@@ -579,7 +617,7 @@ else
             .OrderBy(x => x.Key is null)
             .ThenBy(x => x.Key)
             .Select(x => x.Key is int round
-                ? new ChangeGroup($"AI round {round}", "Changes an agent began in this round of its steps", x.ToList())
+                ? new ChangeGroup($"AI round {round}", "Changes an agent began in this round of its steps", x.ToList(), round)
                 : new ChangeGroup("Other changes", "Changes a person began, or whose first step is no longer in the history", x.ToList()));
     }
 
@@ -639,7 +677,7 @@ else
     }
 
     void ToggleGlyph(GlyphRow row, bool include) =>
-        Try(() =>
+        Record($"{(include ? "include" : "exclude")} {row.Name}", () =>
         {
             if (include)
                 Workbench.Revert(DefinitionKind.Glyph, row.Name);
@@ -706,10 +744,14 @@ else
             if (name != _editor.OriginalName && names.Contains(name))
                 return $"The working grammar already has a {_editor.Kind.ToString().ToLowerInvariant()} named {name}";
 
+            var before = Workbench.WorkingDefinition;
+
             if (_editor.Kind == DefinitionKind.Glyph)
                 Workbench.SetGlyph(ReadGlyph(json), _editor.OriginalName);
             else
                 Workbench.SetVocabulary(ReadVocabulary(json), _editor.OriginalName);
+
+            Remember(_editor.OriginalName is null ? $"add {name}" : $"edit {name}", before);
 
             _editor = null;
             return null;
@@ -726,6 +768,72 @@ else
     static VocabularyDefinition ReadVocabulary(string json) =>
         DefinitionJson.Deserialize<VocabularyDefinition>(json) is { Name: { Length: > 0 } } vocabulary ? vocabulary : throw new InvalidOperationException("A vocabulary needs a Name");
 
+    // ---- Undo ----
+
+    /// <summary>Runs a workbench operation as <see cref="Try"/> does, remembering it for undo if it changed the working grammar.</summary>
+    void Record(string description, Action action)
+    {
+        var before = Workbench.WorkingDefinition;
+        Try(action);
+        Remember(description, before);
+    }
+
+    void Remember(string description, GrammarDefinition before)
+    {
+        if (ReferenceEquals(before, Workbench.WorkingDefinition))
+            return;
+
+        _undo.Push(new(description, before, Workbench.WorkingDefinition));
+        _redo.Clear();
+    }
+
+    void ForgetSteps()
+    {
+        _undo.Clear();
+        _redo.Clear();
+    }
+
+    void Undo() => Step(_undo, _redo, "undo", x => x.After, x => x.Before);
+
+    void Redo() => Step(_redo, _undo, "redo", x => x.Before, x => x.After);
+
+    /// <summary>Takes the latest step off <paramref name="from"/> and returns the working grammar to its other side - as long as nothing else (an agent, say) has changed it since.</summary>
+    void Step(Stack<PageStep> from, Stack<PageStep> to, string verb, Func<PageStep, GrammarDefinition> expected, Func<PageStep, GrammarDefinition> target)
+    {
+        if (_editor is not null || _commitPlan is not null || !from.TryPop(out var step))
+            return;
+
+        if (!ReferenceEquals(Workbench.WorkingDefinition, expected(step)))
+        {
+            ForgetSteps();
+            _notice = $"Can't {verb} {step.Description}: the working grammar has changed since, other than from this page.";
+            return;
+        }
+
+        Try(() => Workbench.Restore(target(step), $"{verb} {step.Description}"));
+
+        if (ReferenceEquals(Workbench.WorkingDefinition, target(step)))
+        {
+            to.Push(step);
+            _notice = $"{(verb == "undo" ? "Undid" : "Redid")} {step.Description}.";
+        }
+    }
+
+    [JSInvokable]
+    public Task OnUndoKey(bool redo) =>
+        InvokeAsync(() =>
+        {
+            if (Workspaces is null)
+                return;
+
+            if (redo)
+                Redo();
+            else
+                Undo();
+
+            StateHasChanged();
+        });
+
     // ---- Committing ----
 
     void OpenCommit() => Try(() => _commitPlan = Workbench.PlanCommit());
@@ -734,6 +842,7 @@ else
         Try(() =>
         {
             Workbench.Checkpoint();
+            ForgetSteps();
             _notice = $"Checkpointed {Workspaces.ActiveWorkspace.Name}: the working grammar is its baseline now.";
         });
 
@@ -745,6 +854,7 @@ else
         Try(() =>
         {
             Workbench.Commit(plan);
+            ForgetSteps();
             _notice = $"Committed {plan.Declarations.Count} declaration change{(plan.Declarations.Count == 1 ? "" : "s")} to {plan.Files.Count} file{(plan.Files.Count == 1 ? "" : "s")}. Rebuild and restart to compile them; until then, scores reflect the working grammar.";
         });
     }
