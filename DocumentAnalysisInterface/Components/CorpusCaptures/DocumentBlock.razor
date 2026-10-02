@@ -39,9 +39,11 @@
                 </div>
                 <div class="line-container-parent" data-path=@line.DataPath>
                     <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) data-path=@line.DataPath>
-                        @foreach (var root in line.CaptureTraceRoots)
+                        @{ var roots = line.CaptureTraceRoots; }
+                        @for (int i = 0; i < roots.Count; i++)
                         {
-                            <SpanView CaptureTrace=@root />
+                            @GetGapBefore(line, roots, i)
+                            <SpanView CaptureTrace=@roots[i] />
                         }
                     </pre>
 
@@ -61,6 +63,22 @@
     public ProcessedDocument ProcessedDocument { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
+
+    /// <summary>
+    /// The source text between root <paramref name="index"/> and the one before it - the whitespace the
+    /// Tokenizer steps past after each token (and clause break) without making it part of either, so the
+    /// roots alone would render run together ("it.they").
+    /// </summary>
+    static string GetGapBefore(ProcessedLine line, List<RootCaptureTrace> roots, int index)
+    {
+        if (index == 0)
+            return "";
+
+        int gapStart = roots[index - 1].End;
+        int gapEnd = roots[index].Index;
+
+        return gapEnd > gapStart ? line.SourceText.FormattedText[gapStart..gapEnd] : "";
+    }
 
     static double GetCoveragePercent(int capturedWordCount, int wordCount) =>
         wordCount == 0 ? 0 : 100.0 * capturedWordCount / wordCount;
