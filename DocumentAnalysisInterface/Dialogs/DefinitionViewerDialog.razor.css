@@ -82,11 +82,11 @@
 
 /* Views */
 
-/* One fixed height, whichever tab is showing, so moving between them never resizes the dialog: as tall as the
-   window allows around the dialog's own header, tabs and buttons. Content longer or wider than that scrolls. */
+/* One fixed height, whichever tab is showing, so moving between them never resizes the dialog. Long lines wrap;
+   content taller than this scrolls. */
 .viewer-body {
     margin-top: 0.9rem;
-    height: max(20rem, calc(100vh - 19rem));
+    height: max(20rem, calc(81vh - 9.5rem));
     overflow: auto;
     border: 1px solid var(--outline-grey);
     border-radius: 6px;
@@ -178,4 +178,10 @@
     border: none;
     border-radius: 0;
     font-size: 0.82rem;
+}
+
+/* Every view wraps its long lines, breaking mid-token only where a token's longer than the line. */
+.viewer-body ::deep pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }

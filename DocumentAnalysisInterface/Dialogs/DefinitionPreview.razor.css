@@ -1,13 +1,10 @@
 .definition-preview ::deep pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     margin: 0;
     border: none;
     border-radius: 0;
     font-size: 0.78rem;
-}
-
-.minified ::deep pre {
-    white-space: pre-wrap;
-    word-break: break-all;
 }
 
 .preview-note {
@@ -27,7 +24,6 @@
     background-color: #1E1E1E;
     color: #DCDCDC;
     font-family: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace;
-    white-space: pre;
 }
 
     .preview-diff .added {

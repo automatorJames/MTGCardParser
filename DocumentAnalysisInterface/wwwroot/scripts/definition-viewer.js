@@ -33,7 +33,8 @@ window.definitionViewer = {
 // Rich tooltips for definition names (Components/DefinitionTooltip.razor): after the pointer rests on an element marked
 // data-preview-kind / data-preview-name, the component shows that definition beside it, until the pointer leaves.
 window.definitionTooltip = {
-    delay: 450,
+    // Straight away: a definition's name is there to be looked into.
+    delay: 0,
 
     attach(tooltip) {
         this.detach();
