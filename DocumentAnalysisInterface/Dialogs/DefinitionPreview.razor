@@ -1,0 +1,77 @@
+@* A definition as one of the viewer's tabs shows it, cut down to a tooltip's size. *@
+<div class="definition-preview">
+    @switch (_view)
+    {
+        case DefinitionView.Json:
+            var json = SyntaxHighlighter.FirstLines(DefinitionViews.JsonTokens(Shown), MaxLines);
+            <HighlightedCode Tokens="@json.Tokens" Cut="@json.Cut" />
+            break;
+
+        case DefinitionView.FormattedRegex or DefinitionView.MinifiedRegex when GlyphType is null:
+            <p class="preview-note">The regex shows once the grammar is built.</p>
+            break;
+
+        case DefinitionView.FormattedRegex:
+            var lines = DefinitionViews.FormattedRegex(GlyphType, BlankLines).Lines;
+            <FormattedRegex Lines="@lines.Take(MaxLines).ToList()" ShowLineNumbers="@LineNumbers" />
+            @if (lines.Count > MaxLines)
+            {
+                <div class="preview-cut">…</div>
+            }
+            break;
+
+        case DefinitionView.MinifiedRegex:
+            var graph = GlyphTypeCache.GetRegexGraph(GlyphType);
+            <div class="minified">
+                <FormattedRegex Lines="@graph.BuiltRegex.ToRichMinifiedLines(graph)" />
+            </div>
+            break;
+
+        case DefinitionView.Diff:
+            var diff = LineDiff.Compare(DefinitionViews.CSharp(Committed), DefinitionViews.CSharp(Working));
+            <pre class="preview-diff">@foreach (var line in diff.Take(MaxLines))
+            {
+                <span class="@line.Kind.ToString().ToLowerInvariant()">@(line.Kind switch { LineDiff.LineKind.Added => "+ ", LineDiff.LineKind.Removed => "− ", _ => "  " })@line.Text@("\n")</span>
+            }@if (diff.Count > MaxLines)
+            {
+                <span class="unchanged">…</span>
+            }</pre>
+            break;
+
+        default:
+            var csharp = SyntaxHighlighter.FirstLines(DefinitionViews.CSharpTokens(Shown, ResolveType), MaxLines);
+            <HighlightedCode Tokens="@csharp.Tokens" Cut="@csharp.Cut" />
+            break;
+    }
+</div>
+
+@code {
+    const int MaxLines = 24;
+
+    [Parameter, EditorRequired] public DefinitionView View { get; set; }
+
+    [Parameter, EditorRequired] public DefinitionKind Kind { get; set; }
+
+    [Parameter] public ChangeType? Change { get; set; }
+
+    [Parameter] public object Committed { get; set; }
+
+    [Parameter] public object Working { get; set; }
+
+    /// <summary>For a glyph: its built type, or null while there's none to hand.</summary>
+    [Parameter] public Type GlyphType { get; set; }
+
+    [Parameter, EditorRequired] public Func<string, CodeTypeKind?> ResolveType { get; set; }
+
+    [Parameter] public bool BlankLines { get; set; }
+
+    [Parameter] public bool LineNumbers { get; set; }
+
+    DefinitionView _view;
+
+    object Shown => Working ?? Committed;
+
+    /// <summary>The view asked for, where this definition has it; else its C#.</summary>
+    protected override void OnParametersSet() =>
+        _view = DefinitionViews.For(Kind, Change).Contains(View) ? View : DefinitionView.CSharp;
+}

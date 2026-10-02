@@ -1,0 +1,22 @@
+@* Code shown as an editor shows it: in its font, on its background, each token in its color (see SyntaxHighlighter). *@
+<pre class="highlighted-code">@foreach (var token in Tokens)
+{
+    if (token.Color is null)
+    {
+        @token.Text
+    }
+    else
+    {
+        <span style="color: @token.Color">@token.Text</span>
+    }
+}@if (Cut)
+{
+    <span class="cut">@("\n…")</span>
+}</pre>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<CodeToken> Tokens { get; set; }
+
+    /// <summary>Whether the code goes on past what's shown, which ends it with an ellipsis.</summary>
+    [Parameter] public bool Cut { get; set; }
+}

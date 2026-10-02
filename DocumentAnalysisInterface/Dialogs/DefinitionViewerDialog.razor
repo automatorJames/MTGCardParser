@@ -33,13 +33,13 @@
             {
                 case DefinitionView.CSharp:
                     <CopyButtonOverlay TextToCopy="@_csharp">
-                        <pre class="code-view">@_csharp</pre>
+                        <HighlightedCode Tokens="@_csharpTokens" />
                     </CopyButtonOverlay>
                     break;
 
                 case DefinitionView.Json:
                     <CopyButtonOverlay TextToCopy="@_json">
-                        <pre class="code-view">@_json</pre>
+                        <HighlightedCode Tokens="@_jsonTokens" />
                     </CopyButtonOverlay>
                     break;
 
@@ -108,12 +108,17 @@
     /// <summary>For a glyph: its type in the grammar it's shown from, built - for the regex tabs. Null while there's none to hand.</summary>
     [Parameter] public Type GlyphType { get; set; }
 
+    /// <summary>What each type the definition's C# names is (see <see cref="SyntaxHighlighter.CSharp"/>).</summary>
+    [Parameter, EditorRequired] public Func<string, CodeTypeKind?> ResolveType { get; set; }
+
     [Parameter] public EventCallback OnClose { get; set; }
 
     DefinitionView _tab;
     IReadOnlyList<DefinitionView> _tabs = [];
     string _csharp;
+    IReadOnlyList<CodeToken> _csharpTokens = [];
     string _json;
+    IReadOnlyList<CodeToken> _jsonTokens = [];
     SmartRegex _formattedRegex;
     string _formattedRegexText;
     List<SmartLine> _minifiedRegex;
@@ -127,7 +132,11 @@
         var shown = Working ?? Committed;
         _tabs = DefinitionViews.For(Kind, Change);
         _csharp = DefinitionViews.CSharp(shown);
-        _json = DefinitionViews.Json(shown);
+        _csharpTokens = SyntaxHighlighter.CSharp(_csharp, ResolveType);
+        _jsonTokens = DefinitionViews.JsonTokens(shown);
+
+        // The JSON as shown, pretty-printed, is what's copied.
+        _json = string.Concat(_jsonTokens.Select(x => x.Text));
         _diff = Change == ChangeType.Modified ? LineDiff.Compare(DefinitionViews.CSharp(Committed), _csharp) : [];
         _diffText = DefinitionViews.DiffText(_diff);
 

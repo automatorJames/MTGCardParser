@@ -1,0 +1,43 @@
+.definition-preview ::deep pre {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.78rem;
+}
+
+.minified ::deep pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.preview-note {
+    margin: 0;
+    padding: 0.6rem 0.9rem;
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.preview-cut {
+    padding: 0 1rem 0.5rem;
+    color: #808080;
+}
+
+.preview-diff {
+    padding: 0.6rem 0.9rem;
+    background-color: #1E1E1E;
+    color: #DCDCDC;
+    font-family: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace;
+    white-space: pre;
+}
+
+    .preview-diff .added {
+        color: #3fb950;
+    }
+
+    .preview-diff .removed {
+        color: #f85149;
+    }
+
+    .preview-diff .unchanged {
+        color: #8b949e;
+    }

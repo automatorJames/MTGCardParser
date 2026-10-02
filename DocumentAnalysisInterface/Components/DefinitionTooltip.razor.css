@@ -1,0 +1,11 @@
+.definition-tooltip {
+    position: fixed;
+    z-index: 1100;
+    min-width: 12rem;
+    overflow: hidden;
+    border: 1px solid #4A5568;
+    border-radius: 6px;
+    background-color: #1E1E1E;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+}

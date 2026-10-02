@@ -38,6 +38,7 @@ else
         </section>
 
         <Snackbar @ref="_snackbar" />
+        <DefinitionTooltip Content="PreviewContent" />
 
         @if (_committed is null)
         {
@@ -180,7 +181,7 @@ else
                                             }
                                             else
                                             {
-                                                <button class="name-link" title="@Preview(change.Kind, change.Name)" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
+                                                <button class="name-link" data-preview-kind="@change.Kind" data-preview-name="@change.Name" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
                                             }
                                         </td>
                                         <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
@@ -230,7 +231,7 @@ else
                                            title="@(row.Referrers.Count > 0 ? "Used by " + string.Join(", ", row.Referrers) : "")"
                                            @onchange="e => ToggleGlyph(row, (bool)e.Value)" />
                                 </td>
-                                <td class="name-column"><button class="name-link" title="@Preview(DefinitionKind.Glyph, row.Name)" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
+                                <td class="name-column"><button class="name-link" data-preview-kind="@DefinitionKind.Glyph" data-preview-name="@row.Name" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
                                 <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
                                 <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
                                 <td>@Bits(stats?.ResidualEquivalentBits)</td>
@@ -271,7 +272,7 @@ else
                         {
                             var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
                             <tr class="@(referrers.Count == 0 ? "excluded" : "")">
-                                <td class="name-column"><button class="name-link" title="@Preview(DefinitionKind.Vocabulary, vocabulary.Name)" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
+                                <td class="name-column"><button class="name-link" data-preview-kind="@DefinitionKind.Vocabulary" data-preview-name="@vocabulary.Name" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
                                 <td>@(CurrentScore.VocabularyMembersUsed?.GetValueOrDefault(vocabulary.Name) ?? 0) of @vocabulary.Members.Count.ToString("N0")</td>
                                 <td>@Bits(VocabularyBits(vocabulary))</td>
                                 <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
@@ -338,7 +339,7 @@ else
 
 @if (_viewer is not null)
 {
-    <DefinitionViewerDialog Name="@_viewer.Name" Kind="_viewer.Kind" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working" GlyphType="_viewer.GlyphType" OnClose="() => _viewer = null" />
+    <DefinitionViewerDialog Name="@_viewer.Name" Kind="_viewer.Kind" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working" GlyphType="_viewer.GlyphType" ResolveType="ResolveType" OnClose="() => _viewer = null" />
 }
 
 @if (_help is GrammarToolsHelpDialog.HelpTopic topic && _committed is not null)
@@ -480,7 +481,6 @@ else
                 _committed = _working = null;
                 _committedErrors = null;
                 _committedGrammar = null;
-                _previews.Clear();
                 _viewer = null;
                 _editor = null;
                 _commitPlan = null;
@@ -732,23 +732,16 @@ else
         return (change, Find(Workbench.CommittedDefinition), working, glyphType);
     }
 
-    /// <summary>Tooltip previews, by the view and definition they show - kept while the definition, and its built type, stay the same.</summary>
-    readonly Dictionary<(DefinitionView, DefinitionKind, string), (object Committed, object Working, Type GlyphType, bool BlankLines, string Text)> _previews = [];
+    /// <summary>What each type a definition can name is, for coloring its C# as Visual Studio would.</summary>
+    Func<string, CodeTypeKind?> ResolveType => DefinitionViews.TypeResolver(Workbench.WorkingDefinition, Workbench.CommittedDefinition);
 
     /// <summary>A definition's tooltip: a preview of it as the viewer's last chosen tab shows it.</summary>
-    string Preview(DefinitionKind kind, string name)
+    RenderFragment PreviewContent(DefinitionKind kind, string name)
     {
-        var view = RuntimeSettings.DefinitionView;
         var (change, committed, working, glyphType) = Describe(kind, name);
-        var blankLines = !RuntimeSettings.HideBlankLines;
 
-        if (_previews.TryGetValue((view, kind, name), out var cached)
-            && ReferenceEquals(cached.Committed, committed) && ReferenceEquals(cached.Working, working) && cached.GlyphType == glyphType && cached.BlankLines == blankLines)
-            return cached.Text;
-
-        var text = DefinitionViews.Preview(view, kind, change, committed, working, glyphType, blankLines);
-        _previews[(view, kind, name)] = (committed, working, glyphType, blankLines, text);
-        return text;
+        return @<DefinitionPreview View="@RuntimeSettings.DefinitionView" Kind="kind" Change="change" Committed="committed" Working="working"
+                                   GlyphType="glyphType" ResolveType="ResolveType" BlankLines="@(!RuntimeSettings.HideBlankLines)" LineNumbers="@RuntimeSettings.ShowLineNumbers" />;
     }
 
     // ---- Editing ----

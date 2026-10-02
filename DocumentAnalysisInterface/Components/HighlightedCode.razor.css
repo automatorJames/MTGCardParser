@@ -1,0 +1,15 @@
+.highlighted-code {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border: none;
+    background-color: #1E1E1E;
+    color: #DCDCDC;
+    font-family: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+.cut {
+    color: #808080;
+}

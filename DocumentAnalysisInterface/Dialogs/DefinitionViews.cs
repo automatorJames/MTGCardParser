@@ -10,15 +10,11 @@ namespace DocumentAnalysisInterface.Dialogs;
 public enum DefinitionView { CSharp, Json, FormattedRegex, MinifiedRegex, Diff }
 
 /// <summary>
-/// A definition as each <see cref="DefinitionView"/> shows it, as plain text: what the viewer's copy buttons copy,
-/// and what a definition's tooltip previews.
+/// A definition as each <see cref="DefinitionView"/> shows it: as plain text, for the viewer's copy buttons, and
+/// highlighted, for the viewer and a definition's tooltip.
 /// </summary>
 public static class DefinitionViews
 {
-    const int PreviewLines = 24;
-    const int PreviewLineLength = 140;
-    const int PreviewLength = 1600;
-
     public static string Label(DefinitionView view) =>
         view switch
         {
@@ -75,69 +71,42 @@ public static class DefinitionViews
             _ => "  ",
         } + x.Text));
 
+    /// <summary>A definition's C#, highlighted, its types colored by what <paramref name="resolveType"/> says they are.</summary>
+    public static IReadOnlyList<CodeToken> CSharpTokens(object definition, Func<string, CodeTypeKind?> resolveType) =>
+        SyntaxHighlighter.CSharp(CSharp(definition), resolveType);
+
+    /// <summary>A definition's JSON, pretty-printed and highlighted.</summary>
+    public static IReadOnlyList<CodeToken> JsonTokens(object definition) =>
+        SyntaxHighlighter.JsonText(Json(definition));
+
     /// <summary>
-    /// <paramref name="view"/>'s text for a definition (falling back to C# where it doesn't have that view), cut down
-    /// to a tooltip's size. <paramref name="glyphType"/> is the glyph's built type, or null if there's none to hand.
+    /// What each type a definition can name is - the grammar's glyphs classes, its vocabularies enums, its markers
+    /// interfaces (from either grammar, so a removed one still reads right) - along with the types Glyphotype's own
+    /// declarations use.
     /// </summary>
-    public static string Preview(DefinitionView view, DefinitionKind kind, ChangeType? change, object committed, object working, Type glyphType, bool includeBlankLines)
+    public static Func<string, CodeTypeKind?> TypeResolver(params GrammarDefinition[] grammars)
     {
-        var shown = working ?? committed;
-
-        if (!For(kind, change).Contains(view))
-            view = DefinitionView.CSharp;
-
-        string text;
-
-        try
+        var kinds = new Dictionary<string, CodeTypeKind>
         {
-            text = view switch
-            {
-                DefinitionView.Json => Json(shown),
-                DefinitionView.FormattedRegex => glyphType is null ? "(the regex shows once the grammar is built)" : FormattedRegexText(glyphType, includeBlankLines),
-                DefinitionView.MinifiedRegex => glyphType is null ? "(the regex shows once the grammar is built)" : MinifiedRegexText(glyphType),
-                DefinitionView.Diff => DiffText(LineDiff.Compare(CSharp(committed), CSharp(working))),
-                _ => CSharp(shown),
-            };
-        }
-        catch (Exception exception)
+            ["Glyph"] = CodeTypeKind.Class,
+            ["GlyphOneOf"] = CodeTypeKind.Class,
+            ["Nib"] = CodeTypeKind.Class,
+            ["Joiner"] = CodeTypeKind.Enum,
+            ["Proptions"] = CodeTypeKind.Enum,
+        };
+
+        foreach (var grammar in grammars.Where(x => x is not null))
         {
-            text = $"(couldn't show the {Label(view)}: {exception.Message})";
+            foreach (var glyph in grammar.Glyphs)
+                kinds.TryAdd(glyph.Name, CodeTypeKind.Class);
+
+            foreach (var vocabulary in grammar.Vocabularies)
+                kinds.TryAdd(vocabulary.Name, CodeTypeKind.Enum);
+
+            foreach (var marker in grammar.Markers)
+                kinds.TryAdd(marker, CodeTypeKind.Interface);
         }
 
-        return Truncate(text);
-    }
-
-    /// <summary>At most <see cref="PreviewLines"/> lines of at most <see cref="PreviewLineLength"/> characters, <see cref="PreviewLength"/> in all - marking each cut with an ellipsis.</summary>
-    static string Truncate(string text)
-    {
-        var lines = text.Replace("\r\n", "\n").Split('\n');
-        var kept = new List<string>();
-        var length = 0;
-        var cut = false;
-
-        foreach (var line in lines)
-        {
-            if (kept.Count == PreviewLines || length >= PreviewLength)
-            {
-                cut = true;
-                break;
-            }
-
-            var shortened = line.Length > PreviewLineLength ? line[..(PreviewLineLength - 1)] + "…" : line;
-
-            if (length + shortened.Length > PreviewLength)
-            {
-                shortened = shortened[..Math.Max(0, PreviewLength - length)] + "…";
-                cut = true;
-            }
-
-            kept.Add(shortened);
-            length += shortened.Length + 1;
-
-            if (cut)
-                break;
-        }
-
-        return string.Join("\n", kept) + (cut && !kept[^1].EndsWith('…') ? "\n…" : "");
+        return name => kinds.TryGetValue(name, out var kind) ? kind : null;
     }
 }

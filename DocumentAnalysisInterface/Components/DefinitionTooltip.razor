@@ -1,0 +1,77 @@
+@* A rich tooltip for anything marked data-preview-kind / data-preview-name: shown by wwwroot/scripts/definition-viewer.js
+   when the pointer rests on one, with whatever Content renders for it. One per page, rendering on its own, so hovering
+   never re-renders the page around it. *@
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (_shown is var (kind, name))
+{
+    <div class="definition-tooltip" style="@_position">@Content(kind, name)</div>
+}
+
+@code {
+    /// <summary>What to show for the definition of a kind and name.</summary>
+    [Parameter, EditorRequired] public Func<DefinitionKind, string, RenderFragment> Content { get; set; }
+
+    (DefinitionKind, string)? _shown;
+    string _position;
+    DotNetObjectReference<DefinitionTooltip> _self;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("definitionTooltip.attach", _self);
+    }
+
+    /// <summary>Shows the tooltip for a definition, under the element it's for - or over it, where there's more room there.</summary>
+    [JSInvokable]
+    public Task Show(string kind, string name, double left, double top, double bottom, double viewportWidth, double viewportHeight) =>
+        InvokeAsync(() =>
+        {
+            if (!Enum.TryParse<DefinitionKind>(kind, out var definitionKind))
+                return;
+
+            var below = viewportHeight - bottom >= 360 || viewportHeight - bottom >= top;
+            var vertical = below ? $"top: {bottom + 6:0}px; max-height: {viewportHeight - bottom - 14:0}px;" : $"bottom: {viewportHeight - top + 6:0}px; max-height: {top - 14:0}px;";
+            var clampedLeft = Math.Max(8, Math.Min(left, viewportWidth - 320));
+
+            _position = $"left: {clampedLeft:0}px; max-width: {viewportWidth - clampedLeft - 16:0}px; {vertical}";
+            _shown = (definitionKind, name);
+            StateHasChanged();
+        });
+
+    [JSInvokable]
+    public Task Hide() =>
+        InvokeAsync(() =>
+        {
+            if (_shown is null)
+                return;
+
+            _shown = null;
+            StateHasChanged();
+        });
+
+    public void Dispose()
+    {
+        if (_self is null)
+            return;
+
+        _ = DetachAsync();
+        _self.Dispose();
+    }
+
+    async Task DetachAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("definitionTooltip.detach");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit's gone, and the listeners with it.
+        }
+    }
+}
