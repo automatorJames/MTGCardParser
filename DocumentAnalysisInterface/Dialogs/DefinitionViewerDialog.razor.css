@@ -82,9 +82,11 @@
 
 /* Views */
 
+/* One fixed height, whichever tab is showing, so moving between them never resizes the dialog: as tall as the
+   window allows around the dialog's own header, tabs and buttons. Content longer or wider than that scrolls. */
 .viewer-body {
     margin-top: 0.9rem;
-    max-height: 62vh;
+    height: max(20rem, calc(100vh - 19rem));
     overflow: auto;
     border: 1px solid var(--outline-grey);
     border-radius: 6px;

@@ -1,4 +1,6 @@
 @inject RuntimeSettings RuntimeSettings
+@inject IJSRuntime JS
+@implements IDisposable
 
 <CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(1100px, 94vw);">
     <TitleContent>
@@ -49,7 +51,7 @@
 
                 case DefinitionView.MinifiedRegex when _minifiedRegex is not null:
                     <CopyButtonOverlay TextToCopy="@_minifiedRegexText">
-                        <FormattedRegex Lines="@_minifiedRegex" BorderStyle="white-space: pre-wrap; word-break: break-all;" />
+                        <FormattedRegex Lines="@_minifiedRegex" />
                     </CopyButtonOverlay>
                     break;
 
@@ -158,6 +160,48 @@
     {
         _tab = tab;
         RuntimeSettings.DefinitionView = tab;
+    }
+
+    DotNetObjectReference<DefinitionViewerDialog> _self;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("definitionViewer.listenForTabKey", _self);
+    }
+
+    /// <summary>Tab moves to the next tab, Shift+Tab to the one before, wrapping round at either end.</summary>
+    [JSInvokable]
+    public Task OnTabKey(bool backwards) =>
+        InvokeAsync(() =>
+        {
+            var index = _tabs.ToList().IndexOf(_tab);
+            Choose(_tabs[(index + (backwards ? -1 : 1) + _tabs.Count) % _tabs.Count]);
+            StateHasChanged();
+        });
+
+    public void Dispose()
+    {
+        if (_self is null)
+            return;
+
+        _ = StopListeningAsync();
+        _self.Dispose();
+    }
+
+    async Task StopListeningAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("definitionViewer.stopListeningForTabKey");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit's gone, and the listener with it.
+        }
     }
 
     Task Close() => OnClose.InvokeAsync();
