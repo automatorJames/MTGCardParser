@@ -189,18 +189,6 @@
         font-size: 0.8rem;
     }
 
-.notice {
-    padding: 0.6rem 1rem;
-    border: 1px solid var(--dark-gold);
-    border-radius: 8px;
-    color: var(--gold);
-    cursor: pointer;
-}
-
-.notice-dismiss {
-    float: right;
-}
-
 /* Changes */
 
 /* Each column as wide as its contents, the name taking the rest */

@@ -10,7 +10,7 @@
     /// <summary>
     /// Show plain text
     /// </summary>
-    public Task Show(string message, int duration = 3000)
+    public Task Show(string message, int duration = 2000)
     {
         return Show(builder => builder.AddContent(0, message), duration);
     }
@@ -18,7 +18,7 @@
     /// <summary>
     /// Show HTML / MarkupString
     /// </summary>
-    public Task Show(MarkupString markupMessage, int duration = 3000)
+    public Task Show(MarkupString markupMessage, int duration = 2000)
     {
         return Show(builder => builder.AddContent(0, markupMessage), duration);
     }

@@ -160,9 +160,12 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         Assert.Equal([(DefinitionKind.Glyph, "AnimalSnores")], workbench.Changes.Select(x => (x.Kind, x.Name)));
         Assert.Throws<InvalidOperationException>(() => workbench.RevertRound(2));
 
-        // Restoring the earlier working grammar brings the round back, as a page's undo does.
+        // Restoring the earlier working grammar, as a page's undo does, brings the changes back under their round.
         workbench.Restore(beforeRevert, "undo revert AI round 2");
         Assert.Equal(3, workbench.Changes.Count);
+        Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
+        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
+        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalNaps")]);
     }
 
     [Fact]

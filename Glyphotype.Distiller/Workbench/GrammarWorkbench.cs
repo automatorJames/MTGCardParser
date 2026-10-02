@@ -34,7 +34,8 @@ public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, 
 
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
 /// <param name="Round">For a step an agent applied: which of its rounds of steps - one working session, from start to check-in - it was applied in, counted from 1. Null for a person's edit.</param>
-public sealed record WorkbenchStep(int Number, string Description, GrammarDefinition Before, GrammarDefinition After, DateTimeOffset At, int? Round = null);
+/// <param name="Restores">Whether the step returned the working definition to an earlier state (see <see cref="GrammarWorkbench.Restore"/>), so begins nothing of its own.</param>
+public sealed record WorkbenchStep(int Number, string Description, GrammarDefinition Before, GrammarDefinition After, DateTimeOffset At, int? Round = null, bool Restores = false);
 
 /// <summary>A change set scored against the working definition without being made (see <see cref="GrammarWorkbench.EvaluateAsync"/>).</summary>
 /// <param name="Before">The working definition's own score, which the change set was applied on top of.</param>
@@ -172,7 +173,10 @@ public sealed class GrammarWorkbench : IDisposable
         ChangeRounds = FindChangeRounds();
     }
 
-    /// <summary>The round of the step each change began in: the latest step to find the definition as committed, and leave it otherwise.</summary>
+    /// <summary>
+    /// The round of the step each change began in: the latest step to find the definition as committed, and leave it
+    /// otherwise - other than a restoring step, which brings back a change an earlier step began.
+    /// </summary>
     Dictionary<(DefinitionKind, string), int> FindChangeRounds()
     {
         var rounds = new Dictionary<(DefinitionKind, string), int>();
@@ -197,8 +201,19 @@ public sealed class GrammarWorkbench : IDisposable
                     || (definition is not null && committed is not null && DefinitionJson.Serialize(definition) == committed);
             }
 
-            if (_history.LastOrDefault(x => IsCommitted(x.Before)) is { Round: int round } step && !IsCommitted(step.After))
-                rounds[(change.Kind, change.Name)] = round;
+            // The latest step to begin the change: to find the definition as committed, and leave it otherwise.
+            for (int i = _history.Count - 1; i >= 0; i--)
+            {
+                var step = _history[i];
+
+                if (step.Restores || !IsCommitted(step.Before) || IsCommitted(step.After))
+                    continue;
+
+                if (step.Round is int round)
+                    rounds[(change.Kind, change.Name)] = round;
+
+                break;
+            }
         }
 
         return rounds;
@@ -367,7 +382,7 @@ public sealed class GrammarWorkbench : IDisposable
 
     /// <summary>Makes <paramref name="definition"/> the working definition, as one step - how a caller takes back, or redoes, steps of its own.</summary>
     public void Restore(GrammarDefinition definition, string description) =>
-        Edit(_ => definition, description);
+        Edit(_ => definition, description, restores: true);
 
     /// <summary>Discards every working change.</summary>
     public void RevertAll() => Edit(_ => CommittedDefinition, "revert all");
@@ -403,7 +418,7 @@ public sealed class GrammarWorkbench : IDisposable
         return step;
     }
 
-    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description, int? round = null)
+    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description, int? round = null, bool restores = false)
     {
         WorkbenchStep step;
 
@@ -415,7 +430,7 @@ public sealed class GrammarWorkbench : IDisposable
             if (DefinitionDiff.Compare(before, after).Count == 0)
                 return null;
 
-            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round);
+            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores);
             _history.Add(step);
 
             if (_history.Count > _historyCapacity)
@@ -671,7 +686,7 @@ public sealed class GrammarWorkbench : IDisposable
     }
 
     /// <summary>One step as saved: what came after it is the next step's <see cref="Before"/>, or the working definition.</summary>
-    sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before, int? Round = null);
+    sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before, int? Round = null, bool Restores = false);
 
     void SaveHistory()
     {
@@ -684,7 +699,7 @@ public sealed class GrammarWorkbench : IDisposable
             return;
         }
 
-        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round)).ToList()));
+        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores)).ToList()));
     }
 
     void LoadHistory()
@@ -697,7 +712,7 @@ public sealed class GrammarWorkbench : IDisposable
             var saved = DefinitionJson.Deserialize<List<SavedStep>>(File.ReadAllText(_options.HistoryPath));
 
             for (int i = 0; i < saved.Count; i++)
-                _history.Add(new(saved[i].Number, saved[i].Description, saved[i].Before, i + 1 < saved.Count ? saved[i + 1].Before : WorkingDefinition, saved[i].At, saved[i].Round));
+                _history.Add(new(saved[i].Number, saved[i].Description, saved[i].Before, i + 1 < saved.Count ? saved[i + 1].Before : WorkingDefinition, saved[i].At, saved[i].Round, saved[i].Restores));
 
             _stepNumber = _history.Count > 0 ? _history.Max(x => x.Number) : 0;
         }

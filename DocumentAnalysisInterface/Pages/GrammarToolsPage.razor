@@ -36,10 +36,7 @@ else
             </div>
         </section>
 
-        @if (_notice is not null)
-        {
-            <div class="notice" @onclick="() => _notice = null">@_notice <span class="notice-dismiss">×</span></div>
-        }
+        <Snackbar @ref="_snackbar" />
 
         @if (_committed is null)
         {
@@ -356,7 +353,7 @@ else
     IReadOnlyList<string> _committedErrors;
     MdlScore _working;
     WorkspaceDialog.WorkspaceAction? _workspaceAction;
-    string _notice;
+    Snackbar _snackbar;
     bool _showNestedOnly;
     bool _agentOpen;
     readonly HashSet<Section> _collapsed = [];
@@ -509,10 +506,17 @@ else
         _working = working;
     }
 
+    /// <summary>Shows <paramref name="message"/> briefly at the top of the page.</summary>
+    void Notify(string message)
+    {
+        if (!string.IsNullOrEmpty(message))
+            _ = _snackbar?.Show(message);
+    }
+
     void WorkspaceActionDone(string notice)
     {
         _workspaceAction = null;
-        _notice = notice;
+        Notify(notice);
     }
 
     // ---- Sections ----
@@ -806,7 +810,7 @@ else
         if (!ReferenceEquals(Workbench.WorkingDefinition, expected(step)))
         {
             ForgetSteps();
-            _notice = $"Can't {verb} {step.Description}: the working grammar has changed since, other than from this page.";
+            Notify($"Can't {verb} {step.Description}: the working grammar has changed since, other than from this page.");
             return;
         }
 
@@ -815,7 +819,7 @@ else
         if (ReferenceEquals(Workbench.WorkingDefinition, target(step)))
         {
             to.Push(step);
-            _notice = $"{(verb == "undo" ? "Undid" : "Redid")} {step.Description}.";
+            Notify($"{(verb == "undo" ? "Undid" : "Redid")} {step.Description}.");
         }
     }
 
@@ -843,7 +847,7 @@ else
         {
             Workbench.Checkpoint();
             ForgetSteps();
-            _notice = $"Checkpointed {Workspaces.ActiveWorkspace.Name}: the working grammar is its baseline now.";
+            Notify($"Checkpointed {Workspaces.ActiveWorkspace.Name}: the working grammar is its baseline now.");
         });
 
     void Commit()
@@ -855,7 +859,7 @@ else
         {
             Workbench.Commit(plan);
             ForgetSteps();
-            _notice = $"Committed {plan.Declarations.Count} declaration change{(plan.Declarations.Count == 1 ? "" : "s")} to {plan.Files.Count} file{(plan.Files.Count == 1 ? "" : "s")}. Rebuild and restart to compile them; until then, scores reflect the working grammar.";
+            Notify($"Committed {plan.Declarations.Count} declaration change{(plan.Declarations.Count == 1 ? "" : "s")} to {plan.Files.Count} file{(plan.Files.Count == 1 ? "" : "s")}. Rebuild and restart to compile them; until then, scores reflect the working grammar.");
         });
     }
 
@@ -868,7 +872,7 @@ else
         }
         catch (Exception exception) when (exception is InvalidOperationException or IOException or NotSupportedException)
         {
-            _notice = exception.Message;
+            Notify(exception.Message);
         }
     }
 
