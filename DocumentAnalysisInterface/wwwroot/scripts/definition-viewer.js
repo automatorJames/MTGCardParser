@@ -1,4 +1,4 @@
-// Client-side half of the definition viewer (Dialogs/DefinitionViewerDialog.razor): Tab and Shift+Tab, or the right and left arrows, move between its tabs.
+// Client-side half of the definition viewer (Dialogs/DefinitionViewerDialog.razor): Tab and Shift+Tab, the right and left arrows, or the mouse's forward and back buttons move between its tabs.
 window.definitionViewer = {
     listenForTabKey(viewer) {
         this.stopListeningForTabKey();
@@ -19,13 +19,31 @@ window.definitionViewer = {
             viewer.invokeMethodAsync('OnTabKey', backwards);
         };
 
+        // The mouse's back and forward buttons (3 and 4) step back and forward through the tabs, rather than through
+        // the browser's history. Both halves of the press are swallowed, since browsers navigate on one or the other.
+        this.sideButton = e => {
+            if (e.button !== 3 && e.button !== 4)
+                return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.type === 'mouseup')
+                viewer.invokeMethodAsync('OnTabKey', e.button === 3);
+        };
+
         document.addEventListener('keydown', this.tabKeydown);
+        window.addEventListener('mousedown', this.sideButton, true);
+        window.addEventListener('mouseup', this.sideButton, true);
     },
 
     stopListeningForTabKey() {
         if (this.tabKeydown) {
             document.removeEventListener('keydown', this.tabKeydown);
+            window.removeEventListener('mousedown', this.sideButton, true);
+            window.removeEventListener('mouseup', this.sideButton, true);
             this.tabKeydown = null;
+            this.sideButton = null;
         }
     }
 };

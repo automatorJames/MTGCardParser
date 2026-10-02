@@ -182,7 +182,7 @@
         await JS.InvokeVoidAsync("definitionViewer.listenForTabKey", _self);
     }
 
-    /// <summary>Tab or the right arrow moves to the next tab, Shift+Tab or the left arrow to the one before, wrapping round at either end.</summary>
+    /// <summary>Tab, the right arrow or the mouse's forward button moves to the next tab; Shift+Tab, the left arrow or the back button to the one before - wrapping round at either end.</summary>
     [JSInvokable]
     public Task OnTabKey(bool backwards) =>
         InvokeAsync(() =>
