@@ -1,3 +1,5 @@
+@inject RuntimeSettings RuntimeSettings
+
 <CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(1100px, 94vw);">
     <TitleContent>
         <div class="viewer-title">
@@ -11,11 +13,11 @@
     </TitleContent>
     <DialogContent>
         <div class="viewer-tabs" role="tablist">
-            @foreach (var tab in Tabs)
+            @foreach (var tab in _tabs)
             {
-                <button class="viewer-tab @(tab == _tab ? "active" : "")" role="tab" aria-selected="@(tab == _tab)" @onclick="() => _tab = tab">
-                    @TabLabel(tab)
-                    @if (tab == Tab.Diff)
+                <button class="viewer-tab @(tab == _tab ? "active" : "")" role="tab" aria-selected="@(tab == _tab)" @onclick="() => Choose(tab)">
+                    @DefinitionViews.Label(tab)
+                    @if (tab == DefinitionView.Diff)
                     {
                         <span class="diff-stat added">+@_diff.Count(x => x.Kind == LineDiff.LineKind.Added)</span>
                         <span class="diff-stat removed">−@_diff.Count(x => x.Kind == LineDiff.LineKind.Removed)</span>
@@ -27,30 +29,52 @@
         <div class="viewer-body">
             @switch (_tab)
             {
-                case Tab.CSharp:
-                    <pre class="code-view">@_csharp</pre>
+                case DefinitionView.CSharp:
+                    <CopyButtonOverlay TextToCopy="@_csharp">
+                        <pre class="code-view">@_csharp</pre>
+                    </CopyButtonOverlay>
                     break;
 
-                case Tab.Json:
-                    <pre class="code-view">@_json</pre>
+                case DefinitionView.Json:
+                    <CopyButtonOverlay TextToCopy="@_json">
+                        <pre class="code-view">@_json</pre>
+                    </CopyButtonOverlay>
                     break;
 
-                case Tab.Diff:
+                case DefinitionView.FormattedRegex when _formattedRegex is not null:
+                    <CopyButtonOverlay TextToCopy="@_formattedRegexText">
+                        <FormattedRegex Lines="@_formattedRegex.Lines" ShowLineNumbers="@RuntimeSettings.ShowLineNumbers" />
+                    </CopyButtonOverlay>
+                    break;
+
+                case DefinitionView.MinifiedRegex when _minifiedRegex is not null:
+                    <CopyButtonOverlay TextToCopy="@_minifiedRegexText">
+                        <FormattedRegex Lines="@_minifiedRegex" BorderStyle="white-space: pre-wrap; word-break: break-all;" />
+                    </CopyButtonOverlay>
+                    break;
+
+                case DefinitionView.FormattedRegex or DefinitionView.MinifiedRegex:
+                    <p class="viewer-note">@(_regexError ?? "The regex shows once the grammar this definition is in is built.")</p>
+                    break;
+
+                case DefinitionView.Diff:
                     <div class="diff-header">committed → working</div>
-                    <table class="diff-view">
-                        <tbody>
-                            @foreach (var line in _diff)
-                            {
-                                var kind = line.Kind.ToString().ToLowerInvariant();
-                                <tr class="diff-line @kind">
-                                    <td class="line-number">@line.OldNumber</td>
-                                    <td class="line-number">@line.NewNumber</td>
-                                    <td class="line-marker">@(line.Kind switch { LineDiff.LineKind.Added => "+", LineDiff.LineKind.Removed => "−", _ => "" })</td>
-                                    <td class="line-text">@line.Text</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <CopyButtonOverlay TextToCopy="@_diffText">
+                        <table class="diff-view">
+                            <tbody>
+                                @foreach (var line in _diff)
+                                {
+                                    var kind = line.Kind.ToString().ToLowerInvariant();
+                                    <tr class="diff-line @kind">
+                                        <td class="line-number">@line.OldNumber</td>
+                                        <td class="line-number">@line.NewNumber</td>
+                                        <td class="line-marker">@(line.Kind switch { LineDiff.LineKind.Added => "+", LineDiff.LineKind.Removed => "−", _ => "" })</td>
+                                        <td class="line-text">@line.Text</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </CopyButtonOverlay>
                     break;
             }
         </div>
@@ -66,8 +90,6 @@
 </CustomDialog>
 
 @code {
-    public enum Tab { CSharp, Json, Diff }
-
     [Parameter, EditorRequired] public string Name { get; set; }
 
     [Parameter, EditorRequired] public DefinitionKind Kind { get; set; }
@@ -81,42 +103,62 @@
     /// <summary>The working definition, or null if it's been removed.</summary>
     [Parameter] public object Working { get; set; }
 
+    /// <summary>For a glyph: its type in the grammar it's shown from, built - for the regex tabs. Null while there's none to hand.</summary>
+    [Parameter] public Type GlyphType { get; set; }
+
     [Parameter] public EventCallback OnClose { get; set; }
 
-    Tab _tab;
+    DefinitionView _tab;
+    IReadOnlyList<DefinitionView> _tabs = [];
     string _csharp;
     string _json;
+    SmartRegex _formattedRegex;
+    string _formattedRegexText;
+    List<SmartLine> _minifiedRegex;
+    string _minifiedRegexText;
+    string _regexError;
     IReadOnlyList<LineDiff.Line> _diff = [];
-
-    /// <summary>The diff tab only means something for a definition changed in place.</summary>
-    IEnumerable<Tab> Tabs => Change == ChangeType.Modified ? [Tab.CSharp, Tab.Json, Tab.Diff] : [Tab.CSharp, Tab.Json];
+    string _diffText;
 
     protected override void OnParametersSet()
     {
         var shown = Working ?? Committed;
-        _csharp = Write(shown);
-        _json = DefinitionJson.Serialize(shown);
-        _diff = Change == ChangeType.Modified ? LineDiff.Compare(Write(Committed), _csharp) : [];
+        _tabs = DefinitionViews.For(Kind, Change);
+        _csharp = DefinitionViews.CSharp(shown);
+        _json = DefinitionViews.Json(shown);
+        _diff = Change == ChangeType.Modified ? LineDiff.Compare(DefinitionViews.CSharp(Committed), _csharp) : [];
+        _diffText = DefinitionViews.DiffText(_diff);
 
-        if (!Tabs.Contains(_tab))
-            _tab = Tab.CSharp;
+        _formattedRegex = null;
+        _minifiedRegex = null;
+        _regexError = null;
+
+        if (Kind == DefinitionKind.Glyph && GlyphType is not null)
+        {
+            try
+            {
+                _formattedRegex = DefinitionViews.FormattedRegex(GlyphType, !RuntimeSettings.HideBlankLines);
+                _formattedRegexText = FormattedRegexCopy.GetCopyText(_formattedRegex.Lines);
+                _minifiedRegex = GlyphTypeCache.GetRegexGraph(GlyphType).BuiltRegex.ToRichMinifiedLines(GlyphTypeCache.GetRegexGraph(GlyphType));
+                _minifiedRegexText = DefinitionViews.MinifiedRegexText(GlyphType);
+            }
+            catch (Exception exception)
+            {
+                _formattedRegex = null;
+                _minifiedRegex = null;
+                _regexError = $"The regex couldn't be shown: {exception.Message}";
+            }
+        }
+
+        // The tab last chosen, where this definition has it.
+        _tab = _tabs.Contains(RuntimeSettings.DefinitionView) ? RuntimeSettings.DefinitionView : DefinitionView.CSharp;
     }
 
-    static string Write(object definition) =>
-        definition switch
-        {
-            GlyphDefinition glyph => GlyphSourceWriter.WriteGlyph(glyph),
-            VocabularyDefinition vocabulary => GlyphSourceWriter.WriteVocabulary(vocabulary),
-            _ => "",
-        };
-
-    static string TabLabel(Tab tab) =>
-        tab switch
-        {
-            Tab.CSharp => "C#",
-            Tab.Json => "JSON",
-            _ => "Diff",
-        };
+    void Choose(DefinitionView tab)
+    {
+        _tab = tab;
+        RuntimeSettings.DefinitionView = tab;
+    }
 
     Task Close() => OnClose.InvokeAsync();
 }

@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IServiceProvider Services
 @inject IJSRuntime JS
+@inject RuntimeSettings RuntimeSettings
 
 @if (Workspaces is null)
 {
@@ -179,7 +180,7 @@ else
                                             }
                                             else
                                             {
-                                                <button class="name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
+                                                <button class="name-link" title="@Preview(change.Kind, change.Name)" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
                                             }
                                         </td>
                                         <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
@@ -229,7 +230,7 @@ else
                                            title="@(row.Referrers.Count > 0 ? "Used by " + string.Join(", ", row.Referrers) : "")"
                                            @onchange="e => ToggleGlyph(row, (bool)e.Value)" />
                                 </td>
-                                <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
+                                <td class="name-column"><button class="name-link" title="@Preview(DefinitionKind.Glyph, row.Name)" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
                                 <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
                                 <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
                                 <td>@Bits(stats?.ResidualEquivalentBits)</td>
@@ -270,7 +271,7 @@ else
                         {
                             var referrers = Workbench.WorkingDefinition.GetReferrers(vocabulary.Name);
                             <tr class="@(referrers.Count == 0 ? "excluded" : "")">
-                                <td class="name-column"><button class="name-link" title="View the definition" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
+                                <td class="name-column"><button class="name-link" title="@Preview(DefinitionKind.Vocabulary, vocabulary.Name)" @onclick="() => View(DefinitionKind.Vocabulary, vocabulary.Name)">@vocabulary.Name</button></td>
                                 <td>@(CurrentScore.VocabularyMembersUsed?.GetValueOrDefault(vocabulary.Name) ?? 0) of @vocabulary.Members.Count.ToString("N0")</td>
                                 <td>@Bits(VocabularyBits(vocabulary))</td>
                                 <td class="referrers">@(referrers.Count == 0 ? "unused - costs nothing until a glyph uses it" : string.Join(", ", referrers))</td>
@@ -337,7 +338,7 @@ else
 
 @if (_viewer is not null)
 {
-    <DefinitionViewerDialog Name="@_viewer.Name" Kind="_viewer.Kind" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working" OnClose="() => _viewer = null" />
+    <DefinitionViewerDialog Name="@_viewer.Name" Kind="_viewer.Kind" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working" GlyphType="_viewer.GlyphType" OnClose="() => _viewer = null" />
 }
 
 @if (_help is GrammarToolsHelpDialog.HelpTopic topic && _committed is not null)
@@ -355,6 +356,7 @@ else
 
     MdlScore _committed;
     IReadOnlyList<string> _committedErrors;
+    GlyphGrammar _committedGrammar;
     MdlScore _working;
     WorkspaceDialog.WorkspaceAction? _workspaceAction;
     Snackbar _snackbar;
@@ -389,7 +391,7 @@ else
     record MetricGroup(string Title, string Tooltip, IReadOnlyList<Metric> Metrics);
 
     /// <summary>A definition open for viewing: its committed and working versions (either null where it doesn't exist), captured as the dialog opens.</summary>
-    record ViewerState(DefinitionKind Kind, string Name, ChangeType? Change, object Committed, object Working);
+    record ViewerState(DefinitionKind Kind, string Name, ChangeType? Change, object Committed, object Working, Type GlyphType);
 
     record GlyphRow(string Name, bool InWorking, ChangeType? Change, IReadOnlyList<string> Referrers, GlyphContribution Stats, double? NetDelta);
 
@@ -477,6 +479,8 @@ else
                 Listen();
                 _committed = _working = null;
                 _committedErrors = null;
+                _committedGrammar = null;
+                _previews.Clear();
                 _viewer = null;
                 _editor = null;
                 _commitPlan = null;
@@ -507,6 +511,7 @@ else
 
         _committed = committed.Score;
         _committedErrors = committed.Errors;
+        _committedGrammar = committed.Grammar;
         _working = working;
     }
 
@@ -700,13 +705,50 @@ else
 
     void View(DefinitionKind kind, string name)
     {
+        var (change, committed, working, glyphType) = Describe(kind, name);
+        _viewer = new(kind, name, change, committed, working, glyphType);
+    }
+
+    /// <summary>A definition's change, its committed and working versions (either null where it doesn't exist), and - for a glyph - its built type, where there's one to hand.</summary>
+    (ChangeType? Change, object Committed, object Working, Type GlyphType) Describe(DefinitionKind kind, string name)
+    {
         object Find(GrammarDefinition grammar) =>
             kind == DefinitionKind.Glyph
                 ? grammar.Glyphs.FirstOrDefault(x => x.Name == name)
                 : grammar.Vocabularies.FirstOrDefault(x => x.Name == name);
 
         var change = Workbench.Changes.FirstOrDefault(x => x.Kind == kind && x.Name == name)?.Change;
-        _viewer = new(kind, name, change, Find(Workbench.CommittedDefinition), Find(Workbench.WorkingDefinition));
+        var working = Find(Workbench.WorkingDefinition);
+        Type glyphType = null;
+
+        // The grammar the definition shown is in: the working one, once it's built, or for a definition it no longer has, the committed one.
+        var grammar = working is null || !Workbench.HasChanges
+            ? _committedGrammar
+            : Workbench.LatestWorkingScore is { } latest && latest.Definition == Workbench.WorkingDefinition ? latest.Grammar : null;
+
+        if (kind == DefinitionKind.Glyph && grammar is not null && grammar.TryGetType(name, out var type))
+            glyphType = type;
+
+        return (change, Find(Workbench.CommittedDefinition), working, glyphType);
+    }
+
+    /// <summary>Tooltip previews, by the view and definition they show - kept while the definition, and its built type, stay the same.</summary>
+    readonly Dictionary<(DefinitionView, DefinitionKind, string), (object Committed, object Working, Type GlyphType, bool BlankLines, string Text)> _previews = [];
+
+    /// <summary>A definition's tooltip: a preview of it as the viewer's last chosen tab shows it.</summary>
+    string Preview(DefinitionKind kind, string name)
+    {
+        var view = RuntimeSettings.DefinitionView;
+        var (change, committed, working, glyphType) = Describe(kind, name);
+        var blankLines = !RuntimeSettings.HideBlankLines;
+
+        if (_previews.TryGetValue((view, kind, name), out var cached)
+            && ReferenceEquals(cached.Committed, committed) && ReferenceEquals(cached.Working, working) && cached.GlyphType == glyphType && cached.BlankLines == blankLines)
+            return cached.Text;
+
+        var text = DefinitionViews.Preview(view, kind, change, committed, working, glyphType, blankLines);
+        _previews[(view, kind, name)] = (committed, working, glyphType, blankLines, text);
+        return text;
     }
 
     // ---- Editing ----

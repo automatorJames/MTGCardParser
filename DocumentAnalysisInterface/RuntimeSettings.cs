@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+﻿using DocumentAnalysisInterface.Dialogs;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 namespace DocumentAnalysisInterface
 {
@@ -242,6 +243,23 @@ namespace DocumentAnalysisInterface
             }
         }
 
+        private DefinitionView _definitionView = DefinitionView.CSharp;
+
+        /// <summary>The definition viewer's tab last chosen: the one it opens on, and the one a definition's tooltip previews.</summary>
+        public DefinitionView DefinitionView
+        {
+            get => _definitionView;
+            set
+            {
+                if (_definitionView != value)
+                {
+                    _definitionView = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private string _searchTerm = string.Empty;
         public string SearchTerm
         {
@@ -283,6 +301,7 @@ namespace DocumentAnalysisInterface
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
                     _showEchoes = dto.ShowEchoes;
+                    _definitionView = dto.DefinitionView;
                 }
             }
             catch
@@ -341,6 +360,7 @@ namespace DocumentAnalysisInterface
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
         public bool ShowEchoes { get; init; }
+        public DefinitionView DefinitionView { get; init; }
 
         // Parameterless constructor for deserialization
         public RuntimeSettingsDto() { }
@@ -361,6 +381,7 @@ namespace DocumentAnalysisInterface
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;
             ShowEchoes = runtimeSettings.ShowEchoes;
+            DefinitionView = runtimeSettings.DefinitionView;
         }
     }
 }

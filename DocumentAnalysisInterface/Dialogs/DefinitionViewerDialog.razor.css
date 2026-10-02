@@ -175,3 +175,14 @@
     font-size: 0.85rem;
     color: var(--subtext-grey);
 }
+
+/* Each view sits flush in the body, its copy button in the top right corner. */
+.viewer-body ::deep .pre-container {
+    margin: 0;
+}
+
+.viewer-body ::deep .formatted-regex-fira {
+    border: none;
+    border-radius: 0;
+    font-size: 0.82rem;
+}
