@@ -160,6 +160,10 @@ else
                                             {
                                                 <button class="link-button" title="Revert every change in this round" @onclick="@(() => Record($"revert AI round {round}", () => Workbench.RevertRound(round)))">revert round</button>
                                             }
+                                            else
+                                            {
+                                                <button class="link-button" title="Revert every change not begun in an AI round" @onclick="@(() => Record("revert other changes", Workbench.RevertOtherChanges))">revert all</button>
+                                            }
                                         </td>
                                     </tr>
                                 }

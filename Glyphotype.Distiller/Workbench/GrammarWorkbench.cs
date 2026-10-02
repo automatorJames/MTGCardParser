@@ -331,12 +331,17 @@ public sealed class GrammarWorkbench : IDisposable
 
     /// <summary>Reverts (as <see cref="Revert"/> does) every change an agent began in <paramref name="round"/> (see <see cref="ChangeRounds"/>), as one step.</summary>
     public void RevertRound(int round) =>
+        RevertEach(ChangeRounds.Where(x => x.Value == round).Select(x => x.Key).ToList(), $"No working change began in AI round {round}", $"revert AI round {round}");
+
+    /// <summary>Reverts (as <see cref="Revert"/> does) every change no agent round began - those not in <see cref="ChangeRounds"/> - as one step.</summary>
+    public void RevertOtherChanges() =>
+        RevertEach(Changes.Select(x => (x.Kind, x.Name)).Where(x => !ChangeRounds.ContainsKey(x)).ToList(), "Every working change began in an AI round", "revert other changes");
+
+    void RevertEach(List<(DefinitionKind Kind, string Name)> pending, string noneMessage, string description) =>
         Edit(working =>
         {
-            var pending = ChangeRounds.Where(x => x.Value == round).Select(x => x.Key).ToList();
-
             if (pending.Count == 0)
-                throw new InvalidOperationException($"No working change began in AI round {round}");
+                throw new InvalidOperationException(noneMessage);
 
             // A change the round added may be referred to by another it added: keep going round until each
             // revert goes through, or none of those left can.
@@ -364,7 +369,7 @@ public sealed class GrammarWorkbench : IDisposable
             }
 
             return working;
-        }, $"revert AI round {round}");
+        }, description);
 
     GrammarDefinition RevertIn(GrammarDefinition working, DefinitionKind kind, string name) =>
         kind switch

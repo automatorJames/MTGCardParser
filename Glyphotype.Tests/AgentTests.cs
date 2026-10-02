@@ -147,6 +147,9 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         var (agent, workbench) = CreateAgent();
 
+        // A person's own change, in no round.
+        workbench.Apply(ChangeSet.FromSource(Glyph("AnimalDozes", "dozes"), [], workbench.WorkingDefinition));
+
         await agent.StartSessionAsync();
         await agent.ApplyAsync(_animalSnores);
 
@@ -157,15 +160,20 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         var beforeRevert = workbench.WorkingDefinition;
         workbench.RevertRound(2);
 
-        Assert.Equal([(DefinitionKind.Glyph, "AnimalSnores")], workbench.Changes.Select(x => (x.Kind, x.Name)));
+        Assert.Equal(["AnimalDozes", "AnimalSnores"], workbench.Changes.Select(x => x.Name).Order());
         Assert.Throws<InvalidOperationException>(() => workbench.RevertRound(2));
 
         // Restoring the earlier working grammar, as a page's undo does, brings the changes back under their round.
         workbench.Restore(beforeRevert, "undo revert AI round 2");
-        Assert.Equal(3, workbench.Changes.Count);
+        Assert.Equal(4, workbench.Changes.Count);
         Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
         Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
         Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalNaps")]);
+
+        // The changes no round began revert together, leaving the rounds' own.
+        workbench.RevertOtherChanges();
+        Assert.Equal(["AnimalNaps", "AnimalSleeps", "AnimalSnores"], workbench.Changes.Select(x => x.Name).Order());
+        Assert.Throws<InvalidOperationException>(workbench.RevertOtherChanges);
     }
 
     [Fact]
