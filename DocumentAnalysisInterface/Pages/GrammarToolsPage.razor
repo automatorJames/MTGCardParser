@@ -146,29 +146,35 @@ else
                 {
                     <table class="data-table changes-table">
                         <thead>
-                            <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th class="change-round" title="For a change an agent began: which of its rounds of steps it began in">AI round</th><th></th></tr>
+                            <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th></th></tr>
                         </thead>
-                        <tbody>
-                            @foreach (var change in Workbench.Changes)
-                            {
-                                <tr>
-                                    <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
-                                    <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
-                                    <td class="name-column">
-                                        @if (change.Kind == DefinitionKind.Marker)
-                                        {
-                                            @change.Name
-                                        }
-                                        else
-                                        {
-                                            <button class="name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
-                                        }
-                                    </td>
-                                    <td class="change-round">@(Workbench.ChangeRounds.TryGetValue((change.Kind, change.Name), out var round) ? round.ToString() : "-")</td>
-                                    <td><button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button></td>
-                                </tr>
-                            }
-                        </tbody>
+                        @foreach (var group in GetChangeGroups())
+                        {
+                            <tbody>
+                                @if (group.Title is not null)
+                                {
+                                    <tr class="group-row"><td colspan="4" title="@group.Tooltip">@group.Title</td></tr>
+                                }
+                                @foreach (var change in group.Changes)
+                                {
+                                    <tr>
+                                        <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
+                                        <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
+                                        <td class="name-column">
+                                            @if (change.Kind == DefinitionKind.Marker)
+                                            {
+                                                @change.Name
+                                            }
+                                            else
+                                            {
+                                                <button class="name-link" title="View the definition" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
+                                            }
+                                        </td>
+                                        <td><button class="link-button" @onclick="() => Try(() => Workbench.Revert(change.Kind, change.Name))">revert</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        }
                     </table>
                 }
             </section>
@@ -556,6 +562,26 @@ else
         metric.Working is not double working ? ""
         : Math.Abs(working - metric.Committed) < 1e-9 ? "unchanged"
         : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
+
+    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes);
+
+    /// <summary>The working changes grouped by the agent round each began in, earliest first, then the rest; a single untitled group when no agent round began any.</summary>
+    IEnumerable<ChangeGroup> GetChangeGroups()
+    {
+        int? RoundOf(DefinitionChange change) => Workbench.ChangeRounds.TryGetValue((change.Kind, change.Name), out var round) ? round : null;
+
+        var groups = Workbench.Changes.GroupBy(RoundOf).ToList();
+
+        if (groups.All(x => x.Key is null))
+            return [new ChangeGroup(null, null, Workbench.Changes)];
+
+        return groups
+            .OrderBy(x => x.Key is null)
+            .ThenBy(x => x.Key)
+            .Select(x => x.Key is int round
+                ? new ChangeGroup($"AI round {round}", "Changes an agent began in this round of its steps", x.ToList())
+                : new ChangeGroup("Other changes", "Changes a person began, or whose first step is no longer in the history", x.ToList()));
+    }
 
     // ---- Glyphs ----
 

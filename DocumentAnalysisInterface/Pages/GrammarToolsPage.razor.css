@@ -164,10 +164,6 @@
     color: var(--subtext-grey);
 }
 
-    .metrics td.unchanged {
-        text-align: center;
-    }
-
 /* Under the table, and in line with it */
 .status {
     width: min(100%, 52rem);
@@ -219,8 +215,17 @@
     width: auto;
 }
 
-.changes-table .change-round {
-    text-align: center;
+.changes-table .group-row td {
+    padding-top: 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #569cd6;
+}
+
+.changes-table tbody:first-of-type .group-row td {
+    padding-top: 0.35rem;
 }
 
 .change-badge {
