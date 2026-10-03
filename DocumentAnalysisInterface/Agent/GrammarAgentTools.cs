@@ -46,8 +46,9 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         [Description("A name for it.")] string name,
         [Description("empty: nothing. vocabularies (for starting from scratch): another workspace's vocabularies and nothing else. copy: everything another workspace has.")] string start = "empty",
         [Description("The workspace to take vocabularies from, or copy - the active one by default.")] string from = null,
+        [Description("Whether to start with that workspace's guidance too (the person's notes on the grammar). Usually yes, when there is some.")] bool copyGuidance = true,
         CancellationToken cancellation = default) =>
-        Run(() => agent.CreateWorkspaceAsync(name, start, from, cancellation));
+        Run(() => agent.CreateWorkspaceAsync(name, start, from, copyGuidance, cancellation));
 
     [McpServerTool(Name = "switch_workspace"), Description("Makes another workspace active - for the person too, so only when they ask.")]
     public Task<string> SwitchWorkspace([Description("The workspace's name.")] string name, CancellationToken cancellation = default) =>

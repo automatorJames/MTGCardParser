@@ -239,6 +239,14 @@ public sealed class GrammarAgent
         report.AppendLine($"- A step must take at least {Settings.MinimumGainBits:N0} bit{(Settings.MinimumGainBits == 1 ? "" : "s")} off the total{(Settings.AllowLostLines ? "" : " and lose no lines")}. `apply` refuses anything else unless you pass `override_reason` - for a deliberate refactor, never to force a loss through.");
         report.AppendLine("- Stay in the active workspace. Create or switch workspaces only if the instructions ask - to start from scratch, `create_workspace` with start=vocabularies.");
         report.AppendLine("- Never commit, checkpoint or export: the person does that in the app.");
+
+        if (_workspaces?.GetGuidance() is { Length: > 0 } guidance)
+        {
+            report.AppendLine();
+            report.AppendLine("Guidance for this workspace's grammar, written by the person - what it is for and how to approach iterating it. Follow it alongside the guide:");
+            report.AppendLine(guidance);
+        }
+
         report.AppendLine();
         report.Append(await OverviewAsync(cancellation));
 
@@ -287,14 +295,14 @@ public sealed class GrammarAgent
     /// <summary>Creates a scratch workspace and makes it active - only when the person asked for one.</summary>
     /// <param name="start">"empty", "vocabularies" (another workspace's vocabularies and nothing else) or "copy".</param>
     /// <param name="from">The workspace to take vocabularies from, or copy - the active one by default.</param>
-    public async Task<string> CreateWorkspaceAsync(string name, string start = "empty", string from = null, CancellationToken cancellation = default)
+    public async Task<string> CreateWorkspaceAsync(string name, string start = "empty", string from = null, bool copyGuidance = false, CancellationToken cancellation = default)
     {
         var workspaces = RequireWorkspaces();
 
         if (!Enum.TryParse<WorkspaceSeed>(start, ignoreCase: true, out var seed))
             throw new AgentRequestException($"Unknown start '{start}': use empty, vocabularies or copy.");
 
-        var workspace = Try(() => workspaces.Create(name, seed, NullIfBlank(from)));
+        var workspace = Try(() => workspaces.Create(name, seed, NullIfBlank(from), copyGuidance));
         return $"Created and switched to {DescribeWorkspace(workspace)}.{Environment.NewLine}{Environment.NewLine}{await OverviewAsync(cancellation)}";
     }
 

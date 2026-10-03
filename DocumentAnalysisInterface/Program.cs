@@ -51,7 +51,8 @@ public class Program
                 SourceNamespace: glyphSources.Namespace),
             root: Path.Combine(appData, "workspaces"),
             allowPartialClauseMatches: GlobalSettings.Current.AllowPartialClauseMatches,
-            legacyWorkingDefinitionPath: Path.Combine(appData, "working-grammar.json")));
+            legacyWorkingDefinitionPath: Path.Combine(appData, "working-grammar.json"),
+            configuredGuidance: WorkspaceGuidance(builder.Configuration.GetSection("WorkspaceGuidance"))));
 
         // What every tab shows: the corpus as the active workspace's grammar tokenizes it.
         builder.Services.AddSingleton(services => new ActiveCorpus(
@@ -114,4 +115,12 @@ public class Program
 
         await app.RunAsync();
     }
+
+    /// <summary>
+    /// Guidance by workspace name: each entry is the text itself, or (since JSON has no multi-line strings) an array of its lines.
+    /// </summary>
+    static Dictionary<string, string> WorkspaceGuidance(IConfigurationSection section) =>
+        section.GetChildren().ToDictionary(
+            x => x.Key,
+            x => x.Value ?? string.Join(Environment.NewLine, x.GetChildren().OrderBy(line => int.Parse(line.Key)).Select(line => line.Value)));
 }

@@ -38,9 +38,39 @@
                     </label>
                 }
 
+                <label class="choice">
+                    <input type="checkbox" checked="@_copyGuidance" disabled="@(!HasGuidanceToCopy)" @onchange="e => _copyGuidance = (bool)e.Value" />
+                    <span>
+                        <strong>Copy the guidance</strong>
+                        <span class="choice-help">
+                            @(HasGuidanceToCopy
+                                ? $"Start with the notes for AI that {GuidanceSource} has."
+                                : $"{GuidanceSource} has no guidance to copy.")
+                        </span>
+                    </span>
+                </label>
+
                 <p class="dialog-note">
                     A scratch workspace is a grammar of its own, kept as JSON in app data and scored against the same corpus. Nothing you do
                     in it touches the C# sources: checkpoint it to save a baseline, and export it to take it out as C#.
+                </p>
+                break;
+
+            case WorkspaceAction.Guidance:
+                <label class="field">
+                    <span class="field-label">Guidance for AI</span>
+                    <textarea class="form-control guidance-text" rows="14" @bind="_guidance" @bind:event="oninput" readonly="@GuidanceConfigured"
+                              placeholder="What this grammar is for, fundamentals of the text it describes, patterns it should have, how to approach iterating it..."></textarea>
+                </label>
+                @if (GuidanceConfigured)
+                {
+                    <p class="dialog-note">
+                        This guidance is set in the app's settings (<code>WorkspaceGuidance</code> in appsettings), so it travels with the code: change it there.
+                    </p>
+                }
+                <p class="dialog-note">
+                    Notes the AI agent is given at the start of every session in this workspace, alongside its own guide. Describe what the grammar is
+                    and how you'd like it approached - they're kept with the workspace, apart from the grammar, and can be copied into a new one.
                 </p>
                 break;
 
@@ -77,12 +107,15 @@
     </DialogContent>
     <DialogActions>
         <button class="btn btn-secondary" @onclick="Close">Cancel</button>
-        <button class="btn @(Action == WorkspaceAction.Delete ? "btn-danger" : "btn-primary")" @onclick="Confirm">@ConfirmLabel</button>
+        @if (!(Action == WorkspaceAction.Guidance && GuidanceConfigured))
+        {
+            <button class="btn @(Action == WorkspaceAction.Delete ? "btn-danger" : "btn-primary")" @onclick="Confirm">@ConfirmLabel</button>
+        }
     </DialogActions>
 </CustomDialog>
 
 @code {
-    public enum WorkspaceAction { Create, Rename, Delete, Export }
+    public enum WorkspaceAction { Create, Rename, Delete, Export, Guidance }
 
     [Parameter, EditorRequired] public WorkspaceAction Action { get; set; }
 
@@ -99,13 +132,23 @@
     string _namespace;
     WorkspaceSeed _seed = WorkspaceSeed.Vocabularies;
     string _error;
+    string _guidance;
+    bool _copyGuidance = true;
 
     string ActiveName => Workspaces.ActiveWorkspace.Name;
+
+    /// <summary>The workspace a new one takes its guidance from: the one chosen to start from, or the active one when starting from nothing.</summary>
+    string GuidanceSource => _seed == WorkspaceSeed.Empty ? ActiveName : _from;
+
+    bool GuidanceConfigured => Workspaces.IsGuidanceConfigured();
+
+    bool HasGuidanceToCopy =>Workspaces.GetGuidance(GuidanceSource).Length > 0;
 
     protected override void OnInitialized()
     {
         _name = Action == WorkspaceAction.Rename ? ActiveName : DefaultName();
         _from = ActiveName;
+        _guidance = Workspaces.GetGuidance();
         _namespace = WorkspaceManager.SuggestNamespace(ActiveName);
     }
 
@@ -126,6 +169,7 @@
     {
         WorkspaceAction.Create => "New workspace",
         WorkspaceAction.Rename => $"Rename {ActiveName}",
+        WorkspaceAction.Guidance => $"Guidance for {ActiveName}",
         WorkspaceAction.Delete => $"Delete {ActiveName}",
         _ => $"Export {ActiveName}",
     };
@@ -134,6 +178,7 @@
     {
         WorkspaceAction.Create => "Create and switch to it",
         WorkspaceAction.Rename => "Rename",
+        WorkspaceAction.Guidance => "Save",
         WorkspaceAction.Delete => "Delete",
         _ => "Download",
     };
@@ -161,8 +206,13 @@
             switch (Action)
             {
                 case WorkspaceAction.Create:
-                    var created = Workspaces.Create(_name, _seed, _from);
+                    var created = Workspaces.Create(_name, _seed, _seed == WorkspaceSeed.Empty ? null : _from, _copyGuidance && HasGuidanceToCopy);
                     await OnDone.InvokeAsync($"Created and switched to {created.Name}.");
+                    break;
+
+                case WorkspaceAction.Guidance:
+                    Workspaces.SetGuidance(_guidance);
+                    await OnDone.InvokeAsync(string.IsNullOrWhiteSpace(_guidance) ? $"Removed the guidance for {ActiveName}." : $"Saved the guidance for {ActiveName}.");
                     break;
 
                 case WorkspaceAction.Rename:

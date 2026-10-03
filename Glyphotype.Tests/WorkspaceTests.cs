@@ -157,6 +157,49 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task Guidance_is_kept_per_workspace_copied_on_request_and_given_to_the_agent()
+    {
+        var workspaces = CreateManager();
+        Assert.Equal("", workspaces.GetGuidance());
+
+        workspaces.SetGuidance("  Rules text is terse.  ");
+        Assert.Equal("Rules text is terse.", workspaces.GetGuidance());
+
+        workspaces.Create("Plain", WorkspaceSeed.Vocabularies);
+        Assert.Equal("", workspaces.GetGuidance());
+
+        workspaces.Create("Informed", WorkspaceSeed.Vocabularies, "TestGrammar", copyGuidance: true);
+        Assert.Equal("Rules text is terse.", workspaces.GetGuidance());
+        Assert.Equal("Rules text is terse.", CreateManager().GetGuidance("Informed"));
+
+        var brief = await new GrammarAgent(workspaces, "the test corpus", AgentTests.AnySteps).StartSessionAsync();
+        Assert.Contains("Rules text is terse.", brief);
+
+        workspaces.SetGuidance("");
+        Assert.Equal("", workspaces.GetGuidance());
+        Assert.Equal("Rules text is terse.", workspaces.GetGuidance("TestGrammar"));
+    }
+
+    [Fact]
+    public void Configured_guidance_overrides_the_workspace_folders_and_cant_be_set_here()
+    {
+        CreateManager().SetGuidance("Kept on this machine.");
+
+        var workspaces = new WorkspaceManager(
+            new SourceWorkspace("TestGrammar", corpus.Grammar, corpus.ProcessedDocuments, Path.Combine(_root, "sources"), "Glyphotype.Tests.Grammar"),
+            Path.Combine(_root, "workspaces"), allowPartialClauseMatches: false,
+            configuredGuidance: new Dictionary<string, string> { ["TestGrammar"] = " Travels with the code. " });
+
+        Assert.True(workspaces.IsGuidanceConfigured());
+        Assert.Equal("Travels with the code.", workspaces.GetGuidance());
+        Assert.Throws<InvalidOperationException>(() => workspaces.SetGuidance("Changed."));
+
+        workspaces.Create("Informed", WorkspaceSeed.Vocabularies, copyGuidance: true);
+        Assert.False(workspaces.IsGuidanceConfigured());
+        Assert.Equal("Travels with the code.", workspaces.GetGuidance());
+    }
+
+    [Fact]
     public async Task An_agent_works_on_the_active_workspace_and_can_start_one_from_scratch()
     {
         var workspaces = CreateManager();

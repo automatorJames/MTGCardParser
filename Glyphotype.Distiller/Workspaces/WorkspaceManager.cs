@@ -49,6 +49,7 @@ public sealed class WorkspaceManager
     const string _workingFileName = "working.json";
     const string _baselineFileName = "baseline.json";
     const string _historyFileName = "history.json";
+    const string _guidanceFileName = "guidance.md";
 
     readonly SourceWorkspace _source;
     readonly string _root;
@@ -56,17 +57,26 @@ public sealed class WorkspaceManager
     readonly IReadOnlyList<IDocument> _documents;
     readonly object _gate = new();
     readonly List<WorkspaceInfo> _workspaces = [];
+    readonly Dictionary<string, string> _configuredGuidance;
 
     /// <summary>The source workspace's workbench, kept for the whole session: after a commit it knows more than the compiled grammar does until the app restarts.</summary>
     GrammarWorkbench _sourceWorkbench;
 
     /// <param name="root">The folder every workspace's files are kept under.</param>
     /// <param name="legacyWorkingDefinitionPath">Where the source grammar's working definition was kept before workspaces, if anywhere: moved into its workspace on first run.</param>
-    public WorkspaceManager(SourceWorkspace source, string root, bool allowPartialClauseMatches, string legacyWorkingDefinitionPath = null)
+    /// <param name="configuredGuidance">
+    /// Guidance by workspace name, from configuration that travels with the code (unlike the root folder): where a workspace has some,
+    /// it overrides any kept in the workspace's folder, and can't be set here.
+    /// </param>
+    public WorkspaceManager(SourceWorkspace source, string root, bool allowPartialClauseMatches, string legacyWorkingDefinitionPath = null,
+        IReadOnlyDictionary<string, string> configuredGuidance = null)
     {
         _source = source;
         _root = root;
         _allowPartialClauseMatches = allowPartialClauseMatches;
+        _configuredGuidance = (configuredGuidance ?? new Dictionary<string, string>())
+            .Where(x => !string.IsNullOrWhiteSpace(x.Value))
+            .ToDictionary(x => x.Key, x => x.Value.Trim(), StringComparer.OrdinalIgnoreCase);
         _documents = source.Documents.Select(x => x.Document).ToList();
 
         var active = LoadIndex();
@@ -104,6 +114,58 @@ public sealed class WorkspaceManager
     /// <summary>The active workspace's workbench.</summary>
     public GrammarWorkbench Active { get; private set; }
 
+    /// <summary>
+    /// Notes for an AI on what the named workspace's grammar is and how to approach iterating it (the active workspace by default) - empty
+    /// where there are none. Kept apart from the grammar itself, so no step, revert or checkpoint touches it.
+    /// </summary>
+    public string GetGuidance(string name = null)
+    {
+        lock (_gate)
+            return ReadGuidance(name is null ? ActiveWorkspace : Find(name));
+    }
+
+    /// <summary>Whether the named workspace's guidance (the active workspace's by default) comes from configuration, and so can't be set here.</summary>
+    public bool IsGuidanceConfigured(string name = null)
+    {
+        lock (_gate)
+            return _configuredGuidance.ContainsKey((name is null ? ActiveWorkspace : Find(name)).Name);
+    }
+
+    /// <summary>Replaces the named workspace's guidance (the active workspace's by default); blank removes it.</summary>
+    /// <exception cref="InvalidOperationException">The workspace's guidance comes from configuration.</exception>
+    public void SetGuidance(string guidance, string name = null)
+    {
+        lock (_gate)
+        {
+            var workspace = name is null ? ActiveWorkspace : Find(name);
+
+            if (_configuredGuidance.ContainsKey(workspace.Name))
+                throw new InvalidOperationException($"{workspace.Name}'s guidance is set in the app's settings - change it there");
+
+            var folder = FolderOf(workspace);
+            var path = Path.Combine(folder, _guidanceFileName);
+
+            if (string.IsNullOrWhiteSpace(guidance))
+                File.Delete(path);
+            else
+            {
+                Directory.CreateDirectory(folder);
+                File.WriteAllText(path, guidance.Trim());
+            }
+        }
+
+        ActiveChanged?.Invoke();
+    }
+
+    string ReadGuidance(WorkspaceInfo workspace)
+    {
+        if (_configuredGuidance.TryGetValue(workspace.Name, out var configured))
+            return configured;
+
+        var path = Path.Combine(FolderOf(workspace), _guidanceFileName);
+        return File.Exists(path) ? File.ReadAllText(path).Trim() : "";
+    }
+
     /// <summary>Makes the named workspace the active one.</summary>
     public void Switch(string name)
     {
@@ -120,9 +182,12 @@ public sealed class WorkspaceManager
         ActiveChanged?.Invoke();
     }
 
-    /// <summary>Creates a scratch workspace named <paramref name="name"/>, starting from <paramref name="seed"/> of the workspace named <paramref name="from"/> (the active one by default), and makes it active.</summary>
+    /// <summary>
+    /// Creates a scratch workspace named <paramref name="name"/>, starting from <paramref name="seed"/> of the workspace named <paramref name="from"/>
+    /// (the active one by default), and makes it active. With <paramref name="copyGuidance"/>, it starts with that workspace's guidance too.
+    /// </summary>
     /// <exception cref="InvalidOperationException">The name is taken or unusable, or <paramref name="from"/> names no workspace.</exception>
-    public WorkspaceInfo Create(string name, WorkspaceSeed seed = WorkspaceSeed.Empty, string from = null)
+    public WorkspaceInfo Create(string name, WorkspaceSeed seed = WorkspaceSeed.Empty, string from = null, bool copyGuidance = false)
     {
         WorkspaceInfo workspace;
 
@@ -130,7 +195,8 @@ public sealed class WorkspaceManager
         {
             name = ValidateNewName(name);
 
-            var origin = seed == WorkspaceSeed.Empty ? null : GetWorkingDefinition(from is null ? ActiveWorkspace : Find(from));
+            var originWorkspace = seed == WorkspaceSeed.Empty && !copyGuidance ? null : from is null ? ActiveWorkspace : Find(from);
+            var origin = seed == WorkspaceSeed.Empty ? null : GetWorkingDefinition(originWorkspace);
             var baseline = seed switch
             {
                 WorkspaceSeed.Vocabularies => new GrammarDefinition { Vocabularies = origin.Vocabularies },
@@ -142,6 +208,9 @@ public sealed class WorkspaceManager
             var folder = FolderOf(workspace);
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, _baselineFileName), baseline.ToJson());
+
+            if (copyGuidance && ReadGuidance(originWorkspace) is { Length: > 0 } guidance)
+                File.WriteAllText(Path.Combine(folder, _guidanceFileName), guidance);
 
             _workspaces.Add(workspace);
             Activate(workspace);

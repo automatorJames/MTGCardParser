@@ -794,7 +794,7 @@ public enum PermanentVerb
     [RegexPattern("gain(s)?")]
     Gain,
 
-    [RegexPattern("lose(es)?")]
+    [RegexPattern("lose(s)?")]
     Lose,
 
     [RegexPattern("it's")]
@@ -808,7 +808,7 @@ public enum WhichPlayer
     [RegexPattern("each opponent")]
     EachOpponent,
 
-    [RegexPattern("each opponent")]
+    [RegexPattern("an opponent")]
     AnyOpponent
 }
 
@@ -847,7 +847,7 @@ public enum LandType
     [RegexPattern("island(s)?")]
     Island,
 
-    [RegexPattern("mountains(s)?")]
+    [RegexPattern("mountain(s)?")]
     Mountain,
 
     [RegexPattern("plains")]
