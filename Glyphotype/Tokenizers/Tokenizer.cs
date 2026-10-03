@@ -6,13 +6,13 @@ public class Tokenizer
 {
     private readonly List<Type> _orderedTopLevelTypes;
     private readonly List<Type> _dependentTypes;
-    private readonly bool _allowPartialSegmentMatches;
+    private readonly bool _allowPartialClauseMatches;
 
     /// <summary>
     /// The types one <see cref="Tokenize"/> call tries, as their graphs in the order tried - and whether any of
-    /// them may match partway into a segment (see <see cref="RegexGraph.AllowsPartialSegmentMatch"/>).
+    /// them may match partway into a clause (see <see cref="RegexGraph.AllowsPartialClauseMatch"/>).
     /// </summary>
-    sealed record CandidateSet(RegexGraph[] Graphs, bool AnyAllowsPartialSegment);
+    sealed record CandidateSet(RegexGraph[] Graphs, bool AnyAllowsPartialClause);
 
     /// <summary>
     /// <see cref="CandidateSet"/>s by (scope type, dependents included?) - the only inputs they depend on, and a
@@ -22,24 +22,24 @@ public class Tokenizer
     /// </summary>
     readonly ConcurrentDictionary<(Type ScopeToType, bool IncludeDependentTypes), CandidateSet> _candidateSets = new();
 
-    /// <param name="allowPartialSegmentMatches">
+    /// <param name="allowPartialClauseMatches">
     /// The default for <see cref="Tokenize"/>'s parameter of the same name, supplied by the
-    /// <see cref="GlyphGrammar"/> that builds this Tokenizer (see <see cref="GlyphGrammar.AllowPartialSegmentMatches"/>).
+    /// <see cref="GlyphGrammar"/> that builds this Tokenizer (see <see cref="GlyphGrammar.AllowPartialClauseMatches"/>).
     /// </param>
-    public Tokenizer(List<Type> orderedTopLevelTypes, List<Type> dependentTypes, bool allowPartialSegmentMatches)
+    public Tokenizer(List<Type> orderedTopLevelTypes, List<Type> dependentTypes, bool allowPartialClauseMatches)
     {
         _orderedTopLevelTypes = orderedTopLevelTypes;
         _dependentTypes = dependentTypes;
-        _allowPartialSegmentMatches = allowPartialSegmentMatches;
+        _allowPartialClauseMatches = allowPartialClauseMatches;
     }
 
-    /// <param name="allowPartialSegmentMatches">
-    /// Overrides this Tokenizer's configured <see cref="GlobalSettings.AllowPartialSegmentMatches"/>
+    /// <param name="allowPartialClauseMatches">
+    /// Overrides this Tokenizer's configured <see cref="GlobalSettings.AllowPartialClauseMatches"/>
     /// default for this one call. Null (the usual case) uses that default. Passed explicitly by callers
     /// that aren't tokenizing a line at all but resolving an already-matched sub-capture - see
-    /// <see cref="DynamicGlyphNode.TryHydrate"/> - where "consume the whole segment" is both meaningless
-    /// (the capture is a fragment of one segment, not a segment) and actively harmful (that resolution
-    /// depends on being handed the shorter prefix a whole-segment rule would reject outright).
+    /// <see cref="DynamicGlyphNode.TryHydrate"/> - where "consume the whole clause" is both meaningless
+    /// (the capture is a fragment of one clause, not a clause) and actively harmful (that resolution
+    /// depends on being handed the shorter prefix a whole-clause rule would reject outright).
     /// </param>
     public List<CaptureUnit> Tokenize(
         string sourceText,
@@ -47,7 +47,7 @@ public class Tokenizer
         scopeEnd = null,
         Type scopeToType = null,
         bool includeDependentTypes = false,
-        bool? allowPartialSegmentMatches = null)
+        bool? allowPartialClauseMatches = null)
     {
         if (string.IsNullOrEmpty(sourceText))
             throw new Exception("Source text may not be null or empty");
@@ -57,42 +57,34 @@ public class Tokenizer
         int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
 
-        // Fixed anchor for the scope this call is tokenizing, used below to gate MustMatchWholeLine
-        // types: currentIndex advances as tokens get committed or unmatched text gets skipped, but a
-        // MustMatchWholeLine type is only a valid candidate on the very first attempt at this scope's own
-        // start - once anything (a token or a ratchet skip) has consumed part of the scope, no match
-        // starting after that point could still be "the whole line" by itself.
-        int scopeStartIndex = currentIndex;
-
-        // Whether a top-level type may match only part of a segment (see GlobalSettings). When it may
-        // not, a type is only a candidate at a segment's own start and has to consume that segment whole,
-        // gated by the segment bookkeeping maintained across the loop below.
-        bool requireWholeSegments = !(allowPartialSegmentMatches ?? _allowPartialSegmentMatches);
+        // Whether a top-level type may match only part of a clause (see GlobalSettings). When it may
+        // not, a type is only a candidate at a clause's own start and has to consume that clause whole,
+        // gated by the clause bookkeeping maintained across the loop below.
+        bool requireWholeClauses = !(allowPartialClauseMatches ?? _allowPartialClauseMatches);
 
         var candidates = GetCandidateSet(scopeToType, includeDependentTypes);
 
-        // AllowPartialSegmentMatch is the only thing that keeps a type a candidate partway into a segment
-        // - a MustMatchWholeLine type is even stricter than the requirement, so it's already ruled out
-        // anywhere past the scope start. With none of them in the candidate set, a segment that didn't
-        // match at its own start can't match anywhere within itself, which the ratchet below exploits.
-        bool anyCandidateAllowsPartialSegment = candidates.AnyAllowsPartialSegment;
+        // AllowPartialClauseMatch is the only thing that keeps a type a candidate partway into a clause.
+        // With none of them in the candidate set, a clause that didn't match at its own start can't match
+        // anywhere within itself, which the ratchet below exploits.
+        bool anyCandidateAllowsPartialClause = candidates.AnyAllowsPartialClause;
 
-        int segmentStartIndex = scopeStartIndex;
-        int segmentEndIndex = FindSegmentEnd(sourceText, segmentStartIndex, endIndex);
+        int clauseStartIndex = currentIndex;
+        int clauseEndIndex = FindClauseEnd(sourceText, clauseStartIndex, endIndex);
 
         while (currentIndex < endIndex)
         {
-            // Open the next segment once the cursor has moved past this one's terminating period.
+            // Open the next clause once the cursor has moved past this one's terminating period.
             // Strictly greater, not >=: landing exactly on the period means the period itself is still
-            // unconsumed, and it's no more the start of the next segment than it is part of this one.
-            if (currentIndex > segmentEndIndex)
+            // unconsumed, and it's no more the start of the next clause than it is part of this one.
+            if (currentIndex > clauseEndIndex)
             {
-                segmentStartIndex = currentIndex;
-                segmentEndIndex = FindSegmentEnd(sourceText, currentIndex, endIndex);
+                clauseStartIndex = currentIndex;
+                clauseEndIndex = FindClauseEnd(sourceText, currentIndex, endIndex);
             }
 
             bool matched = false;
-            bool atSegmentStart = currentIndex == segmentStartIndex;
+            bool atClauseStart = currentIndex == clauseStartIndex;
 
             foreach (var rootNode in candidates.Graphs)
             {
@@ -100,29 +92,22 @@ public class Tokenizer
                 if (!rootNode.StartChars.CanStartWith(sourceText[currentIndex]))
                     continue;
 
-                if (rootNode.MustMatchWholeLine && currentIndex != scopeStartIndex)
-                    continue;
-
-                // A whole-segment candidate that isn't sitting at a segment's start can't satisfy the
+                // A whole-clause candidate that isn't sitting at a clause's start can't satisfy the
                 // requirement no matter what it would match, so don't pay for the match at all.
-                bool mustConsumeSegment = requireWholeSegments
-                    && !rootNode.MustMatchWholeLine
-                    && !rootNode.AllowsPartialSegmentMatch;
+                bool mustConsumeClause = requireWholeClauses && !rootNode.AllowsPartialClauseMatch;
 
-                if (mustConsumeSegment && !atSegmentStart)
+                if (mustConsumeClause && !atClauseStart)
                     continue;
 
-                // The rule is "cover a whole number of segments, at least one" - so a type is offered each
+                // The rule is "cover a whole number of clauses, at least one" - so a type is offered each
                 // successive clause boundary as a candidate end, shortest first, and must fill whichever
                 // one it takes. Only a type that declares a clause break of its own (SpansClauses) is
-                // offered more than the first: everything else is capped at one segment, which is what
-                // stops a greedy wildcard from swallowing clauses it never said it wanted.
-                // MustMatchWholeLine and the exempt types skip all this and run against the full scope, as
-                // before - the former still has to fill it (RegexGraph applies that itself), the latter
-                // still may end partway through it.
-                foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, segmentEndIndex, mustConsumeSegment, rootNode.SpansClauses))
+                // offered more than the first: everything else is capped at one clause, which is what
+                // stops a greedy wildcard from swallowing clauses it never said it wanted. An exempt type
+                // skips all this and runs against the full scope, where it may end partway through.
+                foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, clauseEndIndex, mustConsumeClause, rootNode.SpansClauses))
                 {
-                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, mustConsumeSegment, tokenizer: this))
+                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, mustConsumeClause, tokenizer: this))
                         continue;
 
                     // --- COMMIT PHASE ---
@@ -154,17 +139,13 @@ public class Tokenizer
                 // Nothing matched here because the cursor is sitting on a clause-separating period. That
                 // period is modeled punctuation, not text still awaiting a Glyph, so it gets a token of its
                 // own rather than being folded into the surrounding unmatched span - see ClauseBreak.
-                if (currentIndex == segmentEndIndex && currentIndex < endIndex && sourceText[currentIndex] == '.')
+                if (currentIndex == clauseEndIndex && currentIndex < endIndex && sourceText[currentIndex] == ClauseBreak.Period)
                 {
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
-                    // A closing parenthesis straight after the period ends the same clause the period does
-                    // ("the dog sleeps (the cat eats fish.)"), so it belongs to the break - left behind,
-                    // it would open the next segment as a lone ")" of unmatched text.
-                    int breakLength = 1;
-
-                    while (currentIndex + breakLength < endIndex && sourceText[currentIndex + breakLength] == ')')
-                        breakLength++;
+                    // A closing parenthesis or quote straight after the period ends the same clause the period
+                    // does ("the dog sleeps (the cat eats fish.)"), so it belongs to the break.
+                    int breakLength = ClauseBreak.LengthAt(sourceText, currentIndex, endIndex);
 
                     tokens.Add(new ClauseBreak(sourceText, currentIndex, breakLength));
 
@@ -181,18 +162,18 @@ public class Tokenizer
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
-                // Nothing left in the candidate set can match before this segment ends (see
-                // anyCandidateAllowsPartialSegment), so skip the rest of it in one step rather than
+                // Nothing left in the candidate set can match before this clause ends (see
+                // anyCandidateAllowsPartialClause), so skip the rest of it in one step rather than
                 // ratcheting a word at a time. Purely an optimization: that span is unmatched either way
                 // and gets flushed as the very same single UnmatchedString.
-                bool skipRestOfSegment = requireWholeSegments
-                    && !anyCandidateAllowsPartialSegment
-                    && !atSegmentStart
-                    && currentIndex < segmentEndIndex;
+                bool skipRestOfClause = requireWholeClauses
+                    && !anyCandidateAllowsPartialClause
+                    && !atClauseStart
+                    && currentIndex < clauseEndIndex;
 
-                if (skipRestOfSegment)
+                if (skipRestOfClause)
                 {
-                    currentIndex = segmentEndIndex;
+                    currentIndex = clauseEndIndex;
                     continue;
                 }
 
@@ -209,8 +190,8 @@ public class Tokenizer
                 // spanning one - the next pass then emits it as its own ClauseBreak. Without this, whether
                 // a period became a token or got swallowed into unmatched text would depend on the
                 // accident of whether the preceding clause happened to match.
-                if (currentIndex > segmentEndIndex && segmentEndIndex < endIndex)
-                    currentIndex = segmentEndIndex;
+                if (currentIndex > clauseEndIndex && clauseEndIndex < endIndex)
+                    currentIndex = clauseEndIndex;
             }
         }
 
@@ -229,54 +210,53 @@ public class Tokenizer
 
             var graphs = types.Select(GlyphTypeCache.GetRegexGraph).ToArray();
 
-            return new(graphs, graphs.Any(x => x.AllowsPartialSegmentMatch));
+            return new(graphs, graphs.Any(x => x.AllowsPartialClauseMatch));
         });
 
     /// <summary>
     /// The scope ends a type may be matched against at the current position, in the order they should be
-    /// tried. A type not held to the whole-segment rule gets the full scope and nothing else (it either
-    /// fills the line or may end partway, both of which <see cref="RegexGraph.TryMatch"/> decides on its
-    /// own). A type held to it gets the first clause boundary, and - only if it declares a clause break of
-    /// its own - each later one in turn, shortest first, so it settles on the fewest clauses that satisfy
-    /// it rather than the most.
+    /// tried. A type not held to the whole-clause rule gets the full scope and nothing else (it may end
+    /// partway, which <see cref="RegexGraph.TryMatch"/> decides on its own). A type held to it gets the first
+    /// clause boundary, and - only if it declares a clause break of its own - each later one in turn,
+    /// shortest first, so it settles on the fewest clauses that satisfy it rather than the most.
     /// </summary>
     static IEnumerable<int> GetCandidateEnds(
-        string sourceText, int endIndex, int segmentEndIndex, bool mustConsumeSegment, bool spansClauses)
+        string sourceText, int endIndex, int clauseEndIndex, bool mustConsumeClause, bool spansClauses)
     {
-        if (!mustConsumeSegment)
+        if (!mustConsumeClause)
         {
             yield return endIndex;
             yield break;
         }
 
-        yield return segmentEndIndex;
+        yield return clauseEndIndex;
 
         if (!spansClauses)
             yield break;
 
-        int candidateEnd = segmentEndIndex;
+        int candidateEnd = clauseEndIndex;
 
         // Each step moves past the period just offered and out to the next boundary, so the sequence
         // strictly increases and terminates at endIndex.
         while (candidateEnd < endIndex)
         {
-            candidateEnd = FindSegmentEnd(sourceText, candidateEnd + 1, endIndex);
+            candidateEnd = FindClauseEnd(sourceText, candidateEnd + 1, endIndex);
             yield return candidateEnd;
         }
     }
 
     /// <summary>
-    /// The exclusive end of the segment starting at <paramref name="fromIndex"/>: the next period at or
+    /// The exclusive end of the clause starting at <paramref name="fromIndex"/>: the next period at or
     /// after it, or <paramref name="endIndex"/> if the scope runs out first. The period itself is never
-    /// part of the segment - a whole-segment match ends immediately before it, leaving the period to the
-    /// ordinary ratchet on a later pass, exactly as it was before segments existed.
+    /// part of the clause - a whole-clause match ends immediately before it, leaving the period to the
+    /// ordinary ratchet on a later pass, which emits it as a <see cref="ClauseBreak"/>.
     /// </summary>
-    static int FindSegmentEnd(string sourceText, int fromIndex, int endIndex)
+    static int FindClauseEnd(string sourceText, int fromIndex, int endIndex)
     {
         if (fromIndex >= endIndex)
             return endIndex;
 
-        int periodIndex = sourceText.IndexOf('.', fromIndex);
+        int periodIndex = sourceText.IndexOf(ClauseBreak.Period, fromIndex);
 
         return periodIndex == -1 || periodIndex >= endIndex ? endIndex : periodIndex;
     }

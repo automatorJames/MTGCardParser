@@ -25,7 +25,7 @@ public abstract class OneOfBase : Glyph
     /// <paramref name="oneOfType"/>'s alternative slots: every property declared between it and
     /// <see cref="OneOfBase"/>, base-most level first. Not just <paramref name="oneOfType"/>'s own, since
     /// the slots needn't live on the most-derived type - a pure alias like
-    /// <c>[MustMatchWholeLine] class Foo : OneOf&lt;A?, B?&gt;</c> declares none of its own, its slots being
+    /// <c>class Foo : OneOf&lt;A?, B?&gt;;</c> declares none of its own, its slots being
     /// <see cref="OneOf{T1,T2}"/>'s. Excludes overrides of base members (e.g. <see cref="Glyph.Joiner"/>).
     /// </summary>
     public static PropertyInfo[] GetAlternativeProps(Type oneOfType)

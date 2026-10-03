@@ -21,6 +21,15 @@ public class ProcessedDocument
     /// </summary>
     public int CapturedWordCount { get; init; }
 
+    /// <summary>Count of every <see cref="BackReference"/> across every line in this document.</summary>
+    public int BackReferenceCount { get; init; }
+
+    /// <summary>
+    /// Count of the back-references no referent was found for (see <see cref="BackReferenceResolver"/>) - modeled text whose
+    /// meaning the grammar still can't pin down, the counterpart for reference of unmatched text for matching.
+    /// </summary>
+    public int UnresolvedBackReferenceCount { get; init; }
+
     public ProcessedDocument(IDocument document, GlyphGrammar grammar)
     {
         Document = document;
@@ -33,5 +42,7 @@ public class ProcessedDocument
 
         WordCount = Lines.Sum(x => x.WordCount);
         CapturedWordCount = Lines.Sum(x => x.CapturedWordCount);
+        BackReferenceCount = Lines.Sum(x => x.BackReferences.Count);
+        UnresolvedBackReferenceCount = Lines.Sum(x => x.BackReferences.Count(y => !y.IsResolved));
     }
 }

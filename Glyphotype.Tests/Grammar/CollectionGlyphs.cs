@@ -38,7 +38,6 @@ public class FamilyAdopts : Glyph
 
 /// <summary>A top-level <see cref="CompoundOf{T}"/> alias with the default comma joiner, e.g. a line reading "flour, sugar, eggs".</summary>
 /// Also carries a get-only convenience property, which a pure alias may declare since it's never regex-bound.
-[MustMatchWholeLine]
 public class ShoppingList : CompoundOf<Ingredient>
 {
     public bool NeedsEggs => Items.Contains(Ingredient.Eggs);

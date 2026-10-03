@@ -23,10 +23,10 @@ public class RegistryTests(CorpusFixture corpus)
     }
 
     [Fact]
-    public void AllowPartialSegmentMatches_is_a_setting_of_each_grammar()
+    public void AllowPartialClauseMatches_is_a_setting_of_each_grammar()
     {
         // Two grammars over the same types, differing only in this setting, coexisting in one process.
-        var lenient = GlyphGrammar.FromAssemblies([_testAssembly], allowPartialSegmentMatches: true);
+        var lenient = GlyphGrammar.FromAssemblies([_testAssembly], allowPartialClauseMatches: true);
         const string text = "the dog sleeps in the kitchen all day.";
 
         Assert.Equal("«the dog sleeps in the kitchen all day» .", Signature(corpus.Grammar.Tokenize(text)));

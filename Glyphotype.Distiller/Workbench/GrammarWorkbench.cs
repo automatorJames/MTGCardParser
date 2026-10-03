@@ -9,14 +9,14 @@ namespace Glyphotype.Distiller.Workbench;
 /// written into it. Null for a workbench whose baseline is kept as JSON instead (see <paramref name="BaselinePath"/>).
 /// </param>
 /// <param name="SourceNamespace">The namespace new source files declare.</param>
-/// <param name="AllowPartialSegmentMatches">The setting working grammars are tokenized under - the committed grammar's own.</param>
+/// <param name="AllowPartialClauseMatches">The setting working grammars are tokenized under - the committed grammar's own.</param>
 /// <param name="BaselinePath">For a workbench with no C# sources: the JSON file its baseline (see <see cref="GrammarWorkbench.Checkpoint"/>) is kept in.</param>
 /// <param name="HistoryPath">The JSON file <see cref="GrammarWorkbench.History"/> is saved to after every step, so undo survives a restart - or null to keep it in memory only.</param>
 public sealed record WorkbenchOptions(
     string WorkingDefinitionPath,
     string SourceDirectory,
     string SourceNamespace,
-    bool AllowPartialSegmentMatches,
+    bool AllowPartialClauseMatches,
     string BaselinePath = null,
     string HistoryPath = null);
 
@@ -537,7 +537,7 @@ public sealed class GrammarWorkbench : IDisposable
     /// <summary>Builds the grammar <paramref name="definition"/> describes, as the workbench scores it - without tokenizing anything.</summary>
     /// <exception cref="AggregateException">The grammar's validation failed: one inner exception per problem.</exception>
     public GlyphGrammar BuildGrammar(GrammarDefinition definition) =>
-        GlyphGrammar.FromDefinition(definition.WithoutUnreferencedTerminals(), _options.AllowPartialSegmentMatches);
+        GlyphGrammar.FromDefinition(definition.WithoutUnreferencedTerminals(), _options.AllowPartialClauseMatches);
 
     /// <summary>Scores <paramref name="definition"/> - or returns its recent score, if it was scored lately. Null if cancelled.</summary>
     WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation)

@@ -13,7 +13,7 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
 
     GrammarWorkbench CreateWorkbench(string sourceDirectory = null) =>
         new(corpus.Grammar, corpus.ProcessedDocuments,
-            new(Path.Combine(_directory, "working.json"), sourceDirectory ?? _directory, "Glyphotype.Tests.Grammar", AllowPartialSegmentMatches: false));
+            new(Path.Combine(_directory, "working.json"), sourceDirectory ?? _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
 
     [Fact]
     public async Task A_fresh_workbench_matches_the_committed_grammar_without_rescoring()

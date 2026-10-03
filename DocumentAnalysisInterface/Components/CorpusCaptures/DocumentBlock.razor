@@ -14,6 +14,16 @@
                 <span class="callout-key">Coverage:</span>
                 <span class="callout-value @CoverageDisplay.GetColorClass(documentPercent)">@CoverageDisplay.FormatPercent(documentPercent)</span>
             </div>
+
+            @if (ProcessedDocument.BackReferenceCount > 0)
+            {
+                var resolvedPercent = GetCoveragePercent(ProcessedDocument.BackReferenceCount - ProcessedDocument.UnresolvedBackReferenceCount, ProcessedDocument.BackReferenceCount);
+
+                <div class="coverage-callout">
+                    <span class="callout-key">Back-references resolved:</span>
+                    <span class="callout-value @CoverageDisplay.GetColorClass(resolvedPercent)">@(ProcessedDocument.BackReferenceCount - ProcessedDocument.UnresolvedBackReferenceCount)/@ProcessedDocument.BackReferenceCount</span>
+                </div>
+            }
         }
     </div>
 
@@ -39,11 +49,16 @@
                 </div>
                 <div class="line-container-parent" data-path=@line.DataPath>
                     <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) data-path=@line.DataPath>
-                        @{ var roots = line.CaptureTraceRoots; }
-                        @for (int i = 0; i < roots.Count; i++)
+                        @for (int c = 0; c < line.Clauses.Count; c++)
                         {
-                            @GetGapBefore(line, roots, i)
-                            <SpanView CaptureTrace=@roots[i] />
+                            var roots = line.Clauses[c].UnitsWithBreak.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
+
+                            @(c > 0 ? "\n" : "")
+                            @for (int i = 0; i < roots.Count; i++)
+                            {
+                                @GetGapBefore(line, roots, i)
+                                <SpanView CaptureTrace=@roots[i] />
+                            }
                         }
                     </pre>
 
@@ -67,7 +82,8 @@
     /// <summary>
     /// The source text between root <paramref name="index"/> and the one before it - the whitespace the
     /// Tokenizer steps past after each token (and clause break) without making it part of either, so the
-    /// roots alone would render run together ("it.they").
+    /// roots alone would render run together ("it.they"). Within one clause only: the gap after a clause's
+    /// break is where the next clause starts its own row.
     /// </summary>
     static string GetGapBefore(ProcessedLine line, List<RootCaptureTrace> roots, int index)
     {

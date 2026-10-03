@@ -21,4 +21,10 @@ public sealed record PropertyDefinition
 
     /// <summary><see cref="TypeFilterAttribute"/>: the marker (see <see cref="GrammarDefinition.Markers"/>) a <see cref="DynamicGlyph"/> may resolve to.</summary>
     public string TypeFilter { get; init; }
+
+    /// <summary><see cref="IntroducesAttribute"/>: the captured value is a referent, with these features. Null when it isn't one.</summary>
+    public AgreementDefinition Introduces { get; init; }
+
+    /// <summary><see cref="RefersToAttribute"/>: the sibling property a back-reference property refers to outright.</summary>
+    public string RefersTo { get; init; }
 }

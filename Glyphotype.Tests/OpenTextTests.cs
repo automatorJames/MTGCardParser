@@ -52,7 +52,7 @@ public class OpenTextTests(CorpusFixture corpus)
         var catchAll = GlyphGrammar.FromDefinition(new GrammarDefinition
         {
             Glyphs = [new() { Name = "MyDogHas", Nibs = [new NibDefinition.Literal("my dog has"), new NibDefinition.Pattern(@"[^.]+")] }],
-        }, allowPartialSegmentMatches: false);
+        }, allowPartialClauseMatches: false);
 
         string[] distinct = [.. Enumerable.Range(0, 20).Select(i => $"parasite{(char)('a' + i)}ish")];
         var same = Score(catchAll, Enumerable.Repeat("my dog has parasiteaish.", 20));
@@ -84,7 +84,7 @@ public class OpenTextTests(CorpusFixture corpus)
     GlyphGrammar WithWhenever(string source = _whenever)
     {
         var glyph = Assert.Single(GlyphSourceReader.Read(source, corpus.Grammar.ToDefinition()).Glyphs);
-        return GlyphGrammar.FromDefinition(corpus.Grammar.ToDefinition().WithGlyph(glyph), allowPartialSegmentMatches: false);
+        return GlyphGrammar.FromDefinition(corpus.Grammar.ToDefinition().WithGlyph(glyph), allowPartialClauseMatches: false);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class OpenTextTests(CorpusFixture corpus)
             }
             """, definition).Glyphs);
 
-        var exception = Assert.ThrowsAny<Exception>(() => GlyphGrammar.FromDefinition(definition.WithGlyph(misplaced), allowPartialSegmentMatches: false));
+        var exception = Assert.ThrowsAny<Exception>(() => GlyphGrammar.FromDefinition(definition.WithGlyph(misplaced), allowPartialClauseMatches: false));
         Assert.Contains("[AllowUnmatched]", exception.Message);
     }
 

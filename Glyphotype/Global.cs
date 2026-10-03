@@ -17,6 +17,7 @@ global using Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
 global using Glyphotype.Tokenizers;
 global using Glyphotype.GlyphPrimitives;
 global using Glyphotype.GlyphPrimitives.Internal;
+global using Glyphotype.BackReferences;
 global using System.Reflection;
 global using System.Text;
 global using System.Text.Json.Serialization;

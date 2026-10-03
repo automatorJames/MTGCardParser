@@ -76,3 +76,13 @@ public enum Quantifier
     [Description("?")]
     Optional
 }
+
+/// <summary>Whether a referent is one thing or several - what an <see cref="GlyphPrimitives.BackReference"/> such as "it" or "they" has to agree with.</summary>
+public enum GrammaticalNumber
+{
+    /// <summary>Not known, or not declared - agrees with either.</summary>
+    Unspecified,
+
+    Singular,
+    Plural,
+}

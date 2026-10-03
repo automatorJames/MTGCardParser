@@ -14,6 +14,12 @@ public class ProcessedLine
     /// </summary>
     public List<CaptureUnit> Glyphs { get; init; } = [];
 
+    /// <summary><see cref="Glyphs"/>, grouped into the clauses they were tokenized from - see <see cref="LineClause"/>.</summary>
+    public List<LineClause> Clauses { get; }
+
+    /// <summary>Every <see cref="BackReference"/> on this line, in text order, with what it was resolved to - see <see cref="BackReferenceResolver"/>.</summary>
+    public List<BackReferenceResolution> BackReferences { get; }
+
     /// <summary>
     /// A list of all full spans found on this specific line.
     /// </summary>
@@ -46,6 +52,8 @@ public class ProcessedLine
     {
         SourceText = sourceText;
         Glyphs = glyphs;
+        Clauses = LineClause.Group(glyphs);
+        BackReferences = BackReferenceResolver.Resolve(glyphs);
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
 

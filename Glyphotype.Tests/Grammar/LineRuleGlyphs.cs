@@ -11,8 +11,17 @@ public class MorningRoutine : Glyph
     public Food Food { get; set; }
 }
 
-/// <summary><see cref="AllowPartialSegmentMatchAttribute"/>: may match the start of a clause and leave the rest.</summary>
-[AllowPartialSegmentMatch]
+/// <summary>A literal nib with a period inside it: split around the period, so it spans two clauses just as <see cref="MorningRoutine"/> does.</summary>
+public class EveningRoutine : Glyph
+{
+    public override Nib[] Nibs => ["the", Prop(Animal), "goes to bed. then it dreams of", Prop(Food)];
+
+    public Animal Animal { get; set; }
+    public Food Food { get; set; }
+}
+
+/// <summary><see cref="AllowPartialClauseMatchAttribute"/>: may match the start of a clause and leave the rest.</summary>
+[AllowPartialClauseMatch]
 public class Greeting : Glyph
 {
     public override Nib[] Nibs => ["good", Prop(TimeOfDay)];

@@ -28,7 +28,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     (GrammarAgent Agent, GrammarWorkbench Workbench) CreateAgent()
     {
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
-            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialSegmentMatches: false));
+            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
 
         // These tests exercise the tools themselves, so the session's step rules are off.
         return (new GrammarAgent(workbench, "the test corpus", AnySteps), workbench);

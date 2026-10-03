@@ -177,10 +177,12 @@ public static class GlyphSourceReader
                     return (GlyphKind.Glyph, null);
                 case IdentifierNameSyntax { Identifier.Text: nameof(GlyphOneOf) }:
                     return (GlyphKind.GlyphOneOf, null);
+                case IdentifierNameSyntax { Identifier.Text: nameof(BackReference) }:
+                    return (GlyphKind.BackReference, null);
                 case GenericNameSyntax generic when _genericPrimitives.Contains(generic.Identifier.Text):
                     return (GlyphKind.Alias, ReadTypeReference(generic));
                 default:
-                    Error(baseType, $"{name} derives from {baseType}, but a glyph's base must be Glyph, GlyphOneOf or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf) - markers come after it");
+                    Error(baseType, $"{name} derives from {baseType}, but a glyph's base must be Glyph, GlyphOneOf, BackReference or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf) - markers come after it");
                     return (GlyphKind.Glyph, null);
             }
         }
@@ -194,12 +196,13 @@ public static class GlyphSourceReader
                 glyph = AttributeName(attribute) switch
                 {
                     "Dependent" => glyph with { IsDependent = true },
-                    "MustMatchWholeLine" => glyph with { SpanRule = SpanRule.WholeLine },
-                    "AllowPartialSegmentMatch" => glyph with { SpanRule = SpanRule.PartialSegment },
+                    "AllowPartialClauseMatch" => glyph with { SpanRule = SpanRule.PartialClause },
                     "TokenizationOrder" when arguments.Count == 1 => glyph with { TokenizationOrder = (int)ReadInteger(arguments[0]) },
                     "RegexPattern" => glyph with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => glyph with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
-                    _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, MustMatchWholeLine, AllowPartialSegmentMatch, TokenizationOrder, RegexPattern, JoinedBy)"),
+                    "Introduces" when arguments.Count <= 2 => glyph with { Introduces = ReadAgreement(arguments) },
+                    "Agreement" when arguments.Count <= 2 => glyph with { Agreement = ReadAgreement(arguments) },
+                    _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, AllowPartialClauseMatch, TokenizationOrder, RegexPattern, JoinedBy, Introduces, Agreement)"),
                 };
             }
 
@@ -231,7 +234,9 @@ public static class GlyphSourceReader
                     "RegexPattern" => definition with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => definition with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
                     "TypeFilter" when arguments is [TypeOfExpressionSyntax typeOf] => definition with { TypeFilter = typeOf.Type.ToString() },
-                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)))"),
+                    "Introduces" when arguments.Count <= 2 => definition with { Introduces = ReadAgreement(arguments) },
+                    "RefersTo" when arguments.Count == 1 => definition with { RefersTo = ReadPropertyName(arguments[0]) },
+                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Introduces, RefersTo(nameof(Property)))"),
                 };
             }
 
@@ -441,6 +446,20 @@ public static class GlyphSourceReader
 
             return default;
         }
+
+        /// <summary>An <c>[Introduces]</c> or <c>[Agreement]</c>'s arguments: an optional <see cref="GrammaticalNumber"/>, then an optional kind.</summary>
+        AgreementDefinition ReadAgreement(List<ExpressionSyntax> arguments) =>
+            new()
+            {
+                Number = arguments.Count > 0 ? ReadEnumMember<GrammaticalNumber>(arguments[0]) : GrammaticalNumber.Unspecified,
+                Kind = arguments.Count > 1 ? ReadString(arguments[1]) : null,
+            };
+
+        /// <summary>A property named by <c>nameof(Property)</c>, or by its name as a string literal.</summary>
+        string ReadPropertyName(ExpressionSyntax expression) =>
+            expression is InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "nameof" }, ArgumentList.Arguments: [{ Expression: IdentifierNameSyntax property }] }
+                ? property.Identifier.Text
+                : ReadString(expression);
 
         T ReadFlags<T>(ExpressionSyntax expression) where T : struct, Enum =>
             expression is BinaryExpressionSyntax { RawKind: (int)SyntaxKind.BitwiseOrExpression } or

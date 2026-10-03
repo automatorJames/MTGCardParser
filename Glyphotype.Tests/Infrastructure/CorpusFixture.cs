@@ -8,8 +8,8 @@ public sealed class CorpusFixture
 {
     readonly Dictionary<string, ProcessedDocument> _processedByText;
 
-    /// <summary>The test grammar: every Glyph type in this assembly, under the whole-segment rule the app runs with.</summary>
-    public GlyphGrammar Grammar { get; } = GlyphGrammar.FromAssemblies([typeof(CorpusFixture).Assembly], allowPartialSegmentMatches: false);
+    /// <summary>The test grammar: every Glyph type in this assembly, under the whole-clause rule the app runs with.</summary>
+    public GlyphGrammar Grammar { get; } = GlyphGrammar.FromAssemblies([typeof(CorpusFixture).Assembly], allowPartialClauseMatches: false);
 
     public IReadOnlyList<ProcessedDocument> ProcessedDocuments { get; }
 

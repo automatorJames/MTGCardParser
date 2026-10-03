@@ -50,7 +50,7 @@
     }
     else
     {
-        <span class=@GetClass() style=@GetStyle() data-path=@CaptureTrace.HoverPath>
+        <span class=@GetClass() style=@GetStyle() title=@GetTitle() data-path=@CaptureTrace.HoverPath>
             @foreach (var segment in CaptureTraceWalker.GetSegments(CaptureTrace))
             {
                 if (segment.Child is { } child)
@@ -161,6 +161,10 @@
         style.Append($" padding-bottom: {CorpusCapturesFormatting.GetUnderlinePaddingPx(EffectiveDepth)}px;");
         return style.ToString();
     }
+
+    /// <summary>For a back-reference, what it was resolved to (see <see cref="BackReferenceDisplay"/>) - null, so no tooltip at all, for anything else.</summary>
+    string GetTitle() =>
+        CaptureTrace.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference ? $"{CaptureTrace.CaptureValue} {BackReferenceDisplay.Describe(backReference)}" : null;
 
     string GetClass()
     {

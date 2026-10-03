@@ -50,7 +50,7 @@ public class Program
                 SourceDirectory: glyphSources.Directory,
                 SourceNamespace: glyphSources.Namespace),
             root: Path.Combine(appData, "workspaces"),
-            allowPartialSegmentMatches: GlobalSettings.Current.AllowPartialSegmentMatches,
+            allowPartialClauseMatches: GlobalSettings.Current.AllowPartialClauseMatches,
             legacyWorkingDefinitionPath: Path.Combine(appData, "working-grammar.json")));
 
         // What every tab shows: the corpus as the active workspace's grammar tokenizes it.

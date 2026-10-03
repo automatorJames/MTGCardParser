@@ -80,7 +80,7 @@ public class BuiltRegex
         _regexBricks = regexBricks;
         MinifiedRegex = string.Join("", _regexBricks.Select(x => x.Regex)).Replace(EscapedSpace, " ");
 
-        // Each built on first use: a type may only ever be matched one way (with the whole-segment rule on,
+        // Each built on first use: a type may only ever be matched one way (with the whole-clause rule on,
         // nearly every top-level type only ever has to fill its scope).
         _anchoredRegex = new(() => Compile($@"\G({MinifiedRegex})"));
         _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));

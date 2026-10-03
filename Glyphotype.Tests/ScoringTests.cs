@@ -51,7 +51,7 @@ public class ScoringTests(CorpusFixture corpus)
         // (The test grammar itself doesn't compress the test corpus, and shouldn't be expected to: the corpus
         // exercises each glyph a handful of times, amid near misses, for coverage rather than repetition.)
         var score = MdlScorer.Score(corpus.Grammar, corpus.ProcessedDocuments);
-        var empty = Score(new GlyphGrammar([], allowPartialSegmentMatches: false), TestCorpus.Documents);
+        var empty = Score(new GlyphGrammar([], allowPartialClauseMatches: false), TestCorpus.Documents);
 
         Assert.Equal(score.GrammarBits + score.ComponentBits.Values.Sum(), score.TotalBits, precision: 6);
         Assert.Equal(empty.TotalBits, score.BaselineBits, precision: 6);
@@ -86,9 +86,9 @@ public class ScoringTests(CorpusFixture corpus)
             Vocabularies = [new() { Name = "Parasite", Members = parasites.Select(x => new VocabularyMemberDefinition { Name = char.ToUpper(x[0]) + x[1..] }).ToList() }],
         };
 
-        var none = Score(new GlyphGrammar([], allowPartialSegmentMatches: false), documents);
-        var literal = Score(GlyphGrammar.FromDefinition(literals, allowPartialSegmentMatches: false), documents);
-        var templated = Score(GlyphGrammar.FromDefinition(template, allowPartialSegmentMatches: false), documents);
+        var none = Score(new GlyphGrammar([], allowPartialClauseMatches: false), documents);
+        var literal = Score(GlyphGrammar.FromDefinition(literals, allowPartialClauseMatches: false), documents);
+        var templated = Score(GlyphGrammar.FromDefinition(template, allowPartialClauseMatches: false), documents);
 
         Assert.Equal(1, templated.Coverage);
         Assert.Equal(1, literal.Coverage);
@@ -127,8 +127,8 @@ public class ScoringTests(CorpusFixture corpus)
             .. Enumerable.Range(0, 40).Select(i => new VocabularyMemberDefinition { Name = $"Unused{i}", Patterns = [$"unused parasite number {i}"] }),
         ]);
 
-        var lean = Score(GlyphGrammar.FromDefinition(used, allowPartialSegmentMatches: false), documents);
-        var full = Score(GlyphGrammar.FromDefinition(padded, allowPartialSegmentMatches: false), documents);
+        var lean = Score(GlyphGrammar.FromDefinition(used, allowPartialClauseMatches: false), documents);
+        var full = Score(GlyphGrammar.FromDefinition(padded, allowPartialClauseMatches: false), documents);
 
         Assert.Equal(lean.TotalBits, full.TotalBits, precision: 6);
         Assert.Equal(2, full.VocabularyMembersUsed["Parasite"]);
@@ -151,7 +151,7 @@ public class ScoringTests(CorpusFixture corpus)
                 },
             ],
             Vocabularies = [new() { Name = "Parasite", Members = [new() { Name = "Fleas" }] }],
-        }, allowPartialSegmentMatches: false);
+        }, allowPartialClauseMatches: false);
 
         IEnumerable<TestDocument> Corpus(string leftover) => Enumerable.Range(0, 20)
             .Select(i => new TestDocument(TestDocument.Unnamed, $"my dog has fleas.\n{leftover} everywhere.", []));

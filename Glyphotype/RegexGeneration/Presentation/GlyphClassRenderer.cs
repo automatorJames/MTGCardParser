@@ -443,14 +443,44 @@ public static class GlyphClassRenderer
         if (name.EndsWith("Attribute", StringComparison.Ordinal))
             name = name[..^"Attribute".Length];
 
-        var arguments = attribute.ConstructorArguments.Select(FormatAttributeArgument).ToList();
-        return arguments.Count > 0 ? $"{name}({string.Join(", ", arguments)})" : name;
+        // Compiled metadata records every constructor argument, optional ones included - drop the trailing ones
+        // still at their defaults, as the attribute would have been written ([Introduces], not [Introduces(0, null)]).
+        var parameters = attribute.Constructor.GetParameters();
+        var arguments = attribute.ConstructorArguments.ToList();
+
+        while (arguments.Count > 0 && IsDefault(arguments[^1], parameters[arguments.Count - 1]))
+            arguments.RemoveAt(arguments.Count - 1);
+
+        var formatted = arguments.Select(FormatAttributeArgument).ToList();
+        return formatted.Count > 0 ? $"{name}({string.Join(", ", formatted)})" : name;
+    }
+
+    /// <summary>Whether <paramref name="argument"/> is just <paramref name="parameter"/>'s default value.</summary>
+    static bool IsDefault(CustomAttributeTypedArgument argument, ParameterInfo parameter)
+    {
+        if (!parameter.HasDefaultValue)
+            return false;
+
+        var value = argument.Value;
+        var defaultValue = parameter.RawDefaultValue;
+
+        if (value is null || defaultValue is null)
+            return value is null && defaultValue is null;
+
+        // Both are read raw, so an enum's argument and its parameter's default are each its underlying value.
+        return argument.ArgumentType.IsEnum
+            ? Convert.ToInt64(value) == Convert.ToInt64(defaultValue)
+            : value.Equals(defaultValue);
     }
 
     static string FormatAttributeArgument(CustomAttributeTypedArgument argument)
     {
         if (argument.Value is IReadOnlyCollection<CustomAttributeTypedArgument> arrayValue)
             return string.Join(", ", arrayValue.Select(FormatAttributeArgument));
+
+        // An enum argument is recorded as its underlying value - spelled back out by name, as it was written.
+        if (argument.ArgumentType.IsEnum && argument.Value is not null)
+            return $"{argument.ArgumentType.Name}.{Enum.ToObject(argument.ArgumentType, argument.Value)}";
 
         return argument.Value switch
         {

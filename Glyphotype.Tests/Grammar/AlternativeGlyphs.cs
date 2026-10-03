@@ -57,8 +57,7 @@ public class OffersTreat : Glyph
     public Treat Treat { get; set; }
 }
 
-/// <summary>A pure <see cref="OneOf{T1,T2}"/> alias, made top-level by class attributes alone.</summary>
-[MustMatchWholeLine]
+/// <summary>A pure <see cref="OneOf{T1,T2}"/> alias: naming it is all it takes to make it top-level.</summary>
 public class DayHeading : OneOf<Weekday?, Holiday?>
 {
 }

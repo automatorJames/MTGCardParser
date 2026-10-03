@@ -15,14 +15,29 @@ public class GlyphNode : NamedGroupNode
 
     protected override void AddReflectedChildren(List<RegexNode> children)
     {
-        foreach (var nib in Navigation.GlyphTypeConfiguration.Nibs)
+        var nibs = Navigation.GlyphTypeConfiguration.Nibs.ToList();
+
+        // A closing period the whole-clause rule makes redundant is dropped: the Tokenizer emits it as a ClauseBreak.
+        if (ClauseBreak.EndsWithPeriod(Navigation.NodeType) && ClauseBreak.IsTrailingPeriodRedundant(Navigation.NodeType))
+        {
+            var last = ClauseBreak.WithoutTrailingPeriod(nibs[^1]);
+            nibs.RemoveAt(nibs.Count - 1);
+
+            if (last is not null)
+                nibs.Add(last);
+        }
+
+        foreach (var nib in nibs)
             if (nib is PropertyNib propertyNib)
                 children.Add(GetNodeForNavigaton(this, propertyNib.Navigation));
             else
                 // Pass nib itself, not nib.Text - TextNode's own optional-wrapping depends on nib's actual
                 // runtime type (e.g. OptionalNib), which passing just the string would silently discard via
                 // the implicit string->Nib conversion (producing a fresh, always-non-optional plain Nib).
-                children.Add(new TextNode(this, nib));
+                // A literal nib with a period inside it becomes one TextNode per piece, the period a
+                // clause-break nib of its own - so the graph, not the authored Nibs, carries the split.
+                foreach (var piece in ClauseBreak.SplitAtPeriods(nib))
+                    children.Add(new TextNode(this, piece));
     }
 
     /// <summary>

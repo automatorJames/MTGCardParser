@@ -65,24 +65,11 @@ public abstract class Glyph : CaptureUnit
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
-        // A dependent only ever matches as a subgraph nested inside some parent's own pattern - its
-        // parent must match first for the dependent to even be reached. MustMatchWholeLine, on the other
-        // hand, means the type is only ever a candidate when its match consumes an entire tokenization
-        // pass by itself (see Tokenizer/RegexGraph.TryMatch). A type can't be both: by the time a
-        // dependent is reached, it's already partway through its parent's own line-spanning match, so it
-        // can never independently be "the whole line" itself.
-        if (Type.IsDefined(typeof(DependentAttribute)) && Type.IsDefined(typeof(MustMatchWholeLineAttribute)))
-            return $"{Type.Name} cannot be both {nameof(DependentAttribute)} and {nameof(MustMatchWholeLineAttribute)} - a dependent is always matched as a subgraph of a parent, so it can never independently match a whole line";
-
-        // AllowPartialSegmentMatch exists solely to exempt a top-level type from the Tokenizer's
-        // whole-segment requirement. A dependent is never a top-level candidate in the first place, and a
-        // MustMatchWholeLine type is held to a rule strictly stricter than the one being opted out of -
-        // so in either pairing the attribute is dead weight that reads like it's doing something.
-        if (Type.IsDefined(typeof(AllowPartialSegmentMatchAttribute)) && Type.IsDefined(typeof(DependentAttribute)))
-            return $"{Type.Name} cannot be both {nameof(AllowPartialSegmentMatchAttribute)} and {nameof(DependentAttribute)} - a dependent is only ever matched as a subgraph of a parent, so it is never subject to the whole-segment requirement this opts out of";
-
-        if (Type.IsDefined(typeof(AllowPartialSegmentMatchAttribute)) && Type.IsDefined(typeof(MustMatchWholeLineAttribute)))
-            return $"{Type.Name} cannot be both {nameof(AllowPartialSegmentMatchAttribute)} and {nameof(MustMatchWholeLineAttribute)} - requiring a whole line is strictly stricter than requiring a whole segment, so opting out of the latter would have no effect";
+        // AllowPartialClauseMatch exists solely to exempt a top-level type from the Tokenizer's
+        // whole-clause requirement. A dependent is never a top-level candidate in the first place, so on one
+        // the attribute is dead weight that reads like it's doing something.
+        if (Type.IsDefined(typeof(AllowPartialClauseMatchAttribute)) && Type.IsDefined(typeof(DependentAttribute)))
+            return $"{Type.Name} cannot be both {nameof(AllowPartialClauseMatchAttribute)} and {nameof(DependentAttribute)} - a dependent is only ever matched as a subgraph of a parent, so it is never subject to the whole-clause requirement this opts out of";
 
         // DeclaredOnly still includes properties that override a base virtual member (e.g. Nibs,
         // Joiner), since C# generates a PropertyInfo on the derived type for those too. Excluding
@@ -122,6 +109,33 @@ public abstract class Glyph : CaptureUnit
 
         if (GetUnanchoredDynamicError() is string unanchoredDynamicError)
             return unanchoredDynamicError;
+
+        if (GetRefersToError(props) is string refersToError)
+            return refersToError;
+
+        if (Type.IsDefined(typeof(AgreementAttribute)) && this is not BackReference)
+            return $"{Type.Name} declares [Agreement] but isn't a {nameof(BackReference)} - only a back-reference has a referent to agree with (a referent's own features go on [Introduces])";
+
+        return null;
+    }
+
+    /// <summary>
+    /// <see cref="RefersToAttribute"/> binds a back-reference to a sibling capture, so it's refused anywhere else: on a
+    /// property that isn't a <see cref="BackReference"/> (nothing else refers to anything), or naming anything but
+    /// another of this type's own nib-bound properties (there'd be nothing for it to bind to).
+    /// </summary>
+    string GetRefersToError(PropertyInfo[] props)
+    {
+        foreach (var prop in props.Where(x => x.IsDefined(typeof(RefersToAttribute))))
+        {
+            var targetName = prop.GetCustomAttribute<RefersToAttribute>().PropertyName;
+
+            if (!typeof(BackReference).IsAssignableFrom(prop.PropertyType))
+                return $"{Type.Name}.{prop.Name} declares [RefersTo] but isn't a {nameof(BackReference)} - only a back-reference refers back to anything";
+
+            if (targetName == prop.Name || !NibBoundProps(Type).Any(x => x.Name == targetName))
+                return $"{Type.Name}.{prop.Name} declares [RefersTo(\"{targetName}\")], which names no other property of {Type.Name} - it can only bind to a sibling capture";
+        }
 
         return null;
     }
@@ -187,8 +201,8 @@ public abstract class Glyph : CaptureUnit
     /// the regex, so none of the below applies to it.
     /// <para>
     /// Subclassing one as a pure alias is fine, and is how a primitive becomes top-level: e.g.
-    /// <c>[MustMatchWholeLine] class ShoppingList : CompoundOf&lt;Ingredient&gt;</c> just gives a
-    /// <see cref="CompoundOf{T}"/> a name and class-level attributes. Extending one is valid C# but not a valid
+    /// <c>class ShoppingList : CompoundOf&lt;Ingredient&gt;;</c> just gives a <see cref="CompoundOf{T}"/> a name,
+    /// and room for class-level attributes. Extending one is valid C# but not a valid
     /// Glyph composition. With no <see cref="Nibs"/> override, the added properties are laid out in reflection
     /// order - unspecified, and in practice ahead of the inherited ones - so the regex silently expects them in
     /// the wrong place. With one, the subclass has to restate the primitive's internal layout (e.g.
@@ -226,7 +240,7 @@ public abstract class Glyph : CaptureUnit
         var primitiveKind = primitive.Name[..primitive.Name.IndexOf('`')];
 
         return $"{type.Name} subclasses {primitiveName} but declares its own members ({string.Join(", ", declaredProps)}). " +
-            $"A {primitiveKind} subclass may only alias it - giving it a name and class-level attributes such as [MustMatchWholeLine] - because a {primitiveKind}'s regex layout is fixed by the primitive itself. " +
+            $"A {primitiveKind} subclass may only alias it - giving it a name and class-level attributes such as [Dependent] - because a {primitiveKind}'s regex layout is fixed by the primitive itself. " +
             $"Added properties would be laid out in reflection order (unspecified, and in practice ahead of the inherited ones), so the regex would silently expect them in the wrong place; " +
             $"overriding {nameof(Nibs)} instead would mean restating {primitiveKind}'s internal layout by hand, which nothing validates. " +
             $"Instead, derive {type.Name} from {nameof(Glyph)} and compose: declare a {primitiveName} property alongside the new ones, and order them all explicitly in {nameof(Nibs)}";
@@ -347,6 +361,77 @@ public abstract class Glyph : CaptureUnit
         ?? GetPropertyTypeError(type)
         ?? GetNullabilityError(type)
         ?? GetOneOfTypeArgumentError(type);
+
+    /// <summary>A regex matching a literal period: <c>\.</c> not itself preceded by an escaping backslash.</summary>
+    static readonly Regex _escapedPeriod = new(@"(?<!\\)(?:\\\\)*\\\.");
+
+    /// <summary>
+    /// The period rules, which keep every period on a line a <see cref="ClauseBreak"/> the Tokenizer can see:
+    /// <list type="bullet">
+    /// <item>A plain literal nib may have a period inside it only if <paramref name="allowPeriodsInLiteralNibs"/>
+    /// (see <see cref="GlobalSettings.AllowPeriodsInLiteralNibs"/>) - it's then split around it into a clause-break
+    /// nib of its own (see <see cref="ClauseBreak.SplitAtPeriods"/>).</item>
+    /// <item>Nothing else may match a literal period: not a pattern (<see cref="PatternNib"/>, or a
+    /// <see cref="RegexPatternAttribute"/> on the type, a dynamic property or an enum member), an
+    /// <see cref="Alt"/> or an <see cref="Opt"/> - none can be split around a break, so a period in one could
+    /// only ever match by swallowing it.</item>
+    /// <item>A type may end with a period (bare <c>"."</c> nib included) only where it's redundant, and so dropped
+    /// (see <see cref="ClauseBreak.IsTrailingPeriodRedundant"/>): a clause's closing period is the Tokenizer's own
+    /// <see cref="ClauseBreak"/>, never part of a Glyph. Not, then, on a dependent or partial-match type, nor on
+    /// one <paramref name="isUsedAsProperty"/> by another glyph - in each, the period is a real constraint the
+    /// type can't keep.</item>
+    /// </list>
+    /// Run by <see cref="GlyphGrammar"/> after every graph is built, since both the setting and which types nest
+    /// which are the grammar's.
+    /// </summary>
+    public static string GetPeriodError(Type type, bool allowPeriodsInLiteralNibs, bool isUsedAsProperty)
+    {
+        const string useClauseBreakNib = "write the period as a bare \".\" nib of its own instead";
+        var textNibs = GlyphTypeCache.GetConfiguration(type).Nibs.Where(x => x is not PropertyNib).ToList();
+
+        foreach (var nib in textNibs)
+        {
+            var error = nib switch
+            {
+                PatternNib or OptionalNib { Inner: PatternNib } when _escapedPeriod.IsMatch(nib.Regex) =>
+                    $"the pattern \"{nib.Regex}\" matches a literal period, which a pattern can't be split around - {useClauseBreakNib}",
+                NibAlternatives alternatives when alternatives.Alternatives.Any(x => x.Contains(ClauseBreak.Period)) =>
+                    $"Alt(\"{string.Join("\", \"", alternatives.Alternatives)}\") contains a period, which an alternation can't be split around - {useClauseBreakNib}",
+                OptionalNib { Inner: not PatternNib } when nib.Text.Contains(ClauseBreak.Period) =>
+                    $"Opt(\"{nib.Text}\") contains a period, and a clause break can't be optional - {useClauseBreakNib}",
+                _ when !allowPeriodsInLiteralNibs && ClauseBreak.IsSplittable(nib) =>
+                    $"the nib \"{nib.Text}\" contains a period, which this grammar doesn't allow in literal text ({nameof(GlobalSettings)}.{nameof(GlobalSettings.AllowPeriodsInLiteralNibs)} is off) - {useClauseBreakNib}",
+                _ => null,
+            };
+
+            if (error is not null)
+                return error;
+        }
+
+        var graph = GlyphTypeCache.GetRegexGraph(type);
+
+        var propertyPatterns = graph.RootNode.Children.OfType<DynamicGlyphNode>()
+            .SelectMany(x => x.Children.OfType<TextNode>().Select(y => (Owner: x.Navigation.Prop?.Name, Pattern: y.Text)))
+            .Concat(graph.RootNode.Children.OfType<EnumNode>()
+                .SelectMany(x => x.Children.OfType<EnumMemberNode>().Select(y => (Owner: $"{x.Navigation.UnderlyingType.Name}.{y.Name}", Pattern: y.RegexString))));
+
+        if (propertyPatterns.FirstOrDefault(x => _escapedPeriod.IsMatch(x.Pattern)) is { Pattern: not null } offending)
+            return $"{offending.Owner}'s pattern \"{offending.Pattern}\" matches a literal period, which a pattern can't be split around - {useClauseBreakNib}";
+
+        // Only a plain literal nib is left to check: a pattern, Alt or Opt with a period in it was refused above.
+        if (!ClauseBreak.EndsWithPeriod(type))
+            return null;
+
+        var where =
+            type.IsDefined(typeof(DependentAttribute)) ? "it's [Dependent], so that period would fall inside its parent's match"
+            : type.IsDefined(typeof(AllowPartialClauseMatchAttribute)) ? "it's [AllowPartialClauseMatch], so that period would be what stops it matching partway through a clause"
+            : isUsedAsProperty ? "another glyph uses it as a property, so that period would fall inside that glyph's match"
+            : null;
+
+        return where is null ? null
+            : $"{type.Name} ends with a period, but {where} - and a clause's closing period is a {nameof(ClauseBreak)} the Tokenizer emits between Glyphs, never part of one. " +
+              $"Drop it, and if the period belongs inside a larger match, write it there as a bare \".\" nib.";
+    }
 
     /// <summary>A Glyph type's publicly settable properties below <see cref="Glyph"/> itself (so not, e.g., <see cref="CaptureUnit.CaptureContext"/>) - the ones that are nib-bound.</summary>
     static IEnumerable<PropertyInfo> NibBoundProps(Type type) =>

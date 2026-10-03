@@ -52,7 +52,7 @@ public sealed class WorkspaceManager
 
     readonly SourceWorkspace _source;
     readonly string _root;
-    readonly bool _allowPartialSegmentMatches;
+    readonly bool _allowPartialClauseMatches;
     readonly IReadOnlyList<IDocument> _documents;
     readonly object _gate = new();
     readonly List<WorkspaceInfo> _workspaces = [];
@@ -62,11 +62,11 @@ public sealed class WorkspaceManager
 
     /// <param name="root">The folder every workspace's files are kept under.</param>
     /// <param name="legacyWorkingDefinitionPath">Where the source grammar's working definition was kept before workspaces, if anywhere: moved into its workspace on first run.</param>
-    public WorkspaceManager(SourceWorkspace source, string root, bool allowPartialSegmentMatches, string legacyWorkingDefinitionPath = null)
+    public WorkspaceManager(SourceWorkspace source, string root, bool allowPartialClauseMatches, string legacyWorkingDefinitionPath = null)
     {
         _source = source;
         _root = root;
-        _allowPartialSegmentMatches = allowPartialSegmentMatches;
+        _allowPartialClauseMatches = allowPartialClauseMatches;
         _documents = source.Documents.Select(x => x.Document).ToList();
 
         var active = LoadIndex();
@@ -267,11 +267,11 @@ public sealed class WorkspaceManager
 
         if (workspace.Kind == WorkspaceKind.Source)
             return _sourceWorkbench ??= new GrammarWorkbench(_source.Grammar, _source.Documents, new(
-                Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace, _allowPartialSegmentMatches,
+                Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace, _allowPartialClauseMatches,
                 HistoryPath: Path.Combine(folder, _historyFileName)));
 
         return new GrammarWorkbench(ReadBaseline(workspace), _documents, new(
-            Path.Combine(folder, _workingFileName), SourceDirectory: null, SourceNamespace: SuggestNamespace(workspace.Name), _allowPartialSegmentMatches,
+            Path.Combine(folder, _workingFileName), SourceDirectory: null, SourceNamespace: SuggestNamespace(workspace.Name), _allowPartialClauseMatches,
             BaselinePath: Path.Combine(folder, _baselineFileName),
             HistoryPath: Path.Combine(folder, _historyFileName)));
     }

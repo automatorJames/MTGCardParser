@@ -28,46 +28,26 @@ public class RegexGraph
     public BuiltRegex BuiltRegex { get; }
 
     /// <summary>
-    /// Whether <see cref="RootGlyphType"/> carries <see cref="MustMatchWholeLineAttribute"/>: this type
-    /// claims an entire line or nothing, so it is only ever a candidate at the tokenization scope's own
-    /// start, and its match has to run all the way to the scope's end. The <em>strictest</em> of the three
-    /// span rules - see the table on <see cref="AllowsPartialSegmentMatch"/>.
+    /// Whether <see cref="RootGlyphType"/> carries <see cref="AllowPartialClauseMatchAttribute"/>: this
+    /// type may stop partway through a clause, so it is exempt from the whole-clause requirement the
+    /// Tokenizer otherwise imposes when <see cref="GlobalSettings.AllowPartialClauseMatches"/> is false.
     /// <para>
-    /// Enforced here rather than by the Tokenizer, since it's a fact about the type rather than about
-    /// where the cursor happens to be: <see cref="TryMatch(string, int, int, out Glyph, bool)"/> applies
-    /// it to every call regardless of what the caller asked for. The Tokenizer only contributes the
-    /// candidacy half (skipping the type once the cursor has left the scope start), which it can't learn
-    /// from here.
-    /// </para>
-    /// </summary>
-    public bool MustMatchWholeLine { get; }
-
-    /// <summary>
-    /// Whether <see cref="RootGlyphType"/> carries <see cref="AllowPartialSegmentMatchAttribute"/>: this
-    /// type may stop partway through a clause, so it is exempt from the whole-segment requirement the
-    /// Tokenizer otherwise imposes when <see cref="GlobalSettings.AllowPartialSegmentMatches"/> is false.
-    /// The <em>loosest</em> of the three span rules.
-    /// <para>
-    /// The three are answers to two different questions, which is why they aren't points on one scale.
-    /// <c>MustMatchWholeLine</c> and this one answer "how much must a match cover?"; they are opposite
-    /// ends of that axis and are mutually exclusive (enforced in <see cref="Glyph.ValidateStructure"/>).
-    /// <see cref="SpansClauses"/> answers a different question - "may a match cross a period at all?" -
-    /// and only has anything to say in the default case between them:
+    /// The two span rules, and <see cref="SpansClauses"/>, which answers a different question - "may a match
+    /// cross a period at all?" - and only has anything to say under the default:
     /// </para>
     /// <list type="table">
     /// <listheader><term>rule</term><description>must start at / must end at</description></listheader>
-    /// <item><term>MustMatchWholeLine</term><description>scope start / scope end - every clause on the line, always, whatever the global setting says</description></item>
     /// <item><term>(default)</term><description>clause start / first clause boundary - exactly one clause, or with <see cref="SpansClauses"/>, any whole number of them</description></item>
-    /// <item><term>AllowsPartialSegmentMatch</term><description>anywhere / any word boundary - the pre-setting behavior, kept per-type</description></item>
+    /// <item><term>AllowsPartialClauseMatch</term><description>anywhere / any word boundary - the pre-setting behavior, kept per-type</description></item>
     /// </list>
     /// <para>
-    /// Unlike <see cref="MustMatchWholeLine"/>, nothing in this class reads this one: exempting a type
-    /// just means the Tokenizer hands it the ordinary scope and asks for an ordinary match, so there's no
-    /// rule left here to apply. It's purely a statement about candidacy, and only meaningful while the
-    /// global setting is false - with the setting true, every type already matches this way.
+    /// Nothing in this class reads it: exempting a type just means the Tokenizer hands it the ordinary scope
+    /// and asks for an ordinary match, so there's no rule left here to apply. It's purely a statement about
+    /// candidacy, and only meaningful while the global setting is false - with the setting true, every type
+    /// already matches this way.
     /// </para>
     /// </summary>
-    public bool AllowsPartialSegmentMatch { get; }
+    public bool AllowsPartialClauseMatch { get; }
 
     /// <summary>
     /// Whether <see cref="RootGlyphType"/> declares a bare <c>"."</c> nib anywhere in its graph, i.e.
@@ -75,10 +55,9 @@ public class RegexGraph
     /// boundary rather than being capped at the first - the Tokenizer offers it each successive one in
     /// turn, shortest first, so it settles on the fewest clauses that satisfy it.
     /// <para>
-    /// Orthogonal to the two attributes above, not a third point on their scale: they set how much a match
-    /// must cover, this sets whether it may cross a period while doing so. It only changes anything in the
-    /// default case, since <see cref="MustMatchWholeLine"/> already crosses every period on the line and
-    /// <see cref="AllowsPartialSegmentMatch"/> opts out of clause accounting altogether.
+    /// Orthogonal to <see cref="AllowsPartialClauseMatch"/>, not a point on its scale: that sets how much a
+    /// match must cover, this sets whether it may cross a period while doing so. It only changes anything
+    /// under the default rule, since a partial-match type opts out of clause accounting altogether.
     /// </para>
     /// <para>
     /// Keyed off an explicit period nib rather than "may this pattern contain a period", because the
@@ -108,8 +87,7 @@ public class RegexGraph
         RootGlyphType = rootGlyphType;
         IsDependent = rootGlyphType.IsDefined(typeof(DependentAttribute));
         RootNode = rootNode;
-        MustMatchWholeLine = rootGlyphType.IsDefined(typeof(MustMatchWholeLineAttribute));
-        AllowsPartialSegmentMatch = rootGlyphType.IsDefined(typeof(AllowPartialSegmentMatchAttribute));
+        AllowsPartialClauseMatch = rootGlyphType.IsDefined(typeof(AllowPartialClauseMatchAttribute));
         SpansClauses = ContainsClauseBreak(rootNode);
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);
@@ -199,10 +177,9 @@ public class RegexGraph
     /// Evaluates if the source text at the current index satisfies the regex and the scope's boundary rules.
     /// </summary>
     /// <param name="mustConsumeWholeScope">
-    /// Forces the whole-scope rule described on <see cref="MustMatchWholeLine"/> onto this one call, for a
-    /// type that doesn't carry <see cref="MustMatchWholeLineAttribute"/> itself. How the Tokenizer imposes
-    /// its whole-segment requirement: it narrows <paramref name="endIndex"/> to the end of the current
-    /// segment and then demands the match fill it, which is the same shape of rule against a smaller scope.
+    /// Requires the match to fill the scope exactly, rather than end at any boundary within it. How the
+    /// Tokenizer imposes its whole-clause requirement: it narrows <paramref name="endIndex"/> to the end of the
+    /// current clause and then demands the match fill it.
     /// </param>
     /// <param name="tokenizer">
     /// The Tokenizer this match is part of, which any <see cref="DynamicGlyph"/> in it resolves through - so a
@@ -253,24 +230,17 @@ public class RegexGraph
         glyph = null;
         narrowedScopeEnd = -1;
 
-        // MustMatchWholeLine imposes the same "fill the scope" requirement the per-call flag does, so it
-        // gets the same bounded window - otherwise a greedy whole-line type would overshoot and be thrown
-        // out by the range check instead of being backtracked into filling the line.
-        bool mustFillScope = MustMatchWholeLine || mustConsumeWholeScope;
-
         var match =
-            mustFillScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
+            mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
             : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex)
             : BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
 
         int matchEndIndex = match.Index + match.Length;
 
-        // A MustMatchWholeLine type is a special case: nothing else may share its tokenization pass, so
-        // it must consume the entire requested scope - ending at a boundary char partway through isn't
-        // good enough. mustConsumeWholeScope asks for that same treatment per-call, which is how the
-        // Tokenizer enforces its whole-segment requirement against a segment-sized endIndex. Every other
-        // type keeps the normal "end of scope, or followed by a boundary char" partial-match allowance.
-        bool endsAtBoundary = mustFillScope
+        // A match held to the whole scope (how the Tokenizer enforces its whole-clause requirement against a
+        // clause-sized endIndex) must consume all of it - ending at a boundary char partway through isn't good
+        // enough. Otherwise the normal "end of scope, or followed by a boundary char" allowance applies.
+        bool endsAtBoundary = mustConsumeWholeScope
             ? matchEndIndex == endIndex
             : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
 
@@ -279,7 +249,7 @@ public class RegexGraph
             && match.Index == currentIndex  // 2. Anchoring:    Must start exactly at currentIndex
             && match.Length > 0             // 3. Length:       Must be non-empty
             && matchEndIndex <= endIndex    // 4. Scope:        Must not exceed endIndex
-            && endsAtBoundary;              // 5. Boundary:     Must end at end index, or a boundary char, or if applicable match whole line
+            && endsAtBoundary;              // 5. Boundary:     Must end at end index, or a boundary char, or fill the scope if required
 
         if (!matchIsValid)
             return false;

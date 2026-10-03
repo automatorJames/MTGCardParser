@@ -15,5 +15,6 @@ global using Glyphotype.GlyphAnalysisDTOs.WordTrees;
 global using Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
 global using Glyphotype.Tokenizers;
 global using Glyphotype.GlyphPrimitives;
+global using Glyphotype.BackReferences;
 global using static Glyphotype.Extensions;
 global using MTGGlyphs.Data;

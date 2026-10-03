@@ -67,12 +67,13 @@ static class DefinitionReader
             Markers = type.GetInterfaces().Where(markerTypes.Contains).Select(x => x.Name).Order(StringComparer.Ordinal).ToList(),
             IsDependent = type.IsDefined(typeof(DependentAttribute), inherit: false),
             SpanRule =
-                type.IsDefined(typeof(MustMatchWholeLineAttribute), inherit: false) ? SpanRule.WholeLine
-                : type.IsDefined(typeof(AllowPartialSegmentMatchAttribute), inherit: false) ? SpanRule.PartialSegment
+                type.IsDefined(typeof(AllowPartialClauseMatchAttribute), inherit: false) ? SpanRule.PartialClause
                 : SpanRule.Default,
             TokenizationOrder = type.GetCustomAttribute<TokenizationOrderAttribute>(inherit: false)?.Order,
             Patterns = type.GetCustomAttribute<RegexPatternAttribute>(inherit: false)?.Patterns ?? [],
             JoinedBy = type.GetCustomAttribute<JoinedByAttribute>(inherit: false)?.Joiner,
+            Introduces = AgreementDefinition.Of(type.GetCustomAttribute<IntroducesAttribute>(inherit: false)),
+            Agreement = AgreementDefinition.Of(type.GetCustomAttribute<AgreementAttribute>(inherit: false)),
         };
     }
 
@@ -86,10 +87,13 @@ static class DefinitionReader
         if (baseType == typeof(GlyphOneOf))
             return (GlyphKind.GlyphOneOf, null);
 
+        if (baseType == typeof(BackReference))
+            return (GlyphKind.BackReference, null);
+
         if (baseType.IsGenericType && ReadTypeReference(baseType) is { Kind: not TypeReferenceKind.Glyph } primitive)
             return (GlyphKind.Alias, primitive);
 
-        throw new NotSupportedException($"{type.Name} derives from {baseType.Name}, but a definition's base must be {nameof(Glyph)}, {nameof(GlyphOneOf)} or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)");
+        throw new NotSupportedException($"{type.Name} derives from {baseType.Name}, but a definition's base must be {nameof(Glyph)}, {nameof(GlyphOneOf)}, {nameof(BackReference)} or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)");
     }
 
     static PropertyDefinition ReadProperty(PropertyInfo prop) =>
@@ -102,6 +106,8 @@ static class DefinitionReader
             Patterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [],
             JoinedBy = prop.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
             TypeFilter = GetTypeFilter(prop)?.Name,
+            Introduces = AgreementDefinition.Of(prop.GetCustomAttribute<IntroducesAttribute>()),
+            RefersTo = prop.GetCustomAttribute<RefersToAttribute>()?.PropertyName,
         };
 
     static NibDefinition ReadNib(Nib nib) =>

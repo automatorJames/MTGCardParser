@@ -109,6 +109,7 @@ public static class GrammarEmitter
             {
                 GlyphKind.Glyph => typeof(Glyph),
                 GlyphKind.GlyphOneOf => typeof(GlyphOneOf),
+                GlyphKind.BackReference => typeof(BackReference),
                 GlyphKind.Alias when glyph.AliasOf is { Kind: TypeReferenceKind.OneOf or TypeReferenceKind.CompoundOf or TypeReferenceKind.ManyOf or TypeReferenceKind.OptionalOf } => Resolve(glyph.AliasOf),
                 _ => throw new InvalidOperationException($"{glyph.Name} is an alias, but not of a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)"),
             };
@@ -140,11 +141,8 @@ public static class GrammarEmitter
             if (glyph.IsDependent)
                 yield return Attribute<DependentAttribute>();
 
-            if (glyph.SpanRule == SpanRule.WholeLine)
-                yield return Attribute<MustMatchWholeLineAttribute>();
-
-            if (glyph.SpanRule == SpanRule.PartialSegment)
-                yield return Attribute<AllowPartialSegmentMatchAttribute>();
+            if (glyph.SpanRule == SpanRule.PartialClause)
+                yield return Attribute<AllowPartialClauseMatchAttribute>();
 
             if (glyph.TokenizationOrder is int order)
                 yield return Attribute<TokenizationOrderAttribute>(order);
@@ -154,6 +152,12 @@ public static class GrammarEmitter
 
             if (glyph.JoinedBy is Joiner joinedBy)
                 yield return Attribute<JoinedByAttribute>(joinedBy);
+
+            if (glyph.Introduces is { } introduces)
+                yield return Attribute<IntroducesAttribute>(introduces.Number, introduces.Kind);
+
+            if (glyph.Agreement is { } agreement)
+                yield return Attribute<AgreementAttribute>(agreement.Number, agreement.Kind);
         }
 
         void DefineAutoProperty(TypeBuilder typeBuilder, PropertyDefinition property)
@@ -193,6 +197,12 @@ public static class GrammarEmitter
 
             if (property.TypeFilter is not null)
                 propertyBuilder.SetCustomAttribute(Attribute<TypeFilterAttribute>(ResolveName(property.TypeFilter)));
+
+            if (property.Introduces is { } introduces)
+                propertyBuilder.SetCustomAttribute(Attribute<IntroducesAttribute>(introduces.Number, introduces.Kind));
+
+            if (property.RefersTo is not null)
+                propertyBuilder.SetCustomAttribute(Attribute<RefersToAttribute>(property.RefersTo));
         }
 
         static void DefineGetterOverride(TypeBuilder typeBuilder, string name, Type type, Action<ILGenerator> emitValue)

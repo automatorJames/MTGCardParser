@@ -31,14 +31,14 @@ public class DynamicGlyphNode : GlyphNode
         glyph = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);
         var captureValue = captureTrace.CaptureValue;
-        // allowPartialSegmentMatches is forced on regardless of the global setting: captureValue is a
-        // fragment carved out of one segment, not a segment of its own, so there's no whole-segment rule
+        // allowPartialClauseMatches is forced on regardless of the global setting: captureValue is a
+        // fragment carved out of one clause, not a clause of its own, so there's no whole-clause rule
         // that could sensibly apply to it - and the shortfall handling just below depends on getting back
         // the shorter resolved prefix that such a rule would reject outright, leaving nothing to narrow to.
         // Resolved through the same Tokenizer (so the same grammar) that made the enclosing match.
         var tokenizer = captureTrace.CaptureContext.Tokenizer ?? GlyphGrammar.Default.Tokenizer;
         var resolvedTokens = tokenizer.Tokenize(
-            captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialSegmentMatches: true);
+            captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: true);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
         if (resolvedTokens.FirstOrDefault() is UnmatchedString || resolvedTokens.OfType<Glyph>().FirstOrDefault() is not Glyph dynamicMatchToken)

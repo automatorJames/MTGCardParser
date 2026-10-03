@@ -305,3 +305,11 @@ public static class CoverageDisplay
         percent <= 0 ? "coverage-none" :
         "coverage-partial";
 }
+
+/// <summary>How an <see cref="Glyphotype.GlyphPrimitives.BackReference"/>'s resolution reads on the Corpus Captures page.</summary>
+public static class BackReferenceDisplay
+{
+    /// <summary>"→ “the baker”", or "→ unresolved" when nothing before it agreed with it.</summary>
+    public static string Describe(Glyphotype.GlyphPrimitives.BackReference backReference) =>
+        backReference.Antecedent is { } antecedent ? $"→ “{antecedent.Text}”" : "→ unresolved";
+}

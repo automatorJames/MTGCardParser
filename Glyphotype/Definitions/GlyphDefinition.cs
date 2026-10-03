@@ -11,19 +11,19 @@ public enum GlyphKind
 
     /// <summary>A pure alias of a generic primitive (see <see cref="GlyphDefinition.AliasOf"/>): a name and class-level attributes, nothing more.</summary>
     Alias,
+
+    /// <summary>Derives from <see cref="GlyphPrimitives.BackReference"/>: matched like a <see cref="Glyph"/>, then resolved to what it refers back to (see <see cref="GlyphDefinition.Agreement"/>).</summary>
+    BackReference,
 }
 
-/// <summary>How much of a line a top-level glyph's match must cover - the three span rules.</summary>
+/// <summary>How much of a clause a top-level glyph's match must cover.</summary>
 public enum SpanRule
 {
-    /// <summary>No attribute: governed by <see cref="GlobalSettings.AllowPartialSegmentMatches"/>.</summary>
+    /// <summary>No attribute: governed by <see cref="GlobalSettings.AllowPartialClauseMatches"/>.</summary>
     Default,
 
-    /// <summary><see cref="MustMatchWholeLineAttribute"/>.</summary>
-    WholeLine,
-
-    /// <summary><see cref="AllowPartialSegmentMatchAttribute"/>.</summary>
-    PartialSegment,
+    /// <summary><see cref="AllowPartialClauseMatchAttribute"/>.</summary>
+    PartialClause,
 }
 
 /// <summary>
@@ -73,6 +73,12 @@ public sealed record GlyphDefinition
 
     /// <summary>Class-level <see cref="JoinedByAttribute"/>, for a <see cref="CompoundOf{T}"/> alias.</summary>
     public Joiner? JoinedBy { get; init; }
+
+    /// <summary>Class-level <see cref="IntroducesAttribute"/>: every match is a referent, with these features. Null when it isn't one.</summary>
+    public AgreementDefinition Introduces { get; init; }
+
+    /// <summary><see cref="AgreementAttribute"/>, for an <see cref="GlyphKind.BackReference"/>: what its referent must be. Null for none.</summary>
+    public AgreementDefinition Agreement { get; init; }
 
     /// <summary>The names of the glyphs this one refers to directly - through its properties or the primitive it aliases.</summary>
     public IEnumerable<string> GetReferencedGlyphNames() =>

@@ -12,7 +12,7 @@ public class EngineRegressionTests
     static GlyphGrammar Build(string source)
     {
         var read = GlyphSourceReader.Read(source);
-        return GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialSegmentMatches: false);
+        return GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
     }
 
     const string _costs = """

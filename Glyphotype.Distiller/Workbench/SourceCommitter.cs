@@ -1,3 +1,4 @@
+using Glyphotype.Attributes.Quantifiers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -28,9 +29,27 @@ public sealed record SourceCommitPlan(IReadOnlyList<DeclarationEdit> Declaration
 /// </summary>
 public static class SourceCommitter
 {
-    /// <summary>The attributes a definition expresses: any other on a rewritten declaration is lost.</summary>
+    /// <summary>The attributes a definition expresses, by type name: any other on a rewritten declaration is lost.</summary>
     static readonly HashSet<string> _expressedAttributes =
-        ["Dependent", "MustMatchWholeLine", "AllowPartialSegmentMatch", "TokenizationOrder", "RegexPattern", "JoinedBy", "OptionalPlural", "Optional", "AllowUnmatched", "TypeFilter", "Color"];
+    [
+        nameof(DependentAttribute),
+        nameof(AllowPartialClauseMatchAttribute),
+        nameof(TokenizationOrderAttribute),
+        nameof(RegexPatternAttribute),
+        nameof(JoinedByAttribute),
+        nameof(OptionalPluralAttribute),
+        nameof(OptionalAttribute),
+        nameof(AllowUnmatchedAttribute),
+        nameof(TypeFilterAttribute),
+        nameof(ColorAttribute),
+        nameof(IntroducesAttribute),
+        nameof(AgreementAttribute),
+        nameof(RefersToAttribute),
+    ];
+
+    /// <summary>Whether the attribute written <paramref name="name"/> in source - with or without its "Attribute" suffix - is one a definition expresses.</summary>
+    static bool IsExpressed(string name) =>
+        _expressedAttributes.Contains(name.EndsWith("Attribute") ? name : name + "Attribute");
 
     /// <summary>
     /// Plans the edits that turn the sources under <paramref name="sourceDirectory"/> (which declare
@@ -84,7 +103,7 @@ public static class SourceCommitter
             notes.AddRange(existing.Node.AttributeLists
                 .SelectMany(x => x.Attributes)
                 .Select(x => x.Name.ToString())
-                .Where(x => !_expressedAttributes.Contains(x) && !_expressedAttributes.Contains(x.EndsWith("Attribute") ? x[..^9] : x))
+                .Where(x => !IsExpressed(x))
                 .Select(x => $"[{x}] isn't part of a definition, and is dropped"));
 
             AddSplice(spliceEdits, existing.Path, existing.Node.Span, replacement);

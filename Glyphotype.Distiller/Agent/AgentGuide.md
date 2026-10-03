@@ -174,16 +174,32 @@ floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing
 | Attribute | Effect |
 |---|---|
 | `[Dependent]` | only matched inside another glyph, never on its own |
-| `[MustMatchWholeLine]` | must cover the whole line |
-| `[AllowPartialSegmentMatch]` | see the rule below |
+| `[AllowPartialClauseMatch]` | see the rule below |
 | `[TokenizationOrder(n)]` | changes which glyph is tried first: n ≥ 0 goes before glyphs without one (lowest first), n < 0 goes after all of them |
 
 Without an order, glyphs with longer patterns are tried first, and the first glyph to match a clause wins it.
 
 **The whole-clause rule.** A top-level glyph must match an entire clause: everything between line starts and
 periods. Otherwise it doesn't match at all, so "the dog naps" won't match inside "the dog naps on monday".
-`[AllowPartialSegmentMatch]` relaxes this for one glyph. Use it sparingly, since partial matches hide unmodeled
+`[AllowPartialClauseMatch]` relaxes this for one glyph. Use it sparingly, since partial matches hide unmodeled
 text. For shared fragments, prefer `[Dependent]` glyphs nested inside whole-clause ones.
+
+**Periods.** Every period ends a clause, and the tokenizer emits it (along with any `)` or `"` straight after it) as
+a clause break, shown as ` . `. To cover several sentences, put the period inside a literal nib (`"by it. they
+can't be regenerated"`) or write it as its own `"."` nib. A clause's closing period is always a break, so one written
+at the end of a top-level glyph is simply dropped. It's an error on a `[Dependent]` or `[AllowPartialClauseMatch]`
+glyph, or on one another glyph uses as a property, because there the period would fall inside a larger match. No
+pattern, `Alt` or `Opt` may contain a period.
+
+**Back-references** ("it", "they", "that creature") are glyphs deriving from `BackReference`. They match like any glyph, and
+after the line is tokenized each one is resolved to the most recent earlier referent in its line that agrees with
+it. If nothing agrees, it stays unresolved and is counted.
+- `[Agreement(GrammaticalNumber.Plural)]` or `[Agreement(GrammaticalNumber.Singular, "creature")]` on the back-reference
+  sets what its referent must be. Write a pronoun whose number varies as one back-reference per number, combined with
+  `OneOf<It, They>`.
+- `[Introduces(GrammaticalNumber.Plural, "creature")]` on a property makes its captured value a referent. On a glyph
+  class, every match of the class is a referent. The arguments are optional.
+- `[RefersTo(nameof(Target))]` on a back-reference property binds it to a sibling property directly, skipping the search.
 
 ## Habits that work
 

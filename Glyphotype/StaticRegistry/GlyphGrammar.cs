@@ -17,7 +17,7 @@
 public sealed class GlyphGrammar
 {
     static readonly Lazy<GlyphGrammar> _default = new(() =>
-        new GlyphGrammar(LoadAllAssemblyTypes(), GlobalSettings.Current.AllowPartialSegmentMatches));
+        new GlyphGrammar(LoadAllAssemblyTypes(), GlobalSettings.Current.AllowPartialClauseMatches, GlobalSettings.Current.AllowPeriodsInLiteralNibs));
 
     /// <summary>
     /// The grammar of every Glyph type in the assemblies alongside the running one - Glyph types are defined by
@@ -31,8 +31,11 @@ public sealed class GlyphGrammar
     readonly List<Type> _candidateTypes;
     readonly Dictionary<string, Type> _typesByName = [];
 
-    /// <summary>Whether a top-level type may match only part of a segment - see <see cref="GlobalSettings.AllowPartialSegmentMatches"/>.</summary>
-    public bool AllowPartialSegmentMatches { get; }
+    /// <summary>Whether a top-level type may match only part of a clause - see <see cref="GlobalSettings.AllowPartialClauseMatches"/>.</summary>
+    public bool AllowPartialClauseMatches { get; }
+
+    /// <summary>Whether a literal nib may have a period inside it - see <see cref="GlobalSettings.AllowPeriodsInLiteralNibs"/>.</summary>
+    public bool AllowPeriodsInLiteralNibs { get; }
 
     /// <summary>
     /// Every Glyph type in play: each non-generic, non-abstract Glyph type given - dependents included - plus every
@@ -61,16 +64,17 @@ public sealed class GlyphGrammar
     public Tokenizer Tokenizer { get; private set; }
 
     /// <summary>Builds and validates a grammar from <paramref name="types"/> (any types; the Glyph types among them are used). Throws if any Glyph type in play is invalid.</summary>
-    public GlyphGrammar(IEnumerable<Type> types, bool allowPartialSegmentMatches)
+    public GlyphGrammar(IEnumerable<Type> types, bool allowPartialClauseMatches, bool allowPeriodsInLiteralNibs = true)
     {
         _candidateTypes = types.ToList();
-        AllowPartialSegmentMatches = allowPartialSegmentMatches;
+        AllowPartialClauseMatches = allowPartialClauseMatches;
+        AllowPeriodsInLiteralNibs = allowPeriodsInLiteralNibs;
         Build();
     }
 
     /// <summary>A grammar of every type in <paramref name="assemblies"/>.</summary>
-    public static GlyphGrammar FromAssemblies(IEnumerable<Assembly> assemblies, bool allowPartialSegmentMatches) =>
-        new(assemblies.SelectMany(GetLoadableTypes), allowPartialSegmentMatches);
+    public static GlyphGrammar FromAssemblies(IEnumerable<Assembly> assemblies, bool allowPartialClauseMatches, bool allowPeriodsInLiteralNibs = true) =>
+        new(assemblies.SelectMany(GetLoadableTypes), allowPartialClauseMatches, allowPeriodsInLiteralNibs);
 
     public List<CaptureUnit> Tokenize(string sourceText) =>
         Tokenizer.Tokenize(sourceText);
@@ -86,8 +90,8 @@ public sealed class GlyphGrammar
     /// Builds and validates a grammar from <paramref name="definition"/>, emitting its types first (see
     /// <see cref="GrammarEmitter.Emit"/>, which also describes <paramref name="knownTypes"/>).
     /// </summary>
-    public static GlyphGrammar FromDefinition(GrammarDefinition definition, bool allowPartialSegmentMatches, IEnumerable<Type> knownTypes = null) =>
-        new(GrammarEmitter.Emit(definition, knownTypes), allowPartialSegmentMatches);
+    public static GlyphGrammar FromDefinition(GrammarDefinition definition, bool allowPartialClauseMatches, IEnumerable<Type> knownTypes = null, bool allowPeriodsInLiteralNibs = true) =>
+        new(GrammarEmitter.Emit(definition, knownTypes), allowPartialClauseMatches, allowPeriodsInLiteralNibs);
 
     /// <summary>
     /// Runs every validation rule over <see cref="Types"/> and returns each failure as a "TypeName: message" string
@@ -95,7 +99,7 @@ public sealed class GlyphGrammar
     /// the full list of everything currently broken as data rather than as an exception.
     /// </summary>
     public List<string> GetStructuralValidationErrors() =>
-        GetStructuralValidationErrors(Types);
+        GetStructuralValidationErrors(Types, AllowPeriodsInLiteralNibs);
 
     /// <summary>Every concrete <see cref="CaptureUnit"/> type given to this grammar, plus Glyphotype's own (e.g. <see cref="UnmatchedString"/>), by name.</summary>
     public List<Type> GetAllCaptureUnitTypes() =>
@@ -136,7 +140,7 @@ public sealed class GlyphGrammar
         // everything only reachable via property nibs - so an authoring mistake anywhere in the graph stops
         // construction rather than surfacing later as a bad match. Runs as its own pass, after every graph is
         // built, since some rules read other types' graphs.
-        ThrowIfAny(GetStructuralValidationErrors(types), "One or more Glyph types failed structural validation");
+        ThrowIfAny(GetStructuralValidationErrors(types, AllowPeriodsInLiteralNibs),"One or more Glyph types failed structural validation");
 
         Types = types;
         BuildTokenizer();
@@ -191,14 +195,19 @@ public sealed class GlyphGrammar
             .ToList();
 
         DependentTypes = Types.Where(x => x.IsDefined(typeof(DependentAttribute)) && _candidateTypes.Contains(x)).ToList();
-        Tokenizer = new(TopLevelTypes.ToList(), DependentTypes.ToList(), AllowPartialSegmentMatches);
+        Tokenizer = new(TopLevelTypes.ToList(), DependentTypes.ToList(), AllowPartialClauseMatches);
     }
 
-    static List<string> GetStructuralValidationErrors(IEnumerable<Type> types)
+    static List<string> GetStructuralValidationErrors(IEnumerable<Type> types, bool allowPeriodsInLiteralNibs)
     {
         var errors = new List<string>();
+        var typeList = types.ToList();
 
-        foreach (var type in types)
+        // Types some other glyph nests as a property - whose closing period, if any, would fall inside that glyph's
+        // match (see Glyph.GetPeriodError).
+        var propertyTypes = typeList.Where(x => Glyph.GetTypeShapeError(x) is null).SelectMany(GetDirectDependentGlyphTypes).ToHashSet();
+
+        foreach (var type in typeList)
         {
             // Checked first, and without a graph: a type-shape violation can break graph building itself.
             if (Glyph.GetTypeShapeError(type) is string typeShapeError)
@@ -215,6 +224,8 @@ public sealed class GlyphGrammar
 
             if (instance.ValidateStructure() is string error)
                 errors.Add($"{type.Name}: {error}");
+            else if (Glyph.GetPeriodError(type, allowPeriodsInLiteralNibs, propertyTypes.Contains(type)) is string periodError)
+                errors.Add($"{type.Name}: {periodError}");
         }
 
         return errors;

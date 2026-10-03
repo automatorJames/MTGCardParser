@@ -40,7 +40,7 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
             .Select(i => new TestDocument(TestDocument.Unnamed, $"the {animals[i % 3]} snores in the {places[i / 3 % 3]}.\nthe {animals[i % 3]} yawns in the {places[i / 3 % 3]}.\nthe dog sleeps in the kitchen.", []));
 
         var workbench = new GrammarWorkbench(corpus.Grammar, CorpusFixture.Process(corpus.Grammar, documents),
-            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialSegmentMatches: false));
+            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
 
         return new GrammarAgent(workbench, "a snoring corpus", settings);
     }

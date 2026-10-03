@@ -4,6 +4,7 @@ global using Glyphotype.Attributes.Quantifiers;
 global using Glyphotype.GlyphAnalysisDTOs;
 global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
 global using Glyphotype.GlyphPrimitives;
+global using Glyphotype.BackReferences;
 global using Glyphotype.Interfaces;
 global using Glyphotype.NibHelpers;
 global using Glyphotype.StaticRegistry;

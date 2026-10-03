@@ -49,7 +49,7 @@ else
                         // ("*"-quantified) ancestor can capture more than once (e.g. two keywords in
                         // one ManyOf<Buff> list) - every occurrence shares this one table position,
                         // distinguished by PositionLabel below, rather than getting a branch of its own.
-                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal).SelectMany(x => x).ToList();
+                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal || IsLeafBackReference(x)).SelectMany(x => x).ToList();
 
                         if (terminals.Any())
                         {
@@ -70,7 +70,7 @@ else
                                                 @TerminalTypeLabel(leaf)
                                             </td>
                                             <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
-                                                @leaf.ClrValue.ToString()
+                                                @(leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference ? BackReferenceDisplay.Describe(backReference) : leaf.ClrValue.ToString())
                                             </td>
                                         </tr>
                                     }
@@ -262,10 +262,19 @@ else
     string LeafDisplayName(CaptureTrace leaf) =>
         DisplayName(BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name);
 
-    /// <summary>A terminal leaf's displayed "Type" column text - always an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/>, or <see cref="BoolNode"/>, since those are the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for.</summary>
+    /// <summary>
+    /// Whether <paramref name="trace"/> is a back-reference with nothing captured inside it (a bare "it"): not
+    /// <see cref="CaptureTrace.IsTerminal"/>, being a Glyph, but with no children to give it a table of its own - so it
+    /// gets a row here instead, where what it was resolved to is shown as its value.
+    /// </summary>
+    static bool IsLeafBackReference(CaptureTrace trace) =>
+        trace.ClrValue is Glyphotype.GlyphPrimitives.BackReference && !trace.Children.Any();
+
+    /// <summary>A leaf's displayed "Type" column text - an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/> or <see cref="BoolNode"/>, the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for, or a leaf back-reference (see <see cref="IsLeafBackReference"/>).</summary>
     static string TerminalTypeLabel(CaptureTrace leaf) =>
         leaf.SourceNode switch
         {
+            _ when leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference => "BackReference",
             EnumNode => "Enum",
             PrimitiveNode primitive => char.ToUpperInvariant(primitive.Terminal.DisplayName[0]) + primitive.Terminal.DisplayName[1..],
             BoolNode => "Bool",

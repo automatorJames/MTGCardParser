@@ -41,7 +41,7 @@ public class DefinitionTests(CorpusFixture corpus)
     {
         // Through JSON first, so this also proves the serialized form is missing nothing.
         var definition = GrammarDefinition.FromJson(Definition.ToJson());
-        var grammar = GlyphGrammar.FromDefinition(definition, allowPartialSegmentMatches: false);
+        var grammar = GlyphGrammar.FromDefinition(definition, allowPartialClauseMatches: false);
 
         var mismatches = CorpusFixture.Process(grammar)
             .Select(x => (Expected: TestCorpus.Documents.Single(y => y.Text == x.Document.Text).ExpectedLines, Actual: x.Lines.Select(GlyphSignature.Of).ToArray()))
@@ -68,7 +68,7 @@ public class DefinitionTests(CorpusFixture corpus)
         };
 
         var newTypes = GrammarEmitter.Emit(new GrammarDefinition { Glyphs = [glyph] }, knownTypes: corpus.Grammar.Types);
-        var grammar = new GlyphGrammar(corpus.Grammar.Types.Concat(newTypes), allowPartialSegmentMatches: false);
+        var grammar = new GlyphGrammar(corpus.Grammar.Types.Concat(newTypes), allowPartialClauseMatches: false);
 
         Assert.Equal("AnimalHides{Animal=Dog, Place=Barn} .", string.Join(" ", grammar.Tokenize("the dog hides in the barn.").Select(GlyphSignature.Of)));
     }
@@ -127,7 +127,6 @@ public class DefinitionTests(CorpusFixture corpus)
             """);
 
         AssertWrites(nameof(DayHeading), """
-            [MustMatchWholeLine]
             public class DayHeading : OneOf<Weekday?, Holiday?>;
             """);
 
