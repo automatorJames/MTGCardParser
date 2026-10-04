@@ -1,6 +1,7 @@
 ﻿@using Glyphotype.RegexGeneration.Graph
 @inject ActiveCorpus CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
+@inject DocumentAnalysisInterface.Agent.LineChats LineChats
 
 <div class="document-capture-block">
     <div class="document-title-row">
@@ -48,6 +49,7 @@
                     }
                 </div>
                 <div class="line-container-parent" data-path=@line.DataPath>
+                    <div class="line-text-frame">
                     <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) data-path=@line.DataPath>
                         @for (int c = 0; c < line.Clauses.Count; c++)
                         {
@@ -61,6 +63,23 @@
                             }
                         }
                     </pre>
+
+                    @if (ShowAgentButtons)
+                    {
+                        var hasChat = LineChats.Get(ProcessedDocument.Document.Name, line.SourceText.LineIndex) is not null;
+
+                        <button class="line-agent-button @(hasChat ? "open" : "")"
+                                title="@(hasChat ? "This line's agent chat is open below" : "Have the agent write glyphs that capture this line")"
+                                @onclick="() => LineChats.Open(ProcessedDocument.Document.Name, line.SourceText.LineIndex, line.SourceText.FormattedText)">
+                            <span class="material-symbols-outlined">smart_toy</span>
+                        </button>
+                    }
+                    </div>
+
+                    @if (ShowAgentButtons && LineChats.Get(ProcessedDocument.Document.Name, line.SourceText.LineIndex) is { } lineChat)
+                    {
+                        <LineChatPanel @key=lineChat Chat="lineChat" Line="line" />
+                    }
 
                     @foreach (var root in line.MatchedCaptureTraceRoots)
                     {
@@ -76,6 +95,10 @@
 @code {
     [Parameter]
     public ProcessedDocument ProcessedDocument { get; set; }
+
+    /// <summary>Whether each line has a button opening a chat in which the local agent writes glyphs for it - and the open chats show.</summary>
+    [Parameter]
+    public bool ShowAgentButtons { get; set; }
 
     static HashSet<string> _terminals = [".", ";", ".\"", ";\""];
 

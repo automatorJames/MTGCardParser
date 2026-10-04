@@ -1,0 +1,51 @@
+@using DocumentAnalysisInterface.Agent
+
+@* What a conversation with the local agent runs on: chosen before it begins, simply stated from then on. *@
+@if (!Chat.HasBegun)
+{
+    <div class="chat-options" title="What the agent runs on, for the whole conversation">
+        <label>
+            <span class="chat-label">Model</span>
+            <select value="@Chat.Model" @onchange="e => Chat.Model = (string)e.Value">
+                @foreach (var model in Options(_models, Chat.Model))
+                {
+                    <option value="@model">@Name(model)</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span class="chat-label">Effort</span>
+            <select value="@Chat.Effort" @onchange="e => Chat.Effort = (string)e.Value">
+                @foreach (var effort in Options(_efforts, Chat.Effort))
+                {
+                    <option value="@effort">@Name(effort)</option>
+                }
+            </select>
+        </label>
+    </div>
+}
+else
+{
+    <div class="chat-options settled" title="What this conversation runs on - start a new chat to choose again">
+        <span><span class="chat-label">Model</span> @Name(Chat.Model)</span>
+        <span><span class="chat-label">Effort</span> @Name(Chat.Effort)</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public AgentChat Chat { get; set; }
+
+    /// <summary>What the CLI takes for its model and effort.</summary>
+    static readonly string[] _models = ["fable", "opus", "sonnet", "haiku"];
+    static readonly string[] _efforts = ["low", "medium", "high", "xhigh", "max"];
+
+    /// <summary>The choices on offer, with the current one among them even when it came from settings as something else (a full model id, say).</summary>
+    static IEnumerable<string> Options(string[] offered, string current) =>
+        offered.Contains(current) ? offered : offered.Append(current);
+
+    /// <summary>A model or effort as it reads: "sonnet" as Sonnet, "xhigh" as Extra high, a full model id as it is.</summary>
+    static string Name(string option) =>
+        option == "xhigh" ? "Extra high"
+        : _models.Contains(option) || _efforts.Contains(option) ? char.ToUpperInvariant(option[0]) + option[1..]
+        : option;
+}

@@ -1,7 +1,11 @@
-<button type="button" class="setting-icon-toggle @(Value ? "active" : "")" data-tooltip="@Label" aria-label="@Label" @onclick="Toggle">
+<button type="button" class="setting-icon-toggle @(Value && !Disabled ? "active" : "")" data-tooltip="@Label" aria-label="@Label" disabled="@Disabled" @onclick="Toggle">
     @if (Icon == "percent")
     {
         <span class="text-icon" aria-hidden="true">%</span>
+    }
+    else if (Icon.StartsWith(MaterialPrefix))
+    {
+        <span class="material-symbols-outlined" aria-hidden="true">@Icon[MaterialPrefix.Length..]</span>
     }
     else
     {
@@ -10,6 +14,9 @@
 </button>
 
 @code {
+    /// <summary>Marks an <see cref="Icon"/> as a Material Symbols name ("material:smart_toy") rather than an Open Iconic one.</summary>
+    const string MaterialPrefix = "material:";
+
     [Parameter, EditorRequired]
     public string Icon { get; set; }
 
@@ -19,8 +26,12 @@
     [Parameter]
     public bool Value { get; set; }
 
+    /// <summary>Shown, but not offered - say why in <see cref="Label"/>.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
     [Parameter]
     public EventCallback<bool> ValueChanged { get; set; }
 
-    Task Toggle() => ValueChanged.InvokeAsync(!Value);
+    Task Toggle() => Disabled ? Task.CompletedTask : ValueChanged.InvokeAsync(!Value);
 }

@@ -1,0 +1,178 @@
+@using DocumentAnalysisInterface.Agent
+@implements IDisposable
+@inject WorkspaceManager Workspaces
+@inject LineChats LineChats
+@inject IJSRuntime JS
+
+@* A chat about one line, under it: the agent writes the glyphs that capture the line, and the person pushes back until
+   they're happy. An empty data-path keeps the page's hover highlighting from lighting the line up from in here. *@
+@{
+    var entries = Chat.Entries;
+    var running = Chat.IsRunning;
+    var produced = Chat.Produced;
+    var working = Workspaces.Active.WorkingDefinition;
+}
+
+<section class="line-chat" data-path="">
+    <header class="line-chat-header">
+        <span class="material-symbols-outlined line-chat-icon @(running ? "running" : "")">smart_toy</span>
+        <h4>Line agent</h4>
+        <span class="line-chat-state @(running ? "running" : "")">@(running ? "working…" : entries.Count == 0 ? "ready" : "idle")</span>
+        <span class="line-chat-coverage @(Line.CapturedWordCount == Line.WordCount ? "covered" : "")"
+              title="How much of the line the working grammar covers">
+            @(Line.CapturedWordCount == Line.WordCount ? "line covered" : $"{Line.CapturedWordCount} of {Line.WordCount} words covered")
+        </span>
+        <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation about this line, forgetting this one" @onclick="Restart">new chat</button>
+        <button class="line-chat-close" title="Close this chat (stopping the agent, if it's working) - steps it applied stay applied" @onclick="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </header>
+
+    <ChatOptionsBar Chat="Chat" />
+
+    @if (produced.Count > 0)
+    {
+        <div class="line-chat-produced">
+            <span class="chat-label">Made</span>
+            @foreach (var definition in produced)
+            {
+                var exists = definition.Kind == DefinitionKind.Glyph
+                    ? working.Glyphs.Any(x => x.Name == definition.Name)
+                    : working.Vocabularies.Any(x => x.Name == definition.Name);
+
+                <button class="definition-chip @definition.Kind.ToString().ToLowerInvariant() @(exists ? "" : "gone")" disabled="@(!exists)"
+                        title="@(exists ? $"See the {definition.Kind.ToString().ToLowerInvariant()} {definition.Name}: C#, JSON and its regex" : "No longer in the working grammar")"
+                        @onclick="() => View(definition)">
+                    <span class="chip-kind">@(definition.Kind == DefinitionKind.Glyph ? "glyph" : "vocab")</span>
+                    @definition.Name
+                </button>
+            }
+        </div>
+    }
+
+    @if (entries.Count > 0)
+    {
+        <div class="line-chat-entries" @ref="_entriesElement">
+            <ChatEntryList Entries="entries" />
+        </div>
+    }
+
+    <footer class="line-chat-footer">
+        <textarea class="chat-input" rows="@(entries.Count == 0 ? 4 : 2)" placeholder="Push back, or ask about what it chose…"
+                  value="@Chat.Draft" @oninput="e => Chat.Draft = (string)e.Value" @onkeydown="OnKeyDown"></textarea>
+        <div class="line-chat-actions">
+            <span class="line-chat-hint">Ctrl+Enter to send. Steps land as working changes in Grammar Tools.</span>
+            @if (running)
+            {
+                <button class="btn btn-sm btn-secondary" @onclick="Chat.Stop">Stop</button>
+            }
+            else
+            {
+                <button class="btn btn-sm btn-primary" disabled="@string.IsNullOrWhiteSpace(Chat.Draft)" @onclick="Send">Send</button>
+            }
+        </div>
+    </footer>
+</section>
+
+@if (_viewer is not null)
+{
+    <DefinitionViewerDialog Name="@_viewer.Name" Kind="_viewer.Kind" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working"
+                            GlyphType="_viewer.GlyphType" ResolveType="ResolveType" OnClose="() => _viewer = null" />
+}
+
+@code {
+    [Parameter, EditorRequired] public LineChat Chat { get; set; }
+
+    /// <summary>The line as the working grammar tokenizes it now.</summary>
+    [Parameter, EditorRequired] public ProcessedLine Line { get; set; }
+
+    record ViewerState(DefinitionKind Kind, string Name, ChangeType? Change, object Committed, object Working, Type GlyphType);
+
+    ViewerState _viewer;
+    ElementReference _entriesElement;
+    LineChat _listeningTo;
+
+    protected override void OnParametersSet()
+    {
+        if (_listeningTo == Chat)
+            return;
+
+        if (_listeningTo is not null)
+            _listeningTo.Changed -= OnChatChanged;
+
+        _listeningTo = Chat;
+        Chat.Changed += OnChatChanged;
+    }
+
+    public void Dispose()
+    {
+        if (_listeningTo is not null)
+            _listeningTo.Changed -= OnChatChanged;
+    }
+
+    void OnChatChanged() => _ = InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Chat.Entries.Count > 0)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("grammarChat.follow", _entriesElement, firstRender);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+
+    void Send()
+    {
+        if (Chat.IsRunning || string.IsNullOrWhiteSpace(Chat.Draft))
+            return;
+
+        Chat.Send(Chat.Draft);
+        Chat.Draft = null;
+    }
+
+    void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+            Send();
+    }
+
+    void Restart() => Chat.Reset();
+
+    void Close() => LineChats.Close(Chat);
+
+    /// <summary>What each type a definition can name is, for coloring its C# as Visual Studio would.</summary>
+    Func<string, CodeTypeKind?> ResolveType =>
+        DefinitionViews.TypeResolver(Workspaces.Active.WorkingDefinition, Workspaces.Active.CommittedDefinition);
+
+    /// <summary>Opens the definition viewer on something the agent made, as the Grammar Tools page shows it.</summary>
+    async Task View(ProducedDefinition definition)
+    {
+        var workbench = Workspaces.Active;
+
+        object Find(GrammarDefinition grammar) =>
+            definition.Kind == DefinitionKind.Glyph
+                ? grammar.Glyphs.FirstOrDefault(x => x.Name == definition.Name)
+                : grammar.Vocabularies.FirstOrDefault(x => x.Name == definition.Name);
+
+        var working = Find(workbench.WorkingDefinition);
+        var committed = Find(workbench.CommittedDefinition);
+        var change = workbench.Changes.FirstOrDefault(x => x.Kind == definition.Kind && x.Name == definition.Name)?.Change;
+        Type glyphType = null;
+
+        // For the regex tabs: the glyph's type in the grammar it's in, built - the working one, or the committed one for a glyph it no longer has.
+        if (definition.Kind == DefinitionKind.Glyph)
+        {
+            var trial = working is null ? await workbench.GetCommittedTrialAsync() : await workbench.GetCurrentTrialAsync();
+
+            if (trial.Grammar is { } grammar && grammar.TryGetType(definition.Name, out var type))
+                glyphType = type;
+        }
+
+        _viewer = new(definition.Kind, definition.Name, change, committed, working, glyphType);
+    }
+}

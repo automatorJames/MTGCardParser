@@ -97,6 +97,40 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task Suspended_check_ins_let_steps_through_as_a_round_of_their_own_and_leave_the_sessions_count_as_it_was()
+    {
+        static string Glyph(string name, string verb) => $$"""
+            public class {{name}} : Glyph
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "{{verb}} in the", Prop(Place)];
+
+                public Animal Animal { get; set; }
+                public Place Place { get; set; }
+            }
+            """;
+
+        var (agent, workbench) = CreateAgent();
+        agent.Settings = agent.Settings with { StepsBeforeCheckIn = 1 };
+
+        await agent.StartSessionAsync();
+        Assert.Contains("Check-in due", await agent.ApplyAsync(_animalSnores));
+
+        using (agent.SuspendCheckIns())
+        {
+            var applied = await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"));
+            Assert.DoesNotContain("Check-in", applied);
+            await agent.ApplyAsync(Glyph("AnimalNaps", "naps"));
+        }
+
+        Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
+        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
+        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalNaps")]);
+
+        // The session's own check-in is still due.
+        await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(Glyph("AnimalDozes", "dozes")));
+    }
+
+    [Fact]
     public async Task A_change_is_marked_with_the_round_an_agent_began_it_in()
     {
         static string Glyph(string name, string verb) => $$"""

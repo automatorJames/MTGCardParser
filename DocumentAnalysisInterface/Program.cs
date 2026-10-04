@@ -81,6 +81,15 @@ public class Program
             services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>(),
             workingDirectory: Path.Combine(appData, "agent")));
 
+        // Corpus Captures' chats about one line each: the agent writes the glyphs that capture it.
+        builder.Services.AddSingleton(services => new LineChats((documentName, lineIndex, lineText) => new LineChat(
+            services.GetRequiredService<LocalAgent>(),
+            services.GetRequiredService<GrammarAgent>(),
+            services.GetRequiredService<WorkspaceManager>(),
+            services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>(),
+            workingDirectory: Path.Combine(appData, "agent"),
+            documentName, lineIndex, lineText)));
+
         builder.Services
             .AddMcpServer(options => options.ServerInstructions = GrammarAgent.Instructions)
             .WithHttpTransport()

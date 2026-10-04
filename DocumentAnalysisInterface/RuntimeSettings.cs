@@ -243,6 +243,26 @@ namespace DocumentAnalysisInterface
             }
         }
 
+        private bool _showLineAgentButtons;
+
+        /// <summary>
+        /// Whether Corpus Captures puts an agent button on each line, opening a chat in which the local agent writes
+        /// the glyphs that capture the line. Only offered where there's a local agent to chat with.
+        /// </summary>
+        public bool ShowLineAgentButtons
+        {
+            get => _showLineAgentButtons;
+            set
+            {
+                if (_showLineAgentButtons != value)
+                {
+                    _showLineAgentButtons = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
         private DefinitionView _definitionView = DefinitionView.CSharp;
 
         /// <summary>The definition viewer's tab last chosen: the one it opens on, and the one a definition's tooltip previews.</summary>
@@ -301,6 +321,7 @@ namespace DocumentAnalysisInterface
                     _minSpanWords = dto.MinSpanWords;
                     _minSpanOccurences = dto.MinSpanOccurences;
                     _showEchoes = dto.ShowEchoes;
+                    _showLineAgentButtons = dto.ShowLineAgentButtons;
                     _definitionView = dto.DefinitionView;
                 }
             }
@@ -360,6 +381,7 @@ namespace DocumentAnalysisInterface
         public int MinSpanWords { get; init; }
         public int MinSpanOccurences { get; init; }
         public bool ShowEchoes { get; init; }
+        public bool ShowLineAgentButtons { get; init; }
         public DefinitionView DefinitionView { get; init; }
 
         // Parameterless constructor for deserialization
@@ -381,6 +403,7 @@ namespace DocumentAnalysisInterface
             MinSpanWords = runtimeSettings.MinSpanWords;
             MinSpanOccurences = runtimeSettings.MinSpanOccurences;
             ShowEchoes = runtimeSettings.ShowEchoes;
+            ShowLineAgentButtons = runtimeSettings.ShowLineAgentButtons;
             DefinitionView = runtimeSettings.DefinitionView;
         }
     }

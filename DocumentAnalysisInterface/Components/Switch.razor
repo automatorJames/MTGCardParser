@@ -1,8 +1,8 @@
-﻿<label class="switch">
-    <input type="checkbox" checked="@Value" @onchange="OnCheckboxChanged" />
+<label class="switch @(Disabled ? "disabled" : "")">
+    <input type="checkbox" checked="@(Value && !Disabled)" disabled="@Disabled" @onchange="OnCheckboxChanged" />
     <span class="slider"></span>
 </label>
-<label style="margin-left: -16px;" class="switch-label">@Label</label>
+<label style="margin-left: -16px;" class="switch-label @(Disabled ? "disabled" : "")" title="@DisabledReason">@Label</label>
 
 @code {
     [Parameter]
@@ -13,6 +13,14 @@
 
     [Parameter]
     public EventCallback<bool> ValueChanged { get; set; }
+
+    /// <summary>Shown, but not offered.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Why it's <see cref="Disabled"/>, for its tooltip.</summary>
+    [Parameter]
+    public string DisabledReason { get; set; }
 
     // This method is called when the user clicks the checkbox.
     // It is responsible for invoking the parent's EventCallback.

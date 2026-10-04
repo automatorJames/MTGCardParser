@@ -1,0 +1,201 @@
+/* A chat about one line, set in under it */
+.line-chat {
+    margin: 0.5rem 0 1rem;
+    border: 1px solid var(--outline-grey);
+    border-left: 3px solid #569cd6;
+    border-radius: 6px;
+    background-color: var(--dark-grey);
+    color: #E2E8F0;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.line-chat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--outline-grey);
+}
+
+    .line-chat-header h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #569cd6;
+    }
+
+.line-chat-icon {
+    font-size: 1.2rem;
+    color: #569cd6;
+}
+
+    .line-chat-icon.running {
+        color: var(--gold);
+        animation: line-chat-pulse 1.2s ease-in-out infinite;
+    }
+
+@keyframes line-chat-pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.line-chat-state {
+    color: var(--subtext-grey);
+    font-size: 0.8rem;
+}
+
+    .line-chat-state.running {
+        color: var(--gold);
+    }
+
+.line-chat-coverage {
+    margin-left: auto;
+    padding: 0.05rem 0.5rem;
+    border-radius: 10px;
+    background-color: rgba(242, 139, 130, 0.12);
+    color: #f28b82;
+    font-size: 0.75rem;
+}
+
+    .line-chat-coverage.covered {
+        background-color: rgba(145, 186, 170, 0.15);
+        color: var(--teal);
+    }
+
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--faded-blue);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+    .link-button:hover:not(:disabled) {
+        color: var(--lightest-blue);
+        text-decoration: underline;
+    }
+
+    .link-button:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+
+.line-chat-close {
+    display: flex;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--subtext-grey);
+    cursor: pointer;
+}
+
+    .line-chat-close:hover {
+        color: var(--lightest-blue);
+    }
+
+    .line-chat-close .material-symbols-outlined {
+        font-size: 1.1rem;
+    }
+
+.chat-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--subtext-grey);
+}
+
+/* What the agent made: each opens the definition viewer */
+.line-chat-produced {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--outline-grey);
+}
+
+.definition-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.1rem 0.55rem;
+    border: 1px solid var(--outline-grey);
+    border-radius: 12px;
+    background-color: var(--near-black);
+    color: #4ec9b0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+    .definition-chip.vocabulary {
+        color: #b8d7a3;
+    }
+
+    .definition-chip:hover:not(:disabled) {
+        border-color: #569cd6;
+    }
+
+    .definition-chip.gone {
+        opacity: 0.45;
+        text-decoration: line-through;
+        cursor: default;
+    }
+
+.chip-kind {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--subtext-grey);
+}
+
+.line-chat-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-height: 28rem;
+    padding: 0.75rem;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    white-space: normal;
+}
+
+.line-chat-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem 0.75rem;
+    border-top: 1px solid var(--outline-grey);
+}
+
+.chat-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--outline-grey);
+    border-radius: 6px;
+    background-color: var(--near-black);
+    color: #f0f4f8;
+    font-size: 0.85rem;
+    resize: vertical;
+}
+
+    .chat-input:focus {
+        outline: none;
+        border-color: #569cd6;
+    }
+
+.line-chat-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.line-chat-hint {
+    color: var(--subtext-grey);
+    font-size: 0.75rem;
+}

@@ -61,3 +61,13 @@ input:checked + .slider:before {
     font-size: 1rem;
     cursor: pointer;
 }
+
+.switch.disabled,
+.switch-label.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+    .switch.disabled .slider {
+        cursor: not-allowed;
+    }

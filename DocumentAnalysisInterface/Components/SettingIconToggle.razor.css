@@ -30,3 +30,14 @@
     font-weight: 700;
     line-height: 1;
 }
+
+    .setting-icon-toggle:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        background: none;
+    }
+
+.setting-icon-toggle .material-symbols-outlined {
+    font-size: 1.25rem;
+    line-height: 1;
+}

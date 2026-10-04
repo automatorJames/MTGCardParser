@@ -6,7 +6,7 @@
 @* Nothing at all unless there's a local agent to chat with. *@
 @if (_available)
 {
-    var entries = GetEntries();
+    var entries = Chat.Entries;
     var running = Chat.IsRunning;
     var steps = Chat.StepsPerRound;
     var stats = Chat.Stats;
@@ -23,36 +23,7 @@
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
         </header>
 
-        @if (entries.Count == 0)
-        {
-            <div class="chat-options" title="What the agent runs on, for the whole conversation">
-                <label>
-                    <span class="chat-label">Model</span>
-                    <select value="@Chat.Model" @onchange="e => Chat.Model = (string)e.Value">
-                        @foreach (var model in Options(_models, Chat.Model))
-                        {
-                            <option value="@model">@Name(model)</option>
-                        }
-                    </select>
-                </label>
-                <label>
-                    <span class="chat-label">Effort</span>
-                    <select value="@Chat.Effort" @onchange="e => Chat.Effort = (string)e.Value">
-                        @foreach (var effort in Options(_efforts, Chat.Effort))
-                        {
-                            <option value="@effort">@Name(effort)</option>
-                        }
-                    </select>
-                </label>
-            </div>
-        }
-        else
-        {
-            <div class="chat-options settled" title="What this conversation runs on - start a new chat to choose again">
-                <span><span class="chat-label">Model</span> @Name(Chat.Model)</span>
-                <span><span class="chat-label">Effort</span> @Name(Chat.Effort)</span>
-            </div>
-        }
+        <ChatOptionsBar Chat="Chat" />
 
         @if (stats.TotalTokens > 0 || stats.FiveHour is not null || stats.SevenDay is not null)
         {
@@ -92,40 +63,7 @@
                 </p>
             }
 
-            @foreach (var entry in entries)
-            {
-                switch (entry.Kind)
-                {
-                    case ChatEntryKind.Person:
-                        <div class="chat-entry person">@entry.Text</div>
-                        break;
-
-                    case ChatEntryKind.Agent:
-                        <div class="chat-entry agent">@Html(entry)</div>
-                        break;
-
-                    case ChatEntryKind.Tool:
-                        <details class="chat-entry tool @(entry.Result is null ? "pending" : entry.Failed ? "failed" : "")">
-                            <summary>
-                                <span class="tool-name">@entry.Tool</span>
-                                <span class="tool-summary">@(Outcome(entry) ?? entry.Text)</span>
-                            </summary>
-                            @if (!string.IsNullOrWhiteSpace(entry.Source))
-                            {
-                                <pre>@entry.Source</pre>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(entry.Result))
-                            {
-                                <pre>@entry.Result</pre>
-                            }
-                        </details>
-                        break;
-
-                    default:
-                        <div class="chat-entry error">@entry.Text</div>
-                        break;
-                }
-            }
+            <ChatEntryList Entries="entries" />
         </div>
 
         <footer class="chat-footer">
@@ -155,20 +93,6 @@
 }
 
 @code {
-    /// <summary>What the CLI takes for its model and effort.</summary>
-    static readonly string[] _models = ["fable", "opus", "sonnet", "haiku"];
-    static readonly string[] _efforts = ["low", "medium", "high", "xhigh", "max"];
-
-    /// <summary>The choices on offer, with the current one among them even when it came from settings as something else (a full model id, say).</summary>
-    static IEnumerable<string> Options(string[] offered, string current) =>
-        offered.Contains(current) ? offered : offered.Append(current);
-
-    /// <summary>A model or effort as it reads: "sonnet" as Sonnet, "xhigh" as Extra high, a full model id as it is.</summary>
-    static string Name(string option) =>
-        option == "xhigh" ? "Extra high"
-        : _models.Contains(option) || _efforts.Contains(option) ? char.ToUpperInvariant(option[0]) + option[1..]
-        : option;
-
     /// <summary>One figure of the conversation's stats: what it is, the figure, a line under it, and - for a share of something - a bar filled that far.</summary>
     RenderFragment Stat(string label, string value, string caption, double? share, string title) =>
         @<div class="chat-stat @Level(share)" title="@title">
@@ -222,9 +146,6 @@
     string _draft;
     ElementReference _entriesElement;
 
-    /// <summary>The agent's finished entries as HTML, so only the one still arriving is rendered again.</summary>
-    readonly Dictionary<ChatEntry, MarkupString> _html = new(ReferenceEqualityComparer.Instance);
-
     protected override async Task OnInitializedAsync()
     {
         _available = (await Chat.GetStatusAsync()).IsAvailable;
@@ -247,17 +168,6 @@
     {
         if (_available && _open)
             await JS.InvokeVoidAsync("grammarChat.follow", _entriesElement, false);
-    }
-
-    IReadOnlyList<ChatEntry> GetEntries()
-    {
-        var entries = Chat.Entries;
-
-        // A new conversation: nothing rendered for the last one is shown again.
-        if (entries.Count == 0)
-            _html.Clear();
-
-        return entries;
     }
 
     Task Toggle() => SetOpen(!_open);
@@ -289,28 +199,4 @@
             Chat.StepsPerRound = Math.Clamp(steps, 0, 99);
     }
 
-    MarkupString Html(ChatEntry entry)
-    {
-        if (entry.Streaming)
-            return (MarkupString)ChatMarkdown.ToHtml(entry.Text);
-
-        if (!_html.TryGetValue(entry, out var html))
-            _html[entry] = html = (MarkupString)ChatMarkdown.ToHtml(entry.Text);
-
-        return html;
-    }
-
-    /// <summary>What a tool call came to, in a line: the first line of its report - null while it's still running.</summary>
-    static string Outcome(ChatEntry entry)
-    {
-        if (entry.Result is null)
-            return null;
-
-        // Only a step's outcome is news; for the rest, what was asked says more than the report's heading.
-        if (!entry.Failed && entry.Tool is not ("apply" or "evaluate" or "undo" or "revert"))
-            return entry.Text;
-
-        var line = entry.Result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "";
-        return line.Length > 160 ? line[..160] + "…" : line;
-    }
 }

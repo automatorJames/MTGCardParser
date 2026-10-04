@@ -34,6 +34,9 @@ public sealed class GrammarAgent
     /// <summary>The round the session's steps are applied in (see <see cref="WorkbenchStep.Round"/>), and the workbench that counts it - null until the session's first step.</summary>
     (GrammarWorkbench Workbench, int Number)? _round;
 
+    /// <summary>How many <see cref="SuspendCheckIns"/> are under way - while any is, no check-in is due.</summary>
+    int _checkInsSuspended;
+
     /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
     public GrammarAgent(WorkspaceManager workspaces, string corpusDescription, AgentSessionSettings settings = null)
     {
@@ -256,6 +259,9 @@ public sealed class GrammarAgent
     /// <summary>The session's progress toward a check-in, for a report's last lines - or a check-in, when it's due.</summary>
     string SessionStatus(bool applied)
     {
+        if (_checkInsSuspended > 0)
+            return null;
+
         if (applied && Settings.StepsBeforeCheckIn > 0)
         {
             var steps = _stepsSinceCheckIn;
@@ -269,6 +275,32 @@ public sealed class GrammarAgent
             return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it paid off, and wait. When they say to continue, call `start_session`.";
 
         return null;
+    }
+
+    /// <summary>
+    /// Sets the session's check-ins aside until disposed: for work the person directs as it goes (the glyphs for one
+    /// line, say), where stopping to check in after so many steps would only get in the way. Its steps are a round of
+    /// their own, and the session's counts are as they were once it's over.
+    /// </summary>
+    public IDisposable SuspendCheckIns()
+    {
+        Interlocked.Increment(ref _checkInsSuspended);
+
+        var (steps, attempts, round) = (_stepsSinceCheckIn, _attemptsSinceStep, _round);
+        _round = null;
+
+        return new Resumption(() =>
+        {
+            (_stepsSinceCheckIn, _attemptsSinceStep, _round) = (steps, attempts, round);
+            Interlocked.Decrement(ref _checkInsSuspended);
+        });
+    }
+
+    sealed class Resumption(Action resume) : IDisposable
+    {
+        Action _resume = resume;
+
+        public void Dispose() => Interlocked.Exchange(ref _resume, null)?.Invoke();
     }
 
     static string WithStatus(string report, string status) =>
@@ -350,7 +382,7 @@ public sealed class GrammarAgent
     /// <param name="overrideReason">Why a step that breaks the step rules should be applied anyway - recorded in its description.</param>
     public async Task<string> ApplyAsync(string source, string remove = null, string description = null, string overrideReason = null, CancellationToken cancellation = default)
     {
-        if (Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
+        if (_checkInsSuspended == 0 && Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
             throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
 
         var changes = ReadChanges(source, remove);

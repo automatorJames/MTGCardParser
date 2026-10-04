@@ -1,4 +1,5 @@
 @inject RuntimeSettings RuntimeSettings
+@inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
 
 <CustomDialog OnBackdropClick="Close">
     <TitleContent>Settings</TitleContent>
@@ -16,6 +17,10 @@
             </div>
             <div class="settings-row">
                 <Switch @bind-Value=@RuntimeSettings.ShowEchoes Label="Echoes" />
+            </div>
+            <div class="settings-row">
+                <Switch @bind-Value=@RuntimeSettings.ShowLineAgentButtons Label="Line agent" Disabled="@(_agentStatus?.IsAvailable != true)"
+                        DisabledReason="@(_agentStatus?.IsAvailable == true ? "A button on each line, to have the agent write glyphs for it" : _agentStatus?.Reason ?? "Checking for a local agent…")" />
             </div>
         </div>
 
@@ -75,6 +80,11 @@
 @code {
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    /// <summary>Whether there's a local agent, for the settings that need one - null until checked.</summary>
+    DocumentAnalysisInterface.Agent.LocalAgentStatus _agentStatus;
+
+    protected override async Task OnInitializedAsync() => _agentStatus = await LocalAgent.GetStatusAsync();
 
     Task Close() => OnClose.InvokeAsync();
 }

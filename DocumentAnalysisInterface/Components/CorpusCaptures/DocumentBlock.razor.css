@@ -82,3 +82,43 @@ pre.nested-underline-container {
         height: 0;
         margin-top: var(--top-crop, 0);
     }
+
+/* Holds a line's text, and the agent button in its bottom-right corner */
+.line-text-frame {
+    position: relative;
+}
+
+.line-agent-button {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    display: flex;
+    padding: 2px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: none;
+    color: var(--subtext-grey);
+    opacity: 0.55;
+    cursor: pointer;
+    transition: opacity var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+    .line-agent-button .material-symbols-outlined {
+        font-size: 1rem;
+    }
+
+    .line-text-frame:hover .line-agent-button,
+    .line-agent-button:focus-visible {
+        opacity: 1;
+    }
+
+    .line-agent-button:hover {
+        color: #569cd6;
+        border-color: var(--outline-grey);
+        background-color: var(--near-black);
+    }
+
+    .line-agent-button.open {
+        opacity: 1;
+        color: #569cd6;
+    }

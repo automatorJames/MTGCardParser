@@ -3,6 +3,8 @@
 @inject IJSRuntime JSRuntime
 @inject ActiveCorpus DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
+@inject DocumentAnalysisInterface.Agent.LineChats LineChats
+@inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
 @implements IAsyncDisposable
 
 <DeferredContent OnReady="InitHoverAsync">
@@ -13,7 +15,7 @@
            line's display context into spans still holding the old grammar's captures. *@
         @foreach (var document in GetFilteredDocuments())
         {
-            <DocumentBlock @key=document ProcessedDocument=document />
+            <DocumentBlock @key=document ProcessedDocument=document ShowAgentButtons=@ShowAgentButtons />
         }
     </div>
 </DeferredContent>
@@ -27,16 +29,30 @@
     string _debugTextSegment;
     DotNetObjectReference<CorpusCapturesPage> _selfRef;
 
+    /// <summary>Whether there's a local agent to write a line's glyphs.</summary>
+    bool _agentAvailable;
+
+    /// <summary>Whether lines get the agent button: when it's turned on, and there's an agent to do the work.</summary>
+    bool ShowAgentButtons => RuntimeSettings.ShowLineAgentButtons && _agentAvailable;
+
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += StateHasChanged;
         DocumentAnalyzer.Changed += OnCorpusChanged;
+        LineChats.Changed += OnLineChatsChanged;
     }
 
-    protected override Task OnInitializedAsync() =>
+    protected override async Task OnInitializedAsync()
+    {
         // Resolves at once while the grammar shown is the one the corpus was analyzed with at startup (see
         // Program.cs); for another workspace's grammar, it waits for that to be scored and analyzed.
-        DocumentAnalyzer.EnsureInitializedAsync();
+        await DocumentAnalyzer.EnsureInitializedAsync();
+
+        _agentAvailable = (await LocalAgent.GetStatusAsync()).IsAvailable;
+    }
+
+    /// <summary>A line's chat opened or closed: show it under its line, or take it away.</summary>
+    void OnLineChatsChanged() => _ = InvokeAsync(StateHasChanged);
 
     /// <summary>The active workspace's grammar changed (see <see cref="ActiveCorpus"/>): show the corpus as it tokenizes now.</summary>
     void OnCorpusChanged() =>
@@ -91,6 +107,7 @@
     {
         RuntimeSettings.OnChanged -= StateHasChanged;
         DocumentAnalyzer.Changed -= OnCorpusChanged;
+        LineChats.Changed -= OnLineChatsChanged;
 
         if (_selfRef != null)
         {
@@ -112,7 +129,8 @@
         IEnumerable<ProcessedDocument> documents = DocumentAnalyzer.ProcessedDocuments;
 
         if (RuntimeSettings.HideFullyMatchedDocuments)
-            documents = documents.Where(x => !x.IsFullyMatched);
+            // A document whose line the agent is working on stays, though the agent's glyphs cover it now.
+            documents = documents.Where(x => !x.IsFullyMatched || ShowAgentButtons && LineChats.AnyFor(x.Document.Name));
 
         var searchTerm = RuntimeSettings.SearchTerm;
         if (string.IsNullOrWhiteSpace(searchTerm))

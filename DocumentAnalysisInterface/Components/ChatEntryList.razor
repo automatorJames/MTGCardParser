@@ -1,0 +1,77 @@
+@using DocumentAnalysisInterface.Agent
+
+@* A conversation with the local agent as it stands: what the person said, what the agent said (as Markdown), and each
+   tool it called, as a line that opens to what was passed and what came back. *@
+@foreach (var entry in Entries)
+{
+    switch (entry.Kind)
+    {
+        case ChatEntryKind.Person:
+            <div class="chat-entry person">@entry.Text</div>
+            break;
+
+        case ChatEntryKind.Agent:
+            <div class="chat-entry agent">@Html(entry)</div>
+            break;
+
+        case ChatEntryKind.Tool:
+            <details class="chat-entry tool @(entry.Result is null ? "pending" : entry.Failed ? "failed" : "")">
+                <summary>
+                    <span class="tool-name">@entry.Tool</span>
+                    <span class="tool-summary">@(Outcome(entry) ?? entry.Text)</span>
+                </summary>
+                @if (!string.IsNullOrWhiteSpace(entry.Source))
+                {
+                    <pre>@entry.Source</pre>
+                }
+                @if (!string.IsNullOrWhiteSpace(entry.Result))
+                {
+                    <pre>@entry.Result</pre>
+                }
+            </details>
+            break;
+
+        default:
+            <div class="chat-entry error">@entry.Text</div>
+            break;
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ChatEntry> Entries { get; set; }
+
+    /// <summary>The agent's finished entries as HTML, so only the one still arriving is rendered again.</summary>
+    readonly Dictionary<ChatEntry, MarkupString> _html = new(ReferenceEqualityComparer.Instance);
+
+    protected override void OnParametersSet()
+    {
+        // A new conversation: nothing rendered for the last one is shown again.
+        if (Entries.Count == 0)
+            _html.Clear();
+    }
+
+    MarkupString Html(ChatEntry entry)
+    {
+        if (entry.Streaming)
+            return (MarkupString)ChatMarkdown.ToHtml(entry.Text);
+
+        if (!_html.TryGetValue(entry, out var html))
+            _html[entry] = html = (MarkupString)ChatMarkdown.ToHtml(entry.Text);
+
+        return html;
+    }
+
+    /// <summary>What a tool call came to, in a line: the first line of its report - null while it's still running.</summary>
+    static string Outcome(ChatEntry entry)
+    {
+        if (entry.Result is null)
+            return null;
+
+        // Only a step's outcome is news; for the rest, what was asked says more than the report's heading.
+        if (!entry.Failed && entry.Tool is not ("apply" or "evaluate" or "undo" or "revert"))
+            return entry.Text;
+
+        var line = entry.Result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "";
+        return line.Length > 160 ? line[..160] + "…" : line;
+    }
+}
