@@ -135,7 +135,7 @@ public class AnimalNaps : Glyph
 | `Opt(nib)` | the nib, or nothing |
 | `Plural()` | an optional plural suffix on the word before it: `"card", Plural()` matches card and cards |
 | `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern("an?")` |
-| `Prop(Name)` | the property `Name`; `Prop(Name, Proptions.Plural)` and `Proptions.NoPrecedingSpace` adjust it |
+| `Prop(Name)` | the property `Name`; follow it with `Plural()` for a plural, e.g. `Prop(CardType), Plural()` |
 
 With no `Nibs` override, a glyph matches its properties in declaration order. With no properties either, it
 matches `[RegexPattern("…")]` if given, else its own name, friendly-cased (`WeSweepTheFloor` → "we sweep the

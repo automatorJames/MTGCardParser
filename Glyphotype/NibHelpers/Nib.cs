@@ -1,4 +1,4 @@
-namespace Glyphotype.NibHelpers;
+﻿namespace Glyphotype.NibHelpers;
 
 /// <summary>
 /// One piece of a Glyph's pattern, as listed in <see cref="GlyphPrimitives.Glyph.Nibs"/>. A string nib is literal
@@ -14,7 +14,6 @@ public record Nib
     /// <summary>The regex this nib contributes: <see cref="Text"/> escaped for a literal nib, <see cref="Text"/> itself for a <see cref="PatternNib"/>.</summary>
     public string Regex { get; init; }
 
-    public bool IsPlural { get; init; }
     public bool IsOptional { get; init; }
 
     /// <summary>A literal-text nib.</summary>

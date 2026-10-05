@@ -30,7 +30,6 @@ public abstract class Glyph : CaptureUnit
 
         return new PropertyNib(resolvedProp.Name, resolvedProp, proptions)
         {
-            IsPlural = proptions.HasFlag(Proptions.Plural),
             IsOptional = proptions.HasFlag(Proptions.Optional),
         };
     }
