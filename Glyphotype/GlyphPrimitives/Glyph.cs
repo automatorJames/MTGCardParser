@@ -24,14 +24,11 @@ public abstract class Glyph : CaptureUnit
         return propInfo;
     }
 
-    public PropertyNib Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
+    public PropertyNib Prop(object member, [CallerArgumentExpression("member")] string expression = "")
     {
         var resolvedProp = MemberExpressionToProp(expression);
 
-        return new PropertyNib(resolvedProp.Name, resolvedProp, proptions)
-        {
-            IsOptional = proptions.HasFlag(Proptions.Optional),
-        };
+        return new PropertyNib(resolvedProp.Name, resolvedProp);
     }
 
     /// <summary>Exactly one of several literal texts, e.g. <c>Alt("sleeps", "naps")</c>.</summary>

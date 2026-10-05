@@ -2,14 +2,6 @@
 
 namespace Glyphotype;
 
-[Flags]
-public enum Proptions
-{
-    None = 0,
-    Optional = 2,
-    NoPrecedingSpace = 4,
-}
-
 public enum CaptureGroupJoinStrategy
 {
     ConcatenateWithSpace,

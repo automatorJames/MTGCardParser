@@ -7,28 +7,20 @@ public record PropertyNib : Nib
     public PropertyInfo Prop { get; }
     public Type Type { get; }
     public string Name { get; }
-    public Proptions Proptions { get; }
 
     /// <summary>A better name than <see cref="Name"/> for "XOf" wrapper properties (FirstItem, Item, ...) - based on the wrapped type T instead. Null outside that hierarchy.</summary>
     public string DescriptiveName { get; }
 
-    /// <summary>This property's own <see cref="Navigation"/>, cached so every graph position sharing this <see cref="PropertyNib"/> reuses the same instance. Must be built last - its constructor snapshots <see cref="Proptions"/>.</summary>
+    /// <summary>This property's own <see cref="Navigation"/>, cached so every graph position sharing this <see cref="PropertyNib"/> reuses the same instance.</summary>
     public Navigation Navigation { get; }
 
-    public PropertyNib(string text, PropertyInfo prop, Proptions proptions)
+    public PropertyNib(string text, PropertyInfo prop)
         : base(text)
     {
         Prop = prop;
-        Proptions = proptions;
         Type = prop.PropertyType;
         Name = prop.Name;
         DescriptiveName = ComputeDescriptiveName();
-
-        // Extract metadata info from property attributes
-        // Todo: we should be using Quantifier to express quantifiers, not Proptions
-
-        if (Prop.IsDefined(typeof(OptionalAttribute)))
-            Proptions |= Proptions.Optional;
 
         Navigation = new Navigation(this, DescriptiveName);
     }
@@ -69,7 +61,7 @@ public record PropertyNib : Nib
         type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(x => x.GetSetMethod() != null) // Ignore get-only props like Joiner overrides
             .Where(x => IsRelevantPropertyType(x.PropertyType))
-            .Select(x => new PropertyNib(x.Name, x, Proptions.None))
+            .Select(x => new PropertyNib(x.Name, x))
             .ToArray();
 
     /// <summary>

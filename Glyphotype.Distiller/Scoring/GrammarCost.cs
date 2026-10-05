@@ -1,4 +1,4 @@
-namespace Glyphotype.Distiller.Scoring;
+﻿namespace Glyphotype.Distiller.Scoring;
 
 /// <summary>The description length of each definition in a grammar, and of the lists holding them.</summary>
 public sealed record GrammarCost(
@@ -57,7 +57,6 @@ public sealed record GrammarCost(
         static readonly int _spanRules = Enum.GetValues<SpanRule>().Length;
         static readonly int _joiners = Enum.GetValues<Joiner>().Length;
         static readonly int _nibKinds = typeof(NibDefinition).GetNestedTypes().Count(x => x.IsSubclassOf(typeof(NibDefinition)));
-        static readonly int _proptionFlags = Enum.GetValues<Proptions>().Count(x => x != Proptions.None);
         static readonly int _typeReferenceKinds = Enum.GetValues<TypeReferenceKind>().Length;
         static readonly int _primitives = PrimitiveTerminal.SupportedDisplayNames.Count();
 
@@ -135,7 +134,7 @@ public sealed record GrammarCost(
                 NibDefinition.Alternatives alternatives => Texts(alternatives.Texts),
                 NibDefinition.Optional optional => Nib(optional.Inner, glyph),
                 NibDefinition.Plural => 0,
-                NibDefinition.Property => CodeLength.Uniform(glyph.Properties.Count) + _proptionFlags,
+                NibDefinition.Property => CodeLength.Uniform(glyph.Properties.Count),
                 _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} has no cost"),
             };
 

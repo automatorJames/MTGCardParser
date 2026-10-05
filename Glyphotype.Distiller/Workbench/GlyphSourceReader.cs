@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -278,15 +278,14 @@ public static class GlyphSourceReader
                         return ReadNib(glyphName, arguments[0]) is NibDefinition inner ? new NibDefinition.Optional(inner) : null;
                     case "Plural" when arguments.Count == 0:
                         return new NibDefinition.Plural();
-                    case "Prop" when arguments.Count is 1 or 2:
+                    case "Prop" when arguments.Count == 1:
                         var propName = arguments[0] switch
                         {
                             IdentifierNameSyntax identifier => identifier.Identifier.Text,
                             InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "nameof" } } nameOf => nameOf.ArgumentList.Arguments[0].Expression.ToString(),
                             var other => Unsupported<string>(null, other, $"{glyphName}: Prop takes the property itself, e.g. Prop(Quantity)"),
                         };
-                        var proptions = arguments.Count == 2 ? ReadFlags<Proptions>(arguments[1]) : Proptions.None;
-                        return propName is null ? null : new NibDefinition.Property(propName, proptions);
+                        return propName is null ? null : new NibDefinition.Property(propName);
                 }
             }
 
@@ -460,11 +459,6 @@ public static class GlyphSourceReader
             expression is InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "nameof" }, ArgumentList.Arguments: [{ Expression: IdentifierNameSyntax property }] }
                 ? property.Identifier.Text
                 : ReadString(expression);
-
-        T ReadFlags<T>(ExpressionSyntax expression) where T : struct, Enum =>
-            expression is BinaryExpressionSyntax { RawKind: (int)SyntaxKind.BitwiseOrExpression } or
-                ? (T)Enum.ToObject(typeof(T), Convert.ToInt64(ReadFlags<T>(or.Left)) | Convert.ToInt64(ReadFlags<T>(or.Right)))
-                : ReadEnumMember<T>(expression);
 
         T Unsupported<T>(T fallback, SyntaxNode node, string message)
         {

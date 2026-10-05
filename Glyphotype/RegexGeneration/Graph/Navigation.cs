@@ -11,7 +11,6 @@ public class Navigation
 
     // Only used for navigations to properties
     public PropertyInfo Prop { get; private set; }
-    public Proptions Proptions { get; private set; } = Proptions.None;
     public Quantifier? Quantifier { get; private set; }
 
     // Only used for navigations to Glyph types
@@ -59,7 +58,6 @@ public class Navigation
         Name = nameOverride ?? propertyNib.Name;
         Patterns = propertyNib.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         Prop = propertyNib.Prop;
-        Proptions = propertyNib.Proptions;
 
         // A list's own quantifier (OneOrMore/AnyNumber) always wins, since it's what the *group* itself
         // must carry to match repeated occurrences; otherwise [Optional] - or, equivalently, being wrapped

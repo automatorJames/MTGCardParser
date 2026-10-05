@@ -1,4 +1,4 @@
-namespace Glyphotype.Definitions;
+﻿namespace Glyphotype.Definitions;
 
 /// <summary>
 /// One entry of a <see cref="GlyphDefinition.Nibs"/> list - the portable counterpart of a <see cref="Nib"/>, and of
@@ -36,5 +36,5 @@ public abstract record NibDefinition
     public sealed record Plural : NibDefinition;
 
     /// <summary>A reference to one of the glyph's own <see cref="GlyphDefinition.Properties"/>, by name.</summary>
-    public sealed record Property(string Name, Proptions Proptions = Proptions.None) : NibDefinition;
+    public sealed record Property(string Name) : NibDefinition;
 }

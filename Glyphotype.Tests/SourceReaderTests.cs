@@ -41,7 +41,7 @@ public class SourceReaderTests(CorpusFixture corpus)
             public class PetNaps : Glyph, IChore
             {
                 public override Joiner Joiner => Joiner.Space;
-                public override Nib[] Nibs => ["the", Prop(Pet), Alt("naps", "sleeps"), Opt("soundly"), Prop(Hours, Proptions.NoPrecedingSpace), Pattern(@"\d+"), Plural()];
+                public override Nib[] Nibs => ["the", Prop(Pet), Alt("naps", "sleeps"), Opt("soundly"), Prop(Hours), Pattern(@"\d+"), Plural()];
 
                 public Pet Pet { get; set; }
 

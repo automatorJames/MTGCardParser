@@ -1,4 +1,4 @@
-namespace Glyphotype.Definitions;
+﻿namespace Glyphotype.Definitions;
 
 /// <summary>
 /// Writes definitions as C# source in the style of hand-written glyph files: file-scoped namespace, no usings
@@ -175,13 +175,9 @@ public static class GlyphSourceWriter
             NibDefinition.Alternatives alternatives => $"Alt({string.Join(", ", alternatives.Texts.Select(Literal))})",
             NibDefinition.Optional optional => $"Opt({WriteNib(optional.Inner)})",
             NibDefinition.Plural => "Plural()",
-            NibDefinition.Property { Proptions: Proptions.None } property => $"Prop({property.Name})",
-            NibDefinition.Property property => $"Prop({property.Name}, {WriteProptions(property.Proptions)})",
+            NibDefinition.Property property => $"Prop({property.Name})",
             _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} can't be written"),
         };
-
-    static string WriteProptions(Proptions proptions) =>
-        string.Join(" | ", Enum.GetValues<Proptions>().Where(x => x != Proptions.None && proptions.HasFlag(x)).Select(x => $"{nameof(Proptions)}.{x}"));
 
     static string RegexPatternAttribute(IEnumerable<string> patterns) =>
         $"[RegexPattern({string.Join(", ", patterns.Select(Literal))})]";

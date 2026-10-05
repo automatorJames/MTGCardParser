@@ -1,4 +1,4 @@
-using DocumentAnalysisInterface.Components.Regex;
+﻿using DocumentAnalysisInterface.Components.Regex;
 using Glyphotype.Definitions;
 using Glyphotype.Distiller.Workbench;
 using Glyphotype.GlyphAnalysisDTOs.TypeExpressions;
@@ -92,7 +92,6 @@ public static class DefinitionViews
             ["GlyphOneOf"] = CodeTypeKind.Class,
             ["Nib"] = CodeTypeKind.Class,
             ["Joiner"] = CodeTypeKind.Enum,
-            ["Proptions"] = CodeTypeKind.Enum,
         };
 
         foreach (var grammar in grammars.Where(x => x is not null))

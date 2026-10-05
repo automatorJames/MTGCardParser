@@ -113,9 +113,7 @@ static class DefinitionReader
     static NibDefinition ReadNib(Nib nib) =>
         nib switch
         {
-            // PropertyNib folds the property's own [Optional] into its Proptions; that's the property's to declare, not the nib's.
-            PropertyNib property => new NibDefinition.Property(property.Name,
-                property.Prop.IsDefined(typeof(OptionalAttribute)) ? property.Proptions & ~Proptions.Optional : property.Proptions),
+            PropertyNib property => new NibDefinition.Property(property.Name),
             NibAlternatives alternatives => new NibDefinition.Alternatives(alternatives.Alternatives),
             OptionalNib optional => new NibDefinition.Optional(ReadNib(optional.Inner)),
             OptionalPluralNib => new NibDefinition.Plural(),
