@@ -243,6 +243,9 @@ public sealed class GrammarAgent
         report.AppendLine("- Stay in the active workspace. Create or switch workspaces only if the instructions ask - to start from scratch, `create_workspace` with start=vocabularies.");
         report.AppendLine("- Never commit, checkpoint or export: the person does that in the app.");
 
+        if (!Settings.AllowTypeFilters)
+            report.AppendLine($"- {TypeFilterPolicy}");
+
         if (_workspaces?.GetGuidance() is { Length: > 0 } guidance)
         {
             report.AppendLine();
@@ -596,7 +599,42 @@ public sealed class GrammarAgent
         if (changes.IsEmpty)
             throw new AgentRequestException("The change set is empty: pass C# declarations as source, names to remove, or both.");
 
+        if (!Settings.AllowTypeFilters && IntroducedTypeFiltering(changes, Workbench.WorkingDefinition) is { Count: > 0 } introduced)
+            throw new AgentRequestException($"Refused: this change {string.Join("; ", introduced)}. {TypeFilterPolicy}");
+
         return changes;
+    }
+
+    /// <summary>
+    /// Why type filters are off, for the agent - see <see cref="AgentSessionSettings.AllowTypeFilters"/>.
+    /// </summary>
+    public const string TypeFilterPolicy =
+        "Type filters are turned off for this grammar: don't put `[TypeFilter]` on a `DynamicGlyph` property, don't declare marker interfaces, and don't mark glyphs with them - use a plain `DynamicGlyph` (with `[AllowUnmatched]` where that helps). " +
+        "The person chose this deliberately. While a grammar is being built, which glyphs belong in which slot is still settling: markers written now would likely have to be redone as later glyphs arrive, so they'd tie the design down early. " +
+        "Nor are they needed yet: glyphs here are long and specific enough that one rarely resolves into a slot it doesn't belong in, and when one does, it shows plainly on review, because nothing downstream could use what was resolved there. " +
+        "Accepting that small risk of a wrong resolution is the intended trade, to keep the options open.";
+
+    /// <summary>What <paramref name="changes"/> would add to <paramref name="working"/> by way of markers and type filters - each as a phrase, for a refusal.</summary>
+    static List<string> IntroducedTypeFiltering(ChangeSet changes, GrammarDefinition working)
+    {
+        List<string> introduced = [];
+
+        foreach (var marker in changes.Declarations.Markers.Where(x => !working.Markers.Contains(x)))
+            introduced.Add($"declares the marker interface {marker}");
+
+        foreach (var glyph in changes.Declarations.Glyphs)
+        {
+            var before = working.Glyphs.FirstOrDefault(x => x.Name == glyph.Name);
+
+            foreach (var marker in glyph.Markers.Where(x => before?.Markers.Contains(x) != true))
+                introduced.Add($"marks {glyph.Name} with {marker}");
+
+            foreach (var property in glyph.Properties.Where(x => x.TypeFilter is not null))
+                if (before?.Properties.FirstOrDefault(x => x.Name == property.Name)?.TypeFilter != property.TypeFilter)
+                    introduced.Add($"filters {glyph.Name}.{property.Name} with [TypeFilter(typeof({property.TypeFilter}))]");
+        }
+
+        return introduced;
     }
 
     async Task<Evaluation> Evaluate(ChangeSet changes, CancellationToken cancellation)

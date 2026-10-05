@@ -97,6 +97,40 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task With_type_filters_off_a_change_introducing_a_marker_or_filter_is_refused_and_the_brief_says_why()
+    {
+        var (agent, workbench) = CreateAgent();
+        agent.Settings = agent.Settings with { AllowTypeFilters = false };
+
+        const string filtered = """
+            public interface IRest { }
+
+            public class AnimalRests : Glyph, IRest
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "rests:", Prop(Then)];
+
+                public Animal Animal { get; set; }
+
+                [TypeFilter(typeof(IRest))]
+                public DynamicGlyph Then { get; set; }
+            }
+            """;
+
+        var refused = await Assert.ThrowsAsync<AgentRequestException>(() => agent.EvaluateAsync(filtered));
+        Assert.Contains("declares the marker interface IRest", refused.Message);
+        Assert.Contains("marks AnimalRests with IRest", refused.Message);
+        Assert.Contains("filters AnimalRests.Then", refused.Message);
+        Assert.Contains(GrammarAgent.TypeFilterPolicy, refused.Message);
+        await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(filtered));
+
+        // Unfiltered, the same glyph is fine.
+        await agent.ApplyAsync(filtered.Replace("public interface IRest { }", "").Replace(", IRest", "").Replace("[TypeFilter(typeof(IRest))]", ""));
+        Assert.Contains(workbench.WorkingDefinition.Glyphs, x => x.Name == "AnimalRests");
+
+        Assert.Contains(GrammarAgent.TypeFilterPolicy, await agent.StartSessionAsync());
+    }
+
+    [Fact]
     public async Task Suspended_check_ins_let_steps_through_as_a_round_of_their_own_and_leave_the_sessions_count_as_it_was()
     {
         static string Glyph(string name, string verb) => $$"""

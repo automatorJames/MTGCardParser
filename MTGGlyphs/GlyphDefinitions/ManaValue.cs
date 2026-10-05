@@ -1,6 +1,7 @@
 namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>A run of mana symbols written with nothing between them, e.g. "{2}{w}{w}".</summary>
+[Dependent]
 [JoinedBy(Joiner.None)]
 public class ManaValue : CompoundOf<ManaSymbol>
 {

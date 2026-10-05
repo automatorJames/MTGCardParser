@@ -36,14 +36,15 @@
             <span class="chat-label">Made</span>
             @foreach (var definition in produced)
             {
-                var exists = definition.Kind == DefinitionKind.Glyph
-                    ? working.Glyphs.Any(x => x.Name == definition.Name)
-                    : working.Vocabularies.Any(x => x.Name == definition.Name);
+                var exists = DefinitionViews.Find(working, definition.Kind, definition.Name) is not null;
+                var kind = definition.Kind.ToString().ToLowerInvariant();
 
-                <button class="definition-chip @definition.Kind.ToString().ToLowerInvariant() @(exists ? "" : "gone")" disabled="@(!exists)"
-                        title="@(exists ? $"See the {definition.Kind.ToString().ToLowerInvariant()} {definition.Name}: C#, JSON and its regex" : "No longer in the working grammar")"
+                @* The page's definition tooltip previews whatever's marked data-preview-*, as Grammar Tools' names are. *@
+                <button class="definition-chip @kind @(exists ? "" : "gone")" disabled="@(!exists)"
+                        data-preview-kind="@(exists ? definition.Kind : null)" data-preview-name="@(exists ? definition.Name : null)"
+                        title="@(exists ? null : "No longer in the working grammar")"
                         @onclick="() => View(definition)">
-                    <span class="chip-kind">@(definition.Kind == DefinitionKind.Glyph ? "glyph" : "vocab")</span>
+                    <span class="chip-kind">@(definition.Kind == DefinitionKind.Vocabulary ? "vocab" : kind)</span>
                     @definition.Name
                 </button>
             }
@@ -86,9 +87,7 @@
     /// <summary>The line as the working grammar tokenizes it now.</summary>
     [Parameter, EditorRequired] public ProcessedLine Line { get; set; }
 
-    record ViewerState(DefinitionKind Kind, string Name, ChangeType? Change, object Committed, object Working, Type GlyphType);
-
-    ViewerState _viewer;
+    DefinitionDescription _viewer;
     ElementReference _entriesElement;
     LineChat _listeningTo;
 
@@ -154,25 +153,10 @@
     {
         var workbench = Workspaces.Active;
 
-        object Find(GrammarDefinition grammar) =>
-            definition.Kind == DefinitionKind.Glyph
-                ? grammar.Glyphs.FirstOrDefault(x => x.Name == definition.Name)
-                : grammar.Vocabularies.FirstOrDefault(x => x.Name == definition.Name);
-
-        var working = Find(workbench.WorkingDefinition);
-        var committed = Find(workbench.CommittedDefinition);
-        var change = workbench.Changes.FirstOrDefault(x => x.Kind == definition.Kind && x.Name == definition.Name)?.Change;
-        Type glyphType = null;
-
-        // For the regex tabs: the glyph's type in the grammar it's in, built - the working one, or the committed one for a glyph it no longer has.
+        // A step the agent just applied may still be building: the regex tabs wait for it, rather than open without it.
         if (definition.Kind == DefinitionKind.Glyph)
-        {
-            var trial = working is null ? await workbench.GetCommittedTrialAsync() : await workbench.GetCurrentTrialAsync();
+            await workbench.GetCurrentTrialAsync();
 
-            if (trial.Grammar is { } grammar && grammar.TryGetType(definition.Name, out var type))
-                glyphType = type;
-        }
-
-        _viewer = new(definition.Kind, definition.Name, change, committed, working, glyphType);
+        _viewer = DefinitionViews.Describe(workbench, definition.Kind, definition.Name);
     }
 }

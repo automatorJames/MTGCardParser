@@ -13,7 +13,8 @@ namespace Glyphotype.Tests.Infrastructure;
 /// <item><c>AnimalRests{Animal=Dog, Place=Kitchen}</c> - a glyph and its property values, in nib order.
 /// Null, false and empty-list values are omitted; a glyph with none left is just its name.</item>
 /// <item><c>«the dog snores»</c> - unmatched text.</item>
-/// <item><c>.</c> - a clause-separating period.</item>
+/// <item><c>.</c> - a clause-separating period, a clause's own or one nested in an enclosure.</item>
+/// <item><c>(</c>, <c>)</c>, <c>"</c> - the delimiters of an enclosure no glyph matched whole, around its tokenized inside.</item>
 /// </list>
 /// Values: enums by member name, lists as <c>[A, B]</c>, nested glyphs recursively. Primitives render
 /// compactly: a <see cref="OneOf{T1,T2}"/> as the one alternative that matched, a <see cref="CompoundOf{T}"/>
@@ -33,6 +34,7 @@ public static class GlyphSignature
         unit switch
         {
             ClauseBreak => ".",
+            EnclosureMark mark => mark.CaptureValue,
             UnmatchedString unmatched => $"«{unmatched.CaptureValue}»",
             Glyph glyph => OfGlyph(glyph),
             _ => throw new ArgumentException($"Unexpected {nameof(CaptureUnit)} type {unit.GetType().Name}"),

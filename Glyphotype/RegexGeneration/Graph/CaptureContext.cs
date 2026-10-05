@@ -37,7 +37,8 @@ public class CaptureContext
         Tokenizer = tokenizer;
         _captureDictionary = GetNamedGroupCaptures(match);
         SourceText = sourceText;
-        FullMatch = match.Value;
+        // Read from the source text, not the match: the regex ran against a view of it (see Enclosures.MatchText).
+        FullMatch = sourceText.Substring(match.Index, match.Length);
         RootCaptureTrace = new(this, rootNode, match);
     }
 

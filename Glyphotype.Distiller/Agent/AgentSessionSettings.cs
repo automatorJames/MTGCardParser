@@ -18,4 +18,11 @@ public sealed record AgentSessionSettings
 
     /// <summary>Whether a step may leave any line with fewer words covered than before.</summary>
     public bool AllowLostLines { get; init; }
+
+    /// <summary>
+    /// Whether the agent may introduce <c>[TypeFilter]</c>s on dynamic properties - and the marker interfaces they select
+    /// by. When false, a change set that declares a new marker, marks a glyph with one, or filters a property by one is
+    /// refused, with <see cref="GrammarAgent.TypeFilterPolicy"/> to say why; those already in the grammar may stay.
+    /// </summary>
+    public bool AllowTypeFilters { get; init; } = true;
 }

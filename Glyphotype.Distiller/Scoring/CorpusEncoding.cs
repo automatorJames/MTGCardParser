@@ -151,6 +151,11 @@ public sealed class CorpusEncoding
                 Choose(token, TokenContext(), _unmatchedSymbol);
                 EncodeResidual(token, unit.CaptureValue);
             }
+            else if (root.IsEnclosureMark)
+            {
+                // An enclosure no glyph matched whole: "(" and ")" each a symbol of its own, as a clause break's period is.
+                Choose(token, TokenContext(), $"«{unit.CaptureValue}»");
+            }
             else if (root.IsClauseBreak)
             {
                 Choose(token, TokenContext(), _clauseBreakSymbol);

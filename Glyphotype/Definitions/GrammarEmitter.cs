@@ -18,8 +18,9 @@ public static class GrammarEmitter
     static readonly ConstructorInfo _nibCtor = typeof(Nib).GetConstructor([typeof(string)]);
     static readonly ConstructorInfo _patternNibCtor = typeof(PatternNib).GetConstructor([typeof(string)]);
     static readonly ConstructorInfo _alternativesNibCtor = typeof(NibAlternatives).GetConstructor([typeof(string[])]);
-    static readonly ConstructorInfo _optionalNibCtor = typeof(OptionalNib).GetConstructor([typeof(Nib)]);
-    static readonly ConstructorInfo _pluralNibCtor = typeof(OptionalPluralNib).GetConstructor(Type.EmptyTypes);
+    static readonly ConstructorInfo _someNibCtor = typeof(SomeNib).GetConstructor([typeof(string[])]);
+    static readonly ConstructorInfo _optionalNibCtor = typeof(OptionalNib).GetConstructor([typeof(string[])]);
+    static readonly ConstructorInfo _pluralNibCtor = typeof(PluralNib).GetConstructor([typeof(string)]);
     static readonly MethodInfo _propMethod = typeof(Glyph).GetMethod(nameof(Glyph.Prop));
 
     /// <summary>
@@ -186,6 +187,9 @@ public static class GrammarEmitter
             if (property.IsOptional)
                 propertyBuilder.SetCustomAttribute(Attribute<OptionalAttribute>());
 
+            if (property.IsOptionalPlural)
+                propertyBuilder.SetCustomAttribute(Attribute<OptionalPluralAttribute>());
+
             if (property.AllowsUnmatched)
                 propertyBuilder.SetCustomAttribute(Attribute<AllowUnmatchedAttribute>());
 
@@ -253,12 +257,18 @@ public static class GrammarEmitter
                         il.Emit(OpCodes.Newobj, _alternativesNibCtor);
                         break;
 
+                    case NibDefinition.Some some:
+                        EmitStringArray(il, some.Texts);
+                        il.Emit(OpCodes.Newobj, _someNibCtor);
+                        break;
+
                     case NibDefinition.Optional optional:
-                        EmitNib(il, optional.Inner);
+                        EmitStringArray(il, optional.Texts);
                         il.Emit(OpCodes.Newobj, _optionalNibCtor);
                         break;
 
-                    case NibDefinition.Plural:
+                    case NibDefinition.Plural plural:
+                        il.Emit(OpCodes.Ldstr, plural.Text);
                         il.Emit(OpCodes.Newobj, _pluralNibCtor);
                         break;
 
@@ -266,10 +276,9 @@ public static class GrammarEmitter
                         if (!propertyNames.Contains(property.Name))
                             throw new InvalidOperationException($"{glyph.Name} has a nib for property '{property.Name}', which it doesn't declare");
 
-                        // this.Prop(null, proptions, "Name") - what Prop(Name, proptions) compiles to, the name being its caller argument expression.
+                        // this.Prop(null, "Name") - what Prop(Name) compiles to, the name being its caller argument expression.
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldnull);
-                        il.Emit(OpCodes.Ldc_I4, (int)property.Proptions);
                         il.Emit(OpCodes.Ldstr, property.Name);
                         il.Emit(OpCodes.Call, _propMethod);
                         break;

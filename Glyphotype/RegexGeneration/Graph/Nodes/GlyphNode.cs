@@ -27,17 +27,33 @@ public class GlyphNode : NamedGroupNode
                 nibs.Add(last);
         }
 
-        foreach (var nib in nibs)
-            if (nib is PropertyNib propertyNib)
+        // Which text sits inside an enclosure the glyph writes itself: "(", Prop(Reminder), Opt("."), ")" - a period
+        // there ends a clause nested in the glyph's own text, not one of the line's. And which literal opens or closes
+        // one, which spacing reads (see JoinerRules) - for a quote, only its pairing says which it does.
+        var inside = Enclosures.Inside(nibs);
+        var delimiters = Enclosures.Delimiters(nibs);
+
+        for (int i = 0; i < nibs.Count; i++)
+        {
+            if (nibs[i] is PropertyNib propertyNib)
+            {
                 children.Add(GetNodeForNavigaton(this, propertyNib.Navigation));
-            else
-                // Pass nib itself, not nib.Text - TextNode's own optional-wrapping depends on nib's actual
-                // runtime type (e.g. OptionalNib), which passing just the string would silently discard via
-                // the implicit string->Nib conversion (producing a fresh, always-non-optional plain Nib).
-                // A literal nib with a period inside it becomes one TextNode per piece, the period a
-                // clause-break nib of its own - so the graph, not the authored Nibs, carries the split.
-                foreach (var piece in ClauseBreak.SplitAtPeriods(nib))
-                    children.Add(new TextNode(this, piece));
+                continue;
+            }
+
+            // Pass nib itself, not nib.Text - TextNode's own optional-wrapping depends on nib's actual
+            // runtime type (e.g. OptionalNib), which passing just the string would silently discard via
+            // the implicit string->Nib conversion (producing a fresh, always-non-optional plain Nib).
+            // A literal nib with a period inside it becomes one TextNode per piece, the period a
+            // clause-break nib of its own - so the graph, not the authored Nibs, carries the split.
+            var pieces = ClauseBreak.SplitAtPeriods(nibs[i], inside[i]).ToList();
+
+            for (int j = 0; j < pieces.Count; j++)
+                children.Add(new TextNode(
+                    this, pieces[j].Nib, pieces[j].Enclosed,
+                    opensEnclosure: j == pieces.Count - 1 && delimiters[i].EndsOpening,
+                    closesEnclosure: j == 0 && delimiters[i].StartsClosing));
+        }
     }
 
     /// <summary>

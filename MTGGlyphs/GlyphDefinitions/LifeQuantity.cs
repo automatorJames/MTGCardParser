@@ -1,5 +1,6 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
+[Dependent]
 public class LifeQuantity : Glyph
 {
     public override Nib[] Nibs => [Prop(Quantity), "life"];

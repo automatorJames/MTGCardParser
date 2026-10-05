@@ -147,7 +147,7 @@
                 the text had to pick one, and that pick costs bits here. A glyph that always matches the same scaffold costs nothing.
                 <div class="example">
                     <span class="example-label">Example</span>
-                    <code>CardOutsideBattlefield</code> is <code>Alt("card", "spell"), Opt(Alt("in", "from")), Whose, Zone</code>. Its frames include
+                    <code>CardOutsideBattlefield</code> is <code>Alt("card", "spell"), Opt("in", "from"), Whose, Zone</code>. Its frames include
                     <code>card in {Whose} {Zone}</code> and <code>spell from {Whose} {Zone}</code>: which one appeared is information the glyph lets through
                     without capturing into a property. Likewise <code>Quantity.One</code> matches "1", "one" or "a" - which spelling was used is a frame choice too.
                 </div>

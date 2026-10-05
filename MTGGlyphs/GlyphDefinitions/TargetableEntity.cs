@@ -1,16 +1,8 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
 [Dependent]
 public class TargetableEntity : GlyphOneOf
 {
-    public TargetablePlayer? TargetablePlayer { get; set; }
-    public CardType? CardType { get; set; }
-    public CreatureType? CreatureType { get; set; }
+    public PlayerIdentity? PlayerIdentity { get; set; }
+    public CardOrCreatureType CardOrCreatureType { get; set; }
 }
-
-public enum TargetablePlayer
-{
-    Player,
-    Opponent
-}
-

@@ -1,13 +1,14 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>"target creature", "target player".</summary>
 [Dependent]
 public class Target : Glyph
 {
-    public override Nib[] Nibs => [Prop(IsAny), "target", Prop(TargetableEntity)];
+    public override Nib[] Nibs => ["target", Prop(TargetableEntity)];
 
-    [RegexPattern("any")]
-    public bool IsAny { get; set; }
-
-    [Optional]
     public TargetableEntity TargetableEntity { get; set; }
 }
+
+/// <summary>"any target": a creature, player or planeswalker.</summary>
+[Dependent]
+public class AnyTarget : Glyph;

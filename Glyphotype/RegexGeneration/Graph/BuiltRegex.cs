@@ -126,7 +126,7 @@ public class BuiltRegex
 
         foreach (var brick in _regexBricks)
         {
-            if (brick.Parent is Nodes.TextNode { AuthoredPattern: not null } node && brick.Regex == node.Text)
+            if (brick.Parent is Nodes.TextNode { AuthoredPattern: not null } node && node.IsTextBrick(brick))
             {
                 text.Append(node.WithPatternGroup(_patternGroupPrefix + patterns.Count));
                 patterns.Add(node.AuthoredPattern);
@@ -151,9 +151,16 @@ public class BuiltRegex
     /// ~15k-document corpus: 10.4s first pass then 376ms compiled, vs 444ms then 417ms interpreted). A grammar is
     /// rarely matched more than a few passes' worth - and every what-if grammar built from a definition is new
     /// types, so would pay the compile again.
+    /// <para>
+    /// Case-insensitive, as <see cref="MatchOptions"/> - a document is lowercased before it's matched, so a nib, pattern
+    /// or synonym written with a capital letter would otherwise silently never match.
+    /// </para>
     /// </summary>
     static Regex Compile(string pattern) =>
-        new(pattern, RegexOptions.ExplicitCapture);
+        new(pattern, MatchOptions);
+
+    /// <summary>The options every regex built from a glyph's nibs, patterns and vocabularies is matched with.</summary>
+    public const RegexOptions MatchOptions = RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
     public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly) =>

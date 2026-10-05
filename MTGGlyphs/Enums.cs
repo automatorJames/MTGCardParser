@@ -55,6 +55,7 @@ public enum ManaColor
     Green
 }
 
+[OptionalPlural]
 public enum CardType
 {
     Permanent,
@@ -92,16 +93,6 @@ public enum Keyword
     Trample,
     Vigilance,
 
-    // Keyword Actions
-    Attach,
-    Counter,
-    Exile,
-    Fight,
-    Regenerate,
-    Sacrifice,
-    Tap,
-    Untap,
-
     // Expansion Keywords
     Absorb,
     Affinity,
@@ -119,13 +110,11 @@ public enum Keyword
     Champion,
     Changeling,
     Cipher,
-    Clash,
     Conspire,
     Convoke,
     CumulativeUpkeep,
     Cycling,
     Delve,
-    Detain,
     Devour,
     Dredge,
     Echo,
@@ -136,7 +125,6 @@ public enum Keyword
     Exalted,
     Extort,
     Fading,
-    Fateseal,
     Fear,
     Flanking,
     Flashback,
@@ -156,7 +144,6 @@ public enum Keyword
     Madness,
     Miracle,
     Modular,
-    Monstrosity,
     Morph,
     Multikicker,
     Ninjutsu,
@@ -165,8 +152,6 @@ public enum Keyword
     Persist,
     Phasing,
     Poisonous,
-    Populate,
-    Proliferate,
     Provoke,
     Prowl,
     Rampage,
@@ -177,7 +162,6 @@ public enum Keyword
     Retrace,
     Ripple,
     Scavenge,
-    Scry,
     Shadow,
     Soulbond,
     Soulshift,
@@ -188,7 +172,6 @@ public enum Keyword
     Suspend,
     TotemArmor,
     Transfigure,
-    Transform,
     Transmute,
     Typecycling,
     Undying,
@@ -197,7 +180,36 @@ public enum Keyword
     Vanishing,
     Wither,
 
-    // Ability Words
+    // Discontinued
+    Landhome,
+    Substance
+}
+
+public enum KeywordAction
+{
+    Attach,
+    Clash,
+    Counter,
+    Detain,
+    Exile,
+    Fateseal,
+    Fight,
+    Monstrosity,
+    Populate,
+    Proliferate,
+    Regenerate,
+    Sacrifice,
+    Scry,
+    Tap,
+    Transform,
+    Untap,
+
+    // Discontinued
+    Bury
+}
+
+public enum AbilityWord
+{
     Battalion,
     Bloodrush,
     Channel,
@@ -215,19 +227,13 @@ public enum Keyword
     Morbid,
     Radiance,
     Sweep,
-    Threshold,
-
-    // Discontinued
-    Bury,
-    Landhome,
-    Substance
+    Threshold
 }
 
+/// <summary>Named counters. Power/toughness counters ("+1/+1", "+1/+0") are a <see cref="PowerToughnessMod"/> instead (see <see cref="Counters"/>).</summary>
 public enum CounterType
 {
     // Common counters
-    [RegexPattern(@"\+1/\+1")] PlusOnePlusOne,
-    [RegexPattern(@"-1/-1")] MinusOneMinusOne,
     Charge,
     Defense,
     Energy,
@@ -492,22 +498,16 @@ public enum CreatureType
 {
     Advisor,
     Aetherborn,
-    Ajani,
     Ally,
     Angel,
-    Angrath,
     Antelope,
     Ape,
-    Arcane,
     Archer,
     Archon,
-    Arlinn,
     Artificer,
-    Ashiok,
     Assassin,
     [RegexPattern("assembly-worker")] AssemblyWorker,
     Atog,
-    Aura,
     Aurochs,
     Avatar,
     Badger,
@@ -521,34 +521,26 @@ public enum CreatureType
     Berserker,
     Bird,
     Boar,
-    Bolas,
     Bringer,
     Brushwagg,
     Camel,
     Carrier,
-    Cartouche,
     Cat,
     Centaur,
     Cephalid,
-    Chandra,
     Chimera,
     Cleric,
-    Clue,
     Cockatrice,
     Construct,
     Crab,
     Crocodile,
-    Curse,
     Cyclops,
     Dauthi,
     Demon,
-    Desert,
     Devil,
     Dinosaur,
     Djinn,
     Dog,
-    Domri,
-    Dovin,
     Dragon,
     Drake,
     Dreadnought,
@@ -564,23 +556,16 @@ public enum CreatureType
     Elephant,
     Elf,
     Elk,
-    Elspeth,
-    Equipment,
     Eye,
     Faerie,
     Ferret,
     Fish,
     Flagbearer,
-    Forest,
-    Fortification,
     Fox,
     Frog,
     Fungus,
     Gargoyle,
-    Garruk,
-    Gate,
     Giant,
-    Gideon,
     Gnome,
     Goat,
     Goblin,
@@ -598,7 +583,6 @@ public enum CreatureType
     Homunculus,
     Horror,
     Horse,
-    Huatli,
     Human,
     Hydra,
     Hyena,
@@ -606,38 +590,28 @@ public enum CreatureType
     Imp,
     Incarnation,
     Insect,
-    Island,
-    Jace,
     Jackal,
     Jellyfish,
     Juggernaut,
-    Kaito,
-    Karn,
     Kavu,
-    Kiora,
     Kirin,
     Kithkin,
     Knight,
     Kobold,
     Kor,
-    Koth,
     Kraken,
-    Lair,
     Lamia,
     Lammasu,
     Leech,
     Leviathan,
     Lhurgoyf,
     Licid,
-    Liliana,
     Lizard,
-    Locus,
     Manticore,
     Masticore,
     Mercenary,
     Merfolk,
     Metathran,
-    Mine,
     Minion,
     Minotaur,
     Mole,
@@ -646,20 +620,15 @@ public enum CreatureType
     Monk,
     Monkey,
     Moonfolk,
-    Mountain,
     Mutant,
     Myr,
     Mystic,
     Naga,
-    Nahiri,
-    Narset,
     Nautilus,
     Nephilim,
     Nightmare,
     Nightstalker,
     Ninja,
-    Nissa,
-    Nixilis,
     Noble,
     Noggle,
     Nomad,
@@ -680,13 +649,10 @@ public enum CreatureType
     Phyrexian,
     Pilot,
     Pirate,
-    Plains,
     Plant,
-    [RegexPattern("power-plant")] PowerPlant,
     Praetor,
     Processor,
     Rabbit,
-    Ral,
     Ranger,
     Rat,
     Rebel,
@@ -694,11 +660,8 @@ public enum CreatureType
     Rigger,
     Rogue,
     Sable,
-    Saheeli,
     Salamander,
     Samurai,
-    Samut,
-    Sarkhan,
     Satyr,
     Scarecrow,
     Scorpion,
@@ -709,7 +672,6 @@ public enum CreatureType
     Shapeshifter,
     Shark,
     Sheep,
-    Shrine,
     Siren,
     Skeleton,
     Slith,
@@ -718,7 +680,6 @@ public enum CreatureType
     Snake,
     Soldier,
     Soltari,
-    Sorin,
     Spawn,
     Specter,
     Spellshaper,
@@ -731,29 +692,18 @@ public enum CreatureType
     Squirrel,
     Starfish,
     Surrakar,
-    Swamp,
-    Tamiyo,
-    Tezzeret,
     Thalakos,
     Thopter,
     Thrull,
-    Tibalt,
-    Tower,
-    Trap,
     Treefolk,
     Trilobite,
     Troll,
     Turtle,
-    Ugin,
     Unicorn,
-    [RegexPattern("urza's")] Urzas,
     Vampire,
     Vedalken,
-    Vehicle,
-    Venser,
     Viashino,
     Volver,
-    Vraska,
     Wall,
     Warlock,
     Warrior,
@@ -767,7 +717,6 @@ public enum CreatureType
     Worm,
     Wraith,
     Wurm,
-    Xenagos,
     Yeti,
     Zombie,
     Zubera
@@ -788,17 +737,11 @@ public enum PermanentVerb
     [RegexPattern("have", "has")]
     Have,
 
-    [RegexPattern("deal(s)?")]
-    Deal,
-
     [RegexPattern("gain(s)?")]
     Gain,
 
     [RegexPattern("lose(s)?")]
     Lose,
-
-    [RegexPattern("it's")]
-    Is,
 }
 
 public enum WhichPlayer
@@ -818,12 +761,6 @@ public enum PlayerIdentity
     Opponent
 }
 
-public enum CardPlace
-{
-    Graveyard,
-    Hand,
-}
-
 public enum PlusMinus
 {
     [RegexPattern(@"\+")]
@@ -839,22 +776,82 @@ public enum VariableName
     Y
 }
 
+[OptionalPlural]
 public enum LandType
 {
-    [RegexPattern("forest(s)?")]
+    Desert,
     Forest,
-
-    [RegexPattern("island(s)?")]
+    Gate,
     Island,
-
-    [RegexPattern("mountain(s)?")]
+    Lair,
+    Locus,
+    Mine,
     Mountain,
-
-    [RegexPattern("plains")]
     Plains,
+    [RegexPattern("power-plant")] PowerPlant,
+    Swamp,
+    Tower,
+    [RegexPattern("urza's")] Urzas
+}
 
-    [RegexPattern("swamp(s)?")]
-    Swamp
+public enum ArtifactType
+{
+    Clue,
+    Equipment,
+    Fortification,
+    Vehicle
+}
+
+public enum EnchantmentType
+{
+    Aura,
+    Cartouche,
+    Curse,
+    Shrine
+}
+
+public enum SpellType
+{
+    Arcane,
+    Trap
+}
+
+public enum PlaneswalkerType
+{
+    Ajani,
+    Angrath,
+    Arlinn,
+    Ashiok,
+    Bolas,
+    Chandra,
+    Domri,
+    Dovin,
+    Elspeth,
+    Garruk,
+    Gideon,
+    Huatli,
+    Jace,
+    Kaito,
+    Karn,
+    Kiora,
+    Koth,
+    Liliana,
+    Nahiri,
+    Narset,
+    Nissa,
+    Nixilis,
+    Ral,
+    Saheeli,
+    Samut,
+    Sarkhan,
+    Sorin,
+    Tamiyo,
+    Tezzeret,
+    Tibalt,
+    Ugin,
+    Venser,
+    Vraska,
+    Xenagos
 }
 
 public enum TemporalDisposition
@@ -912,7 +909,6 @@ public enum NonBattlefieldZone
     [RegexPattern("you own outside the game")]
     Sideboard,
 
-    [RegexPattern("spell")]
     Stack
 }
 
@@ -934,10 +930,4 @@ public enum Assertion
 
     [RegexPattern("isn't")]
     Isnt
-}
-
-public enum Who
-{
-    [RegexPattern("that creature's controller")]
-    ThatCreaturesController
 }

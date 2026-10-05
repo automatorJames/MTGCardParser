@@ -16,6 +16,9 @@ public sealed record PropertyDefinition
     /// <summary><see cref="RegexPatternAttribute"/>: overrides the default pattern (a bool's or primitive's).</summary>
     public IReadOnlyList<string> Patterns { get; init; } = [];
 
+    /// <summary><see cref="OptionalPluralAttribute"/>: an enum property matches each of its members singular or plural.</summary>
+    public bool IsOptionalPlural { get; init; }
+
     /// <summary><see cref="JoinedByAttribute"/>: the separator between a <see cref="CompoundOf{T}"/>'s items at this usage site.</summary>
     public Joiner? JoinedBy { get; init; }
 

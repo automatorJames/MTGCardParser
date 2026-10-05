@@ -86,8 +86,7 @@ public abstract class RegexNode
             bool owns = JoinerRules.OwnsTrailingJoiner(
                 IsNullable,
                 hasNext: next is not null,
-                nextIsNullable: next?.IsNullable ?? false,
-                nextHasAnchorBefore: next is not null && HasAnchorBefore(parent, index + 1));
+                hasAnchorBefore: index > 0 && HasAnchorBefore(parent, index));
 
             return owns ? next : null;
         }
@@ -108,12 +107,15 @@ public abstract class RegexNode
     /// so attributing a joiner to the group it merely precedes makes it render as (and be harvested as) that
     /// group's own inner content.
     /// </param>
-    protected static void AppendJoinerBefore(RegexNode after, RegexCollector collector, RegexNode owner)
+    /// <returns>The joiner appended, or <see cref="Joiner.None"/> when none was.</returns>
+    protected static Joiner AppendJoinerBefore(RegexNode after, RegexCollector collector, RegexNode owner)
     {
         var joiner = JoinerRules.Between(JoinSite.Of((NamedGroupNode)after.ParentNode, after, collector));
 
         if (joiner != Joiner.None)
             collector.Append(new RegexBrickJoiner(owner, joiner));
+
+        return joiner;
     }
 
     RegexNode[] GetLineage()

@@ -1,4 +1,4 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
 public class ThisDealsDamage : Glyph
 {

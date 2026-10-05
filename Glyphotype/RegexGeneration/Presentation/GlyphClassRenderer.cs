@@ -110,11 +110,16 @@ public static class GlyphClassRenderer
         if (nibsLine != null)
             lines.Add(nibsLine);
 
+        if (nibsLine != null && joinerLine != null)
+            lines.Add(new ClassLine([]));
+
         if (joinerLine != null)
             lines.Add(joinerLine);
 
         if (nibsLine != null || joinerLine != null)
             lines.Add(new ClassLine([]));
+
+        var isFirstProperty = true;
 
         foreach (var property in type.GetOwnProps())
         {
@@ -124,6 +129,12 @@ public static class GlyphClassRenderer
             var propertyNode = contextNode.NamedGroupChildren.FirstOrDefault(x => x.Navigation.Prop == property);
             if (propertyNode == null)
                 continue;
+
+            // A blank line between properties, none after the last.
+            if (!isFirstProperty)
+                lines.Add(new ClassLine([]));
+
+            isFirstProperty = false;
 
             foreach (var attribute in GetDisplayableAttributes(property))
                 lines.Add(BuildAttributeLine(attribute, indent));
@@ -203,9 +214,9 @@ public static class GlyphClassRenderer
     /// like a concrete <see cref="GlyphOneOf"/>, which rely entirely on reflected property nibs and so have
     /// no such line in their real source). Walks the raw declared <see cref="Nib"/>[] itself - not
     /// <paramref name="contextNode"/>'s <see cref="NamedGroupNode.Children"/>, which flattens every non-property
-    /// nib down to plain literal text and so can't tell an <see cref="OptionalNib"/>/<see cref="NibAlternatives"/>/
-    /// <see cref="OptionalPluralNib"/> apart from an ordinary string - so each nib's real authored call syntax
-    /// (<c>Opt(...)</c>, <c>Alt(...)</c>, <c>Plural()</c>) can be reconstructed exactly.
+    /// nib down to plain literal text and so can't tell a text helper (<see cref="OptionalNib"/>, <see cref="NibAlternatives"/>,
+    /// <see cref="SomeNib"/>, <see cref="PluralNib"/>) apart from an ordinary string - so each nib's real authored call
+    /// syntax (<c>Opt(...)</c>, <c>Alt(...)</c>, <c>Plural(...)</c>) can be reconstructed exactly.
     /// </summary>
     static ClassLine BuildNibsLine(NamedGroupNode contextNode, RenderContext ctx, string indent)
     {
@@ -234,24 +245,19 @@ public static class GlyphClassRenderer
                     break;
 
                 case NibAlternatives alternatives:
-                    spans.Add(Keyword("Alt("));
-                    for (int a = 0; a < alternatives.Alternatives.Length; a++)
-                    {
-                        if (a > 0)
-                            spans.Add(Brace(", "));
-                        spans.AddRange(LiteralSpans(alternatives.Alternatives[a], contextNode, ctx));
-                    }
-                    spans.Add(Keyword(")"));
+                    spans.AddRange(HelperCallSpans("Alt", alternatives.Alternatives, contextNode, ctx));
                     break;
 
-                case OptionalPluralNib:
-                    spans.Add(Keyword("Plural()"));
+                case SomeNib some:
+                    spans.AddRange(HelperCallSpans("Some", some.Items, contextNode, ctx));
                     break;
 
                 case OptionalNib optional:
-                    spans.Add(Keyword("Opt("));
-                    spans.AddRange(NibTextSpans(optional.Inner, contextNode, ctx));
-                    spans.Add(Keyword(")"));
+                    spans.AddRange(HelperCallSpans("Opt", optional.Texts, contextNode, ctx));
+                    break;
+
+                case PluralNib plural:
+                    spans.AddRange(HelperCallSpans("Plural", [plural.Singular], contextNode, ctx));
                     break;
 
                 case PatternNib pattern:
@@ -289,6 +295,22 @@ public static class GlyphClassRenderer
         nib is PatternNib
             ? [Keyword("Pattern("), .. LiteralSpans(nib.Text, contextNode, ctx), Keyword(")")]
             : LiteralSpans(nib.Text, contextNode, ctx);
+
+    /// <summary>A text helper's call, e.g. <c>Alt("a", "b")</c>: its name, then each of its literal texts.</summary>
+    static List<ClassSpan> HelperCallSpans(string helper, IEnumerable<string> texts, NamedGroupNode contextNode, RenderContext ctx)
+    {
+        List<ClassSpan> spans = [Keyword(helper + "(")];
+
+        foreach (var (text, i) in texts.Select((x, i) => (x, i)))
+        {
+            if (i > 0)
+                spans.Add(Brace(", "));
+            spans.AddRange(LiteralSpans(text, contextNode, ctx));
+        }
+
+        spans.Add(Keyword(")"));
+        return spans;
+    }
 
     /// <summary>A quoted literal's spans: neutral quote marks (verbatim <c>@"</c> when <paramref name="text"/> contains a backslash - see <see cref="FormatStringLiteral"/>) around content colored via <see cref="LiteralPalette"/>.</summary>
     static List<ClassSpan> LiteralSpans(string text, NamedGroupNode contextNode, RenderContext ctx)

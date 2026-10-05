@@ -101,22 +101,70 @@ public abstract class NamedGroupNode : GroupNode
     /// joiner's presence is coupled to whichever conditional match already governs this group, rather than
     /// rendering unconditionally.
     /// </summary>
+    /// <remarks>
+    /// When this group's content is a bare alternation (see <see cref="ContentIsBareAlternation"/>) and it carries a
+    /// joiner inside its bookends, the content is grouped - as <see cref="GlyphOneOfNode"/> groups its alternatives
+    /// between literal text - so the joiner binds to every alternative rather than only the first or last:
+    /// <c>(?&lt;x&gt;[ ](a|b))?</c>, not <c>(?&lt;x&gt;[ ]a|b)?</c>.
+    /// </remarks>
     protected override void AppendOwnRegexBricks(RegexCollector collector)
     {
         if (!IsTransparentRoot)
             collector.Append(GetGroupOpenBrick());
 
-        if (LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading)
-            AppendJoinerBefore(this, collector, owner: this);
+        var successor = TrailingJoinerSuccessor;
+        var groupsContent = ContentIsBareAlternation && (LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading || successor is not null);
+
+        _innerLeadingJoiner = LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading
+            ? AppendJoinerBefore(this, collector, owner: this)
+            : Joiner.None;
+
+        if (groupsContent)
+            collector.Append(new RegexBrick(this, "("));
 
         AppendInnerContentBricks(collector);
 
-        if (TrailingJoinerSuccessor is RegexNode successor)
-            AppendJoinerBefore(successor, collector, owner: this);
+        if (groupsContent)
+            collector.Append(new RegexBrick(this, ")"));
+
+        _innerTrailingJoiner = successor is not null
+            ? AppendJoinerBefore(successor, collector, owner: this)
+            : Joiner.None;
 
         if (!IsTransparentRoot)
             collector.Append(GetGroupCloseBrick());
     }
+
+    Joiner _innerLeadingJoiner;
+    Joiner _innerTrailingJoiner;
+
+    /// <summary>Whether this group's content is two or more alternatives with nothing around them, so anything placed next to it inside the group would bind to one alternative alone.</summary>
+    protected virtual bool ContentIsBareAlternation =>
+        EffectiveChildJoiner == Joiner.Pipe && Children.Count > 1;
+
+    /// <summary>
+    /// What <paramref name="captureTrace"/> captured of this group's own content: its text without the joiners this
+    /// group carries inside its own bookends when it's nullable (see <see cref="AppendOwnRegexBricks"/>) - e.g.
+    /// "has" rather than " has" - which is what a terminal's value is read from.
+    /// </summary>
+    protected string ContentText(CaptureTrace captureTrace)
+    {
+        var text = captureTrace.CaptureValue;
+        var leading = JoinerText(_innerLeadingJoiner);
+        var trailing = JoinerText(_innerTrailingJoiner);
+
+        if (leading.Length > 0 && text.StartsWith(leading, StringComparison.Ordinal))
+            text = text[leading.Length..];
+
+        if (trailing.Length > 0 && text.EndsWith(trailing, StringComparison.Ordinal))
+            text = text[..^trailing.Length];
+
+        return text;
+    }
+
+    /// <summary>The literal text a joiner matches: "[ ]" is a space.</summary>
+    static string JoinerText(Joiner joiner) =>
+        joiner == Joiner.None ? "" : joiner.GetDescription().Replace("[ ]", " ");
 
     /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="JoinedItemNode"/>).</summary>
     protected virtual void AppendInnerContentBricks(RegexCollector collector)

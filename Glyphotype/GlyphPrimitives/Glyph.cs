@@ -24,32 +24,49 @@ public abstract class Glyph : CaptureUnit
         return propInfo;
     }
 
-    public PropertyNib Prop(object member, Proptions proptions = Proptions.None, [CallerArgumentExpression("member")] string expression = "")
+    /// <summary>
+    /// A property, by itself: <c>Prop(Animal)</c>. Everything about how it's captured - optional, plural, its
+    /// patterns, its separator - is declared on the property, by attribute (<see cref="OptionalAttribute"/>,
+    /// <see cref="OptionalPluralAttribute"/>, <see cref="RegexPatternAttribute"/>, ...), never here.
+    /// </summary>
+    public PropertyNib Prop(object member, [CallerArgumentExpression("member")] string expression = "")
     {
         var resolvedProp = MemberExpressionToProp(expression);
 
-        return new PropertyNib(resolvedProp.Name, resolvedProp, proptions)
-        {
-            IsPlural = proptions.HasFlag(Proptions.Plural),
-            IsOptional = proptions.HasFlag(Proptions.Optional),
-        };
+        return new PropertyNib(resolvedProp.Name, resolvedProp);
     }
 
-    /// <summary>Exactly one of several literal texts, e.g. <c>Alt("sleeps", "naps")</c>.</summary>
+    // The text helpers. Each takes literal text - only literal text, matched exactly as written (ignoring case) - and
+    // applies one treatment to it; they don't nest, and a property's treatments are its attributes, not these. Spacing
+    // around and within each is the engine's (see JoinerRules), the same for all: neighbours are separated by the
+    // glyph's Joiner, an optional part's separator renders exactly when the part does, punctuation binds to the word it
+    // belongs to ("dog, ball", "(dog)", "$3", "dog-fish"), and a space written into the text is used as written.
+
+    /// <summary>Exactly one of several texts, e.g. <c>Alt("sleeps", "naps")</c>. Each is spaced as a nib of its own: after a word, <c>Alt(",", "and")</c> matches "dog, ball" and "dog and ball".</summary>
     public NibAlternatives Alt(params string[] alternatives) =>
         new NibAlternatives(alternatives);
 
-    /// <summary>A nib that may be absent: literal text, e.g. <c>Opt("some")</c>, or a pattern, e.g. <c>Opt(Pattern("an?"))</c>.</summary>
-    public OptionalNib Opt(Nib optional) =>
-        new OptionalNib(optional);
+    /// <summary>One of several texts, or none: <c>"eats", Opt("some"), "fish"</c> matches "eats some fish" and "eats fish"; <c>Opt("in", "from")</c> matches either word, or neither.</summary>
+    public OptionalNib Opt(params string[] texts) =>
+        new OptionalNib(texts);
 
-    /// <summary>An optional plural suffix on the word before it: <c>"dog", Plural()</c> matches "dog" and "dogs".</summary>
-    public OptionalPluralNib Plural() =>
-        new OptionalPluralNib();
+    /// <summary>
+    /// At least one of several texts, in the order written - any or all of them, but never none - spaced as separate
+    /// nibs would be. E.g. <c>Some("big", "red")</c> matches "big", "red" and "big red", and <c>Some(",", " ")</c>
+    /// between two words matches "a, b", "a,b" and "a b" but not "ab". Where <see cref="Alt"/> is exactly one and
+    /// <see cref="Opt"/> zero or one, this is one or more.
+    /// </summary>
+    public SomeNib Some(params string[] items) =>
+        new SomeNib(items);
+
+    /// <summary>A word or phrase, singular or plural: <c>Plural("creature")</c> matches "creature" and "creatures", <c>Plural("berry")</c> "berry" and "berries". (For a property, see <see cref="OptionalPluralAttribute"/>.)</summary>
+    public PluralNib Plural(string singular) =>
+        new PluralNib(singular);
 
     /// <summary>
     /// A regex rather than literal text - the explicit opt-in, for what literal text and the other helpers can't
-    /// express, e.g. <c>Pattern("an?")</c>. Every other nib is matched exactly as written.
+    /// express, e.g. <c>Pattern(@"\d+")</c>. It's one unit wherever it sits (a <c>|</c> in it splits only the pattern),
+    /// and one that can match nothing, e.g. <c>Pattern("(an?)?")</c>, is optional, spaced as <see cref="Opt"/> is.
     /// </summary>
     public PatternNib Pattern(string regex) =>
         new PatternNib(regex);
@@ -98,6 +115,9 @@ public abstract class Glyph : CaptureUnit
 
         if (GetJoinedByError(props) is string joinedByError)
             return joinedByError;
+
+        if (props.FirstOrDefault(x => x.IsDefined(typeof(OptionalPluralAttribute)) && !(Nullable.GetUnderlyingType(x.PropertyType) ?? x.PropertyType).IsEnum) is PropertyInfo misplacedOptionalPlural)
+            return $"{Type.Name}.{misplacedOptionalPlural.Name} declares [OptionalPlural] but isn't a vocabulary (enum) property - only a vocabulary's members are pluralized; for literal text, use Plural(\"word\")";
 
         if (props.FirstOrDefault(x => x.IsDefined(typeof(AllowUnmatchedAttribute)) && x.PropertyType != typeof(DynamicGlyph)) is PropertyInfo misplacedAllowUnmatched)
             return $"{Type.Name}.{misplacedAllowUnmatched.Name} declares [AllowUnmatched] but isn't a {nameof(DynamicGlyph)} - only a dynamic resolves its text, so only a dynamic can leave it unresolved";
@@ -366,40 +386,54 @@ public abstract class Glyph : CaptureUnit
     static readonly Regex _escapedPeriod = new(@"(?<!\\)(?:\\\\)*\\\.");
 
     /// <summary>
-    /// The period rules, which keep every period on a line a <see cref="ClauseBreak"/> the Tokenizer can see:
+    /// The period rules, which keep every period ending a clause of the line a <see cref="ClauseBreak"/> the Tokenizer can see:
     /// <list type="bullet">
     /// <item>A plain literal nib may have a period inside it only if <paramref name="allowPeriodsInLiteralNibs"/>
     /// (see <see cref="GlobalSettings.AllowPeriodsInLiteralNibs"/>) - it's then split around it into a clause-break
     /// nib of its own (see <see cref="ClauseBreak.SplitAtPeriods"/>).</item>
     /// <item>Nothing else may match a literal period: not a pattern (<see cref="PatternNib"/>, or a
     /// <see cref="RegexPatternAttribute"/> on the type, a dynamic property or an enum member), an
-    /// <see cref="Alt"/> or an <see cref="Opt"/> - none can be split around a break, so a period in one could
+    /// <see cref="Alt"/>, a <see cref="Some"/> or an <see cref="Opt"/> - none can be split around a break, so a period in one could
     /// only ever match by swallowing it.</item>
     /// <item>A type may end with a period (bare <c>"."</c> nib included) only where it's redundant, and so dropped
     /// (see <see cref="ClauseBreak.IsTrailingPeriodRedundant"/>): a clause's closing period is the Tokenizer's own
     /// <see cref="ClauseBreak"/>, never part of a Glyph. Not, then, on a dependent or partial-match type, nor on
     /// one <paramref name="isUsedAsProperty"/> by another glyph - in each, the period is a real constraint the
     /// type can't keep.</item>
+    /// <item>None of this applies to a period inside parentheses or quotes the glyph writes itself -
+    /// <c>"(", Prop(Reminder), Opt("."), ")"</c> - which ends a clause nested in its own text, not one of the line's
+    /// (see <see cref="Enclosures"/>).</item>
     /// </list>
     /// Run by <see cref="GlyphGrammar"/> after every graph is built, since both the setting and which types nest
     /// which are the grammar's.
     /// </summary>
     public static string GetPeriodError(Type type, bool allowPeriodsInLiteralNibs, bool isUsedAsProperty)
     {
-        const string useClauseBreakNib = "write the period as a bare \".\" nib of its own instead";
-        var textNibs = GlyphTypeCache.GetConfiguration(type).Nibs.Where(x => x is not PropertyNib).ToList();
+        const string useClauseBreakNib = "write the period as a bare \".\" nib of its own instead, or inside parentheses or quotes the glyph writes itself";
+        var nibs = GlyphTypeCache.GetConfiguration(type).Nibs;
 
-        foreach (var nib in textNibs)
+        // A period inside an enclosure the glyph writes itself ends a clause nested in its own text, never a clause of
+        // the line, so none of these rules apply to it - see Enclosures.
+        var inside = Enclosures.Inside(nibs);
+
+        for (int i = 0; i < nibs.Length; i++)
         {
+            var nib = nibs[i];
+
+            if (nib is PropertyNib || (nib.GetType() != typeof(Nib) && inside[i][0]))
+                continue;
+
+            var text = nib.Text;
+            bool hasOutsidePeriod = nib.GetType() == typeof(Nib) && text != ClauseBreak.Period.ToString() && Enumerable.Range(0, text.Length).Any(x => text[x] == ClauseBreak.Period && !inside[i][x]);
+
             var error = nib switch
             {
-                PatternNib or OptionalNib { Inner: PatternNib } when _escapedPeriod.IsMatch(nib.Regex) =>
+                PatternNib when _escapedPeriod.IsMatch(nib.Regex) =>
                     $"the pattern \"{nib.Regex}\" matches a literal period, which a pattern can't be split around - {useClauseBreakNib}",
-                NibAlternatives alternatives when alternatives.Alternatives.Any(x => x.Contains(ClauseBreak.Period)) =>
-                    $"Alt(\"{string.Join("\", \"", alternatives.Alternatives)}\") contains a period, which an alternation can't be split around - {useClauseBreakNib}",
-                OptionalNib { Inner: not PatternNib } when nib.Text.Contains(ClauseBreak.Period) =>
-                    $"Opt(\"{nib.Text}\") contains a period, and a clause break can't be optional - {useClauseBreakNib}",
-                _ when !allowPeriodsInLiteralNibs && ClauseBreak.IsSplittable(nib) =>
+                // Only a plain literal can be split around a period: a helper's texts are alternatives or optional parts.
+                not PatternNib when nib.GetType() != typeof(Nib) && nib.Literals.Any(x => x.Contains(ClauseBreak.Period)) =>
+                    $"{nib.Authored} contains a period, and a helper's text can't hold a clause break (it may be absent, or one of several) - {useClauseBreakNib}",
+                _ when !allowPeriodsInLiteralNibs && hasOutsidePeriod =>
                     $"the nib \"{nib.Text}\" contains a period, which this grammar doesn't allow in literal text ({nameof(GlobalSettings)}.{nameof(GlobalSettings.AllowPeriodsInLiteralNibs)} is off) - {useClauseBreakNib}",
                 _ => null,
             };
@@ -418,7 +452,7 @@ public abstract class Glyph : CaptureUnit
         if (propertyPatterns.FirstOrDefault(x => _escapedPeriod.IsMatch(x.Pattern)) is { Pattern: not null } offending)
             return $"{offending.Owner}'s pattern \"{offending.Pattern}\" matches a literal period, which a pattern can't be split around - {useClauseBreakNib}";
 
-        // Only a plain literal nib is left to check: a pattern, Alt or Opt with a period in it was refused above.
+        // Only a plain literal nib is left to check: a pattern, Alt, Some or Opt with a period in it was refused above.
         if (!ClauseBreak.EndsWithPeriod(type))
             return null;
 
@@ -499,16 +533,10 @@ public abstract class Glyph : CaptureUnit
     /// </summary>
     static bool AlwaysConsumesText(Nib nib, HashSet<Type> visitedTypes = null)
     {
-        // Literal text always matches itself (non-empty, as TextNode requires); Alt's literal alternatives do as
-        // long as none is empty. An OptionalNib may match nothing, as may Plural()'s suffix, and a pattern is
-        // opaque - it might (e.g. "(on)?") - so none of those can anchor.
+        // Literal text always matches itself (non-empty, as every helper requires), and so does each of a helper's
+        // texts - except Opt's, which may all be absent. A pattern anchors unless it can match nothing.
         if (nib is not PropertyNib propertyNib)
-            return nib switch
-            {
-                OptionalNib or OptionalPluralNib or PatternNib => false,
-                NibAlternatives alternatives => alternatives.Alternatives.All(x => !string.IsNullOrEmpty(x)),
-                _ => true,
-            };
+            return !nib.IsOptional;
 
         // "?" or "*" - permits zero occurrences by construction.
         if (propertyNib.Navigation.IsOptional)

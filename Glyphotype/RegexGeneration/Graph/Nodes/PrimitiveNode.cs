@@ -20,6 +20,6 @@ public class PrimitiveNode : NamedGroupNode
         if (captureTrace.Count != 1)
             throw new Exception($"{nameof(PrimitiveNode)} expects exactly one capture");
 
-        return Terminal.Parse(captureTrace.CaptureValue);
+        return Terminal.Parse(ContentText(captureTrace));
     }
 }

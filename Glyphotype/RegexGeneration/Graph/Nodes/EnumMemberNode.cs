@@ -28,7 +28,7 @@ public class EnumMemberNode : TerminalRegexNode
         // Anchored: it's used to work out which member a captured value *is*, so it must match all of it. A bare
         // pattern matches anywhere within the value, so e.g. "fish" would claim a captured "fish sticks", and
         // "cat" a captured "catfish", whenever that member happens to be declared first.
-        Regex = new ($"^(?:{regexString})$");
+        Regex = new($"^(?:{regexString})$", BuiltRegex.MatchOptions);
         PositionAmongSiblings = positionAmongSiblings;
         PositionAmongSynonyms = positionAmongSynonyms;
     }

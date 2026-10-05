@@ -10,7 +10,12 @@ namespace Glyphotype.RegexGeneration.Graph.Nodes;
 /// </summary>
 public class DynamicGlyphNode : GlyphNode
 {
-    protected override string DefaultPattern => @"[^.]+";
+    /// <summary>
+    /// Anything up to the clause's end: no period but an enclosed one (see <see cref="Enclosures"/>) - and not the one
+    /// ending an enclosure, unless nothing after it here can take it. So in <c>"(", Prop(Reminder), Opt("."), ")"</c>,
+    /// "(this creature can't attack.)" leaves the period to <c>Opt(".")</c>, and with no <c>Opt(".")</c> the reminder takes it.
+    /// </summary>
+    protected override string DefaultPattern => $@"(?:[^.{Enclosures.EnclosedPeriod}]|{Enclosures.EnclosedPeriod}(?! *[)""]))+{Enclosures.EnclosedPeriod}??";
 
     public DynamicGlyphNode(RegexNode parentNode, Navigation navigation)
         : base(parentNode, navigation)

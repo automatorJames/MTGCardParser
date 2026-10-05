@@ -63,7 +63,8 @@ public class Program
         // the Grammar Tools tab, and vice versa.
         var maxSetSequence = GlobalSettings.Current.MaxSetSequence;
         // How agent sessions run: when to check in, and what a step must achieve. Optional - each setting has a default.
-        var agentSettings = builder.Configuration.GetSection("GrammarAgent").Get<AgentSessionSettings>() ?? new();
+        var agentSettings = (builder.Configuration.GetSection("GrammarAgent").Get<AgentSessionSettings>() ?? new())
+            with { AllowTypeFilters = !GlobalSettings.Current.DisallowAgentTypeFilters };
 
         builder.Services.AddSingleton(services => new GrammarAgent(
             services.GetRequiredService<WorkspaceManager>(),

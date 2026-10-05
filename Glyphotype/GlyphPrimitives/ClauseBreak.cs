@@ -2,8 +2,8 @@ namespace Glyphotype.GlyphPrimitives;
 
 /// <summary>
 /// The period that separates one clause from the next, as a first-class token rather than leftover text -
-/// along with any closing parentheses or quotes straight after it, which end the same clause (".)" closing a
-/// parenthetical, ".\"" closing a quoted sentence).
+/// along with any stray closing parentheses or quotes straight after it. A period inside parenthesized or quoted
+/// text ends a clause nested in the one around it, not that one (see <see cref="Enclosures"/> and <see cref="Depth"/>).
 /// <para>
 /// Synthesized directly by the <see cref="Tokenizers.Tokenizer"/> (like <see cref="UnmatchedString"/>,
 /// and for the same reason) instead of competing as a top-level type: a clause break sits *between*
@@ -26,19 +26,26 @@ public class ClauseBreak : CaptureUnit
 
     static readonly ClauseBreakNode _rootNode = CreateSharedRootNode(new ClauseBreakNode(null, new(typeof(ClauseBreak))));
 
-    public ClauseBreak(string sourceText, int index, int length)
+    public ClauseBreak(string sourceText, int index, int length, int depth = 0)
     {
         InitializeSpanContext(_rootNode, sourceText, index, length);
+        Depth = depth;
     }
 
-    /// <summary>The one character that ends a clause. Every period is a clause break - the Tokenizer splits on each.</summary>
+    /// <summary>
+    /// How many enclosures (see <see cref="Enclosures"/>) this break sits inside: 0 for one ending a clause of the
+    /// line itself, more for one ending a clause nested inside parenthesized or quoted text - "(this creature can't
+    /// attack.)" - which ends that nested clause but not the clause around it (see <see cref="LineClause.Group"/>).
+    /// </summary>
+    public int Depth { get; }
+
+    /// <summary>The one character that ends a clause. Every period outside an enclosure is a clause break - the Tokenizer splits on each (see <see cref="Enclosures"/>).</summary>
     public const char Period = '.';
 
     /// <summary>
     /// What may follow a clause-ending <see cref="Period"/> and still belong to the same break: a closing
-    /// parenthesis or quote ends the clause the period does. Left behind, it would open the next clause as a
-    /// lone ")" or "\"" of unmatched text. (The quoted or parenthesized sentence is a clause of its own, not yet
-    /// one nested inside the clause around it.)
+    /// parenthesis or quote that closes nothing (see <see cref="Enclosures"/> - one that closes an enclosure would put
+    /// the period inside it). Left behind, it would open the next clause as a lone ")" or "\"" of unmatched text.
     /// </summary>
     static readonly char[] _closingChars = [')', '"'];
 
@@ -86,6 +93,47 @@ public class ClauseBreak : CaptureUnit
 
             if (!string.IsNullOrWhiteSpace(piece))
                 yield return new Nib(piece);
+        }
+    }
+
+    /// <summary>
+    /// <see cref="SplitAtPeriods(Nib)"/> around only the periods outside an enclosure the glyph writes itself -
+    /// <paramref name="inside"/> flags each of the nib's characters (see <see cref="Enclosures.Inside(IReadOnlyList{Nib})"/>).
+    /// A period inside one ends a clause nested in the glyph's own text, not a clause of the line, so it stays in its
+    /// piece, and the piece is marked enclosed: its periods match only enclosed ones (see <see cref="Enclosures"/>).
+    /// </summary>
+    public static IEnumerable<(Nib Nib, bool Enclosed)> SplitAtPeriods(Nib nib, bool[] inside)
+    {
+        if (nib.GetType() != typeof(Nib))
+        {
+            yield return (nib, inside.Length > 0 && inside[0]);
+            yield break;
+        }
+
+        var text = nib.Text;
+        var breaks = Enumerable.Range(0, text.Length).Where(i => text[i] == Period && !inside[i]).ToList();
+
+        // A bare "." nib is the clause-break nib itself, and a nib with no outside period has nothing to split.
+        if (breaks.Count == 0 || text == Period.ToString())
+        {
+            yield return (nib, text.Contains(Period) && breaks.Count == 0);
+            yield break;
+        }
+
+        int start = 0;
+
+        foreach (var index in breaks.Append(text.Length))
+        {
+            // As in SplitAtPeriods(Nib): the text before a period drops its trailing spaces; the text after keeps its leading ones.
+            var piece = index < text.Length ? text[start..index].TrimEnd() : text[start..];
+
+            if (!string.IsNullOrWhiteSpace(piece))
+                yield return (new Nib(piece), piece.Contains(Period));
+
+            if (index < text.Length)
+                yield return (new Nib(Period.ToString()), false);
+
+            start = index + 1;
         }
     }
 

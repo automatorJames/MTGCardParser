@@ -123,16 +123,26 @@ public class AnimalNaps : Glyph
 }
 ```
 
-**Nibs** are the glyph's parts, in order. By default they're joined by a single space.
+**Nibs** are the glyph's parts, in order: literal text, a text helper, or a property. By default they're joined by a
+single space, and spacing is otherwise the engine's to handle: an optional nib's space comes and goes with it
+(`"eats", Opt("the"), Prop(Food)` matches "eats the fish" and "eats fish"), punctuation attaches to the word it
+belongs to (`,` `;` `'s` `)` `%` to the word before, `(` `$` `#` to the word after, `-` `/` to both: "dog, cat",
+"(dog)", "$3", "+1/+1"), and a space you write into a nib yourself is used as written (`Alt(", and", " and")`), never
+doubled. Case doesn't matter.
 
 | Nib | Matches |
 |---|---|
 | `"text"` | the text exactly, as literal characters (no regex) |
 | `Alt("a", "b")` | exactly one of the texts |
-| `Opt(nib)` | the nib, or nothing |
-| `Plural()` | an optional plural suffix on the word before it: `"card", Plural()` matches card and cards |
-| `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern("an?")` |
-| `Prop(Name)` | the property `Name`; `Prop(Name, Proptions.Plural)` and `Proptions.NoPrecedingSpace` adjust it |
+| `Opt("a")`, `Opt("a", "b")` | one of the texts, or nothing |
+| `Some("a", "b")` | at least one of the texts, in order: a, b, or a b. `Some(",", " ")` between two words matches "x, y", "x,y" and "x y" but not "xy" |
+| `Plural("card")` | the word or phrase, singular or plural: card, cards (`Plural("berry")`: berry, berries) |
+| `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern(@"\d+")`; one that can match nothing (`Pattern("(an?)?")`) is optional |
+| `Prop(Name)` | the property `Name` |
+
+The text helpers take literal text only, and don't nest (`Opt(Alt(...))` is `Opt("a", "b")`). A property's
+treatments are its attributes, never the nib: `[Optional]` makes it optional, `[OptionalPlural]` (on an enum
+property) matches its members singular or plural.
 
 With no `Nibs` override, a glyph matches its properties in declaration order. With no properties either, it
 matches `[RegexPattern("…")]` if given, else its own name, friendly-cased (`WeSweepTheFloor` → "we sweep the
@@ -181,15 +191,30 @@ Without an order, glyphs with longer patterns are tried first, and the first gly
 
 **The whole-clause rule.** A top-level glyph must match an entire clause: everything between line starts and
 periods. Otherwise it doesn't match at all, so "the dog naps" won't match inside "the dog naps on monday".
-`[AllowPartialClauseMatch]` relaxes this for one glyph. Use it sparingly, since partial matches hide unmodeled
+Parenthesized and quoted text (see *Enclosures*) is the one exception: a match may also stop just before one or start
+at one. `[AllowPartialClauseMatch]` relaxes this for one glyph. Use it sparingly, since partial matches hide unmodeled
 text. For shared fragments, prefer `[Dependent]` glyphs nested inside whole-clause ones.
 
-**Periods.** Every period ends a clause, and the tokenizer emits it (along with any `)` or `"` straight after it) as
-a clause break, shown as ` . `. To cover several sentences, put the period inside a literal nib (`"by it. they
-can't be regenerated"`) or write it as its own `"."` nib. A clause's closing period is always a break, so one written
-at the end of a top-level glyph is simply dropped. It's an error on a `[Dependent]` or `[AllowPartialClauseMatch]`
-glyph, or on one another glyph uses as a property, because there the period would fall inside a larger match. No
-pattern, `Alt` or `Opt` may contain a period.
+**Periods.** Every period outside parentheses and quotes ends a clause, and the tokenizer emits it (along with any
+stray `)` or `"` straight after it) as a clause break, shown as ` . `. To cover several sentences, put the period
+inside a literal nib (`"by it. they can't be regenerated"`) or write it as its own `"."` nib. A clause's closing
+period is always a break, so one written at the end of a top-level glyph is simply dropped. It's an error on a
+`[Dependent]` or `[AllowPartialClauseMatch]` glyph, or on one another glyph uses as a property, because there the
+period would fall inside a larger match. No pattern, `Alt` or `Opt` may contain a period, except inside parentheses or
+quotes the glyph writes itself.
+
+**Enclosures.** Text in parentheses or quotes, like reminder text `(this creature can't be blocked.)` or a granted
+ability `has "{t}: add {g}."`, is nested inside the clause around it. Its periods end its own clauses, not that one.
+- A glyph can match an enclosure whole, before or after other matches in the clause:
+  `["(", Prop(Reminder), Opt("."), ")"]` matches the reminder text in `flying (this creature can't be blocked.)`
+  after a keyword glyph matches `flying`. A dynamic there stops before the enclosure's closing period, leaving it to
+  `Opt(".")`. Without one, the dynamic takes the period.
+- A glyph can span an enclosure: `["has", "\"", Prop(Ability), Opt("."), "\""]`.
+- Periods the glyph writes inside its own parentheses or quotes are part of its text, never clause breaks, so
+  they're allowed in literals, `Opt` and `Alt` there.
+- When no glyph takes an enclosure, its inside is tokenized as text of its own, shown between its delimiters:
+  `⟦Flying: flying⟧ ( «this creature can't be blocked» . )`.
+- A delimiter with no partner, like an unclosed `(`, is plain text.
 
 **Back-references** ("it", "they", "that creature") are glyphs deriving from `BackReference`. They match like any glyph, and
 after the line is tokenized each one is resolved to the most recent earlier referent in its line that agrees with

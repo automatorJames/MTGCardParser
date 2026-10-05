@@ -13,7 +13,7 @@ public class EnumNode : NamedGroupNode
     {
     }
 
-    /// <summary>Adds one <see cref="EnumMemberNode"/> per (member, synonym pattern) pair — including plural variants when <see cref="OptionalPluralAttribute"/> is declared on the enum type.</summary>
+    /// <summary>Adds one <see cref="EnumMemberNode"/> per (member, synonym pattern) pair — including plural variants when <see cref="OptionalPluralAttribute"/> is declared on the enum type or on this property.</summary>
     protected override void AddReflectedChildren(List<RegexNode> children)
     {
         var enumType = Navigation.UnderlyingType;
@@ -29,7 +29,7 @@ public class EnumNode : NamedGroupNode
                 field.GetCustomAttribute<RegexPatternAttribute>()?.Patterns.ToList()
                 ?? [enumAsString.ToFriendlyCase(TitleDisplayOption.Lower)];
 
-            if (enumType.IsDefined(typeof(OptionalPluralAttribute)))
+            if (enumType.IsDefined(typeof(OptionalPluralAttribute)) || Navigation.Prop?.IsDefined(typeof(OptionalPluralAttribute)) == true)
             {
                 patterns = patterns
                     .SelectMany(x => new[] { x, x.AddPluralization(makeOptional: false) })
@@ -55,8 +55,8 @@ public class EnumNode : NamedGroupNode
 
         return Children
             .OfType<EnumMemberNode>()
-            .FirstOrDefault(x => x.Regex.IsMatch(captureTrace.CaptureValue))
+            .FirstOrDefault(x => x.Regex.IsMatch(ContentText(captureTrace)))
             .ScalarValue
-            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{captureTrace.CaptureValue}'");
+            ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{ContentText(captureTrace)}'");
     }
 }

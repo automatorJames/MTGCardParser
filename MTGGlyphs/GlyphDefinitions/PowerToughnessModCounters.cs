@@ -1,9 +1,0 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
-
-public class PowerToughnessModCounters : Glyph
-{
-    public override Nib[] Nibs => [Prop(Quantity), Prop(PowerToughnessMod), Pattern("counter(s)?")];
-
-    public Quantity Quantity { get; set; }
-    public PowerToughnessMod PowerToughnessMod { get; set; }
-}

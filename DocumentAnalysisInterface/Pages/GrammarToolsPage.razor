@@ -176,16 +176,15 @@ else
                                         <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
                                         <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
                                         <td class="name-column">
-                                            @if (change.Kind == DefinitionKind.Marker)
-                                            {
-                                                @change.Name
-                                            }
-                                            else
-                                            {
-                                                <button class="name-link" data-preview-kind="@change.Kind" data-preview-name="@change.Name" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
-                                            }
+                                            <button class="name-link" data-preview-kind="@change.Kind" data-preview-name="@change.Name" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
                                         </td>
-                                        <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
+                                        <td>
+                                            @if (change.Change != ChangeType.Removed && change.Kind != DefinitionKind.Marker)
+                                            {
+                                                <button class="link-button" @onclick="() => EditChange(change.Kind, change.Name)">edit</button>
+                                            }
+                                            <button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -358,7 +357,6 @@ else
 
     MdlScore _committed;
     IReadOnlyList<string> _committedErrors;
-    GlyphGrammar _committedGrammar;
     MdlScore _working;
     WorkspaceDialog.WorkspaceAction? _workspaceAction;
     Snackbar _snackbar;
@@ -481,7 +479,6 @@ else
                 Listen();
                 _committed = _working = null;
                 _committedErrors = null;
-                _committedGrammar = null;
                 _viewer = null;
                 _editor = null;
                 _commitPlan = null;
@@ -512,7 +509,6 @@ else
 
         _committed = committed.Score;
         _committedErrors = committed.Errors;
-        _committedGrammar = committed.Grammar;
         _working = working;
     }
 
@@ -713,24 +709,8 @@ else
     /// <summary>A definition's change, its committed and working versions (either null where it doesn't exist), and - for a glyph - its built type, where there's one to hand.</summary>
     (ChangeType? Change, object Committed, object Working, Type GlyphType) Describe(DefinitionKind kind, string name)
     {
-        object Find(GrammarDefinition grammar) =>
-            kind == DefinitionKind.Glyph
-                ? grammar.Glyphs.FirstOrDefault(x => x.Name == name)
-                : grammar.Vocabularies.FirstOrDefault(x => x.Name == name);
-
-        var change = Workbench.Changes.FirstOrDefault(x => x.Kind == kind && x.Name == name)?.Change;
-        var working = Find(Workbench.WorkingDefinition);
-        Type glyphType = null;
-
-        // The grammar the definition shown is in: the working one, once it's built, or for a definition it no longer has, the committed one.
-        var grammar = working is null || !Workbench.HasChanges
-            ? _committedGrammar
-            : Workbench.LatestWorkingScore is { } latest && latest.Definition == Workbench.WorkingDefinition ? latest.Grammar : null;
-
-        if (kind == DefinitionKind.Glyph && grammar is not null && grammar.TryGetType(name, out var type))
-            glyphType = type;
-
-        return (change, Find(Workbench.CommittedDefinition), working, glyphType);
+        var description = DefinitionViews.Describe(Workbench, kind, name);
+        return (description.Change, description.Committed, description.Working, description.GlyphType);
     }
 
     /// <summary>What each type a definition can name is, for coloring its C# as Visual Studio would.</summary>
@@ -750,6 +730,14 @@ else
     void EditGlyph(string name) =>
         _editor = new(DefinitionKind.Glyph, name, $"Edit glyph {name}",
             DefinitionJson.Serialize(Workbench.WorkingDefinition.Glyphs.Single(x => x.Name == name)));
+
+    void EditChange(DefinitionKind kind, string name)
+    {
+        if (kind == DefinitionKind.Glyph)
+            EditGlyph(name);
+        else
+            EditVocabulary(name);
+    }
 
     void NewGlyph() =>
         _editor = new(DefinitionKind.Glyph, null, "New glyph", DefinitionJson.Serialize(new GlyphDefinition

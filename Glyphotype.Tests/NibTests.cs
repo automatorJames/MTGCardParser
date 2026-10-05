@@ -32,10 +32,42 @@ public class NibTests
     }
 
     [Fact]
-    public void Opt_and_Alt_take_literal_text_and_Opt_also_a_pattern()
+    public void The_text_helpers_take_literal_text()
     {
         Assert.Equal(@"(\$|\?)", new NibAlternatives("$", "?").Regex);
         Assert.Equal(@"\$", new OptionalNib("$").Regex);
-        Assert.Equal("an?", new OptionalNib(new PatternNib("an?")).Regex);
+        Assert.Equal(@"(in|from)", new OptionalNib("in", "from").Regex);
+    }
+
+    [Theory]
+    [InlineData("creature", "creature|creatures", "creatur|creaturess")]
+    [InlineData("berry", "berry|berries", "berrys|berr")]
+    [InlineData("box", "box|boxes", "boxs")]
+    [InlineData("enchanted creature", "enchanted creature|enchanted creatures", "enchanteds creature")]
+    public void Plural_matches_the_word_singular_or_plural(string singular, string matching, string notMatching)
+    {
+        var nib = new PluralNib(singular);
+
+        Assert.All(matching.Split('|'), x => Assert.Matches($"^(?:{nib.Regex})$", x));
+        Assert.All(notMatching.Split('|'), x => Assert.DoesNotMatch($"^(?:{nib.Regex})$", x));
+    }
+
+    [Fact]
+    public void A_pattern_that_can_match_nothing_is_optional()
+    {
+        Assert.True(new PatternNib("(an?)?").IsOptional);
+        Assert.True(new PatternNib(@"\d*").IsOptional);
+        Assert.False(new PatternNib("an?").IsOptional);
+    }
+
+    [Fact]
+    public void The_text_helpers_refuse_empty_and_pointless_texts()
+    {
+        Assert.Throws<ArgumentException>(() => new NibAlternatives("", "big"));
+        Assert.Throws<ArgumentException>(() => new NibAlternatives("big"));
+        Assert.Throws<ArgumentException>(() => new SomeNib("big"));
+        Assert.Throws<ArgumentException>(() => new OptionalNib());
+        Assert.Throws<ArgumentException>(() => new OptionalNib("a", ""));
+        Assert.Throws<ArgumentException>(() => new PluralNib(""));
     }
 }

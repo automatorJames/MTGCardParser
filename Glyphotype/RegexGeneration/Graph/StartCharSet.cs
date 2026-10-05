@@ -20,25 +20,32 @@ public sealed class StartCharSet
 
     StartCharSet(HashSet<char> chars)
     {
-        _chars = chars;
-
         if (chars is null)
             return;
 
+        // Glyph regexes ignore case (see BuiltRegex), so the set is kept lowercased and checked in lowercase.
+        _chars = [.. chars.Select(char.ToLowerInvariant)];
         _ascii = new bool[128];
 
-        foreach (var c in chars.Where(c => c < 128))
+        foreach (var c in _chars.Where(c => c < 128))
             _ascii[c] = true;
     }
 
     /// <summary>Whether a match can begin with any character at all, i.e. there's nothing to filter on.</summary>
     public bool IsAny => _chars is null;
 
-    /// <summary>The characters a match can begin with, or null when <see cref="IsAny"/>.</summary>
+    /// <summary>The characters a match can begin with, lowercased (a match may begin with either case), or null when <see cref="IsAny"/>.</summary>
     public IReadOnlyCollection<char> Chars => _chars;
 
-    public bool CanStartWith(char c) =>
-        _chars is null || (c < 128 ? _ascii[c] : _chars.Contains(c));
+    public bool CanStartWith(char c)
+    {
+        if (_chars is null)
+            return true;
+
+        c = c is >= 'A' and <= 'Z' ? (char)(c + 32) : c < 128 ? c : char.ToLowerInvariant(c);
+
+        return c < 128 ? _ascii[c] : _chars.Contains(c);
+    }
 
     public static StartCharSet Of(GlyphNode rootNode) =>
         Analyze(rootNode) is { Chars: { } chars, Nullable: false } ? new(chars) : Any;
@@ -60,7 +67,7 @@ public sealed class StartCharSet
         {
             // A wildcard capture, and a separator-led repetition (see JoinedItemNode): anything.
             DynamicGlyphNode or JoinedItemNode => Starts.Anything,
-            TextNode text => FromRegexText(text.Text),
+            TextNode text => FromRegexText(text.Text) with { Nullable = text.IsNullable || FromRegexText(text.Text).Nullable },
             TerminalRegexNode terminal => FromRegexText(terminal.RegexString),
             NamedGroupNode group => AnalyzeGroup(group),
             _ => Starts.Anything,
@@ -188,7 +195,7 @@ public sealed class StartCharSet
         return new(first, false);
     }
 
-    static bool HasTopLevelAlternation(string text)
+    internal static bool HasTopLevelAlternation(string text)
     {
         int depth = 0;
         bool inClass = false;

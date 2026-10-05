@@ -3,7 +3,7 @@ namespace Glyphotype.Definitions;
 /// <summary>
 /// Writes definitions as C# source in the style of hand-written glyph files: file-scoped namespace, no usings
 /// (glyph projects supply Glyphotype's namespaces as global usings), attributes on their own lines, and nibs
-/// through the <see cref="Glyph"/> helpers (<c>Prop</c>, <c>Alt</c>, <c>Opt</c>, <c>Plural</c>, <c>Pattern</c>)
+/// through the <see cref="Glyph"/> helpers (<c>Prop</c>, <c>Alt</c>, <c>Opt</c>, <c>Some</c>, <c>Plural</c>, <c>Pattern</c>)
 /// exactly as an author would write them.
 /// </summary>
 public static class GlyphSourceWriter
@@ -78,9 +78,18 @@ public static class GlyphSourceWriter
             overrides.Add(_indent + $"public override Joiner Joiner => Joiner.{joiner};");
 
         if (glyph.Nibs.Count > 0)
-            overrides.Add(_indent + $"public override Nib[] Nibs => [{string.Join(", ", glyph.Nibs.Select(WriteNib))}];");
+        {
+            // A blank line between overridden properties, as between any others.
+            if (overrides.Count > 0)
+                overrides.Add("");
 
-        var properties = glyph.Properties.SelectMany(WriteProperty).ToList();
+            overrides.Add(_indent + $"public override Nib[] Nibs => [{string.Join(", ", glyph.Nibs.Select(WriteNib))}];");
+        }
+
+        // A blank line between properties, none after the last.
+        var properties = glyph.Properties
+            .SelectMany((x, i) => i > 0 ? WriteProperty(x).Prepend("") : WriteProperty(x))
+            .ToList();
 
         if (overrides.Count == 0 && properties.Count == 0)
         {
@@ -146,6 +155,9 @@ public static class GlyphSourceWriter
         if (property.IsOptional)
             yield return _indent + "[Optional]";
 
+        if (property.IsOptionalPlural)
+            yield return _indent + "[OptionalPlural]";
+
         if (property.AllowsUnmatched)
             yield return _indent + "[AllowUnmatched]";
 
@@ -173,15 +185,12 @@ public static class GlyphSourceWriter
             NibDefinition.Literal literal => Literal(literal.Text),
             NibDefinition.Pattern pattern => $"Pattern({Literal(pattern.Regex)})",
             NibDefinition.Alternatives alternatives => $"Alt({string.Join(", ", alternatives.Texts.Select(Literal))})",
-            NibDefinition.Optional optional => $"Opt({WriteNib(optional.Inner)})",
-            NibDefinition.Plural => "Plural()",
-            NibDefinition.Property { Proptions: Proptions.None } property => $"Prop({property.Name})",
-            NibDefinition.Property property => $"Prop({property.Name}, {WriteProptions(property.Proptions)})",
+            NibDefinition.Some some => $"Some({string.Join(", ", some.Texts.Select(Literal))})",
+            NibDefinition.Optional optional => $"Opt({string.Join(", ", optional.Texts.Select(Literal))})",
+            NibDefinition.Plural plural => $"Plural({Literal(plural.Text)})",
+            NibDefinition.Property property => $"Prop({property.Name})",
             _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} can't be written"),
         };
-
-    static string WriteProptions(Proptions proptions) =>
-        string.Join(" | ", Enum.GetValues<Proptions>().Where(x => x != Proptions.None && proptions.HasFlag(x)).Select(x => $"{nameof(Proptions)}.{x}"));
 
     static string RegexPatternAttribute(IEnumerable<string> patterns) =>
         $"[RegexPattern({string.Join(", ", patterns.Select(Literal))})]";

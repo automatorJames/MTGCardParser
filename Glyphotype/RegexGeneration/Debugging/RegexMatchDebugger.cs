@@ -27,7 +27,7 @@ public static class RegexMatchDebugger
 
     /// <summary>Analyzes one graph against <paramref name="textSegment"/> (which must already be trimmed to word boundaries), resolving any dynamic group against <paramref name="grammar"/>'s types (<see cref="GlyphGrammar.Default"/>'s if null).</summary>
     public static RegexDebugResult Analyze(RegexGraph graph, string textSegment, GlyphGrammar grammar = null) =>
-        new StemWalk(graph, textSegment, grammar ?? GlyphGrammar.Default).Run();
+        new StemWalk(graph, Enclosures.Scan(textSegment, 0, textSegment.Length).MatchText, grammar ?? GlyphGrammar.Default).Run();
 
     class StemWalk
     {
@@ -323,7 +323,7 @@ public static class RegexMatchDebugger
         /// One start-anchored test of a candidate stem against the segment. The candidate arrives as brick
         /// text (spaces escaped, same as the graph writes them) and is unescaped exactly the way
         /// <see cref="BuiltRegex"/> unescapes the full pattern before compiling. Matches the same
-        /// <see cref="RegexOptions.ExplicitCapture"/> semantics the runtime regex compiles with; a
+        /// <see cref="BuiltRegex.MatchOptions"/> the runtime regex compiles with; a
         /// zero-length match still counts as a pass (an all-optional stem legitimately matches nothing).
         /// </summary>
         bool TestCandidate(string candidatePattern, out int matchLength)
@@ -333,7 +333,7 @@ public static class RegexMatchDebugger
 
             try
             {
-                var regex = new Regex(pattern, RegexOptions.ExplicitCapture, _matchTimeout);
+                var regex = new Regex(pattern, BuiltRegex.MatchOptions, _matchTimeout);
                 var match = regex.Match(_text);
 
                 if (!match.Success || match.Index != 0)

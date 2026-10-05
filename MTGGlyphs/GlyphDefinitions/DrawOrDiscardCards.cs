@@ -1,8 +1,8 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
 public class DrawOrDiscardCards : Glyph
 {
-    public override Nib[] Nibs => [Prop(CardVerb), Prop(Quantity), Pattern("cards?")];
+    public override Nib[] Nibs => [Prop(CardVerb), Prop(Quantity), Plural("card")];
 
     public CardVerb CardVerb { get; set; }
     public Quantity Quantity { get; set; }
@@ -12,7 +12,5 @@ public class DrawOrDiscardCards : Glyph
 public enum CardVerb
 {
     Draw,
-
-    [RegexPattern("discard", "discard angrily")]
     Discard
 }

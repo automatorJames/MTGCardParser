@@ -28,9 +28,22 @@ public class LineClauseTests(CorpusFixture corpus)
     }
 
     [Fact]
-    public void A_closing_quote_belongs_to_the_break_before_it()
+    public void A_quoted_sentence_is_nested_in_the_clause_around_it()
     {
-        var line = Process("\"the cat eats fish.\" the bird sings loudly.");
+        // The period inside the quotes ends the quoted clause, not the line's: the line is one clause, holding it.
+        var line = Process("the bird sings loudly \"the cat eats fish.\" the dog snores.");
+
+        var clause = Assert.Single(line.Clauses);
+        Assert.Equal("AnimalSings{Animal=Bird} \" AnimalEats{Animal=Cat, Food=Fish} . \" «the dog snores»", Signature(clause));
+        Assert.Equal(1, Assert.Single(clause.Units.OfType<ClauseBreak>()).Depth);
+        Assert.Equal(0, clause.Break.Depth);
+    }
+
+    [Fact]
+    public void A_stray_closing_quote_belongs_to_the_break_before_it()
+    {
+        // A quote that closes nothing would otherwise open the next clause as a lone '"' of unmatched text.
+        var line = Process("the cat eats fish.\" the bird sings loudly.");
 
         Assert.Equal([".\"", "."], line.Clauses.Select(x => x.Break?.CaptureValue));
     }

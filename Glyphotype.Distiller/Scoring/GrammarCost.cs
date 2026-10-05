@@ -57,7 +57,6 @@ public sealed record GrammarCost(
         static readonly int _spanRules = Enum.GetValues<SpanRule>().Length;
         static readonly int _joiners = Enum.GetValues<Joiner>().Length;
         static readonly int _nibKinds = typeof(NibDefinition).GetNestedTypes().Count(x => x.IsSubclassOf(typeof(NibDefinition)));
-        static readonly int _proptionFlags = Enum.GetValues<Proptions>().Count(x => x != Proptions.None);
         static readonly int _typeReferenceKinds = Enum.GetValues<TypeReferenceKind>().Length;
         static readonly int _primitives = PrimitiveTerminal.SupportedDisplayNames.Count();
 
@@ -133,15 +132,17 @@ public sealed record GrammarCost(
                 NibDefinition.Literal literal => Text(literal.Text),
                 NibDefinition.Pattern pattern => Text(pattern.Regex, literal: false),
                 NibDefinition.Alternatives alternatives => Texts(alternatives.Texts),
-                NibDefinition.Optional optional => Nib(optional.Inner, glyph),
-                NibDefinition.Plural => 0,
-                NibDefinition.Property => CodeLength.Uniform(glyph.Properties.Count) + _proptionFlags,
+                NibDefinition.Some some => Texts(some.Texts),
+                NibDefinition.Optional optional => Texts(optional.Texts),
+                NibDefinition.Plural plural => Text(plural.Text),
+                NibDefinition.Property => CodeLength.Uniform(glyph.Properties.Count),
                 _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} has no cost"),
             };
 
         double Property(PropertyDefinition property) =>
             TypeReference(property.Type)
             + 1 // IsOptional
+            + 1 // IsOptionalPlural
             + Texts(property.Patterns, literal: false)
             + Optional(property.JoinedBy is not null, CodeLength.Uniform(_joiners))
             + Optional(property.TypeFilter is not null, CodeLength.Uniform(grammar.Markers.Count));

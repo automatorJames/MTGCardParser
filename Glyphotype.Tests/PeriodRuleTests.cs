@@ -34,7 +34,7 @@ public class PeriodRuleTests
     {
         Assert.Single(ClauseBreak.SplitAtPeriods(new Nib(".")));
         Assert.Single(ClauseBreak.SplitAtPeriods(new PatternNib(@"a\.b")));
-        Assert.Single(ClauseBreak.SplitAtPeriods(new OptionalNib(new Nib("a. b"))));
+        Assert.Single(ClauseBreak.SplitAtPeriods(new OptionalNib("a. b")));
     }
 
     [Fact]
@@ -105,8 +105,10 @@ public class PeriodRuleTests
     }
 
     [Theory]
-    [InlineData("""["the", Alt("end.", "close"), "now"]""", "an alternation can't be split")]
-    [InlineData("""["the", Opt("end."), "now"]""", "can't be optional")]
+    [InlineData("""["the", Alt("end.", "close"), "now"]""", "a helper's text can't hold a clause break")]
+    [InlineData("""["the", Some("end.", "close"), "now"]""", "a helper's text can't hold a clause break")]
+    [InlineData("""["the", Opt("end."), "now"]""", "a helper's text can't hold a clause break")]
+    [InlineData("""["the", Plural("end."), "now"]""", "a helper's text can't hold a clause break")]
     [InlineData("""["the", Pattern(@"end\.?"), "now"]""", "matches a literal period")]
     public void Nothing_but_a_literal_nib_may_hold_a_period(string nibs, string expectedError)
     {

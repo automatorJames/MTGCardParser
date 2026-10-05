@@ -49,6 +49,15 @@ public class GlobalSettings
     public bool AllowPeriodsInLiteralNibs { get; init; } = true;
 
     /// <summary>
+    /// Whether an AI agent working on the grammar is kept from introducing <c>[TypeFilter]</c>s on dynamic glyph
+    /// properties, and the marker interfaces they filter by. Off by default. Turned on while a grammar is young: which
+    /// glyphs belong in which slot is still settling, so markers written early tend to need redoing - and they aren't
+    /// needed to get resolutions right, since long, specific glyphs rarely resolve into the wrong slot, and one that
+    /// does is plain on review. Filters already in the grammar may stay.
+    /// </summary>
+    public bool DisallowAgentTypeFilters { get; init; }
+
+    /// <summary>
     /// The settings this process is running under, resolved on first access and fixed thereafter.
     /// <para>
     /// Self-loading rather than host-injected because it's what <see cref="GlyphGrammar.Default"/> is built

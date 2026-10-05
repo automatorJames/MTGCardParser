@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 
 namespace DocumentAnalysisInterface.Agent;
 
-/// <summary>A glyph or vocabulary an agent declared in a step it applied.</summary>
+/// <summary>A glyph, vocabulary or marker an agent declared in a step it applied.</summary>
 public sealed record ProducedDefinition(DefinitionKind Kind, string Name);
 
 /// <summary>
@@ -47,7 +47,7 @@ public sealed class LineChat : AgentChat
         DocumentName = documentName;
         LineIndex = lineIndex;
         LineText = lineText;
-        Draft = $"Create GlyphDefinition (or multiple as necessary for composition) in the current workspace that would capture this line. Do so with respect to variable data from existing or not-yet-existing vocabularies that should reasonably be used to extract key information into Glyph and terminal sub-properties in the top-level glyph. Here's the text: {lineText}";
+        Draft = $"Create a GlyphDefinition (or multiple as necessary for composition) in the current workspace that would capture this line. Do so with respect to variable data from existing vocabularies or new ones you might create to extract key information into Glyph and terminal sub-properties in the top-level glyph. Below is the line text:\r\n\r\n{lineText}";
     }
 
     public string DocumentName { get; }
@@ -64,7 +64,7 @@ public sealed class LineChat : AgentChat
     /// <summary>What the worst-case glyph is named: for the document and the line.</summary>
     public string FallbackGlyphName => FallbackName(DocumentName, LineIndex);
 
-    /// <summary>The glyphs and vocabularies the agent's applied steps declared, in the order it first declared them.</summary>
+    /// <summary>The glyphs, vocabularies and markers the agent's applied steps declared, in the order it first declared them.</summary>
     public IReadOnlyList<ProducedDefinition> Produced
     {
         get
@@ -83,6 +83,9 @@ public sealed class LineChat : AgentChat
             var prompt = new StringBuilder(string.Format(_systemPrompt, $"`{FallbackGlyphName}`"));
             prompt.AppendLine().AppendLine($"The line is line {LineIndex + 1} of the document \"{DocumentName}\". Its text, as the grammar tokenizes it:");
             prompt.AppendLine(LineText);
+
+            if (!_agent.Settings.AllowTypeFilters)
+                prompt.AppendLine().AppendLine(GrammarAgent.TypeFilterPolicy);
 
             if (_workspaces.GetGuidance() is { Length: > 0 } guidance)
             {
@@ -116,7 +119,8 @@ public sealed class LineChat : AgentChat
         }
 
         var declared = declarations.Glyphs.Select(x => new ProducedDefinition(DefinitionKind.Glyph, x.Name))
-            .Concat(declarations.Vocabularies.Select(x => new ProducedDefinition(DefinitionKind.Vocabulary, x.Name)));
+            .Concat(declarations.Vocabularies.Select(x => new ProducedDefinition(DefinitionKind.Vocabulary, x.Name)))
+            .Concat(declarations.Markers.Select(x => new ProducedDefinition(DefinitionKind.Marker, x)));
 
         foreach (var definition in declared)
             if (!_produced.Contains(definition))

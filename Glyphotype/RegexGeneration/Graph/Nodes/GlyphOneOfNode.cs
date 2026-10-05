@@ -19,6 +19,10 @@ public class GlyphOneOfNode : GlyphNode
     {
     }
 
+    /// <summary>Not when there's literal text around the alternatives: <see cref="AppendInnerContentBricks"/> already groups them.</summary>
+    protected override bool ContentIsBareAlternation =>
+        base.ContentIsBareAlternation && !Children.OfType<TextNode>().Any();
+
     protected override void AppendInnerContentBricks(RegexCollector collector)
     {
         if (!Children.OfType<TextNode>().Any())

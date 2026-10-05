@@ -82,6 +82,7 @@ public class DefinitionTests(CorpusFixture corpus)
                 public override Nib[] Nibs => ["the", Prop(Animal), Alt("sleeps", "naps"), "in the", Prop(Place)];
 
                 public Animal Animal { get; set; }
+
                 public Place Place { get; set; }
             }
             """);
@@ -91,6 +92,7 @@ public class DefinitionTests(CorpusFixture corpus)
             public class Price : Glyph
             {
                 public override Joiner Joiner => Joiner.None;
+
                 public override Nib[] Nibs => ["$", Prop(Dollars)];
 
                 public int Dollars { get; set; }
@@ -103,7 +105,9 @@ public class DefinitionTests(CorpusFixture corpus)
                 public override Nib[] Nibs => ["the", Prop(Person), "comes", Prop(Day), Prop(Time)];
 
                 public Person Person { get; set; }
+
                 public OnDay Day { get; set; }
+
                 [Optional]
                 public AtTime Time { get; set; }
             }
@@ -115,6 +119,7 @@ public class DefinitionTests(CorpusFixture corpus)
                 public override Nib[] Nibs => ["every", Prop(Weekday), ",", Prop(Chore)];
 
                 public Weekday Weekday { get; set; }
+
                 [TypeFilter(typeof(IChore))]
                 public DynamicGlyph Chore { get; set; }
             }
@@ -142,6 +147,7 @@ public class DefinitionTests(CorpusFixture corpus)
                 public override Nib[] Nibs => ["we have", Pattern("an?"), Prop(Traits), Prop(Animal)];
 
                 public TraitList Traits { get; set; }
+
                 public Animal Animal { get; set; }
             }
             """);

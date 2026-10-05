@@ -11,26 +11,32 @@ public class JoinerRulesTests
     const string NoText = null;
 
     [Theory]
-    // group joiner       one-of  before-prop after-prop after-text  plural clause  separated   => expected
-    [InlineData(Joiner.Space,      false, true,  true,  NoText,     false, false, false, Joiner.Space)]      // two properties: the group's joiner
-    [InlineData(Joiner.CommaSpace, false, true,  true,  NoText,     false, false, false, Joiner.CommaSpace)]
-    [InlineData(Joiner.None,       false, true,  true,  NoText,     false, false, false, Joiner.None)]       // a fused group joins with nothing
-    [InlineData(Joiner.Space,      false, true,  false, "with",     false, false, false, Joiner.Space)]      // ordinary text after a property
-    [InlineData(Joiner.Space,      false, true,  true,  NoText,     false, false, true,  Joiner.None)]       // the regex so far already ends in a space
-    [InlineData(Joiner.Space,      false, true,  false, ",",        false, false, false, Joiner.None)]       // tight punctuation binds to the token before
-    [InlineData(Joiner.Space,      false, true,  false, "'s",       false, false, false, Joiner.None)]
-    [InlineData(Joiner.Space,      false, true,  false, @"\?",      false, false, false, Joiner.None)]       // ...read through the escape a literal "?" arrives with
-    [InlineData(Joiner.Space,      false, true,  false, @"\.",      false, true,  false, Joiner.None)]       // a clause break hugs the clause it ends
-    [InlineData(Joiner.Space,      false, true,  false, "(s|es|ies)?", true, false, false, Joiner.None)]     // a plural suffix is part of the word before
-    [InlineData(Joiner.Space,      false, true,  false, "[ ]and",   false, false, false, Joiner.None)]       // text supplying its own leading space
-    [InlineData(Joiner.Pipe,       true,  true,  true,  NoText,     false, false, false, Joiner.Pipe)]       // one-of: the pipe between two alternatives
-    [InlineData(Joiner.Pipe,       true,  false, true,  NoText,     false, false, false, Joiner.None)]       // one-of: nothing between its text and an alternative
-    [InlineData(Joiner.Pipe,       true,  true,  false, @"\}",      false, false, false, Joiner.None)]
+    // group joiner       one-of  before-prop after-prop after-text  clause separated before-closing => expected
+    [InlineData(Joiner.Space,      false, true,  true,  NoText,     false, false, NoText, Joiner.Space)]      // two properties: the group's joiner
+    [InlineData(Joiner.CommaSpace, false, true,  true,  NoText,     false, false, NoText, Joiner.CommaSpace)]
+    [InlineData(Joiner.None,       false, true,  true,  NoText,     false, false, NoText, Joiner.None)]       // a fused group joins with nothing
+    [InlineData(Joiner.Space,      false, true,  false, "with",     false, false, NoText, Joiner.Space)]      // ordinary text after a property
+    [InlineData(Joiner.Space,      false, true,  true,  NoText,     false, true,  NoText, Joiner.None)]       // the regex so far already ends in a space
+    [InlineData(Joiner.Space,      false, true,  false, ",",        false, false, NoText, Joiner.None)]       // punctuation that binds to the token before
+    [InlineData(Joiner.Space,      false, true,  false, "'s",       false, false, NoText, Joiner.None)]
+    [InlineData(Joiner.Space,      false, true,  false, @"\)",      false, false, NoText, Joiner.None)]       // ...read through the escape a literal ")" arrives with
+    [InlineData(Joiner.Space,      false, true,  false, "%",        false, false, NoText, Joiner.None)]
+    [InlineData(Joiner.Space,      false, true,  false, @"\.",      true,  false, NoText, Joiner.None)]       // a clause break hugs the clause it ends
+    [InlineData(Joiner.Space,      false, true,  false, "[ ]and",   false, false, NoText, Joiner.None)]       // text supplying its own leading space
+    [InlineData(Joiner.Space,      false, false, true,  NoText,     false, false, "(",    Joiner.None)]       // punctuation that binds to the token after
+    [InlineData(Joiner.Space,      false, false, true,  NoText,     false, false, "$",    Joiner.None)]
+    [InlineData(Joiner.Space,      false, false, true,  NoText,     false, false, "-",    Joiner.None)]       // a hyphen binds both ways
+    [InlineData(Joiner.Space,      false, true,  false, "-",        false, false, NoText, Joiner.None)]
+    [InlineData(Joiner.Space,      false, false, true,  NoText,     false, false, "the",  Joiner.Space)]
+    [InlineData(Joiner.Pipe,       true,  true,  true,  NoText,     false, false, NoText, Joiner.Pipe)]       // one-of: the pipe between two alternatives
+    [InlineData(Joiner.Pipe,       true,  false, true,  NoText,     false, false, NoText, Joiner.None)]       // one-of: nothing between its text and an alternative
+    [InlineData(Joiner.Pipe,       true,  true,  false, @"\}",      false, false, NoText, Joiner.None)]
     public void Between_decides_what_separates_two_neighbours(
         Joiner groupJoiner, bool groupIsOneOf, bool beforeIsProperty, bool afterIsProperty,
-        string afterText, bool afterIsPluralSuffix, bool afterIsClauseBreak, bool alreadySeparated, Joiner expected)
+        string afterText, bool afterIsClauseBreak, bool alreadySeparated, string beforeClosing, Joiner expected)
     {
-        var site = new JoinSite(groupJoiner, groupIsOneOf, beforeIsProperty, afterIsProperty, afterText, afterIsPluralSuffix, afterIsClauseBreak, alreadySeparated);
+        var site = new JoinSite(groupJoiner, groupIsOneOf, beforeIsProperty, afterIsProperty, afterText, afterIsClauseBreak, alreadySeparated,
+            BeforeClosings: beforeClosing is null ? null : [beforeClosing]);
 
         Assert.Equal(expected, JoinerRules.Between(site));
     }
@@ -39,25 +45,24 @@ public class JoinerRulesTests
     // first  nullable anchor-before => placement
     [InlineData(true,  false, false, JoinerPlacement.None)]              // a first child has nothing to be separated from
     [InlineData(true,  true,  false, JoinerPlacement.None)]
-    [InlineData(false, true,  false, JoinerPlacement.InsideNodeLeading)] // a nullable node carries its own joiner...
-    [InlineData(false, true,  true,  JoinerPlacement.InsideNodeLeading)] // ...whatever precedes it
+    [InlineData(false, true,  true,  JoinerPlacement.InsideNodeLeading)] // a nullable node after a guaranteed one carries its own joiner
     [InlineData(false, false, true,  JoinerPlacement.BeforeNode)]        // a required node after a guaranteed one: unconditionally
-    [InlineData(false, false, false, JoinerPlacement.None)]              // a required node after only nullables: its predecessor carries it
+    [InlineData(false, true,  false, JoinerPlacement.None)]              // after only nullables, nullable or not: its predecessor carries it
+    [InlineData(false, false, false, JoinerPlacement.None)]
     public void PlaceLeadingJoiner_decides_where_the_joiner_goes(bool isFirstChild, bool isNullable, bool hasAnchorBefore, JoinerPlacement expected)
     {
         Assert.Equal(expected, JoinerRules.PlaceLeadingJoiner(isFirstChild, isNullable, hasAnchorBefore));
     }
 
     [Theory]
-    // nullable has-next next-nullable next-anchor-before => owns
-    [InlineData(true,  true,  false, false, true)]   // the last nullable before an unanchored required node carries its joiner
-    [InlineData(true,  true,  false, true,  false)]  // anchored: the next node places its own
-    [InlineData(true,  true,  true,  false, false)]  // the next node is nullable too: it carries its own
-    [InlineData(true,  false, false, false, false)]  // nothing follows
-    [InlineData(false, true,  false, false, false)]  // only a nullable node can carry it
-    public void OwnsTrailingJoiner_hands_an_unanchored_joiner_to_the_nullable_before_it(bool isNullable, bool hasNext, bool nextIsNullable, bool nextHasAnchorBefore, bool expected)
+    // nullable has-next anchor-before => owns
+    [InlineData(true,  true,  false, true)]   // every nullable of an all-nullable run carries the joiner after it
+    [InlineData(true,  true,  true,  false)]  // anchored: the next node places its own
+    [InlineData(true,  false, false, false)]  // nothing follows
+    [InlineData(false, true,  false, false)]  // only a nullable node can carry it
+    public void OwnsTrailingJoiner_hands_an_unanchored_joiner_to_the_nullable_before_it(bool isNullable, bool hasNext, bool hasAnchorBefore, bool expected)
     {
-        Assert.Equal(expected, JoinerRules.OwnsTrailingJoiner(isNullable, hasNext, nextIsNullable, nextHasAnchorBefore));
+        Assert.Equal(expected, JoinerRules.OwnsTrailingJoiner(isNullable, hasNext, hasAnchorBefore));
     }
 
     [Theory]

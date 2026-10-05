@@ -192,7 +192,7 @@
 
     string GetStyle()
     {
-        if (CaptureTrace is RootCaptureTrace root && root.IsClauseBreak)
+        if (CaptureTrace is RootCaptureTrace root && root.IsStructural)
             return "";
 
         if (CaptureTrace is RootCaptureTrace unmatchedRoot && unmatchedRoot.IsUnmatchedString)

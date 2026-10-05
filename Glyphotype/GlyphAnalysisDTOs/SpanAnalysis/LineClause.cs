@@ -16,7 +16,8 @@ public sealed record LineClause(IReadOnlyList<CaptureUnit> Units, ClauseBreak Br
 
     /// <summary>
     /// <paramref name="units"/> - one line's tokens, in order - grouped into clauses, each closed by the
-    /// <see cref="ClauseBreak"/> after it.
+    /// <see cref="ClauseBreak"/> after it. A break inside an enclosure (see <see cref="ClauseBreak.Depth"/>) ends a
+    /// clause nested in this one, so it stays among this clause's units.
     /// </summary>
     public static List<LineClause> Group(IEnumerable<CaptureUnit> units)
     {
@@ -25,7 +26,7 @@ public sealed record LineClause(IReadOnlyList<CaptureUnit> Units, ClauseBreak Br
 
         foreach (var unit in units)
         {
-            if (unit is ClauseBreak clauseBreak)
+            if (unit is ClauseBreak { Depth: 0 } clauseBreak)
             {
                 clauses.Add(new(current, clauseBreak));
                 current = [];

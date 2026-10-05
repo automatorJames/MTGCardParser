@@ -5,6 +5,7 @@
 @inject RuntimeSettings RuntimeSettings
 @inject DocumentAnalysisInterface.Agent.LineChats LineChats
 @inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
+@inject WorkspaceManager Workspaces
 @implements IAsyncDisposable
 
 <DeferredContent OnReady="InitHoverAsync">
@@ -19,6 +20,12 @@
         }
     </div>
 </DeferredContent>
+
+@* Previews what a line agent made, on hover, as Grammar Tools previews its definitions. *@
+@if (ShowAgentButtons)
+{
+    <DefinitionTooltip Content="PreviewContent" />
+}
 
 @if (_debugTextSegment != null)
 {
@@ -49,6 +56,18 @@
         await DocumentAnalyzer.EnsureInitializedAsync();
 
         _agentAvailable = (await LocalAgent.GetStatusAsync()).IsAvailable;
+    }
+
+    /// <summary>A definition's tooltip: a preview of it as the definition viewer's last chosen tab shows it - the same tab, here and in Grammar Tools.</summary>
+    RenderFragment PreviewContent(DefinitionKind kind, string name)
+    {
+        var workbench = Workspaces.Active;
+        var description = DefinitionViews.Describe(workbench, kind, name);
+
+        return @<DefinitionPreview View="@RuntimeSettings.DefinitionView" Kind="kind" Change="description.Change" Committed="description.Committed"
+                                   Working="description.Working" GlyphType="description.GlyphType"
+                                   ResolveType="DefinitionViews.TypeResolver(workbench.WorkingDefinition, workbench.CommittedDefinition)"
+                                   BlankLines="@(!RuntimeSettings.HideBlankLines)" LineNumbers="@RuntimeSettings.ShowLineNumbers" />;
     }
 
     /// <summary>A line's chat opened or closed: show it under its line, or take it away.</summary>

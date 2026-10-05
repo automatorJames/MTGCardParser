@@ -41,8 +41,9 @@ public class SourceReaderTests(CorpusFixture corpus)
             public class PetNaps : Glyph, IChore
             {
                 public override Joiner Joiner => Joiner.Space;
-                public override Nib[] Nibs => ["the", Prop(Pet), Alt("naps", "sleeps"), Opt("soundly"), Prop(Hours, Proptions.Plural | Proptions.NoPrecedingSpace), Pattern(@"\d+"), Plural()];
+                public override Nib[] Nibs => ["the", Prop(Pet), Alt("naps", "sleeps"), Opt("soundly", "deeply"), Some("all", "day"), Prop(Hours), Pattern(@"\d+"), Plural("hour")];
 
+                [OptionalPlural]
                 public Pet Pet { get; set; }
 
                 [Optional]
@@ -107,6 +108,29 @@ public class SourceReaderTests(CorpusFixture corpus)
             x => Assert.Contains("MethodDeclaration", x),
             x => Assert.Contains("Prop(Missing)", x));
         Assert.All(exception.Errors, x => Assert.StartsWith("line ", x));
+    }
+
+    [Theory]
+    [InlineData("""Opt(Prop(Pet))""", "mark it [Optional]")]
+    [InlineData("""Opt(Alt("in", "from"))""", "Opt(\"a\", \"b\") is already one of several texts")]
+    [InlineData("""Opt(Pattern("an?"))""", "Pattern(\"(an?)?\")")]
+    [InlineData("""Alt(Plural("card"), "spell")""", "list the texts themselves")]
+    [InlineData("""Prop(Pet, 1)""", "declared on the property itself, by attribute")]
+    [InlineData("""Alt("card")""", "a single text is just the literal itself")]
+    [InlineData("""Alt("", "big")""", "use Opt(\"text\")")]
+    public void The_text_helpers_take_literal_text_only_and_say_what_to_write_instead(string nib, string expectedError)
+    {
+        var exception = Assert.Throws<GlyphSourceException>(() => GlyphSourceReader.Read($$"""
+            public enum Pet { Dog, Cat }
+
+            public class Misused : Glyph
+            {
+                public override Nib[] Nibs => ["the", {{nib}}, Prop(Pet)];
+                public Pet Pet { get; set; }
+            }
+            """));
+
+        Assert.Contains(exception.Errors, x => x.Contains(expectedError));
     }
 
     [Fact]

@@ -11,7 +11,6 @@ public class Navigation
 
     // Only used for navigations to properties
     public PropertyInfo Prop { get; private set; }
-    public Proptions Proptions { get; private set; } = Proptions.None;
     public Quantifier? Quantifier { get; private set; }
 
     // Only used for navigations to Glyph types
@@ -29,12 +28,12 @@ public class Navigation
     {
         SetTypeInfo(type);
 
-        // UnmatchedString and ClauseBreak are the deliberate exceptions: neither goes through the registry
+        // UnmatchedString, ClauseBreak and EnclosureMark are the deliberate exceptions: none goes through the registry
         // (both are CaptureUnits rather than Glyphs, so neither is a top-level type and neither has a
         // GlyphTypeConfiguration), but each still builds its own throwaway root Navigation and node purely
         // to seed a CaptureContext for its own instance - see those two types' own constructors.
-        if (!IsGlyphType && type != typeof(UnmatchedString) && type != typeof(ClauseBreak))
-            throw new Exception($"This constructor may only be used for {nameof(Glyph)} types (or {nameof(UnmatchedString)}/{nameof(ClauseBreak)})");
+        if (!IsGlyphType && type != typeof(UnmatchedString) && type != typeof(ClauseBreak) && type != typeof(EnclosureMark))
+            throw new Exception($"This constructor may only be used for {nameof(Glyph)} types (or {nameof(UnmatchedString)}/{nameof(ClauseBreak)}/{nameof(EnclosureMark)})");
 
         IsRoot = true;
         Name = GetRegexSafeTypeName(UnderlyingType);
@@ -59,7 +58,6 @@ public class Navigation
         Name = nameOverride ?? propertyNib.Name;
         Patterns = propertyNib.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         Prop = propertyNib.Prop;
-        Proptions = propertyNib.Proptions;
 
         // A list's own quantifier (OneOrMore/AnyNumber) always wins, since it's what the *group* itself
         // must carry to match repeated occurrences; otherwise [Optional] - or, equivalently, being wrapped

@@ -10,7 +10,7 @@ namespace Glyphotype.RegexGeneration.Graph;
 /// </summary>
 public class RegexGraph
 {
-    static readonly char[] _boundaryChars = [' ', '.'];
+    static readonly char[] _boundaryChars = [' ', '.', Enclosures.EnclosedPeriod];
 
     /// <summary>The root <see cref="Glyph"/> type this graph was built from.</summary>
     public Type RootGlyphType { get; }
@@ -186,7 +186,8 @@ public class RegexGraph
     /// dynamic only ever resolves to types of the same <see cref="GlyphGrammar"/>. Null (a match made outside any
     /// tokenization) falls back to <see cref="GlyphGrammar.Default"/>'s.
     /// </param>
-    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph, bool mustConsumeWholeScope = false, Tokenizer tokenizer = null)
+    /// <param name="matchText">The view of <paramref name="sourceText"/> the regex runs against - the same text with its enclosed periods marked (see <see cref="Enclosures.MatchText"/>) - or null to scan the scope for one. What the match captures is always read from <paramref name="sourceText"/>.</param>
+    public bool TryMatch(string sourceText, int currentIndex, int endIndex, out Glyph glyph, bool mustConsumeWholeScope = false, Tokenizer tokenizer = null, string matchText = null)
     {
         // Retried against a progressively shorter scope whenever hydration discovers that a trailing
         // DynamicGlyph resolved less text than its greedy pattern captured (see
@@ -197,10 +198,11 @@ public class RegexGraph
         // Match, every capture under it, and every index they carry all describe the same span. Each
         // retry strictly shortens the scope, so this terminates.
         int scopeEnd = endIndex;
+        matchText ??= Enclosures.Scan(sourceText, currentIndex, endIndex).MatchText;
 
         while (true)
         {
-            if (TryMatchWithinScope(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, tokenizer, out glyph, out int narrowedScopeEnd))
+            if (TryMatchWithinScope(sourceText, matchText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, tokenizer, out glyph, out int narrowedScopeEnd))
                 return true;
 
             // Either no narrowing was requested (an ordinary failed match, leaving -1) or the one that
@@ -225,15 +227,15 @@ public class RegexGraph
     /// </param>
     /// <param name="mustConsumeWholeScope"><inheritdoc cref="TryMatch(string, int, int, out Glyph, bool)" path="/param[@name='mustConsumeWholeScope']"/></param>
     /// <param name="narrowedScopeEnd">The scope end to retry at, or -1 if no narrowing was requested.</param>
-    bool TryMatchWithinScope(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, Tokenizer tokenizer, out Glyph glyph, out int narrowedScopeEnd)
+    bool TryMatchWithinScope(string sourceText, string matchText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, Tokenizer tokenizer, out Glyph glyph, out int narrowedScopeEnd)
     {
         glyph = null;
         narrowedScopeEnd = -1;
 
         var match =
-            mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
-            : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex)
-            : BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
+            mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex.Match(matchText, currentIndex, scopeEnd - currentIndex)
+            : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(matchText, currentIndex)
+            : BuiltRegex.AnchoredRegex.Match(matchText, currentIndex, scopeEnd - currentIndex);
 
         int matchEndIndex = match.Index + match.Length;
 
@@ -242,7 +244,7 @@ public class RegexGraph
         // enough. Otherwise the normal "end of scope, or followed by a boundary char" allowance applies.
         bool endsAtBoundary = mustConsumeWholeScope
             ? matchEndIndex == endIndex
-            : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
+            : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(matchText[matchEndIndex]));
 
         bool matchIsValid =
             match.Success                   // 1. Regex:        Match must be successful

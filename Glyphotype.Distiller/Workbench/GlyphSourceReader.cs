@@ -162,7 +162,7 @@ public static class GlyphSourceReader
 
             glyph = glyph with { Properties = properties };
 
-            foreach (var nib in glyph.Nibs.SelectMany(Flatten).OfType<NibDefinition.Property>())
+            foreach (var nib in glyph.Nibs.OfType<NibDefinition.Property>())
                 if (!properties.Any(x => x.Name == nib.Name))
                     Error(@class, $"{name}: Prop({nib.Name}) refers to no property of {name}");
 
@@ -230,13 +230,14 @@ public static class GlyphSourceReader
                 definition = AttributeName(attribute) switch
                 {
                     "Optional" => definition with { IsOptional = true },
+                    "OptionalPlural" => definition with { IsOptionalPlural = true },
                     "AllowUnmatched" => definition with { AllowsUnmatched = true },
                     "RegexPattern" => definition with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => definition with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
                     "TypeFilter" when arguments is [TypeOfExpressionSyntax typeOf] => definition with { TypeFilter = typeOf.Type.ToString() },
                     "Introduces" when arguments.Count <= 2 => definition with { Introduces = ReadAgreement(arguments) },
                     "RefersTo" when arguments.Count == 1 => definition with { RefersTo = ReadPropertyName(arguments[0]) },
-                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Introduces, RefersTo(nameof(Property)))"),
+                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, OptionalPlural, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Introduces, RefersTo(nameof(Property)))"),
                 };
             }
 
@@ -266,32 +267,66 @@ public static class GlyphSourceReader
 
             if (expression is InvocationExpressionSyntax { Expression: IdentifierNameSyntax method } invocation)
             {
+                var helper = method.Identifier.Text;
                 var arguments = invocation.ArgumentList.Arguments.Select(x => x.Expression).ToList();
 
-                switch (method.Identifier.Text)
+                switch (helper)
                 {
                     case "Pattern" when arguments.Count == 1:
                         return new NibDefinition.Pattern(ReadString(arguments[0]));
-                    case "Alt" when arguments.Count > 0:
-                        return new NibDefinition.Alternatives(arguments.Select(ReadString).ToList());
-                    case "Opt" when arguments.Count == 1:
-                        return ReadNib(glyphName, arguments[0]) is NibDefinition inner ? new NibDefinition.Optional(inner) : null;
-                    case "Plural" when arguments.Count == 0:
-                        return new NibDefinition.Plural();
-                    case "Prop" when arguments.Count is 1 or 2:
+                    case "Alt" when arguments.Count >= 2:
+                        return ReadTexts(glyphName, helper, arguments) is { } alternatives ? new NibDefinition.Alternatives(alternatives) : null;
+                    case "Some" when arguments.Count >= 2:
+                        return ReadTexts(glyphName, helper, arguments) is { } items ? new NibDefinition.Some(items) : null;
+                    case "Opt" when arguments.Count >= 1:
+                        return ReadTexts(glyphName, helper, arguments) is { } texts ? new NibDefinition.Optional(texts) : null;
+                    case "Plural" when arguments.Count == 1:
+                        return ReadTexts(glyphName, helper, arguments) is [var singular] ? new NibDefinition.Plural(singular) : null;
+                    case "Alt" or "Some":
+                        return Unsupported<NibDefinition>(null, expression, $"{glyphName}: {helper}() takes two or more texts - a single text is just the literal itself");
+                    case "Opt" or "Plural":
+                        return Unsupported<NibDefinition>(null, expression, $"{glyphName}: {helper}() takes {(helper == "Opt" ? "one or more texts" : "one word or phrase")}");
+                    case "Prop" when arguments.Count == 1:
                         var propName = arguments[0] switch
                         {
                             IdentifierNameSyntax identifier => identifier.Identifier.Text,
                             InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "nameof" } } nameOf => nameOf.ArgumentList.Arguments[0].Expression.ToString(),
                             var other => Unsupported<string>(null, other, $"{glyphName}: Prop takes the property itself, e.g. Prop(Quantity)"),
                         };
-                        var proptions = arguments.Count == 2 ? ReadFlags<Proptions>(arguments[1]) : Proptions.None;
-                        return propName is null ? null : new NibDefinition.Property(propName, proptions);
+                        return propName is null ? null : new NibDefinition.Property(propName);
+                    case "Prop":
+                        return Unsupported<NibDefinition>(null, expression, $"{glyphName}: Prop takes only the property, e.g. Prop(Quantity) - how it's captured is declared on the property itself, by attribute ([Optional], [OptionalPlural], ...)");
                 }
             }
 
-            Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(nib), Plural() or Prop(Property)");
+            Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(\"a\"), Some(\"a\", \"b\"), Plural(\"word\") or Prop(Property)");
             return null;
+        }
+
+        /// <summary>
+        /// A text helper's arguments, each of which must be a string literal: the helpers take literal text only, and
+        /// don't nest. A nested call is refused with what to write instead.
+        /// </summary>
+        List<string> ReadTexts(string glyphName, string helper, List<ExpressionSyntax> arguments)
+        {
+            if (arguments.FirstOrDefault(x => x is InvocationExpressionSyntax) is InvocationExpressionSyntax { Expression: IdentifierNameSyntax nested } call)
+            {
+                var instead = nested.Identifier.Text switch
+                {
+                    "Prop" => "a property's treatments are its attributes: mark it [Optional] to make it optional, [OptionalPlural] to pluralize it",
+                    "Pattern" => "write the treatment into the regex itself, e.g. Pattern(\"(an?)?\") for an optional pattern",
+                    "Alt" when helper == "Opt" => "Opt(\"a\", \"b\") is already one of several texts, or none",
+                    _ => "list the texts themselves, e.g. Alt(\"card\", \"cards\", \"spell\", \"spells\"), or use Pattern(\"regex\")",
+                };
+
+                return Unsupported<List<string>>(null, call, $"{glyphName}: {helper}() takes literal text only - the helpers don't nest. Instead, {instead}");
+            }
+
+            var texts = arguments.Select(ReadString).ToList();
+
+            return texts.Any(string.IsNullOrEmpty)
+                ? Unsupported<List<string>>(null, arguments[0].Parent.Parent, $"{glyphName}: {helper}() takes non-empty texts - for something that may be absent, use Opt(\"text\")")
+                : texts;
         }
 
         static bool IsOverride(PropertyDeclarationSyntax property) =>
@@ -461,18 +496,10 @@ public static class GlyphSourceReader
                 ? property.Identifier.Text
                 : ReadString(expression);
 
-        T ReadFlags<T>(ExpressionSyntax expression) where T : struct, Enum =>
-            expression is BinaryExpressionSyntax { RawKind: (int)SyntaxKind.BitwiseOrExpression } or
-                ? (T)Enum.ToObject(typeof(T), Convert.ToInt64(ReadFlags<T>(or.Left)) | Convert.ToInt64(ReadFlags<T>(or.Right)))
-                : ReadEnumMember<T>(expression);
-
         T Unsupported<T>(T fallback, SyntaxNode node, string message)
         {
             Error(node, message);
             return fallback;
         }
     }
-
-    static IEnumerable<NibDefinition> Flatten(NibDefinition nib) =>
-        nib is NibDefinition.Optional optional ? Flatten(optional.Inner).Prepend(nib) : [nib];
 }

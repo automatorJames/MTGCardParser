@@ -58,13 +58,13 @@ public class ProcessedLine
         DataPath = dataPath;
 
         WordCount = CountWords(sourceText.FormattedText);
-        // Clause breaks are excluded alongside unmatched text, for the opposite reason: a period is
+        // Clause breaks and enclosure marks are excluded alongside unmatched text, for the opposite reason: punctuation is
         // modeled, but it isn't a word. WordCount counts it as part of whatever word it trails ("kitchen."
         // is one word), so counting the ClauseBreak token as a captured word too would credit coverage
         // that the denominator never had.
         CapturedWordCount = glyphs
             .Where(x => !x.CaptureContext.RootCaptureTrace.IsUnmatchedString)
-            .Where(x => !x.CaptureContext.RootCaptureTrace.IsClauseBreak)
+            .Where(x => !x.CaptureContext.RootCaptureTrace.IsStructural)
             .Sum(x => CountWords(x.CaptureValue) - x.UnresolvedTraces.Sum(y => CountWords(y.CaptureValue)));
     }
 

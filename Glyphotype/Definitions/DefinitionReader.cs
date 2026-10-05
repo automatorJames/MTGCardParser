@@ -102,6 +102,7 @@ static class DefinitionReader
             Name = prop.Name,
             Type = ReadTypeReference(prop.PropertyType),
             IsOptional = prop.IsDefined(typeof(OptionalAttribute)),
+            IsOptionalPlural = prop.IsDefined(typeof(OptionalPluralAttribute)),
             AllowsUnmatched = prop.IsDefined(typeof(AllowUnmatchedAttribute)),
             Patterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [],
             JoinedBy = prop.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
@@ -113,12 +114,11 @@ static class DefinitionReader
     static NibDefinition ReadNib(Nib nib) =>
         nib switch
         {
-            // PropertyNib folds the property's own [Optional] into its Proptions; that's the property's to declare, not the nib's.
-            PropertyNib property => new NibDefinition.Property(property.Name,
-                property.Prop.IsDefined(typeof(OptionalAttribute)) ? property.Proptions & ~Proptions.Optional : property.Proptions),
+            PropertyNib property => new NibDefinition.Property(property.Name),
             NibAlternatives alternatives => new NibDefinition.Alternatives(alternatives.Alternatives),
-            OptionalNib optional => new NibDefinition.Optional(ReadNib(optional.Inner)),
-            OptionalPluralNib => new NibDefinition.Plural(),
+            SomeNib some => new NibDefinition.Some(some.Items),
+            OptionalNib optional => new NibDefinition.Optional(optional.Texts),
+            PluralNib plural => new NibDefinition.Plural(plural.Singular),
             PatternNib pattern => new NibDefinition.Pattern(pattern.Text),
             _ when nib.GetType() == typeof(Nib) => new NibDefinition.Literal(nib.Text),
             _ => throw new NotSupportedException($"Nib type {nib.GetType().Name} has no definition counterpart"),

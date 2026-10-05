@@ -45,10 +45,11 @@ public class AsksARiddle : Glyph
     public override Nib[] Nibs => ["the teacher asks what is 2+2?"];
 }
 
-/// <summary><c>Plural()</c>: an optional plural suffix on the preceding nib.</summary>
+/// <summary><c>[OptionalPlural]</c> on a property: its vocabulary's members, singular or plural, at just this property.</summary>
 public class FeedAll : Glyph
 {
-    public override Nib[] Nibs => ["feed all the", Prop(Animal), Plural(), "before noon"];
+    public override Nib[] Nibs => ["feed all the", Prop(Animal), "before noon"];
 
+    [OptionalPlural]
     public Animal Animal { get; set; }
 }

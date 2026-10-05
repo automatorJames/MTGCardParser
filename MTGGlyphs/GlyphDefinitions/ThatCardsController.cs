@@ -1,8 +1,10 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>"that land's controller", "that creature's controller".</summary>
+[Dependent]
 public class ThatCardsController : Glyph
 {
     public override Nib[] Nibs => ["that", Prop(CardOrCreatureType), "'s controller"];
 
-    public OneOf<CardType?, CreatureType?> CardOrCreatureType { get; set; }
+    public CardOrCreatureType CardOrCreatureType { get; set; }
 }

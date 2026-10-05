@@ -1,5 +1,6 @@
-﻿namespace MTGGlyphs.GlyphDefinitions;
+namespace MTGGlyphs.GlyphDefinitions;
 
+[Dependent]
 public class ToTheBattlefieldUnderControl : Glyph
 {
     public override Nib[] Nibs => [Alt("onto", "to"), "the battlefield under", Prop(Whose), "control", Prop(AndAttachThisToIt)];

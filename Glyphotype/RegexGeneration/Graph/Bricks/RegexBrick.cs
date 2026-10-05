@@ -57,7 +57,8 @@ public class RegexBrick
     /// <summary>Display-only regex text, defaulting to <see cref="Regex"/> until the Formatting layer overrides it (e.g. simplified group names, ranked enum members).</summary>
     public string RegexFormatted
     {
-        get => _regexFormatted ?? Regex ?? "";
+        // An enclosed period (see Enclosures) is a private-use character, invisible as text: shown as "·".
+        get => (_regexFormatted ?? Regex ?? "").Replace(Enclosures.EnclosedPeriod, '·');
         set => _regexFormatted = value;
     }
 

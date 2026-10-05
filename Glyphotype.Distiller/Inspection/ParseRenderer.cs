@@ -22,7 +22,7 @@ public static class ParseRenderer
         if (root.IsUnmatchedString)
             return $"«{unit.CaptureValue.Trim()}»";
 
-        if (root.IsClauseBreak)
+        if (root.IsStructural)
             return unit.CaptureValue.Trim();
 
         return $"⟦{unit.Type.Name}: {(nested ? RenderInner(root) : unit.CaptureValue).Trim()}⟧";

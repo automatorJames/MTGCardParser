@@ -187,7 +187,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
             throw new ArgumentNullException(nameof(capture));
 
         Success = true;
-        CaptureValue = capture.Value;
+        CaptureValue = captureContext.SourceText.Substring(capture.Index, capture.Length);
         Index = capture.Index;
         Length = capture.Length;
         End = Index + Length;

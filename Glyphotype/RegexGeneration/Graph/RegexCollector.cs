@@ -12,8 +12,9 @@ public class RegexCollector
     /// <summary>
     /// A trailing space - raw (e.g. from an unescaped <see cref="RegexPatternAttribute"/> pattern) or written
     /// as <see cref="BuiltRegex.EscapedSpace"/> - optionally sitting just inside a closing group that may
-    /// itself be quantified. That last case is what catches an optional nib like <c>(an[ ])?</c> or
-    /// <c>((in|from)[ ])*</c>, whose space is only emitted when the optional actually matches.
+    /// itself be quantified. That last case is what catches an optional nib that supplies its own trailing space,
+    /// like <c>(an[ ])?</c> (see <see cref="Nodes.TextNode"/>), or a separator such as <c>Some(",", " ")</c>'s
+    /// <c>(,([ ])?|[ ])</c>, whose space is only emitted when that part actually matches.
     /// </summary>
     static readonly Regex _trailingSpacePattern = new(@"(?: |\[ \])\)?[?*+]?$", RegexOptions.Compiled);
 
@@ -30,7 +31,11 @@ public class RegexCollector
     /// </summary>
     public bool AlreadySeparated =>
         RegexBricks.LastOrDefault(x => x is not RegexBrickGroupBookend)?.Regex is string regex
-        && _trailingSpacePattern.IsMatch(regex);
+        && EndsSeparated(regex);
+
+    /// <summary>Whether <paramref name="regex"/> ends in a space, as <see cref="AlreadySeparated"/> reads one.</summary>
+    public static bool EndsSeparated(string regex) =>
+        regex is not null && _trailingSpacePattern.IsMatch(regex);
 
     /// <summary>Appends a brick to the sequence.</summary>
     public void Append(RegexBrick brick) =>

@@ -13,14 +13,20 @@ public class RootCaptureTrace : CaptureTrace
     /// <summary>Whether this root is a <see cref="ClauseBreak"/> - a synthesized clause-separating period rather than a matched Glyph. Distinct from <see cref="IsUnmatchedString"/>: a clause break is modeled punctuation, not text still awaiting a Glyph.</summary>
     [JsonProperty] public bool IsClauseBreak { get; }
 
+    /// <summary>Whether this root is an <see cref="EnclosureMark"/> - a synthesized enclosure delimiter rather than a matched Glyph. Like <see cref="IsClauseBreak"/>, modeled punctuation, not text still awaiting a Glyph.</summary>
+    [JsonProperty] public bool IsEnclosureMark { get; }
+
+    /// <summary>Whether this root is punctuation the Tokenizer emits as structure: a <see cref="ClauseBreak"/> or an <see cref="EnclosureMark"/>.</summary>
+    public bool IsStructural => IsClauseBreak || IsEnclosureMark;
+
     /// <summary>
     /// Whether this root was manufactured by the Tokenizer to account for a span of source text, rather
     /// than produced by matching a Glyph type - <see cref="IsUnmatchedString"/> or
-    /// <see cref="IsClauseBreak"/>. Neither has nibs, a property graph, or a registered type, so anything
+    /// <see cref="IsStructural"/>. None has nibs, a property graph, or a registered type, so anything
     /// presenting captures *as* captures (the property tables, per-type corpus analysis) should skip them;
     /// they still carry a real span, so anything rendering the line's text still walks them.
     /// </summary>
-    public bool IsSynthesized => IsUnmatchedString || IsClauseBreak;
+    public bool IsSynthesized => IsUnmatchedString || IsStructural;
 
     public RootCaptureTrace(CaptureContext captureContext, GlyphNode rootNode, Capture capture)
         : base(captureContext, rootNode, capture)
@@ -29,6 +35,7 @@ public class RootCaptureTrace : CaptureTrace
         _flatCaptureTree[rootNode.FullyQualifiedName] = this;
         IsUnmatchedString = rootNode is UnmatchedGlyphNode;
         IsClauseBreak = rootNode is ClauseBreakNode;
+        IsEnclosureMark = rootNode is EnclosureMarkNode;
     }
 
     public CaptureTrace this[string fullyQualifiedName]
