@@ -1,4 +1,4 @@
-namespace Glyphotype.Distiller.Workbench;
+﻿namespace Glyphotype.Distiller.Workbench;
 
 /// <summary>
 /// Edits applied together, as one step: definitions to add or replace (each by its own name), and names to remove.
@@ -61,7 +61,7 @@ public sealed record ChangeSet
 
         foreach (var glyph in grammar.Glyphs)
         {
-            var missing = GrammarDefinitionEdits.GetReferencedNames(glyph).Where(x => !kinds.Contains(x)).ToList();
+            var missing = GrammarDefinitionEdits.GetReferencedNames(glyph).Where(x => !kinds.Contains(x) && !GrammarDefinition.BuiltInNames.Contains(x)).ToList();
 
             if (missing.Count > 0)
                 problems.Add($"{glyph.Name} refers to {string.Join(", ", missing)}, which {(missing.Count == 1 ? "isn't" : "aren't")} defined{(Removals.Intersect(missing).Any() ? " (removed in this change set)" : "")}");

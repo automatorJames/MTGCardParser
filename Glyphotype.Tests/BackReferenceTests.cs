@@ -1,4 +1,4 @@
-using Glyphotype.Definitions;
+﻿using Glyphotype.Definitions;
 using Glyphotype.Distiller.Workbench;
 
 namespace Glyphotype.Tests;
@@ -87,7 +87,7 @@ public class BackReferenceTests(CorpusFixture corpus)
         public class NotABackReference : Glyph { public override Nib[] Nibs => ["they"]; }
         """, "only a back-reference has a referent to agree with")]
     [InlineData("""
-        public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
+        [Dependent] public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
         public class Chases : Glyph
         {
             public override Nib[] Nibs => [Prop(Chaser), "chases", Prop(Chased)];
@@ -97,7 +97,7 @@ public class BackReferenceTests(CorpusFixture corpus)
         }
         """, null)]
     [InlineData("""
-        public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
+        [Dependent] public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
         public class Chases : Glyph
         {
             public override Nib[] Nibs => ["the dog chases", Prop(Chased)];
@@ -105,7 +105,14 @@ public class BackReferenceTests(CorpusFixture corpus)
             public Pronoun Chased { get; set; }
         }
         """, "names no other property")]
-    public void Agreement_belongs_to_back_references_and_RefersTo_to_a_sibling(string source, string expectedError)
+    [InlineData("""
+        public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
+        public class Chases : Glyph { public override Nib[] Nibs => ["the dog chases", Prop(Chased)]; public Pronoun Chased { get; set; } }
+        """, "isn't [Dependent]")]
+    [InlineData("""
+        public class Chases : Glyph { public override Nib[] Nibs => ["the dog chases", Prop(Chased)]; public Them Chased { get; set; } }
+        """, null)]
+    public void Agreement_belongs_to_dependent_back_references_and_RefersTo_to_a_sibling(string source, string expectedError)
     {
         var read = GlyphSourceReader.Read(source);
         GlyphGrammar Build() => GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);

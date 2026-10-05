@@ -194,6 +194,10 @@ pattern, `Alt` or `Opt` may contain a period.
 **Back-references** ("it", "they", "that creature") are glyphs deriving from `BackReference`. They match like any glyph, and
 after the line is tokenized each one is resolved to the most recent earlier referent in its line that agrees with
 it. If nothing agrees, it stays unresolved and is counted.
+- The standard pronouns are built in, so use them as property types without declaring them: `It`, `Its`, `Itself`
+  (singular) and `They`, `Them`, `Their`, `Themselves`, `These`, `Those` (plural). Don't declare a glyph with one of
+  these names. Declare your own back-reference only for a phrase that names its referent's kind ("that creature").
+- Every back-reference must be `[Dependent]`.
 - `[Agreement(GrammaticalNumber.Plural)]` or `[Agreement(GrammaticalNumber.Singular, "creature")]` on the back-reference
   sets what its referent must be. Write a pronoun whose number varies as one back-reference per number, combined with
   `OneOf<It, They>`.

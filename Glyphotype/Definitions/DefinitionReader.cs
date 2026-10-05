@@ -1,4 +1,4 @@
-namespace Glyphotype.Definitions;
+﻿namespace Glyphotype.Definitions;
 
 /// <summary>
 /// Reads definitions from CLR types (see <see cref="GrammarDefinition.FromTypes"/>). Refuses, rather than
@@ -190,7 +190,9 @@ static class DefinitionReader
             if (definition == typeof(OptionalOf<>))
                 return TypeReference.OptionalOf(arguments[0]);
         }
-        else if (type.IsAssignableTo(typeof(Glyph)) && type.Assembly != _glyphotype)
+        // Glyphotype's own concrete glyphs (e.g. the standard pronouns) are referred to by name, like its enums - neither
+        // is defined by the grammar, and both resolve when it's emitted.
+        else if (type.IsAssignableTo(typeof(Glyph)) && !type.IsAbstract)
         {
             return TypeReference.Glyph(type.Name);
         }

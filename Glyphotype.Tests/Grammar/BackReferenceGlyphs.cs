@@ -1,22 +1,7 @@
-namespace Glyphotype.Tests.Grammar;
+﻿namespace Glyphotype.Tests.Grammar;
 
-// Back-references - "it", "they", "that animal" - and the referents they're resolved to after tokenization.
-
-/// <summary>A singular pronoun: agrees only with a singular referent.</summary>
-[Dependent]
-[Agreement(GrammaticalNumber.Singular)]
-public class It : BackReference
-{
-    public override Nib[] Nibs => ["it"];
-}
-
-/// <summary>A plural pronoun: agrees only with a plural referent.</summary>
-[Dependent]
-[Agreement(GrammaticalNumber.Plural)]
-public class They : BackReference
-{
-    public override Nib[] Nibs => ["they"];
-}
+// Back-references - the standard pronouns "it" and "they", and "that animal" - and the referents they're resolved to
+// after tokenization.
 
 /// <summary>A back-reference that also names its referent's kind, so it skips past a more recent referent of another kind.</summary>
 [Dependent]

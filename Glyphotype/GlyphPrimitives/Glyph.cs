@@ -116,6 +116,9 @@ public abstract class Glyph : CaptureUnit
         if (Type.IsDefined(typeof(AgreementAttribute)) && this is not BackReference)
             return $"{Type.Name} declares [Agreement] but isn't a {nameof(BackReference)} - only a back-reference has a referent to agree with (a referent's own features go on [Introduces])";
 
+        if (this is BackReference && !Type.IsDefined(typeof(DependentAttribute)))
+            return $"{Type.Name} is a {nameof(BackReference)} but isn't [Dependent] - a back-reference only means anything inside the phrase around it, so it's never matched on its own";
+
         return null;
     }
 

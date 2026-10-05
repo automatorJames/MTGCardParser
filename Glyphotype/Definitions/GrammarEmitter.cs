@@ -1,4 +1,4 @@
-using System.Reflection.Emit;
+﻿using System.Reflection.Emit;
 
 namespace Glyphotype.Definitions;
 
@@ -28,7 +28,7 @@ public static class GrammarEmitter
     /// <param name="knownTypes">
     /// Existing types that references to names <paramref name="grammar"/> doesn't define resolve against - e.g. a
     /// grammar's <see cref="GlyphGrammar.Types"/>, when defining one new glyph on top of it. The enums, markers and
-    /// glyphs those types refer to are known too. Glyphotype's own enums (e.g. <see cref="Conjunction"/>) always are.
+    /// glyphs those types refer to are known too. Glyphotype's own enums (e.g. <see cref="Conjunction"/>) and glyphs (e.g. <see cref="It"/>) always are.
     /// A name defined in <paramref name="grammar"/> takes precedence over a known type of the same name.
     /// </param>
     public static IReadOnlyList<Type> Emit(GrammarDefinition grammar, IEnumerable<Type> knownTypes = null)
@@ -368,13 +368,13 @@ public static class GrammarEmitter
 
     /// <summary>
     /// Every enum, interface and glyph type among <paramref name="knownTypes"/>, and everything those glyphs refer
-    /// to through their properties, generic arguments, interfaces and type filters - plus Glyphotype's own enums -
-    /// by name. Where two share a name, the first found wins.
+    /// to through their properties, generic arguments, interfaces and type filters - plus Glyphotype's own enums and
+    /// glyphs (e.g. the standard pronouns) - by name. Where two share a name, the first found wins.
     /// </summary>
     static Dictionary<string, Type> IndexKnownTypes(IEnumerable<Type> knownTypes)
     {
         var index = new Dictionary<string, Type>();
-        var pending = new Stack<Type>(knownTypes.Concat(typeof(Glyph).Assembly.GetExportedTypes().Where(x => x.IsEnum)).Reverse());
+        var pending = new Stack<Type>(knownTypes.Concat(typeof(Glyph).Assembly.GetExportedTypes().Where(IsBuiltIn)).Reverse());
 
         while (pending.TryPop(out var type))
         {
@@ -408,6 +408,10 @@ public static class GrammarEmitter
 
         return index;
     }
+
+    /// <summary>Whether <paramref name="type"/>, one of Glyphotype's own, is one a grammar can refer to by name: an enum, or a concrete glyph such as <see cref="It"/>.</summary>
+    internal static bool IsBuiltIn(Type type) =>
+        type.IsEnum || (type.IsClass && !type.IsAbstract && !type.ContainsGenericParameters && type.IsAssignableTo(typeof(Glyph)));
 
     /// <summary>An attribute through its one constructor - every attribute a definition can carry has exactly one.</summary>
     static CustomAttributeBuilder Attribute<TAttribute>(params object[] arguments) where TAttribute : Attribute =>

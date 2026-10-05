@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Glyphotype.Tests.Infrastructure;
@@ -13,6 +13,7 @@ public static class SourceCompiler
         global using Glyphotype;
         global using Glyphotype.Attributes;
         global using Glyphotype.Attributes.Quantifiers;
+        global using Glyphotype.BackReferences;
         global using Glyphotype.GlyphPrimitives;
         global using Glyphotype.NibHelpers;
         """;
