@@ -1,4 +1,4 @@
-# Grammar workbench: a guide for agents
+﻿# Grammar workbench: a guide for agents
 
 You're composing a **grammar** for a corpus of short documents, one glyph at a time. A glyph is a small C# class
 describing one construction of the text, e.g. "the {animal} naps on {weekday}". The grammar is *solved* when its
@@ -105,7 +105,10 @@ of words inside matches) is the other headline number. The score is the judge wh
   - `⟦Property=text⟧` is a terminal (vocabulary member, bool, or number).
 - A *frame* such as `the {Animal} naps on {Day}` is a match's text with its captures masked out.
 
-Corpus text is lower-cased before tokenizing, and a document's own name is replaced with `{this}`.
+Corpus text is lower-cased before tokenizing, and a document's own name is replaced with `{this}`. Every `{this}` in
+a match is a singular referent, so a later "it" resolves to the document. Write it as a literal where it's the only
+thing that fits. Where the document is one of several things that can fill a property, use the built-in `This` glyph,
+e.g. `OneOf<This, …>`.
 
 ## Writing glyphs
 

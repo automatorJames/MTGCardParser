@@ -178,7 +178,9 @@ public static class TestCorpus
             Doc("the dog meets the friends of it. they sleep all day.", "Meets{Animal=Dog, Friends=FriendsOf{Friend=It}} . Rests{Subject={They}} ."),
             Doc("the dog follows the baker until it rests.", "FollowsUntil{Animal=Dog, Person=Baker, Follower=It} ."),
             Doc("it sleeps all day.", "Rests{Subject={It}} ."),
-            Doc("that dog sleeps all day.", "«that dog sleeps all day» .")),
+            Doc("that dog sleeps all day.", "«that dog sleeps all day» ."),
+            Named("Rex", "the baker visits Rex. it sleeps all day.", "Visits{Person=Baker} . Rests{Subject={It}} ."),
+            Named("Rex", "the baker feeds Rex. they sleep all day.", "Feeds{Person=Baker, Fed={This}} . Rests{Subject={They}} .")),
 
         .. Section("[TokenizationOrder]",
             Doc("the baker opens the shop.", "BakerOpensTheShop ."),

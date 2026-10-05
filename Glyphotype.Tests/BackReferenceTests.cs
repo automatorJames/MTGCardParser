@@ -45,6 +45,26 @@ public class BackReferenceTests(CorpusFixture corpus)
         Assert.Equal(BackReferenceResolutionKind.Declared, resolution.Kind);
     }
 
+    [Theory]
+    [InlineData("the baker visits rex. it sleeps all day.")]
+    [InlineData("the baker feeds rex. it sleeps all day.")]
+    public void The_documents_reference_to_itself_is_a_referent_whether_literal_or_captured(string text)
+    {
+        var resolution = Assert.Single(Assert.Single(ProcessedLine.GetAll(new TestDocument("rex", text, []), corpus.Grammar)).BackReferences);
+
+        Assert.Equal("{this}", resolution.Antecedent.Text);
+        Assert.True(resolution.Antecedent.IsSelf);
+        Assert.IsType<This>(resolution.Antecedent.Value);
+    }
+
+    [Fact]
+    public void The_documents_reference_to_itself_is_singular()
+    {
+        var resolution = Assert.Single(Assert.Single(ProcessedLine.GetAll(new TestDocument("rex", "the baker visits rex. they sleep all day.", []), corpus.Grammar)).BackReferences);
+
+        Assert.False(resolution.IsResolved);
+    }
+
     [Fact]
     public void A_back_reference_with_nothing_to_refer_to_is_left_unresolved_and_counted()
     {

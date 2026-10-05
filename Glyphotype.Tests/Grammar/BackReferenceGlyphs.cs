@@ -81,3 +81,23 @@ public class FollowsUntil : Glyph
     [RefersTo(nameof(Animal))]
     public It Follower { get; set; }
 }
+
+/// <summary>A literal self-reference: the document's own name is a referent wherever it sits in a match's text.</summary>
+public class Visits : Glyph
+{
+    public override Nib[] Nibs => ["the", Prop(Person), "visits {this}"];
+
+    [Introduces(GrammaticalNumber.Singular, "person")]
+    public Person Person { get; set; }
+}
+
+/// <summary>A captured self-reference: the document as one of the things that can fill a property.</summary>
+public class Feeds : Glyph
+{
+    public override Nib[] Nibs => ["the", Prop(Person), "feeds", Prop(Fed)];
+
+    [Introduces(GrammaticalNumber.Singular, "person")]
+    public Person Person { get; set; }
+
+    public OneOf<This, FriendsOf> Fed { get; set; }
+}

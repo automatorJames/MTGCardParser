@@ -1,4 +1,4 @@
-namespace Glyphotype.BackReferences;
+﻿namespace Glyphotype.BackReferences;
 
 /// <summary>
 /// Resolves every <see cref="BackReference"/> on a tokenized line to its <see cref="BackReference.Antecedent"/> - the pass after
@@ -13,6 +13,8 @@ namespace Glyphotype.BackReferences;
 /// property's capture outright. With nothing agreeing, it's left unresolved: an unresolved back-reference is a gap the
 /// grammar can see and close, while a guessed one would hide it.</item>
 /// <item>A capture declared <see cref="IntroducesAttribute"/> then becomes a referent for what follows.</item>
+/// <item>Every <see cref="IDocument.ThisToken"/> - the document's reference to itself - is a singular referent where it
+/// sits, whether a <see cref="This"/> glyph captured it or it's a literal in the text around a capture's children.</item>
 /// </list>
 /// Visiting a capture only after its contents is what keeps a phrase from being its own antecedent: in "creatures
 /// blocking or blocked by it", "it" is resolved before the phrase around it has been introduced.
@@ -38,8 +40,16 @@ public static class BackReferenceResolver
 
     static void Visit(CaptureTrace trace, CaptureTrace parent, List<Referent> referents, List<BackReferenceResolution> resolutions)
     {
+        var position = trace.Index;
+
         foreach (var child in OrderedChildren(trace))
+        {
+            AddSelfReferences(trace, position, child.Index, referents);
             Visit(child, trace, referents, resolutions);
+            position = Math.Max(position, child.End);
+        }
+
+        AddSelfReferences(trace, position, trace.End, referents);
 
         if (trace.ClrValue is BackReference backReference)
             resolutions.Add(Resolve(backReference, trace, parent, referents));
@@ -62,6 +72,17 @@ public static class BackReferenceResolver
         backReference.Antecedent = referents.LastOrDefault(backReference.AgreesWith);
 
         return new(backReference, trace, backReference.Antecedent is null ? BackReferenceResolutionKind.Unresolved : BackReferenceResolutionKind.Searched);
+    }
+
+    /// <summary>A self-reference for each <see cref="IDocument.ThisToken"/> in <paramref name="trace"/>'s own text from <paramref name="start"/> to <paramref name="end"/> - text none of its children captured.</summary>
+    static void AddSelfReferences(CaptureTrace trace, int start, int end, List<Referent> referents)
+    {
+        var text = trace.CaptureValue ?? "";
+        start = Math.Clamp(start - trace.Index, 0, text.Length);
+        end = Math.Clamp(end - trace.Index, start, text.Length);
+
+        for (var i = text.IndexOf(IDocument.ThisToken, start, end - start, StringComparison.Ordinal); i >= 0; i = text.IndexOf(IDocument.ThisToken, i + 1, end - i - 1, StringComparison.Ordinal))
+            referents.Add(Referent.Self(trace));
     }
 
     /// <summary>
