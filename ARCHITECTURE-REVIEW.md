@@ -55,23 +55,6 @@ The code already knows this is fragile: `ResetEmbeddingOverrides()` exists solel
 
 ---
 
-### 2. `[Flags] enum Proptions` has non-flag values
-
-```csharp
-// Glyphotype/Enums.cs:6-13
-[Flags]
-public enum Proptions { None, Plural, Optional, OneOrMore, NoPrecedingSpace }
-//                       0      1        2          3              4
-```
-
-`OneOrMore == 3 == Plural | Optional`. So `PropertyNib.cs:33` (`Proptions |= Proptions.OneOrMore`) silently sets Plural *and* Optional, and every `HasFlag` check downstream (`Glyph.cs:33-34`, `NibContextAction.cs:44,49`, `EditorPropertyNib.GetSetFlags()`) reports both.
-
-Latent today — nothing uses `[OneOrMore]` or passes `Proptions.OneOrMore` — but it will misfire the first time someone does.
-
-**Fix:** explicit powers of two (`None=0, Plural=1, Optional=2, OneOrMore=4, NoPrecedingSpace=8`). The existing `// Todo: we should be using Quantifier to express quantifiers, not Proptions` at `PropertyNib.cs:30` is the better long-term answer.
-
----
-
 ### 3. `EnumNode.GetValue` throws the wrong exception on its own error path
 
 ```csharp
@@ -320,7 +303,7 @@ The GlyphEditor is a real feature mid-flight, so it is a judgment call — but i
 **Do first — high value, low risk, no design change:**
 
 1. `\G`-anchor the tokenizer regexes (item 8) — biggest single perf win
-2. Fix `Proptions` flag values (item 2) and `EnumNode.GetValue` (item 3)
+2. Fix `EnumNode.GetValue` (item 3)
 3. Replace the `Match._regex` reflection with `match.Groups.Keys` (item 4)
 4. Drop the `Regex` from `UnmatchedString` (item 9)
 5. Delete the confirmed-dead code (item 18)
