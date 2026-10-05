@@ -1,10 +1,5 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-public class Abu : Glyph
-{
-    public override Nib[] Nibs => ["when {this} dies, destroy all creatures blocking or blocked by it. they can't be regenerated."];
-}
-
 //[MustMatchWholeLine]
 //public class MustMatchWholeLineTest : Glyph
 //{
