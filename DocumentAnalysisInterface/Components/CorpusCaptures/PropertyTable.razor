@@ -182,8 +182,8 @@ else
     /// The text <paramref name="trace"/> captured, then the path to what <paramref name="backReference"/>, its value,
     /// refers to (see <see cref="BackReferenceDisplay.ReferentPath"/>): "they -> DestroyAll.Destroyed". Each part of the
     /// path stands for the capture it names: in its color, highlighting it on hover - it alone, not the back-reference
-    /// whose row it's in (<c>data-path-isolated</c>) - and previewing its type. A part with no capture of its own (a
-    /// dynamic property's resolved glyph), or no color (one hidden as collapsible), takes the one before it's.
+    /// whose row it's in (<c>data-path-isolated</c>) - and previewing its type. A part whose capture has no color (one
+    /// hidden as collapsible) takes the one before it's, and with none before it stays the plain value color.
     /// </summary>
     RenderFragment ReferentPath(CaptureTrace trace, Glyphotype.GlyphPrimitives.BackReference backReference)
     {

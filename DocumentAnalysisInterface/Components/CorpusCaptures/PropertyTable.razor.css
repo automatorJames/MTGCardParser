@@ -60,13 +60,18 @@
     color: dimgrey;
 }
 
-/* A part of a back-reference's referent path, standing for the capture it names: lit up while that capture is. */
+/* A part of a back-reference's referent path, standing for the capture it names: lit up while that capture is. Only one
+   carrying that capture's palette (its style) is colored from it - the row's own, which the rest would inherit, is the
+   back-reference's. */
 .referent-part {
-    color: var(--color);
     transition: color var(--transition-time);
 }
 
-.referent-part.highlight-active {
+.referent-part[style] {
+    color: var(--color);
+}
+
+.referent-part[style].highlight-active {
     color: var(--highlight-color);
 }
 

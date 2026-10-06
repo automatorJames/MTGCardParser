@@ -320,8 +320,8 @@ public static class BackReferenceDisplay
 {
     /// <summary>
     /// Where <paramref name="backReference"/> was resolved to, as a property path ("Chooser.Player"), each part paired
-    /// with the capture it names - null for one with no capture of its own, such as a dynamic property's resolved glyph -
-    /// and the type of what it names. The path is the shortest ending of the referent's full one, at least two parts
+    /// with the capture it names - a dynamic property's resolved glyph, which has none of its own, the property's - and
+    /// the type of what it names. The path is the shortest ending of the referent's full one, at least two parts
     /// long, that no other capture on the line also ends with: "Chosen.CardType", not
     /// "Effect.MayChooseAndPayForEach.Chosen.CardType", unless something else on the line ends in "Chosen.CardType" too.
     /// A single part, with no capture, for <c>{this}</c> (the document itself, a <see cref="Glyphotype.BackReferences.This"/>),
@@ -345,11 +345,16 @@ public static class BackReferenceDisplay
 
         var root = antecedent.Trace.CaptureContext?.RootCaptureTrace;
         var parts = new List<(string, Glyphotype.RegexGeneration.Graph.CaptureTrace, Type)>();
+        Glyphotype.RegexGeneration.Graph.CaptureTrace capture = null;
 
-        for (var i = path.Length - length; i < path.Length; i++)
+        // Walked from the root, not just over the parts shown: a part with no capture of its own is the type the one
+        // before it resolved to, and that one may be trimmed off the front.
+        for (var i = 0; i < path.Length; i++)
         {
-            var capture = i == path.Length - 1 ? antecedent.Trace : root?[string.Join('_', path[..(i + 1)])];
-            parts.Add((path[i], capture, capture?.ResolvedNodeType));
+            capture = i == path.Length - 1 ? antecedent.Trace : root?[string.Join('_', path[..(i + 1)])] ?? capture;
+
+            if (i >= path.Length - length)
+                parts.Add((path[i], capture, capture?.ResolvedNodeType));
         }
 
         return parts;
