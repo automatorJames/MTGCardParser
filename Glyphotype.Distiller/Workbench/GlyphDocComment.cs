@@ -12,8 +12,7 @@ static class GlyphDocComment
             ? comment
             : null;
 
-    /// <summary>What the doc comment above <paramref name="declaration"/> says - null when there's none.</summary>
-    /// <exception cref="FormatException">The comment holds something a <see cref="GlyphDocumentation"/> can't.</exception>
-    public static GlyphDocumentation Read(SyntaxNode declaration) =>
-        Find(declaration) is { } comment ? GlyphDocumentation.FromComment(comment.ToFullString()) : null;
+    /// <summary>What the doc comment above <paramref name="declaration"/> says (see <see cref="GlyphDocumentation.Read"/>) - nothing at all when there's none.</summary>
+    public static GlyphDocumentation.ReadComment Read(SyntaxNode declaration) =>
+        GlyphDocumentation.Read(Find(declaration)?.ToFullString());
 }

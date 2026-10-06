@@ -175,9 +175,15 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
         var compiled = SourceCompiler.Compile(Directory.GetFiles(sourceDirectory, "*.cs").Select(File.ReadAllText).ToArray());
         Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithDocumentation(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
 
-        // A glyph's doc comment holds only its documentation: anything else in committed sources is an error, not dropped.
-        File.WriteAllText(basicGlyphsPath, basicGlyphs.Replace("/// <summary><c>Opt()</c>", "/// <remarks>Not a glyph's.</remarks>\n/// <summary><c>Opt()</c>"));
-        Assert.Contains(nameof(AnimalEats), Assert.Throws<InvalidOperationException>(() => CreateWorkbench(sourceDirectory)).Message);
+        // Whatever else a doc comment holds is no part of the documentation, and a commit keeps it, after the documentation.
+        File.WriteAllText(basicGlyphsPath, basicGlyphs.Replace("/// <summary><c>Opt()</c>", "/// Eats, sometimes.\n/// <remarks>Kept.</remarks>\n/// <summary><c>Opt()</c>"));
+        workbench = CreateWorkbench(sourceDirectory);
+        Assert.Equal(new GlyphDocumentation { Summary = "<c>Opt()</c>: an optional literal." }, Glyph(workbench.CommittedDefinition, nameof(AnimalEats)).Documentation);
+
+        workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalEats)) with { TokenizationOrder = 5 });
+        workbench.Commit(workbench.PlanCommit());
+        Assert.Contains("/// <summary><c>Opt()</c>: an optional literal.</summary>\n/// Eats, sometimes.\n/// <remarks>Kept.</remarks>\n[TokenizationOrder(5)]",
+            File.ReadAllText(basicGlyphsPath).ReplaceLineEndings("\n"));
     }
 
     static GlyphDefinition Glyph(GrammarDefinition grammar, string name) => grammar.Glyphs.Single(x => x.Name == name);

@@ -16,7 +16,7 @@ public static class GlyphSourceWriter
     {
         var declarations = grammar.Markers.Select(WriteMarker)
             .Concat(grammar.Vocabularies.Select(WriteVocabulary))
-            .Concat(grammar.Glyphs.Select(WriteGlyph))
+            .Concat(grammar.Glyphs.Select(x => WriteGlyph(x)))
             .Select(x => stamp is null ? x : stamp + Environment.NewLine + x);
 
         return $"namespace {@namespace};{Environment.NewLine}{Environment.NewLine}" + string.Join(Environment.NewLine, declarations);
@@ -60,9 +60,10 @@ public static class GlyphSourceWriter
         return Lines([.. lines]);
     }
 
-    public static string WriteGlyph(GlyphDefinition glyph)
+    /// <param name="keptComment">The rest of the doc comment the glyph's documentation was read from, to write after it (see <see cref="GlyphDocumentation.ReadComment.Rest"/>).</param>
+    public static string WriteGlyph(GlyphDefinition glyph, IEnumerable<string> keptComment = null)
     {
-        List<string> lines = [.. glyph.Documentation?.ToComment() ?? [], .. GetClassAttributes(glyph)];
+        List<string> lines = [.. GlyphDocumentation.ToComment(glyph.Documentation, keptComment), .. GetClassAttributes(glyph)];
 
         var baseList = string.Join(", ", glyph.Markers.Prepend(glyph.Kind switch
         {

@@ -112,9 +112,13 @@ public static class SourceCommitter
 
             var start = PreviousStamp(existing.Node)?.SpanStart ?? existing.Node.Span.Start;
 
-            // A glyph's doc comment is its definition's documentation, so it's written again along with the rest.
-            if (change.After is GlyphDefinition && GlyphDocComment.Find(existing.Node) is { } comment)
+            // A glyph's doc comment holds its definition's documentation, so it's written again along with the rest - keeping
+            // whatever else the comment held after it.
+            if (change.After is GlyphDefinition glyph && GlyphDocComment.Find(existing.Node) is { } comment)
+            {
                 start = Math.Min(start, comment.FullSpan.Start);
+                text = stamp + Environment.NewLine + GlyphSourceWriter.WriteGlyph(glyph, GlyphDocComment.Read(existing.Node).Rest);
+            }
 
             var replacement = Reindent(text.TrimEnd(), existing.Indentation);
 
@@ -244,7 +248,6 @@ public static class SourceCommitter
     /// above its declaration under <paramref name="sourceDirectory"/> - which compiled types, being without their
     /// comments, can't give it.
     /// </summary>
-    /// <exception cref="InvalidOperationException">A glyph's doc comment holds something a <see cref="GlyphDocumentation"/> can't.</exception>
     public static GrammarDefinition WithDocumentation(GrammarDefinition definition, string sourceDirectory)
     {
         if (!Directory.Exists(sourceDirectory))
@@ -256,23 +259,12 @@ public static class SourceCommitter
         {
             Glyphs = definition.Glyphs
                 .Select(x => declarations.TryGetValue(x.Name, out var declaration) && declaration.Node is ClassDeclarationSyntax
-                    ? x with { Documentation = ReadDocumentation(declaration) }
+                    ? x with { Documentation = GlyphDocComment.Read(declaration.Node).Documentation }
                     : x)
                 .ToList(),
         };
     }
 
-    static GlyphDocumentation ReadDocumentation(Declaration declaration)
-    {
-        try
-        {
-            return GlyphDocComment.Read(declaration.Node);
-        }
-        catch (FormatException e)
-        {
-            throw new InvalidOperationException($"{declaration.Node.Identifier.Text}, in {declaration.Path}: {e.Message}", e);
-        }
-    }
 
     static string Reindent(string text, string indentation) =>
         indentation.Length == 0

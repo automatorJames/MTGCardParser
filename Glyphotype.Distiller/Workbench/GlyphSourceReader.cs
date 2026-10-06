@@ -106,20 +106,6 @@ public static class GlyphSourceReader
 
         // ---- Glyphs ----
 
-        /// <summary>What <paramref name="class"/>'s doc comment says - with an error, and nothing, for one that says more than a glyph's can.</summary>
-        GlyphDocumentation ReadDocumentation(ClassDeclarationSyntax @class)
-        {
-            try
-            {
-                return GlyphDocComment.Read(@class);
-            }
-            catch (FormatException e)
-            {
-                Error(@class, $"{@class.Identifier.Text}: {e.Message}");
-                return null;
-            }
-        }
-
         public GlyphDefinition ReadGlyph(ClassDeclarationSyntax @class)
         {
             var name = @class.Identifier.Text;
@@ -140,7 +126,7 @@ public static class GlyphSourceReader
             var glyph = new GlyphDefinition
             {
                 Name = name,
-                Documentation = ReadDocumentation(@class),
+                Documentation = GlyphDocComment.Read(@class).Documentation,
                 Kind = kind,
                 AliasOf = aliasOf,
                 ReferenceKind = referenceKind,

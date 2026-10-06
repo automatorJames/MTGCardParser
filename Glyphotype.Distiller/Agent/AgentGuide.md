@@ -117,7 +117,8 @@ compiled, so they may refer to anything in the working grammar. Declaring a name
 it. Remove definitions by name with `remove`.
 
 **Documentation.** A glyph's `///` doc comment is part of its definition: it's shown with the glyph, and committed
-with it. It may hold three tags, each optional and each free text, and nothing else:
+with it. Three tags in it are read as the glyph's documentation, each optional and each free text (anything else
+in the comment is kept, but isn't part of it):
 
 ```csharp
 /// <summary>What the glyph is for, and why it exists. Doc-comment markup like <see cref="OnDay"/> is fine here.</summary>

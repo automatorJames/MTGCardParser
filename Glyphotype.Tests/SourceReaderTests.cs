@@ -115,15 +115,16 @@ public class SourceReaderTests(CorpusFixture corpus)
     }
 
     [Theory]
-    [InlineData("/// <remarks>Not documentation a glyph holds.</remarks>", "<remarks>")]
-    [InlineData("/// Text outside any tag.", "text outside any tag")]
-    [InlineData("/// <summary>One.</summary>\n/// <summary>Two.</summary>", "more than one <summary>")]
-    [InlineData("/// <summary>Unclosed.", "isn't well-formed")]
-    public void A_doc_comment_holding_more_than_a_glyphs_documentation_is_refused(string comment, string expected)
+    [InlineData("/// <remarks>Not documentation.</remarks>\n/// <summary>Naps.</summary>", "Naps.")]
+    [InlineData("/// Text outside any tag.\n/// <summary>Naps.</summary>", "Naps.")]
+    [InlineData("/// <summary>Naps.</summary>\n/// <summary>Two.</summary>", "Naps.")]
+    [InlineData("/// <summary>Unclosed.", null)]
+    [InlineData("/// Just a note.", null)]
+    public void A_doc_comment_is_read_for_whatever_documentation_it_has_and_never_refused(string comment, string summary)
     {
-        var exception = Assert.Throws<GlyphSourceException>(() => GlyphSourceReader.Read(comment + "\npublic class AnimalNaps : Glyph;", Definition));
+        var glyph = Assert.Single(GlyphSourceReader.Read(comment + "\npublic class AnimalNaps : Glyph;", Definition).Glyphs);
 
-        Assert.Contains(expected, Assert.Single(exception.Errors));
+        Assert.Equal(summary, glyph.Documentation?.Summary);
     }
 
     [Fact]
