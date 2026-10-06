@@ -50,6 +50,26 @@
         text-underline-offset: 3px;
     }
 
+/* The type of a property named otherwise: "Destroyed (Creatures Blocking or Blocked By)". */
+.header-type-note {
+    color: grey;
+    transition: color var(--transition-time);
+}
+
+.header-type-note.mute-active {
+    color: dimgrey;
+}
+
+/* A part of a back-reference's referent path, standing for the capture it names: lit up while that capture is. */
+.referent-part {
+    color: var(--color);
+    transition: color var(--transition-time);
+}
+
+.referent-part.highlight-active {
+    color: var(--highlight-color);
+}
+
 .header-separator {
     color: var(--header-separator-color);
     font-weight: 700;

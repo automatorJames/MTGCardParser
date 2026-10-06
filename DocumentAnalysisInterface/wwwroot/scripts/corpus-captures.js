@@ -67,11 +67,14 @@ function initDocumentCaptureHover() {
         const pathsToHighlight = new Set();
         let currentElement = hoveredElement;
 
+        // An element marked data-path-isolated stands for its own capture alone - a part of a back-reference's
+        // referent path names another capture than the row it sits in - so the walk stops there.
         while (currentElement && currentElement !== boundary.parentElement) {
             const currentPath = currentElement.dataset.path;
             if (currentPath) {
                 pathsToHighlight.add(currentPath);
             }
+            if (currentElement.hasAttribute('data-path-isolated')) break;
             currentElement = currentElement.parentElement;
         }
 
