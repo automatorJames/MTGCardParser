@@ -52,27 +52,13 @@ public static class SourceCommitter
     static bool IsExpressed(string name) =>
         _expressedAttributes.Contains(name.EndsWith("Attribute") ? name : name + "Attribute");
 
-    /// <summary>How the comment above a declaration the Grammar Tools page wrote begins - followed by the date it was written.</summary>
-    public const string CommitStampPrefix = "// Committed from Grammar Tools on ";
-
-    /// <summary>The same, for a declaration exported from a workspace.</summary>
-    public const string ExportStampPrefix = "// Exported from Grammar Tools on ";
-
-    /// <summary>The comment written above a declaration committed on <paramref name="date"/>.</summary>
-    public static string CommitStamp(DateTime date) => $"{CommitStampPrefix}{date:yyyy-MM-dd}";
-
-    /// <summary>The comment written above a declaration exported on <paramref name="date"/>.</summary>
-    public static string ExportStamp(DateTime date) => $"{ExportStampPrefix}{date:yyyy-MM-dd}";
-
     /// <summary>
     /// Plans the edits that turn the sources under <paramref name="sourceDirectory"/> (which declare
     /// <paramref name="committed"/>) into sources declaring <paramref name="working"/>. New files go in
-    /// <paramref name="sourceDirectory"/> under <paramref name="namespace"/>. Each declaration written gets a
-    /// <see cref="CommitStamp"/> for <paramref name="date"/> (today by default) above it, in place of any earlier stamp.
+    /// <paramref name="sourceDirectory"/> under <paramref name="namespace"/>.
     /// </summary>
-    public static SourceCommitPlan Plan(GrammarDefinition committed, GrammarDefinition working, string sourceDirectory, string @namespace, DateTime? date = null)
+    public static SourceCommitPlan Plan(GrammarDefinition committed, GrammarDefinition working, string sourceDirectory, string @namespace)
     {
-        var stamp = CommitStamp(date ?? DateTime.Today);
         var declarations = IndexDeclarations(sourceDirectory);
         var edits = new List<DeclarationEdit>();
         var spliceEdits = new Dictionary<string, List<(TextSpan Span, string Text)>>(StringComparer.OrdinalIgnoreCase);
@@ -96,7 +82,7 @@ public static class SourceCommitter
                 continue;
             }
 
-            var text = stamp + Environment.NewLine + Write(change);
+            var text = Write(change);
 
             if (existing is null)
             {
@@ -110,14 +96,14 @@ public static class SourceCommitter
                 continue;
             }
 
-            var start = PreviousStamp(existing.Node)?.SpanStart ?? existing.Node.Span.Start;
+            var start = existing.Node.Span.Start;
 
             // A glyph's doc comment holds its definition's documentation, so it's written again along with the rest - keeping
             // whatever else the comment held after it.
             if (change.After is GlyphDefinition glyph && GlyphDocComment.Find(existing.Node) is { } comment)
             {
-                start = Math.Min(start, comment.FullSpan.Start);
-                text = stamp + Environment.NewLine + GlyphSourceWriter.WriteGlyph(glyph, GlyphDocComment.Read(existing.Node).Rest);
+                start = comment.FullSpan.Start;
+                text = GlyphSourceWriter.WriteGlyph(glyph, GlyphDocComment.Read(existing.Node).Rest);
             }
 
             var replacement = Reindent(text.TrimEnd(), existing.Indentation);
@@ -231,17 +217,6 @@ public static class SourceCommitter
             FieldDeclarationSyntax field => string.Join(", ", field.Declaration.Variables.Select(x => x.Identifier.Text)),
             _ => member.Kind().ToString(),
         };
-
-    /// <summary>
-    /// The commit or export stamp just above <paramref name="node"/>, which a new one replaces - null when there's none.
-    /// Only a doc comment can come between them: a glyph's stamp is written above its summary.
-    /// </summary>
-    static SyntaxTrivia? PreviousStamp(SyntaxNode node) =>
-        node.GetLeadingTrivia().LastOrDefault(x => x.IsKind(SyntaxKind.SingleLineCommentTrivia)) is var comment
-            && (comment.ToString().StartsWith(CommitStampPrefix, StringComparison.Ordinal) || comment.ToString().StartsWith(ExportStampPrefix, StringComparison.Ordinal))
-            && node.GetLeadingTrivia().SkipWhile(x => x != comment).Skip(1).All(x => x.IsKind(SyntaxKind.EndOfLineTrivia) || x.IsKind(SyntaxKind.WhitespaceTrivia) || x.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia))
-            ? comment
-            : null;
 
     /// <summary>
     /// <paramref name="definition"/> with each glyph's <see cref="GlyphDefinition.Documentation"/> read from the doc comment

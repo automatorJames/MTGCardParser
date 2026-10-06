@@ -289,16 +289,14 @@ public sealed class WorkspaceManager
                 writer.Write(text);
             }
 
-            var stamp = SourceCommitter.ExportStamp(DateTime.Today);
-
             foreach (var marker in definition.Markers)
-                Add($"{marker}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Markers = [marker] }, @namespace, stamp));
+                Add($"{marker}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Markers = [marker] }, @namespace));
 
             foreach (var vocabulary in definition.Vocabularies)
-                Add($"{vocabulary.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Vocabularies = [vocabulary] }, @namespace, stamp));
+                Add($"{vocabulary.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Vocabularies = [vocabulary] }, @namespace));
 
             foreach (var glyph in definition.Glyphs)
-                Add($"{glyph.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Glyphs = [glyph] }, @namespace, stamp));
+                Add($"{glyph.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Glyphs = [glyph] }, @namespace));
 
             Add("grammar.json", definition.ToJson());
         }
