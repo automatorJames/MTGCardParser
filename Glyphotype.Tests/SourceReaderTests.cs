@@ -63,6 +63,44 @@ public class SourceReaderTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void A_glyphs_summary_is_its_doc_comment_read_and_written_alike()
+    {
+        const string source = """
+            /// <summary>The animal napping, as in <see cref="AnimalRests"/>.</summary>
+            public class AnimalNaps : Glyph
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "naps"];
+
+                public Animal Animal { get; set; }
+            }
+
+            /// <summary>
+            /// The animal dozing off,
+            ///
+            /// over two paragraphs.
+            /// </summary>
+            /// <remarks>Not part of the summary.</remarks>
+            public class AnimalDozes : Glyph
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "dozes"];
+
+                public Animal Animal { get; set; }
+            }
+            """;
+
+        var read = GlyphSourceReader.Read(source, Definition);
+
+        Assert.Equal("""The animal napping, as in <see cref="AnimalRests"/>.""", read.Glyphs[0].Summary);
+        Assert.Equal("The animal dozing off,\n\nover two paragraphs.", read.Glyphs[1].Summary);
+
+        var written = GlyphSourceWriter.WriteGlyph(read.Glyphs[1]).ReplaceLineEndings("\n");
+        Assert.StartsWith("/// <summary>\n/// The animal dozing off,\n///\n/// over two paragraphs.\n/// </summary>\npublic class AnimalDozes", written);
+
+        Assert.Equal(read.Glyphs.Select(x => x.Summary), read.Glyphs.Select(x => GlyphSourceReader.Read(GlyphSourceWriter.WriteGlyph(x), Definition).Glyphs.Single().Summary));
+        Assert.DoesNotContain("summary", GlyphSourceWriter.WriteGlyph(read.Glyphs[0] with { Summary = null }));
+    }
+
+    [Fact]
     public void Type_names_resolve_against_the_context_grammar()
     {
         var read = GlyphSourceReader.Read("""

@@ -110,6 +110,25 @@ public static class SourceCommitter
                 continue;
             }
 
+            var start = PreviousStamp(existing.Node)?.SpanStart ?? existing.Node.Span.Start;
+
+            // A glyph's summary is part of its definition, so the doc comment above it is written along with it - unless
+            // the comment holds more than a summary that's unchanged, which is then kept as it was.
+            if (change.After is GlyphDefinition glyph)
+            {
+                var documentation = DocumentationSummary.Read(existing.Node);
+
+                if (documentation.Comment is { } comment)
+                {
+                    start = Math.Min(start, comment.FullSpan.Start);
+
+                    if (documentation.HoldsMore && documentation.Summary == glyph.Summary)
+                        text = stamp + Environment.NewLine + Dedent(comment.ToFullString()) + GlyphSourceWriter.WriteGlyph(glyph with { Summary = null });
+                    else if (documentation.HoldsMore)
+                        notes.Add("The doc comment above it held more than a summary, and only the summary is written");
+                }
+            }
+
             var replacement = Reindent(text.TrimEnd(), existing.Indentation);
 
             if (existing.Node is ClassDeclarationSyntax classDeclaration)
@@ -121,7 +140,7 @@ public static class SourceCommitter
                 .Where(x => !IsExpressed(x))
                 .Select(x => $"[{x}] isn't part of a definition, and is dropped"));
 
-            AddSplice(spliceEdits, existing.Path, TextSpan.FromBounds(PreviousStamp(existing.Node)?.SpanStart ?? existing.Node.Span.Start, existing.Node.Span.End), replacement);
+            AddSplice(spliceEdits, existing.Path, TextSpan.FromBounds(start, existing.Node.Span.End), replacement);
             edits.Add(new(change, existing.Path, existing.Node.ToString(), replacement, notes));
         }
 
@@ -222,13 +241,42 @@ public static class SourceCommitter
             _ => member.Kind().ToString(),
         };
 
-    /// <summary>The commit or export stamp just above <paramref name="node"/>, which a new one replaces - null when there's none.</summary>
+    /// <summary>
+    /// The commit or export stamp just above <paramref name="node"/>, which a new one replaces - null when there's none.
+    /// Only a doc comment can come between them: a glyph's stamp is written above its summary.
+    /// </summary>
     static SyntaxTrivia? PreviousStamp(SyntaxNode node) =>
         node.GetLeadingTrivia().LastOrDefault(x => x.IsKind(SyntaxKind.SingleLineCommentTrivia)) is var comment
             && (comment.ToString().StartsWith(CommitStampPrefix, StringComparison.Ordinal) || comment.ToString().StartsWith(ExportStampPrefix, StringComparison.Ordinal))
-            && node.GetLeadingTrivia().SkipWhile(x => x != comment).Skip(1).All(x => x.IsKind(SyntaxKind.EndOfLineTrivia) || x.IsKind(SyntaxKind.WhitespaceTrivia))
+            && node.GetLeadingTrivia().SkipWhile(x => x != comment).Skip(1).All(x => x.IsKind(SyntaxKind.EndOfLineTrivia) || x.IsKind(SyntaxKind.WhitespaceTrivia) || x.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia))
             ? comment
             : null;
+
+    /// <summary><paramref name="text"/> with each line's indentation taken off, for <see cref="Reindent"/> to put back at the declaration's own.</summary>
+    static string Dedent(string text) =>
+        string.Join(Environment.NewLine, text.ReplaceLineEndings("\n").Split('\n').Select(x => x.TrimStart()));
+
+    /// <summary>
+    /// <paramref name="definition"/> with each glyph's <see cref="GlyphDefinition.Summary"/> read from the doc comment
+    /// above its declaration under <paramref name="sourceDirectory"/> - which compiled types, being without their
+    /// comments, can't give it.
+    /// </summary>
+    public static GrammarDefinition WithSummaries(GrammarDefinition definition, string sourceDirectory)
+    {
+        if (!Directory.Exists(sourceDirectory))
+            return definition;
+
+        var declarations = IndexDeclarations(sourceDirectory);
+
+        return definition with
+        {
+            Glyphs = definition.Glyphs
+                .Select(x => declarations.TryGetValue(x.Name, out var declaration) && declaration.Node is ClassDeclarationSyntax
+                    ? x with { Summary = DocumentationSummary.Read(declaration.Node).Summary }
+                    : x)
+                .ToList(),
+        };
+    }
 
     static string Reindent(string text, string indentation) =>
         indentation.Length == 0

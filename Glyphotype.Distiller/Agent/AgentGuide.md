@@ -116,6 +116,9 @@ Send one or more declarations as C# source, without a namespace or usings. They 
 compiled, so they may refer to anything in the working grammar. Declaring a name that already exists replaces
 it. Remove definitions by name with `remove`.
 
+A `/// <summary>` above a glyph class is part of its definition: it's shown with the glyph, and committed with it.
+It's optional, but when you replace a glyph that has one, send its summary along, or the replacement drops it.
+
 ```csharp
 public class AnimalNaps : Glyph
 {

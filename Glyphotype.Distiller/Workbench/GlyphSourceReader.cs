@@ -126,6 +126,7 @@ public static class GlyphSourceReader
             var glyph = new GlyphDefinition
             {
                 Name = name,
+                Summary = DocumentationSummary.Read(@class).Summary,
                 Kind = kind,
                 AliasOf = aliasOf,
                 ReferenceKind = referenceKind,

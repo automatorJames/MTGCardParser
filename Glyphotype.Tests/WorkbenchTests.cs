@@ -132,7 +132,7 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
         // Each declaration written is stamped with where and when it came from - once, a later commit replacing the stamp.
         var stamp = SourceCommitter.CommitStamp(DateTime.Today);
         Assert.Contains(stamp + Environment.NewLine + "public class AnimalHides", File.ReadAllText(Path.Combine(sourceDirectory, "AnimalHides.cs")).ReplaceLineEndings());
-        Assert.Contains(stamp + Environment.NewLine + $"public class {nameof(AnimalRests)}", basicGlyphs.ReplaceLineEndings());
+        Assert.Contains(stamp + Environment.NewLine + "/// <summary>Literal nibs, <c>Alt()</c>, plain enums, an enum synonym, and a multi-word enum member.</summary>" + Environment.NewLine + $"public class {nameof(AnimalRests)}", basicGlyphs.ReplaceLineEndings());
 
         workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalRests)) with { TokenizationOrder = 7 });
         workbench.Commit(workbench.PlanCommit());
@@ -142,7 +142,44 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
 
         // Everything else is untouched, and what's there compiles back to exactly the working grammar.
         var compiled = SourceCompiler.Compile(Directory.GetFiles(sourceDirectory, "*.cs").Select(File.ReadAllText).ToArray());
-        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, GrammarDefinition.FromTypes(compiled.GetTypes())));
+        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithSummaries(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
+    }
+
+    [Fact]
+    public void Summaries_come_from_the_sources_doc_comments_and_commit_back_to_them()
+    {
+        var sourceDirectory = Directory.CreateDirectory(Path.Combine(_directory, "Grammar")).FullName;
+
+        foreach (var file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Grammar"), "*.cs"))
+            File.Copy(file, Path.Combine(sourceDirectory, Path.GetFileName(file)));
+
+        var basicGlyphsPath = Path.Combine(sourceDirectory, "BasicGlyphs.cs");
+        File.WriteAllText(basicGlyphsPath, File.ReadAllText(basicGlyphsPath).Replace(
+            "/// <summary><c>Opt()</c>: an optional literal.</summary>",
+            "/// <summary><c>Opt()</c>: an optional literal.</summary>\n/// <remarks>Kept.</remarks>"));
+
+        // A working grammar saved before glyphs had summaries takes the committed ones, rather than taking them all out.
+        var committed = CreateWorkbench(sourceDirectory).CommittedDefinition;
+        Assert.Equal("<c>Opt()</c>: an optional literal.", Glyph(committed, nameof(AnimalEats)).Summary);
+
+        var saved = committed with { Glyphs = committed.Glyphs.Select(x => x with { Summary = null, TokenizationOrder = x.Name == nameof(AnimalEats) ? 4 : x.TokenizationOrder }).ToList() };
+        File.WriteAllText(Path.Combine(_directory, "working.json"), saved.ToJson());
+
+        var workbench = CreateWorkbench(sourceDirectory);
+        Assert.Equal(nameof(AnimalEats), Assert.Single(workbench.Changes).Name);
+
+        // A changed summary is written in place of the old one; a comment holding more than an unchanged summary is kept.
+        workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalRests)) with { Summary = "Resting,\nover two lines." });
+        workbench.Commit(workbench.PlanCommit());
+
+        var basicGlyphs = File.ReadAllText(basicGlyphsPath).ReplaceLineEndings("\n");
+        Assert.Contains("/// <summary>\n/// Resting,\n/// over two lines.\n/// </summary>\npublic class AnimalRests", basicGlyphs);
+        Assert.DoesNotContain("plain enums", basicGlyphs);
+        Assert.Contains("/// <summary><c>Opt()</c>: an optional literal.</summary>\n/// <remarks>Kept.</remarks>\n[TokenizationOrder(4)]", basicGlyphs);
+
+        // The sources now hold the working summaries, so a workbench opened on them starts with nothing to commit.
+        var compiled = SourceCompiler.Compile(Directory.GetFiles(sourceDirectory, "*.cs").Select(File.ReadAllText).ToArray());
+        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithSummaries(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
     }
 
     static GlyphDefinition Glyph(GrammarDefinition grammar, string name) => grammar.Glyphs.Single(x => x.Name == name);

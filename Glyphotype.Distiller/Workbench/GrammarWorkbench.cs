@@ -1,4 +1,4 @@
-using Glyphotype.Distiller.Scoring;
+﻿using Glyphotype.Distiller.Scoring;
 
 namespace Glyphotype.Distiller.Workbench;
 
@@ -88,7 +88,7 @@ public sealed class GrammarWorkbench : IDisposable
 
         _committedGrammar = committedGrammar;
         _committedDocuments = committedDocuments;
-        Initialize(committedGrammar.ToDefinition());
+        Initialize(SourceCommitter.WithSummaries(committedGrammar.ToDefinition(), options.SourceDirectory));
     }
 
     /// <summary>
@@ -107,8 +107,8 @@ public sealed class GrammarWorkbench : IDisposable
 
     void Initialize(GrammarDefinition committed)
     {
-        SetDefinitions(committed, LoadWorkingDefinition() ?? committed);
-        LoadHistory();
+        SetDefinitions(committed, CarrySummaries(committed, LoadWorkingDefinition()) ?? committed);
+        LoadHistory(committed);
         ChangeRounds = FindChangeRounds();
 
         if (HasChanges)
@@ -707,7 +707,7 @@ public sealed class GrammarWorkbench : IDisposable
         WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores)).ToList()));
     }
 
-    void LoadHistory()
+    void LoadHistory(GrammarDefinition committed)
     {
         if (_options.HistoryPath is null || !File.Exists(_options.HistoryPath))
             return;
@@ -717,7 +717,7 @@ public sealed class GrammarWorkbench : IDisposable
             var saved = DefinitionJson.Deserialize<List<SavedStep>>(File.ReadAllText(_options.HistoryPath));
 
             for (int i = 0; i < saved.Count; i++)
-                _history.Add(new(saved[i].Number, saved[i].Description, saved[i].Before, i + 1 < saved.Count ? saved[i + 1].Before : WorkingDefinition, saved[i].At, saved[i].Round, saved[i].Restores));
+                _history.Add(new(saved[i].Number, saved[i].Description, CarrySummaries(committed, saved[i].Before), i + 1 < saved.Count ? CarrySummaries(committed, saved[i + 1].Before) : WorkingDefinition, saved[i].At, saved[i].Round, saved[i].Restores));
 
             _stepNumber = _history.Count > 0 ? _history.Max(x => x.Number) : 0;
         }
@@ -727,6 +727,22 @@ public sealed class GrammarWorkbench : IDisposable
             _history.Clear();
             File.Move(_options.HistoryPath, _options.HistoryPath + $".unreadable-{DateTime.Now:yyyyMMddHHmmss}");
         }
+    }
+
+    /// <summary>
+    /// <paramref name="saved"/> with the summaries of <paramref name="committed"/>'s glyphs, when it was saved before
+    /// glyphs had summaries (it has none at all) - else, so that a summary taken out stays out, as it is.
+    /// </summary>
+    static GrammarDefinition CarrySummaries(GrammarDefinition committed, GrammarDefinition saved)
+    {
+        if (saved is null || saved.Glyphs.Any(x => x.Summary is not null))
+            return saved;
+
+        var summaries = committed.Glyphs.Where(x => x.Summary is not null).ToDictionary(x => x.Name, x => x.Summary);
+
+        return summaries.Count == 0
+            ? saved
+            : saved with { Glyphs = saved.Glyphs.Select(x => summaries.TryGetValue(x.Name, out var summary) ? x with { Summary = summary } : x).ToList() };
     }
 
     static void WriteFile(string path, string text)
