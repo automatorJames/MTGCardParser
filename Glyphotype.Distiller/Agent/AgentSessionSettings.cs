@@ -18,4 +18,11 @@ public sealed record AgentSessionSettings
 
     /// <summary>Whether a step may leave any line with fewer words covered than before.</summary>
     public bool AllowLostLines { get; init; }
+
+    /// <summary>
+    /// Whether every glyph a step adds or changes must carry complete <see cref="GlyphDocumentation"/> (see
+    /// <see cref="GlobalSettings.AgentDocumentsGlyphs"/>). Either way, a step changing nothing but documentation is free
+    /// of the gain rule, since documenting a glyph takes no bits off.
+    /// </summary>
+    public bool DocumentGlyphs { get; init; }
 }

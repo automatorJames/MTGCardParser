@@ -240,6 +240,9 @@ public sealed class GrammarAgent
             : "- There's no check-in limit: keep going until you run out of improvements, then summarize and wait.");
 
         report.AppendLine($"- A step must take at least {Settings.MinimumGainBits:N0} bit{(Settings.MinimumGainBits == 1 ? "" : "s")} off the total{(Settings.AllowLostLines ? "" : " and lose no lines")}. `apply` refuses anything else unless you pass `override_reason` - for a deliberate refactor, never to force a loss through.");
+        if (DocumentationRule is { } documentationRule)
+            report.AppendLine($"- {documentationRule}");
+
         report.AppendLine("- Stay in the active workspace. Create or switch workspaces only if the instructions ask - to start from scratch, `create_workspace` with start=vocabularies.");
         report.AppendLine("- Never commit, checkpoint or export: the person does that in the app.");
 
@@ -255,6 +258,34 @@ public sealed class GrammarAgent
 
         return report.ToString();
     }
+
+    /// <summary>
+    /// What an agent is told about documenting the glyphs it writes, when <see cref="AgentSessionSettings.DocumentGlyphs"/>
+    /// says it must - null when it needn't. For any brief that sets an agent writing glyphs, a session's or otherwise.
+    /// </summary>
+    public string DocumentationRule => Settings.DocumentGlyphs
+        ? "Document every glyph you add or change, in its doc comment: `/// <summary>` saying what it's for and why it exists, " +
+          "`/// <exampledoc>` naming one corpus document it's meant for (as the tools name documents), and `/// <examplecapture>` " +
+          "with just the text in that document it captures. Keep a glyph's documentation when you change it, updating what's out of date. " +
+          "`apply` refuses a glyph without all three; a step that only documents glyphs needn't take any bits off."
+        : null;
+
+    /// <summary>The glyphs <paramref name="changes"/> declares without complete documentation, when the session requires it - empty otherwise.</summary>
+    List<string> Undocumented(ChangeSet changes) =>
+        Settings.DocumentGlyphs
+            ? changes.Declarations.Glyphs.Where(x => !GlyphDocumentation.IsComplete(x.Documentation)).Select(x => x.Name).ToList()
+            : [];
+
+    static string DescribeUndocumented(List<string> names) =>
+        $"{string.Join(", ", names)} {(names.Count == 1 ? "lacks" : "lack")} a `/// <summary>`, `/// <exampledoc>` or `/// <examplecapture>` - every glyph you add or change needs all three";
+
+    /// <summary>Whether <paramref name="changes"/> changes nothing but the documentation of glyphs <paramref name="working"/> already has.</summary>
+    static bool OnlyDocuments(ChangeSet changes, GrammarDefinition working) =>
+        changes.Removals.Count == 0
+        && changes.Declarations.Vocabularies.Count == 0
+        && changes.Declarations.Markers.Count == 0
+        && changes.Declarations.Glyphs.All(x => working.Glyphs.FirstOrDefault(y => y.Name == x.Name) is { } existing
+            && DefinitionJson.Serialize(existing with { Documentation = x.Documentation }) == DefinitionJson.Serialize(x));
 
     /// <summary>The session's progress toward a check-in, for a report's last lines - or a check-in, when it's due.</summary>
     string SessionStatus(bool applied)
@@ -367,9 +398,16 @@ public sealed class GrammarAgent
         var report = $"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
 
         if (evaluation.After.Succeeded)
-            report += RuleViolations(evaluation) is { Count: > 0 } violations
-                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}."
+        {
+            var refusals = RuleViolations(evaluation);
+
+            if (Undocumented(changes) is { Count: > 0 } undocumented)
+                refusals.Add(DescribeUndocumented(undocumented));
+
+            report += refusals.Count > 0
+                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", refusals)}."
                 : $"{Environment.NewLine}To make this change, `apply` the same source and removals.";
+        }
 
         return WithStatus(report, SessionStatus(applied: false));
     }
@@ -386,6 +424,11 @@ public sealed class GrammarAgent
             throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
 
         var changes = ReadChanges(source, remove);
+
+        // Before scoring, which documentation can't change: there's no override for it.
+        if (Undocumented(changes) is { Count: > 0 } undocumented)
+            return $"Not applied - {DescribeUndocumented(undocumented)}: {changes.Describe()}{Environment.NewLine}Add what's missing and `apply` again.";
+
         var evaluation = await Evaluate(changes, cancellation);
         Interlocked.Increment(ref _attemptsSinceStep);
 
@@ -424,7 +467,8 @@ public sealed class GrammarAgent
         List<string> violations = [];
         var gain = evaluation.Before.Score.TotalBits - evaluation.After.Score.TotalBits;
 
-        if (gain < Settings.MinimumGainBits)
+        // Documentation isn't grammar: a step that only documents takes nothing off, and needn't.
+        if (gain < Settings.MinimumGainBits && !OnlyDocuments(evaluation.Changes, evaluation.Before.Definition))
             violations.Add($"it takes {gain:N1} bits off the total, and a step must take at least {Settings.MinimumGainBits:N0}");
 
         if (!Settings.AllowLostLines && CorpusQueries.CompareTokenizations(evaluation.Before.Documents, evaluation.After.Documents, limit: 0).LostLines is int lost and > 0)

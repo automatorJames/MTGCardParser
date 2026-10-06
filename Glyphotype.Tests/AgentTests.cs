@@ -317,4 +317,32 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         // ...and a new glyph can use them straight away.
         Assert.Contains("Applied as step 2", await agent.ApplyAsync(_animalSnores));
     }
+
+    [Fact]
+    public async Task When_glyphs_must_be_documented_apply_refuses_one_that_isnt_and_lets_documenting_through()
+    {
+        var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
+            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
+        var agent = new GrammarAgent(workbench, "the test corpus", AnySteps with { MinimumGainBits = 1, DocumentGlyphs = true });
+
+        Assert.Contains("<exampledoc>", await agent.StartSessionAsync());
+
+        // Undocumented: refused, override or not.
+        Assert.Contains("AnimalSnores lacks a `/// <summary>`", await agent.EvaluateAsync(_animalSnores));
+        Assert.StartsWith("Not applied - AnimalSnores lacks", await agent.ApplyAsync(_animalSnores, overrideReason: "requested"));
+        Assert.Empty(workbench.Changes);
+
+        const string documentation = """
+            /// <summary>An animal snoring somewhere.</summary>
+            /// <exampledoc>Pet diary</exampledoc>
+            /// <examplecapture>the dog snores in the garden</examplecapture>
+
+            """;
+
+        Assert.Contains("Applied as step 1", await agent.ApplyAsync(documentation + _animalSnores, overrideReason: "requested"));
+
+        // Changing only its documentation takes no bits off, and needn't.
+        Assert.Contains("Applied as step 2", await agent.ApplyAsync(documentation.Replace("somewhere", "in a place") + _animalSnores));
+        Assert.Equal("An animal snoring in a place.", workbench.WorkingDefinition.Glyphs.Single(x => x.Name == "AnimalSnores").Documentation.Summary);
+    }
 }

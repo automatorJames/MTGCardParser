@@ -116,8 +116,19 @@ Send one or more declarations as C# source, without a namespace or usings. They 
 compiled, so they may refer to anything in the working grammar. Declaring a name that already exists replaces
 it. Remove definitions by name with `remove`.
 
-A `/// <summary>` above a glyph class is part of its definition: it's shown with the glyph, and committed with it.
-It's optional, but when you replace a glyph that has one, send its summary along, or the replacement drops it.
+**Documentation.** A glyph's `///` doc comment is part of its definition: it's shown with the glyph, and committed
+with it. It may hold three tags, each optional and each free text, and nothing else:
+
+```csharp
+/// <summary>What the glyph is for, and why it exists. Doc-comment markup like <see cref="OnDay"/> is fine here.</summary>
+/// <exampledoc>The name of one corpus document the glyph is meant for</exampledoc>
+/// <examplecapture>the dog naps on monday</examplecapture>
+public class AnimalNaps : Glyph
+```
+
+`<examplecapture>` is just the part of that document's text the glyph captures. When you replace a glyph, send its
+documentation along (updated, if it's out of date), or the replacement drops it. Documentation isn't grammar: it
+changes no score, and a step that only documents glyphs needn't take bits off.
 
 ```csharp
 public class AnimalNaps : Glyph

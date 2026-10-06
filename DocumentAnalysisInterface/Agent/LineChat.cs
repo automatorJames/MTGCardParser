@@ -84,6 +84,10 @@ public sealed class LineChat : AgentChat
             prompt.AppendLine().AppendLine($"The line is line {LineIndex + 1} of the document \"{DocumentName}\". Its text, as the grammar tokenizes it:");
             prompt.AppendLine(LineText);
 
+            // This chat skips start_session, whose brief would otherwise carry the rule.
+            if (_agent.DocumentationRule is { } documentationRule)
+                prompt.AppendLine().AppendLine(documentationRule + $" For the glyphs that capture this line, the example document is \"{DocumentName}\".");
+
             if (_workspaces.GetGuidance() is { Length: > 0 } guidance)
             {
                 prompt.AppendLine().AppendLine("Guidance for this workspace's grammar, written by the person - what it is for and how to approach it. Follow it alongside the guide:");

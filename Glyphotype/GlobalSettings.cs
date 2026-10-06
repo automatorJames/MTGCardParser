@@ -49,6 +49,13 @@ public class GlobalSettings
     public bool AllowPeriodsInLiteralNibs { get; init; } = true;
 
     /// <summary>
+    /// Whether an agent writing glyphs documents each one it adds or changes: its <see cref="GlyphDocumentation"/> -
+    /// a summary of what it's for, a corpus document it's meant for, and the text there it captures. When true, the
+    /// agent is told to, and its tools refuse a glyph without all three.
+    /// </summary>
+    public bool AgentDocumentsGlyphs { get; init; }
+
+    /// <summary>
     /// The settings this process is running under, resolved on first access and fixed thereafter.
     /// <para>
     /// Self-loading rather than host-injected because it's what <see cref="GlyphGrammar.Default"/> is built
