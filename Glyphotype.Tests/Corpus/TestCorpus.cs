@@ -140,7 +140,9 @@ public static class TestCorpus
             Doc("if it rains, the dog sleeps in the kitchen.", "IfWeather{Weather=Rains, Outcome=Dynamic(AnimalRests{Animal=Dog, Place=Kitchen})} ."),
             Doc("if it is sunny, the cat walks quietly to the garden.", "IfWeather{Weather=IsSunny, Outcome=Dynamic(AnimalWalks{Animal=Cat, Quietly=True, Place=Garden})} ."),
             Doc("if it snows, we sweep the floor.", "IfWeather{Weather=Snows, Outcome=Dynamic(WeSweepTheFloor)} ."),
-            Doc("if it rains, the dog sleeps in the garage.", "«if it rains, the dog sleeps in the garage» .")),
+            Doc("if it rains, the dog sleeps in the garage.", "«if it rains, the dog sleeps in the garage» ."),
+            Doc("the dog dozes.", "PetDozes{Animal=Dog} ."),
+            Doc("if it rains, the cat dozes in the sun.", "IfWeather{Weather=Rains, Outcome=Dynamic(CatDozesInTheSun)} .")),
 
         .. Section("DynamicGlyph with [TypeFilter]",
             Doc("every sunday, we water the plants.", "EveryWeekday{Weekday=Sunday, Chore=Dynamic(WeWaterThePlants)} ."),

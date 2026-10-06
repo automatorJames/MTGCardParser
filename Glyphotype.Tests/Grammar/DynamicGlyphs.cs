@@ -1,4 +1,4 @@
-namespace Glyphotype.Tests.Grammar;
+﻿namespace Glyphotype.Tests.Grammar;
 
 // DynamicGlyph: a property resolved at match time by tokenizing its captured text.
 
@@ -9,6 +9,20 @@ public class IfWeather : Glyph
 
     public Weather Weather { get; set; }
     public DynamicGlyph Outcome { get; set; }
+}
+
+/// <summary>Matches the start of what <see cref="CatDozesInTheSun"/> does, with a longer regex, so the Tokenizer tries it first.</summary>
+public class PetDozes : Glyph
+{
+    public override Nib[] Nibs => ["the", Prop(Animal), Alt("dozes", "snoozes", "slumbers", "drowses", "naps")];
+
+    public Animal Animal { get; set; }
+}
+
+/// <summary>What a dynamic resolves "the cat dozes in the sun" to: the glyph that covers all of it, not <see cref="PetDozes"/>, which covers only its start.</summary>
+public class CatDozesInTheSun : Glyph
+{
+    public override Nib[] Nibs => ["the cat dozes in the sun"];
 }
 
 /// <summary>Marker for the glyphs <see cref="EveryWeekday"/>'s <see cref="TypeFilterAttribute"/> accepts.</summary>

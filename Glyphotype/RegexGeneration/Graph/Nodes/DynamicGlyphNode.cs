@@ -31,14 +31,17 @@ public class DynamicGlyphNode : GlyphNode
         glyph = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);
         var captureValue = captureTrace.CaptureValue;
-        // allowPartialClauseMatches is forced on regardless of the global setting: captureValue is a
-        // fragment carved out of one clause, not a clause of its own, so there's no whole-clause rule
-        // that could sensibly apply to it - and the shortfall handling just below depends on getting back
-        // the shorter resolved prefix that such a rule would reject outright, leaving nothing to narrow to.
-        // Resolved through the same Tokenizer (so the same grammar) that made the enclosing match.
+        // Resolved through the same Tokenizer (so the same grammar) that made the enclosing match. A glyph that
+        // resolves all of captureValue wins: otherwise whichever glyph the Tokenizer tries first would, even if it
+        // only matched a prefix ("untap" of "untap those creatures"), leaving the rest to fail the match.
         var tokenizer = captureTrace.CaptureContext.Tokenizer ?? GlyphGrammar.Default.Tokenizer;
-        var resolvedTokens = tokenizer.Tokenize(
-            captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: true);
+        var resolvedTokens = ResolveWhole(tokenizer, captureValue, filterType)
+
+            // Failing that, allowPartialClauseMatches is forced on regardless of the global setting:
+            // captureValue is a fragment carved out of one clause, not a clause of its own, and the shortfall
+            // handling just below depends on getting back the shorter resolved prefix that a whole-clause
+            // rule would reject outright, leaving nothing to narrow to.
+            ?? tokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: true);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
         if (resolvedTokens.FirstOrDefault() is UnmatchedString || resolvedTokens.OfType<Glyph>().FirstOrDefault() is not Glyph dynamicMatchToken)
@@ -72,6 +75,13 @@ public class DynamicGlyphNode : GlyphNode
 
         return true;
     }
+
+    /// <summary>The one glyph that resolves all of <paramref name="captureValue"/>, as the only token - or null if none does.</summary>
+    static List<CaptureUnit> ResolveWhole(Tokenizer tokenizer, string captureValue, Type filterType) =>
+        tokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: false) is [Glyph whole]
+            && whole.CaptureValue.Length == captureValue.Length
+            ? [whole]
+            : null;
 
     bool AllowsUnmatched => Navigation.Prop?.IsDefined(typeof(AllowUnmatchedAttribute)) == true;
 
