@@ -207,8 +207,9 @@ If nothing agrees, it stays unresolved and is counted.
   (singular) and `They`, `Them`, `Their`, `Themselves`, `These`, `Those` (plural). Don't declare a glyph with one of
   these names. Where a pronoun can only mean one kind of thing in its place ("they" in "creatures they control" is a
   player), declare a `BackReference<T>` of that kind matching it, and use it in that place.
-- `[Singular]` or `[Plural]` on a referent or a back-reference sets its number, so "it" skips plural referents and
-  "they" singular ones. Leave it off unless that's needed.
+- Number is optional on both sides: `[Referent(GrammaticalNumber.Plural)]` says a referent is several things, and
+  `[Singular]` or `[Plural]` on a back-reference says what it refers to, so "it" skips plural referents and "they"
+  singular ones. Leave it off unless that's needed.
 - Every back-reference must be `[Dependent]`.
 - `[RefersTo(nameof(Target))]` on a back-reference property binds it to a sibling property directly, skipping the search.
 

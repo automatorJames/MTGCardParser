@@ -150,8 +150,8 @@ public abstract class Glyph : CaptureUnit
     /// <summary>
     /// What <see cref="ReferentAttribute"/>, <see cref="SingularAttribute"/>/<see cref="PluralAttribute"/> and
     /// <see cref="BackReference{T}"/> need of this type and <paramref name="props"/> (its own nib-bound properties): a
-    /// referent captures something with a kind, a back-reference is neither a referent nor contains one, a number
-    /// belongs to a referent or a back-reference, and a back-reference's kind is something a referent can be.
+    /// referent captures something with a kind, a back-reference is neither a referent nor contains one,
+    /// [Singular]/[Plural] belong to a back-reference, and a back-reference's kind is something a referent can be.
     /// </summary>
     string GetReferentError(PropertyInfo[] props)
     {
@@ -169,41 +169,29 @@ public abstract class Glyph : CaptureUnit
                 return $"{Type.Name} is a {FriendlyName(Type.BaseType)}, but a back-reference's kind must be an enum or a glyph type - the type of what a [Referent] captures";
         }
 
-        if (GetNumberError(Type, isReferent || this is BackReference) is string classNumberError)
-            return classNumberError;
-
-        foreach (var prop in props)
+        if (Type.GetCustomAttributes<GrammaticalNumberAttribute>(inherit: false).ToList() is { Count: > 0 } numbers)
         {
-            if (prop.IsDefined(typeof(ReferentAttribute)))
-            {
-                var kinds = ReferentCapture.PossibleKinds(prop.PropertyType).ToList();
+            if (numbers.Count > 1)
+                return $"{Type.Name} is both [Singular] and [Plural] - it can only be one";
 
-                if (kinds.Count == 0)
-                    return $"{Type.Name}.{prop.Name} is a [Referent], but it captures a {FriendlyName(prop.PropertyType)} - a referent must capture an enum or a glyph, whose type is the kind a BackReference<T> names";
+            if (this is not BackReference)
+                return isReferent
+                    ? $"{Type.Name} is [{numbers[0].Number}], which is for a {nameof(BackReference)} - a referent's number goes in its own attribute: [Referent(GrammaticalNumber.{numbers[0].Number})]"
+                    : $"{Type.Name} is [{numbers[0].Number}], which does nothing here - [Singular]/[Plural] only apply to a {nameof(BackReference)}";
+        }
 
-                if (kinds.Contains(typeof(This)))
-                    return $"{Type.Name}.{prop.Name} is a [Referent] that can capture {{this}}, which is always a referent already - remove [Referent], or {{this}} would be counted twice";
-            }
+        foreach (var prop in props.Where(x => x.IsDefined(typeof(ReferentAttribute))))
+        {
+            var kinds = ReferentCapture.PossibleKinds(prop.PropertyType).ToList();
 
-            if (GetNumberError(prop, prop.IsDefined(typeof(ReferentAttribute))) is string numberError)
-                return numberError;
+            if (kinds.Count == 0)
+                return $"{Type.Name}.{prop.Name} is a [Referent], but it captures a {FriendlyName(prop.PropertyType)} - a referent must capture an enum or a glyph, whose type is the kind a BackReference<T> names";
+
+            if (kinds.Contains(typeof(This)))
+                return $"{Type.Name}.{prop.Name} is a [Referent] that can capture {{this}}, which is always a referent already - remove [Referent], or {{this}} would be counted twice";
         }
 
         return null;
-
-        string GetNumberError(MemberInfo member, bool takesNumber)
-        {
-            var name = member is Type ? Type.Name : $"{Type.Name}.{member.Name}";
-            var numbers = member.GetCustomAttributes<GrammaticalNumberAttribute>(inherit: false).ToList();
-
-            if (numbers.Count > 1)
-                return $"{name} is both [Singular] and [Plural] - it can only be one";
-
-            if (numbers.Count == 1 && !takesNumber)
-                return $"{name} is [{numbers[0].Number}], which does nothing here - [Singular]/[Plural] only apply to a [Referent] or a {nameof(BackReference)}";
-
-            return null;
-        }
 
         static bool IsReferentKind(Type kind) =>
             kind.IsEnum || ReferentCapture.PossibleKinds(kind).SequenceEqual([kind]);

@@ -74,7 +74,7 @@ static class DefinitionReader
             Patterns = type.GetCustomAttribute<RegexPatternAttribute>(inherit: false)?.Patterns ?? [],
             JoinedBy = type.GetCustomAttribute<JoinedByAttribute>(inherit: false)?.Joiner,
             IsReferent = type.IsDefined(typeof(ReferentAttribute), inherit: false),
-            Number = ReadNumber(type),
+            Number = type.GetCustomAttribute<ReferentAttribute>(inherit: false)?.Number ?? ReadNumber(type),
             ReferenceKind = referenceKind is null ? null : ReadTypeReference(referenceKind),
         };
     }
@@ -98,7 +98,7 @@ static class DefinitionReader
         throw new NotSupportedException($"{type.Name} derives from {baseType.Name}, but a definition's base must be {nameof(Glyph)}, {nameof(GlyphOneOf)}, {nameof(BackReference)} (or BackReference<T>) or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)");
     }
 
-    /// <summary>The number <paramref name="member"/> itself declares with <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/>.</summary>
+    /// <summary>The number a back-reference type itself declares with <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/>.</summary>
     static GrammaticalNumber ReadNumber(MemberInfo member) =>
         member.GetCustomAttributes<GrammaticalNumberAttribute>(inherit: false).FirstOrDefault()?.Number ?? GrammaticalNumber.Unspecified;
 
@@ -113,7 +113,7 @@ static class DefinitionReader
             JoinedBy = prop.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
             TypeFilter = GetTypeFilter(prop)?.Name,
             IsReferent = prop.IsDefined(typeof(ReferentAttribute)),
-            Number = ReadNumber(prop),
+            Number = prop.GetCustomAttribute<ReferentAttribute>()?.Number ?? GrammaticalNumber.Unspecified,
             RefersTo = prop.GetCustomAttribute<RefersToAttribute>()?.PropertyName,
         };
 

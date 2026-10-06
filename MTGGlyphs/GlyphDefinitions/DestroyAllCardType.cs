@@ -4,6 +4,6 @@ public class DestroyAllCardType : Glyph
 {
     public override Nib[] Nibs => ["destroy all", Plural(Prop(CardType))];
 
-    [Referent, Plural]
+    [Referent(GrammaticalNumber.Plural)]
     public CardType CardType { get; set; }
 }

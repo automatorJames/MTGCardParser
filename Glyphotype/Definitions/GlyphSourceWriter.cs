@@ -122,9 +122,8 @@ public static class GlyphSourceWriter
             yield return $"[JoinedBy(Joiner.{joinedBy})]";
 
         if (glyph.IsReferent)
-            yield return "[Referent]";
-
-        if (glyph.Number != GrammaticalNumber.Unspecified)
+            yield return ReferentAttribute(glyph.Number);
+        else if (glyph.Number != GrammaticalNumber.Unspecified)
             yield return $"[{glyph.Number}]";
     }
 
@@ -146,10 +145,7 @@ public static class GlyphSourceWriter
             yield return _indent + $"[TypeFilter(typeof({property.TypeFilter}))]";
 
         if (property.IsReferent)
-            yield return _indent + "[Referent]";
-
-        if (property.Number != GrammaticalNumber.Unspecified)
-            yield return _indent + $"[{property.Number}]";
+            yield return _indent + ReferentAttribute(property.Number);
 
         if (property.RefersTo is not null)
             yield return _indent + $"[RefersTo(nameof({property.RefersTo}))]";
@@ -168,6 +164,10 @@ public static class GlyphSourceWriter
             NibDefinition.Property property => $"Prop({property.Name})",
             _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} can't be written"),
         };
+
+    /// <summary><c>[Referent]</c>, with its number when it has one: <c>[Referent(GrammaticalNumber.Plural)]</c>.</summary>
+    static string ReferentAttribute(GrammaticalNumber number) =>
+        number == GrammaticalNumber.Unspecified ? "[Referent]" : $"[Referent({nameof(GrammaticalNumber)}.{number})]";
 
     static string RegexPatternAttribute(IEnumerable<string> patterns) =>
         $"[RegexPattern({string.Join(", ", patterns.Select(Literal))})]";
