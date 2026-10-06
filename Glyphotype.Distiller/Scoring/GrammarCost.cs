@@ -136,7 +136,7 @@ public sealed record GrammarCost(
                 NibDefinition.Pattern pattern => Text(pattern.Regex, literal: false),
                 NibDefinition.Alternatives alternatives => Texts(alternatives.Texts),
                 NibDefinition.Optional optional => Nib(optional.Inner, glyph),
-                NibDefinition.Plural => 0,
+                NibDefinition.Plural plural => Nib(plural.Inner, glyph),
                 NibDefinition.Property => CodeLength.Uniform(glyph.Properties.Count),
                 _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} has no cost"),
             };

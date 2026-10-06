@@ -39,9 +39,9 @@ public abstract class Glyph : CaptureUnit
     public OptionalNib Opt(Nib optional) =>
         new OptionalNib(optional);
 
-    /// <summary>An optional plural suffix on the word before it: <c>"dog", Plural()</c> matches "dog" and "dogs".</summary>
-    public OptionalPluralNib Plural() =>
-        new OptionalPluralNib();
+    /// <summary>A nib that may be plural: <c>Plural("dog")</c> matches "dog" and "dogs", <c>Plural(Prop(Animal))</c> "cat" and "cats".</summary>
+    public PluralNib Plural(Nib nib) =>
+        new PluralNib(nib);
 
     /// <summary>
     /// A regex rather than literal text - the explicit opt-in, for what literal text and the other helpers can't
@@ -576,7 +576,7 @@ public abstract class Glyph : CaptureUnit
     static bool AlwaysConsumesText(Nib nib, HashSet<Type> visitedTypes = null)
     {
         // Literal text always matches itself (non-empty, as TextNode requires); Alt's literal alternatives do as
-        // long as none is empty. An OptionalNib may match nothing, as may Plural()'s suffix, and a pattern is
+        // long as none is empty. An OptionalNib may match nothing, as may a plural's suffix, and a pattern is
         // opaque - it might (e.g. "(on)?") - so none of those can anchor.
         if (nib is not PropertyNib propertyNib)
             return nib switch

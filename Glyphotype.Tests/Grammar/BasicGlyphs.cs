@@ -1,4 +1,4 @@
-namespace Glyphotype.Tests.Grammar;
+﻿namespace Glyphotype.Tests.Grammar;
 
 // Single-level glyphs: literal nibs, the nib helpers, and each scalar property kind.
 
@@ -45,10 +45,19 @@ public class AsksARiddle : Glyph
     public override Nib[] Nibs => ["the teacher asks what is 2+2?"];
 }
 
-/// <summary><c>Plural()</c>: an optional plural suffix on the preceding nib.</summary>
+/// <summary><c>Plural(nib)</c> on a property: "dog" or "dogs".</summary>
 public class FeedAll : Glyph
 {
-    public override Nib[] Nibs => ["feed all the", Prop(Animal), Plural(), "before noon"];
+    public override Nib[] Nibs => ["feed all the", Plural(Prop(Animal)), "before noon"];
 
     public Animal Animal { get; set; }
+}
+
+/// <summary><c>Plural(nib)</c> on literal text: "apple" or "apples".</summary>
+public class PicksApples : Glyph
+{
+    public override Nib[] Nibs => ["the", Prop(Person), "picks", Prop(Count), Plural("ripe apple")];
+
+    public Person Person { get; set; }
+    public int Count { get; set; }
 }

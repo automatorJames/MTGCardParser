@@ -31,6 +31,7 @@ public static class DefinitionJson
     /// and <c>Number</c>; <c>Agreement</c> became <c>Number</c>. Their kinds were text, and kinds are now types (see
     /// <see cref="BackReference{T}"/>), so those are dropped - a back-reference that named one refers to any kind until
     /// it's given a <c>T</c>.</item>
+    /// <item>A plural nib was a suffix on the nib before it; now it wraps that nib (see <see cref="NibDefinition.Plural"/>).</item>
     /// </list>
     /// </summary>
     static JsonNode Migrate(JsonNode node)
@@ -57,6 +58,14 @@ public static class DefinitionJson
                 break;
 
             case JsonArray array:
+                for (var i = array.Count - 1; i > 0; i--)
+                    if (array[i] is JsonObject { Count: 1 } suffix && suffix["$nib"]?.GetValue<string>() == "plural" && array[i - 1] is JsonObject before)
+                    {
+                        array.RemoveAt(i);
+                        array.RemoveAt(i - 1);
+                        array.Insert(i - 1, new JsonObject { ["$nib"] = "plural", ["Inner"] = before });
+                    }
+
                 foreach (var item in array)
                     if (item is not null)
                         Migrate(item);

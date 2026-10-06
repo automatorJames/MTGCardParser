@@ -162,7 +162,7 @@ public static class GlyphSourceWriter
             NibDefinition.Pattern pattern => $"Pattern({Literal(pattern.Regex)})",
             NibDefinition.Alternatives alternatives => $"Alt({string.Join(", ", alternatives.Texts.Select(Literal))})",
             NibDefinition.Optional optional => $"Opt({WriteNib(optional.Inner)})",
-            NibDefinition.Plural => "Plural()",
+            NibDefinition.Plural plural => $"Plural({WriteNib(plural.Inner)})",
             NibDefinition.Property property => $"Prop({property.Name})",
             _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} can't be written"),
         };

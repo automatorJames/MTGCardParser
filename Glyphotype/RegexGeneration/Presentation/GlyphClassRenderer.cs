@@ -204,8 +204,8 @@ public static class GlyphClassRenderer
     /// no such line in their real source). Walks the raw declared <see cref="Nib"/>[] itself - not
     /// <paramref name="contextNode"/>'s <see cref="NamedGroupNode.Children"/>, which flattens every non-property
     /// nib down to plain literal text and so can't tell an <see cref="OptionalNib"/>/<see cref="NibAlternatives"/>/
-    /// <see cref="OptionalPluralNib"/> apart from an ordinary string - so each nib's real authored call syntax
-    /// (<c>Opt(...)</c>, <c>Alt(...)</c>, <c>Plural()</c>) can be reconstructed exactly.
+    /// <see cref="PluralNib"/> apart from an ordinary string - so each nib's real authored call syntax
+    /// (<c>Opt(...)</c>, <c>Alt(...)</c>, <c>Plural(...)</c>) can be reconstructed exactly.
     /// </summary>
     static ClassLine BuildNibsLine(NamedGroupNode contextNode, RenderContext ctx, string indent)
     {
@@ -215,7 +215,7 @@ public static class GlyphClassRenderer
             return null;
 
         List<ClassSpan> spans = [Keyword($"{indent}public override Nib[] Nibs => "), Brace("[")];
-        var nibs = contextNode.Navigation.GlyphTypeConfiguration.Nibs;
+        var nibs = contextNode.Navigation.GlyphTypeConfiguration.AuthoredNibs;
         var propertyNodes = contextNode.NamedGroupChildren;
         var propertyIndex = 0;
 
@@ -224,7 +224,12 @@ public static class GlyphClassRenderer
             if (i > 0)
                 spans.Add(Brace(", "));
 
-            switch (nibs[i])
+            AddNib(nibs[i]);
+        }
+
+        void AddNib(Nib nib)
+        {
+            switch (nib)
             {
                 case PropertyNib:
                     var propertyNode = propertyNodes[propertyIndex++];
@@ -244,8 +249,10 @@ public static class GlyphClassRenderer
                     spans.Add(Keyword(")"));
                     break;
 
-                case OptionalPluralNib:
-                    spans.Add(Keyword("Plural()"));
+                case PluralNib plural:
+                    spans.Add(Keyword("Plural("));
+                    AddNib(plural.Inner);
+                    spans.Add(Keyword(")"));
                     break;
 
                 case OptionalNib optional:

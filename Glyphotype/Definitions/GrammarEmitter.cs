@@ -19,7 +19,7 @@ public static class GrammarEmitter
     static readonly ConstructorInfo _patternNibCtor = typeof(PatternNib).GetConstructor([typeof(string)]);
     static readonly ConstructorInfo _alternativesNibCtor = typeof(NibAlternatives).GetConstructor([typeof(string[])]);
     static readonly ConstructorInfo _optionalNibCtor = typeof(OptionalNib).GetConstructor([typeof(Nib)]);
-    static readonly ConstructorInfo _pluralNibCtor = typeof(OptionalPluralNib).GetConstructor(Type.EmptyTypes);
+    static readonly ConstructorInfo _pluralNibCtor = typeof(PluralNib).GetConstructor([typeof(Nib)]);
     static readonly MethodInfo _propMethod = typeof(Glyph).GetMethod(nameof(Glyph.Prop));
 
     /// <summary>
@@ -262,7 +262,8 @@ public static class GrammarEmitter
                         il.Emit(OpCodes.Newobj, _optionalNibCtor);
                         break;
 
-                    case NibDefinition.Plural:
+                    case NibDefinition.Plural plural:
+                        EmitNib(il, plural.Inner);
                         il.Emit(OpCodes.Newobj, _pluralNibCtor);
                         break;
 

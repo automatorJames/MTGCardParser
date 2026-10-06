@@ -133,9 +133,9 @@ public class AnimalNaps : Glyph
 | `"text"` | the text exactly, as literal characters (no regex) |
 | `Alt("a", "b")` | exactly one of the texts |
 | `Opt(nib)` | the nib, or nothing |
-| `Plural()` | an optional plural suffix on the word before it: `"card", Plural()` matches card and cards |
+| `Plural(nib)` | the nib, singular or plural: `Plural("card")` matches card and cards, `Plural(Prop(CardType))` creature and creatures |
 | `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern("an?")` |
-| `Prop(Name)` | the property `Name`; follow it with `Plural()` for a plural, e.g. `Prop(CardType), Plural()` |
+| `Prop(Name)` | the property `Name` |
 
 With no `Nibs` override, a glyph matches its properties in declaration order. With no properties either, it
 matches `[RegexPattern("…")]` if given, else its own name, friendly-cased (`WeSweepTheFloor` → "we sweep the

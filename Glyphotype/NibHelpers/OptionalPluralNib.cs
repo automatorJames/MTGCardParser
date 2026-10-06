@@ -1,6 +1,6 @@
-namespace Glyphotype.NibHelpers;
+﻿namespace Glyphotype.NibHelpers;
 
-/// <summary>An optional plural suffix on the word before it (see <see cref="GlyphPrimitives.Glyph.Plural"/>).</summary>
+/// <summary>An optional plural suffix on the nib before it: what a <see cref="PluralNib"/> is matched as (see <see cref="PluralNib.Flatten"/>).</summary>
 public record OptionalPluralNib : Nib
 {
     const string _suffixes = "(s|es|ies)?";

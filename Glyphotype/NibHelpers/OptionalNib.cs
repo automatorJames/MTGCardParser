@@ -1,4 +1,4 @@
-namespace Glyphotype.NibHelpers;
+﻿namespace Glyphotype.NibHelpers;
 
 /// <summary>A nib that may be absent (see <see cref="GlyphPrimitives.Glyph.Opt"/>): literal text, or a <see cref="PatternNib"/>.</summary>
 public record OptionalNib : Nib
@@ -9,6 +9,11 @@ public record OptionalNib : Nib
     public OptionalNib(Nib inner)
         : base(inner.Text, inner.Regex)
     {
-        Inner = inner;
+        Inner = inner switch
+        {
+            PluralNib => throw new ArgumentException("Opt(Plural(...)) - a nib can't be both optional and plural; write its forms out, e.g. Opt(Alt(\"card\", \"cards\"))", nameof(inner)),
+            PropertyNib => throw new ArgumentException("Opt(Prop(...)) - make a property optional with [Optional] on it instead", nameof(inner)),
+            _ => inner,
+        };
     }
 }

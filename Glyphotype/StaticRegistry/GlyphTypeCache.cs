@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace Glyphotype.StaticRegistry;
 
@@ -25,7 +25,7 @@ public static class GlyphTypeCache
     static readonly ConcurrentDictionary<Type, GlyphTypeConfiguration> _configurations = new()
     {
         // Glyph itself is abstract, so it can't be instantiated to read its Nibs.
-        [typeof(Glyph)] = new GlyphTypeConfiguration(typeof(Glyph), [], Joiner.Space),
+        [typeof(Glyph)] = new GlyphTypeConfiguration(typeof(Glyph), [], Joiner.Space, []),
     };
     static readonly ConcurrentDictionary<Type, RegexGraph> _graphs = new();
 
@@ -33,7 +33,7 @@ public static class GlyphTypeCache
     {
         // DynamicGlyphs have no nibs b/c it contains an Item object that will be resolved via the Tokenizer at runtime
         if (glyphType.IsAssignableTo(typeof(DynamicGlyph)))
-            return new(glyphType, [], Joiner.None);
+            return new(glyphType, [], Joiner.None, []);
 
         if (_configurations.TryGetValue(glyphType, out var configuration))
             return configuration;
@@ -72,6 +72,6 @@ public static class GlyphTypeCache
                 nibs = [new Nib(glyphType.Name.ToFriendlyCase(TitleDisplayOption.Lower))];
         }
 
-        return new(glyphType, nibs, instance.Joiner);
+        return new(glyphType, PluralNib.Flatten(nibs), instance.Joiner, nibs);
     }
 }

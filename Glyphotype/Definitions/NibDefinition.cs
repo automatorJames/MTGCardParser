@@ -32,8 +32,8 @@ public abstract record NibDefinition
     /// <summary>A nib that may be absent.</summary>
     public sealed record Optional(NibDefinition Inner) : NibDefinition;
 
-    /// <summary>An optional plural suffix on the word before it.</summary>
-    public sealed record Plural : NibDefinition;
+    /// <summary>A nib that may be plural: the nib, then an optional plural suffix.</summary>
+    public sealed record Plural(NibDefinition Inner) : NibDefinition;
 
     /// <summary>A reference to one of the glyph's own <see cref="GlyphDefinition.Properties"/>, by name.</summary>
     public sealed record Property(string Name) : NibDefinition;

@@ -284,8 +284,11 @@ public static class GlyphSourceReader
                         return new NibDefinition.Alternatives(arguments.Select(ReadString).ToList());
                     case "Opt" when arguments.Count == 1:
                         return ReadNib(glyphName, arguments[0]) is NibDefinition inner ? new NibDefinition.Optional(inner) : null;
-                    case "Plural" when arguments.Count == 0:
-                        return new NibDefinition.Plural();
+                    case "Plural" when arguments.Count == 1:
+                        return ReadNib(glyphName, arguments[0]) is NibDefinition plural ? new NibDefinition.Plural(plural) : null;
+                    case "Plural":
+                        Error(expression, $"{glyphName}: Plural takes the nib it makes plural, e.g. Plural(\"card\") or Plural(Prop(CardType))");
+                        return null;
                     case "Prop" when arguments.Count == 1:
                         var propName = arguments[0] switch
                         {
@@ -297,7 +300,7 @@ public static class GlyphSourceReader
                 }
             }
 
-            Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(nib), Plural() or Prop(Property)");
+            Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(nib), Plural(nib) or Prop(Property)");
             return null;
         }
 
@@ -468,5 +471,10 @@ public static class GlyphSourceReader
     }
 
     static IEnumerable<NibDefinition> Flatten(NibDefinition nib) =>
-        nib is NibDefinition.Optional optional ? Flatten(optional.Inner).Prepend(nib) : [nib];
+        nib switch
+        {
+            NibDefinition.Optional optional => Flatten(optional.Inner).Prepend(nib),
+            NibDefinition.Plural plural => Flatten(plural.Inner).Prepend(nib),
+            _ => [nib],
+        };
 }

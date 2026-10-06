@@ -48,10 +48,12 @@ public static class TestCorpus
             Doc("the teacher asks what is 22?", "«the teacher asks what is 22?»"),
             Doc("the teacher asks what is 2+2", "«the teacher asks what is 2+2»")),
 
-        .. Section("Plural()",
+        .. Section("Plural(nib)",
             Doc("feed all the dogs before noon.", "FeedAll{Animal=Dog} ."),
             Doc("feed all the horses before noon.", "FeedAll{Animal=Horse} ."),
-            Doc("feed all the dog s before noon.", "«feed all the dog s before noon» .")),
+            Doc("feed all the dog s before noon.", "«feed all the dog s before noon» ."),
+            Doc("the baker picks 3 ripe apples.", "PicksApples{Person=Baker, Count=3} ."),
+            Doc("the baker picks 1 ripe apple.", "PicksApples{Person=Baker, Count=1} .")),
 
         .. Section("Nested glyphs and [Optional]",
             Doc("the doctor comes on monday.", "PersonComes{Person=Doctor, Day=OnDay{Weekday=Monday}} ."),

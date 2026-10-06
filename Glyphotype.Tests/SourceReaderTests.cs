@@ -41,7 +41,7 @@ public class SourceReaderTests(CorpusFixture corpus)
             public class PetNaps : Glyph, IChore
             {
                 public override Joiner Joiner => Joiner.Space;
-                public override Nib[] Nibs => ["the", Prop(Pet), Alt("naps", "sleeps"), Opt("soundly"), Prop(Hours), Pattern(@"\d+"), Plural()];
+                public override Nib[] Nibs => ["the", Prop(Pet), Alt("naps", "sleeps"), Opt("soundly"), Prop(Hours), Plural(Pattern(@"\d+"))];
 
                 public Pet Pet { get; set; }
 
@@ -115,5 +115,27 @@ public class SourceReaderTests(CorpusFixture corpus)
         var exception = Assert.Throws<GlyphSourceException>(() => GlyphSourceReader.Read("public class Broken : Glyph\n{\n    public int X { get; set; \n}"));
 
         Assert.All(exception.Errors, x => Assert.Matches(@"^line \d+: ", x));
+    }
+
+    [Fact]
+    public void Plural_takes_the_nib_it_makes_plural()
+    {
+        var exception = Assert.Throws<GlyphSourceException>(() => GlyphSourceReader.Read("""
+            public class FeedsAll : Glyph { public override Nib[] Nibs => ["feed all the", Prop(Animal), Plural()]; public Animal Animal { get; set; } }
+            """, corpus.Grammar.ToDefinition()));
+
+        Assert.Contains(exception.Errors, x => x.Contains("Plural takes the nib it makes plural"));
+    }
+
+    [Fact]
+    public void A_plural_saved_as_a_suffix_loads_wrapping_the_nib_before_it()
+    {
+        var grammar = GrammarDefinition.FromJson("""
+            { "Glyphs": [ { "Name": "FeedsAll", "Kind": "Glyph",
+              "Nibs": [ { "$nib": "literal", "Text": "feed all the" }, { "$nib": "prop", "Name": "Animal" }, { "$nib": "plural" } ],
+              "Properties": [ { "Name": "Animal", "Type": { "Kind": "Vocabulary", "Name": "Animal" } } ] } ] }
+            """);
+
+        Assert.Equal([new NibDefinition.Literal("feed all the"), new NibDefinition.Plural(new NibDefinition.Property("Animal"))], grammar.Glyphs[0].Nibs);
     }
 }
