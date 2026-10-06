@@ -1,4 +1,4 @@
-// The single home for every presentation knob that only the Blazor UI reads — theme colors, document
+﻿// The single home for every presentation knob that only the Blazor UI reads — theme colors, document
 // text colors, echo underline treatment, the depth-to-pixel scales behind CorpusCapturesPage's nested
 // underlines, hover behavior, and coverage formatting. Consolidated here from ThemeColor.cs,
 // CoverageDisplay.cs, PresentationRules/HoverTreatmentConfig.cs, Glyphotype's
@@ -312,4 +312,33 @@ public static class BackReferenceDisplay
     /// <summary>"→ “the baker”", or "→ unresolved" when nothing before it agreed with it.</summary>
     public static string Describe(Glyphotype.GlyphPrimitives.BackReference backReference) =>
         backReference.Antecedent is { } antecedent ? $"→ “{antecedent.Text}”" : "→ unresolved";
+
+    /// <summary>
+    /// Where the back-reference captured at <paramref name="trace"/> was resolved to, as a property path: from the top-level
+    /// glyph they share ("Chooser.Player"), or from the referent's own when it's in another one ("AtBeginningOfEachPlayersStep.Player").
+    /// <c>{this}</c> for the document itself; "unresolved" when nothing before it agreed with it.
+    /// </summary>
+    public static string ReferentPath(Glyphotype.GlyphPrimitives.BackReference backReference, Glyphotype.RegexGeneration.Graph.CaptureTrace trace)
+    {
+        if (backReference.Antecedent is not { } antecedent)
+            return "unresolved";
+
+        if (antecedent.IsSelf)
+            return Glyphotype.Interfaces.IDocument.ThisToken;
+
+        var path = antecedent.Trace.FullyQualifiedName.Split('_');
+        var sameGlyph = antecedent.Trace.CaptureContext?.RootCaptureTrace is { } root && root == trace.CaptureContext?.RootCaptureTrace;
+
+        return string.Join('.', sameGlyph && path.Length > 1 ? path[1..] : path);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="leaf"/>, a row of <paramref name="branch"/>'s table, shows a referent: its own property is
+    /// marked [Referent], or it's the alternative a [Referent] one-of resolved to.
+    /// </summary>
+    public static bool IsReferent(Glyphotype.RegexGeneration.Graph.CaptureTrace leaf, Glyphotype.RegexGeneration.Graph.CaptureTrace branch) =>
+        IsMarked(leaf) || branch.ClrValue is Glyphotype.GlyphPrimitives.OneOfBase && IsMarked(branch);
+
+    static bool IsMarked(Glyphotype.RegexGeneration.Graph.CaptureTrace trace) =>
+        trace.SourceNode?.Navigation?.Prop?.IsDefined(typeof(Glyphotype.Attributes.ReferentAttribute), inherit: true) == true;
 }

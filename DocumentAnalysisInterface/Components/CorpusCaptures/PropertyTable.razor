@@ -51,13 +51,23 @@ else
                         // distinguished by PositionLabel below, rather than getting a branch of its own.
                         var terminals = BranchTrace.Children.Where(x => x.IsTerminal || IsLeafBackReference(x)).SelectMany(x => x).ToList();
 
-                        if (terminals.Any())
+                        if (terminals.Any() || BranchTrace.ClrValue is Glyphotype.GlyphPrimitives.BackReference)
                         {
                             <table class="property-capture-table">
                                 <thead>
                                     <tr><th>Property</th><th>Type</th><th>Value</th></tr>
                                 </thead>
                                 <tbody>
+                                    @if (BranchTrace.ClrValue is Glyphotype.GlyphPrimitives.BackReference branchBackReference)
+                                    {
+                                        <!-- A back-reference with captures of its own ("that player") is a branch, not a row:
+                                             what it refers to gets a row of its own, at the top of its table. -->
+                                        <tr data-path="@BranchTrace.HoverPath">
+                                            <td class="prop-capture-table-cell first-column" style=@(RootPalette.ToColorStyle())>refers to</td>
+                                            <td class="prop-capture-table-cell type-column" style=@(RootPalette.ToColorStyle())>BackReference</td>
+                                            <td class="prop-capture-table-cell value-column" style=@(RootPalette.ToColorStyle())>@BackReferenceDisplay.ReferentPath(branchBackReference, BranchTrace)</td>
+                                        </tr>
+                                    }
                                     @foreach (var leaf in terminals)
                                     {
                                         var leafPaletteStyle = DisplayContext.Palettes[PaletteKey(leaf)].ToColorStyle();
@@ -70,7 +80,11 @@ else
                                                 @TerminalTypeLabel(leaf)
                                             </td>
                                             <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
-                                                @(leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference ? BackReferenceDisplay.Describe(backReference) : leaf.ClrValue.ToString())
+                                                @(leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference ? BackReferenceDisplay.ReferentPath(backReference, leaf) : leaf.ClrValue.ToString())
+                                                @if (BackReferenceDisplay.IsReferent(leaf, BranchTrace))
+                                                {
+                                                    <span class="referent-note">(referent)</span>
+                                                }
                                             </td>
                                         </tr>
                                     }

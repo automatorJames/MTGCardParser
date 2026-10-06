@@ -95,6 +95,12 @@ thead tr {
         color: white;
     }
 
+    .referent-note {
+        color: grey;
+        font-style: italic;
+        margin-left: 4px;
+    }
+
 /* --- ACTIVE STATES --- */
 
 .content-box.highlight-active {
