@@ -158,15 +158,11 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
             "/// <summary><c>Opt()</c>: an optional literal.</summary>",
             "/// <summary><c>Opt()</c>: an optional literal.</summary>\n/// <remarks>Kept.</remarks>"));
 
-        // A working grammar saved before glyphs had summaries takes the committed ones, rather than taking them all out.
-        var committed = CreateWorkbench(sourceDirectory).CommittedDefinition;
-        Assert.Equal("<c>Opt()</c>: an optional literal.", Glyph(committed, nameof(AnimalEats)).Summary);
-
-        var saved = committed with { Glyphs = committed.Glyphs.Select(x => x with { Summary = null, TokenizationOrder = x.Name == nameof(AnimalEats) ? 4 : x.TokenizationOrder }).ToList() };
-        File.WriteAllText(Path.Combine(_directory, "working.json"), saved.ToJson());
-
         var workbench = CreateWorkbench(sourceDirectory);
-        Assert.Equal(nameof(AnimalEats), Assert.Single(workbench.Changes).Name);
+        Assert.Equal("<c>Opt()</c>: an optional literal.", Glyph(workbench.CommittedDefinition, nameof(AnimalEats)).Summary);
+        Assert.Empty(workbench.Changes);
+
+        workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalEats)) with { TokenizationOrder = 4 });
 
         // A changed summary is written in place of the old one; a comment holding more than an unchanged summary is kept.
         workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalRests)) with { Summary = "Resting,\nover two lines." });
