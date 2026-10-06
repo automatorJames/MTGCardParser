@@ -51,7 +51,7 @@ public class GlobalSettings
     /// <summary>
     /// Whether an agent writing glyphs documents each one it adds or changes: its <see cref="GlyphDocumentation"/> -
     /// a summary of what it's for, a corpus document it's meant for, and the text there it captures. When true, the
-    /// agent is told to, and its tools refuse a glyph without all three.
+    /// agent is told to, and its tools remind it of a glyph without all three - never refusing one.
     /// </summary>
     public bool AgentDocumentsGlyphs { get; init; }
 

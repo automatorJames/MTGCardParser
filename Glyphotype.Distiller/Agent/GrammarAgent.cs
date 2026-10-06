@@ -267,7 +267,7 @@ public sealed class GrammarAgent
         ? "Document every glyph you add or change, in its doc comment: `/// <summary>` saying what it's for and why it exists, " +
           "`/// <exampledoc>` naming one corpus document it's meant for (as the tools name documents), and `/// <examplecapture>` " +
           "with just the text in that document it captures. Keep a glyph's documentation when you change it, updating what's out of date. " +
-          "`apply` refuses a glyph without all three; a step that only documents glyphs needn't take any bits off."
+          "`evaluate` and `apply` remind you of a glyph missing any of them; a step that only documents glyphs needn't take any bits off."
         : null;
 
     /// <summary>The glyphs <paramref name="changes"/> declares without complete documentation, when the session requires it - empty otherwise.</summary>
@@ -276,8 +276,11 @@ public sealed class GrammarAgent
             ? changes.Declarations.Glyphs.Where(x => !GlyphDocumentation.IsComplete(x.Documentation)).Select(x => x.Name).ToList()
             : [];
 
-    static string DescribeUndocumented(List<string> names) =>
-        $"{string.Join(", ", names)} {(names.Count == 1 ? "lacks" : "lack")} a `/// <summary>`, `/// <exampledoc>` or `/// <examplecapture>` - every glyph you add or change needs all three";
+    /// <summary>A reminder, for a report's end, of the glyphs <paramref name="changes"/> declares without complete documentation - null when there are none.</summary>
+    string DocumentationReminder(ChangeSet changes) =>
+        Undocumented(changes) is { Count: > 0 } names
+            ? $"Documentation: {string.Join(", ", names)} {(names.Count == 1 ? "lacks" : "lack")} a `/// <summary>`, `/// <exampledoc>` or `/// <examplecapture>`. Every glyph you add or change should have all three - add them in a later step if not in this one."
+            : null;
 
     /// <summary>Whether <paramref name="changes"/> changes nothing but the documentation of glyphs <paramref name="working"/> already has.</summary>
     static bool OnlyDocuments(ChangeSet changes, GrammarDefinition working) =>
@@ -398,18 +401,11 @@ public sealed class GrammarAgent
         var report = $"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
 
         if (evaluation.After.Succeeded)
-        {
-            var refusals = RuleViolations(evaluation);
-
-            if (Undocumented(changes) is { Count: > 0 } undocumented)
-                refusals.Add(DescribeUndocumented(undocumented));
-
-            report += refusals.Count > 0
-                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", refusals)}."
+            report += RuleViolations(evaluation) is { Count: > 0 } violations
+                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}."
                 : $"{Environment.NewLine}To make this change, `apply` the same source and removals.";
-        }
 
-        return WithStatus(report, SessionStatus(applied: false));
+        return WithStatus(WithStatus(report, DocumentationReminder(changes)), SessionStatus(applied: false));
     }
 
     /// <summary>
@@ -424,11 +420,6 @@ public sealed class GrammarAgent
             throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
 
         var changes = ReadChanges(source, remove);
-
-        // Before scoring, which documentation can't change: there's no override for it.
-        if (Undocumented(changes) is { Count: > 0 } undocumented)
-            return $"Not applied - {DescribeUndocumented(undocumented)}: {changes.Describe()}{Environment.NewLine}Add what's missing and `apply` again.";
-
         var evaluation = await Evaluate(changes, cancellation);
         Interlocked.Increment(ref _attemptsSinceStep);
 
@@ -458,7 +449,7 @@ public sealed class GrammarAgent
         Interlocked.Increment(ref _stepsSinceCheckIn);
         Interlocked.Exchange(ref _attemptsSinceStep, 0);
 
-        return WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}", SessionStatus(applied: true));
+        return WithStatus(WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}", DocumentationReminder(changes)), SessionStatus(applied: true));
     }
 
     /// <summary>How <paramref name="evaluation"/> falls short of the session's step rules - empty when it doesn't.</summary>

@@ -319,7 +319,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
-    public async Task When_glyphs_must_be_documented_apply_refuses_one_that_isnt_and_lets_documenting_through()
+    public async Task When_glyphs_are_to_be_documented_the_agent_is_reminded_of_one_that_isnt_and_documenting_goes_through()
     {
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
             new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
@@ -327,10 +327,11 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         Assert.Contains("<exampledoc>", await agent.StartSessionAsync());
 
-        // Undocumented: refused, override or not.
-        Assert.Contains("AnimalSnores lacks a `/// <summary>`", await agent.EvaluateAsync(_animalSnores));
-        Assert.StartsWith("Not applied - AnimalSnores lacks", await agent.ApplyAsync(_animalSnores, overrideReason: "requested"));
-        Assert.Empty(workbench.Changes);
+        // Undocumented: a reminder, not a refusal.
+        Assert.Contains("Documentation: AnimalSnores lacks", await agent.EvaluateAsync(_animalSnores));
+        var applied = await agent.ApplyAsync(_animalSnores, overrideReason: "requested");
+        Assert.Contains("Applied as step 1", applied);
+        Assert.Contains("Documentation: AnimalSnores lacks", applied);
 
         const string documentation = """
             /// <summary>An animal snoring somewhere.</summary>
@@ -339,10 +340,12 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
             """;
 
-        Assert.Contains("Applied as step 1", await agent.ApplyAsync(documentation + _animalSnores, overrideReason: "requested"));
+        // Documenting it later changes nothing else, so takes no bits off - and needn't.
+        applied = await agent.ApplyAsync(documentation + _animalSnores);
+        Assert.Contains("Applied as step 2", applied);
+        Assert.DoesNotContain("Documentation:", applied);
 
-        // Changing only its documentation takes no bits off, and needn't.
-        Assert.Contains("Applied as step 2", await agent.ApplyAsync(documentation.Replace("somewhere", "in a place") + _animalSnores));
+        Assert.Contains("Applied as step 3", await agent.ApplyAsync(documentation.Replace("somewhere", "in a place") + _animalSnores));
         Assert.Equal("An animal snoring in a place.", workbench.WorkingDefinition.Glyphs.Single(x => x.Name == "AnimalSnores").Documentation.Summary);
     }
 }
