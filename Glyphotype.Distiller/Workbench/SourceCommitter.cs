@@ -52,13 +52,27 @@ public static class SourceCommitter
     static bool IsExpressed(string name) =>
         _expressedAttributes.Contains(name.EndsWith("Attribute") ? name : name + "Attribute");
 
+    /// <summary>How the comment above a declaration the Grammar Tools page wrote begins - followed by the date it was written.</summary>
+    public const string CommitStampPrefix = "// Committed from Grammar Tools on ";
+
+    /// <summary>The same, for a declaration exported from a workspace.</summary>
+    public const string ExportStampPrefix = "// Exported from Grammar Tools on ";
+
+    /// <summary>The comment written above a declaration committed on <paramref name="date"/>.</summary>
+    public static string CommitStamp(DateTime date) => $"{CommitStampPrefix}{date:yyyy-MM-dd}";
+
+    /// <summary>The comment written above a declaration exported on <paramref name="date"/>.</summary>
+    public static string ExportStamp(DateTime date) => $"{ExportStampPrefix}{date:yyyy-MM-dd}";
+
     /// <summary>
     /// Plans the edits that turn the sources under <paramref name="sourceDirectory"/> (which declare
     /// <paramref name="committed"/>) into sources declaring <paramref name="working"/>. New files go in
-    /// <paramref name="sourceDirectory"/> under <paramref name="namespace"/>.
+    /// <paramref name="sourceDirectory"/> under <paramref name="namespace"/>. Each declaration written gets a
+    /// <see cref="CommitStamp"/> for <paramref name="date"/> (today by default) above it, in place of any earlier stamp.
     /// </summary>
-    public static SourceCommitPlan Plan(GrammarDefinition committed, GrammarDefinition working, string sourceDirectory, string @namespace)
+    public static SourceCommitPlan Plan(GrammarDefinition committed, GrammarDefinition working, string sourceDirectory, string @namespace, DateTime? date = null)
     {
+        var stamp = CommitStamp(date ?? DateTime.Today);
         var declarations = IndexDeclarations(sourceDirectory);
         var edits = new List<DeclarationEdit>();
         var spliceEdits = new Dictionary<string, List<(TextSpan Span, string Text)>>(StringComparer.OrdinalIgnoreCase);
@@ -82,7 +96,7 @@ public static class SourceCommitter
                 continue;
             }
 
-            var text = Write(change);
+            var text = stamp + Environment.NewLine + Write(change);
 
             if (existing is null)
             {
@@ -107,7 +121,7 @@ public static class SourceCommitter
                 .Where(x => !IsExpressed(x))
                 .Select(x => $"[{x}] isn't part of a definition, and is dropped"));
 
-            AddSplice(spliceEdits, existing.Path, existing.Node.Span, replacement);
+            AddSplice(spliceEdits, existing.Path, TextSpan.FromBounds(PreviousStamp(existing.Node)?.SpanStart ?? existing.Node.Span.Start, existing.Node.Span.End), replacement);
             edits.Add(new(change, existing.Path, existing.Node.ToString(), replacement, notes));
         }
 
@@ -207,6 +221,14 @@ public static class SourceCommitter
             FieldDeclarationSyntax field => string.Join(", ", field.Declaration.Variables.Select(x => x.Identifier.Text)),
             _ => member.Kind().ToString(),
         };
+
+    /// <summary>The commit or export stamp just above <paramref name="node"/>, which a new one replaces - null when there's none.</summary>
+    static SyntaxTrivia? PreviousStamp(SyntaxNode node) =>
+        node.GetLeadingTrivia().LastOrDefault(x => x.IsKind(SyntaxKind.SingleLineCommentTrivia)) is var comment
+            && (comment.ToString().StartsWith(CommitStampPrefix, StringComparison.Ordinal) || comment.ToString().StartsWith(ExportStampPrefix, StringComparison.Ordinal))
+            && node.GetLeadingTrivia().SkipWhile(x => x != comment).Skip(1).All(x => x.IsKind(SyntaxKind.EndOfLineTrivia) || x.IsKind(SyntaxKind.WhitespaceTrivia))
+            ? comment
+            : null;
 
     static string Reindent(string text, string indentation) =>
         indentation.Length == 0

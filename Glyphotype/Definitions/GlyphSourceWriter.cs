@@ -11,11 +11,13 @@ public static class GlyphSourceWriter
     const string _indent = "    ";
 
     /// <summary>One source file declaring every marker, vocabulary and glyph in <paramref name="grammar"/>.</summary>
-    public static string Write(GrammarDefinition grammar, string @namespace)
+    /// <param name="stamp">A line written above each declaration, e.g. where and when it was written - none when null.</param>
+    public static string Write(GrammarDefinition grammar, string @namespace, string stamp = null)
     {
         var declarations = grammar.Markers.Select(WriteMarker)
             .Concat(grammar.Vocabularies.Select(WriteVocabulary))
-            .Concat(grammar.Glyphs.Select(WriteGlyph));
+            .Concat(grammar.Glyphs.Select(WriteGlyph))
+            .Select(x => stamp is null ? x : stamp + Environment.NewLine + x);
 
         return $"namespace {@namespace};{Environment.NewLine}{Environment.NewLine}" + string.Join(Environment.NewLine, declarations);
     }

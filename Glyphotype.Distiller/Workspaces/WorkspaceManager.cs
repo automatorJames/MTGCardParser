@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using Glyphotype.Distiller.Workbench;
 
 namespace Glyphotype.Distiller.Workspaces;
@@ -289,14 +289,16 @@ public sealed class WorkspaceManager
                 writer.Write(text);
             }
 
+            var stamp = SourceCommitter.ExportStamp(DateTime.Today);
+
             foreach (var marker in definition.Markers)
-                Add($"{marker}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Markers = [marker] }, @namespace));
+                Add($"{marker}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Markers = [marker] }, @namespace, stamp));
 
             foreach (var vocabulary in definition.Vocabularies)
-                Add($"{vocabulary.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Vocabularies = [vocabulary] }, @namespace));
+                Add($"{vocabulary.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Vocabularies = [vocabulary] }, @namespace, stamp));
 
             foreach (var glyph in definition.Glyphs)
-                Add($"{glyph.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Glyphs = [glyph] }, @namespace));
+                Add($"{glyph.Name}.cs", GlyphSourceWriter.Write(new GrammarDefinition { Glyphs = [glyph] }, @namespace, stamp));
 
             Add("grammar.json", definition.ToJson());
         }

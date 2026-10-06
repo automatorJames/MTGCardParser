@@ -1,4 +1,4 @@
-using Glyphotype.Definitions;
+﻿using Glyphotype.Definitions;
 using Glyphotype.Distiller.Workbench;
 
 namespace Glyphotype.Tests;
@@ -128,6 +128,17 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
         Assert.Contains("NeedsEggs", File.ReadAllText(Path.Combine(sourceDirectory, "CollectionGlyphs.cs")));
         Assert.DoesNotContain($"class {nameof(BakerOpensTheShop)}", File.ReadAllText(Path.Combine(sourceDirectory, "LineRuleGlyphs.cs")));
         Assert.True(File.Exists(Path.Combine(sourceDirectory, "AnimalHides.cs")));
+
+        // Each declaration written is stamped with where and when it came from - once, a later commit replacing the stamp.
+        var stamp = SourceCommitter.CommitStamp(DateTime.Today);
+        Assert.Contains(stamp + Environment.NewLine + "public class AnimalHides", File.ReadAllText(Path.Combine(sourceDirectory, "AnimalHides.cs")).ReplaceLineEndings());
+        Assert.Contains(stamp + Environment.NewLine + $"public class {nameof(AnimalRests)}", basicGlyphs.ReplaceLineEndings());
+
+        workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalRests)) with { TokenizationOrder = 7 });
+        workbench.Commit(workbench.PlanCommit());
+        basicGlyphs = File.ReadAllText(Path.Combine(sourceDirectory, "BasicGlyphs.cs"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(basicGlyphs, System.Text.RegularExpressions.Regex.Escape(SourceCommitter.CommitStampPrefix)));
+        Assert.Contains("/// <summary>Literal nibs, <c>Alt()</c>, plain enums", basicGlyphs);
 
         // Everything else is untouched, and what's there compiles back to exactly the working grammar.
         var compiled = SourceCompiler.Compile(Directory.GetFiles(sourceDirectory, "*.cs").Select(File.ReadAllText).ToArray());
