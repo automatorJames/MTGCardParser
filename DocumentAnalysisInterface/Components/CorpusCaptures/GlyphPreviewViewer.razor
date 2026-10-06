@@ -1,0 +1,73 @@
+@* The tooltip and definition viewer behind GlyphPreviews: the same ones the Grammar Tools page shows its glyphs in. *@
+@inject WorkspaceManager Workspaces
+@inject ActiveCorpus Corpus
+@inject RuntimeSettings RuntimeSettings
+@implements IDisposable
+
+<DefinitionTooltip Content="PreviewContent" />
+
+@if (_viewer is not null)
+{
+    <DefinitionViewerDialog Name="@_viewer.Name" Kind="DefinitionKind.Glyph" Change="_viewer.Change" Committed="_viewer.Committed" Working="_viewer.Working"
+                            GlyphType="_viewer.GlyphType" ResolveType="ResolveType" OnClose="() => _viewer = null" />
+}
+
+@code {
+    [Parameter, EditorRequired] public GlyphPreviews Previews { get; set; }
+
+    record ViewerState(string Name, ChangeType? Change, object Committed, object Working, Type GlyphType);
+
+    ViewerState _viewer;
+    GlyphPreviews _subscribed;
+
+    protected override void OnParametersSet()
+    {
+        if (_subscribed == Previews)
+            return;
+
+        if (_subscribed is not null)
+            _subscribed.ViewRequested -= OnViewRequested;
+
+        _subscribed = Previews;
+        _subscribed.ViewRequested += OnViewRequested;
+    }
+
+    void OnViewRequested(string name) =>
+        _ = InvokeAsync(() =>
+        {
+            var (change, committed, working, glyphType) = Describe(name);
+            _viewer = new(name, change, committed, working, glyphType);
+            StateHasChanged();
+        });
+
+    /// <summary>
+    /// A glyph's change, its committed and working definitions (either null where it doesn't exist), and its built type in
+    /// the grammar the page's captures come from - so the regex tabs show what matched them.
+    /// </summary>
+    (ChangeType? Change, GlyphDefinition Committed, GlyphDefinition Working, Type GlyphType) Describe(string name)
+    {
+        var workbench = Workspaces.Active;
+        var change = workbench.Changes.FirstOrDefault(x => x.Kind == DefinitionKind.Glyph && x.Name == name)?.Change;
+        Type glyphType = Corpus.Grammar is { } grammar && grammar.TryGetType(name, out var type) ? type : null;
+
+        return (change, workbench.CommittedDefinition.Glyphs.FirstOrDefault(x => x.Name == name), workbench.WorkingDefinition.Glyphs.FirstOrDefault(x => x.Name == name), glyphType);
+    }
+
+    /// <summary>What each type a definition can name is, for coloring its C# as Visual Studio would.</summary>
+    Func<string, CodeTypeKind?> ResolveType => DefinitionViews.TypeResolver(Workspaces.Active.WorkingDefinition, Workspaces.Active.CommittedDefinition);
+
+    /// <summary>A glyph's tooltip: a preview of it as the viewer's last chosen tab shows it.</summary>
+    RenderFragment PreviewContent(DefinitionKind kind, string name)
+    {
+        var (change, committed, working, glyphType) = Describe(name);
+
+        return @<DefinitionPreview View="@RuntimeSettings.DefinitionView" Kind="DefinitionKind.Glyph" Change="change" Committed="committed" Working="working"
+                                   GlyphType="glyphType" ResolveType="ResolveType" BlankLines="@(!RuntimeSettings.HideBlankLines)" LineNumbers="@RuntimeSettings.ShowLineNumbers" />;
+    }
+
+    public void Dispose()
+    {
+        if (_subscribed is not null)
+            _subscribed.ViewRequested -= OnViewRequested;
+    }
+}

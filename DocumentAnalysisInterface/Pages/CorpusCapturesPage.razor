@@ -1,10 +1,11 @@
-@page "/"
+﻿@page "/"
 @page "/corpus-captures"
 @inject IJSRuntime JSRuntime
 @inject ActiveCorpus DocumentAnalyzer
 @inject RuntimeSettings RuntimeSettings
 @inject DocumentAnalysisInterface.Agent.LineChats LineChats
 @inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
+@inject WorkspaceManager Workspaces
 @implements IAsyncDisposable
 
 <DeferredContent OnReady="InitHoverAsync">
@@ -13,12 +14,16 @@
         @* Keyed by the processed document itself, not its name: a new analysis (another workspace's grammar, or a re-score)
            brings new documents, and their blocks are built fresh - patching the old ones in place would cascade the new
            line's display context into spans still holding the old grammar's captures. *@
-        @foreach (var document in GetFilteredDocuments())
-        {
-            <DocumentBlock @key=document ProcessedDocument=document ShowAgentButtons=@ShowAgentButtons />
-        }
+        <CascadingValue Value="_glyphPreviews" IsFixed="true">
+            @foreach (var document in GetFilteredDocuments())
+            {
+                <DocumentBlock @key=document ProcessedDocument=document ShowAgentButtons=@ShowAgentButtons />
+            }
+        </CascadingValue>
     </div>
 </DeferredContent>
+
+<GlyphPreviewViewer Previews="_glyphPreviews" />
 
 @if (_debugTextSegment != null)
 {
@@ -35,8 +40,12 @@
     /// <summary>Whether lines get the agent button: when it's turned on, and there's an agent to do the work.</summary>
     bool ShowAgentButtons => RuntimeSettings.ShowLineAgentButtons && _agentAvailable;
 
+    /// <summary>What lets the property tables' headers preview and open the glyphs they name.</summary>
+    GlyphPreviews _glyphPreviews;
+
     protected override void OnInitialized()
     {
+        _glyphPreviews = new(Workspaces);
         RuntimeSettings.OnChanged += StateHasChanged;
         DocumentAnalyzer.Changed += OnCorpusChanged;
         LineChats.Changed += OnLineChatsChanged;

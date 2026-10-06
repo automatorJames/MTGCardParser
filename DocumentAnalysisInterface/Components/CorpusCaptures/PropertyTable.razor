@@ -33,7 +33,15 @@ else
                     {
                         @(" ")<span class="header-separator" data-path=@segment.DataPath>@SeparatorGlyph(separatorKind)</span>@(" ")
                     }
-                    <span class="header-part @(isDim ? "header-part-dim" : "")" data-path=@segment.DataPath>@segment.Text</span>
+                    @if (Previews?.Has(segment.Glyph) == true)
+                    {
+                        <span class="header-part previewable @(isDim ? "header-part-dim" : "")" data-path=@segment.DataPath
+                              data-preview-kind="@DefinitionKind.Glyph" data-preview-name="@segment.Glyph.Name" @onclick="() => Previews.View(segment.Glyph)">@segment.Text</span>
+                    }
+                    else
+                    {
+                        <span class="header-part @(isDim ? "header-part-dim" : "")" data-path=@segment.DataPath>@segment.Text</span>
+                    }
                 }
             </span>
         </div>
@@ -115,6 +123,10 @@ else
 
     [CascadingParameter]
     public CaptureTraceDisplayContext DisplayContext { get; set; } = null!;
+
+    /// <summary>What lets a header part naming a glyph preview it on hover and open it on click - absent where the table isn't on the Corpus Captures page.</summary>
+    [CascadingParameter]
+    public GlyphPreviews Previews { get; set; }
 
     [Parameter, EditorRequired]
     public CaptureTrace BranchTrace { get; set; }
@@ -206,11 +218,11 @@ else
     {
         var lineage = new List<HeaderSegment>(CollapsedLineage)
         {
-            new(DisplayName(BranchTrace.Name), OwnSeparatorBefore, BranchTrace.FullyQualifiedName)
+            new(DisplayName(BranchTrace.Name), OwnSeparatorBefore, BranchTrace.FullyQualifiedName, OwnGlyph)
         };
 
         if (OwnResolutionSeparatorKind is { } kind && !ResolvesTo(child))
-            lineage.Add(new(DisplayName(BranchTrace.ResolvedNodeTypeName), kind, BranchTrace.FullyQualifiedName));
+            lineage.Add(new(DisplayName(BranchTrace.ResolvedNodeTypeName), kind, BranchTrace.FullyQualifiedName, BranchTrace.ResolvedNodeType));
 
         return lineage;
     }
@@ -236,9 +248,17 @@ else
     /// relationship joins it to the part before it, and the data-path of the capture it names — so
     /// each part highlights and lowlights on its own, in step with that capture's own span in the
     /// line above. A resolution part, which is a display-time fact rather than a step of its own,
-    /// shares the path of the part it resolves.
+    /// shares the path of the part it resolves. <see cref="Glyph"/> is the type of what it names -
+    /// the glyph a property captured, or the one a dynamic or one-of resolved to - which the part
+    /// previews, when it's a glyph with a definition (see <see cref="GlyphPreviews"/>).
     /// </summary>
-    public readonly record struct HeaderSegment(string Text, HeaderSeparatorKind? SeparatorBefore, string DataPath);
+    public readonly record struct HeaderSegment(string Text, HeaderSeparatorKind? SeparatorBefore, string DataPath, Type Glyph);
+
+    /// <summary>
+    /// The type of what <see cref="BranchTrace"/>'s own name part names: the glyph it captured. A dynamic's or a generic
+    /// one-of's value is a wrapper with no definition of its own - the part after it names what it resolved to.
+    /// </summary>
+    Type OwnGlyph => BranchTrace.ClrValue?.GetType();
 
     static string SeparatorGlyph(HeaderSeparatorKind kind) => kind switch
     {
@@ -275,11 +295,11 @@ else
         {
             var segments = new List<HeaderSegment>(CollapsedLineage)
             {
-                new(DisplayName(BranchTrace.Name), OwnSeparatorBefore, BranchTrace.FullyQualifiedName)
+                new(DisplayName(BranchTrace.Name), OwnSeparatorBefore, BranchTrace.FullyQualifiedName, OwnGlyph)
             };
 
             if (OwnResolutionSeparatorKind is { } kind)
-                segments.Add(new HeaderSegment(DisplayName(BranchTrace.ResolvedNodeTypeName), kind, BranchTrace.FullyQualifiedName));
+                segments.Add(new HeaderSegment(DisplayName(BranchTrace.ResolvedNodeTypeName), kind, BranchTrace.FullyQualifiedName, BranchTrace.ResolvedNodeType));
 
             return segments;
         }

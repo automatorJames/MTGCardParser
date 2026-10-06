@@ -40,6 +40,16 @@
     color: var(--lowlight-color);
 }
 
+/* A part naming a glyph with a definition: hovering previews it, clicking opens it. */
+.header-part.previewable {
+    cursor: pointer;
+}
+
+    .header-part.previewable:hover {
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+    }
+
 .header-separator {
     color: var(--header-separator-color);
     font-weight: 700;
