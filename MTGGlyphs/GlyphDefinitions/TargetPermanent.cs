@@ -5,6 +5,8 @@
 /// a referent, so a later "it" refers to it - "destroy target wall. it can't be regenerated." - and so does a later
 /// "that creature" or "that wall", whose kind (CardType, CreatureType) is the type of what was captured.
 /// </summary>
+/// <exampledoc>Crumble</exampledoc>
+/// <examplecapture>target artifact</examplecapture>
 [Dependent]
 public class TargetPermanent : Glyph
 {

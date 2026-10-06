@@ -5,6 +5,8 @@
 /// well as for several things, so the built-in <see cref="They"/> (plural, any kind) can't tell; in a place only a
 /// player fits, this one says so.
 /// </summary>
+/// <exampledoc>Magnetic Mountain</exampledoc>
+/// <examplecapture>they</examplecapture>
 [Dependent]
 public class TheyPlayer : BackReference<PlayerIdentity>
 {

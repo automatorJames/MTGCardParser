@@ -1,5 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>"it's an enchantment": a permanent being, or becoming, a type.</summary>
+/// <exampledoc>Copy Artifact</exampledoc>
+/// <examplecapture>it's an enchantment</examplecapture>
 [Dependent]
 public class TransformedType : Glyph
 {

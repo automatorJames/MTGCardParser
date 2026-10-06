@@ -1,5 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A point in a player's turn: "at the beginning of your upkeep", "until the end of your turn".</summary>
+/// <exampledoc>Juzám Djinn</exampledoc>
+/// <examplecapture>at the beginning of your upkeep</examplecapture>
 [TokenizationOrder(0)]
 public class AtOrUntilPlayerPhase : Glyph
 {

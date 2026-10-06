@@ -1,6 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>One word narrowing what a card can be: "black", "artifact", "tapped", or negated, "nonblack", "nonartifact".</summary>
+/// <exampledoc>Ashnod's Transmogrant</exampledoc>
+/// <examplecapture>nonartifact</examplecapture>
 [Dependent]
 public class TargetQualifier : Glyph
 {

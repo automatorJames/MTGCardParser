@@ -4,6 +4,8 @@
 /// "that creature", "those artifacts": refers back to a card type - a <see cref="CardType"/> marked [Referent] earlier
 /// in the line, such as the creatures chosen in "choose any number of tapped blue creatures they control".
 /// </summary>
+/// <exampledoc>Magnetic Mountain</exampledoc>
+/// <examplecapture>those creatures</examplecapture>
 [Dependent]
 public class ThatCard : BackReference<CardType>
 {

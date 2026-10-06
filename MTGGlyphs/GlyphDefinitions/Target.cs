@@ -1,5 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A target: "any target", or "target" and what it targets.</summary>
+/// <exampledoc>Pirate Ship</exampledoc>
+/// <examplecapture>any target</examplecapture>
 [Dependent]
 public class Target : Glyph
 {

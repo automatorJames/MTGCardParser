@@ -1,5 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A change to power and toughness: "+1/+1", "-1/-0".</summary>
+/// <exampledoc>Blessing</exampledoc>
+/// <examplecapture>+1/+1</examplecapture>
 public class PowerToughnessMod : Glyph
 {
     public override Nib[] Nibs => [Prop(PowerSign), Prop(PowerValue), "/", Prop(ToughnessSign), Prop(ToughnessValue)];

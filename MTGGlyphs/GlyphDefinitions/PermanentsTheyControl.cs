@@ -4,6 +4,8 @@
 /// "tapped blue creatures they control": permanents of one type that a player controls. The card type is a referent,
 /// so a later "those creatures" refers to them (see <see cref="ThatCard"/>).
 /// </summary>
+/// <exampledoc>Magnetic Mountain</exampledoc>
+/// <examplecapture>tapped blue creatures they control</examplecapture>
 [Dependent]
 public class PermanentsTheyControl : Glyph
 {
