@@ -15,16 +15,6 @@
                 <span class="callout-key">Coverage:</span>
                 <span class="callout-value @CoverageDisplay.GetColorClass(documentPercent)">@CoverageDisplay.FormatPercent(documentPercent)</span>
             </div>
-
-            @if (ProcessedDocument.BackReferenceCount > 0)
-            {
-                var resolvedPercent = GetCoveragePercent(ProcessedDocument.BackReferenceCount - ProcessedDocument.UnresolvedBackReferenceCount, ProcessedDocument.BackReferenceCount);
-
-                <div class="coverage-callout">
-                    <span class="callout-key">Back-references resolved:</span>
-                    <span class="callout-value @CoverageDisplay.GetColorClass(resolvedPercent)">@(ProcessedDocument.BackReferenceCount - ProcessedDocument.UnresolvedBackReferenceCount)/@ProcessedDocument.BackReferenceCount</span>
-                </div>
-            }
         }
     </div>
 
