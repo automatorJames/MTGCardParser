@@ -50,14 +50,18 @@ static class DefinitionReader
         };
     }
 
-    /// <summary>The definitions of Glyphotype's own glyphs and enums (see <see cref="GrammarDefinition.BuiltIns"/>) - which <see cref="ReadGrammar"/> leaves out, a grammar only referring to them.</summary>
+    /// <summary>
+    /// The definitions of Glyphotype's own glyphs and enums (see <see cref="GrammarDefinition.BuiltIns"/>) - which
+    /// <see cref="ReadGrammar"/> leaves out, a grammar only referring to them. Only a glyph with a layout of its own: not
+    /// <see cref="DynamicGlyph"/>, the wrapper a dynamic property's value comes in.
+    /// </summary>
     public static GrammarDefinition ReadBuiltIns()
     {
         var types = _glyphotype.GetExportedTypes().Where(GrammarEmitter.IsBuiltIn).OrderBy(x => x.Name, StringComparer.Ordinal).ToList();
 
         return new()
         {
-            Glyphs = types.Where(x => !x.IsEnum).Select(x => ReadGlyph(x, [])).ToList(),
+            Glyphs = types.Where(x => !x.IsEnum && IsOverridden(x, nameof(Glyph.Nibs))).Select(x => ReadGlyph(x, [])).ToList(),
             Vocabularies = types.Where(x => x.IsEnum).Select(ReadVocabulary).ToList(),
         };
     }
@@ -223,10 +227,13 @@ static class DefinitionReader
             .Where(x => x.SetMethod is { IsPublic: true } && x.GetMethod.GetBaseDefinition().DeclaringType == x.DeclaringType)
             .ToArray();
 
-    /// <summary>Whether a type below Glyphotype's own (so not a primitive's built-in layout) overrides <paramref name="propertyName"/>.</summary>
+    /// <summary>
+    /// Whether <paramref name="type"/>, or a type between it and Glyphotype's own bases (so not a primitive's built-in
+    /// layout), overrides <paramref name="propertyName"/>. The type itself always counts, so a built-in's own layout does.
+    /// </summary>
     static bool IsOverridden(Type type, string propertyName)
     {
-        for (var current = type; current.Assembly != _glyphotype; current = current.BaseType)
+        for (var current = type; current == type || current.Assembly != _glyphotype; current = current.BaseType)
             if (current.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly) is not null)
                 return true;
 

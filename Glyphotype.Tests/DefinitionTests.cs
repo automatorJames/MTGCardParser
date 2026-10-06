@@ -33,7 +33,8 @@ public class DefinitionTests(CorpusFixture corpus)
     {
         var builtIns = GrammarDefinition.BuiltIns;
 
-        Assert.Equal(GrammarDefinition.BuiltInNames.Order(), builtIns.Glyphs.Select(x => x.Name).Concat(builtIns.Vocabularies.Select(x => x.Name)).Order());
+        Assert.Equal(GrammarDefinition.BuiltInNames.Except([nameof(DynamicGlyph)]).Order(), builtIns.Glyphs.Select(x => x.Name).Concat(builtIns.Vocabularies.Select(x => x.Name)).Order());
+        Assert.All(builtIns.Glyphs, x => Assert.NotEmpty(x.Nibs));
         Assert.Contains("public class It : BackReference", GlyphSourceWriter.Write(builtIns, "BuiltIns"));
     }
 
