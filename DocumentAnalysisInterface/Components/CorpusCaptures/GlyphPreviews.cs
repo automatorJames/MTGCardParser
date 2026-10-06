@@ -15,25 +15,29 @@ public sealed class GlyphPreviews(WorkspaceManager workspaces)
     public event Action<DefinitionKind, string> ViewRequested;
 
     /// <summary>
-    /// Which kind of definition the active workspace has for <paramref name="type"/> - a glyph, or a vocabulary (an enum
-    /// it defines) - or null for one it doesn't define: a primitive, or a built-in pronoun, which have no definition to show.
+    /// Which kind of definition <paramref name="type"/> has - a glyph, or a vocabulary (an enum) - in the active workspace
+    /// or among Glyphotype's built-ins (see <see cref="GrammarDefinition.BuiltIns"/>, e.g. the standard pronouns); null
+    /// for one with none to show, such as a primitive.
     /// </summary>
     public DefinitionKind? KindOf(Type type)
     {
         if (type is null)
             return null;
 
-        var working = workspaces.Active.WorkingDefinition;
-        var committed = workspaces.Active.CommittedDefinition;
+        GrammarDefinition[] definitions = [workspaces.Active.WorkingDefinition, workspaces.Active.CommittedDefinition, GrammarDefinition.BuiltIns];
 
-        if (working.Glyphs.Any(x => x.Name == type.Name) || committed.Glyphs.Any(x => x.Name == type.Name))
+        if (definitions.Any(d => d.Glyphs.Any(x => x.Name == type.Name)))
             return DefinitionKind.Glyph;
 
-        if (type.IsEnum && (working.Vocabularies.Any(x => x.Name == type.Name) || committed.Vocabularies.Any(x => x.Name == type.Name)))
+        if (type.IsEnum && definitions.Any(d => d.Vocabularies.Any(x => x.Name == type.Name)))
             return DefinitionKind.Vocabulary;
 
         return null;
     }
+
+    /// <summary>The built-in glyph type named <paramref name="name"/>, or null for none.</summary>
+    public static Type BuiltInType(string name) =>
+        GrammarDefinition.BuiltInNames.Contains(name) ? typeof(Glyphotype.GlyphPrimitives.Glyph).Assembly.GetExportedTypes().FirstOrDefault(x => x.Name == name) : null;
 
     /// <summary>Whether <paramref name="type"/> has a definition to show (see <see cref="KindOf"/>).</summary>
     public bool Has(Type type) => KindOf(type) is not null;

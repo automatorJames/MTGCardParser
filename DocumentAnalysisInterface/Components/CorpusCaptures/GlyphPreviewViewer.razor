@@ -42,7 +42,9 @@
 
     /// <summary>
     /// A definition's change, its committed and working versions (either null where it doesn't exist), and - for a glyph -
-    /// its built type in the grammar the page's captures come from, so the regex tabs show what matched them.
+    /// its built type in the grammar the page's captures come from, so the regex tabs show what matched them. A built-in
+    /// the workspace doesn't define is shown as committed and unchanged: its definition read from Glyphotype's own type
+    /// (see <see cref="GrammarDefinition.BuiltIns"/>), which is also its built type where the grammar has none by its name.
     /// </summary>
     (ChangeType? Change, object Committed, object Working, Type GlyphType) Describe(DefinitionKind kind, string name)
     {
@@ -53,9 +55,17 @@
 
         var workbench = Workspaces.Active;
         var change = workbench.Changes.FirstOrDefault(x => x.Kind == kind && x.Name == name)?.Change;
+        var committed = Find(workbench.CommittedDefinition);
+        var working = Find(workbench.WorkingDefinition);
         Type glyphType = kind == DefinitionKind.Glyph && Corpus.Grammar is { } grammar && grammar.TryGetType(name, out var type) ? type : null;
 
-        return (change, Find(workbench.CommittedDefinition), Find(workbench.WorkingDefinition), glyphType);
+        if (committed is null && working is null && Find(GrammarDefinition.BuiltIns) is { } builtIn)
+        {
+            committed = builtIn;
+            glyphType ??= kind == DefinitionKind.Glyph ? GlyphPreviews.BuiltInType(name) : null;
+        }
+
+        return (change, committed, working, glyphType);
     }
 
     /// <summary>What each type a definition can name is, for coloring its C# as Visual Studio would.</summary>

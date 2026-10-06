@@ -50,6 +50,18 @@ static class DefinitionReader
         };
     }
 
+    /// <summary>The definitions of Glyphotype's own glyphs and enums (see <see cref="GrammarDefinition.BuiltIns"/>) - which <see cref="ReadGrammar"/> leaves out, a grammar only referring to them.</summary>
+    public static GrammarDefinition ReadBuiltIns()
+    {
+        var types = _glyphotype.GetExportedTypes().Where(GrammarEmitter.IsBuiltIn).OrderBy(x => x.Name, StringComparer.Ordinal).ToList();
+
+        return new()
+        {
+            Glyphs = types.Where(x => !x.IsEnum).Select(x => ReadGlyph(x, [])).ToList(),
+            Vocabularies = types.Where(x => x.IsEnum).Select(ReadVocabulary).ToList(),
+        };
+    }
+
     static GlyphDefinition ReadGlyph(Type type, List<Type> markerTypes)
     {
         var (kind, aliasOf) = ReadBase(type);

@@ -25,6 +25,15 @@ public sealed record GrammarDefinition
     public static IReadOnlySet<string> BuiltInNames { get; } =
         typeof(Glyph).Assembly.GetExportedTypes().Where(GrammarEmitter.IsBuiltIn).Select(x => x.Name).ToHashSet();
 
+    static readonly Lazy<GrammarDefinition> _builtIns = new(DefinitionReader.ReadBuiltIns);
+
+    /// <summary>
+    /// The definitions of the built-ins named by <see cref="BuiltInNames"/>, read from their types - so a built-in can be
+    /// shown as a grammar's own definitions are. Never part of any grammar's definition: a grammar refers to them, it
+    /// doesn't define them. Read once, on first use.
+    /// </summary>
+    public static GrammarDefinition BuiltIns => _builtIns.Value;
+
     /// <summary>Reads the definitions of <paramref name="glyphTypes"/>, plus the vocabularies and markers they refer to. Generic primitives among them are skipped: they're referred to, not defined.</summary>
     public static GrammarDefinition FromTypes(IEnumerable<Type> glyphTypes) =>
         DefinitionReader.ReadGrammar(glyphTypes);

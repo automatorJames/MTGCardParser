@@ -1,4 +1,4 @@
-using Glyphotype.Definitions;
+﻿using Glyphotype.Definitions;
 
 namespace Glyphotype.Tests;
 
@@ -26,6 +26,15 @@ public class DefinitionTests(CorpusFixture corpus)
         var emitted = GrammarEmitter.Emit(Definition);
 
         Assert.Equal(Definition.ToJson(), GrammarDefinition.FromTypes(emitted).ToJson());
+    }
+
+    [Fact]
+    public void Every_built_in_reads_as_a_definition_and_writes_as_source()
+    {
+        var builtIns = GrammarDefinition.BuiltIns;
+
+        Assert.Equal(GrammarDefinition.BuiltInNames.Order(), builtIns.Glyphs.Select(x => x.Name).Concat(builtIns.Vocabularies.Select(x => x.Name)).Order());
+        Assert.Contains("public class It : BackReference", GlyphSourceWriter.Write(builtIns, "BuiltIns"));
     }
 
     [Fact]
