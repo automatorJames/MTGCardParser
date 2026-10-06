@@ -314,22 +314,42 @@ public static class BackReferenceDisplay
         backReference.Antecedent is { } antecedent ? $"→ “{antecedent.Text}”" : "→ unresolved";
 
     /// <summary>
-    /// Where the back-reference captured at <paramref name="trace"/> was resolved to, as a property path: from the top-level
-    /// glyph they share ("Chooser.Player"), or from the referent's own when it's in another one ("AtBeginningOfEachPlayersStep.Player").
-    /// <c>{this}</c> for the document itself; "unresolved" when nothing before it agreed with it.
+    /// Where <paramref name="backReference"/> was resolved to, as a property path ("Chooser.Player"), each part paired
+    /// with the capture it names so it can wear that capture's color - a dynamic property's resolved glyph wears the
+    /// property's. The path is the shortest ending of the referent's full one, at least two parts long, that no other
+    /// capture on the line also ends with: "Chosen.CardType", not "Effect.MayChooseAndPayForEach.Chosen.CardType",
+    /// unless something else on the line ends in "Chosen.CardType" too. A single part, with no capture, for
+    /// <c>{this}</c> (the document itself), or "unresolved" when nothing before it agreed with it.
     /// </summary>
-    public static string ReferentPath(Glyphotype.GlyphPrimitives.BackReference backReference, Glyphotype.RegexGeneration.Graph.CaptureTrace trace)
+    public static IReadOnlyList<(string Text, Glyphotype.RegexGeneration.Graph.CaptureTrace Capture)> ReferentPath(
+        Glyphotype.GlyphPrimitives.BackReference backReference,
+        IEnumerable<Glyphotype.RegexGeneration.Graph.RootCaptureTrace> lineRoots)
     {
         if (backReference.Antecedent is not { } antecedent)
-            return "unresolved";
+            return [("unresolved", null)];
 
         if (antecedent.IsSelf)
-            return Glyphotype.Interfaces.IDocument.ThisToken;
+            return [(Glyphotype.Interfaces.IDocument.ThisToken, null)];
 
         var path = antecedent.Trace.FullyQualifiedName.Split('_');
-        var sameGlyph = antecedent.Trace.CaptureContext?.RootCaptureTrace is { } root && root == trace.CaptureContext?.RootCaptureTrace;
+        var lineNames = lineRoots.Where(x => !x.IsSynthesized).SelectMany(x => x.GetFlatCaptureTree().Keys).Select(x => x.Split('_')).ToList();
 
-        return string.Join('.', sameGlyph && path.Length > 1 ? path[1..] : path);
+        var length = Enumerable.Range(Math.Min(2, path.Length), path.Length - Math.Min(2, path.Length) + 1)
+            .FirstOrDefault(n => lineNames.Count(name => name.Length >= n && name[^n..].SequenceEqual(path[^n..])) == 1, path.Length);
+
+        var root = antecedent.Trace.CaptureContext?.RootCaptureTrace;
+        var parts = new List<(string, Glyphotype.RegexGeneration.Graph.CaptureTrace)>();
+        Glyphotype.RegexGeneration.Graph.CaptureTrace capture = null;
+
+        for (var i = 0; i < path.Length; i++)
+        {
+            capture = i == path.Length - 1 ? antecedent.Trace : root?[string.Join('_', path[..(i + 1)])] ?? capture;
+
+            if (i >= path.Length - length)
+                parts.Add((path[i], capture));
+        }
+
+        return parts;
     }
 
     /// <summary>

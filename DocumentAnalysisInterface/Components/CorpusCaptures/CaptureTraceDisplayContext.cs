@@ -16,12 +16,16 @@ public class CaptureTraceDisplayContext
     public IReadOnlyDictionary<CaptureTrace, HexPalette> Palettes { get; }
     public int MaxEffectiveDepth { get; }
 
+    /// <summary>The line's top-level captures, which a back-reference's path to its referent has to be told apart from.</summary>
+    public IReadOnlyList<RootCaptureTrace> LineRoots { get; }
+
     public CaptureTraceDisplayContext(ProcessedLine line, RuntimeSettings runtimeSettings, DigestedText echoCorpus)
     {
         bool IsEffectivelyCollapsed(CaptureTrace trace) =>
             trace.IsCollapsible && runtimeSettings.HideCollapsibleCaptureNodes;
 
         Palettes = line.GetPositionalPalettes(IsEffectivelyCollapsed);
+        LineRoots = line.CaptureTraceRoots;
 
         var captureDepth = line.CaptureTraceRoots
             .Select(root => root.GetEffectiveDepth(IsEffectivelyCollapsed))

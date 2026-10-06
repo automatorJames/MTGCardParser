@@ -65,7 +65,7 @@ else
                                         <tr data-path="@BranchTrace.HoverPath">
                                             <td class="prop-capture-table-cell first-column" style=@(RootPalette.ToColorStyle())>refers to</td>
                                             <td class="prop-capture-table-cell type-column" style=@(RootPalette.ToColorStyle())>BackReference</td>
-                                            <td class="prop-capture-table-cell value-column" style=@(RootPalette.ToColorStyle())>@BackReferenceDisplay.ReferentPath(branchBackReference, BranchTrace)</td>
+                                            <td class="prop-capture-table-cell value-column" style=@(RootPalette.ToColorStyle())>@ReferentPath(branchBackReference)</td>
                                         </tr>
                                     }
                                     @foreach (var leaf in terminals)
@@ -80,7 +80,14 @@ else
                                                 @TerminalTypeLabel(leaf)
                                             </td>
                                             <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
-                                                @(leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference ? BackReferenceDisplay.ReferentPath(backReference, leaf) : leaf.ClrValue.ToString())
+                                                @if (leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference)
+                                                {
+                                                    @ReferentPath(backReference)
+                                                }
+                                                else
+                                                {
+                                                    @leaf.ClrValue.ToString()
+                                                }
                                                 @if (BackReferenceDisplay.IsReferent(leaf, BranchTrace))
                                                 {
                                                     <span class="referent-note">(referent)</span>
@@ -142,6 +149,30 @@ else
     /// to that slot's representative.
     /// </summary>
     static CaptureTrace PaletteKey(CaptureTrace trace) => trace.Representative ?? trace;
+
+    /// <summary>
+    /// The path to what <paramref name="backReference"/> refers to (see <see cref="BackReferenceDisplay.ReferentPath"/>),
+    /// each part in the color of the capture it names - or of the nearest one before it with a color, for a capture
+    /// that has none of its own (one hidden as collapsible).
+    /// </summary>
+    RenderFragment ReferentPath(Glyphotype.GlyphPrimitives.BackReference backReference) => builder =>
+    {
+        string style = null;
+
+        foreach (var (text, capture, index) in BackReferenceDisplay.ReferentPath(backReference, DisplayContext.LineRoots).Select((x, i) => (x.Text, x.Capture, i)))
+        {
+            if (index > 0)
+                builder.AddContent(0, ".");
+
+            if (capture is not null && DisplayContext.Palettes.TryGetValue(PaletteKey(capture), out var palette))
+                style = $"color: {palette.Normal};";
+
+            builder.OpenElement(1, "span");
+            builder.AddAttribute(2, "style", style);
+            builder.AddContent(3, text);
+            builder.CloseElement();
+        }
+    };
 
     /// <summary>
     /// " (position N)" for a leaf whose declared property sits beneath a <c>List&lt;&gt;</c>-typed
