@@ -318,10 +318,6 @@ public static class CoverageDisplay
 /// <summary>How an <see cref="Glyphotype.GlyphPrimitives.BackReference"/>'s resolution reads on the Corpus Captures page.</summary>
 public static class BackReferenceDisplay
 {
-    /// <summary>"→ “the baker”", or "→ unresolved" when nothing before it agreed with it.</summary>
-    public static string Describe(Glyphotype.GlyphPrimitives.BackReference backReference) =>
-        backReference.Antecedent is { } antecedent ? $"→ “{antecedent.Text}”" : "→ unresolved";
-
     /// <summary>
     /// Where <paramref name="backReference"/> was resolved to, as a property path ("Chooser.Player"), each part paired
     /// with the capture it names so it can wear that capture's color - a dynamic property's resolved glyph wears the
