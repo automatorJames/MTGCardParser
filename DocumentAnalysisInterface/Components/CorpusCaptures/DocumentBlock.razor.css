@@ -76,12 +76,27 @@ pre.nested-underline-container {
         background-color: var(--near-black);
     }
 
-    pre.nested-underline-container::before {
+/* Each clause is sized for its own deepest underline: its line-height and --top-crop are set on it. */
+.clause-block {
+    display: block;
+}
+
+    .clause-block::before {
         content: "";
         display: block;
         height: 0;
         margin-top: var(--top-crop, 0);
     }
+
+/* Between two clauses: a thin rule, with the newline that separates them in the text squeezed to nothing. */
+.clause-rule {
+    display: block;
+    height: 0;
+    font-size: 0;
+    line-height: 0;
+    border-top: 1px solid var(--clause-rule-color);
+    margin: var(--clause-rule-margin) 0;
+}
 
 /* Holds a line's text, and the agent button in its bottom-right corner */
 .line-text-frame {

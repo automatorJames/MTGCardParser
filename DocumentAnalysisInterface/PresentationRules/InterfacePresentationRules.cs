@@ -50,6 +50,12 @@ public static class DocumentTextPresentation
 {
     public const string CapturedTextColorHex = "#d4d4d4";
     public const string UnmatchedTextColorHex = "#989e9e";
+
+    /// <summary>The thin rule drawn above each of a line's clauses after its first.</summary>
+    public const string ClauseRuleColorHex = "#444444";
+
+    /// <summary>Space in px kept clear above and below a clause rule.</summary>
+    public const int ClauseRuleMarginPx = 10;
 }
 
 /// <summary>

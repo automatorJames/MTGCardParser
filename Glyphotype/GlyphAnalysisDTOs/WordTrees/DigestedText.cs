@@ -359,18 +359,18 @@ public class DigestedText
     }
 
     /// <summary>
-    /// The most lanes any single UnmatchedString occurrence on this line would need to render its
-    /// own echoes — the echo-underline equivalent of a line's deepest capture-trace depth. Used to
-    /// make sure a line reserves enough vertical room that a dense stack of echo underlines
+    /// The most lanes any one of <paramref name="occurrences"/> would need to render its own echoes —
+    /// the echo-underline equivalent of a stretch of text's deepest capture-trace depth. Used to
+    /// make sure the text reserves enough vertical room that a dense stack of echo underlines
     /// doesn't run into the next physically-wrapped line of text, the same way capture depth
-    /// already does for colored underlines (see CaptureTraceDisplayContext.MaxEffectiveDepth,
+    /// already does for colored underlines (see CaptureTraceDisplayContext.GetMaxEffectiveDepth,
     /// which takes the max of that and this).
     /// </summary>
-    public int GetMaxEchoLaneCount(ProcessedLine line, int minWords, int minOccurrences)
+    public int GetMaxEchoLaneCount(IEnumerable<UnmatchedTextOccurrence> occurrences, int minWords, int minOccurrences)
     {
         int max = 0;
 
-        foreach (var occurrence in line.UnmatchedTextOccurrences)
+        foreach (var occurrence in occurrences)
         {
             var echoes = FindEchoes(occurrence, minWords, minOccurrences);
             if (echoes.Count == 0) continue;

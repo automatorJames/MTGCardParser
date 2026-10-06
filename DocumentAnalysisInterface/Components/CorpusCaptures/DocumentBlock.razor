@@ -40,17 +40,21 @@
                 </div>
                 <div class="line-container-parent" data-path=@line.DataPath>
                     <div class="line-text-frame">
-                    <pre class="nested-underline-container" style=@GetLineHeightStyle(displayContext) data-path=@line.DataPath>
+                    <pre class="nested-underline-container" style=@GetLineStyle() data-path=@line.DataPath>
                         @for (int c = 0; c < line.Clauses.Count; c++)
                         {
                             var roots = line.Clauses[c].UnitsWithBreak.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
 
-                            @(c > 0 ? "\n" : "")
-                            @for (int i = 0; i < roots.Count; i++)
+                            @if (c > 0)
+                            {
+                                @* The newline keeps the clauses apart in the text a selection reads (regex-debug.js); the rule draws the break. *@
+                                <span class="clause-rule">@("\n")</span>
+                            }
+                            <span class="clause-block" style=@GetClauseHeightStyle(displayContext, roots)>@for (int i = 0; i < roots.Count; i++)
                             {
                                 @GetGapBefore(line, roots, i)
                                 <SpanView CaptureTrace=@roots[i] />
-                            }
+                            }</span>
                         }
                     </pre>
 
@@ -112,19 +116,25 @@
     static double GetCoveragePercent(int capturedWordCount, int wordCount) =>
         wordCount == 0 ? 0 : 100.0 * capturedWordCount / wordCount;
 
-    string GetLineHeightStyle(CaptureTraceDisplayContext displayContext)
+    /// <summary>
+    /// A clause's line height, and the top-half crop of the extra space it adds, sized for that clause's own deepest
+    /// underline rather than the line's - a clause with little nesting needn't spread its wrapped rows as far apart as
+    /// a deeply nested one beside it. Both come off the shared depth-to-pixel scale in DocumentLineMetrics — the same
+    /// one SpanView's and EchoUnderline's underline offsets come from, so the reserved space always matches what's drawn in it.
+    /// </summary>
+    static string GetClauseHeightStyle(CaptureTraceDisplayContext displayContext, List<RootCaptureTrace> roots)
     {
-        // Line height, and the top-half crop of the extra space it adds, both off the shared
-        // depth-to-pixel scale in DocumentLineMetrics — the same one SpanView's and EchoUnderline's
-        // underline offsets come from, so the reserved space always matches what's drawn in it.
-        int lh = CorpusCapturesFormatting.GetLineHeightPx(displayContext.MaxEffectiveDepth);
-        double topCrop = CorpusCapturesFormatting.GetTopCropPx(displayContext.MaxEffectiveDepth);
+        var depth = displayContext.GetMaxEffectiveDepth(roots);
 
-        // --captured-text-color/--unmatched-text-color set once here so every SpanView in this
-        // line's <pre> can just read them — the two text colors are static C# tuning
-        // (DocumentTextPresentation), not per-capture like the rainbow underline color is.
-        return $"line-height: {lh}px; --top-crop: -{topCrop}px; " +
-               $"--captured-text-color: {DocumentTextPresentation.CapturedTextColorHex}; " +
-               $"--unmatched-text-color: {DocumentTextPresentation.UnmatchedTextColorHex};";
+        return $"line-height: {CorpusCapturesFormatting.GetLineHeightPx(depth)}px; --top-crop: -{CorpusCapturesFormatting.GetTopCropPx(depth)}px;";
     }
+
+    // The text and clause-rule colors set once here so every SpanView in this line's <pre> can
+    // just read them — they're static C# tuning (DocumentTextPresentation), not per-capture like
+    // the rainbow underline color is.
+    static string GetLineStyle() =>
+        $"--captured-text-color: {DocumentTextPresentation.CapturedTextColorHex}; " +
+        $"--unmatched-text-color: {DocumentTextPresentation.UnmatchedTextColorHex}; " +
+        $"--clause-rule-color: {DocumentTextPresentation.ClauseRuleColorHex}; " +
+        $"--clause-rule-margin: {DocumentTextPresentation.ClauseRuleMarginPx}px;";
 }
