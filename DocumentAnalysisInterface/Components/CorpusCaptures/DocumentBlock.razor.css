@@ -31,6 +31,9 @@
 
 .document-capture-block {
     width: 65%;
+    /* Never narrower than what's inside can shrink to - a property table's columns have a minimum width - so a
+       narrow window widens the block around its tables rather than letting them spill out of its right side. */
+    min-width: min-content;
     background-color: var(--light-grey);
     border: 1px solid var(--outline-grey);
     border-radius: 8px;

@@ -7,6 +7,9 @@
     background-color: var(--dark-grey);
     color: #E2E8F0;
     font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Takes the width of the document block it's in without adding to it: the block is never narrower than its
+       content can shrink to, and an unwrapped code line here would otherwise stretch it out that far. */
+    contain: inline-size;
 }
 
 .line-chat-header {
