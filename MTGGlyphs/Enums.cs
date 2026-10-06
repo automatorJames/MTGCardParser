@@ -812,6 +812,12 @@ public enum WhichPlayer
     AnyOpponent
 }
 
+public enum TapState
+{
+    Tapped,
+    Untapped
+}
+
 public enum PlayerIdentity
 {
     Player,

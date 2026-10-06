@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>One word narrowing what a target can be: "black", "artifact", or negated, "nonblack", "nonartifact".</summary>
+/// <summary>One word narrowing what a card can be: "black", "artifact", "tapped", or negated, "nonblack", "nonartifact".</summary>
 [Dependent]
 public class TargetQualifier : Glyph
 {
@@ -11,5 +11,5 @@ public class TargetQualifier : Glyph
     [RegexPattern("non")]
     public bool IsNegated { get; set; }
 
-    public OneOf<CardType?, ManaColor?> Quality { get; set; }
+    public OneOf<CardType?, ManaColor?, TapState?> Quality { get; set; }
 }

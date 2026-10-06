@@ -1,10 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>
-/// "destroy all creatures blocking or blocked by it". Tried ahead of <see cref="DestroyAllCardType"/>, which would
-/// otherwise claim its first three words and leave the rest unmatched.
-/// </summary>
-[TokenizationOrder(0)]
+/// <summary>"destroy all creatures blocking or blocked by it".</summary>
 public class DestroyAll : Glyph
 {
     public override Nib[] Nibs => ["destroy all", Prop(Destroyed)];
