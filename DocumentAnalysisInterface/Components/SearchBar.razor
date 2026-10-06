@@ -7,8 +7,7 @@
     <input @ref="_searchInput"
            type="text"
            class="search-input"
-           placeholder="Search... (Ctrl+F)"
-           value="@RuntimeSettings.SearchTerm" />
+           placeholder="Search... (Ctrl+F)" />
 
     @* This button is displayed only when there's a search term *@
     @if (!string.IsNullOrEmpty(RuntimeSettings.SearchTerm))
@@ -54,6 +53,10 @@
     [JSInvokable]
     public async Task ClearSearch()
     {
+        // The box may hold text that hasn't reached SearchTerm yet, so it's emptied either way.
+        if (_dotNetObjectReference is not null)
+            await JSRuntime.InvokeVoidAsync("clearSearchBar", _searchInput);
+
         if (!string.IsNullOrEmpty(RuntimeSettings.SearchTerm))
         {
             RuntimeSettings.SearchTerm = string.Empty;
