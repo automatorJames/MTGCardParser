@@ -40,12 +40,12 @@
     color: var(--lowlight-color);
 }
 
-/* A part naming a glyph with a definition: hovering previews it, clicking opens it. */
-.header-part.previewable {
+/* A header part or row name naming a glyph or vocabulary with a definition: hovering previews it, clicking opens it. */
+.previewable {
     cursor: pointer;
 }
 
-    .header-part.previewable:hover {
+    .previewable:hover {
         text-decoration: underline dotted;
         text-underline-offset: 3px;
     }

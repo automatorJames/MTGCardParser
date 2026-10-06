@@ -36,7 +36,7 @@ else
                     @if (Previews?.Has(segment.Glyph) == true)
                     {
                         <span class="header-part previewable @(isDim ? "header-part-dim" : "")" data-path=@segment.DataPath
-                              data-preview-kind="@DefinitionKind.Glyph" data-preview-name="@segment.Glyph.Name" @onclick="() => Previews.View(segment.Glyph)">@segment.Text</span>
+                              data-preview-kind="@Previews.KindOf(segment.Glyph)" data-preview-name="@segment.Glyph.Name" @onclick="() => Previews.View(segment.Glyph)">@segment.Text</span>
                     }
                     else
                     {
@@ -82,7 +82,15 @@ else
 
                                         <tr data-path="@leaf.HoverPath">
                                             <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle)>
-                                                @LeafDisplayName(leaf)@PositionLabel(leaf)
+                                                @if (Previews?.Has(leaf.ResolvedNodeType) == true)
+                                                {
+                                                    <span class="previewable" data-preview-kind="@Previews.KindOf(leaf.ResolvedNodeType)" data-preview-name="@leaf.ResolvedNodeType.Name"
+                                                          @onclick="() => Previews.View(leaf.ResolvedNodeType)">@LeafDisplayName(leaf)</span>@PositionLabel(leaf)
+                                                }
+                                                else
+                                                {
+                                                    @LeafDisplayName(leaf)@PositionLabel(leaf)
+                                                }
                                             </td>
                                             <td class="prop-capture-table-cell type-column" style=@(leafPaletteStyle)>
                                                 @TerminalTypeLabel(leaf)
@@ -124,7 +132,7 @@ else
     [CascadingParameter]
     public CaptureTraceDisplayContext DisplayContext { get; set; } = null!;
 
-    /// <summary>What lets a header part naming a glyph preview it on hover and open it on click - absent where the table isn't on the Corpus Captures page.</summary>
+    /// <summary>What lets a header part or row naming a glyph or vocabulary preview it on hover and open it on click - absent where the table isn't on the Corpus Captures page.</summary>
     [CascadingParameter]
     public GlyphPreviews Previews { get; set; }
 
