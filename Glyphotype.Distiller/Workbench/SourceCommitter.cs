@@ -112,22 +112,9 @@ public static class SourceCommitter
 
             var start = PreviousStamp(existing.Node)?.SpanStart ?? existing.Node.Span.Start;
 
-            // A glyph's summary is part of its definition, so the doc comment above it is written along with it - unless
-            // the comment holds more than a summary that's unchanged, which is then kept as it was.
-            if (change.After is GlyphDefinition glyph)
-            {
-                var documentation = DocumentationSummary.Read(existing.Node);
-
-                if (documentation.Comment is { } comment)
-                {
-                    start = Math.Min(start, comment.FullSpan.Start);
-
-                    if (documentation.HoldsMore && documentation.Summary == glyph.Summary)
-                        text = stamp + Environment.NewLine + Dedent(comment.ToFullString()) + GlyphSourceWriter.WriteGlyph(glyph with { Summary = null });
-                    else if (documentation.HoldsMore)
-                        notes.Add("The doc comment above it held more than a summary, and only the summary is written");
-                }
-            }
+            // A glyph's doc comment is its definition's documentation, so it's written again along with the rest.
+            if (change.After is GlyphDefinition && GlyphDocComment.Find(existing.Node) is { } comment)
+                start = Math.Min(start, comment.FullSpan.Start);
 
             var replacement = Reindent(text.TrimEnd(), existing.Indentation);
 
@@ -252,16 +239,13 @@ public static class SourceCommitter
             ? comment
             : null;
 
-    /// <summary><paramref name="text"/> with each line's indentation taken off, for <see cref="Reindent"/> to put back at the declaration's own.</summary>
-    static string Dedent(string text) =>
-        string.Join(Environment.NewLine, text.ReplaceLineEndings("\n").Split('\n').Select(x => x.TrimStart()));
-
     /// <summary>
-    /// <paramref name="definition"/> with each glyph's <see cref="GlyphDefinition.Summary"/> read from the doc comment
+    /// <paramref name="definition"/> with each glyph's <see cref="GlyphDefinition.Documentation"/> read from the doc comment
     /// above its declaration under <paramref name="sourceDirectory"/> - which compiled types, being without their
     /// comments, can't give it.
     /// </summary>
-    public static GrammarDefinition WithSummaries(GrammarDefinition definition, string sourceDirectory)
+    /// <exception cref="InvalidOperationException">A glyph's doc comment holds something a <see cref="GlyphDocumentation"/> can't.</exception>
+    public static GrammarDefinition WithDocumentation(GrammarDefinition definition, string sourceDirectory)
     {
         if (!Directory.Exists(sourceDirectory))
             return definition;
@@ -272,10 +256,22 @@ public static class SourceCommitter
         {
             Glyphs = definition.Glyphs
                 .Select(x => declarations.TryGetValue(x.Name, out var declaration) && declaration.Node is ClassDeclarationSyntax
-                    ? x with { Summary = DocumentationSummary.Read(declaration.Node).Summary }
+                    ? x with { Documentation = ReadDocumentation(declaration) }
                     : x)
                 .ToList(),
         };
+    }
+
+    static GlyphDocumentation ReadDocumentation(Declaration declaration)
+    {
+        try
+        {
+            return GlyphDocComment.Read(declaration.Node);
+        }
+        catch (FormatException e)
+        {
+            throw new InvalidOperationException($"{declaration.Node.Identifier.Text}, in {declaration.Path}: {e.Message}", e);
+        }
     }
 
     static string Reindent(string text, string indentation) =>

@@ -63,10 +63,12 @@ public class SourceReaderTests(CorpusFixture corpus)
     }
 
     [Fact]
-    public void A_glyphs_summary_is_its_doc_comment_read_and_written_alike()
+    public void A_glyphs_doc_comment_is_its_documentation_read_and_written_alike()
     {
         const string source = """
             /// <summary>The animal napping, as in <see cref="AnimalRests"/>.</summary>
+            /// <exampledoc>Pet diary &amp; notes</exampledoc>
+            /// <examplecapture>the cat naps</examplecapture>
             public class AnimalNaps : Glyph
             {
                 public override Nib[] Nibs => ["the", Prop(Animal), "naps"];
@@ -79,10 +81,16 @@ public class SourceReaderTests(CorpusFixture corpus)
             ///
             /// over two paragraphs.
             /// </summary>
-            /// <remarks>Not part of the summary.</remarks>
             public class AnimalDozes : Glyph
             {
                 public override Nib[] Nibs => ["the", Prop(Animal), "dozes"];
+
+                public Animal Animal { get; set; }
+            }
+
+            public class AnimalSnores : Glyph
+            {
+                public override Nib[] Nibs => ["the", Prop(Animal), "snores"];
 
                 public Animal Animal { get; set; }
             }
@@ -90,14 +98,32 @@ public class SourceReaderTests(CorpusFixture corpus)
 
         var read = GlyphSourceReader.Read(source, Definition);
 
-        Assert.Equal("""The animal napping, as in <see cref="AnimalRests"/>.""", read.Glyphs[0].Summary);
-        Assert.Equal("The animal dozing off,\n\nover two paragraphs.", read.Glyphs[1].Summary);
+        Assert.Equal(new GlyphDocumentation
+        {
+            Summary = """The animal napping, as in <see cref="AnimalRests"/>.""",
+            ExampleDocument = "Pet diary & notes",
+            ExampleCapture = "the cat naps",
+        }, read.Glyphs[0].Documentation);
+        Assert.Equal(new GlyphDocumentation { Summary = "The animal dozing off,\n\nover two paragraphs." }, read.Glyphs[1].Documentation);
+        Assert.Null(read.Glyphs[2].Documentation);
 
-        var written = GlyphSourceWriter.WriteGlyph(read.Glyphs[1]).ReplaceLineEndings("\n");
-        Assert.StartsWith("/// <summary>\n/// The animal dozing off,\n///\n/// over two paragraphs.\n/// </summary>\npublic class AnimalDozes", written);
+        Assert.StartsWith("/// <summary>\n/// The animal dozing off,\n///\n/// over two paragraphs.\n/// </summary>\npublic class AnimalDozes",
+            GlyphSourceWriter.WriteGlyph(read.Glyphs[1]).ReplaceLineEndings("\n"));
+        Assert.StartsWith("public class AnimalSnores", GlyphSourceWriter.WriteGlyph(read.Glyphs[2]));
 
-        Assert.Equal(read.Glyphs.Select(x => x.Summary), read.Glyphs.Select(x => GlyphSourceReader.Read(GlyphSourceWriter.WriteGlyph(x), Definition).Glyphs.Single().Summary));
-        Assert.DoesNotContain("summary", GlyphSourceWriter.WriteGlyph(read.Glyphs[0] with { Summary = null }));
+        Assert.Equal(read.Glyphs.Select(x => x.Documentation), read.Glyphs.Select(x => GlyphSourceReader.Read(GlyphSourceWriter.WriteGlyph(x), Definition).Glyphs.Single().Documentation));
+    }
+
+    [Theory]
+    [InlineData("/// <remarks>Not documentation a glyph holds.</remarks>", "<remarks>")]
+    [InlineData("/// Text outside any tag.", "text outside any tag")]
+    [InlineData("/// <summary>One.</summary>\n/// <summary>Two.</summary>", "more than one <summary>")]
+    [InlineData("/// <summary>Unclosed.", "isn't well-formed")]
+    public void A_doc_comment_holding_more_than_a_glyphs_documentation_is_refused(string comment, string expected)
+    {
+        var exception = Assert.Throws<GlyphSourceException>(() => GlyphSourceReader.Read(comment + "\npublic class AnimalNaps : Glyph;", Definition));
+
+        Assert.Contains(expected, Assert.Single(exception.Errors));
     }
 
     [Fact]

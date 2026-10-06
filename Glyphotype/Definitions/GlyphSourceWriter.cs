@@ -62,7 +62,7 @@ public static class GlyphSourceWriter
 
     public static string WriteGlyph(GlyphDefinition glyph)
     {
-        List<string> lines = [.. WriteSummary(glyph.Summary), .. GetClassAttributes(glyph)];
+        List<string> lines = [.. glyph.Documentation?.ToComment() ?? [], .. GetClassAttributes(glyph)];
 
         var baseList = string.Join(", ", glyph.Markers.Prepend(glyph.Kind switch
         {
@@ -102,19 +102,6 @@ public static class GlyphSourceWriter
         lines.Add("}");
 
         return Lines([.. lines]);
-    }
-
-    /// <summary>The <c>/// &lt;summary&gt;</c> comment for <paramref name="summary"/>: on one line when it has no line breaks, else as a block - none when it's empty.</summary>
-    public static IEnumerable<string> WriteSummary(string summary)
-    {
-        if (string.IsNullOrWhiteSpace(summary))
-            return [];
-
-        var lines = summary.ReplaceLineEndings("\n").Split('\n');
-
-        return lines.Length == 1
-            ? [$"/// <summary>{lines[0]}</summary>"]
-            : [.. lines.Select(x => x.Length == 0 ? "///" : "/// " + x).Prepend("/// <summary>").Append("/// </summary>")];
     }
 
     static IEnumerable<string> GetClassAttributes(GlyphDefinition glyph)

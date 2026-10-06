@@ -142,40 +142,42 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
 
         // Everything else is untouched, and what's there compiles back to exactly the working grammar.
         var compiled = SourceCompiler.Compile(Directory.GetFiles(sourceDirectory, "*.cs").Select(File.ReadAllText).ToArray());
-        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithSummaries(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
+        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithDocumentation(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
     }
 
     [Fact]
-    public void Summaries_come_from_the_sources_doc_comments_and_commit_back_to_them()
+    public void Documentation_comes_from_the_sources_doc_comments_and_commits_back_to_them()
     {
         var sourceDirectory = Directory.CreateDirectory(Path.Combine(_directory, "Grammar")).FullName;
 
         foreach (var file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Grammar"), "*.cs"))
             File.Copy(file, Path.Combine(sourceDirectory, Path.GetFileName(file)));
 
-        var basicGlyphsPath = Path.Combine(sourceDirectory, "BasicGlyphs.cs");
-        File.WriteAllText(basicGlyphsPath, File.ReadAllText(basicGlyphsPath).Replace(
-            "/// <summary><c>Opt()</c>: an optional literal.</summary>",
-            "/// <summary><c>Opt()</c>: an optional literal.</summary>\n/// <remarks>Kept.</remarks>"));
-
         var workbench = CreateWorkbench(sourceDirectory);
-        Assert.Equal("<c>Opt()</c>: an optional literal.", Glyph(workbench.CommittedDefinition, nameof(AnimalEats)).Summary);
+        Assert.Equal("<c>Opt()</c>: an optional literal.", Glyph(workbench.CommittedDefinition, nameof(AnimalEats)).Documentation.Summary);
         Assert.Empty(workbench.Changes);
 
+        // Changed documentation is written in place of the old; a glyph changed otherwise has its comment written as it was.
         workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalEats)) with { TokenizationOrder = 4 });
-
-        // A changed summary is written in place of the old one; a comment holding more than an unchanged summary is kept.
-        workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalRests)) with { Summary = "Resting,\nover two lines." });
+        workbench.SetGlyph(Glyph(workbench.WorkingDefinition, nameof(AnimalRests)) with
+        {
+            Documentation = new() { Summary = "Resting,\nover two lines.", ExampleDocument = "Pet diary", ExampleCapture = "the dog sleeps in the garden" },
+        });
         workbench.Commit(workbench.PlanCommit());
 
+        var basicGlyphsPath = Path.Combine(sourceDirectory, "BasicGlyphs.cs");
         var basicGlyphs = File.ReadAllText(basicGlyphsPath).ReplaceLineEndings("\n");
-        Assert.Contains("/// <summary>\n/// Resting,\n/// over two lines.\n/// </summary>\npublic class AnimalRests", basicGlyphs);
+        Assert.Contains("/// <summary>\n/// Resting,\n/// over two lines.\n/// </summary>\n/// <exampledoc>Pet diary</exampledoc>\n/// <examplecapture>the dog sleeps in the garden</examplecapture>\npublic class AnimalRests", basicGlyphs);
         Assert.DoesNotContain("plain enums", basicGlyphs);
-        Assert.Contains("/// <summary><c>Opt()</c>: an optional literal.</summary>\n/// <remarks>Kept.</remarks>\n[TokenizationOrder(4)]", basicGlyphs);
+        Assert.Contains("/// <summary><c>Opt()</c>: an optional literal.</summary>\n[TokenizationOrder(4)]", basicGlyphs);
 
-        // The sources now hold the working summaries, so a workbench opened on them starts with nothing to commit.
+        // The sources now hold the working documentation, so a workbench opened on them starts with nothing to commit.
         var compiled = SourceCompiler.Compile(Directory.GetFiles(sourceDirectory, "*.cs").Select(File.ReadAllText).ToArray());
-        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithSummaries(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
+        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithDocumentation(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
+
+        // A glyph's doc comment holds only its documentation: anything else in committed sources is an error, not dropped.
+        File.WriteAllText(basicGlyphsPath, basicGlyphs.Replace("/// <summary><c>Opt()</c>", "/// <remarks>Not a glyph's.</remarks>\n/// <summary><c>Opt()</c>"));
+        Assert.Contains(nameof(AnimalEats), Assert.Throws<InvalidOperationException>(() => CreateWorkbench(sourceDirectory)).Message);
     }
 
     static GlyphDefinition Glyph(GrammarDefinition grammar, string name) => grammar.Glyphs.Single(x => x.Name == name);

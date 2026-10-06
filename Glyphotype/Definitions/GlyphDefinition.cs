@@ -42,12 +42,8 @@ public sealed record GlyphDefinition
 {
     public string Name { get; init; }
 
-    /// <summary>
-    /// What the glyph is for, written as its class's <c>/// &lt;summary&gt;</c> - the comment's content, which may hold
-    /// doc-comment markup such as <c>&lt;see cref="..."/&gt;</c>. A summary with line breaks is written over that many
-    /// lines. Optional, and no part of how the glyph matches.
-    /// </summary>
-    public string Summary { get; init; }
+    /// <summary>What the glyph's doc comment says about it - see <see cref="GlyphDocumentation"/>. Null when it has none.</summary>
+    public GlyphDocumentation Documentation { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public GlyphKind Kind { get; init; }

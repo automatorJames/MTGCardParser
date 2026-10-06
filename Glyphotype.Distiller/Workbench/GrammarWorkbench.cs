@@ -88,7 +88,7 @@ public sealed class GrammarWorkbench : IDisposable
 
         _committedGrammar = committedGrammar;
         _committedDocuments = committedDocuments;
-        Initialize(SourceCommitter.WithSummaries(committedGrammar.ToDefinition(), options.SourceDirectory));
+        Initialize(SourceCommitter.WithDocumentation(committedGrammar.ToDefinition(), options.SourceDirectory));
     }
 
     /// <summary>

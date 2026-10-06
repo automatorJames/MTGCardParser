@@ -36,8 +36,10 @@ public class FamilyAdopts : Glyph
     public Animal Animal { get; set; }
 }
 
-/// <summary>A top-level <see cref="CompoundOf{T}"/> alias with the default comma joiner, e.g. a line reading "flour, sugar, eggs".</summary>
+/// <summary>
+/// A top-level <see cref="CompoundOf{T}"/> alias with the default comma joiner, e.g. a line reading "flour, sugar, eggs".
 /// Also carries a get-only convenience property, which a pure alias may declare since it's never regex-bound.
+/// </summary>
 public class ShoppingList : CompoundOf<Ingredient>
 {
     public bool NeedsEggs => Items.Contains(Ingredient.Eggs);
