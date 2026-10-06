@@ -109,8 +109,8 @@ public abstract class Glyph : CaptureUnit
         if (GetRefersToError(props) is string refersToError)
             return refersToError;
 
-        if (Type.IsDefined(typeof(AgreementAttribute)) && this is not BackReference)
-            return $"{Type.Name} declares [Agreement] but isn't a {nameof(BackReference)} - only a back-reference has a referent to agree with (a referent's own features go on [Introduces])";
+        if (GetReferentError(props) is string referentError)
+            return referentError;
 
         if (this is BackReference && !Type.IsDefined(typeof(DependentAttribute)))
             return $"{Type.Name} is a {nameof(BackReference)} but isn't [Dependent] - a back-reference only means anything inside the phrase around it, so it's never matched on its own";
@@ -132,12 +132,89 @@ public abstract class Glyph : CaptureUnit
             if (!typeof(BackReference).IsAssignableFrom(prop.PropertyType))
                 return $"{Type.Name}.{prop.Name} declares [RefersTo] but isn't a {nameof(BackReference)} - only a back-reference refers back to anything";
 
-            if (targetName == prop.Name || !NibBoundProps(Type).Any(x => x.Name == targetName))
+            if (targetName == prop.Name || NibBoundProps(Type).FirstOrDefault(x => x.Name == targetName) is not PropertyInfo target)
                 return $"{Type.Name}.{prop.Name} declares [RefersTo(\"{targetName}\")], which names no other property of {Type.Name} - it can only bind to a sibling capture";
+
+            var targetKinds = ReferentCapture.PossibleKinds(target.PropertyType).ToList();
+
+            if (targetKinds.Count == 0)
+                return $"{Type.Name}.{prop.Name} declares [RefersTo(nameof({targetName}))], but {targetName} captures a {FriendlyName(target.PropertyType)} - nothing a back-reference can refer to (a referent is an enum or a glyph)";
+
+            if (BackReference.KindOf(prop.PropertyType) is Type kind && !targetKinds.Any(x => x.IsAssignableTo(kind)))
+                return $"{Type.Name}.{prop.Name} is a {FriendlyName(prop.PropertyType)}, which refers back to a {kind.Name}, but it declares [RefersTo(nameof({targetName}))] and {targetName} captures a {FriendlyName(target.PropertyType)}, never a {kind.Name}";
         }
 
         return null;
     }
+
+    /// <summary>
+    /// What <see cref="ReferentAttribute"/>, <see cref="SingularAttribute"/>/<see cref="PluralAttribute"/> and
+    /// <see cref="BackReference{T}"/> need of this type and <paramref name="props"/> (its own nib-bound properties): a
+    /// referent captures something with a kind, a back-reference is neither a referent nor contains one, a number
+    /// belongs to a referent or a back-reference, and a back-reference's kind is something a referent can be.
+    /// </summary>
+    string GetReferentError(PropertyInfo[] props)
+    {
+        var isReferent = Type.IsDefined(typeof(ReferentAttribute));
+
+        if (this is BackReference)
+        {
+            if (isReferent)
+                return $"{Type.Name} is a {nameof(BackReference)} marked [Referent] - a back-reference already stands for what it refers to, so remove [Referent]";
+
+            if (props.FirstOrDefault(x => x.IsDefined(typeof(ReferentAttribute))) is PropertyInfo inner)
+                return $"{Type.Name}.{inner.Name} is a [Referent] inside a back-reference, which would make {Type.Name} its own antecedent - mark what {Type.Name} refers to instead";
+
+            if (BackReference.KindOf(Type) is Type kind && !IsReferentKind(kind))
+                return $"{Type.Name} is a {FriendlyName(Type.BaseType)}, but a back-reference's kind must be an enum or a glyph type - the type of what a [Referent] captures";
+        }
+
+        if (GetNumberError(Type, isReferent || this is BackReference) is string classNumberError)
+            return classNumberError;
+
+        foreach (var prop in props)
+        {
+            if (prop.IsDefined(typeof(ReferentAttribute)))
+            {
+                var kinds = ReferentCapture.PossibleKinds(prop.PropertyType).ToList();
+
+                if (kinds.Count == 0)
+                    return $"{Type.Name}.{prop.Name} is a [Referent], but it captures a {FriendlyName(prop.PropertyType)} - a referent must capture an enum or a glyph, whose type is the kind a BackReference<T> names";
+
+                if (kinds.Contains(typeof(This)))
+                    return $"{Type.Name}.{prop.Name} is a [Referent] that can capture {{this}}, which is always a referent already - remove [Referent], or {{this}} would be counted twice";
+            }
+
+            if (GetNumberError(prop, prop.IsDefined(typeof(ReferentAttribute))) is string numberError)
+                return numberError;
+        }
+
+        return null;
+
+        string GetNumberError(MemberInfo member, bool takesNumber)
+        {
+            var name = member is Type ? Type.Name : $"{Type.Name}.{member.Name}";
+            var numbers = member.GetCustomAttributes<GrammaticalNumberAttribute>(inherit: false).ToList();
+
+            if (numbers.Count > 1)
+                return $"{name} is both [Singular] and [Plural] - it can only be one";
+
+            if (numbers.Count == 1 && !takesNumber)
+                return $"{name} is [{numbers[0].Number}], which does nothing here - [Singular]/[Plural] only apply to a [Referent] or a {nameof(BackReference)}";
+
+            return null;
+        }
+
+        static bool IsReferentKind(Type kind) =>
+            kind.IsEnum || ReferentCapture.PossibleKinds(kind).SequenceEqual([kind]);
+    }
+
+    /// <summary><paramref name="type"/>'s name as written in C#, generic arguments included (e.g. "OneOf&lt;Animal, Person&gt;").</summary>
+    static string FriendlyName(Type type) =>
+        Nullable.GetUnderlyingType(type) is { } underlying ? FriendlyName(underlying) + "?"
+        : type.IsGenericType ? $"{type.Name[..type.Name.IndexOf('`')]}<{string.Join(", ", type.GetGenericArguments().Select(FriendlyName))}>"
+        : type == typeof(bool) ? "bool" : type == typeof(int) ? "int" : type == typeof(string) ? "string"
+        : type.Name;
 
     /// <summary>
     /// <see cref="JoinedByAttribute"/> only means anything to a <see cref="CompoundOf{T}"/> (the only thing whose

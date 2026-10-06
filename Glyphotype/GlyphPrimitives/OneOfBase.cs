@@ -1,4 +1,4 @@
-namespace Glyphotype.GlyphPrimitives;
+﻿namespace Glyphotype.GlyphPrimitives;
 
 public abstract class OneOfBase : Glyph
 {
@@ -20,6 +20,10 @@ public abstract class OneOfBase : Glyph
         var winningProp = GetAlternativeProps(GetType()).FirstOrDefault(p => p.GetValue(this) != null);
         return winningProp == null ? null : Nullable.GetUnderlyingType(winningProp.PropertyType) ?? winningProp.PropertyType;
     }
+
+    /// <summary>The value of whichever alternative resolved on this instance (see <see cref="GetResolvedType"/>), or null.</summary>
+    public object GetResolvedValue() =>
+        GetAlternativeProps(GetType()).Select(p => p.GetValue(this)).FirstOrDefault(x => x is not null);
 
     /// <summary>
     /// <paramref name="oneOfType"/>'s alternative slots: every property declared between it and

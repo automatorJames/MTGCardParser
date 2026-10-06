@@ -122,12 +122,13 @@ public static class GlyphSourceReader
                 return null;
             }
 
-            var (kind, aliasOf) = ReadBase(name, baseTypes[0]);
+            var (kind, aliasOf, referenceKind) = ReadBase(name, baseTypes[0]);
             var glyph = new GlyphDefinition
             {
                 Name = name,
                 Kind = kind,
                 AliasOf = aliasOf,
+                ReferenceKind = referenceKind,
                 Markers = baseTypes.Skip(1).Select(x => x.ToString()).Order(StringComparer.Ordinal).ToList(),
             };
 
@@ -169,21 +170,23 @@ public static class GlyphSourceReader
             return errors.Count == errorCount ? glyph : null;
         }
 
-        (GlyphKind Kind, TypeReference AliasOf) ReadBase(string name, TypeSyntax baseType)
+        (GlyphKind Kind, TypeReference AliasOf, TypeReference ReferenceKind) ReadBase(string name, TypeSyntax baseType)
         {
             switch (baseType)
             {
                 case IdentifierNameSyntax { Identifier.Text: nameof(Glyph) }:
-                    return (GlyphKind.Glyph, null);
+                    return (GlyphKind.Glyph, null, null);
                 case IdentifierNameSyntax { Identifier.Text: nameof(GlyphOneOf) }:
-                    return (GlyphKind.GlyphOneOf, null);
+                    return (GlyphKind.GlyphOneOf, null, null);
                 case IdentifierNameSyntax { Identifier.Text: nameof(BackReference) }:
-                    return (GlyphKind.BackReference, null);
+                    return (GlyphKind.BackReference, null, null);
+                case GenericNameSyntax { Identifier.Text: nameof(BackReference), TypeArgumentList.Arguments: [var kind] }:
+                    return (GlyphKind.BackReference, null, ReadTypeReference(kind));
                 case GenericNameSyntax generic when _genericPrimitives.Contains(generic.Identifier.Text):
-                    return (GlyphKind.Alias, ReadTypeReference(generic));
+                    return (GlyphKind.Alias, ReadTypeReference(generic), null);
                 default:
-                    Error(baseType, $"{name} derives from {baseType}, but a glyph's base must be Glyph, GlyphOneOf, BackReference or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf) - markers come after it");
-                    return (GlyphKind.Glyph, null);
+                    Error(baseType, $"{name} derives from {baseType}, but a glyph's base must be Glyph, GlyphOneOf, BackReference, BackReference<T> or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf) - markers come after it");
+                    return (GlyphKind.Glyph, null, null);
             }
         }
 
@@ -200,9 +203,11 @@ public static class GlyphSourceReader
                     "TokenizationOrder" when arguments.Count == 1 => glyph with { TokenizationOrder = (int)ReadInteger(arguments[0]) },
                     "RegexPattern" => glyph with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => glyph with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
-                    "Introduces" when arguments.Count <= 2 => glyph with { Introduces = ReadAgreement(arguments) },
-                    "Agreement" when arguments.Count <= 2 => glyph with { Agreement = ReadAgreement(arguments) },
-                    _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, AllowPartialClauseMatch, TokenizationOrder, RegexPattern, JoinedBy, Introduces, Agreement)"),
+                    "Referent" when arguments.Count == 0 => glyph with { IsReferent = true },
+                    "Singular" or "Plural" when glyph.Number != GrammaticalNumber.Unspecified => Unsupported(glyph, attribute, $"{glyph.Name} is both [Singular] and [Plural] - it can only be one"),
+                    "Singular" when arguments.Count == 0 => glyph with { Number = GrammaticalNumber.Singular },
+                    "Plural" when arguments.Count == 0 => glyph with { Number = GrammaticalNumber.Plural },
+                    _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, AllowPartialClauseMatch, TokenizationOrder, RegexPattern, JoinedBy, Referent, Singular, Plural)"),
                 };
             }
 
@@ -234,9 +239,12 @@ public static class GlyphSourceReader
                     "RegexPattern" => definition with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => definition with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
                     "TypeFilter" when arguments is [TypeOfExpressionSyntax typeOf] => definition with { TypeFilter = typeOf.Type.ToString() },
-                    "Introduces" when arguments.Count <= 2 => definition with { Introduces = ReadAgreement(arguments) },
+                    "Referent" when arguments.Count == 0 => definition with { IsReferent = true },
+                    "Singular" or "Plural" when definition.Number != GrammaticalNumber.Unspecified => Unsupported(definition, attribute, $"{glyphName}.{name} is both [Singular] and [Plural] - it can only be one"),
+                    "Singular" when arguments.Count == 0 => definition with { Number = GrammaticalNumber.Singular },
+                    "Plural" when arguments.Count == 0 => definition with { Number = GrammaticalNumber.Plural },
                     "RefersTo" when arguments.Count == 1 => definition with { RefersTo = ReadPropertyName(arguments[0]) },
-                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Introduces, RefersTo(nameof(Property)))"),
+                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Referent, Singular, Plural, RefersTo(nameof(Property)))"),
                 };
             }
 
@@ -445,14 +453,6 @@ public static class GlyphSourceReader
 
             return default;
         }
-
-        /// <summary>An <c>[Introduces]</c> or <c>[Agreement]</c>'s arguments: an optional <see cref="GrammaticalNumber"/>, then an optional kind.</summary>
-        AgreementDefinition ReadAgreement(List<ExpressionSyntax> arguments) =>
-            new()
-            {
-                Number = arguments.Count > 0 ? ReadEnumMember<GrammaticalNumber>(arguments[0]) : GrammaticalNumber.Unspecified,
-                Kind = arguments.Count > 1 ? ReadString(arguments[1]) : null,
-            };
 
         /// <summary>A property named by <c>nameof(Property)</c>, or by its name as a string literal.</summary>
         string ReadPropertyName(ExpressionSyntax expression) =>

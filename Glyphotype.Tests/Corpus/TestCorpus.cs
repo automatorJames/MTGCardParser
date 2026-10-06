@@ -1,4 +1,4 @@
-namespace Glyphotype.Tests.Corpus;
+﻿namespace Glyphotype.Tests.Corpus;
 
 /// <summary>
 /// The dummy corpus and what each document must tokenize into, written in <see cref="GlyphSignature"/>
@@ -180,7 +180,8 @@ public static class TestCorpus
             Doc("it sleeps all day.", "Rests{Subject={It}} ."),
             Doc("that dog sleeps all day.", "«that dog sleeps all day» ."),
             Named("Rex", "the baker visits Rex. it sleeps all day.", "Visits{Person=Baker} . Rests{Subject={It}} ."),
-            Named("Rex", "the baker feeds Rex. they sleep all day.", "Feeds{Person=Baker, Fed={This}} . Rests{Subject={They}} .")),
+            Named("Rex", "the baker feeds Rex. they sleep all day.", "Feeds{Person=Baker, Fed={This}} . Rests{Subject={They}} ."),
+            Named("Rex", "the baker visits Rex. that person waves.", "Visits{Person=Baker} . Waves{Waver=ThatPerson} .")),
 
         .. Section("[TokenizationOrder]",
             Doc("the baker opens the shop.", "BakerOpensTheShop ."),

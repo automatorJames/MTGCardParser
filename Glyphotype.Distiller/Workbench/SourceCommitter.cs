@@ -1,4 +1,4 @@
-using Glyphotype.Attributes.Quantifiers;
+﻿using Glyphotype.Attributes.Quantifiers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -42,8 +42,9 @@ public static class SourceCommitter
         nameof(AllowUnmatchedAttribute),
         nameof(TypeFilterAttribute),
         nameof(ColorAttribute),
-        nameof(IntroducesAttribute),
-        nameof(AgreementAttribute),
+        nameof(ReferentAttribute),
+        nameof(SingularAttribute),
+        nameof(PluralAttribute),
         nameof(RefersToAttribute),
     ];
 

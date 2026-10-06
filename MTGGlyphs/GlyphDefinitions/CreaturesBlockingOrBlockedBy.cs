@@ -5,7 +5,7 @@
 /// is a referent itself, for a later "they".
 /// </summary>
 [Dependent]
-[Introduces(GrammaticalNumber.Plural, "creature")]
+[Referent, Plural]
 public class CreaturesBlockingOrBlockedBy : Glyph
 {
     public override Nib[] Nibs => ["creatures blocking or blocked by", Prop(Combatant)];

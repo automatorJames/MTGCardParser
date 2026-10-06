@@ -228,6 +228,10 @@ public sealed class GlyphGrammar
                 errors.Add($"{type.Name}: {periodError}");
         }
 
+        // Across the whole grammar, since a back-reference's referents are declared on other types.
+        if (errors.Count == 0)
+            errors.AddRange(BackReference.GetUnreferableErrors(typeList));
+
         return errors;
     }
 

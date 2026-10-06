@@ -66,6 +66,36 @@ public class BackReferenceTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void A_back_reference_of_one_kind_skips_the_documents_reference_to_itself()
+    {
+        var resolution = Assert.Single(Assert.Single(ProcessedLine.GetAll(new TestDocument("rex", "the baker visits rex. that person waves.", []), corpus.Grammar)).BackReferences);
+
+        Assert.Equal("baker", resolution.Antecedent.Text);
+        Assert.Equal(typeof(Person), resolution.Antecedent.Kind);
+    }
+
+    [Fact]
+    public void Definitions_saved_with_Introduces_and_Agreement_still_load()
+    {
+        var grammar = GrammarDefinition.FromJson("""
+            {
+              "Glyphs": [
+                { "Name": "Phrase", "Kind": "Glyph", "Introduces": { "Number": "Plural", "Kind": "fruit" },
+                  "Properties": [ { "Name": "Fruit", "Type": { "Kind": "Vocabulary", "Name": "Fruit" }, "Introduces": { "Number": "Singular" } } ] },
+                { "Name": "ThoseFruit", "Kind": "BackReference", "Agreement": { "Number": "Plural", "Kind": "fruit" } }
+              ]
+            }
+            """);
+
+        Assert.True(grammar.Glyphs[0].IsReferent);
+        Assert.Equal(GrammaticalNumber.Plural, grammar.Glyphs[0].Number);
+        Assert.True(grammar.Glyphs[0].Properties[0].IsReferent);
+        Assert.Equal(GrammaticalNumber.Singular, grammar.Glyphs[0].Properties[0].Number);
+        Assert.Equal(GrammaticalNumber.Plural, grammar.Glyphs[1].Number);
+        Assert.Null(grammar.Glyphs[1].ReferenceKind);
+    }
+
+    [Fact]
     public void A_back_reference_with_nothing_to_refer_to_is_left_unresolved_and_counted()
     {
         var document = new ProcessedDocument(new TestDocument(TestDocument.Unnamed, "it sleeps all day.\nthe dog befriends the baker. it sleeps all day.", []), corpus.Grammar);
@@ -85,16 +115,18 @@ public class BackReferenceTests(CorpusFixture corpus)
     [Fact]
     public void Back_references_survive_a_round_trip_through_source()
     {
-        // Agreement, Introduces and RefersTo are all declarative, so they're grammar a definition carries: written out
-        // as C# source, read back and compiled, the grammar resolves exactly as the hand-written one does.
+        // Referent, Singular/Plural, BackReference<T> and RefersTo are all declarative, so they're grammar a definition
+        // carries: written out as C# source, read back and compiled, the grammar resolves exactly as the hand-written one does.
         var source = GlyphSourceWriter.Write(corpus.Grammar.ToDefinition(), "RoundTrip");
         var read = GlyphSourceReader.Read(source);
         var compiled = GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
 
-        Assert.Contains("[Agreement(GrammaticalNumber.Singular, \"animal\")]", source);
+        Assert.Contains("public class ThatAnimal : BackReference<Animal>", source);
+        Assert.Contains("[Referent]", source);
+        Assert.Contains("[Plural]", source);
         Assert.Contains("[RefersTo(nameof(Animal))]", source);
 
-        const string text = "the dog follows the baker until it rests. the dog meets the friends of it. they sleep all day. that animal sleeps all day.";
+        const string text = "the dog follows the baker until it rests. the dog meets the friends of it. they sleep all day. that animal sleeps all day. the baker visits {this}. that person waves.";
         string Resolutions(GlyphGrammar grammar) =>
             string.Join(", ", Assert.Single(ProcessedLine.GetAll(new TestDocument(TestDocument.Unnamed, text, []), grammar)).BackReferences.Select(x => $"{x.Trace.CaptureValue} → {x.Antecedent?.Text}"));
 
@@ -103,9 +135,51 @@ public class BackReferenceTests(CorpusFixture corpus)
 
     [Theory]
     [InlineData("""
-        [Agreement(GrammaticalNumber.Plural)]
+        [Plural]
         public class NotABackReference : Glyph { public override Nib[] Nibs => ["they"]; }
-        """, "only a back-reference has a referent to agree with")]
+        """, "[Plural], which does nothing here")]
+    [InlineData("""
+        public class Barks : Glyph { public override Nib[] Nibs => ["the dog barks", Prop(Loudly)]; [Referent, Singular, Plural] [RegexPattern("loudly")] public bool Loudly { get; set; } }
+        """, "is both [Singular] and [Plural]")]
+    [InlineData("""
+        public class Barks : Glyph { public override Nib[] Nibs => ["the dog barks", Prop(Loudly)]; [Referent] [RegexPattern("loudly")] public bool Loudly { get; set; } }
+        """, "a referent must capture an enum or a glyph")]
+    [InlineData("""
+        public enum Pet { Dog, Cat }
+        [Dependent] public class ThatPet : BackReference<Pet> { public override Nib[] Nibs => ["that pet"]; }
+        public class Naps : Glyph { public override Nib[] Nibs => [Prop(Napper), "naps"]; public ThatPet Napper { get; set; } }
+        """, "nothing in the grammar is a [Referent] of kind Pet")]
+    [InlineData("""
+        public enum Pet { Dog, Cat }
+        [Dependent] public class ThatPet : BackReference<Pet> { public override Nib[] Nibs => ["that pet"]; }
+        public class Naps : Glyph { public override Nib[] Nibs => [Prop(Napper), "naps"]; public ThatPet Napper { get; set; } }
+        public class Adopts : Glyph { public override Nib[] Nibs => ["we adopt a", Prop(Pet)]; [Referent] public Pet Pet { get; set; } }
+        """, null)]
+    [InlineData("""
+        public enum Pet { Dog, Cat }
+        [Dependent] public class ThatPet : BackReference<Pet> { public override Nib[] Nibs => ["that", Prop(Pet)]; [Referent] public Pet Pet { get; set; } }
+        public class Naps : Glyph { public override Nib[] Nibs => [Prop(Napper), "naps"]; public ThatPet Napper { get; set; } }
+        """, "would make ThatPet its own antecedent")]
+    [InlineData("""
+        [Dependent] [Referent] public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
+        public class Naps : Glyph { public override Nib[] Nibs => [Prop(Napper), "naps"]; public Pronoun Napper { get; set; } }
+        """, "already stands for what it refers to")]
+    [InlineData("""
+        [Dependent] public class ThatNumber : BackReference<int> { public override Nib[] Nibs => ["that number"]; }
+        public class Naps : Glyph { public override Nib[] Nibs => [Prop(Napper), "naps"]; public ThatNumber Napper { get; set; } }
+        """, "a back-reference's kind must be an enum or a glyph type")]
+    [InlineData("""
+        public enum Pet { Dog, Cat }
+        public enum Owner { Alice, Bob }
+        [Dependent] public class ThatPet : BackReference<Pet> { public override Nib[] Nibs => ["that pet"]; }
+        public class Walks : Glyph
+        {
+            public override Nib[] Nibs => [Prop(Owner), "walks", Prop(Walked)];
+            public Owner Owner { get; set; }
+            [RefersTo(nameof(Owner))]
+            public ThatPet Walked { get; set; }
+        }
+        """, "never a Pet")]
     [InlineData("""
         [Dependent] public class Pronoun : BackReference { public override Nib[] Nibs => ["it"]; }
         public class Chases : Glyph
@@ -132,10 +206,14 @@ public class BackReferenceTests(CorpusFixture corpus)
     [InlineData("""
         public class Chases : Glyph { public override Nib[] Nibs => ["the dog chases", Prop(Chased)]; public Them Chased { get; set; } }
         """, null)]
-    public void Agreement_belongs_to_dependent_back_references_and_RefersTo_to_a_sibling(string source, string expectedError)
+    public void Referents_and_back_references_are_validated(string source, string expectedError)
     {
-        var read = GlyphSourceReader.Read(source);
-        GlyphGrammar Build() => GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
+        // A mistake is caught where it can first be seen: reading the source, or else building the grammar.
+        void Build()
+        {
+            var read = GlyphSourceReader.Read(source);
+            GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
+        }
 
         if (expectedError is null)
             Build();

@@ -1,4 +1,4 @@
-namespace Glyphotype.Definitions;
+﻿namespace Glyphotype.Definitions;
 
 /// <summary>What a <see cref="GlyphDefinition"/> derives from, which decides how the engine handles it.</summary>
 public enum GlyphKind
@@ -12,7 +12,7 @@ public enum GlyphKind
     /// <summary>A pure alias of a generic primitive (see <see cref="GlyphDefinition.AliasOf"/>): a name and class-level attributes, nothing more.</summary>
     Alias,
 
-    /// <summary>Derives from <see cref="GlyphPrimitives.BackReference"/>: matched like a <see cref="Glyph"/>, then resolved to what it refers back to (see <see cref="GlyphDefinition.Agreement"/>).</summary>
+    /// <summary>Derives from <see cref="GlyphPrimitives.BackReference"/> (or <see cref="BackReference{T}"/>): matched like a <see cref="Glyph"/>, then resolved to what it refers back to (see <see cref="GlyphDefinition.ReferenceKind"/>).</summary>
     BackReference,
 }
 
@@ -74,16 +74,20 @@ public sealed record GlyphDefinition
     /// <summary>Class-level <see cref="JoinedByAttribute"/>, for a <see cref="CompoundOf{T}"/> alias.</summary>
     public Joiner? JoinedBy { get; init; }
 
-    /// <summary>Class-level <see cref="IntroducesAttribute"/>: every match is a referent, with these features. Null when it isn't one.</summary>
-    public AgreementDefinition Introduces { get; init; }
+    /// <summary>Class-level <see cref="ReferentAttribute"/>: every match is a referent, of this glyph's kind.</summary>
+    public bool IsReferent { get; init; }
 
-    /// <summary><see cref="AgreementAttribute"/>, for an <see cref="GlyphKind.BackReference"/>: what its referent must be. Null for none.</summary>
-    public AgreementDefinition Agreement { get; init; }
+    /// <summary>Class-level <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/>, on a referent or a back-reference.</summary>
+    public GrammaticalNumber Number { get; init; }
+
+    /// <summary>For a <see cref="GlyphKind.BackReference"/>, the <c>T</c> of the <see cref="BackReference{T}"/> it derives from: the kind of referent it refers to. Null for a plain <see cref="BackReference"/>, which refers to any.</summary>
+    public TypeReference ReferenceKind { get; init; }
 
     /// <summary>The names of the glyphs this one refers to directly - through its properties or the primitive it aliases.</summary>
     public IEnumerable<string> GetReferencedGlyphNames() =>
         Properties.Select(x => x.Type)
             .Append(AliasOf)
+            .Append(ReferenceKind)
             .Where(x => x is not null)
             .SelectMany(x => x.SelfAndDescendants())
             .Where(x => x.Kind == TypeReferenceKind.Glyph)

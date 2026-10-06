@@ -1,4 +1,4 @@
-namespace Glyphotype.BackReferences;
+﻿namespace Glyphotype.BackReferences;
 
 /// <summary>How a <see cref="BackReference"/> got - or didn't get - its <see cref="BackReference.Antecedent"/>.</summary>
 public enum BackReferenceResolutionKind
@@ -17,7 +17,7 @@ public enum BackReferenceResolutionKind
 public sealed record BackReferenceResolution(BackReference BackReference, CaptureTrace Trace, BackReferenceResolutionKind Kind)
 {
     /// <summary>What <see cref="BackReference"/> refers to, or null when <see cref="Kind"/> is <see cref="BackReferenceResolutionKind.Unresolved"/>.</summary>
-    public Referent Antecedent => BackReference.Antecedent;
+    public ReferentCapture Antecedent => BackReference.Antecedent;
 
     public bool IsResolved => Kind != BackReferenceResolutionKind.Unresolved;
 }

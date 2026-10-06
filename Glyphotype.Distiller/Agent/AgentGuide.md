@@ -194,18 +194,22 @@ at the end of a top-level glyph is simply dropped. It's an error on a `[Dependen
 glyph, or on one another glyph uses as a property, because there the period would fall inside a larger match. No
 pattern, `Alt` or `Opt` may contain a period.
 
-**Back-references** ("it", "they", "that creature") are glyphs deriving from `BackReference`. They match like any glyph, and
-after the line is tokenized each one is resolved to the most recent earlier referent in its line that agrees with
-it. If nothing agrees, it stays unresolved and is counted.
+**Back-references** ("it", "they", "that creature") are glyphs deriving from `BackReference`. They match like any glyph.
+After the line is tokenized, each one resolves to the most recent earlier **referent** in its line that it agrees with.
+If nothing agrees, it stays unresolved and is counted.
+- `[Referent]` on a property makes its captured value a referent. On a glyph class, every match of the class is one.
+  Mark only what something later refers back to.
+- A referent's kind is its type, never written: an enum property's kind is the enum (`CardType`), a glyph's is the
+  glyph, and a one-of's is whichever alternative matched. `{this}` is always a referent, of kind `This`.
+- `BackReference<T>` refers only to referents of kind `T`: `class ThatCard : BackReference<CardType>` matching
+  "that creature" skips a more recent `{this}` or player. Plain `BackReference` refers to any kind.
 - The standard pronouns are built in, so use them as property types without declaring them: `It`, `Its`, `Itself`
   (singular) and `They`, `Them`, `Their`, `Themselves`, `These`, `Those` (plural). Don't declare a glyph with one of
-  these names. Declare your own back-reference only for a phrase that names its referent's kind ("that creature").
+  these names. Where a pronoun can only mean one kind of thing in its place ("they" in "creatures they control" is a
+  player), declare a `BackReference<T>` of that kind matching it, and use it in that place.
+- `[Singular]` or `[Plural]` on a referent or a back-reference sets its number, so "it" skips plural referents and
+  "they" singular ones. Leave it off unless that's needed.
 - Every back-reference must be `[Dependent]`.
-- `[Agreement(GrammaticalNumber.Plural)]` or `[Agreement(GrammaticalNumber.Singular, "creature")]` on the back-reference
-  sets what its referent must be. Write a pronoun whose number varies as one back-reference per number, combined with
-  `OneOf<It, They>`.
-- `[Introduces(GrammaticalNumber.Plural, "creature")]` on a property makes its captured value a referent. On a glyph
-  class, every match of the class is a referent. The arguments are optional.
 - `[RefersTo(nameof(Target))]` on a back-reference property binds it to a sibling property directly, skipping the search.
 
 ## Habits that work

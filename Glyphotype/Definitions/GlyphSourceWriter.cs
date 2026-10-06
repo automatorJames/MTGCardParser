@@ -66,6 +66,7 @@ public static class GlyphSourceWriter
         {
             GlyphKind.Glyph => nameof(Glyph),
             GlyphKind.GlyphOneOf => nameof(GlyphOneOf),
+            GlyphKind.BackReference when glyph.ReferenceKind is { } referenceKind => $"{nameof(BackReference)}<{referenceKind}>",
             GlyphKind.BackReference => nameof(BackReference),
             _ => glyph.AliasOf.ToString(),
         }));
@@ -118,27 +119,11 @@ public static class GlyphSourceWriter
         if (glyph.JoinedBy is Joiner joinedBy)
             yield return $"[JoinedBy(Joiner.{joinedBy})]";
 
-        if (glyph.Introduces is { } introduces)
-            yield return AgreementAttribute("Introduces", introduces);
+        if (glyph.IsReferent)
+            yield return "[Referent]";
 
-        if (glyph.Agreement is { } agreement)
-            yield return AgreementAttribute("Agreement", agreement);
-    }
-
-    /// <summary>
-    /// <c>[Introduces]</c> or <c>[Agreement]</c> with only the arguments it needs: <c>[Introduces]</c>,
-    /// <c>[Introduces(GrammaticalNumber.Plural)]</c>, <c>[Agreement(GrammaticalNumber.Singular, "creature")]</c>.
-    /// </summary>
-    static string AgreementAttribute(string name, AgreementDefinition features)
-    {
-        var number = $"{nameof(GrammaticalNumber)}.{features.Number}";
-
-        return features switch
-        {
-            { Kind: not null } => $"[{name}({number}, {Literal(features.Kind)})]",
-            { Number: not GrammaticalNumber.Unspecified } => $"[{name}({number})]",
-            _ => $"[{name}]",
-        };
+        if (glyph.Number != GrammaticalNumber.Unspecified)
+            yield return $"[{glyph.Number}]";
     }
 
     static IEnumerable<string> WriteProperty(PropertyDefinition property)
@@ -158,8 +143,11 @@ public static class GlyphSourceWriter
         if (property.TypeFilter is not null)
             yield return _indent + $"[TypeFilter(typeof({property.TypeFilter}))]";
 
-        if (property.Introduces is { } introduces)
-            yield return _indent + AgreementAttribute("Introduces", introduces);
+        if (property.IsReferent)
+            yield return _indent + "[Referent]";
+
+        if (property.Number != GrammaticalNumber.Unspecified)
+            yield return _indent + $"[{property.Number}]";
 
         if (property.RefersTo is not null)
             yield return _indent + $"[RefersTo(nameof({property.RefersTo}))]";

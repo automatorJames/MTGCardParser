@@ -1,4 +1,4 @@
-namespace Glyphotype.Distiller.Workbench;
+﻿namespace Glyphotype.Distiller.Workbench;
 
 /// <summary>Non-destructive edits to a <see cref="GrammarDefinition"/>: each returns a new definition.</summary>
 public static class GrammarDefinitionEdits
@@ -44,6 +44,7 @@ public static class GrammarDefinitionEdits
     public static IEnumerable<string> GetReferencedNames(GlyphDefinition glyph) =>
         glyph.Properties.Select(x => x.Type)
             .Append(glyph.AliasOf)
+            .Append(glyph.ReferenceKind)
             .Where(x => x is not null)
             .SelectMany(x => x.SelfAndDescendants())
             .Where(x => x.Kind is TypeReferenceKind.Glyph or TypeReferenceKind.Vocabulary)

@@ -12,7 +12,7 @@
 /// <see cref="BackReference.AgreesWith"/>) - or, if its property declares <see cref="RefersToAttribute"/>, to that
 /// property's capture outright. With nothing agreeing, it's left unresolved: an unresolved back-reference is a gap the
 /// grammar can see and close, while a guessed one would hide it.</item>
-/// <item>A capture declared <see cref="IntroducesAttribute"/> then becomes a referent for what follows.</item>
+/// <item>A capture marked <see cref="ReferentAttribute"/> then becomes a referent for what follows.</item>
 /// <item>Every <see cref="IDocument.ThisToken"/> - the document's reference to itself - is a singular referent where it
 /// sits, whether a <see cref="This"/> glyph captured it or it's a literal in the text around a capture's children.</item>
 /// </list>
@@ -29,7 +29,7 @@ public static class BackReferenceResolver
     /// <summary>Resolves the back-references in <paramref name="units"/> - one line's tokens, in order - and returns each, in text order.</summary>
     public static List<BackReferenceResolution> Resolve(IEnumerable<CaptureUnit> units)
     {
-        List<Referent> referents = [];
+        List<ReferentCapture> referents = [];
         List<BackReferenceResolution> resolutions = [];
 
         foreach (var glyph in units.OfType<Glyph>())
@@ -38,7 +38,7 @@ public static class BackReferenceResolver
         return resolutions;
     }
 
-    static void Visit(CaptureTrace trace, CaptureTrace parent, List<Referent> referents, List<BackReferenceResolution> resolutions)
+    static void Visit(CaptureTrace trace, CaptureTrace parent, List<ReferentCapture> referents, List<BackReferenceResolution> resolutions)
     {
         var position = trace.Index;
 
@@ -54,17 +54,17 @@ public static class BackReferenceResolver
         if (trace.ClrValue is BackReference backReference)
             resolutions.Add(Resolve(backReference, trace, parent, referents));
 
-        if (trace.ClrValue is not null && GetIntroduction(trace) is { } introduces)
-            referents.Add(Referent.Of(trace.ClrValue, trace, introduces));
+        if (trace.ClrValue is not null && GetReferentNumber(trace) is { } number)
+            referents.Add(ReferentCapture.Of(trace.ClrValue, trace, number));
     }
 
-    static BackReferenceResolution Resolve(BackReference backReference, CaptureTrace trace, CaptureTrace parent, List<Referent> referents)
+    static BackReferenceResolution Resolve(BackReference backReference, CaptureTrace trace, CaptureTrace parent, List<ReferentCapture> referents)
     {
         if (DeclaringProperty(trace)?.GetCustomAttribute<RefersToAttribute>() is { } refersTo)
         {
             var target = parent is null ? null : OrderedChildren(parent).FirstOrDefault(x => DeclaringProperty(x)?.Name == refersTo.PropertyName);
 
-            backReference.Antecedent = target?.ClrValue is { } value ? Referent.Of(value, target, GetIntroduction(target)) : null;
+            backReference.Antecedent = target?.ClrValue is { } value ? ReferentCapture.Of(value, target, GetReferentNumber(target) ?? GrammaticalNumber.Unspecified) : null;
 
             return new(backReference, trace, backReference.Antecedent is null ? BackReferenceResolutionKind.Unresolved : BackReferenceResolutionKind.Declared);
         }
@@ -75,23 +75,24 @@ public static class BackReferenceResolver
     }
 
     /// <summary>A self-reference for each <see cref="IDocument.ThisToken"/> in <paramref name="trace"/>'s own text from <paramref name="start"/> to <paramref name="end"/> - text none of its children captured.</summary>
-    static void AddSelfReferences(CaptureTrace trace, int start, int end, List<Referent> referents)
+    static void AddSelfReferences(CaptureTrace trace, int start, int end, List<ReferentCapture> referents)
     {
         var text = trace.CaptureValue ?? "";
         start = Math.Clamp(start - trace.Index, 0, text.Length);
         end = Math.Clamp(end - trace.Index, start, text.Length);
 
         for (var i = text.IndexOf(IDocument.ThisToken, start, end - start, StringComparison.Ordinal); i >= 0; i = text.IndexOf(IDocument.ThisToken, i + 1, end - i - 1, StringComparison.Ordinal))
-            referents.Add(Referent.Self(trace));
+            referents.Add(ReferentCapture.Self(trace));
     }
 
     /// <summary>
-    /// What <paramref name="trace"/>'s capture introduces, if anything: its property's <see cref="IntroducesAttribute"/>
-    /// - the more specific declaration - else its Glyph type's.
+    /// The number of the referent <paramref name="trace"/>'s capture is, or null when it isn't one: its property is
+    /// marked <see cref="ReferentAttribute"/> - the more specific declaration, whose number it takes - else its Glyph type.
     /// </summary>
-    static IntroducesAttribute GetIntroduction(CaptureTrace trace) =>
-        DeclaringProperty(trace)?.GetCustomAttribute<IntroducesAttribute>()
-        ?? trace.ClrValue?.GetType().GetCustomAttribute<IntroducesAttribute>();
+    static GrammaticalNumber? GetReferentNumber(CaptureTrace trace) =>
+        DeclaringProperty(trace) is { } property && property.IsDefined(typeof(ReferentAttribute)) ? GrammaticalNumberAttribute.Of(property)
+        : trace.ClrValue?.GetType() is { } type && type.IsDefined(typeof(ReferentAttribute)) ? GrammaticalNumberAttribute.Of(type)
+        : null;
 
     /// <summary>The property <paramref name="trace"/> was captured for - null for a line's root captures, which no property holds.</summary>
     static PropertyInfo DeclaringProperty(CaptureTrace trace) =>

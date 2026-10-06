@@ -109,6 +109,7 @@ public static class GrammarEmitter
             {
                 GlyphKind.Glyph => typeof(Glyph),
                 GlyphKind.GlyphOneOf => typeof(GlyphOneOf),
+                GlyphKind.BackReference when glyph.ReferenceKind is { } referenceKind => typeof(BackReference<>).MakeGenericType(Resolve(referenceKind)),
                 GlyphKind.BackReference => typeof(BackReference),
                 GlyphKind.Alias when glyph.AliasOf is { Kind: TypeReferenceKind.OneOf or TypeReferenceKind.CompoundOf or TypeReferenceKind.ManyOf or TypeReferenceKind.OptionalOf } => Resolve(glyph.AliasOf),
                 _ => throw new InvalidOperationException($"{glyph.Name} is an alias, but not of a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)"),
@@ -153,11 +154,11 @@ public static class GrammarEmitter
             if (glyph.JoinedBy is Joiner joinedBy)
                 yield return Attribute<JoinedByAttribute>(joinedBy);
 
-            if (glyph.Introduces is { } introduces)
-                yield return Attribute<IntroducesAttribute>(introduces.Number, introduces.Kind);
+            if (glyph.IsReferent)
+                yield return Attribute<ReferentAttribute>();
 
-            if (glyph.Agreement is { } agreement)
-                yield return Attribute<AgreementAttribute>(agreement.Number, agreement.Kind);
+            if (NumberAttribute(glyph.Number) is { } number)
+                yield return number;
         }
 
         void DefineAutoProperty(TypeBuilder typeBuilder, PropertyDefinition property)
@@ -198,8 +199,11 @@ public static class GrammarEmitter
             if (property.TypeFilter is not null)
                 propertyBuilder.SetCustomAttribute(Attribute<TypeFilterAttribute>(ResolveName(property.TypeFilter)));
 
-            if (property.Introduces is { } introduces)
-                propertyBuilder.SetCustomAttribute(Attribute<IntroducesAttribute>(introduces.Number, introduces.Kind));
+            if (property.IsReferent)
+                propertyBuilder.SetCustomAttribute(Attribute<ReferentAttribute>());
+
+            if (NumberAttribute(property.Number) is { } number)
+                propertyBuilder.SetCustomAttribute(number);
 
             if (property.RefersTo is not null)
                 propertyBuilder.SetCustomAttribute(Attribute<RefersToAttribute>(property.RefersTo));
@@ -411,6 +415,15 @@ public static class GrammarEmitter
     /// <summary>Whether <paramref name="type"/>, one of Glyphotype's own, is one a grammar can refer to by name: an enum, or a concrete glyph such as <see cref="It"/>.</summary>
     internal static bool IsBuiltIn(Type type) =>
         type.IsEnum || (type.IsClass && !type.IsAbstract && !type.ContainsGenericParameters && type.IsAssignableTo(typeof(Glyph)));
+
+    /// <summary>The <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/> declaring <paramref name="number"/>, or null for neither.</summary>
+    static CustomAttributeBuilder NumberAttribute(GrammaticalNumber number) =>
+        number switch
+        {
+            GrammaticalNumber.Singular => Attribute<SingularAttribute>(),
+            GrammaticalNumber.Plural => Attribute<PluralAttribute>(),
+            _ => null,
+        };
 
     /// <summary>An attribute through its one constructor - every attribute a definition can carry has exactly one.</summary>
     static CustomAttributeBuilder Attribute<TAttribute>(params object[] arguments) where TAttribute : Attribute =>

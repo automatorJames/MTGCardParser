@@ -1,14 +1,20 @@
 ﻿namespace Glyphotype.Tests.Grammar;
 
-// Back-references - the standard pronouns "it" and "they", and "that animal" - and the referents they're resolved to
-// after tokenization.
+// Back-references - the standard pronouns "it" and "they", and "that animal", "that person" - and the referents they're
+// resolved to after tokenization.
 
-/// <summary>A back-reference that also names its referent's kind, so it skips past a more recent referent of another kind.</summary>
+/// <summary>A back-reference of one kind: it skips past a more recent referent of another kind.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Singular, "animal")]
-public class ThatAnimal : BackReference
+public class ThatAnimal : BackReference<Animal>
 {
     public override Nib[] Nibs => ["that animal"];
+}
+
+/// <summary>Another back-reference of one kind - which skips {this}, whose kind is <see cref="This"/>.</summary>
+[Dependent]
+public class ThatPerson : BackReference<Person>
+{
+    public override Nib[] Nibs => ["that person"];
 }
 
 /// <summary>Back-references as a sentence's subject.</summary>
@@ -19,15 +25,22 @@ public class Rests : Glyph
     public OneOf<It, They, ThatAnimal> Subject { get; set; }
 }
 
-/// <summary>Property-level <see cref="IntroducesAttribute"/>, with each referent's number and kind.</summary>
+public class Waves : Glyph
+{
+    public override Nib[] Nibs => [Prop(Waver), "waves"];
+
+    public ThatPerson Waver { get; set; }
+}
+
+/// <summary>Property-level <see cref="ReferentAttribute"/>s, each of its property's kind, with their numbers.</summary>
 public class Befriends : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Animal), "befriends the", Prop(Person)];
 
-    [Introduces(GrammaticalNumber.Singular, "animal")]
+    [Referent, Singular]
     public Animal Animal { get; set; }
 
-    [Introduces(GrammaticalNumber.Singular, "person")]
+    [Referent, Singular]
     public Person Person { get; set; }
 }
 
@@ -36,21 +49,21 @@ public class Buys : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Person), "buys", Prop(Count), Prop(Fruit)];
 
-    [Introduces(GrammaticalNumber.Singular, "person")]
+    [Referent, Singular]
     public Person Person { get; set; }
 
     public int Count { get; set; }
 
-    [Introduces(GrammaticalNumber.Plural, "fruit")]
+    [Referent, Plural]
     public Fruit Fruit { get; set; }
 }
 
 /// <summary>
-/// Class-level <see cref="IntroducesAttribute"/>: every match is a referent - and one with a back-reference inside it,
-/// which has to be resolved before the phrase around it is introduced (it can't be its own antecedent).
+/// Class-level <see cref="ReferentAttribute"/>: every match is a referent - and one with a back-reference inside it,
+/// which has to be resolved before the phrase around it becomes a referent (it can't be its own antecedent).
 /// </summary>
 [Dependent]
-[Introduces(GrammaticalNumber.Plural)]
+[Referent, Plural]
 public class FriendsOf : Glyph
 {
     public override Nib[] Nibs => ["the friends of", Prop(Friend)];
@@ -62,7 +75,7 @@ public class Meets : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Animal), "meets", Prop(Friends)];
 
-    [Introduces(GrammaticalNumber.Singular, "animal")]
+    [Referent, Singular]
     public Animal Animal { get; set; }
 
     public FriendsOf Friends { get; set; }
@@ -75,7 +88,7 @@ public class FollowsUntil : Glyph
 
     public Animal Animal { get; set; }
 
-    [Introduces(GrammaticalNumber.Singular, "person")]
+    [Referent, Singular]
     public Person Person { get; set; }
 
     [RefersTo(nameof(Animal))]
@@ -87,7 +100,7 @@ public class Visits : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Person), "visits {this}"];
 
-    [Introduces(GrammaticalNumber.Singular, "person")]
+    [Referent, Singular]
     public Person Person { get; set; }
 }
 
@@ -96,7 +109,7 @@ public class Feeds : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Person), "feeds", Prop(Fed)];
 
-    [Introduces(GrammaticalNumber.Singular, "person")]
+    [Referent, Singular]
     public Person Person { get; set; }
 
     public OneOf<This, FriendsOf> Fed { get; set; }

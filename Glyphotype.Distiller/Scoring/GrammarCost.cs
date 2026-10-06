@@ -67,6 +67,9 @@ public sealed record GrammarCost(
             if (glyph.Kind == GlyphKind.Alias)
                 bits += TypeReference(glyph.AliasOf);
 
+            if (glyph.Kind == GlyphKind.BackReference)
+                bits += Optional(glyph.ReferenceKind is not null, glyph.ReferenceKind is null ? 0 : TypeReference(glyph.ReferenceKind));
+
             bits += CodeLength.Count(glyph.Nibs.Count) + glyph.Nibs.Sum(x => Nib(x, glyph));
             bits += Optional(glyph.Joiner is not null, CodeLength.Uniform(_joiners));
             bits += CodeLength.Count(glyph.Properties.Count) + glyph.Properties.Sum(Property);

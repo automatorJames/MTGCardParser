@@ -1,16 +1,17 @@
-namespace Glyphotype.BackReferences;
+﻿namespace Glyphotype.BackReferences;
 
 // The standard pronouns: back-references every grammar can use as they are, without declaring its own. Each is
-// [Dependent] - a pronoun only means anything inside the phrase around it - and agrees only with its number, so it
-// binds to the most recent referent of that number whatever its kind. A back-reference that names its referent's
-// kind ("that animal") belongs to the grammar whose vocabulary that kind is.
+// [Dependent] - a pronoun only means anything inside the phrase around it - and a plain BackReference, so it binds to
+// the most recent referent of its number whatever its kind. A back-reference that names its referent's kind ("that
+// animal", a BackReference<Animal>) belongs to the grammar whose vocabulary that kind is.
 //
 // Bare "this" and "that" aren't here: as words they're far more often determiners ("that animal", "this way") or
-// conjunctions than pronouns. "They" is plural; a grammar that uses it for one person defines its own.
+// conjunctions than pronouns. "They" is plural; where a grammar uses it for one person, it declares a
+// BackReference<T> of that person's kind matching "they", for the places only a person can be meant.
 
 /// <summary>"it": a singular pronoun, as subject or object.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Singular)]
+[Singular]
 public class It : BackReference
 {
     public override Nib[] Nibs => ["it"];
@@ -18,7 +19,7 @@ public class It : BackReference
 
 /// <summary>"its": a singular possessive, as in "its owner".</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Singular)]
+[Singular]
 public class Its : BackReference
 {
     public override Nib[] Nibs => ["its"];
@@ -26,7 +27,7 @@ public class Its : BackReference
 
 /// <summary>"itself": a singular reflexive.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Singular)]
+[Singular]
 public class Itself : BackReference
 {
     public override Nib[] Nibs => ["itself"];
@@ -34,7 +35,7 @@ public class Itself : BackReference
 
 /// <summary>"they": a plural pronoun, as subject.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Plural)]
+[Plural]
 public class They : BackReference
 {
     public override Nib[] Nibs => ["they"];
@@ -42,7 +43,7 @@ public class They : BackReference
 
 /// <summary>"them": a plural pronoun, as object.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Plural)]
+[Plural]
 public class Them : BackReference
 {
     public override Nib[] Nibs => ["them"];
@@ -50,7 +51,7 @@ public class Them : BackReference
 
 /// <summary>"their": a plural possessive, as in "their owners".</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Plural)]
+[Plural]
 public class Their : BackReference
 {
     public override Nib[] Nibs => ["their"];
@@ -58,7 +59,7 @@ public class Their : BackReference
 
 /// <summary>"themselves": a plural reflexive.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Plural)]
+[Plural]
 public class Themselves : BackReference
 {
     public override Nib[] Nibs => ["themselves"];
@@ -66,7 +67,7 @@ public class Themselves : BackReference
 
 /// <summary>"these": a plural demonstrative pronoun, standing alone.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Plural)]
+[Plural]
 public class These : BackReference
 {
     public override Nib[] Nibs => ["these"];
@@ -74,7 +75,7 @@ public class These : BackReference
 
 /// <summary>"those": a plural demonstrative pronoun, standing alone.</summary>
 [Dependent]
-[Agreement(GrammaticalNumber.Plural)]
+[Plural]
 public class Those : BackReference
 {
     public override Nib[] Nibs => ["those"];

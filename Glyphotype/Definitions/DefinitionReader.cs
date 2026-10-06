@@ -53,6 +53,7 @@ static class DefinitionReader
     static GlyphDefinition ReadGlyph(Type type, List<Type> markerTypes)
     {
         var (kind, aliasOf) = ReadBase(type);
+        var referenceKind = BackReference.KindOf(type);
         var instance = (Glyph)Activator.CreateInstance(type);
         var props = GetNibBoundProps(type);
 
@@ -72,8 +73,9 @@ static class DefinitionReader
             TokenizationOrder = type.GetCustomAttribute<TokenizationOrderAttribute>(inherit: false)?.Order,
             Patterns = type.GetCustomAttribute<RegexPatternAttribute>(inherit: false)?.Patterns ?? [],
             JoinedBy = type.GetCustomAttribute<JoinedByAttribute>(inherit: false)?.Joiner,
-            Introduces = AgreementDefinition.Of(type.GetCustomAttribute<IntroducesAttribute>(inherit: false)),
-            Agreement = AgreementDefinition.Of(type.GetCustomAttribute<AgreementAttribute>(inherit: false)),
+            IsReferent = type.IsDefined(typeof(ReferentAttribute), inherit: false),
+            Number = ReadNumber(type),
+            ReferenceKind = referenceKind is null ? null : ReadTypeReference(referenceKind),
         };
     }
 
@@ -87,14 +89,18 @@ static class DefinitionReader
         if (baseType == typeof(GlyphOneOf))
             return (GlyphKind.GlyphOneOf, null);
 
-        if (baseType == typeof(BackReference))
+        if (baseType == typeof(BackReference) || baseType.IsGenericType && baseType.GetGenericTypeDefinition() == typeof(BackReference<>))
             return (GlyphKind.BackReference, null);
 
         if (baseType.IsGenericType && ReadTypeReference(baseType) is { Kind: not TypeReferenceKind.Glyph } primitive)
             return (GlyphKind.Alias, primitive);
 
-        throw new NotSupportedException($"{type.Name} derives from {baseType.Name}, but a definition's base must be {nameof(Glyph)}, {nameof(GlyphOneOf)}, {nameof(BackReference)} or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)");
+        throw new NotSupportedException($"{type.Name} derives from {baseType.Name}, but a definition's base must be {nameof(Glyph)}, {nameof(GlyphOneOf)}, {nameof(BackReference)} (or BackReference<T>) or a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)");
     }
+
+    /// <summary>The number <paramref name="member"/> itself declares with <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/>.</summary>
+    static GrammaticalNumber ReadNumber(MemberInfo member) =>
+        member.GetCustomAttributes<GrammaticalNumberAttribute>(inherit: false).FirstOrDefault()?.Number ?? GrammaticalNumber.Unspecified;
 
     static PropertyDefinition ReadProperty(PropertyInfo prop) =>
         new()
@@ -106,7 +112,8 @@ static class DefinitionReader
             Patterns = prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns ?? [],
             JoinedBy = prop.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
             TypeFilter = GetTypeFilter(prop)?.Name,
-            Introduces = AgreementDefinition.Of(prop.GetCustomAttribute<IntroducesAttribute>()),
+            IsReferent = prop.IsDefined(typeof(ReferentAttribute)),
+            Number = ReadNumber(prop),
             RefersTo = prop.GetCustomAttribute<RefersToAttribute>()?.PropertyName,
         };
 

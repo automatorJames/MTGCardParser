@@ -1,4 +1,4 @@
-namespace Glyphotype.RegexGeneration.Presentation;
+﻿namespace Glyphotype.RegexGeneration.Presentation;
 
 /// <summary>
 /// Renders one <see cref="Glyph"/> type's (<see cref="Render"/>) or enum's (<see cref="RenderEnum"/>) declared
@@ -444,7 +444,7 @@ public static class GlyphClassRenderer
             name = name[..^"Attribute".Length];
 
         // Compiled metadata records every constructor argument, optional ones included - drop the trailing ones
-        // still at their defaults, as the attribute would have been written ([Introduces], not [Introduces(0, null)]).
+        // still at their defaults, as the attribute would have been written.
         var parameters = attribute.Constructor.GetParameters();
         var arguments = attribute.ConstructorArguments.ToList();
 

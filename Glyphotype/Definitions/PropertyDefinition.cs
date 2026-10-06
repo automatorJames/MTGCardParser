@@ -1,4 +1,4 @@
-namespace Glyphotype.Definitions;
+﻿namespace Glyphotype.Definitions;
 
 /// <summary>One nib-bound property of a <see cref="GlyphDefinition"/>, with the property-level attributes the engine reads.</summary>
 public sealed record PropertyDefinition
@@ -22,8 +22,11 @@ public sealed record PropertyDefinition
     /// <summary><see cref="TypeFilterAttribute"/>: the marker (see <see cref="GrammarDefinition.Markers"/>) a <see cref="DynamicGlyph"/> may resolve to.</summary>
     public string TypeFilter { get; init; }
 
-    /// <summary><see cref="IntroducesAttribute"/>: the captured value is a referent, with these features. Null when it isn't one.</summary>
-    public AgreementDefinition Introduces { get; init; }
+    /// <summary><see cref="ReferentAttribute"/>: the captured value is a referent, of the kind of what it captured.</summary>
+    public bool IsReferent { get; init; }
+
+    /// <summary><see cref="SingularAttribute"/> or <see cref="PluralAttribute"/>, on a referent.</summary>
+    public GrammaticalNumber Number { get; init; }
 
     /// <summary><see cref="RefersToAttribute"/>: the sibling property a back-reference property refers to outright.</summary>
     public string RefersTo { get; init; }
