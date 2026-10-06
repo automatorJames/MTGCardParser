@@ -174,7 +174,7 @@
         if (CaptureTrace.HasOwnBoundary && !IsEffectivelyCollapsible)
             classes.Add("nested-underline");
 
-        if (CaptureTrace.IsTerminal)
+        if (CaptureTrace.IsTerminal || BackReferenceDisplay.IsLeafBackReference(CaptureTrace))
             classes.Add("prop-capture-overline");
 
         //if (node is SpanSubLeaf spanSubLeaf)

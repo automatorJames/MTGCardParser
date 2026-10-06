@@ -57,7 +57,7 @@ else
                         // ("*"-quantified) ancestor can capture more than once (e.g. two keywords in
                         // one ManyOf<Buff> list) - every occurrence shares this one table position,
                         // distinguished by PositionLabel below, rather than getting a branch of its own.
-                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal || IsLeafBackReference(x)).SelectMany(x => x).ToList();
+                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal || BackReferenceDisplay.IsLeafBackReference(x)).SelectMany(x => x).ToList();
 
                         if (terminals.Any() || BranchTrace.ClrValue is Glyphotype.GlyphPrimitives.BackReference)
                         {
@@ -73,7 +73,7 @@ else
                                         <tr data-path="@BranchTrace.HoverPath">
                                             <td class="prop-capture-table-cell first-column" style=@(RootPalette.ToColorStyle())>refers to</td>
                                             <td class="prop-capture-table-cell type-column" style=@(RootPalette.ToColorStyle())>BackReference</td>
-                                            <td class="prop-capture-table-cell value-column" style=@(RootPalette.ToColorStyle())>@ReferentPath(branchBackReference)</td>
+                                            <td class="prop-capture-table-cell value-column" style=@(RootPalette.ToColorStyle())>@ReferentPath(BranchTrace, branchBackReference)</td>
                                         </tr>
                                     }
                                     @foreach (var leaf in terminals)
@@ -90,7 +90,7 @@ else
                                             <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
                                                 @if (leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference)
                                                 {
-                                                    @ReferentPath(backReference)
+                                                    @ReferentPath(leaf, backReference)
                                                 }
                                                 else
                                                 {
@@ -163,12 +163,15 @@ else
     static CaptureTrace PaletteKey(CaptureTrace trace) => trace.Representative ?? trace;
 
     /// <summary>
-    /// The path to what <paramref name="backReference"/> refers to (see <see cref="BackReferenceDisplay.ReferentPath"/>),
-    /// each part in the color of the capture it names - or of the nearest one before it with a color, for a capture
-    /// that has none of its own (one hidden as collapsible).
+    /// The text <paramref name="trace"/> captured, then the path to what <paramref name="backReference"/>, its value,
+    /// refers to (see <see cref="BackReferenceDisplay.ReferentPath"/>): "they -> DestroyAll.Destroyed". Each part of the
+    /// path is in the color of the capture it names - or of the nearest one before it with a color, for a capture that
+    /// has none of its own (one hidden as collapsible).
     /// </summary>
-    RenderFragment ReferentPath(Glyphotype.GlyphPrimitives.BackReference backReference) => builder =>
+    RenderFragment ReferentPath(CaptureTrace trace, Glyphotype.GlyphPrimitives.BackReference backReference) => builder =>
     {
+        builder.AddContent(0, $"{trace.CaptureValue} -> ");
+
         string style = null;
 
         foreach (var (text, capture, index) in BackReferenceDisplay.ReferentPath(backReference, DisplayContext.LineRoots).Select((x, i) => (x.Text, x.Capture, i)))
@@ -327,15 +330,7 @@ else
     string LeafDisplayName(CaptureTrace leaf) =>
         DisplayName(BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name);
 
-    /// <summary>
-    /// Whether <paramref name="trace"/> is a back-reference with nothing captured inside it (a bare "it"): not
-    /// <see cref="CaptureTrace.IsTerminal"/>, being a Glyph, but with no children to give it a table of its own - so it
-    /// gets a row here instead, where what it was resolved to is shown as its value.
-    /// </summary>
-    static bool IsLeafBackReference(CaptureTrace trace) =>
-        trace.ClrValue is Glyphotype.GlyphPrimitives.BackReference && !trace.Children.Any();
-
-    /// <summary>A leaf's displayed "Type" column text - an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/> or <see cref="BoolNode"/>, the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for, or a leaf back-reference (see <see cref="IsLeafBackReference"/>).</summary>
+    /// <summary>A leaf's displayed "Type" column text - an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/> or <see cref="BoolNode"/>, the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for, or a leaf back-reference (see <see cref="BackReferenceDisplay.IsLeafBackReference"/>).</summary>
     static string TerminalTypeLabel(CaptureTrace leaf) =>
         leaf.SourceNode switch
         {

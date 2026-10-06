@@ -358,6 +358,15 @@ public static class BackReferenceDisplay
     }
 
     /// <summary>
+    /// Whether <paramref name="trace"/> is a back-reference with nothing captured inside it (a bare "it"): not
+    /// <see cref="Glyphotype.RegexGeneration.Graph.CaptureTrace.IsTerminal"/>, being a Glyph, but with no children of its
+    /// own - so it's shown like a terminal: a row in its parent's table rather than a table of its own, and overlined
+    /// in the line above.
+    /// </summary>
+    public static bool IsLeafBackReference(Glyphotype.RegexGeneration.Graph.CaptureTrace trace) =>
+        trace.ClrValue is Glyphotype.GlyphPrimitives.BackReference && !trace.EffectiveChildren.Any();
+
+    /// <summary>
     /// Whether <paramref name="leaf"/>, a row of <paramref name="branch"/>'s table, shows a referent: its own property is
     /// marked [Referent], or it's the alternative a [Referent] one-of resolved to.
     /// </summary>
