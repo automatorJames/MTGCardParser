@@ -95,7 +95,7 @@ pre.nested-underline-container {
     font-size: 0;
     line-height: 0;
     border-top: 1px solid var(--clause-rule-color);
-    margin: var(--clause-rule-margin) 0;
+    margin: var(--clause-rule-space-above) 0 var(--clause-rule-space-below);
 }
 
 /* Holds a line's text, and the agent button in its bottom-right corner */

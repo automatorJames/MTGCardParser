@@ -54,8 +54,11 @@ public static class DocumentTextPresentation
     /// <summary>The thin rule drawn above each of a line's clauses after its first.</summary>
     public const string ClauseRuleColorHex = "#444444";
 
-    /// <summary>Space in px kept clear above and below a clause rule.</summary>
-    public const int ClauseRuleMarginPx = 10;
+    /// <summary>Space in px kept clear above a clause rule.</summary>
+    public const int ClauseRuleSpaceAbovePx = 10;
+
+    /// <summary>Space in px kept clear below a clause rule - a little more than above, leaving room for the overlines drawn over terminal captures in the clause's first row.</summary>
+    public const int ClauseRuleSpaceBelowPx = 14;
 }
 
 /// <summary>
