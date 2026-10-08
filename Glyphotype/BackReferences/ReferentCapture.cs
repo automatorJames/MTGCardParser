@@ -1,11 +1,11 @@
-namespace Glyphotype.BackReferences;
+﻿namespace Glyphotype.BackReferences;
 
 /// <summary>
 /// Something a <see cref="BackReference"/> can refer back to: a captured value marked <see cref="ReferentAttribute"/>
 /// (or a <c>{this}</c>), where it was captured, and what a back-reference has to agree with to refer to it.
 /// </summary>
 /// <param name="Value">The captured value - a Glyph, or an enum captured by a referent property.</param>
-/// <param name="Trace">Where <paramref name="Value"/> was captured - for a self-reference written as a literal, the capture whose text it's in.</param>
+/// <param name="Trace">Where <paramref name="Value"/> was captured.</param>
 /// <param name="Number">Its number, from <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/>.</param>
 /// <param name="Kind">The kind of thing it is (see <see cref="KindOf"/>): what a <see cref="BackReference{T}"/>'s <c>T</c> must match.</param>
 public sealed record ReferentCapture(object Value, CaptureTrace Trace, GrammaticalNumber Number, Type Kind)
@@ -26,16 +26,13 @@ public sealed record ReferentCapture(object Value, CaptureTrace Trace, Grammatic
         value switch
         {
             BackReference { Antecedent: { } antecedent } => antecedent,
-            This => Self(trace),
+            This self => Self(self, trace),
             _ => new(value, trace, number, KindOf(value)),
         };
 
-    /// <summary>
-    /// The document itself, as referred to by a <see cref="IDocument.ThisToken"/> in <paramref name="trace"/>'s text:
-    /// the <see cref="This"/> glyph that captured it, or a new one for a literal.
-    /// </summary>
-    public static ReferentCapture Self(CaptureTrace trace) =>
-        new(trace.ClrValue as This ?? new This(), trace, GrammaticalNumber.Singular, typeof(This)) { Text = IDocument.ThisToken };
+    /// <summary>The document itself, as referred to by <paramref name="self"/>, captured at <paramref name="trace"/>: always singular.</summary>
+    public static ReferentCapture Self(This self, CaptureTrace trace) =>
+        new(self, trace, GrammaticalNumber.Singular, typeof(This));
 
     /// <summary>
     /// The kind of thing <paramref name="value"/> is: its type, looking through the primitives that only wrap it - a

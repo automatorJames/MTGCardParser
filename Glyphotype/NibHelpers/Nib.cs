@@ -32,6 +32,12 @@ public record Nib
     /// <summary>A plain string in a Nibs list is literal text.</summary>
     public static implicit operator Nib(string str) => new(str);
 
+    /// <summary>
+    /// The document referring to itself - where its name appears in its text - matched as a
+    /// <see cref="BackReferences.This"/> (see <see cref="EmbeddedGlyphNib"/>): a referent, with no property to hold it.
+    /// </summary>
+    public static Nib This => new EmbeddedGlyphNib(typeof(BackReferences.This));
+
     /// <summary>The characters that are special in a .NET regex outside a character class - the set <see cref="System.Text.RegularExpressions.Regex.Escape"/> escapes, less whitespace and <c>#</c> (which only matter under <see cref="System.Text.RegularExpressions.RegexOptions.IgnorePatternWhitespace"/>, and spaces are escaped separately - see <see cref="BuiltRegex.EscapeSpaces"/>).</summary>
     static readonly HashSet<char> _metacharacters = ['\\', '*', '+', '?', '|', '{', '[', '(', ')', '^', '$', '.'];
 

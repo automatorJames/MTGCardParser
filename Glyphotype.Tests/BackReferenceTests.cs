@@ -48,7 +48,7 @@ public class BackReferenceTests(CorpusFixture corpus)
     [Theory]
     [InlineData("the baker visits rex. it sleeps all day.")]
     [InlineData("the baker feeds rex. it sleeps all day.")]
-    public void The_documents_reference_to_itself_is_a_referent_whether_literal_or_captured(string text)
+    public void The_documents_reference_to_itself_is_a_referent_whether_embedded_or_held_by_a_property(string text)
     {
         var resolution = Assert.Single(Assert.Single(ProcessedLine.GetAll(new TestDocument("rex", text, []), corpus.Grammar)).BackReferences);
 

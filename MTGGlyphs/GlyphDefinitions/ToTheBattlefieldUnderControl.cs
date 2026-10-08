@@ -9,6 +9,6 @@ public class ToTheBattlefieldUnderControl : Glyph
 
     public Whose Whose { get; set; }
 
-    [RegexPattern("and attach {this} to it")]
-    public bool AndAttachThisToIt { get; set; }
+    [Optional]
+    public AttachThisToIt AndAttachThisToIt { get; set; }
 }

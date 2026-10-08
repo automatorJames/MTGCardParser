@@ -13,6 +13,7 @@ public record OptionalNib : Nib
         {
             PluralNib => throw new ArgumentException("Opt(Plural(...)) - a nib can't be both optional and plural; write its forms out, e.g. Opt(Alt(\"card\", \"cards\"))", nameof(inner)),
             PropertyNib => throw new ArgumentException("Opt(Prop(...)) - make a property optional with [Optional] on it instead", nameof(inner)),
+            EmbeddedGlyphNib => throw new ArgumentException($"Opt(Nib.{inner.Text}) - an embedded glyph can't be optional; write the glyph with and without it", nameof(inner)),
             _ => inner,
         };
     }

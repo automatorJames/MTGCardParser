@@ -226,6 +226,8 @@ public sealed class GlyphGrammar
                 errors.Add($"{type.Name}: {error}");
             else if (Glyph.GetPeriodError(type, allowPeriodsInLiteralNibs, propertyTypes.Contains(type)) is string periodError)
                 errors.Add($"{type.Name}: {periodError}");
+            else if (Glyph.GetThisTokenError(type) is string thisTokenError)
+                errors.Add($"{type.Name}: {thisTokenError}");
         }
 
         // Across the whole grammar, since a back-reference's referents are declared on other types.

@@ -161,6 +161,7 @@ public static class GlyphSourceWriter
             NibDefinition.Optional optional => $"Opt({WriteNib(optional.Inner)})",
             NibDefinition.Plural plural => $"Plural({WriteNib(plural.Inner)})",
             NibDefinition.Property property => $"Prop({property.Name})",
+            NibDefinition.This => "Nib.This",
             _ => throw new NotSupportedException($"Nib definition {nib.GetType().Name} can't be written"),
         };
 

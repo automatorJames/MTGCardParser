@@ -274,6 +274,9 @@ public static class GlyphSourceReader
             if (expression is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.StringLiteralExpression } literal)
                 return new NibDefinition.Literal(literal.Token.ValueText);
 
+            if (expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "Nib" }, Name.Identifier.Text: "This" })
+                return new NibDefinition.This();
+
             if (expression is InvocationExpressionSyntax { Expression: IdentifierNameSyntax method } invocation)
             {
                 var arguments = invocation.ArgumentList.Arguments.Select(x => x.Expression).ToList();
@@ -302,7 +305,7 @@ public static class GlyphSourceReader
                 }
             }
 
-            Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(nib), Plural(nib) or Prop(Property)");
+            Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(nib), Plural(nib), Prop(Property) or Nib.This");
             return null;
         }
 

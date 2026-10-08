@@ -166,8 +166,9 @@ public abstract class NamedGroupNode : GroupNode
         if (value == null)
             return false;
 
-        // Assign the value to the prop (either a single object value or a List<object> value)
-        Navigation.Prop.SetValue(instance, value);
+        // Assign the value to the prop (either a single object value or a List<object> value) - unless it's an embedded
+        // glyph's (see EmbeddedGlyphNib), which has none: its capture and value are all there is of it.
+        Navigation.Prop?.SetValue(instance, value);
 
         return true;
     }

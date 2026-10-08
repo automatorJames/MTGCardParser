@@ -141,6 +141,7 @@ static class DefinitionReader
             OptionalNib optional => new NibDefinition.Optional(ReadNib(optional.Inner)),
             PluralNib plural => new NibDefinition.Plural(ReadNib(plural.Inner)),
             PatternNib pattern => new NibDefinition.Pattern(pattern.Text),
+            EmbeddedGlyphNib { GlyphType: var type } when type == typeof(This) => new NibDefinition.This(),
             _ when nib.GetType() == typeof(Nib) => new NibDefinition.Literal(nib.Text),
             _ => throw new NotSupportedException($"Nib type {nib.GetType().Name} has no definition counterpart"),
         };

@@ -430,6 +430,42 @@ public abstract class Glyph : CaptureUnit
     static readonly Regex _escapedPeriod = new(@"(?<!\\)(?:\\\\)*\\\.");
 
     /// <summary>
+    /// An error where <paramref name="type"/> writes the document's reference to itself, <see cref="IDocument.ThisToken"/>,
+    /// as text - in a nib or a <see cref="RegexPatternAttribute"/> - rather than as <see cref="Nib.This"/>: as text it
+    /// would match, but never be captured as the <see cref="This"/> a back-reference can refer to. <see cref="This"/>
+    /// itself, which matches the token, is the one exception.
+    /// </summary>
+    public static string GetThisTokenError(Type type)
+    {
+        if (type == typeof(This))
+            return null;
+
+        static bool HasToken(string text) =>
+            text?.Replace("\\", "").Contains(IDocument.ThisToken) == true;
+
+        const string useThisNib = $"write it as {nameof(Nib)}.{nameof(Nib.This)}, a nib of its own, so it's captured as a {nameof(This)} - e.g. [\"when\", {nameof(Nib)}.{nameof(Nib.This)}, \"dies,\"]";
+
+        foreach (var nib in GlyphTypeCache.GetConfiguration(type).Nibs)
+        {
+            var texts = nib switch
+            {
+                NibAlternatives alternatives => alternatives.Alternatives,
+                PropertyNib or EmbeddedGlyphNib => [],
+                _ => [nib.Text],
+            };
+
+            if (texts.FirstOrDefault(HasToken) is { } text)
+                return $"\"{text}\" contains {IDocument.ThisToken} - {useThisNib}";
+        }
+
+        foreach (var property in type.GetOwnProps())
+            if (property.GetCustomAttribute<RegexPatternAttribute>()?.Patterns.FirstOrDefault(HasToken) is { } pattern)
+                return $"{property.Name}'s pattern \"{pattern}\" contains {IDocument.ThisToken}, which a pattern can't capture - match it with a glyph of its own whose Nibs use {nameof(Nib)}.{nameof(Nib.This)}";
+
+        return null;
+    }
+
+    /// <summary>
     /// The period rules, which keep every period on a line a <see cref="ClauseBreak"/> the Tokenizer can see:
     /// <list type="bullet">
     /// <item>A plain literal nib may have a period inside it only if <paramref name="allowPeriodsInLiteralNibs"/>

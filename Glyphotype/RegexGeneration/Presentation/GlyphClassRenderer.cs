@@ -216,7 +216,9 @@ public static class GlyphClassRenderer
 
         List<ClassSpan> spans = [Keyword($"{indent}public override Nib[] Nibs => "), Brace("[")];
         var nibs = contextNode.Navigation.GlyphTypeConfiguration.AuthoredNibs;
-        var propertyNodes = contextNode.NamedGroupChildren;
+        var propertyNodes = contextNode.NamedGroupChildren.Where(x => x.Navigation.Prop is not null).ToList();
+        var embeddedNodes = contextNode.NamedGroupChildren.Where(x => x.Navigation.Prop is null).ToList();
+        var embeddedIndex = 0;
         var propertyIndex = 0;
 
         for (int i = 0; i < nibs.Length; i++)
@@ -236,6 +238,12 @@ public static class GlyphClassRenderer
                     spans.Add(Keyword("Prop("));
                     spans.Add(BuildReferenceSpan(propertyNode.Navigation.Prop.Name, propertyNode, ctx, PropertyPalette(propertyNode, ctx)));
                     spans.Add(Keyword(")"));
+                    break;
+
+                case EmbeddedGlyphNib embedded:
+                    var embeddedNode = embeddedNodes[embeddedIndex++];
+                    spans.Add(Keyword("Nib."));
+                    spans.Add(BuildReferenceSpan(embedded.GlyphType.Name, embeddedNode, ctx, PropertyPalette(embeddedNode, ctx)));
                     break;
 
                 case NibAlternatives alternatives:

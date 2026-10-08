@@ -27,9 +27,20 @@ public class GlyphNode : NamedGroupNode
                 nibs.Add(last);
         }
 
+        var embeddedCounts = nibs.OfType<EmbeddedGlyphNib>().GroupBy(x => x.GlyphType).ToDictionary(x => x.Key, x => x.Count());
+        var embeddedSeen = new Dictionary<Type, int>();
+
         foreach (var nib in nibs)
             if (nib is PropertyNib propertyNib)
                 children.Add(GetNodeForNavigaton(this, propertyNib.Navigation));
+            else if (nib is EmbeddedGlyphNib embedded)
+            {
+                // Named for its glyph, and numbered only where the glyph embeds it more than once: This, or This1 and This2.
+                var number = embeddedSeen[embedded.GlyphType] = embeddedSeen.GetValueOrDefault(embedded.GlyphType) + 1;
+                var name = embeddedCounts[embedded.GlyphType] > 1 ? $"{embedded.GlyphType.Name}{number}" : embedded.GlyphType.Name;
+
+                children.Add(GetNodeForNavigaton(this, new Navigation(embedded, name)));
+            }
             else
                 // Pass nib itself, not nib.Text - TextNode's own optional-wrapping depends on nib's actual
                 // runtime type (e.g. OptionalNib), which passing just the string would silently discard via

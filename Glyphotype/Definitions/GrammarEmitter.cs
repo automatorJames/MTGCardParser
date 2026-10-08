@@ -21,6 +21,7 @@ public static class GrammarEmitter
     static readonly ConstructorInfo _optionalNibCtor = typeof(OptionalNib).GetConstructor([typeof(Nib)]);
     static readonly ConstructorInfo _pluralNibCtor = typeof(PluralNib).GetConstructor([typeof(Nib)]);
     static readonly MethodInfo _propMethod = typeof(Glyph).GetMethod(nameof(Glyph.Prop));
+    static readonly MethodInfo _thisNibGetter = typeof(Nib).GetProperty(nameof(Nib.This)).GetMethod;
 
     /// <summary>
     /// Emits every marker, vocabulary and glyph in <paramref name="grammar"/>, returning the emitted types.
@@ -272,6 +273,10 @@ public static class GrammarEmitter
                         il.Emit(OpCodes.Ldnull);
                         il.Emit(OpCodes.Ldstr, property.Name);
                         il.Emit(OpCodes.Call, _propMethod);
+                        break;
+
+                    case NibDefinition.This:
+                        il.Emit(OpCodes.Call, _thisNibGetter);
                         break;
 
                     default:

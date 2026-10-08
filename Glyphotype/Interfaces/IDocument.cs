@@ -2,7 +2,7 @@
 
 public interface IDocument
 {
-    public static string ThisToken = "{this}";
+    public const string ThisToken = "{this}";
 
     public string Name { get; }
     public string Text { get; }

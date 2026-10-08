@@ -17,6 +17,7 @@ public record PluralNib : Nib
         {
             null => throw new ArgumentNullException(nameof(inner)),
             PluralNib => throw new ArgumentException("Plural(Plural(...)) - a nib can only be made plural once", nameof(inner)),
+            EmbeddedGlyphNib => throw new ArgumentException($"Plural(Nib.{inner.Text}) - an embedded glyph can't be made plural", nameof(inner)),
             OptionalNib => throw new ArgumentException("Plural(Opt(...)) - a nib can't be both optional and plural; write its forms out, e.g. Opt(Alt(\"card\", \"cards\"))", nameof(inner)),
             _ => inner,
         };

@@ -71,6 +71,16 @@ public class Navigation
         IsOptional = Quantifier is Glyphotype.Quantifier.AnyNumber or Glyphotype.Quantifier.Optional;
     }
 
+    /// <summary>
+    /// The navigation to a glyph embedded in its parent's Nibs (see <see cref="EmbeddedGlyphNib"/>): a capture named
+    /// <paramref name="name"/>, with no <see cref="Prop"/> to assign it to.
+    /// </summary>
+    public Navigation(EmbeddedGlyphNib nib, string name)
+    {
+        SetTypeInfo(nib.GlyphType);
+        Name = name;
+    }
+
     /// <summary>Whether <paramref name="type"/> (or its nullable-unwrapped underlying type) is a closed <see cref="List{T}"/>.</summary>
     public static bool IsListType(Type type)
     {

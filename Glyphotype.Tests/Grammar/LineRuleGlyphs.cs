@@ -48,7 +48,7 @@ public class BakerOpensTheShop : Glyph
 /// <summary>The <c>{this}</c> placeholder, which stands for the document's own name.</summary>
 public class ThisBarksAt : Glyph
 {
-    public override Nib[] Nibs => ["{this} barks at the", Prop(Person)];
+    public override Nib[] Nibs => [Nib.This, "barks at the", Prop(Person)];
 
     public Person Person { get; set; }
 }

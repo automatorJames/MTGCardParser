@@ -98,7 +98,7 @@ public class FollowsUntil : Glyph
 /// <summary>A literal self-reference: the document's own name is a referent wherever it sits in a match's text.</summary>
 public class Visits : Glyph
 {
-    public override Nib[] Nibs => ["the", Prop(Person), "visits {this}"];
+    public override Nib[] Nibs => ["the", Prop(Person), "visits", Nib.This];
 
     [Referent(GrammaticalNumber.Singular)]
     public Person Person { get; set; }
