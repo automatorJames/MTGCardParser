@@ -105,10 +105,11 @@ of words inside matches) is the other headline number. The score is the judge wh
   - `⟦Property=text⟧` is a terminal (vocabulary member, bool, or number).
 - A *frame* such as `the {Animal} naps on {Day}` is a match's text with its captures masked out.
 
-Corpus text is lower-cased before tokenizing, and a document's own name is replaced with `{this}`. Every `{this}` in
-a match is a singular referent, so a later "it" resolves to the document. Write it as a literal where it's the only
-thing that fits. Where the document is one of several things that can fill a property, use the built-in `This` glyph,
-e.g. `OneOf<This, …>`.
+Corpus text is lower-cased before tokenizing, and a document's own name is replaced with `{this}`. Every `{this}` a
+glyph matches is a singular referent, so a later "it" resolves to the document. Never write `{this}` as text, in a nib
+or a pattern - it's refused. Match it with the nib `Nib.This` where it's the only thing that fits:
+`["when", Nib.This, "dies,", Prop(Effect)]`. Where the document is one of several things that can fill a property,
+use the built-in `This` glyph, e.g. `OneOf<This, …>`.
 
 ## Writing glyphs
 
@@ -151,6 +152,7 @@ public class AnimalNaps : Glyph
 | `Plural(nib)` | the nib, singular or plural: `Plural("card")` matches card and cards, `Plural(Prop(CardType))` creature and creatures |
 | `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern("an?")` |
 | `Prop(Name)` | the property `Name` |
+| `Nib.This` | `{this}`, the document's name: captured as a `This`, with no property to hold it |
 
 With no `Nibs` override, a glyph matches its properties in declaration order. With no properties either, it
 matches `[RegexPattern("…")]` if given, else its own name, friendly-cased (`WeSweepTheFloor` → "we sweep the
@@ -215,7 +217,7 @@ If nothing agrees, it stays unresolved and is counted.
 - `[Referent]` on a property makes its captured value a referent. On a glyph class, every match of the class is one.
   Mark only what something later refers back to.
 - A referent's kind is its type, never written: an enum property's kind is the enum (`CardType`), a glyph's is the
-  glyph, and a one-of's is whichever alternative matched. `{this}` is always a referent, of kind `This`.
+  glyph, and a one-of's is whichever alternative matched. Every `{this}` is a referent, of kind `This`.
 - `BackReference<T>` refers only to referents of kind `T`: `class ThatCard : BackReference<CardType>` matching
   "that creature" skips a more recent `{this}` or player. Plain `BackReference` refers to any kind.
 - The standard pronouns are built in, so use them as property types without declaring them: `It`, `Its`, `Itself`
