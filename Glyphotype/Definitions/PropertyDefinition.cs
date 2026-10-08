@@ -25,7 +25,7 @@ public sealed record PropertyDefinition
     /// <summary><see cref="ReferentAttribute"/>: the captured value is a referent, of the kind of what it captured.</summary>
     public bool IsReferent { get; init; }
 
-    /// <summary>A referent's <see cref="ReferentAttribute.Number"/>.</summary>
+    /// <summary>A referent's own number: its <see cref="SingularAttribute"/>/<see cref="PluralAttribute"/>.</summary>
     public GrammaticalNumber Number { get; init; }
 
     /// <summary><see cref="RefersToAttribute"/>: the sibling property a back-reference property refers to outright.</summary>

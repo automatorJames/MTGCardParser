@@ -15,6 +15,7 @@ public class TargetPermanent : Glyph
     [Optional]
     public CompoundOf<TargetQualifier> Qualifiers { get; set; }
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public CardOrCreatureTypeTarget CardOrCreatureType { get; set; }
 }

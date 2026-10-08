@@ -156,8 +156,9 @@ public static class GrammarEmitter
                 yield return Attribute<JoinedByAttribute>(joinedBy);
 
             if (glyph.IsReferent)
-                yield return Attribute<ReferentAttribute>(glyph.Number);
-            else if (NumberAttribute(glyph.Number) is { } number)
+                yield return Attribute<ReferentAttribute>();
+
+            if (NumberAttribute(glyph.Number) is { } number)
                 yield return number;
         }
 
@@ -200,7 +201,10 @@ public static class GrammarEmitter
                 propertyBuilder.SetCustomAttribute(Attribute<TypeFilterAttribute>(ResolveName(property.TypeFilter)));
 
             if (property.IsReferent)
-                propertyBuilder.SetCustomAttribute(Attribute<ReferentAttribute>(property.Number));
+                propertyBuilder.SetCustomAttribute(Attribute<ReferentAttribute>());
+
+            if (NumberAttribute(property.Number) is { } number)
+                propertyBuilder.SetCustomAttribute(number);
 
             if (property.RefersTo is not null)
                 propertyBuilder.SetCustomAttribute(Attribute<RefersToAttribute>(property.RefersTo));

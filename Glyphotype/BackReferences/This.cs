@@ -1,4 +1,4 @@
-namespace Glyphotype.BackReferences;
+﻿namespace Glyphotype.BackReferences;
 
 /// <summary>
 /// The document's reference to itself: <see cref="IDocument.ThisToken"/>, which <see cref="IDocument.GetFormattedLines"/>
@@ -12,7 +12,8 @@ namespace Glyphotype.BackReferences;
 /// </para>
 /// </summary>
 [Dependent]
-[Referent(GrammaticalNumber.Singular)]
+[Referent]
+[Singular]
 public class This : Glyph
 {
     public override Nib[] Nibs => [IDocument.ThisToken];

@@ -84,11 +84,13 @@ public static class BackReferenceResolver
     }
 
     /// <summary>
-    /// The number of the referent <paramref name="trace"/>'s capture is, or null when it isn't one: its property's
-    /// <see cref="ReferentAttribute"/> - the more specific declaration - else its Glyph type's.
+    /// The number of the referent <paramref name="trace"/>'s capture is, or null when it isn't one: declared beside the
+    /// <see cref="ReferentAttribute"/> that makes it one - its property's, the more specific declaration, else its Glyph type's.
     /// </summary>
     static GrammaticalNumber? GetReferentNumber(CaptureTrace trace) =>
-        (DeclaringProperty(trace)?.GetCustomAttribute<ReferentAttribute>() ?? trace.ClrValue?.GetType().GetCustomAttribute<ReferentAttribute>())?.Number;
+        DeclaringProperty(trace) is { } property && property.IsDefined(typeof(ReferentAttribute)) ? GrammaticalNumberAttribute.Of(property)
+        : trace.ClrValue?.GetType() is { } type && type.IsDefined(typeof(ReferentAttribute)) ? GrammaticalNumberAttribute.Of(type)
+        : null;
 
     /// <summary>The property <paramref name="trace"/> was captured for - null for a line's root captures, which no property holds.</summary>
     static PropertyInfo DeclaringProperty(CaptureTrace trace) =>

@@ -204,11 +204,10 @@ public static class GlyphSourceReader
                     "TokenizationOrder" when arguments.Count == 1 => glyph with { TokenizationOrder = (int)ReadInteger(arguments[0]) },
                     "RegexPattern" => glyph with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => glyph with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
-                    "Referent" or "Singular" or "Plural" when glyph.Number != GrammaticalNumber.Unspecified || glyph.IsReferent && AttributeName(attribute) != "Referent"
-                        => Unsupported(glyph, attribute, glyph.IsReferent || AttributeName(attribute) == "Referent"
-                            ? $"{glyph.Name}: a referent's number goes in its own attribute, [Referent(GrammaticalNumber.Plural)] - [Singular]/[Plural] are for a BackReference"
-                            : $"{glyph.Name} is both [Singular] and [Plural] - it can only be one"),
-                    "Referent" when arguments.Count <= 1 => glyph with { IsReferent = true, Number = arguments.Count == 0 ? GrammaticalNumber.Unspecified : ReadEnumMember<GrammaticalNumber>(arguments[0]) },
+                    "Singular" or "Plural" when glyph.Number != GrammaticalNumber.Unspecified
+                        => Unsupported(glyph, attribute, $"{glyph.Name} is both [Singular] and [Plural] - it can only be one"),
+                    "Referent" when arguments.Count == 0 => glyph with { IsReferent = true },
+                    "Referent" => Unsupported(glyph, attribute, $"{glyph.Name}: [Referent] takes no number - give it [Singular] or [Plural] beside it"),
                     "Singular" when arguments.Count == 0 => glyph with { Number = GrammaticalNumber.Singular },
                     "Plural" when arguments.Count == 0 => glyph with { Number = GrammaticalNumber.Plural },
                     _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, AllowPartialClauseMatch, TokenizationOrder, RegexPattern, JoinedBy, Referent, Singular, Plural)"),
@@ -243,10 +242,14 @@ public static class GlyphSourceReader
                     "RegexPattern" => definition with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => definition with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
                     "TypeFilter" when arguments is [TypeOfExpressionSyntax typeOf] => definition with { TypeFilter = typeOf.Type.ToString() },
-                    "Referent" when arguments.Count <= 1 => definition with { IsReferent = true, Number = arguments.Count == 0 ? GrammaticalNumber.Unspecified : ReadEnumMember<GrammaticalNumber>(arguments[0]) },
-                    "Singular" or "Plural" => Unsupported(definition, attribute, $"{glyphName}.{name}: a referent's number goes in its own attribute, [Referent(GrammaticalNumber.{AttributeName(attribute)})] - [Singular]/[Plural] are for a BackReference"),
+                    "Referent" when arguments.Count == 0 => definition with { IsReferent = true },
+                    "Referent" => Unsupported(definition, attribute, $"{glyphName}.{name}: [Referent] takes no number - give it [Singular] or [Plural] beside it"),
+                    "Singular" or "Plural" when definition.Number != GrammaticalNumber.Unspecified
+                        => Unsupported(definition, attribute, $"{glyphName}.{name} is both [Singular] and [Plural] - it can only be one"),
+                    "Singular" when arguments.Count == 0 => definition with { Number = GrammaticalNumber.Singular },
+                    "Plural" when arguments.Count == 0 => definition with { Number = GrammaticalNumber.Plural },
                     "RefersTo" when arguments.Count == 1 => definition with { RefersTo = ReadPropertyName(arguments[0]) },
-                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Referent, RefersTo(nameof(Property)))"),
+                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Referent, Singular, Plural, RefersTo(nameof(Property)))"),
                 };
             }
 

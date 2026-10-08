@@ -15,7 +15,8 @@ public class PermanentsTheyControl : Glyph
     [JoinedBy(Joiner.Space)]
     public CompoundOf<TargetQualifier> Qualifiers { get; set; }
 
-    [Referent(GrammaticalNumber.Plural)]
+    [Referent]
+    [Plural]
     public CardType CardType { get; set; }
 
     public TheyPlayer Controller { get; set; }

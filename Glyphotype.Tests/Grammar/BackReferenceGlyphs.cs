@@ -37,10 +37,12 @@ public class Befriends : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Animal), "befriends the", Prop(Person)];
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Animal Animal { get; set; }
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Person Person { get; set; }
 }
 
@@ -49,12 +51,14 @@ public class Buys : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Person), "buys", Prop(Count), Prop(Fruit)];
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Person Person { get; set; }
 
     public int Count { get; set; }
 
-    [Referent(GrammaticalNumber.Plural)]
+    [Referent]
+    [Plural]
     public Fruit Fruit { get; set; }
 }
 
@@ -63,7 +67,8 @@ public class Buys : Glyph
 /// which has to be resolved before the phrase around it becomes a referent (it can't be its own antecedent).
 /// </summary>
 [Dependent]
-[Referent(GrammaticalNumber.Plural)]
+[Referent]
+[Plural]
 public class FriendsOf : Glyph
 {
     public override Nib[] Nibs => ["the friends of", Prop(Friend)];
@@ -75,7 +80,8 @@ public class Meets : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Animal), "meets", Prop(Friends)];
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Animal Animal { get; set; }
 
     public FriendsOf Friends { get; set; }
@@ -88,7 +94,8 @@ public class FollowsUntil : Glyph
 
     public Animal Animal { get; set; }
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Person Person { get; set; }
 
     [RefersTo(nameof(Animal))]
@@ -100,7 +107,8 @@ public class Visits : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Person), "visits", Nib.This];
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Person Person { get; set; }
 }
 
@@ -109,7 +117,8 @@ public class Feeds : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(Person), "feeds", Prop(Fed)];
 
-    [Referent(GrammaticalNumber.Singular)]
+    [Referent]
+    [Singular]
     public Person Person { get; set; }
 
     public OneOf<This, FriendsOf> Fed { get; set; }

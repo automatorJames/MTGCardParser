@@ -7,7 +7,8 @@
 /// <exampledoc>Abu Ja'far</exampledoc>
 /// <examplecapture>creatures blocking or blocked by it</examplecapture>
 [Dependent]
-[Referent(GrammaticalNumber.Plural)]
+[Referent]
+[Plural]
 public class CreaturesBlockingOrBlockedBy : Glyph
 {
     public override Nib[] Nibs => ["creatures blocking or blocked by", Prop(Combatant)];

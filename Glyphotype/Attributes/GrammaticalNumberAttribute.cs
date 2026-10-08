@@ -1,11 +1,12 @@
 ﻿namespace Glyphotype.Attributes;
 
 /// <summary>
-/// The number of what a <see cref="BackReference"/> refers to: see <see cref="SingularAttribute"/> and
-/// <see cref="PluralAttribute"/>. Left off, it refers to referents of either number. (A referent's own number is
-/// <see cref="ReferentAttribute.Number"/>.)
+/// A grammatical number - see <see cref="SingularAttribute"/> and <see cref="PluralAttribute"/>. On a
+/// <see cref="BackReference"/>, the number of what it refers to: left off, it refers to referents of either number. On a
+/// <see cref="ReferentAttribute"/> class or property, the referent's own number: left off, a back-reference of either
+/// number can refer to it. Nowhere else.
 /// </summary>
-[AttributeUsage(AttributeTargets.Class)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Property)]
 public abstract class GrammaticalNumberAttribute(GrammaticalNumber number) : Attribute
 {
     public GrammaticalNumber Number { get; } = number;
@@ -15,8 +16,8 @@ public abstract class GrammaticalNumberAttribute(GrammaticalNumber number) : Att
         member?.GetCustomAttributes<GrammaticalNumberAttribute>().FirstOrDefault()?.Number ?? GrammaticalNumber.Unspecified;
 }
 
-/// <summary>A back-reference, such as "it", that refers only to one thing.</summary>
+/// <summary>One thing: a back-reference, such as "it", that refers only to one thing, or a referent that is one.</summary>
 public class SingularAttribute() : GrammaticalNumberAttribute(GrammaticalNumber.Singular);
 
-/// <summary>A back-reference, such as "they", that refers only to several things.</summary>
+/// <summary>Several things: a back-reference, such as "they", that refers only to several things, or a referent that is several.</summary>
 public class PluralAttribute() : GrammaticalNumberAttribute(GrammaticalNumber.Plural);

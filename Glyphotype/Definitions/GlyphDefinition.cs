@@ -80,7 +80,7 @@ public sealed record GlyphDefinition
     /// <summary>Class-level <see cref="ReferentAttribute"/>: every match is a referent, of this glyph's kind.</summary>
     public bool IsReferent { get; init; }
 
-    /// <summary>A referent's <see cref="ReferentAttribute.Number"/>, or a back-reference's <see cref="SingularAttribute"/>/<see cref="PluralAttribute"/>.</summary>
+    /// <summary>Its <see cref="SingularAttribute"/>/<see cref="PluralAttribute"/>: a referent's own number, or the number of what a back-reference refers to.</summary>
     public GrammaticalNumber Number { get; init; }
 
     /// <summary>For a <see cref="GlyphKind.BackReference"/>, the <c>T</c> of the <see cref="BackReference{T}"/> it derives from: the kind of referent it refers to. Null for a plain <see cref="BackReference"/>, which refers to any.</summary>

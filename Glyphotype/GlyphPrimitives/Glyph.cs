@@ -151,7 +151,7 @@ public abstract class Glyph : CaptureUnit
     /// What <see cref="ReferentAttribute"/>, <see cref="SingularAttribute"/>/<see cref="PluralAttribute"/> and
     /// <see cref="BackReference{T}"/> need of this type and <paramref name="props"/> (its own nib-bound properties): a
     /// referent captures something with a kind, a back-reference is neither a referent nor contains one,
-    /// [Singular]/[Plural] belong to a back-reference, and a back-reference's kind is something a referent can be.
+    /// [Singular]/[Plural] belong to a back-reference or a referent, and a back-reference's kind is something a referent can be.
     /// </summary>
     string GetReferentError(PropertyInfo[] props)
     {
@@ -169,27 +169,31 @@ public abstract class Glyph : CaptureUnit
                 return $"{Type.Name} is a {FriendlyName(Type.BaseType)}, but a back-reference's kind must be an enum or a glyph type - the type of what a [Referent] captures";
         }
 
+        const string numberUse = $"[Singular]/[Plural] give the number of a [Referent], or of what a {nameof(BackReference)} refers to";
+
         if (Type.GetCustomAttributes<GrammaticalNumberAttribute>(inherit: false).ToList() is { Count: > 0 } numbers)
         {
             if (numbers.Count > 1)
                 return $"{Type.Name} is both [Singular] and [Plural] - it can only be one";
 
-            if (this is not BackReference)
-                return isReferent
-                    ? $"{Type.Name} is [{numbers[0].Number}], which is for a {nameof(BackReference)} - a referent's number goes in its own attribute: [Referent(GrammaticalNumber.{numbers[0].Number})]"
-                    : $"{Type.Name} is [{numbers[0].Number}], which does nothing here - [Singular]/[Plural] only apply to a {nameof(BackReference)}";
+            if (this is not BackReference && !isReferent)
+                return $"{Type.Name} is [{numbers[0].Number}], which does nothing here - {numberUse}";
+        }
+
+        foreach (var prop in props)
+        {
+            var propNumbers = prop.GetCustomAttributes<GrammaticalNumberAttribute>().ToList();
+
+            if (propNumbers.Count > 1)
+                return $"{Type.Name}.{prop.Name} is both [Singular] and [Plural] - it can only be one";
+
+            if (propNumbers.Count == 1 && !prop.IsDefined(typeof(ReferentAttribute)))
+                return $"{Type.Name}.{prop.Name} is [{propNumbers[0].Number}], which does nothing here - {numberUse}";
         }
 
         foreach (var prop in props.Where(x => x.IsDefined(typeof(ReferentAttribute))))
-        {
-            var kinds = ReferentCapture.PossibleKinds(prop.PropertyType).ToList();
-
-            if (kinds.Count == 0)
+            if (!ReferentCapture.PossibleKinds(prop.PropertyType).Any())
                 return $"{Type.Name}.{prop.Name} is a [Referent], but it captures a {FriendlyName(prop.PropertyType)} - a referent must capture an enum or a glyph, whose type is the kind a BackReference<T> names";
-
-            if (kinds.Contains(typeof(This)))
-                return $"{Type.Name}.{prop.Name} is a [Referent] that can capture {{this}}, which is always a referent already - remove [Referent], or {{this}} would be counted twice";
-        }
 
         return null;
 

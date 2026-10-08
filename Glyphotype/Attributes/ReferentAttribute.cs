@@ -8,16 +8,12 @@
 /// A referent's kind is its type, never declared: a property's is the type of what it captured (an enum such as
 /// <c>CardType</c>, or a glyph - for a one-of, whichever alternative matched), a class's is the class. A
 /// <see cref="BackReference{T}"/> refers only to referents of kind <c>T</c>; a plain <see cref="BackReference"/>, a
-/// pronoun, to any. Give its <see cref="Number"/> - <c>[Referent(GrammaticalNumber.Plural)]</c> - where "it" and "they"
-/// need telling apart.
+/// pronoun, to any. Give its number - <see cref="SingularAttribute"/> or <see cref="PluralAttribute"/> beside it - where
+/// "it" and "they" need telling apart.
 /// </para>
 /// <para>
 /// Mark only what something later refers back to: every referent is one more thing a back-reference may have to skip.
 /// </para>
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property)]
-public class ReferentAttribute(GrammaticalNumber number = GrammaticalNumber.Unspecified) : Attribute
-{
-    /// <summary>Whether the referent is one thing or several - left unspecified, a back-reference of either number can refer to it.</summary>
-    public GrammaticalNumber Number { get; } = number;
-}
+public class ReferentAttribute : Attribute;

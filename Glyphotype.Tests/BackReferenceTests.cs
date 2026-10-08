@@ -131,7 +131,7 @@ public class BackReferenceTests(CorpusFixture corpus)
         var compiled = GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
 
         Assert.Contains("public class ThatAnimal : BackReference<Animal>", source);
-        Assert.Contains("[Referent(GrammaticalNumber.Plural)]", source);
+        Assert.Contains("[Referent]\n    [Plural]".Replace("\n", Environment.NewLine), source);
         Assert.Contains("[RefersTo(nameof(Animal))]", source);
 
         const string text = "the dog follows the baker until it rests. the dog meets the friends of it. they sleep all day. that animal sleeps all day. the baker visits {this}. that person waves.";
@@ -153,11 +153,19 @@ public class BackReferenceTests(CorpusFixture corpus)
     [InlineData("""
         [Referent] [Plural]
         public class Pack : Glyph { public override Nib[] Nibs => ["the pack"]; }
-        """, "a referent's number goes in its own attribute, [Referent(GrammaticalNumber.Plural)]")]
+        """, null)]
     [InlineData("""
         public enum Pet { Dog, Cat }
         public class Adopts : Glyph { public override Nib[] Nibs => ["we adopt a", Prop(Pet)]; [Referent] [Singular] public Pet Pet { get; set; } }
-        """, "a referent's number goes in its own attribute, [Referent(GrammaticalNumber.Singular)]")]
+        """, null)]
+    [InlineData("""
+        public enum Pet { Dog, Cat }
+        public class Adopts : Glyph { public override Nib[] Nibs => ["we adopt a", Prop(Pet)]; [Singular] public Pet Pet { get; set; } }
+        """, "[Singular], which does nothing here")]
+    [InlineData("""
+        public enum Pet { Dog, Cat }
+        public class Adopts : Glyph { public override Nib[] Nibs => ["we adopt a", Prop(Pet)]; [Referent(GrammaticalNumber.Plural)] public Pet Pet { get; set; } }
+        """, "[Referent] takes no number")]
     [InlineData("""
         public class Barks : Glyph { public override Nib[] Nibs => ["the dog barks", Prop(Loudly)]; [Referent] [RegexPattern("loudly")] public bool Loudly { get; set; } }
         """, "a referent must capture an enum or a glyph")]

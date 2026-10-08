@@ -90,7 +90,7 @@ static class DefinitionReader
             Patterns = type.GetCustomAttribute<RegexPatternAttribute>(inherit: false)?.Patterns ?? [],
             JoinedBy = type.GetCustomAttribute<JoinedByAttribute>(inherit: false)?.Joiner,
             IsReferent = type.IsDefined(typeof(ReferentAttribute), inherit: false),
-            Number = type.GetCustomAttribute<ReferentAttribute>(inherit: false)?.Number ?? ReadNumber(type),
+            Number = ReadNumber(type),
             ReferenceKind = referenceKind is null ? null : ReadTypeReference(referenceKind),
         };
     }
@@ -129,7 +129,7 @@ static class DefinitionReader
             JoinedBy = prop.GetCustomAttribute<JoinedByAttribute>()?.Joiner,
             TypeFilter = GetTypeFilter(prop)?.Name,
             IsReferent = prop.IsDefined(typeof(ReferentAttribute)),
-            Number = prop.GetCustomAttribute<ReferentAttribute>()?.Number ?? GrammaticalNumber.Unspecified,
+            Number = ReadNumber(prop),
             RefersTo = prop.GetCustomAttribute<RefersToAttribute>()?.PropertyName,
         };
 
