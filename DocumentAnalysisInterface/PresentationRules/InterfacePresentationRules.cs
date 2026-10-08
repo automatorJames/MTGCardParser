@@ -320,12 +320,13 @@ public static class BackReferenceDisplay
 {
     /// <summary>
     /// Where <paramref name="backReference"/> was resolved to, as a property path ("Chooser.Player"), each part paired
-    /// with the capture it names - a dynamic property's resolved glyph, which has none of its own, the property's - and
-    /// the type of what it names. The path is the shortest ending of the referent's full one, at least two parts
-    /// long, that no other capture on the line also ends with: "Chosen.CardType", not
-    /// "Effect.MayChooseAndPayForEach.Chosen.CardType", unless something else on the line ends in "Chosen.CardType" too.
-    /// A single part for <c>{this}</c> (the document itself, a <see cref="Glyphotype.BackReferences.This"/>), or "unresolved",
-    /// with no capture, when nothing before it agreed with it.
+    /// with the capture it names and the type of what it names. The path is the referent's chain of captures down from
+    /// its line's root, found by walking the line's captures as the resolver does - a dynamic property adding a part
+    /// for the glyph it resolved to ("Effect.DestroyAll.Destroyed"), which stands for the property's capture, having
+    /// none of its own. It's cut to the shortest ending, at least two parts long, that no other capture on the line
+    /// also ends with: "Chosen.CardType", not "Effect.MayChooseAndPayForEach.Chosen.CardType", unless something else on
+    /// the line ends in "Chosen.CardType" too. A single part for <c>{this}</c> (the document itself, a
+    /// <see cref="Glyphotype.BackReferences.This"/>), or "unresolved", with no capture, when nothing before it agreed with it.
     /// </summary>
     public static IReadOnlyList<(string Text, Glyphotype.RegexGeneration.Graph.CaptureTrace Capture, Type Type)> ReferentPath(
         Glyphotype.GlyphPrimitives.BackReference backReference,
@@ -337,27 +338,44 @@ public static class BackReferenceDisplay
         if (antecedent.IsSelf)
             return [(Glyphotype.Interfaces.IDocument.ThisToken, antecedent.Trace, typeof(Glyphotype.BackReferences.This))];
 
-        var path = antecedent.Trace.FullyQualifiedName.Split('_');
-        var lineNames = lineRoots.Where(x => !x.IsSynthesized).SelectMany(x => x.GetFlatCaptureTree().Keys).Select(x => x.Split('_')).ToList();
+        // Every capture's path on the line, as names - each repeat occurrence of a capture sharing its one path - and the
+        // referent's own, as the captures along it.
+        HashSet<string> linePaths = [];
+        List<(string Text, Glyphotype.RegexGeneration.Graph.CaptureTrace Capture)> found = null;
 
-        var length = Enumerable.Range(Math.Min(2, path.Length), path.Length - Math.Min(2, path.Length) + 1)
-            .FirstOrDefault(n => lineNames.Count(name => name.Length >= n && name[^n..].SequenceEqual(path[^n..])) == 1, path.Length);
-
-        var root = antecedent.Trace.CaptureContext?.RootCaptureTrace;
-        var parts = new List<(string, Glyphotype.RegexGeneration.Graph.CaptureTrace, Type)>();
-        Glyphotype.RegexGeneration.Graph.CaptureTrace capture = null;
-
-        // Walked from the root, not just over the parts shown: a part with no capture of its own is the type the one
-        // before it resolved to, and that one may be trimmed off the front.
-        for (var i = 0; i < path.Length; i++)
+        void Walk(Glyphotype.RegexGeneration.Graph.CaptureTrace trace, List<(string, Glyphotype.RegexGeneration.Graph.CaptureTrace)> path)
         {
-            capture = i == path.Length - 1 ? antecedent.Trace : root?[string.Join('_', path[..(i + 1)])] ?? capture;
+            path = [.. path, (trace.Name, trace)];
 
-            if (i >= path.Length - length)
-                parts.Add((path[i], capture, capture?.ResolvedNodeType));
+            if (trace.ClrValue is Glyphotype.GlyphPrimitives.DynamicGlyph)
+                path = [.. path, (trace.ResolvedNodeTypeName, trace)];
+
+            linePaths.Add(string.Join(".", path.Select(x => x.Item1)));
+
+            if (found is null && trace.Equals(antecedent.Trace))
+                found = path;
+
+            foreach (var child in trace.EffectiveChildren.SelectMany(x => x))
+                Walk(child, path);
         }
 
-        return parts;
+        foreach (var root in lineRoots.Where(x => !x.IsSynthesized))
+            Walk(root, []);
+
+        if (found is null)
+            return [(antecedent.Text, antecedent.Trace, antecedent.Trace.ResolvedNodeType)];
+
+        var names = found.Select(x => x.Text).ToList();
+        var shortest = Math.Min(2, names.Count);
+        bool IsUnique(int n)
+        {
+            var ending = string.Join(".", names.TakeLast(n));
+            return linePaths.Count(x => x == ending || x.EndsWith("." + ending)) == 1;
+        }
+
+        var length = Enumerable.Range(shortest, names.Count - shortest + 1).FirstOrDefault(IsUnique, names.Count);
+
+        return found.TakeLast(length).Select(x => (x.Text, x.Capture, x.Capture.ResolvedNodeType)).ToList();
     }
 
     /// <summary>
