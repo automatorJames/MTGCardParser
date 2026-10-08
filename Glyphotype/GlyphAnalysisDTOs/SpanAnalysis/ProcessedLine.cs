@@ -53,7 +53,7 @@ public class ProcessedLine
         SourceText = sourceText;
         Glyphs = glyphs;
         Clauses = LineClause.Group(glyphs);
-        BackReferences = BackReferenceResolver.Resolve(glyphs);
+        BackReferences = BackReferenceResolver.Collect(glyphs);
         UnmatchedTextOccurrences = unmatchedTextOccurrences;
         DataPath = dataPath;
 

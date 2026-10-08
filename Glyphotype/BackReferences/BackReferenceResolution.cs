@@ -14,8 +14,14 @@ public enum BackReferenceResolutionKind
 }
 
 /// <summary>One <see cref="BackReference"/> on a line, where it was captured, and what it was resolved to (see <see cref="BackReferenceResolver"/>).</summary>
-public sealed record BackReferenceResolution(BackReference BackReference, CaptureTrace Trace, BackReferenceResolutionKind Kind)
+public sealed record BackReferenceResolution(BackReference BackReference, CaptureTrace Trace)
 {
+    /// <summary>How <see cref="BackReference"/> was resolved - read off it and where it was captured, never stored apart from it.</summary>
+    public BackReferenceResolutionKind Kind =>
+        Antecedent is null ? BackReferenceResolutionKind.Unresolved
+        : BackReferenceResolver.IsDeclared(Trace) ? BackReferenceResolutionKind.Declared
+        : BackReferenceResolutionKind.Searched;
+
     /// <summary>What <see cref="BackReference"/> refers to, or null when <see cref="Kind"/> is <see cref="BackReferenceResolutionKind.Unresolved"/>.</summary>
     public ReferentCapture Antecedent => BackReference.Antecedent;
 

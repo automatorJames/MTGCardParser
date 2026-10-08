@@ -45,6 +45,15 @@ public class BackReferenceTests(CorpusFixture corpus)
         Assert.Equal(BackReferenceResolutionKind.Declared, resolution.Kind);
     }
 
+    [Fact]
+    public void Tokenizing_a_line_resolves_its_back_references()
+    {
+        var units = corpus.Grammar.Tokenize("the dog follows the baker until it rests.");
+        var resolution = Assert.Single(BackReferenceResolver.Collect(units));
+
+        Assert.Equal("dog", resolution.BackReference.Antecedent?.Text);
+    }
+
     [Theory]
     [InlineData("the baker visits rex. it sleeps all day.")]
     [InlineData("the baker feeds rex. it sleeps all day.")]

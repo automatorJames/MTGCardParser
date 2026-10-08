@@ -76,8 +76,17 @@ public sealed class GlyphGrammar
     public static GlyphGrammar FromAssemblies(IEnumerable<Assembly> assemblies, bool allowPartialClauseMatches, bool allowPeriodsInLiteralNibs = true) =>
         new(assemblies.SelectMany(GetLoadableTypes), allowPartialClauseMatches, allowPeriodsInLiteralNibs);
 
-    public List<CaptureUnit> Tokenize(string sourceText) =>
-        Tokenizer.Tokenize(sourceText);
+    /// <summary>
+    /// Tokenizes one line, <paramref name="sourceText"/>, and resolves its back-references (see
+    /// <see cref="BackReferenceResolver"/>) - the line being the scope a back-reference resolves in.
+    /// </summary>
+    public List<CaptureUnit> Tokenize(string sourceText)
+    {
+        var units = Tokenizer.Tokenize(sourceText);
+        BackReferenceResolver.Resolve(units);
+
+        return units;
+    }
 
     public bool TryGetType(string name, out Type type) =>
         _typesByName.TryGetValue(name, out type);
