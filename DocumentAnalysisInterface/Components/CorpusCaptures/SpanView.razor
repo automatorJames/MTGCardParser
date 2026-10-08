@@ -174,7 +174,7 @@
         if (CaptureTrace.HasOwnBoundary && !IsEffectivelyCollapsible)
             classes.Add("nested-underline");
 
-        if (CaptureTrace.IsTerminal || BackReferenceDisplay.IsLeafBackReference(CaptureTrace))
+        if (CaptureTrace.IsTerminal || CaptureDisplay.IsLeafGlyph(CaptureTrace))
             classes.Add("prop-capture-overline");
 
         //if (node is SpanSubLeaf spanSubLeaf)
@@ -201,6 +201,9 @@
         // every captured level regardless, so leaving it unset here is fine too — it inherits.
         if (IsEffectivelyCollapsible)
             return "";
+
+        if (CaptureDisplay.IsEmbedded(CaptureTrace))
+            return CaptureDisplay.ColorStyle;
 
         var style = new System.Text.StringBuilder();
 

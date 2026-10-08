@@ -1,3 +1,4 @@
+﻿using DocumentAnalysisInterface.PresentationRules;
 using Glyphotype.RegexGeneration.Graph;
 using Glyphotype.GlyphAnalysisDTOs.WordTrees;
 
@@ -28,7 +29,8 @@ public class CaptureTraceDisplayContext
         _runtimeSettings = runtimeSettings;
         _echoCorpus = echoCorpus;
 
-        Palettes = line.GetPositionalPalettes(IsEffectivelyCollapsed);
+        // An embedded capture is grey rather than a color of its own (see CaptureDisplay.IsEmbedded), so it takes no slot.
+        Palettes = line.GetPositionalPalettes(x => IsEffectivelyCollapsed(x) || CaptureDisplay.IsEmbedded(x));
         LineRoots = line.CaptureTraceRoots;
     }
 

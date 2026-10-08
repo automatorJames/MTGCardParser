@@ -324,8 +324,8 @@ public static class BackReferenceDisplay
     /// the type of what it names. The path is the shortest ending of the referent's full one, at least two parts
     /// long, that no other capture on the line also ends with: "Chosen.CardType", not
     /// "Effect.MayChooseAndPayForEach.Chosen.CardType", unless something else on the line ends in "Chosen.CardType" too.
-    /// A single part, with no capture, for <c>{this}</c> (the document itself, a <see cref="Glyphotype.BackReferences.This"/>),
-    /// or "unresolved" when nothing before it agreed with it.
+    /// A single part for <c>{this}</c> (the document itself, a <see cref="Glyphotype.BackReferences.This"/>), or "unresolved",
+    /// with no capture, when nothing before it agreed with it.
     /// </summary>
     public static IReadOnlyList<(string Text, Glyphotype.RegexGeneration.Graph.CaptureTrace Capture, Type Type)> ReferentPath(
         Glyphotype.GlyphPrimitives.BackReference backReference,
@@ -335,7 +335,7 @@ public static class BackReferenceDisplay
             return [("unresolved", null, null)];
 
         if (antecedent.IsSelf)
-            return [(Glyphotype.Interfaces.IDocument.ThisToken, null, typeof(Glyphotype.BackReferences.This))];
+            return [(Glyphotype.Interfaces.IDocument.ThisToken, antecedent.Trace, typeof(Glyphotype.BackReferences.This))];
 
         var path = antecedent.Trace.FullyQualifiedName.Split('_');
         var lineNames = lineRoots.Where(x => !x.IsSynthesized).SelectMany(x => x.GetFlatCaptureTree().Keys).Select(x => x.Split('_')).ToList();
@@ -361,21 +361,43 @@ public static class BackReferenceDisplay
     }
 
     /// <summary>
-    /// Whether <paramref name="trace"/> is a back-reference with nothing captured inside it (a bare "it"): not
-    /// <see cref="Glyphotype.RegexGeneration.Graph.CaptureTrace.IsTerminal"/>, being a Glyph, but with no children of its
-    /// own - so it's shown like a terminal: a row in its parent's table rather than a table of its own, and overlined
-    /// in the line above.
-    /// </summary>
-    public static bool IsLeafBackReference(Glyphotype.RegexGeneration.Graph.CaptureTrace trace) =>
-        trace.ClrValue is Glyphotype.GlyphPrimitives.BackReference && !trace.EffectiveChildren.Any();
-
-    /// <summary>
-    /// Whether <paramref name="leaf"/>, a row of <paramref name="branch"/>'s table, shows a referent: its own property is
-    /// marked [Referent], or it's the alternative a [Referent] one-of resolved to.
+    /// Whether <paramref name="leaf"/>, a row of <paramref name="branch"/>'s table, shows a referent: its own property or its
+    /// glyph's class is marked [Referent] (as <see cref="Glyphotype.BackReferences.This"/> is), or it's the alternative a
+    /// [Referent] one-of resolved to.
     /// </summary>
     public static bool IsReferent(Glyphotype.RegexGeneration.Graph.CaptureTrace leaf, Glyphotype.RegexGeneration.Graph.CaptureTrace branch) =>
         IsMarked(leaf) || branch.ClrValue is Glyphotype.GlyphPrimitives.OneOfBase && IsMarked(branch);
 
     static bool IsMarked(Glyphotype.RegexGeneration.Graph.CaptureTrace trace) =>
-        trace.SourceNode?.Navigation?.Prop?.IsDefined(typeof(Glyphotype.Attributes.ReferentAttribute), inherit: true) == true;
+        trace.SourceNode?.Navigation?.Prop?.IsDefined(typeof(Glyphotype.Attributes.ReferentAttribute), inherit: true) == true
+        || trace.ClrValue?.GetType().IsDefined(typeof(Glyphotype.Attributes.ReferentAttribute), inherit: false) == true;
+}
+
+/// <summary>How the Corpus Captures page shows a capture that isn't an ordinary property's.</summary>
+public static class CaptureDisplay
+{
+    /// <summary>
+    /// Whether <paramref name="trace"/> is a glyph with nothing captured inside it - a bare "it", an embedded
+    /// <c>{this}</c>, a glyph of literal text: not <see cref="Glyphotype.RegexGeneration.Graph.CaptureTrace.IsTerminal"/>,
+    /// being a Glyph, but with no children of its own - so it's shown like a terminal: a row in its parent's table
+    /// rather than a table of its own, and overlined in the line above. Never a line's root, which has no parent table.
+    /// </summary>
+    public static bool IsLeafGlyph(Glyphotype.RegexGeneration.Graph.CaptureTrace trace) =>
+        trace is not Glyphotype.RegexGeneration.Graph.RootCaptureTrace
+        && trace.ClrValue is Glyphotype.GlyphPrimitives.Glyph
+        && !trace.EffectiveChildren.Any();
+
+    /// <summary>
+    /// Whether <paramref name="trace"/> is an embedded glyph's - <see cref="Glyphotype.NibHelpers.Nib.This"/>, captured with
+    /// no property to hold it. Shown as though it were a property's, for a reviewer's sake, but in grey rather than a
+    /// color of its own (see <see cref="ColorStyle"/>), and never given a palette slot.
+    /// </summary>
+    public static bool IsEmbedded(Glyphotype.RegexGeneration.Graph.CaptureTrace trace) =>
+        trace is not Glyphotype.RegexGeneration.Graph.RootCaptureTrace && trace.SourceNode?.Navigation is { Prop: null, IsRoot: false };
+
+    /// <summary>An embedded capture's colors, in place of a palette's.</summary>
+    public const string ColorStyle = "--color: grey; --highlight-color: #bdbdbd; --lowlight-color: dimgrey;";
+
+    /// <summary>What an embedded capture's row says in place of a property name.</summary>
+    public const string NoPropertyNote = "no property";
 }

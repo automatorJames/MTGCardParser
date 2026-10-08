@@ -130,6 +130,12 @@ thead tr {
         color: white;
     }
 
+    /* In place of a property name, for a capture with no property to hold it (Nib.This). */
+    .no-property-note {
+        font-style: italic;
+        color: grey;
+    }
+
     .referent-note {
         color: grey;
         font-style: italic;

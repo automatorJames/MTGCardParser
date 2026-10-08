@@ -65,7 +65,7 @@ else
                         // ("*"-quantified) ancestor can capture more than once (e.g. two keywords in
                         // one ManyOf<Buff> list) - every occurrence shares this one table position,
                         // distinguished by PositionLabel below, rather than getting a branch of its own.
-                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal || BackReferenceDisplay.IsLeafBackReference(x)).SelectMany(x => x).ToList();
+                        var terminals = BranchTrace.Children.Where(x => x.IsTerminal || CaptureDisplay.IsLeafGlyph(x)).SelectMany(x => x).ToList();
 
                         if (terminals.Any() || BranchTrace.ClrValue is Glyphotype.GlyphPrimitives.BackReference)
                         {
@@ -86,11 +86,18 @@ else
                                     }
                                     @foreach (var leaf in terminals)
                                     {
-                                        var leafPaletteStyle = DisplayContext.Palettes[PaletteKey(leaf)].ToColorStyle();
+                                        var isEmbedded = CaptureDisplay.IsEmbedded(leaf);
+                                        var leafPaletteStyle = isEmbedded ? CaptureDisplay.ColorStyle : DisplayContext.Palettes[PaletteKey(leaf)].ToColorStyle();
+                                        var typePreviewable = isEmbedded && Previews?.Has(leaf.ResolvedNodeType) == true;
 
                                         <tr data-path="@leaf.HoverPath">
-                                            <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle)>
-                                                @if (Previews?.Has(leaf.ResolvedNodeType) == true)
+                                            <td class="prop-capture-table-cell first-column" style=@leafPaletteStyle>
+                                                @if (isEmbedded)
+                                                {
+                                                    <!-- Captured with no property to hold it (Nib.This): shown as though it were a property's, for a reviewer's sake. -->
+                                                    <span class="no-property-note">@CaptureDisplay.NoPropertyNote</span>
+                                                }
+                                                else if (Previews?.Has(leaf.ResolvedNodeType) == true)
                                                 {
                                                     <span class="previewable" data-preview-kind="@Previews.KindOf(leaf.ResolvedNodeType)" data-preview-name="@leaf.ResolvedNodeType.Name"
                                                           @onclick="() => Previews.View(leaf.ResolvedNodeType)">@LeafDisplayName(leaf)</span>@PositionLabel(leaf)
@@ -101,12 +108,25 @@ else
                                                 }
                                             </td>
                                             <td class="prop-capture-table-cell type-column" style=@(leafPaletteStyle)>
-                                                @TerminalTypeLabel(leaf)
+                                                @if (typePreviewable)
+                                                {
+                                                    <span class="previewable" data-preview-kind="@Previews.KindOf(leaf.ResolvedNodeType)" data-preview-name="@leaf.ResolvedNodeType.Name"
+                                                          @onclick="() => Previews.View(leaf.ResolvedNodeType)">@TerminalTypeLabel(leaf)</span>
+                                                }
+                                                else
+                                                {
+                                                    @TerminalTypeLabel(leaf)
+                                                }
                                             </td>
                                             <td class="prop-capture-table-cell value-column" style=@(leafPaletteStyle)>
                                                 @if (leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference backReference)
                                                 {
                                                     @ReferentPath(leaf, backReference)
+                                                }
+                                                else if (leaf.ClrValue is Glyphotype.GlyphPrimitives.Glyph)
+                                                {
+                                                    <!-- A glyph with nothing captured inside it has no value but its text. -->
+                                                    @leaf.CaptureValue
                                                 }
                                                 else
                                                 {
@@ -199,6 +219,8 @@ else
 
                 if (DisplayContext.Palettes.TryGetValue(PaletteKey(capture), out var palette))
                     style = palette.ToColorStyle(PaletteVariant.Normal);
+                else if (CaptureDisplay.IsEmbedded(capture))
+                    style = CaptureDisplay.ColorStyle;
             }
 
             type = part.Type ?? type;
@@ -368,11 +390,12 @@ else
     string LeafDisplayName(CaptureTrace leaf) =>
         DisplayName(BranchTrace.SourceNode is GlyphOneOfNode ? leaf.ResolvedNodeTypeName : leaf.Name);
 
-    /// <summary>A leaf's displayed "Type" column text - an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/> or <see cref="BoolNode"/>, the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for, or a leaf back-reference (see <see cref="BackReferenceDisplay.IsLeafBackReference"/>).</summary>
+    /// <summary>A leaf's displayed "Type" column text - an <see cref="EnumNode"/>, <see cref="PrimitiveNode"/> or <see cref="BoolNode"/>, the only node types <see cref="CaptureTrace.IsTerminal"/> is ever true for, or a leaf glyph (see <see cref="CaptureDisplay.IsLeafGlyph"/>): "BackReference" for a back-reference, else the glyph's own type.</summary>
     static string TerminalTypeLabel(CaptureTrace leaf) =>
         leaf.SourceNode switch
         {
             _ when leaf.ClrValue is Glyphotype.GlyphPrimitives.BackReference => "BackReference",
+            _ when leaf.ClrValue is Glyphotype.GlyphPrimitives.Glyph => leaf.ResolvedNodeTypeName,
             EnumNode => "Enum",
             PrimitiveNode primitive => char.ToUpperInvariant(primitive.Terminal.DisplayName[0]) + primitive.Terminal.DisplayName[1..],
             BoolNode => "Bool",
