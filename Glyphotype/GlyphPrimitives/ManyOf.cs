@@ -2,7 +2,7 @@
 
 namespace Glyphotype.GlyphPrimitives;
 
-public class ManyOf<T> : Glyph
+public class ManyOf<T> : Glyph, IWrapsItems<T>
 {
     public override Nib[] Nibs => [Prop(FirstItem), Prop(SecondPlus), Pattern(",? "), Prop(Conjunction), " ", Prop(LastItem)];
 
@@ -19,4 +19,6 @@ public class ManyOf<T> : Glyph
             .. SecondPlus?.Select(x => x.Item),
             LastItem 
         ];
+
+    IEnumerable<object> IWrapsItems.WrappedItems => Items.Cast<object>();
 }

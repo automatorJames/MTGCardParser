@@ -70,22 +70,13 @@ public sealed record ReferentCapture(object Value, CaptureTrace Trace, Grammatic
         return [type];
     }
 
-    /// <summary>The items of an <see cref="OptionalOf{T}"/>, <see cref="ManyOf{T}"/> or <see cref="CompoundOf{T}"/> - null for anything else.</summary>
+    /// <summary>The items of a primitive that only wraps them (see <see cref="IWrapsItems{T}"/>) - null for anything else.</summary>
     static IEnumerable<object> GetWrappedItems(object value) =>
-        GetWrappedItemType(value.GetType()) is null ? null
-        : value.GetType().GetProperty(nameof(OptionalOf<Glyph>.Item)) is { } item ? [item.GetValue(value)]
-        : ((System.Collections.IEnumerable)value.GetType().GetProperty(nameof(ManyOf<Glyph>.Items)).GetValue(value)).Cast<object>();
+        (value as IWrapsItems)?.WrappedItems;
 
-    /// <summary>The <c>T</c> of an <see cref="OptionalOf{T}"/>, <see cref="ManyOf{T}"/> or <see cref="CompoundOf{T}"/> <paramref name="type"/> is or derives from - null for anything else.</summary>
-    static Type GetWrappedItemType(Type type)
-    {
-        for (var current = type; current is not null && current != typeof(Glyph); current = current.BaseType)
-            if (current.IsGenericType && current.GetGenericTypeDefinition() is var definition
-                && (definition == typeof(OptionalOf<>) || definition == typeof(ManyOf<>) || definition == typeof(CompoundOf<>)))
-                return current.GetGenericArguments()[0];
-
-        return null;
-    }
+    /// <summary>The <c>T</c> of the <see cref="IWrapsItems{T}"/> <paramref name="type"/> is - null for anything else.</summary>
+    static Type GetWrappedItemType(Type type) =>
+        type.GetInterfaces().FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IWrapsItems<>))?.GetGenericArguments()[0];
 
     public override string ToString() => Text;
 }
