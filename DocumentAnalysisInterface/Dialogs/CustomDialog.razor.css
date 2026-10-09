@@ -29,6 +29,10 @@
     z-index: 1001;
     width: 90%;
     max-width: 1080px;
+    /* Never taller than the window: the title and actions stay put, and the content between them scrolls */
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 2rem);
     /* A subtle border helps define the dialog against a dark backdrop */
     border: 1px solid #4A5568;
     /* A soft glow and shadow to lift the dialog off the page */
@@ -36,6 +40,7 @@
 }
 
 .custom-dialog-header {
+    flex-shrink: 0;
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 1rem;
@@ -43,10 +48,14 @@
 }
 
 .custom-dialog-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     margin-bottom: 2rem;
 }
 
 .custom-dialog-actions {
+    flex-shrink: 0;
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
