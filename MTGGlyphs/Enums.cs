@@ -880,6 +880,11 @@ public enum Whose
 
     Your,
 
+    [RegexPattern("its owner's")]
+    ItsOwners,
+
+    Their,
+
     [RegexPattern("a")]
     Any,
 
@@ -934,10 +939,4 @@ public enum Assertion
 
     [RegexPattern("isn't")]
     Isnt
-}
-
-public enum Who
-{
-    [RegexPattern("that creature's controller")]
-    ThatCreaturesController
 }

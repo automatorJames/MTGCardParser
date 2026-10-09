@@ -7,7 +7,6 @@
 public class Recipient : GlyphOneOf
 {
     public Target Target { get; set; }
-    public ThatCardsController ThatCardsController { get; set; }
-    public ThatPlayer ThatPlayer { get; set; }
+    public PlayerReference PlayerReference { get; set; }
     public ThatCard ThatCard { get; set; }
 }
