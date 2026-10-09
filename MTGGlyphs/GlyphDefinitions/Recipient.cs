@@ -6,7 +6,7 @@
 [Dependent]
 public class Recipient : GlyphOneOf
 {
-    public TargetableEntity TargetableEntity { get; set; }
+    public Target Target { get; set; }
     public ThatCardsController ThatCardsController { get; set; }
     public ThatPlayer ThatPlayer { get; set; }
     public ThatCard ThatCard { get; set; }

@@ -1,12 +1,12 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"that land's controller": the controller of a permanent named earlier.</summary>
+/// <summary>"that land's controller": the controller of a permanent named earlier in the line.</summary>
 /// <exampledoc>Ankh of Mishra</exampledoc>
 /// <examplecapture>that land's controller</examplecapture>
 [Dependent]
 public class ThatCardsController : Glyph
 {
-    public override Nib[] Nibs => ["that", Prop(CardOrCreatureType), "'s controller"];
+    public override Nib[] Nibs => [Prop(Card), "'s controller"];
 
-    public OneOf<CardType?, CreatureType?> CardOrCreatureType { get; set; }
+    public ThatCard Card { get; set; }
 }

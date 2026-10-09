@@ -1,10 +1,7 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>What a target can be: a player, a card type or a creature type.</summary>
+/// <summary>"any target": a target that can be a player or a permanent.</summary>
+/// <exampledoc>Aladdin's Ring</exampledoc>
+/// <examplecapture>any target</examplecapture>
 [Dependent]
-public class AnyTarget : GlyphOneOf
-{
-    public PlayerIdentity? PlayerIdentity { get; set; }
-    public CardType? CardType { get; set; }
-    public CreatureType? CreatureType { get; set; }
-}
+public class AnyTarget : Glyph;

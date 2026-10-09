@@ -788,17 +788,11 @@ public enum PermanentVerb
     [RegexPattern("have", "has")]
     Have,
 
-    [RegexPattern("deal(s)?")]
-    Deal,
-
     [RegexPattern("gain(s)?")]
     Gain,
 
     [RegexPattern("lose(s)?")]
     Lose,
-
-    [RegexPattern("it's")]
-    Is,
 }
 
 public enum WhichPlayer

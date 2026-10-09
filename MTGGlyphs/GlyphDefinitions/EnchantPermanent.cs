@@ -5,9 +5,9 @@
 /// <examplecapture>enchant land</examplecapture>
 public class EnchantPermanent : Glyph
 {
-    public override Nib[] Nibs => ["enchant", Prop(CardOrCreatureType), Prop(CardOutsideBattlefield)];
+    public override Nib[] Nibs => ["enchant", Prop(Kind), Prop(CardOutsideBattlefield)];
 
-    public OneOf<CardType?, CreatureType?> CardOrCreatureType { get; set; }
+    public PermanentKind Kind { get; set; }
 
     [Optional]
     public CardOutsideBattlefield CardOutsideBattlefield { get; set; }

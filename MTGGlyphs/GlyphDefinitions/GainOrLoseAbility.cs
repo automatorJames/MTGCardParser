@@ -3,7 +3,8 @@
 /// <summary>Gaining or losing a quoted ability: 'loses "enchant creature card in a graveyard"'.</summary>
 /// <exampledoc>Animate Dead</exampledoc>
 /// <examplecapture>loses "enchant creature card in a graveyard"</examplecapture>
-public class GainOrLoseAbility : Glyph
+[Dependent]
+public class GainOrLoseAbility : Glyph, IPredicate
 {
     public override Nib[] Nibs => [Prop(GainOrLose), "\"", Prop(Ability), "\""];
 

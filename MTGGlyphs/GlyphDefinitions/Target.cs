@@ -1,16 +1,11 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>A target: "any target", or "target" and what it targets.</summary>
-/// <exampledoc>Pirate Ship</exampledoc>
+/// <exampledoc>Aladdin's Ring</exampledoc>
 /// <examplecapture>any target</examplecapture>
 [Dependent]
-public class Target : Glyph
+public class Target : GlyphOneOf
 {
-    public override Nib[] Nibs => [Prop(IsAny), "target", Prop(TargetableEntity)];
-
-    [RegexPattern("any")]
-    public bool IsAny { get; set; }
-
-    [Optional]
-    public TargetableEntity TargetableEntity { get; set; }
+    public AnyTarget AnyTarget { get; set; }
+    public SpecificTarget SpecificTarget { get; set; }
 }

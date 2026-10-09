@@ -5,8 +5,8 @@
 /// <examplecapture>whenever a land enters the battlefield, {this} deals 2 damage to that land's controller</examplecapture>
 public class WheneverACardEntersTheBattlefield : Glyph
 {
-    public override Nib[] Nibs => ["whenever a", Prop(CardOrCreatureType), "enters the battlefield,", Prop(Result)];
+    public override Nib[] Nibs => ["whenever a", Prop(Kind), "enters the battlefield,", Prop(Result)];
 
-    public OneOf<CardType?, CreatureType?> CardOrCreatureType { get; set; }
+    public PermanentKind Kind { get; set; }
     public DynamicGlyph Result { get; set; }
 }
