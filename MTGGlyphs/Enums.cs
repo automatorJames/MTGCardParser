@@ -71,7 +71,6 @@ public enum CardType
 
 public enum Keyword
 {
-    // Evergreen
     Deathtouch,
     Defender,
     FirstStrike,
@@ -85,14 +84,17 @@ public enum Keyword
     Indestructible,
     Intimidate,
     Landwalk,
+    Plainswalk,
+    Islandwalk,
+    Swampwalk,
+    Mountainwalk,
+    Forestwalk,
     Lifelink,
     Protection,
     Reach,
     Shroud,
     Trample,
     Vigilance,
-
-    // Keyword Actions
     Attach,
     Counter,
     Exile,
@@ -101,8 +103,6 @@ public enum Keyword
     Sacrifice,
     Tap,
     Untap,
-
-    // Expansion Keywords
     Absorb,
     Affinity,
     Amplify,
@@ -196,8 +196,6 @@ public enum Keyword
     Unleash,
     Vanishing,
     Wither,
-
-    // Ability Words
     Battalion,
     Bloodrush,
     Channel,
@@ -216,8 +214,6 @@ public enum Keyword
     Radiance,
     Sweep,
     Threshold,
-
-    // Discontinued
     Bury,
     Landhome,
     Substance
@@ -225,266 +221,508 @@ public enum Keyword
 
 public enum CounterType
 {
-    // Common counters
-    [RegexPattern(@"\+1/\+1")] PlusOnePlusOne,
-    [RegexPattern(@"-1/-1")] MinusOneMinusOne,
+    [RegexPattern(@"\+1/\+1")]
+    PlusOnePlusOne,
+
+    [RegexPattern("-1/-1")]
+    MinusOneMinusOne,
+
+    [RegexPattern(@"\+1/\+0")]
+    PlusOnePlusZero,
+
     Charge,
+
     Defense,
+
     Energy,
+
     Finality,
+
     Lore,
+
     Loyalty,
+
     Oil,
+
     Poison,
+
     Stun,
+
     Time,
 
-    // Keyword counters
     Deathtouch,
+
     DoubleStrike,
+
     FirstStrike,
+
     Flying,
+
     Haste,
+
     Hexproof,
+
     Indestructible,
+
     Lifelink,
+
     Menace,
+
     Reach,
+
     Shadow,
+
     Trample,
+
     Vigilance,
 
-    // Mechanic counters
     Age,
-    [RegexPattern("crank!")] Crank,
+
+    [RegexPattern("crank!")]
+    Crank,
+
     Divinity,
+
     Fade,
+
     Ki,
+
     Level,
+
     Rad,
+
     Shield,
+
     Spore,
+
     Ticket,
 
-    // Cycle counters
     Brick,
+
     Depletion,
+
     Experience,
+
     Quest,
+
     Storage,
+
     Verse,
 
-    // Other (multiple cards)
     Acorn,
+
     Aim,
+
     Blaze,
+
     Blood,
+
     Bounty,
+
     Coin,
+
     Collection,
+
     Corpse,
+
     Delay,
+
     Devotion,
+
     Doom,
+
     Dream,
+
     Egg,
+
     Eon,
+
     Fate,
+
     Feather,
+
     Fetch,
+
     Flame,
+
     Flood,
+
     Fungus,
+
     Fuse,
+
     Gold,
+
     Growth,
+
     Hatchling,
+
     Healing,
+
     Hit,
+
     Hour,
+
     Ice,
+
     Infection,
+
     Judgment,
+
     Landmark,
+
     Luck,
+
     Net,
+
     Omen,
+
     Page,
+
     Plague,
+
     Point,
+
     Pressure,
+
     Scream,
+
     Slime,
+
     Soul,
+
     Study,
+
     Tide,
+
     Velocity,
+
     Void,
+
     Wind,
+
     Wish,
 
-    // Other (single card)
     Aegis,
+
     Arrow,
+
     Arrowhead,
+
     Awakening,
+
     Bait,
+
     Blessing,
+
     Blight,
+
     Bloodline,
+
     Bloodstain,
+
     Book,
+
     Bore,
+
     Brain,
+
     Bribery,
+
     Burden,
+
     Cage,
+
     Carrion,
+
     Chip,
+
     Chorus,
+
     Contested,
+
     Credit,
+
     Croak,
+
     Crystal,
+
     Component,
+
     Corruption,
+
     Cube,
+
     Currency,
+
     Death,
+
     Descent,
+
     Despair,
+
     Discovery,
+
     Dread,
+
     Duty,
+
     Echo,
+
     Elixir,
+
     Ember,
+
     Enlightened,
+
     Eruption,
+
     Everything,
+
     Eyeball,
+
     Eyestalk,
+
     Feeding,
+
     Fellowship,
+
     Filibuster,
+
     Foreshadow,
+
     Funk,
+
     Fury,
+
     Gem,
+
     Ghostform,
+
     Globe,
+
     Glyph,
+
     Hack,
+
     Harmony,
+
     Hatching,
+
     Hone,
+
     Hoofprint,
+
     Hope,
+
     Hourglass,
+
     Hunger,
+
     Husk,
+
     Impostor,
+
     Incarnation,
+
     Incubation,
+
     Influence,
+
     Ingenuity,
+
     Intel,
+
     Intervention,
+
     Isolation,
+
     Invitation,
+
     Javelin,
+
     Kick,
+
     Knickknack,
+
     Knowledge,
+
     Loot,
+
     Magnet,
+
     Manifestation,
+
     Mannequin,
+
     Matrix,
+
     Memory,
+
     Midway,
+
     Mine,
+
     Mining,
+
     Mire,
+
     Music,
+
     Muster,
+
     Necrodermis,
+
     Nest,
+
     Night,
+
     Ore,
+
     Pain,
+
     Palliation,
+
     Paralyzation,
+
     Pause,
+
     Petal,
+
     Petrification,
+
     Phylactery,
+
     Phyresis,
+
     Pin,
+
     Plot,
+
     Polyp,
-    [RegexPattern("Pop!")] Pop,
+
+    [RegexPattern("Pop!")]
+    Pop,
+
     Possession,
+
     Prey,
+
     Pupa,
+
     Rejection,
+
     Reprieve,
+
     Rev,
+
     Revival,
+
     Ribbon,
+
     Ritual,
+
     Rope,
+
     Rust,
+
     Scroll,
+
     Shell,
+
     Shoe,
+
     Shred,
+
     Skewer,
+
     Silver,
+
     Sleep,
+
     Sleight,
+
     Slumber,
+
     Soot,
+
     Spark,
+
     Spite,
+
     Stash,
+
     Story,
+
     Strife,
+
     Supply,
+
     Suspect,
+
     Takeover,
+
     Task,
+
     Theft,
-    [RegexPattern("third-degree-burn")] ThirdDegreeBurn,
+
+    [RegexPattern("third-degree-burn")]
+    ThirdDegreeBurn,
+
     Tower,
+
     Training,
+
     Trap,
+
     Treasure,
+
     Unity,
+
     Unlock,
+
     Valor,
+
     Vitality,
+
     Vortex,
+
     Vow,
+
     Voyage,
+
     Wage,
+
     Winch,
 
-    // Test card counters
     Art,
+
     BasePower,
+
     BaseToughness,
+
     Day,
+
     Glass,
+
     Hole,
+
     Manabond,
+
     Milk,
+
     Primeval,
+
     Rebuilding,
+
     Release,
+
     Resonance,
+
     Shy,
+
     Stroopwafel,
+
     Token
 }
 
@@ -803,7 +1041,13 @@ public enum WhichPlayer
     EachOpponent,
 
     [RegexPattern("an opponent")]
-    AnyOpponent
+    AnyOpponent,
+
+    [RegexPattern("a player")]
+    AnyPlayer,
+
+    [RegexPattern("defending player")]
+    DefendingPlayer
 }
 
 public enum TapState
@@ -815,7 +1059,8 @@ public enum TapState
 public enum PlayerIdentity
 {
     Player,
-    Opponent
+    Opponent,
+    Controller
 }
 
 public enum CardPlace
@@ -841,20 +1086,11 @@ public enum VariableName
 
 public enum LandType
 {
-    [RegexPattern("forest(s)?")]
-    Forest,
-
-    [RegexPattern("island(s)?")]
-    Island,
-
-    [RegexPattern("mountain(s)?")]
-    Mountain,
-
-    [RegexPattern("plains")]
     Plains,
-
-    [RegexPattern("swamp(s)?")]
-    Swamp
+    Island,
+    Swamp,
+    Mountain,
+    Forest
 }
 
 public enum TemporalDisposition
@@ -880,6 +1116,12 @@ public enum Whose
     [RegexPattern("its owner's")]
     ItsOwners,
 
+    [RegexPattern("its controller's")]
+    ItsControllers,
+
+    [RegexPattern("their controllers'")]
+    TheirControllers,
+
     Their,
 
     [RegexPattern("a")]
@@ -890,6 +1132,7 @@ public enum Whose
 
 public enum Phase
 {
+    UntapStep,
     Upkeep,
     DrawStep,
     MainPhase,
@@ -899,7 +1142,8 @@ public enum Phase
     DeclareBlockersStep,
     DamageStep,
     EndStep,
-    EndOfTurn
+    EndOfTurn,
+    Turn
 }
 
 public enum NonBattlefieldZone
