@@ -875,9 +875,6 @@ public enum Whose
     [RegexPattern("(an|your) opponent's")]
     Opponent,
 
-    [RegexPattern("each player's")]
-    EachPlayer,
-
     Your,
 
     [RegexPattern("its owner's")]
