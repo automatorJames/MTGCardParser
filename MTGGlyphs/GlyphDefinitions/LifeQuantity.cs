@@ -3,6 +3,7 @@
 /// <summary>An amount of life, e.g. as a cost: "10 life".</summary>
 /// <exampledoc>Bronze Tablet</exampledoc>
 /// <examplecapture>10 life</examplecapture>
+[Dependent]
 public class LifeQuantity : Glyph
 {
     public override Nib[] Nibs => [Prop(Quantity), "life"];

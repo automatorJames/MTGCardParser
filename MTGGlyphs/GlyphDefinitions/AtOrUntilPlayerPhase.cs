@@ -3,7 +3,7 @@
 /// <summary>A point in a player's turn: "at the beginning of your upkeep", "until the end of your turn".</summary>
 /// <exampledoc>Juzám Djinn</exampledoc>
 /// <examplecapture>at the beginning of your upkeep</examplecapture>
-[TokenizationOrder(0)]
+[Dependent]
 public class AtOrUntilPlayerPhase : Glyph
 {
     public override Nib[] Nibs => [Prop(TemporalDisposition), "the", Prop(PhasePart), "of", Prop(Whose), Prop(Phase)];
