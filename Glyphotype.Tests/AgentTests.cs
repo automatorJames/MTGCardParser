@@ -125,6 +125,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
         Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
         Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalNaps")]);
+        Assert.Equal(3, workbench.ChangeSteps[(DefinitionKind.Glyph, "AnimalNaps")]);
 
         // The session's own check-in is still due.
         await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(Glyph("AnimalDozes", "dozes")));

@@ -109,7 +109,7 @@ public sealed class GrammarWorkbench : IDisposable
     {
         SetDefinitions(committed, LoadWorkingDefinition() ?? committed);
         LoadHistory();
-        ChangeRounds = FindChangeRounds();
+        (ChangeRounds, ChangeSteps) = FindChangeOrigins();
 
         if (HasChanges)
             _ = RescoreAsync();
@@ -155,6 +155,9 @@ public sealed class GrammarWorkbench : IDisposable
     /// <summary>The agent round (see <see cref="WorkbenchStep.Round"/>) each of <see cref="Changes"/> began in. A change a person began isn't here, nor one whose first step <see cref="History"/> no longer holds.</summary>
     public IReadOnlyDictionary<(DefinitionKind Kind, string Name), int> ChangeRounds { get; private set; } = new Dictionary<(DefinitionKind, string), int>();
 
+    /// <summary>The number of the agent step each of <see cref="ChangeRounds"/>' changes began in.</summary>
+    public IReadOnlyDictionary<(DefinitionKind Kind, string Name), int> ChangeSteps { get; private set; } = new Dictionary<(DefinitionKind, string), int>();
+
     /// <summary>The edits made since the workbench started or last committed, oldest first.</summary>
     public IReadOnlyList<WorkbenchStep> History
     {
@@ -170,19 +173,21 @@ public sealed class GrammarWorkbench : IDisposable
         CommittedDefinition = committed;
         WorkingDefinition = working;
         Changes = DefinitionDiff.Compare(committed, working);
-        ChangeRounds = FindChangeRounds();
+        (ChangeRounds, ChangeSteps) = FindChangeOrigins();
     }
 
     /// <summary>
-    /// The round of the step each change began in: the latest step to find the definition as committed, and leave it
-    /// otherwise - other than a restoring step, which brings back a change an earlier step began.
+    /// The round and number of the step each change began in, where an agent's round did: the latest step to find the
+    /// definition as committed, and leave it otherwise - other than a restoring step, which brings back a change an
+    /// earlier step began.
     /// </summary>
-    Dictionary<(DefinitionKind, string), int> FindChangeRounds()
+    (Dictionary<(DefinitionKind, string), int> Rounds, Dictionary<(DefinitionKind, string), int> Steps) FindChangeOrigins()
     {
         var rounds = new Dictionary<(DefinitionKind, string), int>();
+        var steps = new Dictionary<(DefinitionKind, string), int>();
 
         if (!_history.Any(x => x.Round is not null))
-            return rounds;
+            return (rounds, steps);
 
         foreach (var change in Changes)
         {
@@ -210,13 +215,16 @@ public sealed class GrammarWorkbench : IDisposable
                     continue;
 
                 if (step.Round is int round)
+                {
                     rounds[(change.Kind, change.Name)] = round;
+                    steps[(change.Kind, change.Name)] = step.Number;
+                }
 
                 break;
             }
         }
 
-        return rounds;
+        return (rounds, steps);
     }
 
     /// <summary>The committed grammar's own score, computed on first request.</summary>

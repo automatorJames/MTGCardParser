@@ -75,6 +75,9 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
     /// <summary>The options of the conversation under way - null before it begins.</summary>
     ChatOptions _settled;
 
+    /// <summary>The context window the CLI last said each model has, by the model's name as chosen - kept from one conversation to the next.</summary>
+    readonly Dictionary<string, long> _contextWindows = [];
+
     public event Action Changed;
 
     protected LocalAgent LocalAgent => localAgent;
@@ -107,6 +110,26 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
 
     /// <summary>What the conversation has used so far.</summary>
     public ChatStats Stats => _stats;
+
+    /// <summary>
+    /// How many tokens the model can hold: as the CLI said in this conversation, or an earlier one on the same model -
+    /// or, before it has, as the model is documented to (every current model has a 1M window). Null for a model that's
+    /// neither.
+    /// </summary>
+    public long? ContextWindow
+    {
+        get
+        {
+            lock (_gate)
+            {
+                var model = Options.Model;
+
+                return _stats.ContextWindow
+                    ?? (_contextWindows.TryGetValue(model, out var window) ? (long?)window : null)
+                    ?? (((string[])["fable", "opus", "sonnet", "haiku"]).Contains(model) ? (long?)1_000_000 : null);
+            }
+        }
+    }
 
     /// <summary>
     /// The model the conversation runs on, as the CLI names it (an alias like "sonnet", or a full id). Settable until
@@ -166,6 +189,11 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
 
     /// <summary>Something to hold for the length of one turn, disposed of once it's over - null for nothing.</summary>
     protected virtual IDisposable BeginTurn() => null;
+
+    /// <summary>The agent has finished with a message, or been stopped - called under the gate.</summary>
+    protected virtual void OnTurnEnded()
+    {
+    }
 
     /// <summary>A tool call has its answer - called under the gate.</summary>
     protected virtual void OnToolAnswered(ChatEntry call)
@@ -273,6 +301,7 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
                     _entries.Add(new(ChatEntryKind.Error, "Stopped."));
 
                 _turn = null;
+                OnTurnEnded();
             }
 
             turn.Dispose();
@@ -324,6 +353,9 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
 
             case AgentTurnCompleted completed:
                 _stats = _stats with { CostUsd = _stats.CostUsd + completed.CostUsd, ContextWindow = completed.ContextWindow ?? _stats.ContextWindow };
+
+                if (completed.ContextWindow is long contextWindow)
+                    _contextWindows[_settled.Model] = contextWindow;
                 break;
 
             case AgentUsageLimits limits:

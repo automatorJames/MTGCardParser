@@ -8,8 +8,9 @@
 {
     var entries = Chat.Entries;
     var running = Chat.IsRunning;
-    var steps = Chat.StepsPerRound;
+    var round = Chat.Round;
     var stats = Chat.Stats;
+    var contextWindow = Chat.ContextWindow;
 
     <aside class="chat-pane @(_open ? "open" : "")">
         <button class="chat-handle @(running ? "running" : "")" title="@(_open ? "Hide the agent" : "Work on the grammar with the local agent")" @onclick="Toggle">
@@ -19,7 +20,7 @@
 
         <header class="chat-header">
             <h3>Grammar agent</h3>
-            <span class="chat-state @(running ? "running" : "")">@(running ? "working…" : "idle")</span>
+            <span class="chat-state @(running ? "running" : "")">@(round is int number ? $"AI round {number} · working…" : running ? "working…" : "idle")</span>
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
         </header>
 
@@ -29,9 +30,9 @@
         {
             <div class="chat-stats">
                 @Stat("Context",
-                    stats.ContextWindow is long window ? Percent((double)stats.ContextTokens / window) : Compact(stats.ContextTokens),
-                    stats.ContextWindow is long size ? $"{Compact(stats.ContextTokens)} of {Compact(size)}" : "tokens",
-                    stats.ContextWindow is long capacity ? (double)stats.ContextTokens / capacity : null,
+                    contextWindow is long window ? Percent((double)stats.ContextTokens / window) : Compact(stats.ContextTokens),
+                    contextWindow is long size ? $"{Compact(stats.ContextTokens)} of {Compact(size)}" : "tokens",
+                    contextWindow is long capacity ? (double)stats.ContextTokens / capacity : null,
                     "How much of what the model can hold the conversation takes up")
 
                 @Stat("Tokens",
@@ -58,8 +59,9 @@
             @if (entries.Count == 0)
             {
                 <p class="chat-hint">
-                    The agent works on the active workspace through the app's own tools, as <code>/grammar</code> does in a terminal:
-                    a round of steps, then it stops to check in. Each step it applies shows up under Working changes as it lands.
+                    The agent works on the active workspace through the app's own tools, as <code>/grammar</code> does in a terminal.
+                    Each start is an AI round: it works until it has applied the max steps, runs out of improvements, or is stopped.
+                    Each step it applies shows up under Working changes as it lands.
                 </p>
             }
 
@@ -72,21 +74,27 @@
             </form>
 
             <div class="chat-actions">
-                <div class="round-button" title="Steps the agent applies before it stops to check in - 0 for no limit. The session's setting, so it holds for an agent in a terminal too.">
-                    <button class="btn btn-sm btn-primary" disabled="@running" @onclick="RunRound">
-                        @(Chat.HasRound ? "Next" : "Start") @(steps > 0 ? $"{steps} glyph{(steps == 1 ? "" : "s")}" : "round")
-                    </button>
-                    <input type="number" min="0" max="99" value="@steps" @onchange="SetSteps" />
+                <div class="round-control">
+                    @if (running)
+                    {
+                        <button class="btn btn-sm round-toggle stop" title="Stop the agent where it is - steps it has applied stay applied" @onclick="Chat.Stop">
+                            <span class="material-symbols-outlined">stop</span> Stop
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-primary round-toggle" title="Start an AI round, with the message as its instructions" @onclick="StartRound">
+                            <span class="material-symbols-outlined">play_arrow</span> Start AI
+                        </button>
+                    }
+
+                    <label class="max-steps" title="Steps the agent applies in a round before it stops - empty for no limit. The session's setting, so it holds for an agent in a terminal too.">
+                        <span class="chat-label">Max steps</span>
+                        <input type="number" min="1" max="99" placeholder="∞" value="@Chat.MaxSteps" @onchange="SetMaxSteps" />
+                    </label>
                 </div>
 
-                @if (running)
-                {
-                    <button class="btn btn-sm btn-secondary" @onclick="Chat.Stop">Stop</button>
-                }
-                else
-                {
-                    <button class="btn btn-sm btn-secondary" disabled="@string.IsNullOrWhiteSpace(_draft)" @onclick="Send">Send</button>
-                }
+                <button class="btn btn-sm btn-secondary" disabled="@(running || string.IsNullOrWhiteSpace(_draft))" title="Say something to the agent without starting a round" @onclick="Send">Send</button>
             </div>
         </footer>
     </aside>
@@ -178,9 +186,9 @@
         return OpenChanged.InvokeAsync(open);
     }
 
-    void RunRound()
+    void StartRound()
     {
-        Chat.RunRound(_draft);
+        Chat.StartRound(_draft);
         _draft = null;
     }
 
@@ -193,10 +201,8 @@
         _draft = null;
     }
 
-    void SetSteps(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var steps))
-            Chat.StepsPerRound = Math.Clamp(steps, 0, 99);
-    }
+    /// <summary>Empty, or anything short of a step, for no limit.</summary>
+    void SetMaxSteps(ChangeEventArgs e) =>
+        Chat.MaxSteps = int.TryParse(e.Value?.ToString(), out var steps) && steps > 0 ? Math.Min(steps, 99) : null;
 
 }

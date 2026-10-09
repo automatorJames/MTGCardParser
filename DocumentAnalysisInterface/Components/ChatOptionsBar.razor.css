@@ -40,3 +40,12 @@
         .chat-options select:disabled {
             opacity: 0.6;
         }
+
+/* Once settled, a darker key and a lighter value, so each pair reads apart from the next */
+.chat-options.settled .chat-label {
+    color: #6e6e6e;
+}
+
+.chat-option-value {
+    color: #c8ccd2;
+}

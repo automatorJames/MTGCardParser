@@ -248,28 +248,54 @@
     gap: 0.5rem;
 }
 
-/* One control: the button runs a round, the number beside it is how many steps a round is */
-.round-button {
+/* Starting and stopping an AI round, and how many steps it may take */
+.round-control {
     display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-    .round-button .btn {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
+.round-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 5.5rem;
+    padding-left: 0.4rem;
+}
+
+    .round-toggle .material-symbols-outlined {
+        font-size: 1.15rem;
     }
 
-    .round-button input {
+    .round-toggle.stop {
+        border: 1px solid var(--dark-gold);
+        background-color: transparent;
+        color: var(--gold);
+    }
+
+        .round-toggle.stop:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+.max-steps {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+}
+
+    .max-steps input {
         width: 3.4rem;
-        padding: 0 0.3rem 0 0.5rem;
-        border: 1px solid #1861ac;
-        border-left: none;
-        border-radius: 0 4px 4px 0;
+        padding: 0.1rem 0.3rem 0.1rem 0.5rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 4px;
         background-color: var(--near-black);
         color: #f0f4f8;
         font-size: 0.85rem;
         font-variant-numeric: tabular-nums;
     }
 
-        .round-button input:focus {
+        .max-steps input:focus {
             outline: none;
+            border-color: #569cd6;
         }

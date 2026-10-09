@@ -251,6 +251,11 @@
     color: var(--subtext-grey);
 }
 
+.change-step {
+    color: var(--subtext-grey);
+    font-variant-numeric: tabular-nums;
+}
+
 /* Tables */
 
 .data-table {

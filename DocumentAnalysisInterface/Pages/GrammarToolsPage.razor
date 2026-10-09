@@ -149,7 +149,7 @@ else
                 {
                     <table class="data-table changes-table">
                         <thead>
-                            <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th></th></tr>
+                            <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th title="The AI step each change began in">Step</th><th></th></tr>
                         </thead>
                         @foreach (var group in GetChangeGroups())
                         {
@@ -157,7 +157,7 @@ else
                                 @if (group.Title is not null)
                                 {
                                     <tr class="group-row">
-                                        <td colspan="3" title="@group.Tooltip">@group.Title</td>
+                                        <td colspan="4" title="@group.Tooltip">@group.Title</td>
                                         <td>
                                             @if (group.Round is int round)
                                             {
@@ -185,6 +185,7 @@ else
                                                 <button class="name-link" data-preview-kind="@change.Kind" data-preview-name="@change.Name" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
                                             }
                                         </td>
+                                        <td class="change-step">@(Workbench.ChangeSteps.TryGetValue((change.Kind, change.Name), out var step) ? $"#{step}" : "")</td>
                                         <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
                                     </tr>
                                 }

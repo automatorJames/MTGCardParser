@@ -32,6 +32,9 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// <summary>Whether a round has been run in this conversation - so the next is a continuation.</summary>
     public bool HasRound { get; private set; }
 
+    /// <summary>The number of the AI round under way - the round its steps are grouped under in the working changes - or null when none is.</summary>
+    public int? Round { get; private set; }
+
     /// <summary>Before the conversation begins: what the active workspace's last conversation ran on - or the settings' model and effort, where there hasn't been one.</summary>
     protected override ChatOptions ChosenOptions
     {
@@ -55,6 +58,9 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         _instructions = null;
         HasRound = false;
     }
+
+    /// <summary>A round lasts until the agent stops, or is stopped.</summary>
+    protected override void OnTurnEnded() => Round = null;
 
     string LastUsedPath => Path.Combine(WorkingDirectory, "last-used.json");
 
@@ -87,24 +93,33 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         }
     }
 
-    /// <summary>Steps the agent applies in a round before it checks in (0 for no limit) - the session setting itself, so it holds for an agent in a terminal too.</summary>
-    public int StepsPerRound
+    /// <summary>
+    /// Steps the agent applies in a round before it stops - null for no limit, when it works until it runs out of
+    /// improvements or is stopped. The session setting itself, so it holds for an agent in a terminal too.
+    /// </summary>
+    public int? MaxSteps
     {
-        get => agent.Settings.StepsBeforeCheckIn;
+        get => agent.Settings.StepsBeforeCheckIn > 0 ? agent.Settings.StepsBeforeCheckIn : null;
         set
         {
-            agent.Settings = agent.Settings with { StepsBeforeCheckIn = Math.Max(0, value) };
+            agent.Settings = agent.Settings with { StepsBeforeCheckIn = Math.Max(0, value ?? 0) };
             NotifyChanged();
         }
     }
 
-    /// <summary>Has the agent work a round of steps: the first starts a session as <c>/grammar</c> does, later ones continue it.</summary>
+    /// <summary>
+    /// Starts an AI round: the agent works until it has applied <see cref="MaxSteps"/>, runs out of improvements, or is
+    /// stopped. The first starts a session as <c>/grammar</c> does, later ones continue it.
+    /// </summary>
     /// <param name="instructions">What to work on, in the person's words - when blank, a later round keeps the instructions of the one before.</param>
-    public void RunRound(string instructions)
+    public void StartRound(string instructions)
     {
         instructions = string.IsNullOrWhiteSpace(instructions) ? null : instructions.Trim();
-        var steps = StepsPerRound;
-        var said = $"{(HasRound ? "Next round" : "Start")}: {(steps > 0 ? $"{steps} step{(steps == 1 ? "" : "s")}" : "no step limit")}{(instructions is null ? "" : $" - {instructions}")}";
+
+        // The agent's first step in the round is numbered after the last round the workbench's history holds (see GrammarAgent.ApplyAsync).
+        var round = (workspaces.Active.History.Max(x => x.Round) ?? 0) + 1;
+        var steps = MaxSteps;
+        var said = $"AI round {round}: {(steps is int limit ? $"up to {limit} step{(limit == 1 ? "" : "s")}" : "no step limit")}{(instructions is null ? "" : $" - {instructions}")}";
 
         var message = HasRound
             ? $"Continue with another round: call `start_session` again with instructions \"{instructions ?? _instructions}\", then follow the brief it returns."
@@ -112,8 +127,16 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
         if (Start(said, message))
         {
+            lock (_gate)
+            {
+                // Unless the agent was quick enough to finish already.
+                if (IsRunning)
+                    Round = round;
+            }
+
             _instructions = instructions ?? _instructions;
             HasRound = true;
+            NotifyChanged();
         }
     }
 }
