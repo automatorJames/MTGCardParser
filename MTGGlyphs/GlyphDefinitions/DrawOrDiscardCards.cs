@@ -15,7 +15,5 @@ public class DrawOrDiscardCards : Glyph
 public enum CardVerb
 {
     Draw,
-
-    [RegexPattern("discard", "discard angrily")]
     Discard
 }
