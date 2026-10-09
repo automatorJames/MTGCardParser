@@ -10,6 +10,9 @@ public enum ChatEntryKind
     Agent,
     Tool,
     Error,
+
+    /// <summary>Something the app did in the conversation on its own - not said by the person or the agent.</summary>
+    Note,
 }
 
 /// <summary>One thing in the chat: something the person or the agent said, a tool the agent called, or what went wrong.</summary>
@@ -190,9 +193,22 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
     /// <summary>Something to hold for the length of one turn, disposed of once it's over - null for nothing.</summary>
     protected virtual IDisposable BeginTurn() => null;
 
-    /// <summary>The agent has finished with a message, or been stopped - called under the gate.</summary>
-    protected virtual void OnTurnEnded()
+    /// <summary>The agent has finished with a message, or - <paramref name="stopped"/> - been stopped. Called under the gate.</summary>
+    protected virtual void OnTurnEnded(bool stopped)
     {
+    }
+
+    /// <summary>Adds a <see cref="ChatEntryKind.Note"/> to the conversation - called under the gate.</summary>
+    protected void AddNote(string text) => _entries.Add(new(ChatEntryKind.Note, text));
+
+    /// <summary>
+    /// Has the next message start a fresh session of the CLI - the conversation shown, and what it has used, carry on,
+    /// but the agent starts again from nothing. Called under the gate, between turns.
+    /// </summary>
+    protected void StartFreshSession()
+    {
+        _session = null;
+        _stats = _stats with { ContextTokens = 0 };
     }
 
     /// <summary>A tool call has its answer - called under the gate.</summary>
@@ -237,8 +253,8 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
 
     protected void NotifyChanged() => Changed?.Invoke();
 
-    /// <summary>Has the agent take <paramref name="message"/>, shown in the chat as <paramref name="said"/> - false if it's busy with one already.</summary>
-    protected bool Start(string said, string message)
+    /// <summary>Has the agent take <paramref name="message"/>, shown in the chat as <paramref name="said"/> (as the person's, or <paramref name="saidAs"/>) - false if it's busy with one already.</summary>
+    protected bool Start(string said, string message, ChatEntryKind saidAs = ChatEntryKind.Person)
     {
         CancellationTokenSource turn;
 
@@ -254,7 +270,7 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
             }
 
             _turn = turn = new();
-            _entries.Add(new(ChatEntryKind.Person, said));
+            _entries.Add(new(saidAs, said));
         }
 
         NotifyChanged();
@@ -301,7 +317,7 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
                     _entries.Add(new(ChatEntryKind.Error, "Stopped."));
 
                 _turn = null;
-                OnTurnEnded();
+                OnTurnEnded(turn.IsCancellationRequested);
             }
 
             turn.Dispose();

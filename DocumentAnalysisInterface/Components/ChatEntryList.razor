@@ -31,6 +31,10 @@
             </details>
             break;
 
+        case ChatEntryKind.Note:
+            <div class="chat-entry note">@entry.Text</div>
+            break;
+
         default:
             <div class="chat-entry error">@entry.Text</div>
             break;

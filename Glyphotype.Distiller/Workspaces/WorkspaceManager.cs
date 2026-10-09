@@ -59,6 +59,9 @@ public sealed class WorkspaceManager
     readonly List<WorkspaceInfo> _workspaces = [];
     readonly Dictionary<string, string> _configuredGuidance;
 
+    /// <summary>Each workspace's journal, by folder, once asked for.</summary>
+    readonly Dictionary<string, WorkspaceJournal> _journals = [];
+
     /// <summary>The source workspace's workbench, kept for the whole session: after a commit it knows more than the compiled grammar does until the app restarts.</summary>
     GrammarWorkbench _sourceWorkbench;
 
@@ -166,6 +169,32 @@ public sealed class WorkspaceManager
         return File.Exists(path) ? File.ReadAllText(path).Trim() : "";
     }
 
+    /// <summary>
+    /// The named workspace's journal (the active workspace's by default): what agents have learned working on its grammar.
+    /// Kept apart from the grammar, as guidance is, and copied with each commit or checkpoint (see <see cref="WorkspaceJournal.Snapshot"/>).
+    /// </summary>
+    public WorkspaceJournal GetJournal(string name = null)
+    {
+        lock (_gate)
+            return JournalOf(name is null ? ActiveWorkspace : Find(name));
+    }
+
+    /// <summary>Fires, from whatever thread, when any workspace's journal changes.</summary>
+    public event Action JournalChanged;
+
+    WorkspaceJournal JournalOf(WorkspaceInfo workspace)
+    {
+        var folder = FolderOf(workspace);
+
+        if (!_journals.TryGetValue(folder, out var journal))
+        {
+            _journals[folder] = journal = new WorkspaceJournal(folder);
+            journal.Changed += () => JournalChanged?.Invoke();
+        }
+
+        return journal;
+    }
+
     /// <summary>Makes the named workspace the active one.</summary>
     public void Switch(string name)
     {
@@ -184,10 +213,11 @@ public sealed class WorkspaceManager
 
     /// <summary>
     /// Creates a scratch workspace named <paramref name="name"/>, starting from <paramref name="seed"/> of the workspace named <paramref name="from"/>
-    /// (the active one by default), and makes it active. With <paramref name="copyGuidance"/>, it starts with that workspace's guidance too.
+    /// (the active one by default), and makes it active. With <paramref name="copyGuidance"/>, it starts with that workspace's guidance too,
+    /// and with <paramref name="copyJournal"/>, its journal.
     /// </summary>
     /// <exception cref="InvalidOperationException">The name is taken or unusable, or <paramref name="from"/> names no workspace.</exception>
-    public WorkspaceInfo Create(string name, WorkspaceSeed seed = WorkspaceSeed.Empty, string from = null, bool copyGuidance = false)
+    public WorkspaceInfo Create(string name, WorkspaceSeed seed = WorkspaceSeed.Empty, string from = null, bool copyGuidance = false, bool copyJournal = false)
     {
         WorkspaceInfo workspace;
 
@@ -195,7 +225,7 @@ public sealed class WorkspaceManager
         {
             name = ValidateNewName(name);
 
-            var originWorkspace = seed == WorkspaceSeed.Empty && !copyGuidance ? null : from is null ? ActiveWorkspace : Find(from);
+            var originWorkspace = seed == WorkspaceSeed.Empty && !copyGuidance && !copyJournal ? null : from is null ? ActiveWorkspace : Find(from);
             var origin = seed == WorkspaceSeed.Empty ? null : GetWorkingDefinition(originWorkspace);
             var baseline = seed switch
             {
@@ -211,6 +241,9 @@ public sealed class WorkspaceManager
 
             if (copyGuidance && ReadGuidance(originWorkspace) is { Length: > 0 } guidance)
                 File.WriteAllText(Path.Combine(folder, _guidanceFileName), guidance);
+
+            if (copyJournal)
+                JournalOf(originWorkspace).CopyTo(folder);
 
             _workspaces.Add(workspace);
             Activate(workspace);
@@ -256,6 +289,7 @@ public sealed class WorkspaceManager
                 Activate(_workspaces.First(x => x.Kind == WorkspaceKind.Source));
 
             _workspaces.Remove(workspace);
+            _journals.Remove(FolderOf(workspace));
             SaveIndex();
 
             if (Directory.Exists(FolderOf(workspace)))
@@ -335,14 +369,33 @@ public sealed class WorkspaceManager
         Directory.CreateDirectory(folder);
 
         if (workspace.Kind == WorkspaceKind.Source)
-            return _sourceWorkbench ??= new GrammarWorkbench(_source.Grammar, _source.Documents, new(
-                Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace, _allowPartialClauseMatches,
-                HistoryPath: Path.Combine(folder, _historyFileName)));
+        {
+            if (_sourceWorkbench is null)
+            {
+                _sourceWorkbench = new GrammarWorkbench(_source.Grammar, _source.Documents, new(
+                    Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace, _allowPartialClauseMatches,
+                    HistoryPath: Path.Combine(folder, _historyFileName)));
 
-        return new GrammarWorkbench(ReadBaseline(workspace), _documents, new(
+                KeepJournalVersions(_sourceWorkbench, workspace);
+            }
+
+            return _sourceWorkbench;
+        }
+
+        var workbench = new GrammarWorkbench(ReadBaseline(workspace), _documents, new(
             Path.Combine(folder, _workingFileName), SourceDirectory: null, SourceNamespace: SuggestNamespace(workspace.Name), _allowPartialClauseMatches,
             BaselinePath: Path.Combine(folder, _baselineFileName),
             HistoryPath: Path.Combine(folder, _historyFileName)));
+
+        KeepJournalVersions(workbench, workspace);
+        return workbench;
+    }
+
+    /// <summary>Has the journal keep a version of itself each time <paramref name="workbench"/> is committed or checkpointed.</summary>
+    void KeepJournalVersions(GrammarWorkbench workbench, WorkspaceInfo workspace)
+    {
+        var journal = JournalOf(workspace);
+        workbench.Committed += journal.Snapshot;
     }
 
     /// <summary>The workspace's grammar as it stands: the active workbench's working definition, or what's saved for a dormant one.</summary>

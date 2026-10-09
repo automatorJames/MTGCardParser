@@ -127,6 +127,9 @@ public sealed class GrammarWorkbench : IDisposable
 
     public event Action Changed;
 
+    /// <summary>Fires once the working definition has been committed to C# or checkpointed, with a few words saying which.</summary>
+    public event Action<string> Committed;
+
     /// <summary>The grammar as the C# sources declare it.</summary>
     public GrammarDefinition CommittedDefinition { get; private set; }
 
@@ -640,6 +643,7 @@ public sealed class GrammarWorkbench : IDisposable
         }
 
         Changed?.Invoke();
+        Committed?.Invoke("Committed to C#");
     }
 
     /// <summary>
@@ -669,6 +673,7 @@ public sealed class GrammarWorkbench : IDisposable
         }
 
         Changed?.Invoke();
+        Committed?.Invoke("Checkpoint");
     }
 
     // ---- Persistence ----

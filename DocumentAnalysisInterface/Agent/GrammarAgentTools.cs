@@ -47,8 +47,9 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         [Description("empty: nothing. vocabularies (for starting from scratch): another workspace's vocabularies and nothing else. copy: everything another workspace has.")] string start = "empty",
         [Description("The workspace to take vocabularies from, or copy - the active one by default.")] string from = null,
         [Description("Whether to start with that workspace's guidance too (the person's notes on the grammar). Usually yes, when there is some.")] bool copyGuidance = true,
+        [Description("Whether to start with that workspace's journal too (what agents learned there). Usually yes when copying the grammar; no when starting from scratch, where its dead ends mostly don't apply.")] bool copyJournal = true,
         CancellationToken cancellation = default) =>
-        Run(() => agent.CreateWorkspaceAsync(name, start, from, copyGuidance, cancellation));
+        Run(() => agent.CreateWorkspaceAsync(name, start, from, copyGuidance, copyJournal, cancellation));
 
     [McpServerTool(Name = "switch_workspace"), Description("Makes another workspace active - for the person too, so only when they ask.")]
     public Task<string> SwitchWorkspace([Description("The workspace's name.")] string name, CancellationToken cancellation = default) =>
@@ -96,6 +97,33 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
     [McpServerTool(Name = "history", ReadOnly = true), Description("The steps made this session, newest first, and what's uncommitted.")]
     public Task<string> History([Description("How many steps to list.")] int limit = 20) =>
         Run(() => Task.FromResult(agent.History(limit)));
+
+    [McpServerTool(Name = "journal", ReadOnly = true), Description(
+        "The workspace's journal - open problems, dead ends and hints earlier sessions recorded - with each entry's id, and which are about a glyph or vocabulary that's changed since. " +
+        "`start_session` includes it; read it again to see it as it stands.")]
+    public Task<string> Journal() =>
+        Run(() => Task.FromResult(agent.Journal()));
+
+    [McpServerTool(Name = "journal_add"), Description(
+        "Records something a later session would want to know before doing the work: an open problem, a dead end (what you tried, and why it didn't pay off), or a hint. " +
+        "Write it when you find it. Not for logging what you did - the step history does that.")]
+    public Task<string> JournalAdd(
+        [Description("open_problem, dead_end or hint.")] string section,
+        [Description("The finding, in a sentence or two: specific enough to act on without redoing the work.")] string text,
+        [Description("The glyphs and vocabularies it's about, comma-separated - so it's flagged when they change.")] string names = null) =>
+        Run(() => Task.FromResult(agent.JournalAdd(section, text, names)));
+
+    [McpServerTool(Name = "journal_update"), Description("Rewrites a journal entry that's partly out of date - whatever's given of its text, section and names.")]
+    public Task<string> JournalUpdate(
+        [Description("The entry's id.")] int id,
+        [Description("Its new text, if it changes.")] string text = null,
+        [Description("Its new section, if it changes: open_problem, dead_end or hint.")] string section = null,
+        [Description("The glyphs and vocabularies it's about now, comma-separated, if they change.")] string names = null) =>
+        Run(() => Task.FromResult(agent.JournalUpdate(id, text, section, names)));
+
+    [McpServerTool(Name = "journal_remove"), Description("Removes a journal entry that no longer holds - a problem since solved, a dead end the grammar has moved past.")]
+    public Task<string> JournalRemove([Description("The entry's id.")] int id) =>
+        Run(() => Task.FromResult(agent.JournalRemove(id)));
 
     [McpServerTool(Name = "search_lines", ReadOnly = true), Description("Distinct corpus lines matching a regex, most frequent first, as the working grammar tokenizes them.")]
     public Task<string> SearchLines(

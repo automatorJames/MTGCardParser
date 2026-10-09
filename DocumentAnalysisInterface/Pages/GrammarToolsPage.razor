@@ -27,7 +27,7 @@ else
                     : "a grammar of its own, kept as JSON - checkpoint to save a baseline, export to take it out as C#")
             </span>
             <div class="panel-actions">
-                <button class="btn btn-sm btn-secondary" title="@(Workspaces.GetGuidance().Length > 0 ? "Notes the AI agent is given about this grammar" : "No guidance yet: write notes the AI agent is given about this grammar")" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Guidance">Guidance@(Workspaces.GetGuidance().Length > 0 ? " ✓" : "")</button>
+                <button class="btn btn-sm btn-secondary" title="@(Workspaces.GetGuidance().Length > 0 ? "Notes the AI agent is given about this grammar" : "No guidance yet: write notes the AI agent is given about this grammar")" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Guidance">Guidance &amp; journal@(Workspaces.GetGuidance().Length > 0 ? " ✓" : "")</button>
                 <button class="btn btn-sm btn-secondary" @onclick="() => _workspaceAction = WorkspaceDialog.WorkspaceAction.Create">New workspace</button>
                 @if (!Workbench.IsSourceBacked)
                 {

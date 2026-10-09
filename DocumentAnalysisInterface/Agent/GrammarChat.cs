@@ -22,6 +22,11 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     string _instructions;
 
+    /// <summary>Whether the agent has been told to hand off to a fresh session (see <see cref="HandoffPercent"/>) in this turn.</summary>
+    bool _handingOff;
+
+    int? _handoffPercent;
+
     /// <summary>The options set for a conversation to come, by the folder of the workspace they were set in.</summary>
     readonly Dictionary<string, ChatOptions> _chosen = [];
 
@@ -59,8 +64,117 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         HasRound = false;
     }
 
-    /// <summary>A round lasts until the agent stops, or is stopped.</summary>
-    protected override void OnTurnEnded() => Round = null;
+    /// <summary>
+    /// How full the agent's context may get, as a percent of what the model can hold, before a round hands off to a
+    /// fresh session: the agent puts what the next one needs in the workspace's journal, and the round goes on from
+    /// there. Kept with the app's agent settings.
+    /// </summary>
+    public int HandoffPercent
+    {
+        get
+        {
+            lock (_gate)
+                return _handoffPercent ??= ReadSettings()?.HandoffPercent ?? 20;
+        }
+        set
+        {
+            lock (_gate)
+            {
+                _handoffPercent = Math.Clamp(value, 5, 95);
+                SaveSettings(new(_handoffPercent.Value));
+            }
+
+            NotifyChanged();
+        }
+    }
+
+    /// <summary>Once a call is answered in a round whose context has passed <see cref="HandoffPercent"/>, the agent is told to hand off.</summary>
+    protected override void OnToolAnswered(ChatEntry call)
+    {
+        if (Round is null || _handingOff || agent.IsHandoffDue || ContextWindow is not long window)
+            return;
+
+        var share = (double)Stats.ContextTokens / window;
+
+        if (share * 100 < HandoffPercent)
+            return;
+
+        _handingOff = true;
+        agent.RequestHandoff();
+        AddNote($"Context at {share:P0}, past the {HandoffPercent}% handoff point: the agent is writing what the next session needs into the journal.");
+    }
+
+    /// <summary>
+    /// A round lasts until the agent stops, or is stopped - unless it stopped to hand off, when it goes on in a fresh
+    /// session. A check-in due ends it all the same.
+    /// </summary>
+    protected override void OnTurnEnded(bool stopped)
+    {
+        var handingOff = _handingOff;
+        _handingOff = false;
+
+        if (handingOff && !stopped && Round is int round && !agent.IsCheckInDue)
+        {
+            StartFreshSession();
+            _ = Task.Run(() => ContinueRound(round));
+            return;
+        }
+
+        Round = null;
+    }
+
+    /// <summary>Starts AI round <paramref name="round"/> again in the fresh session a handoff left, where the last session left it.</summary>
+    void ContinueRound(int round)
+    {
+        agent.ContinueRoundInNextSession();
+
+        var message = $"Continue AI round {round} - the session before this one handed off when its context filled up: call `start_session` with instructions \"{_instructions}\", then follow the brief it returns.";
+
+        if (Start($"Handed off to a fresh session: AI round {round} goes on from the journal.", message, ChatEntryKind.Note))
+        {
+            lock (_gate)
+            {
+                if (IsRunning)
+                    Round = round;
+            }
+        }
+        else
+        {
+            lock (_gate)
+                Round = null;
+        }
+
+        NotifyChanged();
+    }
+
+    sealed record Settings(int HandoffPercent);
+
+    string SettingsPath => Path.Combine(WorkingDirectory, "chat-settings.json");
+
+    Settings ReadSettings()
+    {
+        try
+        {
+            return File.Exists(SettingsPath) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(SettingsPath)) : null;
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    void SaveSettings(Settings settings)
+    {
+        try
+        {
+            Directory.CreateDirectory(WorkingDirectory);
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Remembering is a convenience: the setting holds for this session either way.
+        }
+    }
 
     string LastUsedPath => Path.Combine(WorkingDirectory, "last-used.json");
 

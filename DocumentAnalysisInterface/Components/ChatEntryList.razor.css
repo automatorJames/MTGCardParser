@@ -120,3 +120,14 @@
         opacity: 0.35;
     }
 }
+
+/* What the app did on its own: a quiet line between the turns */
+.chat-entry.note {
+    align-self: center;
+    max-width: 90%;
+    padding: 0.2rem 0.6rem;
+    border-left: 2px solid var(--dark-gold);
+    color: var(--subtext-grey);
+    font-size: 0.8rem;
+    font-style: italic;
+}

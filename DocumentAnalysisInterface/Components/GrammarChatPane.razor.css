@@ -299,3 +299,63 @@
             outline: none;
             border-color: #569cd6;
         }
+
+.icon-button {
+    display: inline-flex;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--subtext-grey);
+    cursor: pointer;
+}
+
+    .icon-button .material-symbols-outlined {
+        font-size: 1.15rem;
+    }
+
+    .icon-button:hover,
+    .icon-button.active {
+        color: var(--lightest-blue);
+    }
+
+/* The agent's settings, opened from the header in place of the line stating what it runs on */
+.chat-settings {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--outline-grey);
+    background-color: var(--near-black);
+}
+
+.chat-setting {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0.5rem 1rem 0.6rem;
+    font-size: 0.8rem;
+    color: var(--subtext-grey);
+}
+
+    .chat-setting .chat-label {
+        margin-right: 0.3rem;
+    }
+
+    .chat-setting input {
+        width: 3.6rem;
+        padding: 0.1rem 0.3rem 0.1rem 0.5rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 4px;
+        background-color: var(--dark-grey);
+        color: #f0f4f8;
+        font-size: 0.8rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+        .chat-setting input:focus {
+            outline: none;
+            border-color: #569cd6;
+        }
+
+.chat-header .icon-button {
+    align-self: center;
+}

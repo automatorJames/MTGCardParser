@@ -1,0 +1,144 @@
+.journal {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.journal-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+    .journal-bar label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+    }
+
+    .journal-bar select,
+    .journal-add select {
+        padding: 0.2rem 0.4rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 4px;
+        background-color: var(--near-black);
+        color: #f0f4f8;
+        font-size: 0.85rem;
+    }
+
+.journal-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--subtext-grey);
+}
+
+.journal-words,
+.journal-empty {
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.journal-section {
+    margin: 0.75rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #569cd6;
+}
+
+.journal-entry {
+    padding: 0.4rem 0;
+    border-top: 1px solid var(--outline-grey);
+}
+
+.journal-entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.journal-id {
+    color: var(--subtext-grey);
+    font-variant-numeric: tabular-nums;
+}
+
+.journal-name {
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    background-color: rgba(86, 156, 214, 0.15);
+    color: var(--lightest-blue);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+}
+
+.journal-stale {
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    background-color: rgba(189, 157, 89, 0.15);
+    color: var(--gold);
+    font-size: 0.75rem;
+}
+
+.journal-updated {
+    margin-left: auto;
+    color: var(--subtext-grey);
+}
+
+.journal-text {
+    margin-top: 0.2rem;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}
+
+.journal-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--faded-blue);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+    .link-button:hover {
+        color: var(--lightest-blue);
+        text-decoration: underline;
+    }
+
+.journal-add {
+    margin-top: 0.75rem;
+}
+
+    .journal-add summary {
+        cursor: pointer;
+        color: var(--faded-blue);
+        font-size: 0.85rem;
+    }
+
+    .journal-add .btn {
+        margin-top: 0.4rem;
+    }
+
+.journal-add-fields {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.journal-error {
+    color: #f28b82;
+    font-size: 0.85rem;
+}

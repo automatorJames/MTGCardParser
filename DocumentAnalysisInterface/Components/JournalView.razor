@@ -1,0 +1,176 @@
+@using Glyphotype.Distiller.Workspaces
+@implements IDisposable
+
+@* A workspace's journal: what agents have learned working on its grammar, as it stands - or as it stood at a commit or
+   checkpoint. Agents keep it; a person can edit it here too. *@
+<div class="journal">
+    <div class="journal-bar">
+        <label>
+            <span class="journal-label">Version</span>
+            <select @onchange="ChooseVersion">
+                <option value="" selected="@(_version is null)">Current</option>
+                @foreach (var version in _versions)
+                {
+                    <option value="@version.Id" selected="@(_version == version.Id)">@version.Label, @version.At.ToLocalTime().ToString("MMM d, h:mm tt")</option>
+                }
+            </select>
+        </label>
+        <span class="journal-words">@_entries.Count entr@(_entries.Count == 1 ? "y" : "ies") · @_entries.Sum(x => x.Words).ToString("N0") words</span>
+    </div>
+
+    @if (_entries.Count == 0)
+    {
+        <p class="journal-empty">
+            @(_version is null
+                ? "Nothing yet. Agents add open problems, dead ends and hints here as they work, for every later session to read first."
+                : "The journal was empty then.")
+        </p>
+    }
+
+    @foreach (var section in _entries.GroupBy(x => x.Section))
+    {
+        <h4 class="journal-section">@WorkspaceJournal.SectionTitle(section.Key)</h4>
+
+        @foreach (var entry in section)
+        {
+            <div class="journal-entry">
+                <div class="journal-entry-head">
+                    <span class="journal-id">#@entry.Id</span>
+                    @foreach (var name in entry.Names)
+                    {
+                        <span class="journal-name">@name</span>
+                    }
+                    @if (_version is null && WorkspaceJournal.IsStale(entry, Workspaces.Active.WorkingDefinition))
+                    {
+                        <span class="journal-stale" title="A glyph or vocabulary it's about has changed since it was written">may be stale</span>
+                    }
+                    <span class="journal-updated">@entry.Updated.ToLocalTime().ToString("MMM d, h:mm tt")</span>
+
+                    @if (_version is null && _editing != entry.Id)
+                    {
+                        <button class="link-button" @onclick="() => Edit(entry)">edit</button>
+                        <button class="link-button" @onclick="() => Run(() => Journal.Remove(entry.Id))">remove</button>
+                    }
+                </div>
+
+                @if (_editing == entry.Id)
+                {
+                    <textarea class="form-control journal-text" rows="3" @bind="_editText" @bind:event="oninput"></textarea>
+                    <div class="journal-edit-actions">
+                        <button class="link-button" @onclick="() => _editing = null">cancel</button>
+                        <button class="link-button" @onclick="() => SaveEdit(entry.Id)">save</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="journal-text">@entry.Text</div>
+                }
+            </div>
+        }
+    }
+
+    @if (_version is null)
+    {
+        <details class="journal-add">
+            <summary>Add an entry</summary>
+            <div class="journal-add-fields">
+                <select @bind="_newSection">
+                    @foreach (var section in Enum.GetValues<JournalSection>())
+                    {
+                        <option value="@section">@WorkspaceJournal.SectionTitle(section)</option>
+                    }
+                </select>
+                <input class="form-control" placeholder="Glyphs and vocabularies it's about, comma-separated" @bind="_newNames" @bind:event="oninput" />
+            </div>
+            <textarea class="form-control journal-text" rows="3" placeholder="What a later session should know before doing the work" @bind="_newText" @bind:event="oninput"></textarea>
+            <button class="btn btn-sm btn-secondary" disabled="@string.IsNullOrWhiteSpace(_newText)" @onclick="Add">Add</button>
+        </details>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="journal-error">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public WorkspaceManager Workspaces { get; set; }
+
+    WorkspaceJournal Journal => Workspaces.GetJournal();
+
+    IReadOnlyList<JournalVersion> _versions = [];
+    IReadOnlyList<JournalEntry> _entries = [];
+
+    /// <summary>The version shown - null for the journal as it stands.</summary>
+    string _version;
+
+    int? _editing;
+    string _editText;
+    JournalSection _newSection = JournalSection.OpenProblem;
+    string _newNames;
+    string _newText;
+    string _error;
+
+    protected override void OnInitialized()
+    {
+        Load();
+        Workspaces.JournalChanged += OnJournalChanged;
+    }
+
+    public void Dispose() => Workspaces.JournalChanged -= OnJournalChanged;
+
+    void OnJournalChanged() => _ = InvokeAsync(() =>
+    {
+        Load();
+        StateHasChanged();
+    });
+
+    void Load()
+    {
+        _versions = Journal.Versions;
+
+        if (_version is not null && !_versions.Any(x => x.Id == _version))
+            _version = null;
+
+        _entries = _version is null ? Journal.Entries : Journal.ReadVersion(_version);
+    }
+
+    void ChooseVersion(ChangeEventArgs e)
+    {
+        _version = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        _editing = null;
+        Load();
+    }
+
+    void Edit(JournalEntry entry)
+    {
+        _editing = entry.Id;
+        _editText = entry.Text;
+    }
+
+    void SaveEdit(int id) => Run(() =>
+    {
+        Journal.Update(id, null, _editText, null, Workspaces.Active.WorkingDefinition);
+        _editing = null;
+    });
+
+    void Add() => Run(() =>
+    {
+        Journal.Add(_newSection, _newText, (_newNames ?? "").Split(','), Workspaces.Active.WorkingDefinition);
+        _newText = _newNames = null;
+    });
+
+    void Run(Action action)
+    {
+        try
+        {
+            action();
+            _error = null;
+            Load();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException)
+        {
+            _error = exception.Message;
+        }
+    }
+}

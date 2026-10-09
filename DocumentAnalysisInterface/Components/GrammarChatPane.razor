@@ -22,9 +22,27 @@
             <h3>Grammar agent</h3>
             <span class="chat-state @(running ? "running" : "")">@(round is int number ? $"AI round {number} · working…" : running ? "working…" : "idle")</span>
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
+            <button class="icon-button @(_settingsOpen ? "active" : "")" title="The agent's settings" @onclick="() => _settingsOpen = !_settingsOpen">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
         </header>
 
-        <ChatOptionsBar Chat="Chat" />
+        @if (_settingsOpen)
+        {
+            <div class="chat-settings">
+                <ChatOptionsBar Chat="Chat" />
+
+                <label class="chat-setting" title="How full the agent's context may get before a round hands off to a fresh session: the agent writes what the next session needs into the workspace's journal, and the round goes on from there. Lower is cheaper; higher keeps more of what the agent was thinking.">
+                    <span class="chat-label">Hand off at context</span>
+                    <input type="number" min="5" max="95" value="@Chat.HandoffPercent" @onchange="SetHandoffPercent" />
+                    <span class="chat-setting-unit">%</span>
+                </label>
+            </div>
+        }
+        else
+        {
+            <ChatOptionsBar Chat="Chat" Choosable="false" />
+        }
 
         @if (stats.TotalTokens > 0 || stats.FiveHour is not null || stats.SevenDay is not null)
         {
@@ -146,6 +164,7 @@
 
     bool _available;
     bool _open;
+    bool _settingsOpen;
 
     /// <summary>Tells the page the pane slid in or out, so it can make room for it.</summary>
     [Parameter]
@@ -199,6 +218,12 @@
 
         Chat.Send(_draft);
         _draft = null;
+    }
+
+    void SetHandoffPercent(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var percent))
+            Chat.HandoffPercent = percent;
     }
 
     /// <summary>Empty, or anything short of a step, for no limit.</summary>

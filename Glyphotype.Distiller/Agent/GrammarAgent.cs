@@ -24,6 +24,7 @@ public sealed class AgentRequestException(string message, Exception inner = null
 public sealed class GrammarAgent
 {
     readonly Func<GrammarWorkbench> _workbench;
+    readonly Func<WorkspaceJournal> _journal;
     readonly WorkspaceManager _workspaces;
     readonly string _corpusDescription;
 
@@ -37,19 +38,28 @@ public sealed class GrammarAgent
     /// <summary>How many <see cref="SuspendCheckIns"/> are under way - while any is, no check-in is due.</summary>
     int _checkInsSuspended;
 
+    /// <summary>Whether the journal has been written to since the last applied step - so a stuck agent is reminded to record why only until it does.</summary>
+    bool _journalEditedSinceStep;
+
+    /// <summary>Whether the session is to hand off to a fresh one (see <see cref="RequestHandoff"/>), and whether the next session continues this one's round (see <see cref="ContinueRoundInNextSession"/>).</summary>
+    volatile bool _handoffDue;
+    volatile bool _continueRound;
+
     /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
     public GrammarAgent(WorkspaceManager workspaces, string corpusDescription, AgentSessionSettings settings = null)
     {
         _workspaces = workspaces;
         _workbench = () => workspaces.Active;
+        _journal = () => workspaces.GetJournal();
         _corpusDescription = corpusDescription;
         Settings = settings ?? new();
     }
 
-    /// <summary>An agent working on <paramref name="workbench"/> alone.</summary>
-    public GrammarAgent(GrammarWorkbench workbench, string corpusDescription, AgentSessionSettings settings = null)
+    /// <summary>An agent working on <paramref name="workbench"/> alone - keeping <paramref name="journal"/>, if given.</summary>
+    public GrammarAgent(GrammarWorkbench workbench, string corpusDescription, AgentSessionSettings settings = null, WorkspaceJournal journal = null)
     {
         _workbench = () => workbench;
+        _journal = () => journal;
         _corpusDescription = corpusDescription;
         Settings = settings ?? new();
     }
@@ -215,13 +225,25 @@ public sealed class GrammarAgent
     /// <param name="instructions">What the person asked for this session, in their words - may be empty.</param>
     public async Task<string> StartSessionAsync(string instructions = null, CancellationToken cancellation = default)
     {
-        Interlocked.Exchange(ref _stepsSinceCheckIn, 0);
+        var continuing = _continueRound;
+        _continueRound = false;
+        _handoffDue = false;
+
+        // A session continuing a round after a handoff keeps the round, and its count toward the check-in.
+        if (!continuing)
+        {
+            Interlocked.Exchange(ref _stepsSinceCheckIn, 0);
+            _round = null;
+        }
+
         Interlocked.Exchange(ref _attemptsSinceStep, 0);
-        _round = null;
 
         var report = new StringBuilder();
 
-        report.AppendLine("Session started.");
+        report.AppendLine(continuing
+            ? "Session started, continuing the round the last session handed off when its context filled up. What it learned, and what it was in the middle of, is in the journal below."
+                + (Settings.StepsBeforeCheckIn > 0 ? $" {_stepsSinceCheckIn} of the round's {Settings.StepsBeforeCheckIn} steps are taken." : "")
+            : "Session started.");
         report.AppendLine($"The person's instructions: {(string.IsNullOrWhiteSpace(instructions) ? "none given - improve the grammar in the active workspace as it stands." : instructions.Trim())}");
         report.AppendLine();
         report.AppendLine("How this session works (set in the app, and enforced by the tools):");
@@ -246,6 +268,11 @@ public sealed class GrammarAgent
         report.AppendLine("- Stay in the active workspace. Create or switch workspaces only if the instructions ask - to start from scratch, `create_workspace` with start=vocabularies.");
         report.AppendLine("- Never commit, checkpoint or export: the person does that in the app.");
 
+        if (_journal() is not null)
+            report.AppendLine("- Keep the workspace's journal (`journal_add`, `journal_update`, `journal_remove`): what a later session would want to know before doing the work you did - open problems, dead ends (what you tried and why it didn't pay off), and hints. " +
+                "Write each down when you find it, not at the end - you can be stopped at any time. It's not a log of what you did (the step history is that), and facts about the tools or the engine in general don't belong in it. " +
+                $"Remove or rewrite entries that no longer hold{(Settings.JournalWordLimit > 0 ? $", and keep it under {Settings.JournalWordLimit:N0} words" : "")}.");
+
         if (_workspaces?.GetGuidance() is { Length: > 0 } guidance)
         {
             report.AppendLine();
@@ -253,11 +280,52 @@ public sealed class GrammarAgent
             report.AppendLine(guidance);
         }
 
+        if (_journal() is { } journal)
+        {
+            var entries = journal.Entries;
+            report.AppendLine();
+
+            if (entries.Count == 0)
+                report.AppendLine("The workspace's journal is empty: nothing's been learned here yet.");
+            else
+            {
+                report.AppendLine($"The workspace's journal ({journal.Words:N0} words) - what earlier sessions learned. Read it before choosing what to work on. An entry marked \"may be stale\" is about a glyph or vocabulary that's changed since it was written: check it, then update or remove it.");
+                report.AppendLine(WorkspaceJournal.Render(entries, Workbench.WorkingDefinition));
+            }
+        }
+
+        if (Workbench.History is { Count: > 0 } history)
+        {
+            report.AppendLine();
+            report.AppendLine("The latest steps, newest first:");
+
+            foreach (var step in history.AsEnumerable().Reverse().Take(5))
+                report.AppendLine($"  #{step.Number,-4}{(step.Round is int round ? $" (AI round {round})" : "")} {step.Description}");
+        }
+
         report.AppendLine();
         report.Append(await OverviewAsync(cancellation));
 
         return report.ToString();
     }
+
+    /// <summary>
+    /// Has the session hand off to a fresh one - for a host whose agent's context is filling up: from the next report on,
+    /// the agent is told to put what the next session needs in the journal and stop, and no step is applied until a
+    /// session starts again.
+    /// </summary>
+    public void RequestHandoff() => _handoffDue = true;
+
+    public bool IsHandoffDue => _handoffDue;
+
+    /// <summary>Has the next <see cref="StartSessionAsync"/> continue this session's round - and its count toward the check-in - rather than start a new one.</summary>
+    public void ContinueRoundInNextSession() => _continueRound = true;
+
+    /// <summary>Whether the session has reached a check-in (see <see cref="AgentSessionSettings"/>), so it's over until the person says to continue.</summary>
+    public bool IsCheckInDue =>
+        _checkInsSuspended == 0
+        && ((Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
+            || (Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn));
 
     /// <summary>
     /// What an agent is told about documenting the glyphs it writes, when <see cref="AgentSessionSettings.DocumentGlyphs"/>
@@ -296,6 +364,9 @@ public sealed class GrammarAgent
         if (_checkInsSuspended > 0)
             return null;
 
+        if (_handoffDue && !IsCheckInDue)
+            return HandoffInstruction;
+
         if (applied && Settings.StepsBeforeCheckIn > 0)
         {
             var steps = _stepsSinceCheckIn;
@@ -310,6 +381,11 @@ public sealed class GrammarAgent
 
         return null;
     }
+
+    const string HandoffInstruction =
+        "Handoff due: your context is filling up, so this round goes on in a fresh session that starts from the journal. " +
+        "Put in the journal what it needs - what you were in the middle of, what you'd try next, and anything you've learned that isn't there yet - " +
+        "then end your turn with one line saying you've handed off. Don't apply anything more.";
 
     /// <summary>
     /// Sets the session's check-ins aside until disposed: for work the person directs as it goes (the glyphs for one
@@ -361,14 +437,14 @@ public sealed class GrammarAgent
     /// <summary>Creates a scratch workspace and makes it active - only when the person asked for one.</summary>
     /// <param name="start">"empty", "vocabularies" (another workspace's vocabularies and nothing else) or "copy".</param>
     /// <param name="from">The workspace to take vocabularies from, or copy - the active one by default.</param>
-    public async Task<string> CreateWorkspaceAsync(string name, string start = "empty", string from = null, bool copyGuidance = false, CancellationToken cancellation = default)
+    public async Task<string> CreateWorkspaceAsync(string name, string start = "empty", string from = null, bool copyGuidance = false, bool copyJournal = false, CancellationToken cancellation = default)
     {
         var workspaces = RequireWorkspaces();
 
         if (!Enum.TryParse<WorkspaceSeed>(start, ignoreCase: true, out var seed))
             throw new AgentRequestException($"Unknown start '{start}': use empty, vocabularies or copy.");
 
-        var workspace = Try(() => workspaces.Create(name, seed, NullIfBlank(from), copyGuidance));
+        var workspace = Try(() => workspaces.Create(name, seed, NullIfBlank(from), copyGuidance, copyJournal));
         return $"Created and switched to {DescribeWorkspace(workspace)}.{Environment.NewLine}{Environment.NewLine}{await OverviewAsync(cancellation)}";
     }
 
@@ -386,6 +462,104 @@ public sealed class GrammarAgent
 
     static string DescribeWorkspace(WorkspaceInfo workspace) =>
         $"{workspace.Name} ({(workspace.Kind == WorkspaceKind.Source ? "source - the app's C# sources" : "scratch - kept as JSON")})";
+
+    // ---- Journal ----
+
+    /// <summary>The workspace's journal, with each entry's id and whether what it's about has changed since.</summary>
+    public string Journal()
+    {
+        var journal = RequireJournal();
+        var entries = journal.Entries;
+
+        return $"The journal: {entries.Count} entr{(entries.Count == 1 ? "y" : "ies")}, {journal.Words:N0} words{(Settings.JournalWordLimit > 0 ? $" of {Settings.JournalWordLimit:N0}" : "")}.{Environment.NewLine}"
+            + WorkspaceJournal.Render(entries, Workbench.WorkingDefinition) + Environment.NewLine;
+    }
+
+    /// <summary>Adds an entry to the workspace's journal.</summary>
+    /// <param name="section">"open_problem", "dead_end" or "hint".</param>
+    /// <param name="names">The glyphs and vocabularies it's about, comma-separated.</param>
+    public string JournalAdd(string section, string text, string names = null)
+    {
+        var journal = RequireJournal();
+        var parsed = ParseSection(section);
+        RequireRoom(journal, WorkspaceJournal.CountWords(text));
+
+        var entry = Try(() => journal.Add(parsed, text, SplitNames(names), Workbench.WorkingDefinition));
+        _journalEditedSinceStep = true;
+
+        return $"Added #{entry.Id} to {WorkspaceJournal.SectionTitle(entry.Section).ToLowerInvariant()} ({journal.Words:N0} words in all).";
+    }
+
+    /// <summary>Rewrites an entry of the workspace's journal: whatever's given of its text, section and names.</summary>
+    public string JournalUpdate(int id, string text = null, string section = null, string names = null)
+    {
+        var journal = RequireJournal();
+        var old = journal.Entries.FirstOrDefault(x => x.Id == id) ?? throw new AgentRequestException($"The journal has no entry #{id}.");
+
+        if (!string.IsNullOrWhiteSpace(text))
+            RequireRoom(journal, WorkspaceJournal.CountWords(text) - old.Words);
+
+        var entry = Try(() => journal.Update(id, string.IsNullOrWhiteSpace(section) ? null : ParseSection(section), text, names is null ? null : SplitNames(names), Workbench.WorkingDefinition));
+        _journalEditedSinceStep = true;
+
+        return $"Updated #{entry.Id} ({journal.Words:N0} words in all).";
+    }
+
+    /// <summary>Removes an entry from the workspace's journal - one that no longer holds.</summary>
+    public string JournalRemove(int id)
+    {
+        var journal = RequireJournal();
+        var entry = Try(() => journal.Remove(id));
+        _journalEditedSinceStep = true;
+
+        return $"Removed #{entry.Id} ({journal.Words:N0} words left).";
+    }
+
+    WorkspaceJournal RequireJournal() =>
+        _journal() ?? throw new AgentRequestException("This host keeps no journal.");
+
+    /// <summary>Refuses an edit that would take the journal past its word limit, adding <paramref name="added"/> words.</summary>
+    void RequireRoom(WorkspaceJournal journal, int added)
+    {
+        var words = journal.Words + added;
+
+        if (Settings.JournalWordLimit > 0 && added > 0 && words > Settings.JournalWordLimit)
+            throw new AgentRequestException($"Not written: the journal would come to {words:N0} words, past its limit of {Settings.JournalWordLimit:N0}. " +
+                "Remove entries that no longer hold, or shorten some (`journal_update`), then try again.");
+    }
+
+    static JournalSection ParseSection(string section) =>
+        WorkspaceJournal.TryParseSection(section, out var parsed)
+            ? parsed
+            : throw new AgentRequestException($"Unknown section '{section}': use open_problem, dead_end or hint.");
+
+    /// <summary>After every few evaluations without a step, while nothing's been written to the journal since the last: a reminder to record what didn't pay off.</summary>
+    string DeadEndReminder() =>
+        _journal() is not null && !_journalEditedSinceStep && _attemptsSinceStep > 0 && _attemptsSinceStep % 3 == 0
+            ? $"Journal: {_attemptsSinceStep} evaluations without a step. If you've learned why these drafts don't pay off, record it as a dead end (`journal_add`) before moving on."
+            : null;
+
+    /// <summary>A reminder of the journal entries about what <paramref name="changes"/> changed, for the agent to check - null when there are none.</summary>
+    string JournalReminder(ChangeSet changes)
+    {
+        if (_journal() is not { } journal)
+            return null;
+
+        var changed = changes.Declarations.Glyphs.Select(x => x.Name)
+            .Concat(changes.Declarations.Vocabularies.Select(x => x.Name))
+            .Concat(changes.Declarations.Markers)
+            .Concat(changes.Removals)
+            .ToHashSet();
+
+        var about = journal.Entries.Where(x => x.Names.Any(changed.Contains)).ToList();
+
+        if (about.Count == 0)
+            return null;
+
+        var one = about.Count == 1;
+        return $"Journal: {string.Join(", ", about.Select(x => $"#{x.Id}"))} {(one ? "is" : "are")} about what this step changed ({string.Join(", ", about.SelectMany(x => x.Names).Where(changed.Contains).Distinct())}). " +
+            $"Update or remove {(one ? "it if it no longer holds" : "them if they no longer hold")}.";
+    }
 
     // ---- Stepping ----
 
@@ -405,7 +579,7 @@ public sealed class GrammarAgent
                 ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}."
                 : $"{Environment.NewLine}To make this change, `apply` the same source and removals.";
 
-        return WithStatus(WithStatus(report, DocumentationReminder(changes)), SessionStatus(applied: false));
+        return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), DeadEndReminder()), SessionStatus(applied: false));
     }
 
     /// <summary>
@@ -418,6 +592,9 @@ public sealed class GrammarAgent
     {
         if (_checkInsSuspended == 0 && Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
             throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
+
+        if (_checkInsSuspended == 0 && _handoffDue)
+            throw new AgentRequestException("Not applied. " + HandoffInstruction + " If this change is worth making, describe it in the journal for the next session.");
 
         var changes = ReadChanges(source, remove);
         var evaluation = await Evaluate(changes, cancellation);
@@ -448,8 +625,10 @@ public sealed class GrammarAgent
 
         Interlocked.Increment(ref _stepsSinceCheckIn);
         Interlocked.Exchange(ref _attemptsSinceStep, 0);
+        _journalEditedSinceStep = false;
 
-        return WithStatus(WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}", DocumentationReminder(changes)), SessionStatus(applied: true));
+        var report = $"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
+        return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: true));
     }
 
     /// <summary>How <paramref name="evaluation"/> falls short of the session's step rules - empty when it doesn't.</summary>

@@ -67,3 +67,30 @@
     .btn-danger:hover {
         background-color: #9b2c2c;
     }
+
+/* Guidance and the AI journal, side by side */
+.tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--outline-grey);
+}
+
+.tab {
+    padding: 0.4rem 0.9rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--subtext-grey);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .tab:hover {
+        color: #e2e8f0;
+    }
+
+    .tab.active {
+        border-bottom-color: #569cd6;
+        color: #e2e8f0;
+    }

@@ -1,6 +1,6 @@
 @inject IJSRuntime JS
 
-<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(560px, 94vw);">
+<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="@(ShowingJournal ? "max-width: min(820px, 94vw);" : "max-width: min(560px, 94vw);")">
     <TitleContent>@Title</TitleContent>
     <DialogContent>
         @switch (Action)
@@ -50,6 +50,18 @@
                     </span>
                 </label>
 
+                <label class="choice">
+                    <input type="checkbox" checked="@_copyJournal" disabled="@(!HasJournalToCopy)" @onchange="e => _copyJournal = (bool)e.Value" />
+                    <span>
+                        <strong>Copy the journal</strong>
+                        <span class="choice-help">
+                            @(HasJournalToCopy
+                                ? $"Start with what agents learned working on {GuidanceSource} - most useful when copying its grammar."
+                                : $"{GuidanceSource} has no journal entries to copy.")
+                        </span>
+                    </span>
+                </label>
+
                 <p class="dialog-note">
                     A scratch workspace is a grammar of its own, kept as JSON in app data and scored against the same corpus. Nothing you do
                     in it touches the C# sources: checkpoint it to save a baseline, and export it to take it out as C#.
@@ -57,6 +69,21 @@
                 break;
 
             case WorkspaceAction.Guidance:
+                <div class="tabs">
+                    <button class="tab @(ShowingJournal ? "" : "active")" @onclick="() => _journalTab = false">Guidance</button>
+                    <button class="tab @(ShowingJournal ? "active" : "")" title="What AI agents have learned working on this grammar" @onclick="() => _journalTab = true">AI journal</button>
+                </div>
+
+                @if (ShowingJournal)
+                {
+                    <JournalView Workspaces="Workspaces" />
+                    <p class="dialog-note">
+                        Agents read the journal at the start of every session, and keep it as they work: open problems, approaches that didn't
+                        pay off and why, and hints - so no session has to learn them again. A copy is kept each time the workspace is committed or checkpointed.
+                    </p>
+                    break;
+                }
+
                 <label class="field">
                     <span class="field-label">Guidance for AI</span>
                     <textarea class="form-control guidance-text" rows="14" @bind="_guidance" @bind:event="oninput" readonly="@GuidanceConfigured"
@@ -106,8 +133,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <button class="btn btn-secondary" @onclick="Close">Cancel</button>
-        @if (!(Action == WorkspaceAction.Guidance && GuidanceConfigured))
+        <button class="btn btn-secondary" @onclick="Close">@(ShowingJournal ? "Close" : "Cancel")</button>
+        @if (!(Action == WorkspaceAction.Guidance && (GuidanceConfigured || ShowingJournal)))
         {
             <button class="btn @(Action == WorkspaceAction.Delete ? "btn-danger" : "btn-primary")" @onclick="Confirm">@ConfirmLabel</button>
         }
@@ -134,6 +161,12 @@
     string _error;
     string _guidance;
     bool _copyGuidance = true;
+    bool _copyJournal = true;
+    bool _journalTab;
+
+    bool ShowingJournal => Action == WorkspaceAction.Guidance && _journalTab;
+
+    bool HasJournalToCopy => Workspaces.GetJournal(GuidanceSource).Entries.Count > 0;
 
     string ActiveName => Workspaces.ActiveWorkspace.Name;
 
@@ -206,7 +239,7 @@
             switch (Action)
             {
                 case WorkspaceAction.Create:
-                    var created = Workspaces.Create(_name, _seed, _seed == WorkspaceSeed.Empty ? null : _from, _copyGuidance && HasGuidanceToCopy);
+                    var created = Workspaces.Create(_name, _seed, _seed == WorkspaceSeed.Empty ? null : _from, _copyGuidance && HasGuidanceToCopy, _copyJournal && HasJournalToCopy);
                     await OnDone.InvokeAsync($"Created and switched to {created.Name}.");
                     break;
 
