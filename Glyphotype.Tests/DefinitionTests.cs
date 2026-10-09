@@ -84,6 +84,22 @@ public class DefinitionTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void A_definition_wrapping_a_nib_in_what_cant_wrap_it_is_refused_as_it_is_emitted()
+    {
+        // As a definition read from JSON can, never having been through the source reader's own check.
+        var glyph = new GlyphDefinition
+        {
+            Name = "AnimalHides",
+            Nibs = [new NibDefinition.Literal("the"), new NibDefinition.Optional(new NibDefinition.Property("Animal")), new NibDefinition.Literal("hides")],
+            Properties = [new() { Name = "Animal", Type = TypeReference.Vocabulary(nameof(Animal)) }],
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(() => GrammarEmitter.Emit(new GrammarDefinition { Glyphs = [glyph] }, knownTypes: corpus.Grammar.Types));
+
+        Assert.Equal("AnimalHides: Opt(Prop(...)) - make a property optional with [Optional] on it instead", exception.Message);
+    }
+
+    [Fact]
     public void Written_source_reads_like_hand_written_glyphs()
     {
         AssertWrites(nameof(AnimalRests), """

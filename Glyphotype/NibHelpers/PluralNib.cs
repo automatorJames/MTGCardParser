@@ -13,14 +13,9 @@ public record PluralNib : Nib
     public PluralNib(Nib inner)
         : base(inner?.Text, inner?.Regex)
     {
-        Inner = inner switch
-        {
-            null => throw new ArgumentNullException(nameof(inner)),
-            PluralNib => throw new ArgumentException("Plural(Plural(...)) - a nib can only be made plural once", nameof(inner)),
-            EmbeddedGlyphNib => throw new ArgumentException($"Plural(Nib.{inner.Text}) - an embedded glyph can't be made plural", nameof(inner)),
-            OptionalNib => throw new ArgumentException("Plural(Opt(...)) - a nib can't be both optional and plural; write its forms out, e.g. Opt(Alt(\"card\", \"cards\"))", nameof(inner)),
-            _ => inner,
-        };
+        Inner = inner is null ? throw new ArgumentNullException(nameof(inner))
+            : NibNesting.GetPluralError(NibNesting.KindOf(inner), inner.Text) is string error ? throw new ArgumentException(error, nameof(inner))
+            : inner;
     }
 
     /// <summary><paramref name="nibs"/> as the engine matches them: each <see cref="PluralNib"/> as its inner nib, then an <see cref="OptionalPluralNib"/>.</summary>

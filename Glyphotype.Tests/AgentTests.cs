@@ -286,6 +286,32 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_draft_that_cant_be_built_is_reported_by_every_probe_as_a_message()
+    {
+        var (agent, _) = CreateAgent();
+
+        var optionalProperty = _animalSnores.Replace("Prop(Place)", "Opt(Prop(Place))");
+
+        var tokenize = await Assert.ThrowsAsync<AgentRequestException>(() => agent.TokenizeAsync("the cat snores in the barn", optionalProperty));
+        Assert.Contains("make a property optional with [Optional] on it instead", tokenize.Message);
+
+        var explain = await Assert.ThrowsAsync<AgentRequestException>(() => agent.ExplainMismatchAsync("AnimalSnores", "the cat snores in the barn", optionalProperty));
+        Assert.Contains("make a property optional with [Optional] on it instead", explain.Message);
+
+        // Read, but refused as it's built: whatever the failure, the probe reports it rather than throwing it.
+        var circular = await Assert.ThrowsAsync<AgentRequestException>(() => agent.TokenizeAsync("the cat snores in the barn", """
+            public class Loop : Glyph
+            {
+                public override Nib[] Nibs => ["loop", Prop(Inner)];
+
+                public Loop Inner { get; set; }
+            }
+            """));
+        Assert.Contains("The draft doesn't build", circular.Message);
+        Assert.Contains("Loop", circular.Message);
+    }
+
+    [Fact]
     public async Task Definitions_are_shown_as_source_and_listed_with_their_contributions()
     {
         var (agent, _) = CreateAgent();

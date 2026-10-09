@@ -735,7 +735,9 @@ public sealed class GrammarAgent
         {
             return Workbench.BuildGrammar(definition);
         }
-        catch (AggregateException exception)
+        // Any failure to build is the draft's, as scoring it would report (see GrammarWorkbench.ScoreUncached) - so
+        // it reaches the agent as a message, never as an exception the tool host would hide.
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             throw new AgentRequestException("The draft doesn't build:" + Environment.NewLine
                 + string.Join(Environment.NewLine, exception.Message.Split('\n').Select(x => x.Trim()).Where(x => x.Length > 0).Select(x => "  " + x)), exception);

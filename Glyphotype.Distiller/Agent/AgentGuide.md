@@ -148,8 +148,8 @@ public class AnimalNaps : Glyph
 |---|---|
 | `"text"` | the text exactly, as literal characters (no regex) |
 | `Alt("a", "b")` | exactly one of the texts |
-| `Opt(nib)` | the nib, or nothing |
-| `Plural(nib)` | the nib, singular or plural: `Plural("card")` matches card and cards, `Plural(Prop(CardType))` creature and creatures |
+| `Opt(nib)` | the nib, or nothing. It wraps text, `Alt` or `Pattern` - never `Prop` (make the property `[Optional]` instead), `Plural` or `Nib.This` |
+| `Plural(nib)` | the nib, singular or plural: `Plural("card")` matches card and cards, `Plural(Prop(CardType))` creature and creatures. Never wraps `Opt`, `Plural` or `Nib.This` |
 | `Pattern(@"regex")` | a regex, for what the others can't express, e.g. `Pattern("an?")` |
 | `Prop(Name)` | the property `Name` |
 | `Nib.This` | `{this}`, the document's name: captured as a `This`, with no property to hold it |

@@ -10,7 +10,8 @@ namespace Glyphotype.Definitions;
 /// <para>
 /// Emitting doesn't validate the grammar - <see cref="GlyphGrammar"/>'s construction does that, as it would for
 /// hand-written types. It only refuses what can't be built at all: a name that resolves to nothing, a reference
-/// cycle, a nib naming a property that isn't declared.
+/// cycle, a nib naming a property that isn't declared, an <c>Opt</c> or <c>Plural</c> wrapping what it can't (see
+/// <see cref="NibNesting"/>).
 /// </para>
 /// </summary>
 public static class GrammarEmitter
@@ -241,6 +242,10 @@ public static class GrammarEmitter
 
             void EmitNib(ILGenerator il, NibDefinition nib)
             {
+                // Refused here rather than emitted as a getter that throws the first time the glyph is built.
+                if (nib.GetNestingError() is string nestingError)
+                    throw new InvalidOperationException($"{glyph.Name}: {nestingError}");
+
                 switch (nib)
                 {
                     case NibDefinition.Literal literal:

@@ -291,9 +291,9 @@ public static class GlyphSourceReader
                     case "Alt" when arguments.Count > 0:
                         return new NibDefinition.Alternatives(arguments.Select(ReadString).ToList());
                     case "Opt" when arguments.Count == 1:
-                        return ReadNib(glyphName, arguments[0]) is NibDefinition inner ? new NibDefinition.Optional(inner) : null;
+                        return ReadNib(glyphName, arguments[0]) is NibDefinition inner ? Nested(new NibDefinition.Optional(inner)) : null;
                     case "Plural" when arguments.Count == 1:
-                        return ReadNib(glyphName, arguments[0]) is NibDefinition plural ? new NibDefinition.Plural(plural) : null;
+                        return ReadNib(glyphName, arguments[0]) is NibDefinition plural ? Nested(new NibDefinition.Plural(plural)) : null;
                     case "Plural":
                         Error(expression, $"{glyphName}: Plural takes the nib it makes plural, e.g. Plural(\"card\") or Plural(Prop(CardType))");
                         return null;
@@ -310,6 +310,16 @@ public static class GlyphSourceReader
 
             Error(expression, $"{glyphName}: '{expression}' isn't a nib - use a string literal, Pattern(\"regex\"), Alt(\"a\", \"b\"), Opt(nib), Plural(nib), Prop(Property) or Nib.This");
             return null;
+
+            // An Opt or Plural wrapping what it can't is refused here, as it's read, rather than when its glyph is built.
+            NibDefinition Nested(NibDefinition nib)
+            {
+                if (nib.GetNestingError() is not string error)
+                    return nib;
+
+                Error(expression, $"{glyphName}: {error}");
+                return null;
+            }
         }
 
         static bool IsOverride(PropertyDeclarationSyntax property) =>

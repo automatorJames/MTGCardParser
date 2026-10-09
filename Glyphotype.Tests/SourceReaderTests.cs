@@ -192,6 +192,22 @@ public class SourceReaderTests(CorpusFixture corpus)
         Assert.Contains(exception.Errors, x => x.Contains("Plural takes the nib it makes plural"));
     }
 
+    [Theory]
+    [InlineData("Opt(Prop(Animal))", "Opt(Prop(...)) - make a property optional with [Optional] on it instead")]
+    [InlineData("Opt(Plural(\"dog\"))", "Opt(Plural(...)) - a nib can't be both optional and plural")]
+    [InlineData("Opt(Nib.This)", "Opt(Nib.This) - an embedded glyph can't be optional")]
+    [InlineData("Plural(Opt(\"dog\"))", "Plural(Opt(...)) - a nib can't be both optional and plural")]
+    [InlineData("Plural(Plural(\"dog\"))", "Plural(Plural(...)) - a nib can only be made plural once")]
+    [InlineData("Plural(Nib.This)", "Plural(Nib.This) - an embedded glyph can't be made plural")]
+    public void A_nib_wrapped_in_what_cant_wrap_it_is_refused_as_it_is_read(string nib, string expected)
+    {
+        var exception = Assert.Throws<GlyphSourceException>(() => GlyphSourceReader.Read($$"""
+            public class FeedsAll : Glyph { public override Nib[] Nibs => ["feed all the", {{nib}}]; public Animal Animal { get; set; } }
+            """, corpus.Grammar.ToDefinition()));
+
+        Assert.Contains(exception.Errors, x => x.Contains("FeedsAll: " + expected));
+    }
+
     [Fact]
     public void A_plural_saved_as_a_suffix_loads_wrapping_the_nib_before_it()
     {

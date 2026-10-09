@@ -41,4 +41,24 @@ public abstract record NibDefinition
 
     /// <summary>The document referring to itself: <see cref="Nib.This"/>.</summary>
     public sealed record This : NibDefinition;
+
+    /// <summary>
+    /// Why this nib can't be built - an <c>Opt</c> or <c>Plural</c>, at any depth, wrapping what it can't (see
+    /// <see cref="NibNesting"/>) - or null if it can.
+    /// </summary>
+    public string GetNestingError() => this switch
+    {
+        Optional optional => NibNesting.GetOptionalError(optional.Inner.NestingKind, nameof(Nib.This)) ?? optional.Inner.GetNestingError(),
+        Plural plural => NibNesting.GetPluralError(plural.Inner.NestingKind, nameof(Nib.This)) ?? plural.Inner.GetNestingError(),
+        _ => null,
+    };
+
+    NibNesting.Kind NestingKind => this switch
+    {
+        Optional => NibNesting.Kind.Optional,
+        Plural => NibNesting.Kind.Plural,
+        Property => NibNesting.Kind.Property,
+        This => NibNesting.Kind.Embedded,
+        _ => NibNesting.Kind.Text,
+    };
 }

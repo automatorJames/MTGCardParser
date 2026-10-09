@@ -9,12 +9,8 @@ public record OptionalNib : Nib
     public OptionalNib(Nib inner)
         : base(inner.Text, inner.Regex)
     {
-        Inner = inner switch
-        {
-            PluralNib => throw new ArgumentException("Opt(Plural(...)) - a nib can't be both optional and plural; write its forms out, e.g. Opt(Alt(\"card\", \"cards\"))", nameof(inner)),
-            PropertyNib => throw new ArgumentException("Opt(Prop(...)) - make a property optional with [Optional] on it instead", nameof(inner)),
-            EmbeddedGlyphNib => throw new ArgumentException($"Opt(Nib.{inner.Text}) - an embedded glyph can't be optional; write the glyph with and without it", nameof(inner)),
-            _ => inner,
-        };
+        Inner = NibNesting.GetOptionalError(NibNesting.KindOf(inner), inner.Text) is string error
+            ? throw new ArgumentException(error, nameof(inner))
+            : inner;
     }
 }
