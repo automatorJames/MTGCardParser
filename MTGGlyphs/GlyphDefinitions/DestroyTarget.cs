@@ -1,11 +1,11 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"destroy target land": destroys one targeted permanent.</summary>
+/// <summary>"destroy target land", "destroy {this}", "destroy that creature": destroys one permanent.</summary>
 /// <exampledoc>Ice Storm</exampledoc>
 /// <examplecapture>destroy target land</examplecapture>
 public class DestroyTarget : Glyph
 {
     public override Nib[] Nibs => ["destroy", Prop(Destroyed)];
 
-    public SpecificTarget Destroyed { get; set; }
+    public PermanentPhrase Destroyed { get; set; }
 }

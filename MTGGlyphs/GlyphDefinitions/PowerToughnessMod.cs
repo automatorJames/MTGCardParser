@@ -6,6 +6,7 @@
 [Dependent]
 public class PowerToughnessMod : Glyph
 {
+    public override Joiner Joiner => Joiner.None;
     public override Nib[] Nibs => [Prop(PowerSign), Prop(PowerValue), "/", Prop(ToughnessSign), Prop(ToughnessValue)];
 
     public PlusMinus PowerSign { get; set; }
