@@ -12,14 +12,43 @@ public sealed record DeclarationEdit(DefinitionChange Change, string FilePath, s
 /// <summary>One file a commit writes: <see cref="OriginalText"/> is null for a new file, <see cref="NewText"/> null for one deleted.</summary>
 public sealed record FileWrite(string Path, string OriginalText, string NewText);
 
+/// <summary>A definition a commit adds under a name some type in the project already has - one no definition holds, so the commit can't simply rewrite it.</summary>
+public sealed record NameConflict(DefinitionChange Change, string ExistingPath);
+
+/// <summary>What a commit does about a <see cref="NameConflict"/>.</summary>
+public enum NameConflictResolution
+{
+    /// <summary>Nothing: the new declaration is written alongside the existing type, and the two share a name.</summary>
+    AllowConflicts,
+
+    /// <summary>The existing type is renamed, with <see cref="SourceCommitter.LegacySuffix"/>, where it's declared - code referring to the name then refers to the new declaration.</summary>
+    RenameExisting,
+
+    /// <summary>The new definition is renamed, with <see cref="SourceCommitter.NewSuffix"/>, along with every reference to it - in the working grammar too.</summary>
+    RenameIncoming,
+}
+
 /// <summary>Everything a commit would do, for review before <see cref="SourceCommitter.Apply"/> does it.</summary>
-public sealed record SourceCommitPlan(IReadOnlyList<DeclarationEdit> Declarations, IReadOnlyList<FileWrite> Files);
+/// <param name="Definition">The grammar the sources will declare: the working one, unless <see cref="NameConflictResolution.RenameIncoming"/> renamed some of it.</param>
+/// <param name="Conflicts">The names the commit adds that some type in the project already has - for the person to resolve before committing, unless <paramref name="Resolution"/> already does.</param>
+public sealed record SourceCommitPlan(
+    GrammarDefinition Definition,
+    IReadOnlyList<DeclarationEdit> Declarations,
+    IReadOnlyList<FileWrite> Files,
+    IReadOnlyList<NameConflict> Conflicts,
+    NameConflictResolution? Resolution)
+{
+    /// <summary>Whether the plan can be applied as it is: it has no conflicts, or says what to do about them.</summary>
+    public bool IsResolved => Conflicts.Count == 0 || Resolution is not null;
+}
 
 /// <summary>
 /// Turns definition changes into edits of the C# sources that declare them. Each changed declaration is found by
-/// name among the sources and replaced in place - only its own text, so the rest of its file, and its own leading
-/// doc comment, stay exactly as they were. A new one gets a file of its own; a removed one is cut out, and a
-/// file left declaring nothing is deleted.
+/// name anywhere in the project the sources belong to - so a vocabulary declared outside the source directory is
+/// still rewritten where it is - and replaced in place: only its own text, so the rest of its file, and its own
+/// leading doc comment, stay exactly as they were. A new one gets a file of its own - a vocabulary's under
+/// <see cref="VocabularyDirectory"/>, apart from the glyphs; a removed one is cut out, and a file left declaring
+/// nothing is deleted.
 /// <para>
 /// A rewritten declaration is regenerated from its definition (see <see cref="GlyphSourceWriter"/>), so
 /// formatting and comments inside it are not kept. Members a definition doesn't hold - a glyph's computed
@@ -29,6 +58,13 @@ public sealed record SourceCommitPlan(IReadOnlyList<DeclarationEdit> Declaration
 /// </summary>
 public static class SourceCommitter
 {
+    /// <summary>The subdirectory of the source directory a new vocabulary's file goes in.</summary>
+    public const string VocabularyDirectory = "Enums";
+
+    /// <summary>What <see cref="NameConflictResolution.RenameExisting"/> and <see cref="NameConflictResolution.RenameIncoming"/> append to a name.</summary>
+    public const string LegacySuffix = "_legacy";
+    public const string NewSuffix = "_new";
+
     /// <summary>The attributes a definition expresses, by type name: any other on a rewritten declaration is lost.</summary>
     static readonly HashSet<string> _expressedAttributes =
     [
@@ -53,13 +89,28 @@ public static class SourceCommitter
         _expressedAttributes.Contains(name.EndsWith("Attribute") ? name : name + "Attribute");
 
     /// <summary>
-    /// Plans the edits that turn the sources under <paramref name="sourceDirectory"/> (which declare
-    /// <paramref name="committed"/>) into sources declaring <paramref name="working"/>. New files go in
-    /// <paramref name="sourceDirectory"/> under <paramref name="namespace"/>.
+    /// Plans the edits that turn the sources of the project <paramref name="sourceDirectory"/> belongs to (which
+    /// declare <paramref name="committed"/>) into sources declaring <paramref name="working"/>. New files go in
+    /// <paramref name="sourceDirectory"/> - a vocabulary's in its <see cref="VocabularyDirectory"/> - under
+    /// <paramref name="namespace"/>.
     /// </summary>
-    public static SourceCommitPlan Plan(GrammarDefinition committed, GrammarDefinition working, string sourceDirectory, string @namespace)
+    /// <param name="resolution">What to do about any <see cref="SourceCommitPlan.Conflicts"/> - null to leave it to the person, in which case the plan previews them as allowed.</param>
+    public static SourceCommitPlan Plan(GrammarDefinition committed, GrammarDefinition working, string sourceDirectory, string @namespace, NameConflictResolution? resolution = null)
     {
-        var declarations = IndexDeclarations(sourceDirectory);
+        var declarations = IndexDeclarations(FindProjectDirectory(sourceDirectory));
+        var conflicts = FindConflicts(committed, working, declarations);
+        var renamedFrom = new Dictionary<string, string>();
+
+        if (resolution == NameConflictResolution.RenameIncoming)
+        {
+            foreach (var conflict in conflicts)
+            {
+                var renamed = UnusedName(conflict.Change.Name + NewSuffix, working, declarations);
+                working = working.WithRenamed(conflict.Change.Name, renamed);
+                renamedFrom[renamed] = conflict.Change.Name;
+            }
+        }
+
         var edits = new List<DeclarationEdit>();
         var spliceEdits = new Dictionary<string, List<(TextSpan Span, string Text)>>(StringComparer.OrdinalIgnoreCase);
         var newFiles = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -67,7 +118,27 @@ public static class SourceCommitter
         foreach (var change in DefinitionDiff.Compare(committed, working))
         {
             List<string> notes = [];
-            declarations.TryGetValue(change.Name, out var existing);
+            var existing = Find(declarations, change.Name);
+
+            // An added definition's name belongs to no definition, so whatever has it is some other type: left be, or renamed.
+            if (change.Change == ChangeType.Added && existing is not null)
+            {
+                if (resolution == NameConflictResolution.RenameExisting)
+                {
+                    var legacy = UnusedName(change.Name + LegacySuffix, working, declarations);
+                    AddSplice(spliceEdits, existing.Path, existing.Node.Identifier.Span, legacy);
+                    notes.Add($"The existing {change.Name} in {existing.Path} is renamed {legacy}: code that referred to {change.Name} now refers to this one");
+                }
+                else
+                {
+                    notes.Add($"{existing.Path} already declares a type named {change.Name}");
+                }
+
+                existing = null;
+            }
+
+            if (renamedFrom.TryGetValue(change.Name, out var original))
+                notes.Add($"Renamed from {original}, a name a type in the project already has - in the working grammar too");
 
             if (change.Change == ChangeType.Removed)
             {
@@ -86,7 +157,9 @@ public static class SourceCommitter
 
             if (existing is null)
             {
-                var path = Path.Combine(sourceDirectory, change.Name + ".cs");
+                var path = change.Kind == DefinitionKind.Vocabulary
+                    ? Path.Combine(sourceDirectory, VocabularyDirectory, change.Name + ".cs")
+                    : Path.Combine(sourceDirectory, change.Name + ".cs");
 
                 if (!newFiles.TryGetValue(path, out var fileDeclarations))
                     newFiles[path] = fileDeclarations = [];
@@ -149,12 +222,54 @@ public static class SourceCommitter
             files.Add(new(path, original, text));
         }
 
-        return new(edits, files);
+        return new(working, edits, files, conflicts, conflicts.Count > 0 ? resolution : null);
     }
 
-    /// <summary>Writes (or deletes) every file in <paramref name="plan"/>.</summary>
+    /// <summary>The definitions <paramref name="working"/> adds under a name some type in the project already has.</summary>
+    static List<NameConflict> FindConflicts(GrammarDefinition committed, GrammarDefinition working, Dictionary<string, List<Declaration>> declarations) =>
+        DefinitionDiff.Compare(committed, working)
+            .Where(x => x.Change == ChangeType.Added && declarations.ContainsKey(x.Name))
+            .Select(x => new NameConflict(x, declarations[x.Name][0].Path))
+            .ToList();
+
+    /// <summary><paramref name="name"/> - or, should a definition or a type in the project have it, the first of name2, name3, … that none does.</summary>
+    static string UnusedName(string name, GrammarDefinition definition, Dictionary<string, List<Declaration>> declarations)
+    {
+        bool IsUsed(string candidate) =>
+            declarations.ContainsKey(candidate)
+            || definition.Glyphs.Any(x => x.Name == candidate)
+            || definition.Vocabularies.Any(x => x.Name == candidate)
+            || definition.Markers.Contains(candidate);
+
+        var unused = name;
+
+        for (int i = 2; IsUsed(unused); i++)
+            unused = name + i;
+
+        return unused;
+    }
+
+    /// <summary>
+    /// The directory of the project <paramref name="sourceDirectory"/> belongs to - the nearest one holding a
+    /// <c>.csproj</c>, at or above it - or <paramref name="sourceDirectory"/> itself when it belongs to none.
+    /// </summary>
+    static string FindProjectDirectory(string sourceDirectory)
+    {
+        for (var directory = new DirectoryInfo(sourceDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (directory.Exists && directory.EnumerateFiles("*.csproj").Any())
+                return directory.FullName;
+        }
+
+        return sourceDirectory;
+    }
+
+    /// <summary>Writes (or deletes) every file in <paramref name="plan"/> - which must be resolved (see <see cref="SourceCommitPlan.IsResolved"/>).</summary>
     public static void Apply(SourceCommitPlan plan)
     {
+        if (!plan.IsResolved)
+            throw new InvalidOperationException($"Types in the project already have names this commit adds ({string.Join(", ", plan.Conflicts.Select(x => x.Change.Name))}) - say what to do about them first");
+
         foreach (var file in plan.Files)
         {
             if (file.NewText is null)
@@ -162,6 +277,8 @@ public static class SourceCommitter
                 File.Delete(file.Path);
                 continue;
             }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(file.Path));
 
             var newline = file.OriginalText is not null && !file.OriginalText.Contains("\r\n") ? "\n" : "\r\n";
             File.WriteAllText(file.Path, file.NewText.ReplaceLineEndings(newline), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
@@ -233,7 +350,7 @@ public static class SourceCommitter
         return definition with
         {
             Glyphs = definition.Glyphs
-                .Select(x => declarations.TryGetValue(x.Name, out var declaration) && declaration.Node is ClassDeclarationSyntax
+                .Select(x => declarations.TryGetValue(x.Name, out var found) && found is [{ Node: ClassDeclarationSyntax } declaration]
                     ? x with { Documentation = GlyphDocComment.Read(declaration.Node).Documentation }
                     : x)
                 .ToList(),
@@ -256,10 +373,16 @@ public static class SourceCommitter
 
     sealed record Declaration(string Path, BaseTypeDeclarationSyntax Node, string Indentation);
 
+    /// <summary>The one declaration named <paramref name="name"/> - null for none, and an error for more than one, which would make a commit ambiguous.</summary>
+    static Declaration Find(Dictionary<string, List<Declaration>> declarations, string name) =>
+        !declarations.TryGetValue(name, out var found) ? null
+        : found.Count == 1 ? found[0]
+        : throw new InvalidOperationException($"{name} is declared more than once ({string.Join(", ", found.Select(x => x.Path))}), so a commit can't tell which to change - rename or remove all but one");
+
     /// <summary>Every top-level type declaration in the C# files under <paramref name="sourceDirectory"/> (bin/obj aside), by name.</summary>
-    static Dictionary<string, Declaration> IndexDeclarations(string sourceDirectory)
+    static Dictionary<string, List<Declaration>> IndexDeclarations(string sourceDirectory)
     {
-        var index = new Dictionary<string, Declaration>();
+        var index = new Dictionary<string, List<Declaration>>();
 
         foreach (var path in Directory.EnumerateFiles(sourceDirectory, "*.cs", SearchOption.AllDirectories))
         {
@@ -276,9 +399,11 @@ public static class SourceCommitter
                 var line = text.Lines.GetLineFromPosition(node.SpanStart);
                 var indentation = text.ToString(TextSpan.FromBounds(line.Start, node.SpanStart));
 
-                // Declarations are matched by name, so two of one name would make a commit ambiguous.
-                if (!index.TryAdd(node.Identifier.Text, new(path, node, string.IsNullOrWhiteSpace(indentation) ? indentation : "")))
-                    throw new InvalidOperationException($"{node.Identifier.Text} is declared more than once under {sourceDirectory} ({index[node.Identifier.Text].Path}, {path})");
+                // Declarations are matched by name, so two of one name make a commit ambiguous - but only one that changes it (see Find).
+                if (!index.TryGetValue(node.Identifier.Text, out var named))
+                    index[node.Identifier.Text] = named = [];
+
+                named.Add(new(path, node, string.IsNullOrWhiteSpace(indentation) ? indentation : ""));
             }
         }
 

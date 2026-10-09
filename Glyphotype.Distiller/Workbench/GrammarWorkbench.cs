@@ -607,15 +607,17 @@ public sealed class GrammarWorkbench : IDisposable
     // ---- Committing ----
 
     /// <summary>The source edits committing the working definition would make, for review.</summary>
-    public SourceCommitPlan PlanCommit() =>
+    /// <param name="resolution">What to do about names the commit adds that types in the project already have - null to leave it to the person (see <see cref="SourceCommitPlan.Conflicts"/>).</param>
+    public SourceCommitPlan PlanCommit(NameConflictResolution? resolution = null) =>
         IsSourceBacked
-            ? SourceCommitter.Plan(CommittedDefinition, WorkingDefinition, _options.SourceDirectory, _options.SourceNamespace)
+            ? SourceCommitter.Plan(CommittedDefinition, WorkingDefinition, _options.SourceDirectory, _options.SourceNamespace, resolution)
             : throw new InvalidOperationException("This grammar has no C# sources to commit to - checkpoint it instead, or export it");
 
     /// <summary>
-    /// Writes <paramref name="plan"/> (from <see cref="PlanCommit"/>) into the sources, after which the working
-    /// definition is the committed one and <see cref="History"/> starts over. The running process's compiled grammar
-    /// is unchanged until it's rebuilt; until then the committed trial is the working one's.
+    /// Writes <paramref name="plan"/> (from <see cref="PlanCommit"/>) into the sources, after which the definition they
+    /// declare - the working one, unless the plan renamed some of it - is both the committed and the working one, and
+    /// <see cref="History"/> starts over. The running process's compiled grammar is unchanged until it's rebuilt;
+    /// until then the committed trial is the working one's.
     /// </summary>
     public void Commit(SourceCommitPlan plan)
     {
@@ -625,14 +627,14 @@ public sealed class GrammarWorkbench : IDisposable
         {
             // The compiled grammar still predates the commit, so the committed trial is now the working one's.
             _compiledGrammarSuperseded = true;
-            var workingTrial = LatestWorkingScore is { Succeeded: true } latest && latest.Definition == WorkingDefinition ? latest : null;
-            var definition = WorkingDefinition;
+            var definition = plan.Definition;
+            var workingTrial = LatestWorkingScore is { Succeeded: true } latest && latest.Definition == definition ? latest : null;
             _committedTrial = workingTrial is not null ? Task.FromResult(workingTrial) : Task.Run(() => Score(definition, CancellationToken.None));
 
             // Steps from before the commit would take back committed work.
             _history.Clear();
 
-            SetDefinitions(WorkingDefinition, WorkingDefinition);
+            SetDefinitions(definition, definition);
             SaveWorkingDefinition();
             SaveHistory();
         }

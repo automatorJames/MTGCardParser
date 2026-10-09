@@ -351,7 +351,7 @@ else
 
 @if (_commitPlan is not null)
 {
-    <CommitDialog Plan="_commitPlan" SourceDirectory="@Workbench.SourceDirectory" OnCommit="Commit" OnClose="() => _commitPlan = null" />
+    <CommitDialog Plan="_commitPlan" SourceDirectory="@Workbench.SourceDirectory" OnResolve="ResolveConflicts" OnCommit="Commit" OnClose="() => _commitPlan = null" />
 }
 
 @code {
@@ -882,6 +882,9 @@ else
     // ---- Committing ----
 
     void OpenCommit() => Try(() => _commitPlan = Workbench.PlanCommit());
+
+    /// <summary>Plans the commit again, doing <paramref name="resolution"/> about the names it adds that types in the project already have.</summary>
+    void ResolveConflicts(NameConflictResolution resolution) => Try(() => _commitPlan = Workbench.PlanCommit(resolution));
 
     void Checkpoint() =>
         Try(() =>

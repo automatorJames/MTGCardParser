@@ -6,6 +6,26 @@
             Only the changed declarations are rewritten; the rest of each file, and each declaration's doc comment, stay as they are.
         </p>
 
+        @if (Plan.Conflicts.Count > 0)
+        {
+            <div class="conflicts">
+                <p class="conflicts-summary">
+                    @(Plan.Conflicts.Count == 1 ? "A definition this commit adds has a name" : $"{Plan.Conflicts.Count} definitions this commit adds have names") a type in the project already has:
+                </p>
+                <ul>
+                    @foreach (var conflict in Plan.Conflicts)
+                    {
+                        <li>@conflict.Change.Kind.ToString().ToLowerInvariant() <strong>@conflict.Change.Name</strong> <span class="declaration-file">already in @Relative(conflict.ExistingPath)</span></li>
+                    }
+                </ul>
+                <div class="conflict-choices">
+                    @Choice(NameConflictResolution.AllowConflicts, "Do nothing", "Write them anyway - the names will clash")
+                    @Choice(NameConflictResolution.RenameExisting, "Rename existing", $"The existing types get \"{SourceCommitter.LegacySuffix}\" appended")
+                    @Choice(NameConflictResolution.RenameIncoming, "Rename incoming", $"The new definitions get \"{SourceCommitter.NewSuffix}\" appended, in the working grammar too")
+                </div>
+            </div>
+        }
+
         <div class="file-list">
             @foreach (var file in Plan.Files)
             {
@@ -48,7 +68,7 @@
     </DialogContent>
     <DialogActions>
         <button class="btn btn-secondary" @onclick="Close">Cancel</button>
-        <button class="btn btn-primary" @onclick="Commit">Write files</button>
+        <button class="btn btn-primary" disabled="@(!Plan.IsResolved)" title="@(Plan.IsResolved ? "" : "Choose what to do about the name conflicts first")" @onclick="Commit">Write files</button>
     </DialogActions>
 </CustomDialog>
 
@@ -56,9 +76,19 @@
     [Parameter, EditorRequired] public SourceCommitPlan Plan { get; set; }
     [Parameter, EditorRequired] public string SourceDirectory { get; set; }
     [Parameter] public EventCallback OnCommit { get; set; }
+
+    /// <summary>The person chose what to do about the plan's <see cref="SourceCommitPlan.Conflicts"/> - for the plan to be made again doing it.</summary>
+    [Parameter] public EventCallback<NameConflictResolution> OnResolve { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
     string Relative(string path) => Path.GetRelativePath(SourceDirectory, path);
+
+    RenderFragment Choice(NameConflictResolution resolution, string label, string description) =>
+        @<label class="conflict-choice @(Plan.Resolution == resolution ? "chosen" : "")">
+            <input type="radio" name="conflict-resolution" checked="@(Plan.Resolution == resolution)" @onchange="() => OnResolve.InvokeAsync(resolution)" />
+            <span class="conflict-choice-label">@label</span>
+            <span class="conflict-choice-description">@description</span>
+        </label>;
 
     Task Commit() => OnCommit.InvokeAsync();
 

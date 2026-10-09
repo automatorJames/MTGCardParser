@@ -71,7 +71,7 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
         workspaces.Create("Scratch", WorkspaceSeed.Vocabularies);
         var workbench = workspaces.Active;
 
-        Assert.Throws<InvalidOperationException>(workbench.PlanCommit);
+        Assert.Throws<InvalidOperationException>(() => workbench.PlanCommit());
 
         workbench.Apply(Changes(workbench, _animalSnores));
         var trial = await workbench.GetCurrentTrialAsync();

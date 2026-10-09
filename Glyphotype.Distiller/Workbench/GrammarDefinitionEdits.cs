@@ -17,6 +17,34 @@ public static class GrammarDefinitionEdits
     public static GrammarDefinition WithoutVocabulary(this GrammarDefinition grammar, string name) =>
         grammar with { Vocabularies = grammar.Vocabularies.Where(x => x.Name != name).ToList() };
 
+    /// <summary><paramref name="grammar"/> with the glyph, vocabulary or marker named <paramref name="name"/> named <paramref name="newName"/> instead, and every reference to it too.</summary>
+    public static GrammarDefinition WithRenamed(this GrammarDefinition grammar, string name, string newName)
+    {
+        string Rename(string x) => x == name ? newName : x;
+
+        TypeReference RenameReference(TypeReference reference) =>
+            reference is null ? null
+            : reference with
+            {
+                Name = reference.Kind is TypeReferenceKind.Glyph or TypeReferenceKind.Vocabulary ? Rename(reference.Name) : reference.Name,
+                Arguments = reference.Arguments.Select(RenameReference).ToList(),
+            };
+
+        return grammar with
+        {
+            Glyphs = grammar.Glyphs.Select(glyph => glyph with
+            {
+                Name = Rename(glyph.Name),
+                AliasOf = RenameReference(glyph.AliasOf),
+                ReferenceKind = RenameReference(glyph.ReferenceKind),
+                Markers = glyph.Markers.Select(Rename).ToList(),
+                Properties = glyph.Properties.Select(x => x with { Type = RenameReference(x.Type), TypeFilter = x.TypeFilter is null ? null : Rename(x.TypeFilter) }).ToList(),
+            }).ToList(),
+            Vocabularies = grammar.Vocabularies.Select(x => x with { Name = Rename(x.Name) }).ToList(),
+            Markers = grammar.Markers.Select(Rename).ToList(),
+        };
+    }
+
     /// <summary>The glyphs in <paramref name="grammar"/> that refer to the glyph, vocabulary or marker named <paramref name="name"/>.</summary>
     public static IReadOnlyList<string> GetReferrers(this GrammarDefinition grammar, string name) =>
         grammar.Glyphs

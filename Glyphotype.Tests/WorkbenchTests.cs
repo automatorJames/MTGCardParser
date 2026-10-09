@@ -184,5 +184,102 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
             File.ReadAllText(basicGlyphsPath).ReplaceLineEndings("\n"));
     }
 
+    /// <summary>
+    /// A project laid out as a real one is: a <c>.csproj</c>, the glyph sources in a directory of their own, and the
+    /// vocabularies - plus an enum no glyph uses - in a file beside it rather than in it.
+    /// </summary>
+    string CreateProject()
+    {
+        var projectDirectory = Directory.CreateDirectory(Path.Combine(_directory, "Project")).FullName;
+        var sourceDirectory = Directory.CreateDirectory(Path.Combine(projectDirectory, "Grammar")).FullName;
+        File.WriteAllText(Path.Combine(projectDirectory, "Project.csproj"), "<Project />");
+
+        foreach (var file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Grammar"), "*.cs"))
+        {
+            var vocabulary = Path.GetFileName(file) == "Vocabulary.cs";
+            File.Copy(file, Path.Combine(vocabulary ? projectDirectory : sourceDirectory, Path.GetFileName(file)));
+        }
+
+        File.WriteAllText(Path.Combine(projectDirectory, "Unused.cs"), "namespace Glyphotype.Tests.Grammar;\n\npublic enum Mood\n{\n    Calm,\n}\n");
+        return sourceDirectory;
+    }
+
+    static string[] ProjectSources(string sourceDirectory) =>
+        Directory.GetFiles(Path.GetDirectoryName(sourceDirectory), "*.cs", SearchOption.AllDirectories).Select(File.ReadAllText).ToArray();
+
+    [Fact]
+    public void Committing_rewrites_a_vocabulary_where_the_project_declares_it_and_puts_a_new_one_with_the_other_enums()
+    {
+        var sourceDirectory = CreateProject();
+        var workbench = CreateWorkbench(sourceDirectory);
+        var place = workbench.WorkingDefinition.Vocabularies.Single(x => x.Name == nameof(Place));
+
+        workbench.SetVocabulary(place with { Members = [.. place.Members, new() { Name = "Attic" }] });
+        workbench.SetVocabulary(new VocabularyDefinition { Name = "Season", Members = [new() { Name = "Spring" }] });
+        workbench.SetGlyph(new GlyphDefinition
+        {
+            Name = "ItIsSeason",
+            Nibs = [new NibDefinition.Literal("it is"), new NibDefinition.Property("Season")],
+            Properties = [new() { Name = "Season", Type = TypeReference.Vocabulary("Season") }],
+        });
+
+        var plan = workbench.PlanCommit();
+        Assert.Empty(plan.Conflicts);
+        workbench.Commit(plan);
+
+        var projectDirectory = Path.GetDirectoryName(sourceDirectory);
+        Assert.Contains("Attic", File.ReadAllText(Path.Combine(projectDirectory, "Vocabulary.cs")));
+        Assert.False(File.Exists(Path.Combine(sourceDirectory, "Place.cs")));
+        Assert.True(File.Exists(Path.Combine(sourceDirectory, SourceCommitter.VocabularyDirectory, "Season.cs")));
+        Assert.True(File.Exists(Path.Combine(sourceDirectory, "ItIsSeason.cs")));
+
+        var compiled = SourceCompiler.Compile(ProjectSources(sourceDirectory));
+        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithDocumentation(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
+    }
+
+    [Theory]
+    [InlineData(NameConflictResolution.RenameExisting)]
+    [InlineData(NameConflictResolution.RenameIncoming)]
+    public void A_new_definition_named_like_a_type_in_the_project_waits_for_the_person_to_say_which_to_rename(NameConflictResolution resolution)
+    {
+        var sourceDirectory = CreateProject();
+        var workbench = CreateWorkbench(sourceDirectory);
+
+        workbench.SetVocabulary(new VocabularyDefinition { Name = "Mood", Members = [new() { Name = "Happy" }, new() { Name = "Sad" }] });
+        workbench.SetGlyph(new GlyphDefinition
+        {
+            Name = "AnimalFeels",
+            Nibs = [new NibDefinition.Literal("the"), new NibDefinition.Property("Animal"), new NibDefinition.Literal("feels"), new NibDefinition.Property("Mood")],
+            Properties = [new() { Name = "Animal", Type = TypeReference.Vocabulary(nameof(Animal)) }, new() { Name = "Mood", Type = TypeReference.Vocabulary("Mood") }],
+        });
+
+        var unresolved = workbench.PlanCommit();
+        Assert.Equal("Mood", Assert.Single(unresolved.Conflicts).Change.Name);
+        Assert.False(unresolved.IsResolved);
+        Assert.Throws<InvalidOperationException>(() => workbench.Commit(unresolved));
+
+        workbench.Commit(workbench.PlanCommit(resolution));
+
+        var enums = Path.Combine(sourceDirectory, SourceCommitter.VocabularyDirectory);
+        var unused = File.ReadAllText(Path.Combine(Path.GetDirectoryName(sourceDirectory), "Unused.cs"));
+
+        if (resolution == NameConflictResolution.RenameExisting)
+        {
+            Assert.Contains("enum Mood_legacy", unused);
+            Assert.True(File.Exists(Path.Combine(enums, "Mood.cs")));
+        }
+        else
+        {
+            Assert.Contains("enum Mood\n", unused);
+            Assert.True(File.Exists(Path.Combine(enums, "Mood_new.cs")));
+            Assert.Contains(workbench.WorkingDefinition.Glyphs.Single(x => x.Name == "AnimalFeels").Properties, x => x.Type.Name == "Mood_new");
+        }
+
+        Assert.Empty(workbench.Changes);
+
+        var compiled = SourceCompiler.Compile(ProjectSources(sourceDirectory));
+        Assert.Empty(DefinitionDiff.Compare(workbench.WorkingDefinition, SourceCommitter.WithDocumentation(GrammarDefinition.FromTypes(compiled.GetTypes()), sourceDirectory)));
+    }
+
     static GlyphDefinition Glyph(GrammarDefinition grammar, string name) => grammar.Glyphs.Single(x => x.Name == name);
 }
