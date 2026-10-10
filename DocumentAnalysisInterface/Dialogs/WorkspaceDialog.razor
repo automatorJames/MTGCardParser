@@ -115,6 +115,61 @@
                 </p>
                 break;
 
+            case WorkspaceAction.Merge:
+                <label class="field">
+                    <span class="field-label">Merge into</span>
+                    <select class="form-control" value="@_mergeInto" @onchange="e => PlanMerge((string)e.Value)">
+                        @foreach (var workspace in Workspaces.Workspaces.Where(x => x.Name != ActiveName))
+                        {
+                            <option value="@workspace.Name">@workspace.Name</option>
+                        }
+                    </select>
+                </label>
+
+                @if (_merge is not null)
+                {
+                    @if (!_merge.IsBaseRecorded)
+                    {
+                        <p class="dialog-note merge-warning">
+                            There's no record of what @ActiveName started from, so everything that differs from @(_merge.Into)'s
+                            @(IsSourceTarget ? "committed sources" : "checkpoint") is listed - untick what @_merge.Into should keep as it is.
+                        </p>
+                    }
+
+                    @if (_merge.Items.Count == 0)
+                    {
+                        <p>@_merge.Into already has everything @ActiveName changed.</p>
+                    }
+                    else
+                    {
+                        <div class="merge-items">
+                            @foreach (var item in _merge.Items)
+                            {
+                                <label class="choice">
+                                    <input type="checkbox" checked="@_taken.Contains(item)" @onchange="e => Take(item, (bool)e.Value)" />
+                                    <span>
+                                        <span class="merge-change @item.Change.ToString().ToLowerInvariant()">@ChangeLabel(item.Change)</span>
+                                        <strong class="merge-name">@item.Name</strong>
+                                        <span class="merge-kind">@item.Kind.ToString().ToLowerInvariant()</span>
+                                        @if (item.IsConflict)
+                                        {
+                                            <span class="choice-help merge-conflict">@ConflictHelp(item)</span>
+                                        }
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    }
+                }
+
+                <p class="dialog-note">
+                    What @ActiveName added, changed or removed since it started or last merged - its working changes included - becomes one
+                    working step in @(_merge?.Into ?? "the target"), to score, undo and @(IsSourceTarget ? "commit to C#" : "checkpoint") as any working change.
+                    @ActiveName is left with no working changes: it can be deleted without losing anything merged, or kept to iterate on.
+                    What you leave unticked is offered again next time.
+                </p>
+                break;
+
             case WorkspaceAction.Export:
                 <label class="field">
                     <span class="field-label">Namespace</span>
@@ -142,7 +197,7 @@
 </CustomDialog>
 
 @code {
-    public enum WorkspaceAction { Create, Rename, Delete, Export, Guidance }
+    public enum WorkspaceAction { Create, Rename, Delete, Export, Guidance, Merge }
 
     [Parameter, EditorRequired] public WorkspaceAction Action { get; set; }
 
@@ -163,6 +218,9 @@
     bool _copyGuidance = true;
     bool _copyJournal = true;
     bool _journalTab;
+    string _mergeInto;
+    WorkspaceMerge _merge;
+    HashSet<MergeItem> _taken = [];
 
     bool ShowingJournal => Action == WorkspaceAction.Guidance && _journalTab;
 
@@ -183,7 +241,50 @@
         _from = ActiveName;
         _guidance = Workspaces.GetGuidance();
         _namespace = WorkspaceManager.SuggestNamespace(ActiveName);
+
+        if (Action == WorkspaceAction.Merge)
+            PlanMerge(Workspaces.DefaultMergeTarget(ActiveName));
     }
+
+    bool IsSourceTarget => Workspaces.Workspaces.FirstOrDefault(x => x.Name == _mergeInto)?.Kind == WorkspaceKind.Source;
+
+    /// <summary>Plans merging the active workspace into <paramref name="into"/>, taking everything that isn't a conflict.</summary>
+    void PlanMerge(string into)
+    {
+        _mergeInto = into;
+        _error = null;
+
+        try
+        {
+            _merge = Workspaces.PlanMerge(ActiveName, into);
+            _taken = _merge.CleanItems.ToHashSet();
+        }
+        catch (InvalidOperationException exception)
+        {
+            _merge = null;
+            _error = exception.Message;
+        }
+    }
+
+    void Take(MergeItem item, bool take)
+    {
+        if (take)
+            _taken.Add(item);
+        else
+            _taken.Remove(item);
+    }
+
+    static string ChangeLabel(ChangeType change) => change switch
+    {
+        ChangeType.Added => "added",
+        ChangeType.Modified => "changed",
+        _ => "removed",
+    };
+
+    string ConflictHelp(MergeItem item) =>
+        item.Target is null ? $"{_merge.Into} has removed it since - ticked, it comes back"
+        : item.Base is null ? $"{_merge.Into} has added its own since - ticked, this replaces it"
+        : $"{_merge.Into} has changed it too - ticked, this replaces its version";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -204,6 +305,7 @@
         WorkspaceAction.Rename => $"Rename {ActiveName}",
         WorkspaceAction.Guidance => $"Guidance for {ActiveName}",
         WorkspaceAction.Delete => $"Delete {ActiveName}",
+        WorkspaceAction.Merge => $"Merge {ActiveName}",
         _ => $"Export {ActiveName}",
     };
 
@@ -213,6 +315,7 @@
         WorkspaceAction.Rename => "Rename",
         WorkspaceAction.Guidance => "Save",
         WorkspaceAction.Delete => "Delete",
+        WorkspaceAction.Merge => _merge is null ? "Merge" : $"Merge {_taken.Count} into {_merge.Into}",
         _ => "Download",
     };
 
@@ -258,6 +361,15 @@
                     var deleted = ActiveName;
                     Workspaces.Delete(deleted);
                     await OnDone.InvokeAsync($"Deleted {deleted}; switched to {Workspaces.ActiveWorkspace.Name}.");
+                    break;
+
+                case WorkspaceAction.Merge:
+                    if (_merge is null)
+                        return;
+
+                    var merged = ActiveName;
+                    Workspaces.Merge(_merge, _merge.Items.Where(_taken.Contains));
+                    await OnDone.InvokeAsync($"Merged {merged} into {Workspaces.ActiveWorkspace.Name}: a working step here now, and {merged} has no working changes left.");
                     break;
 
                 case WorkspaceAction.Export:

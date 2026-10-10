@@ -94,3 +94,49 @@
         border-bottom-color: #569cd6;
         color: #e2e8f0;
     }
+
+/* Merging: what the merged workspace changed, one row each */
+.merge-items {
+    max-height: 22rem;
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--outline-grey);
+    border-radius: 6px;
+}
+
+.merge-change {
+    display: inline-block;
+    min-width: 4.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+    .merge-change.added {
+        color: #81c995;
+    }
+
+    .merge-change.modified {
+        color: #fdd663;
+    }
+
+    .merge-change.removed {
+        color: #f28b82;
+    }
+
+.choice strong.merge-name {
+    display: inline;
+}
+
+.merge-kind {
+    margin-left: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--subtext-grey);
+}
+
+.merge-conflict,
+.merge-warning {
+    color: #fdd663;
+}

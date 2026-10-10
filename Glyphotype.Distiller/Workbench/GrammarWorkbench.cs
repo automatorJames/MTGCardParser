@@ -400,6 +400,11 @@ public sealed class GrammarWorkbench : IDisposable
     public void Restore(GrammarDefinition definition, string description) =>
         Edit(_ => definition, description, restores: true);
 
+    /// <summary>Makes <paramref name="definition"/> the working definition, as one step of its own - how a merge from another workspace (see <see cref="Workspaces.WorkspaceManager.Merge"/>) arrives.</summary>
+    /// <returns>The step, or null if it changed nothing.</returns>
+    public WorkbenchStep Replace(GrammarDefinition definition, string description) =>
+        Edit(_ => definition, description);
+
     /// <summary>Discards every working change.</summary>
     public void RevertAll() => Edit(_ => CommittedDefinition, "revert all");
 

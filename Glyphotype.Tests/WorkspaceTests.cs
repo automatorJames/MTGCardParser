@@ -200,6 +200,108 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task Merging_a_copy_brings_what_it_changed_into_the_workspace_it_came_from_and_leaves_it_clean()
+    {
+        var workspaces = CreateManager();
+        workspaces.Create("Branch", WorkspaceSeed.Copy);
+        var branch = workspaces.Active;
+        branch.Apply(Changes(branch, _animalSnores));
+        await branch.GetCurrentTrialAsync();
+        branch.Checkpoint();
+        branch.RemoveGlyph("AnimalRests");
+        workspaces.GetJournal().Add(JournalSection.Hint, "Snoring is its own glyph.", ["AnimalSnores"], branch.WorkingDefinition);
+
+        Assert.Equal("TestGrammar", workspaces.DefaultMergeTarget("Branch"));
+        var merge = workspaces.PlanMerge("Branch", "TestGrammar");
+
+        Assert.True(merge.IsBaseRecorded);
+        Assert.Equal([("AnimalSnores", ChangeType.Added), ("AnimalRests", ChangeType.Removed)], merge.Items.Select(x => (x.Name, x.Change)));
+        Assert.DoesNotContain(merge.Items, x => x.IsConflict);
+
+        workspaces.Merge(merge, merge.CleanItems);
+
+        Assert.Equal("TestGrammar", workspaces.ActiveWorkspace.Name);
+        Assert.Equal(["AnimalRests", "AnimalSnores"], workspaces.Active.Changes.Select(x => x.Name).Order());
+        Assert.Equal("merge Branch", Assert.Single(workspaces.Active.History).Description);
+
+        // The branch has nothing left to merge, nor any working changes, so could go without losing anything.
+        Assert.Empty(workspaces.PlanMerge("Branch", "TestGrammar").Items);
+        workspaces.Switch("Branch");
+        Assert.Empty(workspaces.Active.Changes);
+        Assert.Empty(workspaces.Active.History);
+        Assert.Contains(workspaces.Active.CommittedDefinition.Glyphs, x => x.Name == "AnimalSnores");
+        Assert.Equal("Merged into TestGrammar", workspaces.GetJournal().Versions[0].Label);
+
+        // Kept iterating, the branch's next merge offers only what changed since.
+        workspaces.Active.Apply(Changes(workspaces.Active, _animalSnores.Replace("snores in the", "snores loudly in the")));
+        var next = Assert.Single(workspaces.PlanMerge("Branch", "TestGrammar").Items);
+        Assert.Equal(("AnimalSnores", ChangeType.Modified, false), (next.Name, next.Change, next.IsConflict));
+    }
+
+    [Fact]
+    public void A_definition_both_workspaces_changed_is_a_conflict_and_what_isnt_taken_is_offered_again()
+    {
+        var workspaces = CreateManager();
+        workspaces.Active.Apply(Changes(workspaces.Active, _animalSnores.Replace("snores in the", "snores softly in the")));
+        workspaces.Create("Branch", WorkspaceSeed.Copy);
+        workspaces.Switch("TestGrammar");
+        workspaces.Active.Apply(Changes(workspaces.Active, _animalSnores.Replace("snores in the", "snores loudly in the")));
+        workspaces.Switch("Branch");
+        workspaces.Active.Apply(Changes(workspaces.Active, _animalSnores));
+
+        var merge = workspaces.PlanMerge("Branch", "TestGrammar");
+        var conflict = Assert.Single(merge.Items);
+        Assert.True(conflict.IsConflict);
+        Assert.Empty(merge.CleanItems);
+
+        workspaces.Merge(merge, merge.CleanItems);
+
+        Assert.Contains(workspaces.Active.WorkingDefinition.Glyphs, x => x.Name == "AnimalSnores" && DefinitionJson.Serialize(x).Contains("loudly"));
+        Assert.Equal("AnimalSnores", Assert.Single(workspaces.PlanMerge("Branch", "TestGrammar").Items).Name);
+    }
+
+    [Fact]
+    public void A_merge_cant_leave_a_glyph_referring_to_what_it_removed()
+    {
+        var workspaces = CreateManager();
+        workspaces.Create("Branch", WorkspaceSeed.Copy);
+        var definition = workspaces.Active.WorkingDefinition;
+
+        // A glyph referred to by one other glyph alone, which nothing refers to.
+        var (referrer, referenced) = definition.Glyphs
+            .Where(x => definition.GetReferrers(x.Name).Count == 1)
+            .Select(x => (Referrer: definition.GetReferrers(x.Name)[0], Referenced: x.Name))
+            .First(x => definition.GetReferrers(x.Referrer).Count == 0);
+
+        workspaces.Active.Restore(definition.WithoutGlyph(referrer).WithoutGlyph(referenced), "remove both");
+
+        var merge = workspaces.PlanMerge("Branch", "TestGrammar");
+
+        Assert.Throws<InvalidOperationException>(() => workspaces.Merge(merge, merge.Items.Where(x => x.Name == referenced)));
+        Assert.Equal("Branch", workspaces.ActiveWorkspace.Name);
+
+        workspaces.Merge(merge, merge.Items);
+        Assert.Equal(2, workspaces.Active.Changes.Count);
+    }
+
+    [Fact]
+    public void A_workspace_started_before_merge_bases_were_kept_merges_from_its_baseline_if_never_checkpointed()
+    {
+        var workspaces = CreateManager();
+        var folder = Path.Combine(_root, "workspaces", workspaces.Create("Branch", WorkspaceSeed.Copy).Folder);
+        File.Delete(Path.Combine(folder, "merge-base.json"));
+        workspaces.Active.Apply(Changes(workspaces.Active, _animalSnores));
+
+        var merge = workspaces.PlanMerge("Branch", "TestGrammar");
+        Assert.True(merge.IsBaseRecorded);
+        Assert.Equal("AnimalSnores", Assert.Single(merge.Items).Name);
+
+        // A baseline written well after the workspace started was checkpointed: what it started from is lost.
+        File.SetLastWriteTimeUtc(Path.Combine(folder, "baseline.json"), DateTime.UtcNow.AddHours(1));
+        Assert.False(workspaces.PlanMerge("Branch", "TestGrammar").IsBaseRecorded);
+    }
+
+    [Fact]
     public async Task An_agent_works_on_the_active_workspace_and_can_start_one_from_scratch()
     {
         var workspaces = CreateManager();

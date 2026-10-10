@@ -27,7 +27,8 @@ public enum WorkspaceSeed
 }
 
 /// <summary>One workspace: its name, its kind, and the folder (under the manager's root) it keeps its files in.</summary>
-public sealed record WorkspaceInfo(string Name, WorkspaceKind Kind, string Folder, DateTimeOffset Created);
+/// <param name="Parent">The folder of the workspace it started from, if any: where it's merged into by default.</param>
+public sealed record WorkspaceInfo(string Name, WorkspaceKind Kind, string Folder, DateTimeOffset Created, string Parent = null);
 
 /// <summary>The grammar compiled from C# sources that a <see cref="WorkspaceManager"/> always offers as its first workspace.</summary>
 /// <param name="Documents">The corpus as <paramref name="Grammar"/> already tokenized it - every workspace is scored against these documents.</param>
@@ -50,6 +51,7 @@ public sealed class WorkspaceManager
     const string _baselineFileName = "baseline.json";
     const string _historyFileName = "history.json";
     const string _guidanceFileName = "guidance.md";
+    const string _mergeBaseFileName = "merge-base.json";
 
     readonly SourceWorkspace _source;
     readonly string _root;
@@ -234,10 +236,11 @@ public sealed class WorkspaceManager
                 _ => new GrammarDefinition(),
             };
 
-            workspace = new(name, WorkspaceKind.Scratch, NewFolder(name), DateTimeOffset.Now);
+            workspace = new(name, WorkspaceKind.Scratch, NewFolder(name), DateTimeOffset.Now, seed == WorkspaceSeed.Empty ? null : originWorkspace.Folder);
             var folder = FolderOf(workspace);
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, _baselineFileName), baseline.ToJson());
+            File.WriteAllText(Path.Combine(folder, _mergeBaseFileName), baseline.ToJson());
 
             if (copyGuidance && ReadGuidance(originWorkspace) is { Length: > 0 } guidance)
                 File.WriteAllText(Path.Combine(folder, _guidanceFileName), guidance);
@@ -297,6 +300,110 @@ public sealed class WorkspaceManager
         }
 
         ActiveChanged?.Invoke();
+    }
+
+    /// <summary>The workspace <paramref name="name"/> is merged into by default: the one it started from, while there is one, else the source workspace.</summary>
+    public string DefaultMergeTarget(string name)
+    {
+        lock (_gate)
+        {
+            var workspace = Find(name);
+            return (_workspaces.FirstOrDefault(x => x.Folder == workspace.Parent && x != workspace) ?? _workspaces.First(x => x.Kind == WorkspaceKind.Source)).Name;
+        }
+    }
+
+    /// <summary>
+    /// What merging the scratch workspace <paramref name="from"/> into <paramref name="into"/> would do, for review: what
+    /// <paramref name="from"/> added, changed or removed since it started or last merged - working changes included - with
+    /// where <paramref name="into"/> changed the same definition its own way marked as a conflict.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Either names no workspace, they're the same one, or <paramref name="from"/> is the source workspace.</exception>
+    public WorkspaceMerge PlanMerge(string from, string into)
+    {
+        lock (_gate)
+        {
+            var source = Find(from);
+            var target = Find(into);
+
+            if (source == target)
+                throw new InvalidOperationException($"{source.Name} can't be merged into itself");
+
+            if (source.Kind == WorkspaceKind.Source)
+                throw new InvalidOperationException($"{source.Name} is the grammar compiled from C# sources - commit it rather than merging it");
+
+            var recordedBase = ReadMergeBase(source);
+
+            return WorkspaceMerge.Plan(source.Name, target.Name, recordedBase ?? GetCommittedDefinition(target),
+                GetWorkingDefinition(target), GetWorkingDefinition(source), recordedBase is not null);
+        }
+    }
+
+    /// <summary>
+    /// Merges <paramref name="taken"/> (items of <paramref name="merge"/>, from <see cref="PlanMerge"/>) into its target, as one
+    /// step on the target's working definition, and makes the target active - so the merge is there to score, review, undo
+    /// and commit (or checkpoint) as any working change is. The merged workspace is left with no working changes: what it
+    /// has is its baseline now, and its merge base too, but for what wasn't taken - which the next merge offers again.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Either workspace changed since the merge was planned, the merge would remove something that's still referred to, or
+    /// what it would leave doesn't build.
+    /// </exception>
+    public void Merge(WorkspaceMerge merge, IEnumerable<MergeItem> taken)
+    {
+        var takenItems = taken.ToList();
+
+        lock (_gate)
+        {
+            var source = Find(merge.From);
+            var target = Find(merge.Into);
+
+            if (GetWorkingDefinition(source).ToJson() != merge.Incoming.ToJson() || GetWorkingDefinition(target).ToJson() != merge.Target.ToJson())
+                throw new InvalidOperationException($"{source.Name} or {target.Name} changed since this merge was planned - look it over again");
+
+            var merged = merge.Apply(takenItems);
+
+            try
+            {
+                GlyphGrammar.FromDefinition(merged.WithoutUnreferencedTerminals(), _allowPartialClauseMatches);
+            }
+            catch (AggregateException exception)
+            {
+                throw new InvalidOperationException($"What the merge would leave in {target.Name} doesn't build: {exception.Message}");
+            }
+
+            if (ActiveWorkspace != target)
+                Activate(target);
+
+            Active.Replace(merged, $"merge {source.Name}");
+
+            // The merged workspace's working definition becomes its baseline, as a checkpoint makes it.
+            var folder = FolderOf(source);
+            File.WriteAllText(Path.Combine(folder, _baselineFileName), merge.Incoming.ToJson());
+            File.WriteAllText(Path.Combine(folder, _mergeBaseFileName), merge.NextBase(takenItems).ToJson());
+            File.Delete(Path.Combine(folder, _workingFileName));
+            File.Delete(Path.Combine(folder, _historyFileName));
+            JournalOf(source).Snapshot($"Merged into {target.Name}");
+        }
+
+        ActiveChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// What the workspace had when it started or last merged - or, for one started before that was kept, its baseline if
+    /// it was never checkpointed (it's still what the workspace started from). Null where neither is known.
+    /// </summary>
+    GrammarDefinition ReadMergeBase(WorkspaceInfo workspace)
+    {
+        var folder = FolderOf(workspace);
+        var path = Path.Combine(folder, _mergeBaseFileName);
+
+        if (File.Exists(path))
+            return GrammarDefinition.FromJson(File.ReadAllText(path));
+
+        var baseline = Path.Combine(folder, _baselineFileName);
+        var neverCheckpointed = File.Exists(baseline) && (File.GetLastWriteTimeUtc(baseline) - workspace.Created.UtcDateTime).Duration() < TimeSpan.FromMinutes(1);
+
+        return neverCheckpointed ? ReadBaseline(workspace) : null;
     }
 
     /// <summary>
@@ -414,6 +521,12 @@ public sealed class WorkspaceManager
 
         return workspace.Kind == WorkspaceKind.Source ? _source.Grammar.ToDefinition() : ReadBaseline(workspace);
     }
+
+    /// <summary>The workspace's committed grammar: its C# sources' or its baseline.</summary>
+    GrammarDefinition GetCommittedDefinition(WorkspaceInfo workspace) =>
+        workspace == ActiveWorkspace ? Active.CommittedDefinition
+        : workspace.Kind == WorkspaceKind.Source ? Open(workspace).CommittedDefinition
+        : ReadBaseline(workspace);
 
     GrammarDefinition ReadBaseline(WorkspaceInfo workspace)
     {
