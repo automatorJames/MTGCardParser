@@ -11,10 +11,3 @@ public class DrawOrDiscardCards : Glyph, IPredicate
     public CardVerb CardVerb { get; set; }
     public Quantity Quantity { get; set; }
 }
-
-[OptionalPlural]
-public enum CardVerb
-{
-    Draw,
-    Discard
-}

@@ -15,17 +15,3 @@ public class PermanentEventTrigger : Glyph
     [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }
-
-public enum PermanentEvent
-{
-    Dies,
-    EntersTheBattlefield,
-    LeavesTheBattlefield,
-    IsPutIntoAGraveyardFromTheBattlefield,
-    Attacks,
-    Blocks,
-    BecomesBlocked,
-    BecomesTapped,
-    IsDealtDamage,
-    DealsDamage
-}

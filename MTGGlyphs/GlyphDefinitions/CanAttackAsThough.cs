@@ -11,11 +11,3 @@ public class CanAttackAsThough : Glyph, IPredicate
     public Possession Possession { get; set; }
     public Keyword Keyword { get; set; }
 }
-
-public enum Possession
-{
-    Had,
-
-    [RegexPattern("didn't have")]
-    DidntHave
-}

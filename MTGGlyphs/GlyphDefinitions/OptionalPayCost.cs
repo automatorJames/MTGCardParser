@@ -11,9 +11,3 @@ public class OptionalPayCost : Glyph
     public PayOptionType PayOptionType { get; set; }
     public Cost Cost { get; set; }
 }
-
-public enum PayOptionType
-{
-    UnlessYou,
-    YouMay
-}

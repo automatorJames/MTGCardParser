@@ -13,12 +13,3 @@ public class Cost : GlyphOneOf
     public DestroyTarget Exile { get; set; }
     public PlaceCounters RemoveCounters { get; set; }
 }
-
-public enum TapSymbol
-{
-    [RegexPattern(@"\{t\}")]
-    Tap,
-
-    [RegexPattern(@"\{q\}")]
-    Untap,
-}
