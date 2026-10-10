@@ -21,5 +21,9 @@ public enum Whose
     [RegexPattern("a")]
     Any,
 
-    TheNext
+    TheNext,
+
+    Each,
+
+    The
 }

@@ -7,9 +7,8 @@ public class ReturnToBattlefield : Glyph
 {
     public override Nib[] Nibs => ["return", Prop(Returned), Opt("card"), Prop(Destination), Prop(AndThen)];
 
-    public PermanentPhrase Returned { get; set; }
+    public OneOf<TargetCardInZone, PermanentPhrase> Returned { get; set; }
     public ToTheBattlefieldUnderControl Destination { get; set; }
-
     [Optional]
     public AndThen AndThen { get; set; }
 }
