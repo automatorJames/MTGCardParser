@@ -222,6 +222,20 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>
+    /// What a step that covers more words may cost in bits per word it gains (see <see cref="AgentSessionSettings.MaxBitsPerCoveredWord"/>) -
+    /// null for no such allowance. The session setting itself, so it holds for an agent in a terminal too.
+    /// </summary>
+    public double? MaxBitsPerCoveredWord
+    {
+        get => agent.Settings.MaxBitsPerCoveredWord > 0 ? agent.Settings.MaxBitsPerCoveredWord : null;
+        set
+        {
+            agent.Settings = agent.Settings with { MaxBitsPerCoveredWord = Math.Max(0, value ?? 0) };
+            NotifyChanged();
+        }
+    }
+
+    /// <summary>
     /// Starts an AI round: the agent works until it has applied <see cref="MaxSteps"/>, runs out of improvements, or is
     /// stopped. The first starts a session as <c>/grammar</c> does, later ones continue it.
     /// </summary>

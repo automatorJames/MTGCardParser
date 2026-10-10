@@ -22,27 +22,24 @@
             <h3>Grammar agent</h3>
             <span class="chat-state @(running ? "running" : "")">@(round is int number ? $"AI round {number} · working…" : running ? "working…" : "idle")</span>
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
-            <button class="icon-button @(_settingsOpen ? "active" : "")" title="The agent's settings" @onclick="() => _settingsOpen = !_settingsOpen">
-                <span class="material-symbols-outlined">settings</span>
-            </button>
         </header>
 
-        @if (_settingsOpen)
-        {
-            <div class="chat-settings">
-                <ChatOptionsBar Chat="Chat" />
+        <div class="chat-settings">
+            <ChatOptionsBar Chat="Chat" />
 
+            <div class="chat-setting-row">
                 <label class="chat-setting" title="How full the agent's context may get before a round hands off to a fresh session: the agent writes what the next session needs into the workspace's journal, and the round goes on from there. Lower is cheaper; higher keeps more of what the agent was thinking.">
                     <span class="chat-label">Hand off at context</span>
                     <input type="number" min="5" max="95" value="@Chat.HandoffPercent" @onchange="SetHandoffPercent" />
                     <span class="chat-setting-unit">%</span>
                 </label>
+
+                <label class="chat-setting" title="What a step that covers more words may cost, in bits per word it gains, when it doesn't take bits off the total: full coverage is the goal, so text with no cheap model still gets covered, and this caps how dearly. Lower holds out for efficient glyphs; higher lets through costlier ones. Empty for none - every step must take bits off. The session's setting, so it holds for an agent in a terminal too.">
+                    <span class="chat-label">Max bits per word covered</span>
+                    <input type="number" min="0" step="0.5" placeholder="none" value="@Chat.MaxBitsPerCoveredWord" @onchange="SetMaxBitsPerCoveredWord" />
+                </label>
             </div>
-        }
-        else
-        {
-            <ChatOptionsBar Chat="Chat" Choosable="false" />
-        }
+        </div>
 
         @if (stats.TotalTokens > 0 || stats.FiveHour is not null || stats.SevenDay is not null)
         {
@@ -164,7 +161,6 @@
 
     bool _available;
     bool _open;
-    bool _settingsOpen;
 
     /// <summary>Tells the page the pane slid in or out, so it can make room for it.</summary>
     [Parameter]
@@ -225,6 +221,10 @@
         if (int.TryParse(e.Value?.ToString(), out var percent))
             Chat.HandoffPercent = percent;
     }
+
+    /// <summary>Empty, or nothing above zero, for no allowance.</summary>
+    void SetMaxBitsPerCoveredWord(ChangeEventArgs e) =>
+        Chat.MaxBitsPerCoveredWord = double.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var bits) && bits > 0 ? bits : null;
 
     /// <summary>Empty, or anything short of a step, for no limit.</summary>
     void SetMaxSteps(ChangeEventArgs e) =>

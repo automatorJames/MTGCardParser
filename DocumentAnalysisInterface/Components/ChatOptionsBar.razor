@@ -1,7 +1,7 @@
 @using DocumentAnalysisInterface.Agent
 
-@* What a conversation with the local agent runs on: chosen before it begins, simply stated from then on - or only ever stated, where it's chosen elsewhere. *@
-@if (Choosable && !Chat.HasBegun)
+@* What a conversation with the local agent runs on: chosen before it begins, simply stated from then on. *@
+@if (!Chat.HasBegun)
 {
     <div class="chat-options" title="What the agent runs on, for the whole conversation">
         <label>
@@ -26,7 +26,7 @@
 }
 else
 {
-    <div class="chat-options settled" title="@(Chat.HasBegun ? "What this conversation runs on - start a new chat to choose again" : "What the conversation will run on - chosen in the agent's settings")">
+    <div class="chat-options settled" title="What this conversation runs on - start a new chat to choose again">
         <span><span class="chat-label">Model</span> <span class="chat-option-value">@Name(Chat.Model)</span></span>
         <span><span class="chat-label">Effort</span> <span class="chat-option-value">@Name(Chat.Effort)</span></span>
     </div>
@@ -34,9 +34,6 @@ else
 
 @code {
     [Parameter, EditorRequired] public AgentChat Chat { get; set; }
-
-    /// <summary>Whether the model and effort can be chosen here before the conversation begins - else they're only stated.</summary>
-    [Parameter] public bool Choosable { get; set; } = true;
 
     /// <summary>What the CLI takes for its model and effort.</summary>
     static readonly string[] _models = ["fable", "opus", "sonnet", "haiku"];
