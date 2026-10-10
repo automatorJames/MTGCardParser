@@ -1,4 +1,4 @@
-using Glyphotype.Definitions;
+﻿using Glyphotype.Definitions;
 using Glyphotype.Distiller.Workbench;
 
 namespace Glyphotype.Tests;
@@ -45,6 +45,17 @@ public class ThisNibTests
         Assert.Equal("This", capture.Name);
         Assert.Equal("{this}", capture.CaptureValue);
         Assert.IsType<This>(capture.ClrValue);
+    }
+
+    [Theory]
+    [InlineData("""[Nib.This, "'s bark is loud"]""")]
+    [InlineData("""[Nib.This, "'s", "bark is loud"]""")]
+    public void A_possessive_after_it_binds_without_a_joiner_of_its_own(string nibs)
+    {
+        // Tight punctuation joins the token before it under the default joiner, as it does after any other nib.
+        var grammar = Build($$"""public class Barks : Glyph { public override Nib[] Nibs => {{nibs}}; }""");
+
+        Assert.IsType<Glyph>(Assert.Single(grammar.Tokenize("{this}'s bark is loud")), exactMatch: false);
     }
 
     [Fact]

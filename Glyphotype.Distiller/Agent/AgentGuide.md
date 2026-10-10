@@ -156,7 +156,10 @@ public class AnimalNaps : Glyph
 }
 ```
 
-**Nibs** are the glyph's parts, in order. By default they're joined by a single space.
+**Nibs** are the glyph's parts, in order. By default they're joined by a single space - except before text opening
+with tight punctuation (`'`, `,`, `.`, `;`, `:`, `!`, `?`), which joins the token before it with no space, whatever
+that token is (`[Nib.This, "'s owner"]` matches "{this}'s owner"). So a possessive or a comma never needs
+`Joiner.None`.
 
 | Nib | Matches |
 |---|---|
