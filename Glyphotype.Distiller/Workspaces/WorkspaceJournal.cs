@@ -9,7 +9,7 @@ public enum JournalSection
     /// <summary>Something the grammar doesn't handle yet, and what's known about it.</summary>
     OpenProblem,
 
-    /// <summary>An approach that was tried and didn't pay off, and why - so it isn't tried again blind.</summary>
+    /// <summary>An approach that was tried and didn't work, and why - so it isn't tried again blind.</summary>
     DeadEnd,
 
     /// <summary>Anything else worth knowing before doing the work: a quirk of the corpus, a trap, a lead.</summary>

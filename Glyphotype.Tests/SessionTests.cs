@@ -54,14 +54,15 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
 
         Assert.Contains("The person's instructions: focus on snoring", brief);
         Assert.Contains("Check in after 3 applied steps", brief);
-        Assert.Contains("at least 5 bits off the total and lose no lines", brief);
+        Assert.Contains("The goal is full coverage", brief);
+        Assert.Contains("at least 5 bits off the total, or cover more words for at most 8 bits per word gained, and lose no lines", brief);
         Assert.Contains("Corpus: a snoring corpus", brief);
     }
 
     [Fact]
     public async Task A_step_that_breaks_the_rules_needs_a_reason()
     {
-        var agent = CreateAgent(new() { MinimumGainBits = 1_000_000 });
+        var agent = CreateAgent(new() { MinimumGainBits = 1_000_000, MaxBitsPerCoveredWord = 0 });
 
         var refused = await agent.ApplyAsync(_animalSnores);
         Assert.StartsWith("Not applied - it takes", refused);

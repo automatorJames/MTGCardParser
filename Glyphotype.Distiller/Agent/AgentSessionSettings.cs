@@ -16,6 +16,13 @@ public sealed record AgentSessionSettings
     /// <summary>How many bits a step must take off the total to be applied.</summary>
     public double MinimumGainBits { get; init; } = 1;
 
+    /// <summary>
+    /// What a step that covers more words may cost in bits per word it gains, when it doesn't take
+    /// <see cref="MinimumGainBits"/> off: full coverage is the goal, so text with no cheap model still gets covered, and
+    /// this caps how dearly. 0 for no such allowance - every step must take bits off.
+    /// </summary>
+    public double MaxBitsPerCoveredWord { get; init; } = 8;
+
     /// <summary>How many words the workspace's journal may come to: past it, an agent must prune before adding. 0 for no limit.</summary>
     public int JournalWordLimit { get; init; } = 1500;
 

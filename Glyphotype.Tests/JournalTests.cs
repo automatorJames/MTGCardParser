@@ -80,15 +80,15 @@ public sealed class JournalTests(CorpusFixture corpus) : IDisposable
         var (agent, _, _) = CreateAgent(AgentTests.AnySteps with { JournalWordLimit = 12 });
         await agent.StartSessionAsync();
 
-        Assert.DoesNotContain("record it as a dead end", await agent.EvaluateAsync(_animalYawns));
-        Assert.DoesNotContain("record it as a dead end", await agent.EvaluateAsync(_animalYawns));
-        Assert.Contains("record it as a dead end", await agent.EvaluateAsync(_animalYawns));
+        Assert.DoesNotContain("record it (`journal_add`)", await agent.EvaluateAsync(_animalYawns));
+        Assert.DoesNotContain("record it (`journal_add`)", await agent.EvaluateAsync(_animalYawns));
+        Assert.Contains("record it (`journal_add`)", await agent.EvaluateAsync(_animalYawns));
 
         // Once something's written down, it isn't asked for again until the next step.
         agent.JournalAdd("open_problem", "Yawning lines have no glyph yet.");
         await agent.EvaluateAsync(_animalYawns);
         await agent.EvaluateAsync(_animalYawns);
-        Assert.DoesNotContain("record it as a dead end", await agent.EvaluateAsync(_animalYawns));
+        Assert.DoesNotContain("record it (`journal_add`)", await agent.EvaluateAsync(_animalYawns));
 
         var refused = Assert.Throws<AgentRequestException>(() => agent.JournalAdd("hint", "This entry is long enough to take the journal past its limit."));
         Assert.Contains("past its limit of 12", refused.Message);

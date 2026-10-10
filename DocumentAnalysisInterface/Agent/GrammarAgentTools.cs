@@ -105,7 +105,7 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         Run(() => Task.FromResult(agent.Journal()));
 
     [McpServerTool(Name = "journal_add"), Description(
-        "Records something a later session would want to know before doing the work: an open problem, a dead end (what you tried, and why it didn't pay off), or a hint. " +
+        "Records something a later session would want to know before doing the work: an open problem (including text whose best cover so far costs too much), a dead end (what you tried, and why it didn't work), or a hint. " +
         "Write it when you find it. Not for logging what you did - the step history does that.")]
     public Task<string> JournalAdd(
         [Description("open_problem, dead_end or hint.")] string section,

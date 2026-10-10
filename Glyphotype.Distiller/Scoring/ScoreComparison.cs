@@ -38,7 +38,9 @@ public sealed record ScoreComparison(MdlScore Before, MdlScore After)
     public string ToReport(int rows = 12)
     {
         var report = new StringBuilder();
-        var verdict = TotalBitsDelta < -0.5 ? "better" : TotalBitsDelta > 0.5 ? "worse" : "no change";
+        var verdict = TotalBitsDelta < -0.5 ? "better"
+            : TotalBitsDelta > 0.5 ? (CapturedWordsDelta > 0 ? $"more bits, more coverage: {TotalBitsDelta / CapturedWordsDelta:N1} bits per word gained" : "worse")
+            : "no change";
 
         report.AppendLine($"Total: {Before.TotalBits:N0} → {After.TotalBits:N0} bits ({Signed(TotalBitsDelta)}, {Signed(100 * TotalBitsDelta / Before.BaselineBits, "N2")}% of the no-grammar baseline) - {verdict}");
         report.AppendLine($"  grammar {Signed(GrammarBitsDelta)} · {string.Join(" · ", ComponentBitsDelta.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {Signed(x.Value)}"))}");

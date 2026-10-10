@@ -25,13 +25,13 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    (GrammarAgent Agent, GrammarWorkbench Workbench) CreateAgent()
+    (GrammarAgent Agent, GrammarWorkbench Workbench) CreateAgent(AgentSessionSettings settings = null)
     {
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
             new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
 
-        // These tests exercise the tools themselves, so the session's step rules are off.
-        return (new GrammarAgent(workbench, "the test corpus", AnySteps), workbench);
+        // These tests exercise the tools themselves, so the session's step rules are off unless a test sets them.
+        return (new GrammarAgent(workbench, "the test corpus", settings ?? AnySteps), workbench);
     }
 
     [Fact]
@@ -55,15 +55,28 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_step_that_covers_more_words_may_cost_bits_up_to_a_price_per_word()
+    {
+        // Snoring costs bits here - one line's worth of matches doesn't pay for the glyph - but covers words nothing else does.
+        var (dear, _) = CreateAgent(AnySteps with { MinimumGainBits = 1, MaxBitsPerCoveredWord = 0.001 });
+        var refused = await dear.ApplyAsync(_animalSnores);
+        Assert.StartsWith("Not applied - it takes", refused);
+        Assert.Contains("per word it gains", refused);
+
+        var (fair, _) = CreateAgent(AnySteps with { MinimumGainBits = 1, MaxBitsPerCoveredWord = 1_000 });
+        Assert.StartsWith("Applied as step 1", await fair.ApplyAsync(_animalSnores));
+    }
+
+    [Fact]
     public async Task Evaluating_leaves_the_working_definition_alone()
     {
         var (agent, workbench) = CreateAgent();
 
         var report = await agent.EvaluateAsync(_animalSnores);
 
-        // One line's worth of matches doesn't pay for a glyph's own definition - the report says so rather than flattering it.
+        // One line's worth of matches doesn't pay for a glyph's own definition - the report says what the coverage costs rather than flattering it.
         Assert.Contains("Evaluated, not applied: set AnimalSnores", report);
-        Assert.Contains("- worse", report);
+        Assert.Contains("- more bits, more coverage", report);
         Assert.Contains("1 gained, 0 lost", report);
         Assert.Contains("«the dog snores in the kitchen»", report);
         Assert.Contains("→ ⟦AnimalSnores: the dog snores in the kitchen⟧", report);

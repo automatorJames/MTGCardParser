@@ -2,7 +2,11 @@
 
 You're composing a **grammar** for a corpus of short documents, one glyph at a time. A glyph is a small C# class
 describing one construction of the text, e.g. "the {animal} naps on {weekday}". The grammar is *solved* when its
-glyphs describe the corpus well: most words fall inside matches, and each glyph earns its keep.
+glyphs cover the whole corpus - every word inside a match - as cheaply and generally as they can.
+
+**Coverage decides whether to cover text, and bits decide how.** Full coverage is the goal. The score (below) is how
+you choose between ways of covering the same text, not a reason to leave text uncovered: a real corpus always has
+some text with no cheap model, and it still has to be covered.
 
 You work on a shared **working definition** that the person you're collaborating with can see and edit live in the
 app's Grammar Tools tab. Nothing you do touches the C# source files. Committing working changes to source
@@ -40,6 +44,10 @@ Only create or switch workspaces when the person asks. Switching changes what th
 
    Read the lost and reshaped lines. A glyph that steals text from a better one, or breaks another glyph's
    matches, shows up there.
+
+   A change that covers more words but costs bits isn't a failure. Ask whether it's the cheapest, most general way
+   to cover that text: reuse existing glyphs and vocabularies, widen a glyph's family, or cover the shared part
+   with a nested glyph. Then apply the best form you find, within the session's price per word gained.
 5. **Commit to the working definition.** `apply` makes the change as one step, with a short description of *why*.
    `undo` takes back the latest step; `history` lists them.
 6. **Repeat**, generalizing as patterns emerge:
@@ -70,7 +78,7 @@ write down the corpus using it. Lower is better. The baseline is the same corpus
   is only a word or two long and rare in the corpus, that can cost about what leaving it unmatched does, so it may
   not pay until the corpus is bigger. That isn't a verdict on the glyph.
 - **A glyph costs its own definition:** every literal character and property. A glyph that matches once rarely pays
-  for itself.
+  for itself, so cover rare text by reusing or widening what exists before writing a glyph just for it.
 - **A vocabulary costs only the members the corpus uses.** Members that never match, and synonyms that never spell
   anything, are free, because a finished grammar would cull them. So never spell out an `Alt` of words an existing
   vocabulary already covers (`Alt("creature", "land", "artifact")` instead of a `CardType` property) to "save" the
@@ -88,11 +96,14 @@ write down the corpus using it. Lower is better. The baseline is the same corpus
   small closed variations (`an?`, `cards?`), not to hide text.
 - A glyph's **net bits** = what its matches would cost as unmatched text − what they cost as matches − its own
   definition. Positive means it pays for itself. A nested-only glyph's net is minus its definition cost; the glyphs
-  using it are credited instead.
+  using it are credited instead. A glyph that's also matched nested is marked as such, and its net undersells it.
+  A negative net is a prompt to cover the same text more cheaply, not to uncover it.
 
-So the score rewards the grammar a person would call *right*: general templates with slots for what varies,
-vocabularies for closed word sets, and nothing that matches too little to justify itself. **Coverage** (the share
-of words inside matches) is the other headline number. The score is the judge when the two disagree.
+So the score rewards the grammar a person would call *right*: general templates with slots for what varies, and
+vocabularies for closed word sets, rather than one-off literals and catch-alls. **Coverage** (the share of words
+inside matches) is the other headline number, and the one the work is for. Coverage decides whether to cover text,
+and bits decide how: among the ways to cover some text, the score picks the best. A step that takes bits off is
+always welcome, and so is one that covers more text for a fair price in bits.
 
 ## Notation in tool output
 
@@ -244,3 +255,6 @@ If nothing agrees, it stays unresolved and is counted.
   person reads them.
 - **When a change is worse, say so and undo it** rather than piling fixes on top. When the score stalls, try
   refactoring (merge, generalize, extract) before adding more glyphs.
+- **Don't stop at text that's expensive to cover.** If the best cover you can find for some text costs more than
+  the session allows, record it in the journal as an open problem - what it covers, what it costs, the best form
+  so far - not as a dead end. It still needs covering, and a later glyph may make it cheap.

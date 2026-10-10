@@ -1,3 +1,5 @@
+using Glyphotype.Distiller.Inspection;
+
 namespace Glyphotype.Distiller.Scoring;
 
 /// <summary>
@@ -37,6 +39,14 @@ public static class MdlScorer
             .Where(x => x.Unit is Glyph)
             .ToLookup(x => x.Unit.Type.Name);
 
+        var nestedMatches = encoding.Tokens
+            .Where(x => x.Unit is Glyph)
+            .SelectMany(x => ParseRenderer.SelfAndDescendants(x.Unit.CaptureContext.RootCaptureTrace).Skip(1))
+            .Select(x => ParseRenderer.CapturedType(x)?.Name)
+            .Where(x => x is not null)
+            .GroupBy(x => x)
+            .ToDictionary(x => x.Key, x => x.Count());
+
         var glyphs = definition.Glyphs
             .Select(glyph =>
             {
@@ -47,6 +57,7 @@ public static class MdlScorer
                     IsTopLevel: topLevelNames.Contains(glyph.Name),
                     DefinitionBits: grammarCost.GlyphBits[glyph.Name],
                     Occurrences: tokens.Count,
+                    NestedOccurrences: nestedMatches.GetValueOrDefault(glyph.Name),
                     Words: tokens.Sum(x => CountWords(x.Unit.CaptureValue) - x.Unit.UnresolvedTraces.Sum(y => CountWords(y.CaptureValue))),
                     DataBits: tokens.Sum(encoding.GetBits),
                     ResidualEquivalentBits: tokens.Sum(x => encoding.GetResidualBits(x.Unit.CaptureValue)));
@@ -88,6 +99,7 @@ public static class MdlScorer
 
 /// <summary>What one glyph costs and what it saves.</summary>
 /// <param name="Occurrences">Top-level matches - zero for a glyph only ever matched nested in another.</param>
+/// <param name="NestedOccurrences">Matches nested inside another glyph's match, which credit that glyph rather than this one.</param>
 /// <param name="DataBits">What its top-level matches cost to encode, nested captures included.</param>
 /// <param name="ResidualEquivalentBits">What the same text would cost as unmatched text instead (approximate: another glyph might claim some of it, if this one went).</param>
 public sealed record GlyphContribution(
@@ -95,12 +107,16 @@ public sealed record GlyphContribution(
     bool IsTopLevel,
     double DefinitionBits,
     int Occurrences,
+    int NestedOccurrences,
     int Words,
     double DataBits,
     double ResidualEquivalentBits)
 {
     /// <summary>Bits saved net of its own definition: positive when the glyph pays for itself. Nested-only glyphs are paid for by the glyphs using them, so theirs is just the negated definition cost.</summary>
     public double NetBits => ResidualEquivalentBits - DataBits - DefinitionBits;
+
+    /// <summary>Whether its net bits undersell it: it's matched nested inside other glyphs, which are credited for what those matches save, so removing it would lose text they cover.</summary>
+    public bool IsUsedNested => NestedOccurrences > 0;
 }
 
 /// <summary>One distinct span of unmatched text, and what it costs across the corpus.</summary>
@@ -156,13 +172,13 @@ public sealed record MdlScore
 
         var topLevel = Glyphs.Where(x => x.IsTopLevel).OrderByDescending(x => x.NetBits).ToList();
 
-        report.AppendLine($"Top-level glyphs by net savings ({topLevel.Count(x => x.NetBits < 0)} of {topLevel.Count} cost more than they save):");
+        report.AppendLine($"Top-level glyphs by net savings ({topLevel.Count(x => x.NetBits < 0 && !x.IsUsedNested)} of {topLevel.Count} cost more than they save, besides those also matched nested in others):");
         report.AppendLine($"  {"net",10} {"saves",10} {"data",9} {"def",7} {"matches",8} {"words",7}  glyph");
 
         foreach (var glyph in TopAndBottom(topLevel, rows))
             report.AppendLine(glyph is null
                 ? "  ..."
-                : $"  {glyph.NetBits,10:N0} {glyph.ResidualEquivalentBits,10:N0} {glyph.DataBits,9:N0} {glyph.DefinitionBits,7:N0} {glyph.Occurrences,8:N0} {glyph.Words,7:N0}  {glyph.Name}");
+                : $"  {glyph.NetBits,10:N0} {glyph.ResidualEquivalentBits,10:N0} {glyph.DataBits,9:N0} {glyph.DefinitionBits,7:N0} {glyph.Occurrences,8:N0} {glyph.Words,7:N0}  {glyph.Name}{(glyph.IsUsedNested ? $" (also matched nested {glyph.NestedOccurrences:N0}×)" : "")}");
 
         report.AppendLine();
         report.AppendLine("Vocabularies by definition cost:");

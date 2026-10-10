@@ -117,10 +117,12 @@ public sealed class GrammarAgent
         report.AppendLine($"  grammar {score.GrammarBits:N0} · {string.Join(" · ", score.ComponentBits.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {x.Value:N0}"))}");
         report.AppendLine($"Coverage: {score.Coverage:P2} of words inside matches ({score.CapturedWords:N0} of {score.Words:N0}, {score.Lines:N0} lines).");
 
-        var losing = score.Glyphs.Where(x => x.IsTopLevel && x.NetBits < 0).OrderBy(x => x.NetBits).ToList();
+        // A glyph also matched nested is credited to the glyphs using it, so its own net undersells it.
+        var losing = score.Glyphs.Where(x => x.IsTopLevel && !x.IsUsedNested && x.NetBits < 0).OrderBy(x => x.NetBits).ToList();
 
         if (losing.Count > 0)
-            report.AppendLine($"Top-level glyphs costing more than they save: {string.Join(", ", losing.Take(8).Select(x => $"{x.Name} ({x.NetBits:N0})"))}{(losing.Count > 8 ? $", … {losing.Count - 8} more" : "")}.");
+            report.AppendLine($"Top-level glyphs costing more than they save: {string.Join(", ", losing.Take(8).Select(x => $"{x.Name} ({x.NetBits:N0})"))}{(losing.Count > 8 ? $", … {losing.Count - 8} more" : "")}. " +
+                "Look for a cheaper or more general way to cover their text, rather than uncovering it - only one that matches nothing can simply go.");
 
         report.AppendLine();
         report.AppendLine("Costliest unmatched text:");
@@ -167,6 +169,8 @@ public sealed class GrammarAgent
 
             if (contribution?.IsTopLevel != true)
                 notes.Add(glyph.IsDependent ? "dependent" : "nested only");
+            else if (contribution.IsUsedNested)
+                notes.Add($"also matched nested {contribution.NestedOccurrences:N0}×");
 
             if (status.TryGetValue((DefinitionKind.Glyph, glyph.Name), out var change))
                 notes.Add(change.ToString().ToLowerInvariant() + " since commit");
@@ -247,6 +251,8 @@ public sealed class GrammarAgent
         report.AppendLine($"The person's instructions: {(string.IsNullOrWhiteSpace(instructions) ? "none given - improve the grammar in the active workspace as it stands." : instructions.Trim())}");
         report.AppendLine();
         report.AppendLine("How this session works (set in the app, and enforced by the tools):");
+        report.AppendLine("- The goal is full coverage: every word of the corpus inside a match. Coverage decides whether to cover text, and bits decide how - among the ways to cover it, the cheapest and most general. " +
+            "Text with no cheap model still has to be covered: a step that costs bits to cover it is progress, not a failure.");
         report.AppendLine($"- The loop: find recurring unmatched text, draft a glyph, check it with `tokenize`/`explain_mismatch`, `evaluate` it, then `apply` it with a one-line description of why. Before each step, say in one line what you're targeting. If you haven't read `guide` in this conversation, read it first.");
 
         var checkIn = new List<string>();
@@ -259,9 +265,12 @@ public sealed class GrammarAgent
 
         report.AppendLine(checkIn.Count > 0
             ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, say what you'd try next, and wait. When the person says to continue, call `start_session` again."
-            : "- There's no check-in limit: keep going until you run out of improvements, then summarize and wait.");
+            : "- There's no check-in limit: keep going until the corpus is covered or you're stuck, then summarize and wait. Uncovered text that only costs bits to cover isn't a reason to stop.");
 
-        report.AppendLine($"- A step must take at least {Settings.MinimumGainBits:N0} bit{(Settings.MinimumGainBits == 1 ? "" : "s")} off the total{(Settings.AllowLostLines ? "" : " and lose no lines")}. `apply` refuses anything else unless you pass `override_reason` - for a deliberate refactor, never to force a loss through.");
+        var stepRule = Settings.MaxBitsPerCoveredWord > 0
+            ? $"take at least {Settings.MinimumGainBits:N0} bit{S(Settings.MinimumGainBits)} off the total, or cover more words for at most {Settings.MaxBitsPerCoveredWord:N0} bit{S(Settings.MaxBitsPerCoveredWord)} per word gained"
+            : $"take at least {Settings.MinimumGainBits:N0} bit{S(Settings.MinimumGainBits)} off the total";
+        report.AppendLine($"- A step must {stepRule}{(Settings.AllowLostLines ? "" : ", and lose no lines")}. `apply` refuses anything else unless you pass `override_reason` - for a deliberate refactor, never to force a loss through.");
         if (DocumentationRule is { } documentationRule)
             report.AppendLine($"- {documentationRule}");
 
@@ -269,7 +278,8 @@ public sealed class GrammarAgent
         report.AppendLine("- Never commit, checkpoint or export: the person does that in the app.");
 
         if (_journal() is not null)
-            report.AppendLine("- Keep the workspace's journal (`journal_add`, `journal_update`, `journal_remove`): what a later session would want to know before doing the work you did - open problems, dead ends (what you tried and why it didn't pay off), and hints. " +
+            report.AppendLine("- Keep the workspace's journal (`journal_add`, `journal_update`, `journal_remove`): what a later session would want to know before doing the work you did - open problems, dead ends (what you tried and why it didn't work), and hints. " +
+                "A way of covering text that cost too many bits is an open problem, not a dead end: say what it covered, what it cost, and the best form you found, since the text still needs covering. " +
                 "Write each down when you find it, not at the end - you can be stopped at any time. It's not a log of what you did (the step history is that), and facts about the tools or the engine in general don't belong in it. " +
                 $"Remove or rewrite entries that no longer hold{(Settings.JournalWordLimit > 0 ? $", and keep it under {Settings.JournalWordLimit:N0} words" : "")}.");
 
@@ -377,7 +387,7 @@ public sealed class GrammarAgent
         }
 
         if (!applied && Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn)
-            return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it paid off, and wait. When they say to continue, call `start_session`.";
+            return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it could be applied, and wait. When they say to continue, call `start_session`.";
 
         return null;
     }
@@ -533,10 +543,11 @@ public sealed class GrammarAgent
             ? parsed
             : throw new AgentRequestException($"Unknown section '{section}': use open_problem, dead_end or hint.");
 
-    /// <summary>After every few evaluations without a step, while nothing's been written to the journal since the last: a reminder to record what didn't pay off.</summary>
+    /// <summary>After every few evaluations without a step, while nothing's been written to the journal since the last: a reminder to record what didn't work.</summary>
     string DeadEndReminder() =>
         _journal() is not null && !_journalEditedSinceStep && _attemptsSinceStep > 0 && _attemptsSinceStep % 3 == 0
-            ? $"Journal: {_attemptsSinceStep} evaluations without a step. If you've learned why these drafts don't pay off, record it as a dead end (`journal_add`) before moving on."
+            ? $"Journal: {_attemptsSinceStep} evaluations without a step. If you've learned why these drafts don't work, record it (`journal_add`) before moving on - " +
+              "as a dead end if the approach is wrong, or as an open problem if it covers text but costs too much, since that text still needs covering."
             : null;
 
     /// <summary>A reminder of the journal entries about what <paramref name="changes"/> changed, for the agent to check - null when there are none.</summary>
@@ -636,10 +647,16 @@ public sealed class GrammarAgent
     {
         List<string> violations = [];
         var gain = evaluation.Before.Score.TotalBits - evaluation.After.Score.TotalBits;
+        var wordsGained = evaluation.After.Score.CapturedWords - evaluation.Before.Score.CapturedWords;
+
+        // Coverage decides whether to cover text, and bits decide how: a step covering more words may cost bits, up to a price per word.
+        var coversAffordably = Settings.MaxBitsPerCoveredWord > 0 && wordsGained > 0 && -gain <= Settings.MaxBitsPerCoveredWord * wordsGained;
 
         // Documentation isn't grammar: a step that only documents takes nothing off, and needn't.
-        if (gain < Settings.MinimumGainBits && !OnlyDocuments(evaluation.Changes, evaluation.Before.Definition))
-            violations.Add($"it takes {gain:N1} bits off the total, and a step must take at least {Settings.MinimumGainBits:N0}");
+        if (gain < Settings.MinimumGainBits && !coversAffordably && !OnlyDocuments(evaluation.Changes, evaluation.Before.Definition))
+            violations.Add($"it takes {gain:N1} bits off the total, and a step must take at least {Settings.MinimumGainBits:N0}" + (Settings.MaxBitsPerCoveredWord > 0
+                ? $" or cover more words for at most {Settings.MaxBitsPerCoveredWord:N0} bits each ({(wordsGained > 0 ? $"this costs {-gain / wordsGained:N1} per word it gains" : "this covers no more")})"
+                : ""));
 
         if (!Settings.AllowLostLines && CorpusQueries.CompareTokenizations(evaluation.Before.Documents, evaluation.After.Documents, limit: 0).LostLines is int lost and > 0)
             violations.Add($"it loses {lost} line{S(lost)}, and a step must lose none");
@@ -969,6 +986,8 @@ public sealed class GrammarAgent
     static string NullIfBlank(string text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     static string S(int count) => count == 1 ? "" : "s";
+
+    static string S(double count) => count == 1 ? "" : "s";
 
     static string Truncate(string text, int length) => text.Length <= length ? text : text[..(length - 1)] + "…";
 }
