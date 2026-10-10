@@ -34,7 +34,7 @@
                     <span class="chat-setting-unit">%</span>
                 </label>
 
-                <label class="chat-setting" title="What a step that covers more words may cost, in bits per word it gains, when it doesn't take bits off the total: full coverage is the goal, so text with no cheap model still gets covered, and this caps how dearly. Lower holds out for efficient glyphs; higher lets through costlier ones. Empty for none - every step must take bits off. The session's setting, so it holds for an agent in a terminal too.">
+                <label class="chat-setting" title="What a step that covers more words may cost, in bits per word it gains, when it doesn't take bits off the total: full coverage is the goal, so text with no cheap model still gets covered, and this caps how dearly. Lower holds out for efficient glyphs; higher lets through costlier ones. Empty for none - every step must take bits off.">
                     <span class="chat-label">Max bits per word covered</span>
                     <input type="number" min="0" step="0.5" placeholder="none" value="@Chat.MaxBitsPerCoveredWord" @onchange="SetMaxBitsPerCoveredWord" />
                 </label>
@@ -44,17 +44,17 @@
         @if (stats.TotalTokens > 0 || stats.FiveHour is not null || stats.SevenDay is not null)
         {
             <div class="chat-stats">
-                @Stat("Context",
-                    contextWindow is long window ? Percent((double)stats.ContextTokens / window) : Compact(stats.ContextTokens),
-                    contextWindow is long size ? $"{Compact(stats.ContextTokens)} of {Compact(size)}" : "tokens",
-                    contextWindow is long capacity ? (double)stats.ContextTokens / capacity : null,
-                    "How much of what the model can hold the conversation takes up")
-
                 @Stat("Tokens",
                     Compact(stats.TotalTokens),
                     $"{Compact(stats.OutputTokens)} written",
                     null,
                     $"This conversation's requests, added up: {stats.InputTokens:N0} read in new, {stats.CacheReadTokens:N0} read from cache, {stats.CacheWriteTokens:N0} written to cache, {stats.OutputTokens:N0} written out. At list prices, {stats.CostUsd:C2}.")
+
+                @Stat("Context",
+                    contextWindow is long window ? Percent((double)stats.ContextTokens / window) : Compact(stats.ContextTokens),
+                    contextWindow is long size ? $"{Compact(stats.ContextTokens)} of {Compact(size)}" : "tokens",
+                    contextWindow is long capacity ? (double)stats.ContextTokens / capacity : null,
+                    "How much of what the model can hold the conversation takes up")
 
                 @if (stats.FiveHour is UsageWindow fiveHour)
                 {

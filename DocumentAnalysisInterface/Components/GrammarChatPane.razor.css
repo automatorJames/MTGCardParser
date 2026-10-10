@@ -308,18 +308,17 @@
     background-color: var(--near-black);
 }
 
+/* One setting a line, their inputs lined up in a column */
 .chat-setting-row {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: 1.2rem;
+    display: grid;
+    grid-template-columns: max-content max-content 1fr;
+    align-items: center;
+    gap: 0.35rem 0.4rem;
     padding: 0.5rem 1rem 0.6rem;
 }
 
 .chat-setting {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin: 0;
+    display: contents;
     font-size: 0.8rem;
     color: var(--subtext-grey);
 }
