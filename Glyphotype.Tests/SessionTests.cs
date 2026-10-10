@@ -55,7 +55,7 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         Assert.Contains("The person's instructions: focus on snoring", brief);
         Assert.Contains("Check in after 3 applied steps", brief);
         Assert.Contains("The goal is full coverage", brief);
-        Assert.Contains("at least 5 bits off the total, or cover more words for at most 8 bits per word gained, and lose no lines", brief);
+        Assert.Contains("at least 5 bits off the total, or cover more words for at most 12 bits per word gained, and lose no lines", brief);
         Assert.Contains("Corpus: a snoring corpus", brief);
     }
 

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+﻿using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MTGGlyphs.Data;
 using Glyphotype.Interfaces;
 using Glyphotype.GlyphAnalysisDTOs;
@@ -105,6 +105,10 @@ public class Program
         // once here rather than being lazily triggered by whichever page a user happens
         // to land on first.
         await app.Services.GetRequiredService<CorpusAnalyzer>().EnsureInitializedAsync();
+
+        // Made now rather than when the chat pane is first shown: it puts back the session settings last set there, which
+        // an agent in a terminal works under too.
+        app.Services.GetRequiredService<GrammarChat>();
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())

@@ -1,4 +1,4 @@
-namespace Glyphotype.Distiller.Agent;
+﻿namespace Glyphotype.Distiller.Agent;
 
 /// <summary>
 /// How an agent's working session runs (see <see cref="GrammarAgent.StartSessionAsync"/>): when it stops to check in
@@ -21,7 +21,7 @@ public sealed record AgentSessionSettings
     /// <see cref="MinimumGainBits"/> off: full coverage is the goal, so text with no cheap model still gets covered, and
     /// this caps how dearly. 0 for no such allowance - every step must take bits off.
     /// </summary>
-    public double MaxBitsPerCoveredWord { get; init; } = 8;
+    public double MaxBitsPerCoveredWord { get; init; } = 12;
 
     /// <summary>How many words the workspace's journal may come to: past it, an agent must prune before adding. 0 for no limit.</summary>
     public int JournalWordLimit { get; init; } = 1500;

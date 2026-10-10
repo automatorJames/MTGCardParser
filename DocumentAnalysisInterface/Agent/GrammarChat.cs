@@ -88,7 +88,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             lock (_gate)
             {
                 _handoffPercent = Math.Clamp(value, 5, 95);
-                SaveSettings(new(_handoffPercent.Value));
+                SaveSettings();
             }
 
             NotifyChanged();
@@ -185,21 +185,49 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         NotifyChanged();
     }
 
-    sealed record Settings(int HandoffPercent);
+    /// <summary>
+    /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
+    /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
+    /// </summary>
+    sealed record Settings(int HandoffPercent, int? StepsBeforeCheckIn = null, double? MaxBitsPerCoveredWord = null);
 
-    string SettingsPath => Path.Combine(WorkingDirectory, "chat-settings.json");
+    const string _settingsFileName = "chat-settings.json";
 
-    Settings ReadSettings()
+    string SettingsPath => Path.Combine(WorkingDirectory, _settingsFileName);
+
+    /// <summary>The session settings last set here, put back on <paramref name="grammarAgent"/> as the chat is made - so they hold from the app's start, for an agent in a terminal too.</summary>
+    readonly bool _sessionSettingsRestored = RestoreSessionSettings(grammarAgent: agent, Path.Combine(workingDirectory, _settingsFileName));
+
+    static bool RestoreSessionSettings(GrammarAgent grammarAgent, string path)
+    {
+        if (ReadSettings(path) is not { } saved)
+            return false;
+
+        grammarAgent.Settings = grammarAgent.Settings with
+        {
+            StepsBeforeCheckIn = saved.StepsBeforeCheckIn ?? grammarAgent.Settings.StepsBeforeCheckIn,
+            MaxBitsPerCoveredWord = saved.MaxBitsPerCoveredWord ?? grammarAgent.Settings.MaxBitsPerCoveredWord,
+        };
+
+        return true;
+    }
+
+    Settings ReadSettings() => ReadSettings(SettingsPath);
+
+    static Settings ReadSettings(string path)
     {
         try
         {
-            return File.Exists(SettingsPath) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(SettingsPath)) : null;
+            return File.Exists(path) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(path)) : null;
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {
             return null;
         }
     }
+
+    /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
+    void SaveSettings() => SaveSettings(new(HandoffPercent, agent.Settings.StepsBeforeCheckIn, agent.Settings.MaxBitsPerCoveredWord));
 
     void SaveSettings(Settings settings)
     {
@@ -247,7 +275,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     /// <summary>
     /// Steps the agent applies in a round before it stops - null for no limit, when it works until it runs out of
-    /// improvements or is stopped. The session setting itself, so it holds for an agent in a terminal too.
+    /// improvements or is stopped. The session setting itself, so it holds for an agent in a terminal too - and kept for the app's next run.
     /// </summary>
     public int? MaxSteps
     {
@@ -255,13 +283,14 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         set
         {
             agent.Settings = agent.Settings with { StepsBeforeCheckIn = Math.Max(0, value ?? 0) };
+            SaveSettings();
             NotifyChanged();
         }
     }
 
     /// <summary>
     /// What a step that covers more words may cost in bits per word it gains (see <see cref="AgentSessionSettings.MaxBitsPerCoveredWord"/>) -
-    /// null for no such allowance. The session setting itself, so it holds for an agent in a terminal too.
+    /// null for no such allowance. The session setting itself, so it holds for an agent in a terminal too - and kept for the app's next run.
     /// </summary>
     public double? MaxBitsPerCoveredWord
     {
@@ -269,6 +298,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         set
         {
             agent.Settings = agent.Settings with { MaxBitsPerCoveredWord = Math.Max(0, value ?? 0) };
+            SaveSettings();
             NotifyChanged();
         }
     }
