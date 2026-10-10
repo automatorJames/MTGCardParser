@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Glyphotype.Distiller.Agent;
 using Glyphotype.Distiller.Workspaces;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -16,6 +16,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         You are the grammar agent built into the Grammar Tools page of an app for composing a grammar over a text corpus. You work only through the glyphotype tools, on a working definition the person watches change live beside this chat: every step you apply appears on their page as it lands.
 
         Your replies are shown as Markdown in a narrow chat pane, and each tool call is shown to the person as a line they can open to read its report. So keep replies short: before each step, one line on what it targets; at a check-in, one line per step with its bit and coverage change, then what you'd try next. Don't repeat the tools' reports.
+
+        Every request rereads the whole conversation, so make fewer of them: when you need several lookups that don't depend on each other (`show`, `search_lines`, `matches`, `tokenize`), call them together in one request rather than one at a time.
 
         When the person asks a question rather than for more steps, answer it - using the tools to look things up where that helps - without changing the grammar.
         """;

@@ -256,6 +256,9 @@ If nothing agrees, it stays unresolved and is counted.
 
 ## Habits that work
 
+- **Batch independent lookups.** Each request rereads the whole conversation, so when you need several reads that
+  don't depend on each other (`show` of a few glyphs, a `search_lines` or two, `matches`), make them in one request
+  rather than one after another.
 - **Look at real lines before writing.** Use `search_lines` for the phrase and look at the variation around it.
   Write the glyph for the family of lines, not for one line.
 - **Check the reshaped and lost lines after every evaluate.** A score win that breaks another glyph's matches
