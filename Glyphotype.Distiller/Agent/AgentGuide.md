@@ -188,6 +188,12 @@ floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing
   frame is paid for immediately, and the held text resolves by itself once some glyph matches it. This is how to
   model an outer construction (a trigger, a condition, a cost) before its inner parts. `residuals` and
   `search_lines scope=unmatched` include held text, so they show which inner parts to model next.
+
+  A frame isn't the finished cover, though: its literal words count as covered, but what it holds doesn't, and the
+  line isn't done until that's modeled too. The score reports **fully covered lines** and **words held unresolved**
+  beside coverage, for this. Before adding a frame, look for one that already takes that construction - a second
+  frame for the same shape splits its family in two - and before adding frame after frame, fill the held slots of
+  the ones there are.
 - **`OneOf<A, B>` / `OneOf<A, B, C>`**: exactly one of two or three types. Value types must be nullable:
   `OneOf<Animal?, Person?>`.
 - **`ManyOf<T>`**: a list with a conjunction ("x, y, and z", "x or y").

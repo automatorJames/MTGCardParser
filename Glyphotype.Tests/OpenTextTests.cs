@@ -107,6 +107,19 @@ public class OpenTextTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void The_score_counts_held_words_and_the_lines_left_with_none()
+    {
+        var grammar = WithWhenever();
+        var documents = CorpusFixture.Process(grammar, [new TestDocument(TestDocument.Unnamed, "whenever we can, the dog snores.\nwhenever we can, the dog sleeps in the kitchen.", [])]);
+
+        var score = MdlScorer.Score(grammar, documents);
+
+        // The first line's frame holds "the dog snores"; the second's resolves, so that line is done.
+        Assert.Equal(3, score.HeldWords);
+        Assert.Equal(1, score.FullyCoveredLines);
+    }
+
+    [Fact]
     public void Without_the_attribute_an_unresolvable_dynamic_fails_the_whole_match()
     {
         var grammar = WithWhenever(_whenever.Replace("[AllowUnmatched]", ""));

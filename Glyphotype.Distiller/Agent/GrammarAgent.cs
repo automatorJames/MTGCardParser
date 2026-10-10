@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Glyphotype.Distiller.Inspection;
 using Glyphotype.Distiller.Scoring;
 using Glyphotype.Distiller.Workbench;
@@ -115,7 +115,8 @@ public sealed class GrammarAgent
         var score = trial.Score;
         report.AppendLine($"Score: {score.TotalBits:N0} bits = {score.CompressionRatio:P2} of the no-grammar baseline ({score.BaselineBits:N0}). Lower is better.");
         report.AppendLine($"  grammar {score.GrammarBits:N0} · {string.Join(" · ", score.ComponentBits.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {x.Value:N0}"))}");
-        report.AppendLine($"Coverage: {score.Coverage:P2} of words inside matches ({score.CapturedWords:N0} of {score.Words:N0}, {score.Lines:N0} lines).");
+        report.AppendLine($"Coverage: {score.Coverage:P2} of words inside matches ({score.CapturedWords:N0} of {score.Words:N0}, {score.Lines:N0} lines). " +
+            $"{score.FullyCoveredLines:N0} lines are fully covered; {score.HeldWords:N0} words are held unresolved inside matches.");
 
         // A glyph also matched nested is credited to the glyphs using it, so its own net undersells it.
         var losing = score.Glyphs.Where(x => x.IsTopLevel && !x.IsUsedNested && x.NetBits < 0).OrderBy(x => x.NetBits).ToList();
@@ -264,7 +265,7 @@ public sealed class GrammarAgent
             checkIn.Add($"after {Settings.AttemptsBeforeCheckIn} evaluations in a row without an applied step");
 
         report.AppendLine(checkIn.Count > 0
-            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, say what you'd try next, and wait. When the person says to continue, call `start_session` again. " +
+            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, give the round's change in fully covered lines and in words held unresolved, say what you'd try next, and wait. When the person says to continue, call `start_session` again. " +
                 "Don't stop before then: text that's expensive to cover is something to evaluate and, if no step can afford it, to journal as an open problem - then move on to the next target."
             : "- There's no check-in limit: keep going until the corpus is covered or you're stuck, then summarize and wait. Uncovered text that only costs bits to cover isn't a reason to stop.");
 

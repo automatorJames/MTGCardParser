@@ -1,4 +1,4 @@
-using Glyphotype.Distiller.Inspection;
+﻿using Glyphotype.Distiller.Inspection;
 
 namespace Glyphotype.Distiller.Scoring;
 
@@ -86,6 +86,8 @@ public static class MdlScorer
             Lines = lines.Count,
             Words = documents.Sum(x => x.WordCount),
             CapturedWords = documents.Sum(x => x.CapturedWordCount),
+            FullyCoveredLines = lines.Count(x => x.CapturedWordCount == x.WordCount),
+            HeldWords = lines.Sum(x => x.Glyphs.Sum(y => y.UnresolvedTraces.Sum(z => CountWords(z.CaptureValue)))),
             Glyphs = glyphs,
             Vocabularies = grammarCost.VocabularyBits,
             VocabularyMembersUsed = definition.Vocabularies.ToDictionary(x => x.Name, x => encoding.VocabularyUsage.UsedMemberCount(x.Name)),
@@ -145,6 +147,15 @@ public sealed record MdlScore
     public int CapturedWords { get; init; }
     public double Coverage => Words == 0 ? 1 : (double)CapturedWords / Words;
 
+    /// <summary>Lines with every word inside a match, none of it held unresolved - the lines that are done.</summary>
+    public int FullyCoveredLines { get; init; }
+
+    /// <summary>
+    /// Words matches hold unresolved (see <see cref="AllowUnmatchedAttribute"/>): uncovered still, but already placed inside
+    /// a frame - text whose outer structure is modeled and whose inner parts aren't yet.
+    /// </summary>
+    public int HeldWords { get; init; }
+
     public IReadOnlyList<GlyphContribution> Glyphs { get; init; }
     /// <summary>What each vocabulary costs to define: only the members the corpus used (see <see cref="VocabularyUsage"/>).</summary>
     public IReadOnlyDictionary<string, double> Vocabularies { get; init; }
@@ -163,7 +174,7 @@ public sealed record MdlScore
         report.AppendLine($"MDL score: {Bits(TotalBits)} (grammar {Bits(GrammarBits)} + data {Bits(DataBits)}) = {CompressionRatio:P1} of the empty grammar's {Bits(BaselineBits)}");
         report.AppendLine($"  data: {string.Join(" · ", ComponentBits.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {Bits(x.Value)}"))}");
         report.AppendLine($"  grammar: {Bits(Glyphs.Sum(x => x.DefinitionBits))} in {Glyphs.Count} glyphs, {Bits(Vocabularies.Values.Sum())} in {Vocabularies.Count} vocabularies ({CharBits:F2} bits/char)");
-        report.AppendLine($"Coverage: {CapturedWords:N0} of {Words:N0} words ({Coverage:P1}), {Documents:N0} documents, {Lines:N0} lines");
+        report.AppendLine($"Coverage: {CapturedWords:N0} of {Words:N0} words ({Coverage:P1}), {Documents:N0} documents, {Lines:N0} lines ({FullyCoveredLines:N0} fully covered), {HeldWords:N0} words held unresolved");
 
         if (UnlocatedPatternMatches > 0)
             report.AppendLine($"Warning: {UnlocatedPatternMatches:N0} matches had open-ended pattern text the scorer couldn't locate, so didn't charge");

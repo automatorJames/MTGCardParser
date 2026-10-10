@@ -1,4 +1,4 @@
-namespace Glyphotype.Distiller.Scoring;
+﻿namespace Glyphotype.Distiller.Scoring;
 
 /// <summary>One glyph's contribution under two grammars - either side null where the glyph doesn't exist.</summary>
 public sealed record GlyphContributionChange(string Name, GlyphContribution Before, GlyphContribution After)
@@ -18,6 +18,10 @@ public sealed record ScoreComparison(MdlScore Before, MdlScore After)
         Before.ComponentBits.Keys.ToDictionary(x => x, x => After.ComponentBits[x] - Before.ComponentBits[x]);
 
     public int CapturedWordsDelta => After.CapturedWords - Before.CapturedWords;
+
+    public int FullyCoveredLinesDelta => After.FullyCoveredLines - Before.FullyCoveredLines;
+
+    public int HeldWordsDelta => After.HeldWords - Before.HeldWords;
 
     /// <summary>The glyphs whose contribution changed by at least half a bit, or that were added or removed - largest change first.</summary>
     public IReadOnlyList<GlyphContributionChange> GlyphChanges
@@ -45,6 +49,11 @@ public sealed record ScoreComparison(MdlScore Before, MdlScore After)
         report.AppendLine($"Total: {Before.TotalBits:N0} → {After.TotalBits:N0} bits ({Signed(TotalBitsDelta)}, {Signed(100 * TotalBitsDelta / Before.BaselineBits, "N2")}% of the no-grammar baseline) - {verdict}");
         report.AppendLine($"  grammar {Signed(GrammarBitsDelta)} · {string.Join(" · ", ComponentBitsDelta.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {Signed(x.Value)}"))}");
         report.AppendLine($"Coverage: {Before.Coverage:P2} → {After.Coverage:P2} ({Signed(CapturedWordsDelta)} words); now {After.CompressionRatio:P2} of baseline");
+        report.AppendLine($"Fully covered lines: {Before.FullyCoveredLines:N0} → {After.FullyCoveredLines:N0} ({Signed(FullyCoveredLinesDelta)}); words held unresolved: {Before.HeldWords:N0} → {After.HeldWords:N0} ({Signed(HeldWordsDelta)})");
+
+        // Words a frame takes in without resolving them aren't covered, but they're easily mistaken for progress.
+        if (HeldWordsDelta > 0 && HeldWordsDelta > CapturedWordsDelta)
+            report.AppendLine($"  This mostly frames text rather than covering it: it holds {HeldWordsDelta:N0} more words unresolved and covers {Signed(CapturedWordsDelta)}. Filling held slots is what finishes lines.");
 
         var changes = GlyphChanges;
 
