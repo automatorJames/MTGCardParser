@@ -1,4 +1,4 @@
-@using DocumentAnalysisInterface.Agent
+﻿@using DocumentAnalysisInterface.Agent
 @implements IDisposable
 @inject GrammarChat Chat
 @inject IJSRuntime JS
@@ -28,10 +28,10 @@
             <ChatOptionsBar Chat="Chat" />
 
             <div class="chat-setting-row">
-                <label class="chat-setting" title="How full the agent's context may get before a round hands off to a fresh session: the agent writes what the next session needs into the workspace's journal, and the round goes on from there. Lower is cheaper; higher keeps more of what the agent was thinking.">
+                <label class="chat-setting" title="How many tokens of context a round may build up before it hands off to a fresh session: the agent writes what the next session needs into the workspace's journal, and the round goes on from there. Every request rereads the whole context, so lower is cheaper; higher keeps more of what the agent was thinking.">
                     <span class="chat-label">Hand off at context</span>
-                    <input type="number" min="5" max="95" value="@Chat.HandoffPercent" @onchange="SetHandoffPercent" />
-                    <span class="chat-setting-unit">%</span>
+                    <input type="number" min="20" max="900" step="10" value="@Chat.HandoffThousands" @onchange="SetHandoffThousands" />
+                    <span class="chat-setting-unit">K tokens</span>
                 </label>
 
                 <label class="chat-setting" title="What a step that covers more words may cost, in bits per word it gains, when it doesn't take bits off the total: full coverage is the goal, so text with no cheap model still gets covered, and this caps how dearly. Lower holds out for efficient glyphs; higher lets through costlier ones. Empty for none - every step must take bits off.">
@@ -216,10 +216,10 @@
         _draft = null;
     }
 
-    void SetHandoffPercent(ChangeEventArgs e)
+    void SetHandoffThousands(ChangeEventArgs e)
     {
-        if (int.TryParse(e.Value?.ToString(), out var percent))
-            Chat.HandoffPercent = percent;
+        if (int.TryParse(e.Value?.ToString(), out var thousands))
+            Chat.HandoffThousands = thousands;
     }
 
     /// <summary>Empty, or nothing above zero, for no allowance.</summary>

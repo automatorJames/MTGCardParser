@@ -22,7 +22,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     string _instructions;
 
-    /// <summary>Whether the agent has been told to hand off to a fresh session (see <see cref="HandoffPercent"/>) in this turn.</summary>
+    /// <summary>Whether the agent has been told to hand off to a fresh session (see <see cref="HandoffThousands"/>) in this turn.</summary>
     bool _handingOff;
 
     /// <summary>How many times in this round the agent has been told to go on after stopping with no check-in due.</summary>
@@ -31,7 +31,10 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// <summary>How many times a round tells an agent that stopped early to go on, before taking the stop as meant.</summary>
     const int _maxNudges = 2;
 
-    int? _handoffPercent;
+    int? _handoffThousands;
+
+    /// <summary>Where a round hands off by default, in thousands of tokens of context - see <see cref="HandoffThousands"/>.</summary>
+    const int _defaultHandoffThousands = 60;
 
     /// <summary>The options set for a conversation to come, by the folder of the workspace they were set in.</summary>
     readonly Dictionary<string, ChatOptions> _chosen = [];
@@ -72,22 +75,23 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>
-    /// How full the agent's context may get, as a percent of what the model can hold, before a round hands off to a
-    /// fresh session: the agent puts what the next one needs in the workspace's journal, and the round goes on from
-    /// there. Kept with the app's agent settings.
+    /// How many tokens of context, in thousands, a round may build up before it hands off to a fresh session: the agent
+    /// puts what the next one needs in the workspace's journal, and the round goes on from there. A count rather than a
+    /// share of the model's window, since what it governs is the cost: every request reads the whole context again, so a
+    /// round's cost grows with the square of its length, whatever the model could hold. Kept with the app's agent settings.
     /// </summary>
-    public int HandoffPercent
+    public int HandoffThousands
     {
         get
         {
             lock (_gate)
-                return _handoffPercent ??= ReadSettings()?.HandoffPercent ?? 20;
+                return _handoffThousands ??= ReadSettings()?.HandoffThousands ?? _defaultHandoffThousands;
         }
         set
         {
             lock (_gate)
             {
-                _handoffPercent = Math.Clamp(value, 5, 95);
+                _handoffThousands = Math.Clamp(value, 20, 900);
                 SaveSettings();
             }
 
@@ -95,20 +99,20 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         }
     }
 
-    /// <summary>Once a call is answered in a round whose context has passed <see cref="HandoffPercent"/>, the agent is told to hand off.</summary>
+    /// <summary>Once a call is answered in a round whose context has passed <see cref="HandoffThousands"/>, the agent is told to hand off.</summary>
     protected override void OnToolAnswered(ChatEntry call)
     {
-        if (Round is null || _handingOff || agent.IsHandoffDue || ContextWindow is not long window)
+        if (Round is null || _handingOff || agent.IsHandoffDue)
             return;
 
-        var share = (double)Stats.ContextTokens / window;
+        var tokens = Stats.ContextTokens;
 
-        if (share * 100 < HandoffPercent)
+        if (tokens < HandoffThousands * 1000L)
             return;
 
         _handingOff = true;
         agent.RequestHandoff();
-        AddNote($"Context at {share:P0}, past the {HandoffPercent}% handoff point: the agent is writing what the next session needs into the journal.");
+        AddNote($"Context at {tokens / 1000:N0}K tokens, past the {HandoffThousands:N0}K handoff point: the agent is writing what the next session needs into the journal.");
     }
 
     /// <summary>
@@ -189,7 +193,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
     /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
     /// </summary>
-    sealed record Settings(int HandoffPercent, int? StepsBeforeCheckIn = null, double? MaxBitsPerCoveredWord = null);
+    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, double? MaxBitsPerCoveredWord = null);
 
     const string _settingsFileName = "chat-settings.json";
 
@@ -227,7 +231,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
-    void SaveSettings() => SaveSettings(new(HandoffPercent, agent.Settings.StepsBeforeCheckIn, agent.Settings.MaxBitsPerCoveredWord));
+    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.MaxBitsPerCoveredWord));
 
     void SaveSettings(Settings settings)
     {
