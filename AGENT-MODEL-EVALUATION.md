@@ -112,7 +112,29 @@ By headline numbers Sonnet won outright. By fully covered lines Opus did nearly 
 - **Confirm with tokens.** This was one run per model. Before settling, repeat with the chat pane's token stats
   recorded per round, and compare fully covered lines gained per token.
 
-## Harness changes made from this
+## What a round costs in tokens
+
+Measured from the app agent's CLI transcripts for the same three rounds. "Weighted" counts each token at its price
+relative to plain input: cache reads about 0.1×, cache writes 1.25×, output 5×.
+
+| Run | Requests | Context: start → end | Weighted tokens | Reads / writes / output |
+|---|---|---|---|---|
+| Haiku | 20 | 6K → 50K | ~192K | |
+| Sonnet | 33 | 6K → 75K | ~310K | 49% / 30% / 20% |
+| Opus | 68 | 6K → 138K | ~915K | 56% / 19% / 25% |
+
+- **The chief cost is rereading.** Every request rereads the whole conversation, and the agent made nearly one
+  request per tool call, adding about 2K tokens of context each time (tool results, plus its own thinking and C#
+  drafts). So a round's cost grows with roughly the square of its number of calls. Opus made twice Sonnet's calls,
+  each over a longer context.
+- **A handoff threshold set as a share of the window never fired:** 20% of a 1M window is 200K tokens, and no round
+  got that far. Simulated on the Opus round, handing off at 60K tokens saves about 18%; at 40K, handoffs come so
+  often they cost more for Sonnet.
+- **`apply` repeated `evaluate`:** the agent sent its C# draft a second time (as output, the dearest kind of token)
+  and read the full report again, and both stayed in context.
+- **Lookups went one per request** even when they didn't depend on each other.
+- Prompt caching worked throughout (almost no uncached input), and the agent's starting context was a lean 6K.
+
 
 | Problem seen | Change |
 |---|---|
@@ -122,6 +144,9 @@ By headline numbers Sonnet won outright. By fully covered lines Opus did nearly 
 | Agents found frame targets only by hand-written regexes | `unmatched_openings` groups uncovered text by how it opens, ranked by the uncovered words it holds |
 | A false joiner "fact" entered the journal | The guide states that tight punctuation (`'s`, `,`) binds under the default joiner, `{this}` included; the false entry was removed |
 | The pane's bits-per-word and max-steps settings reset on every restart | Both are kept between runs and restored at startup; the default cap is 12 bits per word |
+| The handoff threshold, as a share of a 1M window, never fired | A round hands off at a number of tokens of context, 60K by default |
+| `apply` re-sent the evaluated draft and repeated its report | `apply` with no source makes the change last evaluated, reusing its evaluation, and reports a change applied as evaluated in brief |
+| One lookup per request | The chat's system prompt and the guide ask for independent lookups to be made together in one request |
 
 ## Workspace notes from this comparison
 
