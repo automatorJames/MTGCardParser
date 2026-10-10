@@ -75,7 +75,8 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         Run(() => agent.EvaluateAsync(source, remove, cancellation));
 
     [McpServerTool(Name = "apply", Destructive = false), Description(
-        "Makes a change set as one step of the working definition, reporting what it did as `evaluate` does. Refused if the result wouldn't build, " +
+        "Makes a change set as one step of the working definition. With no source or removals, it makes the change you last evaluated (unless the working definition changed since) and reports it in brief; " +
+        "given them, it reports what it did as `evaluate` does. Refused if the result wouldn't build, " +
         "if a check-in is due, or if it breaks the session's step rules (see `start_session`) without an override reason. " +
         "The person sees the step in the app; `undo` takes it back.")]
     public Task<string> Apply(

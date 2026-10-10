@@ -32,6 +32,14 @@ public sealed class GrammarAgent
     int _stepsSinceCheckIn;
     int _attemptsSinceStep;
 
+    /// <summary>
+    /// The change set last evaluated, as given, with its evaluation and the working definition it was evaluated against:
+    /// what an `apply` with no source and removals makes, while that definition is still the working one.
+    /// </summary>
+    LastEvaluation _lastEvaluated;
+
+    sealed record LastEvaluation(string Source, ChangeSet Changes, Evaluation Evaluation, GrammarWorkbench Workbench, GrammarDefinition Against);
+
     /// <summary>The round the session's steps are applied in (see <see cref="WorkbenchStep.Round"/>), and the workbench that counts it - null until the session's first step.</summary>
     (GrammarWorkbench Workbench, int Number)? _round;
 
@@ -594,15 +602,17 @@ public sealed class GrammarAgent
     public async Task<string> EvaluateAsync(string source, string remove = null, CancellationToken cancellation = default)
     {
         var changes = ReadChanges(source, remove);
+        var against = Workbench.WorkingDefinition;
         var evaluation = await Evaluate(changes, cancellation);
         Interlocked.Increment(ref _attemptsSinceStep);
+        _lastEvaluated = new(source, changes, evaluation, Workbench, against);
 
         var report = WithStatus($"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}", MisplacedDocumentation(source));
 
         if (evaluation.After.Succeeded)
             report += RuleViolations(evaluation) is { Count: > 0 } violations
                 ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}."
-                : $"{Environment.NewLine}To make this change, `apply` the same source and removals.";
+                : $"{Environment.NewLine}To make this change, `apply` with no source or removals: it makes what you just evaluated, without sending it again.";
 
         return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), DeadEndReminder()), SessionStatus(applied: false));
     }
@@ -613,9 +623,33 @@ public sealed class GrammarAgent
     /// </summary>
     /// <param name="description">Why: shown to the person in the step history.</param>
     /// <param name="overrideReason">Why a step that breaks the step rules should be applied anyway - recorded in its description.</param>
+    /// <remarks>
+    /// With no <paramref name="source"/> and no <paramref name="remove"/>, it makes the change set last evaluated - as long
+    /// as nothing has changed the working definition since - reusing that evaluation rather than scoring again. Either way,
+    /// a change applied just as it was evaluated is reported in brief, since the evaluation already said what it does.
+    /// </remarks>
     public async Task<string> ApplyAsync(string source, string remove = null, string description = null, string overrideReason = null, CancellationToken cancellation = default)
     {
-        var changes = ReadChanges(source, remove);
+        var evaluated = _lastEvaluated is { } last && last.Workbench == Workbench && ReferenceEquals(last.Against, Workbench.WorkingDefinition) ? last : null;
+        ChangeSet changes;
+        Evaluation reused = null;
+
+        if (string.IsNullOrWhiteSpace(source) && string.IsNullOrWhiteSpace(remove))
+        {
+            if (evaluated is null)
+                throw new AgentRequestException(_lastEvaluated is null
+                    ? "Nothing to apply: pass C# declarations as source, names to remove, or both - or `evaluate` a change first, then `apply` with neither to make it."
+                    : "Nothing to apply: the working definition has changed since your last `evaluate`, so that evaluation no longer says what the change would do. Evaluate it again, or pass its source and removals.");
+
+            (source, changes, reused) = (evaluated.Source, evaluated.Changes, evaluated.Evaluation);
+        }
+        else
+        {
+            changes = ReadChanges(source, remove);
+
+            if (evaluated is not null && evaluated.Source == source && evaluated.Changes.Describe() == changes.Describe())
+                reused = evaluated.Evaluation;
+        }
 
         // A step that only documents glyphs is housekeeping, not one of the round's steps: it counts toward neither check-in, and isn't held up by one.
         var onlyDocuments = OnlyDocuments(changes, Workbench.WorkingDefinition);
@@ -626,7 +660,7 @@ public sealed class GrammarAgent
         if (_checkInsSuspended == 0 && _handoffDue)
             throw new AgentRequestException("Not applied. " + HandoffInstruction + " If this change is worth making, describe it in the journal for the next session.");
 
-        var evaluation = await Evaluate(changes, cancellation);
+        var evaluation = reused ?? await Evaluate(changes, cancellation);
         Interlocked.Increment(ref _attemptsSinceStep);
 
         if (!evaluation.After.Succeeded)
@@ -661,7 +695,9 @@ public sealed class GrammarAgent
             _journalEditedSinceStep = false;
         }
 
-        var report = WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}", MisplacedDocumentation(source));
+        _lastEvaluated = null;
+
+        var report = WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{(reused is null ? DescribeEvaluation(evaluation) : SummarizeEvaluation(evaluation))}", MisplacedDocumentation(source));
         return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: !onlyDocuments || _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn));
     }
 
@@ -881,6 +917,18 @@ public sealed class GrammarAgent
                 + Environment.NewLine + string.Join(Environment.NewLine, evaluation.Before.Errors.Select(x => "  " + x)));
 
         return evaluation;
+    }
+
+    /// <summary>What <paramref name="evaluation"/> did to the headline numbers, in brief - for a change whose full report was already given.</summary>
+    static string SummarizeEvaluation(Evaluation evaluation)
+    {
+        var comparison = new ScoreComparison(evaluation.Before.Score, evaluation.After.Score);
+        var (before, after) = (evaluation.Before.Score, evaluation.After.Score);
+
+        return $"As evaluated: {before.TotalBits:N0} → {after.TotalBits:N0} bits; coverage {before.Coverage:P2} → {after.Coverage:P2} ({Signed(comparison.CapturedWordsDelta)} words); " +
+            $"fully covered lines {Signed(comparison.FullyCoveredLinesDelta)}; words held unresolved {Signed(comparison.HeldWordsDelta)}.";
+
+        static string Signed(int value) => value > 0 ? $"+{value:N0}" : value < 0 ? $"−{-value:N0}" : "±0";
     }
 
     static string DescribeEvaluation(Evaluation evaluation, int lineLimit = 8)

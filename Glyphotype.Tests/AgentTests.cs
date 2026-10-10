@@ -286,6 +286,41 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task Applying_with_nothing_given_makes_the_change_last_evaluated_and_reports_it_in_brief()
+    {
+        var (agent, workbench) = CreateAgent();
+
+        await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(null));
+
+        Assert.Contains("`apply` with no source or removals", await agent.EvaluateAsync(_animalSnores));
+
+        var applied = await agent.ApplyAsync(null, description: "snoring animals");
+
+        Assert.StartsWith("Applied as step 1: snoring animals", applied);
+        Assert.Contains("As evaluated:", applied);
+        Assert.DoesNotContain("Glyph contributions", applied);
+        Assert.Contains(workbench.WorkingDefinition.Glyphs, x => x.Name == "AnimalSnores");
+
+        // Applied once, the evaluation is spent: there's nothing left to make.
+        await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(null));
+    }
+
+    [Fact]
+    public async Task An_evaluation_goes_stale_once_the_working_definition_changes()
+    {
+        var (agent, workbench) = CreateAgent();
+
+        await agent.EvaluateAsync(_animalSnores);
+        workbench.RemoveGlyph(workbench.WorkingDefinition.Glyphs.First(x => x.Name != "AnimalSnores").Name);
+
+        var refused = await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(null));
+        Assert.Contains("changed since your last `evaluate`", refused.Message);
+
+        // Given again in full, it's scored afresh and reported in full.
+        Assert.Contains("Glyph contributions", await agent.ApplyAsync(_animalSnores));
+    }
+
+    [Fact]
     public async Task Uncovered_text_is_grouped_by_how_it_opens()
     {
         var (agent, _) = CreateAgent();

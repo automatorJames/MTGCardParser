@@ -51,6 +51,7 @@ Only create or switch workspaces when the person asks. Switching changes what th
    to cover that text: reuse existing glyphs and vocabularies, widen a glyph's family, or cover the shared part
    with a nested glyph. Then apply the best form you find, within the session's price per word gained.
 5. **Commit to the working definition.** `apply` makes the change as one step, with a short description of *why*.
+   Call it with no source or removals to make the change you just evaluated - there's no need to send it again.
    `undo` takes back the latest step; `history` lists them.
 6. **Repeat**, generalizing as patterns emerge:
    - merge near-duplicate glyphs into one with a property;
