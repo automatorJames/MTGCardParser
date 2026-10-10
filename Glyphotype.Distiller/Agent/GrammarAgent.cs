@@ -345,7 +345,8 @@ public sealed class GrammarAgent
         ? "Document every glyph you add or change, in its doc comment: `/// <summary>` saying what it's for and why it exists, " +
           "`/// <exampledoc>` naming one corpus document it's meant for (as the tools name documents), and `/// <examplecapture>` " +
           "with just the text in that document it captures. Keep a glyph's documentation when you change it, updating what's out of date. " +
-          "`evaluate` and `apply` remind you of a glyph missing any of them; a step that only documents glyphs needn't take any bits off."
+          "`evaluate` and `apply` remind you of a glyph missing any of them; a step that only documents glyphs needn't take any bits off, and isn't counted among the round's steps. " +
+          "A doc comment goes above everything in the declaration, attributes included."
         : null;
 
     /// <summary>The glyphs <paramref name="changes"/> declares without complete documentation, when the session requires it - empty otherwise.</summary>
@@ -358,6 +359,13 @@ public sealed class GrammarAgent
     string DocumentationReminder(ChangeSet changes) =>
         Undocumented(changes) is { Count: > 0 } names
             ? $"Documentation: {string.Join(", ", names)} {(names.Count == 1 ? "lacks" : "lack")} a `/// <summary>`, `/// <exampledoc>` or `/// <examplecapture>`. Every glyph you add or change should have all three - add them in a later step if not in this one."
+            : null;
+
+    /// <summary>A warning, for a report's end, of declarations in <paramref name="source"/> whose doc comment isn't above them all, and so was dropped - null when there are none.</summary>
+    static string MisplacedDocumentation(string source) =>
+        GlyphDocComment.Misplaced(source) is { Count: > 0 } names
+            ? $"Documentation dropped: the `///` doc comment on {string.Join(", ", names)} comes after {(names.Count == 1 ? "its" : "their")} attributes, where it isn't read. " +
+              "Put a declaration's doc comment above everything else, attributes included, and send it again."
             : null;
 
     /// <summary>Whether <paramref name="changes"/> changes nothing but the documentation of glyphs <paramref name="working"/> already has.</summary>
@@ -583,7 +591,7 @@ public sealed class GrammarAgent
         var evaluation = await Evaluate(changes, cancellation);
         Interlocked.Increment(ref _attemptsSinceStep);
 
-        var report = $"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
+        var report = WithStatus($"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}", MisplacedDocumentation(source));
 
         if (evaluation.After.Succeeded)
             report += RuleViolations(evaluation) is { Count: > 0 } violations
@@ -601,13 +609,17 @@ public sealed class GrammarAgent
     /// <param name="overrideReason">Why a step that breaks the step rules should be applied anyway - recorded in its description.</param>
     public async Task<string> ApplyAsync(string source, string remove = null, string description = null, string overrideReason = null, CancellationToken cancellation = default)
     {
-        if (_checkInsSuspended == 0 && Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
+        var changes = ReadChanges(source, remove);
+
+        // A step that only documents glyphs is housekeeping, not one of the round's steps: it counts toward neither check-in, and isn't held up by one.
+        var onlyDocuments = OnlyDocuments(changes, Workbench.WorkingDefinition);
+
+        if (_checkInsSuspended == 0 && !onlyDocuments && Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
             throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
 
         if (_checkInsSuspended == 0 && _handoffDue)
             throw new AgentRequestException("Not applied. " + HandoffInstruction + " If this change is worth making, describe it in the journal for the next session.");
 
-        var changes = ReadChanges(source, remove);
         var evaluation = await Evaluate(changes, cancellation);
         Interlocked.Increment(ref _attemptsSinceStep);
 
@@ -634,12 +646,17 @@ public sealed class GrammarAgent
         var step = Try(() => workbench.Apply(changes, description, _round.Value.Number))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
-        Interlocked.Increment(ref _stepsSinceCheckIn);
-        Interlocked.Exchange(ref _attemptsSinceStep, 0);
-        _journalEditedSinceStep = false;
+        if (onlyDocuments)
+            Interlocked.Decrement(ref _attemptsSinceStep);
+        else
+        {
+            Interlocked.Increment(ref _stepsSinceCheckIn);
+            Interlocked.Exchange(ref _attemptsSinceStep, 0);
+            _journalEditedSinceStep = false;
+        }
 
-        var report = $"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}";
-        return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: true));
+        var report = WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(evaluation)}", MisplacedDocumentation(source));
+        return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: !onlyDocuments || _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn));
     }
 
     /// <summary>How <paramref name="evaluation"/> falls short of the session's step rules - empty when it doesn't.</summary>

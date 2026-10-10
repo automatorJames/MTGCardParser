@@ -388,4 +388,30 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         Assert.Contains("Applied as step 3", await agent.ApplyAsync(documentation.Replace("somewhere", "in a place") + _animalSnores));
         Assert.Equal("An animal snoring in a place.", workbench.WorkingDefinition.Glyphs.Single(x => x.Name == "AnimalSnores").Documentation.Summary);
     }
+
+    [Fact]
+    public async Task A_step_that_only_documents_isnt_one_of_the_rounds_steps()
+    {
+        var (agent, _) = CreateAgent(AnySteps with { StepsBeforeCheckIn = 1 });
+
+        Assert.Contains("Check-in due", await agent.ApplyAsync(_animalSnores));
+        var refused = await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(_animalSnores.Replace("Snores", "Dozes").Replace("snores", "dozes")));
+        Assert.StartsWith("Not applied: a check-in is due", refused.Message);
+
+        // Documenting what the round did is still allowed, and the check-in is still due after it.
+        var documented = await agent.ApplyAsync("/// <summary>An animal snoring somewhere.</summary>" + Environment.NewLine + _animalSnores);
+        Assert.Contains("Applied as step 2", documented);
+        Assert.Contains("Check-in due (1 step applied)", documented);
+    }
+
+    [Fact]
+    public async Task A_doc_comment_after_the_attributes_is_reported_as_dropped()
+    {
+        var (agent, _) = CreateAgent();
+
+        var report = await agent.EvaluateAsync("[TokenizationOrder(0)]" + Environment.NewLine + "/// <summary>An animal snoring somewhere.</summary>" + Environment.NewLine + _animalSnores);
+        Assert.Contains("Documentation dropped: the `///` doc comment on AnimalSnores comes after its attributes", report);
+
+        Assert.DoesNotContain("Documentation dropped", await agent.EvaluateAsync("/// <summary>An animal snoring somewhere.</summary>" + Environment.NewLine + "[TokenizationOrder(0)]" + Environment.NewLine + _animalSnores));
+    }
 }

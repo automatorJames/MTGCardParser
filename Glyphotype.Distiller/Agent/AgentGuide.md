@@ -130,7 +130,8 @@ it. Remove definitions by name with `remove`.
 
 **Documentation.** A glyph's `///` doc comment is part of its definition: it's shown with the glyph, and committed
 with it. Three tags in it are read as the glyph's documentation, each optional and each free text (anything else
-in the comment is kept, but isn't part of it):
+in the comment is kept, but isn't part of it). It goes above everything else in the declaration, attributes
+included - a doc comment after `[Dependent]` isn't read:
 
 ```csharp
 /// <summary>What the glyph is for, and why it exists. Doc-comment markup like <see cref="OnDay"/> is fine here.</summary>
@@ -141,7 +142,7 @@ public class AnimalNaps : Glyph
 
 `<examplecapture>` is just the part of that document's text the glyph captures. When you replace a glyph, send its
 documentation along (updated, if it's out of date), or the replacement drops it. Documentation isn't grammar: it
-changes no score, and a step that only documents glyphs needn't take bits off.
+changes no score, and a step that only documents glyphs needn't take bits off, or count toward the session's steps.
 
 ```csharp
 public class AnimalNaps : Glyph
