@@ -30,6 +30,9 @@ public sealed record MergeItem(DefinitionKind Kind, string Name, ChangeType Chan
 public sealed record WorkspaceMerge(string From, string Into, GrammarDefinition Base, GrammarDefinition Target, GrammarDefinition Incoming,
     bool IsBaseRecorded, IReadOnlyList<MergeItem> Items)
 {
+    /// <summary>How many working changes <see cref="Into"/> had already - which committing it after the merge commits too.</summary>
+    public int TargetWorkingChanges { get; init; }
+
     /// <summary>The items taken by default: every one that isn't a conflict.</summary>
     public IReadOnlyList<MergeItem> CleanItems => Items.Where(x => !x.IsConflict).ToList();
 

@@ -253,6 +253,7 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
         var conflict = Assert.Single(merge.Items);
         Assert.True(conflict.IsConflict);
         Assert.Empty(merge.CleanItems);
+        Assert.Equal(1, merge.TargetWorkingChanges);
 
         workspaces.Merge(merge, merge.CleanItems);
 

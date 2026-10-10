@@ -332,7 +332,7 @@ else
 
 @if (_workspaceAction is WorkspaceDialog.WorkspaceAction action)
 {
-    <WorkspaceDialog Action="action" Workspaces="Workspaces" OnDone="WorkspaceActionDone" OnClose="() => _workspaceAction = null" />
+    <WorkspaceDialog Action="action" Workspaces="Workspaces" OnDone="WorkspaceActionDone" OnCommitMerge="CommitMerge" OnClose="() => _workspaceAction = null" />
 }
 
 @if (_editor is not null)
@@ -895,7 +895,45 @@ else
             Notify($"Checkpointed {Workspaces.ActiveWorkspace.Name}: the working grammar is its baseline now.");
         });
 
-    void Commit()
+    /// <summary>
+    /// Commits (or checkpoints) the workspace a merge was just made into, as the merge dialog was asked to - with no review,
+    /// unless the commit adds names types in the project already have, which the commit dialog asks about.
+    /// </summary>
+    async Task CommitMerge(string merged)
+    {
+        _workspaceAction = null;
+
+        if (!Workbench.IsSourceBacked)
+        {
+            await Workbench.GetCurrentTrialAsync();
+            Try(() =>
+            {
+                Workbench.Checkpoint();
+                ForgetSteps();
+                Notify($"{merged} and checkpointed it.");
+            });
+
+            return;
+        }
+
+        Try(() => _commitPlan = Workbench.PlanCommit());
+
+        if (_commitPlan is null)
+            return;
+
+        if (!_commitPlan.IsResolved)
+        {
+            Notify($"{merged}. Types in the project already have names it adds: say what to do about them to commit.");
+            return;
+        }
+
+        CommitPlan(merged);
+    }
+
+    void Commit() => CommitPlan(null);
+
+    /// <param name="merged">What a merge committed straight away did, to begin the message with.</param>
+    void CommitPlan(string merged)
     {
         var plan = _commitPlan;
         _commitPlan = null;
@@ -904,7 +942,7 @@ else
         {
             Workbench.Commit(plan);
             ForgetSteps();
-            Notify($"Committed {plan.Declarations.Count} declaration change{(plan.Declarations.Count == 1 ? "" : "s")} to {plan.Files.Count} file{(plan.Files.Count == 1 ? "" : "s")}. Rebuild and restart to compile them; until then, scores reflect the working grammar.");
+            Notify($"{(merged is null ? "" : $"{merged}. ")}Committed {plan.Declarations.Count} declaration change{(plan.Declarations.Count == 1 ? "" : "s")} to {plan.Files.Count} file{(plan.Files.Count == 1 ? "" : "s")}. Rebuild and restart to compile them; until then, scores reflect the working grammar.");
         });
     }
 

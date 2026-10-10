@@ -332,9 +332,11 @@ public sealed class WorkspaceManager
                 throw new InvalidOperationException($"{source.Name} is the grammar compiled from C# sources - commit it rather than merging it");
 
             var recordedBase = ReadMergeBase(source);
+            var targetCommitted = GetCommittedDefinition(target);
+            var targetWorking = GetWorkingDefinition(target);
 
-            return WorkspaceMerge.Plan(source.Name, target.Name, recordedBase ?? GetCommittedDefinition(target),
-                GetWorkingDefinition(target), GetWorkingDefinition(source), recordedBase is not null);
+            return WorkspaceMerge.Plan(source.Name, target.Name, recordedBase ?? targetCommitted, targetWorking, GetWorkingDefinition(source), recordedBase is not null)
+                with { TargetWorkingChanges = DefinitionDiff.Compare(targetCommitted, targetWorking).Count };
         }
     }
 

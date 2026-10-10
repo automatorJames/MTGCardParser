@@ -162,6 +162,22 @@
                     }
                 }
 
+                <label class="choice">
+                    <input type="checkbox" checked="@_commitAfterMerge" disabled="@(_merge is null)" @onchange="e => _commitAfterMerge = (bool)e.Value" />
+                    <span>
+                        <strong>@(IsSourceTarget ? "Commit to C# straight away" : "Checkpoint straight away")</strong>
+                        <span class="choice-help">
+                            @(IsSourceTarget
+                                ? "Writes the merge into the C# sources with no review step - unless types in the project already have names it adds, in which case you're asked what to do about them first."
+                                : "Saves the merge as its baseline once it's scored.")
+                            @if (_merge is { TargetWorkingChanges: > 0 and var others })
+                            {
+                                <span class="merge-conflict">@_merge.Into's @others other working change@(others == 1 ? " is" : "s are") @(IsSourceTarget ? "committed" : "checkpointed") too.</span>
+                            }
+                        </span>
+                    </span>
+                </label>
+
                 <p class="dialog-note">
                     What @ActiveName added, changed or removed since it started or last merged - its working changes included - becomes one
                     working step in @(_merge?.Into ?? "the target"), to score, undo and @(IsSourceTarget ? "commit to C#" : "checkpoint") as any working change.
@@ -208,6 +224,9 @@
 
     [Parameter] public EventCallback OnClose { get; set; }
 
+    /// <summary>Called, with a message to show, in place of <see cref="OnDone"/> once a merge asked to be committed (or checkpointed) straight away is made: the target is active by then.</summary>
+    [Parameter] public EventCallback<string> OnCommitMerge { get; set; }
+
     string _name;
     ElementReference _nameInput;
     string _from;
@@ -221,6 +240,7 @@
     string _mergeInto;
     WorkspaceMerge _merge;
     HashSet<MergeItem> _taken = [];
+    bool _commitAfterMerge;
 
     bool ShowingJournal => Action == WorkspaceAction.Guidance && _journalTab;
 
@@ -369,6 +389,13 @@
 
                     var merged = ActiveName;
                     Workspaces.Merge(_merge, _merge.Items.Where(_taken.Contains));
+
+                    if (_commitAfterMerge)
+                    {
+                        await OnCommitMerge.InvokeAsync($"Merged {merged} into {Workspaces.ActiveWorkspace.Name}");
+                        break;
+                    }
+
                     await OnDone.InvokeAsync($"Merged {merged} into {Workspaces.ActiveWorkspace.Name}: a working step here now, and {merged} has no working changes left.");
                     break;
 
