@@ -59,7 +59,8 @@ public static class GlyphSourceWriter
     }
 
     /// <param name="keptComment">The rest of the doc comment the glyph's documentation was read from, to write after it (see <see cref="GlyphDocumentation.ReadComment.Rest"/>).</param>
-    public static string WriteGlyph(GlyphDefinition glyph, IEnumerable<string> keptComment = null)
+    /// <param name="spaceProperties">Whether to separate properties with a blank line, each with its attributes - for reading rather than committing.</param>
+    public static string WriteGlyph(GlyphDefinition glyph, IEnumerable<string> keptComment = null, bool spaceProperties = false)
     {
         List<string> lines = [.. GlyphDocumentation.ToComment(glyph.Documentation, keptComment), .. GetClassAttributes(glyph)];
 
@@ -82,7 +83,9 @@ public static class GlyphSourceWriter
         if (glyph.Nibs.Count > 0)
             overrides.Add(_indent + $"public override Nib[] Nibs => [{string.Join(", ", glyph.Nibs.Select(WriteNib))}];");
 
-        var properties = glyph.Properties.SelectMany(WriteProperty).ToList();
+        var properties = glyph.Properties
+            .SelectMany((x, i) => spaceProperties && i > 0 ? WriteProperty(x).Prepend("") : WriteProperty(x))
+            .ToList();
 
         if (overrides.Count == 0 && properties.Count == 0)
         {

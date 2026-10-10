@@ -42,7 +42,7 @@ public static class DefinitionViews
     public static string CSharp(object definition) =>
         definition switch
         {
-            GlyphDefinition glyph => GlyphSourceWriter.WriteGlyph(glyph),
+            GlyphDefinition glyph => GlyphSourceWriter.WriteGlyph(glyph, spaceProperties: true),
             VocabularyDefinition vocabulary => GlyphSourceWriter.WriteVocabulary(vocabulary),
             _ => "",
         };
