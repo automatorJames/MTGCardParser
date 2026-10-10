@@ -1,11 +1,13 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"it can't be regenerated", "they can't be regenerated": the pronoun refers to what was just destroyed.</summary>
-/// <exampledoc>Crumble</exampledoc>
-/// <examplecapture>it can't be regenerated</examplecapture>
-public class CantBeRegenerated : Glyph
+/// <summary>"can't be regenerated", "can't be regenerated this turn": a predicate, so its subject can be "it", "they" (what was just destroyed) or a target.</summary>
+/// <exampledoc>Hurr Jackal</exampledoc>
+/// <examplecapture>can't be regenerated this turn</examplecapture>
+[Dependent]
+public class CantBeRegenerated : Glyph, IPredicate
 {
-    public override Nib[] Nibs => [Prop(Subject), "can't be regenerated"];
+    public override Nib[] Nibs => ["can't be regenerated", Prop(Duration)];
 
-    public OneOf<It, They> Subject { get; set; }
+    [Optional]
+    public ThisPeriod Duration { get; set; }
 }

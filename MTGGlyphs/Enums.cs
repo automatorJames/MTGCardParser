@@ -1169,11 +1169,6 @@ public enum PowerAndOrToughness
     PowerAndToughness
 }
 
-public enum EquivalentToMeasurement
-{
-    ItsManaValue,
-}
-
 public enum Assertion
 {
     Is,
