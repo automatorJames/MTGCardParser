@@ -40,7 +40,12 @@
     padding: 1.5rem;
     margin-bottom: 2rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    transition: all var(--transition-time);
+    transition: border-color var(--transition-time);
+    /* A block off screen skips style, layout and paint, so a large corpus costs little more than the blocks in view.
+       Its height until first shown is a guess; once shown, the height it really had is remembered (auto). Nothing in
+       a block draws outside it, so the paint containment this brings clips nothing. */
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 600px;
 }
 
 .document-capture-block:hover {

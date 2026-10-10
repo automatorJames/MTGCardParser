@@ -6,6 +6,10 @@ let mouseoverHandler;
 let mouseleaveHandler;
 let lastHoveredElement = null;
 
+/// The elements the last hover marked, so clearing them touches only those - never a search of the
+/// whole page, which costs more with every document the corpus shows.
+let markedElements = [];
+
 const highlightActiveClass = 'highlight-active';
 const muteActiveClass = 'mute-active';
 const dataPathSelector = '[data-path]';
@@ -37,11 +41,8 @@ function initDocumentCaptureHover() {
     }
 
     const clearClasses = () => {
-        const activeElements = document.querySelectorAll(`.${highlightActiveClass}, .${muteActiveClass}`);
-        activeElements.forEach(el => {
-            el.classList.remove(highlightActiveClass);
-            el.classList.remove(muteActiveClass);
-        });
+        markedElements.forEach(el => el.classList.remove(highlightActiveClass, muteActiveClass));
+        markedElements = [];
     };
 
     mouseoverHandler = (event) => {
@@ -80,8 +81,8 @@ function initDocumentCaptureHover() {
 
         // --- PHASE 2: DISTRIBUTE ---
         if (pathsToHighlight.size > 0) {
-            const allPathElementsInBoundary = boundary.querySelectorAll(dataPathSelector);
-            allPathElementsInBoundary.forEach(el => {
+            markedElements = Array.from(boundary.querySelectorAll(dataPathSelector));
+            markedElements.forEach(el => {
                 if (isSelfOrAncestorPath(el.dataset.path, pathsToHighlight)) {
                     el.classList.add(highlightActiveClass);
                 } else {
@@ -128,6 +129,9 @@ let echoMouseleaveHandler;
 let echoClickHandler;
 let lastHoveredEchoElement = null;
 
+/// The segments the last echo hover lit, cleared on their own for the same reason as markedElements.
+let litEchoElements = [];
+
 const echoHoverActiveClass = 'echo-hover-active';
 const echoKeySelector = '[data-echo-key]';
 const echoResolvedFlag = 'echoResolvedClick';
@@ -159,9 +163,8 @@ function initEchoHover() {
     }
 
     const clearEchoHighlight = () => {
-        document.querySelectorAll(`.${echoHoverActiveClass}`).forEach(el => {
-            el.classList.remove(echoHoverActiveClass);
-        });
+        litEchoElements.forEach(el => el.classList.remove(echoHoverActiveClass));
+        litEchoElements = [];
     };
 
     echoMouseMoveHandler = (event) => {
@@ -184,7 +187,8 @@ function initEchoHover() {
         const key = resolved.dataset.echoKey;
         if (!container || !key) return;
 
-        container.querySelectorAll(`[data-echo-key="${key}"]`).forEach(el => {
+        litEchoElements = Array.from(container.querySelectorAll(`[data-echo-key="${key}"]`));
+        litEchoElements.forEach(el => {
             el.classList.add(echoHoverActiveClass);
         });
     };
