@@ -57,6 +57,11 @@
                 {
                     <SpanView CaptureTrace=@child EffectiveDepth=@ChildEffectiveDepth />
                 }
+                else if (IsEffectivelyCollapsible && FindEmergentDescendant() is { } clauseSpanning && DisplayContext.SpansClause(clauseSpanning))
+                {
+                    @* No underline to extend: the level this collapses into spans its clause and draws none. *@
+                    <span class="clause-capture" style=@CaptureDisplay.ClauseColorStyle data-path=@clauseSpanning.HoverPath>@segment.Text</span>
+                }
                 else if (IsEffectivelyCollapsible && FindEmergentDescendant() is { } emergent)
                 {
                     @* Same data-path as the level it borrows its color from, so hover
@@ -113,7 +118,10 @@
     /// level. A collapsed node passes its own received depth straight through unchanged, so an
     /// arbitrarily long chain of collapsed nodes costs no vertical space at all.
     /// </summary>
-    int ChildEffectiveDepth => IsEffectivelyCollapsible ? EffectiveDepth : EffectiveDepth + 1;
+    int ChildEffectiveDepth => DisplayContext.IsUnderlineHidden(CaptureTrace) ? EffectiveDepth : EffectiveDepth + 1;
+
+    /// <summary>Whether this is a clause's only capture, drawing no underline (see <see cref="CaptureTraceDisplayContext.SpansClause"/>).</summary>
+    bool SpansClause => DisplayContext.SpansClause(CaptureTrace);
 
     /// <summary>
     /// Walks down this (collapsed) node's single-child collapse chain, past every intermediate
@@ -171,7 +179,9 @@
 
         var classes = new List<string>();
 
-        if (CaptureTrace.HasOwnBoundary && !IsEffectivelyCollapsible)
+        if (SpansClause)
+            classes.Add("clause-capture");
+        else if (CaptureTrace.HasOwnBoundary && !IsEffectivelyCollapsible)
             classes.Add("nested-underline");
 
         if (CaptureTrace.IsTerminal || CaptureDisplay.IsLeafGlyph(CaptureTrace))
@@ -201,6 +211,9 @@
         // every captured level regardless, so leaving it unset here is fine too — it inherits.
         if (IsEffectivelyCollapsible)
             return "";
+
+        if (SpansClause)
+            return CaptureDisplay.ClauseColorStyle;
 
         if (CaptureDisplay.IsEmbedded(CaptureTrace))
             return CaptureDisplay.ColorStyle;

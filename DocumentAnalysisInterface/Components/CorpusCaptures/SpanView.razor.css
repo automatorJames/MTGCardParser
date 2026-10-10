@@ -13,6 +13,16 @@
     padding-bottom: 2px;
 }
 
+/* A clause's only capture: no underline, which would run under the whole clause, but its text still reads as captured. */
+.clause-capture {
+    color: var(--captured-text-color);
+    transition: color var(--transition-time);
+}
+
+    .clause-capture.highlight-active {
+        color: var(--highlight-color);
+    }
+
 .prop-capture-overline {
     border-top-width: var(--underline-width);
     border-top-style: solid;

@@ -416,6 +416,13 @@ public static class CaptureDisplay
     /// <summary>An embedded capture's colors, in place of a palette's.</summary>
     public const string ColorStyle = "--color: grey; --highlight-color: #bdbdbd; --lowlight-color: dimgrey;";
 
+    /// <summary>
+    /// The colors of a capture spanning a whole clause, in place of a palette's: one underlining nothing but the
+    /// clause, which every capture inside it already sits in, so it draws none and takes no palette slot - but
+    /// still heads its table, light as befits the top of one.
+    /// </summary>
+    public const string ClauseColorStyle = "--color: #d4d4d4; --highlight-color: white; --lowlight-color: dimgrey;";
+
     /// <summary>What an embedded capture's row says in place of a property name.</summary>
     public const string NoPropertyNote = "no property";
 }

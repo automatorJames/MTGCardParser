@@ -1,4 +1,4 @@
-﻿@using DocumentAnalysisInterface.Components.CorpusCaptures
+@using DocumentAnalysisInterface.Components.CorpusCaptures
 @inject RuntimeSettings RuntimeSettings
 
 @if (ShouldCollapse)
@@ -21,7 +21,7 @@ else
          leading parts could never highlight without the trailing ones coming along too. The
          content-box inside still carries the same path, so hovering the table body is unchanged. -->
     <div class="glyph-summary-branch" style="margin-top:16px">
-        <div class="glyph-summary-header" style=@(RootPalette.ToColorStyle(PaletteVariant.Sat))>
+        <div class="glyph-summary-header" style=@(OwnColorStyle(PaletteVariant.Sat))>
             <span class="glyph-type-name">
                 @{ var segments = HeaderSegments; }
                 @for (var i = 0; i < segments.Count; i++)
@@ -58,7 +58,7 @@ else
         {
             <div class="property-table-wrapper">
                 <div 
-                    class="content-box" data-path=@BranchTrace.FullyQualifiedName style=@(RootPalette.ToColorStyle(PaletteVariant.Dark))>
+                    class="content-box" data-path=@BranchTrace.FullyQualifiedName style=@(OwnColorStyle(PaletteVariant.Dark))>
 
                     @{
                         // One row per real occurrence: a terminal child nested under a repeated
@@ -79,9 +79,9 @@ else
                                         <!-- A back-reference with captures of its own ("that player") is a branch, not a row:
                                              what it refers to gets a row of its own, at the top of its table. -->
                                         <tr data-path="@BranchTrace.HoverPath">
-                                            <td class="prop-capture-table-cell first-column" style=@(RootPalette.ToColorStyle())>refers to</td>
-                                            <td class="prop-capture-table-cell type-column" style=@(RootPalette.ToColorStyle())>BackReference</td>
-                                            <td class="prop-capture-table-cell value-column" style=@(RootPalette.ToColorStyle())>@ReferentPath(BranchTrace, branchBackReference)</td>
+                                            <td class="prop-capture-table-cell first-column" style=@(OwnColorStyle())>refers to</td>
+                                            <td class="prop-capture-table-cell type-column" style=@(OwnColorStyle())>BackReference</td>
+                                            <td class="prop-capture-table-cell value-column" style=@(OwnColorStyle())>@ReferentPath(BranchTrace, branchBackReference)</td>
                                         </tr>
                                     }
                                     @foreach (var leaf in terminals)
@@ -186,7 +186,14 @@ else
     [Parameter]
     public HeaderSeparatorKind SeparatorFromLineage { get; set; } = HeaderSeparatorKind.Collapsed;
 
-    HexPalette RootPalette => DisplayContext.Palettes[PaletteKey(BranchTrace)];
+    /// <summary>
+    /// The colors of <see cref="BranchTrace"/>'s own header, box and rows: its palette's, or - spanning its clause, with
+    /// no palette slot of its own (see <see cref="CaptureTraceDisplayContext.SpansClause"/>) - the light ones of a clause's.
+    /// </summary>
+    string OwnColorStyle(PaletteVariant? variant = null) =>
+        DisplayContext.SpansClause(BranchTrace)
+            ? CaptureDisplay.ClauseColorStyle
+            : DisplayContext.Palettes[PaletteKey(BranchTrace)].ToColorStyle(variant);
 
     /// <summary>
     /// The key to look <see cref="CaptureTraceDisplayContext.Palettes"/> up by: <see cref="CaptureTrace.Representative"/>
@@ -217,7 +224,9 @@ else
             {
                 dataPath = capture.HoverPath;
 
-                if (DisplayContext.Palettes.TryGetValue(PaletteKey(capture), out var palette))
+                if (DisplayContext.SpansClause(capture))
+                    style = CaptureDisplay.ClauseColorStyle;
+                else if (DisplayContext.Palettes.TryGetValue(PaletteKey(capture), out var palette))
                     style = palette.ToColorStyle(PaletteVariant.Normal);
                 else if (CaptureDisplay.IsEmbedded(capture))
                     style = CaptureDisplay.ColorStyle;

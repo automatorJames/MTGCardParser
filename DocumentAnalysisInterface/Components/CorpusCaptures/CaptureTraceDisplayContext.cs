@@ -28,14 +28,57 @@ public class CaptureTraceDisplayContext
         _line = line;
         _runtimeSettings = runtimeSettings;
         _echoCorpus = echoCorpus;
+        _clauseSpanning = GetClauseSpanning(line);
 
-        // An embedded capture is grey rather than a color of its own (see CaptureDisplay.IsEmbedded), so it takes no slot.
-        Palettes = line.GetPositionalPalettes(x => IsEffectivelyCollapsed(x) || CaptureDisplay.IsEmbedded(x));
+        // An embedded capture is grey rather than a color of its own (see CaptureDisplay.IsEmbedded), so it takes no
+        // slot, and nor does one spanning its clause (see SpansClause).
+        Palettes = line.GetPositionalPalettes(x => IsUnderlineHidden(x) || CaptureDisplay.IsEmbedded(x));
         LineRoots = line.CaptureTraceRoots;
     }
 
+    readonly HashSet<CaptureTrace> _clauseSpanning;
+
+    /// <summary>
+    /// Whether <paramref name="trace"/> is the first level drawn of a clause's only capture - the clause captured whole
+    /// by one top-level glyph, collapsed nodes hidden. Its underline would run under the whole clause, which every
+    /// capture inside it already sits in, telling nothing - so it draws none and takes no palette slot, its table
+    /// headed in <see cref="CaptureDisplay.ClauseColorStyle"/>.
+    /// </summary>
+    public bool SpansClause(CaptureTrace trace) => _clauseSpanning.Contains(trace);
+
+    /// <summary>Whether <paramref name="trace"/> draws no underline of its own: collapsed, or spanning its clause.</summary>
+    public bool IsUnderlineHidden(CaptureTrace trace) =>
+        IsEffectivelyCollapsed(trace) || SpansClause(trace);
+
     bool IsEffectivelyCollapsed(CaptureTrace trace) =>
         trace.IsCollapsible && _runtimeSettings.HideCollapsibleCaptureNodes;
+
+    /// <summary>
+    /// For each clause captured whole by one top-level glyph, the first level of it that would draw an underline: the
+    /// glyph's own, or past any collapsed ones, the descendant they collapse into. None unless collapsed nodes are hidden.
+    /// </summary>
+    HashSet<CaptureTrace> GetClauseSpanning(ProcessedLine line)
+    {
+        if (!_runtimeSettings.HideCollapsibleCaptureNodes)
+            return [];
+
+        var spanning = new HashSet<CaptureTrace>();
+
+        foreach (var clause in line.Clauses)
+        {
+            if (clause.Units is not [{ CaptureContext.RootCaptureTrace: { IsSynthesized: false } root }])
+                continue;
+
+            CaptureTrace level = root;
+
+            while (IsEffectivelyCollapsed(level))
+                level = level.EffectiveChildren.First();
+
+            spanning.Add(level);
+        }
+
+        return spanning;
+    }
 
     /// <summary>
     /// How deep the visible (non-collapsed) nesting under <paramref name="roots"/> goes - some of the line's roots, like
@@ -44,7 +87,7 @@ public class CaptureTraceDisplayContext
     public int GetMaxEffectiveDepth(IReadOnlyCollection<RootCaptureTrace> roots)
     {
         var captureDepth = roots
-            .Select(root => root.GetEffectiveDepth(IsEffectivelyCollapsed))
+            .Select(root => root.GetEffectiveDepth(IsUnderlineHidden))
             .DefaultIfEmpty(0)
             .Max();
 
