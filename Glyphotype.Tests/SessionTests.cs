@@ -91,14 +91,14 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         var agent = CreateAgent(new() { StepsBeforeCheckIn = 2 });
         await agent.StartSessionAsync();
 
-        Assert.Contains("Session: step 1 of 2 before checking in", await agent.ApplyAsync(_animalSnores));
+        Assert.Contains("Session: 1 of 2 steps applied - keep going", await agent.ApplyAsync(_animalSnores));
         Assert.Contains("Check-in due (2 steps applied)", await agent.ApplyAsync(_animalYawns));
 
         var refused = await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(_animalSnores.Replace("snores", "dozes").Replace("Snores", "Dozes")));
         Assert.Contains("check-in is due", refused.Message);
 
         await agent.StartSessionAsync("keep going");
-        Assert.Contains("Session: step 1 of 2", await agent.UndoAndReapply(_animalYawns));
+        Assert.Contains("Session: 1 of 2 steps applied", await agent.UndoAndReapply(_animalYawns));
     }
 
     [Fact]

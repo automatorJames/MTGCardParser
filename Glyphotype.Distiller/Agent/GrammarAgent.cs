@@ -264,7 +264,8 @@ public sealed class GrammarAgent
             checkIn.Add($"after {Settings.AttemptsBeforeCheckIn} evaluations in a row without an applied step");
 
         report.AppendLine(checkIn.Count > 0
-            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, say what you'd try next, and wait. When the person says to continue, call `start_session` again."
+            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, say what you'd try next, and wait. When the person says to continue, call `start_session` again. " +
+                "Don't stop before then: text that's expensive to cover is something to evaluate and, if no step can afford it, to journal as an open problem - then move on to the next target."
             : "- There's no check-in limit: keep going until the corpus is covered or you're stuck, then summarize and wait. Uncovered text that only costs bits to cover isn't a reason to stop.");
 
         var stepRule = Settings.MaxBitsPerCoveredWord > 0
@@ -327,6 +328,9 @@ public sealed class GrammarAgent
     public void RequestHandoff() => _handoffDue = true;
 
     public bool IsHandoffDue => _handoffDue;
+
+    /// <summary>Steps applied since the session started or last checked in - what <see cref="AgentSessionSettings.StepsBeforeCheckIn"/> counts.</summary>
+    public int StepsSinceCheckIn => _stepsSinceCheckIn;
 
     /// <summary>Has the next <see cref="StartSessionAsync"/> continue this session's round - and its count toward the check-in - rather than start a new one.</summary>
     public void ContinueRoundInNextSession() => _continueRound = true;
@@ -391,7 +395,7 @@ public sealed class GrammarAgent
 
             return steps >= Settings.StepsBeforeCheckIn
                 ? $"Check-in due ({steps} step{S(steps)} applied): stop now, summarize the steps for the person, and wait. When they say to continue, call `start_session`."
-                : $"Session: step {steps} of {Settings.StepsBeforeCheckIn} before checking in.";
+                : $"Session: {steps} of {Settings.StepsBeforeCheckIn} steps applied - keep going: the check-in comes after step {Settings.StepsBeforeCheckIn}, and the tools say when it's due.";
         }
 
         if (!applied && Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn)

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Glyphotype.Distiller.Agent;
 using Glyphotype.Distiller.Workspaces;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -24,6 +24,12 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     /// <summary>Whether the agent has been told to hand off to a fresh session (see <see cref="HandoffPercent"/>) in this turn.</summary>
     bool _handingOff;
+
+    /// <summary>How many times in this round the agent has been told to go on after stopping with no check-in due.</summary>
+    int _nudges;
+
+    /// <summary>How many times a round tells an agent that stopped early to go on, before taking the stop as meant.</summary>
+    const int _maxNudges = 2;
 
     int? _handoffPercent;
 
@@ -62,6 +68,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     {
         _instructions = null;
         HasRound = false;
+        _nudges = 0;
     }
 
     /// <summary>
@@ -105,8 +112,10 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>
-    /// A round lasts until the agent stops, or is stopped - unless it stopped to hand off, when it goes on in a fresh
-    /// session. A check-in due ends it all the same.
+    /// A round lasts until a check-in is due, or the agent is stopped - unless it stopped to hand off, when it goes on in
+    /// a fresh session. An agent that stops on its own before a check-in is due is told to go on, up to
+    /// <see cref="_maxNudges"/> times a round: agents tend to stop at text that's expensive to cover, which the session
+    /// says to journal and move past.
     /// </summary>
     protected override void OnTurnEnded(bool stopped)
     {
@@ -120,7 +129,36 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             return;
         }
 
+        if (!stopped && Round is int unfinished && !agent.IsCheckInDue && !agent.IsHandoffDue && _nudges < _maxNudges && !EndedInError)
+        {
+            _nudges++;
+            _ = Task.Run(() => Nudge(unfinished));
+            return;
+        }
+
         Round = null;
+    }
+
+    /// <summary>Whether the turn just ended with an error - when going on would only meet it again.</summary>
+    bool EndedInError => Entries is [.., { Kind: ChatEntryKind.Error }];
+
+    /// <summary>Tells the agent, which stopped with no check-in due, to go on with AI round <paramref name="round"/>.</summary>
+    void Nudge(int round)
+    {
+        var steps = agent.Settings.StepsBeforeCheckIn;
+        var taken = agent.StepsSinceCheckIn;
+        var progress = steps > 0 ? $"{taken} of the round's {steps} steps are applied" : "this round has no step limit";
+        var message = $"No check-in is due yet - {progress}, so go on with AI round {round}. " +
+            "Text that's expensive to cover isn't a reason to stop: evaluate the best form you can find, apply it if the step rules allow, " +
+            "and if they don't, journal it as an open problem and move on to the next target. Stop when the tools say a check-in is due.";
+
+        if (!Start($"The agent stopped with no check-in due ({progress}): told it to go on.", message, ChatEntryKind.Note))
+        {
+            lock (_gate)
+                Round = null;
+        }
+
+        NotifyChanged();
     }
 
     /// <summary>Starts AI round <paramref name="round"/> again in the fresh session a handoff left, where the last session left it.</summary>
@@ -252,6 +290,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         var message = HasRound
             ? $"Continue with another round: call `start_session` again with instructions \"{instructions ?? _instructions}\", then follow the brief it returns."
             : GrammarAgentPrompts.Instruction(instructions);
+
+        _nudges = 0;
 
         if (Start(said, message))
         {
