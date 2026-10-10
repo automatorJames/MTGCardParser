@@ -135,8 +135,9 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// aggregated more than one property, it just forwards to its one child, bracketing the exact same
     /// stretch of text that child already brackets. A node with two or more children is never
     /// collapsible (it's aggregating distinct named properties, which is itself meaningful structure),
-    /// and a node whose only child is terminal is never collapsible (the terminal leaf's overline needs
-    /// this level's underline to pair with).
+    /// and a node whose only child is a leaf - terminal, or a glyph with nothing captured inside it - is
+    /// never collapsible (the leaf's overline needs this level's underline to pair with, and its row
+    /// needs this level's table to sit in).
     /// A <see cref="GlyphOneOfNode"/> choice or a <see cref="DynamicGlyphNode"/> resolution is no
     /// exception, even though which alternative/type it resolved to is genuinely meaningful: that fact
     /// is the collapsed-into child's own identity, so the property table folds it into the header it
@@ -149,7 +150,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         get
         {
             var children = EffectiveChildren.ToList();
-            return children.Count == 1 && !children[0].IsTerminal;
+            return children.Count == 1 && !children[0].IsTerminal && children[0].EffectiveChildren.Any();
         }
     }
 
