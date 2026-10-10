@@ -10,6 +10,9 @@ namespace Glyphotype.RegexGeneration.Graph.Nodes;
 /// between the text and the alternatives - any space wanted there belongs in the text itself (see
 /// <see cref="JoinerRules.Between"/>). The alternatives are grouped so the text binds to all of them rather than
 /// to the first and last alone - a plain group, which captures nothing under <see cref="RegexOptions.ExplicitCapture"/>.
+/// A joiner the one-of carries inside its own group (as an optional one-of does - see
+/// <see cref="NamedGroupNode.AppendOwnRegexBricks"/>) is grouped around in the same way, or it would precede the first
+/// alternative alone.
 /// </para>
 /// </summary>
 public class GlyphOneOfNode : GlyphNode
@@ -21,7 +24,9 @@ public class GlyphOneOfNode : GlyphNode
 
     protected override void AppendInnerContentBricks(RegexCollector collector)
     {
-        if (!Children.OfType<TextNode>().Any())
+        var carriesJoiner = LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading || TrailingJoinerSuccessor is not null;
+
+        if (!carriesJoiner && !Children.OfType<TextNode>().Any())
         {
             base.AppendInnerContentBricks(collector);
             return;

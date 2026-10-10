@@ -1,4 +1,4 @@
-using Glyphotype.Definitions;
+﻿using Glyphotype.Definitions;
 using Glyphotype.Distiller.Inspection;
 using Glyphotype.Distiller.Scoring;
 using Glyphotype.Distiller.Workbench;
@@ -104,5 +104,44 @@ public class EngineRegressionTests
             Assert.Equal(alternative == expected, (bool)speed.GetType().GetProperty(alternative).GetValue(speed));
 
         Assert.IsType<UnmatchedString>(Assert.Single(grammar.Tokenize("it runs")));
+    }
+
+    [Theory]
+    [InlineData("a dog with a loud bark", "WithLoud")]
+    [InlineData("a dog with size 2 or less", "WithSize")]
+    [InlineData("a dog", null)]
+    public void An_optional_one_of_matches_any_of_its_alternatives(string text, string expected)
+    {
+        // An optional one-of carries its leading joiner inside its own group, where it used to sit before the first
+        // alternative alone: (?<With> (?<A>…)|(?<B>…))? - so the second never matched after a space.
+        var grammar = Build("""
+            [Dependent]
+            public class WithLoud : Glyph
+            {
+                public override Nib[] Nibs => ["with a loud bark"];
+            }
+
+            [Dependent]
+            public class WithSize : Glyph
+            {
+                public override Nib[] Nibs => ["with size", Pattern("[0-9]"), "or less"];
+            }
+
+            public class Dog : Glyph
+            {
+                public override Nib[] Nibs => ["a dog", Prop(With)];
+
+                [Optional]
+                public OneOf<WithLoud, WithSize> With { get; set; }
+            }
+            """);
+
+        var match = Assert.IsAssignableFrom<Glyph>(Assert.Single(grammar.Tokenize(text)));
+        var rendered = ParseRenderer.Render(match, nested: true);
+
+        if (expected is null)
+            Assert.DoesNotContain("With", rendered);
+        else
+            Assert.Contains($"⟦{expected}: ", rendered);
     }
 }
