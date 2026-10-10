@@ -139,8 +139,8 @@ public sealed class GrammarAgent
     }
 
     /// <summary>Every glyph with its contribution, and every vocabulary with its cost and users.</summary>
-    /// <param name="sort">"net" (default), "matches", "name" or "cost".</param>
-    public async Task<string> ListGlyphsAsync(string sort = "net", CancellationToken cancellation = default)
+    /// <param name="sort">"words" (default), "net", "matches", "name" or "cost".</param>
+    public async Task<string> ListGlyphsAsync(string sort = "words", CancellationToken cancellation = default)
     {
         var trial = await GetScoredTrialAsync(cancellation);
         var definition = trial.Definition;
@@ -154,7 +154,8 @@ public sealed class GrammarAgent
             "name" => glyphs.OrderBy(x => x.Glyph.Name, StringComparer.Ordinal).ToList(),
             "matches" => glyphs.OrderByDescending(x => x.Contribution?.Occurrences ?? 0).ToList(),
             "cost" => glyphs.OrderByDescending(x => x.Contribution?.DefinitionBits ?? 0).ToList(),
-            _ => glyphs.OrderByDescending(x => x.Contribution?.NetBits ?? 0).ToList(),
+            "net" => glyphs.OrderByDescending(x => x.Contribution?.NetBits ?? 0).ToList(),
+            _ => glyphs.OrderByDescending(x => x.Contribution?.Words ?? 0).ToList(),
         };
 
         var report = new StringBuilder();
@@ -254,7 +255,7 @@ public sealed class GrammarAgent
         report.AppendLine("How this session works (set in the app, and enforced by the tools):");
         report.AppendLine("- The goal is full coverage: every word of the corpus inside a match. Coverage decides whether to cover text, and bits decide how - among the ways to cover it, the cheapest and most general. " +
             "Text with no cheap model still has to be covered: a step that costs bits to cover it is progress, not a failure.");
-        report.AppendLine($"- The loop: find recurring unmatched text, draft a glyph, check it with `tokenize`/`explain_mismatch`, `evaluate` it, then `apply` it with a one-line description of why. Before each step, say in one line what you're targeting. If you haven't read `guide` in this conversation, read it first.");
+        report.AppendLine($"- The loop: find recurring unmatched text (`unmatched_openings` shows where most of it is), draft a glyph, check it with `tokenize`/`explain_mismatch`, `evaluate` it, then `apply` it with a one-line description of why. Before each step, say in one line what you're targeting. If you haven't read `guide` in this conversation, read it first.");
 
         var checkIn = new List<string>();
 
@@ -800,6 +801,25 @@ public sealed class GrammarAgent
             report.AppendLine($"  {phrase.Occurrences,6:N0} {phrase.Documents,5:N0}  {phrase.Text}");
 
         if (phrases.Count == 0)
+            report.AppendLine("  (none)");
+
+        return report.ToString();
+    }
+
+    /// <summary>Uncovered spans grouped by how they open, by the uncovered words they hold (see <see cref="CorpusQueries.GetUnmatchedOpenings"/>).</summary>
+    public async Task<string> UnmatchedOpeningsAsync(int maxWords = 3, int minOccurrences = 3, int limit = 25, CancellationToken cancellation = default)
+    {
+        var trial = await GetScoredTrialAsync(cancellation);
+        var openings = CorpusQueries.GetUnmatchedOpenings(trial.Documents, maxWords, minOccurrences, limit);
+
+        var report = new StringBuilder();
+        report.AppendLine($"How uncovered text opens (up to {maxWords} word{S(maxWords)}, at least {minOccurrences}×), by the uncovered words the spans hold - held means inside a match, a slot to fill:");
+        report.AppendLine($"  {"words",6} {"spans",6} {"held",5} {"docs",5}  opening  →  commonest span");
+
+        foreach (var opening in openings)
+            report.AppendLine($"  {opening.Words,6:N0} {opening.Spans,6:N0} {opening.Held,5:N0} {opening.Documents,5:N0}  {opening.Opening} …  →  {Truncate(opening.Example, 90)}");
+
+        if (openings.Count == 0)
             report.AppendLine("  (none)");
 
         return report.ToString();

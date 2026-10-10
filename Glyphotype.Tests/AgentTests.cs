@@ -1,4 +1,4 @@
-using Glyphotype.Distiller.Agent;
+﻿using Glyphotype.Distiller.Agent;
 using Glyphotype.Distiller.Inspection;
 using Glyphotype.Distiller.Workbench;
 
@@ -283,6 +283,18 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         Assert.Contains("the dog sleeps in the", phrases);
         Assert.DoesNotContain("  dog sleeps in the\r", phrases);
+    }
+
+    [Fact]
+    public async Task Uncovered_text_is_grouped_by_how_it_opens()
+    {
+        var (agent, _) = CreateAgent();
+
+        var openings = await agent.UnmatchedOpeningsAsync(maxWords: 3, minOccurrences: 2);
+
+        // Ranked by the uncovered words the spans hold: every "the dog sleeps" span is a "the dog" span too.
+        Assert.Contains("the dog sleeps …  →  the dog sleeps in the garage", openings);
+        Assert.True(openings.IndexOf("the dog …", StringComparison.Ordinal) < openings.IndexOf("the dog sleeps …", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -28,6 +28,8 @@ Only create or switch workspaces when the person asks. Switching changes what th
 1. **Orient.** `overview` shows the score, coverage and biggest unmatched text. `list_glyphs` shows what exists,
    and `show` shows any definition's C# source.
 2. **Find a target.** Look for recurring unmatched text:
+   - `unmatched_openings` groups uncovered text by how it opens - the quickest way to the constructions a frame
+     (or a held slot) would cover most of;
    - `residual_phrases` lists repeated word runs;
    - `residuals` lists whole unmatched spans by cost;
    - `search_lines` finds lines by regex, and `scope=unmatched` searches only the text nothing covers.

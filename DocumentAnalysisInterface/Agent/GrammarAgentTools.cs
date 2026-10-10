@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using Glyphotype.Distiller.Agent;
 using Glyphotype.Distiller.Inspection;
 using ModelContextProtocol;
@@ -57,7 +57,7 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
 
     [McpServerTool(Name = "list_glyphs", ReadOnly = true), Description("Every glyph with its net bits, top-level matches, words covered and definition cost; every vocabulary with its cost and the glyphs using it.")]
     public Task<string> ListGlyphs(
-        [Description("Sort glyphs by: net (default), matches, cost or name.")] string sort = "net",
+        [Description("Sort glyphs by: words covered (default), net, matches, cost or name.")] string sort = "words",
         CancellationToken cancellation = default) =>
         Run(() => agent.ListGlyphsAsync(sort, cancellation));
 
@@ -150,6 +150,14 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         [Description("Only spans of at least this many words.")] int minWords = 1,
         CancellationToken cancellation = default) =>
         Run(() => agent.ResidualsAsync(limit, offset, minWords, cancellation));
+
+    [McpServerTool(Name = "unmatched_openings", ReadOnly = true), Description("Uncovered text - unmatched, or held unresolved in a match - grouped by its opening words, ranked by the uncovered words it holds: the constructions whose frame, or slot, covers the most.")]
+    public Task<string> UnmatchedOpenings(
+        [Description("Longest opening, in words.")] int maxWords = 3,
+        [Description("Only openings starting at least this many spans.")] int minOccurrences = 3,
+        [Description("How many openings to list.")] int limit = 25,
+        CancellationToken cancellation = default) =>
+        Run(() => agent.UnmatchedOpeningsAsync(maxWords, minOccurrences, limit, cancellation));
 
     [McpServerTool(Name = "residual_phrases", ReadOnly = true), Description("Word runs that recur in unmatched text, at their longest form, ranked by the words they'd account for: where the next glyph probably is.")]
     public Task<string> ResidualPhrases(
