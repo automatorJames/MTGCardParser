@@ -101,6 +101,11 @@ pre.nested-underline-container {
     margin: var(--clause-rule-space-above) 0 var(--clause-rule-space-below);
 }
 
+/* Between two of a line's top-level property tables: the same thin rule as between clauses. */
+.property-table-rule {
+    border-top: 1px solid var(--clause-rule-color);
+}
+
 /* Holds a line's text, and the agent button in its bottom-right corner */
 .line-text-frame {
     position: relative;

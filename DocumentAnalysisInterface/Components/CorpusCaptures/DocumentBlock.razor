@@ -75,8 +75,14 @@
                         <LineChatPanel @key=lineChat Chat="lineChat" Line="line" />
                     }
 
+                    @{ var first = true; }
                     @foreach (var root in line.MatchedCaptureTraceRoots)
                     {
+                        @if (!first)
+                        {
+                            <div class="property-table-rule" style=@GetPropertyTableRuleStyle()></div>
+                        }
+                        first = false;
                         <PropertyTable BranchTrace=@root />
                     }
                 </div>
@@ -138,4 +144,8 @@
         $"--clause-rule-color: {DocumentTextPresentation.ClauseRuleColorHex}; " +
         $"--clause-rule-space-above: {DocumentTextPresentation.ClauseRuleSpaceAbovePx}px; " +
         $"--clause-rule-space-below: {DocumentTextPresentation.ClauseRuleSpaceBelowPx}px;";
+
+    // The rule between a line's top-level property tables, in the clause rule's color.
+    static string GetPropertyTableRuleStyle() =>
+        $"--clause-rule-color: {DocumentTextPresentation.ClauseRuleColorHex};";
 }
