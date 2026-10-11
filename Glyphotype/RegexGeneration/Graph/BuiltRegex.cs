@@ -46,6 +46,7 @@ public class BuiltRegex
     readonly Lazy<Regex> _anchoredRegex;
     readonly Lazy<Regex> _scopeFillingRegex;
     readonly Lazy<PatternRegex> _patternRegex;
+    readonly Lazy<ILookup<string, RegexBrickValue>> _membersByEnclosingEnum;
 
     /// <summary>
     /// <see cref="MinifiedRegex"/> with every authored pattern inside a named group of its own, and those patterns
@@ -85,7 +86,25 @@ public class BuiltRegex
         _anchoredRegex = new(() => Compile($@"\G({MinifiedRegex})"));
         _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));
         _patternRegex = new(BuildPatternRegex);
+        _membersByEnclosingEnum = new(() => IndexMembersByEnclosingEnum(_regexBricks));
     }
+
+    /// <summary>
+    /// <see cref="IndexMembersByEnclosingEnum"/> over <see cref="Bricks"/>, built once: a type embedded in
+    /// others' dynamic groups is formatted again for every one, every render.
+    /// </summary>
+    public ILookup<string, RegexBrickValue> MembersByEnclosingEnum => _membersByEnclosingEnum.Value;
+
+    /// <summary>
+    /// Every enum member value brick in <paramref name="bricks"/>, keyed by the fully qualified name of each
+    /// enum group it sits inside, in brick order - so formatting finds an enum's members by looking them up
+    /// rather than scanning every brick once per enum.
+    /// </summary>
+    public static ILookup<string, RegexBrickValue> IndexMembersByEnclosingEnum(IEnumerable<RegexBrick> bricks) =>
+        bricks
+            .OfType<RegexBrickValue>()
+            .SelectMany(member => member.NamedGroupNodeLineage.OfType<EnumNode>().Select(enumNode => (enumNode.FullyQualifiedName, member)))
+            .ToLookup(x => x.FullyQualifiedName, x => x.member);
 
     /// <summary>Whether any part of this regex is a pattern an author wrote, rather than literal text or structure (see <see cref="Nodes.TextNode.AuthoredPattern"/>).</summary>
     public bool HasAuthoredPatterns => _patternRegex.Value is not null;

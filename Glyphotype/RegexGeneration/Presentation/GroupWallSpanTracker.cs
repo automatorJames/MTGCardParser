@@ -8,10 +8,11 @@ namespace Glyphotype.RegexGeneration.Presentation;
 internal class GroupWallSpanTracker
 {
     readonly Stack<SmartSpan> _leftWalls = [];
+    SmartSpan[] _leftWallsOutermostFirst = [];
     List<SmartSpan> _mirroredRightWalls = [];
 
     /// <summary>Left-hand wall spans, outermost first, for every group box currently open.</summary>
-    public IEnumerable<SmartSpan> LeftWalls => _leftWalls.Reverse();
+    public IEnumerable<SmartSpan> LeftWalls => _leftWallsOutermostFirst;
 
     /// <summary>How many group boxes are currently open — the live nesting depth at this point in rendering.</summary>
     public int Depth => _leftWalls.Count;
@@ -23,13 +24,20 @@ internal class GroupWallSpanTracker
     public void Push(SmartSpan leftWallSpan)
     {
         _leftWalls.Push(leftWallSpan);
-        _mirroredRightWalls = _leftWalls.Select(x => x.Mirror()).ToList();
+        Rebuild();
     }
 
     /// <summary>Closes the innermost open group box.</summary>
     public void Pop()
     {
         _leftWalls.Pop();
+        Rebuild();
+    }
+
+    // Built as walls open and close rather than on every read: every line reads both.
+    void Rebuild()
+    {
+        _leftWallsOutermostFirst = _leftWalls.Reverse().ToArray();
         _mirroredRightWalls = _leftWalls.Select(x => x.Mirror()).ToList();
     }
 }

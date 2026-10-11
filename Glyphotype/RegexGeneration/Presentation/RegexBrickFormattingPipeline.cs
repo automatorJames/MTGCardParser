@@ -53,6 +53,9 @@ internal class RegexBrickFormattingPipeline
         }
 
         var sequence = FoldAdheringJoiners(RemoveRawSynthesizedSectionBricks(bricks));
+        var membersByEnclosingEnum = ReferenceEquals(bricks, _regexGraph.BuiltRegex.Bricks)
+            ? _regexGraph.BuiltRegex.MembersByEnclosingEnum
+            : BuiltRegex.IndexMembersByEnclosingEnum(bricks);
         List<RegexBrick> result = [];
 
         for (int i = 0; i < sequence.Count; i++)
@@ -66,7 +69,7 @@ internal class RegexBrickFormattingPipeline
             result.Add(brick);
 
             if (brick is RegexBrickGroupOpen groupOpen)
-                ExpandGroupOpen(groupOpen, bricks, result, includeSupplementalLines);
+                ExpandGroupOpen(groupOpen, bricks, membersByEnclosingEnum, result, includeSupplementalLines);
         }
 
         return result;
@@ -130,14 +133,14 @@ internal class RegexBrickFormattingPipeline
         && !(sequence[index] is RegexBrickGroupClose && sequence[index - 1] is RegexBrickGroupClose);
 
     /// <summary>Simplifies a group-open brick's displayed name and, for enum/dynamic groups, appends its member/capture section.</summary>
-    void ExpandGroupOpen(RegexBrickGroupOpen groupOpen, List<RegexBrick> allBricks, List<RegexBrick> result, bool includeSupplementalLines)
+    void ExpandGroupOpen(RegexBrickGroupOpen groupOpen, List<RegexBrick> allBricks, ILookup<string, RegexBrickValue> membersByEnclosingEnum, List<RegexBrick> result, bool includeSupplementalLines)
     {
         groupOpen.SetFormattedGroupName(_regexGraph.SimpleUniqueNames[groupOpen.FullyQualifiedName]);
 
         if (groupOpen.NamedGroupParent is EnumNode enumNode)
         {
             var enumSummary = _summary.EnumCaptureSummaries[enumNode.FullyQualifiedName];
-            result.AddRange(_enumSectionBuilder.Build(enumNode, allBricks, enumSummary, _displayMode, includeOmittedCount: includeSupplementalLines));
+            result.AddRange(_enumSectionBuilder.Build(enumNode, membersByEnclosingEnum[enumNode.FullyQualifiedName], enumSummary, _displayMode, includeOmittedCount: includeSupplementalLines));
             return;
         }
 

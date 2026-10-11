@@ -36,15 +36,17 @@ public class RegexBrick
     public RegexNode Parent => NodeLineage.LastOrDefault();
 
     /// <summary>The subset of <see cref="NodeLineage"/> that are named groups, root-to-self.</summary>
-    public NamedGroupNode[] NamedGroupNodeLineage => NodeLineage.OfType<NamedGroupNode>().ToArray();
+    public NamedGroupNode[] NamedGroupNodeLineage { get; }
 
     NamedGroupNode _namedGroupParentOverride;
 
     /// <summary>The nearest enclosing named group, or an override set by <see cref="OverrideNamedGroupParent"/>.</summary>
-    public NamedGroupNode NamedGroupParent => _namedGroupParentOverride ?? NamedGroupNodeLineage.LastOrDefault();
+    public NamedGroupNode NamedGroupParent => _namedGroupParentOverride ?? _baseNamedGroupParent;
+
+    readonly NamedGroupNode _baseNamedGroupParent;
 
     /// <summary>Fully qualified names of every named group enclosing this brick, root-to-self.</summary>
-    public string[] NamedGroupLineageNames => NamedGroupNodeLineage.Select(x => x.FullyQualifiedName).ToArray();
+    public string[] NamedGroupLineageNames { get; }
 
     /// <summary>Enclosing named groups, self-to-root, omitting transparent root groups.</summary>
     public NamedGroupNode[] GroupLineage { get; }
@@ -68,6 +70,11 @@ public class RegexBrick
     {
         Regex = regex;
         NodeLineage = parentNode.Lineage;
+        // Kept rather than derived on every read: formatting a large regex reads these for every brick many
+        // times over (once per enum section, and per span colored), and the lineage never changes.
+        NamedGroupNodeLineage = NodeLineage.OfType<NamedGroupNode>().ToArray();
+        NamedGroupLineageNames = NamedGroupNodeLineage.Select(x => x.FullyQualifiedName).ToArray();
+        _baseNamedGroupParent = NamedGroupNodeLineage.LastOrDefault();
         _baseFullyQualifiedName = parentNode.FullyQualifiedName;
         GroupLineage = parentNode.Lineage.OfType<NamedGroupNode>().Where(x => !x.IsTransparentRoot).Reverse().ToArray();
         GroupLineageNames = GroupLineage.Select(x => x.Name).ToArray();

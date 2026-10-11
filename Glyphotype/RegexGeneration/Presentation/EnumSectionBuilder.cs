@@ -11,9 +11,10 @@ internal class EnumSectionBuilder
 {
     /// <summary>Builds the full ordered sequence of member/synonym/omitted-count bricks for <paramref name="enumNode"/>.</summary>
     /// <param name="includeOmittedCount">Whether to append the trailing "N omitted" summary row at all.</param>
-    public List<RegexBrick> Build(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode, bool includeOmittedCount = true)
+    /// <param name="memberBricks">The value bricks inside <paramref name="enumNode"/>, in brick order.</param>
+    public List<RegexBrick> Build(EnumNode enumNode, IEnumerable<RegexBrickValue> memberBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode, bool includeOmittedCount = true)
     {
-        var members = GetMembersToDisplay(enumNode, allBricks, enumSummary, displayMode);
+        var members = GetMembersToDisplay(memberBricks, enumSummary, displayMode);
 
         // Full already shows every member with its real (possibly zero) count, so there's nothing left
         // for an "N omitted" row to summarize.
@@ -45,7 +46,7 @@ internal class EnumSectionBuilder
     /// synonym breakdown included, ranked by occurrence count - today's default view.</item>
     /// </list>
     /// </summary>
-    static List<RegexBrickValue> GetMembersToDisplay(EnumNode enumNode, List<RegexBrick> allBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode)
+    static List<RegexBrickValue> GetMembersToDisplay(IEnumerable<RegexBrickValue> memberBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode)
     {
         // Checked via EnumCaptureTraceSummary's safe accessors rather than the raw dictionaries/
         // EnumMembersWithZeroOcurrences: a member the graph declares but the summary has no entry for at
@@ -64,10 +65,9 @@ internal class EnumSectionBuilder
         RegexBrickValue PickRepresentative(IGrouping<object, RegexBrickValue> group) =>
             group.FirstOrDefault(IsOccurringPattern) ?? group.First();
 
-        var membersByValue = allBricks
-            .OfType<RegexBrickValue>()
-            .Where(x => x.NamedGroupLineageNames.Contains(enumNode.FullyQualifiedName))
-            .GroupBy(x => x.Value);
+        var membersByValue = memberBricks
+            .GroupBy(x => x.Value)
+            .ToList();
 
         if (displayMode == RegexDisplayMode.Full)
             return membersByValue
