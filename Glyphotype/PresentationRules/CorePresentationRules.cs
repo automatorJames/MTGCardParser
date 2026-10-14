@@ -33,6 +33,12 @@ public static class SmartRegexStaticRules
     /// </summary>
     public static int EnumMemberIndentSpaces = 2;
 
+    /// <summary>
+    /// The column no line of a long literal match reaches, indent included - the next word starts a line of its
+    /// own instead (see <see cref="LiteralLineWrapper"/>). A single word longer than that still gets a line to itself.
+    /// </summary>
+    public static int LiteralWrapColumn = 32;
+
     /// <summary>Extra columns of padding before the '#' comment separator.</summary>
     public static int CommentBorderLineBuffer = 2;
 

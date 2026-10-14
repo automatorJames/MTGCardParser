@@ -43,8 +43,8 @@ public static class RegexDebugRenderer
     }
 
     /// <summary>
-    /// <see cref="SmartLineRenderer.Render"/> emits exactly one line per formatted brick, so a brick's
-    /// index in the formatted sequence is its line index. The failure brick itself usually survives
+    /// <see cref="SmartLineRenderer.Render"/> emits a line per formatted brick, but for the extra lines a wrapped
+    /// literal takes, so a brick's line is its first (see <see cref="SmartLineRenderer.GetFirstLineIndex"/>). The failure brick itself usually survives
     /// formatting (a failing group's open bookend always does); when it doesn't (e.g. a joiner folded onto
     /// the preceding literal's line), walk backward through the raw sequence to the nearest brick that did.
     /// </summary>
@@ -58,10 +58,10 @@ public static class RegexDebugRenderer
 
         for (int i = rawIdx; i >= 0; i--)
         {
-            int lineIdx = formattedBricks.IndexOf(rawBricks[i]);
+            int brickIdx = formattedBricks.IndexOf(rawBricks[i]);
 
-            if (lineIdx >= 0)
-                return lineIdx;
+            if (brickIdx >= 0)
+                return SmartLineRenderer.GetFirstLineIndex(formattedBricks, brickIdx);
         }
 
         return -1;

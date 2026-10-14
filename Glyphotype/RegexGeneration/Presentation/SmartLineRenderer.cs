@@ -2,8 +2,8 @@ namespace Glyphotype.RegexGeneration.Presentation;
 
 /// <summary>
 /// Renders an already-formatted brick sequence (see <see cref="RegexBrickFormattingPipeline"/>) into
-/// <see cref="SmartLine"/>s: one line per brick, pairing its padded regex text with a colored, box-drawn
-/// comment. Delegates group-box corner/padding-line rendering to <see cref="GroupBookendCommentRenderer"/>
+/// <see cref="SmartLine"/>s: one line per brick - or several, for a literal match long enough to wrap (see
+/// <see cref="LiteralLineWrapper"/>) - pairing its padded regex text with a colored, box-drawn comment. Delegates group-box corner/padding-line rendering to <see cref="GroupBookendCommentRenderer"/>
 /// and nested-wall bookkeeping to <see cref="GroupWallSpanTracker"/>; this class owns per-line assembly,
 /// named-group palette lookup (the coloring fallback for bricks with no more specific role), and classifying
 /// bricks into the <see cref="RegexSpanKind"/> roles that <see cref="SmartSpanControlPanel"/> knows how
@@ -42,7 +42,7 @@ public class SmartLineRenderer
         _bookendRenderer = new GroupBookendCommentRenderer(SpanFromBrick, _metrics.MaxCommentLength);
     }
 
-    /// <summary>Renders every brick in <paramref name="bricks"/> into its own <see cref="SmartLine"/>, in order.</summary>
+    /// <summary>Renders every brick in <paramref name="bricks"/> into its own <see cref="SmartLine"/>s, in order.</summary>
     public static List<SmartLine> Render(List<RegexBrick> bricks, RegexGraph regexGraph) =>
         new SmartLineRenderer(bricks, regexGraph).RenderLines();
 
@@ -68,10 +68,16 @@ public class SmartLineRenderer
             if (brick is RegexBrickGroupClose)
                 _wallTracker.Pop();
 
-            List<SmartSpan> spans = [.. BuildRegexColumnSpans(brick), BuildCommentSeparatorSpan(brick)];
-            spans.AddRange(BuildCommentSpans(brick));
+            var regexLines = LiteralLineWrapper.Wrap(brick);
 
-            lines.Add(new(spans));
+            for (int i = 0; i < regexLines.Count; i++)
+            {
+                // A wrapped literal's comment goes on its first line; the lines after it carry the walls alone.
+                List<SmartSpan> spans = [.. BuildRegexColumnSpans(brick, regexLines[i]), BuildCommentSeparatorSpan(brick)];
+                spans.AddRange(i == 0 ? BuildCommentSpans(brick) : BuildContinuationCommentSpans(brick));
+
+                lines.Add(new(spans));
+            }
 
             if (brick is RegexBrickGroupOpen groupOpen)
                 _wallTracker.Push(BuildLeftWallSpan(groupOpen));
@@ -80,16 +86,20 @@ public class SmartLineRenderer
         return lines;
     }
 
+    /// <summary>The index of the first line <paramref name="bricks"/>[<paramref name="brickIndex"/>] renders as - its own index, but for the extra lines a wrapped literal before it takes.</summary>
+    internal static int GetFirstLineIndex(List<RegexBrick> bricks, int brickIndex) =>
+        bricks.Take(brickIndex).Sum(LiteralLineWrapper.LineCount);
+
     /// <summary>
     /// The brick's regex-column span(s): indented to its nesting depth and padded out to the shared comment
     /// column, same as before. Most brick kinds still render as a single span colored by their enclosing
     /// named group, but a few kinds get split into role-tagged sub-spans: an enum member row's leading
     /// joiner vs. its pattern text, and a literal-match brick's words vs. its connective spaces.
     /// </summary>
-    List<SmartSpan> BuildRegexColumnSpans(RegexBrick brick)
+    List<SmartSpan> BuildRegexColumnSpans(RegexBrick brick, string regexText)
     {
         var indent = string.Empty.PadLeft(SmartRegexStaticRules.GetIndentSpaces(brick));
-        var indented = indent + brick.RegexFormatted;
+        var indented = indent + regexText;
         var trailingPad = string.Empty.PadRight(Math.Max(0, _metrics.CommentSeparatorColumn - indented.Length));
 
         if (brick is RegexBrickValue member)
@@ -108,7 +118,7 @@ public class SmartLineRenderer
         }
 
         if (brick.Parent is TextNode)
-            return BuildLiteralMatchSpans(brick, indent, trailingPad);
+            return BuildLiteralMatchSpans(brick, regexText, indent, trailingPad);
 
         return [SpanFromBrick(brick, indented + trailingPad)];
     }
@@ -123,10 +133,8 @@ public class SmartLineRenderer
     /// line by <c>RegexBrickFormattingPipeline.FoldAdheringJoiners</c>, which lands here as the trailing
     /// fragment of e.g. <c>,[ ]</c> and so gets colored as the connective space it is.
     /// </summary>
-    List<SmartSpan> BuildLiteralMatchSpans(RegexBrick brick, string indent, string trailingPad)
+    List<SmartSpan> BuildLiteralMatchSpans(RegexBrick brick, string text, string indent, string trailingPad)
     {
-        var text = brick.RegexFormatted;
-
         if (text == BuiltRegex.EscapedSpace)
             return [SpanFromBrick(brick, indent + text + trailingPad, RegexSpanKind.RegexConnectiveSpace)];
 
@@ -164,6 +172,14 @@ public class SmartLineRenderer
         spans.AddRange(_wallTracker.RightWalls);
 
         return spans;
+    }
+
+    /// <summary>The comment-column spans for a wrapped literal's lines after its first: the enclosing walls around a blank comment.</summary>
+    List<SmartSpan> BuildContinuationCommentSpans(RegexBrick brick)
+    {
+        var availableWidth = _metrics.MaxCommentLength - CommentBoxMetrics.GetGroupBoxPaddingCount(_wallTracker.Depth, isBookend: false);
+
+        return [.. _wallTracker.LeftWalls, SpanFromBrick(brick, "".PadRight(availableWidth), RegexSpanKind.CommentLiteralMatch), .. _wallTracker.RightWalls];
     }
 
     /// <summary>Center- or right-padded comment span(s) for a non-bookend brick, sized to the shared comment box width. An enum member row (standalone or synonym-group header) splits into its name and occurrence-count fields; the other synthesized Presentation brick kinds get their own dedicated role.</summary>
