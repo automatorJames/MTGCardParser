@@ -86,14 +86,16 @@ public class RegexBrick
         GroupLineage.Length + NestedDepthModifer;
 
     /// <summary>
-    /// Sets (does not accumulate) an offset applied on top of this brick's own graph-computed depth. A
-    /// brick's depth is normally fixed by its own graph's ancestry, but a brick spliced in from an
-    /// independently-compiled graph — e.g. a dynamic capture's resolved type, embedded by
-    /// <see cref="DynamicSectionBuilder"/> — needs its depth shifted to match where it's actually being
-    /// rendered. Bricks are shared/cached per type and re-formatted on every render, so this must overwrite
-    /// rather than add — an additive offset would compound further on every subsequent render.
+    /// Adds to an offset applied on top of this brick's own graph-computed depth. A brick's depth is
+    /// normally fixed by its own graph's ancestry, but a brick spliced in from an independently-compiled
+    /// graph — e.g. a dynamic capture's resolved type, embedded by <see cref="DynamicSectionBuilder"/> —
+    /// needs its depth shifted to match where it's actually being rendered. It accumulates because
+    /// embeddings nest: a resolved type's own dynamic group shifts its contents first, and the outer
+    /// embedding then shifts them again along with the rest of that type. An embedded brick is a copy (see
+    /// <see cref="CloneForEmbedding"/>), and every formatting pass first clears its own shared bricks via
+    /// <see cref="ResetEmbeddingOverrides"/>, so the offset never compounds from one render to the next.
     /// </summary>
-    public void OffsetNestedDepth(int levels) => _depthOffset = levels;
+    public void OffsetNestedDepth(int levels) => _depthOffset += levels;
 
     /// <summary>
     /// Overrides <see cref="FullyQualifiedName"/>, e.g. rebasing a dynamic capture's resolved type's own
@@ -122,6 +124,14 @@ public class RegexBrick
         _fullyQualifiedNameOverride = null;
         _namedGroupParentOverride = null;
     }
+
+    /// <summary>
+    /// A copy of this brick, carrying its formatting and embedding overrides as they stand, for splicing into
+    /// another type's rendering. Bricks are shared/cached per type, so a type embedded more than once in the
+    /// same render - resolved in several dynamic groups - must be given copies: otherwise every embedding
+    /// shifts and renames the same objects, and each one takes on the depth and name of the last.
+    /// </summary>
+    public RegexBrick CloneForEmbedding() => (RegexBrick)MemberwiseClone();
 
     public override string ToString() => RegexFormatted;
 }

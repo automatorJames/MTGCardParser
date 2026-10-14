@@ -122,12 +122,16 @@ internal class DynamicSectionBuilder
     /// Formats one resolved type's own bricks from the actual instances captured as that type — the same
     /// <see cref="RegexBrickFormattingPipeline"/> every registered type's own page runs — without rendering
     /// them yet, so they can be depth-shifted and spliced into the outer sequence for one shared render pass.
+    /// Returns copies (see <see cref="RegexBrick.CloneForEmbedding"/>), so a type resolved in more than one
+    /// dynamic group keeps each embedding's own depth and name.
     /// </summary>
     static List<RegexBrick> RenderResolvedType(RegexGraph resolvedGraph, List<Glyph> glyphs, bool includeSupplementalLines, RegexDisplayMode displayMode)
     {
         var resolvedSummary = new GlyphOccurrenceSummary(resolvedGraph.RootGlyphType, glyphs.Select(g => new MatchOccurrence(null, g)));
         var pipeline = new RegexBrickFormattingPipeline(resolvedGraph, resolvedSummary, displayMode);
 
-        return pipeline.Format(resolvedGraph.BuiltRegex.Bricks, includeSupplementalLines);
+        return pipeline.Format(resolvedGraph.BuiltRegex.Bricks, includeSupplementalLines)
+            .Select(x => x.CloneForEmbedding())
+            .ToList();
     }
 }
