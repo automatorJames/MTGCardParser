@@ -192,7 +192,7 @@ else
     /// </summary>
     string OwnColorStyle(PaletteVariant? variant = null) =>
         DisplayContext.SpansClause(BranchTrace)
-            ? CaptureDisplay.ClauseColorStyle
+            ? CaptureDisplay.ClauseTableColorStyle
             : DisplayContext.Palettes[PaletteKey(BranchTrace)].ToColorStyle(variant);
 
     /// <summary>

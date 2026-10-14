@@ -13,6 +13,9 @@ else
     <LoadingIndicator Label=@Label />
 }
 
+@implements IDisposable
+@inject RuntimeSettings RuntimeSettings
+
 @code {
     [Parameter]
     public RenderFragment ChildContent { get; set; }
@@ -29,10 +32,21 @@ else
     bool _ready;
     bool _onReadyInvoked;
 
+    protected override void OnInitialized() => RuntimeSettings.OnChanged += OnSettingsChanged;
+
+    void OnSettingsChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => RuntimeSettings.OnChanged -= OnSettingsChanged;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_ready)
         {
+            // Held back until the saved settings are in, so the content's first appearance is already the finished
+            // one rather than the defaults followed by the saved settings applied over them.
+            if (!RuntimeSettings.IsLoaded)
+                return;
+
             _ready = true;
             StateHasChanged();
             return;

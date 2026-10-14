@@ -437,6 +437,12 @@ public static class CaptureDisplay
     /// </summary>
     public const string ClauseColorStyle = "--color: #d4d4d4; --highlight-color: white; --lowlight-color: dimgrey;";
 
+    /// <summary>
+    /// <see cref="ClauseColorStyle"/> as the top of a property table wears it: the header's name and the box's lines
+    /// grey, so the outermost level is less prominent than the glyphs inside it. Lights up as the clause's does.
+    /// </summary>
+    public const string ClauseTableColorStyle = "--color: #8a8a8a; --highlight-color: white; --lowlight-color: dimgrey;";
+
     /// <summary>What an embedded capture's row says in place of a property name.</summary>
     public const string NoPropertyNote = "no property";
 }
