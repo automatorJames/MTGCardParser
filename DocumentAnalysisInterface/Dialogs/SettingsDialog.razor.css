@@ -46,3 +46,44 @@
     gap: 0.35rem;
     cursor: pointer;
 }
+
+.settings-note {
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.settings-error {
+    color: #f28b82;
+    padding-top: 0.25rem;
+}
+
+.volume-range {
+    gap: 1rem;
+}
+
+    .volume-range label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+.volume-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+    gap: 0.25rem 0.5rem;
+    max-height: 10rem;
+    overflow-y: auto;
+    padding: 0.4rem 0;
+}
+
+.volume-option {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+}
+
+.volume-status {
+    justify-content: space-between;
+    gap: 1rem;
+}

@@ -1,5 +1,6 @@
 ﻿using Glyphotype;
 using Glyphotype.GlyphAnalysisDTOs;
+using Glyphotype.Interfaces;
 using MTGGlyphs.Data;
 
 namespace ConsoleUtility;
@@ -25,26 +26,20 @@ internal class Program
     }
 
     /// <summary>
-    /// Scores the MTG grammar against the card corpus (see <see cref="MdlScorer"/>): up to set sequence
-    /// <paramref name="maxSetSequence"/>, or every set for "all", or appsettings' MaxSetSequence when omitted.
+    /// Scores the MTG grammar against the card corpus (see <see cref="MdlScorer"/>): the sets <paramref name="volumes"/> names by set
+    /// sequence - a range ("1-5") or a list ("1,3,7") - or every set when omitted.
     /// </summary>
-    static void PrintMdlScore(string maxSetSequence)
+    static void PrintMdlScore(string volumes)
     {
-        var settings = GlobalSettings.Current;
-        var corpusSettings = new GlobalSettings
+        var selection = volumes switch
         {
-            SqlConnString = settings.SqlConnString,
-            IncludeEmptyDocuments = settings.IncludeEmptyDocuments,
-            MaxSetSequence = maxSetSequence switch
-            {
-                null => settings.MaxSetSequence,
-                "all" => null,
-                _ => int.Parse(maxSetSequence),
-            },
+            null => VolumeSelection.All,
+            _ when volumes.Split('-') is [var min, var max] => VolumeSelection.Range(int.Parse(min), int.Parse(max)),
+            _ => VolumeSelection.Only(volumes.Split(',').Select(int.Parse).ToArray()),
         };
 
         // Tokenized directly rather than through CorpusAnalyzer, which also builds echo trees the score doesn't use.
-        var documents = new CardDataGetter(corpusSettings).GetDocumentsAsync().GetAwaiter().GetResult()
+        var documents = selection.GetDocumentsAsync(_cardDataGetter).GetAwaiter().GetResult()
             .AsParallel()
             .AsOrdered()
             .Select(x => new ProcessedDocument(x, GlyphGrammar.Default))

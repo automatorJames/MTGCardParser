@@ -3,57 +3,59 @@ using Microsoft.Data.SqlClient;
 
 namespace MTGGlyphs.Data;
 
+/// <summary>The card database's cards, as a corpus whose volumes are its sets, numbered by set sequence.</summary>
 public class CardDataGetter : IDocumentRepository
 {
     readonly string _sqlConnString;
-    int? _maxSetSequence;
-    bool _includeEmptyDocuments;
+    readonly bool _includeEmptyDocuments;
+    readonly Lazy<int[]> _volumes;
 
     public CardDataGetter(GlobalSettings settings)
     {
         _sqlConnString = settings.SqlConnString;
-        _maxSetSequence = settings.MaxSetSequence;
         _includeEmptyDocuments = settings.IncludeEmptyDocuments;
+        _volumes = new(ReadVolumes, LazyThreadSafetyMode.PublicationOnly);
     }
 
-    public async Task<List<IDocument>> GetDocumentsAsync()
+    public Task<List<IDocument>> GetDocumentsAsync() =>
+        QueryAsync(null, null);
+
+    public Task<List<IDocument>> GetDocumentsAsync(int minVolume, int maxVolume) =>
+        QueryAsync("SetSequence between @MinVolume and @MaxVolume", new { MinVolume = minVolume, MaxVolume = maxVolume });
+
+    public Task<List<IDocument>> GetDocumentsAsync(params int[] volumes) =>
+        QueryAsync("SetSequence in @Volumes", new { Volumes = volumes });
+
+    /// <summary>The set sequences of the sets with cards in them - read once, since sets don't change while the app runs.</summary>
+    public int[] GetVolumes() => _volumes.Value;
+
+    async Task<List<IDocument>> QueryAsync(string volumeCondition, object parameters)
+    {
+        using var conn = new SqlConnection(_sqlConnString);
+        var result = await conn.QueryAsync<Card>("select * from Card" + Where(volumeCondition), parameters);
+
+        return result.Cast<IDocument>().ToList();
+    }
+
+    int[] ReadVolumes()
+    {
+        using var conn = new SqlConnection(_sqlConnString);
+
+        return conn.Query<int>("select distinct SetSequence from Card" + Where(null) + " order by SetSequence").ToArray();
+    }
+
+    string Where(string volumeCondition)
     {
         var conditions = new List<string>();
 
-        if (_maxSetSequence.HasValue)
-            conditions.Add("SetSequence <= @MaxSequence");
+        if (volumeCondition is not null)
+            conditions.Add(volumeCondition);
 
         if (!_includeEmptyDocuments)
             conditions.Add("Text is not null");
 
-        var whereClause = conditions.Count > 0
+        return conditions.Count > 0
             ? " where " + string.Join(" and ", conditions)
             : string.Empty;
-
-        var query = "select * from Card" + whereClause;
-        using var conn = new SqlConnection(_sqlConnString);
-        var result = await conn.QueryAsync<Card>(query, new { MaxSequence = _maxSetSequence });
-
-        //result = result.Where(x => x.Name == "Animate Artifact");
-
-        ////result = [new Card { Name = "feckall", Text = "as long as enchanted land is a land, it's a permanent artifact" }];
-        //result = result.Where(x => x.Name == "Animate Artifact");
-        //result = [new Card { Name = "feckall", Text = "as long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value." }];
-        //result = result.Where(x => x.Name == "Aspect of Wolf");
-        //result = result.Where(x => x.Name == "Ancestral Recall");
-        //result = result.Where(x => x.Name == "Berserk");
-        //result = [new Card { Name = "feckall", Text = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power." }];
-        //result = [new Card { Name = "feck you all", Text = "draw three cards" }, new Card { Name = "feck them all", Text = "draws seven cards" }];
-        //result = [new Card { Name = "A", Text = "target a, a, and a" }, new Card { Name = "B", Text = "target b, b, or b" }];
-        //result = [new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }];
-
-        //result = [
-        //    new Card { Name = "Ancestrall Recall", Text = "target player draws three cards." }, 
-        //    new Card { Name = "Ancestrall Recall Deux", Text = "target opponent draws three cards." },
-        //    new Card { Name = "Ancestrall Recall Sevaughn", Text = "target opponent draws seven cards." },
-        //    new Card { Name = "Silly Salve", Text = "target player you gain three life." }];
-
-        return result.Cast<IDocument>().ToList();
     }
 }
-

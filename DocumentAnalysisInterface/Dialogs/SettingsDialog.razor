@@ -1,9 +1,85 @@
 @inject RuntimeSettings RuntimeSettings
 @inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
+@using Glyphotype.Interfaces
+@implements IDisposable
 
 <CustomDialog OnBackdropClick="Close">
     <TitleContent>Settings</TitleContent>
     <DialogContent>
+        <div class="settings-section">
+            <h3 class="settings-section-title">Corpus</h3>
+            @if (_volumes is null)
+            {
+                <div class="settings-note">Finding the corpus's volumes…</div>
+            }
+            else if (_volumes.Length == 0)
+            {
+                <div class="settings-note">This corpus isn't divided into volumes: all of it is read.</div>
+            }
+            else
+            {
+                <div class="settings-row radio-group">
+                    <span class="settings-row-label">Volumes</span>
+                    @foreach (var kind in Enum.GetValues<VolumeSelectionKind>())
+                    {
+                        <label class="radio-option">
+                            <input type="radio" name="corpus-volumes" checked="@(_kind == kind)" disabled="@IsLoading"
+                                   @onchange="() => _kind = kind" />
+                            @(kind switch { VolumeSelectionKind.All => "All", VolumeSelectionKind.Range => "Range", _ => "Individual" })
+                        </label>
+                    }
+                </div>
+                @if (_kind == VolumeSelectionKind.Range)
+                {
+                    <div class="settings-row volume-range">
+                        <label>
+                            From
+                            <select value="@_minVolume" disabled="@IsLoading" @onchange="e => _minVolume = int.Parse((string)e.Value)">
+                                @foreach (var volume in _volumes)
+                                {
+                                    <option value="@volume">@volume</option>
+                                }
+                            </select>
+                        </label>
+                        <label>
+                            to
+                            <select value="@_maxVolume" disabled="@IsLoading" @onchange="e => _maxVolume = int.Parse((string)e.Value)">
+                                @foreach (var volume in _volumes)
+                                {
+                                    <option value="@volume">@volume</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                }
+                else if (_kind == VolumeSelectionKind.Only)
+                {
+                    <div class="volume-list">
+                        @foreach (var volume in _volumes)
+                        {
+                            <label class="volume-option">
+                                <input type="checkbox" checked="@_chosenVolumes.Contains(volume)" disabled="@IsLoading"
+                                       @onchange="e => Choose(volume, (bool)e.Value)" />
+                                @volume
+                            </label>
+                        }
+                    </div>
+                }
+                <div class="settings-row volume-status">
+                    <span class="settings-note">
+                        @(RuntimeSettings.LoadingCorpusVolumes is VolumeSelection loading
+                            ? $"Reading {loading.Describe()}…"
+                            : $"Reading {RuntimeSettings.CorpusVolumes.Describe()}.")
+                    </span>
+                    <button class="btn btn-sm btn-primary" disabled="@(!CanLoad)" @onclick="LoadAsync">Load</button>
+                </div>
+            }
+            @if (_loadError is not null)
+            {
+                <div class="settings-note settings-error">@_loadError</div>
+            }
+        </div>
+
         <div class="settings-section">
             <h3 class="settings-section-title">Corpus Captures</h3>
             <div class="settings-row">
@@ -95,7 +171,85 @@
     /// <summary>Whether there's a local agent, for the settings that need one - null until checked.</summary>
     DocumentAnalysisInterface.Agent.LocalAgentStatus _agentStatus;
 
-    protected override async Task OnInitializedAsync() => _agentStatus = await LocalAgent.GetStatusAsync();
+    /// <summary>The corpus's volumes, to choose from - null until found, empty if it isn't divided into volumes.</summary>
+    int[] _volumes;
+
+    /// <summary>The selection of volumes being made here, until it's loaded: how it picks, and what it picks each way.</summary>
+    VolumeSelectionKind _kind;
+    int _minVolume;
+    int _maxVolume;
+    readonly SortedSet<int> _chosenVolumes = [];
+
+    string _loadError;
+
+    bool IsLoading => RuntimeSettings.LoadingCorpusVolumes is not null;
+
+    VolumeSelection Draft => _kind switch
+    {
+        VolumeSelectionKind.Range => VolumeSelection.Range(_minVolume, _maxVolume),
+        VolumeSelectionKind.Only => VolumeSelection.Only(_chosenVolumes.ToArray()),
+        _ => VolumeSelection.All,
+    };
+
+    bool CanLoad => !IsLoading && Draft != RuntimeSettings.CorpusVolumes && !(_kind == VolumeSelectionKind.Only && _chosenVolumes.Count == 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        RuntimeSettings.CorpusVolumesChanged += OnCorpusVolumesChanged;
+
+        var agentStatus = LocalAgent.GetStatusAsync();
+
+        // Read from the corpus the first time it's asked, so off the circuit's thread.
+        try
+        {
+            _volumes = await Task.Run(RuntimeSettings.GetAvailableCorpusVolumes);
+        }
+        catch (Exception exception)
+        {
+            _volumes = [];
+            _loadError = $"Couldn't find the corpus's volumes: {exception.Message}";
+        }
+
+        ShowSelection(RuntimeSettings.LoadingCorpusVolumes ?? RuntimeSettings.CorpusVolumes);
+        _agentStatus = await agentStatus;
+    }
+
+    /// <summary>Sets the choices here to <paramref name="selection"/>, with a starting choice for each other way of picking.</summary>
+    void ShowSelection(VolumeSelection selection)
+    {
+        _kind = selection.Kind;
+        _minVolume = selection.Kind == VolumeSelectionKind.Range ? selection.MinVolume : _volumes.FirstOrDefault();
+        _maxVolume = selection.Kind == VolumeSelectionKind.Range ? selection.MaxVolume : _volumes.LastOrDefault();
+        _chosenVolumes.Clear();
+        _chosenVolumes.UnionWith(selection.Kind == VolumeSelectionKind.Only ? selection.Volumes : []);
+    }
+
+    void Choose(int volume, bool chosen)
+    {
+        if (chosen)
+            _chosenVolumes.Add(volume);
+        else
+            _chosenVolumes.Remove(volume);
+    }
+
+    async Task LoadAsync()
+    {
+        var volumes = Draft;
+        _loadError = null;
+
+        try
+        {
+            await RuntimeSettings.SetCorpusVolumesAsync(volumes);
+        }
+        catch (Exception exception)
+        {
+            _loadError = $"Couldn't read {volumes.Describe()}: {exception.Message}";
+        }
+    }
+
+    void OnCorpusVolumesChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => RuntimeSettings.CorpusVolumesChanged -= OnCorpusVolumesChanged;
 
     Task Close() => OnClose.InvokeAsync();
 }

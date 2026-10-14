@@ -1,4 +1,4 @@
-using Glyphotype.Distiller.Scoring;
+﻿using Glyphotype.Distiller.Scoring;
 
 namespace Glyphotype.Distiller.Workbench;
 
@@ -55,12 +55,15 @@ public sealed record Evaluation(ChangeSet Changes, WorkingScore Before, WorkingS
 /// </summary>
 public sealed class GrammarWorkbench : IDisposable
 {
-    readonly IReadOnlyList<IDocument> _documents;
+    IReadOnlyList<IDocument> _documents;
     readonly WorkbenchOptions _options;
     readonly object _gate = new();
     readonly GlyphGrammar _committedGrammar;
-    readonly IReadOnlyList<ProcessedDocument> _committedDocuments;
+    IReadOnlyList<ProcessedDocument> _committedDocuments;
     Task<WorkingScore> _committedTrial;
+
+    /// <summary>Counts <see cref="SetCorpus(IReadOnlyList{IDocument})"/>s, so a score taken against an earlier corpus isn't kept as a recent one.</summary>
+    int _corpusVersion;
 
     /// <summary>Whether a commit has made the compiled grammar out of date (it stays so until the app restarts).</summary>
     bool _compiledGrammarSuperseded;
@@ -236,7 +239,7 @@ public sealed class GrammarWorkbench : IDisposable
     {
         lock (_gate)
         {
-            if (_committedGrammar is null)
+            if (_committedGrammar is null || _compiledGrammarSuperseded)
             {
                 var baseline = CommittedDefinition;
                 return _committedTrial ??= Task.Run(() => Score(baseline, CancellationToken.None));
@@ -311,6 +314,41 @@ public sealed class GrammarWorkbench : IDisposable
 
         var trial = await GetCurrentTrialAsync(cancellation);
         return trial.Succeeded ? (trial.Grammar, trial.Documents) : null;
+    }
+
+    /// <summary>
+    /// Scores every definition against <paramref name="committedDocuments"/> from now on: a new corpus, as the compiled
+    /// grammar already tokenized it. The working definition and its history stand; every score is taken again.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The workbench has no compiled grammar - give it the documents alone.</exception>
+    public void SetCorpus(IReadOnlyList<ProcessedDocument> committedDocuments)
+    {
+        if (_committedGrammar is null)
+            throw new InvalidOperationException("This workbench has no compiled grammar to have tokenized the corpus - give it the documents alone");
+
+        SetCorpus(committedDocuments.Select(x => x.Document).ToList(), committedDocuments);
+    }
+
+    /// <summary>
+    /// Scores every definition against <paramref name="documents"/> from now on. The working definition and its history
+    /// stand; every score is taken again.
+    /// </summary>
+    public void SetCorpus(IReadOnlyList<IDocument> documents) =>
+        SetCorpus(documents, _committedGrammar is null ? null : documents.AsParallel().AsOrdered().Select(x => new ProcessedDocument(x, _committedGrammar)).ToList());
+
+    void SetCorpus(IReadOnlyList<IDocument> documents, IReadOnlyList<ProcessedDocument> committedDocuments)
+    {
+        lock (_gate)
+        {
+            _documents = documents;
+            _committedDocuments = committedDocuments;
+            _corpusVersion++;
+            _committedTrial = null;
+            _recentScores.Clear();
+            LatestWorkingScore = null;
+        }
+
+        _ = RescoreAsync();
     }
 
     // ---- Edits ----
@@ -557,16 +595,26 @@ public sealed class GrammarWorkbench : IDisposable
     WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation)
     {
         var json = definition.ToJson();
+        IReadOnlyList<IDocument> documents;
+        int corpusVersion;
 
         lock (_gate)
+        {
             if (_recentScores.FirstOrDefault(x => x.Json == json).Score is WorkingScore recent)
                 return recent with { Definition = definition };
 
-        var score = ScoreUncached(definition, cancellation);
+            documents = _documents;
+            corpusVersion = _corpusVersion;
+        }
+
+        var score = ScoreUncached(definition, documents, cancellation);
 
         if (score is not null)
             lock (_gate)
             {
+                if (corpusVersion != _corpusVersion)
+                    return score;
+
                 _recentScores.Add((json, score));
 
                 if (_recentScores.Count > _recentScoreCapacity)
@@ -576,7 +624,7 @@ public sealed class GrammarWorkbench : IDisposable
         return score;
     }
 
-    WorkingScore ScoreUncached(GrammarDefinition definition, CancellationToken cancellation)
+    WorkingScore ScoreUncached(GrammarDefinition definition, IReadOnlyList<IDocument> corpus, CancellationToken cancellation)
     {
         var started = DateTime.UtcNow;
 
@@ -584,7 +632,7 @@ public sealed class GrammarWorkbench : IDisposable
         {
             var grammar = BuildGrammar(definition);
 
-            var documents = _documents
+            var documents = corpus
                 .AsParallel()
                 .AsOrdered()
                 .WithCancellation(cancellation)

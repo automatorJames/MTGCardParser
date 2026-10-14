@@ -1,4 +1,5 @@
 using DocumentAnalysisInterface.Dialogs;
+using Glyphotype.Interfaces;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 namespace DocumentAnalysisInterface
@@ -7,6 +8,7 @@ namespace DocumentAnalysisInterface
     {
         private const string Key = "runtime-settings";
         private readonly ProtectedLocalStorage _pls;
+        private readonly ActiveCorpus _corpus;
         private bool _loaded;
         private CancellationTokenSource _saveCts;
 
@@ -20,7 +22,34 @@ namespace DocumentAnalysisInterface
         /// </summary>
         public event Action OnChanged;
 
-        public RuntimeSettings(ProtectedLocalStorage pls) => _pls = pls;
+        public RuntimeSettings(ProtectedLocalStorage pls, ActiveCorpus corpus)
+        {
+            _pls = pls;
+            _corpus = corpus;
+        }
+
+        /// <summary>
+        /// Which of the corpus's volumes are read. Unlike the other settings, it isn't this browser's own: the corpus is
+        /// shared by every page, every browser and the agent, so this is the app's - kept between runs by
+        /// <see cref="ActiveCorpus"/> - and a change made anywhere raises <see cref="CorpusVolumesChanged"/> rather than <see cref="OnChanged"/>.
+        /// </summary>
+        public VolumeSelection CorpusVolumes => _corpus.Volumes;
+
+        /// <summary>The volumes being read in place of <see cref="CorpusVolumes"/>, while a load is under way - else null.</summary>
+        public VolumeSelection LoadingCorpusVolumes => _corpus.LoadingVolumes;
+
+        /// <summary>The numbers of the corpus's volumes, to choose from - empty if it isn't divided into volumes.</summary>
+        public int[] GetAvailableCorpusVolumes() => _corpus.GetAvailableVolumes();
+
+        /// <summary>Reads <paramref name="volumes"/> of the corpus in place of <see cref="CorpusVolumes"/>, refreshing every page once it's read.</summary>
+        public Task SetCorpusVolumesAsync(VolumeSelection volumes) => _corpus.LoadVolumesAsync(volumes);
+
+        /// <summary>Fires, from whatever thread, when <see cref="CorpusVolumes"/> or <see cref="LoadingCorpusVolumes"/> changes.</summary>
+        public event Action CorpusVolumesChanged
+        {
+            add => _corpus.VolumesChanged += value;
+            remove => _corpus.VolumesChanged -= value;
+        }
 
         private bool _hideFullyMatchedDocuments;
         public bool HideFullyMatchedDocuments

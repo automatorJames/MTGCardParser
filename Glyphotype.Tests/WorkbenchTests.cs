@@ -60,6 +60,25 @@ public sealed class WorkbenchTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_new_corpus_is_scored_again_and_the_working_changes_stand()
+    {
+        var workbench = CreateWorkbench();
+        workbench.RemoveGlyph(nameof(AnimalRests));
+        await workbench.RescoreAsync();
+
+        var fewer = corpus.ProcessedDocuments.Take(corpus.ProcessedDocuments.Count / 2).ToList();
+        workbench.SetCorpus(fewer);
+
+        Assert.Single(workbench.Changes);
+        Assert.Equal(fewer.Count, workbench.Documents.Count);
+        Assert.Equal(fewer.Sum(x => x.WordCount), (await workbench.GetCommittedScoreAsync()).Words);
+
+        var trial = await workbench.GetCurrentTrialAsync();
+        Assert.Equal(fewer.Count, trial.Documents.Count);
+        Assert.Equal(fewer.Sum(x => x.WordCount), trial.Score.Words);
+    }
+
+    [Fact]
     public async Task A_working_definition_that_does_not_build_reports_why()
     {
         var workbench = CreateWorkbench();

@@ -53,9 +53,9 @@ public sealed class WorkspaceManager
     const string _guidanceFileName = "guidance.md";
     const string _mergeBaseFileName = "merge-base.json";
 
-    readonly SourceWorkspace _source;
+    SourceWorkspace _source;
     readonly string _root;
-    readonly IReadOnlyList<IDocument> _documents;
+    IReadOnlyList<IDocument> _documents;
     readonly object _gate = new();
     readonly List<WorkspaceInfo> _workspaces = [];
     readonly Dictionary<string, string> _configuredGuidance;
@@ -193,6 +193,23 @@ public sealed class WorkspaceManager
         }
 
         return journal;
+    }
+
+    /// <summary>
+    /// Scores every workspace against a new corpus from now on: <paramref name="sourceDocuments"/>, as the source workspace's
+    /// compiled grammar tokenized it. Each workspace's working definition and history stand.
+    /// </summary>
+    public void SetCorpus(IReadOnlyList<ProcessedDocument> sourceDocuments)
+    {
+        lock (_gate)
+        {
+            _source = _source with { Documents = sourceDocuments };
+            _documents = sourceDocuments.Select(x => x.Document).ToList();
+            _sourceWorkbench?.SetCorpus(sourceDocuments);
+
+            if (Active != _sourceWorkbench)
+                Active.SetCorpus(_documents);
+        }
     }
 
     /// <summary>Makes the named workspace the active one.</summary>

@@ -26,7 +26,7 @@ public sealed class GrammarAgent
     readonly Func<GrammarWorkbench> _workbench;
     readonly Func<WorkspaceJournal> _journal;
     readonly WorkspaceManager _workspaces;
-    readonly string _corpusDescription;
+    readonly Func<string> _corpusDescription;
 
     /// <summary>Steps applied, and evaluations made since the last applied step, since the session (re)started.</summary>
     int _stepsSinceCheckIn;
@@ -55,6 +55,12 @@ public sealed class GrammarAgent
 
     /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
     public GrammarAgent(WorkspaceManager workspaces, string corpusDescription, AgentSessionSettings settings = null)
+        : this(workspaces, () => corpusDescription, settings)
+    {
+    }
+
+    /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, describing the corpus as <paramref name="corpusDescription"/> does at the time.</summary>
+    public GrammarAgent(WorkspaceManager workspaces, Func<string> corpusDescription, AgentSessionSettings settings = null)
     {
         _workspaces = workspaces;
         _workbench = () => workspaces.Active;
@@ -68,7 +74,7 @@ public sealed class GrammarAgent
     {
         _workbench = () => workbench;
         _journal = () => journal;
-        _corpusDescription = corpusDescription;
+        _corpusDescription = () => corpusDescription;
         Settings = settings ?? new();
     }
 
@@ -108,7 +114,7 @@ public sealed class GrammarAgent
         if (_workspaces is not null)
             report.AppendLine($"Workspace: {DescribeWorkspace(_workspaces.ActiveWorkspace)}.");
 
-        report.AppendLine($"Corpus: {_corpusDescription} ({Workbench.Documents.Count:N0} documents).");
+        report.AppendLine($"Corpus: {_corpusDescription()} ({Workbench.Documents.Count:N0} documents).");
         report.AppendLine($"Working grammar: {definition.Glyphs.Count} glyphs, {definition.Vocabularies.Count} vocabularies. "
             + $"{Workbench.Changes.Count} uncommitted change{S(Workbench.Changes.Count)}, {Workbench.History.Count} step{S(Workbench.History.Count)} this session.");
 

@@ -26,9 +26,15 @@ public class Program
         builder.Services.AddScoped<RuntimeSettings>();
         builder.Services.AddSingleton<IDocumentRepository, CardDataGetter>();
 
+        var appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glyphotype");
+
+        // Which of the corpus's volumes are read: those last chosen in the settings, kept here between runs.
+        var corpusVolumesPath = Path.Combine(appData, "corpus-volumes.json");
+
         // The corpus as the compiled grammar tokenizes it. Pages don't read it directly: they read ActiveCorpus (below),
-        // which starts from this and follows whichever workspace's grammar is active.
-        builder.Services.AddSingleton(services => new CorpusAnalyzer(services.GetRequiredService<IDocumentRepository>(), GlyphGrammar.Default));
+        // which starts from this and follows whichever workspace's grammar is active, and whichever volumes are chosen.
+        builder.Services.AddSingleton(services => new CorpusAnalyzer(
+            services.GetRequiredService<IDocumentRepository>(), GlyphGrammar.Default, ActiveCorpus.ReadVolumes(corpusVolumesPath)));
 
         // Where glyph sources are read from and written to - by Grammar Tools commits.
         var glyphSources = new GlyphSourceLocation(
@@ -40,8 +46,6 @@ public class Program
         // The Grammar Tools tab's grammars: the one compiled from the glyph sources, plus any scratch grammars, each
         // scored against the corpus the analyzer already tokenized and kept outside the repo - the source one until
         // it's committed into the glyph sources, the scratch ones until they're exported.
-        var appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glyphotype");
-
         builder.Services.AddSingleton(services => new WorkspaceManager(
             new SourceWorkspace(
                 Name: "MTGGlyphs",
@@ -56,21 +60,28 @@ public class Program
         // What every tab shows: the corpus as the active workspace's grammar tokenizes it.
         builder.Services.AddSingleton(services => new ActiveCorpus(
             services.GetRequiredService<WorkspaceManager>(),
-            services.GetRequiredService<CorpusAnalyzer>()));
+            services.GetRequiredService<CorpusAnalyzer>(),
+            services.GetRequiredService<IDocumentRepository>(),
+            corpusVolumesPath));
 
         // An agent's tools over those same workspaces, served at /mcp: whatever an agent does there shows up live in
         // the Grammar Tools tab, and vice versa.
-        var maxSetSequence = GlobalSettings.Current.MaxSetSequence;
         // How agent sessions run: when to check in, and what a step must achieve. Optional - each setting has a default.
         var agentSettings = (builder.Configuration.GetSection("GrammarAgent").Get<AgentSessionSettings>() ?? new()) with
         {
             DocumentGlyphs = GlobalSettings.Current.AgentDocumentsGlyphs,
         };
 
-        builder.Services.AddSingleton(services => new GrammarAgent(
-            services.GetRequiredService<WorkspaceManager>(),
-            settings: agentSettings,
-            corpusDescription: "the text of cards in the card database" + (maxSetSequence is int sets ? (sets == 1 ? ", from the first set" : $", from the first {sets} sets") : "")));
+        builder.Services.AddSingleton(services =>
+        {
+            var corpus = services.GetRequiredService<ActiveCorpus>();
+
+            return new GrammarAgent(
+                services.GetRequiredService<WorkspaceManager>(),
+                settings: agentSettings,
+                corpusDescription: () => "the text of cards in the card database"
+                    + (corpus.Volumes.Kind == VolumeSelectionKind.All ? "" : $", from {corpus.Volumes.Describe()} (sets, by set sequence)"));
+        });
 
         // The same tools, worked by an agent the app runs itself where there's a local one (the Claude Code CLI) to run:
         // the Grammar Tools tab's chat pane.

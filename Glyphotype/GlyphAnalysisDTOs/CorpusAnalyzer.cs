@@ -8,7 +8,7 @@ namespace Glyphotype.GlyphAnalysisDTOs;
 /// </summary>
 public class CorpusAnalyzer
 {
-    IDocumentRepository _repository;
+    readonly IDocumentRepository _repository;
     readonly GlyphGrammar _grammar;
     bool _isInitialized;
 
@@ -41,15 +41,19 @@ public class CorpusAnalyzer
     /// </summary>
     public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries { get; private set; } = [];
 
-    /// <summary>Analyzes <paramref name="repository"/>'s documents as tokenized by <paramref name="grammar"/>.</summary>
-    public CorpusAnalyzer(IDocumentRepository repository, GlyphGrammar grammar)
+    /// <summary>Analyzes <paramref name="repository"/>'s documents - those in <paramref name="volumes"/>, or every one - as tokenized by <paramref name="grammar"/>.</summary>
+    public CorpusAnalyzer(IDocumentRepository repository, GlyphGrammar grammar, VolumeSelection volumes = null)
     {
         _repository = repository;
         _grammar = grammar;
+        Volumes = volumes ?? VolumeSelection.All;
     }
 
     /// <summary>The grammar the corpus is tokenized by.</summary>
     public GlyphGrammar Grammar => _grammar;
+
+    /// <summary>The volumes of the repository's corpus that are analyzed.</summary>
+    public VolumeSelection Volumes { get; }
 
     /// <summary>An analysis of a corpus <paramref name="grammar"/> has already tokenized - nothing is tokenized again.</summary>
     public static CorpusAnalyzer FromProcessedDocuments(IReadOnlyList<ProcessedDocument> documents, GlyphGrammar grammar)
@@ -66,7 +70,7 @@ public class CorpusAnalyzer
         // set ProcessedDocuments
         // Each document tokenizes independently, so this is CPU-bound and parallelizable.
         // AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
-        var documents = await _repository.GetDocumentsAsync();
+        var documents = await Volumes.GetDocumentsAsync(_repository);
 
         Analyze(documents
             .AsParallel()

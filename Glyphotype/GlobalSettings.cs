@@ -14,7 +14,6 @@ public class GlobalSettings
     const string _baseFileName = "appsettings.json";
 
     public string SqlConnString { get; init; }
-    public int? MaxSetSequence { get; init; }
     public bool IncludeEmptyDocuments { get; init; }
 
     /// <summary>
