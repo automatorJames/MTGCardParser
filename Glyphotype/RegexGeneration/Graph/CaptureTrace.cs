@@ -1,15 +1,12 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System.Collections;
+﻿using System.Collections;
 
 namespace Glyphotype.RegexGeneration.Graph;
 
-[JsonObject(MemberSerialization.OptIn)]
 public class CaptureTrace : IEnumerable<CaptureTrace>
 {
     public CaptureContext CaptureContext { get; private set; }
-    [JsonProperty] public string FullyQualifiedName { get; private set; }
-    [JsonProperty] public string Name { get; }
+    public string FullyQualifiedName { get; private set; }
+    public string Name { get; }
 
     /// <summary>
     /// The graph node that produced this capture - unlike <see cref="FullyQualifiedName"/>, this is never
@@ -21,20 +18,19 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// should key off this instead of the display-only FullyQualifiedName.
     /// </summary>
     public NamedGroupNode SourceNode { get; }
-    [JsonProperty] public string CaptureValue { get; set; }
-    public string PrintValue => GetPrintValue();
+    public string CaptureValue { get; set; }
     public bool Success { get; }
     public Type ResolvedNodeType => GetResolvedNodeType();
     /// <summary><see cref="ResolvedNodeType"/>'s name, or null for a trace with no hydrated value (e.g. an optional group that matched nothing).</summary>
-    [JsonProperty] public string ResolvedNodeTypeName => ResolvedNodeType?.Name;
+    public string ResolvedNodeTypeName => ResolvedNodeType?.Name;
     public string ParentName { get; private set; }
-    [JsonProperty] public int Index { get; private set; }
-    [JsonProperty] public int Length { get; }
-    [JsonProperty] public int End { get; private set; }
-    [JsonProperty] public int? SiblingIndex { get; }
-    [JsonProperty] public int Count => (Success ? 1 : 0) + Siblings.Count;
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Siblings { get; } = [];
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public List<CaptureTrace> Children { get; } = [];
+    public int Index { get; private set; }
+    public int Length { get; }
+    public int End { get; private set; }
+    public int? SiblingIndex { get; }
+    public int Count => (Success ? 1 : 0) + Siblings.Count;
+    public List<CaptureTrace> Siblings { get; } = [];
+    public List<CaptureTrace> Children { get; } = [];
 
     /// <summary>
     /// The one trace among this FQN's occurrences that hydration actually recursed into and gave real,
@@ -90,7 +86,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         }
     }
 
-    [JsonProperty] public bool IsTerminal { get; }
+    public bool IsTerminal { get; }
 
     /// <summary>
     /// True when this trace's own named group sits beneath (or is) a <c>List&lt;&gt;</c>-typed ancestor
@@ -144,7 +140,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     /// builds for that child (as the "»"/"⇢" separator joining the two names) rather than needing a
     /// redundant level of its own to carry it.
     /// </summary>
-    [JsonProperty]
     public bool IsCollapsible
     {
         get
@@ -165,21 +160,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     public bool HasOwnBoundary =>
         EffectiveChildren.Any() || this is RootCaptureTrace;
 
-    public string JsonDebug => JsonConvert.SerializeObject(
-        this,
-        Formatting.Indented,
-        new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            Converters =
-            [
-                new StringEnumConverter()
-            ]
-        });
-
-    public bool ShouldSerializeSiblings => Siblings.Count > 0;
-    public bool ShouldSerializeChildren => Children.Count > 0;
-    public bool ShouldSerializeCount => Count > 1;
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode, Capture capture, int? siblingIndex = null)
     : this(captureContext, namedGroupNode)
@@ -354,14 +334,6 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
             return view;
         });
-    }
-
-    string GetPrintValue()
-    {
-        if (ClrValue == null)
-            return null;
-
-        return SourceNode.GetType().Name + ": " + ClrValue.ToString();
     }
 
     Type GetResolvedNodeType()

@@ -44,9 +44,6 @@ public sealed class ActiveCorpus
     /// <summary>Fires, from whatever thread, when the active grammar has changed and a new analysis is due: await <see cref="EnsureInitializedAsync"/> to get it.</summary>
     public event Action Changed;
 
-    /// <summary>The workspace whose grammar this analyzes.</summary>
-    public string WorkspaceName => _workspaces.ActiveWorkspace.Name;
-
     public GlyphGrammar Grammar => _current.Grammar;
     public List<ProcessedDocument> ProcessedDocuments => _current.ProcessedDocuments;
     public int WordCount => _current.WordCount;

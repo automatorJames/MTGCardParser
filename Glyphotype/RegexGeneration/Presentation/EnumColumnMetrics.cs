@@ -44,10 +44,6 @@ internal readonly struct EnumColumnMetrics
         return new(maxNameLength, maxDigitLength, maxCommentLength);
     }
 
-    /// <summary>"     : count", with the name column blanked but still reserved, for a synonym row grouped under a header.</summary>
-    public string FormatMinimalCore(int synonymOccurrenceCount) =>
-        FormatBlankNameField() + FormatCountField(synonymOccurrenceCount);
-
     /// <summary>The name field alone, right-aligned within <see cref="MaxNameLength"/>.</summary>
     public string FormatNameField(object memberValue) =>
         memberValue.ToString().PadLeft(MaxNameLength);

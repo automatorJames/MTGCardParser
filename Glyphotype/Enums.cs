@@ -2,13 +2,6 @@
 
 namespace Glyphotype;
 
-public enum CaptureGroupJoinStrategy
-{
-    ConcatenateWithSpace,
-    AlternateValues,
-    CompoundValue
-}
-
 public enum Joiner
 {
     [Description("")]
@@ -33,20 +26,6 @@ public enum Joiner
     CommaSpace,
 }
 
-public enum MultiItemOrdinal
-{
-    First,
-    SecondPlus,
-    Last
-}
-
-public enum OneOfItemOrdinal
-{
-    First,
-    Second,
-    Third
-}
-
 public enum Conjunction
 {
     And,
@@ -57,12 +36,6 @@ public enum Quantifier
 {
     [Description("*")]
     AnyNumber,
-
-    [Description("+")]
-    OneOrMore,
-
-    [Description("{2,}")]
-    TwoOrMore,
 
     [Description("?")]
     Optional

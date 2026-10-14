@@ -5,8 +5,7 @@ namespace Glyphotype.Tests.Infrastructure;
 
 /// <summary>
 /// Renders what a line was tokenized into as one deterministic, human-readable string - the unit every
-/// corpus expectation is written in. Owned by the tests (rather than reusing something like
-/// <c>DebugSerializer</c>) so that no display change elsewhere can break them.
+/// corpus expectation is written in. Owned by the tests so that no display change elsewhere can break them.
 /// <para>
 /// The notation, token by token, space-separated:
 /// <list type="bullet">

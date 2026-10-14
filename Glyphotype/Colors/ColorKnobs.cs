@@ -37,7 +37,4 @@ public readonly record struct ColorKnobs(
 
     /// <summary>The hue normalized to the [0,1) fraction that <see cref="HslMath"/> expects.</summary>
     public double HueFraction => ((HueDegrees % 360.0) + 360.0) % 360.0 / 360.0;
-
-    /// <summary>Returns a copy of these knobs with <see cref="HueDegrees"/> replaced, keeping every other knob as-is.</summary>
-    public ColorKnobs WithHueDegrees(double hueDegrees) => this with { HueDegrees = hueDegrees };
 }

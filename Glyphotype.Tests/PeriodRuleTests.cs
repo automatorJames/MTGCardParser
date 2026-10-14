@@ -10,12 +10,12 @@ namespace Glyphotype.Tests;
 /// </summary>
 public class PeriodRuleTests
 {
-    static GlyphGrammar Build(string source, bool allowPeriodsInLiteralNibs = true)
+    static GlyphGrammar Build(string source)
     {
         var read = GlyphSourceReader.Read(source);
         var definition = new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers };
 
-        return GlyphGrammar.FromDefinition(definition, allowPeriodsInLiteralNibs: allowPeriodsInLiteralNibs);
+        return GlyphGrammar.FromDefinition(definition);
     }
 
     static string Signature(IEnumerable<CaptureUnit> units) =>
@@ -49,22 +49,6 @@ public class PeriodRuleTests
             """);
 
         Assert.Equal("Tight .", Signature(grammar.Tokenize("it ends. so it goes.")));
-    }
-
-    [Fact]
-    public void A_period_inside_a_literal_nib_is_refused_when_the_grammar_disallows_it()
-    {
-        const string source = """
-            public class TwoClauses : Glyph
-            {
-                public override Nib[] Nibs => ["it ends. so it goes"];
-            }
-            """;
-
-        var exception = Assert.ThrowsAny<Exception>(() => Build(source, allowPeriodsInLiteralNibs: false));
-
-        Assert.Contains(nameof(GlobalSettings.AllowPeriodsInLiteralNibs), exception.Message);
-        Assert.Equal("TwoClauses .", Signature(Build(source).Tokenize("it ends. so it goes.")));
     }
 
     [Theory]

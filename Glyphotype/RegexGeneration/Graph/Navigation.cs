@@ -59,13 +59,13 @@ public class Navigation
         Patterns = propertyNib.Prop.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
         Prop = propertyNib.Prop;
 
-        // A list's own quantifier (OneOrMore/AnyNumber) always wins, since it's what the *group* itself
+        // A list's own quantifier (AnyNumber) always wins, since it's what the *group* itself
         // must carry to match repeated occurrences; otherwise [Optional] - or, equivalently, being wrapped
         // in OptionalOf<T> - the wrapper generic is just an alternate, structural way of declaring the same
         // optionality [Optional] declares by attribute.
         Quantifier =
             IsList
-                ? (Prop.IsDefined(typeof(OneOrMoreAttribute)) ? Glyphotype.Quantifier.OneOrMore : Glyphotype.Quantifier.AnyNumber)
+                ? Glyphotype.Quantifier.AnyNumber
                 : Prop.IsDefined(typeof(OptionalAttribute)) || IsOptionalOfType(UnderlyingType) ? Glyphotype.Quantifier.Optional : null;
 
         IsOptional = Quantifier is Glyphotype.Quantifier.AnyNumber or Glyphotype.Quantifier.Optional;

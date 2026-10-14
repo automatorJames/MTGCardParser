@@ -150,50 +150,7 @@ public static class Extensions
         nextPathParts == null || nextPathParts.Length == 0 ? parentPath
         : parentPath + "." + string.Join('.', nextPathParts);
 
-
-    public static string ToFriendlyStringOrPattern(object value)
-    {
-        if (value is null)
-            return string.Empty;
-
-        var type = value.GetType();
-
-        if (type.IsEnum)
-        {
-            var member = type.GetMember(value.ToString() ?? string.Empty);
-            if (member.Length > 0)
-            {
-                var attr = member[0].GetCustomAttribute<RegexPatternAttribute>();
-                if (attr != null && attr.Patterns.Length > 0)
-                    return attr.Patterns.First();
-            }
-        }
-
-        return value.ToString()?.ToFriendlyCase(TitleDisplayOption.Lower) ?? string.Empty;
-    }
-
-    public static object[] GetSetFlags(this Enum value)
-    {
-        if (value is null)
-            throw new ArgumentNullException(nameof(value));
-
-        var type = value.GetType();
-
-        if (!Attribute.IsDefined(type, typeof(FlagsAttribute)))
-            throw new ArgumentException($"Enum type '{type.Name}' is not marked with [Flags].", nameof(value));
-
-        return Enum.GetValues(type)
-            .Cast<Enum>()
-            .Where(flag =>
-            Convert.ToUInt64(flag) != 0 &&
-            value.HasFlag(flag))
-            .Cast<object>()
-            .ToArray();
-    }
-
     public static Type GetUnderlyingType(this Type type)
         => Nullable.GetUnderlyingType(type) ?? type;
-
-    public static string PrintDebug(this object obj) => DebugSerializer.Serialize(obj);
 }
 

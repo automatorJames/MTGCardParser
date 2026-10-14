@@ -60,10 +60,6 @@ public class ClauseBreak : CaptureUnit
     /// Any other nib is returned as is. Literal text either side keeps the spaces it was written with, so the
     /// split matches exactly what the unsplit text would have under any <see cref="Joiner"/>; a piece that's only
     /// whitespace is dropped, the joiner supplying the space it stood for.
-    /// <para>
-    /// Whether a grammar allows such a nib at all is <see cref="GlobalSettings.AllowPeriodsInLiteralNibs"/>; where
-    /// it does, this is all that's needed for one to work.
-    /// </para>
     /// </summary>
     public static IEnumerable<Nib> SplitAtPeriods(Nib nib)
     {

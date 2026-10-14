@@ -1,17 +1,15 @@
-﻿using Newtonsoft.Json;
-
+﻿
 namespace Glyphotype.RegexGeneration.Graph;
 
-[JsonObject(MemberSerialization.OptIn)]
 public class RootCaptureTrace : CaptureTrace
 {
     Dictionary<string, CaptureTrace> _flatCaptureTree { get; } = [];
 
     public GlyphNode RootNode { get; }
-    [JsonProperty] public bool IsUnmatchedString { get; }
+    public bool IsUnmatchedString { get; }
 
     /// <summary>Whether this root is a <see cref="ClauseBreak"/> - a synthesized clause-separating period rather than a matched Glyph. Distinct from <see cref="IsUnmatchedString"/>: a clause break is modeled punctuation, not text still awaiting a Glyph.</summary>
-    [JsonProperty] public bool IsClauseBreak { get; }
+    public bool IsClauseBreak { get; }
 
     /// <summary>
     /// Whether this root was manufactured by the Tokenizer to account for a span of source text, rather

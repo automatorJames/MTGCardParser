@@ -187,12 +187,6 @@
         if (CaptureTrace.IsTerminal || CaptureDisplay.IsLeafGlyph(CaptureTrace))
             classes.Add("prop-capture-overline");
 
-        //if (node is SpanSubLeaf spanSubLeaf)
-        //    classes.Add("dashed-line");
-
-        //if (node.ElementType == TokenAnalysisElementType.PlaceholderLeaf)
-        //    classes.Add("dotted-line");
-
         return string.Join(" ", classes);
     }
 

@@ -57,9 +57,6 @@ public static class DefinitionViews
         return graph.BuiltRegex.ToSmartRegex(new GlyphOccurrenceSummary(glyphType), graph, includeBlankLines, RegexDisplayMode.Full);
     }
 
-    public static string FormattedRegexText(Type glyphType, bool includeBlankLines) =>
-        FormattedRegexCopy.GetCopyText(FormattedRegex(glyphType, includeBlankLines).Lines);
-
     public static string MinifiedRegexText(Type glyphType) =>
         GlyphTypeCache.GetRegexGraph(glyphType).BuiltRegex.MinifiedRegex;
 

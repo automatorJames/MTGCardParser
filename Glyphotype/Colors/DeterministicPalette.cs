@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.ComponentModel;
 
 namespace Glyphotype.Colors;
 
@@ -16,7 +15,6 @@ public static class DeterministicPalette
     // ConcurrentDictionary because corpus processing builds many ProcessedLines (and therefore
     // palettes) in parallel across documents; a plain Dictionary would race under that.
     static readonly ConcurrentDictionary<(int Count, double SaturationFactor, double LightnessFactor), Dictionary<int, HexPalette>> _positionalPaletteSets = [];
-    static readonly ConcurrentDictionary<int, HexPalette> _fixedRainbowPalettes = [];
     static readonly ConcurrentDictionary<HexColor, HexPalette> _staticColorPalettes = [];
 
     static Dictionary<Type, HexPalette> _typePaletteSet;
@@ -34,14 +32,6 @@ public static class DeterministicPalette
     const double MaxLightness = RainbowPaletteKnobs.MaxLightness;
 
     // --- Static Factories ---
-
-    public static HexPalette GetFixedRainbowPalette(int rainbowIndex)
-    {
-        var rainbowMember = (RainbowMuted)(rainbowIndex % Enum.GetNames(typeof(RainbowMuted)).Length);
-
-        return _fixedRainbowPalettes.GetOrAdd((int)rainbowMember,
-            key => BuildFromColor(new HexColor(((RainbowMuted)key).GetDescription())));
-    }
 
     /// <summary>Builds the full type-to-palette map: every registered token type gets an equidistant rainbow hue, hash-ordered for stability.</summary>
     static Dictionary<Type, HexPalette> GetTypePaletteSet()
@@ -211,16 +201,5 @@ public static class DeterministicPalette
         }
 
         return hues;
-    }
-
-    public enum RainbowMuted
-    {
-        [Description("#9d81ba")] Violet,
-        [Description("#7b8dcf")] Blue,
-        [Description("#5ca9b4")] Teal,
-        [Description("#7d9e5b")] Green,
-        [Description("#d8a960")] Yellow,
-        [Description("#c77e59")] Orange,
-        [Description("#b9676f")] Red
     }
 }

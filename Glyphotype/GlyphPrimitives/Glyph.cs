@@ -78,13 +78,13 @@ public abstract class Glyph : CaptureUnit
             return $"the following properties are not represented among template nibs: {string.Join(", ", missingProps)}";
 
         var misplacedQuantifierAttributeProps = props
-            .Where(x => x.IsDefined(typeof(OneOrMoreAttribute)) || x.IsDefined(typeof(AnyNumberAttribute)))
+            .Where(x => x.IsDefined(typeof(AnyNumberAttribute)))
             .Where(x => !Navigation.IsListType(x.PropertyType))
             .Select(x => x.Name)
             .ToList();
 
         if (misplacedQuantifierAttributeProps.Any())
-            return $"{nameof(OneOrMoreAttribute)}/{nameof(AnyNumberAttribute)} may only appear on List<> properties, but found on: {string.Join(", ", misplacedQuantifierAttributeProps)}";
+            return $"{nameof(AnyNumberAttribute)} may only appear on List<> properties, but found on: {string.Join(", ", misplacedQuantifierAttributeProps)}";
 
         if (GetJoinedByError(props) is string joinedByError)
             return joinedByError;
@@ -463,23 +463,21 @@ public abstract class Glyph : CaptureUnit
     /// <summary>
     /// The period rules, which keep every period on a line a <see cref="ClauseBreak"/> the Tokenizer can see:
     /// <list type="bullet">
-    /// <item>A plain literal nib may have a period inside it only if <paramref name="allowPeriodsInLiteralNibs"/>
-    /// (see <see cref="GlobalSettings.AllowPeriodsInLiteralNibs"/>) - it's then split around it into a clause-break
-    /// nib of its own (see <see cref="ClauseBreak.SplitAtPeriods"/>).</item>
+    /// <item>A plain literal nib may have a period inside it: it's split around it into a clause-break nib of its
+    /// own (see <see cref="ClauseBreak.SplitAtPeriods"/>).</item>
     /// <item>Nothing else may match a literal period: not a pattern (<see cref="PatternNib"/>, or a
     /// <see cref="RegexPatternAttribute"/> on the type, a dynamic property or an enum member), an
     /// <see cref="Alt"/> or an <see cref="Opt"/> - none can be split around a break, so a period in one could
     /// only ever match by swallowing it.</item>
     /// <item>A type may end with a period (bare <c>"."</c> nib included) only where it's redundant, and so dropped
     /// (see <see cref="ClauseBreak.IsTrailingPeriodRedundant"/>): a clause's closing period is the Tokenizer's own
-    /// <see cref="ClauseBreak"/>, never part of a Glyph. Not, then, on a dependent or partial-match type, nor on
+    /// <see cref="ClauseBreak"/>, never part of a Glyph. Not, then, on a dependent type, nor on
     /// one <paramref name="isUsedAsProperty"/> by another glyph - in each, the period is a real constraint the
     /// type can't keep.</item>
     /// </list>
-    /// Run by <see cref="GlyphGrammar"/> after every graph is built, since both the setting and which types nest
-    /// which are the grammar's.
+    /// Run by <see cref="GlyphGrammar"/> after every graph is built, since which types nest which is the grammar's.
     /// </summary>
-    public static string GetPeriodError(Type type, bool allowPeriodsInLiteralNibs, bool isUsedAsProperty)
+    public static string GetPeriodError(Type type, bool isUsedAsProperty)
     {
         const string useClauseBreakNib = "write the period as a bare \".\" nib of its own instead";
         var textNibs = GlyphTypeCache.GetConfiguration(type).Nibs.Where(x => x is not PropertyNib).ToList();
@@ -494,8 +492,6 @@ public abstract class Glyph : CaptureUnit
                     $"Alt(\"{string.Join("\", \"", alternatives.Alternatives)}\") contains a period, which an alternation can't be split around - {useClauseBreakNib}",
                 OptionalNib { Inner: not PatternNib } when nib.Text.Contains(ClauseBreak.Period) =>
                     $"Opt(\"{nib.Text}\") contains a period, and a clause break can't be optional - {useClauseBreakNib}",
-                _ when !allowPeriodsInLiteralNibs && ClauseBreak.IsSplittable(nib) =>
-                    $"the nib \"{nib.Text}\" contains a period, which this grammar doesn't allow in literal text ({nameof(GlobalSettings)}.{nameof(GlobalSettings.AllowPeriodsInLiteralNibs)} is off) - {useClauseBreakNib}",
                 _ => null,
             };
 

@@ -35,7 +35,6 @@ internal class Program
         {
             SqlConnString = settings.SqlConnString,
             IncludeEmptyDocuments = settings.IncludeEmptyDocuments,
-            AllowPeriodsInLiteralNibs = settings.AllowPeriodsInLiteralNibs,
             MaxSetSequence = maxSetSequence switch
             {
                 null => settings.MaxSetSequence,
@@ -69,62 +68,4 @@ internal class Program
         foreach (var error in errors)
             Console.WriteLine($"- {error}");
     }
-
-    //static void TestSmartLine()
-    //{
-    //    var glyphsByType = GetGlyphsByType();
-    //
-    //    foreach ((var type, var tokens) in glyphsByType)
-    //    {
-    //        GlyphOccurrenceSummary summary = new(type, tokens.Select(t => new MatchOccurrence(null, t)));
-    //        var regexGraph = GlyphTypeCache.GetRegexGraph(type);
-    //        var smartRegex = regexGraph.BuiltRegex.ToSmartRegex(summary, regexGraph);
-    //        Console.WriteLine(smartRegex);
-    //    }
-    //}
-    //
-    //static List<string> GetLines()
-    //{
-    //    var cards = _cardDataGetter.GetDocumentsAsync().Result;
-    //    return cards.SelectMany(x => x.GetFormattedLines()).ToList();
-    //}
-    //
-    //static List<Glyph> GetGlyphs()
-    //{
-    //    List<Glyph> tokens = [];
-    //    var lines = GetLines();
-    //
-    //    foreach (var line in lines)
-    //        tokens.AddRange(GlyphGrammar.Default.Tokenize(line).OfType<Glyph>());
-    //
-    //    return tokens;
-    //}
-    //
-    //static Dictionary<Type, List<Glyph>> GetGlyphsByType()
-    //{
-    //    List<Glyph> tokens = [];
-    //    var lines = GetLines();
-    //
-    //    foreach (var line in lines)
-    //        tokens.AddRange(GlyphGrammar.Default.Tokenize(line).OfType<Glyph>());
-    //
-    //    return tokens.GroupBy(x => x.Type).ToDictionary(x => x.Key, x => x.ToList());
-    //}
-    //
-    //static void TestTokenization()
-    //{
-    //    var tokens = GetGlyphs();
-    //    Debugger.Break();
-    //}
-    //
-    //static void TestSummary()
-    //{
-    //    var glyphsByType = GetGlyphsByType();
-    //
-    //    foreach ((var type, var tokens) in glyphsByType)
-    //    {
-    //        GlyphOccurrenceSummary summary = new(type, tokens.Select(t => new MatchOccurrence(null, t)));
-    //        Debugger.Break();
-    //    }
-    //}
 }

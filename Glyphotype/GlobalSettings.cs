@@ -18,19 +18,6 @@ public class GlobalSettings
     public bool IncludeEmptyDocuments { get; init; }
 
     /// <summary>
-    /// Whether a plain literal nib may have a period inside it, e.g. <c>"by it. they can't be regenerated"</c>.
-    /// When true (the default), such a nib is split around each period into a bare <c>"."</c> clause-break nib of
-    /// its own (see <see cref="ClauseBreak.SplitAtPeriods"/>), which is exactly what it would have to be written
-    /// as otherwise - so the text reads as written and still declares the clauses it spans. When false, such a nib
-    /// fails validation, and the break has to be written out.
-    /// <para>
-    /// Either way, nothing else may match a period (a pattern, <c>Alt</c> or <c>Opt</c>), and a Glyph's closing period
-    /// is dropped where it's redundant and refused where it isn't - see <see cref="Glyph.GetPeriodError"/>.
-    /// </para>
-    /// </summary>
-    public bool AllowPeriodsInLiteralNibs { get; init; } = true;
-
-    /// <summary>
     /// Whether an agent writing glyphs documents each one it adds or changes: its <see cref="GlyphDocumentation"/> -
     /// a summary of what it's for, a corpus document it's meant for, and the text there it captures. When true, the
     /// agent is told to, and its tools remind it of a glyph without all three - never refusing one.

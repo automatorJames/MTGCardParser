@@ -63,9 +63,6 @@ public sealed record TypeReference
     public static TypeReference ManyOf(TypeReference item) => new() { Kind = TypeReferenceKind.ManyOf, Arguments = [item] };
     public static TypeReference OptionalOf(TypeReference item) => new() { Kind = TypeReferenceKind.OptionalOf, Arguments = [item] };
 
-    /// <summary>The reference to an existing CLR <paramref name="type"/>, which must be something a glyph property can be.</summary>
-    public static TypeReference FromType(Type type) => DefinitionReader.ReadTypeReference(type);
-
     public TypeReference AsNullable() => this with { IsNullable = true };
 
     /// <summary>Whether this is a value type in C# - the only kinds <see cref="IsNullable"/> means anything for.</summary>

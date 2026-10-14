@@ -38,9 +38,6 @@ public abstract class CaptureUnit
     public string CaptureValue =>
         CaptureContext.FullMatch;
 
-    public string JsonDebug =>
-        CaptureContext.RootCaptureTrace.JsonDebug ?? "";
-
     Type _type;
     public Type Type
     {

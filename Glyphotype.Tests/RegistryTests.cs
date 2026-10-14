@@ -63,25 +63,9 @@ public class RegistryTests(CorpusFixture corpus)
         var glyphotype = typeof(Glyph).Assembly;
 
         Assert.False(glyphotype.GetType("Glyphotype.Attributes.Quantifiers.AnyNumberAttribute", throwOnError: true).IsPublic);
-        Assert.False(glyphotype.GetType("Glyphotype.Attributes.Quantifiers.OneOrMoreAttribute", throwOnError: true).IsPublic);
 
         var publicPropOverloads = typeof(Glyph).GetMethods(BindingFlags.Instance | BindingFlags.Public).Where(x => x.Name == nameof(Glyph.Prop));
         Assert.DoesNotContain(publicPropOverloads, x => x.GetParameters().Any(p => p.ParameterType == typeof(Quantifier) || p.ParameterType == typeof(Quantifier?)));
-    }
-
-    [Fact]
-    public void Every_token_serializes_for_debugging()
-    {
-        // JsonDebug once threw for every UnmatchedString and ClauseBreak: their synthesized root traces had no
-        // hydrated value, and naming its type dereferenced null.
-        var failures = corpus.ProcessedDocuments
-            .SelectMany(x => x.Lines)
-            .SelectMany(x => x.Glyphs)
-            .Select(unit => { try { _ = unit.JsonDebug; return null; } catch (Exception e) { return $"{unit.GetType().Name} \"{unit.CaptureValue}\": {e.Message}"; } })
-            .Where(x => x != null)
-            .ToList();
-
-        Assert.Empty(failures);
     }
 
     [Fact]
