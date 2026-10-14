@@ -9,6 +9,5 @@ public class ActivatedAbility : Glyph
 
     public CompoundOf<Cost> Costs { get; set; }
 
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

@@ -35,8 +35,7 @@ public enum DataComponent
 /// culled from a finished grammar, see <see cref="VocabularyUsage"/>), the number (a universal integer code), or the
 /// type a dynamic resolved to - and per enum member, the synonym that spelled it;</item>
 /// <item>unmatched text: its word count, then each word from a residual lexicon, whose distinct words are
-/// spelled once - unless the grammar already spells them (see <see cref="UseGrammarWords"/>) - including text a dynamic left unresolved (see <see cref="AllowUnmatchedAttribute"/>), which is
-/// unmatched text held in place;</item>
+/// spelled once - unless the grammar already spells them (see <see cref="UseGrammarWords"/>);</item>
 /// <item>text matched by an open-ended regex (see <see cref="RegexOpenness"/>) - a pattern nib's, or a terminal's
 /// own pattern: masked out of its frame as <c>{~}</c>, drawn from a context of its own, and spelled out the first
 /// time each distinct text appears. The grammar paid for a closed regex's every text by writing it down, but an
@@ -51,7 +50,6 @@ public sealed class CorpusEncoding
     const string _unmatchedSymbol = "«unmatched»";
     const string _clauseBreakSymbol = "«.»";
     const string _endOfLineSymbol = "«¶»";
-    const string _unresolvedSymbol = "«unresolved»";
     const string _patternPlaceholder = "{~}";
 
     readonly Dictionary<string, Context> _contexts = [];
@@ -204,14 +202,6 @@ public sealed class CorpusEncoding
         if (node is DynamicGlyphNode)
         {
             frameType = trace.ResolvedNodeType ?? throw new InvalidOperationException($"Dynamic capture '{trace.CaptureValue}' ({trace.FullyQualifiedName}) has no resolved type");
-
-            if (frameType == typeof(UnmatchedString))
-            {
-                // Left unresolved: unmatched text, coded as unmatched text is - it merely sits inside a match.
-                Choose(token, GetContext($"resolution {Slot(node)}", DataComponent.Values, alphabetSize: null), _unresolvedSymbol);
-                EncodeResidual(token, trace.CaptureValue);
-                return;
-            }
 
             Choose(token, GetContext($"resolution {Slot(node)}", DataComponent.Values, alphabetSize: null), frameType.Name);
 

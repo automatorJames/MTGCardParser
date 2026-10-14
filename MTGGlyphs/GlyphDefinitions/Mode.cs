@@ -7,6 +7,5 @@ public class Mode : Glyph
 {
     public override Nib[] Nibs => ["•", Prop(Effect)];
 
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

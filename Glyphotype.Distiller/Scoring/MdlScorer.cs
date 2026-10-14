@@ -58,20 +58,15 @@ public static class MdlScorer
                     DefinitionBits: grammarCost.GlyphBits[glyph.Name],
                     Occurrences: tokens.Count,
                     NestedOccurrences: nestedMatches.GetValueOrDefault(glyph.Name),
-                    Words: tokens.Sum(x => CountWords(x.Unit.CaptureValue) - x.Unit.UnresolvedTraces.Sum(y => CountWords(y.CaptureValue))),
+                    Words: tokens.Sum(x => CountWords(x.Unit.CaptureValue)),
                     DataBits: tokens.Sum(encoding.GetBits),
                     ResidualEquivalentBits: tokens.Sum(x => encoding.GetResidualBits(x.Unit.CaptureValue)));
             })
             .ToList();
 
-        // Unmatched tokens, and text matches hold unresolved (see AllowUnmatchedAttribute) - priced as unmatched text alone would be.
         var residuals = encoding.Tokens
             .Where(x => x.Unit is UnmatchedString)
             .Select(x => (Text: x.Unit.CaptureValue.Trim(), Bits: encoding.GetBits(x)))
-            .Concat(encoding.Tokens
-                .Where(x => x.Unit is Glyph)
-                .SelectMany(x => x.Unit.UnresolvedTraces)
-                .Select(x => (Text: x.CaptureValue.Trim(), Bits: encoding.GetResidualBits(x.CaptureValue))))
             .GroupBy(x => x.Text)
             .Select(x => new ResidualSpan(x.Key, x.Count(), CountWords(x.Key), x.Sum(y => y.Bits)))
             .ToList();
@@ -87,7 +82,6 @@ public static class MdlScorer
             Words = documents.Sum(x => x.WordCount),
             CapturedWords = documents.Sum(x => x.CapturedWordCount),
             FullyCoveredLines = lines.Count(x => x.CapturedWordCount == x.WordCount),
-            HeldWords = lines.Sum(x => x.Glyphs.Sum(y => y.UnresolvedTraces.Sum(z => CountWords(z.CaptureValue)))),
             Glyphs = glyphs,
             Vocabularies = grammarCost.VocabularyBits,
             VocabularyMembersUsed = definition.Vocabularies.ToDictionary(x => x.Name, x => encoding.VocabularyUsage.UsedMemberCount(x.Name)),
@@ -147,14 +141,8 @@ public sealed record MdlScore
     public int CapturedWords { get; init; }
     public double Coverage => Words == 0 ? 1 : (double)CapturedWords / Words;
 
-    /// <summary>Lines with every word inside a match, none of it held unresolved - the lines that are done.</summary>
+    /// <summary>Lines with every word inside a match - the lines that are done.</summary>
     public int FullyCoveredLines { get; init; }
-
-    /// <summary>
-    /// Words matches hold unresolved (see <see cref="AllowUnmatchedAttribute"/>): uncovered still, but already placed inside
-    /// a frame - text whose outer structure is modeled and whose inner parts aren't yet.
-    /// </summary>
-    public int HeldWords { get; init; }
 
     public IReadOnlyList<GlyphContribution> Glyphs { get; init; }
     /// <summary>What each vocabulary costs to define: only the members the corpus used (see <see cref="VocabularyUsage"/>).</summary>
@@ -174,7 +162,7 @@ public sealed record MdlScore
         report.AppendLine($"MDL score: {Bits(TotalBits)} (grammar {Bits(GrammarBits)} + data {Bits(DataBits)}) = {CompressionRatio:P1} of the empty grammar's {Bits(BaselineBits)}");
         report.AppendLine($"  data: {string.Join(" · ", ComponentBits.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {Bits(x.Value)}"))}");
         report.AppendLine($"  grammar: {Bits(Glyphs.Sum(x => x.DefinitionBits))} in {Glyphs.Count} glyphs, {Bits(Vocabularies.Values.Sum())} in {Vocabularies.Count} vocabularies ({CharBits:F2} bits/char)");
-        report.AppendLine($"Coverage: {CapturedWords:N0} of {Words:N0} words ({Coverage:P1}), {Documents:N0} documents, {Lines:N0} lines ({FullyCoveredLines:N0} fully covered), {HeldWords:N0} words held unresolved");
+        report.AppendLine($"Coverage: {CapturedWords:N0} of {Words:N0} words ({Coverage:P1}), {Documents:N0} documents, {Lines:N0} lines ({FullyCoveredLines:N0} fully covered)");
 
         if (UnlocatedPatternMatches > 0)
             report.AppendLine($"Warning: {UnlocatedPatternMatches:N0} matches had open-ended pattern text the scorer couldn't locate, so didn't charge");

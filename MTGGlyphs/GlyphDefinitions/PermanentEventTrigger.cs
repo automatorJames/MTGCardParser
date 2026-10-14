@@ -12,6 +12,5 @@ public class PermanentEventTrigger : Glyph
 
     public OneOf<This, IndefinitePermanent, EnchantedPermanent> Subject { get; set; }
     public PermanentEvent Event { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

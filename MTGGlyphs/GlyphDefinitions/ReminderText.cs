@@ -8,6 +8,5 @@ public class ReminderText : Glyph
     public override Joiner Joiner => Joiner.None;
     public override Nib[] Nibs => ["(", Prop(Rule)];
 
-    [AllowUnmatched]
     public DynamicGlyph Rule { get; set; }
 }

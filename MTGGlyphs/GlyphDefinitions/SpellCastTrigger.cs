@@ -9,6 +9,5 @@ public class SpellCastTrigger : Glyph
 
     public WhichPlayer Caster { get; set; }
     public IndefiniteSpell Spell { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

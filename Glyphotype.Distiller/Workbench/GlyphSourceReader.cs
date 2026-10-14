@@ -238,7 +238,6 @@ public static class GlyphSourceReader
                 definition = AttributeName(attribute) switch
                 {
                     "Optional" => definition with { IsOptional = true },
-                    "AllowUnmatched" => definition with { AllowsUnmatched = true },
                     "RegexPattern" => definition with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => definition with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
                     "TypeFilter" when arguments is [TypeOfExpressionSyntax typeOf] => definition with { TypeFilter = typeOf.Type.ToString() },
@@ -249,7 +248,7 @@ public static class GlyphSourceReader
                     "Singular" when arguments.Count == 0 => definition with { Number = GrammaticalNumber.Singular },
                     "Plural" when arguments.Count == 0 => definition with { Number = GrammaticalNumber.Plural },
                     "RefersTo" when arguments.Count == 1 => definition with { RefersTo = ReadPropertyName(arguments[0]) },
-                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, AllowUnmatched, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Referent, Singular, Plural, RefersTo(nameof(Property)))"),
+                    _ => Unsupported(definition, attribute, $"{glyphName}.{name}: [{attribute}] isn't an attribute a property definition can hold (Optional, RegexPattern, JoinedBy, TypeFilter(typeof(Marker)), Referent, Singular, Plural, RefersTo(nameof(Property)))"),
                 };
             }
 

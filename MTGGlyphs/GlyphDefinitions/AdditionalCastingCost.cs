@@ -7,6 +7,5 @@ public class AdditionalCastingCost : Glyph
 {
     public override Nib[] Nibs => ["as an additional cost to cast this spell,", Prop(Cost)];
 
-    [AllowUnmatched]
     public DynamicGlyph Cost { get; set; }
 }

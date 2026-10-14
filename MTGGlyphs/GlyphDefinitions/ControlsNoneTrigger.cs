@@ -9,6 +9,5 @@ public class ControlsNoneTrigger : Glyph
 
     public WhichPlayer Controller { get; set; }
     public PermanentKind Kind { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

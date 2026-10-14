@@ -10,7 +10,7 @@ public enum LineScope
     /// <summary>The whole text of every line.</summary>
     All,
 
-    /// <summary>Only the unmatched spans of each line - so a hit is text no glyph covers (including text a match holds unresolved).</summary>
+    /// <summary>Only the unmatched spans of each line - so a hit is text no glyph covers.</summary>
     Unmatched,
 
     /// <summary>The whole text of lines no glyph matched any of.</summary>
@@ -36,9 +36,8 @@ public sealed record ResidualPhrase(string Text, int Words, int Occurrences, int
 /// <param name="Opening">The words the spans start with.</param>
 /// <param name="Spans">How many uncovered spans start with them.</param>
 /// <param name="Words">How many uncovered words those spans hold in all.</param>
-/// <param name="Held">How many of the spans are held unresolved inside a match, rather than unmatched outright.</param>
 /// <param name="Example">The commonest such span.</param>
-public sealed record UnmatchedOpening(string Opening, int Spans, int Words, int Held, int Documents, string Example);
+public sealed record UnmatchedOpening(string Opening, int Spans, int Words, int Documents, string Example);
 
 /// <summary>A line that tokenizes differently under two grammars, and how many times it occurs.</summary>
 /// <param name="CapturedWordsDelta">How many more words the second grammar's matches cover, per occurrence.</param>
@@ -129,19 +128,18 @@ public static class CorpusQueries
     }
 
     /// <summary>
-    /// Uncovered spans - unmatched text, and text held unresolved inside matches - grouped by their first one to
-    /// <paramref name="maxWords"/> words, ranked by the uncovered words the spans hold in all: where a construction's
-    /// opening recurs, a frame for it (or for the slot holding it) covers the most. As with
+    /// Unmatched spans grouped by their first one to <paramref name="maxWords"/> words, ranked by the unmatched words
+    /// the spans hold in all: where a construction's opening recurs, a glyph for it covers the most. As with
     /// <see cref="GetResidualPhrases"/>, an opening is left out when one a word longer starts nearly as many spans.
     /// </summary>
     public static IReadOnlyList<UnmatchedOpening> GetUnmatchedOpenings(IReadOnlyList<ProcessedDocument> documents, int maxWords = 3, int minOccurrences = 3, int limit = 25)
     {
         var spans = Lines(documents)
-            .SelectMany(x => UnmatchedSpans(x.Line).Select(y => (x.Document, Text: y.Text, y.IsHeld, Words: y.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries))))
+            .SelectMany(x => Unmatched(x.Line).Select(y => (x.Document, Text: y, Words: y.Split(' ', StringSplitOptions.RemoveEmptyEntries))))
             .Where(x => x.Words.Length > 0)
             .ToList();
 
-        var groups = new Dictionary<string, List<(string Document, string Text, bool IsHeld, string[] Words)>>();
+        var groups = new Dictionary<string, List<(string Document, string Text, string[] Words)>>();
 
         foreach (var span in spans)
             for (int n = 1; n <= Math.Min(maxWords, span.Words.Length); n++)
@@ -167,7 +165,6 @@ public static class CorpusQueries
                 x.Key,
                 x.Value.Count,
                 x.Value.Sum(y => y.Words.Length),
-                x.Value.Count(y => y.IsHeld),
                 x.Value.Select(y => y.Document).Distinct().Count(),
                 x.Value.GroupBy(y => y.Text).OrderByDescending(y => y.Count()).ThenBy(y => y.Key, StringComparer.Ordinal).First().Key))
             .OrderByDescending(x => x.Words)
@@ -305,17 +302,11 @@ public static class CorpusQueries
     static IEnumerable<(string Document, ProcessedLine Line)> Lines(IReadOnlyList<ProcessedDocument> documents) =>
         documents.SelectMany(x => x.Lines.Select(y => (x.Document.Name, y)));
 
-    /// <summary>A line's unmatched text: its unmatched spans, and the text its matches hold unresolved (see <see cref="CaptureUnit.UnresolvedTraces"/>).</summary>
-    /// <summary>Each uncovered span of <paramref name="line"/>, and whether it's held inside a match rather than unmatched outright.</summary>
-    static IEnumerable<(string Text, bool IsHeld)> UnmatchedSpans(ProcessedLine line) =>
-        line.Glyphs.SelectMany(x => x.CaptureContext.RootCaptureTrace.IsUnmatchedString
-            ? [(x.CaptureValue.Trim(), false)]
-            : x.UnresolvedTraces.Select(y => (y.CaptureValue.Trim(), true)));
-
+    /// <summary>A line's unmatched spans.</summary>
     static IEnumerable<string> Unmatched(ProcessedLine line) =>
-        line.Glyphs.SelectMany(x => x.CaptureContext.RootCaptureTrace.IsUnmatchedString
-            ? [x.CaptureValue.Trim()]
-            : x.UnresolvedTraces.Select(y => y.CaptureValue.Trim()));
+        line.Glyphs
+            .Where(x => x.CaptureContext.RootCaptureTrace.IsUnmatchedString)
+            .Select(x => x.CaptureValue.Trim());
 
     static bool Mentions(ProcessedLine line, string name) =>
         line.Glyphs

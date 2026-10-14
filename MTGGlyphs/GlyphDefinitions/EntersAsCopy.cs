@@ -7,6 +7,5 @@ public class EntersAsCopy : Glyph
 {
     public override Nib[] Nibs => ["you may have", Nib.This, "enter the battlefield as a copy of", Prop(Copied)];
 
-    [AllowUnmatched]
     public DynamicGlyph Copied { get; set; }
 }

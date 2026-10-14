@@ -7,6 +7,5 @@ public class CastRestriction : Glyph
 {
     public override Nib[] Nibs => ["cast this spell only", Prop(Timing)];
 
-    [AllowUnmatched]
     public DynamicGlyph Timing { get; set; }
 }

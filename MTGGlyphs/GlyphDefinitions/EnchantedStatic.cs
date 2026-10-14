@@ -8,6 +8,5 @@ public class EnchantedStatic : Glyph
     public override Nib[] Nibs => ["enchanted", Prop(Kind), Prop(Rest)];
 
     public CardType Kind { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Rest { get; set; }
 }

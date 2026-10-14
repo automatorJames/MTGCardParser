@@ -9,6 +9,5 @@ public class IfOutcome : Glyph
 
     public OneOf<ThatPlayer, TheyPlayer, WhichPlayer?> Player { get; set; }
     public OutcomeResult Result { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Outcome { get; set; }
 }

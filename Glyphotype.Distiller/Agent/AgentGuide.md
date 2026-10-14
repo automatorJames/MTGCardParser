@@ -28,8 +28,8 @@ Only create or switch workspaces when the person asks. Switching changes what th
 1. **Orient.** `overview` shows the score, coverage and biggest unmatched text. `list_glyphs` shows what exists,
    and `show` shows any definition's C# source.
 2. **Find a target.** Look for recurring unmatched text:
-   - `unmatched_openings` groups uncovered text by how it opens - the quickest way to the constructions a frame
-     (or a held slot) would cover most of;
+   - `unmatched_openings` groups unmatched text by how it opens - the quickest way to the constructions a glyph
+     would cover most of;
    - `residual_phrases` lists repeated word runs;
    - `residuals` lists whole unmatched spans by cost;
    - `search_lines` finds lines by regex, and `scope=unmatched` searches only the text nothing covers.
@@ -115,7 +115,6 @@ always welcome, and so is one that covers more text for a fair price in bits.
 - Nested renderings also show captures:
   - `⟦Property: …⟧` is a nested glyph;
   - `⟦Property→Glyph: …⟧` is what a `DynamicGlyph` property resolved to;
-  - `⟦Property: «…»⟧` is text a `[AllowUnmatched]` dynamic holds unresolved;
   - `⟦Property=text⟧` is a terminal (vocabulary member, bool, or number).
 - A *frame* such as `the {Animal} naps on {Day}` is a match's text with its captures masked out.
 
@@ -186,20 +185,12 @@ floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing
 - **`int`**: digits, or a custom `[RegexPattern]`.
 - **`DynamicGlyph`**: whatever glyph matches the captured text, resolved at match time. `[TypeFilter(typeof(IMarker))]`
   restricts it to glyphs implementing an empty marker interface (`public interface IMarker { }`, listed after the
-  base class: `class X : Glyph, IMarker`). Use it for "if …, {any effect}" constructions. By default, when no glyph
-  matches the captured text, the whole match fails.
-
-  `[AllowUnmatched]` on the property changes that: the text is kept as unmatched text inside the match (shown as
-  `⟦Effect: «…»⟧`) instead of failing it. It's still charged and counted as unmatched text, but the surrounding
-  frame is paid for immediately, and the held text resolves by itself once some glyph matches it. This is how to
-  model an outer construction (a trigger, a condition, a cost) before its inner parts. `residuals` and
-  `search_lines scope=unmatched` include held text, so they show which inner parts to model next.
-
-  A frame isn't the finished cover, though: its literal words count as covered, but what it holds doesn't, and the
-  line isn't done until that's modeled too. The score reports **fully covered lines** and **words held unresolved**
-  beside coverage, for this. Before adding a frame, look for one that already takes that construction - a second
-  frame for the same shape splits its family in two - and before adding frame after frame, fill the held slots of
-  the ones there are.
+  base class: `class X : Glyph, IMarker`). Use it for "if …, {any effect}" constructions. When no glyph matches the
+  captured text, the whole match fails: a glyph with dynamic slots matches only where every slot resolves, and it
+  matches more lines by itself as glyphs for its slots are added. So a new outer construction goes in the same step
+  as at least one glyph for each of its slots - `evaluate` and `apply` take several declarations at once. Before
+  adding one, look for an existing glyph that already takes that construction: a second one for the same shape
+  splits its family in two.
 - **`OneOf<A, B>` / `OneOf<A, B, C>`**: exactly one of two or three types. Value types must be nullable:
   `OneOf<Animal?, Person?>`.
 - **`ManyOf<T>`**: a list with a conjunction ("x, y, and z", "x or y").

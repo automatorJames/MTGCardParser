@@ -14,6 +14,5 @@ public class AsLongAs : Glyph
     public Assertion Assertion { get; set; }
     public CardAspect Aspect { get; set; }
 
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

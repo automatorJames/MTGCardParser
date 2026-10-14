@@ -7,8 +7,6 @@ public class TriggeredAbility : Glyph
 {
     public override Nib[] Nibs => [Alt("when", "whenever"), Prop(Condition), ",", Prop(Effect)];
 
-    [AllowUnmatched]
     public DynamicGlyph Condition { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

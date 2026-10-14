@@ -189,9 +189,6 @@ public static class GrammarEmitter
             if (property.IsOptional)
                 propertyBuilder.SetCustomAttribute(Attribute<OptionalAttribute>());
 
-            if (property.AllowsUnmatched)
-                propertyBuilder.SetCustomAttribute(Attribute<AllowUnmatchedAttribute>());
-
             if (property.Patterns.Count > 0)
                 propertyBuilder.SetCustomAttribute(Attribute<RegexPatternAttribute>((object)property.Patterns.ToArray()));
 

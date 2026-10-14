@@ -124,7 +124,7 @@ public sealed class GrammarAgent
         report.AppendLine($"Score: {score.TotalBits:N0} bits = {score.CompressionRatio:P2} of the no-grammar baseline ({score.BaselineBits:N0}). Lower is better.");
         report.AppendLine($"  grammar {score.GrammarBits:N0} · {string.Join(" · ", score.ComponentBits.Select(x => $"{x.Key.ToString().ToLowerInvariant()} {x.Value:N0}"))}");
         report.AppendLine($"Coverage: {score.Coverage:P2} of words inside matches ({score.CapturedWords:N0} of {score.Words:N0}, {score.Lines:N0} lines). " +
-            $"{score.FullyCoveredLines:N0} lines are fully covered; {score.HeldWords:N0} words are held unresolved inside matches.");
+            $"{score.FullyCoveredLines:N0} lines are fully covered.");
 
         // A glyph also matched nested is credited to the glyphs using it, so its own net undersells it.
         var losing = score.Glyphs.Where(x => x.IsTopLevel && !x.IsUsedNested && x.NetBits < 0).OrderBy(x => x.NetBits).ToList();
@@ -274,7 +274,7 @@ public sealed class GrammarAgent
             checkIn.Add($"after {Settings.AttemptsBeforeCheckIn} evaluations in a row without an applied step");
 
         report.AppendLine(checkIn.Count > 0
-            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, give the round's change in fully covered lines and in words held unresolved, say what you'd try next, and wait. When the person says to continue, call `start_session` again. " +
+            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, give the round's change in fully covered lines, say what you'd try next, and wait. When the person says to continue, call `start_session` again. " +
                 "Don't stop before then: text that's expensive to cover is something to evaluate and, if no step can afford it, to journal as an open problem - then move on to the next target."
             : "- There's no check-in limit: keep going until the corpus is covered or you're stuck, then summarize and wait. Uncovered text that only costs bits to cover isn't a reason to stop.");
 
@@ -849,11 +849,11 @@ public sealed class GrammarAgent
         var openings = CorpusQueries.GetUnmatchedOpenings(trial.Documents, maxWords, minOccurrences, limit);
 
         var report = new StringBuilder();
-        report.AppendLine($"How uncovered text opens (up to {maxWords} word{S(maxWords)}, at least {minOccurrences}×), by the uncovered words the spans hold - held means inside a match, a slot to fill:");
-        report.AppendLine($"  {"words",6} {"spans",6} {"held",5} {"docs",5}  opening  →  commonest span");
+        report.AppendLine($"How uncovered text opens (up to {maxWords} word{S(maxWords)}, at least {minOccurrences}×), by the uncovered words the spans hold:");
+        report.AppendLine($"  {"words",6} {"spans",6} {"docs",5}  opening  →  commonest span");
 
         foreach (var opening in openings)
-            report.AppendLine($"  {opening.Words,6:N0} {opening.Spans,6:N0} {opening.Held,5:N0} {opening.Documents,5:N0}  {opening.Opening} …  →  {Truncate(opening.Example, 90)}");
+            report.AppendLine($"  {opening.Words,6:N0} {opening.Spans,6:N0} {opening.Documents,5:N0}  {opening.Opening} …  →  {Truncate(opening.Example, 90)}");
 
         if (openings.Count == 0)
             report.AppendLine("  (none)");
@@ -926,7 +926,7 @@ public sealed class GrammarAgent
         var (before, after) = (evaluation.Before.Score, evaluation.After.Score);
 
         return $"As evaluated: {before.TotalBits:N0} → {after.TotalBits:N0} bits; coverage {before.Coverage:P2} → {after.Coverage:P2} ({Signed(comparison.CapturedWordsDelta)} words); " +
-            $"fully covered lines {Signed(comparison.FullyCoveredLinesDelta)}; words held unresolved {Signed(comparison.HeldWordsDelta)}.";
+            $"fully covered lines {Signed(comparison.FullyCoveredLinesDelta)}.";
 
         static string Signed(int value) => value > 0 ? $"+{value:N0}" : value < 0 ? $"−{-value:N0}" : "±0";
     }

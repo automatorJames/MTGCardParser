@@ -75,7 +75,6 @@ public static class SourceCommitter
         nameof(JoinedByAttribute),
         nameof(OptionalPluralAttribute),
         nameof(OptionalAttribute),
-        nameof(AllowUnmatchedAttribute),
         nameof(TypeFilterAttribute),
         nameof(ColorAttribute),
         nameof(ReferentAttribute),

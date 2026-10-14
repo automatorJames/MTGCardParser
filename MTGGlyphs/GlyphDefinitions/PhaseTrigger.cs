@@ -12,6 +12,5 @@ public class PhaseTrigger : Glyph
 
     public AtOrUntilPlayerPhase When { get; set; }
 
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

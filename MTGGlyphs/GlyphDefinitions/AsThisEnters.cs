@@ -7,6 +7,5 @@ public class AsThisEnters : Glyph
 {
     public override Nib[] Nibs => ["as", Nib.This, "enters the battlefield,", Prop(Effect)];
 
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

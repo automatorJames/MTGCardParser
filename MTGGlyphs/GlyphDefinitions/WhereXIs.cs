@@ -9,6 +9,5 @@ public class WhereXIs : Glyph
     public override Nib[] Nibs => [Prop(Effect), ", where x is", Prop(Definition)];
 
     public DynamicGlyph Effect { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Definition { get; set; }
 }

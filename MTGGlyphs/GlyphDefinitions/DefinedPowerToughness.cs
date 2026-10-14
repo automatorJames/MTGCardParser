@@ -8,6 +8,5 @@ public class DefinedPowerToughness : Glyph
     public override Joiner Joiner => Joiner.None;
     public override Nib[] Nibs => [Nib.This, "'s power and toughness are each equal to ", Prop(Amount)];
 
-    [AllowUnmatched]
     public DynamicGlyph Amount { get; set; }
 }

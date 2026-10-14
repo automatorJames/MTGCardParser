@@ -6,8 +6,8 @@ using Glyphotype.Distiller.Workbench;
 namespace Glyphotype.Tests;
 
 /// <summary>
-/// Text a grammar holds without spelling it out: what open-ended patterns match (which the score must pay to spell),
-/// and what a dynamic marked <see cref="AllowUnmatchedAttribute"/> leaves unresolved (which stays unmatched text).
+/// Text a grammar holds without spelling it out: what open-ended patterns match, which the score must pay to spell -
+/// and what a dynamic can't resolve, which fails its match rather than being held.
 /// </summary>
 [Collection(CorpusCollection.Name)]
 public class OpenTextTests(CorpusFixture corpus)
@@ -71,106 +71,21 @@ public class OpenTextTests(CorpusFixture corpus)
         Assert.Equal(0, MdlScorer.Score(corpus.Grammar, corpus.ProcessedDocuments).UnlocatedPatternMatches);
     }
 
-    const string _whenever = """
-        public class WheneverWeCan : Glyph
-        {
-            public override Nib[] Nibs => ["whenever we can,", Prop(Outcome)];
-
-            [AllowUnmatched]
-            public DynamicGlyph Outcome { get; set; }
-        }
-        """;
-
-    GlyphGrammar WithWhenever(string source = _whenever)
-    {
-        var glyph = Assert.Single(GlyphSourceReader.Read(source, corpus.Grammar.ToDefinition()).Glyphs);
-        return GlyphGrammar.FromDefinition(corpus.Grammar.ToDefinition().WithGlyph(glyph), allowPartialClauseMatches: false);
-    }
-
     [Fact]
-    public void A_dynamic_allowed_to_keep_unmatched_text_holds_what_nothing_resolves()
+    public void A_dynamic_nothing_resolves_fails_the_whole_match()
     {
-        var grammar = WithWhenever();
-        var lines = CorpusFixture.Process(grammar, [new TestDocument(TestDocument.Unnamed, "whenever we can, the dog snores.\nwhenever we can, the dog sleeps in the kitchen.", [])])
-            .Single().Lines;
+        var glyph = Assert.Single(GlyphSourceReader.Read("""
+            public class WheneverWeCan : Glyph
+            {
+                public override Nib[] Nibs => ["whenever we can,", Prop(Outcome)];
 
-        Assert.Equal("⟦WheneverWeCan: whenever we can, ⟦Outcome: «the dog snores»⟧⟧ .", ParseRenderer.Render(lines[0], nested: true));
-        Assert.StartsWith("⟦WheneverWeCan: whenever we can, ⟦Outcome→AnimalRests:", ParseRenderer.Render(lines[1], nested: true));
-
-        // What's held unresolved is still unmatched text: it's not coverage, and it's what a residual hot spot lists.
-        Assert.Equal(3, lines[0].CapturedWordCount);
-        Assert.Equal(9, lines[1].CapturedWordCount);
-
-        var match = lines[0].Glyphs.First();
-        Assert.Equal("the dog snores", Assert.Single(match.UnresolvedTraces).CaptureValue);
-        Assert.Equal(match.CaptureValue, CorpusEncoding.Reconstruct(match));
-    }
-
-    [Fact]
-    public void The_score_counts_held_words_and_the_lines_left_with_none()
-    {
-        var grammar = WithWhenever();
-        var documents = CorpusFixture.Process(grammar, [new TestDocument(TestDocument.Unnamed, "whenever we can, the dog snores.\nwhenever we can, the dog sleeps in the kitchen.", [])]);
-
-        var score = MdlScorer.Score(grammar, documents);
-
-        // The first line's frame holds "the dog snores"; the second's resolves, so that line is done.
-        Assert.Equal(3, score.HeldWords);
-        Assert.Equal(1, score.FullyCoveredLines);
-    }
-
-    [Fact]
-    public void Without_the_attribute_an_unresolvable_dynamic_fails_the_whole_match()
-    {
-        var grammar = WithWhenever(_whenever.Replace("[AllowUnmatched]", ""));
+                public DynamicGlyph Outcome { get; set; }
+            }
+            """, corpus.Grammar.ToDefinition()).Glyphs);
+        var grammar = GlyphGrammar.FromDefinition(corpus.Grammar.ToDefinition().WithGlyph(glyph), allowPartialClauseMatches: false);
 
         Assert.Equal("«whenever we can, the dog snores»", ParseRenderer.Render(grammar.Tokenize("whenever we can, the dog snores"), nested: true));
-    }
-
-    [Fact]
-    public void Held_text_is_scored_as_unmatched_text_so_the_frame_around_it_pays_for_itself()
-    {
-        var outcomes = new[] { "the dog snores", "the cat purrs loudly", "the bird hums" };
-        var documents = Enumerable.Range(0, 30).Select(i => $"whenever we can, {outcomes[i % outcomes.Length]}.");
-
-        var without = Score(corpus.Grammar, documents);
-        var with = Score(WithWhenever(), documents);
-
-        // The frame's own three words are covered; the held text isn't.
-        Assert.Equal(0, without.CapturedWords);
-        Assert.Equal(30 * 3, with.CapturedWords);
-        Assert.Contains(with.Residuals, x => x.Text == "the dog snores" && x.Occurrences == 10);
-        Assert.True(with.TotalBits < without.TotalBits, $"with the frame {with.TotalBits:N0} vs without {without.TotalBits:N0}");
-    }
-
-    [Fact]
-    public void Only_a_dynamic_can_keep_unmatched_text()
-    {
-        var definition = corpus.Grammar.ToDefinition();
-        var misplaced = Assert.Single(GlyphSourceReader.Read("""
-            public class Misplaced : Glyph
-            {
-                public override Nib[] Nibs => ["misplaced", Prop(Animal)];
-
-                [AllowUnmatched]
-                public Animal Animal { get; set; }
-            }
-            """, definition).Glyphs);
-
-        var exception = Assert.ThrowsAny<Exception>(() => GlyphGrammar.FromDefinition(definition.WithGlyph(misplaced), allowPartialClauseMatches: false));
-        Assert.Contains("[AllowUnmatched]", exception.Message);
-    }
-
-    [Fact]
-    public void The_attribute_survives_every_trip_through_a_definition()
-    {
-        var glyph = Assert.Single(GlyphSourceReader.Read(_whenever, corpus.Grammar.ToDefinition()).Glyphs);
-        Assert.True(glyph.Properties.Single().AllowsUnmatched);
-
-        Assert.Contains("[AllowUnmatched]", GlyphSourceWriter.WriteGlyph(glyph));
-
-        var emitted = GrammarEmitter.Emit(corpus.Grammar.ToDefinition().WithGlyph(glyph));
-        Assert.True(GrammarDefinition.FromTypes(emitted).Glyphs.Single(x => x.Name == "WheneverWeCan").Properties.Single().AllowsUnmatched);
+        Assert.StartsWith("⟦WheneverWeCan: whenever we can, ⟦Outcome→AnimalRests:", ParseRenderer.Render(grammar.Tokenize("whenever we can, the dog sleeps in the kitchen"), nested: true));
     }
 
     static MdlScore Score(GlyphGrammar grammar, IEnumerable<string> texts) =>

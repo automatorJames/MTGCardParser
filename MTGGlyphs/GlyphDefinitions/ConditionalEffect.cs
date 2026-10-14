@@ -7,8 +7,6 @@ public class ConditionalEffect : Glyph
 {
     public override Nib[] Nibs => ["if", Prop(Condition), ",", Prop(Effect)];
 
-    [AllowUnmatched]
     public DynamicGlyph Condition { get; set; }
-    [AllowUnmatched]
     public DynamicGlyph Effect { get; set; }
 }

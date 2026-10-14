@@ -152,7 +152,7 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         CancellationToken cancellation = default) =>
         Run(() => agent.ResidualsAsync(limit, offset, minWords, cancellation));
 
-    [McpServerTool(Name = "unmatched_openings", ReadOnly = true), Description("Uncovered text - unmatched, or held unresolved in a match - grouped by its opening words, ranked by the uncovered words it holds: the constructions whose frame, or slot, covers the most.")]
+    [McpServerTool(Name = "unmatched_openings", ReadOnly = true), Description("Unmatched text grouped by its opening words, ranked by the unmatched words it holds: the constructions whose glyph would cover the most.")]
     public Task<string> UnmatchedOpenings(
         [Description("Longest opening, in words.")] int maxWords = 3,
         [Description("Only openings starting at least this many spans.")] int minOccurrences = 3,
