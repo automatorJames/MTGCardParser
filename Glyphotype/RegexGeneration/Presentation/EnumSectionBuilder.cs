@@ -14,7 +14,8 @@ internal class EnumSectionBuilder
     /// <param name="memberBricks">The value bricks inside <paramref name="enumNode"/>, in brick order.</param>
     public List<RegexBrick> Build(EnumNode enumNode, IEnumerable<RegexBrickValue> memberBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode, bool includeOmittedCount = true)
     {
-        var members = GetMembersToDisplay(memberBricks, enumSummary, displayMode);
+        var patternCounts = CountPatternCaptures(memberBricks, enumSummary);
+        var members = GetMembersToDisplay(memberBricks, enumSummary, patternCounts, displayMode);
 
         // Full already shows every member with its real (possibly zero) count, so there's nothing left
         // for an "N omitted" row to summarize.
@@ -24,12 +25,35 @@ internal class EnumSectionBuilder
         var metrics = EnumColumnMetrics.Calculate(members, enumSummary, omittedCount);
 
         List<RegexBrick> bricks = [];
-        AppendMemberBricksWithSynonymSections(bricks, members, enumSummary, metrics, displayMode);
+        AppendMemberBricksWithSynonymSections(bricks, members, enumSummary, patternCounts, metrics, displayMode);
 
         if (omittedCount != null)
             bricks.Add(omittedCount);
 
         return bricks;
+    }
+
+    /// <summary>
+    /// How many captures each member pattern accounts for: each text a member captured goes to the first of that
+    /// member's patterns matching all of it, as <see cref="EnumNode"/> reads a capture - or, should none, to its
+    /// first pattern, so a member that occurred always has a pattern to show it by. Matched rather than looked up
+    /// by text, since a pattern is seldom the text it captures: <c>\{t\}</c> captures "{t}", and <c>deals?</c>
+    /// both "deal" and "deals".
+    /// </summary>
+    static Dictionary<RegexBrickValue, int> CountPatternCaptures(IEnumerable<RegexBrickValue> memberBricks, EnumCaptureTraceSummary enumSummary)
+    {
+        Dictionary<RegexBrickValue, int> counts = [];
+
+        foreach (var patterns in memberBricks.GroupBy(x => x.Value))
+        {
+            foreach (var (text, count) in enumSummary.GetSynonymOccurrenceCounts(patterns.Key))
+            {
+                var pattern = patterns.FirstOrDefault(x => x.Parent is EnumMemberNode node ? node.Regex.IsMatch(text) : x.Regex == text) ?? patterns.First();
+                counts[pattern] = counts.GetValueOrDefault(pattern) + count;
+            }
+        }
+
+        return counts;
     }
 
     /// <summary>
@@ -46,7 +70,7 @@ internal class EnumSectionBuilder
     /// synonym breakdown included, ranked by occurrence count - today's default view.</item>
     /// </list>
     /// </summary>
-    static List<RegexBrickValue> GetMembersToDisplay(IEnumerable<RegexBrickValue> memberBricks, EnumCaptureTraceSummary enumSummary, RegexDisplayMode displayMode)
+    static List<RegexBrickValue> GetMembersToDisplay(IEnumerable<RegexBrickValue> memberBricks, EnumCaptureTraceSummary enumSummary, Dictionary<RegexBrickValue, int> patternCounts, RegexDisplayMode displayMode)
     {
         // Checked via EnumCaptureTraceSummary's safe accessors rather than the raw dictionaries/
         // EnumMembersWithZeroOcurrences: a member the graph declares but the summary has no entry for at
@@ -56,7 +80,7 @@ internal class EnumSectionBuilder
         // KeyNotFoundException. Missing from the summary now just reads as "didn't occur," the same safe
         // default as an explicit zero.
         bool Occurred(object memberValue) => enumSummary.GetOccurrenceCount(memberValue) > 0;
-        bool IsOccurringPattern(RegexBrickValue member) => enumSummary.GetSynonymOccurrenceCounts(member.Value).ContainsKey(member.Regex);
+        bool IsOccurringPattern(RegexBrickValue member) => patternCounts.ContainsKey(member);
 
         // A member the summary counts as "occurred" isn't guaranteed to have a declared pattern brick
         // whose raw Regex text exactly matches one of its recorded capture strings (e.g. a pattern with
@@ -121,14 +145,14 @@ internal class EnumSectionBuilder
     /// Sample never groups by synonym - it already reduced every member to one representative row, so
     /// every row renders as if standalone regardless of how many synonyms the member actually has.
     /// </summary>
-    static void AppendMemberBricksWithSynonymSections(List<RegexBrick> bricks, List<RegexBrickValue> members, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics, RegexDisplayMode displayMode)
+    static void AppendMemberBricksWithSynonymSections(List<RegexBrick> bricks, List<RegexBrickValue> members, EnumCaptureTraceSummary enumSummary, Dictionary<RegexBrickValue, int> patternCounts, EnumColumnMetrics metrics, RegexDisplayMode displayMode)
     {
         RegexNode currentSynonymGroupParentNode = null;
 
         for (int i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            bool isPartOfSynonymGroup = displayMode != RegexDisplayMode.Sample && enumSummary.GetSynonymOccurrenceCounts(member.Value).Count > 1;
+            bool isPartOfSynonymGroup = displayMode != RegexDisplayMode.Sample && patternCounts.Keys.Count(x => Equals(x.Value, member.Value)) > 1;
 
             bool isFirstRowOfSynonymGroup =
                 isPartOfSynonymGroup
@@ -140,7 +164,7 @@ internal class EnumSectionBuilder
                 bricks.Add(BuildSynonymSectionHeader(currentSynonymGroupParentNode, member, enumSummary, metrics));
             }
 
-            member.CommentFormatted = BuildMemberComment(member, enumSummary, metrics, isPartOfSynonymGroup);
+            member.CommentFormatted = BuildMemberComment(member, enumSummary, patternCounts, metrics, isPartOfSynonymGroup);
             member.RegexFormatted = BuildMemberRegex(member, positionAmongOccurring: i, totalMemberCount: members.Count);
             bricks.Add(member);
 
@@ -168,12 +192,12 @@ internal class EnumSectionBuilder
     /// (which together concatenate to the same string this always returned) so the name and count can be
     /// colored as separate spans.
     /// </summary>
-    static string BuildMemberComment(RegexBrickValue member, EnumCaptureTraceSummary enumSummary, EnumColumnMetrics metrics, bool isPartOfSynonymGroup)
+    static string BuildMemberComment(RegexBrickValue member, EnumCaptureTraceSummary enumSummary, Dictionary<RegexBrickValue, int> patternCounts, EnumColumnMetrics metrics, bool isPartOfSynonymGroup)
     {
         var nameField = isPartOfSynonymGroup ? metrics.FormatBlankNameField() : metrics.FormatNameField(member.Value);
 
         var occurrenceCount = isPartOfSynonymGroup
-            ? enumSummary.GetSynonymOccurrenceCounts(member.Value).GetValueOrDefault(member.Regex, 0)
+            ? patternCounts.GetValueOrDefault(member)
             : enumSummary.GetOccurrenceCount(member.Value);
         var countField = metrics.FormatCountField(occurrenceCount);
 
@@ -193,9 +217,7 @@ internal class EnumSectionBuilder
     static string BuildMemberRegex(RegexBrickValue member, int positionAmongOccurring, int totalMemberCount)
     {
         member.JoinerRegexFormatted = BuildJoinerPrefix(positionAmongOccurring, totalMemberCount);
-        // Escaped for display only - member.Regex itself must stay raw, since it's the key looked up against
-        // EnumCaptureTraceSummary's synonym table (see IsOccurringPattern), which is keyed by matched
-        // document text rather than by pattern text.
+        // Escaped for display only - member.Regex itself stays raw, the pattern the engine compiles.
         member.MemberRegexFormatted = BuiltRegex.EscapeSpaces(member.Regex);
 
         return member.JoinerRegexFormatted + member.MemberRegexFormatted;

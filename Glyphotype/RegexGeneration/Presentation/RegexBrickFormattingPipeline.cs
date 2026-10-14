@@ -45,10 +45,9 @@ internal class RegexBrickFormattingPipeline
             // Every brick's default display text is its own pattern with spaces escaped. A TextNode already
             // carries them that way (EscapeSpaces is idempotent, so this is a no-op there); what this reaches
             // is the pattern-derived bricks a RegexPatternAttribute produced - enum member synonyms like
-            // "each player's", terminal patterns like "((in|from) )?" - which must keep raw spaces in their
-            // own Regex, since that text doubles as the identity EnumCaptureTraceSummary's synonym table is
-            // keyed by (matched document text, not pattern text). Escaping display-side only keeps the
-            // rendered regex uniform without touching that lookup, or the compiled pattern.
+            // "each player's", terminal patterns like "((in|from) )?" - which keep raw spaces in their own
+            // Regex. Escaping display-side only keeps the rendered regex uniform without touching the
+            // compiled pattern.
             brick.RegexFormatted = BuiltRegex.EscapeSpaces(brick.Regex);
         }
 
