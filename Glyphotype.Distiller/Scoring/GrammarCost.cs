@@ -54,7 +54,6 @@ public sealed record GrammarCost(
         public HashSet<string> SpelledWords { get; } = [];
 
         static readonly int _glyphKinds = Enum.GetValues<GlyphKind>().Length;
-        static readonly int _spanRules = Enum.GetValues<SpanRule>().Length;
         static readonly int _joiners = Enum.GetValues<Joiner>().Length;
         static readonly int _nibKinds = typeof(NibDefinition).GetNestedTypes().Count(x => x.IsSubclassOf(typeof(NibDefinition)));
         static readonly int _typeReferenceKinds = Enum.GetValues<TypeReferenceKind>().Length;
@@ -74,7 +73,7 @@ public sealed record GrammarCost(
             bits += Optional(glyph.Joiner is not null, CodeLength.Uniform(_joiners));
             bits += CodeLength.Count(glyph.Properties.Count) + glyph.Properties.Sum(Property);
             bits += CodeLength.Count(glyph.Markers.Count) + glyph.Markers.Count * CodeLength.Uniform(grammar.Markers.Count);
-            bits += 1 + CodeLength.Uniform(_spanRules); // IsDependent, SpanRule
+            bits += 1; // IsDependent
             bits += Optional(glyph.TokenizationOrder is not null, CodeLength.SignedInteger(glyph.TokenizationOrder ?? 0));
             bits += Texts(glyph.Patterns, literal: false);
             bits += Optional(glyph.JoinedBy is not null, CodeLength.Uniform(_joiners));

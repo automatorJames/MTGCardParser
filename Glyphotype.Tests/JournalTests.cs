@@ -41,7 +41,7 @@ public sealed class JournalTests(CorpusFixture corpus) : IDisposable
             .Select(i => new TestDocument(TestDocument.Unnamed, $"the {animals[i % 3]} snores in the {places[i / 3 % 3]}.\nthe {animals[i % 3]} yawns in the {places[i / 3 % 3]}.", []));
 
         var workbench = new GrammarWorkbench(corpus.Grammar, CorpusFixture.Process(corpus.Grammar, documents),
-            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
+            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar"));
 
         var journal = new WorkspaceJournal(Path.Combine(_directory, "journal"));
         return (new GrammarAgent(workbench, "a snoring corpus", settings ?? AgentTests.AnySteps, journal), workbench, journal);
@@ -125,7 +125,7 @@ public sealed class JournalTests(CorpusFixture corpus) : IDisposable
     {
         var workspaces = new WorkspaceManager(
             new SourceWorkspace("TestGrammar", corpus.Grammar, corpus.ProcessedDocuments, Path.Combine(_directory, "sources"), "Glyphotype.Tests.Grammar"),
-            Path.Combine(_directory, "workspaces"), allowPartialClauseMatches: false);
+            Path.Combine(_directory, "workspaces"));
 
         workspaces.Create("Scratch", WorkspaceSeed.Vocabularies);
         var journal = workspaces.GetJournal();

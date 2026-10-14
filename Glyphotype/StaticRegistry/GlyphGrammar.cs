@@ -17,7 +17,7 @@
 public sealed class GlyphGrammar
 {
     static readonly Lazy<GlyphGrammar> _default = new(() =>
-        new GlyphGrammar(LoadAllAssemblyTypes(), GlobalSettings.Current.AllowPartialClauseMatches, GlobalSettings.Current.AllowPeriodsInLiteralNibs));
+        new GlyphGrammar(LoadAllAssemblyTypes(), GlobalSettings.Current.AllowPeriodsInLiteralNibs));
 
     /// <summary>
     /// The grammar of every Glyph type in the assemblies alongside the running one - Glyph types are defined by
@@ -30,9 +30,6 @@ public sealed class GlyphGrammar
     // drawn from here too.
     readonly List<Type> _candidateTypes;
     readonly Dictionary<string, Type> _typesByName = [];
-
-    /// <summary>Whether a top-level type may match only part of a clause - see <see cref="GlobalSettings.AllowPartialClauseMatches"/>.</summary>
-    public bool AllowPartialClauseMatches { get; }
 
     /// <summary>Whether a literal nib may have a period inside it - see <see cref="GlobalSettings.AllowPeriodsInLiteralNibs"/>.</summary>
     public bool AllowPeriodsInLiteralNibs { get; }
@@ -64,17 +61,16 @@ public sealed class GlyphGrammar
     public Tokenizer Tokenizer { get; private set; }
 
     /// <summary>Builds and validates a grammar from <paramref name="types"/> (any types; the Glyph types among them are used). Throws if any Glyph type in play is invalid.</summary>
-    public GlyphGrammar(IEnumerable<Type> types, bool allowPartialClauseMatches, bool allowPeriodsInLiteralNibs = true)
+    public GlyphGrammar(IEnumerable<Type> types, bool allowPeriodsInLiteralNibs = true)
     {
         _candidateTypes = types.ToList();
-        AllowPartialClauseMatches = allowPartialClauseMatches;
         AllowPeriodsInLiteralNibs = allowPeriodsInLiteralNibs;
         Build();
     }
 
     /// <summary>A grammar of every type in <paramref name="assemblies"/>.</summary>
-    public static GlyphGrammar FromAssemblies(IEnumerable<Assembly> assemblies, bool allowPartialClauseMatches, bool allowPeriodsInLiteralNibs = true) =>
-        new(assemblies.SelectMany(GetLoadableTypes), allowPartialClauseMatches, allowPeriodsInLiteralNibs);
+    public static GlyphGrammar FromAssemblies(IEnumerable<Assembly> assemblies, bool allowPeriodsInLiteralNibs = true) =>
+        new(assemblies.SelectMany(GetLoadableTypes), allowPeriodsInLiteralNibs);
 
     /// <summary>
     /// Tokenizes one line, <paramref name="sourceText"/>, and resolves its back-references (see
@@ -99,8 +95,8 @@ public sealed class GlyphGrammar
     /// Builds and validates a grammar from <paramref name="definition"/>, emitting its types first (see
     /// <see cref="GrammarEmitter.Emit"/>, which also describes <paramref name="knownTypes"/>).
     /// </summary>
-    public static GlyphGrammar FromDefinition(GrammarDefinition definition, bool allowPartialClauseMatches, IEnumerable<Type> knownTypes = null, bool allowPeriodsInLiteralNibs = true) =>
-        new(GrammarEmitter.Emit(definition, knownTypes), allowPartialClauseMatches, allowPeriodsInLiteralNibs);
+    public static GlyphGrammar FromDefinition(GrammarDefinition definition, IEnumerable<Type> knownTypes = null, bool allowPeriodsInLiteralNibs = true) =>
+        new(GrammarEmitter.Emit(definition, knownTypes), allowPeriodsInLiteralNibs);
 
     /// <summary>
     /// Runs every validation rule over <see cref="Types"/> and returns each failure as a "TypeName: message" string
@@ -204,7 +200,7 @@ public sealed class GlyphGrammar
             .ToList();
 
         DependentTypes = Types.Where(x => x.IsDefined(typeof(DependentAttribute)) && _candidateTypes.Contains(x)).ToList();
-        Tokenizer = new(TopLevelTypes.ToList(), DependentTypes.ToList(), AllowPartialClauseMatches);
+        Tokenizer = new(TopLevelTypes.ToList(), DependentTypes.ToList());
     }
 
     static List<string> GetStructuralValidationErrors(IEnumerable<Type> types, bool allowPeriodsInLiteralNibs)

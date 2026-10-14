@@ -128,7 +128,7 @@ public class BackReferenceTests(CorpusFixture corpus)
         // carries: written out as C# source, read back and compiled, the grammar resolves exactly as the hand-written one does.
         var source = GlyphSourceWriter.Write(corpus.Grammar.ToDefinition(), "RoundTrip");
         var read = GlyphSourceReader.Read(source);
-        var compiled = GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
+        var compiled = GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers });
 
         Assert.Contains("public class ThatAnimal : BackReference<Animal>", source);
         Assert.Contains("[Referent]\n    [Plural]".Replace("\n", Environment.NewLine), source);
@@ -237,7 +237,7 @@ public class BackReferenceTests(CorpusFixture corpus)
         void Build()
         {
             var read = GlyphSourceReader.Read(source);
-            GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers }, allowPartialClauseMatches: false);
+            GlyphGrammar.FromDefinition(new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers });
         }
 
         if (expectedError is null)

@@ -69,7 +69,6 @@ public static class SourceCommitter
     static readonly HashSet<string> _expressedAttributes =
     [
         nameof(DependentAttribute),
-        nameof(AllowPartialClauseMatchAttribute),
         nameof(TokenizationOrderAttribute),
         nameof(RegexPatternAttribute),
         nameof(JoinedByAttribute),

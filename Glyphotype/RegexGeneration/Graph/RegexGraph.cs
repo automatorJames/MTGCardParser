@@ -28,37 +28,10 @@ public class RegexGraph
     public BuiltRegex BuiltRegex { get; }
 
     /// <summary>
-    /// Whether <see cref="RootGlyphType"/> carries <see cref="AllowPartialClauseMatchAttribute"/>: this
-    /// type may stop partway through a clause, so it is exempt from the whole-clause requirement the
-    /// Tokenizer otherwise imposes when <see cref="GlobalSettings.AllowPartialClauseMatches"/> is false.
-    /// <para>
-    /// The two span rules, and <see cref="SpansClauses"/>, which answers a different question - "may a match
-    /// cross a period at all?" - and only has anything to say under the default:
-    /// </para>
-    /// <list type="table">
-    /// <listheader><term>rule</term><description>must start at / must end at</description></listheader>
-    /// <item><term>(default)</term><description>clause start / first clause boundary - exactly one clause, or with <see cref="SpansClauses"/>, any whole number of them</description></item>
-    /// <item><term>AllowsPartialClauseMatch</term><description>anywhere / any word boundary - the pre-setting behavior, kept per-type</description></item>
-    /// </list>
-    /// <para>
-    /// Nothing in this class reads it: exempting a type just means the Tokenizer hands it the ordinary scope
-    /// and asks for an ordinary match, so there's no rule left here to apply. It's purely a statement about
-    /// candidacy, and only meaningful while the global setting is false - with the setting true, every type
-    /// already matches this way.
-    /// </para>
-    /// </summary>
-    public bool AllowsPartialClauseMatch { get; }
-
-    /// <summary>
     /// Whether <see cref="RootGlyphType"/> declares a bare <c>"."</c> nib anywhere in its graph, i.e.
     /// states outright that it spans a clause boundary. Such a type may end at <em>any</em> clause
     /// boundary rather than being capped at the first - the Tokenizer offers it each successive one in
     /// turn, shortest first, so it settles on the fewest clauses that satisfy it.
-    /// <para>
-    /// Orthogonal to <see cref="AllowsPartialClauseMatch"/>, not a point on its scale: that sets how much a
-    /// match must cover, this sets whether it may cross a period while doing so. It only changes anything
-    /// under the default rule, since a partial-match type opts out of clause accounting altogether.
-    /// </para>
     /// <para>
     /// Keyed off an explicit period nib rather than "may this pattern contain a period", because the
     /// latter would hand every greedy wildcard a licence to swallow whole clauses. A type only gets to
@@ -87,7 +60,6 @@ public class RegexGraph
         RootGlyphType = rootGlyphType;
         IsDependent = rootGlyphType.IsDefined(typeof(DependentAttribute));
         RootNode = rootNode;
-        AllowsPartialClauseMatch = rootGlyphType.IsDefined(typeof(AllowPartialClauseMatchAttribute));
         SpansClauses = ContainsClauseBreak(rootNode);
         RegexCollector collector = new();
         RootNode.AppendRegexBricks(collector);

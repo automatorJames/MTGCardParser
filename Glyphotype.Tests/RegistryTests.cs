@@ -23,20 +23,6 @@ public class RegistryTests(CorpusFixture corpus)
     }
 
     [Fact]
-    public void AllowPartialClauseMatches_is_a_setting_of_each_grammar()
-    {
-        // Two grammars over the same types, differing only in this setting, coexisting in one process.
-        var lenient = GlyphGrammar.FromAssemblies([_testAssembly], allowPartialClauseMatches: true);
-        const string text = "the dog sleeps in the kitchen all day.";
-
-        Assert.Equal("«the dog sleeps in the kitchen all day» .", Signature(corpus.Grammar.Tokenize(text)));
-        Assert.Equal("AnimalRests{Animal=Dog, Place=Kitchen} «all day» .", Signature(lenient.Tokenize(text)));
-    }
-
-    static string Signature(IEnumerable<CaptureUnit> units) =>
-        string.Join(" ", units.Select(GlyphSignature.Of));
-
-    [Fact]
     public void Every_test_glyph_type_is_matched_somewhere_in_the_corpus()
     {
         // Keeps the corpus comprehensive: a glyph added to the grammar without a document exercising it

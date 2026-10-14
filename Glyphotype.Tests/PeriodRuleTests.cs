@@ -15,7 +15,7 @@ public class PeriodRuleTests
         var read = GlyphSourceReader.Read(source);
         var definition = new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers };
 
-        return GlyphGrammar.FromDefinition(definition, allowPartialClauseMatches: false, allowPeriodsInLiteralNibs: allowPeriodsInLiteralNibs);
+        return GlyphGrammar.FromDefinition(definition, allowPeriodsInLiteralNibs: allowPeriodsInLiteralNibs);
     }
 
     static string Signature(IEnumerable<CaptureUnit> units) =>
@@ -89,10 +89,6 @@ public class PeriodRuleTests
         public class Closing : Glyph { public override Nib[] Nibs => ["it ends."]; }
         public class Outer : Glyph { public override Nib[] Nibs => [Prop(Closing), "so it goes"]; public Closing Closing { get; set; } }
         """, "it's [Dependent]")]
-    [InlineData("""
-        [AllowPartialClauseMatch]
-        public class Closing : Glyph { public override Nib[] Nibs => ["it ends."]; }
-        """, "it's [AllowPartialClauseMatch]")]
     [InlineData("""
         public class Closing : Glyph { public override Nib[] Nibs => ["it ends."]; }
         public class Outer : Glyph { public override Nib[] Nibs => [Prop(Closing), "so it goes"]; public Closing Closing { get; set; } }

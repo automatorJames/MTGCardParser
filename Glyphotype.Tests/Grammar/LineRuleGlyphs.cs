@@ -20,8 +20,7 @@ public class EveningRoutine : Glyph
     public Food Food { get; set; }
 }
 
-/// <summary><see cref="AllowPartialClauseMatchAttribute"/>: may match the start of a clause and leave the rest.</summary>
-[AllowPartialClauseMatch]
+/// <summary>Short enough to fit inside many clauses, but held to the whole-clause rule like every top-level glyph.</summary>
 public class Greeting : Glyph
 {
     public override Nib[] Nibs => ["good", Prop(TimeOfDay)];

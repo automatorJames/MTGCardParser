@@ -6,13 +6,9 @@ public class Tokenizer
 {
     private readonly List<Type> _orderedTopLevelTypes;
     private readonly List<Type> _dependentTypes;
-    private readonly bool _allowPartialClauseMatches;
 
-    /// <summary>
-    /// The types one <see cref="Tokenize"/> call tries, as their graphs in the order tried - and whether any of
-    /// them may match partway into a clause (see <see cref="RegexGraph.AllowsPartialClauseMatch"/>).
-    /// </summary>
-    sealed record CandidateSet(RegexGraph[] Graphs, bool AnyAllowsPartialClause);
+    /// <summary>The types one <see cref="Tokenize"/> call tries, as their graphs in the order tried.</summary>
+    sealed record CandidateSet(RegexGraph[] Graphs);
 
     /// <summary>
     /// <see cref="CandidateSet"/>s by (scope type, dependents included?) - the only inputs they depend on, and a
@@ -22,21 +18,21 @@ public class Tokenizer
     /// </summary>
     readonly ConcurrentDictionary<(Type ScopeToType, bool IncludeDependentTypes), CandidateSet> _candidateSets = new();
 
-    /// <param name="allowPartialClauseMatches">
-    /// The default for <see cref="Tokenize"/>'s parameter of the same name, supplied by the
-    /// <see cref="GlyphGrammar"/> that builds this Tokenizer (see <see cref="GlyphGrammar.AllowPartialClauseMatches"/>).
-    /// </param>
-    public Tokenizer(List<Type> orderedTopLevelTypes, List<Type> dependentTypes, bool allowPartialClauseMatches)
+    public Tokenizer(List<Type> orderedTopLevelTypes, List<Type> dependentTypes)
     {
         _orderedTopLevelTypes = orderedTopLevelTypes;
         _dependentTypes = dependentTypes;
-        _allowPartialClauseMatches = allowPartialClauseMatches;
     }
 
+    /// <summary>
+    /// Tokenizes <paramref name="sourceText"/> clause by clause: a type matches only at a clause's start, and only by
+    /// consuming that clause whole (or several, if it declares a clause break of its own - see
+    /// <see cref="RegexGraph.SpansClauses"/>). A clause nothing consumes whole is unmatched text, so an
+    /// incompletely-modeled clause shows as such rather than hiding behind a match of part of it.
+    /// </summary>
     /// <param name="allowPartialClauseMatches">
-    /// Overrides this Tokenizer's configured <see cref="GlobalSettings.AllowPartialClauseMatches"/>
-    /// default for this one call. Null (the usual case) uses that default. Passed explicitly by callers
-    /// that aren't tokenizing a line at all but resolving an already-matched sub-capture - see
+    /// Lifts the whole-clause rule for this one call, so a type may start anywhere and end at any word boundary.
+    /// Only for callers that aren't tokenizing a line at all but resolving an already-matched sub-capture - see
     /// <see cref="DynamicGlyphNode.TryHydrate"/> - where "consume the whole clause" is both meaningless
     /// (the capture is a fragment of one clause, not a clause) and actively harmful (that resolution
     /// depends on being handed the shorter prefix a whole-clause rule would reject outright).
@@ -47,7 +43,7 @@ public class Tokenizer
         scopeEnd = null,
         Type scopeToType = null,
         bool includeDependentTypes = false,
-        bool? allowPartialClauseMatches = null)
+        bool allowPartialClauseMatches = false)
     {
         if (string.IsNullOrEmpty(sourceText))
             throw new Exception("Source text may not be null or empty");
@@ -57,17 +53,11 @@ public class Tokenizer
         int endIndex = scopeEnd ?? sourceText.Length;
         int unmatchedStartIndex = -1;
 
-        // Whether a top-level type may match only part of a clause (see GlobalSettings). When it may
-        // not, a type is only a candidate at a clause's own start and has to consume that clause whole,
-        // gated by the clause bookkeeping maintained across the loop below.
-        bool requireWholeClauses = !(allowPartialClauseMatches ?? _allowPartialClauseMatches);
+        // Held to the whole-clause rule, a type is only a candidate at a clause's own start and has to consume
+        // that clause whole, gated by the clause bookkeeping maintained across the loop below.
+        bool requireWholeClauses = !allowPartialClauseMatches;
 
         var candidates = GetCandidateSet(scopeToType, includeDependentTypes);
-
-        // AllowPartialClauseMatch is the only thing that keeps a type a candidate partway into a clause.
-        // With none of them in the candidate set, a clause that didn't match at its own start can't match
-        // anywhere within itself, which the ratchet below exploits.
-        bool anyCandidateAllowsPartialClause = candidates.AnyAllowsPartialClause;
 
         int clauseStartIndex = currentIndex;
         int clauseEndIndex = FindClauseEnd(sourceText, clauseStartIndex, endIndex);
@@ -94,20 +84,18 @@ public class Tokenizer
 
                 // A whole-clause candidate that isn't sitting at a clause's start can't satisfy the
                 // requirement no matter what it would match, so don't pay for the match at all.
-                bool mustConsumeClause = requireWholeClauses && !rootNode.AllowsPartialClauseMatch;
-
-                if (mustConsumeClause && !atClauseStart)
+                if (requireWholeClauses && !atClauseStart)
                     continue;
 
                 // The rule is "cover a whole number of clauses, at least one" - so a type is offered each
                 // successive clause boundary as a candidate end, shortest first, and must fill whichever
                 // one it takes. Only a type that declares a clause break of its own (SpansClauses) is
                 // offered more than the first: everything else is capped at one clause, which is what
-                // stops a greedy wildcard from swallowing clauses it never said it wanted. An exempt type
-                // skips all this and runs against the full scope, where it may end partway through.
-                foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, clauseEndIndex, mustConsumeClause, rootNode.SpansClauses))
+                // stops a greedy wildcard from swallowing clauses it never said it wanted. With the rule lifted,
+                // a type skips all this and runs against the full scope, where it may end partway through.
+                foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, clauseEndIndex, requireWholeClauses, rootNode.SpansClauses))
                 {
-                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, mustConsumeClause, tokenizer: this))
+                    if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, requireWholeClauses, tokenizer: this))
                         continue;
 
                     // --- COMMIT PHASE ---
@@ -162,12 +150,10 @@ public class Tokenizer
                 if (unmatchedStartIndex == -1)
                     unmatchedStartIndex = currentIndex;
 
-                // Nothing left in the candidate set can match before this clause ends (see
-                // anyCandidateAllowsPartialClause), so skip the rest of it in one step rather than
-                // ratcheting a word at a time. Purely an optimization: that span is unmatched either way
-                // and gets flushed as the very same single UnmatchedString.
+                // Held to the whole-clause rule, nothing can match before this clause ends, so skip the rest
+                // of it in one step rather than ratcheting a word at a time. Purely an optimization: that span
+                // is unmatched either way and gets flushed as the very same single UnmatchedString.
                 bool skipRestOfClause = requireWholeClauses
-                    && !anyCandidateAllowsPartialClause
                     && !atClauseStart
                     && currentIndex < clauseEndIndex;
 
@@ -210,13 +196,13 @@ public class Tokenizer
 
             var graphs = types.Select(GlyphTypeCache.GetRegexGraph).ToArray();
 
-            return new(graphs, graphs.Any(x => x.AllowsPartialClauseMatch));
+            return new(graphs);
         });
 
     /// <summary>
     /// The scope ends a type may be matched against at the current position, in the order they should be
-    /// tried. A type not held to the whole-clause rule gets the full scope and nothing else (it may end
-    /// partway, which <see cref="RegexGraph.TryMatch"/> decides on its own). A type held to it gets the first
+    /// tried. With the whole-clause rule lifted, a type gets the full scope and nothing else (it may end
+    /// partway, which <see cref="RegexGraph.TryMatch"/> decides on its own). Held to it, a type gets the first
     /// clause boundary, and - only if it declares a clause break of its own - each later one in turn,
     /// shortest first, so it settles on the fewest clauses that satisfy it rather than the most.
     /// </summary>

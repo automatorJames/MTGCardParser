@@ -9,7 +9,7 @@ public sealed class CorpusFixture
     readonly Dictionary<string, ProcessedDocument> _processedByText;
 
     /// <summary>The test grammar: every Glyph type in this assembly, under the whole-clause rule the app runs with.</summary>
-    public GlyphGrammar Grammar { get; } = GlyphGrammar.FromAssemblies([typeof(CorpusFixture).Assembly], allowPartialClauseMatches: false);
+    public GlyphGrammar Grammar { get; } = GlyphGrammar.FromAssemblies([typeof(CorpusFixture).Assembly]);
 
     public IReadOnlyList<ProcessedDocument> ProcessedDocuments { get; }
 

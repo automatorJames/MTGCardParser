@@ -52,7 +52,7 @@ public class OpenTextTests(CorpusFixture corpus)
         var catchAll = GlyphGrammar.FromDefinition(new GrammarDefinition
         {
             Glyphs = [new() { Name = "MyDogHas", Nibs = [new NibDefinition.Literal("my dog has"), new NibDefinition.Pattern(@"[^.]+")] }],
-        }, allowPartialClauseMatches: false);
+        });
 
         string[] distinct = [.. Enumerable.Range(0, 20).Select(i => $"parasite{(char)('a' + i)}ish")];
         var same = Score(catchAll, Enumerable.Repeat("my dog has parasiteaish.", 20));
@@ -82,7 +82,7 @@ public class OpenTextTests(CorpusFixture corpus)
                 public DynamicGlyph Outcome { get; set; }
             }
             """, corpus.Grammar.ToDefinition()).Glyphs);
-        var grammar = GlyphGrammar.FromDefinition(corpus.Grammar.ToDefinition().WithGlyph(glyph), allowPartialClauseMatches: false);
+        var grammar = GlyphGrammar.FromDefinition(corpus.Grammar.ToDefinition().WithGlyph(glyph));
 
         Assert.Equal("«whenever we can, the dog snores»", ParseRenderer.Render(grammar.Tokenize("whenever we can, the dog snores"), nested: true));
         Assert.StartsWith("⟦WheneverWeCan: whenever we can, ⟦Outcome→AnimalRests:", ParseRenderer.Render(grammar.Tokenize("whenever we can, the dog sleeps in the kitchen"), nested: true));

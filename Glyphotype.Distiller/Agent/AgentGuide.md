@@ -209,21 +209,19 @@ floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing
 | Attribute | Effect |
 |---|---|
 | `[Dependent]` | only matched inside another glyph, never on its own |
-| `[AllowPartialClauseMatch]` | see the rule below |
 | `[TokenizationOrder(n)]` | changes which glyph is tried first: n ≥ 0 goes before glyphs without one (lowest first), n < 0 goes after all of them |
 
 Without an order, glyphs with longer patterns are tried first, and the first glyph to match a clause wins it.
 
 **The whole-clause rule.** A top-level glyph must match an entire clause: everything between line starts and
-periods. Otherwise it doesn't match at all, so "the dog naps" won't match inside "the dog naps on monday".
-`[AllowPartialClauseMatch]` relaxes this for one glyph. Use it sparingly, since partial matches hide unmodeled
-text. For shared fragments, prefer `[Dependent]` glyphs nested inside whole-clause ones.
+periods. Otherwise it doesn't match at all, so "the dog naps" won't match inside "the dog naps on monday". For
+shared fragments, write `[Dependent]` glyphs nested inside whole-clause ones.
 
 **Periods.** Every period ends a clause, and the tokenizer emits it (along with any `)` or `"` straight after it) as
 a clause break, shown as ` . `. To cover several sentences, put the period inside a literal nib (`"by it. they
 can't be regenerated"`) or write it as its own `"."` nib. A clause's closing period is always a break, so one written
-at the end of a top-level glyph is simply dropped. It's an error on a `[Dependent]` or `[AllowPartialClauseMatch]`
-glyph, or on one another glyph uses as a property, because there the period would fall inside a larger match. No
+at the end of a top-level glyph is simply dropped. It's an error on a `[Dependent]` glyph, or on one another glyph
+uses as a property, because there the period would fall inside a larger match. No
 pattern, `Alt` or `Opt` may contain a period.
 
 **Back-references** ("it", "they", "that creature") are glyphs deriving from `BackReference`. They match like any glyph.

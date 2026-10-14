@@ -83,9 +83,6 @@ static class DefinitionReader
             Properties = props.Select(ReadProperty).ToList(),
             Markers = type.GetInterfaces().Where(markerTypes.Contains).Select(x => x.Name).Order(StringComparer.Ordinal).ToList(),
             IsDependent = type.IsDefined(typeof(DependentAttribute), inherit: false),
-            SpanRule =
-                type.IsDefined(typeof(AllowPartialClauseMatchAttribute), inherit: false) ? SpanRule.PartialClause
-                : SpanRule.Default,
             TokenizationOrder = type.GetCustomAttribute<TokenizationOrderAttribute>(inherit: false)?.Order,
             Patterns = type.GetCustomAttribute<RegexPatternAttribute>(inherit: false)?.Patterns ?? [],
             JoinedBy = type.GetCustomAttribute<JoinedByAttribute>(inherit: false)?.Joiner,

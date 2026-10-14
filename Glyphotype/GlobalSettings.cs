@@ -18,24 +18,6 @@ public class GlobalSettings
     public bool IncludeEmptyDocuments { get; init; }
 
     /// <summary>
-    /// Whether a top-level token may match only part of a clause - a clause being everything from the
-    /// start of the tokenization scope up to but not including the next period, or through the end of the
-    /// line, whichever comes first (a line may hold several).
-    /// <para>
-    /// When true (the Tokenizer's historical behavior, which was implicit rather than chosen), a top-level
-    /// token that ends at any word boundary is accepted, so "The dog runs" can be tokenized out of "The dog
-    /// runs very fast" and the remainder left to whatever matches next. When false, that match is rejected
-    /// and the clause is only tokenized if a single top-level type consumes all of it - which is what
-    /// surfaces an incompletely-modeled line as unmatched text instead of hiding it behind a partial match.
-    /// </para>
-    /// <para>
-    /// Individual top-level types opt back out of the requirement with
-    /// <see cref="AllowPartialClauseMatchAttribute"/>.
-    /// </para>
-    /// </summary>
-    public bool AllowPartialClauseMatches { get; init; }
-
-    /// <summary>
     /// Whether a plain literal nib may have a period inside it, e.g. <c>"by it. they can't be regenerated"</c>.
     /// When true (the default), such a nib is split around each period into a bare <c>"."</c> clause-break nib of
     /// its own (see <see cref="ClauseBreak.SplitAtPeriods"/>), which is exactly what it would have to be written

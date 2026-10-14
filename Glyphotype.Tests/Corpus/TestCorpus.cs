@@ -169,10 +169,10 @@ public static class TestCorpus
             Doc("the dog goes to bed. then it dreams of bread", "EveningRoutine{Animal=Dog, Food=Bread}"),
             Doc("the dog goes to bed then it dreams of bread.", "«the dog goes to bed then it dreams of bread» .")),
 
-        .. Section("Whole-clause rule and [AllowPartialClauseMatch]",
-            Doc("good morning to everyone.", "Greeting{TimeOfDay=Morning} «to everyone» ."),
+        .. Section("Whole-clause rule",
+            Doc("good morning to everyone.", "«good morning to everyone» ."),
             Doc("good evening.", "Greeting{TimeOfDay=Evening} ."),
-            Doc("good morning good evening.", "Greeting{TimeOfDay=Morning} Greeting{TimeOfDay=Evening} ."),
+            Doc("good morning good evening.", "«good morning good evening» ."),
             Doc("the dog sleeps in the kitchen all day.", "«the dog sleeps in the kitchen all day» .")),
 
         .. Section("Back-references and referents",

@@ -145,7 +145,7 @@ public class SourceReaderTests(CorpusFixture corpus)
         Assert.Equal(TypeReference.Glyph(nameof(OnDay)), glyph.Properties[1].Type);
 
         // Put in front of the corpus, it's a grammar like any other.
-        var grammar = GlyphGrammar.FromDefinition(Definition.WithGlyph(glyph), allowPartialClauseMatches: false);
+        var grammar = GlyphGrammar.FromDefinition(Definition.WithGlyph(glyph));
         Assert.Contains(grammar.Tokenize("the cat naps on monday"), x => x.Type.Name == "AnimalNaps");
     }
 

@@ -61,12 +61,6 @@ public abstract class Glyph : CaptureUnit
         if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
-        // AllowPartialClauseMatch exists solely to exempt a top-level type from the Tokenizer's
-        // whole-clause requirement. A dependent is never a top-level candidate in the first place, so on one
-        // the attribute is dead weight that reads like it's doing something.
-        if (Type.IsDefined(typeof(AllowPartialClauseMatchAttribute)) && Type.IsDefined(typeof(DependentAttribute)))
-            return $"{Type.Name} cannot be both {nameof(AllowPartialClauseMatchAttribute)} and {nameof(DependentAttribute)} - a dependent is only ever matched as a subgraph of a parent, so it is never subject to the whole-clause requirement this opts out of";
-
         // DeclaredOnly still includes properties that override a base virtual member (e.g. Nibs,
         // Joiner), since C# generates a PropertyInfo on the derived type for those too. Excluding
         // anything whose base definition lives on a different type leaves only genuinely new,
@@ -525,7 +519,6 @@ public abstract class Glyph : CaptureUnit
 
         var where =
             type.IsDefined(typeof(DependentAttribute)) ? "it's [Dependent], so that period would fall inside its parent's match"
-            : type.IsDefined(typeof(AllowPartialClauseMatchAttribute)) ? "it's [AllowPartialClauseMatch], so that period would be what stops it matching partway through a clause"
             : isUsedAsProperty ? "another glyph uses it as a property, so that period would fall inside that glyph's match"
             : null;
 

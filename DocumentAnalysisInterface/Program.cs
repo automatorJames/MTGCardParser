@@ -50,7 +50,6 @@ public class Program
                 SourceDirectory: glyphSources.Directory,
                 SourceNamespace: glyphSources.Namespace),
             root: Path.Combine(appData, "workspaces"),
-            allowPartialClauseMatches: GlobalSettings.Current.AllowPartialClauseMatches,
             legacyWorkingDefinitionPath: Path.Combine(appData, "working-grammar.json"),
             configuredGuidance: WorkspaceGuidance(builder.Configuration.GetSection("WorkspaceGuidance"))));
 

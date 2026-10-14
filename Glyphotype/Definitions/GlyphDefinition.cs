@@ -16,16 +16,6 @@ public enum GlyphKind
     BackReference,
 }
 
-/// <summary>How much of a clause a top-level glyph's match must cover.</summary>
-public enum SpanRule
-{
-    /// <summary>No attribute: governed by <see cref="GlobalSettings.AllowPartialClauseMatches"/>.</summary>
-    Default,
-
-    /// <summary><see cref="AllowPartialClauseMatchAttribute"/>.</summary>
-    PartialClause,
-}
-
 /// <summary>
 /// A Glyph type, independent of any CLR <see cref="Type"/>: everything the engine reads from a Glyph class - its
 /// base, nibs, joiner, nib-bound properties and class-level attributes - as plain, serializable data that refers
@@ -65,8 +55,6 @@ public sealed record GlyphDefinition
 
     /// <summary><see cref="DependentAttribute"/>: only ever matched nested in another glyph (or through a dynamic), never top-level.</summary>
     public bool IsDependent { get; init; }
-
-    public SpanRule SpanRule { get; init; }
 
     /// <summary><see cref="TokenizationOrderAttribute"/>.</summary>
     public int? TokenizationOrder { get; init; }

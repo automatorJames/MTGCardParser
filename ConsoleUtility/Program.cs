@@ -35,7 +35,6 @@ internal class Program
         {
             SqlConnString = settings.SqlConnString,
             IncludeEmptyDocuments = settings.IncludeEmptyDocuments,
-            AllowPartialClauseMatches = settings.AllowPartialClauseMatches,
             AllowPeriodsInLiteralNibs = settings.AllowPeriodsInLiteralNibs,
             MaxSetSequence = maxSetSequence switch
             {

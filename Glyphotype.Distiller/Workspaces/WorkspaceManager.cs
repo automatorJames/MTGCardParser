@@ -55,7 +55,6 @@ public sealed class WorkspaceManager
 
     readonly SourceWorkspace _source;
     readonly string _root;
-    readonly bool _allowPartialClauseMatches;
     readonly IReadOnlyList<IDocument> _documents;
     readonly object _gate = new();
     readonly List<WorkspaceInfo> _workspaces = [];
@@ -73,12 +72,11 @@ public sealed class WorkspaceManager
     /// Guidance by workspace name, from configuration that travels with the code (unlike the root folder): where a workspace has some,
     /// it overrides any kept in the workspace's folder, and can't be set here.
     /// </param>
-    public WorkspaceManager(SourceWorkspace source, string root, bool allowPartialClauseMatches, string legacyWorkingDefinitionPath = null,
+    public WorkspaceManager(SourceWorkspace source, string root, string legacyWorkingDefinitionPath = null,
         IReadOnlyDictionary<string, string> configuredGuidance = null)
     {
         _source = source;
         _root = root;
-        _allowPartialClauseMatches = allowPartialClauseMatches;
         _configuredGuidance = (configuredGuidance ?? new Dictionary<string, string>())
             .Where(x => !string.IsNullOrWhiteSpace(x.Value))
             .ToDictionary(x => x.Key, x => x.Value.Trim(), StringComparer.OrdinalIgnoreCase);
@@ -366,7 +364,7 @@ public sealed class WorkspaceManager
 
             try
             {
-                GlyphGrammar.FromDefinition(merged.WithoutUnreferencedTerminals(), _allowPartialClauseMatches);
+                GlyphGrammar.FromDefinition(merged.WithoutUnreferencedTerminals());
             }
             catch (AggregateException exception)
             {
@@ -482,7 +480,7 @@ public sealed class WorkspaceManager
             if (_sourceWorkbench is null)
             {
                 _sourceWorkbench = new GrammarWorkbench(_source.Grammar, _source.Documents, new(
-                    Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace, _allowPartialClauseMatches,
+                    Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace,
                     HistoryPath: Path.Combine(folder, _historyFileName)));
 
                 KeepJournalVersions(_sourceWorkbench, workspace);
@@ -492,7 +490,7 @@ public sealed class WorkspaceManager
         }
 
         var workbench = new GrammarWorkbench(ReadBaseline(workspace), _documents, new(
-            Path.Combine(folder, _workingFileName), SourceDirectory: null, SourceNamespace: SuggestNamespace(workspace.Name), _allowPartialClauseMatches,
+            Path.Combine(folder, _workingFileName), SourceDirectory: null, SourceNamespace: SuggestNamespace(workspace.Name),
             BaselinePath: Path.Combine(folder, _baselineFileName),
             HistoryPath: Path.Combine(folder, _historyFileName)));
 

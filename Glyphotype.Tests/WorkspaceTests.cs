@@ -26,7 +26,7 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
 
     WorkspaceManager CreateManager(string legacyWorkingDefinitionPath = null) =>
         new(new SourceWorkspace("TestGrammar", corpus.Grammar, corpus.ProcessedDocuments, Path.Combine(_root, "sources"), "Glyphotype.Tests.Grammar"),
-            Path.Combine(_root, "workspaces"), allowPartialClauseMatches: false, legacyWorkingDefinitionPath);
+            Path.Combine(_root, "workspaces"), legacyWorkingDefinitionPath);
 
     static ChangeSet Changes(GrammarWorkbench workbench, string source) =>
         ChangeSet.FromSource(source, [], workbench.WorkingDefinition);
@@ -187,7 +187,7 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
 
         var workspaces = new WorkspaceManager(
             new SourceWorkspace("TestGrammar", corpus.Grammar, corpus.ProcessedDocuments, Path.Combine(_root, "sources"), "Glyphotype.Tests.Grammar"),
-            Path.Combine(_root, "workspaces"), allowPartialClauseMatches: false,
+            Path.Combine(_root, "workspaces"),
             configuredGuidance: new Dictionary<string, string> { ["TestGrammar"] = " Travels with the code. " });
 
         Assert.True(workspaces.IsGuidanceConfigured());

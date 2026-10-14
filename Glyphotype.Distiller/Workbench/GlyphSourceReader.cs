@@ -200,7 +200,6 @@ public static class GlyphSourceReader
                 glyph = AttributeName(attribute) switch
                 {
                     "Dependent" => glyph with { IsDependent = true },
-                    "AllowPartialClauseMatch" => glyph with { SpanRule = SpanRule.PartialClause },
                     "TokenizationOrder" when arguments.Count == 1 => glyph with { TokenizationOrder = (int)ReadInteger(arguments[0]) },
                     "RegexPattern" => glyph with { Patterns = arguments.Select(ReadString).ToList() },
                     "JoinedBy" when arguments.Count == 1 => glyph with { JoinedBy = ReadEnumMember<Joiner>(arguments[0]) },
@@ -210,7 +209,7 @@ public static class GlyphSourceReader
                     "Referent" => Unsupported(glyph, attribute, $"{glyph.Name}: [Referent] takes no number - give it [Singular] or [Plural] beside it"),
                     "Singular" when arguments.Count == 0 => glyph with { Number = GrammaticalNumber.Singular },
                     "Plural" when arguments.Count == 0 => glyph with { Number = GrammaticalNumber.Plural },
-                    _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, AllowPartialClauseMatch, TokenizationOrder, RegexPattern, JoinedBy, Referent, Singular, Plural)"),
+                    _ => Unsupported(glyph, attribute, $"{glyph.Name}: [{attribute}] isn't an attribute a glyph definition can hold (Dependent, TokenizationOrder, RegexPattern, JoinedBy, Referent, Singular, Plural)"),
                 };
             }
 

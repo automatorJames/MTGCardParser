@@ -29,7 +29,7 @@ public static class MdlScorer
         var componentBits = encoding.GetComponentBits();
 
         // The baseline: the same corpus with no grammar at all, every clause unmatched.
-        var emptyGrammar = new GlyphGrammar([], grammar.AllowPartialClauseMatches);
+        var emptyGrammar = new GlyphGrammar([]);
         var baselineLines = documents.SelectMany(x => ProcessedLine.GetAll(x.Document, emptyGrammar));
         var baselineBits = GrammarCost.Of(new GrammarDefinition(), charBits).TotalBits
             + CorpusEncoding.Encode(baselineLines, topLevelTypeCount: 0, charBits).GetComponentBits().Values.Sum();

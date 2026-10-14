@@ -14,7 +14,7 @@ public class ThisNibTests
         var read = GlyphSourceReader.Read(source);
         var definition = new GrammarDefinition { Glyphs = read.Glyphs, Vocabularies = read.Vocabularies, Markers = read.Markers };
 
-        return GlyphGrammar.FromDefinition(definition, allowPartialClauseMatches: false);
+        return GlyphGrammar.FromDefinition(definition);
     }
 
     const string _grammar = """

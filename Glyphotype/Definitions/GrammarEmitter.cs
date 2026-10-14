@@ -144,9 +144,6 @@ public static class GrammarEmitter
             if (glyph.IsDependent)
                 yield return Attribute<DependentAttribute>();
 
-            if (glyph.SpanRule == SpanRule.PartialClause)
-                yield return Attribute<AllowPartialClauseMatchAttribute>();
-
             if (glyph.TokenizationOrder is int order)
                 yield return Attribute<TokenizationOrderAttribute>(order);
 

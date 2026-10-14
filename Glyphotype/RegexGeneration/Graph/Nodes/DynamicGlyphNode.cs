@@ -36,10 +36,9 @@ public class DynamicGlyphNode : GlyphNode
         var tokenizer = captureTrace.CaptureContext.Tokenizer ?? GlyphGrammar.Default.Tokenizer;
         var resolvedTokens = ResolveWhole(tokenizer, captureValue, filterType)
 
-            // Failing that, allowPartialClauseMatches is forced on regardless of the global setting:
-            // captureValue is a fragment carved out of one clause, not a clause of its own, and the shortfall
-            // handling just below depends on getting back the shorter resolved prefix that a whole-clause
-            // rule would reject outright, leaving nothing to narrow to.
+            // Failing that, the whole-clause rule is lifted: captureValue is a fragment carved out of one clause,
+            // not a clause of its own, and the shortfall handling just below depends on getting back the shorter
+            // resolved prefix that a whole-clause rule would reject outright, leaving nothing to narrow to.
             ?? tokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: true);
 
         // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match

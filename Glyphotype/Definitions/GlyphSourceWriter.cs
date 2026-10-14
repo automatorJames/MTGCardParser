@@ -111,9 +111,6 @@ public static class GlyphSourceWriter
         if (glyph.IsDependent)
             yield return "[Dependent]";
 
-        if (glyph.SpanRule == SpanRule.PartialClause)
-            yield return "[AllowPartialClauseMatch]";
-
         if (glyph.TokenizationOrder is int order)
             yield return $"[TokenizationOrder({order})]";
 

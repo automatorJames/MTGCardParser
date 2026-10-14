@@ -28,7 +28,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     (GrammarAgent Agent, GrammarWorkbench Workbench) CreateAgent(AgentSessionSettings settings = null)
     {
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
-            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
+            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar"));
 
         // These tests exercise the tools themselves, so the session's step rules are off unless a test sets them.
         return (new GrammarAgent(workbench, "the test corpus", settings ?? AnySteps), workbench);
@@ -409,7 +409,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     public async Task When_glyphs_are_to_be_documented_the_agent_is_reminded_of_one_that_isnt_and_documenting_goes_through()
     {
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
-            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar", AllowPartialClauseMatches: false));
+            new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar"));
         var agent = new GrammarAgent(workbench, "the test corpus", AnySteps with { MinimumGainBits = 1, DocumentGlyphs = true });
 
         Assert.Contains("<exampledoc>", await agent.StartSessionAsync());

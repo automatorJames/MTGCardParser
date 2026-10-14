@@ -97,18 +97,17 @@ public class ClauseBreak : CaptureUnit
 
     /// <summary>
     /// Whether <paramref name="glyphType"/>'s closing period (see <see cref="EndsWithPeriod"/>) is redundant, so it's
-    /// dropped rather than refused: true unless the type is <see cref="DependentAttribute"/> or
-    /// <see cref="AllowPartialClauseMatchAttribute"/>. Any other top-level match already has to end where a clause
-    /// does, and the period there is emitted as a <see cref="ClauseBreak"/> of its own - so writing it out says
-    /// nothing the whole-clause rule doesn't. A dependent's closing period instead falls inside its parent's match,
-    /// and a partial match's says where it may stop; in both it's a real constraint.
+    /// dropped rather than refused: true unless the type is <see cref="DependentAttribute"/>. A top-level match already
+    /// has to end where a clause does, and the period there is emitted as a <see cref="ClauseBreak"/> of its own - so
+    /// writing it out says nothing the whole-clause rule doesn't. A dependent's closing period instead falls inside its
+    /// parent's match, where it's a real constraint.
     /// <para>
     /// A type that's also another glyph's property is in the same position as a dependent. That depends on the rest
     /// of the grammar, so <see cref="GlyphGrammar"/> refuses it (see <see cref="Glyph.GetPeriodError"/>).
     /// </para>
     /// </summary>
     public static bool IsTrailingPeriodRedundant(Type glyphType) =>
-        !glyphType.IsDefined(typeof(DependentAttribute)) && !glyphType.IsDefined(typeof(AllowPartialClauseMatchAttribute));
+        !glyphType.IsDefined(typeof(DependentAttribute));
 
     /// <summary><paramref name="nib"/> without the period(s) it ends with, or null when nothing's left (a bare <c>"."</c>).</summary>
     public static Nib WithoutTrailingPeriod(Nib nib)
