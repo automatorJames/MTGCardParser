@@ -44,13 +44,18 @@ Only create or switch workspaces when the person asks. Switching changes what th
    - lost: fewer;
    - reshaped: same coverage, different parse.
 
-   Read the lost and reshaped lines. A glyph that steals text from a better one, or breaks another glyph's
-   matches, shows up there.
+   It also lists the words the change **takes from existing glyphs**, by glyph: words a glyph matched before -
+   top-level, or nested, through a dynamic too - that it no longer does. Judge each glyph it takes from. Is the new
+   parse better? Then narrow that glyph, or remove it. Is the old one right? Then revise your change.
 
    A change that covers more words but costs bits isn't a failure. Ask whether it's the cheapest, most general way
    to cover that text: reuse existing glyphs and vocabularies, widen a glyph's family, or cover the shared part
-   with a nested glyph. Then apply the best form you find, within the session's price per word gained.
+   with a nested glyph. Then apply the best form you find.
 5. **Commit to the working definition.** `apply` makes the change as one step, with a short description of *why*.
+   A step must cover at least one more word and take no words from another glyph; among the steps that do, prefer
+   the one that takes the most bits off. `apply` refuses anything else. If you judge such a step right anyway - a
+   refactor, or a well-formed glyph replacing one too broad to be useful - check in with the person: say which rule
+   it breaks and why it's worth it, and apply it with `approval` only once they agree.
    Call it with no source or removals to make the change you just evaluated - there's no need to send it again.
    `undo` takes back the latest step; `history` lists them.
 6. **Repeat**, generalizing as patterns emerge:
@@ -58,7 +63,8 @@ Only create or switch workspaces when the person asks. Switching changes what th
    - promote repeated literal alternatives into a vocabulary;
    - extract a shared sub-phrase into a `[Dependent]` glyph used by several others.
 
-   Removing or rewriting a glyph is as valid a step as adding one.
+   Removing or rewriting a glyph is as valid a step as adding one, though one that uncovers or moves words is the
+   person's to approve.
 
 **Starting from scratch.** If you're asked to ignore the existing glyphs, don't remove them. Create a scratch
 workspace with `create_workspace`, using `start=vocabularies` to keep the current grammar's vocabularies and nothing
@@ -106,7 +112,7 @@ So the score rewards the grammar a person would call *right*: general templates 
 vocabularies for closed word sets, rather than one-off literals and catch-alls. **Coverage** (the share of words
 inside matches) is the other headline number, and the one the work is for. Coverage decides whether to cover text,
 and bits decide how: among the ways to cover some text, the score picks the best. A step that takes bits off is
-always welcome, and so is one that covers more text for a fair price in bits.
+always welcome, but covering more text comes first.
 
 ## Notation in tool output
 

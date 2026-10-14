@@ -2,8 +2,8 @@
 
 /// <summary>
 /// How an agent's working session runs (see <see cref="GrammarAgent.StartSessionAsync"/>): when it stops to check in
-/// with the person, and what a step has to achieve to be applied. <see cref="GrammarAgent.ApplyAsync"/> enforces the
-/// step rules itself, so they hold whatever the agent was told.
+/// with the person. What a step has to achieve to be applied isn't a setting: <see cref="GrammarAgent.ApplyAsync"/>
+/// enforces the step rules itself, so they hold whatever the agent was told.
 /// </summary>
 public sealed record AgentSessionSettings
 {
@@ -13,26 +13,13 @@ public sealed record AgentSessionSettings
     /// <summary>Evaluations in a row without an applied step before checking in - the agent is stuck. 0 for no limit.</summary>
     public int AttemptsBeforeCheckIn { get; init; } = 10;
 
-    /// <summary>How many bits a step must take off the total to be applied.</summary>
-    public double MinimumGainBits { get; init; } = 1;
-
-    /// <summary>
-    /// What a step that covers more words may cost in bits per word it gains, when it doesn't take
-    /// <see cref="MinimumGainBits"/> off: full coverage is the goal, so text with no cheap model still gets covered, and
-    /// this caps how dearly. 0 for no such allowance - every step must take bits off.
-    /// </summary>
-    public double MaxBitsPerCoveredWord { get; init; } = 12;
-
     /// <summary>How many words the workspace's journal may come to: past it, an agent must prune before adding. 0 for no limit.</summary>
     public int JournalWordLimit { get; init; } = 1500;
-
-    /// <summary>Whether a step may leave any line with fewer words covered than before.</summary>
-    public bool AllowLostLines { get; init; }
 
     /// <summary>
     /// Whether the agent is told to give every glyph a step adds or changes complete <see cref="GlyphDocumentation"/>, and
     /// reminded of any it leaves without (see <see cref="GlobalSettings.AgentDocumentsGlyphs"/>) - a reminder, never a refusal. Either way, a step changing nothing but documentation is free
-    /// of the gain rule, since documenting a glyph takes no bits off.
+    /// of the step rules, since documenting a glyph covers nothing.
     /// </summary>
     public bool DocumentGlyphs { get; init; }
 }

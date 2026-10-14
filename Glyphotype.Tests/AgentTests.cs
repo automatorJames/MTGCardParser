@@ -20,8 +20,8 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
     readonly string _directory = Directory.CreateTempSubdirectory("agent-tests-").FullName;
 
-    /// <summary>Session settings that let any step through and never call for a check-in.</summary>
-    internal static readonly AgentSessionSettings AnySteps = new() { StepsBeforeCheckIn = 0, AttemptsBeforeCheckIn = 0, MinimumGainBits = double.NegativeInfinity, AllowLostLines = true };
+    /// <summary>Session settings that never call for a check-in.</summary>
+    internal static readonly AgentSessionSettings AnySteps = new() { StepsBeforeCheckIn = 0, AttemptsBeforeCheckIn = 0 };
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
@@ -30,7 +30,6 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
             new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar"));
 
-        // These tests exercise the tools themselves, so the session's step rules are off unless a test sets them.
         return (new GrammarAgent(workbench, "the test corpus", settings ?? AnySteps), workbench);
     }
 
@@ -55,16 +54,12 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
-    public async Task A_step_that_covers_more_words_may_cost_bits_up_to_a_price_per_word()
+    public async Task A_step_that_covers_more_words_goes_through_whatever_it_costs_in_bits()
     {
         // Snoring costs bits here - one line's worth of matches doesn't pay for the glyph - but covers words nothing else does.
-        var (dear, _) = CreateAgent(AnySteps with { MinimumGainBits = 1, MaxBitsPerCoveredWord = 0.001 });
-        var refused = await dear.ApplyAsync(_animalSnores);
-        Assert.StartsWith("Not applied - it takes", refused);
-        Assert.Contains("per word it gains", refused);
+        var (agent, _) = CreateAgent();
 
-        var (fair, _) = CreateAgent(AnySteps with { MinimumGainBits = 1, MaxBitsPerCoveredWord = 1_000 });
-        Assert.StartsWith("Applied as step 1", await fair.ApplyAsync(_animalSnores));
+        Assert.StartsWith("Applied as step 1", await agent.ApplyAsync(_animalSnores));
     }
 
     [Fact]
@@ -130,9 +125,9 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         using (agent.SuspendCheckIns())
         {
-            var applied = await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"));
+            var applied = await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"), approval: "yes");
             Assert.DoesNotContain("Check-in", applied);
-            await agent.ApplyAsync(Glyph("AnimalNaps", "naps"));
+            await agent.ApplyAsync(Glyph("AnimalNaps", "naps"), approval: "yes");
         }
 
         Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
@@ -167,8 +162,8 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         // Each session is a round of its own.
         await agent.StartSessionAsync();
-        await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"));
-        await agent.ApplyAsync(Glyph("AnimalNaps", "dozes"));
+        await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"), approval: "yes");
+        await agent.ApplyAsync(Glyph("AnimalNaps", "dozes"), approval: "yes");
 
         Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
         Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
@@ -202,8 +197,8 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         await agent.ApplyAsync(_animalSnores);
 
         await agent.StartSessionAsync();
-        await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"));
-        await agent.ApplyAsync(Glyph("AnimalNaps", "naps"));
+        await agent.ApplyAsync(Glyph("AnimalSleeps", "sleeps"), approval: "yes");
+        await agent.ApplyAsync(Glyph("AnimalNaps", "naps"), approval: "yes");
 
         var beforeRevert = workbench.WorkingDefinition;
         workbench.RevertRound(2);
@@ -391,7 +386,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     {
         var (agent, workbench) = CreateAgent();
 
-        var applied = await agent.ApplyAsync(null, remove: string.Join(",", workbench.WorkingDefinition.Glyphs.Select(x => x.Name)), description: "start from scratch");
+        var applied = await agent.ApplyAsync(null, remove: string.Join(",", workbench.WorkingDefinition.Glyphs.Select(x => x.Name)), description: "start from scratch", approval: "yes");
 
         Assert.Contains("Applied as step 1", applied);
         Assert.Empty(workbench.WorkingDefinition.Glyphs);
@@ -410,13 +405,13 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     {
         var workbench = new GrammarWorkbench(corpus.Grammar, corpus.ProcessedDocuments,
             new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar"));
-        var agent = new GrammarAgent(workbench, "the test corpus", AnySteps with { MinimumGainBits = 1, DocumentGlyphs = true });
+        var agent = new GrammarAgent(workbench, "the test corpus", AnySteps with { DocumentGlyphs = true });
 
         Assert.Contains("<exampledoc>", await agent.StartSessionAsync());
 
         // Undocumented: a reminder, not a refusal.
         Assert.Contains("Documentation: AnimalSnores lacks", await agent.EvaluateAsync(_animalSnores));
-        var applied = await agent.ApplyAsync(_animalSnores, overrideReason: "requested");
+        var applied = await agent.ApplyAsync(_animalSnores);
         Assert.Contains("Applied as step 1", applied);
         Assert.Contains("Documentation: AnimalSnores lacks", applied);
 

@@ -278,10 +278,9 @@ public sealed class GrammarAgent
                 "Don't stop before then: text that's expensive to cover is something to evaluate and, if no step can afford it, to journal as an open problem - then move on to the next target."
             : "- There's no check-in limit: keep going until the corpus is covered or you're stuck, then summarize and wait. Uncovered text that only costs bits to cover isn't a reason to stop.");
 
-        var stepRule = Settings.MaxBitsPerCoveredWord > 0
-            ? $"take at least {Settings.MinimumGainBits:N0} bit{S(Settings.MinimumGainBits)} off the total, or cover more words for at most {Settings.MaxBitsPerCoveredWord:N0} bit{S(Settings.MaxBitsPerCoveredWord)} per word gained"
-            : $"take at least {Settings.MinimumGainBits:N0} bit{S(Settings.MinimumGainBits)} off the total";
-        report.AppendLine($"- A step must {stepRule}{(Settings.AllowLostLines ? "" : ", and lose no lines")}. `apply` refuses anything else unless you pass `override_reason` - for a deliberate refactor, never to force a loss through.");
+        report.AppendLine("- A step must cover at least one more word, and take no words from a glyph that matches them (`evaluate` lists any it takes, by glyph). Among steps that do, prefer the one that takes the most bits off. " +
+            "When a step takes words from a glyph, judge that glyph: narrow it, remove it, or revise your own step, and evaluate again. " +
+            "`apply` refuses a step that breaks either rule. If you judge one right anyway - a refactor, or a well-formed glyph replacing one too broad to be useful - check in: tell the person which rule it breaks and why it's worth it, and wait. Apply it with `approval` only once they've agreed.");
         if (DocumentationRule is { } documentationRule)
             report.AppendLine($"- {documentationRule}");
 
@@ -611,7 +610,7 @@ public sealed class GrammarAgent
 
         if (evaluation.After.Succeeded)
             report += RuleViolations(evaluation) is { Count: > 0 } violations
-                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}."
+                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}. Rework it - or, if it's right anyway, check in with the person, and apply it with `approval` once they agree."
                 : $"{Environment.NewLine}To make this change, `apply` with no source or removals: it makes what you just evaluated, without sending it again.";
 
         return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), DeadEndReminder()), SessionStatus(applied: false));
@@ -619,16 +618,16 @@ public sealed class GrammarAgent
 
     /// <summary>
     /// Makes a change set as one step of the working definition - refused if the result wouldn't build, if the session's
-    /// check-in is due, or if it breaks the session's step rules (see <see cref="Settings"/>) without an override reason.
+    /// check-in is due, or if it breaks the step rules (see <see cref="RuleViolations"/>) without the person's approval.
     /// </summary>
     /// <param name="description">Why: shown to the person in the step history.</param>
-    /// <param name="overrideReason">Why a step that breaks the step rules should be applied anyway - recorded in its description.</param>
+    /// <param name="approval">For a step that breaks the step rules: the person's go-ahead, given after the agent checked in - recorded in its description.</param>
     /// <remarks>
     /// With no <paramref name="source"/> and no <paramref name="remove"/>, it makes the change set last evaluated - as long
     /// as nothing has changed the working definition since - reusing that evaluation rather than scoring again. Either way,
     /// a change applied just as it was evaluated is reported in brief, since the evaluation already said what it does.
     /// </remarks>
-    public async Task<string> ApplyAsync(string source, string remove = null, string description = null, string overrideReason = null, CancellationToken cancellation = default)
+    public async Task<string> ApplyAsync(string source, string remove = null, string description = null, string approval = null, CancellationToken cancellation = default)
     {
         var evaluated = _lastEvaluated is { } last && last.Workbench == Workbench && ReferenceEquals(last.Against, Workbench.WorkingDefinition) ? last : null;
         ChangeSet changes;
@@ -668,14 +667,14 @@ public sealed class GrammarAgent
 
         var violations = RuleViolations(evaluation);
 
-        if (violations.Count > 0 && string.IsNullOrWhiteSpace(overrideReason))
+        if (violations.Count > 0 && string.IsNullOrWhiteSpace(approval))
             return WithStatus($"Not applied - {string.Join("; ", violations)}: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}"
-                + $"{Environment.NewLine}Rework it, or undo toward something better. Pass `override_reason` only for a deliberate refactor.", SessionStatus(applied: false));
+                + $"{Environment.NewLine}Rework it, or undo toward something better. If it's right anyway, check in: tell the person which rule it breaks and why it's worth it, and wait - then apply it with `approval` only once they agree.", SessionStatus(applied: false));
 
         description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
 
         if (violations.Count > 0)
-            description = $"{description ?? changes.Describe()} (override: {overrideReason.Trim()})";
+            description = $"{description ?? changes.Describe()} (approved: {approval.Trim()})";
 
         var workbench = Workbench;
 
@@ -701,27 +700,35 @@ public sealed class GrammarAgent
         return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: !onlyDocuments || _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn));
     }
 
-    /// <summary>How <paramref name="evaluation"/> falls short of the session's step rules - empty when it doesn't.</summary>
-    List<string> RuleViolations(Evaluation evaluation)
+    /// <summary>
+    /// How <paramref name="evaluation"/> breaks the step rules - empty when it doesn't. A step must cover at least one more
+    /// word, and take no words from a glyph that matches them (see <see cref="CorpusQueries.FindSteals"/>): one that
+    /// does is a judgment about the glyph it takes from, which is the person's to approve. Bits aren't a rule, only a
+    /// preference among the steps that pass.
+    /// </summary>
+    static List<string> RuleViolations(Evaluation evaluation)
     {
+        // Documentation isn't grammar: a step that only documents covers nothing, and needn't.
+        if (OnlyDocuments(evaluation.Changes, evaluation.Before.Definition))
+            return [];
+
         List<string> violations = [];
-        var gain = evaluation.Before.Score.TotalBits - evaluation.After.Score.TotalBits;
+
+        if (FindSteals(evaluation) is { Count: > 0 } steals)
+            violations.Add($"it takes words from {string.Join(", ", steals.Select(x => $"{x.From} ({x.Words:N0} word{S(x.Words)})"))}, and a step must take none");
+
         var wordsGained = evaluation.After.Score.CapturedWords - evaluation.Before.Score.CapturedWords;
 
-        // Coverage decides whether to cover text, and bits decide how: a step covering more words may cost bits, up to a price per word.
-        var coversAffordably = Settings.MaxBitsPerCoveredWord > 0 && wordsGained > 0 && -gain <= Settings.MaxBitsPerCoveredWord * wordsGained;
-
-        // Documentation isn't grammar: a step that only documents takes nothing off, and needn't.
-        if (gain < Settings.MinimumGainBits && !coversAffordably && !OnlyDocuments(evaluation.Changes, evaluation.Before.Definition))
-            violations.Add($"it takes {gain:N1} bits off the total, and a step must take at least {Settings.MinimumGainBits:N0}" + (Settings.MaxBitsPerCoveredWord > 0
-                ? $" or cover more words for at most {Settings.MaxBitsPerCoveredWord:N0} bits each ({(wordsGained > 0 ? $"this costs {-gain / wordsGained:N1} per word it gains" : "this covers no more")})"
-                : ""));
-
-        if (!Settings.AllowLostLines && CorpusQueries.CompareTokenizations(evaluation.Before.Documents, evaluation.After.Documents, limit: 0).LostLines is int lost and > 0)
-            violations.Add($"it loses {lost} line{S(lost)}, and a step must lose none");
+        if (wordsGained < 1)
+            violations.Add($"it covers {(wordsGained == 0 ? "no more words" : $"{-wordsGained:N0} fewer word{S(-wordsGained)}")}, and a step must cover at least one more");
 
         return violations;
     }
+
+    /// <summary>The words <paramref name="evaluation"/>'s change takes from the glyphs that matched them, by glyph (see <see cref="CorpusQueries.FindSteals"/>).</summary>
+    static IReadOnlyList<GlyphSteal> FindSteals(Evaluation evaluation, int examples = 2) =>
+        CorpusQueries.FindSteals(evaluation.Before.Documents, evaluation.After.Documents,
+            evaluation.Before.Definition.Glyphs.Concat(evaluation.After.Definition.Glyphs).Select(x => x.Name).ToHashSet(), examples);
 
     /// <summary>Takes back the latest step, whoever made it.</summary>
     public async Task<string> UndoAsync(CancellationToken cancellation = default)
@@ -956,8 +963,28 @@ public sealed class GrammarAgent
         AppendChanges(report, "Gained (more words covered)", diff.Gained, diff.GainedLines);
         AppendChanges(report, "Lost (fewer words covered)", diff.Lost, diff.LostLines);
         AppendChanges(report, "Reshaped (same coverage, different parse)", diff.Reshaped, diff.ReshapedLines);
+        AppendSteals(report, FindSteals(evaluation));
 
         return report.ToString();
+    }
+
+    static void AppendSteals(StringBuilder report, IReadOnlyList<GlyphSteal> steals)
+    {
+        if (steals.Count == 0)
+            return;
+
+        report.AppendLine("Taken from existing glyphs - judge each: is the new parse better? Narrow or remove the glyph it takes from, or revise this step:");
+
+        foreach (var steal in steals)
+        {
+            report.AppendLine($"  {steal.From}: {steal.Words:N0} word{S(steal.Words)} on {steal.Lines:N0} line{S(steal.Lines)}, to {string.Join(", ", steal.TakenBy.Select(x => $"{x.Glyph} ({x.Words:N0})"))}");
+
+            foreach (var example in steal.Examples)
+            {
+                report.AppendLine($"    ×{example.Occurrences,-4} {example.Before}");
+                report.AppendLine($"         → {example.After}");
+            }
+        }
     }
 
     static void AppendChanges(StringBuilder report, string heading, IReadOnlyList<LineChange> changes, int total)

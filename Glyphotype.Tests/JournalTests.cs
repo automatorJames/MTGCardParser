@@ -116,7 +116,7 @@ public sealed class JournalTests(CorpusFixture corpus) : IDisposable
 
         // A session started as usual begins a round of its own.
         await agent.StartSessionAsync();
-        await agent.ApplyAsync(_animalSnores.Replace("snores in the", "snores loudly in the"));
+        await agent.ApplyAsync(_animalSnores.Replace("snores in the", "snores loudly in the"), approval: "yes");
         Assert.Equal(2, workbench.History[^1].Round);
     }
 

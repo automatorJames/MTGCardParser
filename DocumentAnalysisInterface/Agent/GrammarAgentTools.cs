@@ -77,15 +77,15 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
     [McpServerTool(Name = "apply", Destructive = false), Description(
         "Makes a change set as one step of the working definition. With no source or removals, it makes the change you last evaluated (unless the working definition changed since) and reports it in brief; " +
         "given them, it reports what it did as `evaluate` does. Refused if the result wouldn't build, " +
-        "if a check-in is due, or if it breaks the session's step rules (see `start_session`) without an override reason. " +
+        "if a check-in is due, or if it breaks the step rules (see `start_session`) without the person's approval. " +
         "The person sees the step in the app; `undo` takes it back.")]
     public Task<string> Apply(
         [Description(_sourceDescription)] string source = null,
         [Description(_removeDescription)] string remove = null,
         [Description("Why you're making this change, in a short phrase - shown in the step history.")] string description = null,
-        [Description("Only for a deliberate refactor that breaks the step rules (e.g. a merge that costs a few bits now): why it's worth it. Recorded in the step.")] string override_reason = null,
+        [Description("Only for a step that breaks the step rules, and only after you've checked in - said which rule it breaks and why it's worth it - and the person agreed: their go-ahead, quoted. Recorded in the step.")] string approval = null,
         CancellationToken cancellation = default) =>
-        Run(() => agent.ApplyAsync(source, remove, description, override_reason, cancellation));
+        Run(() => agent.ApplyAsync(source, remove, description, approval, cancellation));
 
     [McpServerTool(Name = "undo"), Description("Takes back the latest step of the working definition (whoever made it), and reports what that did.")]
     public Task<string> Undo(CancellationToken cancellation) =>

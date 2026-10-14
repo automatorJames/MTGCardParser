@@ -195,7 +195,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
     /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
     /// </summary>
-    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, double? MaxBitsPerCoveredWord = null);
+    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null);
 
     const string _settingsFileName = "chat-settings.json";
 
@@ -212,7 +212,6 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         grammarAgent.Settings = grammarAgent.Settings with
         {
             StepsBeforeCheckIn = saved.StepsBeforeCheckIn ?? grammarAgent.Settings.StepsBeforeCheckIn,
-            MaxBitsPerCoveredWord = saved.MaxBitsPerCoveredWord ?? grammarAgent.Settings.MaxBitsPerCoveredWord,
         };
 
         return true;
@@ -233,7 +232,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
-    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.MaxBitsPerCoveredWord));
+    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn));
 
     void SaveSettings(Settings settings)
     {
@@ -289,21 +288,6 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         set
         {
             agent.Settings = agent.Settings with { StepsBeforeCheckIn = Math.Max(0, value ?? 0) };
-            SaveSettings();
-            NotifyChanged();
-        }
-    }
-
-    /// <summary>
-    /// What a step that covers more words may cost in bits per word it gains (see <see cref="AgentSessionSettings.MaxBitsPerCoveredWord"/>) -
-    /// null for no such allowance. The session setting itself, so it holds for an agent in a terminal too - and kept for the app's next run.
-    /// </summary>
-    public double? MaxBitsPerCoveredWord
-    {
-        get => agent.Settings.MaxBitsPerCoveredWord > 0 ? agent.Settings.MaxBitsPerCoveredWord : null;
-        set
-        {
-            agent.Settings = agent.Settings with { MaxBitsPerCoveredWord = Math.Max(0, value ?? 0) };
             SaveSettings();
             NotifyChanged();
         }

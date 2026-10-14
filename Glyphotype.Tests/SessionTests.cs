@@ -1,4 +1,5 @@
 using Glyphotype.Distiller.Agent;
+using Glyphotype.Distiller.Inspection;
 using Glyphotype.Distiller.Workbench;
 
 namespace Glyphotype.Tests;
@@ -48,41 +49,90 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
     [Fact]
     public async Task A_session_starts_from_one_brief_with_the_instructions_and_the_rules()
     {
-        var agent = CreateAgent(new() { StepsBeforeCheckIn = 3, MinimumGainBits = 5 });
+        var agent = CreateAgent(new() { StepsBeforeCheckIn = 3 });
 
         var brief = await agent.StartSessionAsync("focus on snoring");
 
         Assert.Contains("The person's instructions: focus on snoring", brief);
         Assert.Contains("Check in after 3 applied steps", brief);
         Assert.Contains("The goal is full coverage", brief);
-        Assert.Contains("at least 5 bits off the total, or cover more words for at most 12 bits per word gained, and lose no lines", brief);
+        Assert.Contains("A step must cover at least one more word, and take no words from a glyph that matches them", brief);
         Assert.Contains("Corpus: a snoring corpus", brief);
     }
 
     [Fact]
-    public async Task A_step_that_breaks_the_rules_needs_a_reason()
+    public async Task A_step_that_covers_no_more_words_needs_the_persons_approval()
     {
-        var agent = CreateAgent(new() { MinimumGainBits = 1_000_000, MaxBitsPerCoveredWord = 0 });
+        // Removing AnimalRests uncovers "the dog sleeps in the kitchen" on every document.
+        var agent = CreateAgent(new());
 
-        var refused = await agent.ApplyAsync(_animalSnores);
-        Assert.StartsWith("Not applied - it takes", refused);
+        var refused = await agent.ApplyAsync(null, remove: "AnimalRests");
+        Assert.StartsWith("Not applied - it takes words from AnimalRests (180 words), and a step must take none; it covers 180 fewer words", refused);
+        Assert.Contains("check in", refused);
 
-        var evaluated = await agent.EvaluateAsync(_animalSnores);
-        Assert.Contains("`apply` would refuse this", evaluated);
+        Assert.Contains("`apply` would refuse this", await agent.EvaluateAsync(null, remove: "AnimalRests"));
 
-        var overridden = await agent.ApplyAsync(_animalSnores, description: "snoring", overrideReason: "testing the override");
-        Assert.Contains("Applied as step 1: snoring (override: testing the override)", overridden);
+        var approved = await agent.ApplyAsync(null, remove: "AnimalRests", description: "no resting", approval: "go ahead");
+        Assert.Contains("Applied as step 1: no resting (approved: go ahead)", approved);
     }
 
     [Fact]
-    public async Task A_step_that_loses_lines_is_refused_unless_lost_lines_are_allowed()
+    public async Task A_step_that_takes_words_from_another_glyph_lists_them_and_is_refused()
     {
-        // Removing AnimalRests loses "the dog sleeps in the kitchen" on every document.
-        var strict = CreateAgent(new() { MinimumGainBits = double.NegativeInfinity });
-        Assert.Contains("loses 30 lines", await strict.ApplyAsync(null, remove: "AnimalRests"));
+        // Tried first, it claims the lines AnimalRests matched: as many words covered, but taken from another glyph.
+        const string dogSleeps = """
+            [TokenizationOrder(0)]
+            public class DogSleepsInTheKitchen : Glyph
+            {
+                public override Nib[] Nibs => ["the dog sleeps in the kitchen"];
+            }
+            """;
+        var agent = CreateAgent(new());
 
-        var lenient = CreateAgent(new() { MinimumGainBits = double.NegativeInfinity, AllowLostLines = true });
-        Assert.StartsWith("Applied", await lenient.ApplyAsync(null, remove: "AnimalRests"));
+        var evaluated = await agent.EvaluateAsync(dogSleeps);
+        Assert.Contains("Taken from existing glyphs", evaluated);
+        Assert.Contains("AnimalRests: 180 words on 30 lines, to DogSleepsInTheKitchen (180)", evaluated);
+        Assert.Contains("→ ⟦DogSleepsInTheKitchen: the dog sleeps in the kitchen⟧", evaluated);
+
+        Assert.StartsWith("Not applied - it takes words from AnimalRests (180 words)", await agent.ApplyAsync(dogSleeps));
+    }
+
+    [Fact]
+    public void A_glyph_that_takes_over_a_dynamic_slot_takes_its_words_from_the_glyph_that_filled_it()
+    {
+        var definition = corpus.Grammar.ToDefinition();
+        var glyph = Assert.Single(GlyphSourceReader.Read("""
+            [TokenizationOrder(0)]
+            public class DogSleepsInTheKitchen : Glyph
+            {
+                public override Nib[] Nibs => ["the dog sleeps in the kitchen"];
+            }
+            """, definition).Glyphs);
+        var after = definition.WithGlyph(glyph);
+        TestDocument[] documents = [new(TestDocument.Unnamed, "if it rains, the dog sleeps in the kitchen.", [])];
+
+        var steals = CorpusQueries.FindSteals(
+            CorpusFixture.Process(corpus.Grammar, documents),
+            CorpusFixture.Process(GlyphGrammar.FromDefinition(after), documents),
+            after.Glyphs.Select(x => x.Name).ToHashSet());
+
+        // IfWeather still frames the line: only its slot changed hands.
+        var steal = Assert.Single(steals);
+        Assert.Equal("AnimalRests", steal.From);
+        Assert.Equal(6, steal.Words);
+        Assert.Equal([("DogSleepsInTheKitchen", 6)], steal.TakenBy);
+    }
+
+    [Fact]
+    public async Task A_step_that_covers_more_words_and_takes_none_goes_through()
+    {
+        var agent = CreateAgent(new());
+
+        var evaluated = await agent.EvaluateAsync(_animalSnores);
+        Assert.DoesNotContain("Taken from existing glyphs", evaluated);
+        Assert.DoesNotContain("would refuse", evaluated);
+
+        Assert.StartsWith("Applied as step 1", await agent.ApplyAsync(_animalSnores));
     }
 
     [Fact]

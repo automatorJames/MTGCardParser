@@ -59,6 +59,14 @@ public sealed record TokenizationDiff(
     public int ChangedLines => GainedLines + LostLines + ReshapedLines;
 }
 
+/// <summary>Words a change took from a glyph that matched them (see <see cref="CorpusQueries.FindSteals"/>).</summary>
+/// <param name="From">The glyph that matched the words before the change and doesn't after.</param>
+/// <param name="Words">How many words it lost, corpus-wide.</param>
+/// <param name="Lines">How many lines it lost them on.</param>
+/// <param name="TakenBy">The glyphs that match those words after the change and didn't before, with how many each took, most first - or, for words no new glyph took, whatever still matches them, or <see cref="CorpusQueries.NoGlyph"/> if nothing does.</param>
+/// <param name="Examples">Lines it lost words on, as they tokenize before and after.</param>
+public sealed record GlyphSteal(string From, int Words, int Lines, IReadOnlyList<(string Glyph, int Words)> TakenBy, IReadOnlyList<LineChange> Examples);
+
 /// <summary>How far one glyph's pattern gets through a piece of text, and where it stops (see <see cref="CorpusQueries.ExplainMismatch"/>).</summary>
 public sealed record MismatchExplanation(string Glyph, string Text, bool IsFullMatch, int MatchedWords, int TotalWords, string MatchedText, string FirstFailure, string Tokenization);
 
@@ -267,6 +275,92 @@ public static class CorpusQueries
             gained.Take(limit).ToList(),
             lost.Take(limit).ToList(),
             reshaped.Take(limit).ToList());
+    }
+
+    /// <summary>What <see cref="GlyphSteal.TakenBy"/> lists for words no glyph matches after the change.</summary>
+    public const string NoGlyph = "(unmatched)";
+
+    /// <summary>
+    /// The words a change took from the glyphs that matched them: a word belongs to every glyph whose match - top-level
+    /// or nested, through a dynamic too - spans it, and a glyph loses it when it belongs to that glyph in
+    /// <paramref name="before"/> but not in <paramref name="after"/> (each tokenized by a different grammar, in the same
+    /// order). Only glyphs named in <paramref name="glyphNames"/> count, so a primitive (a list, a one-of) owns nothing.
+    /// Most words first.
+    /// </summary>
+    public static IReadOnlyList<GlyphSteal> FindSteals(IReadOnlyList<ProcessedDocument> before, IReadOnlyList<ProcessedDocument> after, IReadOnlySet<string> glyphNames, int examples = 2)
+    {
+        if (before.Count != after.Count)
+            throw new ArgumentException("Both tokenizations must be of the same documents, in the same order");
+
+        var steals = new Dictionary<string, (int Words, Dictionary<string, int> TakenBy, List<(string Document, ProcessedLine Before, ProcessedLine After)> Lines)>();
+
+        for (int i = 0; i < before.Count; i++)
+            foreach (var (beforeLine, afterLine) in before[i].Lines.Zip(after[i].Lines))
+            {
+                if (ParseRenderer.Render(beforeLine, nested: true) == ParseRenderer.Render(afterLine, nested: true))
+                    continue;
+
+                var (was, now) = (WordOwners(beforeLine, glyphNames), WordOwners(afterLine, glyphNames));
+
+                for (int word = 0; word < Math.Min(was.Count, now.Count); word++)
+                    foreach (var from in was[word].Except(now[word]))
+                    {
+                        if (!steals.TryGetValue(from, out var steal))
+                            steals[from] = steal = (0, [], []);
+
+                        steal.Words++;
+                        steals[from] = steal;
+
+                        List<string> takers = [.. now[word].Except(was[word])];
+
+                        if (takers.Count == 0)
+                            takers = now[word].Count == 0 ? [NoGlyph] : [.. now[word]];
+
+                        foreach (var taker in takers)
+                            steal.TakenBy[taker] = steal.TakenBy.GetValueOrDefault(taker) + 1;
+
+                        if (steal.Lines.Count == 0 || steal.Lines[^1].Before != beforeLine)
+                            steal.Lines.Add((before[i].Document.Name, beforeLine, afterLine));
+                    }
+            }
+
+        return steals
+            .Select(x => new GlyphSteal(
+                x.Key,
+                x.Value.Words,
+                x.Value.Lines.Count,
+                x.Value.TakenBy.OrderByDescending(y => y.Value).ThenBy(y => y.Key, StringComparer.Ordinal).Select(y => (y.Key, y.Value)).ToList(),
+                x.Value.Lines
+                    .GroupBy(y => (Before: ParseRenderer.Render(y.Before, nested: false), After: ParseRenderer.Render(y.After, nested: false), Delta: y.After.CapturedWordCount - y.Before.CapturedWordCount))
+                    .Select(y => new LineChange(y.First().Document, y.Key.Before, y.Key.After, y.Count(), y.Key.Delta))
+                    .OrderByDescending(y => y.Occurrences)
+                    .Take(examples)
+                    .ToList()))
+            .OrderByDescending(x => x.Words)
+            .ThenBy(x => x.From, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>For each word of <paramref name="line"/>, in order, the glyphs named in <paramref name="glyphNames"/> whose matches span it.</summary>
+    static List<HashSet<string>> WordOwners(ProcessedLine line, IReadOnlySet<string> glyphNames)
+    {
+        if (line.Glyphs.FirstOrDefault()?.CaptureContext.SourceText is not string text)
+            return [];
+
+        var words = Regex.Matches(text, @"\S+").Select(x => (Start: x.Index, End: x.Index + x.Length)).ToList();
+        var owners = words.Select(_ => new HashSet<string>()).ToList();
+
+        foreach (var trace in line.Glyphs.Where(x => !x.CaptureContext.RootCaptureTrace.IsSynthesized).SelectMany(x => ParseRenderer.SelfAndDescendants(x.CaptureContext.RootCaptureTrace)))
+        {
+            if (ParseRenderer.CapturedType(trace)?.Name is not string name || !glyphNames.Contains(name))
+                continue;
+
+            for (int word = 0; word < words.Count; word++)
+                if (words[word].Start < trace.Index + trace.Length && trace.Index < words[word].End)
+                    owners[word].Add(name);
+        }
+
+        return owners;
     }
 
     /// <summary><paramref name="text"/> (lower-cased, as corpus lines are) tokenized by <paramref name="grammar"/>, line by line.</summary>
