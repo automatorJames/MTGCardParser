@@ -21,22 +21,19 @@ public class SmartRegex
     }
 
     /// <summary>
-    /// Renames every group <paramref name="bricks"/> opens per <paramref name="style"/> - <see cref="GroupNameStyle.ShortestUnique"/>
-    /// being what formatting already named them. Done over the finished sequence rather than by each formatting pass,
-    /// so a type embedded in a dynamic group is numbered in with the groups around it.
+    /// Under <see cref="GroupNameStyle.Numbered"/>, renames every group <paramref name="bricks"/> opens - any other
+    /// style keeps the name formatting already gave it. Done over the finished sequence rather than by each
+    /// formatting pass, so a type embedded in a dynamic group is numbered in with the groups around it.
     /// </summary>
     static void NameGroups(List<RegexBrick> bricks, GroupNameStyle style)
     {
-        if (style == GroupNameStyle.ShortestUnique)
+        if (style != GroupNameStyle.Numbered)
             return;
 
         var position = 0;
 
         foreach (var groupOpen in bricks.OfType<RegexBrickGroupOpen>())
-        {
-            var ownName = groupOpen.GroupName.Split('_')[^1];
-            groupOpen.SetFormattedGroupName(style == GroupNameStyle.Numbered ? $"_{++position}_{ownName}" : ownName);
-        }
+            groupOpen.SetFormattedGroupName($"_{++position}_{groupOpen.GroupName.Split('_')[^1]}");
     }
 
     public override string ToString() =>

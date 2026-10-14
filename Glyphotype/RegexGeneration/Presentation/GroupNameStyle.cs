@@ -4,7 +4,7 @@ namespace Glyphotype.RegexGeneration.Presentation;
 
 /// <summary>
 /// How a formatted regex names its groups - display-only, since the engine always matches with fully qualified
-/// names - the three states TypeRegexPage's group-name toggle cycles through. <see cref="Description"/> gives the
+/// names - the two states TypeRegexPage's group-name toggle cycles through. <see cref="Description"/> gives the
 /// toggle's tooltip text; <see cref="ColorAttribute"/> gives its icon color for that state.
 /// </summary>
 public enum GroupNameStyle
@@ -25,12 +25,4 @@ public enum GroupNameStyle
     [Description("Numbered")]
     [Color("#1E90FF")]
     Numbered,
-
-    /// <summary>
-    /// Each group's own name alone, the groups enclosing it saying which one it is. Names recur, so a regex copied
-    /// with them merges every same-named group's captures into one.
-    /// </summary>
-    [Description("Own name only")]
-    [Color("#FFA500")]
-    OwnName,
 }
