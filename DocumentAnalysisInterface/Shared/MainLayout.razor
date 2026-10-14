@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @implements IDisposable
 @inject RuntimeSettings RuntimeSettings
 @inject NavigationManager Navigation
@@ -50,6 +50,8 @@
                         {
                             <EnumIconToggle TValue="RegexDisplayMode" Icon="code" Label="Regex format" Value="@RuntimeSettings.RegexFormat"
                                             ValueChanged="@(v => RuntimeSettings.RegexFormat = v)" />
+                            <EnumIconToggle TValue="GroupNameStyle" Icon="tag" Label="Group names" Value="@RuntimeSettings.GroupNameStyle"
+                                            ValueChanged="@(v => RuntimeSettings.GroupNameStyle = v)" />
                             <EnumIconToggle TValue="FooterTrayContent" Icon="layers" Label="Footer tray contents" Value="@RuntimeSettings.FooterTrayContent"
                                             ValueChanged="@(v => RuntimeSettings.FooterTrayContent = v)" />
                         }

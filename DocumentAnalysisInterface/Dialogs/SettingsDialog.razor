@@ -37,6 +37,17 @@
                     </label>
                 }
             </div>
+            <div class="settings-row radio-group">
+                <span class="settings-row-label">Group names</span>
+                @foreach (var style in Enum.GetValues<GroupNameStyle>())
+                {
+                    <label class="radio-option">
+                        <input type="radio" name="group-name-style" checked="@(RuntimeSettings.GroupNameStyle == style)"
+                               @onchange="() => RuntimeSettings.GroupNameStyle = style" />
+                        @style.GetDescription()
+                    </label>
+                }
+            </div>
             <div class="settings-row">
                 <Switch @bind-Value=@RuntimeSettings.HideRegexesWithZeroCaptures Label="Hide zero-capture types" />
             </div>

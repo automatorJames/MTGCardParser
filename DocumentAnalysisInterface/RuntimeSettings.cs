@@ -1,4 +1,4 @@
-﻿using DocumentAnalysisInterface.Dialogs;
+using DocumentAnalysisInterface.Dialogs;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 namespace DocumentAnalysisInterface
@@ -127,6 +127,22 @@ namespace DocumentAnalysisInterface
                 if (_regexFormat != value)
                 {
                     _regexFormat = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync(); // Persist the change
+                }
+            }
+        }
+
+        /// <summary>How the formatted regex names its groups, whatever its <see cref="RegexFormat"/> - though <see cref="RegexDisplayMode.Minified"/> always shows the regex the engine runs.</summary>
+        private GroupNameStyle _groupNameStyle = GroupNameStyle.ShortestUnique;
+        public GroupNameStyle GroupNameStyle
+        {
+            get => _groupNameStyle;
+            set
+            {
+                if (_groupNameStyle != value)
+                {
+                    _groupNameStyle = value;
                     OnChanged?.Invoke();
                     _ = DebouncedSaveAsync(); // Persist the change
                 }
@@ -314,6 +330,7 @@ namespace DocumentAnalysisInterface
                     _orderByWordCount = dto.OrderByWordCount;
                     _orderByOccurrenceCount = dto.OrderByOccurrenceCount;
                     _regexFormat = dto.RegexFormat;
+                    _groupNameStyle = dto.GroupNameStyle;
                     _hideRegexesWithZeroCaptures = dto.HideRegexesWithZeroCaptures;
                     _hideBlankLines = dto.HideBlankLines;
                     _showLineNumbers = dto.ShowLineNumbers;
@@ -374,6 +391,7 @@ namespace DocumentAnalysisInterface
         public bool OrderByWordCount { get; init; }
         public bool OrderByOccurrenceCount { get; init; } = true;
         public RegexDisplayMode RegexFormat { get; init; } = RegexDisplayMode.MatchedOnly;
+        public GroupNameStyle GroupNameStyle { get; init; }
         public bool HideRegexesWithZeroCaptures { get; init; }
         public bool HideBlankLines { get; init; }
         public bool ShowLineNumbers { get; init; }
@@ -396,6 +414,7 @@ namespace DocumentAnalysisInterface
             OrderByWordCount = runtimeSettings.OrderByWordCount;
             OrderByOccurrenceCount = runtimeSettings.OrderByOccurrenceCount;
             RegexFormat = runtimeSettings.RegexFormat;
+            GroupNameStyle = runtimeSettings.GroupNameStyle;
             HideRegexesWithZeroCaptures = runtimeSettings.HideRegexesWithZeroCaptures;
             HideBlankLines = runtimeSettings.HideBlankLines;
             ShowLineNumbers = runtimeSettings.ShowLineNumbers;

@@ -1,4 +1,4 @@
-﻿namespace Glyphotype.RegexGeneration.Graph;
+namespace Glyphotype.RegexGeneration.Graph;
 
 /// <summary>What one authored pattern (see <see cref="Nodes.TextNode.AuthoredPattern"/>) matched, within a match: its regex, and where in the source text.</summary>
 public sealed record PatternCapture(string Pattern, int Index, int Length);
@@ -175,8 +175,8 @@ public class BuiltRegex
         new(pattern, RegexOptions.ExplicitCapture);
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
-    public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly) =>
-        new(_regexBricks, summary, regexGraph, includeSupplementalLines, displayMode);
+    public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly, GroupNameStyle groupNameStyle = GroupNameStyle.ShortestUnique) =>
+        new(_regexBricks, summary, regexGraph, includeSupplementalLines, displayMode, groupNameStyle);
 
     /// <summary>
     /// Builds a single unpadded, uncommented line of this regex's raw text (the same characters as

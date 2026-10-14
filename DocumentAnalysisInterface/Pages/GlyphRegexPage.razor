@@ -39,7 +39,7 @@
                 else
                 {
                     // Formatted once for both the view and what its copy button copies - a large type's takes a while.
-                    var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat);
+                    var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat, RuntimeSettings.GroupNameStyle);
 
                     var copyText = FormattedRegexCopy.GetCopyText(smartRegex.Lines);
 
