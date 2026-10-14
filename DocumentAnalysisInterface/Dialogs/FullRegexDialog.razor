@@ -1,0 +1,32 @@
+@* The whole of a regex GlyphRegexPage cut short (see GlyphRegexTruncation), in the same format it was shown in. *@
+<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(1800px, 95vw);">
+    <TitleContent>
+        <GlyphTypeName GlyphType=@GlyphType />
+    </TitleContent>
+    <DialogContent>
+        <div class="full-regex-scroll">
+            <CopyButtonOverlay TextToCopy=@CopyText>
+                <FormattedRegex Lines=@Lines BorderStyle=@BorderStyle ShowLineNumbers=@ShowLineNumbers />
+            </CopyButtonOverlay>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-secondary" @onclick="Close">Close</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    [Parameter, EditorRequired] public Type GlyphType { get; set; }
+
+    [Parameter, EditorRequired] public List<SmartLine> Lines { get; set; }
+
+    [Parameter, EditorRequired] public string CopyText { get; set; }
+
+    [Parameter] public string BorderStyle { get; set; }
+
+    [Parameter] public bool ShowLineNumbers { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    Task Close() => OnClose.InvokeAsync();
+}

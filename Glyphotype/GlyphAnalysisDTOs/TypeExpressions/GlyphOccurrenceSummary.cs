@@ -17,6 +17,18 @@ public class GlyphOccurrenceSummary
     public Dictionary<string, DynamicCaptureTraceSummary> DynamicCaptureSummaries { get; } = [];
     public RegexGraph RegexGraph { get; }
 
+    /// <summary>
+    /// The fully qualified name of every named group that captured some text in at least one occurrence - what
+    /// <see cref="RegexDisplayMode.Pruned"/> keeps. Built on first use, from <see cref="MatchOccurrences"/>.
+    /// </summary>
+    public IReadOnlySet<string> CapturedGroupNames => _capturedGroupNames ??= MatchOccurrences
+        .SelectMany(x => x.Glyph.CaptureContext.RootCaptureTrace.GetFlatCaptureTree())
+        .Where(x => x.Value.Any(trace => trace.Length > 0))
+        .Select(x => x.Key)
+        .ToHashSet();
+
+    HashSet<string> _capturedGroupNames;
+
     private readonly IEnumerable<EnumNode> _enumNodes;
     private readonly IEnumerable<DynamicGlyphNode> _dynamicNodes;
 

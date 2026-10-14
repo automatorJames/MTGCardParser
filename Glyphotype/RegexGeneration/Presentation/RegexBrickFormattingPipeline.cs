@@ -52,7 +52,7 @@ internal class RegexBrickFormattingPipeline
             brick.RegexFormatted = BuiltRegex.EscapeSpaces(brick.Regex);
         }
 
-        var sequence = FoldAdheringJoiners(RemoveRawSynthesizedSectionBricks(bricks));
+        var sequence = FoldAdheringJoiners(PruneUncapturedGroups(RemoveRawSynthesizedSectionBricks(bricks)));
         var membersByEnclosingEnum = ReferenceEquals(bricks, _regexGraph.BuiltRegex.Bricks)
             ? _regexGraph.BuiltRegex.MembersByEnclosingEnum
             : BuiltRegex.IndexMembersByEnclosingEnum(bricks);
@@ -91,6 +91,68 @@ internal class RegexBrickFormattingPipeline
             .Where(x => x is not RegexBrickJoiner joiner || joiner.NamedGroupParent is not EnumNode)
             .Where(x => x.NamedGroupParent is not DynamicGlyphNode || (x.Parent is not TextNode && x is not RegexBrickJoiner))
             .ToList();
+
+    /// <summary>
+    /// Under <see cref="RegexDisplayMode.Pruned"/>, drops every brick inside a named group that never captured
+    /// anything (see <see cref="GlyphOccurrenceSummary.CapturedGroupNames"/>) - an alternative never taken, an
+    /// optional part never present - together with the one joiner that separated it from its siblings: the one
+    /// before it, or when it came first in its group, the one after it, so <c>a|b|c</c> less <c>a</c> reads
+    /// <c>b|c</c>, never <c>|b|c</c>. A type that never matched captured nothing to prune by, so is left whole.
+    /// </summary>
+    List<RegexBrick> PruneUncapturedGroups(List<RegexBrick> sequence)
+    {
+        if (_displayMode != RegexDisplayMode.Pruned || _summary.OccurrenceCount == 0)
+            return sequence;
+
+        var captured = _summary.CapturedGroupNames;
+        List<RegexBrick> result = [];
+        var inPrunedRun = false;
+        var dropNextJoiner = false;
+
+        foreach (var brick in sequence)
+        {
+            if (!brick.NamedGroupLineageNames.All(captured.Contains))
+            {
+                if (!inPrunedRun)
+                {
+                    if (EndsWithSeparatingJoiner(result))
+                        result.RemoveAt(result.Count - 1);
+                    else
+                        dropNextJoiner = EndsAtGroupStart(result);
+                }
+
+                inPrunedRun = true;
+                continue;
+            }
+
+            inPrunedRun = false;
+
+            if (dropNextJoiner && brick is RegexBrickJoiner)
+            {
+                dropNextJoiner = false;
+                continue;
+            }
+
+            dropNextJoiner = false;
+            result.Add(brick);
+        }
+
+        return result;
+    }
+
+    /// <summary>Whether <paramref name="bricks"/> ends in a joiner between two siblings - not a group's own leading joiner, straight after its start.</summary>
+    static bool EndsWithSeparatingJoiner(List<RegexBrick> bricks) =>
+        bricks is [.., var before, RegexBrickJoiner] && !IsGroupStart(before);
+
+    /// <summary>Whether nothing of the group <paramref name="bricks"/> is in has come yet but its start (and any leading joiner of its own).</summary>
+    static bool EndsAtGroupStart(List<RegexBrick> bricks) =>
+        bricks.Count == 0
+        || IsGroupStart(bricks[^1])
+        ||bricks is [.., var before, RegexBrickJoiner] && IsGroupStart(before);
+
+    /// <summary>A named group's open bookend, or the plain group a one-of puts around its alternatives (see <see cref="GlyphOneOfNode"/>).</summary>
+    static bool IsGroupStart(RegexBrick brick) =>
+        brick is RegexBrickGroupOpen || brick.Parent is GlyphOneOfNode && brick.Regex == "(";
 
     /// <summary>
     /// Folds a joiner that follows tight punctuation into the preceding brick's own line rather than letting

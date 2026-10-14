@@ -298,6 +298,20 @@ public static class RegexDebugPresentation
 }
 
 /// <summary>
+/// How much of a glyph's regex GlyphRegexPage shows before cutting it short, behind a marker that opens the whole
+/// regex in a dialog. Rendering every line of the largest ones at once is what would stall the page. Not
+/// user-configurable at runtime; tune here and redeploy.
+/// </summary>
+public static class GlyphRegexTruncation
+{
+    /// <summary>Lines of a formatted regex shown on the page.</summary>
+    public const int MaxFormattedLines = 100;
+
+    /// <summary>Characters of a minified regex shown on the page.</summary>
+    public const int MaxMinifiedCharacters = 2000;
+}
+
+/// <summary>
 /// Shared formatting for capture-coverage percentages shown across the Corpus Captures page:
 /// whole-number at the 0%/100% extremes (no visual noise implying more precision than "none"/"all"
 /// actually carries), two decimals everywhere in between.

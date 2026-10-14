@@ -28,8 +28,12 @@
 
                 @if (RuntimeSettings.RegexFormat == RegexDisplayMode.Minified)
                 {
+                    var minifiedLines = summary.RegexGraph.BuiltRegex.ToRichMinifiedLines(summary.RegexGraph);
+                    var minifiedStyle = borderColorStyle + " white-space: pre-wrap;";
+
                     <CopyButtonOverlay TextToCopy=@summary.RegexGraph.BuiltRegex.MinifiedRegex>
-                        <FormattedRegex Lines=@summary.RegexGraph.BuiltRegex.ToRichMinifiedLines(summary.RegexGraph) BorderStyle=@(borderColorStyle + " white-space: pre-wrap;") />
+                        <FormattedRegex Lines=@minifiedLines BorderStyle=@minifiedStyle MaxCharacters=@GlyphRegexTruncation.MaxMinifiedCharacters
+                                        OnShowAll=@(() => ShowAll(new(summary.Type, minifiedLines, summary.RegexGraph.BuiltRegex.MinifiedRegex, minifiedStyle, false))) />
                     </CopyButtonOverlay>
                 }
                 else
@@ -37,8 +41,11 @@
                     // Formatted once for both the view and what its copy button copies - a large type's takes a while.
                     var smartRegex = summary.RegexGraph.BuiltRegex.ToSmartRegex(summary, summary.RegexGraph, !RuntimeSettings.HideBlankLines, RuntimeSettings.RegexFormat);
 
-                    <CopyButtonOverlay TextToCopy=@FormattedRegexCopy.GetCopyText(smartRegex.Lines)>
-                        <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle ShowLineNumbers=@RuntimeSettings.ShowLineNumbers />
+                    var copyText = FormattedRegexCopy.GetCopyText(smartRegex.Lines);
+
+                    <CopyButtonOverlay TextToCopy=@copyText>
+                        <FormattedRegex Lines=@smartRegex.Lines BorderStyle=@borderColorStyle ShowLineNumbers=@RuntimeSettings.ShowLineNumbers MaxLines=@GlyphRegexTruncation.MaxFormattedLines
+                                        OnShowAll=@(() => ShowAll(new(summary.Type, smartRegex.Lines, copyText, borderColorStyle, RuntimeSettings.ShowLineNumbers))) />
                     </CopyButtonOverlay>
                 }
 
@@ -60,7 +67,21 @@
     </div>
 </DeferredContent>
 
+@if (_shownInFull is { } full)
+{
+    <FullRegexDialog GlyphType=@full.GlyphType Lines=@full.Lines CopyText=@full.CopyText BorderStyle=@full.BorderStyle ShowLineNumbers=@full.ShowLineNumbers
+                     OnClose=@(() => _shownInFull = null) />
+}
+
 @code {
+    /// <summary>A regex cut short on the page (see <see cref="GlyphRegexTruncation"/>), as <see cref="FullRegexDialog"/> shows it whole.</summary>
+    record FullRegex(Type GlyphType, List<SmartLine> Lines, string CopyText, string BorderStyle, bool ShowLineNumbers);
+
+    /// <summary>The regex open in full, or null when none is.</summary>
+    FullRegex _shownInFull;
+
+    void ShowAll(FullRegex regex) => _shownInFull = regex;
+
     protected override void OnInitialized()
     {
         RuntimeSettings.OnChanged += OnSettingsChanged;

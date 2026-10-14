@@ -1,0 +1,4 @@
+.full-regex-scroll {
+    max-height: min(75vh, 1200px);
+    overflow: auto;
+}

@@ -1,6 +1,6 @@
 <pre class="formatted-regex-fira" style="@($"font-family: {SmartRegexStaticRules.PrimaryFontFamily}; {BorderStyle}")">
     <code>
-        @for (var i = 0; i < Lines.Count; i++)
+        @for (var i = 0; i < _shownLines.Count; i++)
         {
             if (ShowLineNumbers)
             {
@@ -9,13 +9,22 @@
                 <span class="regex-line-number" style="@_lineNumberStyle" data-lowlight="None">@(i + 1)</span>
             }
 
-            foreach (var span in Lines[i].Spans)
+            foreach (var span in _shownLines[i].Spans)
             {
                 var style = BuildSpanStyle(span.Palette);
                 var isInteractive = span.Kind is not { } kind || !HoverTreatmentConfig.NonInteractiveSpanKinds.Contains(kind);
                 <span style="@style" data-path="@(isInteractive ? span.FullyQualifiedName : null)">@span.Content</span>
             }
+
+            if (_hiddenCharacters > 0 && i == _shownLines.Count - 1)
+            {
+                <span class="regex-truncation inline" data-lowlight="None" @onclick="OnShowAll" @onclick:stopPropagation="true">… @_hiddenCharacters.ToString("N0") more characters · show all</span>
+            }
             @("\n")
+        }
+        @if (_hiddenLines > 0)
+        {
+            <span class="regex-truncation" data-lowlight="None" @onclick="OnShowAll" @onclick:stopPropagation="true">⋯ @_hiddenLines.ToString("N0") more lines · show all</span>
         }
     </code>
 </pre>
@@ -35,6 +44,18 @@
     [Parameter]
     public bool ShowLineNumbers { get; set; }
 
+    /// <summary>The most lines to show, the rest cut off behind a marker that raises <see cref="OnShowAll"/> - null for no limit.</summary>
+    [Parameter]
+    public int? MaxLines { get; set; }
+
+    /// <summary>The most characters to show, the rest cut off behind a marker that raises <see cref="OnShowAll"/> - null for no limit.</summary>
+    [Parameter]
+    public int? MaxCharacters { get; set; }
+
+    /// <summary>Raised by the marker standing in for whatever <see cref="MaxLines"/> or <see cref="MaxCharacters"/> cut off.</summary>
+    [Parameter]
+    public EventCallback OnShowAll { get; set; }
+
     /// <summary>
     /// Gutter width, sized to the widest line number so the code column stays flush. This is the
     /// digits only - the gap separating the gutter from the expression is content-box padding in
@@ -42,8 +63,67 @@
     /// </summary>
     string _lineNumberStyle;
 
-    protected override void OnParametersSet() =>
-        _lineNumberStyle = $"width: {(Lines?.Count ?? 0).ToString().Length}ch;";
+    List<SmartLine> _shownLines = [];
+    int _hiddenLines;
+    int _hiddenCharacters;
+
+    protected override void OnParametersSet()
+    {
+        _shownLines = Lines ?? [];
+        _hiddenLines = 0;
+        _hiddenCharacters = 0;
+
+        if (MaxLines is int maxLines && _shownLines.Count > maxLines)
+        {
+            _hiddenLines = _shownLines.Count - maxLines;
+            _shownLines = _shownLines.Take(maxLines).ToList();
+        }
+
+        if (MaxCharacters is int maxCharacters)
+            _shownLines = TruncateCharacters(_shownLines, maxCharacters, out _hiddenCharacters);
+
+        _lineNumberStyle = $"width: {_shownLines.Count.ToString().Length}ch;";
+    }
+
+    /// <summary><paramref name="lines"/> cut off after <paramref name="maxCharacters"/> characters - mid-span if need be - with how many were cut.</summary>
+    static List<SmartLine> TruncateCharacters(List<SmartLine> lines, int maxCharacters, out int hiddenCharacters)
+    {
+        var total = lines.Sum(line => line.Spans.Sum(span => span.Content?.Length ?? 0));
+        hiddenCharacters = Math.Max(0, total - maxCharacters);
+
+        if (hiddenCharacters == 0)
+            return lines;
+
+        List<SmartLine> shown = [];
+        var remaining = maxCharacters;
+
+        foreach (var line in lines)
+        {
+            List<SmartSpan> spans = [];
+
+            foreach (var span in line.Spans)
+            {
+                var content = span.Content ?? "";
+
+                if (content.Length > remaining)
+                {
+                    spans.Add(span with { Content = content[..remaining] });
+                    remaining = 0;
+                    break;
+                }
+
+                spans.Add(span);
+                remaining -= content.Length;
+            }
+
+            shown.Add(new SmartLine(spans));
+
+            if (remaining == 0)
+                break;
+        }
+
+        return shown;
+    }
 
     static string BuildSpanStyle(SpanStylePalette palette)
     {

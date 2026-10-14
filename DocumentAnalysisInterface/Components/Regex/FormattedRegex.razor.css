@@ -64,3 +64,29 @@ span[lowlight-active] {
     color: var(--hex-lo) !important;
     opacity: var(--lowlight-opacity);
 }
+/* --- Truncation Marker --- */
+/* Stands in for whatever was cut off a long regex, and opens the whole of it. Styled as a control rather than
+   as more of the expression - a dashed outline in an accent off the rainbow - so it never reads as regex text. */
+.regex-truncation {
+    display: inline-block;
+    margin-top: 0.5em;
+    padding: 0.1em 0.8em;
+    border: 1px dashed var(--outline-grey);
+    border-radius: 4px;
+    color: #9ab8d8;
+    font-style: italic;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+    .regex-truncation.inline {
+        margin-top: 0;
+        margin-left: 0.5ch;
+    }
+
+    .regex-truncation:hover {
+        color: #ffffff;
+        border-color: #9ab8d8;
+        background-color: rgba(154, 184, 216, 0.12);
+    }

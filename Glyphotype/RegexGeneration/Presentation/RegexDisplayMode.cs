@@ -4,7 +4,7 @@ namespace Glyphotype.RegexGeneration.Presentation;
 
 /// <summary>
 /// How much of an enum group's member list <see cref="EnumSectionBuilder"/> shows, or whether the whole
-/// regex renders unformatted at all - the four states TypeRegexPage's format toggle cycles through.
+/// regex is pruned to what matched or renders unformatted at all - the five states TypeRegexPage's format toggle cycles through.
 /// <see cref="Description"/> gives the toggle's tooltip text; <see cref="ColorAttribute"/> gives its icon
 /// color for that state.
 /// <para>
@@ -25,6 +25,15 @@ public enum RegexDisplayMode
     [Description("Matched enums only")]
     [Color("#008000")]
     MatchedOnly,
+
+    /// <summary>
+    /// <see cref="MatchedOnly"/>'s members, within only the groups that captured something in at least one occurrence:
+    /// an alternative never taken, an optional part never present, is left out along with everything inside it.
+    /// A type that never matched has nothing to prune by, so shows as <see cref="MatchedOnly"/> does.
+    /// </summary>
+    [Description("Pruned to matched groups")]
+    [Color("#1E90FF")]
+    Pruned,
 
     /// <summary>Up to three occurring members, ranked by occurrence count then alphabetically, one row per member (no synonym breakdown).</summary>
     [Description("Sample enums")]
