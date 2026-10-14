@@ -36,6 +36,10 @@
                                         OnShowAll=@(() => ShowAll(new(summary.Type, minifiedLines, summary.RegexGraph.BuiltRegex.MinifiedRegex, minifiedStyle, false))) />
                     </CopyButtonOverlay>
                 }
+                else if (RuntimeSettings.RegexFormat == RegexDisplayMode.Pruned && summary.OccurrenceCount == 0)
+                {
+                    <p class="pruned-note">(never matched - pruned whole)</p>
+                }
                 else
                 {
                     // Formatted once for both the view and what its copy button copies - a large type's takes a while.

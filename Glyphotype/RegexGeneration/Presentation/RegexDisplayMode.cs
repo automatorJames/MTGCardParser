@@ -29,7 +29,7 @@ public enum RegexDisplayMode
     /// <summary>
     /// <see cref="MatchedOnly"/>'s members, within only the groups that captured something in at least one occurrence:
     /// an alternative never taken, an optional part never present, is left out along with everything inside it.
-    /// A type that never matched has nothing to prune by, so shows as <see cref="MatchedOnly"/> does.
+    /// A type that never matched is pruned whole.
     /// </summary>
     [Description("Pruned to matched groups")]
     [Color("#1E90FF")]

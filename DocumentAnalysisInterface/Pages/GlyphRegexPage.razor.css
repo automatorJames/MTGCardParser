@@ -31,6 +31,12 @@
         color: #9a3c3c;
     }
 
+.pruned-note {
+    margin: 0 12px;
+    font-style: italic;
+    color: var(--subtext-grey);
+}
+
 .matches-label {
     font-size: .8em;
     font-style: italic;

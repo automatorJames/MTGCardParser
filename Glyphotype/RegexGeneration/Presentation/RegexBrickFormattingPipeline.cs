@@ -96,11 +96,11 @@ internal class RegexBrickFormattingPipeline
     /// anything (see <see cref="GlyphOccurrenceSummary.CapturedGroupNames"/>) - an alternative never taken, an
     /// optional part never present - together with the one joiner that separated it from its siblings: the one
     /// before it, or when it came first in its group, the one after it, so <c>a|b|c</c> less <c>a</c> reads
-    /// <c>b|c</c>, never <c>|b|c</c>. A type that never matched captured nothing to prune by, so is left whole.
+    /// <c>b|c</c>, never <c>|b|c</c>. A type that never matched captured nothing, so is pruned whole.
     /// </summary>
     List<RegexBrick> PruneUncapturedGroups(List<RegexBrick> sequence)
     {
-        if (_displayMode != RegexDisplayMode.Pruned || _summary.OccurrenceCount == 0)
+        if (_displayMode != RegexDisplayMode.Pruned)
             return sequence;
 
         var captured = _summary.CapturedGroupNames;
