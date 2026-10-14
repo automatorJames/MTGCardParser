@@ -284,9 +284,40 @@
     margin: 0;
 }
 
+    .max-steps-field {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .max-steps-clear {
+        position: absolute;
+        right: 0.2rem;
+        display: flex;
+        align-items: center;
+        padding: 0;
+        border: none;
+        background: none;
+        color: #8a949e;
+        cursor: pointer;
+    }
+
+        .max-steps-clear:hover {
+            color: #f0f4f8;
+        }
+
+        .max-steps-clear .material-symbols-outlined {
+            font-size: 1rem;
+        }
+
+    .max-steps input::placeholder {
+        color: #6b737b;
+        opacity: 1;
+    }
+
     .max-steps input {
-        width: 3.4rem;
-        padding: 0.1rem 0.3rem 0.1rem 0.5rem;
+        width: 4.6rem;
+        padding: 0.1rem 1.4rem 0.1rem 0.5rem;
         border: 1px solid var(--outline-grey);
         border-radius: 4px;
         background-color: var(--near-black);

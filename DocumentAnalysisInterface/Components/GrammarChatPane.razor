@@ -100,7 +100,15 @@
 
                     <label class="max-steps" title="Steps the agent applies in a round before it stops - empty for no limit. The session's setting, so it holds for an agent in a terminal too.">
                         <span class="chat-label">Max steps</span>
-                        <input type="number" min="1" max="99" placeholder="∞" value="@Chat.MaxSteps" @onchange="SetMaxSteps" />
+                        <span class="max-steps-field">
+                            <input type="number" min="1" max="99" placeholder="∞" value="@Chat.MaxSteps" @onchange="SetMaxSteps" />
+                            @if (Chat.MaxSteps is not null)
+                            {
+                                <button type="button" class="max-steps-clear" title="Clear - no limit" @onclick="ClearMaxSteps" @onclick:preventDefault>
+                                    <span class="material-symbols-outlined">close</span>
+                                </button>
+                            }
+                        </span>
                     </label>
                 </div>
 
@@ -218,6 +226,8 @@
     }
 
     /// <summary>Empty, or anything short of a step, for no limit.</summary>
+    void ClearMaxSteps() => Chat.MaxSteps = null;
+
     void SetMaxSteps(ChangeEventArgs e) =>
         Chat.MaxSteps = int.TryParse(e.Value?.ToString(), out var steps) && steps > 0 ? Math.Min(steps, 99) : null;
 
