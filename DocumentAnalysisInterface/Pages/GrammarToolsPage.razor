@@ -175,11 +175,12 @@ else
                     var anySteps = groups.Any(x => x.Steps.Count > 0);
 
                     <table class="data-table changes-table">
-                        <thead>
-                            <tr>
-                                <th>Change</th><th>Kind</th><th class="name-column">Name</th>
-                                @if (anySteps)
-                                {
+                        @* The changes speak for themselves: only the figures want labels, so there's a heading only where there are figures. *@
+                        @if (anySteps)
+                        {
+                            <thead>
+                                <tr>
+                                    <th colspan="3"></th>
                                     <th class="step-figure" title="How long the agent worked toward the step, since the step before it - for a round, every step of it">Time</th>
                                     <th class="step-figure" title="Tokens the agent used toward the step">Tokens</th>
                                     <th class="step-figure" title="An estimate of what those tokens cost, as a share of the weekly allowance's worth">Cost</th>
@@ -187,10 +188,10 @@ else
                                     <th class="step-figure" title="The step's change in total bits, in percentage points of the no-grammar baseline - the change in the compression ratio. Lower is better">Δ bits %</th>
                                     <th class="step-figure" title="The step's change in the words inside matches">Δ words</th>
                                     <th class="step-figure" title="The step's change in coverage, in percentage points of the corpus's words">Δ coverage %</th>
-                                }
-                                <th></th>
-                            </tr>
-                        </thead>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                        }
                         @foreach (var group in groups)
                         {
                             <tbody>
