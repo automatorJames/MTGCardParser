@@ -6,7 +6,8 @@ namespace Glyphotype.Definitions;
 /// Compiles a <see cref="GrammarDefinition"/> into runtime CLR types - marker interfaces, enums and Glyph classes,
 /// each built exactly as its C# source would declare it - ready for a <see cref="GlyphGrammar"/> (see
 /// <see cref="GlyphGrammar.FromDefinition"/>). Every call emits into an assembly of its own, so the same names
-/// can be emitted any number of times.
+/// can be emitted any number of times - but a definition emitted before, whose references resolve to the same types
+/// as they did then, isn't emitted again: the type emitted then is reused (see <see cref="_emittedTypes"/>).
 /// <para>
 /// Emitting doesn't validate the grammar - <see cref="GlyphGrammar"/>'s construction does that, as it would for
 /// hand-written types. It only refuses what can't be built at all: a name that resolves to nothing, a reference
@@ -35,11 +36,30 @@ public static class GrammarEmitter
     /// </param>
     public static IReadOnlyList<Type> Emit(GrammarDefinition grammar, IEnumerable<Type> knownTypes = null)
     {
+        lock (_emitGate)
+            return new Emission(new(DefineModule), IndexKnownTypes(knownTypes ?? [])).EmitAll(grammar);
+    }
+
+    /// <summary>A module in an assembly of its own, for one <see cref="Emit"/> - defined only once it has something new to emit.</summary>
+    static ModuleBuilder DefineModule()
+    {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName($"Glyphotype.Emitted.{Guid.NewGuid():N}"), AssemblyBuilderAccess.Run);
         _emittedAssemblies[assembly.GetName().Name] = assembly;
 
-        return new Emission(assembly.DefineDynamicModule("Main"), IndexKnownTypes(knownTypes ?? [])).EmitAll(grammar);
+        return assembly.DefineDynamicModule("Main");
     }
+
+    /// <summary>
+    /// Every type <see cref="Emit"/> has built, by what it was built from: its definition, and the type each name that
+    /// refers to resolved to. Emitted types are never unloaded, nor is anything cached about them (e.g. a glyph's
+    /// <see cref="RegexGraph"/>, see <see cref="GlyphTypeCache"/>) - so rebuilding a grammar with one glyph changed
+    /// reuses every type it shares with the grammar before, and only emits (and caches) that glyph and the glyphs
+    /// that refer to it, rather than a whole grammar's worth again.
+    /// </summary>
+    static readonly Dictionary<string, Type> _emittedTypes = [];
+
+    /// <summary>Serializes <see cref="Emit"/>s, which share <see cref="_emittedTypes"/>.</summary>
+    static readonly object _emitGate = new();
 
     /// <summary>
     /// Every assembly <see cref="Emit"/> has built, by name. An attribute argument naming a type (e.g.
@@ -55,20 +75,20 @@ public static class GrammarEmitter
             _emittedAssemblies.GetValueOrDefault(new AssemblyName(args.Name).Name);
     }
 
-    sealed class Emission(ModuleBuilder module, Dictionary<string, Type> knownTypes)
+    sealed class Emission(Lazy<ModuleBuilder> module, Dictionary<string, Type> knownTypes)
     {
         readonly Dictionary<string, Type> _emitted = [];
 
         public IReadOnlyList<Type> EmitAll(GrammarDefinition grammar)
         {
             foreach (var marker in grammar.Markers)
-                Add(module.DefineType(marker, TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract).CreateType());
+                Add(Reuse($"marker {marker}", () => module.Value.DefineType(marker, TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract).CreateType()));
 
             foreach (var vocabulary in grammar.Vocabularies)
-                Add(EmitVocabulary(vocabulary));
+                Add(Reuse($"vocabulary {DefinitionJson.Serialize(vocabulary)}", () => EmitVocabulary(vocabulary)));
 
             foreach (var glyph in OrderByDependency(grammar.Glyphs))
-                Add(EmitGlyph(glyph));
+                Add(Reuse(GlyphKey(glyph), () => EmitGlyph(glyph)));
 
             return _emitted.Values.ToList();
         }
@@ -79,9 +99,40 @@ public static class GrammarEmitter
                 throw new InvalidOperationException($"The grammar defines '{type.Name}' more than once");
         }
 
+        /// <summary>The type emitted from <paramref name="key"/> before (see <see cref="_emittedTypes"/>), or else a new one <paramref name="emit"/> emits.</summary>
+        static Type Reuse(string key, Func<Type> emit)
+        {
+            if (_emittedTypes.TryGetValue(key, out var type))
+                return type;
+
+            return _emittedTypes[key] = emit();
+        }
+
+        /// <summary>
+        /// What <paramref name="glyph"/>'s type is emitted from: its definition, less its documentation (which isn't
+        /// emitted), and the type every name it refers to resolves to - so it's emitted again whenever any of those is,
+        /// however deep the change that made it so.
+        /// </summary>
+        string GlyphKey(GlyphDefinition glyph)
+        {
+            var names = glyph.Properties.Select(x => x.Type)
+                .Append(glyph.AliasOf)
+                .Append(glyph.ReferenceKind)
+                .Where(x => x is not null)
+                .SelectMany(x => x.SelfAndDescendants())
+                .Where(x => x.Kind is TypeReferenceKind.Glyph or TypeReferenceKind.Vocabulary)
+                .Select(x => x.Name)
+                .Concat(glyph.Markers)
+                .Concat(glyph.Properties.Select(x => x.TypeFilter).Where(x => x is not null))
+                .Distinct()
+                .Order(StringComparer.Ordinal);
+
+            return $"glyph {DefinitionJson.Serialize(glyph with { Documentation = null })} {string.Join(" ", names.Select(x => $"{x}={ResolveName(x).AssemblyQualifiedName}"))}";
+        }
+
         Type EmitVocabulary(VocabularyDefinition vocabulary)
         {
-            var enumBuilder = module.DefineEnum(vocabulary.Name, TypeAttributes.Public, typeof(int));
+            var enumBuilder = module.Value.DefineEnum(vocabulary.Name, TypeAttributes.Public, typeof(int));
 
             if (vocabulary.IsOptionalPlural)
                 enumBuilder.SetCustomAttribute(Attribute<OptionalPluralAttribute>());
@@ -117,7 +168,7 @@ public static class GrammarEmitter
                 _ => throw new InvalidOperationException($"{glyph.Name} is an alias, but not of a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)"),
             };
 
-            var typeBuilder = module.DefineType(glyph.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.BeforeFieldInit, baseType);
+            var typeBuilder = module.Value.DefineType(glyph.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.BeforeFieldInit, baseType);
 
             foreach (var marker in glyph.Markers)
                 typeBuilder.AddInterfaceImplementation(ResolveName(marker));

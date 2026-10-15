@@ -84,6 +84,46 @@ public class DefinitionTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void Emitting_a_grammar_again_reuses_every_type_but_a_changed_glyph_and_the_glyphs_referring_to_it()
+    {
+        var hides = new GlyphDefinition
+        {
+            Name = "AnimalHides",
+            Nibs = [new NibDefinition.Literal("the"), new NibDefinition.Property("Animal"), new NibDefinition.Literal("hides")],
+            Properties = [new() { Name = "Animal", Type = TypeReference.Vocabulary(nameof(Animal)) }],
+        };
+
+        var hidesAgain = new GlyphDefinition
+        {
+            Name = "AnimalHidesAgain",
+            Nibs = [new NibDefinition.Property("Hiding"), new NibDefinition.Literal("again")],
+            Properties = [new() { Name = "Hiding", Type = TypeReference.Glyph("AnimalHides") }],
+        };
+
+        var seeks = new GlyphDefinition
+        {
+            Name = "AnimalSeeks",
+            Nibs = [new NibDefinition.Literal("the"), new NibDefinition.Property("Animal"), new NibDefinition.Literal("seeks")],
+            Properties = [new() { Name = "Animal", Type = TypeReference.Vocabulary(nameof(Animal)) }],
+        };
+
+        Dictionary<string, Type> Emit(params GlyphDefinition[] glyphs) =>
+            GrammarEmitter.Emit(new GrammarDefinition { Glyphs = glyphs }, knownTypes: corpus.Grammar.Types).ToDictionary(x => x.Name);
+
+        var first = Emit(hides, hidesAgain, seeks);
+        var same = Emit(hides, hidesAgain, seeks);
+        var documented = Emit(hides with { Documentation = new() { Summary = "An animal hiding." } }, hidesAgain, seeks);
+        var changed = Emit(hides with { Nibs = [new NibDefinition.Literal("the"), new NibDefinition.Property("Animal"), new NibDefinition.Literal("hides away")] }, hidesAgain, seeks);
+
+        Assert.All(first.Keys, x => Assert.Same(first[x], same[x]));
+        Assert.All(first.Keys, x => Assert.Same(first[x], documented[x]));
+        Assert.NotSame(first["AnimalHides"], changed["AnimalHides"]);
+        Assert.NotSame(first["AnimalHidesAgain"], changed["AnimalHidesAgain"]);
+        Assert.Same(first["AnimalSeeks"], changed["AnimalSeeks"]);
+        Assert.Same(changed["AnimalHides"], changed["AnimalHidesAgain"].GetProperty("Hiding").PropertyType);
+    }
+
+    [Fact]
     public void A_definition_wrapping_a_nib_in_what_cant_wrap_it_is_refused_as_it_is_emitted()
     {
         // As a definition read from JSON can, never having been through the source reader's own check.

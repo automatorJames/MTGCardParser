@@ -128,15 +128,19 @@ public class RegexGraph
     /// <summary>Computes <see cref="SimpleUniqueNames"/> by growing each name's suffix (shortest first) until it uniquely identifies that node among all others.</summary>
     void PopulateSimpleUniqueNames()
     {
-        foreach (var fullyQualifiedName in NamedGroupFlatGraph.Keys)
+        // A candidate names a key when it's one of the key's own trailing runs of parts, so counting every key's runs
+        // once says how many keys each candidate names - rather than testing every candidate against every key.
+        var suffixes = NamedGroupFlatGraph.Keys.ToDictionary(x => x, Suffixes);
+        var keysNamed = suffixes.Values.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
+
+        foreach (var (fullyQualifiedName, candidates) in suffixes)
+            SimpleUniqueNames[fullyQualifiedName] = candidates.First(x => keysNamed[x] == 1);
+
+        // Shortest first: the last part alone, then the last two, and so on to the whole name.
+        static List<string> Suffixes(string fullyQualifiedName)
         {
             var parts = fullyQualifiedName.Split('_');
-
-            SimpleUniqueNames[fullyQualifiedName] = Enumerable
-                .Range(1, parts.Length)
-                .Select(partCount => string.Join('_', parts[^partCount..]))
-                .First(candidate => NamedGroupFlatGraph.Keys.Count(
-                    key => key == candidate || key.EndsWith($"_{candidate}")) == 1);
+            return Enumerable.Range(1, parts.Length).Select(partCount => string.Join('_', parts[^partCount..])).ToList();
         }
     }
 
