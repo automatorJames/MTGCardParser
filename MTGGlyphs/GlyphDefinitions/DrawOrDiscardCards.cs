@@ -4,7 +4,7 @@
 /// <exampledoc>Bazaar of Baghdad</exampledoc>
 /// <examplecapture>draw two cards</examplecapture>
 [Dependent]
-public class DrawOrDiscardCards : Glyph, IPredicate
+public class DrawOrDiscardCards : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Prop(CardVerb), Prop(Quantity), Prop(Qualifier), Plural("card"), Prop(AtRandom)];
 

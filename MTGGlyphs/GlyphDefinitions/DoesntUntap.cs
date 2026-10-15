@@ -4,7 +4,7 @@
 /// <exampledoc>Paralyze</exampledoc>
 /// <examplecapture>doesn't untap during its controller's untap step</examplecapture>
 [Dependent]
-public class DoesntUntap : Glyph, IPredicate
+public class DoesntUntap : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Alt("doesn't", "don't"), "untap during", Prop(Step), Prop(If)];
 

@@ -14,7 +14,7 @@ public enum Phase
     [RegexPattern("combat damage step")]
     CombatDamageStep,
 
-    [RegexPattern("end of combat step")]
+    [RegexPattern("end of combat step", "end of combat")]
     EndOfCombatStep,
 
     [RegexPattern("combat phase", "combat")]

@@ -4,7 +4,7 @@
 /// <exampledoc>Psionic Blast</exampledoc>
 /// <examplecapture>deals 4 damage to any target and 2 damage to you</examplecapture>
 [Dependent]
-public class DealDamage : Glyph, IPredicate
+public class DealDamage : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Pattern("deals?"), Prop(Portions)];
 
