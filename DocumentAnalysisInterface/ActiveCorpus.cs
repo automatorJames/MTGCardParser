@@ -164,12 +164,15 @@ public sealed class ActiveCorpus
         lock (_gate)
         {
             // Only the analysis of the latest grammar requested takes over.
-            if (documents == _buildingDocuments)
-            {
-                _current = analyzer;
-                _currentDocuments = documents;
-            }
+            if (documents != _buildingDocuments)
+                return;
+
+            _current = analyzer;
+            _currentDocuments = documents;
         }
+
+        // Its digested text is built only for the analysis shown - not for one a later grammar overtook.
+        analyzer.StartDigestingText();
     }
 
     void OnActiveChanged()

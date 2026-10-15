@@ -114,7 +114,11 @@ public class Program
         // The corpus analyzer is app-wide data, not per-session state, so it's warmed
         // once here rather than being lazily triggered by whichever page a user happens
         // to land on first.
-        await app.Services.GetRequiredService<CorpusAnalyzer>().EnsureInitializedAsync();
+        var corpusAnalyzer = app.Services.GetRequiredService<CorpusAnalyzer>();
+        await corpusAnalyzer.EnsureInitializedAsync();
+
+        // Only echoes and the Echo Trees tab need the digested text: built alongside serving, not before it.
+        corpusAnalyzer.StartDigestingText();
 
         // Made now rather than when the chat pane is first shown: it puts back the session settings last set there, which
         // an agent in a terminal works under too.

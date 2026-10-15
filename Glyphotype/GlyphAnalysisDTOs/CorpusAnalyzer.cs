@@ -33,7 +33,13 @@ public class CorpusAnalyzer
     /// including Glyph class captures. Useful for analyzing which spans
     /// of text have not yet been captured by any Glyph.
     /// </summary>
-    public DigestedText DigestedTextWithCaptureGlyphs { get; private set; }
+    /// <remarks>Built on first use - or ahead of it, by <see cref="StartDigestingText"/> - since tokenizing needs none of it.</remarks>
+    public DigestedText DigestedTextWithCaptureGlyphs => _digestedText.Value;
+
+    Lazy<DigestedText> _digestedText;
+
+    /// <summary>Builds <see cref="DigestedTextWithCaptureGlyphs"/> in the background, so it's likely ready by the time it's asked for.</summary>
+    public void StartDigestingText() => _ = Task.Run(() => _digestedText.Value);
 
     /// <summary>
     /// Per-type occurrence summaries for every registered top-level Glyph type, keyed by type.
@@ -85,7 +91,7 @@ public class CorpusAnalyzer
 
         WordCount = ProcessedDocuments.Sum(x => x.WordCount);
         CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
-        DigestedTextWithCaptureGlyphs = new DigestedText(ProcessedDocuments);
+        _digestedText = new(() => new DigestedText(processedDocuments));
 
         // set GlyphOccurrenceSummaries
         var rootMatchOccurrencesByType = ProcessedDocuments

@@ -22,7 +22,7 @@
 
     @foreach (var line in Shown.Lines)
     {
-        var displayContext = new CaptureTraceDisplayContext(line, RuntimeSettings, CorpusAnalyzer.DigestedTextWithCaptureGlyphs);
+        var displayContext = new CaptureTraceDisplayContext(line, RuntimeSettings, () => CorpusAnalyzer.DigestedTextWithCaptureGlyphs);
 
         <CascadingValue @key=line Value=line>
         <CascadingValue Value=displayContext>

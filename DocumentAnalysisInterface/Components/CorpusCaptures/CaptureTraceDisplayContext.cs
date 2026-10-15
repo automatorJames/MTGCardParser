@@ -21,9 +21,10 @@ public class CaptureTraceDisplayContext
 
     readonly ProcessedLine _line;
     readonly RuntimeSettings _runtimeSettings;
-    readonly DigestedText _echoCorpus;
+    readonly Func<DigestedText> _echoCorpus;
 
-    public CaptureTraceDisplayContext(ProcessedLine line, RuntimeSettings runtimeSettings, DigestedText echoCorpus)
+    /// <param name="echoCorpus">The corpus's digested text - asked for only when echoes are shown, since it may still be being built.</param>
+    public CaptureTraceDisplayContext(ProcessedLine line, RuntimeSettings runtimeSettings, Func<DigestedText> echoCorpus)
     {
         _line = line;
         _runtimeSettings = runtimeSettings;
@@ -95,8 +96,8 @@ public class CaptureTraceDisplayContext
         // (both go through DocumentLineMetrics.GetUnderlinePaddingPx), so the same depth that
         // reserves vertical space for the deepest capture nesting can just as well reserve room
         // for the deepest echo lane stack too — whichever is taller wins.
-        var echoLaneCount = _runtimeSettings.ShowEchoes && _echoCorpus != null
-            ? _echoCorpus.GetMaxEchoLaneCount(
+        var echoLaneCount = _runtimeSettings.ShowEchoes && _echoCorpus?.Invoke() is { } echoCorpus
+            ? echoCorpus.GetMaxEchoLaneCount(
                 _line.UnmatchedTextOccurrences.Where(x => roots.Contains(x.Anchor.CaptureContext.RootCaptureTrace)),
                 _runtimeSettings.MinSpanWords,
                 _runtimeSettings.MinSpanOccurences)
