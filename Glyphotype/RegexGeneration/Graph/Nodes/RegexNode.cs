@@ -12,13 +12,31 @@ public abstract class RegexNode
     public string Name { get; }
 
     /// <summary>This node's name qualified by every ancestor's name, e.g. <c>Root_Child_Grandchild</c>. Used as the regex capture group name.</summary>
-    public string FullyQualifiedName { get; }
+    /// <remarks>
+    /// Like <see cref="Lineage"/>, worked out on first use rather than as the node is built: a vocabulary is inlined
+    /// into every graph that uses it, once per use, so a grammar's graphs can hold millions of member nodes, nearly
+    /// all of whose names nothing ever reads - and a deep node's name runs to hundreds of characters.
+    /// </remarks>
+    public string FullyQualifiedName => _fullyQualifiedName ??= ParentNode is null ? Name : $"{ParentNode.FullyQualifiedName}_{Name}";
+
+    string _fullyQualifiedName;
 
     /// <summary>The node that owns this node as a child, or null for the graph's root.</summary>
     public RegexNode ParentNode { get; }
 
-    /// <summary>This node's full ancestor chain, root-to-self (inclusive of this node).</summary>
-    public RegexNode[] Lineage { get; }
+    /// <summary>This node's full ancestor chain, root-to-self (inclusive of this node) - worked out on first use, as <see cref="FullyQualifiedName"/> is.</summary>
+    public RegexNode[] Lineage => _lineage ??= ParentNode is null ? [this] : [.. ParentNode.Lineage, this];
+
+    RegexNode[] _lineage;
+
+    /// <summary>
+    /// Where the bricks this node produces sit among the named groups enclosing it - the same for every one, so held
+    /// here once rather than by each (see <see cref="RegexBrick"/>). A node that isn't a named group itself (e.g. a
+    /// vocabulary member) sits among the same named groups its parent does, so it shares its parent's.
+    /// </summary>
+    internal BrickPlacement BrickPlacement => _brickPlacement ??= this is not NamedGroupNode && ParentNode is not null ? ParentNode.BrickPlacement : new(this);
+
+    BrickPlacement _brickPlacement;
 
     /// <summary>
     /// Whether this node's own span can legitimately match nothing at all - the grammar-theory sense of
@@ -35,8 +53,6 @@ public abstract class RegexNode
     {
         Name = name;
         ParentNode = parentNode;
-        Lineage = GetLineage();
-        FullyQualifiedName = string.Join('_', Lineage.Select(x => x.Name));
     }
 
     /// <summary>
@@ -114,21 +130,6 @@ public abstract class RegexNode
 
         if (joiner != Joiner.None)
             collector.Append(new RegexBrickJoiner(owner, joiner));
-    }
-
-    RegexNode[] GetLineage()
-    {
-        List<RegexNode> lineage = [];
-        RegexNode current = this;
-
-        while (current != null)
-        {
-            lineage.Add(current);
-            current = current.ParentNode;
-        }
-
-        lineage.Reverse();
-        return lineage.ToArray();
     }
 
     public override string ToString() => FullyQualifiedName;

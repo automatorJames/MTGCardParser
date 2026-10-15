@@ -16,11 +16,16 @@ public class RegexBrick
     /// <summary>The immutable regex text this brick contributes to the compiled matching pattern.</summary>
     public string Regex { get; }
 
-    readonly string _baseFullyQualifiedName;
+    /// <summary>The <see cref="RegexNode"/> that directly produced this brick.</summary>
+    public RegexNode Parent { get; }
+
+    /// <summary>Where <see cref="Parent"/>'s bricks sit, shared by every one of them (see <see cref="RegexNode.BrickPlacement"/>).</summary>
+    readonly BrickPlacement _placement;
+
     string _fullyQualifiedNameOverride;
 
     /// <summary>The fully qualified name of the <see cref="RegexNode"/> that produced this brick, or an override set by <see cref="OverrideFullyQualifiedName"/>.</summary>
-    public string FullyQualifiedName => _fullyQualifiedNameOverride ?? _baseFullyQualifiedName;
+    public string FullyQualifiedName => _fullyQualifiedNameOverride ?? Parent.FullyQualifiedName;
 
     int _depthOffset;
 
@@ -30,29 +35,24 @@ public class RegexBrick
     readonly int _baseNestedDepth;
 
     /// <summary>The full ancestor chain (root-to-self) of the <see cref="RegexNode"/> that produced this brick.</summary>
-    public RegexNode[] NodeLineage { get; }
-
-    /// <summary>The <see cref="RegexNode"/> that directly produced this brick.</summary>
-    public RegexNode Parent => NodeLineage.LastOrDefault();
+    public RegexNode[] NodeLineage => Parent.Lineage;
 
     /// <summary>The subset of <see cref="NodeLineage"/> that are named groups, root-to-self.</summary>
-    public NamedGroupNode[] NamedGroupNodeLineage { get; }
+    public NamedGroupNode[] NamedGroupNodeLineage => _placement.NamedGroupNodeLineage;
 
     NamedGroupNode _namedGroupParentOverride;
 
     /// <summary>The nearest enclosing named group, or an override set by <see cref="OverrideNamedGroupParent"/>.</summary>
-    public NamedGroupNode NamedGroupParent => _namedGroupParentOverride ?? _baseNamedGroupParent;
-
-    readonly NamedGroupNode _baseNamedGroupParent;
+    public NamedGroupNode NamedGroupParent => _namedGroupParentOverride ?? _placement.NamedGroupParent;
 
     /// <summary>Fully qualified names of every named group enclosing this brick, root-to-self.</summary>
-    public string[] NamedGroupLineageNames { get; }
+    public string[] NamedGroupLineageNames => _placement.NamedGroupLineageNames;
 
     /// <summary>Enclosing named groups, self-to-root, omitting transparent root groups.</summary>
-    public NamedGroupNode[] GroupLineage { get; }
+    public NamedGroupNode[] GroupLineage => _placement.GroupLineage;
 
     /// <summary>Short names (not fully qualified) of <see cref="GroupLineage"/>, self-to-root.</summary>
-    public string[] GroupLineageNames { get; }
+    public string[] GroupLineageNames => _placement.GroupLineageNames;
 
     string _regexFormatted;
 
@@ -69,15 +69,8 @@ public class RegexBrick
     public RegexBrick(RegexNode parentNode, string regex)
     {
         Regex = regex;
-        NodeLineage = parentNode.Lineage;
-        // Kept rather than derived on every read: formatting a large regex reads these for every brick many
-        // times over (once per enum section, and per span colored), and the lineage never changes.
-        NamedGroupNodeLineage = NodeLineage.OfType<NamedGroupNode>().ToArray();
-        NamedGroupLineageNames = NamedGroupNodeLineage.Select(x => x.FullyQualifiedName).ToArray();
-        _baseNamedGroupParent = NamedGroupNodeLineage.LastOrDefault();
-        _baseFullyQualifiedName = parentNode.FullyQualifiedName;
-        GroupLineage = parentNode.Lineage.OfType<NamedGroupNode>().Where(x => !x.IsTransparentRoot).Reverse().ToArray();
-        GroupLineageNames = GroupLineage.Select(x => x.Name).ToArray();
+        Parent = parentNode;
+        _placement = parentNode.BrickPlacement;
         _baseNestedDepth = CalculateNestedDepth();
     }
 
@@ -134,4 +127,37 @@ public class RegexBrick
     public RegexBrick CloneForEmbedding() => (RegexBrick)MemberwiseClone();
 
     public override string ToString() => RegexFormatted;
+}
+
+/// <summary>
+/// Where the bricks one <see cref="RegexNode"/> produces sit among the named groups enclosing it. Kept rather than
+/// derived on every read - formatting a large regex reads these for every brick many times over (once per enum
+/// section, and per span colored) - but once per node, not per brick: the same for every brick a node produces, and
+/// a grammar's graphs hold millions of bricks.
+/// </summary>
+internal sealed class BrickPlacement
+{
+    /// <summary>The named groups in the node's lineage, root-to-self.</summary>
+    public NamedGroupNode[] NamedGroupNodeLineage { get; }
+
+    /// <summary>The nearest of <see cref="NamedGroupNodeLineage"/>.</summary>
+    public NamedGroupNode NamedGroupParent { get; }
+
+    /// <summary>The fully qualified names of <see cref="NamedGroupNodeLineage"/>.</summary>
+    public string[] NamedGroupLineageNames { get; }
+
+    /// <summary><see cref="NamedGroupNodeLineage"/> self-to-root, omitting transparent root groups.</summary>
+    public NamedGroupNode[] GroupLineage { get; }
+
+    /// <summary>The short names of <see cref="GroupLineage"/>.</summary>
+    public string[] GroupLineageNames { get; }
+
+    public BrickPlacement(RegexNode node)
+    {
+        NamedGroupNodeLineage = node.Lineage.OfType<NamedGroupNode>().ToArray();
+        NamedGroupParent = NamedGroupNodeLineage.LastOrDefault();
+        NamedGroupLineageNames = NamedGroupNodeLineage.Select(x => x.FullyQualifiedName).ToArray();
+        GroupLineage = NamedGroupNodeLineage.Where(x => !x.IsTransparentRoot).Reverse().ToArray();
+        GroupLineageNames = GroupLineage.Select(x => x.Name).ToArray();
+    }
 }
