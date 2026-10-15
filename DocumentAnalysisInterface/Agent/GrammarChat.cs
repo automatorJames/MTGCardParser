@@ -153,7 +153,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
         var workbench = workspaces.Active;
         var step = workbench.History.LastOrDefault(x => x.Number == number);
-        var figures = step is null ? new StepFigures(effort.Elapsed, effort.Tokens, effort.CostUsd, null, null) : StepFigures.Of(step with { Effort = effort });
+        var figures = StepFigures.Of((step ?? new(number, null, null, null, DateTimeOffset.Now)) with { Effort = effort });
 
         AddEntry(new(ChatEntryKind.Step, figures.Line()) { StepNumber = number, StepDescription = step?.Description });
 

@@ -43,8 +43,11 @@ public sealed record WorkbenchStep(int Number, string Description, GrammarDefini
     public StepEffort Effort { get; init; }
 }
 
-/// <summary>A step's change in total bits, and in coverage (as a share of the corpus's words).</summary>
-public sealed record StepScoreChange(double Bits, double Coverage);
+/// <summary>
+/// A step's change in total bits, and in coverage (as a share of the corpus's words) - and, where recorded, in the
+/// words covered, and in total bits as a share of the no-grammar baseline (the compression ratio).
+/// </summary>
+public sealed record StepScoreChange(double Bits, double Coverage, int? Words = null, double? Compression = null);
 
 /// <summary>What an agent spent reaching a step: the time it worked, the tokens it used, and an estimate of their cost - null where there's none.</summary>
 public sealed record StepEffort(TimeSpan Elapsed, long Tokens, double? CostUsd);
@@ -393,6 +396,10 @@ public sealed class GrammarWorkbench : IDisposable
     /// <summary>Reverts (as <see cref="Revert"/> does) every change an agent began in <paramref name="round"/> (see <see cref="ChangeRounds"/>), as one step.</summary>
     public void RevertRound(int round) =>
         RevertEach(ChangeRounds.Where(x => x.Value == round).Select(x => x.Key).ToList(), $"No working change began in AI round {round}", $"revert AI round {round}");
+
+    /// <summary>Reverts (as <see cref="Revert"/> does) every change an agent began in step <paramref name="number"/> (see <see cref="ChangeSteps"/>), as one step.</summary>
+    public void RevertStep(int number) =>
+        RevertEach(ChangeSteps.Where(x => x.Value == number).Select(x => x.Key).ToList(), $"No working change began in step {number}", $"revert step {number}");
 
     /// <summary>Reverts (as <see cref="Revert"/> does) every change no agent round began - those not in <see cref="ChangeRounds"/> - as one step.</summary>
     public void RevertOtherChanges() =>

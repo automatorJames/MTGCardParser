@@ -171,32 +171,41 @@ else
 
                 @if (!_collapsed.Contains(Section.Changes))
                 {
-                    var stepShares = GetStepShares();
+                    var groups = GetChangeGroups();
+                    var anySteps = groups.Any(x => x.Steps.Count > 0);
 
                     <table class="data-table changes-table">
                         <thead>
                             <tr>
-                                <th>Change</th><th>Kind</th><th class="name-column">Name</th><th title="The AI step each change began in">Step</th>
-                                <th class="step-figure" title="How long the agent worked toward the step - shared equally among the changes it began. A round's row adds up all its steps">Time</th>
-                                <th class="step-figure" title="Tokens the agent used toward the step - shared equally among the changes it began">Tokens</th>
-                                <th class="step-figure" title="An estimate of what those tokens cost, as a share of the weekly allowance's worth - shared equally among the changes the step began">Cost</th>
-                                <th class="step-figure" title="The step's change in total bits, as evaluated when it was applied - shared equally among the changes it began. Lower is better">Δ bits</th>
-                                <th class="step-figure" title="The step's change in coverage, in percentage points, as evaluated when it was applied - shared equally among the changes it began">Δ coverage</th>
+                                <th>Change</th><th>Kind</th><th class="name-column">Name</th>
+                                @if (anySteps)
+                                {
+                                    <th class="step-figure" title="How long the agent worked toward the step, since the step before it - for a round, every step of it">Time</th>
+                                    <th class="step-figure" title="Tokens the agent used toward the step">Tokens</th>
+                                    <th class="step-figure" title="An estimate of what those tokens cost, as a share of the weekly allowance's worth">Cost</th>
+                                    <th class="step-figure" title="The step's change in total bits, as evaluated when it was applied. Lower is better">Δ bits</th>
+                                    <th class="step-figure" title="The step's change in total bits, in percentage points of the no-grammar baseline - the change in the compression ratio. Lower is better">Δ bits %</th>
+                                    <th class="step-figure" title="The step's change in the words inside matches">Δ words</th>
+                                    <th class="step-figure" title="The step's change in coverage, in percentage points of the corpus's words">Δ coverage %</th>
+                                }
                                 <th></th>
                             </tr>
                         </thead>
-                        @foreach (var group in GetChangeGroups())
+                        @foreach (var group in groups)
                         {
                             <tbody>
                                 @if (group.Title is not null)
                                 {
                                     <tr class="group-row">
-                                        <td colspan="4" title="@group.Tooltip">@group.Title</td>
-                                        @StepFigureCells(group.Round is int total ? StepFigures.Sum(Workbench.History.Where(x => x.Round == total)) : null)
+                                        <td colspan="3" title="@group.Tooltip">@group.Title</td>
+                                        @if (anySteps)
+                                        {
+                                            @StepFigureCells(group.Round is int total ? StepFigures.Sum(Workbench.History.Where(x => x.Round == total)) : null)
+                                        }
                                         <td>
                                             @if (group.Round is int round)
                                             {
-                                                <button class="link-button" title="Revert every change in this round" @onclick="@(() => Record($"revert AI round {round}", () => Workbench.RevertRound(round)))">revert round</button>
+                                                <button class="link-button" title="Revert every change begun in this round" @onclick="@(() => Record($"revert AI round {round}", () => Workbench.RevertRound(round)))">revert round</button>
                                             }
                                             else
                                             {
@@ -205,25 +214,27 @@ else
                                         </td>
                                     </tr>
                                 }
+                                @foreach (var stepGroup in group.Steps)
+                                {
+                                    var number = stepGroup.Number;
+                                    var description = stepGroup.Step?.Description ?? "no longer in the history";
+
+                                    <tr class="step-row">
+                                        <td colspan="3" class="step-title" title="@($"Step {number}: {description}")">
+                                            <span class="step-number">#@number</span> @description
+                                        </td>
+                                        @StepFigureCells(stepGroup.Step is { } step ? StepFigures.Of(step) : null)
+                                        <td><button class="link-button" title="Revert every change begun in this step" @onclick="@(() => Record($"revert step {number}", () => Workbench.RevertStep(number)))">revert step</button></td>
+                                    </tr>
+
+                                    @foreach (var change in stepGroup.Changes)
+                                    {
+                                        @ChangeRow(change, nested: true, anySteps)
+                                    }
+                                }
                                 @foreach (var change in group.Changes)
                                 {
-                                    <tr>
-                                        <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
-                                        <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
-                                        <td class="name-column">
-                                            @if (change.Kind == DefinitionKind.Marker)
-                                            {
-                                                @change.Name
-                                            }
-                                            else
-                                            {
-                                                <button class="name-link" data-preview-kind="@change.Kind" data-preview-name="@change.Name" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
-                                            }
-                                        </td>
-                                        <td class="change-step">@(Workbench.ChangeSteps.TryGetValue((change.Kind, change.Name), out var step) ? $"#{step}" : "")</td>
-                                        @StepFigureCells(Workbench.ChangeSteps.TryGetValue((change.Kind, change.Name), out var began) ? stepShares.GetValueOrDefault(began) : null)
-                                        <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
-                                    </tr>
+                                    @ChangeRow(change, nested: false, anySteps)
                                 }
                             </tbody>
                         }
@@ -669,31 +680,54 @@ else
         : Math.Abs(working - metric.Committed) < 1e-9 ? "unchanged"
         : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
 
-    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes, int? Round = null);
-
-    /// <summary>For each agent step that began a working change: its figures, shared equally among the changes it began.</summary>
-    Dictionary<int, StepFigures> GetStepShares()
+    /// <summary>Working changes under a heading: an agent's round, with its changes under the steps that began them - or the rest, listed as they are.</summary>
+    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes, int? Round = null)
     {
-        var steps = Workbench.History.Where(x => x.Round is not null).GroupBy(x => x.Number).ToDictionary(x => x.Key, x => x.Last());
-
-        return Workbench.ChangeSteps.Values
-            .GroupBy(x => x)
-            .Where(x => steps.ContainsKey(x.Key))
-            .ToDictionary(x => x.Key, x => StepFigures.Of(steps[x.Key]).Share(x.Count()));
+        public IReadOnlyList<StepGroup> Steps { get; init; } = [];
     }
 
-    /// <summary>The cells of a working change's (or a round's) step figures - empty, for none.</summary>
+    /// <summary>The working changes an agent's step began, and the step - null where the history no longer holds it.</summary>
+    record StepGroup(int Number, WorkbenchStep Step, IReadOnlyList<DefinitionChange> Changes);
+
+    /// <summary>The cells of a round's or a step's figures - empty, for none.</summary>
     static RenderFragment StepFigureCells(StepFigures figures) =>
         @<text>
             <td class="step-figure">@figures?.ElapsedText</td>
             <td class="step-figure">@figures?.TokensText</td>
             <td class="step-figure" title="@(figures?.CostText == "?" ? "Not estimated: no rate had been measured from the weekly allowance yet" : null)">@figures?.CostText</td>
             <td class="step-figure @figures?.BitsClass">@figures?.BitsText</td>
+            <td class="step-figure @figures?.CompressionClass">@figures?.CompressionText</td>
+            <td class="step-figure @figures?.WordsClass">@figures?.WordsText</td>
             <td class="step-figure @figures?.CoverageClass">@figures?.CoverageText</td>
         </text>;
 
-    /// <summary>The working changes grouped by the agent round each began in, earliest first, then the rest; a single untitled group when no agent round began any.</summary>
-    IEnumerable<ChangeGroup> GetChangeGroups()
+    /// <summary>One working change's row - set in under its step's, where it's <paramref name="nested"/>.</summary>
+    RenderFragment ChangeRow(DefinitionChange change, bool nested, bool withFigures) =>
+        @<tr class="@(nested ? "change-row nested" : "change-row")">
+            <td><span class="change-badge @change.Change.ToString().ToLowerInvariant()">@change.Change</span></td>
+            <td class="change-kind">@change.Kind.ToString().ToLowerInvariant()</td>
+            <td class="name-column">
+                @if (change.Kind == DefinitionKind.Marker)
+                {
+                    @change.Name
+                }
+                else
+                {
+                    <button class="name-link" data-preview-kind="@change.Kind" data-preview-name="@change.Name" @onclick="() => View(change.Kind, change.Name)">@change.Name</button>
+                }
+            </td>
+            @if (withFigures)
+            {
+                <td colspan="7"></td>
+            }
+            <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
+        </tr>;
+
+    /// <summary>
+    /// The working changes grouped by the agent round each began in, earliest first, each with its changes under the
+    /// steps that began them; then the rest. A single untitled group when no agent round began any.
+    /// </summary>
+    List<ChangeGroup> GetChangeGroups()
     {
         int? RoundOf(DefinitionChange change) => Workbench.ChangeRounds.TryGetValue((change.Kind, change.Name), out var round) ? round : null;
 
@@ -702,12 +736,29 @@ else
         if (groups.All(x => x.Key is null))
             return [new ChangeGroup(null, null, Workbench.Changes)];
 
+        var steps = Workbench.History.GroupBy(x => x.Number).ToDictionary(x => x.Key, x => x.Last());
+
+        ChangeGroup Round(int round, List<DefinitionChange> changes)
+        {
+            var byStep = changes.GroupBy(x => Workbench.ChangeSteps.TryGetValue((x.Kind, x.Name), out var number) ? number : (int?)null).ToList();
+
+            return new($"AI round {round}", "Changes an agent began in this round of its steps", byStep.Where(x => x.Key is null).SelectMany(x => x).ToList(), round)
+            {
+                Steps = byStep
+                    .Where(x => x.Key is not null)
+                    .OrderBy(x => x.Key)
+                    .Select(x => new StepGroup(x.Key.Value, steps.GetValueOrDefault(x.Key.Value), x.ToList()))
+                    .ToList(),
+            };
+        }
+
         return groups
             .OrderBy(x => x.Key is null)
             .ThenBy(x => x.Key)
             .Select(x => x.Key is int round
-                ? new ChangeGroup($"AI round {round}", "Changes an agent began in this round of its steps", x.ToList(), round)
-                : new ChangeGroup("Other changes", "Changes a person began, or whose first step is no longer in the history", x.ToList()));
+                ? Round(round, x.ToList())
+                : new ChangeGroup("Other changes", "Changes a person began, or whose first step is no longer in the history", x.ToList()))
+            .ToList();
     }
 
     // ---- Glyphs ----

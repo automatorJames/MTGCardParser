@@ -151,6 +151,8 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         var change = Assert.Single(workbench.History).ScoreChange;
         Assert.Equal(after.TotalBits - before.TotalBits, change.Bits, 6);
         Assert.Equal(after.Coverage - before.Coverage, change.Coverage, 9);
+        Assert.Equal(after.CapturedWords - before.CapturedWords, change.Words);
+        Assert.Equal(after.CompressionRatio - before.CompressionRatio, change.Compression.Value, 9);
         Assert.True(change.Bits < 0 && change.Coverage > 0);
     }
 

@@ -192,14 +192,14 @@
 /* Changes */
 
 /* Each column as wide as its contents, the name taking the rest */
-.changes-table th,
-.changes-table td {
+.data-table.changes-table th,
+.data-table.changes-table td {
     width: 1%;
     text-align: left;
     white-space: nowrap;
 }
 
-.changes-table .name-column {
+.data-table.changes-table .name-column {
     width: auto;
 }
 
@@ -251,13 +251,33 @@
     color: var(--subtext-grey);
 }
 
-.change-step {
-    color: var(--subtext-grey);
+/* A step of an agent's round: its number and description, then the changes it began, set in under it */
+.changes-table .step-row td {
+    padding-top: 0.45rem;
+    font-size: 0.82rem;
+    color: #b5bfcc;
+}
+
+.changes-table .step-title {
+    max-width: 0;
+    padding-left: 1.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.step-number {
+    margin-right: 0.3rem;
+    color: var(--teal);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
 
-/* A step's figures: its share for a change, a round's sum on the round's row */
-.changes-table .step-figure {
+.changes-table .change-row.nested td:first-child {
+    padding-left: 2.2rem;
+}
+
+/* A step's figures, and a round's added up on the round's row */
+.data-table.changes-table .step-figure {
     text-align: right;
     font-variant-numeric: tabular-nums;
     color: var(--subtext-grey);

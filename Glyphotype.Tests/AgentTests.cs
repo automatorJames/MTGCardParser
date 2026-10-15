@@ -201,6 +201,14 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
         await agent.ApplyAsync(Glyph("AnimalNaps", "naps"), approval: "yes");
 
         var beforeRevert = workbench.WorkingDefinition;
+
+        // A step's own revert takes back only the change it began.
+        var naps = workbench.ChangeSteps[(DefinitionKind.Glyph, "AnimalNaps")];
+        workbench.RevertStep(naps);
+        Assert.Equal(["AnimalDozes", "AnimalSleeps", "AnimalSnores"], workbench.Changes.Select(x => x.Name).Order());
+        Assert.Throws<InvalidOperationException>(() => workbench.RevertStep(naps));
+        workbench.Restore(beforeRevert, "undo revert step");
+
         workbench.RevertRound(2);
 
         Assert.Equal(["AnimalDozes", "AnimalSnores"], workbench.Changes.Select(x => x.Name).Order());
