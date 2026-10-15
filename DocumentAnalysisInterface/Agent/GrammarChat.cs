@@ -504,6 +504,9 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
         _nudges = 0;
 
+        // The round is the person's: every step from here until they start the next is in it, whatever sessions the agent starts.
+        agent.BeginRound(round);
+
         if (Start(said, message))
         {
             lock (_gate)

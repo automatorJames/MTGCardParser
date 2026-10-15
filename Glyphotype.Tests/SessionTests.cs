@@ -198,6 +198,27 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_round_a_host_begins_lasts_until_it_begins_the_next_whatever_sessions_the_agent_starts()
+    {
+        var agent = CreateAgent(new() { StepsBeforeCheckIn = 1 });
+
+        agent.BeginRound(4);
+        await agent.StartSessionAsync();
+        Assert.Contains("Check-in due (1 step applied)", await agent.ApplyAsync(_animalSnores));
+
+        // The agent starting a session on its own neither ends the round nor resets its count toward the check-in.
+        Assert.Contains("don't call `start_session` to go on", await agent.StartSessionAsync());
+        var refused = await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(_animalYawns));
+        Assert.Contains("check-in is due", refused.Message);
+
+        agent.BeginRound(5);
+        await agent.StartSessionAsync();
+        await agent.ApplyAsync(_animalYawns);
+
+        Assert.Equal([4, 5], _workbench.History.Select(x => x.Round));
+    }
+
+    [Fact]
     public async Task A_session_brief_states_the_focus_the_person_set()
     {
         var agent = CreateAgent(new());

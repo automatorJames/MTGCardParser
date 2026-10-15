@@ -32,7 +32,7 @@ public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, 
 }
 
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
-/// <param name="Round">For a step an agent applied: which of its rounds of steps - one working session, from start to check-in - it was applied in, counted from 1. Null for a person's edit.</param>
+/// <param name="Round">For a step an agent applied: which of its rounds of steps it was applied in, counted from 1 - a round its host began (see <see cref="Agent.GrammarAgent.BeginRound"/>), or else one working session. Null for a person's edit.</param>
 /// <param name="Restores">Whether the step returned the working definition to an earlier state (see <see cref="GrammarWorkbench.Restore"/>), so begins nothing of its own.</param>
 public sealed record WorkbenchStep(int Number, string Description, GrammarDefinition Before, GrammarDefinition After, DateTimeOffset At, int? Round = null, bool Restores = false)
 {

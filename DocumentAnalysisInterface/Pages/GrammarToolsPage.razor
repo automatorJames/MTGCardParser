@@ -197,7 +197,7 @@ else
                             <tbody>
                                 @if (group.Title is not null)
                                 {
-                                    <tr class="group-row">
+                                    <tr class="group-row @(group.Round is null ? "" : "round-row")">
                                         <td colspan="3" title="@group.Tooltip">@group.Title</td>
                                         @if (anySteps)
                                         {
@@ -743,7 +743,7 @@ else
         {
             var byStep = changes.GroupBy(x => Workbench.ChangeSteps.TryGetValue((x.Kind, x.Name), out var number) ? number : (int?)null).ToList();
 
-            return new($"AI round {round}", "Changes an agent began in this round of its steps", byStep.Where(x => x.Key is null).SelectMany(x => x).ToList(), round)
+            return new($"AI round {round}", "Changes an agent began in this round: from a start of the agent to the next", byStep.Where(x => x.Key is null).SelectMany(x => x).ToList(), round)
             {
                 Steps = byStep
                     .Where(x => x.Key is not null)

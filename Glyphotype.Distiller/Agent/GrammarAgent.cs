@@ -252,15 +252,21 @@ public sealed class GrammarAgent
         _continueRound = false;
         _handoffDue = false;
 
-        // A session continuing a round after a handoff keeps the round, and its count toward the check-in.
-        if (!continuing)
+        // A session continuing a round after a handoff keeps the round, and its count toward the check-in - as does one
+        // the agent starts on its own within a host's round: only the host begins the next (see BeginRound).
+        var freshRound = !continuing && (_hostRound is null || _hostRoundUnstarted);
+        _hostRoundUnstarted = false;
+
+        if (freshRound)
         {
             Interlocked.Exchange(ref _stepsSinceCheckIn, 0);
             _round = null;
             _stopAfterSteps = 0;
         }
 
-        Interlocked.Exchange(ref _attemptsSinceStep, 0);
+        if (freshRound || continuing)
+            Interlocked.Exchange(ref _attemptsSinceStep, 0);
+
         _brokeRules = false;
 
         var report = new StringBuilder();
@@ -288,7 +294,7 @@ public sealed class GrammarAgent
             checkIn.Add($"after {Settings.AttemptsBeforeCheckIn} evaluations in a row without an applied step");
 
         report.AppendLine(checkIn.Count > 0
-            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, give the round's change in fully covered lines, say what you'd try next, and wait. When the person says to continue, call `start_session` again. " +
+            ? $"- Check in {string.Join(", or ", checkIn)} (the tools say when): stop, summarize each step with its bit and coverage change, give the round's change in fully covered lines, say what you'd try next, and wait. {ContinueInstruction} " +
                 "Don't stop before then: text that's expensive to cover is something to evaluate and, if no step can afford it, to journal as an open problem - then move on to the next target."
             : "- There's no check-in limit: keep going until the corpus is covered or you're stuck, then summarize and wait. Uncovered text that only costs bits to cover isn't a reason to stop.");
 
@@ -354,6 +360,42 @@ public sealed class GrammarAgent
 
     /// <summary>Steps applied since the session started or last checked in - what <see cref="AgentSessionSettings.StepsBeforeCheckIn"/> counts.</summary>
     public int StepsSinceCheckIn => _stepsSinceCheckIn;
+
+    /// <summary>The round a host began (see <see cref="BeginRound"/>), on the workbench it was begun on - null while no host has.</summary>
+    (GrammarWorkbench Workbench, int Number)? _hostRound;
+
+    /// <summary>Whether no session has started since the host began its round - so the next starts it.</summary>
+    volatile bool _hostRoundUnstarted;
+
+    /// <summary>
+    /// For a host that runs rounds itself (as a person's start of one): begins round <paramref name="number"/> on the
+    /// active workspace. Every step the agent applies from then until the host begins the next is in it - and only the
+    /// next session to start resets the round's counts toward its check-in: a session the agent starts on its own
+    /// carries on the round, so it can't start a fresh one. Without a host's rounds, each session is a round of its own.
+    /// </summary>
+    public void BeginRound(int number)
+    {
+        _hostRound = (Workbench, number);
+        _hostRoundUnstarted = true;
+    }
+
+    /// <summary>What a check-in tells the agent about going on: the person does that - by starting the next round, where a host runs them.</summary>
+    string ContinueInstruction => _hostRound is null
+        ? "When they say to continue, call `start_session`."
+        : "The person starts the next round from the app when they're ready: until then, answer what they ask, but don't call `start_session` to go on.";
+
+    /// <summary>The round a step applied now is in: the host's, where it began one on this workbench (and the step isn't the person's own directed work - see <see cref="SuspendCheckIns"/>), else the session's.</summary>
+    int RoundOfNextStep(GrammarWorkbench workbench)
+    {
+        if (_checkInsSuspended == 0 && _hostRound is { } hosted && hosted.Workbench == workbench)
+            return hosted.Number;
+
+        // A round of the session's own is numbered after every round there is - the host's included, which may have no steps yet.
+        if (_round?.Workbench != workbench)
+            _round = (workbench, Math.Max(workbench.History.Max(x => x.Round) ?? 0, _hostRound?.Workbench == workbench ? _hostRound.Value.Number : 0) + 1);
+
+        return _round.Value.Number;
+    }
 
     /// <summary>Has the next <see cref="StartSessionAsync"/> continue this session's round - and its count toward the check-in - rather than start a new one.</summary>
     public void ContinueRoundInNextSession() => _continueRound = true;
@@ -444,14 +486,14 @@ public sealed class GrammarAgent
             var steps = _stepsSinceCheckIn;
 
             return $"Check-in due ({steps} step{S(steps)} applied{(IsStopAfterStepRequested ? ", and the person asked you to stop after this one" : "")}): " +
-                "stop now, summarize the steps for the person, and wait. When they say to continue, call `start_session`.";
+                $"stop now, summarize the steps for the person, and wait. {ContinueInstruction}";
         }
 
         if (applied && Settings.StepsBeforeCheckIn > 0)
             return $"Session: {_stepsSinceCheckIn} of {Settings.StepsBeforeCheckIn} steps applied - keep going: the check-in comes after step {Settings.StepsBeforeCheckIn}, and the tools say when it's due.";
 
         if (!applied && Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn)
-            return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it could be applied, and wait. When they say to continue, call `start_session`.";
+            return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it could be applied, and wait. {ContinueInstruction}";
 
         return null;
     }
@@ -700,7 +742,7 @@ public sealed class GrammarAgent
 
         if (_checkInsSuspended == 0 && !onlyDocuments && IsStepLimitReached)
             throw new AgentRequestException($"Not applied: a check-in is due after {_stepsSinceCheckIn} step{S(_stepsSinceCheckIn)}{(IsStopAfterStepRequested ? ", as the person asked" : "")}. " +
-                "Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
+                $"Summarize the steps for the person and wait. {ContinueInstruction}");
 
         if (_checkInsSuspended == 0 && _handoffDue)
             throw new AgentRequestException("Not applied. " + HandoffInstruction + " If this change is worth making, describe it in the journal for the next session.");
@@ -724,16 +766,13 @@ public sealed class GrammarAgent
             description = $"{description ?? changes.Describe()} (approved: {approval.Trim()})";
 
         var workbench = Workbench;
-
-        // A session's steps are one round, numbered after the last round the workbench's history holds.
-        if (_round?.Workbench != workbench)
-            _round = (workbench, (workbench.History.Max(x => x.Round) ?? 0) + 1);
+        var round = RoundOfNextStep(workbench);
 
         var (before, after) = (evaluation.Before.Score, evaluation.After.Score);
         var scoreChange = new StepScoreChange(after.TotalBits - before.TotalBits, after.Coverage - before.Coverage,
             after.CapturedWords - before.CapturedWords, after.CompressionRatio - before.CompressionRatio);
 
-        var step = Try(() => workbench.Apply(changes, description, _round.Value.Number, scoreChange))
+        var step = Try(() => workbench.Apply(changes, description, round, scoreChange))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
         if (onlyDocuments)

@@ -216,6 +216,15 @@
     padding-top: 0.35rem;
 }
 
+/* A round's row: a shade lighter than the rows under it, its figures the size of its steps' */
+.changes-table .round-row td {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.changes-table .round-row .step-figure {
+    font-size: 0.82rem;
+}
+
 .changes-table .group-row .link-button {
     font-weight: normal;
     letter-spacing: normal;
