@@ -1,12 +1,14 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"all creatures", "all walls", "all creatures you control": every permanent of a kind, as a subject.</summary>
-/// <exampledoc>Whiteout</exampledoc>
-/// <examplecapture>all creatures</examplecapture>
+/// <summary>"all creatures", "all other creatures", "all creatures you control": every permanent of a kind, as a subject or an object.</summary>
+/// <exampledoc>Shrieking Mogg</exampledoc>
+/// <examplecapture>all other creatures</examplecapture>
 [Dependent]
 public class AllPermanents : Glyph
 {
-    public override Nib[] Nibs => ["all", Prop(Permanents)];
+    public override Nib[] Nibs => ["all", Prop(Other), Prop(Permanents)];
 
+    [RegexPattern("other")]
+    public bool Other { get; set; }
     public Permanents Permanents { get; set; }
 }

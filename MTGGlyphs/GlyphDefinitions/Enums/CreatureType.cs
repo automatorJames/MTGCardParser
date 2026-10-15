@@ -589,5 +589,13 @@ public enum CreatureType
 
     Orb,
 
-    Sand
+    Sand,
+
+    Servo,
+
+    Scion,
+
+    Treasure,
+
+    Food
 }
