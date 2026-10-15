@@ -22,4 +22,7 @@ public sealed record AgentSessionSettings
     /// of the step rules, since documenting a glyph covers nothing.
     /// </summary>
     public bool DocumentGlyphs { get; init; }
+
+    /// <summary>What the session weighs most in choosing targets and steps, as its brief tells the agent - read when a session starts.</summary>
+    public AgentFocus Focus { get; init; }
 }

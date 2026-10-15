@@ -277,6 +277,142 @@
             background-color: rgba(255, 255, 255, 0.05);
         }
 
+/* Stopping: at once, or once the step under way is applied - the button does what was last chosen, the arrow offers both */
+.stop-split {
+    position: relative;
+    display: inline-flex;
+}
+
+    .stop-split .round-toggle {
+        min-width: 8.5rem;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+        .stop-split .round-toggle:disabled {
+            opacity: 0.7;
+        }
+
+.stop-choice {
+    display: flex;
+    align-items: center;
+    padding: 0 0.1rem;
+    border: 1px solid var(--dark-gold);
+    border-left: none;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background-color: transparent;
+    color: var(--gold);
+}
+
+    .stop-choice:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: var(--gold);
+    }
+
+    .stop-choice .material-symbols-outlined {
+        font-size: 1.15rem;
+    }
+
+.stop-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+}
+
+/* Opens upward: the button sits at the pane's foot */
+.stop-menu {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    min-width: 100%;
+    padding: 4px;
+    border: 1px solid var(--outline-grey);
+    border-radius: 6px;
+    background-color: var(--dark-grey);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.stop-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem 0.25rem 0.4rem;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: #f0f4f8;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    text-align: left;
+}
+
+    .stop-menu-item:hover:not(:disabled) {
+        background-color: var(--near-black);
+    }
+
+    .stop-menu-item:disabled {
+        color: #6b737b;
+    }
+
+    .stop-menu-item .material-symbols-outlined {
+        font-size: 1.05rem;
+        color: var(--gold);
+    }
+
+/* What the agent weighs most: one tab per focus, equal widths, each in its own color */
+.focus-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 0.3rem;
+}
+
+.focus-tab {
+    --focus-color: #8a949e;
+    padding: 0.2rem 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--focus-color) 35%, transparent);
+    border-radius: 4px;
+    background-color: transparent;
+    color: color-mix(in srgb, var(--focus-color) 75%, #6b737b);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+    .focus-tab:hover {
+        border-color: var(--focus-color);
+        color: var(--focus-color);
+    }
+
+    .focus-tab.chosen {
+        border-color: var(--focus-color);
+        background-color: color-mix(in srgb, var(--focus-color) 22%, transparent);
+        color: #f0f4f8;
+        font-weight: 600;
+    }
+
+    .focus-tab.focus-coverage {
+        --focus-color: #4caf50;
+    }
+
+    .focus-tab.focus-compression {
+        --focus-color: #a371f7;
+    }
+
+    .focus-tab.focus-hotspots {
+        --focus-color: #f0883e;
+    }
+
+    .focus-tab.focus-refine {
+        --focus-color: #58a6ff;
+    }
+
 .max-steps {
     display: flex;
     align-items: center;

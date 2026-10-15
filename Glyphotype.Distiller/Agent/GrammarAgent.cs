@@ -53,6 +53,9 @@ public sealed class GrammarAgent
     volatile bool _handoffDue;
     volatile bool _continueRound;
 
+    /// <summary>The count of steps after which the person asked the session to check in (see <see cref="StopAfterStep"/>) - 0 when they haven't.</summary>
+    volatile int _stopAfterSteps;
+
     /// <summary>An agent working on whichever of <paramref name="workspaces"/> is active, and able to create and switch between them.</summary>
     public GrammarAgent(WorkspaceManager workspaces, string corpusDescription, AgentSessionSettings settings = null)
         : this(workspaces, () => corpusDescription, settings)
@@ -254,6 +257,7 @@ public sealed class GrammarAgent
         {
             Interlocked.Exchange(ref _stepsSinceCheckIn, 0);
             _round = null;
+            _stopAfterSteps = 0;
         }
 
         Interlocked.Exchange(ref _attemptsSinceStep, 0);
@@ -270,6 +274,9 @@ public sealed class GrammarAgent
         report.AppendLine("- The goal is full coverage: every word of the corpus inside a match. Coverage decides whether to cover text, and bits decide how - among the ways to cover it, the cheapest and most general. " +
             "Text with no cheap model still has to be covered: a step that costs bits to cover it is progress, not a failure.");
         report.AppendLine($"- The loop: find recurring unmatched text (`unmatched_openings` shows where most of it is), draft a glyph, check it with `tokenize`/`explain_mismatch`, `evaluate` it, then `apply` it with a one-line description of why. Before each step, say in one line what you're targeting. If you haven't read `guide` in this conversation, read it first.");
+
+        if (Settings.Focus.Brief() is { } focus)
+            report.AppendLine($"- The person has set this session's focus. {focus} It weighs your choices, and changes none of the rules here.");
 
         var checkIn = new List<string>();
 
@@ -353,8 +360,26 @@ public sealed class GrammarAgent
     /// <summary>Whether the session has reached a check-in (see <see cref="AgentSessionSettings"/>), so it's over until the person says to continue.</summary>
     public bool IsCheckInDue =>
         _checkInsSuspended == 0
-        && ((Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
+        && (IsStepLimitReached
             || (Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn));
+
+    /// <summary>Whether the session has applied as many steps as it may before checking in - the settings' count, or the one <see cref="StopAfterStep"/> set.</summary>
+    bool IsStepLimitReached =>
+        (Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
+        || (_stopAfterSteps > 0 && _stepsSinceCheckIn >= _stopAfterSteps);
+
+    /// <summary>
+    /// Has the session check in once its next step is applied, as it would at the end of its steps: the step under way
+    /// is finished, and nothing more is applied until a session starts again.
+    /// </summary>
+    public void StopAfterStep()
+    {
+        if (_stopAfterSteps == 0)
+            _stopAfterSteps = _stepsSinceCheckIn + 1;
+    }
+
+    /// <summary>Whether the person has asked the session to check in after its next step (see <see cref="StopAfterStep"/>).</summary>
+    public bool IsStopAfterStepRequested => _stopAfterSteps > 0;
 
     /// <summary>
     /// What an agent is told about documenting the glyphs it writes, when <see cref="AgentSessionSettings.DocumentGlyphs"/>
@@ -404,14 +429,16 @@ public sealed class GrammarAgent
         if (_handoffDue && !IsCheckInDue)
             return HandoffInstruction;
 
-        if (applied && Settings.StepsBeforeCheckIn > 0)
+        if (applied && IsStepLimitReached)
         {
             var steps = _stepsSinceCheckIn;
 
-            return steps >= Settings.StepsBeforeCheckIn
-                ? $"Check-in due ({steps} step{S(steps)} applied): stop now, summarize the steps for the person, and wait. When they say to continue, call `start_session`."
-                : $"Session: {steps} of {Settings.StepsBeforeCheckIn} steps applied - keep going: the check-in comes after step {Settings.StepsBeforeCheckIn}, and the tools say when it's due.";
+            return $"Check-in due ({steps} step{S(steps)} applied{(IsStopAfterStepRequested ? ", and the person asked you to stop after this one" : "")}): " +
+                "stop now, summarize the steps for the person, and wait. When they say to continue, call `start_session`.";
         }
+
+        if (applied && Settings.StepsBeforeCheckIn > 0)
+            return $"Session: {_stepsSinceCheckIn} of {Settings.StepsBeforeCheckIn} steps applied - keep going: the check-in comes after step {Settings.StepsBeforeCheckIn}, and the tools say when it's due.";
 
         if (!applied && Settings.AttemptsBeforeCheckIn > 0 && _attemptsSinceStep >= Settings.AttemptsBeforeCheckIn)
             return $"Check-in due: {_attemptsSinceStep} evaluations without an applied step. Stop, tell the person what you tried and why none of it could be applied, and wait. When they say to continue, call `start_session`.";
@@ -659,8 +686,9 @@ public sealed class GrammarAgent
         // A step that only documents glyphs is housekeeping, not one of the round's steps: it counts toward neither check-in, and isn't held up by one.
         var onlyDocuments = OnlyDocuments(changes, Workbench.WorkingDefinition);
 
-        if (_checkInsSuspended == 0 && !onlyDocuments && Settings.StepsBeforeCheckIn > 0 && _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn)
-            throw new AgentRequestException($"Not applied: a check-in is due after {Settings.StepsBeforeCheckIn} steps. Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
+        if (_checkInsSuspended == 0 && !onlyDocuments && IsStepLimitReached)
+            throw new AgentRequestException($"Not applied: a check-in is due after {_stepsSinceCheckIn} step{S(_stepsSinceCheckIn)}{(IsStopAfterStepRequested ? ", as the person asked" : "")}. " +
+                "Summarize the steps for the person and wait; when they say to continue, call `start_session`.");
 
         if (_checkInsSuspended == 0 && _handoffDue)
             throw new AgentRequestException("Not applied. " + HandoffInstruction + " If this change is worth making, describe it in the journal for the next session.");
@@ -703,7 +731,7 @@ public sealed class GrammarAgent
         _lastEvaluated = null;
 
         var report = WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{(reused is null ? DescribeEvaluation(evaluation) : SummarizeEvaluation(evaluation))}", MisplacedDocumentation(source));
-        return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: !onlyDocuments || _stepsSinceCheckIn >= Settings.StepsBeforeCheckIn));
+        return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: !onlyDocuments || IsStepLimitReached));
     }
 
     /// <summary>

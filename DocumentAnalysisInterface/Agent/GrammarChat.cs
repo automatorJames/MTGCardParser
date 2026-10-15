@@ -135,7 +135,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             return;
         }
 
-        if (!stopped && Round is int unfinished && !agent.IsCheckInDue && !agent.IsHandoffDue && _nudges < _maxNudges && !EndedInError)
+        // An agent asked to stop after its step that stops before it is stopping as asked.
+        if (!stopped && Round is int unfinished && !agent.IsCheckInDue && !agent.IsHandoffDue && !agent.IsStopAfterStepRequested && _nudges < _maxNudges && !EndedInError)
         {
             _nudges++;
             _ = Task.Run(() => Nudge(unfinished));
@@ -195,7 +196,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
     /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
     /// </summary>
-    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null);
+    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false);
 
     const string _settingsFileName = "chat-settings.json";
 
@@ -212,6 +213,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         grammarAgent.Settings = grammarAgent.Settings with
         {
             StepsBeforeCheckIn = saved.StepsBeforeCheckIn ?? grammarAgent.Settings.StepsBeforeCheckIn,
+            Focus = saved.Focus ?? grammarAgent.Settings.Focus,
         };
 
         return true;
@@ -232,7 +234,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
-    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn));
+    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep));
 
     void SaveSettings(Settings settings)
     {
@@ -294,6 +296,77 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>
+    /// What the agent weighs most in choosing targets and steps, as its session brief tells it - read when a session
+    /// starts, so a change holds from the next round (or handoff) on. The session setting itself, as <see cref="MaxSteps"/> is.
+    /// </summary>
+    public AgentFocus Focus
+    {
+        get => agent.Settings.Focus;
+        set
+        {
+            agent.Settings = agent.Settings with { Focus = value };
+            SaveSettings();
+            NotifyChanged();
+        }
+    }
+
+    bool? _stopsAfterStep;
+
+    /// <summary>Whether the stop button last used stops after the agent's next step rather than at once - what it offers first. Kept with the chat's settings.</summary>
+    public bool StopsAfterStep
+    {
+        get
+        {
+            lock (_gate)
+                return _stopsAfterStep ??= ReadSettings()?.StopsAfterStep ?? false;
+        }
+        private set
+        {
+            lock (_gate)
+            {
+                if (_stopsAfterStep == value)
+                    return;
+
+                _stopsAfterStep = value;
+                SaveSettings();
+            }
+        }
+    }
+
+    /// <summary>Stops the agent where it is, as <see cref="AgentChat.Stop"/> does - and remembers that's the stop used.</summary>
+    public void StopNow()
+    {
+        StopsAfterStep = false;
+        Stop();
+        NotifyChanged();
+    }
+
+    /// <summary>
+    /// Lets the agent finish the step it's working toward, then has it check in as at the end of its steps - so the round
+    /// ends with the step applied and summarized. Remembers that's the stop used.
+    /// </summary>
+    public void StopAfterStep()
+    {
+        StopsAfterStep = true;
+
+        if (!IsRunning || agent.IsStopAfterStepRequested)
+            return;
+
+        agent.StopAfterStep();
+
+        lock (_gate)
+            AddNote("The agent will stop once it has applied the step it's working on.");
+
+        NotifyChanged();
+    }
+
+    /// <summary>A focus as the pane names it: <see cref="AgentFocus.HotSpots"/> as "Hot spots".</summary>
+    public static string FocusName(AgentFocus focus) => focus == AgentFocus.HotSpots ? "Hot spots" : focus.ToString();
+
+    /// <summary>Whether the agent is working toward a step it's to stop after (see <see cref="StopAfterStep"/>).</summary>
+    public bool IsStoppingAfterStep => IsRunning && agent.IsStopAfterStepRequested && !agent.IsCheckInDue;
+
+    /// <summary>
     /// Starts an AI round: the agent works until it has applied <see cref="MaxSteps"/>, runs out of improvements, or is
     /// stopped. The first starts a session as <c>/grammar</c> does, later ones continue it.
     /// </summary>
@@ -305,7 +378,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         // The agent's first step in the round is numbered after the last round the workbench's history holds (see GrammarAgent.ApplyAsync).
         var round = (workspaces.Active.History.Max(x => x.Round) ?? 0) + 1;
         var steps = MaxSteps;
-        var said = $"AI round {round}: {(steps is int limit ? $"up to {limit} step{(limit == 1 ? "" : "s")}" : "no step limit")}{(instructions is null ? "" : $" - {instructions}")}";
+        var focus = Focus == AgentFocus.Default ? "" : $", {FocusName(Focus)} focus";
+        var said = $"AI round {round}: {(steps is int limit ? $"up to {limit} step{(limit == 1 ? "" : "s")}" : "no step limit")}{focus}{(instructions is null ? "" : $" - {instructions}")}";
 
         var message = HasRound
             ? $"Continue with another round: call `start_session` again with instructions \"{instructions ?? _instructions}\", then follow the brief it returns."

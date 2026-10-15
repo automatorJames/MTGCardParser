@@ -152,6 +152,36 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task An_agent_asked_to_stop_after_its_step_checks_in_once_it_applies_one()
+    {
+        var agent = CreateAgent(new() { StepsBeforeCheckIn = 0 });
+        await agent.StartSessionAsync();
+        agent.StopAfterStep();
+
+        Assert.False(agent.IsCheckInDue);
+        Assert.Contains("Check-in due (1 step applied, and the person asked you to stop after this one)", await agent.ApplyAsync(_animalSnores));
+        Assert.True(agent.IsCheckInDue);
+
+        var refused = await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(_animalYawns));
+        Assert.Contains("as the person asked", refused.Message);
+
+        // A new session is a new round, without the stop.
+        await agent.StartSessionAsync();
+        Assert.False(agent.IsStopAfterStepRequested);
+        Assert.DoesNotContain("Check-in due", await agent.ApplyAsync(_animalYawns));
+    }
+
+    [Fact]
+    public async Task A_session_brief_states_the_focus_the_person_set()
+    {
+        var agent = CreateAgent(new());
+        Assert.DoesNotContain("this session's focus", await agent.StartSessionAsync());
+
+        agent.Settings = agent.Settings with { Focus = AgentFocus.HotSpots };
+        Assert.Contains("The person has set this session's focus. Hot spots: work down `residuals`", await agent.StartSessionAsync());
+    }
+
+    [Fact]
     public async Task An_agent_that_keeps_missing_is_told_to_check_in()
     {
         var agent = CreateAgent(new() { AttemptsBeforeCheckIn = 2 });

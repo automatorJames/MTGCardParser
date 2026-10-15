@@ -1,4 +1,5 @@
 ﻿@using DocumentAnalysisInterface.Agent
+@using Glyphotype.Distiller.Agent
 @implements IDisposable
 @inject GrammarChat Chat
 @inject IJSRuntime JS
@@ -20,7 +21,7 @@
 
         <header class="chat-header">
             <h3>Grammar agent</h3>
-            <span class="chat-state @(running ? "running" : "")">@(round is int number ? $"AI round {number} · working…" : running ? "working…" : "idle")</span>
+            <span class="chat-state @(running ? "running" : "")">@(round is int number ? $"AI round {number} · {(Chat.IsStoppingAfterStep ? "finishing its step…" : "working…")}" : running ? "working…" : "idle")</span>
             <button class="link-button" disabled="@(running || entries.Count == 0)" title="Start a new conversation, forgetting this one" @onclick="Chat.Reset">new chat</button>
         </header>
 
@@ -87,9 +88,31 @@
                 <div class="round-control">
                     @if (running)
                     {
-                        <button class="btn btn-sm round-toggle stop" title="Stop the agent where it is - steps it has applied stay applied" @onclick="Chat.Stop">
-                            <span class="material-symbols-outlined">stop</span> Stop
-                        </button>
+                        var afterStep = Chat.StopsAfterStep;
+                        var stopping = Chat.IsStoppingAfterStep;
+
+                        <div class="stop-split">
+                            <button class="btn btn-sm round-toggle stop" disabled="@(afterStep && stopping)"
+                                    title="@(afterStep ? StopAfterStepTitle : StopNowTitle)" @onclick="StopAsLastUsed">
+                                <span class="material-symbols-outlined">@(afterStep ? "last_page" : "stop")</span> @(afterStep ? stopping ? "Finishing step…" : "Stop after step" : "Stop now")
+                            </button>
+                            <button class="btn btn-sm stop-choice" title="Choose how to stop" @onclick="() => _stopMenuOpen = !_stopMenuOpen">
+                                <span class="material-symbols-outlined">arrow_drop_up</span>
+                            </button>
+
+                            @if (_stopMenuOpen)
+                            {
+                                <div class="stop-menu-backdrop" @onclick="() => _stopMenuOpen = false"></div>
+                                <div class="stop-menu">
+                                    <button class="stop-menu-item" title="@StopNowTitle" @onclick="StopNow">
+                                        <span class="material-symbols-outlined">stop</span> Stop now
+                                    </button>
+                                    <button class="stop-menu-item" disabled="@stopping" title="@StopAfterStepTitle" @onclick="StopAfterStep">
+                                        <span class="material-symbols-outlined">last_page</span> Stop after step
+                                    </button>
+                                </div>
+                            }
+                        </div>
                     }
                     else
                     {
@@ -113,6 +136,18 @@
                 </div>
 
                 <button class="btn btn-sm btn-secondary" disabled="@(running || string.IsNullOrWhiteSpace(_draft))" title="Say something to the agent without starting a round" @onclick="Send">Send</button>
+            </div>
+
+            <div class="focus-row" role="radiogroup" aria-label="Focus">
+                @foreach (var focus in Enum.GetValues<AgentFocus>())
+                {
+                    var chosen = Chat.Focus == focus;
+
+                    <button type="button" role="radio" aria-checked="@(chosen ? "true" : "false")" class="focus-tab focus-@focus.ToString().ToLowerInvariant() @(chosen ? "chosen" : "")"
+                            title="@FocusTitle(focus)" @onclick="() => Chat.Focus = focus">
+                        @GrammarChat.FocusName(focus)
+                    </button>
+                }
             </div>
         </footer>
     </aside>
@@ -209,6 +244,41 @@
         Chat.StartRound(_draft);
         _draft = null;
     }
+
+    bool _stopMenuOpen;
+
+    const string StopNowTitle = "Stop the agent where it is - steps it has applied stay applied";
+    const string StopAfterStepTitle = "Let the agent finish the step it's working on, then stop: it applies that step, summarizes the round, and waits";
+
+    void StopAsLastUsed()
+    {
+        if (Chat.StopsAfterStep)
+            StopAfterStep();
+        else
+            StopNow();
+    }
+
+    void StopNow()
+    {
+        _stopMenuOpen = false;
+        Chat.StopNow();
+    }
+
+    void StopAfterStep()
+    {
+        _stopMenuOpen = false;
+        Chat.StopAfterStep();
+    }
+
+    /// <summary>What a focus has the agent weigh, for its tab's tooltip.</summary>
+    static string FocusTitle(AgentFocus focus) => (focus switch
+    {
+        AgentFocus.Coverage => "Coverage: the agent favors covering the most words, even at some cost in bits - with general frames, spelling out text literally only once nothing more general is left",
+        AgentFocus.Compression => "Compression: the agent favors the steps that take the most bits off, and cheaper covers for glyphs costing more than they save",
+        AgentFocus.HotSpots => "Hot spots: the agent works down the residual hot spots from the costliest, covering each one's family of lines",
+        AgentFocus.Refine => "Refine: the agent favors generalizing the glyphs there are - merging, extracting shared parts, promoting vocabularies - in steps that also cover more words",
+        _ => "Default: the agent chooses its targets as the guide and the workspace's guidance lead it to",
+    }) + ". Read as a session starts, so a change holds from the next round on.";
 
     void Send()
     {
