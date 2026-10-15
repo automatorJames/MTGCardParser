@@ -10,7 +10,7 @@ public enum WhichPlayer
     [RegexPattern("an opponent")]
     AnyOpponent,
 
-    [RegexPattern("a player")]
+    [RegexPattern("a player", "any player")]
     AnyPlayer,
 
     [RegexPattern("defending player")]

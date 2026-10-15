@@ -5,7 +5,7 @@ public enum Quantity
     [RegexPattern("x")]
     X = -1,
 
-    [RegexPattern("0", "zero", "none")]
+    [RegexPattern("0", "zero", "none", "no")]
     Zero,
 
     [RegexPattern("1", "one", "an?")]

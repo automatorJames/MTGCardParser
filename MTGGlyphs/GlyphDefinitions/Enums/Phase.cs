@@ -4,6 +4,7 @@ public enum Phase
 {
     UntapStep,
 
+    [RegexPattern("upkeep step", "upkeep")]
     Upkeep,
 
     DrawStep,

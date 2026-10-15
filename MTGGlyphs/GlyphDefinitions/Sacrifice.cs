@@ -1,7 +1,7 @@
-namespace MTGGlyphs.GlyphDefinitions;
+﻿namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>
-/// Sacrificing a permanent: "sacrifice {this}", "sacrifice a creature", or, as what a subject does, "(that creature's
+/// Sacrificing a permanent: "sacrifice {this}", "sacrifice a creature", "sacrifice two islands", or, as what a subject does, "(that creature's
 /// controller) sacrifices it".
 /// </summary>
 /// <exampledoc>Animate Dead</exampledoc>
@@ -10,5 +10,5 @@ public class Sacrifice : Glyph, IPredicate
 {
     public override Nib[] Nibs => [Pattern("sacrifices?"), Prop(Sacrificed)];
 
-    public OneOf<PermanentPhrase, IndefinitePermanent> Sacrificed { get; set; }
+    public OneOf<PermanentPhrase, IndefinitePermanent, CountedPermanents> Sacrificed { get; set; }
 }
