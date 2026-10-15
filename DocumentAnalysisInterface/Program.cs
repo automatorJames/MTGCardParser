@@ -92,7 +92,8 @@ public class Program
             services.GetRequiredService<GrammarAgent>(),
             services.GetRequiredService<WorkspaceManager>(),
             services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>(),
-            workingDirectory: Path.Combine(appData, "agent")));
+            workingDirectory: Path.Combine(appData, "agent"),
+            new SubscriptionCostEstimator(Path.Combine(appData, "agent", "cost-model.json"))));
 
         // Corpus Captures' chats about one line each: the agent writes the glyphs that capture it.
         builder.Services.AddSingleton(services => new LineChats((documentName, lineIndex, lineText) => new LineChat(

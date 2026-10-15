@@ -363,6 +363,37 @@
         color: var(--gold);
     }
 
+/* Stopwatches for the round and the step under way - stopped, they hold what the round came to */
+.round-clocks {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8rem;
+}
+
+    .round-clocks .material-symbols-outlined {
+        font-size: 1rem;
+        vertical-align: -0.2rem;
+    }
+
+.round-clock {
+    color: #c8d0d8;
+}
+
+.step-clock {
+    color: #8a949e;
+}
+
+.clock-time {
+    margin-left: 0.15rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.round-clocks.stopped {
+    opacity: 0.6;
+}
+
 /* What the agent weighs most: one tab per focus, equal widths, each in its own color */
 .focus-row {
     display: grid;
@@ -373,12 +404,13 @@
 
 .focus-tab {
     --focus-color: #8a949e;
-    padding: 0.2rem 0.25rem;
+    padding: 0.2rem 0.15rem;
     border: 1px solid color-mix(in srgb, var(--focus-color) 35%, transparent);
     border-radius: 4px;
     background-color: transparent;
     color: color-mix(in srgb, var(--focus-color) 75%, #6b737b);
-    font-size: 0.75rem;
+    /* Small enough that a chosen tab's bold label still fits */
+    font-size: 0.7rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

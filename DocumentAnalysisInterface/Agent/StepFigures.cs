@@ -29,13 +29,12 @@ public sealed record StepFigures(TimeSpan? Elapsed, long? Tokens, double? CostUs
             Add(x => x.Bits, (a, b) => a + b), Add(x => x.Compression, (a, b) => a + b), Add(x => x.Words, (a, b) => a + b), Add(x => x.Coverage, (a, b) => a + b));
     }
 
-    public bool HasEffort => Elapsed is not null;
-
     public string ElapsedText => Elapsed is TimeSpan elapsed ? Duration(elapsed) : "";
 
     public string TokensText => Tokens is long tokens ? Compact(tokens) : "";
 
-    public string CostText => CostUsd is double cost ? "~" + cost.ToString(cost < 1 ? "C2" : "C1") : HasEffort ? "?" : "";
+    /// <summary>The estimated cost - to a tenth of a cent under a dime, where cents would round most steps to nothing.</summary>
+    public string CostText => CostUsd is double cost ? "~" + cost.ToString(cost < 0.1 ? "$0.000" : cost < 1 ? "C2" : "C1") : "";
 
     public string BitsText => Bits is double bits ? Signed(bits, "N0") : "";
 
@@ -62,7 +61,7 @@ public sealed record StepFigures(TimeSpan? Elapsed, long? Tokens, double? CostUs
         {
             ElapsedText,
             Tokens is null ? "" : TokensText + " tokens",
-            CostText == "?" ? "" : CostText,
+            CostText,
             Bits is null ? "" : BitsText + " bits" + (Compression is null ? "" : $" ({CompressionText})"),
             Coverage is null ? "" : (Words is null ? "" : WordsText + " words ") + (Words is null ? CoverageText : $"({CoverageText})") + " coverage",
         }.Where(x => x.Length > 0));
@@ -75,10 +74,10 @@ public sealed record StepFigures(TimeSpan? Elapsed, long? Tokens, double? CostUs
         return text.Trim('0', '.', ',') == "" ? text : (value < 0 ? "−" : "+") + text;
     }
 
-    /// <summary>A time worked in a few characters, to a tenth of a second under the hour: 4.2s, 3m 05.4s, 1h 12m.</summary>
+    /// <summary>A time worked in a few characters, to a tenth of a second under the minute: 6.7s, 10m 28s, 1h 12m.</summary>
     public static string Duration(TimeSpan elapsed) =>
         elapsed.TotalHours >= 1 ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m"
-        : elapsed.TotalMinutes >= 1 ? $"{(int)elapsed.TotalMinutes}m {Tenths(elapsed.TotalSeconds % 60):00.0}s"
+        : elapsed.TotalMinutes >= 1 ? $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds:00}s"
         : $"{Tenths(Math.Max(0, elapsed.TotalSeconds)):0.0}s";
 
     /// <summary>Seconds cut down to the tenth - not rounded, so 59.97 seconds never reads as 60.0.</summary>

@@ -11,7 +11,7 @@ namespace DocumentAnalysisInterface.Agent;
 /// The Grammar Tools tab's chat with the local agent - running a round here is what <c>/grammar</c> is in a terminal.
 /// One conversation for the whole app.
 /// </summary>
-public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, WorkspaceManager workspaces, IServer server, string workingDirectory)
+public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, WorkspaceManager workspaces, IServer server, string workingDirectory, ICostEstimator costs)
     : AgentChat(localAgent, server, workingDirectory)
 {
     const string _systemPrompt = """
@@ -77,7 +77,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         _instructions = null;
         HasRound = false;
         _nudges = 0;
-        (_workedBeforeTurn, _workedAtStep, _tokensAtStep, _weeklyStart) = (TimeSpan.Zero, TimeSpan.Zero, 0, null);
+        (_workedBeforeTurn, _workedAtStep, _usageAtStep) = (TimeSpan.Zero, TimeSpan.Zero, TokenUsage.None);
+        (RoundStartedAt, RoundEndedAt, StepStartedAt) = (null, null, null);
     }
 
     // ---- What each step took ----
@@ -86,30 +87,24 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     TimeSpan _workedBeforeTurn;
     DateTimeOffset? _turnBegan;
 
-    /// <summary>How long the agent had worked, and how many tokens the conversation had used, when its last step was applied.</summary>
+    /// <summary>How long the agent had worked, and the tokens the conversation had used, when its last step was applied.</summary>
     TimeSpan _workedAtStep;
-    long _tokensAtStep;
+    TokenUsage _usageAtStep = TokenUsage.None;
 
-    /// <summary>The conversation's tokens, and the weekly allowance's use, when the allowance was first heard of - what <see cref="EstimateCost"/> measures from.</summary>
-    (long Tokens, double Utilization)? _weeklyStart;
+    /// <summary>When the latest round began, and ended - null while it's under way, or before any has begun.</summary>
+    public DateTimeOffset? RoundStartedAt { get; private set; }
+    public DateTimeOffset? RoundEndedAt { get; private set; }
 
-    /// <summary>What a week's allowance is reckoned to be worth, for <see cref="EstimateCost"/>: a rough figure, for a sense of scale.</summary>
-    const double _weeklyAllowanceUsd = 20;
+    /// <summary>When the step the agent is working toward began: as its round did, or as the step before it was applied.</summary>
+    public DateTimeOffset? StepStartedAt { get; private set; }
 
-    /// <summary>The share of the weekly allowance that must have been used before a rate is measured from it - the allowance is reported coarsely.</summary>
-    const double _minimumMeasuredUtilization = 0.01;
-
-    double? _dollarsPerMillionTokens;
-
-    /// <summary>What a million tokens cost, as last measured (see <see cref="EstimateCost"/>) - kept with the chat's settings, so a step has an estimate before this conversation has used enough to measure one.</summary>
-    double? DollarsPerMillionTokens
+    /// <summary>The round under way is over - called under the gate.</summary>
+    void EndRound()
     {
-        get => _dollarsPerMillionTokens ??= ReadSettings()?.DollarsPerMillionTokens;
-        set
-        {
-            _dollarsPerMillionTokens = value;
-            SaveSettings();
-        }
+        if (Round is not null)
+            RoundEndedAt = DateTimeOffset.Now;
+
+        Round = null;
     }
 
     TimeSpan Worked => _workedBeforeTurn + (_turnBegan is DateTimeOffset began ? DateTimeOffset.Now - began : TimeSpan.Zero);
@@ -148,9 +143,11 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             return;
 
         var (ordinal, round) = (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
-        var (worked, tokens) = (Worked, Stats.TotalTokens);
-        var effort = new StepEffort(worked - _workedAtStep, tokens - _tokensAtStep, EstimateCost(tokens - _tokensAtStep));
-        (_workedAtStep, _tokensAtStep) = (worked, tokens);
+        var (worked, usage) = (Worked, TokenUsage.Of(Stats));
+        var used = usage - _usageAtStep;
+        var effort = new StepEffort(worked - _workedAtStep, used.Total, costs.Estimate(used, Model, Stats.SevenDay));
+        (_workedAtStep, _usageAtStep) = (worked, usage);
+        StepStartedAt = DateTimeOffset.Now;
 
         var workbench = workspaces.Active;
 
@@ -165,28 +162,6 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     /// <summary>How `apply` reports a step it applied in a round (see <see cref="WorkbenchStep.Label"/>).</summary>
     static readonly Regex _appliedStep = new(@"^\s*Applied as step (\d+) of round (\d+)", RegexOptions.Compiled);
-
-    /// <summary>
-    /// What <paramref name="tokens"/> cost, reckoned naively as the share of the weekly allowance they used, of what the
-    /// allowance is worth (<see cref="_weeklyAllowanceUsd"/>). The share isn't reported by the token, only for the
-    /// allowance as a whole, so a rate is measured from the conversation's tokens against how far the allowance's use
-    /// has moved while it ran - counting whatever else used the allowance meanwhile. Null until a rate is known.
-    /// </summary>
-    double? EstimateCost(long tokens)
-    {
-        if (Stats.SevenDay is { } weekly)
-        {
-            var total = Stats.TotalTokens;
-
-            // A use lower than at the start is the allowance having started over.
-            if (_weeklyStart is not { } start || weekly.Utilization < start.Utilization)
-                _weeklyStart = (total, weekly.Utilization);
-            else if (weekly.Utilization - start.Utilization >= _minimumMeasuredUtilization && total > start.Tokens)
-                DollarsPerMillionTokens = _weeklyAllowanceUsd * (weekly.Utilization - start.Utilization) / (total - start.Tokens) * 1_000_000;
-        }
-
-        return DollarsPerMillionTokens is double rate ? tokens * rate / 1_000_000 : null;
-    }
 
     /// <summary>
     /// How many tokens of context, in thousands, a round may build up before it hands off to a fresh session: the agent
@@ -264,7 +239,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             return;
         }
 
-        Round = null;
+        EndRound();
     }
 
     /// <summary>Whether the turn just ended with an error - when going on would only meet it again.</summary>
@@ -283,7 +258,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         if (!Start($"The agent stopped with no check-in due ({progress}): told it to go on.", message, ChatEntryKind.Note))
         {
             lock (_gate)
-                Round = null;
+                EndRound();
         }
 
         NotifyChanged();
@@ -308,7 +283,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         else
         {
             lock (_gate)
-                Round = null;
+                EndRound();
         }
 
         NotifyChanged();
@@ -318,7 +293,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
     /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
     /// </summary>
-    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false, double? DollarsPerMillionTokens = null);
+    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false);
 
     const string _settingsFileName = "chat-settings.json";
 
@@ -356,7 +331,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
-    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep, DollarsPerMillionTokens));
+    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep));
 
     void SaveSettings(Settings settings)
     {
@@ -511,14 +486,22 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
         // The round is the person's: every step from here until they start the next is in it, whatever sessions the agent starts.
         agent.BeginRound(round);
+        var startedAt = DateTimeOffset.Now;
 
         if (Start(said, message))
         {
             lock (_gate)
             {
+                (RoundStartedAt, StepStartedAt) = (startedAt, startedAt);
+
                 // Unless the agent was quick enough to finish already.
                 if (IsRunning)
+                {
                     Round = round;
+                    RoundEndedAt = null;
+                }
+                else
+                    RoundEndedAt = DateTimeOffset.Now;
             }
 
             _instructions = instructions ?? _instructions;

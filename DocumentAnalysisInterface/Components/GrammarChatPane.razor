@@ -80,6 +80,20 @@
         </div>
 
         <footer class="chat-footer">
+            @if (Chat.RoundStartedAt is DateTimeOffset roundStarted)
+            {
+                var until = Chat.RoundEndedAt ?? DateTimeOffset.Now;
+
+                <div class="round-clocks @(round is null ? "stopped" : "")">
+                    <span class="round-clock" title="How long the round has run, from its start - or ran, once it's over">
+                        <span class="material-symbols-outlined">timer</span> Round <span class="clock-time">@Clock(until - roundStarted)</span>
+                    </span>
+                    <span class="step-clock" title="How long the agent has been working toward its next step, since the round began or its last step was applied">
+                        Step <span class="clock-time">@Clock(until - (Chat.StepStartedAt ?? roundStarted))</span>
+                    </span>
+                </div>
+            }
+
             <form @onsubmit="Send">
                 <input class="chat-input" type="text" placeholder="A message - or instructions for the next round" @bind="_draft" @bind:event="oninput" />
             </form>
@@ -180,6 +194,21 @@
 
     static string Compact(long tokens) => StepFigures.Compact(tokens);
 
+    /// <summary>A stopwatch's reading: 04:07, or 1:04:07 past the hour.</summary>
+    static string Clock(TimeSpan elapsed) =>
+        elapsed < TimeSpan.Zero ? "00:00"
+        : elapsed.TotalHours >= 1 ? $"{(int)elapsed.TotalHours}:{elapsed.Minutes:00}:{elapsed.Seconds:00}"
+        : $"{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+
+    /// <summary>Ticks the stopwatches over once a second, while a round runs.</summary>
+    Timer _clockTimer;
+
+    void Tick(object state)
+    {
+        if (Chat.Round is not null)
+            _ = InvokeAsync(StateHasChanged);
+    }
+
     /// <summary>When an allowance starts over: the time if that's within a day, the day as well if it's further off.</summary>
     static string Resets(UsageWindow window)
     {
@@ -207,6 +236,7 @@
         if (_available)
         {
             Chat.Changed += OnChatChanged;
+            _clockTimer = new Timer(Tick, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 
             // A conversation under way is worth seeing at once.
             if (Chat.IsRunning)
@@ -214,7 +244,11 @@
         }
     }
 
-    public void Dispose() => Chat.Changed -= OnChatChanged;
+    public void Dispose()
+    {
+        Chat.Changed -= OnChatChanged;
+        _clockTimer?.Dispose();
+    }
 
     void OnChatChanged() => _ = InvokeAsync(StateHasChanged);
 
