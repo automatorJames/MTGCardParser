@@ -14,12 +14,18 @@
         @* Keyed by the processed document itself, not its name: a new analysis (another workspace's grammar, or a re-score)
            brings new documents, and their blocks are built fresh - patching the old ones in place would cascade the new
            line's display context into spans still holding the old grammar's captures. *@
+        @{ var documents = GetFilteredDocuments().ToList(); var pageIndex = GetPageIndex(documents.Count); }
+
+        <DocumentPager PageIndex=@pageIndex PageIndexChanged="GoToPage" PageSize=@CorpusCapturesLayout.DocumentsPerPage DocumentCount=@documents.Count />
+
         <CascadingValue Value="_glyphPreviews" IsFixed="true">
-            @foreach (var document in GetFilteredDocuments())
+            @foreach (var document in documents.Skip(pageIndex * CorpusCapturesLayout.DocumentsPerPage).Take(CorpusCapturesLayout.DocumentsPerPage))
             {
                 <DocumentBlock @key=document ProcessedDocument=document ShowAgentButtons=@ShowAgentButtons />
             }
         </CascadingValue>
+
+        <DocumentPager PageIndex=@pageIndex PageIndexChanged="GoToPage" PageSize=@CorpusCapturesLayout.DocumentsPerPage DocumentCount=@documents.Count />
     </div>
 </DeferredContent>
 
@@ -42,6 +48,50 @@
 
     /// <summary>What lets the property tables' headers preview and open the glyphs they name.</summary>
     GlyphPreviews _glyphPreviews;
+
+    /// <summary>The page of documents shown, from 0.</summary>
+    int _pageIndex;
+
+    /// <summary>The search and filter the page was chosen under: another one brings other documents, shown from the first page.</summary>
+    (string SearchTerm, bool HideFullyMatched) _pagedFilter;
+
+    /// <summary>Whether the next render should bring the window back to the top, for a page chosen from the pager under the documents.</summary>
+    bool _scrollToTop;
+
+    /// <summary>The page to show of <paramref name="documentCount"/> documents: the first under a new filter, and never past the last.</summary>
+    int GetPageIndex(int documentCount)
+    {
+        var filter = (RuntimeSettings.SearchTerm, RuntimeSettings.HideFullyMatchedDocuments);
+        if (filter != _pagedFilter)
+        {
+            _pagedFilter = filter;
+            _pageIndex = 0;
+        }
+
+        var lastPageIndex = Math.Max(0, (documentCount - 1) / CorpusCapturesLayout.DocumentsPerPage);
+        return _pageIndex = Math.Min(_pageIndex, lastPageIndex);
+    }
+
+    void GoToPage(int pageIndex)
+    {
+        _pageIndex = pageIndex;
+        _scrollToTop = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrollToTop)
+            return;
+
+        _scrollToTop = false;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+    }
 
     protected override void OnInitialized()
     {

@@ -74,6 +74,12 @@ public static class CorpusCapturesLayout
     /// shifting it off-center. Surfaces as the <c>--corpus-captures-max-width</c> custom property.
     /// </summary>
     public const int ContentMaxWidthPx = 1920;
+
+    /// <summary>
+    /// How many documents a page shows at once. Every document shown is rendered in full - each line's spans and
+    /// property tables - so a whole corpus at once makes a page too big to render, diff or scroll through.
+    /// </summary>
+    public const int DocumentsPerPage = 100;
 }
 
 /// <summary>

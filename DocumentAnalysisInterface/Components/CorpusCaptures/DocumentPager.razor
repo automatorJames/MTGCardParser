@@ -1,0 +1,50 @@
+@* Steps through the pages of documents the Corpus Captures page shows - shown only when there's more than one. *@
+
+@if (PageCount > 1)
+{
+    var first = PageIndex * PageSize + 1;
+    var last = Math.Min(first + PageSize - 1, DocumentCount);
+
+    <nav class="document-pager">
+        <button class="pager-button" disabled=@(PageIndex == 0) title="First page" @onclick="() => GoTo(0)">&laquo;</button>
+        <button class="pager-button" disabled=@(PageIndex == 0) title="Previous page" @onclick="() => GoTo(PageIndex - 1)">&lsaquo;</button>
+
+        <span class="pager-position">
+            Page
+            <input class="pager-input" type="number" min="1" max="@PageCount" value="@(PageIndex + 1)" @onchange="OnPageEntered" />
+            of @PageCount.ToString("N0")
+        </span>
+
+        <button class="pager-button" disabled=@(PageIndex == PageCount - 1) title="Next page" @onclick="() => GoTo(PageIndex + 1)">&rsaquo;</button>
+        <button class="pager-button" disabled=@(PageIndex == PageCount - 1) title="Last page" @onclick="() => GoTo(PageCount - 1)">&raquo;</button>
+
+        <span class="pager-range">Documents @first.ToString("N0")–@last.ToString("N0") of @DocumentCount.ToString("N0")</span>
+    </nav>
+}
+
+@code {
+    /// <summary>The page shown, from 0.</summary>
+    [Parameter]
+    public int PageIndex { get; set; }
+
+    [Parameter]
+    public EventCallback<int> PageIndexChanged { get; set; }
+
+    [Parameter]
+    public int PageSize { get; set; }
+
+    /// <summary>How many documents there are to page through.</summary>
+    [Parameter]
+    public int DocumentCount { get; set; }
+
+    int PageCount => PageSize <= 0 ? 1 : Math.Max(1, (DocumentCount + PageSize - 1) / PageSize);
+
+    Task GoTo(int pageIndex)
+    {
+        pageIndex = Math.Clamp(pageIndex, 0, PageCount - 1);
+        return pageIndex == PageIndex ? Task.CompletedTask : PageIndexChanged.InvokeAsync(pageIndex);
+    }
+
+    Task OnPageEntered(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), out var page) ? GoTo(page - 1) : Task.CompletedTask;
+}
