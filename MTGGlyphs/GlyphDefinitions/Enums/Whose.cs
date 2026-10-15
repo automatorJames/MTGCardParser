@@ -23,6 +23,9 @@ public enum Whose
 
     TheNext,
 
+    [RegexPattern("the next turn's")]
+    NextTurns,
+
     Each,
 
     The

@@ -5,5 +5,7 @@ public enum ConditionConnective
     [RegexPattern("as long as")]
     AsLongAs,
 
-    Unless
+    Unless,
+
+    If
 }

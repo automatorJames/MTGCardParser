@@ -6,41 +6,41 @@ public enum Quantity
     X = -1,
 
     [RegexPattern("0", "zero", "none")]
-    Zero = 0,
+    Zero,
 
-    [RegexPattern("1", "one", "a")]
-    One = 1,
+    [RegexPattern("1", "one", "an?")]
+    One,
 
     [RegexPattern("2", "two")]
-    Two = 2,
+    Two,
 
     [RegexPattern("3", "three")]
-    Three = 3,
+    Three,
 
     [RegexPattern("4", "four")]
-    Four = 4,
+    Four,
 
     [RegexPattern("5", "five")]
-    Five = 5,
+    Five,
 
     [RegexPattern("6", "six")]
-    Six = 6,
+    Six,
 
     [RegexPattern("7", "seven")]
-    Seven = 7,
+    Seven,
 
     [RegexPattern("8", "eight")]
-    Eight = 8,
+    Eight,
 
     [RegexPattern("9", "nine")]
-    Nine = 9,
+    Nine,
 
     [RegexPattern("10", "ten")]
-    Ten = 10,
+    Ten,
 
     [RegexPattern("11", "eleven")]
-    Eleven = 11,
+    Eleven,
 
     [RegexPattern("12", "twelve")]
-    Twelve = 12
+    Twelve
 }

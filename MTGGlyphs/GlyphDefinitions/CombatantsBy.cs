@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"by walls", "by artifact creatures", "by creatures with flying or reach": which permanents a combat restriction is about.</summary>
+/// <summary>"by walls", "by artifact creatures", "by creatures with flying or reach", "by creatures with power 3 or greater": which permanents a combat restriction is about.</summary>
 /// <exampledoc>Juggernaut</exampledoc>
 /// <examplecapture>by walls</examplecapture>
 [Dependent]
@@ -13,5 +13,5 @@ public class CombatantsBy : Glyph
     public CompoundOf<TargetQualifier> Qualifiers { get; set; }
     public PermanentKind Kind { get; set; }
     [Optional]
-    public WithKeywords With { get; set; }
+    public WithQualifier With { get; set; }
 }

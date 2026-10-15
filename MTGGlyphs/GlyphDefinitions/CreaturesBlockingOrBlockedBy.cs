@@ -1,7 +1,7 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>
-/// The creatures in combat with something earlier in the line, e.g. "creatures blocking or blocked by it". The phrase
+/// The creatures in combat with something earlier in the line or with {this}, e.g. "creatures blocking or blocked by it", "creatures blocking or blocked by {this}". The phrase
 /// is a referent itself, for a later "they".
 /// </summary>
 /// <exampledoc>Abu Ja'far</exampledoc>
@@ -13,5 +13,5 @@ public class CreaturesBlockingOrBlockedBy : Glyph
 {
     public override Nib[] Nibs => ["creatures blocking or blocked by", Prop(Combatant)];
 
-    public It Combatant { get; set; }
+    public PermanentPhrase Combatant { get; set; }
 }

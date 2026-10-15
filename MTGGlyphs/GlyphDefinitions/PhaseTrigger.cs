@@ -1,7 +1,7 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>
-/// A trigger at a point in a turn: "at the beginning of your upkeep, …", "at the beginning of each player's upkeep, …".
+/// A trigger at a point in a turn: "at the beginning of your upkeep, …", "at the beginning of each player's upkeep, …", "at end of combat, …".
 /// Each player is a referent, so the effect can say "that player" (see <see cref="ThatPlayer"/>).
 /// </summary>
 /// <exampledoc>Copper Tablet</exampledoc>
@@ -10,7 +10,6 @@ public class PhaseTrigger : Glyph
 {
     public override Nib[] Nibs => [Prop(When), ",", Prop(Effect)];
 
-    public AtOrUntilPlayerPhase When { get; set; }
-
+    public OneOf<AtOrUntilPlayerPhase, AtEndOfCombat> When { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

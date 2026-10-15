@@ -3,5 +3,6 @@
 public enum PayOptionType
 {
     UnlessYou,
+    UnlessThey,
     YouMay
 }
