@@ -105,7 +105,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
-    public async Task Suspended_check_ins_let_steps_through_as_a_round_of_their_own_and_leave_the_sessions_count_as_it_was()
+    public async Task Suspended_check_ins_let_directed_steps_through_in_no_round_and_leave_the_sessions_count_as_it_was()
     {
         static string Glyph(string name, string verb) => $$"""
             public class {{name}} : Glyph
@@ -130,13 +130,22 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
             await agent.ApplyAsync(Glyph("AnimalNaps", "naps"), approval: "yes");
         }
 
-        Assert.Equal(1, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSnores")]);
-        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalSleeps")]);
-        Assert.Equal(2, workbench.ChangeRounds[(DefinitionKind.Glyph, "AnimalNaps")]);
+        // The directed steps are in no round, but are still an agent's.
+        Assert.Equal([(DefinitionKind.Glyph, "AnimalSnores")], workbench.ChangeRounds.Keys);
+        Assert.Equal([false, true, true], workbench.History.Select(x => x.Directed));
         Assert.Equal(3, workbench.ChangeSteps[(DefinitionKind.Glyph, "AnimalNaps")]);
 
         // The session's own check-in is still due.
         await Assert.ThrowsAsync<AgentRequestException>(() => agent.ApplyAsync(Glyph("AnimalDozes", "dozes")));
+
+        // A person's change is neither: each kind reverts apart from the others.
+        workbench.Apply(ChangeSet.FromSource(Glyph("AnimalDozes", "dozes"), [], workbench.WorkingDefinition));
+
+        workbench.RevertDirectedChanges();
+        Assert.Equal(["AnimalDozes", "AnimalSnores"], workbench.Changes.Select(x => x.Name).Order());
+
+        workbench.RevertOtherChanges();
+        Assert.Equal(["AnimalSnores"], workbench.Changes.Select(x => x.Name));
     }
 
     [Fact]

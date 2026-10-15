@@ -140,6 +140,15 @@
     color: var(--teal);
 }
 
+/* A handoff to a fresh session: ruled off as a step is, in its own color */
+.chat-entry.step.handoff {
+    border-top: 1px dashed #c586c0;
+}
+
+    .chat-entry.step.handoff .step-label {
+        color: #c586c0;
+    }
+
 /* What the app did on its own: a quiet line between the turns */
 .chat-entry.note {
     align-self: center;

@@ -42,6 +42,13 @@
             </div>
             break;
 
+        case ChatEntryKind.Handoff:
+            <div class="chat-entry step handoff" title="The agent's context had filled up, so it wrote what the next session needs into the journal, and a fresh session took over">
+                <span class="step-label">Fresh session</span>
+                <span class="step-figures">@entry.Text</span>
+            </div>
+            break;
+
         default:
             <div class="chat-entry error">@entry.Text</div>
             break;

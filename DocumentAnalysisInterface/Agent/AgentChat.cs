@@ -16,6 +16,9 @@ public enum ChatEntryKind
 
     /// <summary>A step the agent applied, closing off the work that led to it - its text the step's figures.</summary>
     Step,
+
+    /// <summary>A fresh session taking over from one whose context filled up - its text what was handed on.</summary>
+    Handoff,
 }
 
 /// <summary>One thing in the chat: something the person or the agent said, a tool the agent called, or what went wrong.</summary>

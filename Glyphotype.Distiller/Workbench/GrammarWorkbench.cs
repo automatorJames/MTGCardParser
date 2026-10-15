@@ -41,6 +41,9 @@ public sealed record WorkbenchStep(int Number, string Description, GrammarDefini
 
     /// <summary>What the agent spent reaching the step, as its host measured (see <see cref="GrammarWorkbench.SetStepEffort"/>) - null where none did.</summary>
     public StepEffort Effort { get; init; }
+
+    /// <summary>Whether an agent applied the step in work the person directed as it went (see <see cref="Agent.GrammarAgent.SuspendCheckIns"/>) - in no round, but not the person's own edit either.</summary>
+    public bool Directed { get; init; }
 }
 
 /// <summary>
@@ -176,7 +179,10 @@ public sealed class GrammarWorkbench : IDisposable
     /// <summary>The agent round (see <see cref="WorkbenchStep.Round"/>) each of <see cref="Changes"/> began in. A change a person began isn't here, nor one whose first step <see cref="History"/> no longer holds.</summary>
     public IReadOnlyDictionary<(DefinitionKind Kind, string Name), int> ChangeRounds { get; private set; } = new Dictionary<(DefinitionKind, string), int>();
 
-    /// <summary>The number of the agent step each of <see cref="ChangeRounds"/>' changes began in.</summary>
+    /// <summary>
+    /// The number of the agent step each change an agent began, began in: in a round (those in <see cref="ChangeRounds"/>),
+    /// or in work the person directed (see <see cref="WorkbenchStep.Directed"/>) - those that aren't.
+    /// </summary>
     public IReadOnlyDictionary<(DefinitionKind Kind, string Name), int> ChangeSteps { get; private set; } = new Dictionary<(DefinitionKind, string), int>();
 
     /// <summary>The edits made since the workbench started or last committed, oldest first.</summary>
@@ -207,7 +213,7 @@ public sealed class GrammarWorkbench : IDisposable
         var rounds = new Dictionary<(DefinitionKind, string), int>();
         var steps = new Dictionary<(DefinitionKind, string), int>();
 
-        if (!_history.Any(x => x.Round is not null))
+        if (!_history.Any(x => x.Round is not null || x.Directed))
             return (rounds, steps);
 
         foreach (var change in Changes)
@@ -236,10 +242,10 @@ public sealed class GrammarWorkbench : IDisposable
                     continue;
 
                 if (step.Round is int round)
-                {
                     rounds[(change.Kind, change.Name)] = round;
+
+                if (step.Round is not null || step.Directed)
                     steps[(change.Kind, change.Name)] = step.Number;
-                }
 
                 break;
             }
@@ -401,9 +407,13 @@ public sealed class GrammarWorkbench : IDisposable
     public void RevertStep(int number) =>
         RevertEach(ChangeSteps.Where(x => x.Value == number).Select(x => x.Key).ToList(), $"No working change began in step {number}", $"revert step {number}");
 
-    /// <summary>Reverts (as <see cref="Revert"/> does) every change no agent round began - those not in <see cref="ChangeRounds"/> - as one step.</summary>
+    /// <summary>Reverts (as <see cref="Revert"/> does) every change an agent began in work the person directed (see <see cref="WorkbenchStep.Directed"/>), as one step.</summary>
+    public void RevertDirectedChanges() =>
+        RevertEach(ChangeSteps.Keys.Where(x => !ChangeRounds.ContainsKey(x)).ToList(), "No working change began in directed work", "revert directed changes");
+
+    /// <summary>Reverts (as <see cref="Revert"/> does) every change no agent began - those not in <see cref="ChangeSteps"/> - as one step.</summary>
     public void RevertOtherChanges() =>
-        RevertEach(Changes.Select(x => (x.Kind, x.Name)).Where(x => !ChangeRounds.ContainsKey(x)).ToList(), "Every working change began in an AI round", "revert other changes");
+        RevertEach(Changes.Select(x => (x.Kind, x.Name)).Where(x => !ChangeSteps.ContainsKey(x)).ToList(), "Every working change began in an agent's step", "revert other changes");
 
     void RevertEach(List<(DefinitionKind Kind, string Name)> pending, string noneMessage, string description) =>
         Edit(working =>
@@ -470,8 +480,9 @@ public sealed class GrammarWorkbench : IDisposable
     /// <param name="scoreChange">What the change set does to the score, where it was evaluated.</param>
     /// <returns>The step, or null if the change set changed nothing.</returns>
     /// <exception cref="InvalidOperationException">The change set can't be applied (see <see cref="ChangeSet.ApplyTo"/>).</exception>
-    public WorkbenchStep Apply(ChangeSet changes, string description = null, int? round = null, StepScoreChange scoreChange = null) =>
-        Edit(changes.ApplyTo, string.IsNullOrWhiteSpace(description) ? changes.Describe() : description, round, scoreChange: scoreChange);
+    /// <param name="directed">For an agent's step in work the person directed as it went (see <see cref="WorkbenchStep.Directed"/>), rather than in a round.</param>
+    public WorkbenchStep Apply(ChangeSet changes, string description = null, int? round = null, StepScoreChange scoreChange = null, bool directed = false) =>
+        Edit(changes.ApplyTo, string.IsNullOrWhiteSpace(description) ? changes.Describe() : description, round, scoreChange: scoreChange, directed: directed);
 
     /// <summary>Records what an agent spent reaching step <paramref name="number"/> - for a host that measures it. Nothing, if the history no longer holds the step.</summary>
     public void SetStepEffort(int number, StepEffort effort)
@@ -514,7 +525,7 @@ public sealed class GrammarWorkbench : IDisposable
         return step;
     }
 
-    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description, int? round = null, bool restores = false, StepScoreChange scoreChange = null)
+    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description, int? round = null, bool restores = false, StepScoreChange scoreChange = null, bool directed = false)
     {
         WorkbenchStep step;
 
@@ -526,7 +537,7 @@ public sealed class GrammarWorkbench : IDisposable
             if (DefinitionDiff.Compare(before, after).Count == 0)
                 return null;
 
-            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores) { ScoreChange = scoreChange };
+            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores) { ScoreChange = scoreChange, Directed = directed };
             _history.Add(step);
 
             if (_history.Count > _historyCapacity)
@@ -839,7 +850,7 @@ public sealed class GrammarWorkbench : IDisposable
 
     /// <summary>One step as saved: what came after it is the next step's <see cref="Before"/>, or the working definition.</summary>
     sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before, int? Round = null, bool Restores = false,
-        StepScoreChange ScoreChange = null, StepEffort Effort = null);
+        StepScoreChange ScoreChange = null, StepEffort Effort = null, bool Directed = false);
 
     void SaveHistory()
     {
@@ -852,7 +863,7 @@ public sealed class GrammarWorkbench : IDisposable
             return;
         }
 
-        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores, x.ScoreChange, x.Effort)).ToList()));
+        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores, x.ScoreChange, x.Effort, x.Directed)).ToList()));
     }
 
     void LoadHistory()
@@ -869,6 +880,7 @@ public sealed class GrammarWorkbench : IDisposable
                 {
                     ScoreChange = saved[i].ScoreChange,
                     Effort = saved[i].Effort,
+                    Directed = saved[i].Directed,
                 });
 
             _stepNumber = _history.Count > 0 ? _history.Max(x => x.Number) : 0;

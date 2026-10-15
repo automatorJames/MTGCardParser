@@ -384,15 +384,21 @@ public sealed class GrammarAgent
         ? "When they say to continue, call `start_session`."
         : "The person starts the next round from the app when they're ready: until then, answer what they ask, but don't call `start_session` to go on.";
 
-    /// <summary>The round a step applied now is in: the host's, where it began one on this workbench (and the step isn't the person's own directed work - see <see cref="SuspendCheckIns"/>), else the session's.</summary>
-    int RoundOfNextStep(GrammarWorkbench workbench)
+    /// <summary>
+    /// The round a step applied now is in: none, in work the person directs (see <see cref="SuspendCheckIns"/>); the
+    /// host's, where it began one on this workbench; else the session's.
+    /// </summary>
+    int? RoundOfNextStep(GrammarWorkbench workbench)
     {
-        if (_checkInsSuspended == 0 && _hostRound is { } hosted && hosted.Workbench == workbench)
+        if (_checkInsSuspended > 0)
+            return null;
+
+        if (_hostRound is { } hosted && hosted.Workbench == workbench)
             return hosted.Number;
 
-        // A round of the session's own is numbered after every round there is - the host's included, which may have no steps yet.
+        // A round of the session's own is numbered after every round there is.
         if (_round?.Workbench != workbench)
-            _round = (workbench, Math.Max(workbench.History.Max(x => x.Round) ?? 0, _hostRound?.Workbench == workbench ? _hostRound.Value.Number : 0) + 1);
+            _round = (workbench, (workbench.History.Max(x => x.Round) ?? 0) + 1);
 
         return _round.Value.Number;
     }
@@ -505,19 +511,18 @@ public sealed class GrammarAgent
 
     /// <summary>
     /// Sets the session's check-ins aside until disposed: for work the person directs as it goes (the glyphs for one
-    /// line, say), where stopping to check in after so many steps would only get in the way. Its steps are a round of
-    /// their own, and the session's counts are as they were once it's over.
+    /// line, say), where stopping to check in after so many steps would only get in the way. Its steps are in no round,
+    /// but marked as directed (see <see cref="WorkbenchStep.Directed"/>), and the session's counts are as they were once it's over.
     /// </summary>
     public IDisposable SuspendCheckIns()
     {
         Interlocked.Increment(ref _checkInsSuspended);
 
-        var (steps, attempts, round) = (_stepsSinceCheckIn, _attemptsSinceStep, _round);
-        _round = null;
+        var (steps, attempts) = (_stepsSinceCheckIn, _attemptsSinceStep);
 
         return new Resumption(() =>
         {
-            (_stepsSinceCheckIn, _attemptsSinceStep, _round) = (steps, attempts, round);
+            (_stepsSinceCheckIn, _attemptsSinceStep) = (steps, attempts);
             Interlocked.Decrement(ref _checkInsSuspended);
         });
     }
@@ -772,7 +777,7 @@ public sealed class GrammarAgent
         var scoreChange = new StepScoreChange(after.TotalBits - before.TotalBits, after.Coverage - before.Coverage,
             after.CapturedWords - before.CapturedWords, after.CompressionRatio - before.CompressionRatio);
 
-        var step = Try(() => workbench.Apply(changes, description, round, scoreChange))
+        var step = Try(() => workbench.Apply(changes, description, round, scoreChange, directed: _checkInsSuspended > 0))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
         if (onlyDocuments)

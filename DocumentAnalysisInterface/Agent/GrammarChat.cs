@@ -26,8 +26,9 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     string _instructions;
 
-    /// <summary>Whether the agent has been told to hand off to a fresh session (see <see cref="HandoffThousands"/>) in this turn.</summary>
+    /// <summary>Whether the agent has been told to hand off to a fresh session (see <see cref="HandoffThousands"/>) in this turn - and how much context it had then.</summary>
     bool _handingOff;
+    long _handoffTokens;
 
     /// <summary>How many times in this round the agent has been told to go on after stopping with no check-in due.</summary>
     int _nudges;
@@ -227,6 +228,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             return;
 
         _handingOff = true;
+        _handoffTokens = tokens;
         agent.RequestHandoff();
         AddNote($"Context at {tokens / 1000:N0}K tokens, past the {HandoffThousands:N0}K handoff point: the agent is writing what the next session needs into the journal.");
     }
@@ -291,8 +293,9 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         agent.ContinueRoundInNextSession();
 
         var message = $"Continue AI round {round} - the session before this one handed off when its context filled up: call `start_session` with instructions \"{_instructions}\", then follow the brief it returns.";
+        var said = $"The last session handed off at {_handoffTokens / 1000:N0}K tokens of context · AI round {round} goes on from the journal";
 
-        if (Start($"Handed off to a fresh session: AI round {round} goes on from the journal.", message, ChatEntryKind.Note))
+        if (Start(said, message, ChatEntryKind.Handoff))
         {
             lock (_gate)
             {

@@ -216,12 +216,12 @@
     padding-top: 0.35rem;
 }
 
-/* A round's row: a shade lighter than the rows under it, its figures the size of its steps' */
-.changes-table .round-row td {
+/* A round's (or the line agent's) row: a shade lighter than the rows under it, its figures the size of its steps' */
+.changes-table .summary-row td {
     background-color: rgba(255, 255, 255, 0.04);
 }
 
-.changes-table .round-row .step-figure {
+.changes-table .summary-row .step-figure {
     font-size: 0.82rem;
 }
 

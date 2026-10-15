@@ -197,20 +197,24 @@ else
                             <tbody>
                                 @if (group.Title is not null)
                                 {
-                                    <tr class="group-row @(group.Round is null ? "" : "round-row")">
+                                    <tr class="group-row @(group.Steps.Count > 0 ? "summary-row" : "")">
                                         <td colspan="3" title="@group.Tooltip">@group.Title</td>
                                         @if (anySteps)
                                         {
-                                            @StepFigureCells(group.Round is int total ? StepFigures.Sum(Workbench.History.Where(x => x.Round == total)) : null)
+                                            @StepFigureCells(group.Steps.Count > 0 ? StepFigures.Sum(group.AllSteps) : null)
                                         }
                                         <td>
                                             @if (group.Round is int round)
                                             {
                                                 <button class="link-button" title="Revert every change begun in this round" @onclick="@(() => Record($"revert AI round {round}", () => Workbench.RevertRound(round)))">revert round</button>
                                             }
+                                            else if (group.Directed)
+                                            {
+                                                <button class="link-button" title="Revert every change the line agent began" @onclick="@(() => Record("revert line agent changes", Workbench.RevertDirectedChanges))">revert all</button>
+                                            }
                                             else
                                             {
-                                                <button class="link-button" title="Revert every change not begun in an AI round" @onclick="@(() => Record("revert other changes", Workbench.RevertOtherChanges))">revert all</button>
+                                                <button class="link-button" title="Revert every change no agent began" @onclick="@(() => Record("revert other changes", Workbench.RevertOtherChanges))">revert all</button>
                                             }
                                         </td>
                                     </tr>
@@ -681,10 +685,16 @@ else
         : Math.Abs(working - metric.Committed) < 1e-9 ? "unchanged"
         : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
 
-    /// <summary>Working changes under a heading: an agent's round, with its changes under the steps that began them - or the rest, listed as they are.</summary>
-    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes, int? Round = null)
+    /// <summary>
+    /// Working changes under a heading: an agent's round, or the line agent's work, with its changes under the steps that
+    /// began them - or the rest, listed as they are.
+    /// </summary>
+    record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes, int? Round = null, bool Directed = false)
     {
         public IReadOnlyList<StepGroup> Steps { get; init; } = [];
+
+        /// <summary>The steps whose figures the heading adds up: all a round's, including those that began no change still here; the steps listed, otherwise.</summary>
+        public IReadOnlyList<WorkbenchStep> AllSteps { get; init; } = [];
     }
 
     /// <summary>The working changes an agent's step began, and the step - null where the history no longer holds it.</summary>
@@ -725,41 +735,57 @@ else
         </tr>;
 
     /// <summary>
-    /// The working changes grouped by the agent round each began in, earliest first, each with its changes under the
-    /// steps that began them; then the rest. A single untitled group when no agent round began any.
+    /// The working changes grouped by the agent round each began in, earliest first; then those the line agent began;
+    /// then the rest. A round's and the line agent's changes are under the steps that began them. A single untitled
+    /// group when no agent began any.
     /// </summary>
     List<ChangeGroup> GetChangeGroups()
     {
+        int? StepOf(DefinitionChange change) => Workbench.ChangeSteps.TryGetValue((change.Kind, change.Name), out var number) ? number : null;
         int? RoundOf(DefinitionChange change) => Workbench.ChangeRounds.TryGetValue((change.Kind, change.Name), out var round) ? round : null;
 
-        var groups = Workbench.Changes.GroupBy(RoundOf).ToList();
-
-        if (groups.All(x => x.Key is null))
+        if (Workbench.Changes.All(x => StepOf(x) is null))
             return [new ChangeGroup(null, null, Workbench.Changes)];
 
-        var steps = Workbench.History.GroupBy(x => x.Number).ToDictionary(x => x.Key, x => x.Last());
+        var history = Workbench.History;
+        var steps = history.GroupBy(x => x.Number).ToDictionary(x => x.Key, x => x.Last());
 
-        ChangeGroup Round(int round, List<DefinitionChange> changes)
-        {
-            var byStep = changes.GroupBy(x => Workbench.ChangeSteps.TryGetValue((x.Kind, x.Name), out var number) ? number : (int?)null).ToList();
+        List<StepGroup> ByStep(IEnumerable<DefinitionChange> changes) =>
+            changes.GroupBy(x => StepOf(x).Value)
+                .OrderBy(x => x.Key)
+                .Select(x => new StepGroup(x.Key, steps.GetValueOrDefault(x.Key), x.ToList()))
+                .ToList();
 
-            return new($"AI round {round}", "Changes an agent began in this round: from a start of the agent to the next", byStep.Where(x => x.Key is null).SelectMany(x => x).ToList(), round)
+        var rounds = Workbench.Changes
+            .Where(x => RoundOf(x) is not null)
+            .GroupBy(x => RoundOf(x).Value)
+            .OrderBy(x => x.Key)
+            .Select(x => new ChangeGroup($"AI round {x.Key}", "Changes an agent began in this round: from a start of the agent to the next", [], x.Key)
             {
-                Steps = byStep
-                    .Where(x => x.Key is not null)
-                    .OrderBy(x => x.Key)
-                    .Select(x => new StepGroup(x.Key.Value, steps.GetValueOrDefault(x.Key.Value), x.ToList()))
-                    .ToList(),
-            };
+                Steps = ByStep(x),
+                AllSteps = history.Where(y => y.Round == x.Key).ToList(),
+            });
+
+        var directed = Workbench.Changes.Where(x => StepOf(x) is not null && RoundOf(x) is null).ToList();
+        var others = Workbench.Changes.Where(x => StepOf(x) is null).ToList();
+
+        var groups = rounds.ToList();
+
+        if (directed.Count > 0)
+        {
+            var directedSteps = ByStep(directed);
+
+            groups.Add(new("Line agent", "Changes the line agent began on Corpus Captures, working on one line at a time", [], Directed: true)
+            {
+                Steps = directedSteps,
+                AllSteps = directedSteps.Select(x => x.Step).OfType<WorkbenchStep>().ToList(),
+            });
         }
 
-        return groups
-            .OrderBy(x => x.Key is null)
-            .ThenBy(x => x.Key)
-            .Select(x => x.Key is int round
-                ? Round(round, x.ToList())
-                : new ChangeGroup("Other changes", "Changes a person began, or whose first step is no longer in the history", x.ToList()))
-            .ToList();
+        if (others.Count > 0)
+            groups.Add(new("Other changes", "Changes a person began, or whose first step is no longer in the history", others));
+
+        return groups;
     }
 
     // ---- Glyphs ----
