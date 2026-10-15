@@ -249,8 +249,11 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
             return;
         }
 
-        // An agent asked to stop after its step that stops before it is stopping as asked.
-        if (!stopped && Round is int unfinished && !agent.IsCheckInDue && !agent.IsHandoffDue && !agent.IsStopAfterStepRequested && _nudges < _maxNudges && !EndedInError)
+        // An agent stopping to ask approval for a step that breaks the step rules is checking in as the session says to,
+        // and one asked to stop after its step that stops before it is stopping as asked: neither is told to go on.
+        if (!stopped && Round is not null && agent.IsAwaitingApproval)
+            AddNote("The agent is waiting for your approval of a step that breaks the step rules. Answer it with Send - or Start AI, with your answer as the round's instructions.");
+        else if (!stopped && Round is int unfinished && !agent.IsCheckInDue && !agent.IsHandoffDue && !agent.IsStopAfterStepRequested && _nudges < _maxNudges && !EndedInError)
         {
             _nudges++;
             _ = Task.Run(() => Nudge(unfinished));

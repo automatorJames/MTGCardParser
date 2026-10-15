@@ -261,6 +261,7 @@ public sealed class GrammarAgent
         }
 
         Interlocked.Exchange(ref _attemptsSinceStep, 0);
+        _brokeRules = false;
 
         var report = new StringBuilder();
 
@@ -377,6 +378,15 @@ public sealed class GrammarAgent
         if (_stopAfterSteps == 0)
             _stopAfterSteps = _stepsSinceCheckIn + 1;
     }
+
+    /// <summary>Whether the change last evaluated, or refused by `apply`, breaks the step rules - see <see cref="IsAwaitingApproval"/>.</summary>
+    volatile bool _brokeRules;
+
+    /// <summary>
+    /// Whether the agent's latest change breaks the step rules, with nothing applied since - so an agent that stops now has
+    /// stopped as the rules say to, to ask the person's approval for it, rather than given up early.
+    /// </summary>
+    public bool IsAwaitingApproval => _brokeRules;
 
     /// <summary>Whether the person has asked the session to check in after its next step (see <see cref="StopAfterStep"/>).</summary>
     public bool IsStopAfterStepRequested => _stopAfterSteps > 0;
@@ -641,6 +651,8 @@ public sealed class GrammarAgent
 
         var report = WithStatus($"Evaluated, not applied: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}", MisplacedDocumentation(source));
 
+        _brokeRules = evaluation.After.Succeeded && RuleViolations(evaluation).Count > 0;
+
         if (evaluation.After.Succeeded)
             report += RuleViolations(evaluation) is { Count: > 0 } violations
                 ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}. Rework it - or, if it's right anyway, check in with the person, and apply it with `approval` once they agree."
@@ -700,8 +712,9 @@ public sealed class GrammarAgent
             return WithStatus($"Not applied - the result wouldn't build: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}", SessionStatus(applied: false));
 
         var violations = RuleViolations(evaluation);
+        _brokeRules = violations.Count > 0 && string.IsNullOrWhiteSpace(approval);
 
-        if (violations.Count > 0 && string.IsNullOrWhiteSpace(approval))
+        if (_brokeRules)
             return WithStatus($"Not applied - {string.Join("; ", violations)}: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}"
                 + $"{Environment.NewLine}Rework it, or undo toward something better. If it's right anyway, check in: tell the person which rule it breaks and why it's worth it, and wait - then apply it with `approval` only once they agree.", SessionStatus(applied: false));
 

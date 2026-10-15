@@ -75,8 +75,12 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
 
         Assert.Contains("`apply` would refuse this", await agent.EvaluateAsync(null, remove: "AnimalRests"));
 
+        // Stopped here, the agent would be checking in for approval, as the rules say to.
+        Assert.True(agent.IsAwaitingApproval);
+
         var approved = await agent.ApplyAsync(null, remove: "AnimalRests", description: "no resting", approval: "go ahead");
         Assert.Contains("Applied as step 1: no resting (approved: go ahead)", approved);
+        Assert.False(agent.IsAwaitingApproval);
     }
 
     [Fact]
@@ -134,6 +138,7 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         var evaluated = await agent.EvaluateAsync(_animalSnores);
         Assert.DoesNotContain("Taken from existing glyphs", evaluated);
         Assert.DoesNotContain("would refuse", evaluated);
+        Assert.False(agent.IsAwaitingApproval);
 
         Assert.StartsWith("Applied as step 1", await agent.ApplyAsync(_animalSnores));
     }
