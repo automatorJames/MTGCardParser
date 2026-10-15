@@ -21,10 +21,10 @@ public enum Whose
     [RegexPattern("a")]
     Any,
 
-    TheNext,
-
     [RegexPattern("the next turn's")]
     NextTurns,
+
+    TheNext,
 
     Each,
 
