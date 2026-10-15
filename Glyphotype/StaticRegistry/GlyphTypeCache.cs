@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Runtime.CompilerServices;
 
 namespace Glyphotype.StaticRegistry;
 
@@ -16,18 +16,22 @@ namespace Glyphotype.StaticRegistry;
 /// Building a graph for a type with a circular property reference recurses without end; a <see cref="GlyphGrammar"/>
 /// rules that out for its types before building any (see <see cref="Glyph.CheckForReferenceLoops(Type)"/>).
 /// </para>
+/// <para>
+/// Held weakly, by type: what's cached for a type emitted at runtime (see <see cref="GrammarEmitter"/>) goes once the
+/// type itself is no longer used, rather than keeping it, and its assembly, alive for good.
+/// </para>
 /// </summary>
 public static class GlyphTypeCache
 {
     // Built under one reentrant lock (building a type's configuration can build its nested types' configurations)
     // and read lock-free: graphs may be first requested from parallel tokenization.
     static readonly object _buildGate = new();
-    static readonly ConcurrentDictionary<Type, GlyphTypeConfiguration> _configurations = new()
+    static readonly ConditionalWeakTable<Type, GlyphTypeConfiguration> _configurations = new()
     {
         // Glyph itself is abstract, so it can't be instantiated to read its Nibs.
-        [typeof(Glyph)] = new GlyphTypeConfiguration(typeof(Glyph), [], Joiner.Space, []),
+        { typeof(Glyph), new GlyphTypeConfiguration(typeof(Glyph), [], Joiner.Space, []) },
     };
-    static readonly ConcurrentDictionary<Type, RegexGraph> _graphs = new();
+    static readonly ConditionalWeakTable<Type, RegexGraph> _graphs = new();
 
     public static GlyphTypeConfiguration GetConfiguration(Type glyphType)
     {
@@ -41,7 +45,7 @@ public static class GlyphTypeCache
         lock (_buildGate)
             return _configurations.TryGetValue(glyphType, out configuration)
                 ? configuration
-                : _configurations[glyphType] = BuildConfiguration(glyphType);
+                : Add(_configurations, glyphType, BuildConfiguration(glyphType));
     }
 
     public static RegexGraph GetRegexGraph(Type type)
@@ -52,7 +56,13 @@ public static class GlyphTypeCache
         lock (_buildGate)
             return _graphs.TryGetValue(type, out graph)
                 ? graph
-                : _graphs[type] = RegexGraph.Create(type);
+                : Add(_graphs, type, RegexGraph.Create(type));
+    }
+
+    static T Add<T>(ConditionalWeakTable<Type, T> table, Type type, T value) where T : class
+    {
+        table.AddOrUpdate(type, value);
+        return value;
     }
 
     static GlyphTypeConfiguration BuildConfiguration(Type glyphType)

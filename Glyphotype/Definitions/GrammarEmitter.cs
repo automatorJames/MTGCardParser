@@ -5,9 +5,10 @@ namespace Glyphotype.Definitions;
 /// <summary>
 /// Compiles a <see cref="GrammarDefinition"/> into runtime CLR types - marker interfaces, enums and Glyph classes,
 /// each built exactly as its C# source would declare it - ready for a <see cref="GlyphGrammar"/> (see
-/// <see cref="GlyphGrammar.FromDefinition"/>). Every call emits into an assembly of its own, so the same names
-/// can be emitted any number of times - but a definition emitted before, whose references resolve to the same types
-/// as they did then, isn't emitted again: the type emitted then is reused (see <see cref="_emittedTypes"/>).
+/// <see cref="GlyphGrammar.FromDefinition"/>). Every type but a marker is emitted into a collectible assembly of its
+/// own, so the same names can be emitted any number of times, and a type is unloaded once nothing uses it - but a definition
+/// emitted before, whose references resolve to the same types as they did then, isn't emitted again while the type
+/// emitted then is still in use: that type is reused (see <see cref="_emittedTypes"/>).
 /// <para>
 /// Emitting doesn't validate the grammar - <see cref="GlyphGrammar"/>'s construction does that, as it would for
 /// hand-written types. It only refuses what can't be built at all: a name that resolves to nothing, a reference
@@ -34,61 +35,102 @@ public static class GrammarEmitter
     /// glyphs those types refer to are known too. Glyphotype's own enums (e.g. <see cref="Conjunction"/>) and glyphs (e.g. <see cref="It"/>) always are.
     /// A name defined in <paramref name="grammar"/> takes precedence over a known type of the same name.
     /// </param>
-    public static IReadOnlyList<Type> Emit(GrammarDefinition grammar, IEnumerable<Type> knownTypes = null)
+    /// <param name="reuse">Whether to reuse types emitted before (see <see cref="_emittedTypes"/>) - false to emit every one afresh, as when testing what emitting makes.</param>
+    public static IReadOnlyList<Type> Emit(GrammarDefinition grammar, IEnumerable<Type> knownTypes = null, bool reuse = true)
     {
         lock (_emitGate)
-            return new Emission(new(DefineModule), IndexKnownTypes(knownTypes ?? [])).EmitAll(grammar);
+        {
+            ForgetUnloaded();
+            return new Emission(IndexKnownTypes(knownTypes ?? []), reuse: reuse).EmitAll(grammar);
+        }
     }
 
-    /// <summary>A module in an assembly of its own, for one <see cref="Emit"/> - defined only once it has something new to emit.</summary>
-    static ModuleBuilder DefineModule()
+    /// <summary>
+    /// Has later <see cref="Emit"/>s reuse <paramref name="types"/> - e.g. a compiled grammar's - wherever they'd emit
+    /// the same definition, with its references resolving the same way, rather than emitting a copy of each: so a
+    /// grammar built from that grammar's definition, or from one changing a few glyphs of it, shares its types, and
+    /// everything cached about them (e.g. their <see cref="RegexGraph"/>s, see <see cref="GlyphTypeCache"/>).
+    /// </summary>
+    public static void Reuse(IEnumerable<Type> types)
     {
-        var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName($"Glyphotype.Emitted.{Guid.NewGuid():N}"), AssemblyBuilderAccess.Run);
-        _emittedAssemblies[assembly.GetName().Name] = assembly;
+        var list = types.ToList();
+
+        // By name, along with the markers and vocabularies they refer to, as known types are.
+        var existing = IndexKnownTypes(list);
+
+        lock (_emitGate)
+            new Emission(existing, existing).EmitAll(GrammarDefinition.FromTypes(list));
+    }
+
+    /// <summary>
+    /// A module in an assembly of its own, for one type - collectible, so each type is unloaded once nothing uses it,
+    /// whatever was emitted alongside it. Not for a marker, though: a <see cref="TypeFilterAttribute"/> names its
+    /// marker by assembly-qualified name, which the runtime won't resolve to a collectible assembly. A marker is a
+    /// member-less interface, emitted once per name (see <see cref="_emittedTypes"/>), so keeping it costs nothing.
+    /// </summary>
+    static ModuleBuilder DefineModule(bool collectible = true)
+    {
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName($"Glyphotype.Emitted.{Guid.NewGuid():N}"),
+            collectible ? AssemblyBuilderAccess.RunAndCollect : AssemblyBuilderAccess.Run);
+        _emittedAssemblies[assembly.GetName().Name] = new(assembly);
 
         return assembly.DefineDynamicModule("Main");
     }
 
     /// <summary>
-    /// Every type <see cref="Emit"/> has built, by what it was built from: its definition, and the type each name that
-    /// refers to resolved to. Emitted types are never unloaded, nor is anything cached about them (e.g. a glyph's
-    /// <see cref="RegexGraph"/>, see <see cref="GlyphTypeCache"/>) - so rebuilding a grammar with one glyph changed
-    /// reuses every type it shares with the grammar before, and only emits (and caches) that glyph and the glyphs
-    /// that refer to it, rather than a whole grammar's worth again.
+    /// Every type <see cref="Emit"/> has built (or been given to <see cref="Reuse"/>), by what it was built from: its
+    /// definition, and the type each name that refers to resolved to - held weakly, so a type no grammar uses any more
+    /// is unloaded, and what's cached about it with it. So rebuilding a grammar with one glyph changed reuses every type
+    /// it shares with the grammar before, and only emits that glyph and the glyphs that refer to it, rather than a whole
+    /// grammar's worth again.
     /// </summary>
-    static readonly Dictionary<string, Type> _emittedTypes = [];
+    static readonly Dictionary<string, WeakReference<Type>> _emittedTypes = [];
 
     /// <summary>Serializes <see cref="Emit"/>s, which share <see cref="_emittedTypes"/>.</summary>
     static readonly object _emitGate = new();
 
     /// <summary>
-    /// Every assembly <see cref="Emit"/> has built, by name. An attribute argument naming a type (e.g.
-    /// <see cref="TypeFilterAttribute"/>'s marker) is stored as an assembly-qualified name, which the runtime
-    /// resolves by loading that assembly by name when the attribute is read - and it can't find a dynamic
-    /// assembly that way on its own.
+    /// Every assembly <see cref="Emit"/> has built, by name - held weakly, as <see cref="_emittedTypes"/> is. An
+    /// attribute argument naming a type (e.g. <see cref="TypeFilterAttribute"/>'s marker) is stored as an
+    /// assembly-qualified name, which the runtime resolves by loading that assembly by name when the attribute is read -
+    /// and it can't find a dynamic assembly that way on its own.
     /// </summary>
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Assembly> _emittedAssemblies = new();
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, WeakReference<Assembly>> _emittedAssemblies = new();
 
     static GrammarEmitter()
     {
         AppDomain.CurrentDomain.AssemblyResolve += (_, args) =>
-            _emittedAssemblies.GetValueOrDefault(new AssemblyName(args.Name).Name);
+            _emittedAssemblies.TryGetValue(new AssemblyName(args.Name).Name, out var reference) && reference.TryGetTarget(out var assembly) ? assembly : null;
     }
 
-    sealed class Emission(Lazy<ModuleBuilder> module, Dictionary<string, Type> knownTypes)
+    /// <summary>Drops the entries of <see cref="_emittedTypes"/> and <see cref="_emittedAssemblies"/> whose type or assembly has been unloaded.</summary>
+    static void ForgetUnloaded()
+    {
+        foreach (var (key, reference) in _emittedTypes.ToList())
+            if (!reference.TryGetTarget(out _))
+                _emittedTypes.Remove(key);
+
+        foreach (var (name, reference) in _emittedAssemblies)
+            if (!reference.TryGetTarget(out _))
+                _emittedAssemblies.TryRemove(name, out _);
+    }
+
+    /// <param name="existing">For <see cref="Reuse"/>: the types to record, by name, in place of emitting any.</param>
+    /// <param name="reuse">Whether to reuse, and record, types in <see cref="_emittedTypes"/>.</param>
+    sealed class Emission(Dictionary<string, Type> knownTypes, Dictionary<string, Type> existing = null, bool reuse = true)
     {
         readonly Dictionary<string, Type> _emitted = [];
 
         public IReadOnlyList<Type> EmitAll(GrammarDefinition grammar)
         {
             foreach (var marker in grammar.Markers)
-                Add(Reuse($"marker {marker}", () => module.Value.DefineType(marker, TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract).CreateType()));
+                Add(Reuse($"marker {marker}", marker, () => DefineModule(collectible: false).DefineType(marker, TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract).CreateType()));
 
             foreach (var vocabulary in grammar.Vocabularies)
-                Add(Reuse($"vocabulary {DefinitionJson.Serialize(vocabulary)}", () => EmitVocabulary(vocabulary)));
+                Add(Reuse($"vocabulary {DefinitionJson.Serialize(vocabulary)}", vocabulary.Name, () => EmitVocabulary(vocabulary)));
 
             foreach (var glyph in OrderByDependency(grammar.Glyphs))
-                Add(Reuse(GlyphKey(glyph), () => EmitGlyph(glyph)));
+                Add(Reuse(GlyphKey(glyph), glyph.Name, () => EmitGlyph(glyph)));
 
             return _emitted.Values.ToList();
         }
@@ -99,13 +141,21 @@ public static class GrammarEmitter
                 throw new InvalidOperationException($"The grammar defines '{type.Name}' more than once");
         }
 
-        /// <summary>The type emitted from <paramref name="key"/> before (see <see cref="_emittedTypes"/>), or else a new one <paramref name="emit"/> emits.</summary>
-        static Type Reuse(string key, Func<Type> emit)
+        /// <summary>
+        /// The type emitted from <paramref name="key"/> before (see <see cref="_emittedTypes"/>), if it's still loaded, or
+        /// else a new one <paramref name="emit"/> emits - or, recording <see cref="existing"/> types, the one named <paramref name="name"/>.
+        /// </summary>
+        Type Reuse(string key, string name, Func<Type> emit)
         {
-            if (_emittedTypes.TryGetValue(key, out var type))
+            if (!reuse)
+                return emit();
+
+            if (existing is null && _emittedTypes.TryGetValue(key, out var reference) && reference.TryGetTarget(out var type))
                 return type;
 
-            return _emittedTypes[key] = emit();
+            type = existing is null ? emit() : existing[name];
+            _emittedTypes[key] = new(type);
+            return type;
         }
 
         /// <summary>
@@ -132,7 +182,7 @@ public static class GrammarEmitter
 
         Type EmitVocabulary(VocabularyDefinition vocabulary)
         {
-            var enumBuilder = module.Value.DefineEnum(vocabulary.Name, TypeAttributes.Public, typeof(int));
+            var enumBuilder = DefineModule().DefineEnum(vocabulary.Name, TypeAttributes.Public, typeof(int));
 
             if (vocabulary.IsOptionalPlural)
                 enumBuilder.SetCustomAttribute(Attribute<OptionalPluralAttribute>());
@@ -168,7 +218,7 @@ public static class GrammarEmitter
                 _ => throw new InvalidOperationException($"{glyph.Name} is an alias, but not of a generic primitive (OneOf, CompoundOf, ManyOf, OptionalOf)"),
             };
 
-            var typeBuilder = module.Value.DefineType(glyph.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.BeforeFieldInit, baseType);
+            var typeBuilder = DefineModule().DefineType(glyph.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.BeforeFieldInit, baseType);
 
             foreach (var marker in glyph.Markers)
                 typeBuilder.AddInterfaceImplementation(ResolveName(marker));

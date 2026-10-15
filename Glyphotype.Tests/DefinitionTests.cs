@@ -1,4 +1,5 @@
-﻿using Glyphotype.Definitions;
+﻿using System.Runtime.CompilerServices;
+using Glyphotype.Definitions;
 
 namespace Glyphotype.Tests;
 
@@ -23,9 +24,20 @@ public class DefinitionTests(CorpusFixture corpus)
     [Fact]
     public void Emitted_types_read_back_as_the_same_definition()
     {
-        var emitted = GrammarEmitter.Emit(Definition);
+        // Afresh, not reusing the compiled types a workspace manager registers (see GrammarEmitter.Reuse): those would read back trivially.
+        var emitted = GrammarEmitter.Emit(Definition, reuse: false);
 
         Assert.Equal(Definition.ToJson(), GrammarDefinition.FromTypes(emitted).ToJson());
+    }
+
+    [Fact]
+    public void A_grammar_built_from_a_compiled_grammars_definition_reuses_its_types()
+    {
+        GrammarEmitter.Reuse(corpus.Grammar.Types);
+
+        var emitted = GrammarEmitter.Emit(Definition);
+
+        Assert.All(emitted, x => Assert.False(x.Assembly.IsDynamic, $"{x.Name} was emitted again"));
     }
 
     [Fact]
@@ -51,7 +63,7 @@ public class DefinitionTests(CorpusFixture corpus)
     {
         // Through JSON first, so this also proves the serialized form is missing nothing.
         var definition = GrammarDefinition.FromJson(Definition.ToJson());
-        var grammar = GlyphGrammar.FromDefinition(definition);
+        var grammar = new GlyphGrammar(GrammarEmitter.Emit(definition, reuse: false));
 
         var mismatches = CorpusFixture.Process(grammar)
             .Select(x => (Expected: TestCorpus.Documents.Single(y => y.Text == x.Document.Text).ExpectedLines, Actual: x.Lines.Select(GlyphSignature.Of).ToArray()))
@@ -121,6 +133,38 @@ public class DefinitionTests(CorpusFixture corpus)
         Assert.NotSame(first["AnimalHidesAgain"], changed["AnimalHidesAgain"]);
         Assert.Same(first["AnimalSeeks"], changed["AnimalSeeks"]);
         Assert.Same(changed["AnimalHides"], changed["AnimalHidesAgain"].GetProperty("Hiding").PropertyType);
+    }
+
+    [Fact]
+    public void An_emitted_type_is_unloaded_once_nothing_uses_it()
+    {
+        var emitted = EmitAndUse();
+
+        for (int i = 0; i < 20 && emitted.IsAlive; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        Assert.False(emitted.IsAlive);
+    }
+
+    /// <summary>Emits a glyph, and tokenizes with a grammar holding it, so everything cached about it is - returning only a weak reference to it.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    WeakReference EmitAndUse()
+    {
+        var glyph = new GlyphDefinition
+        {
+            Name = "AnimalVanishes",
+            Nibs = [new NibDefinition.Literal("the"), new NibDefinition.Property("Animal"), new NibDefinition.Literal("vanishes")],
+            Properties = [new() { Name = "Animal", Type = TypeReference.Vocabulary(nameof(Animal)) }],
+        };
+
+        var type = GrammarEmitter.Emit(new GrammarDefinition { Glyphs = [glyph] }, knownTypes: corpus.Grammar.Types).Single();
+        var grammar = new GlyphGrammar(corpus.Grammar.Types.Append(type));
+
+        Assert.Equal("AnimalVanishes{Animal=Dog} .", string.Join(" ", grammar.Tokenize("the dog vanishes.").Select(GlyphSignature.Of)));
+        return new(type);
     }
 
     [Fact]

@@ -1,12 +1,13 @@
-﻿using System.Collections.Concurrent;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Glyphotype;
 
 public static class Extensions
 {
-    static readonly ConcurrentDictionary<Type, string> _friendlyGlyphTypeNames = [];
+    // Weak, so it doesn't keep a type emitted at runtime (see Definitions.GrammarEmitter) alive once nothing else uses it.
+    static readonly ConditionalWeakTable<Type, string> _friendlyGlyphTypeNames = new();
 
     /// <summary>
     /// The display name for a <see cref="Glyph"/> type - the same sentence-cased rendering
@@ -15,7 +16,7 @@ public static class Extensions
     /// word-tree builder resolves it once per collapsed token across the whole corpus.
     /// </summary>
     public static string ToFriendlyGlyphName(this Type glyphType) =>
-        _friendlyGlyphTypeNames.GetOrAdd(glyphType, x => x.Name.ToFriendlyCase(TitleDisplayOption.Sentence));
+        _friendlyGlyphTypeNames.GetValue(glyphType, x => x.Name.ToFriendlyCase(TitleDisplayOption.Sentence));
 
     public static string AddPluralization(this string word, bool makeOptional)
     {
