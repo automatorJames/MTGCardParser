@@ -116,6 +116,7 @@ public sealed class LineChat : AgentChat
         catch (Exception)
         {
             // It applied, so it read; should it not read again, there's only less to list.
+            Applied?.Invoke();
             return;
         }
 
@@ -125,7 +126,12 @@ public sealed class LineChat : AgentChat
         foreach (var definition in declared)
             if (!_produced.Contains(definition))
                 _produced.Add(definition);
+
+        Applied?.Invoke();
     }
+
+    /// <summary>Fires, from whatever thread, when the agent has applied a step: the working grammar is not the one the line was last shown under.</summary>
+    public event Action Applied;
 
     /// <summary>"Ancestral Recall", line 0 → AncestralRecallLine1.</summary>
     static string FallbackName(string documentName, int lineIndex)
@@ -155,6 +161,9 @@ public sealed class LineChats(Func<string, int, string, LineChat> create)
 
     public event Action Changed;
 
+    /// <summary>Fires, from whatever thread, when a chat's agent has applied a step - the line's document is due a fresh look under the working grammar.</summary>
+    public event Action<LineChat> Applied;
+
     public LineChat Get(string documentName, int lineIndex)
     {
         lock (_gate)
@@ -180,6 +189,9 @@ public sealed class LineChats(Func<string, int, string, LineChat> create)
 
             _chats[(documentName, lineIndex)] = chat = create(documentName, lineIndex, lineText);
         }
+
+        var opened = chat;
+        opened.Applied += () => Applied?.Invoke(opened);
 
         Changed?.Invoke();
         return chat;

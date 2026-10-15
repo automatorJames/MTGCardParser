@@ -2,6 +2,8 @@
 @inject ActiveCorpus CorpusAnalyzer
 @inject RuntimeSettings RuntimeSettings
 @inject DocumentAnalysisInterface.Agent.LineChats LineChats
+@inject WorkspaceManager Workspaces
+@implements IDisposable
 
 <div class="document-capture-block">
     <div class="document-title-row">
@@ -9,7 +11,7 @@
 
         @if (RuntimeSettings.ShowCoverageStats)
         {
-            var documentPercent = GetCoveragePercent(ProcessedDocument.CapturedWordCount, ProcessedDocument.WordCount);
+            var documentPercent = GetCoveragePercent(Shown.CapturedWordCount, Shown.WordCount);
 
             <div class="coverage-callout">
                 <span class="callout-key">Coverage:</span>
@@ -18,7 +20,7 @@
         }
     </div>
 
-    @foreach (var line in ProcessedDocument.Lines)
+    @foreach (var line in Shown.Lines)
     {
         var displayContext = new CaptureTraceDisplayContext(line, RuntimeSettings, CorpusAnalyzer.DigestedTextWithCaptureGlyphs);
 
@@ -96,6 +98,52 @@
     [Parameter]
     public ProcessedDocument ProcessedDocument { get; set; }
 
+    /// <summary>The document re-tokenized under the working grammar after a line's agent applied a step - shown until the page brings the re-scored corpus.</summary>
+    ProcessedDocument _retokenized;
+
+    ProcessedDocument _retokenizedFrom;
+    int _retokenizeVersion;
+
+    ProcessedDocument Shown => _retokenizedFrom == ProcessedDocument ? _retokenized : ProcessedDocument;
+
+    protected override void OnInitialized() => LineChats.Applied += OnLineApplied;
+
+    public void Dispose() => LineChats.Applied -= OnLineApplied;
+
+    void OnLineApplied(DocumentAnalysisInterface.Agent.LineChat chat)
+    {
+        if (chat.DocumentName == ProcessedDocument.Document.Name)
+            _ = InvokeAsync(RetokenizeAsync);
+    }
+
+    /// <summary>Tokenizes just this document under the working grammar, so the line shows what the agent's step captured without waiting for the whole corpus to be re-scored.</summary>
+    async Task RetokenizeAsync()
+    {
+        var version = ++_retokenizeVersion;
+        var from = ProcessedDocument;
+        var workbench = Workspaces.Active;
+
+        ProcessedDocument retokenized;
+
+        try
+        {
+            var definition = workbench.WorkingDefinition;
+            retokenized = await Task.Run(() => new ProcessedDocument(from.Document, workbench.BuildGrammar(definition)));
+        }
+        catch (Exception)
+        {
+            // A grammar that doesn't build leaves the line as it was; the re-score reports why.
+            return;
+        }
+
+        // A later step's re-tokenizing owns the view now, or the page has brought a new corpus.
+        if (version != _retokenizeVersion || from != ProcessedDocument)
+            return;
+
+        _retokenized = retokenized;
+        _retokenizedFrom = from;
+        StateHasChanged();
+    }
     /// <summary>Whether each line has a button opening a chat in which the local agent writes glyphs for it - and the open chats show.</summary>
     [Parameter]
     public bool ShowAgentButtons { get; set; }
