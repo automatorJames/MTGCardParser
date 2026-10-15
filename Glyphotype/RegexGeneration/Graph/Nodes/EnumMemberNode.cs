@@ -28,10 +28,16 @@ public class EnumMemberNode : TerminalRegexNode
         // Anchored: it's used to work out which member a captured value *is*, so it must match all of it. A bare
         // pattern matches anywhere within the value, so e.g. "fish" would claim a captured "fish sticks", and
         // "cat" a captured "catfish", whenever that member happens to be declared first.
-        Regex = new ($"^(?:{regexString})$");
+        Regex = _anchoredRegexes.GetOrAdd(regexString, x => new($"^(?:{x})$"));
         PositionAmongSiblings = positionAmongSiblings;
         PositionAmongSynonyms = positionAmongSynonyms;
     }
+
+    /// <summary>
+    /// <see cref="Regex"/>es by pattern, shared: a vocabulary is inlined into every graph that uses it, once per use,
+    /// so the same few patterns are otherwise compiled again for each of what can be millions of member nodes.
+    /// </summary>
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Regex> _anchoredRegexes = new();
 
     protected override void AppendOwnRegexBricks(RegexCollector collector) =>
         collector.Append(new RegexBrickValue(this, RegexString, ScalarValue));
