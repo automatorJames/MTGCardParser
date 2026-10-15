@@ -77,6 +77,10 @@ public sealed class WorkspaceManager
     {
         _source = source;
         _root = root;
+
+        // So a grammar built from any workspace's definition shares the compiled grammar's types wherever it hasn't
+        // changed them, rather than emitting - and building graphs for - a copy of every one.
+        GrammarEmitter.Reuse(source.Grammar.Types);
         _configuredGuidance = (configuredGuidance ?? new Dictionary<string, string>())
             .Where(x => !string.IsNullOrWhiteSpace(x.Value))
             .ToDictionary(x => x.Key, x => x.Value.Trim(), StringComparer.OrdinalIgnoreCase);
