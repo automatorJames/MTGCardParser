@@ -2,6 +2,9 @@
 
 public enum WhichPlayer
 {
+    [RegexPattern("your opponents")]
+    YourOpponents,
+
     You,
 
     [RegexPattern("each opponent")]

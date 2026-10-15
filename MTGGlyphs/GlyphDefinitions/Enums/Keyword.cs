@@ -147,5 +147,17 @@ public enum Keyword
     Threshold,
     Bury,
     Landhome,
-    Substance
+    Substance,
+    Devoid,
+    Prowess,
+    Ascend,
+    Menace,
+    Renown,
+    Exert,
+    Fuse,
+    Fabricate,
+    Ingest,
+    Aftermath,
+    Dash,
+    Improvise
 }
