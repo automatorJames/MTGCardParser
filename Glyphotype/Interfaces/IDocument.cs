@@ -7,6 +7,9 @@ public interface IDocument
     public string Name { get; }
     public string Text { get; }
 
+    /// <summary>The number of the volume this document is in (see <see cref="IDocumentRepository.GetVolumes"/>) - null for a corpus that isn't divided into volumes.</summary>
+    public int? Volume => null;
+
     public string[] GetFormattedLines()
     {
         if (Text is null)

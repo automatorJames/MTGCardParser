@@ -1,4 +1,5 @@
 ﻿using Glyphotype.Distiller.Scoring;
+using Glyphotype.Tokenizers;
 
 namespace Glyphotype.Distiller.Workbench;
 
@@ -597,6 +598,7 @@ public sealed class GrammarWorkbench : IDisposable
         var json = definition.ToJson();
         IReadOnlyList<IDocument> documents;
         int corpusVersion;
+        WorkingScore basis;
 
         lock (_gate)
         {
@@ -605,9 +607,10 @@ public sealed class GrammarWorkbench : IDisposable
 
             documents = _documents;
             corpusVersion = _corpusVersion;
+            basis = GetTokenizedBasis();
         }
 
-        var score = ScoreUncached(definition, documents, cancellation);
+        var score = ScoreUncached(definition, documents, basis, cancellation);
 
         if (score is not null)
             lock (_gate)
@@ -624,20 +627,60 @@ public sealed class GrammarWorkbench : IDisposable
         return score;
     }
 
-    WorkingScore ScoreUncached(GrammarDefinition definition, IReadOnlyList<IDocument> corpus, CancellationToken cancellation)
+    /// <summary>
+    /// The latest corpus tokenized against the documents scored now, and the grammar that tokenized it - what the next
+    /// definition's tokenizing starts from (see <see cref="Tokenize"/>). Null if there's none yet. Call under <see cref="_gate"/>.
+    /// </summary>
+    WorkingScore GetTokenizedBasis()
+    {
+        if (LatestWorkingScore is { Succeeded: true } latest)
+            return latest;
+
+        if (_committedTrial is { IsCompletedSuccessfully: true } && _committedTrial.Result is { Succeeded: true } committed)
+            return committed;
+
+        return _committedGrammar is not null && !_compiledGrammarSuperseded
+            ? new(CommittedDefinition, null, [], TimeSpan.Zero) { Grammar = _committedGrammar, Documents = _committedDocuments }
+            : null;
+    }
+
+    /// <summary>
+    /// <paramref name="corpus"/> as <paramref name="grammar"/> tokenizes it: where <paramref name="basis"/> holds the same
+    /// documents, by tokenizing again only the lines <paramref name="grammar"/> could tokenize differently from the
+    /// basis's grammar (see <see cref="TokenizationChange"/>) - a step changing a glyph or two touches few - else whole.
+    /// </summary>
+    static List<ProcessedDocument> Tokenize(GlyphGrammar grammar, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation)
+    {
+        var change = basis?.Documents is { } tokenized && tokenized.Count == corpus.Count && tokenized.Select(x => x.Document).SequenceEqual(corpus)
+            ? TokenizationChange.Between(basis.Grammar, grammar)
+            : null;
+
+        if (change is null)
+            return corpus
+                .AsParallel()
+                .AsOrdered()
+                .WithCancellation(cancellation)
+                .Select(x => new ProcessedDocument(x, grammar))
+                .ToList();
+
+        return change.IsNone
+            ? basis.Documents.ToList()
+            : basis.Documents
+                .AsParallel()
+                .AsOrdered()
+                .WithCancellation(cancellation)
+                .Select(x => x.Retokenize(grammar, change))
+                .ToList();
+    }
+
+    WorkingScore ScoreUncached(GrammarDefinition definition, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation)
     {
         var started = DateTime.UtcNow;
 
         try
         {
             var grammar = BuildGrammar(definition);
-
-            var documents = corpus
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cancellation)
-                .Select(x => new ProcessedDocument(x, grammar))
-                .ToList();
+            var documents = Tokenize(grammar, corpus, basis, cancellation);
 
             return new(definition, MdlScorer.Score(grammar, documents), [], DateTime.UtcNow - started) { Grammar = grammar, Documents = documents };
         }

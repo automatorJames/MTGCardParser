@@ -41,6 +41,17 @@ public class DefinitionTests(CorpusFixture corpus)
     }
 
     [Fact]
+    public void A_grammar_built_from_a_definition_tries_the_same_types_as_one_compiled_from_assemblies()
+    {
+        var built = GlyphGrammar.FromDefinition(Definition);
+
+        // Built-ins included: a dynamic resolves to a pronoun under either.
+        Assert.Contains(typeof(It), corpus.Grammar.DependentTypes);
+        Assert.Equal(corpus.Grammar.TopLevelTypes.Select(x => x.Name), built.TopLevelTypes.Select(x => x.Name));
+        Assert.Equal(corpus.Grammar.DependentTypes.Select(x => x.Name), built.DependentTypes.Select(x => x.Name));
+    }
+
+    [Fact]
     public void Every_built_in_reads_as_a_definition_and_writes_as_source()
     {
         var builtIns = GrammarDefinition.BuiltIns;

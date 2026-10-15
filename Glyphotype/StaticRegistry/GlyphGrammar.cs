@@ -57,10 +57,19 @@ public sealed class GlyphGrammar
 
     public Tokenizer Tokenizer { get; private set; }
 
-    /// <summary>Builds and validates a grammar from <paramref name="types"/> (any types; the Glyph types among them are used). Throws if any Glyph type in play is invalid.</summary>
+    /// <summary>
+    /// Glyphotype's own glyphs - its back-references, such as <see cref="It"/> - which every grammar has, however it was
+    /// built: a grammar refers to them rather than defining them (see <see cref="GrammarDefinition.BuiltInNames"/>). So
+    /// a dynamic resolves to them alike under a grammar compiled from its assemblies, which load them anyway, and one
+    /// built from its definition, which only emits its own types.
+    /// </summary>
+    static readonly Lazy<Type[]> _builtInGlyphTypes = new(() =>
+        typeof(Glyph).Assembly.GetExportedTypes().Where(x => !x.IsEnum && GrammarEmitter.IsBuiltIn(x)).ToArray());
+
+    /// <summary>Builds and validates a grammar from <paramref name="types"/> (any types; the Glyph types among them are used) and the built-in glyphs. Throws if any Glyph type in play is invalid.</summary>
     public GlyphGrammar(IEnumerable<Type> types)
     {
-        _candidateTypes = types.ToList();
+        _candidateTypes = types.Concat(_builtInGlyphTypes.Value).Distinct().ToList();
         Build();
     }
 
@@ -170,16 +179,19 @@ public sealed class GlyphGrammar
         // Since it's possible for multiple types to define the same order via TokenizationOrder,
         // each dictionary entry is a List, though each List should ideally only have one item.
         // An entry List may have multiple items if they each declare the same position.
+        // Ties are broken by name throughout, not left to the order the types were given in: that differs between a
+        // grammar compiled from assemblies and one built from its definition, which must try its types alike.
         Dictionary<int, List<Type>> orderedTypes =
             topLevelTypes.Where(x => x.IsDefined(typeof(TokenizationOrderAttribute)))
             .GroupBy(x => x.GetCustomAttribute<TokenizationOrderAttribute>().Order)
-            .ToDictionary(x => x.Key, x => x.ToList());
+            .ToDictionary(x => x.Key, x => x.OrderBy(x => x.Name, StringComparer.Ordinal).ToList());
 
         // Add all remaining types (i.e. those the user didn't bother to define anywhere).
         // Order by descending length, which is a rough approximate of complexity/match length (not exact)
         var unorderedRemainingTypes = topLevelTypes
             .Except(orderedTypes.SelectMany(x => x.Value))
             .OrderByDescending(x => GlyphTypeCache.GetRegexGraph(x).BuiltRegex.MinifiedRegex.Length)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
             .ToList();
 
         var nextKey = orderedTypes.Keys.Any() ? orderedTypes.Keys.Max() + 1 : 0;
@@ -195,7 +207,7 @@ public sealed class GlyphGrammar
             .Distinct()
             .ToList();
 
-        DependentTypes = Types.Where(x => x.IsDefined(typeof(DependentAttribute)) && _candidateTypes.Contains(x)).ToList();
+        DependentTypes = Types.Where(x => x.IsDefined(typeof(DependentAttribute)) && _candidateTypes.Contains(x)).OrderBy(x => x.Name, StringComparer.Ordinal).ToList();
         Tokenizer = new(TopLevelTypes.ToList(), DependentTypes.ToList());
     }
 

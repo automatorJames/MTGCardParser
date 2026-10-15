@@ -11,6 +11,12 @@
     line-height: 1.2;
 }
 
+/* The volume the document is in, after its name: darker, so the name still reads first. */
+.document-volume {
+    color: var(--grey);
+    filter: brightness(0.6);
+}
+
     .document-title.with-coverage {
         padding-right: 140px;
     }

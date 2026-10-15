@@ -7,7 +7,8 @@
 
 <div class="document-capture-block">
     <div class="document-title-row">
-        <div class="document-title @(RuntimeSettings.ShowCoverageStats ? "with-coverage" : "")">@ProcessedDocument.Document.Name</div>
+        <div class="document-title @(RuntimeSettings.ShowCoverageStats ? "with-coverage" : "")">@ProcessedDocument.Document.Name@if (CorpusAnalyzer.GetVolumeName(ProcessedDocument.Document) is { } volumeName)
+            {<span class="document-volume"> | @volumeName</span>}</div>
 
         @if (RuntimeSettings.ShowCoverageStats)
         {

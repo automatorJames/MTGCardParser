@@ -76,6 +76,10 @@ public class Tokenizer
             bool matched = false;
             bool atClauseStart = currentIndex == clauseStartIndex;
 
+            // Held to the whole-clause rule, no type is offered a match partway through a clause (see below).
+            if (!requireWholeClauses || atClauseStart)
+                TokenizationTrace.NoteAttempt(sourceText, currentIndex, endIndex, clauseEndIndex, requireWholeClauses, scopeToType, includeDependentTypes);
+
             foreach (var rootNode in candidates.Graphs)
             {
                 // Can't match here at all, so skip it without paying for a regex call (see StartCharSet).
@@ -206,7 +210,7 @@ public class Tokenizer
     /// clause boundary, and - only if it declares a clause break of its own - each later one in turn,
     /// shortest first, so it settles on the fewest clauses that satisfy it rather than the most.
     /// </summary>
-    static IEnumerable<int> GetCandidateEnds(
+    internal static IEnumerable<int> GetCandidateEnds(
         string sourceText, int endIndex, int clauseEndIndex, bool mustConsumeClause, bool spansClauses)
     {
         if (!mustConsumeClause)

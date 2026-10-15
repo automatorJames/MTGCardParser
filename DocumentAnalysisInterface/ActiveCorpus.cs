@@ -74,6 +74,10 @@ public sealed class ActiveCorpus
     /// <summary>Fires, from whatever thread, when <see cref="LoadingVolumes"/> or <see cref="Volumes"/> changes.</summary>
     public event Action VolumesChanged;
 
+    /// <summary>The name of the volume <paramref name="document"/> is in - null where the corpus doesn't name its volumes.</summary>
+    public string GetVolumeName(IDocument document) =>
+        document.Volume is int volume && _repository.GetVolumeNames().TryGetValue(volume, out var name) ? name : null;
+
     /// <summary>The numbers of the corpus's volumes - empty if it isn't divided into volumes.</summary>
     public int[] GetAvailableVolumes() => _repository.GetVolumes();
 

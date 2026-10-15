@@ -206,29 +206,10 @@ public class RegexGraph
         glyph = null;
         narrowedScopeEnd = -1;
 
-        var match =
-            mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
-            : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex)
-            : BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
-
-        int matchEndIndex = match.Index + match.Length;
-
-        // A match held to the whole scope (how the Tokenizer enforces its whole-clause requirement against a
-        // clause-sized endIndex) must consume all of it - ending at a boundary char partway through isn't good
-        // enough. Otherwise the normal "end of scope, or followed by a boundary char" allowance applies.
-        bool endsAtBoundary = mustConsumeWholeScope
-            ? matchEndIndex == endIndex
-            : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
-
-        bool matchIsValid =
-            match.Success                   // 1. Regex:        Match must be successful
-            && match.Index == currentIndex  // 2. Anchoring:    Must start exactly at currentIndex
-            && match.Length > 0             // 3. Length:       Must be non-empty
-            && matchEndIndex <= endIndex    // 4. Scope:        Must not exceed endIndex
-            && endsAtBoundary;              // 5. Boundary:     Must end at end index, or a boundary char, or fill the scope if required
-
-        if (!matchIsValid)
+        if (!TryMatchRegex(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, out var match))
             return false;
+
+        TokenizationTrace.NoteMatch(RootGlyphType);
 
         CaptureContext captureContext = new(RootNode, match, sourceText, tokenizer);
         var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
@@ -245,5 +226,38 @@ public class RegexGraph
 
         captureContext.RootCaptureTrace.ClrValue = glyph;
         return true;
+    }
+
+    /// <summary>
+    /// Whether this graph's regex alone would accept a match at <paramref name="currentIndex"/> - what
+    /// <see cref="TryMatch(string, int, int, out Glyph, bool, Tokenizer)"/> checks first, before hydrating anything. Where
+    /// it wouldn't, that attempt fails whatever the grammar around it.
+    /// </summary>
+    internal bool MatchesRegexAt(string sourceText, int currentIndex, int endIndex, bool mustConsumeWholeScope) =>
+        TryMatchRegex(sourceText, currentIndex, endIndex, endIndex, mustConsumeWholeScope, out _);
+
+    /// <summary>The regex half of <see cref="TryMatchWithinScope"/>: a match that starts where it must and ends where it may.</summary>
+    bool TryMatchRegex(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Match match)
+    {
+        match =
+            mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
+            : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex)
+            : BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
+
+        int matchEndIndex = match.Index + match.Length;
+
+        // A match held to the whole scope (how the Tokenizer enforces its whole-clause requirement against a
+        // clause-sized endIndex) must consume all of it - ending at a boundary char partway through isn't good
+        // enough. Otherwise the normal "end of scope, or followed by a boundary char" allowance applies.
+        bool endsAtBoundary = mustConsumeWholeScope
+            ? matchEndIndex == endIndex
+            : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
+
+        return
+            match.Success                   // 1. Regex:        Match must be successful
+            && match.Index == currentIndex  // 2. Anchoring:    Must start exactly at currentIndex
+            && match.Length > 0             // 3. Length:       Must be non-empty
+            && matchEndIndex <= endIndex    // 4. Scope:        Must not exceed endIndex
+            && endsAtBoundary;              // 5. Boundary:     Must end at end index, or a boundary char, or fill the scope if required
     }
 }

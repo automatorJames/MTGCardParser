@@ -15,5 +15,8 @@ public class Card : IDocument
     public string Loyalty { get; set; }
     public string SetCode { get; set; }
     public int SetSequence { get; set; }
+
+    /// <summary>A card's volume is its set, by set sequence.</summary>
+    int? IDocument.Volume => SetSequence;
 }
 

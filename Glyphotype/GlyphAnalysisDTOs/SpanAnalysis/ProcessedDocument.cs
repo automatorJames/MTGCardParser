@@ -31,9 +31,14 @@ public class ProcessedDocument
     public int UnresolvedBackReferenceCount { get; init; }
 
     public ProcessedDocument(IDocument document, GlyphGrammar grammar)
+        : this(document, ProcessedLine.GetAll(document, grammar))
+    {
+    }
+
+    ProcessedDocument(IDocument document, List<ProcessedLine> lines)
     {
         Document = document;
-        Lines = ProcessedLine.GetAll(document, grammar);
+        Lines = lines;
 
         // "Fully matched" means no unmatched text occurrences (except isolated periods) exist
         IsFullyMatched = Lines
@@ -44,5 +49,29 @@ public class ProcessedDocument
         CapturedWordCount = Lines.Sum(x => x.CapturedWordCount);
         BackReferenceCount = Lines.Sum(x => x.BackReferences.Count);
         UnresolvedBackReferenceCount = Lines.Sum(x => x.BackReferences.Count(y => !y.IsResolved));
+    }
+
+    /// <summary>
+    /// This document as <paramref name="grammar"/> tokenizes it, where this is how another grammar did and
+    /// <paramref name="change"/> is how <paramref name="grammar"/> differs from that one: only the lines that could
+    /// tokenize differently are tokenized again, the rest kept as they are - and this document itself is kept, if none could.
+    /// </summary>
+    public ProcessedDocument Retokenize(GlyphGrammar grammar, TokenizationChange change)
+    {
+        var byIndex = Lines.ToDictionary(x => x.SourceText.LineIndex);
+        var anyRetokenized = false;
+
+        ProcessedLine Reuse(int lineIndex, string text)
+        {
+            if (byIndex.TryGetValue(lineIndex, out var line) && line.SourceText.FormattedText == text && !change.MayDiffer(line))
+                return line;
+
+            anyRetokenized = true;
+            return null;
+        }
+
+        var lines = ProcessedLine.GetAll(Document, grammar, Reuse);
+
+        return anyRetokenized || lines.Count != Lines.Count ? new(Document, lines) : this;
     }
 }

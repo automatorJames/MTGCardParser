@@ -22,4 +22,10 @@ public interface IDocumentRepository
 
     /// <summary>The numbers of the corpus's volumes, in order - empty for a corpus that isn't divided into volumes.</summary>
     public int[] GetVolumes() => [];
+
+    /// <summary>
+    /// The names of the corpus's volumes, by number (see <see cref="IDocument.Volume"/>) - empty for a corpus whose
+    /// volumes aren't named, or that isn't divided into volumes.
+    /// </summary>
+    public IReadOnlyDictionary<int, string> GetVolumeNames() => new Dictionary<int, string>();
 }

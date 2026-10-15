@@ -9,12 +9,14 @@ public class CardDataGetter : IDocumentRepository
     readonly string _sqlConnString;
     readonly bool _includeEmptyDocuments;
     readonly Lazy<int[]> _volumes;
+    readonly Lazy<IReadOnlyDictionary<int, string>> _volumeNames;
 
     public CardDataGetter(GlobalSettings settings)
     {
         _sqlConnString = settings.SqlConnString;
         _includeEmptyDocuments = settings.IncludeEmptyDocuments;
         _volumes = new(ReadVolumes, LazyThreadSafetyMode.PublicationOnly);
+        _volumeNames = new(ReadVolumeNames, LazyThreadSafetyMode.PublicationOnly);
     }
 
     public Task<List<IDocument>> GetDocumentsAsync() =>
@@ -28,6 +30,17 @@ public class CardDataGetter : IDocumentRepository
 
     /// <summary>The set sequences of the sets with cards in them - read once, since sets don't change while the app runs.</summary>
     public int[] GetVolumes() => _volumes.Value;
+
+    /// <summary>The names of the sets with cards in them, by set sequence - read once, as <see cref="GetVolumes"/> is.</summary>
+    public IReadOnlyDictionary<int, string> GetVolumeNames() => _volumeNames.Value;
+
+    IReadOnlyDictionary<int, string> ReadVolumeNames()
+    {
+        using var conn = new SqlConnection(_sqlConnString);
+
+        return conn.Query<(int Volume, string Name)>("select distinct c.SetSequence, s.name from Card c join [Set] s on s.code = c.SetCode" + Where(null))
+            .ToDictionary(x => x.Volume, x => x.Name);
+    }
 
     async Task<List<IDocument>> QueryAsync(string volumeCondition, object parameters)
     {

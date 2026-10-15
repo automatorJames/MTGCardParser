@@ -27,6 +27,9 @@ public class ProcessedLine
 
     public string DataPath { get; init; }
 
+    /// <summary>What tokenizing this line tried - what tells whether another grammar could tokenize it differently (see <see cref="TokenizationChange"/>).</summary>
+    public TokenizationTrace TokenizationTrace { get; init; }
+
     public List<RootCaptureTrace> CaptureTraceRoots => Glyphs.Select(x => x.CaptureContext.RootCaptureTrace).ToList();
     /// <summary>
     /// Just the roots that came from actually matching a Glyph type - what a consumer displaying captures
@@ -70,11 +73,15 @@ public class ProcessedLine
     static int CountWords(string text) =>
         text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
-    public static List<ProcessedLine> GetAll(IDocument document, GlyphGrammar grammar)
+    /// <param name="reuse">
+    /// The line already processed for a line index and its text, where it would tokenize the same under
+    /// <paramref name="grammar"/> - else null, to tokenize it. Null to tokenize every line.
+    /// </param>
+    public static List<ProcessedLine> GetAll(IDocument document, GlyphGrammar grammar, Func<int, string, ProcessedLine> reuse = null)
     {
         var formattedLines = document.GetFormattedLines();
         List<ProcessedLine> lines = [];
-        
+
         for (int i = 0; i < formattedLines.Length; i++)
         {
             var formattedText = formattedLines[i];
@@ -82,12 +89,19 @@ public class ProcessedLine
             if (string.IsNullOrWhiteSpace(formattedText))
                 continue;
 
+            if (reuse?.Invoke(i, formattedText) is { } reused)
+            {
+                lines.Add(reused);
+                continue;
+            }
+
             SourceTextDTO sourceText = new(formattedText, document.Name, i);
 
-            var lineGlyphs = grammar.Tokenize(sourceText.FormattedText);
+            List<CaptureUnit> lineGlyphs = null;
+            var trace = TokenizationTrace.Record(() => lineGlyphs = grammar.Tokenize(sourceText.FormattedText));
             var unmatchedTextOccurrences = GetUnmatchedStringOccurrences(document, lineGlyphs, i);
             var dataPath = document.Name.Replace(' ', '_') + $"-line[{i}]";
-            ProcessedLine processedLine = new(sourceText, lineGlyphs, unmatchedTextOccurrences, dataPath);
+            ProcessedLine processedLine = new(sourceText, lineGlyphs, unmatchedTextOccurrences, dataPath) { TokenizationTrace = trace };
             lines.Add(processedLine);
         }
 
