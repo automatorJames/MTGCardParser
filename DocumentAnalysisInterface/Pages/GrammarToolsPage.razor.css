@@ -256,6 +256,26 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* A step's figures: its share for a change, a round's sum on the round's row */
+.changes-table .figure {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--subtext-grey);
+}
+
+    .changes-table .figure.better {
+        color: #9fe0b5;
+    }
+
+    .changes-table .figure.worse {
+        color: #f28b82;
+    }
+
+.changes-table .group-row .figure {
+    letter-spacing: normal;
+    text-transform: none;
+}
+
 /* Tables */
 
 .data-table {

@@ -34,7 +34,20 @@ public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, 
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
 /// <param name="Round">For a step an agent applied: which of its rounds of steps - one working session, from start to check-in - it was applied in, counted from 1. Null for a person's edit.</param>
 /// <param name="Restores">Whether the step returned the working definition to an earlier state (see <see cref="GrammarWorkbench.Restore"/>), so begins nothing of its own.</param>
-public sealed record WorkbenchStep(int Number, string Description, GrammarDefinition Before, GrammarDefinition After, DateTimeOffset At, int? Round = null, bool Restores = false);
+public sealed record WorkbenchStep(int Number, string Description, GrammarDefinition Before, GrammarDefinition After, DateTimeOffset At, int? Round = null, bool Restores = false)
+{
+    /// <summary>What the step did to the score, as evaluated when it was applied - null where it wasn't.</summary>
+    public StepScoreChange ScoreChange { get; init; }
+
+    /// <summary>What the agent spent reaching the step, as its host measured (see <see cref="GrammarWorkbench.SetStepEffort"/>) - null where none did.</summary>
+    public StepEffort Effort { get; init; }
+}
+
+/// <summary>A step's change in total bits, and in coverage (as a share of the corpus's words).</summary>
+public sealed record StepScoreChange(double Bits, double Coverage);
+
+/// <summary>What an agent spent reaching a step: the time it worked, the tokens it used, and an estimate of their cost - null where there's none.</summary>
+public sealed record StepEffort(TimeSpan Elapsed, long Tokens, double? CostUsd);
 
 /// <summary>A change set scored against the working definition without being made (see <see cref="GrammarWorkbench.EvaluateAsync"/>).</summary>
 /// <param name="Before">The working definition's own score, which the change set was applied on top of.</param>
@@ -447,10 +460,28 @@ public sealed class GrammarWorkbench : IDisposable
 
     /// <summary>Makes <paramref name="changes"/> as one step, described as <paramref name="description"/> (by default, the change set's own summary).</summary>
     /// <param name="round">For an agent's step: the round it's applied in (see <see cref="WorkbenchStep.Round"/>).</param>
+    /// <param name="scoreChange">What the change set does to the score, where it was evaluated.</param>
     /// <returns>The step, or null if the change set changed nothing.</returns>
     /// <exception cref="InvalidOperationException">The change set can't be applied (see <see cref="ChangeSet.ApplyTo"/>).</exception>
-    public WorkbenchStep Apply(ChangeSet changes, string description = null, int? round = null) =>
-        Edit(changes.ApplyTo, string.IsNullOrWhiteSpace(description) ? changes.Describe() : description, round);
+    public WorkbenchStep Apply(ChangeSet changes, string description = null, int? round = null, StepScoreChange scoreChange = null) =>
+        Edit(changes.ApplyTo, string.IsNullOrWhiteSpace(description) ? changes.Describe() : description, round, scoreChange: scoreChange);
+
+    /// <summary>Records what an agent spent reaching step <paramref name="number"/> - for a host that measures it. Nothing, if the history no longer holds the step.</summary>
+    public void SetStepEffort(int number, StepEffort effort)
+    {
+        lock (_gate)
+        {
+            var index = _history.FindLastIndex(x => x.Number == number);
+
+            if (index < 0)
+                return;
+
+            _history[index] = _history[index] with { Effort = effort };
+            SaveHistory();
+        }
+
+        Changed?.Invoke();
+    }
 
     /// <summary>Takes back the latest step in <see cref="History"/>, returning the working definition to what it was before it.</summary>
     /// <returns>The step taken back.</returns>
@@ -476,7 +507,7 @@ public sealed class GrammarWorkbench : IDisposable
         return step;
     }
 
-    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description, int? round = null, bool restores = false)
+    WorkbenchStep Edit(Func<GrammarDefinition, GrammarDefinition> edit, string description, int? round = null, bool restores = false, StepScoreChange scoreChange = null)
     {
         WorkbenchStep step;
 
@@ -488,7 +519,7 @@ public sealed class GrammarWorkbench : IDisposable
             if (DefinitionDiff.Compare(before, after).Count == 0)
                 return null;
 
-            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores);
+            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores) { ScoreChange = scoreChange };
             _history.Add(step);
 
             if (_history.Count > _historyCapacity)
@@ -800,7 +831,8 @@ public sealed class GrammarWorkbench : IDisposable
     }
 
     /// <summary>One step as saved: what came after it is the next step's <see cref="Before"/>, or the working definition.</summary>
-    sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before, int? Round = null, bool Restores = false);
+    sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before, int? Round = null, bool Restores = false,
+        StepScoreChange ScoreChange = null, StepEffort Effort = null);
 
     void SaveHistory()
     {
@@ -813,7 +845,7 @@ public sealed class GrammarWorkbench : IDisposable
             return;
         }
 
-        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores)).ToList()));
+        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores, x.ScoreChange, x.Effort)).ToList()));
     }
 
     void LoadHistory()
@@ -826,7 +858,11 @@ public sealed class GrammarWorkbench : IDisposable
             var saved = DefinitionJson.Deserialize<List<SavedStep>>(File.ReadAllText(_options.HistoryPath));
 
             for (int i = 0; i < saved.Count; i++)
-                _history.Add(new(saved[i].Number, saved[i].Description, saved[i].Before, i + 1 < saved.Count ? saved[i + 1].Before : WorkingDefinition, saved[i].At, saved[i].Round, saved[i].Restores));
+                _history.Add(new(saved[i].Number, saved[i].Description, saved[i].Before, i + 1 < saved.Count ? saved[i + 1].Before : WorkingDefinition, saved[i].At, saved[i].Round, saved[i].Restores)
+                {
+                    ScoreChange = saved[i].ScoreChange,
+                    Effort = saved[i].Effort,
+                });
 
             _stepNumber = _history.Count > 0 ? _history.Max(x => x.Number) : 0;
         }

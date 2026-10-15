@@ -35,6 +35,13 @@
             <div class="chat-entry note">@entry.Text</div>
             break;
 
+        case ChatEntryKind.Step:
+            <div class="chat-entry step" title="@entry.StepDescription">
+                <span class="step-label">Step @entry.StepNumber</span>
+                <span class="step-figures">@entry.Text</span>
+            </div>
+            break;
+
         default:
             <div class="chat-entry error">@entry.Text</div>
             break;

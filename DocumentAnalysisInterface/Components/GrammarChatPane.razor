@@ -178,14 +178,7 @@
 
     static string Percent(double share) => share.ToString("P0");
 
-    /// <summary>A count of tokens in a few characters: 950, 24.1k, 1.2M.</summary>
-    static string Compact(long tokens) => tokens switch
-    {
-        < 1_000 => tokens.ToString(),
-        < 100_000 => (tokens / 1_000.0).ToString("0.#") + "k",
-        < 1_000_000 => (tokens / 1_000.0).ToString("0") + "k",
-        _ => (tokens / 1_000_000.0).ToString("0.#") + "M",
-    };
+    static string Compact(long tokens) => StepFigures.Compact(tokens);
 
     /// <summary>When an allowance starts over: the time if that's within a day, the day as well if it's further off.</summary>
     static string Resets(UsageWindow window)

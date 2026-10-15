@@ -107,6 +107,22 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_steps_score_change_and_effort_survive_a_restart()
+    {
+        var workspaces = CreateManager();
+        workspaces.Create("Scratch", WorkspaceSeed.Vocabularies);
+        var step = workspaces.Active.Apply(Changes(workspaces.Active, _animalSnores), "snoring animals", round: 1, scoreChange: new(-1234.5, 0.25));
+        workspaces.Active.SetStepEffort(step.Number, new(TimeSpan.FromSeconds(95), 60_000, 0.42));
+        await workspaces.Active.GetCurrentTrialAsync();
+        workspaces.Active.Dispose();
+
+        var restarted = Assert.Single(CreateManager().Active.History);
+
+        Assert.Equal(new StepScoreChange(-1234.5, 0.25), restarted.ScoreChange);
+        Assert.Equal(new StepEffort(TimeSpan.FromSeconds(95), 60_000, 0.42), restarted.Effort);
+    }
+
+    [Fact]
     public void An_export_compiles_to_the_grammar_it_came_from()
     {
         var workspaces = CreateManager();

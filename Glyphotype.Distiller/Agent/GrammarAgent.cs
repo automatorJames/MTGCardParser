@@ -716,7 +716,10 @@ public sealed class GrammarAgent
         if (_round?.Workbench != workbench)
             _round = (workbench, (workbench.History.Max(x => x.Round) ?? 0) + 1);
 
-        var step = Try(() => workbench.Apply(changes, description, _round.Value.Number))
+        var (before, after) = (evaluation.Before.Score, evaluation.After.Score);
+        var scoreChange = new StepScoreChange(after.TotalBits - before.TotalBits, after.Coverage - before.Coverage);
+
+        var step = Try(() => workbench.Apply(changes, description, _round.Value.Number, scoreChange))
             ?? throw new AgentRequestException("Nothing to apply: the working definition already reads exactly like this.");
 
         if (onlyDocuments)

@@ -13,6 +13,9 @@ public enum ChatEntryKind
 
     /// <summary>Something the app did in the conversation on its own - not said by the person or the agent.</summary>
     Note,
+
+    /// <summary>A step the agent applied, closing off the work that led to it - its text the step's figures.</summary>
+    Step,
 }
 
 /// <summary>One thing in the chat: something the person or the agent said, a tool the agent called, or what went wrong.</summary>
@@ -20,6 +23,10 @@ public enum ChatEntryKind
 /// <param name="Streaming">An agent's entry still being added to.</param>
 public sealed record ChatEntry(ChatEntryKind Kind, string Text, bool Streaming = false)
 {
+    /// <summary>For a <see cref="ChatEntryKind.Step"/>: its number, and its description.</summary>
+    public int? StepNumber { get; init; }
+    public string StepDescription { get; init; }
+
     public string ToolUseId { get; init; }
     public string Tool { get; init; }
 
@@ -200,6 +207,9 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
 
     /// <summary>Adds a <see cref="ChatEntryKind.Note"/> to the conversation - called under the gate.</summary>
     protected void AddNote(string text) => _entries.Add(new(ChatEntryKind.Note, text));
+
+    /// <summary>Adds an entry of the app's own to the conversation - called under the gate.</summary>
+    protected void AddEntry(ChatEntry entry) => _entries.Add(entry);
 
     /// <summary>
     /// Has the next message start a fresh session of the CLI - the conversation shown, and what it has used, carry on,

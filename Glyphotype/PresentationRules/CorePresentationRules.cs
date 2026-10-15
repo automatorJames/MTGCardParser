@@ -24,7 +24,7 @@ namespace Glyphotype.PresentationRules;
 public static class SmartRegexStaticRules
 {
     /// <summary>Spaces of indentation per level of group nesting in the regex column.</summary>
-    public static int IndentSpaces = 4;
+    public static int IndentSpaces = 2;
 
     /// <summary>
     /// Spaces of indentation for an enum member row (and its synonym header/footer/omitted-count siblings)

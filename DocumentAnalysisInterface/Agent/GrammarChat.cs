@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Glyphotype.Distiller.Agent;
+using Glyphotype.Distiller.Workbench;
 using Glyphotype.Distiller.Workspaces;
 using Microsoft.AspNetCore.Hosting.Server;
 
@@ -74,6 +76,113 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         _instructions = null;
         HasRound = false;
         _nudges = 0;
+        (_workedBeforeTurn, _workedAtStep, _tokensAtStep, _weeklyStart) = (TimeSpan.Zero, TimeSpan.Zero, 0, null);
+    }
+
+    // ---- What each step took ----
+
+    /// <summary>How long the agent has worked in this conversation, in the turns before the one under way - and when that one began.</summary>
+    TimeSpan _workedBeforeTurn;
+    DateTimeOffset? _turnBegan;
+
+    /// <summary>How long the agent had worked, and how many tokens the conversation had used, when its last step was applied.</summary>
+    TimeSpan _workedAtStep;
+    long _tokensAtStep;
+
+    /// <summary>The conversation's tokens, and the weekly allowance's use, when the allowance was first heard of - what <see cref="EstimateCost"/> measures from.</summary>
+    (long Tokens, double Utilization)? _weeklyStart;
+
+    /// <summary>What a week's allowance is reckoned to be worth, for <see cref="EstimateCost"/>: a rough figure, for a sense of scale.</summary>
+    const double _weeklyAllowanceUsd = 20;
+
+    /// <summary>The share of the weekly allowance that must have been used before a rate is measured from it - the allowance is reported coarsely.</summary>
+    const double _minimumMeasuredUtilization = 0.01;
+
+    double? _dollarsPerMillionTokens;
+
+    /// <summary>What a million tokens cost, as last measured (see <see cref="EstimateCost"/>) - kept with the chat's settings, so a step has an estimate before this conversation has used enough to measure one.</summary>
+    double? DollarsPerMillionTokens
+    {
+        get => _dollarsPerMillionTokens ??= ReadSettings()?.DollarsPerMillionTokens;
+        set
+        {
+            _dollarsPerMillionTokens = value;
+            SaveSettings();
+        }
+    }
+
+    TimeSpan Worked => _workedBeforeTurn + (_turnBegan is DateTimeOffset began ? DateTimeOffset.Now - began : TimeSpan.Zero);
+
+    /// <summary>A turn's time counts toward the steps applied in it - the time between turns doesn't.</summary>
+    protected override IDisposable BeginTurn()
+    {
+        lock (_gate)
+            _turnBegan = DateTimeOffset.Now;
+
+        return new TurnEnd(() =>
+        {
+            lock (_gate)
+            {
+                _workedBeforeTurn = Worked;
+                _turnBegan = null;
+            }
+        });
+    }
+
+    sealed class TurnEnd(Action end) : IDisposable
+    {
+        Action _end = end;
+
+        public void Dispose() => Interlocked.Exchange(ref _end, null)?.Invoke();
+    }
+
+    /// <summary>
+    /// Where <paramref name="call"/> applied a step: puts a rule under it in the conversation, with what the step took -
+    /// the time worked and tokens used since the step before (or the conversation's start), and their estimated cost -
+    /// and what it did to the score, and records what it took on the step itself, for the working changes to show.
+    /// </summary>
+    void RecordStep(ChatEntry call)
+    {
+        if (call is not { Tool: "apply", Failed: false, Result: { } result } || _appliedStep.Match(result) is not { Success: true } match)
+            return;
+
+        var number = int.Parse(match.Groups[1].Value);
+        var (worked, tokens) = (Worked, Stats.TotalTokens);
+        var effort = new StepEffort(worked - _workedAtStep, tokens - _tokensAtStep, EstimateCost(tokens - _tokensAtStep));
+        (_workedAtStep, _tokensAtStep) = (worked, tokens);
+
+        var workbench = workspaces.Active;
+        var step = workbench.History.LastOrDefault(x => x.Number == number);
+        var figures = step is null ? new StepFigures(effort.Elapsed, effort.Tokens, effort.CostUsd, null, null) : StepFigures.Of(step with { Effort = effort });
+
+        AddEntry(new(ChatEntryKind.Step, figures.Line()) { StepNumber = number, StepDescription = step?.Description });
+
+        // Off the gate: the workbench tells the page, which reads the chat too.
+        _ = Task.Run(() => workbench.SetStepEffort(number, effort));
+    }
+
+    static readonly Regex _appliedStep = new(@"^\s*Applied as step (\d+)", RegexOptions.Compiled);
+
+    /// <summary>
+    /// What <paramref name="tokens"/> cost, reckoned naively as the share of the weekly allowance they used, of what the
+    /// allowance is worth (<see cref="_weeklyAllowanceUsd"/>). The share isn't reported by the token, only for the
+    /// allowance as a whole, so a rate is measured from the conversation's tokens against how far the allowance's use
+    /// has moved while it ran - counting whatever else used the allowance meanwhile. Null until a rate is known.
+    /// </summary>
+    double? EstimateCost(long tokens)
+    {
+        if (Stats.SevenDay is { } weekly)
+        {
+            var total = Stats.TotalTokens;
+
+            // A use lower than at the start is the allowance having started over.
+            if (_weeklyStart is not { } start || weekly.Utilization < start.Utilization)
+                _weeklyStart = (total, weekly.Utilization);
+            else if (weekly.Utilization - start.Utilization >= _minimumMeasuredUtilization && total > start.Tokens)
+                DollarsPerMillionTokens = _weeklyAllowanceUsd * (weekly.Utilization - start.Utilization) / (total - start.Tokens) * 1_000_000;
+        }
+
+        return DollarsPerMillionTokens is double rate ? tokens * rate / 1_000_000 : null;
     }
 
     /// <summary>
@@ -101,9 +210,14 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         }
     }
 
-    /// <summary>Once a call is answered in a round whose context has passed <see cref="HandoffThousands"/>, the agent is told to hand off.</summary>
+    /// <summary>
+    /// Once a call is answered: a step it applied closes off the work that led to it (see <see cref="RecordStep"/>), and
+    /// in a round whose context has passed <see cref="HandoffThousands"/>, the agent is told to hand off.
+    /// </summary>
     protected override void OnToolAnswered(ChatEntry call)
     {
+        RecordStep(call);
+
         if (Round is null || _handingOff || agent.IsHandoffDue)
             return;
 
@@ -196,7 +310,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
     /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
     /// </summary>
-    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false);
+    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false, double? DollarsPerMillionTokens = null);
 
     const string _settingsFileName = "chat-settings.json";
 
@@ -234,7 +348,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
-    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep));
+    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep, DollarsPerMillionTokens));
 
     void SaveSettings(Settings settings)
     {

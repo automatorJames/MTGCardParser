@@ -40,11 +40,14 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         var documents = Enumerable.Range(0, 30)
             .Select(i => new TestDocument(TestDocument.Unnamed, $"the {animals[i % 3]} snores in the {places[i / 3 % 3]}.\nthe {animals[i % 3]} yawns in the {places[i / 3 % 3]}.\nthe dog sleeps in the kitchen.", []));
 
-        var workbench = new GrammarWorkbench(corpus.Grammar, CorpusFixture.Process(corpus.Grammar, documents),
+        var workbench = _workbench = new GrammarWorkbench(corpus.Grammar, CorpusFixture.Process(corpus.Grammar, documents),
             new(Path.Combine(_directory, "working.json"), _directory, "Glyphotype.Tests.Grammar"));
 
         return new GrammarAgent(workbench, "a snoring corpus", settings);
     }
+
+    /// <summary>The workbench the last agent made works on.</summary>
+    GrammarWorkbench _workbench;
 
     [Fact]
     public async Task A_session_starts_from_one_brief_with_the_instructions_and_the_rules()
@@ -133,6 +136,22 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         Assert.DoesNotContain("would refuse", evaluated);
 
         Assert.StartsWith("Applied as step 1", await agent.ApplyAsync(_animalSnores));
+    }
+
+    [Fact]
+    public async Task An_applied_step_records_what_it_did_to_the_score()
+    {
+        var agent = CreateAgent(new());
+        var workbench = _workbench;
+        var before = (await workbench.GetCurrentTrialAsync()).Score;
+
+        await agent.ApplyAsync(_animalSnores);
+        var after = (await workbench.GetCurrentTrialAsync()).Score;
+
+        var change = Assert.Single(workbench.History).ScoreChange;
+        Assert.Equal(after.TotalBits - before.TotalBits, change.Bits, 6);
+        Assert.Equal(after.Coverage - before.Coverage, change.Coverage, 9);
+        Assert.True(change.Bits < 0 && change.Coverage > 0);
     }
 
     [Fact]

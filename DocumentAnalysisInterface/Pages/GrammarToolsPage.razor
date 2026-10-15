@@ -1,4 +1,5 @@
 @page "/grammar-tools"
+@using DocumentAnalysisInterface.Agent
 @implements IDisposable
 @inject IServiceProvider Services
 @inject IJSRuntime JS
@@ -170,9 +171,19 @@ else
 
                 @if (!_collapsed.Contains(Section.Changes))
                 {
+                    var stepShares = GetStepShares();
+
                     <table class="data-table changes-table">
                         <thead>
-                            <tr><th>Change</th><th>Kind</th><th class="name-column">Name</th><th title="The AI step each change began in">Step</th><th></th></tr>
+                            <tr>
+                                <th>Change</th><th>Kind</th><th class="name-column">Name</th><th title="The AI step each change began in">Step</th>
+                                <th class="figure" title="How long the agent worked toward the step - shared equally among the changes it began. A round's row adds up all its steps">Time</th>
+                                <th class="figure" title="Tokens the agent used toward the step - shared equally among the changes it began">Tokens</th>
+                                <th class="figure" title="An estimate of what those tokens cost, as a share of the weekly allowance's worth - shared equally among the changes the step began">Cost</th>
+                                <th class="figure" title="The step's change in total bits, as evaluated when it was applied - shared equally among the changes it began. Lower is better">Δ bits</th>
+                                <th class="figure" title="The step's change in coverage, in percentage points, as evaluated when it was applied - shared equally among the changes it began">Δ coverage</th>
+                                <th></th>
+                            </tr>
                         </thead>
                         @foreach (var group in GetChangeGroups())
                         {
@@ -181,6 +192,7 @@ else
                                 {
                                     <tr class="group-row">
                                         <td colspan="4" title="@group.Tooltip">@group.Title</td>
+                                        @StepFigureCells(group.Round is int total ? StepFigures.Sum(Workbench.History.Where(x => x.Round == total)) : null)
                                         <td>
                                             @if (group.Round is int round)
                                             {
@@ -209,6 +221,7 @@ else
                                             }
                                         </td>
                                         <td class="change-step">@(Workbench.ChangeSteps.TryGetValue((change.Kind, change.Name), out var step) ? $"#{step}" : "")</td>
+                                        @StepFigureCells(Workbench.ChangeSteps.TryGetValue((change.Kind, change.Name), out var began) ? stepShares.GetValueOrDefault(began) : null)
                                         <td><button class="link-button" @onclick="@(() => Record($"revert {change.Name}", () => Workbench.Revert(change.Kind, change.Name)))">revert</button></td>
                                     </tr>
                                 }
@@ -657,6 +670,27 @@ else
         : (working < metric.Committed) == metric.LowerIsBetter ? "better" : "worse";
 
     record ChangeGroup(string Title, string Tooltip, IReadOnlyList<DefinitionChange> Changes, int? Round = null);
+
+    /// <summary>For each agent step that began a working change: its figures, shared equally among the changes it began.</summary>
+    Dictionary<int, StepFigures> GetStepShares()
+    {
+        var steps = Workbench.History.Where(x => x.Round is not null).GroupBy(x => x.Number).ToDictionary(x => x.Key, x => x.Last());
+
+        return Workbench.ChangeSteps.Values
+            .GroupBy(x => x)
+            .Where(x => steps.ContainsKey(x.Key))
+            .ToDictionary(x => x.Key, x => StepFigures.Of(steps[x.Key]).Share(x.Count()));
+    }
+
+    /// <summary>The cells of a working change's (or a round's) step figures - empty, for none.</summary>
+    static RenderFragment StepFigureCells(StepFigures figures) =>
+        @<text>
+            <td class="figure">@figures?.ElapsedText</td>
+            <td class="figure">@figures?.TokensText</td>
+            <td class="figure" title="@(figures?.CostText == "?" ? "Not estimated: no rate had been measured from the weekly allowance yet" : null)">@figures?.CostText</td>
+            <td class="figure @figures?.BitsClass">@figures?.BitsText</td>
+            <td class="figure @figures?.CoverageClass">@figures?.CoverageText</td>
+        </text>;
 
     /// <summary>The working changes grouped by the agent round each began in, earliest first, then the rest; a single untitled group when no agent round began any.</summary>
     IEnumerable<ChangeGroup> GetChangeGroups()
