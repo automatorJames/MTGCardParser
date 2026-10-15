@@ -72,7 +72,9 @@ public static class GrammarEmitter
     {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName($"Glyphotype.Emitted.{Guid.NewGuid():N}"),
             collectible ? AssemblyBuilderAccess.RunAndCollect : AssemblyBuilderAccess.Run);
-        _emittedAssemblies[assembly.GetName().Name] = new(assembly);
+
+        if (!collectible)
+            _markerAssemblies[assembly.GetName().Name] = assembly;
 
         return assembly.DefineDynamicModule("Main");
     }
@@ -90,29 +92,25 @@ public static class GrammarEmitter
     static readonly object _emitGate = new();
 
     /// <summary>
-    /// Every assembly <see cref="Emit"/> has built, by name - held weakly, as <see cref="_emittedTypes"/> is. An
-    /// attribute argument naming a type (e.g. <see cref="TypeFilterAttribute"/>'s marker) is stored as an
-    /// assembly-qualified name, which the runtime resolves by loading that assembly by name when the attribute is read -
-    /// and it can't find a dynamic assembly that way on its own.
+    /// Every assembly a marker has been emitted into (see <see cref="DefineModule"/>), by name. A
+    /// <see cref="TypeFilterAttribute"/> names its marker by assembly-qualified name, which the runtime resolves by
+    /// loading that assembly by name when the attribute is read - and it can't find a dynamic assembly that way on its
+    /// own. Held for good, as the assemblies themselves are.
     /// </summary>
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, WeakReference<Assembly>> _emittedAssemblies = new();
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Assembly> _markerAssemblies = new();
 
     static GrammarEmitter()
     {
         AppDomain.CurrentDomain.AssemblyResolve += (_, args) =>
-            _emittedAssemblies.TryGetValue(new AssemblyName(args.Name).Name, out var reference) && reference.TryGetTarget(out var assembly) ? assembly : null;
+            _markerAssemblies.GetValueOrDefault(new AssemblyName(args.Name).Name);
     }
 
-    /// <summary>Drops the entries of <see cref="_emittedTypes"/> and <see cref="_emittedAssemblies"/> whose type or assembly has been unloaded.</summary>
+    /// <summary>Drops the entries of <see cref="_emittedTypes"/> whose type has been unloaded.</summary>
     static void ForgetUnloaded()
     {
         foreach (var (key, reference) in _emittedTypes.ToList())
             if (!reference.TryGetTarget(out _))
                 _emittedTypes.Remove(key);
-
-        foreach (var (name, reference) in _emittedAssemblies)
-            if (!reference.TryGetTarget(out _))
-                _emittedAssemblies.TryRemove(name, out _);
     }
 
     /// <param name="existing">For <see cref="Reuse"/>: the types to record, by name, in place of emitting any.</param>
