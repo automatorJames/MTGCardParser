@@ -78,7 +78,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         HasRound = false;
         _nudges = 0;
         (_workedBeforeTurn, _workedAtStep, _usageAtStep) = (TimeSpan.Zero, TimeSpan.Zero, TokenUsage.None);
-        (RoundStartedAt, RoundEndedAt, StepStartedAt) = (null, null, null);
+        (RoundStartedAt, RoundEndedAt, StepStartedAt, LatestRound) = (null, null, null, null);
     }
 
     // ---- What each step took ----
@@ -97,6 +97,12 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     /// <summary>When the step the agent is working toward began: as its round did, or as the step before it was applied.</summary>
     public DateTimeOffset? StepStartedAt { get; private set; }
+
+    /// <summary>The latest round's number - under way or not, as the stopwatches show it.</summary>
+    public int? LatestRound { get; private set; }
+
+    /// <summary>The number in its round of the step the agent is working toward in <see cref="LatestRound"/>: one past those applied.</summary>
+    public int NextStepNumber => LatestRound is int round ? workspaces.Active.History.Count(x => x.Round == round) + 1 : 1;
 
     /// <summary>The round under way is over - called under the gate.</summary>
     void EndRound()
@@ -492,7 +498,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         {
             lock (_gate)
             {
-                (RoundStartedAt, StepStartedAt) = (startedAt, startedAt);
+                (RoundStartedAt, StepStartedAt, LatestRound) = (startedAt, startedAt, round);
 
                 // Unless the agent was quick enough to finish already.
                 if (IsRunning)

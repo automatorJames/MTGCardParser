@@ -86,10 +86,10 @@
 
                 <div class="round-clocks @(round is null ? "stopped" : "")">
                     <span class="round-clock" title="How long the round has run, from its start - or ran, once it's over">
-                        <span class="material-symbols-outlined">timer</span> Round <span class="clock-time">@Clock(until - roundStarted)</span>
+                        <span class="material-symbols-outlined">timer</span> Round @Chat.LatestRound <span class="clock-time">@Clock(until - roundStarted)</span>
                     </span>
-                    <span class="step-clock" title="How long the agent has been working toward its next step, since the round began or its last step was applied">
-                        Step <span class="clock-time">@Clock(until - (Chat.StepStartedAt ?? roundStarted))</span>
+                    <span class="step-clock" title="How long the agent has been working toward this step, since the round began or its last step was applied">
+                        Step @Chat.NextStepNumber <span class="clock-time">@Clock(until - (Chat.StepStartedAt ?? roundStarted))</span>
                     </span>
                 </div>
             }
