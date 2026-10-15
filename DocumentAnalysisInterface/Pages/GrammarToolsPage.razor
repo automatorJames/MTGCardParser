@@ -177,11 +177,11 @@ else
                         <thead>
                             <tr>
                                 <th>Change</th><th>Kind</th><th class="name-column">Name</th><th title="The AI step each change began in">Step</th>
-                                <th class="figure" title="How long the agent worked toward the step - shared equally among the changes it began. A round's row adds up all its steps">Time</th>
-                                <th class="figure" title="Tokens the agent used toward the step - shared equally among the changes it began">Tokens</th>
-                                <th class="figure" title="An estimate of what those tokens cost, as a share of the weekly allowance's worth - shared equally among the changes the step began">Cost</th>
-                                <th class="figure" title="The step's change in total bits, as evaluated when it was applied - shared equally among the changes it began. Lower is better">Δ bits</th>
-                                <th class="figure" title="The step's change in coverage, in percentage points, as evaluated when it was applied - shared equally among the changes it began">Δ coverage</th>
+                                <th class="step-figure" title="How long the agent worked toward the step - shared equally among the changes it began. A round's row adds up all its steps">Time</th>
+                                <th class="step-figure" title="Tokens the agent used toward the step - shared equally among the changes it began">Tokens</th>
+                                <th class="step-figure" title="An estimate of what those tokens cost, as a share of the weekly allowance's worth - shared equally among the changes the step began">Cost</th>
+                                <th class="step-figure" title="The step's change in total bits, as evaluated when it was applied - shared equally among the changes it began. Lower is better">Δ bits</th>
+                                <th class="step-figure" title="The step's change in coverage, in percentage points, as evaluated when it was applied - shared equally among the changes it began">Δ coverage</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -685,11 +685,11 @@ else
     /// <summary>The cells of a working change's (or a round's) step figures - empty, for none.</summary>
     static RenderFragment StepFigureCells(StepFigures figures) =>
         @<text>
-            <td class="figure">@figures?.ElapsedText</td>
-            <td class="figure">@figures?.TokensText</td>
-            <td class="figure" title="@(figures?.CostText == "?" ? "Not estimated: no rate had been measured from the weekly allowance yet" : null)">@figures?.CostText</td>
-            <td class="figure @figures?.BitsClass">@figures?.BitsText</td>
-            <td class="figure @figures?.CoverageClass">@figures?.CoverageText</td>
+            <td class="step-figure">@figures?.ElapsedText</td>
+            <td class="step-figure">@figures?.TokensText</td>
+            <td class="step-figure" title="@(figures?.CostText == "?" ? "Not estimated: no rate had been measured from the weekly allowance yet" : null)">@figures?.CostText</td>
+            <td class="step-figure @figures?.BitsClass">@figures?.BitsText</td>
+            <td class="step-figure @figures?.CoverageClass">@figures?.CoverageText</td>
         </text>;
 
     /// <summary>The working changes grouped by the agent round each began in, earliest first, then the rest; a single untitled group when no agent round began any.</summary>

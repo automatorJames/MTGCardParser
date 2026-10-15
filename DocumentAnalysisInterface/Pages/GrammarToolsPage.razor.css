@@ -257,21 +257,21 @@
 }
 
 /* A step's figures: its share for a change, a round's sum on the round's row */
-.changes-table .figure {
+.changes-table .step-figure {
     text-align: right;
     font-variant-numeric: tabular-nums;
     color: var(--subtext-grey);
 }
 
-    .changes-table .figure.better {
+    .changes-table .step-figure.better {
         color: #9fe0b5;
     }
 
-    .changes-table .figure.worse {
+    .changes-table .step-figure.worse {
         color: #f28b82;
     }
 
-.changes-table .group-row .figure {
+.changes-table .group-row .step-figure {
     letter-spacing: normal;
     text-transform: none;
 }
