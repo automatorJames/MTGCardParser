@@ -96,18 +96,40 @@
     protected override void OnInitialized()
     {
         _glyphPreviews = new(Workspaces);
-        RuntimeSettings.OnChanged += StateHasChanged;
+        RuntimeSettings.OnChanged += OnSettingsChanged;
         DocumentAnalyzer.Changed += OnCorpusChanged;
         LineChats.Changed += OnLineChatsChanged;
     }
 
     protected override async Task OnInitializedAsync()
     {
+        // Looked for alongside the corpus rather than after it: a working grammar over a large corpus can take a long
+        // while to score, and the agent's buttons shouldn't wait on that.
+        var agentCheck = CheckAgentAsync();
+
         // Resolves at once while the grammar shown is the one the corpus was analyzed with at startup (see
         // Program.cs); for another workspace's grammar, it waits for that to be scored and analyzed.
         await DocumentAnalyzer.EnsureInitializedAsync();
+        await agentCheck;
+    }
 
-        _agentAvailable = (await LocalAgent.GetStatusAsync()).IsAvailable;
+    async Task CheckAgentAsync()
+    {
+        var available = (await LocalAgent.GetStatusAsync()).IsAvailable;
+        if (available == _agentAvailable)
+            return;
+
+        _agentAvailable = available;
+        StateHasChanged();
+    }
+
+    /// <summary>A setting changed: show it - and with the line agent just turned on, look again for an agent the first look missed.</summary>
+    void OnSettingsChanged()
+    {
+        StateHasChanged();
+
+        if (RuntimeSettings.ShowLineAgentButtons && !_agentAvailable)
+            _ = InvokeAsync(CheckAgentAsync);
     }
 
     /// <summary>A line's chat opened or closed: show it under its line, or take it away.</summary>
@@ -164,7 +186,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        RuntimeSettings.OnChanged -= StateHasChanged;
+        RuntimeSettings.OnChanged -= OnSettingsChanged;
         DocumentAnalyzer.Changed -= OnCorpusChanged;
         LineChats.Changed -= OnLineChatsChanged;
 
