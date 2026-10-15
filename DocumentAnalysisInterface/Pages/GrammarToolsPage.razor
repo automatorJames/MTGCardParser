@@ -223,13 +223,14 @@ else
                                 {
                                     var number = stepGroup.Number;
                                     var description = stepGroup.Step?.Description ?? "no longer in the history";
+                                    var label = stepGroup.Step?.Label ?? "step";
 
                                     <tr class="step-row">
-                                        <td colspan="3" class="step-title" title="@($"Step {number}: {description}")">
-                                            <span class="step-number">#@number</span> @description
+                                        <td colspan="3" class="step-title" title="@($"{char.ToUpperInvariant(label[0])}{label[1..]}: {description}")">
+                                            <span class="step-number">#@(stepGroup.Step?.Ordinal)</span> @description
                                         </td>
                                         @StepFigureCells(stepGroup.Step is { } step ? StepFigures.Of(step) : null)
-                                        <td><button class="link-button" title="Revert every change begun in this step" @onclick="@(() => Record($"revert step {number}", () => Workbench.RevertStep(number)))">revert step</button></td>
+                                        <td><button class="link-button" title="Revert every change begun in this step" @onclick="@(() => Record($"revert {label}", () => Workbench.RevertStep(number)))">revert step</button></td>
                                     </tr>
 
                                     @foreach (var change in stepGroup.Changes)

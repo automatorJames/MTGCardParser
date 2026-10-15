@@ -340,7 +340,7 @@ public sealed class GrammarAgent
             report.AppendLine("The latest steps, newest first:");
 
             foreach (var step in history.AsEnumerable().Reverse().Take(5))
-                report.AppendLine($"  #{step.Number,-4}{(step.Round is int round ? $" (AI round {round})" : "")} {step.Description}");
+                report.AppendLine($"  {step.Label}: {step.Description}");
         }
 
         report.AppendLine();
@@ -791,7 +791,7 @@ public sealed class GrammarAgent
 
         _lastEvaluated = null;
 
-        var report = WithStatus($"Applied as step {step.Number}: {step.Description}{Environment.NewLine}{(reused is null ? DescribeEvaluation(evaluation) : SummarizeEvaluation(evaluation))}", MisplacedDocumentation(source));
+        var report = WithStatus($"Applied as {step.Label}: {step.Description}{Environment.NewLine}{(reused is null ? DescribeEvaluation(evaluation) : SummarizeEvaluation(evaluation))}", MisplacedDocumentation(source));
         return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), JournalReminder(changes)), SessionStatus(applied: !onlyDocuments || IsStepLimitReached));
     }
 
@@ -832,7 +832,7 @@ public sealed class GrammarAgent
         var step = Try(Workbench.Undo);
         var after = await Workbench.GetCurrentTrialAsync(cancellation);
 
-        return $"Undid step {step.Number}: {step.Description}{Environment.NewLine}{DescribeEvaluation(new(new ChangeSet(), before, after), lineLimit: 5)}";
+        return $"Undid {step.Label}: {step.Description}{Environment.NewLine}{DescribeEvaluation(new(new ChangeSet(), before, after), lineLimit: 5)}";
     }
 
     /// <summary>Returns the named glyph or vocabulary to its committed state, as one step.</summary>
@@ -859,7 +859,7 @@ public sealed class GrammarAgent
             : $"Steps this session, newest first ({history.Count}; `undo` takes back the top one):");
 
         foreach (var step in history.AsEnumerable().Reverse().Take(limit))
-            report.AppendLine($"  #{step.Number,-4} {step.At:HH:mm:ss}  {step.Description}");
+            report.AppendLine($"  {step.At:HH:mm:ss}  {step.Label}: {step.Description}");
 
         if (history.Count > limit)
             report.AppendLine($"  … {history.Count - limit} older");

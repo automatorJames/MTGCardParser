@@ -44,6 +44,15 @@ public sealed record WorkbenchStep(int Number, string Description, GrammarDefini
 
     /// <summary>Whether an agent applied the step in work the person directed as it went (see <see cref="Agent.GrammarAgent.SuspendCheckIns"/>) - in no round, but not the person's own edit either.</summary>
     public bool Directed { get; init; }
+
+    /// <summary>
+    /// The step's place in its round - or, for a directed step, among the directed steps - counted from 1: how it's
+    /// numbered to people and agents. <see cref="Number"/> only identifies it. Null for a person's edit.
+    /// </summary>
+    public int? Ordinal { get; init; }
+
+    /// <summary>How the step is named to people and agents: "step 2 of round 3", "directed step 4", or a person's "edit 7".</summary>
+    public string Label => Round is int round ? $"step {Ordinal} of round {round}" : Directed ? $"directed step {Ordinal}" : $"edit {Number}";
 }
 
 /// <summary>
@@ -537,7 +546,12 @@ public sealed class GrammarWorkbench : IDisposable
             if (DefinitionDiff.Compare(before, after).Count == 0)
                 return null;
 
-            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores) { ScoreChange = scoreChange, Directed = directed };
+            step = new WorkbenchStep(++_stepNumber, description, before, after, DateTimeOffset.Now, round, restores)
+            {
+                ScoreChange = scoreChange,
+                Directed = directed,
+                Ordinal = OrdinalOfNext(_history, round, directed),
+            };
             _history.Add(step);
 
             if (_history.Count > _historyCapacity)
@@ -552,6 +566,12 @@ public sealed class GrammarWorkbench : IDisposable
         _ = RescoreAsync();
         return step;
     }
+
+    /// <summary>The place a step in <paramref name="round"/> (or a directed one) takes after <paramref name="earlier"/>: one past theirs - null for a person's edit.</summary>
+    static int? OrdinalOfNext(IEnumerable<WorkbenchStep> earlier, int? round, bool directed) =>
+        round is int number ? earlier.Count(x => x.Round == number) + 1
+        : directed ? earlier.Count(x => x.Directed) + 1
+        : null;
 
     GrammarDefinition RestoreReferences(GrammarDefinition working, GlyphDefinition glyph)
     {
@@ -779,6 +799,7 @@ public sealed class GrammarWorkbench : IDisposable
 
             // Steps from before the commit would take back committed work.
             _history.Clear();
+            _stepNumber = 0;
 
             SetDefinitions(definition, definition);
             SaveWorkingDefinition();
@@ -808,6 +829,7 @@ public sealed class GrammarWorkbench : IDisposable
                 _committedTrial = Task.FromResult(LatestWorkingScore);
 
             _history.Clear();
+            _stepNumber = 0;
 
             SetDefinitions(WorkingDefinition, WorkingDefinition);
             WriteFile(_options.BaselinePath, WorkingDefinition.ToJson());
@@ -850,7 +872,7 @@ public sealed class GrammarWorkbench : IDisposable
 
     /// <summary>One step as saved: what came after it is the next step's <see cref="Before"/>, or the working definition.</summary>
     sealed record SavedStep(int Number, string Description, DateTimeOffset At, GrammarDefinition Before, int? Round = null, bool Restores = false,
-        StepScoreChange ScoreChange = null, StepEffort Effort = null, bool Directed = false);
+        StepScoreChange ScoreChange = null, StepEffort Effort = null, bool Directed = false, int? Ordinal = null);
 
     void SaveHistory()
     {
@@ -863,7 +885,7 @@ public sealed class GrammarWorkbench : IDisposable
             return;
         }
 
-        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores, x.ScoreChange, x.Effort, x.Directed)).ToList()));
+        WriteFile(_options.HistoryPath, DefinitionJson.Serialize(_history.Select(x => new SavedStep(x.Number, x.Description, x.At, x.Before, x.Round, x.Restores, x.ScoreChange, x.Effort, x.Directed, x.Ordinal)).ToList()));
     }
 
     void LoadHistory()
@@ -881,6 +903,9 @@ public sealed class GrammarWorkbench : IDisposable
                     ScoreChange = saved[i].ScoreChange,
                     Effort = saved[i].Effort,
                     Directed = saved[i].Directed,
+
+                    // A step saved before steps had places takes its place among those loaded before it.
+                    Ordinal = saved[i].Ordinal ?? OrdinalOfNext(_history, saved[i].Round, saved[i].Directed),
                 });
 
             _stepNumber = _history.Count > 0 ? _history.Max(x => x.Number) : 0;
@@ -889,6 +914,7 @@ public sealed class GrammarWorkbench : IDisposable
         {
             // History is a convenience: an unreadable file is set aside, and the working definition stands as it is.
             _history.Clear();
+            _stepNumber = 0;
             File.Move(_options.HistoryPath, _options.HistoryPath + $".unreadable-{DateTime.Now:yyyyMMddHHmmss}");
         }
     }

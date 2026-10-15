@@ -79,7 +79,7 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         Assert.True(agent.IsAwaitingApproval);
 
         var approved = await agent.ApplyAsync(null, remove: "AnimalRests", description: "no resting", approval: "go ahead");
-        Assert.Contains("Applied as step 1: no resting (approved: go ahead)", approved);
+        Assert.Contains("Applied as step 1 of round 1: no resting (approved: go ahead)", approved);
         Assert.False(agent.IsAwaitingApproval);
     }
 
@@ -216,6 +216,9 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
         await agent.ApplyAsync(_animalYawns);
 
         Assert.Equal([4, 5], _workbench.History.Select(x => x.Round));
+
+        // Each round numbers its steps from 1.
+        Assert.Equal(["step 1 of round 4", "step 1 of round 5"], _workbench.History.Select(x => x.Label));
     }
 
     [Fact]

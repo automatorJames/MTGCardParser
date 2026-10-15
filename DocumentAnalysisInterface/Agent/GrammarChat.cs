@@ -147,22 +147,24 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         if (call is not { Tool: "apply", Failed: false, Result: { } result } || _appliedStep.Match(result) is not { Success: true } match)
             return;
 
-        var number = int.Parse(match.Groups[1].Value);
+        var (ordinal, round) = (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
         var (worked, tokens) = (Worked, Stats.TotalTokens);
         var effort = new StepEffort(worked - _workedAtStep, tokens - _tokensAtStep, EstimateCost(tokens - _tokensAtStep));
         (_workedAtStep, _tokensAtStep) = (worked, tokens);
 
         var workbench = workspaces.Active;
-        var step = workbench.History.LastOrDefault(x => x.Number == number);
-        var figures = StepFigures.Of((step ?? new(number, null, null, null, DateTimeOffset.Now)) with { Effort = effort });
 
-        AddEntry(new(ChatEntryKind.Step, figures.Line()) { StepNumber = number, StepDescription = step?.Description });
+        if (workbench.History.LastOrDefault(x => x.Round == round && x.Ordinal == ordinal) is not { } step)
+            return;
+
+        AddEntry(new(ChatEntryKind.Step, StepFigures.Of(step with { Effort = effort }).Line()) { StepNumber = ordinal, StepDescription = step.Description });
 
         // Off the gate: the workbench tells the page, which reads the chat too.
-        _ = Task.Run(() => workbench.SetStepEffort(number, effort));
+        _ = Task.Run(() => workbench.SetStepEffort(step.Number, effort));
     }
 
-    static readonly Regex _appliedStep = new(@"^\s*Applied as step (\d+)", RegexOptions.Compiled);
+    /// <summary>How `apply` reports a step it applied in a round (see <see cref="WorkbenchStep.Label"/>).</summary>
+    static readonly Regex _appliedStep = new(@"^\s*Applied as step (\d+) of round (\d+)", RegexOptions.Compiled);
 
     /// <summary>
     /// What <paramref name="tokens"/> cost, reckoned naively as the share of the weekly allowance they used, of what the

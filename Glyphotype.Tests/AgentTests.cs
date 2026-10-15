@@ -87,10 +87,10 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         var applied = await agent.ApplyAsync(_animalSnores, description: "snoring animals");
 
-        Assert.Contains("Applied as step 1: snoring animals", applied);
+        Assert.Contains("Applied as step 1 of round 1: snoring animals", applied);
         Assert.Contains("1 gained", applied);
         Assert.Contains(workbench.Changes, x => x.Name == "AnimalSnores");
-        Assert.Contains("#1", agent.History());
+        Assert.Contains("step 1 of round 1: snoring animals", agent.History());
         Assert.Contains("AnimalSnores (added)", agent.History());
 
         var matches = await agent.MatchesAsync("AnimalSnores");
@@ -99,7 +99,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         var undone = await agent.UndoAsync();
 
-        Assert.Contains("Undid step 1: snoring animals", undone);
+        Assert.Contains("Undid step 1 of round 1: snoring animals", undone);
         Assert.Contains("1 lost", undone);
         Assert.Empty(workbench.Changes);
     }
@@ -308,7 +308,7 @@ public sealed class AgentTests(CorpusFixture corpus) : IDisposable
 
         var applied = await agent.ApplyAsync(null, description: "snoring animals");
 
-        Assert.StartsWith("Applied as step 1: snoring animals", applied);
+        Assert.StartsWith("Applied as step 1 of round 1: snoring animals", applied);
         Assert.Contains("As evaluated:", applied);
         Assert.DoesNotContain("Glyph contributions", applied);
         Assert.Contains(workbench.WorkingDefinition.Glyphs, x => x.Name == "AnimalSnores");

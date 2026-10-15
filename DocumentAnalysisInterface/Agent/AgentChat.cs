@@ -26,7 +26,7 @@ public enum ChatEntryKind
 /// <param name="Streaming">An agent's entry still being added to.</param>
 public sealed record ChatEntry(ChatEntryKind Kind, string Text, bool Streaming = false)
 {
-    /// <summary>For a <see cref="ChatEntryKind.Step"/>: its number, and its description.</summary>
+    /// <summary>For a <see cref="ChatEntryKind.Step"/>: its number in its round, and its description.</summary>
     public int? StepNumber { get; init; }
     public string StepDescription { get; init; }
 
