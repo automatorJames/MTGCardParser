@@ -25,5 +25,11 @@ public enum PermanentEvent
 
     IsDealtDamage,
 
+    [RegexPattern("deals combat damage to a player")]
+    DealsCombatDamageToAPlayer,
+
+    [RegexPattern("deals combat damage to an opponent")]
+    DealsCombatDamageToAnOpponent,
+
     DealsDamage
 }
