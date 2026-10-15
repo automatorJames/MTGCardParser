@@ -1,0 +1,16 @@
+.cell-spinner {
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    vertical-align: -0.1em;
+    border: 2px solid var(--subtext-grey);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: cell-spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes cell-spinner-rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}

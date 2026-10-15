@@ -85,8 +85,30 @@ else
                             <tr class="level-@metric.Level">
                                 <td class="metric-name" title="@metric.Tooltip">@metric.Name</td>
                                 <td>@metric.Format(metric.Committed)</td>
-                                <td>@(metric.Working is double working ? metric.Format(working) : "…")</td>
-                                <td class="@DeltaClass(metric)">@FormatDelta(metric)</td>
+                                <td>
+                                    @if (metric.Working is double working)
+                                    {
+                                        @metric.Format(working)
+                                    }
+                                    else if (IsWorkingScorePending)
+                                    {
+                                        <CellSpinner Label="@ScoringLabel" />
+                                    }
+                                    else
+                                    {
+                                        @("…")
+                                    }
+                                </td>
+                                <td class="@DeltaClass(metric)">
+                                    @if (metric.Working is null && IsWorkingScorePending)
+                                    {
+                                        <CellSpinner Label="@ScoringLabel" />
+                                    }
+                                    else
+                                    {
+                                        @FormatDelta(metric)
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -96,7 +118,7 @@ else
             <div class="status">
                 @if (Workbench.IsScoring)
                 {
-                    <span class="status-scoring">Scoring the working grammar against @_committed.Documents.ToString("N0") documents…</span>
+                    <span class="status-scoring">@ScoringLabel</span>
                 }
                 else if (WorkingErrors is { Count: > 0 } errors)
                 {
@@ -236,7 +258,16 @@ else
                                 </td>
                                 <td class="name-column"><button class="name-link" data-preview-kind="@DefinitionKind.Glyph" data-preview-name="@row.Name" @onclick="() => View(DefinitionKind.Glyph, row.Name)">@row.Name</button></td>
                                 <td class="@Sign(stats?.NetBits)">@Bits(stats?.NetBits)</td>
-                                <td class="@Sign(row.NetDelta)">@Delta(row.NetDelta)</td>
+                                <td class="@Sign(row.NetDelta)">
+                                    @if (row.InWorking && IsWorkingScorePending)
+                                    {
+                                        <CellSpinner Label="@ScoringLabel" />
+                                    }
+                                    else
+                                    {
+                                        @Delta(row.NetDelta)
+                                    }
+                                </td>
                                 <td>@Bits(stats?.ResidualEquivalentBits)</td>
                                 <td>@Bits(stats?.DataBits)</td>
                                 <td>@Bits(stats?.DefinitionBits)</td>
@@ -404,6 +435,14 @@ else
 
     IReadOnlyList<string> WorkingErrors =>
         Workbench.LatestWorkingScore is { Succeeded: false } latest && latest.Definition == Workbench.WorkingDefinition ? latest.Errors : null;
+
+    /// <summary>
+    /// Whether the working grammar's score is on its way: it differs from the committed one, and has neither a score
+    /// nor build errors yet - so a cell waiting on it shows a spinner, not a blank that reads as "no change".
+    /// </summary>
+    bool IsWorkingScorePending => Workbench.HasChanges && _working is null && WorkingErrors is null;
+
+    string ScoringLabel => $"Scoring the working grammar against {_committed.Documents:N0} documents…";
 
     /// <summary>Resolved once the page is showing its loading indicator (see <see cref="OnAfterRenderAsync"/>), not injected: building it reads the whole committed grammar.</summary>
     WorkspaceManager Workspaces;

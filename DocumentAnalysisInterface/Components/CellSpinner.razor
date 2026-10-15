@@ -1,0 +1,7 @@
+<span class="cell-spinner" role="status" title="@Label" aria-label="@Label"></span>
+
+@code {
+    /// <summary>What's still being worked out, e.g. "Scoring the working grammar…" - the spinner's tooltip and accessible name.</summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; }
+}
