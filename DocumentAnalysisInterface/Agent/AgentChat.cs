@@ -77,6 +77,11 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
 {
     const string _mcpServerName = "glyphotype";
 
+    // How long the CLI waits on a tool call: as good as forever. Without it, a call that's quiet for five minutes - an
+    // evaluate of a large corpus - is aborted, and the agent tries again; a long wait costs nothing, a retry costs tokens.
+    // The CLI's own default for the whole call, which this also makes the floor of its idle timeout.
+    const int _mcpToolTimeoutMilliseconds = 100_000_000;
+
     protected readonly object _gate = new();
     readonly List<ChatEntry> _entries = [];
 
@@ -427,7 +432,7 @@ public abstract class AgentChat(LocalAgent localAgent, IServer server, string wo
         {
             mcpServers = new Dictionary<string, object>
             {
-                [_mcpServerName] = new { type = "http", url = GetMcpUrl() },
+                [_mcpServerName] = new { type = "http", url = GetMcpUrl(), timeout = _mcpToolTimeoutMilliseconds },
             },
         };
 
