@@ -6,7 +6,7 @@
 /// </summary>
 /// <exampledoc>Animate Dead</exampledoc>
 /// <examplecapture>sacrifices it</examplecapture>
-public class Sacrifice : Glyph, IPredicate
+public class Sacrifice : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Pattern("sacrifices?"), Prop(Sacrificed)];
 

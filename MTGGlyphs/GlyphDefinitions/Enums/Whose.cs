@@ -10,6 +10,9 @@ public enum Whose
     [RegexPattern("its owner's")]
     ItsOwners,
 
+    [RegexPattern("their owners?'s?")]
+    TheirOwners,
+
     [RegexPattern("its controller's")]
     ItsControllers,
 

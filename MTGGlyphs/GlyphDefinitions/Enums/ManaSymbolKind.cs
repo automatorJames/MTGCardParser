@@ -75,5 +75,8 @@ public enum ManaSymbolKind
     Snow,
 
     [RegexPattern("∞")]
-    Infinite
+    Infinite,
+
+    [RegexPattern("e")]
+    Energy
 }

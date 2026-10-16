@@ -362,3 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /DocumentAnalysisInterface/appsettings.json
+
+# Large card data dump (download locally, do not commit)
+AllPrintings.json

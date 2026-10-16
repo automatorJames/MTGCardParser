@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>One particular permanent: {this}, "this permanent" in reminder text, "it", a target, one named earlier ("that creature"), or the enchanted one.</summary>
+/// <summary>One particular permanent: {this}, "this permanent" in reminder text, "it", a target, one named earlier ("that creature", "the exiled card"), or the enchanted one.</summary>
 /// <exampledoc>Animate Dead</exampledoc>
 /// <examplecapture>enchanted creature</examplecapture>
 [Dependent]
@@ -12,4 +12,5 @@ public class PermanentPhrase : GlyphOneOf
     public SpecificTarget SpecificTarget { get; set; }
     public ThatCard ThatCard { get; set; }
     public EnchantedPermanent EnchantedPermanent { get; set; }
+    public ThatCardPhrase ThatCardPhrase { get; set; }
 }

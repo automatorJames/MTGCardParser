@@ -42,5 +42,11 @@ public enum Quantity
     Eleven,
 
     [RegexPattern("12", "twelve")]
-    Twelve
+    Twelve,
+
+    [RegexPattern("all")]
+    All,
+
+    [RegexPattern("an additional", "one additional")]
+    OneAdditional
 }
