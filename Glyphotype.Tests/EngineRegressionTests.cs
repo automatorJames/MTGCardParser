@@ -144,4 +144,30 @@ public class EngineRegressionTests
         else
             Assert.Contains($"⟦{expected}: ", rendered);
     }
+
+    [Theory]
+    [InlineData("the dog loud snores", "Loud")]
+    [InlineData("the dog quiet snores", "Quiet")]
+    [InlineData("the dog snores", null)]
+    public void An_optional_enum_between_two_nibs_matches_any_of_its_members(string text, string expected)
+    {
+        // An optional enum carries its leading joiner inside its own group, where it used to sit before the first
+        // member alone: (?<Volume> loud|quiet)? - so the others never matched after a space, and the first's capture
+        // kept the space, which no member's anchored pattern matched.
+        var grammar = Build("""
+            public enum Volume { Loud, Quiet }
+
+            public class Snores : Glyph
+            {
+                public override Nib[] Nibs => ["the dog", Prop(Volume), "snores"];
+
+                [Optional]
+                public Volume? Volume { get; set; }
+            }
+            """);
+
+        var match = Assert.IsAssignableFrom<Glyph>(Assert.Single(grammar.Tokenize(text)));
+
+        Assert.Equal(expected, match.Type.GetProperty("Volume").GetValue(match)?.ToString());
+    }
 }

@@ -47,16 +47,38 @@ public class EnumNode : NamedGroupNode
         }
     }
 
+    /// <summary>
+    /// The members, as alternatives - grouped when the enum carries a joiner inside its own group (as an optional
+    /// enum does - see <see cref="NamedGroupNode.AppendOwnRegexBricks"/>), or the joiner would precede the first member
+    /// alone: <c>( fish|milk)?</c> matches " fish" and a bare "milk", where <c>( (fish|milk))?</c> is meant.
+    /// </summary>
+    protected override void AppendInnerContentBricks(RegexCollector collector)
+    {
+        var carriesJoiner = LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading || TrailingJoinerSuccessor is not null;
+
+        if (carriesJoiner)
+            collector.Append(new RegexBrick(this, "("));
+
+        base.AppendInnerContentBricks(collector);
+
+        if (carriesJoiner)
+            collector.Append(new RegexBrick(this, ")"));
+    }
+
     /// <summary>Finds which <see cref="EnumMemberNode"/> child's pattern matched the captured text, and returns its scalar enum value.</summary>
     protected override object GetValue(CaptureTrace captureTrace)
     {
         if (captureTrace.Count != 1)
             throw new Exception($"{nameof(EnumNode)} expects exactly one capture");
 
+        // Without the joiners an optional enum carries inside its group (see AppendInnerContentBricks): the members'
+        // patterns are anchored, and match the member alone.
+        var value = captureTrace.CaptureValue.Trim(' ');
+
         return Children
             .OfType<EnumMemberNode>()
-            .FirstOrDefault(x => x.Regex.IsMatch(captureTrace.CaptureValue))
-            .ScalarValue
+            .FirstOrDefault(x => x.Regex.IsMatch(value))
+            ?.ScalarValue
             ?? throw new Exception($"Found no matching values for enum '{Navigation.UnderlyingType.Name}' from match string '{captureTrace.CaptureValue}'");
     }
 }
