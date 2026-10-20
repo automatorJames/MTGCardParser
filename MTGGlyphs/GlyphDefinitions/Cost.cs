@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>A price to pay: mana ("{u}"), tapping ("{t}", or another permanent: "tap enchanted creature"), life ("1 life", "pay 1 life"), sacrificing ("sacrifice {this}"), exiling ("exile {this}"), discarding ("discard a card at random", "discard this card"), removing counters ("remove a corpse counter from {this}"), or a cumulative upkeep's own cost ("its upkeep cost").</summary>
+/// <summary>A price to pay: mana ("{u}"), tapping ("{t}", or another permanent: "tap enchanted creature"), life ("1 life", "pay 1 life"), sacrificing ("sacrifice {this}"), exiling ("exile {this}"), discarding ("discard a card at random", "discard this card"), removing counters ("remove a corpse counter from {this}"), returning a permanent ("return a land you control to its owner's hand"), or a cumulative upkeep's own cost ("its upkeep cost").</summary>
 /// <exampledoc>Phantasmal Forces</exampledoc>
 /// <examplecapture>{u}</examplecapture>
 [Dependent]
@@ -15,6 +15,7 @@ public class Cost : GlyphOneOf
     public DiscardThisCard DiscardThis { get; set; }
     public DrawOrDiscardCards Discard { get; set; }
     public PlaceCounters RemoveCounters { get; set; }
+    public ReturnCard Return { get; set; }
     public ItsUpkeepCost UpkeepCost { get; set; }
     public PayLifeOrEnergy PayLifeOrEnergy { get; set; }
 }
