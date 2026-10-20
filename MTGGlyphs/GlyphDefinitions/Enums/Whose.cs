@@ -21,7 +21,7 @@ public enum Whose
 
     Their,
 
-    [RegexPattern("a", "any")]
+    [RegexPattern("a single", "a", "any")]
     Any,
 
     [RegexPattern("the next turn's")]

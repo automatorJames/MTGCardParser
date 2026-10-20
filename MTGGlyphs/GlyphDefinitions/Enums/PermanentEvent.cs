@@ -4,6 +4,7 @@ public enum PermanentEvent
 {
     Dies,
 
+    [RegexPattern("enters")]
     EntersTheBattlefield,
 
     LeavesTheBattlefield,
@@ -15,6 +16,8 @@ public enum PermanentEvent
     [RegexPattern("attacks and isn't blocked")]
     AttacksAndIsntBlocked,
 
+    AttacksOrBlocks,
+
     Attacks,
 
     Blocks,
@@ -25,11 +28,17 @@ public enum PermanentEvent
 
     IsDealtDamage,
 
+    [RegexPattern("deals combat damage to a player or planeswalker")]
+    DealsCombatDamageToAPlayerOrPlaneswalker,
+
     [RegexPattern("deals combat damage to a player")]
     DealsCombatDamageToAPlayer,
 
     [RegexPattern("deals combat damage to an opponent")]
     DealsCombatDamageToAnOpponent,
+
+    [RegexPattern("deals combat damage to a creature")]
+    DealsCombatDamageToACreature,
 
     DealsDamage
 }

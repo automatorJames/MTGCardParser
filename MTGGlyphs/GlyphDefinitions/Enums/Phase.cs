@@ -32,5 +32,7 @@ public enum Phase
 
     EndOfTurn,
 
+    NextTurn,
+
     Turn
 }

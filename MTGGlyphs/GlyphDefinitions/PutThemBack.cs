@@ -1,10 +1,10 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>", then put them back in any order": the tail of looking at the top of a library.</summary>
+/// <summary>"them back in any order": returning looked-at cards to the top of the library in an order of the player's choice.</summary>
 /// <exampledoc>Aven Fateshaper</exampledoc>
-/// <examplecapture>, then put them back in any order</examplecapture>
+/// <examplecapture>them back in any order</examplecapture>
 [Dependent]
 public class PutThemBack : Glyph
 {
-    public override Nib[] Nibs => [", then put them back in any order"];
+    public override Nib[] Nibs => ["them back in any order"];
 }

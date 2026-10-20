@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>A point in a player's turn: "at the beginning of your upkeep", "at the beginning of each player's upkeep", "at the beginning of the upkeep of enchanted land's controller", "until the end of your turn".</summary>
+/// <summary>A point in a player's turn: "at the beginning of your upkeep", "at the beginning of each player's upkeep", "at the beginning of the upkeep of enchanted land's controller", "at the beginning of combat on your turn", "until the end of your turn".</summary>
 /// <exampledoc>Juzám Djinn</exampledoc>
 /// <examplecapture>at the beginning of your upkeep</examplecapture>
 [Dependent]
@@ -10,5 +10,5 @@ public class AtOrUntilPlayerPhase : Glyph
 
     public TemporalDisposition TemporalDisposition { get; set; }
     public PhasePart PhasePart { get; set; }
-    public OneOf<PlayersPhase, PhaseOfPlayer> Step { get; set; }
+    public OneOf<PhaseOnPlayersTurn, PlayersPhase, PhaseOfPlayer> Step { get; set; }
 }

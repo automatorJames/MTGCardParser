@@ -1,11 +1,12 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"attach {this} to it": an aura or equipment attaching itself to a permanent.</summary>
-/// <exampledoc>Animate Dead</exampledoc>
-/// <examplecapture>attach {this} to it</examplecapture>
-public class Attach : Glyph
+/// <summary>"attach {this} to it", "attach it to target creature you control", "attach this equipment to that creature": an aura or equipment being attached to a permanent. Also a predicate, so "you may attach it to this creature" resolves.</summary>
+/// <exampledoc>Piston Sledge</exampledoc>
+/// <examplecapture>attach it to target creature you control</examplecapture>
+public class Attach : Glyph, IConjoinedPredicate, IPredicate
 {
-    public override Nib[] Nibs => ["attach", Nib.This, "to", Prop(AttachedTo)];
+    public override Nib[] Nibs => ["attach", Prop(Attachment), "to", Prop(AttachedTo)];
 
+    public OneOf<This, ThisCreature, It> Attachment { get; set; }
     public PermanentPhrase AttachedTo { get; set; }
 }

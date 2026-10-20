@@ -48,5 +48,8 @@ public enum Quantity
     All,
 
     [RegexPattern("an additional", "one additional")]
-    OneAdditional
+    OneAdditional,
+
+    [RegexPattern("any number")]
+    AnyNumber
 }
