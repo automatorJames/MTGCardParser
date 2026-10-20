@@ -15,6 +15,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Glyphotype.Tests", "Glyphot
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Glyphotype.Distiller", "Glyphotype.Distiller\Glyphotype.Distiller.csproj", "{7788DE41-7F78-46E9-9F1E-1CD97EFA7280}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{33234E9C-AC67-416A-9667-E39B672D469C}"
+	ProjectSection(SolutionItems) = preProject
+		AGENT-MODEL-EVALUATION.md = AGENT-MODEL-EVALUATION.md
+		ARCHITECTURE-REVIEW.md = ARCHITECTURE-REVIEW.md
+		JEV-EVALUATION.md = JEV-EVALUATION.md
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
