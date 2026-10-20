@@ -8,6 +8,7 @@ public enum CreatureType
 
     Ajani,
 
+    [RegexPattern("ally", "allies")]
     Ally,
 
     Angel,
@@ -25,6 +26,8 @@ public enum CreatureType
     Archon,
 
     Arlinn,
+
+    Army,
 
     Artificer,
 
@@ -133,6 +136,7 @@ public enum CreatureType
 
     Dryad,
 
+    [RegexPattern("dwarf", "dwarves")]
     Dwarf,
 
     Efreet,
@@ -147,6 +151,7 @@ public enum CreatureType
 
     Elephant,
 
+    [RegexPattern("elf", "elves")]
     Elf,
 
     Elk,
@@ -173,6 +178,7 @@ public enum CreatureType
 
     Frog,
 
+    [RegexPattern("fungus", "fungi")]
     Fungus,
 
     Gargoyle,
@@ -203,6 +209,7 @@ public enum CreatureType
 
     Hag,
 
+    [RegexPattern("harpy", "harpies")]
     Harpy,
 
     Hellion,
@@ -213,6 +220,7 @@ public enum CreatureType
 
     Homarid,
 
+    [RegexPattern("homunculus", "homunculi")]
     Homunculus,
 
     Horror,
@@ -291,6 +299,7 @@ public enum CreatureType
 
     Masticore,
 
+    [RegexPattern("mercenary", "mercenaries")]
     Mercenary,
 
     Merfolk,
@@ -363,12 +372,14 @@ public enum CreatureType
 
     Ouphe,
 
+    [RegexPattern("ox", "oxen")]
     Ox,
 
     Oyster,
 
     Pangolin,
 
+    [RegexPattern("pegasus", "pegasi")]
     Pegasus,
 
     Pest,
@@ -468,6 +479,7 @@ public enum CreatureType
 
     Spellshaper,
 
+    [RegexPattern("sphinx", "sphinxes")]
     Sphinx,
 
     Spider,
@@ -541,12 +553,14 @@ public enum CreatureType
 
     Weird,
 
+    [RegexPattern("werewolf", "werewolves")]
     Werewolf,
 
     Whale,
 
     Wizard,
 
+    [RegexPattern("wolf", "wolves")]
     Wolf,
 
     Wolverine,

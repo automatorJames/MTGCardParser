@@ -16,7 +16,7 @@ public enum Whose
     [RegexPattern("its controller's")]
     ItsControllers,
 
-    [RegexPattern("their controllers'")]
+    [RegexPattern("their controllers'", "their controller's")]
     TheirControllers,
 
     Their,
@@ -31,5 +31,7 @@ public enum Whose
 
     Each,
 
-    The
+    The,
+
+    All
 }

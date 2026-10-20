@@ -15,5 +15,11 @@ public enum OutcomeResult
     WonFlip,
 
     [RegexPattern("lose the flip")]
-    LostFlip
+    LostFlip,
+
+    [RegexPattern("wins?")]
+    Won,
+
+    [RegexPattern("loses?")]
+    Lost
 }

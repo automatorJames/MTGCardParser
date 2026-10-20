@@ -1,9 +1,9 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Copying a spell, often with new targets allowed: "copy this spell", "copy it and you may choose a new target for the copy", "copy that spell".</summary>
+/// <summary>Copying a spell, often with new targets allowed: "copy this spell", "copy it and you may choose a new target for the copy", "copy that spell". Also the second of two actions.</summary>
 /// <exampledoc>Rob the Archives</exampledoc>
 /// <examplecapture>copy this spell</examplecapture>
-public class CopySpell : Glyph, IPredicate
+public class CopySpell : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => ["copy", Prop(Spell), Prop(NewTargets)];
 

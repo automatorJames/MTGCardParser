@@ -98,6 +98,7 @@ public enum Keyword
 
     Cipher,
 
+    [RegexPattern("clash with an opponent", "clash")]
     Clash,
 
     Conspire,
@@ -375,6 +376,7 @@ public enum Keyword
 
     Adapt,
 
+    [RegexPattern("amass zombies", "amass orcs", "amass goblins", "amass")]
     Amass,
 
     Afflict,
@@ -414,6 +416,9 @@ public enum Keyword
     Awaken,
 
     Megamorph,
+
+    [RegexPattern("manifest dread")]
+    ManifestDread,
 
     Manifest,
 
@@ -498,5 +503,35 @@ public enum Keyword
 
     Earthbend,
 
-    Waterbend
+    Waterbend,
+
+    Explore,
+
+    [RegexPattern("venture into the dungeon")]
+    Venture,
+
+    [RegexPattern("the ring tempts you")]
+    TheRingTemptsYou,
+
+    CollectEvidence,
+
+    Goad,
+
+    Firebending,
+
+    Recruit,
+
+    [RegexPattern("empower jace", "empower")]
+    Empower,
+
+    Paradigm,
+
+    [RegexPattern("for mirrodin!")]
+    ForMirrodin,
+
+    Storied,
+
+    Teamwork,
+
+    Airbend
 }

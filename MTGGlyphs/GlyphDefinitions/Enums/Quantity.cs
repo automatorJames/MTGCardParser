@@ -50,6 +50,27 @@ public enum Quantity
     [RegexPattern("an additional", "one additional")]
     OneAdditional,
 
-    [RegexPattern("any number")]
-    AnyNumber
+    [RegexPattern("any number of", "any number")]
+    AnyNumber,
+
+    [RegexPattern("that many")]
+    ThatMany,
+
+    [RegexPattern("a number of")]
+    ANumberOf,
+
+    [RegexPattern("13", "thirteen")]
+    Thirteen,
+
+    [RegexPattern("14", "fourteen")]
+    Fourteen,
+
+    [RegexPattern("15", "fifteen")]
+    Fifteen,
+
+    [RegexPattern("20", "twenty")]
+    Twenty,
+
+    [RegexPattern("[1-9][0-9]+")]
+    LargerNumber
 }

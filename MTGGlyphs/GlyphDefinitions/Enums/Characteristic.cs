@@ -5,5 +5,6 @@ public enum Characteristic
     Power,
     Toughness,
     ManaValue,
-    LifeTotal
+    LifeTotal,
+    Name
 }

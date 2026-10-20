@@ -1,8 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
 /// <summary>
-/// "lands", "nonblack creatures", "swamps", "tapped blue creatures they control": permanents of one kind (card type, land type or creature type), optionally narrowed
-/// and optionally by who controls them. The kind is a referent, so a later "they" or "those creatures" refers to
+/// "lands", "nonblack creatures", "swamps", "tapped blue creatures they control", "creatures on the battlefield": permanents of one kind (card type, land type or creature type), optionally narrowed
+/// and optionally by who controls them, or anywhere on the battlefield. The kind is a referent, so a later "they" or "those creatures" refers to
 /// them (see <see cref="ThatCard"/>).
 /// </summary>
 /// <exampledoc>Magnetic Mountain</exampledoc>
@@ -19,5 +19,5 @@ public class Permanents : Glyph
     [Plural]
     public PermanentKind Kind { get; set; }
     [Optional]
-    public ControlledBy Controller { get; set; }
+    public OneOf<ControlledBy, OnTheBattlefield> Controller { get; set; }
 }
