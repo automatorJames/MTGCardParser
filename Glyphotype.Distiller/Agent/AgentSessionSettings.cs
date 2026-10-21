@@ -13,6 +13,12 @@ public sealed record AgentSessionSettings
     /// <summary>Evaluations in a row without an applied step before checking in - the agent is stuck. 0 for no limit.</summary>
     public int AttemptsBeforeCheckIn { get; init; } = 10;
 
+    /// <summary>
+    /// Whether a step that breaks the step rules waits for the person's approval. When it doesn't, the agent approves
+    /// such a step itself, giving its reason as the approval - so a long session left to run isn't held up waiting.
+    /// </summary>
+    public bool AsksApproval { get; init; } = true;
+
     /// <summary>How many words the workspace's journal may come to: past it, an agent must prune before adding. 0 for no limit.</summary>
     public int JournalWordLimit { get; init; } = 1500;
 

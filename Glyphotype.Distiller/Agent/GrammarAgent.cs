@@ -321,7 +321,9 @@ public sealed class GrammarAgent
 
         report.AppendLine("- A step must cover at least one more word, and take no words from a glyph that matches them (`evaluate` lists any it takes, by glyph). Among steps that do, prefer the one that takes the most bits off. " +
             "When a step takes words from a glyph, judge that glyph: narrow it, remove it, or revise your own step, and evaluate again. " +
-            "`apply` refuses a step that breaks either rule. If you judge one right anyway - a refactor, or a well-formed glyph replacing one too broad to be useful - check in: tell the person which rule it breaks and why it's worth it, and wait. Apply it with `approval` only once they've agreed.");
+            "`apply` refuses a step that breaks either rule. " + (Settings.AsksApproval
+                ? "If you judge one right anyway - a refactor, or a well-formed glyph replacing one too broad to be useful - check in: tell the person which rule it breaks and why it's worth it, and wait. Apply it with `approval` only once they've agreed."
+                : "If you judge one right anyway - a refactor, or a well-formed glyph replacing one too broad to be useful - the person has left that judgment to you: don't check in for it, but apply it with `approval` saying which rule it breaks and why it's worth it. Use this sparingly; it's not a way around a step you could rework."));
         if (DocumentationRule is { } documentationRule)
             report.AppendLine($"- {documentationRule}");
 
@@ -455,7 +457,12 @@ public sealed class GrammarAgent
     /// Whether the agent's latest change breaks the step rules, with nothing applied since - so an agent that stops now has
     /// stopped as the rules say to, to ask the person's approval for it, rather than given up early.
     /// </summary>
-    public bool IsAwaitingApproval => _brokeRules;
+    public bool IsAwaitingApproval => _brokeRules && Settings.AsksApproval;
+
+    /// <summary>What the agent does with a step it judges right though it breaks the step rules, as <see cref="AgentSessionSettings.AsksApproval"/> says.</summary>
+    string ApprovalInstruction => Settings.AsksApproval
+        ? "check in: tell the person which rule it breaks and why it's worth it, and wait - then apply it with `approval` only once they agree"
+        : "apply it with `approval` saying which rule it breaks and why it's worth it - the person has left that to you, so don't check in for it";
 
     /// <summary>Whether the person has asked the session to check in after its next step (see <see cref="StopAfterStep"/>).</summary>
     public bool IsStopAfterStepRequested => _stopAfterSteps > 0;
@@ -723,7 +730,7 @@ public sealed class GrammarAgent
 
         if (evaluation.After.Succeeded)
             report += RuleViolations(evaluation) is { Count: > 0 } violations
-                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}. Rework it - or, if it's right anyway, check in with the person, and apply it with `approval` once they agree."
+                ? $"{Environment.NewLine}`apply` would refuse this: {string.Join("; ", violations)}. Rework it - or, if it's right anyway, {ApprovalInstruction}."
                 : $"{Environment.NewLine}To make this change, `apply` with no source or removals: it makes what you just evaluated, without sending it again.";
 
         return WithStatus(WithStatus(WithStatus(report, DocumentationReminder(changes)), DeadEndReminder()), SessionStatus(applied: false));
@@ -784,12 +791,12 @@ public sealed class GrammarAgent
 
         if (_brokeRules)
             return WithStatus($"Not applied - {string.Join("; ", violations)}: {changes.Describe()}{Environment.NewLine}{DescribeEvaluation(evaluation)}"
-                + $"{Environment.NewLine}Rework it, or undo toward something better. If it's right anyway, check in: tell the person which rule it breaks and why it's worth it, and wait - then apply it with `approval` only once they agree.", SessionStatus(applied: false));
+                + $"{Environment.NewLine}Rework it, or undo toward something better. If it's right anyway, {ApprovalInstruction}.", SessionStatus(applied: false));
 
         description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
 
         if (violations.Count > 0)
-            description = $"{description ?? changes.Describe()} (approved: {approval.Trim()})";
+            description = $"{description ?? changes.Describe()} ({(Settings.AsksApproval ? "approved" : "self-approved")}: {approval.Trim()})";
 
         var workbench = Workbench;
         var round = RoundOfNextStep(workbench);

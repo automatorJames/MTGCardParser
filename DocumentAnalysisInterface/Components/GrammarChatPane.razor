@@ -147,6 +147,10 @@
                             }
                         </span>
                     </label>
+
+                    <span class="asks-approval" title="Whether the agent stops to ask your approval for a step that breaks the step rules. Off, it approves such a step itself and says why in the step - for sessions left to run. Read as a session starts.">
+                        <Switch Value="Chat.AsksApproval" ValueChanged="x => Chat.AsksApproval = x" Label="Ask approval" />
+                    </span>
                 </div>
 
                 <button class="btn btn-sm btn-secondary" disabled="@(running || string.IsNullOrWhiteSpace(_draft))" title="Say something to the agent without starting a round" @onclick="Send">Send</button>

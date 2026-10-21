@@ -84,6 +84,24 @@ public sealed class SessionTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_session_that_doesnt_ask_approval_has_the_agent_approve_a_rule_breaking_step_itself()
+    {
+        var agent = CreateAgent(new() { AsksApproval = false });
+
+        Assert.Contains("don't check in for it", await agent.StartSessionAsync(null));
+
+        var refused = await agent.ApplyAsync(null, remove: "AnimalRests");
+        Assert.StartsWith("Not applied - it takes words from AnimalRests", refused);
+        Assert.Contains("don't check in for it", refused);
+
+        // Stopping here isn't checking in as the rules say to: there's no one to wait for.
+        Assert.False(agent.IsAwaitingApproval);
+
+        var applied = await agent.ApplyAsync(null, remove: "AnimalRests", description: "no resting", approval: "AnimalRests is too broad");
+        Assert.Contains("Applied as step 1 of round 1: no resting (self-approved: AnimalRests is too broad)", applied);
+    }
+
+    [Fact]
     public async Task A_step_that_takes_words_from_another_glyph_lists_them_and_is_refused()
     {
         // Tried first, it claims the lines AnimalRests matched: as many words covered, but taken from another glyph.

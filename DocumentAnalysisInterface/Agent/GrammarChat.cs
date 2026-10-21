@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.RegularExpressions;
 using Glyphotype.Distiller.Agent;
 using Glyphotype.Distiller.Workbench;
@@ -296,10 +296,10 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>
-    /// The chat's settings as kept between runs of the app. The session's two are null where they were never set here,
-    /// which leaves the app's configured ones; 0 is "none", as in <see cref="AgentSessionSettings"/>.
+    /// The chat's settings as kept between runs of the app. The session's are null where they were never set here,
+    /// which leaves the app's configured ones - except whether to ask approval, which is off until it's set; 0 is "none", as in <see cref="AgentSessionSettings"/>.
     /// </summary>
-    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false);
+    sealed record Settings(int? HandoffThousands = null, int? StepsBeforeCheckIn = null, AgentFocus? Focus = null, bool StopsAfterStep = false, bool AsksApproval = false);
 
     const string _settingsFileName = "chat-settings.json";
 
@@ -310,6 +310,9 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
 
     static bool RestoreSessionSettings(GrammarAgent grammarAgent, string path)
     {
+        // Off unless set here: a session left to run shouldn't stop to ask.
+        grammarAgent.Settings = grammarAgent.Settings with { AsksApproval = ReadSettings(path)?.AsksApproval ?? false };
+
         if (ReadSettings(path) is not { } saved)
             return false;
 
@@ -337,7 +340,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     }
 
     /// <summary>Keeps the chat's settings as they stand now, for the app's next run.</summary>
-    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep));
+    void SaveSettings() => SaveSettings(new(HandoffThousands, agent.Settings.StepsBeforeCheckIn, agent.Settings.Focus, StopsAfterStep, agent.Settings.AsksApproval));
 
     void SaveSettings(Settings settings)
     {
@@ -408,6 +411,21 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         set
         {
             agent.Settings = agent.Settings with { Focus = value };
+            SaveSettings();
+            NotifyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Whether a step breaking the step rules waits for the person's approval - when off, the agent approves it itself, so
+    /// a session left to run isn't held up. The session setting itself, as <see cref="MaxSteps"/> is; read as a session starts.
+    /// </summary>
+    public bool AsksApproval
+    {
+        get => agent.Settings.AsksApproval;
+        set
+        {
+            agent.Settings = agent.Settings with { AsksApproval = value };
             SaveSettings();
             NotifyChanged();
         }

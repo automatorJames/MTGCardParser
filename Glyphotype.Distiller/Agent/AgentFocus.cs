@@ -1,4 +1,4 @@
-namespace Glyphotype.Distiller.Agent;
+﻿namespace Glyphotype.Distiller.Agent;
 
 /// <summary>
 /// What a session weighs most in choosing its targets and steps - a leaning within the loop the guide describes, never a
@@ -41,7 +41,7 @@ public static class AgentFocusExtensions
         AgentFocus.Refine =>
             "Refine: weigh generalizing the grammar above reaching new text. Look for near-duplicate glyphs to merge into one with a property, repeated literal alternatives to promote into a vocabulary, " +
             "and shared sub-phrases to extract into a `[Dependent]` glyph - and make each such change in a step that also covers more words, so it passes the step rules. " +
-            "A refactor that covers nothing new is the person's to approve, so save those for a check-in.",
+            "A refactor that covers nothing new breaks the step rules, so it needs an approval, as they say.",
         _ => null,
     };
 }

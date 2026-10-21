@@ -499,6 +499,23 @@
             border-color: #569cd6;
         }
 
+/* Whether the agent stops to ask approval: a switch, labeled as Max steps is */
+.asks-approval {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+    .asks-approval ::deep .switch-label {
+        margin: 0 !important;
+        font-family: inherit;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--subtext-grey);
+    }
+
 /* The agent's settings, under the header: what it runs on, then the rest in a row */
 .chat-settings {
     display: flex;
