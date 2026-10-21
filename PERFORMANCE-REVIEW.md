@@ -159,3 +159,27 @@ Restart the app between sessions, and watch its working set; at this grammar siz
 ## Appendix: the replay harness
 
 `ConsoleUtility replay <history.json> <step> [every] [working.json]` replays one step of a workspace's history as the workbench evaluates it: builds the step's "before" definition and tokenizes and scores the corpus with it, then builds the "after" (the next step's "before", or the working definition for the last step), compiles the rebuilt types' regexes, runs `TokenizationChange` and `MayDiffer`, re-tokenizes, scores, and refreshes, timing each part, counting allocations and gen-2 collections, and reporting the heap after each. `ConsoleUtility expansion-def <definition.json> [count]` prints the expansion report for a grammar built from a definition. Both are what the figures above were taken with; the full outputs are in the session's temp folder (`replay/*.txt`).
+
+---
+
+## Results (2026-10-21, later the same day)
+
+Phases A1, A4, B and C1/C3 are committed (`7b8a924`, `dc192f1`, `e4ed7ee`, `c9b8705`). Every parse of the corpus is identical, capture for capture, to the engine's before the change, under both the compiled grammar and the session's (`ConsoleUtility dump`, diffed), and the test grammar matches alike with every nested glyph matched by a call (`MatchPlanTests`).
+
+What changed in the engine: a glyph is matched by a *plan* - its flattened regex cut into runs the regex engine runs as they are, and calls to the shared plans of the large nested glyphs it inlines - instead of by one compiled flattened regex. The flattened regex is still built from the graph for display and never differs; it's just no longer compiled or even written out unless shown. A leaf's next alternative, when what follows it fails, is found by running the leaf again with the ends already tried ruled out, which is the regex engine's own next alternative.
+
+| Full corpus, same machine | This morning | Now (harness) | Now (in the app, hub-glyph evaluate) |
+|---|---|---|---|
+| Build the session's grammar at startup | 30 s, 6.7 GB | 13 s, 2.7 GB | app serving about 90 s after launch |
+| Tokenize the corpus | 68 s | 9 s | |
+| Score, first / warm | 23 s / 10 s | 1.7 s / 0.9 s | 1.6 s |
+| Rebuild the 227 types inlining PermanentPhrase | 26 s | 11 s | 21 s |
+| Re-tokenize after that edit | 31 s (42,135 lines) | 8 s (all 47,865) | 16 s |
+| Heap after an evaluate | 43 GB | 8.4 GB | 13.6 GB held, 19.2 GB after a second |
+| The whole evaluate | 111 s (app: 157 to 261 s) | about 20 s | 38.5 s |
+
+Still open, in order of what it would buy:
+
+1. **The rebuilt types' node graphs** are now most of what a step costs: 11 s in the harness and 21 s in the app to build 227 of them, and about 4 to 5 GB held per generation. Hydration and the display walk the inlined graph lazily already; what forces all of it is the brick walk (for the plan and the pattern's length), the clause-break and start-character scans, and the flat name tables. Building those compositionally, from each type's own graph plus the few facts the nesting site adds, would make a rebuild cost milliseconds and hold kilobytes - but the equivalence between a nested group's bricks and its type's own has to be established exactly, which is why it wasn't done here.
+2. The app's build and re-tokenize run about twice the harness's; worth a profile in the app with the UI closed, since the harness is the same code.
+3. Phase C2, the grammar refactors (`Cost` and the other hubs as dynamic slots), is now optional for speed and still worth doing for the grammar's own sake: the cost line reports the grammar's pattern size (681.9 M characters) and each step's change to it.
