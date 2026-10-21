@@ -9,9 +9,11 @@ namespace ConsoleUtility;
 /// </summary>
 static class Expansion
 {
-    public static void Run(int count)
+    public static void Run(int count) => Run(GlyphGrammar.Default, count);
+
+    /// <summary>The report for <paramref name="grammar"/> - e.g. one built from a workspace's definition.</summary>
+    public static void Run(GlyphGrammar grammar, int count)
     {
-        var grammar = GlyphGrammar.Default;
         var expansions = GrammarInspection.GetExpansions(grammar, parts: 4);
         var topLevel = grammar.TopLevelTypes.Select(x => x.Name).ToHashSet();
 

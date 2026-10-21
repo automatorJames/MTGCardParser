@@ -22,6 +22,16 @@ internal class Program
                 Bench.Run(_cardDataGetter, int.TryParse(args.ElementAtOrDefault(1), out var every) ? every : 10, args.ElementAtOrDefault(2));
                 break;
 
+            // replay history.json step [every] [working.json]: times one step of a workspace's history as evaluate runs it, part by part.
+            case "replay":
+                Replay.Run(_cardDataGetter, args[1], int.Parse(args[2]), int.TryParse(args.ElementAtOrDefault(3), out var everyNth) ? everyNth : 1, args.ElementAtOrDefault(4));
+                break;
+
+            // expansion-def definition.json [count]: the expansion report for a grammar built from a workspace's definition.
+            case "expansion-def":
+                Expansion.Run(Glyphotype.StaticRegistry.GlyphGrammar.FromDefinition(Glyphotype.Definitions.GrammarDefinition.FromJson(File.ReadAllText(args[1]))), int.TryParse(args.ElementAtOrDefault(2), out var defCount) ? defCount : 15);
+                break;
+
             // expansion [count]: the glyphs with the largest regexes, and the nested glyphs that make them so.
             case "expansion":
                 Expansion.Run(int.TryParse(args.ElementAtOrDefault(1), out var count) ? count : 15);
