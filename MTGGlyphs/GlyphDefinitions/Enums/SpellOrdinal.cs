@@ -4,5 +4,12 @@ public enum SpellOrdinal
 {
     First,
     Second,
-    Third
+    Third,
+    Fourth,
+    Fifth,
+    Sixth,
+    Seventh,
+    Eighth,
+    Ninth,
+    Tenth
 }

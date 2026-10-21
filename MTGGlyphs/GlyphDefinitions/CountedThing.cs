@@ -1,11 +1,12 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>What a "for each" counts: counters, objects, attachments ("aura attached to it"), blockers or targets beyond the first, colors of mana spent, objects acted on this way, basic land types, deaths, kicker payments, cards revealed from hand (amplify), or objects named earlier ("of those creatures").</summary>
+/// <summary>What a "for each" counts: creatures in a party, counters, objects, attachments ("aura attached to it"), blockers or targets beyond the first, colors of mana spent, objects acted on this way, basic land types, deaths, kicker payments, cards revealed from hand (amplify), or objects named earlier ("of those creatures").</summary>
 /// <exampledoc>Mephitic Ooze</exampledoc>
 /// <examplecapture>artifact you control</examplecapture>
 [Dependent]
 public class CountedThing : GlyphOneOf
 {
+    public PartyCreatures PartyCreatures { get; set; }
     public CountersOn CountersOn { get; set; }
     public BlockerBeyondFirst BlockerBeyondFirst { get; set; }
     public AttachedPermanents AttachedPermanents { get; set; }

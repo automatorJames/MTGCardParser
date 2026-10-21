@@ -533,5 +533,7 @@ public enum Keyword
 
     Teamwork,
 
-    Airbend
+    Airbend,
+
+    Tiered
 }

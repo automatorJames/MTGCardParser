@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>A state of the game a static ability can depend on: an object's aspect ("it's attacking", "this creature is equipped") or kind ("it's a human"), counters on it, cards in a zone, something having happened this turn, card types among cards, a life total, a hand size, soulbond pairing, or a player controlling something. Shared by WhileState and WhileConditionStatic.</summary>
+/// <summary>A state of the game a static ability can depend on: an object's aspect ("it's attacking", "this creature is equipped") or kind ("it's a human"), counters on it, cards in a zone, something having happened this turn, card types among cards, a life total, a hand size, soulbond pairing, a group's total power, an object's power or toughness bound, whose turn it is, or a player controlling something. Shared by WhileState, WhileConditionStatic and activation restrictions.</summary>
 /// <exampledoc>Kor Scythemaster</exampledoc>
 /// <examplecapture>it's attacking</examplecapture>
 [Dependent]
@@ -15,6 +15,9 @@ public class GameState : GlyphOneOf
     public LifeThreshold LifeThreshold { get; set; }
     public HandSizeCondition HandSizeCondition { get; set; }
     public IsPaired IsPaired { get; set; }
+    public TotalCharacteristicCondition TotalCharacteristic { get; set; }
+    public CharacteristicBoundCondition CharacteristicBound { get; set; }
+    public WhoseTurnCondition WhoseTurn { get; set; }
     public PermanentIs PermanentIs { get; set; }
     public PlayerControls PlayerControls { get; set; }
 }
