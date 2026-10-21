@@ -79,19 +79,37 @@ public class CorpusAnalyzer
         return analyzer;
     }
 
-    public async Task EnsureInitializedAsync()
+    /// <summary>The corpus's documents, read once (see <see cref="LoadDocumentsAsync"/>) - null until they are.</summary>
+    public IReadOnlyList<IDocument> Documents { get; private set; }
+
+    /// <summary>Reads the corpus's documents from the repository, once: what <see cref="EnsureInitializedAsync"/> tokenizes, readable ahead of it.</summary>
+    public async Task<IReadOnlyList<IDocument>> LoadDocumentsAsync() =>
+        Documents ??= await Volumes.GetDocumentsAsync(_repository);
+
+    /// <param name="progress">Told how many documents are tokenized so far, and how many there are - every so often, and at the end.</param>
+    public async Task EnsureInitializedAsync(IProgress<(int Done, int Total)> progress = null)
     {
         if (_isInitialized) return;
 
         // set ProcessedDocuments
         // Each document tokenizes independently, so this is CPU-bound and parallelizable.
         // AsOrdered keeps the result in the same order as GetDocumentsAsync returned it.
-        var documents = await Volumes.GetDocumentsAsync(_repository);
+        var documents = await LoadDocumentsAsync();
+        var done = 0;
 
         Analyze(documents
             .AsParallel()
             .AsOrdered()
-            .Select(x => new ProcessedDocument(x, _grammar))
+            .Select(x =>
+            {
+                var processed = new ProcessedDocument(x, _grammar);
+                var count = Interlocked.Increment(ref done);
+
+                if (progress is not null && (count % 64 == 0 || count == documents.Count))
+                    progress.Report((count, documents.Count));
+
+                return processed;
+            })
             .ToList());
     }
 

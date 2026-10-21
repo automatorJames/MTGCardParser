@@ -105,7 +105,7 @@ public sealed class ActiveCorpus
             VolumesChanged?.Invoke();
 
             var compiled = new CorpusAnalyzer(_repository, _compiled.Grammar, volumes);
-            await Task.Run(compiled.EnsureInitializedAsync);
+            await Task.Run(() => compiled.EnsureInitializedAsync());
 
             _workspaces.SetCorpus(compiled.ProcessedDocuments);
 

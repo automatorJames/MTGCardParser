@@ -32,7 +32,16 @@ public sealed record WorkspaceInfo(string Name, WorkspaceKind Kind, string Folde
 
 /// <summary>The grammar compiled from C# sources that a <see cref="WorkspaceManager"/> always offers as its first workspace.</summary>
 /// <param name="Documents">The corpus as <paramref name="Grammar"/> already tokenized it - every workspace is scored against these documents.</param>
-public sealed record SourceWorkspace(string Name, GlyphGrammar Grammar, IReadOnlyList<ProcessedDocument> Documents, string SourceDirectory, string SourceNamespace);
+/// <param name="Corpus">The corpus.</param>
+/// <param name="Documents">The corpus as <paramref name="Grammar"/> tokenizes it - made when first needed, so a working definition that differs from the sources doesn't have the corpus tokenized twice for it.</param>
+public sealed record SourceWorkspace(string Name, GlyphGrammar Grammar, IReadOnlyList<IDocument> Corpus, Lazy<IReadOnlyList<ProcessedDocument>> Documents, string SourceDirectory, string SourceNamespace)
+{
+    /// <summary>A source workspace whose corpus <paramref name="documents"/> is already tokenized.</summary>
+    public SourceWorkspace(string name, GlyphGrammar grammar, IReadOnlyList<ProcessedDocument> documents, string sourceDirectory, string sourceNamespace)
+        : this(name, grammar, documents.Select(x => x.Document).ToList(), new(documents), sourceDirectory, sourceNamespace)
+    {
+    }
+}
 
 /// <summary>
 /// Named grammars to work on against one corpus, one of them active at a time: the grammar compiled from C# sources,
@@ -84,7 +93,7 @@ public sealed class WorkspaceManager
         _configuredGuidance = (configuredGuidance ?? new Dictionary<string, string>())
             .Where(x => !string.IsNullOrWhiteSpace(x.Value))
             .ToDictionary(x => x.Key, x => x.Value.Trim(), StringComparer.OrdinalIgnoreCase);
-        _documents = source.Documents.Select(x => x.Document).ToList();
+        _documents = source.Corpus;
 
         var active = LoadIndex();
 
@@ -207,8 +216,8 @@ public sealed class WorkspaceManager
     {
         lock (_gate)
         {
-            _source = _source with { Documents = sourceDocuments };
             _documents = sourceDocuments.Select(x => x.Document).ToList();
+            _source = _source with { Corpus = _documents, Documents = new(sourceDocuments) };
             _sourceWorkbench?.SetCorpus(sourceDocuments);
 
             if (Active != _sourceWorkbench)
@@ -500,7 +509,7 @@ public sealed class WorkspaceManager
         {
             if (_sourceWorkbench is null)
             {
-                _sourceWorkbench = new GrammarWorkbench(_source.Grammar, _source.Documents, new(
+                _sourceWorkbench = new GrammarWorkbench(_source.Grammar, _source.Corpus, _source.Documents, new(
                     Path.Combine(folder, _workingFileName), _source.SourceDirectory, _source.SourceNamespace,
                     HistoryPath: Path.Combine(folder, _historyFileName)));
 

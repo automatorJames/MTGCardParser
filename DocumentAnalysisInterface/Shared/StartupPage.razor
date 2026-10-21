@@ -1,0 +1,79 @@
+@using DocumentAnalysisInterface.Startup
+@implements IDisposable
+@inject AppStartup Startup
+
+<div class="startup">
+    <div class="startup-card">
+        <h1 class="startup-title">Starting up</h1>
+        <p class="startup-subtitle">Building the grammar and tokenizing the corpus before anything can be shown. @Elapsed(Startup.Elapsed) so far.</p>
+
+        @if (Startup.Error is { } error)
+        {
+            <div class="startup-error">
+                <strong>Startup failed.</strong> @error.GetBaseException().Message
+            </div>
+        }
+
+        <ol class="startup-stages">
+            @foreach (var stage in Startup.Stages)
+            {
+                <li class="startup-stage @stage.State.ToString().ToLowerInvariant()">
+                    <span class="startup-stage-mark">
+                        @switch (stage.State)
+                        {
+                            case StartupStageState.Finished:
+                                <text>✓</text>
+                                break;
+                            case StartupStageState.Running:
+                                <span class="startup-spinner"></span>
+                                break;
+                            default:
+                                <text>·</text>
+                                break;
+                        }
+                    </span>
+                    <span class="startup-stage-name">@stage.Name</span>
+                    <span class="startup-stage-detail">
+                        @if (stage.State == StartupStageState.Running && stage.Total > 0)
+                        {
+                            <text>@stage.Done.ToString("N0") of @stage.Total.ToString("N0")</text>
+                        }
+                        else if (stage.Took is { } took)
+                        {
+                            <text>@Elapsed(took)</text>
+                        }
+                    </span>
+                    @if (stage.State == StartupStageState.Running)
+                    {
+                        <div class="startup-bar @(stage.Total > 0 ? "" : "indeterminate")">
+                            <div class="startup-bar-fill" style="@(stage.Total > 0 ? $"width: {100.0 * stage.Done / stage.Total:F1}%" : "")"></div>
+                        </div>
+                    }
+                </li>
+            }
+        </ol>
+    </div>
+</div>
+
+@code {
+    System.Threading.Timer _clock;
+
+    protected override void OnInitialized()
+    {
+        Startup.Changed += OnChanged;
+
+        // The elapsed time ticks on its own, between the startup's own changes.
+        _clock = new(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    static string Elapsed(TimeSpan time) =>
+        time.TotalSeconds < 60 ? $"{time.TotalSeconds:F0} s" : $"{(int)time.TotalMinutes} min {time.Seconds:D2} s";
+
+    public void Dispose()
+    {
+        Startup.Changed -= OnChanged;
+        _clock?.Dispose();
+    }
+}

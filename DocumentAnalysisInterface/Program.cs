@@ -46,11 +46,21 @@ public class Program
         // The Grammar Tools tab's grammars: the one compiled from the glyph sources, plus any scratch grammars, each
         // scored against the corpus the analyzer already tokenized and kept outside the repo - the source one until
         // it's committed into the glyph sources, the scratch ones until they're exported.
+        // Resolved by the startup below, once the corpus is read: the committed grammar's tokenization of it is made only when
+        // something needs it (the corpus shown while nothing's changed, the committed score), so a working definition that
+        // differs from the sources has the corpus tokenized once at startup, by itself, rather than twice.
         builder.Services.AddSingleton(services => new WorkspaceManager(
             new SourceWorkspace(
                 Name: "MTGGlyphs",
                 Grammar: GlyphGrammar.Default,
-                Documents: services.GetRequiredService<CorpusAnalyzer>().ProcessedDocuments,
+                Corpus: services.GetRequiredService<CorpusAnalyzer>().Documents ?? throw new InvalidOperationException("The corpus isn't read yet"),
+                Documents: new(() =>
+                {
+                    var analyzer = services.GetRequiredService<CorpusAnalyzer>();
+                    var startup = services.GetRequiredService<DocumentAnalysisInterface.Startup.AppStartup>();
+                    analyzer.EnsureInitializedAsync(new Progress<(int Done, int Total)>(x => startup.Progress(x.Done, x.Total))).GetAwaiter().GetResult();
+                    return analyzer.ProcessedDocuments;
+                }),
                 SourceDirectory: glyphSources.Directory,
                 SourceNamespace: glyphSources.Namespace),
             root: Path.Combine(appData, "workspaces"),
@@ -110,20 +120,16 @@ public class Program
             .WithTools<GrammarAgentTools>()
             .WithPrompts<GrammarAgentPrompts>();
 
+        // What the app does before it can serve its pages, as it happens - shown by the one page there is until then (see App.razor).
+        builder.Services.AddSingleton<DocumentAnalysisInterface.Startup.AppStartup>();
+
         var app = builder.Build();
 
-        // The corpus analyzer is app-wide data, not per-session state, so it's warmed
-        // once here rather than being lazily triggered by whichever page a user happens
-        // to land on first.
-        var corpusAnalyzer = app.Services.GetRequiredService<CorpusAnalyzer>();
-        await corpusAnalyzer.EnsureInitializedAsync();
-
-        // Only echoes and the Echo Trees tab need the digested text: built alongside serving, not before it.
-        corpusAnalyzer.StartDigestingText();
-
-        // Made now rather than when the chat pane is first shown: it puts back the session settings last set there, which
-        // an agent in a terminal works under too.
-        app.Services.GetRequiredService<GrammarChat>();
+        // The grammar, the corpus and the workspaces are app-wide data, not per-session state, so they're made once here
+        // rather than by whichever page a user happens to land on first - but alongside serving, not before it: the web host
+        // starts now, the browser gets a page showing the work as it goes, and everything that needs the work waits for it.
+        var startup = app.Services.GetRequiredService<DocumentAnalysisInterface.Startup.AppStartup>();
+        _ = Task.Run(() => StartUpAsync(app.Services, startup));
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())
@@ -140,11 +146,72 @@ public class Program
 
         app.UseRouting();
 
+        // An agent that connects before the app is ready waits, rather than finding nothing to work on.
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/mcp"))
+                await startup.WhenReady;
+
+            await next(context);
+        });
+
         app.MapMcp("/mcp");
         app.MapBlazorHub();
         app.MapFallbackToPage("/_Host");
 
         await app.RunAsync();
+    }
+
+    /// <summary>
+    /// Builds the grammar, reads the corpus, opens the workspaces and scores the working grammar, telling <paramref name="startup"/>
+    /// how far it's got - then makes the agent's chat (which puts back the session settings last set there, which an agent in a
+    /// terminal works under too) - and says it's ready. A failure anywhere is the startup's to show.
+    /// </summary>
+    static async Task StartUpAsync(IServiceProvider services, DocumentAnalysisInterface.Startup.AppStartup startup)
+    {
+        const string building = "Building the grammar";
+        const string reading = "Reading the corpus";
+        const string opening = "Opening the workspaces";
+        const string scoring = "Scoring the working grammar";
+
+        try
+        {
+            startup.Plan(building, reading, opening, scoring);
+
+            startup.Begin(building);
+            var analyzer = services.GetRequiredService<CorpusAnalyzer>();
+            _ = GlyphGrammar.Default;
+
+            startup.Begin(reading);
+            await analyzer.LoadDocumentsAsync();
+
+            startup.Begin(opening);
+            var workspaces = services.GetRequiredService<WorkspaceManager>();
+
+            // The active workspace's score, with its progress shown as it goes: the working grammar is built and the corpus
+            // tokenized by it here, where the sources have uncommitted changes; else the committed grammar tokenizes it.
+            startup.Begin(scoring);
+            var workbench = workspaces.Active;
+            void OnProgress() => startup.Progress(workbench.Progress?.Done ?? 0, workbench.Progress?.Total ?? 0);
+            workbench.ProgressChanged += OnProgress;
+
+            try
+            {
+                await workbench.GetCurrentTrialAsync();
+            }
+            finally
+            {
+                workbench.ProgressChanged -= OnProgress;
+            }
+
+            services.GetRequiredService<ActiveCorpus>();
+            services.GetRequiredService<GrammarChat>();
+            startup.Ready();
+        }
+        catch (Exception exception)
+        {
+            startup.Fail(exception);
+        }
     }
 
     /// <summary>

@@ -56,6 +56,9 @@ public sealed record ScoringEffort(TimeSpan Build, TimeSpan Tokenize, TimeSpan S
     static string Millions(long chars) => chars < 1_000_000 ? $"{chars / 1e3:F0} K" : $"{chars / 1e6:F1} M";
 }
 
+/// <summary>How far a score has got (see <see cref="GrammarWorkbench.Progress"/>): the stage, and for tokenizing, the documents done of the total.</summary>
+public sealed record ScoringProgress(string Stage, int Done, int Total);
+
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
 /// <param name="Round">For a step an agent applied: which of its rounds of steps it was applied in, counted from 1 - a round its host began (see <see cref="Agent.GrammarAgent.BeginRound"/>), or else one working session. Null for a person's edit.</param>
 /// <param name="Restores">Whether the step returned the working definition to an earlier state (see <see cref="GrammarWorkbench.Restore"/>), so begins nothing of its own.</param>
@@ -113,7 +116,13 @@ public sealed class GrammarWorkbench : IDisposable
     readonly WorkbenchOptions _options;
     readonly object _gate = new();
     readonly GlyphGrammar _committedGrammar;
-    IReadOnlyList<ProcessedDocument> _committedDocuments;
+
+    /// <summary>
+    /// The corpus as the committed grammar tokenizes it - made when first needed (the committed trial, or the corpus shown
+    /// while nothing's changed), not up front: a working definition that differs from it is tokenized whole on its own,
+    /// which is one pass over the corpus at startup rather than two.
+    /// </summary>
+    Lazy<IReadOnlyList<ProcessedDocument>> _committedDocuments;
     Task<WorkingScore> _committedTrial;
 
     /// <summary>Counts <see cref="SetCorpus(IReadOnlyList{IDocument})"/>s, so a score taken against an earlier corpus isn't kept as a recent one.</summary>
@@ -141,8 +150,16 @@ public sealed class GrammarWorkbench : IDisposable
     /// <param name="committedGrammar">The grammar the sources under <see cref="WorkbenchOptions.SourceDirectory"/> compile to.</param>
     /// <param name="committedDocuments">The corpus as <paramref name="committedGrammar"/> already tokenized it.</param>
     public GrammarWorkbench(GlyphGrammar committedGrammar, IReadOnlyList<ProcessedDocument> committedDocuments, WorkbenchOptions options)
+        : this(committedGrammar, committedDocuments.Select(x => x.Document).ToList(), new(committedDocuments), options)
     {
-        _documents = committedDocuments.Select(x => x.Document).ToList();
+    }
+
+    /// <param name="committedGrammar">The grammar the sources under <see cref="WorkbenchOptions.SourceDirectory"/> compile to.</param>
+    /// <param name="documents">The corpus.</param>
+    /// <param name="committedDocuments">The corpus as <paramref name="committedGrammar"/> tokenizes it - made when first needed (see <see cref="_committedDocuments"/>).</param>
+    public GrammarWorkbench(GlyphGrammar committedGrammar, IReadOnlyList<IDocument> documents, Lazy<IReadOnlyList<ProcessedDocument>> committedDocuments, WorkbenchOptions options)
+    {
+        _documents = documents;
         _options = options;
 
         _committedGrammar = committedGrammar;
@@ -172,6 +189,21 @@ public sealed class GrammarWorkbench : IDisposable
 
         if (HasChanges)
             _ = RescoreAsync();
+    }
+
+    /// <summary>
+    /// How far the scoring under way has got - building the grammar, tokenizing (so many documents of so many), scoring -
+    /// or null between scores. For whoever shows a long score as it runs; <see cref="ProgressChanged"/> says when it moves.
+    /// </summary>
+    public ScoringProgress Progress { get; private set; }
+
+    /// <summary>Fires, from whatever thread, when <see cref="Progress"/> changes - every so often while tokenizing, and at each stage.</summary>
+    public event Action ProgressChanged;
+
+    void ReportProgress(string stage, int done, int total)
+    {
+        Progress = stage is null ? null : new(stage, done, total);
+        ProgressChanged?.Invoke();
     }
 
     /// <summary>Whether the committed grammar is C# sources, which <see cref="Commit"/> writes to - else a JSON baseline, which <see cref="Checkpoint"/> writes to.</summary>
@@ -306,12 +338,17 @@ public sealed class GrammarWorkbench : IDisposable
                 return _committedTrial ??= Task.Run(() => Score(baseline, CancellationToken.None));
             }
 
+            var committedDocuments = _committedDocuments;
+
             return _committedTrial ??= Task.Run(() =>
             {
                 var started = DateTime.UtcNow;
-                var score = MdlScorer.Score(_committedGrammar, _committedDocuments);
+                var documents = committedDocuments.Value;
+                ReportProgress("scoring", 0, 0);
+                var score = MdlScorer.Score(_committedGrammar, documents);
+                ReportProgress(null, 0, 0);
 
-                return new WorkingScore(CommittedDefinition, score, [], DateTime.UtcNow - started) { Grammar = _committedGrammar, Documents = _committedDocuments };
+                return new WorkingScore(CommittedDefinition, score, [], DateTime.UtcNow - started) { Grammar = _committedGrammar, Documents = documents };
             });
         }
     }
@@ -371,7 +408,7 @@ public sealed class GrammarWorkbench : IDisposable
     public async Task<(GlyphGrammar Grammar, IReadOnlyList<ProcessedDocument> Documents)?> GetCurrentCorpusAsync(CancellationToken cancellation = default)
     {
         if (!HasChanges && _committedGrammar is not null && !_compiledGrammarSuperseded)
-            return (_committedGrammar, _committedDocuments);
+            return (_committedGrammar, await Task.Run(() => _committedDocuments.Value, cancellation));
 
         var trial = await GetCurrentTrialAsync(cancellation);
         return trial.Succeeded ? (trial.Grammar, trial.Documents) : null;
@@ -395,9 +432,16 @@ public sealed class GrammarWorkbench : IDisposable
     /// stand; every score is taken again.
     /// </summary>
     public void SetCorpus(IReadOnlyList<IDocument> documents) =>
-        SetCorpus(documents, _committedGrammar is null ? null : documents.AsParallel().AsOrdered().Select(x => new ProcessedDocument(x, _committedGrammar)).ToList());
+        SetCorpus(documents, _committedGrammar is null ? null : TokenizedByCommitted(documents));
 
-    void SetCorpus(IReadOnlyList<IDocument> documents, IReadOnlyList<ProcessedDocument> committedDocuments)
+    /// <summary><paramref name="documents"/> as the committed grammar tokenizes them, when first asked for - reporting progress, as a score does.</summary>
+    Lazy<IReadOnlyList<ProcessedDocument>> TokenizedByCommitted(IReadOnlyList<IDocument> documents) =>
+        new(() => Tokenize(_committedGrammar, documents, null, CancellationToken.None, out _, (done, total) => ReportProgress("tokenizing", done, total)));
+
+    void SetCorpus(IReadOnlyList<IDocument> documents, IReadOnlyList<ProcessedDocument> committedDocuments) =>
+        SetCorpus(documents, committedDocuments is null ? null : new Lazy<IReadOnlyList<ProcessedDocument>>(committedDocuments));
+
+    void SetCorpus(IReadOnlyList<IDocument> documents, Lazy<IReadOnlyList<ProcessedDocument>> committedDocuments)
     {
         lock (_gate)
         {
@@ -737,8 +781,10 @@ public sealed class GrammarWorkbench : IDisposable
         if (_committedTrial is { IsCompletedSuccessfully: true } && _committedTrial.Result is { Succeeded: true } committed)
             return committed;
 
-        return _committedGrammar is not null && !_compiledGrammarSuperseded
-            ? new(CommittedDefinition, null, [], TimeSpan.Zero) { Grammar = _committedGrammar, Documents = _committedDocuments }
+        // The committed tokenization is a basis only once it exists: a working definition is tokenized whole rather than
+        // have the corpus tokenized twice for it.
+        return _committedGrammar is not null && !_compiledGrammarSuperseded && _committedDocuments is { IsValueCreated: true } committedDocuments
+            ? new(CommittedDefinition, null, [], TimeSpan.Zero) { Grammar = _committedGrammar, Documents = committedDocuments.Value }
             : null;
     }
 
@@ -747,11 +793,22 @@ public sealed class GrammarWorkbench : IDisposable
     /// documents, by tokenizing again only the lines <paramref name="grammar"/> could tokenize differently from the
     /// basis's grammar (see <see cref="TokenizationChange"/>) - a step changing a glyph or two touches few - else whole.
     /// </summary>
-    static List<ProcessedDocument> Tokenize(GlyphGrammar grammar, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation, out int retokenizedLines)
+    /// <param name="progress">Told how many documents are done, and how many there are, every so often.</param>
+    static List<ProcessedDocument> Tokenize(GlyphGrammar grammar, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation, out int retokenizedLines, Action<int, int> progress = null)
     {
         var change = basis?.Documents is { } tokenized && tokenized.Count == corpus.Count && tokenized.Select(x => x.Document).SequenceEqual(corpus)
             ? TokenizationChange.Between(basis.Grammar, grammar)
             : null;
+
+        var done = 0;
+
+        void Count()
+        {
+            var count = Interlocked.Increment(ref done);
+
+            if (progress is not null && (count % 64 == 0 || count == corpus.Count))
+                progress(count, corpus.Count);
+        }
 
         if (change is null)
         {
@@ -759,7 +816,12 @@ public sealed class GrammarWorkbench : IDisposable
                 .AsParallel()
                 .AsOrdered()
                 .WithCancellation(cancellation)
-                .Select(x => new ProcessedDocument(x, grammar))
+                .Select(x =>
+                {
+                    var document = new ProcessedDocument(x, grammar);
+                    Count();
+                    return document;
+                })
                 .ToList();
 
             retokenizedLines = documents.Sum(x => x.Lines.Count);
@@ -776,7 +838,12 @@ public sealed class GrammarWorkbench : IDisposable
             .AsParallel()
             .AsOrdered()
             .WithCancellation(cancellation)
-            .Select(x => x.Retokenize(grammar, change))
+            .Select(x =>
+            {
+                var document = x.Retokenize(grammar, change);
+                Count();
+                return document;
+            })
             .ToList();
 
         // A document kept whole is the same object; one tokenized again keeps the lines it didn't tokenize again.
@@ -796,16 +863,20 @@ public sealed class GrammarWorkbench : IDisposable
 
         try
         {
+            ReportProgress("building the grammar", 0, 0);
             var grammar = BuildGrammar(definition);
             var built = DateTime.UtcNow;
             var basisTypes = basis?.Grammar?.Types.ToHashSet();
             var emittedTypes = basisTypes is null ? grammar.Types.Count : grammar.Types.Count(x => !basisTypes.Contains(x));
 
-            var documents = Tokenize(grammar, corpus, basis, cancellation, out var retokenizedLines);
+            ReportProgress("tokenizing", 0, corpus.Count);
+            var documents = Tokenize(grammar, corpus, basis, cancellation, out var retokenizedLines, (done, total) => ReportProgress("tokenizing", done, total));
             var tokenized = DateTime.UtcNow;
 
+            ReportProgress("scoring", 0, 0);
             var score = MdlScorer.Score(grammar, documents);
             var scored = DateTime.UtcNow;
+            ReportProgress(null, 0, 0);
 
             return new(definition, score, [], scored - started)
             {
