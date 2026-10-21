@@ -26,7 +26,7 @@
             </select>
         </label>
 
-        @if (RuntimeSettings.IsLoaded && RuntimeSettings.ShowCoverageStats && GetCurrentRelativePath() == "/" && CorpusAnalyzer.ProcessedDocuments is not null)
+        @if (ShowsCoverage && CorpusAnalyzer.IsReady)
         {
             <div class="corpus-coverage-callout">
                 <span class="callout-key">Documents:</span> <span class="callout-value">@CorpusAnalyzer.ProcessedDocuments.Count.ToString("N0")</span>
@@ -110,11 +110,20 @@
 
     void OnWorkspaceChanged() => _ = InvokeAsync(StateHasChanged);
 
-    /// <summary>Keeps the coverage figures in step with the grammar the tabs show.</summary>
+    /// <summary>Whether the coverage figures are shown - the one thing here that reads the corpus analysis.</summary>
+    bool ShowsCoverage => RuntimeSettings.IsLoaded && RuntimeSettings.ShowCoverageStats && GetCurrentRelativePath() == "/";
+
+    /// <summary>
+    /// Keeps the coverage figures in step with the grammar the tabs show. Only while they're shown: the analysis is
+    /// built on first use, and a tab that needs it asks for it itself, so a step taken with no such tab open costs
+    /// nothing here.
+    /// </summary>
     void OnCorpusChanged() =>
         _ = InvokeAsync(async () =>
         {
-            await CorpusAnalyzer.EnsureInitializedAsync();
+            if (ShowsCoverage)
+                await CorpusAnalyzer.EnsureInitializedAsync();
+
             StateHasChanged();
         });
 

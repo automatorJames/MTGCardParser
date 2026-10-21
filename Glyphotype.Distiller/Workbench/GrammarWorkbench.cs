@@ -37,13 +37,18 @@ public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, 
 /// <summary>What scoring a definition spent: building its grammar, tokenizing the corpus with it, and scoring the result.</summary>
 /// <param name="EmittedTypes">Glyph types built afresh for it, rather than reused from the grammar it was scored after.</param>
 /// <param name="RetokenizedLines">Lines tokenized again, rather than kept from that grammar's tokenization - every line, when there was none to keep from.</param>
-public sealed record ScoringEffort(TimeSpan Build, TimeSpan Tokenize, TimeSpan Score, int EmittedTypes, int RetokenizedLines, int Lines)
+/// <param name="HeapBytes">The managed heap once scored - what the process holds, this score's documents and grammar included.</param>
+/// <param name="WorkingSetBytes">The process's working set once scored: memory the machine actually has it in, which falls below the heap when it's paging.</param>
+public sealed record ScoringEffort(TimeSpan Build, TimeSpan Tokenize, TimeSpan Score, int EmittedTypes, int RetokenizedLines, int Lines, long HeapBytes = 0, long WorkingSetBytes = 0)
 {
     public override string ToString() =>
         $"built the grammar in {Seconds(Build)} ({EmittedTypes:N0} type{(EmittedTypes == 1 ? "" : "s")} rebuilt), " +
-        $"tokenized {RetokenizedLines:N0} of {Lines:N0} lines again in {Seconds(Tokenize)}, scored in {Seconds(Score)}";
+        $"tokenized {RetokenizedLines:N0} of {Lines:N0} lines again in {Seconds(Tokenize)}, scored in {Seconds(Score)}" +
+        (HeapBytes > 0 ? $"; the process holds {Gigabytes(HeapBytes)} ({Gigabytes(WorkingSetBytes)} working set)" : "");
 
     static string Seconds(TimeSpan time) => time.TotalSeconds < 10 ? $"{time.TotalSeconds:F1} s" : $"{time.TotalSeconds:F0} s";
+
+    static string Gigabytes(long bytes) => $"{bytes / 1e9:F1} GB";
 }
 
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
@@ -112,9 +117,13 @@ public sealed class GrammarWorkbench : IDisposable
     /// <summary>Whether a commit has made the compiled grammar out of date (it stays so until the app restarts).</summary>
     bool _compiledGrammarSuperseded;
 
-    /// <summary>The latest scores of definitions, newest last, keyed by their JSON: so applying a change set that was just evaluated doesn't score it again.</summary>
+    /// <summary>
+    /// The latest scores of definitions, newest last, keyed by their JSON: so applying a change set that was just evaluated
+    /// doesn't score it again. One: each holds the corpus as its grammar tokenized it, and every type that grammar
+    /// rebuilt with its compiled regexes - gigabytes for a large grammar - for as long as it's kept.
+    /// </summary>
     readonly List<(string Json, WorkingScore Score)> _recentScores = [];
-    const int _recentScoreCapacity = 2;
+    const int _recentScoreCapacity = 1;
 
     readonly List<WorkbenchStep> _history = [];
     const int _historyCapacity = 100;
@@ -837,7 +846,8 @@ public sealed class GrammarWorkbench : IDisposable
             {
                 Grammar = grammar,
                 Documents = documents,
-                Effort = new(built - started, tokenized - built, scored - tokenized, emittedTypes, retokenizedLines, documents.Sum(x => x.Lines.Count)),
+                Effort = new(built - started, tokenized - built, scored - tokenized, emittedTypes, retokenizedLines, documents.Sum(x => x.Lines.Count),
+                    GC.GetTotalMemory(forceFullCollection: false), Environment.WorkingSet),
             };
         }
         catch (OperationCanceledException)

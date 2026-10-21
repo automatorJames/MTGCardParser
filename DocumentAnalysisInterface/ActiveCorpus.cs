@@ -33,10 +33,14 @@ public sealed class ActiveCorpus
 
     CorpusAnalyzer _compiled;
 
-    CorpusAnalyzer _current;
+    /// <summary>
+    /// The analysis shown, built on first use (see <see cref="EnsureInitializedAsync"/>) - and replaced, unbuilt, the moment
+    /// a newer grammar is scored, so the corpus an earlier grammar tokenized (and with it every type that grammar
+    /// rebuilt, with their compiled regexes) isn't held here for as long as no page asks. Lazy, so nothing is built for
+    /// a step no page looks at.
+    /// </summary>
+    Lazy<CorpusAnalyzer> _current;
     IReadOnlyList<ProcessedDocument> _currentDocuments;
-    Task<CorpusAnalyzer> _building;
-    IReadOnlyList<ProcessedDocument> _buildingDocuments;
     GrammarWorkbench _listeningTo;
 
     /// <param name="compiled">The analysis of the corpus under the compiled grammar, already initialized.</param>
@@ -48,7 +52,7 @@ public sealed class ActiveCorpus
         _repository = repository;
         _volumesPath = volumesPath;
         _compiled = compiled;
-        _current = compiled;
+        _current = new(() => compiled);
         _currentDocuments = compiled.ProcessedDocuments;
 
         _workspaces.ActiveChanged += OnActiveChanged;
@@ -58,12 +62,15 @@ public sealed class ActiveCorpus
     /// <summary>Fires, from whatever thread, when the active grammar has changed and a new analysis is due: await <see cref="EnsureInitializedAsync"/> to get it.</summary>
     public event Action Changed;
 
-    public GlyphGrammar Grammar => _current.Grammar;
-    public List<ProcessedDocument> ProcessedDocuments => _current.ProcessedDocuments;
-    public int WordCount => _current.WordCount;
-    public int CapturedWordCount => _current.CapturedWordCount;
-    public DigestedText DigestedTextWithCaptureGlyphs => _current.DigestedTextWithCaptureGlyphs;
-    public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries => _current.GlyphOccurrenceSummaries;
+    public GlyphGrammar Grammar => _current.Value.Grammar;
+    public List<ProcessedDocument> ProcessedDocuments => _current.Value.ProcessedDocuments;
+    public int WordCount => _current.Value.WordCount;
+    public int CapturedWordCount => _current.Value.CapturedWordCount;
+    public DigestedText DigestedTextWithCaptureGlyphs => _current.Value.DigestedTextWithCaptureGlyphs;
+    public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries => _current.Value.GlyphOccurrenceSummaries;
+
+    /// <summary>Whether the analysis of the grammar as it stands has been built - reading any other member builds it, on the calling thread, if not.</summary>
+    public bool IsReady => _current.IsValueCreated;
 
     /// <summary>The volumes of the corpus read.</summary>
     public VolumeSelection Volumes => _compiled.Volumes;
@@ -136,7 +143,7 @@ public sealed class ActiveCorpus
         File.WriteAllText(path, JsonSerializer.Serialize(volumes));
     }
 
-    /// <summary>Brings the analysis up to date with the active grammar - waiting for it to be scored, if it's being scored.</summary>
+    /// <summary>Brings the analysis up to date with the active grammar - waiting for it to be scored, if it's being scored - and builds it, off the calling thread, if it isn't built.</summary>
     public async Task EnsureInitializedAsync()
     {
         var corpus = await _workspaces.Active.GetCurrentCorpusAsync();
@@ -145,43 +152,41 @@ public sealed class ActiveCorpus
         if (corpus is not var (grammar, documents))
             return;
 
-        Task<CorpusAnalyzer> building;
+        Lazy<CorpusAnalyzer> current;
 
         lock (_gate)
         {
-            if (documents == _currentDocuments)
-                return;
+            if (documents != _currentDocuments)
+                Replace(grammar, documents);
 
-            if (documents != _buildingDocuments)
+            current = _current;
+        }
+
+        if (!current.IsValueCreated)
+            await Task.Run(() => current.Value);
+    }
+
+    /// <summary>Makes the analysis of <paramref name="documents"/> (as <paramref name="grammar"/> tokenized them) the one shown, to be built when first read. Call under <see cref="_gate"/>.</summary>
+    void Replace(GlyphGrammar grammar, IReadOnlyList<ProcessedDocument> documents)
+    {
+        // Its digested text is built only where the analysis before it was asked for its own: the echo views ask, and
+        // nothing else does, so an agent's run of steps with no echo view open doesn't build a digest of the corpus
+        // after every one.
+        var digest = _current is { IsValueCreated: true } previous && previous.Value.WasDigestRequested;
+
+        _current = documents == _compiled.ProcessedDocuments
+            ? new(() => _compiled)
+            : new(() =>
             {
-                _buildingDocuments = documents;
-                _building = documents == _compiled.ProcessedDocuments
-                    ? Task.FromResult(_compiled)
-                    : Task.Run(() => CorpusAnalyzer.FromProcessedDocuments(documents, grammar));
-            }
+                var analyzer = CorpusAnalyzer.FromProcessedDocuments(documents, grammar);
 
-            building = _building;
-        }
+                if (digest)
+                    analyzer.StartDigestingText();
 
-        var analyzer = await building;
-        CorpusAnalyzer previous;
+                return analyzer;
+            });
 
-        lock (_gate)
-        {
-            // Only the analysis of the latest grammar requested takes over.
-            if (documents != _buildingDocuments)
-                return;
-
-            previous = _current;
-            _current = analyzer;
-            _currentDocuments = documents;
-        }
-
-        // Its digested text is built only for the analysis shown - not for one a later grammar overtook - and only
-        // where the one before it was asked for its own: the echo views ask, and nothing else does, so an agent's run
-        // of steps with no echo view open doesn't build a digest of the corpus after every one.
-        if (previous.WasDigestRequested)
-            analyzer.StartDigestingText();
+        _currentDocuments = documents;
     }
 
     void OnActiveChanged()
@@ -216,8 +221,19 @@ public sealed class ActiveCorpus
         var latest = workbench.LatestWorkingScore;
         var documents = !workbench.HasChanges ? null : latest?.Definition == workbench.WorkingDefinition ? latest.Documents : null;
 
-        // Back to the committed grammar, or a newly scored working one that builds.
-        if (!workbench.HasChanges || documents is not null && documents != _currentDocuments)
+        // A newly scored working grammar that builds: it's what's shown from now on, so the one before it goes now
+        // rather than when a page next asks (see _current).
+        if (documents is not null)
+            lock (_gate)
+            {
+                if (documents == _currentDocuments)
+                    return;
+
+                Replace(latest.Grammar, documents);
+            }
+
+        // Back to the committed grammar, or that newly scored working one.
+        if (!workbench.HasChanges || documents is not null)
             Changed?.Invoke();
     }
 }
