@@ -40,8 +40,8 @@ static class Bench
         var allGraphs = grammar.Types.Select(GlyphTypeCache.GetRegexGraph).ToList();
 
         Section("Regex size (top-level types)");
-        var sizes = graphs.Select(g => (g.RootGlyphType.Name, Len: g.BuiltRegex.MinifiedRegex.Length, Groups: g.NamedGroupFlatGraph.Count, Any: g.StartChars.IsAny)).OrderByDescending(x => x.Len).ToList();
-        Console.WriteLine($"Total regex chars (top-level): {sizes.Sum(x => (long)x.Len):N0}; all types: {allGraphs.Sum(g => (long)g.BuiltRegex.MinifiedRegex.Length):N0}");
+        var sizes = graphs.Select(g => (g.RootGlyphType.Name, Len: g.BuiltRegex.MinifiedRegexLength, Groups: g.NamedGroupFlatGraph.Count, Any: g.StartChars.IsAny)).OrderByDescending(x => x.Len).ToList();
+        Console.WriteLine($"Total regex chars (top-level): {sizes.Sum(x => (long)x.Len):N0}; all types: {allGraphs.Sum(g => (long)g.BuiltRegex.MinifiedRegexLength):N0}");
         Console.WriteLine($"Median {sizes[sizes.Count / 2].Len:N0}, p90 {sizes[sizes.Count / 10].Len:N0}, max {sizes[0].Len:N0}; StartChars=Any: {sizes.Count(x => x.Any)}");
         Console.WriteLine($"Named groups per top-level regex: avg {sizes.Average(x => x.Groups):F0}, max {sizes.Max(x => x.Groups)}");
 

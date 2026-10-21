@@ -69,9 +69,30 @@ public class BuiltRegex
     /// The pattern itself: the concatenated raw regex text of every brick. This is the grammar - what's shown
     /// for analysis - and deliberately carries none of the anchors the engine adds to run it (see
     /// <see cref="AnchoredRegex"/>/<see cref="ScopeFillingRegex"/>). Those change how fast a match is found,
-    /// never what it captures, so showing them on every type would be noise.
+    /// never what it captures, so showing them on every type would be noise. Built from the bricks when asked for,
+    /// and held only while something else holds it (as <see cref="Bricks"/> is): the engine matches by
+    /// <see cref="Plan"/>, and a large grammar's patterns run to hundreds of millions of characters.
     /// </summary>
-    public string MinifiedRegex { get; }
+    public string MinifiedRegex
+    {
+        get
+        {
+            lock (_bricksGate)
+            {
+                if (_minifiedRegex is not null && _minifiedRegex.TryGetTarget(out var text))
+                    return text;
+
+                text = string.Concat(Bricks.Select(x => x.Regex)).Replace(EscapedSpace, " ");
+                _minifiedRegex = new(text);
+                return text;
+            }
+        }
+    }
+
+    WeakReference<string> _minifiedRegex;
+
+    /// <summary>The length of <see cref="MinifiedRegex"/>, known without building it - what orders types for the tokenizer, and measures a pattern.</summary>
+    public int MinifiedRegexLength { get; }
 
     /// <summary>
     /// The pattern as the engine matches it (see <see cref="Matching.Matcher"/>): <see cref="MinifiedRegex"/> cut into runs the
@@ -115,69 +136,33 @@ public class BuiltRegex
     /// </summary>
     internal Regex ScopeFillingRegex => _scopeFillingRegex.Value;
 
-    /// <summary>Walks <paramref name="root"/>'s graph for its pattern, and sets up its regexes to compile on first use.</summary>
+    /// <summary>
+    /// Walks <paramref name="root"/>'s graph for its pattern - once, keeping no bricks: only the plan the engine matches by
+    /// and the pattern's length (see <see cref="Matching.MatchPlan.Collector"/>) - and sets up its regexes to compile on first use.
+    /// </summary>
     public BuiltRegex(GlyphNode root)
     {
         _root = root;
 
-        var bricks = Walk(root);
-        MinifiedRegex = Share(string.Concat(bricks.Select(x => x.Regex)).Replace(EscapedSpace, " "));
-        (_patternRegexText, _patterns) = BuildPatternText(bricks);
-        TypedGroups = FindTypedGroups(bricks, MinifiedRegex.Length);
-        Plan = Matching.MatchPlan.Build(root, bricks);
-        _bricks = new(bricks);
+        var collector = new Matching.MatchPlan.Collector(root);
+        root.AppendRegexBricks(collector);
+        collector.Complete();
+        Plan = collector.Plan;
+        MinifiedRegexLength = collector.UnescapedLength;
 
         // Each built on first use: a type may only ever be matched one way (with the whole-clause rule on,
         // nearly every top-level type only ever has to fill its scope).
         _anchoredRegex = new(() => Compile($@"\G({MinifiedRegex})"));
         _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));
-        _patternRegex = new(() => _patternRegexText is null ? null : new(Compile($@"\G({_patternRegexText})\z"), new(() => Compile($@"\G({_patternRegexText})")), _patterns));
+        _patternText = new(() => BuildPatternText(Bricks));
+        _patternRegex = new(() => _patternText.Value.Text is not string text ? null : new(Compile($@"\G({text})\z"), new(() => Compile($@"\G({text})")), _patternText.Value.Patterns));
     }
 
-    /// <summary>The text <see cref="_patternRegex"/> compiles (see <see cref="PatternRegex"/>), or null for a graph with no authored patterns - found from the bricks while they're in hand, since building them again costs more than keeping the text.</summary>
-    readonly string _patternRegexText;
-    readonly IReadOnlyList<string> _patterns;
-
-    /// <summary>
-    /// Where each group capturing a glyph or a vocabulary sits in <see cref="MinifiedRegex"/>, in the order the groups
-    /// open - found from the bricks while they're in hand, as <see cref="_patternRegexText"/> is. What tells whether
-    /// two regexes differ only inside the groups of some types (see <see cref="Tokenizers.TokenizationChange"/>).
-    /// Null if the bricks' text doesn't add up to <see cref="MinifiedRegex"/>'s.
-    /// </summary>
-    internal IReadOnlyList<TypedGroup> TypedGroups { get; }
-
-    /// <summary>A group capturing a glyph or a vocabulary (<paramref name="TypeName"/>): its content, between its bookends, as a range of <see cref="MinifiedRegex"/>.</summary>
-    internal readonly record struct TypedGroup(string TypeName, int ContentStart, int ContentEnd);
-
-    static TypedGroup[] FindTypedGroups(List<RegexBrick> bricks, int textLength)
-    {
-        List<TypedGroup> groups = [];
-        Stack<(RegexNode Node, int Index, int ContentStart)> open = [];
-        var position = 0;
-
-        foreach (var brick in bricks)
-        {
-            if (brick is RegexBrickGroupClose && open.TryPeek(out var top) && top.Node == brick.Parent)
-            {
-                open.Pop();
-                groups[top.Index] = groups[top.Index] with { ContentEnd = position };
-            }
-
-            position += UnescapedLength(brick.Regex);
-
-            if (brick is RegexBrickGroupOpen && brick.Parent is NamedGroupNode { Navigation.NodeType: { IsGenericType: false } type } node
-                && (node.Navigation.IsGlyphType || type.IsEnum))
-            {
-                open.Push((node, groups.Count, position));
-                groups.Add(new(type.Name, position, -1));
-            }
-        }
-
-        return position == textLength && open.Count == 0 ? [.. groups] : null;
-    }
+    /// <summary>The text <see cref="_patternRegex"/> compiles (see <see cref="PatternRegex"/>), or null for a graph with no authored patterns - from the bricks, on first need.</summary>
+    readonly Lazy<(string Text, IReadOnlyList<string> Patterns)> _patternText;
 
     /// <summary>The length of <paramref name="regex"/> once its <see cref="EscapedSpace"/>s are plain spaces, as in <see cref="MinifiedRegex"/>.</summary>
-    static int UnescapedLength(string regex)
+    internal static int UnescapedLength(string regex)
     {
         var length = regex.Length;
 
@@ -186,34 +171,6 @@ public class BuiltRegex
 
         return length;
     }
-
-    /// <summary>
-    /// <paramref name="text"/>, or the identical text another regex already holds: a grammar built from a definition
-    /// emits a fresh type for every glyph that refers to a changed one, and most of their patterns come out character
-    /// for character the same - at megabytes apiece for the largest. Held weakly, so a text no live regex has goes.
-    /// </summary>
-    static string Share(string text)
-    {
-        lock (_sharedTexts)
-        {
-            if (_sharedTexts.TryGetValue(text, out var reference) && reference.TryGetTarget(out var shared))
-                return shared;
-
-            if (++_sharedSinceSweep > 256)
-            {
-                foreach (var key in _sharedTexts.Where(x => !x.Value.TryGetTarget(out _)).Select(x => x.Key).ToList())
-                    _sharedTexts.Remove(key);
-
-                _sharedSinceSweep = 0;
-            }
-
-            _sharedTexts[text] = new(text);
-            return text;
-        }
-    }
-
-    static readonly Dictionary<string, WeakReference<string>> _sharedTexts = [];
-    static int _sharedSinceSweep;
 
     /// <summary>The brick sequence <paramref name="root"/>'s graph produces.</summary>
     static List<RegexBrick> Walk(GlyphNode root)
@@ -312,7 +269,7 @@ public class BuiltRegex
             }
         }
 
-        return patterns.Count == 0 ? (null, null) : (Share(text.ToString().Replace(EscapedSpace, " ")), patterns);
+        return patterns.Count == 0 ? (null, null) : (text.ToString().Replace(EscapedSpace, " "), patterns);
     }
 
     /// <summary>

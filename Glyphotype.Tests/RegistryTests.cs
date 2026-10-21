@@ -52,7 +52,7 @@ public class RegistryTests(CorpusFixture corpus)
         var bakerOpensTheShop = GlyphTypeCache.GetRegexGraph(typeof(BakerOpensTheShop));
 
         Assert.True(opensBuilding.TryMatch("the baker opens the shop", out _));
-        Assert.True(opensBuilding.BuiltRegex.MinifiedRegex.Length > bakerOpensTheShop.BuiltRegex.MinifiedRegex.Length);
+        Assert.True(opensBuilding.BuiltRegex.MinifiedRegexLength > bakerOpensTheShop.BuiltRegex.MinifiedRegexLength);
     }
 
     [Fact]

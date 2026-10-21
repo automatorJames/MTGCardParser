@@ -58,7 +58,8 @@ public abstract class Glyph : CaptureUnit
     {
         var regexGraph = GlyphTypeCache.GetRegexGraph(Type);
 
-        if (string.IsNullOrEmpty(regexGraph.BuiltRegex.MinifiedRegex))
+        // By length: the text itself is built only to be shown (see BuiltRegex.MinifiedRegex).
+        if (regexGraph.BuiltRegex.MinifiedRegexLength == 0)
             return $"{nameof(regexGraph.BuiltRegex.MinifiedRegex)} is null or empty";
 
         // DeclaredOnly still includes properties that override a base virtual member (e.g. Nibs,

@@ -35,13 +35,13 @@ public static class GrammarInspection
             CountNestedGlyphs(graph.RootNode, uses);
 
             var largest = uses
-                .Select(x => new ExpansionPart(Navigation.GetRegexSafeTypeName(x.Key), x.Value, x.Value * (long)GlyphTypeCache.GetRegexGraph(x.Key).BuiltRegex.MinifiedRegex.Length))
+                .Select(x => new ExpansionPart(Navigation.GetRegexSafeTypeName(x.Key), x.Value, x.Value * (long)GlyphTypeCache.GetRegexGraph(x.Key).BuiltRegex.MinifiedRegexLength))
                 .OrderByDescending(x => x.Chars)
                 .ThenBy(x => x.Name, StringComparer.Ordinal)
                 .Take(parts)
                 .ToList();
 
-            expansions.Add(new(type.Name, graph.BuiltRegex.MinifiedRegex.Length, graph.NamedGroupFlatGraph.Count, largest));
+            expansions.Add(new(type.Name, graph.BuiltRegex.MinifiedRegexLength, graph.NamedGroupFlatGraph.Count, largest));
         }
 
         return expansions;

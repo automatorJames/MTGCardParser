@@ -37,7 +37,10 @@ Only create or switch workspaces when the person asks. Switching changes what th
    Prefer text that recurs with *variation* (the same frame, different words in a slot). That's where a glyph with
    a property beats literals.
 3. **Draft a glyph.** Write it in C#. Check it on real lines with `tokenize` (pass your draft as `source`). If it
-   doesn't match, `explain_mismatch` shows how far its pattern got and which part failed.
+   doesn't match, `explain_mismatch` shows how far its pattern got and which part failed. A draft that changes a
+   glyph many others refer to rebuilds every one of them, in `tokenize` as in `evaluate` - the cost line of each
+   `evaluate` says how long that took and how large the grammar's patterns are - so test several lines in one call,
+   and try a pattern you're unsure of as a small glyph of its own before putting it into a shared one.
 4. **Measure.** `evaluate` scores the working grammar with your change applied, without making it. You get the
    bit delta, the coverage delta, per-glyph contribution changes, and the lines whose tokenization changed:
    - gained: more words covered;

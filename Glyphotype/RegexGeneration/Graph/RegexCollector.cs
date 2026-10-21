@@ -6,8 +6,14 @@ namespace Glyphotype.RegexGeneration.Graph;
 /// </summary>
 public class RegexCollector
 {
-    /// <summary>The bricks appended so far, in emission order.</summary>
+    /// <summary>The bricks appended so far, in emission order - none, for a collector that doesn't <see cref="KeepsBricks"/>.</summary>
     public List<RegexBrick> RegexBricks { get; } = [];
+
+    /// <summary>The last brick appended that isn't a group bookend - what <see cref="AlreadySeparated"/> reads.</summary>
+    RegexBrick _lastContent;
+
+    /// <summary>Whether appended bricks are kept in <see cref="RegexBricks"/>. A collector that only reads them as they come (see <see cref="Matching.MatchPlan.Collector"/>) says no: a large graph's bricks run to millions.</summary>
+    protected virtual bool KeepsBricks => true;
 
     /// <summary>
     /// A trailing space - raw (e.g. from an unescaped <see cref="RegexPatternAttribute"/> pattern) or written
@@ -29,12 +35,18 @@ public class RegexCollector
     /// they contribute no matchable text of their own.
     /// </summary>
     public bool AlreadySeparated =>
-        RegexBricks.LastOrDefault(x => x is not RegexBrickGroupBookend)?.Regex is string regex
+        _lastContent?.Regex is string regex
         && _trailingSpacePattern.IsMatch(regex);
 
     /// <summary>Appends a brick to the sequence.</summary>
-    public void Append(RegexBrick brick) =>
-        RegexBricks.Add(brick);
+    public virtual void Append(RegexBrick brick)
+    {
+        if (brick is not RegexBrickGroupBookend)
+            _lastContent = brick;
+
+        if (KeepsBricks)
+            RegexBricks.Add(brick);
+    }
 
     public override string ToString() =>
         string.Join("", RegexBricks.Select(x => x.Regex));

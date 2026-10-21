@@ -27,6 +27,11 @@ internal class Program
                 Replay.Run(_cardDataGetter, args[1], int.Parse(args[2]), int.TryParse(args.ElementAtOrDefault(3), out var everyNth) ? everyNth : 1, args.ElementAtOrDefault(4));
                 break;
 
+            // plan TypeName [depth]: a glyph type's match plan, calls expanded to the given depth.
+            case "plan":
+                PlanDump.Run(args[1], int.TryParse(args.ElementAtOrDefault(2), out var planDepth) ? planDepth : 1);
+                break;
+
             // dump out-path [definition.json|-] [every]: every corpus line as the grammar tokenizes it, capture by capture, for diffing engines.
             case "dump":
                 Dump.Run(_cardDataGetter, args[1], args.ElementAtOrDefault(2), int.TryParse(args.ElementAtOrDefault(3), out var dumpEvery) ? dumpEvery : 1);

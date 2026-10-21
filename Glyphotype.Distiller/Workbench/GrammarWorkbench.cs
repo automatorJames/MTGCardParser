@@ -39,16 +39,21 @@ public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, 
 /// <param name="RetokenizedLines">Lines tokenized again, rather than kept from that grammar's tokenization - every line, when there was none to keep from.</param>
 /// <param name="HeapBytes">The managed heap once scored - what the process holds, this score's documents and grammar included.</param>
 /// <param name="WorkingSetBytes">The process's working set once scored: memory the machine actually has it in, which falls below the heap when it's paging.</param>
-public sealed record ScoringEffort(TimeSpan Build, TimeSpan Tokenize, TimeSpan Score, int EmittedTypes, int RetokenizedLines, int Lines, long HeapBytes = 0, long WorkingSetBytes = 0)
+/// <param name="RegexChars">The grammar's patterns, in characters, every type's added up: what every glyph it inlines costs it, over and over (see <see cref="Inspection.GrammarInspection.GetExpansions"/>).</param>
+/// <param name="RegexCharsBefore">The same of the grammar this one was scored after - null where there was none.</param>
+public sealed record ScoringEffort(TimeSpan Build, TimeSpan Tokenize, TimeSpan Score, int EmittedTypes, int RetokenizedLines, int Lines, long HeapBytes = 0, long WorkingSetBytes = 0, long RegexChars = 0, long? RegexCharsBefore = null)
 {
     public override string ToString() =>
         $"built the grammar in {Seconds(Build)} ({EmittedTypes:N0} type{(EmittedTypes == 1 ? "" : "s")} rebuilt), " +
         $"tokenized {RetokenizedLines:N0} of {Lines:N0} lines again in {Seconds(Tokenize)}, scored in {Seconds(Score)}" +
+        (RegexChars > 0 ? $"; the grammar's patterns total {Millions(RegexChars)} chars{(RegexCharsBefore is long before && before != RegexChars ? $" ({(RegexChars > before ? "+" : "−")}{Millions(Math.Abs(RegexChars - before))})" : "")}" : "") +
         (HeapBytes > 0 ? $"; the process holds {Gigabytes(HeapBytes)} ({Gigabytes(WorkingSetBytes)} working set)" : "");
 
     static string Seconds(TimeSpan time) => time.TotalSeconds < 10 ? $"{time.TotalSeconds:F1} s" : $"{time.TotalSeconds:F0} s";
 
     static string Gigabytes(long bytes) => $"{bytes / 1e9:F1} GB";
+
+    static string Millions(long chars) => chars < 1_000_000 ? $"{chars / 1e3:F0} K" : $"{chars / 1e6:F1} M";
 }
 
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
@@ -674,7 +679,7 @@ public sealed class GrammarWorkbench : IDisposable
     {
         var before = await GetCurrentTrialAsync(cancellation);
         var candidate = changes.ApplyTo(before.Definition);
-        var after = await Task.Run(() => Score(candidate, cancellation, current: false), cancellation)
+        var after = await Task.Run(() => Score(candidate, cancellation), cancellation)
             ?? throw new OperationCanceledException(cancellation);
 
         return new(changes, before, after);
@@ -686,28 +691,22 @@ public sealed class GrammarWorkbench : IDisposable
         GlyphGrammar.FromDefinition(definition.WithoutUnreferencedTerminals());
 
     /// <summary>Scores <paramref name="definition"/> - or returns its recent score, if it was scored lately. Null if cancelled.</summary>
-    /// <param name="current">
-    /// Whether every line has to be tokenized by the definition's own grammar - for a score the workbench keeps as its
-    /// state - rather than allowed to keep lines an earlier grammar tokenized the same, holding that grammar's types
-    /// (see <see cref="TokenizationChange"/>): enough for a what-if, which is only scored and compared.
-    /// </param>
-    WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation, bool current = true)
+    WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation)
     {
         var json = definition.ToJson();
         IReadOnlyList<IDocument> documents;
         int corpusVersion;
-        WorkingScore basis, recent;
+        WorkingScore basis;
 
         lock (_gate)
         {
-            corpusVersion = _corpusVersion;
-            recent = _recentScores.FirstOrDefault(x => x.Json == json).Score;
+            if (_recentScores.FirstOrDefault(x => x.Json == json).Score is WorkingScore recent)
+                return recent with { Definition = definition };
+
             documents = _documents;
+            corpusVersion = _corpusVersion;
             basis = GetTokenizedBasis();
         }
-
-        if (recent is not null)
-            return (current ? Refresh(json, recent, corpusVersion, cancellation) : recent) is { } found ? found with { Definition = definition } : null;
 
         var score = ScoreUncached(definition, documents, basis, cancellation);
 
@@ -723,45 +722,7 @@ public sealed class GrammarWorkbench : IDisposable
                     _recentScores.RemoveAt(0);
             }
 
-        return current && score is not null ? Refresh(json, score, corpusVersion, cancellation) : score;
-    }
-
-    /// <summary>
-    /// <paramref name="score"/> with every line tokenized by its own grammar's types (see <see cref="ProcessedDocument.Refresh"/>) -
-    /// the same tokenization, so the same score - and kept so among the recent scores. Null if cancelled.
-    /// </summary>
-    WorkingScore Refresh(string json, WorkingScore score, int corpusVersion, CancellationToken cancellation)
-    {
-        if (score is not { Succeeded: true, Documents: { } documents } || !documents.Any(x => x.IsSupersededBy(score.Grammar)))
-            return score;
-
-        List<ProcessedDocument> refreshed;
-
-        try
-        {
-            refreshed = documents
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cancellation)
-                .Select(x => x.Refresh(score.Grammar))
-                .ToList();
-        }
-        catch (OperationCanceledException)
-        {
-            return null;
-        }
-
-        var result = score with { Documents = refreshed };
-
-        lock (_gate)
-        {
-            var index = _recentScores.FindIndex(x => x.Json == json && ReferenceEquals(x.Score, score));
-
-            if (index >= 0 && corpusVersion == _corpusVersion)
-                _recentScores[index] = (json, result);
-        }
-
-        return result;
+        return score;
     }
 
     /// <summary>
@@ -825,6 +786,10 @@ public sealed class GrammarWorkbench : IDisposable
         return retokenized;
     }
 
+    /// <summary>The characters of <paramref name="grammar"/>'s patterns, every type's added up (see <see cref="ScoringEffort.RegexChars"/>).</summary>
+    static long RegexChars(GlyphGrammar grammar) =>
+        grammar.Types.Sum(x => (long)GlyphTypeCache.GetRegexGraph(x).BuiltRegex.MinifiedRegexLength);
+
     WorkingScore ScoreUncached(GrammarDefinition definition, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation)
     {
         var started = DateTime.UtcNow;
@@ -847,7 +812,7 @@ public sealed class GrammarWorkbench : IDisposable
                 Grammar = grammar,
                 Documents = documents,
                 Effort = new(built - started, tokenized - built, scored - tokenized, emittedTypes, retokenizedLines, documents.Sum(x => x.Lines.Count),
-                    GC.GetTotalMemory(forceFullCollection: false), Environment.WorkingSet),
+                    GC.GetTotalMemory(forceFullCollection: false), Environment.WorkingSet, RegexChars(grammar), basis?.Grammar is { } basisGrammar ? RegexChars(basisGrammar) : null),
             };
         }
         catch (OperationCanceledException)

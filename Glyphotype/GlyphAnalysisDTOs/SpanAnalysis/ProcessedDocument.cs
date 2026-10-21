@@ -56,29 +56,14 @@ public class ProcessedDocument
     /// <paramref name="change"/> is how <paramref name="grammar"/> differs from that one: only the lines that could
     /// tokenize differently are tokenized again, the rest kept as they are - and this document itself is kept, if none could.
     /// </summary>
-    public ProcessedDocument Retokenize(GlyphGrammar grammar, TokenizationChange change) =>
-        Retokenize(grammar, change.MayDiffer);
-
-    /// <summary>
-    /// This document with every line tokenized by <paramref name="grammar"/>'s own types: a line kept from an earlier
-    /// grammar's tokenization that holds types <paramref name="grammar"/> superseded (see <see cref="TokenizationChange.Supersedes"/>)
-    /// is tokenized again - to the same result, but with these types - and this document itself is kept, if none is.
-    /// </summary>
-    public ProcessedDocument Refresh(GlyphGrammar grammar) =>
-        IsSupersededBy(grammar) ? Retokenize(grammar, x => TokenizationChange.Supersedes(grammar, x)) : this;
-
-    /// <summary>Whether any line holds types other than <paramref name="grammar"/>'s (see <see cref="Refresh"/>).</summary>
-    public bool IsSupersededBy(GlyphGrammar grammar) =>
-        Lines.Any(x => TokenizationChange.Supersedes(grammar, x));
-
-    ProcessedDocument Retokenize(GlyphGrammar grammar, Func<ProcessedLine, bool> mayDiffer)
+    public ProcessedDocument Retokenize(GlyphGrammar grammar, TokenizationChange change)
     {
         var byIndex = Lines.ToDictionary(x => x.SourceText.LineIndex);
         var anyRetokenized = false;
 
         ProcessedLine Reuse(int lineIndex, string text)
         {
-            if (byIndex.TryGetValue(lineIndex, out var line) && line.SourceText.FormattedText == text && !mayDiffer(line))
+            if (byIndex.TryGetValue(lineIndex, out var line) && line.SourceText.FormattedText == text && !change.MayDiffer(line))
                 return line;
 
             anyRetokenized = true;

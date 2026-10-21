@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using System.Security.Cryptography;
 
 namespace Glyphotype.RegexGeneration.Matching;
 
@@ -17,20 +17,25 @@ public abstract class PlanNode
     /// <summary>A run of the flattened regex, run as a regex of its own.</summary>
     public sealed class Leaf : PlanNode
     {
-        /// <summary>The run's text, with its group names relative to the plan's root (see <see cref="MatchPlan.Relativize"/>).</summary>
+        /// <summary>The run's text, with its group names relative to the plan's root (see <see cref="MatchPlan"/>).</summary>
         public string Pattern { get; }
 
-        /// <summary><see cref="Pattern"/> anchored to where it's run from.</summary>
-        public Regex Regex { get; }
+        readonly Lazy<Regex> _regex;
+
+        /// <summary><see cref="Pattern"/> anchored to where it's run from - compiled on first use.</summary>
+        public Regex Regex => _regex.Value;
+
+        readonly IReadOnlyDictionary<string, string> _patterns;
+        readonly Lazy<(string[] Names, int[] Numbers, string[] Patterns)> _groups;
 
         /// <summary>The names of the groups the run captures - a property's, relative to the plan's root - and, for an authored pattern's group (see <see cref="PatternGroupPrefix"/>), null.</summary>
-        internal string[] GroupNames { get; }
+        internal string[] GroupNames => _groups.Value.Names;
 
         /// <summary>The group number of each name in <see cref="GroupNames"/>.</summary>
-        internal int[] GroupNumbers { get; }
+        internal int[] GroupNumbers => _groups.Value.Numbers;
 
         /// <summary>The authored pattern each pattern group captures, by the group's position in <see cref="GroupNames"/> - null for a property's group.</summary>
-        internal string[] Patterns { get; }
+        internal string[] Patterns => _groups.Value.Patterns;
 
         /// <summary>
         /// Whether the run can match only one way at a place: no alternation, quantifier or lookaround outside a character
@@ -38,17 +43,25 @@ public abstract class PlanNode
         /// </summary>
         internal bool IsDeterministic { get; }
 
-        internal Leaf(string pattern, IReadOnlyList<string> patterns)
+        /// <param name="patterns">The authored pattern each pattern group (named with <see cref="PatternGroupPrefix"/>) captures, by group name.</param>
+        internal Leaf(string pattern, IReadOnlyDictionary<string, string> patterns)
         {
             Pattern = pattern;
-            Regex = BuiltRegex.Compile(@"\G(?:" + pattern + ")");
+            _patterns = patterns;
             IsDeterministic = Matcher.IsDeterministic(pattern);
+            _regex = new(() => BuiltRegex.Compile(@"\G(?:" + pattern + ")"));
+            _groups = new(() =>
+            {
+                var names = Regex.GetGroupNames().Where(x => x != "0").ToList();
 
-            var names = Regex.GetGroupNames().Where(x => x != "0").ToList();
-            GroupNames = names.Select(x => x.StartsWith(PatternGroupPrefix, StringComparison.Ordinal) ? null : x).ToArray();
-            GroupNumbers = names.Select(Regex.GroupNumberFromName).ToArray();
-            Patterns = names.Select(x => x.StartsWith(PatternGroupPrefix, StringComparison.Ordinal) ? patterns[int.Parse(x.AsSpan(PatternGroupPrefix.Length))] : null).ToArray();
+                return (
+                    names.Select(x => IsPatternGroup(x) ? null : x).ToArray(),
+                    names.Select(Regex.GroupNumberFromName).ToArray(),
+                    names.Select(x => IsPatternGroup(x) ? _patterns[x] : null).ToArray());
+            });
         }
+
+        static bool IsPatternGroup(string name) => name.StartsWith(PatternGroupPrefix, StringComparison.Ordinal);
     }
 
     /// <summary>Items matched one after another.</summary>
@@ -76,17 +89,25 @@ public abstract class PlanNode
         public MatchPlan Target { get; } = target;
     }
 
-    /// <summary>The prefix of a group capturing what an authored pattern matched (see <see cref="Nodes.TextNode.AuthoredPattern"/>), followed by the pattern's number within its leaf.</summary>
+    /// <summary>
+    /// The prefix of a group capturing what an authored pattern matched (see <see cref="Nodes.TextNode.AuthoredPattern"/>),
+    /// followed by the name of the group the pattern sits in and the pattern's place among that group's children -
+    /// unique within a plan, and the same wherever the group's content is nested.
+    /// </summary>
     internal const string PatternGroupPrefix = "__p";
 }
 
-/// <summary>A plan for a whole type's pattern, or for a nested group's content (see <see cref="PlanNode"/>).</summary>
+/// <summary>
+/// A plan for a whole type's pattern, or for a nested group's content (see <see cref="PlanNode"/>). Group names within a
+/// plan are relative to its root: for a type's plan, to the type's root group; for a nested group's, to that group - so
+/// the same content nested in different types is one plan, and a match's captures are qualified by whoever made the match.
+/// </summary>
 public sealed class MatchPlan
 {
     /// <summary>What the plan matches.</summary>
     public PlanNode Root { get; private set; }
 
-    /// <summary>The text the plan was built from, relative to its root: what tells one plan from another (see <see cref="Shared"/>).</summary>
+    /// <summary>What tells one plan from another: a digest of its content, relative to its root (see <see cref="Shared"/>).</summary>
     public string Key { get; }
 
     /// <summary>How many leaves and calls the plan holds - a measure of what it costs to run beyond the regex engine's own work.</summary>
@@ -100,25 +121,11 @@ public sealed class MatchPlan
     /// </summary>
     public static int CallThreshold { get; internal set; } = 2_000;
 
-    /// <summary>
-    /// The plan of a type's pattern, from the bricks its graph produces (see <see cref="BuiltRegex.Bricks"/>) - built while they're
-    /// in hand, since building them again costs more than anything here.
-    /// </summary>
-    internal static MatchPlan Build(GlyphNode root, List<RegexBrick> bricks)
+    /// <summary>The plan keyed by <paramref name="key"/>, built by <paramref name="build"/> if no live one has that key - so a nested glyph's content is one plan however many types nest it, and across the generations a definition's grammars are built in.</summary>
+    static MatchPlan Shared(string key, Func<PlanNode> build)
     {
-        var builder = new Builder(bricks);
-        var prefix = root.FullyQualifiedName + "_";
-        var key = builder.RelativeText(0, bricks.Count, prefix);
-        return Shared(key, _ => builder.Parse(0, bricks.Count, root, prefix));
-    }
+        key = $"{CallThreshold}:{key}";
 
-    /// <summary>The plan keyed by <paramref name="text"/> - under the call threshold in force, which decides the plan's shape as much as the text does.</summary>
-    static MatchPlan Shared(string text, Func<MatchPlan, PlanNode> build) =>
-        SharedByKey($"{CallThreshold}:{text}", build);
-
-    /// <summary>The plan keyed <paramref name="key"/>, built by <paramref name="build"/> if no live one has that key - so a nested glyph's content is one plan however many types nest it, and across the generations a definition's grammars are built in.</summary>
-    static MatchPlan SharedByKey(string key, Func<MatchPlan, PlanNode> build)
-    {
         lock (_shared)
         {
             if (_shared.TryGetValue(key, out var reference) && reference.TryGetTarget(out var plan) && plan.Root is not null)
@@ -133,7 +140,7 @@ public sealed class MatchPlan
             }
 
             plan = new MatchPlan(key);
-            plan.Root = build(plan);
+            plan.Root = build();
             plan.Size = Count(plan.Root);
             _shared[key] = new(plan);
             return plan;
@@ -150,196 +157,306 @@ public sealed class MatchPlan
         _ => 1,
     };
 
-    /// <summary><paramref name="fullyQualifiedName"/> without <paramref name="prefix"/>, which every name under a plan's root starts with.</summary>
-    internal static string Relativize(string fullyQualifiedName, string prefix) =>
-        fullyQualifiedName.StartsWith(prefix, StringComparison.Ordinal)
-            ? fullyQualifiedName[prefix.Length..]
-            : throw new InvalidOperationException($"Group '{fullyQualifiedName}' isn't under '{prefix}'");
-
-    /// <summary>Cuts a brick sequence into a plan (see <see cref="PlanNode"/>).</summary>
-    sealed class Builder
+    /// <summary>
+    /// Builds a type's plan from the bricks its graph produces, as they're produced (see <see cref="BuiltRegex"/>): a
+    /// <see cref="RegexCollector"/> that keeps no bricks, only what the plan and the pattern's length need of them. Each
+    /// group opened starts a frame; a frame closed small is text inlined into the frame around it, as the flattened regex
+    /// inlines it; one closed large becomes a call to its content's shared plan.
+    /// </summary>
+    internal sealed class Collector : RegexCollector
     {
-        readonly List<RegexBrick> _bricks;
-
-        /// <summary>The index of each group-open brick's close, and each close's open.</summary>
-        readonly int[] _partner;
-
-        /// <summary>The regex length of each named glyph group, by the index of its open brick - what decides whether it's called.</summary>
-        readonly int[] _groupLength;
-
-        public Builder(List<RegexBrick> bricks)
+        /// <summary>A group being collected: a glyph's named group, a plain group its owner puts around alternatives, or the root.</summary>
+        sealed class Frame
         {
-            _bricks = bricks;
-            _partner = new int[bricks.Count];
-            _groupLength = new int[bricks.Count];
-            var open = new Stack<(int Index, int Length)>();
-            var lengths = new int[bricks.Count + 1];
+            /// <summary>The node whose group this is: the owner of the pipes and plain parentheses at this level.</summary>
+            public NamedGroupNode Owner;
 
-            for (var i = 0; i < bricks.Count; i++)
-                lengths[i + 1] = lengths[i] + bricks[i].Regex.Length;
+            /// <summary>For a glyph's group: its open brick, and so its name; null for the root or a plain group.</summary>
+            public RegexBrickGroupOpen Open;
 
-            for (var i = 0; i < bricks.Count; i++)
+            /// <summary>The frame's whole regex text so far, bookends included and group names fully qualified - kept while the frame might still be inlined as text into the frame around it; null once it can't be.</summary>
+            public StringBuilder Text = new();
+
+            /// <summary>The frame's content as structure: text runs, calls, plain levels and the pipes between alternatives.</summary>
+            public List<Piece> Pieces = [];
+
+            /// <summary>The run of text at the frame's own level since the last call or pipe.</summary>
+            public StringBuilder Leaf = new();
+
+            /// <summary>The authored pattern each pattern group anywhere in the frame's text captures, by group name.</summary>
+            public Dictionary<string, string> Patterns = [];
+
+            /// <summary>The regex length of everything in the frame, its own bookends included - what decides whether a glyph's group is a call.</summary>
+            public int Length;
+
+            /// <summary>Whether the frame holds a call, so can't be inlined as text.</summary>
+            public bool HasCalls;
+        }
+
+        abstract class Piece;
+        sealed class TextPiece(string text, Dictionary<string, string> patterns) : Piece { public string Text = text; public Dictionary<string, string> Patterns = patterns; }
+        sealed class CallPiece(string groupName, Quantifier? quantifier, MatchPlan target, string key) : Piece { public string GroupName = groupName; public Quantifier? Quantifier = quantifier; public MatchPlan Target = target; public string Key = key; }
+        sealed class PlainPiece(Frame inner) : Piece { public Frame Inner = inner; }
+        sealed class PipePiece : Piece;
+
+        readonly Stack<Frame> _frames = new();
+        readonly Frame _root;
+        readonly GlyphNode _rootNode;
+
+        public Collector(GlyphNode root)
+        {
+            _rootNode = root;
+            _root = new() { Owner = root, Text = null };
+            _frames.Push(_root);
+        }
+
+        /// <summary>The length of the flattened regex (see <see cref="BuiltRegex.MinifiedRegex"/>), with escaped spaces plain.</summary>
+        public int UnescapedLength { get; private set; }
+
+        /// <summary>The plan, once <see cref="Complete"/>d.</summary>
+        public MatchPlan Plan { get; private set; }
+
+        /// <summary>The base list is never kept: see the class remarks. The last content brick, which <see cref="RegexCollector.AlreadySeparated"/> reads, is.</summary>
+        protected override bool KeepsBricks => false;
+
+        public override void Append(RegexBrick brick)
+        {
+            base.Append(brick);
+            UnescapedLength += BuiltRegex.UnescapedLength(brick.Regex);
+            var frame = _frames.Peek();
+
+            // A glyph's group opens a frame of its own; so does a plain group its owner puts around alternatives (see GlyphOneOfNode).
+            if (brick is RegexBrickGroupOpen open && IsGlyphGroup(open))
             {
-                if (bricks[i] is RegexBrickGroupOpen)
-                    open.Push((i, 0));
-                else if (bricks[i] is RegexBrickGroupClose)
-                {
-                    var (openIndex, _) = open.Pop();
-                    _partner[openIndex] = i;
-                    _partner[i] = openIndex;
-                    _groupLength[openIndex] = lengths[i + 1] - lengths[openIndex];
-                }
+                _frames.Push(new() { Owner = (NamedGroupNode)brick.Parent, Open = open });
+                Grow(brick);
+                return;
             }
 
-            if (open.Count > 0)
-                throw new InvalidOperationException("A group is opened and never closed");
+            if (IsPlain(brick, frame, "("))
+            {
+                _frames.Push(new() { Owner = frame.Owner });
+                Grow(brick);
+                return;
+            }
+
+            if (brick is RegexBrickGroupClose close && frame.Open is not null && brick.Parent == frame.Owner)
+            {
+                Grow(brick);
+                _frames.Pop();
+                CloseGroup(frame, QuantifierOf(close));
+                return;
+            }
+
+            if (frame.Open is null && frame != _root && IsPlain(brick, frame, ")"))
+            {
+                Grow(brick);
+                _frames.Pop();
+                ClosePlain(frame);
+                return;
+            }
+
+            Grow(brick);
+
+            if (brick is RegexBrickJoiner { Joiner: Joiner.Pipe } && brick.Parent == frame.Owner)
+            {
+                FlushLeaf(frame);
+                frame.Pieces.Add(new PipePiece());
+                return;
+            }
+
+            AppendBrick(frame.Leaf, brick, frame.Patterns);
         }
 
-        /// <summary>Whether the group opening at <paramref name="index"/> is a nested glyph's, large enough to be matched by its own plan (see <see cref="CallThreshold"/>).</summary>
-        bool IsCall(int index) =>
-            _bricks[index] is RegexBrickGroupOpen { Parent: GlyphNode node }
-            && node is not DynamicGlyphNode
-            && node.Navigation.IsGlyphType
-            && node.ParentNode is not null
-            && _groupLength[index] >= CallThreshold;
-
-        /// <summary>The text of the bricks in [<paramref name="start"/>, <paramref name="end"/>), with group names relative to <paramref name="prefix"/> and authored patterns in groups of their own - the text a leaf of it would have.</summary>
-        public string RelativeText(int start, int end, string prefix)
+        /// <summary>Finishes the root's plan.</summary>
+        public void Complete()
         {
-            var text = new StringBuilder();
-            var patterns = 0;
+            if (_frames.Count != 1)
+                throw new InvalidOperationException($"{_rootNode.FullyQualifiedName}: a group is opened and never closed");
 
-            for (var i = start; i < end; i++)
-                AppendBrick(text, _bricks[i], prefix, ref patterns);
-
-            return text.ToString().Replace(BuiltRegex.EscapedSpace, " ");
+            var prefix = _rootNode.FullyQualifiedName + "_";
+            Plan = Shared(_rootNode.FullyQualifiedName + "/" + Digest(_root, prefix), () => ToPlan(_root, prefix));
         }
 
-        static void AppendBrick(StringBuilder text, RegexBrick brick, string prefix, ref int patterns)
+        static bool IsGlyphGroup(RegexBrickGroupOpen open) =>
+            open.Parent is GlyphNode node && node is not DynamicGlyphNode && node.Navigation.IsGlyphType && node.ParentNode is not null;
+
+        /// <summary>Whether <paramref name="brick"/> is a plain parenthesis <paramref name="frame"/>'s owner puts around alternatives (not a nib's text, which may start with one).</summary>
+        static bool IsPlain(RegexBrick brick, Frame frame, string parenthesis) =>
+            brick.Parent == frame.Owner && brick.GetType() == typeof(RegexBrick) && brick.Regex == parenthesis;
+
+        /// <summary>Counts <paramref name="brick"/> toward every open frame, and keeps its text in the innermost while that might still be inlined.</summary>
+        void Grow(RegexBrick brick)
         {
-            if (brick is RegexBrickGroupOpen open)
-                text.Append("(?<").Append(Relativize(open.GroupName, prefix)).Append('>');
-            else if (brick.Parent is TextNode { AuthoredPattern: not null } node && brick.Regex == node.Text)
-                text.Append(node.WithPatternGroup(PlanNode.PatternGroupPrefix + patterns++));
+            foreach (var open in _frames)
+                open.Length += brick.Regex.Length;
+
+            var frame = _frames.Peek();
+
+            // Once a glyph's group is large enough to be a call, its own text is never needed again.
+            if (frame.Text is not null && frame.Open is not null && frame.Length >= CallThreshold)
+                frame.Text = null;
+
+            if (frame.Text is not null)
+                AppendBrick(frame.Text, brick, frame.Patterns);
+        }
+
+        static void AppendBrick(StringBuilder text, RegexBrick brick, Dictionary<string, string> patterns)
+        {
+            if (brick.Parent is TextNode { AuthoredPattern: not null } node && brick.Regex == node.Text)
+            {
+                var name = PlanNode.PatternGroupPrefix + node.ParentNode.FullyQualifiedName + "_" + ((NamedGroupNode)node.ParentNode).Children.IndexOf(node);
+                patterns[name] = node.AuthoredPattern;
+                text.Append(node.WithPatternGroup(name));
+            }
             else
                 text.Append(brick.Regex);
         }
 
-        /// <summary>
-        /// The plan of the bricks in [<paramref name="start"/>, <paramref name="end"/>), the content of <paramref name="owner"/>'s group (or the whole
-        /// pattern, for a root): alternatives split at the pipes the owner itself places between them, each a sequence of leaves and calls.
-        /// </summary>
-        public PlanNode Parse(int start, int end, NamedGroupNode owner, string prefix)
+        static void FlushLeaf(Frame frame)
         {
+            if (frame.Leaf.Length == 0)
+                return;
+
+            frame.Pieces.Add(new TextPiece(frame.Leaf.ToString(), frame.Patterns));
+            frame.Leaf.Clear();
+        }
+
+        /// <summary>A glyph's group closed: inlined as text into the frame around it if small, else a call to its content's plan.</summary>
+        void CloseGroup(Frame frame, Quantifier? quantifier)
+        {
+            var parent = _frames.Peek();
+
+            if (frame.Text is not null && !frame.HasCalls)
+            {
+                Inline(frame, parent);
+                return;
+            }
+
+            var prefix = frame.Open.GroupName + "_";
+            var key = Digest(frame, prefix);
+            var target = Shared(key, () => ToPlan(frame, prefix));
+            FlushLeaf(parent);
+            parent.Pieces.Add(new CallPiece(frame.Open.GroupName, quantifier, target, key));
+            MarkCalls(parent);
+        }
+
+        /// <summary>A plain group closed: a level of its own in the frame around it if it holds a call, else text.</summary>
+        void ClosePlain(Frame frame)
+        {
+            var parent = _frames.Peek();
+
+            if (!frame.HasCalls)
+            {
+                Inline(frame, parent);
+                return;
+            }
+
+            FlushLeaf(frame);
+            FlushLeaf(parent);
+            parent.Pieces.Add(new PlainPiece(frame));
+            MarkCalls(parent);
+        }
+
+        /// <summary><paramref name="frame"/>'s whole text goes into <paramref name="parent"/>'s, as the flattened regex has it.</summary>
+        static void Inline(Frame frame, Frame parent)
+        {
+            parent.Leaf.Append(frame.Text);
+            parent.Text?.Append(frame.Text);
+
+            foreach (var (name, pattern) in frame.Patterns)
+                parent.Patterns[name] = pattern;
+        }
+
+        static void MarkCalls(Frame frame)
+        {
+            frame.HasCalls = true;
+            frame.Text = null;
+        }
+
+        /// <summary>A digest of <paramref name="frame"/>'s content with names relative to <paramref name="prefix"/>: the same for the same content wherever it's nested.</summary>
+        static string Digest(Frame frame, string prefix)
+        {
+            FlushLeaf(frame);
+            var text = new StringBuilder();
+            Describe(frame, prefix, text);
+            return Convert.ToHexString(SHA256.HashData(Encoding.Unicode.GetBytes(text.ToString())));
+        }
+
+        static void Describe(Frame frame, string prefix, StringBuilder into)
+        {
+            foreach (var piece in frame.Pieces)
+                switch (piece)
+                {
+                    case TextPiece text:
+                        into.Append(RelativeText(text.Text, prefix));
+                        break;
+
+                    case CallPiece call:
+                        into.Append("{call ").Append(RelativeName(call.GroupName, prefix)).Append(call.Quantifier?.GetDescription()).Append(':').Append(call.Key).Append('}');
+                        break;
+
+                    case PlainPiece plain:
+                        FlushLeaf(plain.Inner);
+                        into.Append("{(");
+                        Describe(plain.Inner, prefix, into);
+                        into.Append(")}");
+                        break;
+
+                    case PipePiece:
+                        into.Append("{|}");
+                        break;
+                }
+        }
+
+        /// <summary><paramref name="frame"/>'s content as a plan node, names relative to <paramref name="prefix"/>.</summary>
+        static PlanNode ToPlan(Frame frame, string prefix)
+        {
+            FlushLeaf(frame);
             var alternatives = new List<PlanNode>();
             var items = new List<PlanNode>();
-            var leaf = new StringBuilder();
-            var leafPatterns = new List<string>();
 
-            void FlushLeaf()
-            {
-                if (leaf.Length == 0)
-                    return;
-
-                items.Add(new PlanNode.Leaf(leaf.ToString().Replace(BuiltRegex.EscapedSpace, " "), [.. leafPatterns]));
-                leaf.Clear();
-                leafPatterns.Clear();
-            }
-
-            void FlushAlternative()
-            {
-                FlushLeaf();
-                alternatives.Add(items.Count == 1 ? items[0] : new PlanNode.Sequence([.. items]));
-                items = [];
-            }
-
-            void AppendLeafBrick(RegexBrick brick)
-            {
-                var patterns = leafPatterns.Count;
-
-                if (brick.Parent is TextNode { AuthoredPattern: not null } node && brick.Regex == node.Text)
-                    leafPatterns.Add(node.AuthoredPattern);
-
-                AppendBrick(leaf, brick, prefix, ref patterns);
-            }
-
-            for (var i = start; i < end; i++)
-            {
-                var brick = _bricks[i];
-
-                if (brick is RegexBrickJoiner { Joiner: Joiner.Pipe } && brick.Parent == owner)
+            foreach (var piece in frame.Pieces)
+                switch (piece)
                 {
-                    FlushAlternative();
-                    continue;
+                    case TextPiece text:
+                        items.Add(new PlanNode.Leaf(
+                            RelativeText(text.Text, prefix).Replace(BuiltRegex.EscapedSpace, " "),
+                            text.Patterns.ToDictionary(x => RelativeName(x.Key, prefix), x => x.Value)));
+                        break;
+
+                    case CallPiece call:
+                        items.Add(new PlanNode.Call(RelativeName(call.GroupName, prefix), call.Quantifier, call.Target));
+                        break;
+
+                    case PlainPiece plain:
+                        items.Add(ToPlan(plain.Inner, prefix));
+                        break;
+
+                    case PipePiece:
+                        alternatives.Add(items.Count == 1 ? items[0] : new PlanNode.Sequence([.. items]));
+                        items = [];
+                        break;
                 }
 
-                // A plain group the owner puts around its alternatives (see GlyphOneOfNode): a level of its own, with the same owner.
-                if (brick.Parent == owner && brick.GetType() == typeof(RegexBrick) && brick.Regex == "(")
-                {
-                    var close = FindPlainClose(i, owner);
-
-                    if (ContainsCall(i + 1, close))
-                    {
-                        FlushLeaf();
-                        items.Add(Parse(i + 1, close, owner, prefix));
-                    }
-                    else
-                        for (var j = i; j <= close; j++)
-                            AppendLeafBrick(_bricks[j]);
-
-                    i = close;
-                    continue;
-                }
-
-                if (brick is RegexBrickGroupOpen open && IsCall(i))
-                {
-                    FlushLeaf();
-                    var close = _partner[i];
-                    var node = (NamedGroupNode)brick.Parent;
-                    var innerPrefix = open.GroupName + "_";
-                    var key = RelativeText(i + 1, close, innerPrefix);
-                    var target = Shared(key, _ => Parse(i + 1, close, node, innerPrefix));
-                    items.Add(new PlanNode.Call(Relativize(open.GroupName, prefix), QuantifierOf((RegexBrickGroupClose)_bricks[close]), target));
-                    i = close;
-                    continue;
-                }
-
-                AppendLeafBrick(brick);
-            }
-
-            FlushAlternative();
+            alternatives.Add(items.Count == 1 ? items[0] : new PlanNode.Sequence([.. items]));
             return alternatives.Count == 1 ? alternatives[0] : new PlanNode.Alternation([.. alternatives]);
         }
 
-        /// <summary>Whether any group in [<paramref name="start"/>, <paramref name="end"/>) is a call - so the range can't be one leaf.</summary>
-        bool ContainsCall(int start, int end)
+        /// <summary><paramref name="text"/> with every group name under <paramref name="prefix"/> made relative to it: <c>(?&lt;prefix…&gt;</c> becomes <c>(?&lt;…&gt;</c>, and a pattern group's name likewise.</summary>
+        static string RelativeText(string text, string prefix) =>
+            text.Replace("(?<" + prefix, "(?<", StringComparison.Ordinal)
+                .Replace("(?<" + PlanNode.PatternGroupPrefix + prefix, "(?<" + PlanNode.PatternGroupPrefix, StringComparison.Ordinal);
+
+        /// <summary>A group's name (a pattern group's included) relative to <paramref name="prefix"/>.</summary>
+        static string RelativeName(string name, string prefix)
         {
-            for (var i = start; i < end; i++)
-                if (_bricks[i] is RegexBrickGroupOpen && IsCall(i))
-                    return true;
+            if (name.StartsWith(PlanNode.PatternGroupPrefix, StringComparison.Ordinal))
+                return PlanNode.PatternGroupPrefix + RelativeName(name[PlanNode.PatternGroupPrefix.Length..], prefix);
 
-            return false;
-        }
-
-        /// <summary>The index of the plain ")" <paramref name="owner"/> closes the plain "(" at <paramref name="open"/> with.</summary>
-        int FindPlainClose(int open, NamedGroupNode owner)
-        {
-            var depth = 0;
-
-            for (var i = open; i < _bricks.Count; i++)
-            {
-                var brick = _bricks[i];
-
-                if (brick.Parent != owner || brick.GetType() != typeof(RegexBrick))
-                    continue;
-
-                if (brick.Regex == "(")
-                    depth++;
-                else if (brick.Regex == ")" && --depth == 0)
-                    return i;
-            }
-
-            throw new InvalidOperationException($"{owner.FullyQualifiedName} opens a plain group it never closes");
+            return name.StartsWith(prefix, StringComparison.Ordinal)
+                ? name[prefix.Length..]
+                : throw new InvalidOperationException($"Group '{name}' isn't under '{prefix}'");
         }
 
         static Quantifier? QuantifierOf(RegexBrickGroupClose close) =>

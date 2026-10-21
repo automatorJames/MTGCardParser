@@ -169,7 +169,7 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
         CancellationToken cancellation = default) =>
         Run(() => agent.ResidualPhrasesAsync(minWords, maxWords, minOccurrences, limit, cancellation));
 
-    [McpServerTool(Name = "tokenize", ReadOnly = true), Description("How text tokenizes under the working grammar - or with a draft change set applied on top - with captures shown. Instant: nothing is scored.")]
+    [McpServerTool(Name = "tokenize", ReadOnly = true), Description("How text tokenizes under the working grammar - or with a draft change set applied on top - with captures shown. Nothing is scored; but a draft rebuilds every glyph that refers to what it changes, which takes as long as evaluate's build, so test several lines in one call.")]
     public Task<string> Tokenize(
         [Description("The text; one line per line. Lower-cased, as corpus lines are.")] string text,
         [Description("Optional draft: " + _sourceDescription)] string source = null,

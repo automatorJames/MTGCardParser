@@ -76,13 +76,6 @@ static class Replay
         Time("MdlScorer.Score (first: compiles new pattern regexes)", () => MdlScorer.Score(candidate, retokenized));
         Time("MdlScorer.Score (again)", () => MdlScorer.Score(candidate, retokenized));
 
-        Section("Refresh - what apply does to keep lines held with superseded types");
-        var superseded = Time("IsSupersededBy over documents", () => retokenized.Count(x => x.IsSupersededBy(candidate)));
-        Console.WriteLine($"  documents holding superseded types: {superseded:N0}");
-
-        if (superseded > 0)
-            Time("Refresh (AsParallel)", () => retokenized.AsParallel().AsOrdered().Select(x => x.Refresh(candidate)).ToList());
-
         Heap("at the end");
     }
 
@@ -108,7 +101,7 @@ static class Replay
             {
                 var sw = Stopwatch.StartNew();
                 var graph = GlyphTypeCache.GetRegexGraph(type);
-                timings.Add((type, sw.Elapsed.TotalMilliseconds, graph.BuiltRegex.MinifiedRegex.Length));
+                timings.Add((type, sw.Elapsed.TotalMilliseconds, graph.BuiltRegex.MinifiedRegexLength));
             });
 
             return 0;
