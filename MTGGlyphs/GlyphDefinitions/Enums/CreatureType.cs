@@ -611,5 +611,136 @@ public enum CreatureType
 
     Treasure,
 
-    Food
+    Food,
+
+    Alien,
+
+    Armadillo,
+
+    Astartes,
+
+    Azra,
+
+    Balloon,
+
+    Beaver,
+
+    Beholder,
+
+    Blinkmoth,
+
+    Capybara,
+
+    [RegexPattern("child", "children")]
+    Child,
+
+    Clown,
+
+    Coward,
+
+    Coyote,
+
+    [RegexPattern("c'tan")]
+    CTan,
+
+    Custodes,
+
+    Cyberman,
+
+    Dalek,
+
+    Demigod,
+
+    Detective,
+
+    Doctor,
+
+    Drix,
+
+    Employee,
+
+    Fractal,
+
+    Gamer,
+
+    Germ,
+
+    Gith,
+
+    Glimmer,
+
+    Gnoll,
+
+    Guest,
+
+    Halfling,
+
+    Hamster,
+
+    Inkling,
+
+    Inquisitor,
+
+    Llama,
+
+    Mite,
+
+    Mount,
+
+    [RegexPattern("mouse", "mice")]
+    Mouse,
+
+    Necron,
+
+    Otter,
+
+    Peasant,
+
+    Pentavite,
+
+    Performer,
+
+    Pincher,
+
+    Porcupine,
+
+    Possum,
+
+    Primarch,
+
+    Prism,
+
+    Raccoon,
+
+    Reflection,
+
+    Robot,
+
+    Scientist,
+
+    Sculpture,
+
+    Skunk,
+
+    Sloth,
+
+    Snail,
+
+    Synth,
+
+    Tentacle,
+
+    Tiefling,
+
+    Toy,
+
+    Triskelavite,
+
+    Tyranid,
+
+    Varmint,
+
+    Walrus,
+
+    Weasel
 }

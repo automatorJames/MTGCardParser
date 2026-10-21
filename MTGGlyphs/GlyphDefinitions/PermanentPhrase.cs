@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>One particular permanent or card: {this}, "this spell" (the card on the stack), "this permanent" in reminder text, "it", a target, one named earlier ("that creature", "the exiled card", "that token"), the enchanted one, or the cards left from a reveal ("all other cards revealed this way"). "this spell" goes before ThisCreature, whose bare "this" would stop short of it.</summary>
+/// <summary>One particular permanent or card: {this}, "this spell" (the card on the stack), "this permanent" in reminder text, "it", a target, one named earlier ("that creature", "the exiled card", "that token"), the enchanted one, the cards left from a reveal ("all other cards revealed this way"), or a legend's short name at the end of a clause. "this spell" goes before ThisCreature, whose bare "this" would stop short of it.</summary>
 /// <exampledoc>Animate Dead</exampledoc>
 /// <examplecapture>enchanted creature</examplecapture>
 [Dependent]
@@ -16,4 +16,5 @@ public class PermanentPhrase : GlyphOneOf
     public ThatCardPhrase ThatCardPhrase { get; set; }
     public ThatToken ThatToken { get; set; }
     public OtherCardsRevealedThisWay OtherCardsRevealedThisWay { get; set; }
+    public ShortNameObject ShortName { get; set; }
 }
