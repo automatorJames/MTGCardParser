@@ -2,7 +2,7 @@
 
 public enum EnteringWay
 {
-    [RegexPattern("enters")]
+    [RegexPattern("enters", "enter")]
     Enters,
 
     [RegexPattern("escapes")]

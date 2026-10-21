@@ -5,6 +5,6 @@ public enum RemovalVerb
     [RegexPattern("destroys?")]
     Destroy,
 
-    [RegexPattern("exiles?")]
+    [RegexPattern("exiles?", "exiling")]
     Exile
 }

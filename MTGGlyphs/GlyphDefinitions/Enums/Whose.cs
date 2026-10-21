@@ -33,6 +33,9 @@ public enum Whose
     [RegexPattern("that player's")]
     ThatPlayers,
 
+    [RegexPattern("enchanted player's")]
+    EnchantedPlayers,
+
     [RegexPattern("a single", "a", "any")]
     Any,
 

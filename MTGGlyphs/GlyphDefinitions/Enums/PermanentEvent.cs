@@ -29,6 +29,9 @@ public enum PermanentEvent
     [RegexPattern("attacks you")]
     AttacksYou,
 
+    [RegexPattern("attacks alone", "attack alone")]
+    AttacksAlone,
+
     [RegexPattern("attacks", "attack")]
     Attacks,
 
@@ -70,6 +73,21 @@ public enum PermanentEvent
 
     [RegexPattern("deals combat damage", "deal combat damage")]
     DealsCombatDamage,
+
+    [RegexPattern("deals damage to a creature or opponent")]
+    DealsDamageToACreatureOrOpponent,
+
+    [RegexPattern("deals damage to a player", "deal damage to a player")]
+    DealsDamageToAPlayer,
+
+    [RegexPattern("deals damage to an opponent", "deal damage to an opponent")]
+    DealsDamageToAnOpponent,
+
+    [RegexPattern("deals damage to you")]
+    DealsDamageToYou,
+
+    [RegexPattern("deals damage to a creature")]
+    DealsDamageToACreature,
 
     [RegexPattern("deals damage", "deal damage")]
     DealsDamage

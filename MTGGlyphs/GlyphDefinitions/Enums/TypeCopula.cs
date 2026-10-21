@@ -5,5 +5,10 @@ public enum TypeCopula
     [RegexPattern("is an?")]
     IsA,
 
-    Are
+    Are,
+
+    [RegexPattern("becomes? an?")]
+    BecomesA,
+
+    Is
 }
