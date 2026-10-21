@@ -5,5 +5,8 @@ public enum LibraryEnd
     [RegexPattern("the bottom")]
     Bottom,
 
-    Top
+    Top,
+
+    [RegexPattern("(their|your) choice of the top or bottom")]
+    TopOrBottom
 }

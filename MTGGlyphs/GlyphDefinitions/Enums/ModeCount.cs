@@ -14,6 +14,9 @@ public enum ModeCount
     [RegexPattern("up to two")]
     UpToTwo,
 
+    [RegexPattern("up to four")]
+    UpToFour,
+
     [RegexPattern("any number")]
     AnyNumber,
 
@@ -21,5 +24,9 @@ public enum ModeCount
 
     Two,
 
-    Three
+    Three,
+
+    Four,
+
+    Both
 }

@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>One condition on when an ability may be activated or a spell cast: during a step or turn, before a point in it, once each turn, only once, as a sorcery, or only if the game is in some state (IfState's narrower set first, then any GameState).</summary>
+/// <summary>One condition on when an ability may be activated or a spell cast: during a step or turn, before a point in it, once each turn, only once, as a sorcery or as an instant, or only if the game is in some state (IfState's narrower set first, then any GameState).</summary>
 /// <exampledoc>Instill Energy</exampledoc>
 /// <examplecapture>during your turn</examplecapture>
 [Dependent]
@@ -14,6 +14,8 @@ public class ActivationTiming : GlyphOneOf
     public bool Once { get; set; }
     [RegexPattern("as a sorcery")]
     public bool AsASorcery { get; set; }
+    [RegexPattern("as an instant")]
+    public bool AsAnInstant { get; set; }
     public IfState OnlyIf { get; set; }
     public IfGameState OnlyIfState { get; set; }
 }

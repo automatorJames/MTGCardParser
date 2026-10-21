@@ -10,6 +10,12 @@ public enum WhichPlayer
     [RegexPattern("each opponent")]
     EachOpponent,
 
+    [RegexPattern("each other player")]
+    EachOtherPlayer,
+
+    [RegexPattern("an opponent of your choice")]
+    OpponentOfYourChoice,
+
     [RegexPattern("an opponent")]
     AnyOpponent,
 

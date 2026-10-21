@@ -1,8 +1,9 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Crew and saddle reminder text: "tap any number of creatures you control with total power 2 or more: this vehicle becomes an artifact creature until end of turn".</summary>
+/// <summary>Crew and saddle reminder text: "tap any number of creatures you control with total power 2 or more: this vehicle becomes an artifact creature until end of turn". Tried before the general activated-ability reading, which would otherwise take it.</summary>
 /// <exampledoc>Daredevil Dragster</exampledoc>
 /// <examplecapture>tap any number of creatures you control with total power 2 or more: this vehicle becomes an artifact creature until end of turn</examplecapture>
+[TokenizationOrder(0)]
 public class CrewRule : Glyph
 {
     public override Nib[] Nibs => ["tap any number of", Opt("other"), "creatures you control with total power", Prop(Power), "or more:", Prop(Result), "until end of turn"];

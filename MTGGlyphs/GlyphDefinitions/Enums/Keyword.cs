@@ -223,6 +223,7 @@ public enum Keyword
 
     Soulshift,
 
+    [RegexPattern("splice onto arcane", "splice")]
     Splice,
 
     SplitSecond,
@@ -535,5 +536,9 @@ public enum Keyword
 
     Airbend,
 
-    Tiered
+    Tiered,
+
+    Blight,
+
+    Mayhem
 }

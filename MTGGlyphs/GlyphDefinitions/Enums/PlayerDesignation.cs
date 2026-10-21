@@ -3,5 +3,8 @@
 public enum PlayerDesignation
 {
     [RegexPattern("the city's blessing")]
-    CitysBlessing
+    CitysBlessing,
+
+    [RegexPattern("an enduring story")]
+    EnduringStory
 }
