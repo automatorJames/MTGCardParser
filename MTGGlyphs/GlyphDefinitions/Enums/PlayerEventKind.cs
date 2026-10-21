@@ -20,6 +20,9 @@ public enum PlayerEventKind
     [RegexPattern("cycles? a card")]
     CyclesACard,
 
+    [RegexPattern("cycles? this card")]
+    CyclesThisCard,
+
     [RegexPattern("sacrifices? another permanent")]
     SacrificesAnotherPermanent,
 
