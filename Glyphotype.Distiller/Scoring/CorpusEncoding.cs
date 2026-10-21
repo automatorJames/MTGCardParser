@@ -85,10 +85,126 @@ public sealed class CorpusEncoding
     {
         var encoding = new CorpusEncoding(charBits, topLevelTypeCount);
 
-        foreach (var line in lines)
-            encoding.EncodeLine(line);
+        // What each line's tokens choose is a fact about the line alone (see LinePlan), found once per line - in
+        // parallel, the first time - and kept with it: a corpus mostly made of lines scored before is replayed, not encoded again.
+        var plans = (lines as IReadOnlyList<ProcessedLine> ?? lines.ToList())
+            .AsParallel()
+            .AsOrdered()
+            .Select(x => _plans.GetValue(x, Plan))
+            .ToList();
+
+        foreach (var plan in plans)
+            encoding.Replay(plan);
 
         return encoding;
+    }
+
+    /// <summary>Each line's plan, for as long as the line lives: a line kept from one tokenization to the next is scored again without being encoded again.</summary>
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ProcessedLine, LinePlan> _plans = new();
+
+    /// <summary>
+    /// What encoding one line comes to, apart from any corpus: the steps each token takes - the context it chooses
+    /// in and the symbol it chooses, a spelling that's paid for the first time the corpus sees it, bits fixed by the
+    /// token alone, a vocabulary member used, a residual word - and how many pattern matches couldn't be located.
+    /// Everything that depends on the rest of the corpus (how often a context saw a symbol, whether a spelling is new,
+    /// the character cost) is left to <see cref="Replay"/>.
+    /// </summary>
+    sealed class LinePlan
+    {
+        public List<TokenPlan> Tokens { get; } = [];
+        public int UnlocatedPatternMatches { get; set; }
+    }
+
+    sealed class TokenPlan(CaptureUnit unit)
+    {
+        public CaptureUnit Unit { get; } = unit;
+        public List<Step> Steps { get; } = [];
+    }
+
+    enum StepKind { Choose, Spelling, Fixed, Vocabulary, ResidualWord }
+
+    /// <param name="Context">The context's name - or, for a vocabulary step, the vocabulary's.</param>
+    /// <param name="Symbol">The symbol chosen - or the member, for a vocabulary step; the word, for a residual word.</param>
+    /// <param name="Bits">Fixed bits, for a fixed step.</param>
+    /// <param name="PaysSpelling">For a spelling step: whether the text is spelled out when first seen (some pattern that matched it is open-ended).</param>
+    /// <param name="Text">For a vocabulary step: how the member was spelled.</param>
+    readonly record struct Step(StepKind Kind, string Context, DataComponent Component, string Symbol, double Bits = 0, bool PaysSpelling = false, string Text = null);
+
+    /// <summary>The plan for <paramref name="line"/>: what <see cref="Replay"/> needs to encode it in any corpus.</summary>
+    static LinePlan Plan(ProcessedLine line)
+    {
+        var plan = new LinePlan();
+
+        foreach (var unit in line.Glyphs)
+        {
+            var token = new TokenPlan(unit);
+            var root = unit.CaptureContext.RootCaptureTrace;
+
+            if (root.IsUnmatchedString)
+            {
+                token.Steps.Add(new(StepKind.Choose, _tokenContextName, DataComponent.Tokens, _unmatchedSymbol));
+                PlanResidual(token, unit.CaptureValue);
+            }
+            else if (root.IsClauseBreak)
+            {
+                token.Steps.Add(new(StepKind.Choose, _tokenContextName, DataComponent.Tokens, _clauseBreakSymbol));
+            }
+            else
+            {
+                token.Steps.Add(new(StepKind.Choose, _tokenContextName, DataComponent.Tokens, unit.Type.Name));
+                PlanTrace(token, root, FindOpenPatterns(unit.Type, root, plan), plan);
+            }
+
+            plan.Tokens.Add(token);
+        }
+
+        return plan;
+    }
+
+    /// <summary>Encodes a line from its plan, in this corpus's contexts.</summary>
+    void Replay(LinePlan plan)
+    {
+        foreach (var tokenPlan in plan.Tokens)
+        {
+            var token = new TokenEncoding(tokenPlan.Unit);
+
+            foreach (var step in tokenPlan.Steps)
+            {
+                switch (step.Kind)
+                {
+                    case StepKind.Choose:
+                        Choose(token, GetContext(step.Context, step.Component), step.Symbol);
+                        break;
+
+                    case StepKind.Spelling:
+                        var context = GetContext(step.Context, step.Component);
+                        var isNew = !context.Counts.ContainsKey(step.Symbol);
+                        Choose(token, context, step.Symbol);
+
+                        if (isNew && step.PaysSpelling)
+                            token.AddFixed(DataComponent.Frames, SpellingBits(step.Symbol), _fixedBits);
+
+                        break;
+
+                    case StepKind.Fixed:
+                        token.AddFixed(step.Component, step.Bits, _fixedBits);
+                        break;
+
+                    case StepKind.Vocabulary:
+                        VocabularyUsage.Add(step.Context, step.Symbol, step.Text);
+                        break;
+
+                    case StepKind.ResidualWord:
+                        _residualWordCounts[step.Symbol] = _residualWordCounts.GetValueOrDefault(step.Symbol) + 1;
+                        break;
+                }
+            }
+
+            _tokens.Add(token);
+        }
+
+        UnlocatedPatternMatches += plan.UnlocatedPatternMatches;
+        TokenContext().Add(_endOfLineSymbol);
     }
 
     /// <summary>The bits spent on each <see cref="DataComponent"/>.</summary>
@@ -137,36 +253,8 @@ public sealed class CorpusEncoding
         return bits;
     }
 
-    void EncodeLine(ProcessedLine line)
-    {
-        foreach (var unit in line.Glyphs)
-        {
-            var token = new TokenEncoding(unit);
-            var root = unit.CaptureContext.RootCaptureTrace;
-
-            if (root.IsUnmatchedString)
-            {
-                Choose(token, TokenContext(), _unmatchedSymbol);
-                EncodeResidual(token, unit.CaptureValue);
-            }
-            else if (root.IsClauseBreak)
-            {
-                Choose(token, TokenContext(), _clauseBreakSymbol);
-            }
-            else
-            {
-                Choose(token, TokenContext(), unit.Type.Name);
-                EncodeTrace(token, root, FindOpenPatterns(unit.Type, root));
-            }
-
-            _tokens.Add(token);
-        }
-
-        TokenContext().Add(_endOfLineSymbol);
-    }
-
     /// <param name="openPatterns">What open-ended patterns matched within the glyph <paramref name="trace"/> belongs to (see <see cref="FindOpenPatterns"/>).</param>
-    void EncodeTrace(TokenEncoding token, CaptureTrace trace, IReadOnlyList<PatternCapture> openPatterns)
+    static void PlanTrace(TokenPlan token, CaptureTrace trace, IReadOnlyList<PatternCapture> openPatterns, LinePlan plan)
     {
         var node = trace.SourceNode;
 
@@ -176,24 +264,24 @@ public sealed class CorpusEncoding
             var member = trace.ClrValue?.ToString() ?? throw new InvalidOperationException($"Enum capture '{trace.CaptureValue}' ({trace.FullyQualifiedName}) has no hydrated value");
             var memberPatterns = enumType.GetField(member)?.GetCustomAttribute<RegexPatternAttribute>()?.Patterns;
 
-            VocabularyUsage.Add(enumType.Name, member, trace.CaptureValue);
+            token.Steps.Add(new(StepKind.Vocabulary, enumType.Name, DataComponent.Values, member, Text: trace.CaptureValue));
 
             // Among the members seen, not all the enum's: a member that never matches would be culled from the grammar.
-            Choose(token, GetContext($"value {Slot(node)}", DataComponent.Values, alphabetSize: null), member);
-            ChooseSpelling(token, GetContext($"spelling {enumType.Name}.{member}", DataComponent.Frames, alphabetSize: null), trace.CaptureValue, memberPatterns);
+            token.Steps.Add(new(StepKind.Choose, $"value {Slot(node)}", DataComponent.Values, member));
+            PlanSpelling(token, $"spelling {enumType.Name}.{member}", trace.CaptureValue, memberPatterns);
             return;
         }
 
         if (node is BoolNode)
         {
-            ChooseSpelling(token, GetContext($"spelling {Slot(node)}", DataComponent.Frames, alphabetSize: null), trace.CaptureValue, node.Navigation.Patterns);
+            PlanSpelling(token, $"spelling {Slot(node)}", trace.CaptureValue, node.Navigation.Patterns);
             return;
         }
 
         if (node is PrimitiveNode)
         {
-            token.AddFixed(DataComponent.Values, CodeLength.SignedInteger(Convert.ToInt64(trace.ClrValue ?? 0)), _fixedBits);
-            ChooseSpelling(token, GetContext($"spelling {Slot(node)}", DataComponent.Frames, alphabetSize: null), NormalizeDigits(trace.CaptureValue), node.Navigation.Patterns);
+            token.Steps.Add(new(StepKind.Fixed, null, DataComponent.Values, null, Bits: CodeLength.SignedInteger(Convert.ToInt64(trace.ClrValue ?? 0))));
+            PlanSpelling(token, $"spelling {Slot(node)}", NormalizeDigits(trace.CaptureValue), node.Navigation.Patterns);
             return;
         }
 
@@ -203,41 +291,49 @@ public sealed class CorpusEncoding
         {
             frameType = trace.ResolvedNodeType ?? throw new InvalidOperationException($"Dynamic capture '{trace.CaptureValue}' ({trace.FullyQualifiedName}) has no resolved type");
 
-            Choose(token, GetContext($"resolution {Slot(node)}", DataComponent.Values, alphabetSize: null), frameType.Name);
+            token.Steps.Add(new(StepKind.Choose, $"resolution {Slot(node)}", DataComponent.Values, frameType.Name));
 
             // The resolved glyph was matched by its own regex, so its patterns are found by that one.
-            openPatterns = FindOpenPatterns(frameType, trace);
+            openPatterns = FindOpenPatterns(frameType, trace, plan);
         }
 
         var frameName = Navigation.GetRegexSafeTypeName(frameType);
         var frame = GetFrame(trace, openPatterns);
-        Choose(token, GetContext($"frame {frameName}", DataComponent.Frames, alphabetSize: null), frame.Text);
+        token.Steps.Add(new(StepKind.Choose, $"frame {frameName}", DataComponent.Frames, frame.Text));
 
         foreach (var pattern in frame.Patterns)
-            ChooseSpelling(token, GetContext($"pattern {frameName} /{pattern.Pattern}/", DataComponent.Frames, alphabetSize: null), pattern.Text, [pattern.Pattern]);
+            PlanSpelling(token, $"pattern {frameName} /{pattern.Pattern}/", pattern.Text, [pattern.Pattern]);
 
         foreach (var child in frame.Children)
-            EncodeTrace(token, child, openPatterns);
+            PlanTrace(token, child, openPatterns, plan);
     }
 
     /// <summary>Unmatched text: its word count, then each word from the residual lexicon.</summary>
-    void EncodeResidual(TokenEncoding token, string text)
+    static void PlanResidual(TokenPlan token, string text)
     {
         var words = SplitWords(text);
-        token.AddFixed(DataComponent.Residual, CodeLength.EliasGamma(Math.Max(1, words.Length)), _fixedBits);
+        token.Steps.Add(new(StepKind.Fixed, null, DataComponent.Residual, null, Bits: CodeLength.EliasGamma(Math.Max(1, words.Length))));
 
         foreach (var word in words)
         {
-            Choose(token, GetContext(ResidualContextName, DataComponent.Residual, alphabetSize: null), word);
-            _residualWordCounts[word] = _residualWordCounts.GetValueOrDefault(word) + 1;
+            token.Steps.Add(new(StepKind.Choose, ResidualContextName, DataComponent.Residual, word));
+            token.Steps.Add(new(StepKind.ResidualWord, null, DataComponent.Residual, word));
         }
     }
+
+    /// <summary>
+    /// Chooses a text some regex among <paramref name="patterns"/> matched - and if one of them is open-ended, spells
+    /// the text out the first time it's seen: the grammar never wrote it down.
+    /// </summary>
+    static void PlanSpelling(TokenPlan token, string context, string text, IEnumerable<string> patterns) =>
+        token.Steps.Add(new(StepKind.Spelling, context, DataComponent.Frames, text, PaysSpelling: patterns is not null && patterns.Any(RegexOpenness.IsOpenEnded)));
 
     /// <summary>
     /// What the open-ended patterns (see <see cref="RegexOpenness"/>) in <paramref name="glyphType"/>'s regex matched,
     /// in its match spanning <paramref name="span"/> - the text a frame has to mask and spell (see <see cref="GetFrame"/>).
     /// </summary>
-    IReadOnlyList<PatternCapture> FindOpenPatterns(Type glyphType, CaptureTrace span)
+    /// <param name="plan">The line's plan, where a match that can't be located is counted.</param>
+    static IReadOnlyList<PatternCapture> FindOpenPatterns(Type glyphType, CaptureTrace span, LinePlan plan)
     {
         var regex = GlyphTypeCache.GetRegexGraph(glyphType).BuiltRegex;
 
@@ -248,7 +344,7 @@ public sealed class CorpusEncoding
 
         if (captures is null)
         {
-            UnlocatedPatternMatches++;
+            plan.UnlocatedPatternMatches++;
             return [];
         }
 
@@ -324,12 +420,15 @@ public sealed class CorpusEncoding
 
     public const string ResidualContextName = "residual words";
 
-    Context TokenContext() => GetContext("tokens", DataComponent.Tokens, _tokenAlphabetSize);
+    const string _tokenContextName = "tokens";
 
-    Context GetContext(string name, DataComponent component, long? alphabetSize)
+    Context TokenContext() => GetContext(_tokenContextName, DataComponent.Tokens);
+
+    /// <summary>The context named <paramref name="name"/> - open (its alphabet the symbols seen), but for the token context, whose alphabet is the grammar's top-level types and the three other kinds of token.</summary>
+    Context GetContext(string name, DataComponent component)
     {
         if (!_contexts.TryGetValue(name, out var context))
-            _contexts[name] = context = new Context(name, component, alphabetSize);
+            _contexts[name] = context = new Context(name, component, name == _tokenContextName ? _tokenAlphabetSize : null);
 
         return context;
     }
@@ -338,19 +437,6 @@ public sealed class CorpusEncoding
     {
         context.Add(symbol);
         token.Choices.Add((context, symbol));
-    }
-
-    /// <summary>
-    /// Chooses a text some regex among <paramref name="patterns"/> matched - and if one of them is open-ended, spells
-    /// the text out the first time it's seen: the grammar never wrote it down.
-    /// </summary>
-    void ChooseSpelling(TokenEncoding token, Context context, string text, IEnumerable<string> patterns)
-    {
-        var isNew = !context.Counts.ContainsKey(text);
-        Choose(token, context, text);
-
-        if (isNew && patterns is not null && patterns.Any(RegexOpenness.IsOpenEnded))
-            token.AddFixed(DataComponent.Frames, SpellingBits(text), _fixedBits);
     }
 
     double SpellingBits(string word) => (word.Length + 1) * _charBits;
