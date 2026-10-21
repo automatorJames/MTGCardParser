@@ -81,7 +81,9 @@ public class BuiltRegex
     /// <see cref="MinifiedRegex"/> with every authored pattern inside a named group of its own, and those patterns
     /// in group order - null when the graph has none. Analysis-only, and never what the engine matches with:
     /// adding groups changes nothing about what matches, but <see cref="MinifiedRegex"/>'s own text and length are
-    /// read elsewhere (e.g. to order top-level types).
+    /// read elsewhere (e.g. to order top-level types). Its other named groups are plain groups, which change nothing
+    /// about what matches either (no pattern refers back to a group): a match allocates for every group its regex
+    /// has, and the largest have tens of thousands, of which only the pattern groups are read.
     /// </summary>
     /// <param name="Anchored">Compiled on first need: it's the fallback for a span the scope-filling regex can't match again, which is rare.</param>
     sealed record PatternRegex(Regex ScopeFilling, Lazy<Regex> Anchored, IReadOnlyList<string> Patterns);
@@ -241,6 +243,10 @@ public class BuiltRegex
             {
                 text.Append(node.WithPatternGroup(_patternGroupPrefix + patterns.Count));
                 patterns.Add(node.AuthoredPattern);
+            }
+            else if (brick is Bricks.RegexBrickGroupOpen)
+            {
+                text.Append("(?:");
             }
             else
             {
