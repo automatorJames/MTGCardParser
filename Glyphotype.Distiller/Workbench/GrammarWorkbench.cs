@@ -665,7 +665,7 @@ public sealed class GrammarWorkbench : IDisposable
     {
         var before = await GetCurrentTrialAsync(cancellation);
         var candidate = changes.ApplyTo(before.Definition);
-        var after = await Task.Run(() => Score(candidate, cancellation), cancellation)
+        var after = await Task.Run(() => Score(candidate, cancellation, current: false), cancellation)
             ?? throw new OperationCanceledException(cancellation);
 
         return new(changes, before, after);
@@ -677,22 +677,28 @@ public sealed class GrammarWorkbench : IDisposable
         GlyphGrammar.FromDefinition(definition.WithoutUnreferencedTerminals());
 
     /// <summary>Scores <paramref name="definition"/> - or returns its recent score, if it was scored lately. Null if cancelled.</summary>
-    WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation)
+    /// <param name="current">
+    /// Whether every line has to be tokenized by the definition's own grammar - for a score the workbench keeps as its
+    /// state - rather than allowed to keep lines an earlier grammar tokenized the same, holding that grammar's types
+    /// (see <see cref="TokenizationChange"/>): enough for a what-if, which is only scored and compared.
+    /// </param>
+    WorkingScore Score(GrammarDefinition definition, CancellationToken cancellation, bool current = true)
     {
         var json = definition.ToJson();
         IReadOnlyList<IDocument> documents;
         int corpusVersion;
-        WorkingScore basis;
+        WorkingScore basis, recent;
 
         lock (_gate)
         {
-            if (_recentScores.FirstOrDefault(x => x.Json == json).Score is WorkingScore recent)
-                return recent with { Definition = definition };
-
-            documents = _documents;
             corpusVersion = _corpusVersion;
+            recent = _recentScores.FirstOrDefault(x => x.Json == json).Score;
+            documents = _documents;
             basis = GetTokenizedBasis();
         }
+
+        if (recent is not null)
+            return (current ? Refresh(json, recent, corpusVersion, cancellation) : recent) is { } found ? found with { Definition = definition } : null;
 
         var score = ScoreUncached(definition, documents, basis, cancellation);
 
@@ -708,7 +714,45 @@ public sealed class GrammarWorkbench : IDisposable
                     _recentScores.RemoveAt(0);
             }
 
-        return score;
+        return current && score is not null ? Refresh(json, score, corpusVersion, cancellation) : score;
+    }
+
+    /// <summary>
+    /// <paramref name="score"/> with every line tokenized by its own grammar's types (see <see cref="ProcessedDocument.Refresh"/>) -
+    /// the same tokenization, so the same score - and kept so among the recent scores. Null if cancelled.
+    /// </summary>
+    WorkingScore Refresh(string json, WorkingScore score, int corpusVersion, CancellationToken cancellation)
+    {
+        if (score is not { Succeeded: true, Documents: { } documents } || !documents.Any(x => x.IsSupersededBy(score.Grammar)))
+            return score;
+
+        List<ProcessedDocument> refreshed;
+
+        try
+        {
+            refreshed = documents
+                .AsParallel()
+                .AsOrdered()
+                .WithCancellation(cancellation)
+                .Select(x => x.Refresh(score.Grammar))
+                .ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+
+        var result = score with { Documents = refreshed };
+
+        lock (_gate)
+        {
+            var index = _recentScores.FindIndex(x => x.Json == json && ReferenceEquals(x.Score, score));
+
+            if (index >= 0 && corpusVersion == _corpusVersion)
+                _recentScores[index] = (json, result);
+        }
+
+        return result;
     }
 
     /// <summary>

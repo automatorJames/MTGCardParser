@@ -116,6 +116,7 @@ public class BuiltRegex
         var bricks = Walk(root);
         MinifiedRegex = Share(string.Concat(bricks.Select(x => x.Regex)).Replace(EscapedSpace, " "));
         (_patternRegexText, _patterns) = BuildPatternText(bricks);
+        TypedGroups = FindTypedGroups(bricks, MinifiedRegex.Length);
         _bricks = new(bricks);
 
         // Each built on first use: a type may only ever be matched one way (with the whole-clause rule on,
@@ -128,6 +129,55 @@ public class BuiltRegex
     /// <summary>The text <see cref="_patternRegex"/> compiles (see <see cref="PatternRegex"/>), or null for a graph with no authored patterns - found from the bricks while they're in hand, since building them again costs more than keeping the text.</summary>
     readonly string _patternRegexText;
     readonly IReadOnlyList<string> _patterns;
+
+    /// <summary>
+    /// Where each group capturing a glyph or a vocabulary sits in <see cref="MinifiedRegex"/>, in the order the groups
+    /// open - found from the bricks while they're in hand, as <see cref="_patternRegexText"/> is. What tells whether
+    /// two regexes differ only inside the groups of some types (see <see cref="Tokenizers.TokenizationChange"/>).
+    /// Null if the bricks' text doesn't add up to <see cref="MinifiedRegex"/>'s.
+    /// </summary>
+    internal IReadOnlyList<TypedGroup> TypedGroups { get; }
+
+    /// <summary>A group capturing a glyph or a vocabulary (<paramref name="TypeName"/>): its content, between its bookends, as a range of <see cref="MinifiedRegex"/>.</summary>
+    internal readonly record struct TypedGroup(string TypeName, int ContentStart, int ContentEnd);
+
+    static TypedGroup[] FindTypedGroups(List<RegexBrick> bricks, int textLength)
+    {
+        List<TypedGroup> groups = [];
+        Stack<(RegexNode Node, int Index, int ContentStart)> open = [];
+        var position = 0;
+
+        foreach (var brick in bricks)
+        {
+            if (brick is RegexBrickGroupClose && open.TryPeek(out var top) && top.Node == brick.Parent)
+            {
+                open.Pop();
+                groups[top.Index] = groups[top.Index] with { ContentEnd = position };
+            }
+
+            position += UnescapedLength(brick.Regex);
+
+            if (brick is RegexBrickGroupOpen && brick.Parent is NamedGroupNode { Navigation.NodeType: { IsGenericType: false } type } node
+                && (node.Navigation.IsGlyphType || type.IsEnum))
+            {
+                open.Push((node, groups.Count, position));
+                groups.Add(new(type.Name, position, -1));
+            }
+        }
+
+        return position == textLength && open.Count == 0 ? [.. groups] : null;
+    }
+
+    /// <summary>The length of <paramref name="regex"/> once its <see cref="EscapedSpace"/>s are plain spaces, as in <see cref="MinifiedRegex"/>.</summary>
+    static int UnescapedLength(string regex)
+    {
+        var length = regex.Length;
+
+        for (var index = regex.IndexOf(EscapedSpace, StringComparison.Ordinal); index >= 0; index = regex.IndexOf(EscapedSpace, index + EscapedSpace.Length, StringComparison.Ordinal))
+            length -= EscapedSpace.Length - 1;
+
+        return length;
+    }
 
     /// <summary>
     /// <paramref name="text"/>, or the identical text another regex already holds: a grammar built from a definition

@@ -92,6 +92,12 @@ public sealed class GlyphGrammar
     public bool TryGetType(string name, out Type type) =>
         _typesByName.TryGetValue(name, out type);
 
+    /// <summary>Whether the tokenizer may try <paramref name="type"/>: one of the <see cref="TopLevelTypes"/> or <see cref="DependentTypes"/>.</summary>
+    public bool IsCandidate(Type type) =>
+        (_candidates ??= TopLevelTypes.Concat(DependentTypes).ToHashSet()).Contains(type);
+
+    HashSet<Type> _candidates;
+
     /// <summary>This grammar's glyph types - and the vocabularies and markers they refer to - as a <see cref="GrammarDefinition"/>.</summary>
     public GrammarDefinition ToDefinition() =>
         GrammarDefinition.FromTypes(Types);
