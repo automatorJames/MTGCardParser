@@ -55,16 +55,27 @@ public sealed record StepFigures(TimeSpan? Elapsed, long? Tokens, double? CostUs
 
     public string CoverageClass => Coverage is double coverage ? Class(coverage) : "";
 
-    /// <summary>The figures in a line, for the chat's rule under a step: those there are, joined by dots.</summary>
-    public string Line() =>
-        string.Join(" · ", new[]
-        {
-            ElapsedText,
-            Tokens is null ? "" : TokensText + " tokens",
-            CostText,
-            Bits is null ? "" : BitsText + " bits" + (Compression is null ? "" : $" ({CompressionText})"),
-            Coverage is null ? "" : (Words is null ? "" : WordsText + " words ") + (Words is null ? CoverageText : $"({CoverageText})") + " coverage",
-        }.Where(x => x.Length > 0));
+    /// <summary>The figures in a line, as text: those there are, joined by dots.</summary>
+    public string Line() => string.Join(" · ", Pairs().Select(x => $"{x.Key} {x.Value}"));
+
+    /// <summary>The figures there are, each with what it is, for the chat's summary under a step.</summary>
+    public IEnumerable<(string Key, string Value)> Pairs()
+    {
+        if (Elapsed is not null)
+            yield return ("Time", ElapsedText);
+
+        if (Tokens is not null)
+            yield return ("Tokens", TokensText);
+
+        if (CostUsd is not null)
+            yield return ("Cost", CostText);
+
+        if (Bits is not null)
+            yield return ("Bits", BitsText + (Compression is null ? "" : $" ({CompressionText})"));
+
+        if (Coverage is not null)
+            yield return ("Coverage", Words is null ? CoverageText : $"{WordsText} words ({CoverageText})");
+    }
 
     static string Class(double gain) => Math.Abs(gain) < 1e-9 ? "unchanged" : gain > 0 ? "better" : "worse";
 

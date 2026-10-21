@@ -38,14 +38,20 @@
         case ChatEntryKind.Step:
             <div class="chat-entry step" title="@entry.StepDescription">
                 <span class="step-label">Step @entry.StepNumber</span>
-                <span class="step-figures">@entry.Text</span>
+                <dl class="step-figures">
+                    @foreach (var (key, value) in entry.StepFigures?.Pairs() ?? [])
+                    {
+                        <dt>@key</dt>
+                        <dd>@value</dd>
+                    }
+                </dl>
             </div>
             break;
 
         case ChatEntryKind.Handoff:
             <div class="chat-entry step handoff" title="The agent's context had filled up, so it wrote what the next session needs into the journal, and a fresh session took over">
                 <span class="step-label">Fresh session</span>
-                <span class="step-figures">@entry.Text</span>
+                <span>@entry.Text</span>
             </div>
             break;
 

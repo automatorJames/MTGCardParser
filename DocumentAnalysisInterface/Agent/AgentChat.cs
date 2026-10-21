@@ -30,6 +30,9 @@ public sealed record ChatEntry(ChatEntryKind Kind, string Text, bool Streaming =
     public int? StepNumber { get; init; }
     public string StepDescription { get; init; }
 
+    /// <summary>For a <see cref="ChatEntryKind.Step"/>: what it took and what it did - its text these in a line.</summary>
+    public StepFigures StepFigures { get; init; }
+
     public string ToolUseId { get; init; }
     public string Tool { get; init; }
 

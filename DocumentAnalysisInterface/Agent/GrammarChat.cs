@@ -160,7 +160,8 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
         if (workbench.History.LastOrDefault(x => x.Round == round && x.Ordinal == ordinal) is not { } step)
             return;
 
-        AddEntry(new(ChatEntryKind.Step, StepFigures.Of(step with { Effort = effort }).Line()) { StepNumber = ordinal, StepDescription = step.Description });
+        var figures = StepFigures.Of(step with { Effort = effort });
+        AddEntry(new(ChatEntryKind.Step, figures.Line()) { StepNumber = ordinal, StepDescription = step.Description, StepFigures = figures });
 
         // Off the gate: the workbench tells the page, which reads the chat too.
         _ = Task.Run(() => workbench.SetStepEffort(step.Number, effort));

@@ -121,33 +121,47 @@
     }
 }
 
-/* A step applied: a rule closing off the work that led to it, with what it took and what it did */
+/* A step applied: a heading closing off the work that led to it, ruled under, then what it took and what it did */
 .chat-entry.step {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.1rem 0.5rem;
-    margin: 0.2rem 0 0.4rem;
-    padding-top: 0.35rem;
-    border-top: 1px solid var(--outline-grey);
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.2rem 0 0.9rem;
     font-size: 0.78rem;
     color: var(--subtext-grey);
     font-variant-numeric: tabular-nums;
 }
 
 .step-label {
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--outline-grey);
     font-weight: 600;
-    color: var(--teal);
+    color: var(--gold);
 }
+
+/* The figures as aligned pairs: what each is, dim, and the figure, brighter */
+.step-figures {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.05rem 1rem;
+    margin: 0;
+}
+
+    .step-figures dt {
+        font-weight: normal;
+        color: var(--subtext-grey);
+    }
+
+    .step-figures dd {
+        margin: 0;
+        color: #c8c8c8;
+    }
 
 /* A handoff to a fresh session: ruled off as a step is, in its own color */
-.chat-entry.step.handoff {
-    border-top: 1px dashed #c586c0;
+.chat-entry.step.handoff .step-label {
+    border-bottom: 1px dashed #c586c0;
+    color: #c586c0;
 }
-
-    .chat-entry.step.handoff .step-label {
-        color: #c586c0;
-    }
 
 /* What the app did on its own: a quiet line between the turns */
 .chat-entry.note {
