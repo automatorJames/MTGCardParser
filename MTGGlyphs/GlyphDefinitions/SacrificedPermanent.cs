@@ -1,12 +1,17 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"the sacrificed creature": the permanent sacrificed to pay the ability's cost.</summary>
+/// <summary>"the sacrificed creature", "the exiled creature", "the revealed card", "the discarded card": the object a cost or an earlier effect handled, named again. (Plain "the exiled card" is <see cref="ThatCardPhrase"/>.)</summary>
 /// <exampledoc>Diamond Valley</exampledoc>
 /// <examplecapture>the sacrificed creature</examplecapture>
 [Dependent]
 public class SacrificedPermanent : Glyph
 {
-    public override Nib[] Nibs => ["the sacrificed", Prop(CardType)];
+    public override Nib[] Nibs => ["the", Prop(How), Prop(CardType), Prop(Card)];
 
-    public CardType CardType { get; set; }
+    public HandledHow How { get; set; }
+    [Optional]
+    public CardType? CardType { get; set; }
+    [Optional]
+    [RegexPattern("card")]
+    public bool Card { get; set; }
 }

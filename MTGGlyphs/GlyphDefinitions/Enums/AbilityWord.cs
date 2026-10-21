@@ -123,5 +123,12 @@ public enum AbilityWord
 
     Companion,
 
-    FathomlessDescent
+    FathomlessDescent,
+
+    [RegexPattern("power-up")]
+    PowerUp,
+
+    Infusion,
+
+    Vivid
 }

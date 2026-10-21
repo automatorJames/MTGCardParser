@@ -1,11 +1,11 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Countering a spell: "counter target spell", "counter target red spell", one named earlier, "counter it" (ward), or the card itself, "counter {this}", "counter this spell". Also a predicate, so "you may counter target spell" resolves, and the second of two actions.</summary>
+/// <summary>Countering a spell or ability: "counter target spell", "counter target red spell", "counter target activated ability", one named earlier ("counter that spell", "counter that spell or ability", "counter it" for ward), or the card itself, "counter {this}", "counter this spell". Also a predicate, so "you may counter target spell" resolves, and the second of two actions.</summary>
 /// <exampledoc>Counterspell</exampledoc>
 /// <examplecapture>counter target spell</examplecapture>
 public class CounterSpell : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => ["counter", Prop(Countered)];
 
-    public OneOf<TargetSpell, It, OneOf<This, ThisSpell>> Countered { get; set; }
+    public OneOf<TargetAbility, TargetSpell, OneOf<It, OneOf<This, ThisSpell>, ThatStackObject>> Countered { get; set; }
 }

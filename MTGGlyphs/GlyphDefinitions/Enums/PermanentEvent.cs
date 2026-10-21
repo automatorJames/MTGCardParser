@@ -14,6 +14,8 @@ public enum PermanentEvent
 
     IsPutIntoAGraveyardFromAnywhere,
 
+    IsPutIntoAGraveyard,
+
     IsTurnedFaceUp,
 
     BlocksOrBecomesBlocked,
