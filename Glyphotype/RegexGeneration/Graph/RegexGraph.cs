@@ -133,8 +133,11 @@ public class RegexGraph
         var suffixes = NamedGroupFlatGraph.Keys.ToDictionary(x => x, Suffixes);
         var keysNamed = suffixes.Values.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
 
+        // Even the whole name can name more than one key, when it's also the tail of a deeper key (e.g. "Root_A"
+        // and "Root_B_Root_A", from a group nested under one named like the root). The whole name is still unique
+        // as a result, though: a candidate naming only its own key can never equal another key's whole name.
         foreach (var (fullyQualifiedName, candidates) in suffixes)
-            SimpleUniqueNames[fullyQualifiedName] = candidates.First(x => keysNamed[x] == 1);
+            SimpleUniqueNames[fullyQualifiedName] = candidates.FirstOrDefault(x => keysNamed[x] == 1) ?? fullyQualifiedName;
 
         // Shortest first: the last part alone, then the last two, and so on to the whole name.
         static List<string> Suffixes(string fullyQualifiedName)
