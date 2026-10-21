@@ -21,7 +21,13 @@ public class RootCaptureTrace : CaptureTrace
     public bool IsSynthesized => IsUnmatchedString || IsClauseBreak;
 
     public RootCaptureTrace(CaptureContext captureContext, GlyphNode rootNode, Capture capture)
-        : base(captureContext, rootNode, capture)
+        : this(captureContext, rootNode, capture.Index, capture.Length)
+    {
+    }
+
+    /// <summary>The root of a match of <paramref name="rootNode"/> spanning <paramref name="length"/> characters of the context's text from <paramref name="index"/>.</summary>
+    public RootCaptureTrace(CaptureContext captureContext, GlyphNode rootNode, int index, int length)
+        : base(captureContext, rootNode, index, length)
     {
         RootNode = rootNode;
         _flatCaptureTree[rootNode.FullyQualifiedName] = this;

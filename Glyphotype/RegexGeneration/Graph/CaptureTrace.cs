@@ -162,15 +162,18 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
 
 
     public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode, Capture capture, int? siblingIndex = null)
+    : this(captureContext, namedGroupNode, (capture ?? throw new ArgumentNullException(nameof(capture))).Index, capture.Length, siblingIndex)
+    {
+    }
+
+    /// <summary>A successful capture of <paramref name="namedGroupNode"/> spanning <paramref name="length"/> characters of the context's text from <paramref name="index"/>.</summary>
+    public CaptureTrace(CaptureContext captureContext, NamedGroupNode namedGroupNode, int index, int length, int? siblingIndex = null)
     : this(captureContext, namedGroupNode)
     {
-        if (capture is null)
-            throw new ArgumentNullException(nameof(capture));
-
         Success = true;
-        CaptureValue = capture.Value;
-        Index = capture.Index;
-        Length = capture.Length;
+        CaptureValue = captureContext.SourceText.Substring(index, length);
+        Index = index;
+        Length = length;
         End = Index + Length;
         SiblingIndex = siblingIndex;
     }
@@ -284,6 +287,9 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
             Children.Add(child);
             outerRoot.RegisterSubtree(child);
         }
+
+        // What the resolved glyph's authored patterns matched, in the enclosing match's own index space.
+        CaptureContext.AdoptPatternCaptures(innerRoot.CaptureContext, Index);
     }
 
     void Rebase(string oldFullyQualifiedNamePrefix, string newFullyQualifiedNamePrefix, int indexOffset, CaptureContext newContext)

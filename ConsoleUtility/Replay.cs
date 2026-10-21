@@ -57,12 +57,6 @@ static class Replay
         Section("Candidate grammar (the step's after) - what evaluate builds");
         var candidate = BuildTimed(after, basis.Types.ToHashSet());
 
-        Section("Compile the candidate's new regexes (the app pays this lazily, inside tokenizing)");
-        var basisSet = basis.Types.ToHashSet();
-        var newTypes = candidate.Types.Where(x => !basisSet.Contains(x)).ToList();
-        Time($"WarmUp {newTypes.Count} new types' anchored + scope-filling regexes", () => { foreach (var t in newTypes) GlyphTypeCache.GetRegexGraph(t).BuiltRegex.WarmUp(); return 0; });
-        Heap("after compiling");
-
         Section("Incremental re-tokenization - what evaluate does after building");
         var change = Time("TokenizationChange.Between", () => TokenizationChange.Between(basis, candidate));
         Console.WriteLine($"  IsNone: {change.IsNone}");

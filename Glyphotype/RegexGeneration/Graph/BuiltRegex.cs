@@ -73,6 +73,13 @@ public class BuiltRegex
     /// </summary>
     public string MinifiedRegex { get; }
 
+    /// <summary>
+    /// The pattern as the engine matches it (see <see cref="Matching.Matcher"/>): <see cref="MinifiedRegex"/> cut into runs the
+    /// regex engine runs as they are, and calls to the plans of the large nested glyphs - shared with every other type
+    /// nesting them - so the flattened regex itself is never compiled for matching, only kept to be shown.
+    /// </summary>
+    public Matching.MatchPlan Plan { get; }
+
     readonly Lazy<Regex> _anchoredRegex;
     readonly Lazy<Regex> _scopeFillingRegex;
     readonly Lazy<PatternRegex> _patternRegex;
@@ -117,6 +124,7 @@ public class BuiltRegex
         MinifiedRegex = Share(string.Concat(bricks.Select(x => x.Regex)).Replace(EscapedSpace, " "));
         (_patternRegexText, _patterns) = BuildPatternText(bricks);
         TypedGroups = FindTypedGroups(bricks, MinifiedRegex.Length);
+        Plan = Matching.MatchPlan.Build(root, bricks);
         _bricks = new(bricks);
 
         // Each built on first use: a type may only ever be matched one way (with the whole-clause rule on,
@@ -314,7 +322,7 @@ public class BuiltRegex
     /// rarely matched more than a few passes' worth - and every what-if grammar built from a definition is new
     /// types, so would pay the compile again.
     /// </summary>
-    static Regex Compile(string pattern)
+    internal static Regex Compile(string pattern)
     {
         // Shared by pattern text: a grammar built from a definition emits a fresh type - with a graph and regexes of its own - for
         // every glyph that so much as refers to a changed one, though most of their patterns come out character for character the

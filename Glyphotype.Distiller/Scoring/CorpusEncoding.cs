@@ -335,6 +335,10 @@ public sealed class CorpusEncoding
     /// <param name="plan">The line's plan, where a match that can't be located is counted.</param>
     static IReadOnlyList<PatternCapture> FindOpenPatterns(Type glyphType, CaptureTrace span, LinePlan plan)
     {
+        // A match made by a plan recorded them as it went; one made by a regex is matched again to find them.
+        if (span.CaptureContext.PatternCaptures is { } recorded)
+            return recorded.Where(x => x.Index >= span.Index && x.Index + x.Length <= span.End && RegexOpenness.IsOpenEnded(x.Pattern)).ToList();
+
         var regex = GlyphTypeCache.GetRegexGraph(glyphType).BuiltRegex;
 
         if (!regex.HasAuthoredPatterns)

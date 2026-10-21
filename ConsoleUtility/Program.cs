@@ -27,6 +27,11 @@ internal class Program
                 Replay.Run(_cardDataGetter, args[1], int.Parse(args[2]), int.TryParse(args.ElementAtOrDefault(3), out var everyNth) ? everyNth : 1, args.ElementAtOrDefault(4));
                 break;
 
+            // dump out-path [definition.json|-] [every]: every corpus line as the grammar tokenizes it, capture by capture, for diffing engines.
+            case "dump":
+                Dump.Run(_cardDataGetter, args[1], args.ElementAtOrDefault(2), int.TryParse(args.ElementAtOrDefault(3), out var dumpEvery) ? dumpEvery : 1);
+                break;
+
             // expansion-def definition.json [count]: the expansion report for a grammar built from a workspace's definition.
             case "expansion-def":
                 Expansion.Run(Glyphotype.StaticRegistry.GlyphGrammar.FromDefinition(Glyphotype.Definitions.GrammarDefinition.FromJson(File.ReadAllText(args[1]))), int.TryParse(args.ElementAtOrDefault(2), out var defCount) ? defCount : 15);

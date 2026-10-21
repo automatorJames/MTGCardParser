@@ -209,12 +209,12 @@ public class RegexGraph
         glyph = null;
         narrowedScopeEnd = -1;
 
-        if (!TryMatchRegex(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, out var match))
+        if (!TryMatchPlan(sourceText, currentIndex, endIndex, scopeEnd, mustConsumeWholeScope, out var match))
             return false;
 
         TokenizationTrace.NoteMatch(RootGlyphType);
 
-        CaptureContext captureContext = new(RootNode, match, sourceText, tokenizer);
+        CaptureContext captureContext = new(RootNode, sourceText, currentIndex, match.End - currentIndex, match.Captures(), tokenizer);
         var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
         narrowedScopeEnd = captureContext.NarrowedScopeEnd;
         captureContext.Seal();
@@ -238,10 +238,38 @@ public class RegexGraph
     /// it wouldn't, that attempt fails whatever the grammar around it.
     /// </summary>
     internal bool MatchesRegexAt(string sourceText, int currentIndex, int endIndex, bool mustConsumeWholeScope) =>
-        TryMatchRegex(sourceText, currentIndex, endIndex, endIndex, mustConsumeWholeScope, out _);
+        TryMatchPlan(sourceText, currentIndex, endIndex, endIndex, mustConsumeWholeScope, out _);
 
-    /// <summary>The regex half of <see cref="TryMatchWithinScope"/>: a match that starts where it must and ends where it may.</summary>
-    bool TryMatchRegex(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Match match)
+    /// <summary>
+    /// The regex half of <see cref="TryMatchWithinScope"/>: a match that starts where it must and ends where it may - the match
+    /// the flattened regex would make, found by the pattern's plan (see <see cref="Matching.Matcher"/>) within the window
+    /// the regex would have been given: the scope, when it must be filled or is narrower than the text; else the whole text.
+    /// </summary>
+    internal bool TryMatchPlan(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Matching.PlanMatch match)
+    {
+        var (windowStart, windowEnd) = mustConsumeWholeScope || scopeEnd != endIndex ? (currentIndex, scopeEnd) : (0, sourceText.Length);
+        match = Matching.Matcher.First(BuiltRegex.Plan, sourceText, currentIndex, windowStart, windowEnd, mustConsumeWholeScope);
+
+        if (match is null)
+            return false;
+
+        int matchEndIndex = match.End;
+
+        // A match held to the whole scope (how the Tokenizer enforces its whole-clause requirement against a
+        // clause-sized endIndex) must consume all of it - ending at a boundary char partway through isn't good
+        // enough. Otherwise the normal "end of scope, or followed by a boundary char" allowance applies.
+        bool endsAtBoundary = mustConsumeWholeScope
+            ? matchEndIndex == endIndex
+            : matchEndIndex == endIndex || (matchEndIndex < endIndex && _boundaryChars.Contains(sourceText[matchEndIndex]));
+
+        return
+            matchEndIndex > currentIndex       // Length:   Must be non-empty
+            && matchEndIndex <= endIndex       // Scope:    Must not exceed endIndex
+            && endsAtBoundary;                 // Boundary: Must end at end index, or a boundary char, or fill the scope if required
+    }
+
+    /// <summary>The regex half of <see cref="TryMatchWithinScope"/> as the flattened regex itself makes it - kept for checking the plan against it.</summary>
+    internal bool TryMatchRegex(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Match match)
     {
         // One thread at a time per Regex: a Regex caches a single runner (whose backtracking arrays are sized by the
         // pattern, megabytes for the largest), and a second thread calling it concurrently allocates and discards a
