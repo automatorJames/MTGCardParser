@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Any one card of a kind in a zone other than the battlefield, not targeted: "a creature card from your graveyard", "a card from a graveyard", "a green card from your hand" - as exiled or chosen.</summary>
+/// <summary>Any one card of a kind in a zone other than the battlefield, not targeted: "a creature card from your graveyard", "a card from a graveyard", "a green card from your hand", "a dragon permanent card from your graveyard" - as exiled, chosen or returned.</summary>
 /// <exampledoc>Corpse Lunge</exampledoc>
 /// <examplecapture>a creature card from your graveyard</examplecapture>
 [Dependent]
@@ -9,6 +9,6 @@ public class IndefiniteCardInZone : Glyph
     public override Nib[] Nibs => [Pattern("an?"), Prop(Qualifiers), Prop(Card)];
 
     [Optional]
-    public OneOf<ManyOf<TargetQualifier>, CompoundOf<TargetQualifier>> Qualifiers { get; set; }
+    public OneOf<CompoundOf<TargetQualifier>, QualifierWords> Qualifiers { get; set; }
     public CardOutsideBattlefield Card { get; set; }
 }

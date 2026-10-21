@@ -8,5 +8,8 @@ public enum CombatEncounterKind
     [RegexPattern("becomes blocked by")]
     BecomesBlockedBy,
 
-    Blocks
+    Blocks,
+
+    [RegexPattern("attacks with")]
+    AttacksWith
 }

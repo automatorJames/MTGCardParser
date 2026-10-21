@@ -53,6 +53,12 @@ public enum Quantity
     [RegexPattern("any number of", "any number")]
     AnyNumber,
 
+    [RegexPattern("that many plus one")]
+    ThatManyPlusOne,
+
+    [RegexPattern("twice that many")]
+    TwiceThatMany,
+
     [RegexPattern("that many")]
     ThatMany,
 

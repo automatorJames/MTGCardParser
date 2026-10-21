@@ -65,6 +65,21 @@ public enum ManaSymbolKind
     [RegexPattern("2/g")]
     TwoOrGreen,
 
+    [RegexPattern("w/p")]
+    PhyrexianWhite,
+
+    [RegexPattern("u/p")]
+    PhyrexianBlue,
+
+    [RegexPattern("b/p")]
+    PhyrexianBlack,
+
+    [RegexPattern("r/p")]
+    PhyrexianRed,
+
+    [RegexPattern("g/p")]
+    PhyrexianGreen,
+
     [RegexPattern("x")]
     X,
 

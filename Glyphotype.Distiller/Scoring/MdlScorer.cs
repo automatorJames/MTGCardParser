@@ -28,11 +28,7 @@ public static class MdlScorer
         encoding.UseGrammarWords(grammarCost.SpelledWords);
         var componentBits = encoding.GetComponentBits();
 
-        // The baseline: the same corpus with no grammar at all, every clause unmatched.
-        var emptyGrammar = new GlyphGrammar([]);
-        var baselineLines = documents.SelectMany(x => ProcessedLine.GetAll(x.Document, emptyGrammar));
-        var baselineBits = GrammarCost.Of(new GrammarDefinition(), charBits).TotalBits
-            + CorpusEncoding.Encode(baselineLines, topLevelTypeCount: 0, charBits).GetComponentBits().Values.Sum();
+        var baselineBits = GetBaselineBits(documents, charBits);
 
         var topLevelNames = grammar.TopLevelTypes.Select(x => x.Name).ToHashSet();
         var tokensByGlyph = encoding.Tokens
@@ -91,6 +87,52 @@ public static class MdlScorer
     }
 
     static int CountWords(string text) => text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+
+    /// <summary>The baselines found lately, by the documents (the same objects, in the same order) and character cost they were found for.</summary>
+    static readonly List<(IDocument[] Documents, double CharBits, double Bits)> _baselines = [];
+    const int _baselineCapacity = 4;
+
+    /// <summary>
+    /// The baseline: the same corpus with no grammar at all, every clause unmatched. A function of the documents and the
+    /// character cost alone, so found once per corpus rather than once per score - every working definition is scored
+    /// against the same corpus.
+    /// </summary>
+    static double GetBaselineBits(IReadOnlyList<ProcessedDocument> documents, double charBits)
+    {
+        var corpus = documents.Select(x => x.Document).ToArray();
+
+        lock (_baselines)
+            foreach (var (known, knownCharBits, bits) in _baselines)
+                if (knownCharBits == charBits && SameDocuments(known, corpus))
+                    return bits;
+
+        var emptyGrammar = new GlyphGrammar([]);
+        var baselineLines = documents.SelectMany(x => ProcessedLine.GetAll(x.Document, emptyGrammar));
+        var baselineBits = GrammarCost.Of(new GrammarDefinition(), charBits).TotalBits
+            + CorpusEncoding.Encode(baselineLines, topLevelTypeCount: 0, charBits).GetComponentBits().Values.Sum();
+
+        lock (_baselines)
+        {
+            _baselines.Add((corpus, charBits, baselineBits));
+
+            if (_baselines.Count > _baselineCapacity)
+                _baselines.RemoveAt(0);
+        }
+
+        return baselineBits;
+    }
+
+    static bool SameDocuments(IDocument[] known, IDocument[] corpus)
+    {
+        if (known.Length != corpus.Length)
+            return false;
+
+        for (int i = 0; i < known.Length; i++)
+            if (!ReferenceEquals(known[i], corpus[i]))
+                return false;
+
+        return true;
+    }
 }
 
 /// <summary>What one glyph costs and what it saves.</summary>

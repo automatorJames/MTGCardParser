@@ -215,12 +215,15 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
         Name = namedGroupNode.Name;
         SourceNode = namedGroupNode;
 
-        var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
-
-        if (parentNameMatch.Success && !string.IsNullOrWhiteSpace(parentNameMatch.Value))
-            ParentName = parentNameMatch.Value;
-
+        ParentName = ParentNameOf(FullyQualifiedName);
         CaptureContext = captureContext;
+    }
+
+    /// <summary>Everything before the last underscore of <paramref name="fullyQualifiedName"/>, when a last part follows it - else null.</summary>
+    static string ParentNameOf(string fullyQualifiedName)
+    {
+        var cut = fullyQualifiedName.LastIndexOf('_');
+        return cut > 0 && cut < fullyQualifiedName.Length - 1 ? fullyQualifiedName[..cut] : null;
     }
 
     public IEnumerator<CaptureTrace> GetEnumerator()
@@ -286,9 +289,7 @@ public class CaptureTrace : IEnumerable<CaptureTrace>
     void Rebase(string oldFullyQualifiedNamePrefix, string newFullyQualifiedNamePrefix, int indexOffset, CaptureContext newContext)
     {
         FullyQualifiedName = newFullyQualifiedNamePrefix + FullyQualifiedName[oldFullyQualifiedNamePrefix.Length..];
-
-        var parentNameMatch = Regex.Match(FullyQualifiedName, @"^.+(?=_[^_]+$)");
-        ParentName = parentNameMatch.Success ? parentNameMatch.Value : null;
+        ParentName = ParentNameOf(FullyQualifiedName);
 
         Index += indexOffset;
         End += indexOffset;

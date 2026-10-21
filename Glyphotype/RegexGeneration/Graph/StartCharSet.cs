@@ -62,9 +62,30 @@ public sealed class StartCharSet
             DynamicGlyphNode or JoinedItemNode => Starts.Anything,
             TextNode text => FromRegexText(text.Text),
             TerminalRegexNode terminal => FromRegexText(terminal.RegexString),
+            EnumNode enumNode => AnalyzeEnum(enumNode),
             NamedGroupNode group => AnalyzeGroup(group),
             _ => Starts.Anything,
         };
+
+    /// <summary>An enum's members are alternatives (as <see cref="AnalyzeGroup"/> would find), read from its shared members rather than from member nodes built for the purpose.</summary>
+    static Starts AnalyzeEnum(EnumNode enumNode)
+    {
+        var chars = new HashSet<char>();
+        bool nullable = enumNode.Members.Count == 0;
+
+        foreach (var member in enumNode.Members)
+        {
+            var starts = FromRegexText(member.Pattern);
+
+            if (starts.Chars is null)
+                return Starts.Anything;
+
+            chars.UnionWith(starts.Chars);
+            nullable |= starts.Nullable;
+        }
+
+        return new(chars, nullable || enumNode.IsNullable);
+    }
 
     static Starts AnalyzeGroup(NamedGroupNode group)
     {

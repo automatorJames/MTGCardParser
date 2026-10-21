@@ -61,9 +61,7 @@ public class RegexGraph
         IsDependent = rootGlyphType.IsDefined(typeof(DependentAttribute));
         RootNode = rootNode;
         SpansClauses = ContainsClauseBreak(rootNode);
-        RegexCollector collector = new();
-        RootNode.AppendRegexBricks(collector);
-        BuiltRegex = collector.GetBuiltRegex();
+        BuiltRegex = new BuiltRegex(RootNode);
         StartChars = StartCharSet.Of(RootNode);
         PopulateFlatGraphRecursive();
         PopulateSimpleUniqueNames();
@@ -71,8 +69,10 @@ public class RegexGraph
 
     /// <summary>Whether <paramref name="node"/>'s subtree contains a bare-period <see cref="TextNode"/> - see <see cref="SpansClauses"/>.</summary>
     static bool ContainsClauseBreak(NamedGroupNode node) =>
-        node.Children.Any(x => x is TextNode { IsClauseBreak: true })
-        || node.Children.OfType<NamedGroupNode>().Any(ContainsClauseBreak);
+        // An enum's children are its members, never text (and are built on each read - see EnumNode).
+        node is not EnumNode
+        && (node.Children.Any(x => x is TextNode { IsClauseBreak: true })
+            || node.NamedGroupChildren.Any(ContainsClauseBreak));
 
     /// <summary>Builds the root <see cref="Graph.Nodes.RegexNode"/> for <paramref name="rootGlyphType"/> and compiles a full <see cref="RegexGraph"/> from it.</summary>
     public static RegexGraph Create(Type rootGlyphType)
@@ -121,7 +121,7 @@ public class RegexGraph
         node ??= RootNode;
         NamedGroupFlatGraph[node.FullyQualifiedName] = node;
 
-        foreach (var child in node.Children.OfType<NamedGroupNode>())
+        foreach (var child in node.NamedGroupChildren)
             PopulateFlatGraphRecursive(child);
     }
 
@@ -214,6 +214,7 @@ public class RegexGraph
         CaptureContext captureContext = new(RootNode, match, sourceText, tokenizer);
         var success = RootNode.TryHydrate(captureContext.RootCaptureTrace, out glyph);
         narrowedScopeEnd = captureContext.NarrowedScopeEnd;
+        captureContext.Seal();
 
         // A narrowing request outranks hydration's own verdict: a Glyph that hydrated fine despite one
         // (because the shortfalling DynamicGlyph sat on a nullable property, so its own failure didn't
@@ -239,10 +240,16 @@ public class RegexGraph
     /// <summary>The regex half of <see cref="TryMatchWithinScope"/>: a match that starts where it must and ends where it may.</summary>
     bool TryMatchRegex(string sourceText, int currentIndex, int endIndex, int scopeEnd, bool mustConsumeWholeScope, out Match match)
     {
-        match =
-            mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
-            : scopeEnd == endIndex ? BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex)
-            : BuiltRegex.AnchoredRegex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
+        // One thread at a time per Regex: a Regex caches a single runner (whose backtracking arrays are sized by the
+        // pattern, megabytes for the largest), and a second thread calling it concurrently allocates and discards a
+        // fresh one every call. The match itself is microseconds, so serializing it costs far less than that.
+        var regex = mustConsumeWholeScope ? BuiltRegex.ScopeFillingRegex : BuiltRegex.AnchoredRegex;
+
+        lock (regex)
+            match =
+                mustConsumeWholeScope ? regex.Match(sourceText, currentIndex, scopeEnd - currentIndex)
+                : scopeEnd == endIndex ? regex.Match(sourceText, currentIndex)
+                : regex.Match(sourceText, currentIndex, scopeEnd - currentIndex);
 
         int matchEndIndex = match.Index + match.Length;
 

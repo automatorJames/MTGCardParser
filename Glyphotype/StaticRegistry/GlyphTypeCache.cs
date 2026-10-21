@@ -53,10 +53,15 @@ public static class GlyphTypeCache
         if (_graphs.TryGetValue(type, out var graph))
             return graph;
 
+        // Built outside the gate, so a grammar can build its types' graphs in parallel (see GlyphGrammar.Build): a
+        // graph only reads other types' configurations, which take the gate briefly on their own. Two threads asking
+        // for the same type at once build it twice and keep the first - rare, and harmless.
+        var built = RegexGraph.Create(type);
+
         lock (_buildGate)
             return _graphs.TryGetValue(type, out graph)
                 ? graph
-                : Add(_graphs, type, RegexGraph.Create(type));
+                : Add(_graphs, type, built);
     }
 
     static T Add<T>(ConditionalWeakTable<Type, T> table, Type type, T value) where T : class

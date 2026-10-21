@@ -164,6 +164,7 @@ public sealed class ActiveCorpus
         }
 
         var analyzer = await building;
+        CorpusAnalyzer previous;
 
         lock (_gate)
         {
@@ -171,12 +172,16 @@ public sealed class ActiveCorpus
             if (documents != _buildingDocuments)
                 return;
 
+            previous = _current;
             _current = analyzer;
             _currentDocuments = documents;
         }
 
-        // Its digested text is built only for the analysis shown - not for one a later grammar overtook.
-        analyzer.StartDigestingText();
+        // Its digested text is built only for the analysis shown - not for one a later grammar overtook - and only
+        // where the one before it was asked for its own: the echo views ask, and nothing else does, so an agent's run
+        // of steps with no echo view open doesn't build a digest of the corpus after every one.
+        if (previous.WasDigestRequested)
+            analyzer.StartDigestingText();
     }
 
     void OnActiveChanged()

@@ -156,13 +156,15 @@ public sealed class GrammarAgent
     }
 
     /// <summary>Every glyph with its contribution, and every vocabulary with its cost and users.</summary>
-    /// <param name="sort">"words" (default), "net", "matches", "name" or "cost".</param>
+    /// <param name="sort">"words" (default), "net", "matches", "name", "cost" - or "size", which also shows each glyph's regex size and what nested glyphs make it so.</param>
     public async Task<string> ListGlyphsAsync(string sort = "words", CancellationToken cancellation = default)
     {
         var trial = await GetScoredTrialAsync(cancellation);
         var definition = trial.Definition;
         var contributions = trial.Score.Glyphs.ToDictionary(x => x.Name);
         var status = Workbench.Changes.ToDictionary(x => (x.Kind, x.Name), x => x.Change);
+        var bySize = string.Equals(sort, "size", StringComparison.OrdinalIgnoreCase);
+        var expansions = bySize ? GrammarInspection.GetExpansions(trial.Grammar).ToDictionary(x => x.Name) : null;
 
         var glyphs = definition.Glyphs.Select(x => (Glyph: x, Contribution: contributions.GetValueOrDefault(x.Name))).ToList();
 
@@ -172,15 +174,34 @@ public sealed class GrammarAgent
             "matches" => glyphs.OrderByDescending(x => x.Contribution?.Occurrences ?? 0).ToList(),
             "cost" => glyphs.OrderByDescending(x => x.Contribution?.DefinitionBits ?? 0).ToList(),
             "net" => glyphs.OrderByDescending(x => x.Contribution?.NetBits ?? 0).ToList(),
+            "size" => glyphs.OrderByDescending(x => expansions.GetValueOrDefault(x.Glyph.Name)?.RegexChars ?? 0).ToList(),
             _ => glyphs.OrderByDescending(x => x.Contribution?.Words ?? 0).ToList(),
         };
 
         var report = new StringBuilder();
         report.AppendLine($"Glyphs ({glyphs.Count}; {glyphs.Count(x => x.Contribution?.IsTopLevel == true)} top-level). Matches and words count top-level matches; nested-only glyphs are credited to the glyphs using them.");
-        report.AppendLine($"  {"net",9} {"matches",8} {"words",7} {"def",6}  glyph");
+
+        if (bySize)
+        {
+            report.AppendLine("Regex size is the length of the glyph's compiled pattern, which inlines every glyph it refers to, and theirs: a vocabulary of hundreds of members nested a few levels down " +
+                "is in it once per path. A glyph of megabytes costs memory and build time (not matching time); the parts shown account for most of it (approximately - a part nested in another part counts toward both). " +
+                "To shrink one: a widely inlined one-of can become a DynamicGlyph slot with a marker, which isn't inlined; or its family can be narrowed to the members the corpus uses there.");
+            report.AppendLine($"  {"regex",11} {"groups",6} {"net",9} {"matches",8} {"words",7}  glyph  <- largest parts (× times inlined)");
+        }
+        else
+            report.AppendLine($"  {"net",9} {"matches",8} {"words",7} {"def",6}  glyph");
 
         foreach (var (glyph, contribution) in glyphs)
         {
+            if (bySize)
+            {
+                var expansion = expansions.GetValueOrDefault(glyph.Name);
+                var parts = expansion is null || expansion.Parts.Count == 0 ? "" : $"  <- {string.Join(", ", expansion.Parts.Select(p => $"{p.Name} ×{p.Uses} (~{p.Chars:N0})"))}";
+
+                report.AppendLine($"  {expansion?.RegexChars ?? 0,11:N0} {expansion?.NamedGroups ?? 0,6:N0} {contribution?.NetBits ?? 0,9:N0} {contribution?.Occurrences ?? 0,8:N0} {contribution?.Words ?? 0,7:N0}  {glyph.Name}{parts}");
+                continue;
+            }
+
             List<string> notes = [];
 
             if (glyph.Kind != GlyphKind.Glyph)
@@ -820,10 +841,15 @@ public sealed class GrammarAgent
         return violations;
     }
 
-    /// <summary>The words <paramref name="evaluation"/>'s change takes from the glyphs that matched them, by glyph (see <see cref="CorpusQueries.FindSteals"/>).</summary>
-    static IReadOnlyList<GlyphSteal> FindSteals(Evaluation evaluation, int examples = 2) =>
-        CorpusQueries.FindSteals(evaluation.Before.Documents, evaluation.After.Documents,
-            evaluation.Before.Definition.Glyphs.Concat(evaluation.After.Definition.Glyphs).Select(x => x.Name).ToHashSet(), examples);
+    /// <summary>
+    /// The words <paramref name="evaluation"/>'s change takes from the glyphs that matched them, by glyph (see
+    /// <see cref="CorpusQueries.FindSteals"/>) - found once per evaluation, however many times it's reported on or judged.
+    /// </summary>
+    static IReadOnlyList<GlyphSteal> FindSteals(Evaluation evaluation) =>
+        _steals.GetValue(evaluation, x => CorpusQueries.FindSteals(x.Before.Documents, x.After.Documents,
+            x.Before.Definition.Glyphs.Concat(x.After.Definition.Glyphs).Select(g => g.Name).ToHashSet(), examples: 2));
+
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Evaluation, IReadOnlyList<GlyphSteal>> _steals = new();
 
     /// <summary>Takes back the latest step, whoever made it.</summary>
     public async Task<string> UndoAsync(CancellationToken cancellation = default)
@@ -1059,6 +1085,10 @@ public sealed class GrammarAgent
         AppendChanges(report, "Lost (fewer words covered)", diff.Lost, diff.LostLines);
         AppendChanges(report, "Reshaped (same coverage, different parse)", diff.Reshaped, diff.ReshapedLines);
         AppendSteals(report, FindSteals(evaluation));
+
+        // What the evaluation itself cost: a change to a glyph many others use rebuilds and re-tokenizes far more than one to a leaf.
+        if (evaluation.After.Effort is { } effort)
+            report.AppendLine($"Evaluating took {evaluation.After.Elapsed.TotalSeconds:F1} s: {effort}.");
 
         return report.ToString();
     }

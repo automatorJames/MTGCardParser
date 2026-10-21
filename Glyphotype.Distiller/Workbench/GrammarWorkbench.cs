@@ -29,6 +29,21 @@ public sealed record WorkingScore(GrammarDefinition Definition, MdlScore Score, 
 
     /// <summary>The corpus as <see cref="Grammar"/> tokenized it - null when it couldn't be built.</summary>
     public IReadOnlyList<ProcessedDocument> Documents { get; init; }
+
+    /// <summary>Where <see cref="Elapsed"/> went - null where the score was taken another way (e.g. the compiled grammar's).</summary>
+    public ScoringEffort Effort { get; init; }
+}
+
+/// <summary>What scoring a definition spent: building its grammar, tokenizing the corpus with it, and scoring the result.</summary>
+/// <param name="EmittedTypes">Glyph types built afresh for it, rather than reused from the grammar it was scored after.</param>
+/// <param name="RetokenizedLines">Lines tokenized again, rather than kept from that grammar's tokenization - every line, when there was none to keep from.</param>
+public sealed record ScoringEffort(TimeSpan Build, TimeSpan Tokenize, TimeSpan Score, int EmittedTypes, int RetokenizedLines, int Lines)
+{
+    public override string ToString() =>
+        $"built the grammar in {Seconds(Build)} ({EmittedTypes:N0} type{(EmittedTypes == 1 ? "" : "s")} rebuilt), " +
+        $"tokenized {RetokenizedLines:N0} of {Lines:N0} lines again in {Seconds(Tokenize)}, scored in {Seconds(Score)}";
+
+    static string Seconds(TimeSpan time) => time.TotalSeconds < 10 ? $"{time.TotalSeconds:F1} s" : $"{time.TotalSeconds:F0} s";
 }
 
 /// <summary>One edit of the working definition, as <see cref="GrammarWorkbench.Undo"/> takes it back.</summary>
@@ -718,28 +733,43 @@ public sealed class GrammarWorkbench : IDisposable
     /// documents, by tokenizing again only the lines <paramref name="grammar"/> could tokenize differently from the
     /// basis's grammar (see <see cref="TokenizationChange"/>) - a step changing a glyph or two touches few - else whole.
     /// </summary>
-    static List<ProcessedDocument> Tokenize(GlyphGrammar grammar, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation)
+    static List<ProcessedDocument> Tokenize(GlyphGrammar grammar, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation, out int retokenizedLines)
     {
         var change = basis?.Documents is { } tokenized && tokenized.Count == corpus.Count && tokenized.Select(x => x.Document).SequenceEqual(corpus)
             ? TokenizationChange.Between(basis.Grammar, grammar)
             : null;
 
         if (change is null)
-            return corpus
+        {
+            var documents = corpus
                 .AsParallel()
                 .AsOrdered()
                 .WithCancellation(cancellation)
                 .Select(x => new ProcessedDocument(x, grammar))
                 .ToList();
 
-        return change.IsNone
-            ? basis.Documents.ToList()
-            : basis.Documents
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cancellation)
-                .Select(x => x.Retokenize(grammar, change))
-                .ToList();
+            retokenizedLines = documents.Sum(x => x.Lines.Count);
+            return documents;
+        }
+
+        if (change.IsNone)
+        {
+            retokenizedLines = 0;
+            return basis.Documents.ToList();
+        }
+
+        var retokenized = basis.Documents
+            .AsParallel()
+            .AsOrdered()
+            .WithCancellation(cancellation)
+            .Select(x => x.Retokenize(grammar, change))
+            .ToList();
+
+        // A document kept whole is the same object; one tokenized again keeps the lines it didn't tokenize again.
+        retokenizedLines = basis.Documents.Zip(retokenized)
+            .Sum(pair => ReferenceEquals(pair.First, pair.Second) ? 0 : pair.Second.Lines.Count(line => !pair.First.Lines.Contains(line)));
+
+        return retokenized;
     }
 
     WorkingScore ScoreUncached(GrammarDefinition definition, IReadOnlyList<IDocument> corpus, WorkingScore basis, CancellationToken cancellation)
@@ -749,9 +779,22 @@ public sealed class GrammarWorkbench : IDisposable
         try
         {
             var grammar = BuildGrammar(definition);
-            var documents = Tokenize(grammar, corpus, basis, cancellation);
+            var built = DateTime.UtcNow;
+            var basisTypes = basis?.Grammar?.Types.ToHashSet();
+            var emittedTypes = basisTypes is null ? grammar.Types.Count : grammar.Types.Count(x => !basisTypes.Contains(x));
 
-            return new(definition, MdlScorer.Score(grammar, documents), [], DateTime.UtcNow - started) { Grammar = grammar, Documents = documents };
+            var documents = Tokenize(grammar, corpus, basis, cancellation, out var retokenizedLines);
+            var tokenized = DateTime.UtcNow;
+
+            var score = MdlScorer.Score(grammar, documents);
+            var scored = DateTime.UtcNow;
+
+            return new(definition, score, [], scored - started)
+            {
+                Grammar = grammar,
+                Documents = documents,
+                Effort = new(built - started, tokenized - built, scored - tokenized, emittedTypes, retokenizedLines, documents.Sum(x => x.Lines.Count)),
+            };
         }
         catch (OperationCanceledException)
         {

@@ -36,10 +36,6 @@ public class RegexCollector
     public void Append(RegexBrick brick) =>
         RegexBricks.Add(brick);
 
-    /// <summary>Compiles the accumulated bricks into a <see cref="BuiltRegex"/>.</summary>
-    public BuiltRegex GetBuiltRegex() =>
-        new(RegexBricks);
-
     public override string ToString() =>
         string.Join("", RegexBricks.Select(x => x.Regex));
 }

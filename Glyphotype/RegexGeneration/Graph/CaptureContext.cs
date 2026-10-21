@@ -2,7 +2,8 @@
 
 public class CaptureContext
 {
-    IReadOnlyDictionary<string, Capture[]> _captureDictionary;
+    /// <summary>The match, held only while hydration may still look groups up in it - null once <see cref="Seal"/>ed.</summary>
+    Match _match;
     readonly Dictionary<string, CaptureTrace> _resolvedTraces = [];
     readonly Dictionary<(CaptureTrace child, CaptureTrace scope), CaptureTrace> _scopedViews = [];
 
@@ -35,11 +36,19 @@ public class CaptureContext
     public CaptureContext(GlyphNode rootNode, Match match, string sourceText, Tokenizer tokenizer = null)
     {
         Tokenizer = tokenizer;
-        _captureDictionary = GetNamedGroupCaptures(match);
+        _match = match;
         SourceText = sourceText;
         FullMatch = match.Value;
         RootCaptureTrace = new(this, rootNode, match);
     }
+
+    /// <summary>
+    /// Lets go of the match: hydration is done, every group it resolved is a trace of its own (which copies what it
+    /// needs), and a group nothing resolved is one that matched nothing as far as any later reader is concerned.
+    /// A match of a regex with thousands of named groups holds arrays sized by that count, so keeping one per
+    /// token for a whole corpus is most of the corpus's memory.
+    /// </summary>
+    public void Seal() => _match = null;
 
     public CaptureTrace this[NamedGroupNode namedGroupNode]
     {
@@ -51,9 +60,12 @@ public class CaptureContext
             if (_resolvedTraces.TryGetValue(namedGroupNode.FullyQualifiedName, out var cached))
                 return cached;
 
-            if (!_captureDictionary.TryGetValue(namedGroupNode.FullyQualifiedName, out var allCapturesForGroup))
-                // This should never happen; even if an FQN has no captures, it should still appear in the dictionary
-                throw new Exception($"Name '{namedGroupNode.FullyQualifiedName}' does not appear in the dictionary");
+            // Looked up on demand, for just the groups hydration asks about: materializing every named group of a
+            // regex with thousands of them, per match, is what made each token cost hundreds of kilobytes.
+            Capture[] allCapturesForGroup = [];
+
+            if (_match is not null && _match.Groups[namedGroupNode.FullyQualifiedName] is { Success: true } group)
+                allCapturesForGroup = group.Captures.Cast<Capture>().ToArray();
 
             if (allCapturesForGroup.Length == 0)
             {
@@ -107,24 +119,6 @@ public class CaptureContext
         var view = factory();
         _scopedViews[key] = view;
         return view;
-    }
-
-    static Dictionary<string, Capture[]> GetNamedGroupCaptures(Match match)
-    {
-        if (match == null || !match.Success) return new();
-
-        var regex = (Regex)typeof(Match)
-            .GetField("_regex", BindingFlags.NonPublic | BindingFlags.Instance)
-            ?.GetValue(match);
-
-        if (regex == null) return new();
-
-        return regex.GetGroupNames()
-            .Where(name => !int.TryParse(name, out _))
-            .ToDictionary(
-                name => name,
-                name => match.Groups[name].Captures.Cast<Capture>().ToArray()
-            );
     }
 
     public override string ToString() => FullMatch;

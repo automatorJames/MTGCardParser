@@ -1,8 +1,8 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"island", "zombies", "artifacts": a permanent kind (card, land or creature type), singular or plural.</summary>
-/// <exampledoc>Lingering Mirage</exampledoc>
-/// <examplecapture>island</examplecapture>
+/// <summary>A kind of permanent named in the plural: "creatures", "lands", "nonbasic lands" - one of a list in "artifacts, creatures, and lands".</summary>
+/// <exampledoc>Jokulhaups</exampledoc>
+/// <examplecapture>creatures</examplecapture>
 [Dependent]
 public class PluralKind : Glyph
 {

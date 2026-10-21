@@ -1,12 +1,15 @@
+using System.Runtime.CompilerServices;
+
 namespace Glyphotype.RegexGeneration.Graph;
 
 /// <summary>What one authored pattern (see <see cref="Nodes.TextNode.AuthoredPattern"/>) matched, within a match: its regex, and where in the source text.</summary>
 public sealed record PatternCapture(string Pattern, int Index, int Length);
 
 /// <summary>
-/// The compiled result of walking a <see cref="RegexNode"/> graph: the flat brick sequence, the
-/// concatenated pattern, and the anchored <see cref="System.Text.RegularExpressions.Regex"/>es the engine
-/// runs it with. Formatted/commented output is a separate concern — see <see cref="ToSmartRegex"/>.
+/// The compiled result of walking a <see cref="RegexNode"/> graph: the concatenated pattern, the anchored
+/// <see cref="System.Text.RegularExpressions.Regex"/>es the engine runs it with, and - built again whenever they're
+/// asked for and nothing holds the last ones (see <see cref="Bricks"/>) - the flat brick sequence the formatted display
+/// is made from. Formatted/commented output is a separate concern — see <see cref="ToSmartRegex"/>.
 /// </summary>
 public class BuiltRegex
 {
@@ -30,10 +33,37 @@ public class BuiltRegex
     public static string EscapeSpaces(string regexText) =>
         regexText?.Replace(EscapedSpace, " ").Replace(" ", EscapedSpace);
 
-    readonly List<RegexBrick> _regexBricks;
+    readonly GlyphNode _root;
+    readonly object _bricksGate = new();
 
-    /// <summary>The flat, unformatted brick sequence this regex was compiled from — the raw input to <see cref="RegexBrickFormattingPipeline.Format"/>.</summary>
-    public List<RegexBrick> Bricks => _regexBricks;
+    /// <summary>The bricks last built, held only while something else holds them too - see <see cref="Bricks"/>.</summary>
+    WeakReference<List<RegexBrick>> _bricks;
+
+    /// <summary><see cref="IndexMembersByEnclosingEnum"/> of each brick list built, for as long as that list lives.</summary>
+    readonly ConditionalWeakTable<List<RegexBrick>, ILookup<string, RegexBrickValue>> _membersByEnclosingEnum = new();
+
+    /// <summary>
+    /// The flat, unformatted brick sequence this regex was compiled from — the raw input to <see cref="RegexBrickFormattingPipeline.Format"/>.
+    /// Not kept: a large grammar's graphs produce millions of bricks, nearly all of them vocabulary members, that only
+    /// the formatted display ever reads. The sequence is built again from the graph when it's asked for and the last
+    /// one built has been let go of; while something holds it, the same list is handed out, so a caller formatting it
+    /// finds the same objects it was given.
+    /// </summary>
+    public List<RegexBrick> Bricks
+    {
+        get
+        {
+            lock (_bricksGate)
+            {
+                if (_bricks is not null && _bricks.TryGetTarget(out var bricks))
+                    return bricks;
+
+                bricks = Walk(_root);
+                _bricks = new(bricks);
+                return bricks;
+            }
+        }
+    }
 
     /// <summary>
     /// The pattern itself: the concatenated raw regex text of every brick. This is the grammar - what's shown
@@ -46,7 +76,6 @@ public class BuiltRegex
     readonly Lazy<Regex> _anchoredRegex;
     readonly Lazy<Regex> _scopeFillingRegex;
     readonly Lazy<PatternRegex> _patternRegex;
-    readonly Lazy<ILookup<string, RegexBrickValue>> _membersByEnclosingEnum;
 
     /// <summary>
     /// <see cref="MinifiedRegex"/> with every authored pattern inside a named group of its own, and those patterns
@@ -54,7 +83,8 @@ public class BuiltRegex
     /// adding groups changes nothing about what matches, but <see cref="MinifiedRegex"/>'s own text and length are
     /// read elsewhere (e.g. to order top-level types).
     /// </summary>
-    sealed record PatternRegex(Regex ScopeFilling, Regex Anchored, IReadOnlyList<string> Patterns);
+    /// <param name="Anchored">Compiled on first need: it's the fallback for a span the scope-filling regex can't match again, which is rare.</param>
+    sealed record PatternRegex(Regex ScopeFilling, Lazy<Regex> Anchored, IReadOnlyList<string> Patterns);
 
     const string _patternGroupPrefix = "__pattern";
 
@@ -76,24 +106,76 @@ public class BuiltRegex
     /// </summary>
     internal Regex ScopeFillingRegex => _scopeFillingRegex.Value;
 
-    public BuiltRegex(List<RegexBrick> regexBricks)
+    /// <summary>Walks <paramref name="root"/>'s graph for its pattern, and sets up its regexes to compile on first use.</summary>
+    public BuiltRegex(GlyphNode root)
     {
-        _regexBricks = regexBricks;
-        MinifiedRegex = string.Join("", _regexBricks.Select(x => x.Regex)).Replace(EscapedSpace, " ");
+        _root = root;
+
+        var bricks = Walk(root);
+        MinifiedRegex = Share(string.Concat(bricks.Select(x => x.Regex)).Replace(EscapedSpace, " "));
+        (_patternRegexText, _patterns) = BuildPatternText(bricks);
+        _bricks = new(bricks);
 
         // Each built on first use: a type may only ever be matched one way (with the whole-clause rule on,
         // nearly every top-level type only ever has to fill its scope).
         _anchoredRegex = new(() => Compile($@"\G({MinifiedRegex})"));
         _scopeFillingRegex = new(() => Compile($@"\G({MinifiedRegex})\z"));
-        _patternRegex = new(BuildPatternRegex);
-        _membersByEnclosingEnum = new(() => IndexMembersByEnclosingEnum(_regexBricks));
+        _patternRegex = new(() => _patternRegexText is null ? null : new(Compile($@"\G({_patternRegexText})\z"), new(() => Compile($@"\G({_patternRegexText})")), _patterns));
+    }
+
+    /// <summary>The text <see cref="_patternRegex"/> compiles (see <see cref="PatternRegex"/>), or null for a graph with no authored patterns - found from the bricks while they're in hand, since building them again costs more than keeping the text.</summary>
+    readonly string _patternRegexText;
+    readonly IReadOnlyList<string> _patterns;
+
+    /// <summary>
+    /// <paramref name="text"/>, or the identical text another regex already holds: a grammar built from a definition
+    /// emits a fresh type for every glyph that refers to a changed one, and most of their patterns come out character
+    /// for character the same - at megabytes apiece for the largest. Held weakly, so a text no live regex has goes.
+    /// </summary>
+    static string Share(string text)
+    {
+        lock (_sharedTexts)
+        {
+            if (_sharedTexts.TryGetValue(text, out var reference) && reference.TryGetTarget(out var shared))
+                return shared;
+
+            if (++_sharedSinceSweep > 256)
+            {
+                foreach (var key in _sharedTexts.Where(x => !x.Value.TryGetTarget(out _)).Select(x => x.Key).ToList())
+                    _sharedTexts.Remove(key);
+
+                _sharedSinceSweep = 0;
+            }
+
+            _sharedTexts[text] = new(text);
+            return text;
+        }
+    }
+
+    static readonly Dictionary<string, WeakReference<string>> _sharedTexts = [];
+    static int _sharedSinceSweep;
+
+    /// <summary>The brick sequence <paramref name="root"/>'s graph produces.</summary>
+    static List<RegexBrick> Walk(GlyphNode root)
+    {
+        RegexCollector collector = new();
+        root.AppendRegexBricks(collector);
+        return collector.RegexBricks;
+    }
+
+    /// <summary>Compiles the matching regexes now rather than on first match - for measuring, or for taking the cost before serving.</summary>
+    public void WarmUp()
+    {
+        _ = _anchoredRegex.Value;
+        _ = _scopeFillingRegex.Value;
     }
 
     /// <summary>
-    /// <see cref="IndexMembersByEnclosingEnum"/> over <see cref="Bricks"/>, built once: a type embedded in
+    /// <see cref="IndexMembersByEnclosingEnum"/> over <see cref="Bricks"/>, built once per brick list: a type embedded in
     /// others' dynamic groups is formatted again for every one, every render.
     /// </summary>
-    public ILookup<string, RegexBrickValue> MembersByEnclosingEnum => _membersByEnclosingEnum.Value;
+    public ILookup<string, RegexBrickValue> MembersByEnclosingEnum =>
+        _membersByEnclosingEnum.GetValue(Bricks, IndexMembersByEnclosingEnum);
 
     /// <summary>
     /// Every enum member value brick in <paramref name="bricks"/>, keyed by the fully qualified name of each
@@ -121,11 +203,20 @@ public class BuiltRegex
         if (_patternRegex.Value is not PatternRegex patternRegex)
             return [];
 
-        var match = patternRegex.ScopeFilling.Match(sourceText, index, length);
+        // One thread at a time per Regex, as RegexGraph.TryMatchRegex: see there.
+        Match match;
+
+        lock (patternRegex.ScopeFilling)
+            match = patternRegex.ScopeFilling.Match(sourceText, index, length);
 
         // The engine may have matched against the whole text (so lookarounds saw past the span) rather than a window.
         if (!match.Success)
-            match = patternRegex.Anchored.Match(sourceText, index);
+        {
+            var anchored = patternRegex.Anchored.Value;
+
+            lock (anchored)
+                match = anchored.Match(sourceText, index);
+        }
 
         if (!match.Success || match.Index != index || match.Length != length)
             return null;
@@ -138,12 +229,13 @@ public class BuiltRegex
             .ToList();
     }
 
-    PatternRegex BuildPatternRegex()
+    /// <summary>The text of <see cref="PatternRegex"/> and its patterns, from <paramref name="bricks"/> - or null and null, for a graph with no authored patterns.</summary>
+    static (string Text, IReadOnlyList<string> Patterns) BuildPatternText(List<RegexBrick> bricks)
     {
         List<string> patterns = [];
         var text = new StringBuilder();
 
-        foreach (var brick in _regexBricks)
+        foreach (var brick in bricks)
         {
             if (brick.Parent is Nodes.TextNode { AuthoredPattern: not null } node && brick.Regex == node.Text)
             {
@@ -156,12 +248,7 @@ public class BuiltRegex
             }
         }
 
-        if (patterns.Count == 0)
-            return null;
-
-        var regex = text.ToString().Replace(EscapedSpace, " ");
-
-        return new(Compile($@"\G({regex})\z"), Compile($@"\G({regex})"), patterns);
+        return patterns.Count == 0 ? (null, null) : (Share(text.ToString().Replace(EscapedSpace, " ")), patterns);
     }
 
     /// <summary>
@@ -171,12 +258,36 @@ public class BuiltRegex
     /// rarely matched more than a few passes' worth - and every what-if grammar built from a definition is new
     /// types, so would pay the compile again.
     /// </summary>
-    static Regex Compile(string pattern) =>
-        new(pattern, RegexOptions.ExplicitCapture);
+    static Regex Compile(string pattern)
+    {
+        // Shared by pattern text: a grammar built from a definition emits a fresh type - with a graph and regexes of its own - for
+        // every glyph that so much as refers to a changed one, though most of their patterns come out character for character the
+        // same. Held weakly, so a pattern no live graph has goes with its last graph.
+        lock (_compiled)
+        {
+            if (_compiled.TryGetValue(pattern, out var reference) && reference.TryGetTarget(out var regex))
+                return regex;
+
+            if (++_compiledSinceSweep > 256)
+            {
+                foreach (var (key, dead) in _compiled.Where(x => !x.Value.TryGetTarget(out _)).ToList())
+                    _compiled.Remove(key);
+
+                _compiledSinceSweep = 0;
+            }
+
+            regex = new(pattern, RegexOptions.ExplicitCapture);
+            _compiled[pattern] = new(regex);
+            return regex;
+        }
+    }
+
+    static readonly Dictionary<string, WeakReference<Regex>> _compiled = [];
+    static int _compiledSinceSweep;
 
     /// <summary>Builds the formatted, colorized, commented representation of this regex for human-readable output.</summary>
     public SmartRegex ToSmartRegex(GlyphOccurrenceSummary summary, RegexGraph regexGraph, bool includeSupplementalLines = true, RegexDisplayMode displayMode = RegexDisplayMode.MatchedOnly, GroupNameStyle groupNameStyle = GroupNameStyle.ShortestUnique) =>
-        new(_regexBricks, summary, regexGraph, includeSupplementalLines, displayMode, groupNameStyle);
+        new(Bricks, summary, regexGraph, includeSupplementalLines, displayMode, groupNameStyle);
 
     /// <summary>
     /// Builds a single unpadded, uncommented line of this regex's raw text (the same characters as
@@ -184,7 +295,7 @@ public class BuiltRegex
     /// breaks, box comments, or enum member ranking/filtering applied.
     /// </summary>
     public List<SmartLine> ToRichMinifiedLines(RegexGraph regexGraph) =>
-        [SmartLineRenderer.RenderMinifiedLine(_regexBricks, regexGraph)];
+        [SmartLineRenderer.RenderMinifiedLine(Bricks, regexGraph)];
 
     public override string ToString() => MinifiedRegex;
 }

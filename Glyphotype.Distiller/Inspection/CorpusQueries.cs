@@ -253,6 +253,10 @@ public static class CorpusQueries
             {
                 lines++;
 
+                // An incremental re-tokenization keeps the very line it didn't tokenize again (see ProcessedDocument.Retokenize).
+                if (ReferenceEquals(beforeLine, afterLine))
+                    continue;
+
                 if (ParseRenderer.Render(beforeLine, nested: true) != ParseRenderer.Render(afterLine, nested: true))
                     changed.Add((before[i].Document.Name, beforeLine, afterLine));
             }
@@ -297,7 +301,7 @@ public static class CorpusQueries
         for (int i = 0; i < before.Count; i++)
             foreach (var (beforeLine, afterLine) in before[i].Lines.Zip(after[i].Lines))
             {
-                if (ParseRenderer.Render(beforeLine, nested: true) == ParseRenderer.Render(afterLine, nested: true))
+                if (ReferenceEquals(beforeLine, afterLine) || ParseRenderer.Render(beforeLine, nested: true) == ParseRenderer.Render(afterLine, nested: true))
                     continue;
 
                 var (was, now) = (WordOwners(beforeLine, glyphNames), WordOwners(afterLine, glyphNames));

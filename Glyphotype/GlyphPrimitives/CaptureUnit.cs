@@ -24,6 +24,7 @@ public abstract class CaptureUnit
     {
         CaptureContext = new(rootNode, _wholeWindow.Match(sourceText, index, length), sourceText);
         CaptureContext.RootCaptureTrace.ClrValue = this;
+        CaptureContext.Seal();
     }
 
     /// <summary>A root node for a directly constructed unit, with its (lazily built) children forced up front, since one instance is shared across threads.</summary>

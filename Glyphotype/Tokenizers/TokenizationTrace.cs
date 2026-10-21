@@ -10,7 +10,9 @@ public sealed class TokenizationTrace
     [ThreadStatic]
     static TokenizationTrace _current;
 
-    readonly List<Attempt> _attempts = [];
+    // A set, not a list: the same place is offered a match again whenever a dynamic slot's text recurs within a line
+    // (or its resolution is replayed - see Replay), and one record of it says all there is to say.
+    readonly HashSet<Attempt> _attempts = [];
     readonly HashSet<Type> _matchedTypes = [];
 
     /// <summary>
@@ -20,9 +22,9 @@ public sealed class TokenizationTrace
     /// </summary>
     internal readonly record struct Attempt(string Text, int Index, int EndIndex, int ClauseEndIndex, bool RequireWholeClauses, Type ScopeToType, bool IncludeDependentTypes);
 
-    internal IReadOnlyList<Attempt> Attempts => _attempts;
+    internal IReadOnlyCollection<Attempt> Attempts => _attempts;
 
-    /// <summary>How many places candidate types were offered a match.</summary>
+    /// <summary>How many distinct places candidate types were offered a match.</summary>
     public int AttemptCount => _attempts.Count;
 
     /// <summary>The types whose regex matched where they were tried - whether or not they went on to hydrate, or won the place.</summary>
@@ -45,6 +47,29 @@ public sealed class TokenizationTrace
 
         trace._attempts.TrimExcess();
         return trace;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="tokenize"/>, recording what it tries in a trace of its own - which is also added to the trace
+    /// recording around it, as if it had been recorded there directly. For work whose outcome is memoized (see
+    /// <see cref="Tokenizer.ResolveDynamic"/>): the trace is kept with the outcome, and <see cref="Replay"/>ed wherever
+    /// the outcome is reused.
+    /// </summary>
+    internal static TokenizationTrace Capture(Action tokenize)
+    {
+        var trace = Record(tokenize);
+        Replay(trace);
+        return trace;
+    }
+
+    /// <summary>Adds everything <paramref name="trace"/> recorded to the trace recording now, if one is.</summary>
+    internal static void Replay(TokenizationTrace trace)
+    {
+        if (_current is not { } current || trace is null)
+            return;
+
+        current._attempts.UnionWith(trace._attempts);
+        current._matchedTypes.UnionWith(trace._matchedTypes);
     }
 
     /// <summary>Notes that the types <paramref name="scopeToType"/> and <paramref name="includeDependentTypes"/> allow are offered a match at <paramref name="index"/> - while a trace is recording.</summary>

@@ -9,6 +9,12 @@ public enum Phase
 
     DrawStep,
 
+    [RegexPattern("first main phase", "precombat main phase")]
+    FirstMainPhase,
+
+    [RegexPattern("second main phase", "postcombat main phase")]
+    SecondMainPhase,
+
     MainPhase,
 
     [RegexPattern("combat damage step")]

@@ -5,6 +5,9 @@ public enum TurnEvent
     [RegexPattern("you attacked", "you've attacked", "you attacked with a creature")]
     YouAttacked,
 
+    [RegexPattern("you didn't attack with a creature", "you didn't attack")]
+    YouDidntAttack,
+
     [RegexPattern("a creature died")]
     CreatureDied,
 
@@ -17,11 +20,20 @@ public enum TurnEvent
     [RegexPattern("you gained life", "you've gained life")]
     YouGainedLife,
 
+    [RegexPattern("you lost life")]
+    YouLostLife,
+
+    [RegexPattern("you didn't lose life")]
+    YouDidntLoseLife,
+
     [RegexPattern("you gained or lost life")]
     YouGainedOrLostLife,
 
     [RegexPattern("you've cast another spell", "you cast another spell")]
     CastAnotherSpell,
+
+    [RegexPattern("you didn't play a land")]
+    YouDidntPlayLand,
 
     [RegexPattern("you descended")]
     YouDescended

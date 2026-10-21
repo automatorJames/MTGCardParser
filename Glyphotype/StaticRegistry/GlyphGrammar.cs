@@ -141,9 +141,17 @@ public sealed class GlyphGrammar
         _typesByName.Clear();
 
         foreach (var type in types)
-        {
-            GlyphTypeCache.GetRegexGraph(type);
             _typesByName[type.Name] = type;
+
+        // In parallel: a large grammar's graphs take tens of seconds to build one after another, and each type's
+        // is independent of the others' (see GlyphTypeCache.GetRegexGraph). A build error is thrown as itself.
+        try
+        {
+            Parallel.ForEach(types, type => GlyphTypeCache.GetRegexGraph(type));
+        }
+        catch (AggregateException exception) when (exception.InnerExceptions.Count == 1)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
         }
 
         // 4) Validate structure across the same full set - not just top-level types, but dependents and

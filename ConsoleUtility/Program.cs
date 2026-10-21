@@ -9,14 +9,27 @@ internal class Program
 {
     static CardDataGetter _cardDataGetter = new(GlobalSettings.Current);
 
-    static CorpusAnalyzer _analyzer = new(_cardDataGetter, GlyphGrammar.Default);
-
     static void Main(string[] args)
     {
         switch (args.FirstOrDefault())
         {
             case "score":
                 PrintMdlScore(args.ElementAtOrDefault(1));
+                break;
+
+            // bench [every] [dump-path]: measures the engine on every Nth card (10 by default), and dumps the sample's parses to a file if given.
+            case "bench":
+                Bench.Run(_cardDataGetter, int.TryParse(args.ElementAtOrDefault(1), out var every) ? every : 10, args.ElementAtOrDefault(2));
+                break;
+
+            // expansion [count]: the glyphs with the largest regexes, and the nested glyphs that make them so.
+            case "expansion":
+                Expansion.Run(int.TryParse(args.ElementAtOrDefault(1), out var count) ? count : 15);
+                break;
+
+            // regexes [path]: a fingerprint of every type's regex and bricks, for checking that a change to graph building builds the same.
+            case "regexes":
+                Fingerprint.Run(args.ElementAtOrDefault(1) ?? "regex-fingerprints.txt");
                 break;
 
             default:

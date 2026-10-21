@@ -57,7 +57,7 @@ public sealed class GrammarAgentTools(GrammarAgent agent)
 
     [McpServerTool(Name = "list_glyphs", ReadOnly = true), Description("Every glyph with its net bits, top-level matches, words covered and definition cost; every vocabulary with its cost and the glyphs using it.")]
     public Task<string> ListGlyphs(
-        [Description("Sort glyphs by: words covered (default), net, matches, cost or name.")] string sort = "words",
+        [Description("Sort glyphs by: words covered (default), net, matches, cost, name - or size, which also shows each glyph's regex size and the nested glyphs that make it so.")] string sort = "words",
         CancellationToken cancellation = default) =>
         Run(() => agent.ListGlyphsAsync(sort, cancellation));
 

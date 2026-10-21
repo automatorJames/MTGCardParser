@@ -190,6 +190,87 @@ public class Tokenizer
         return tokens;
     }
 
+    /// <summary>What resolving a dynamic slot's text came to (see <see cref="ResolveDynamic"/>): the type that resolved all of it, else the type of the first glyph at its start, else neither - and what finding out tried.</summary>
+    sealed record DynamicResolution(Type WholeType, Type FirstType, TokenizationTrace Trace);
+
+    readonly ConcurrentDictionary<(string Text, Type ScopeToType), DynamicResolution> _dynamicResolutions = new();
+
+    /// <summary>
+    /// The glyph a <see cref="DynamicGlyph"/>'s captured text resolves to: the one glyph that matches all of
+    /// <paramref name="text"/> under the whole-clause rule - otherwise whichever glyph the tokenizer tries first would
+    /// win, even one matching only a prefix ("untap" of "untap those creatures") - else, with the rule lifted (the text
+    /// is a fragment carved out of a clause, not a clause), the first glyph at its start, whose length the caller
+    /// narrows the enclosing match to; else null, for text opening with something no glyph matches. Only the first
+    /// glyph of a partial tokenization is ever read, so only that is found (see <see cref="MatchFirstGlyph"/>).
+    /// <para>
+    /// Memoized by text and <paramref name="scopeToType"/>: a tokenizer belongs to one grammar, under which the same
+    /// text resolves the same way every time, and a templated corpus repeats its slot texts thousands of times over.
+    /// On a hit only the resolving type's own match is made again, and what the first resolution tried is replayed
+    /// into the trace recording now (see <see cref="TokenizationTrace.Replay"/>), so a line's trace says the same
+    /// whether its slots were resolved afresh or from memory.
+    /// </para>
+    /// </summary>
+    public Glyph ResolveDynamic(string text, Type scopeToType = null)
+    {
+        scopeToType ??= typeof(Glyph);
+        var key = (text, scopeToType);
+
+        if (_dynamicResolutions.TryGetValue(key, out var known))
+        {
+            TokenizationTrace.Replay(known.Trace);
+
+            if (known.WholeType is null && known.FirstType is null)
+                return null;
+
+            var whole = known.WholeType is not null;
+
+            if (GlyphTypeCache.GetRegexGraph(whole ? known.WholeType : known.FirstType).TryMatch(text, 0, text.Length, out var again, mustConsumeWholeScope: whole, tokenizer: this))
+                return again;
+
+            // Not expected: the grammar resolved this text differently before. Resolve it afresh, below.
+        }
+
+        Glyph wholeGlyph = null, firstGlyph = null;
+
+        var trace = TokenizationTrace.Capture(() =>
+        {
+            if (Tokenize(text, scopeToType: scopeToType, includeDependentTypes: true) is [Glyph only] && only.CaptureValue.Length == text.Length)
+                wholeGlyph = only;
+            else
+                firstGlyph = MatchFirstGlyph(text, scopeToType, includeDependentTypes: true);
+        });
+
+        _dynamicResolutions[key] = new(wholeGlyph?.Type, firstGlyph?.Type, trace);
+        return wholeGlyph ?? firstGlyph;
+    }
+
+    /// <summary>
+    /// The first glyph a partial tokenization of <paramref name="sourceText"/> would open with - the first candidate
+    /// to match at its start, ending anywhere - or null where it would open with unmatched text. Exactly the first
+    /// token of <c>Tokenize(sourceText, allowPartialClauseMatches: true)</c>, without tokenizing the rest.
+    /// </summary>
+    public Glyph MatchFirstGlyph(string sourceText, Type scopeToType = null, bool includeDependentTypes = false)
+    {
+        if (string.IsNullOrEmpty(sourceText))
+            throw new Exception("Source text may not be null or empty");
+
+        var candidates = GetCandidateSet(scopeToType, includeDependentTypes);
+        int endIndex = sourceText.Length;
+
+        TokenizationTrace.NoteAttempt(sourceText, 0, endIndex, FindClauseEnd(sourceText, 0, endIndex), requireWholeClauses: false, scopeToType, includeDependentTypes);
+
+        foreach (var rootNode in candidates.Graphs)
+        {
+            if (!rootNode.StartChars.CanStartWith(sourceText[0]))
+                continue;
+
+            if (rootNode.TryMatch(sourceText, 0, endIndex, out var token, mustConsumeWholeScope: false, tokenizer: this))
+                return token;
+        }
+
+        return null;
+    }
+
     CandidateSet GetCandidateSet(Type scopeToType, bool includeDependentTypes) =>
         _candidateSets.GetOrAdd((scopeToType ?? typeof(Glyph), includeDependentTypes), key =>
         {

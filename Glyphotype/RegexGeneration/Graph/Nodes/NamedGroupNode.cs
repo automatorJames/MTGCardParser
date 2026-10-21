@@ -21,11 +21,21 @@ public abstract class NamedGroupNode : GroupNode
     bool _childrenInitialized;
     List<RegexNode> _children;
 
-    /// <summary>This node's child nodes, computed lazily on first access via <see cref="AddReflectedChildren"/>.</summary>
+    /// <summary>
+    /// This node's child nodes, computed lazily on first access via <see cref="AddReflectedChildren"/> - or, for a node
+    /// that doesn't <see cref="RetainChildren"/>, computed afresh on every access (unless set outright).
+    /// </summary>
     public List<RegexNode> Children
     {
         get
         {
+            if (!RetainChildren && !_childrenInitialized)
+            {
+                var children = new List<RegexNode>();
+                AddReflectedChildren(children);
+                return children;
+            }
+
             EnsureChildren();
             return _children;
         }
@@ -36,7 +46,15 @@ public abstract class NamedGroupNode : GroupNode
         }
     }
 
-    public List<NamedGroupNode> NamedGroupChildren => Children.OfType<NamedGroupNode>().ToList();
+    /// <summary>
+    /// Whether <see cref="Children"/> are kept once built. A node whose children are many, cheap to build again and
+    /// never needed by the engine after its bricks are built (an enum's members) says no, so a large grammar's graphs
+    /// don't hold them. Such a node must not rely on the identity of its children between two reads of
+    /// <see cref="Children"/> - in particular, on finding a child by <c>IndexOf</c> in a later read.
+    /// </summary>
+    protected virtual bool RetainChildren => true;
+
+    public virtual List<NamedGroupNode> NamedGroupChildren => Children.OfType<NamedGroupNode>().ToList();
 
     /// <summary>How sibling children are joined together in the regex (e.g. concatenated, alternated with a pipe).</summary>
     protected virtual Joiner? ChildJoiner => null;

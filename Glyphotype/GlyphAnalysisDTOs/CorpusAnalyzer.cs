@@ -34,9 +34,19 @@ public class CorpusAnalyzer
     /// of text have not yet been captured by any Glyph.
     /// </summary>
     /// <remarks>Built on first use - or ahead of it, by <see cref="StartDigestingText"/> - since tokenizing needs none of it.</remarks>
-    public DigestedText DigestedTextWithCaptureGlyphs => _digestedText.Value;
+    public DigestedText DigestedTextWithCaptureGlyphs
+    {
+        get
+        {
+            WasDigestRequested = true;
+            return _digestedText.Value;
+        }
+    }
 
     Lazy<DigestedText> _digestedText;
+
+    /// <summary>Whether anything has asked for <see cref="DigestedTextWithCaptureGlyphs"/> - a sign that the analysis replacing this one will be asked too.</summary>
+    public bool WasDigestRequested { get; private set; }
 
     /// <summary>Builds <see cref="DigestedTextWithCaptureGlyphs"/> in the background, so it's likely ready by the time it's asked for.</summary>
     public void StartDigestingText() => _ = Task.Run(() => _digestedText.Value);

@@ -30,19 +30,13 @@ public class DynamicGlyphNode : GlyphNode
         glyph = null;
         Type filterType = Navigation.Prop?.GetCustomAttribute<TypeFilterAttribute>()?.Type ?? typeof(Glyph);
         var captureValue = captureTrace.CaptureValue;
-        // Resolved through the same Tokenizer (so the same grammar) that made the enclosing match. A glyph that
-        // resolves all of captureValue wins: otherwise whichever glyph the Tokenizer tries first would, even if it
-        // only matched a prefix ("untap" of "untap those creatures"), leaving the rest to fail the match.
+        // Resolved through the same Tokenizer (so the same grammar) that made the enclosing match - see
+        // Tokenizer.ResolveDynamic for how: the glyph that resolves all of captureValue, else the first glyph at its
+        // start, else nothing (text that opens with unmatched text resolves to nothing).
         var tokenizer = captureTrace.CaptureContext.Tokenizer ?? GlyphGrammar.Default.Tokenizer;
-        var resolvedTokens = ResolveWhole(tokenizer, captureValue, filterType)
+        var dynamicMatchToken = tokenizer.ResolveDynamic(captureValue, filterType);
 
-            // Failing that, the whole-clause rule is lifted: captureValue is a fragment carved out of one clause,
-            // not a clause of its own, and the shortfall handling just below depends on getting back the shorter
-            // resolved prefix that a whole-clause rule would reject outright, leaving nothing to narrow to.
-            ?? tokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: true);
-
-        // Dynamic match tokens must not begin with unmatched text, and must contain at least one real match
-        if (resolvedTokens.FirstOrDefault() is UnmatchedString || resolvedTokens.OfType<Glyph>().FirstOrDefault() is not Glyph dynamicMatchToken)
+        if (dynamicMatchToken is null)
             return false;
 
         // This node's pattern is greedy (see DefaultPattern), so the text it captured routinely runs well
@@ -69,13 +63,6 @@ public class DynamicGlyphNode : GlyphNode
 
         return true;
     }
-
-    /// <summary>The one glyph that resolves all of <paramref name="captureValue"/>, as the only token - or null if none does.</summary>
-    static List<CaptureUnit> ResolveWhole(Tokenizer tokenizer, string captureValue, Type filterType) =>
-        tokenizer.Tokenize(captureValue, scopeToType: filterType, includeDependentTypes: true, allowPartialClauseMatches: false) is [Glyph whole]
-            && whole.CaptureValue.Length == captureValue.Length
-            ? [whole]
-            : null;
 
     /// <summary>
     /// Handles a resolution that stopped short of this node's own capture, by asking

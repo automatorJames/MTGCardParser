@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>What a qualifier word can be: a supertype ("legendary", "snow"), a card type, a color, how many colors ("multicolored"), tapped or untapped, a combat state ("attacking") or a creature type ("non-wall").</summary>
+/// <summary>What a qualifier word can be: a supertype ("legendary", "snow"), a card type, a color, how many colors ("multicolored"), tapped or untapped, a combat state ("attacking"), a creature type ("non-wall") or being a token ("nontoken").</summary>
 /// <exampledoc>Desert</exampledoc>
 /// <examplecapture>attacking</examplecapture>
 [Dependent]
@@ -13,4 +13,5 @@ public class Quality : GlyphOneOf
     public TapState? TapState { get; set; }
     public CombatState? CombatState { get; set; }
     public CreatureType? CreatureType { get; set; }
+    public TokenStatus? TokenStatus { get; set; }
 }
