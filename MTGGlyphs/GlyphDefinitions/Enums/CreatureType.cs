@@ -755,5 +755,47 @@ public enum CreatureType
 
     Cave,
 
-    Spacecraft
+    Spacecraft,
+
+    Blood,
+
+    Map,
+
+    Powerstone,
+
+    Incubator,
+
+    Teferi,
+
+    Junk,
+
+    Gold,
+
+    Kaya,
+
+    Sorcerer,
+
+    Basri,
+
+    Lukka,
+
+    Vivien,
+
+    Yanling,
+
+    Grist,
+
+    Kasmina,
+
+    Teyo,
+
+    Daretti,
+
+    Estrid,
+
+    Calix,
+
+    Niko,
+
+    Wrenn
 }

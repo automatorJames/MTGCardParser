@@ -2,5 +2,8 @@
 
 public enum PermanentSubtype
 {
-    Saga
+    Saga,
+    Room,
+    Role,
+    Background
 }

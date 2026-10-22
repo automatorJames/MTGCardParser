@@ -2,7 +2,7 @@
 
 public enum TypeDesignation
 {
-    [RegexPattern("the chosen (creature )?type")]
+    [RegexPattern("the chosen (creature )?type", "that (creature |land )?type")]
     ChosenType,
 
     [RegexPattern("the chosen color")]

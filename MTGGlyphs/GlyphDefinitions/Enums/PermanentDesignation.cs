@@ -18,5 +18,7 @@ public enum PermanentDesignation
 
     Monstrous,
 
-    Renowned
+    Renowned,
+
+    Equipped
 }
