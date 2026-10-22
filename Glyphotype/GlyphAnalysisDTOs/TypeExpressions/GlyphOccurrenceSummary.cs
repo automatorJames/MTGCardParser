@@ -64,11 +64,18 @@ public class GlyphOccurrenceSummary
         MatchOccurrences = occurrences.ToList();
         var glyphs = MatchOccurrences.Select(x => x.Glyph);
 
+        // Which groups any occurrence captured, found once: a large type's graph holds thousands of vocabulary and dynamic
+        // groups, nearly all of which no occurrence reaches, and a summary of one of those is the same whether it looks
+        // through every occurrence or none.
+        var captured = MatchOccurrences
+            .SelectMany(x => x.Glyph.CaptureContext.RootCaptureTrace.GetFlatCaptureTree().Keys)
+            .ToHashSet();
+
         foreach (var enumNode in _enumNodes)
-            EnumCaptureSummaries[enumNode.FullyQualifiedName] = new(enumNode.FullyQualifiedName, glyphs);
+            EnumCaptureSummaries[enumNode.FullyQualifiedName] = new(enumNode.FullyQualifiedName, captured.Contains(enumNode.FullyQualifiedName) ? glyphs : []);
 
         foreach (var dynamicNode in _dynamicNodes)
-            DynamicCaptureSummaries[dynamicNode.FullyQualifiedName] = new(dynamicNode.FullyQualifiedName, glyphs);
+            DynamicCaptureSummaries[dynamicNode.FullyQualifiedName] = new(dynamicNode.FullyQualifiedName, captured.Contains(dynamicNode.FullyQualifiedName) ? glyphs : []);
     }
 
     private static int ValidateAndCount(Type type, IEnumerable<MatchOccurrence> occurrences)

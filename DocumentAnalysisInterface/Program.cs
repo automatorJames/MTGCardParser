@@ -192,7 +192,7 @@ public class Program
             // tokenized by it here, where the sources have uncommitted changes; else the committed grammar tokenizes it.
             startup.Begin(scoring);
             var workbench = workspaces.Active;
-            void OnProgress() => startup.Progress(workbench.Progress?.Done ?? 0, workbench.Progress?.Total ?? 0);
+            void OnProgress() => startup.Progress(workbench.Progress?.Done ?? 0, workbench.Progress?.Total ?? 0, workbench.Progress?.Stage);
             workbench.ProgressChanged += OnProgress;
 
             try

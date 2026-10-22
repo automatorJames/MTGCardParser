@@ -55,7 +55,10 @@ public class CorpusAnalyzer
     /// Per-type occurrence summaries for every registered top-level Glyph type, keyed by type.
     /// Types with no matches across the corpus are still represented, with OccurrenceCount == 0.
     /// </summary>
-    public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries { get; private set; } = [];
+    /// <remarks>Built on first use, in parallel by type - they're for the views of the grammar, and nothing else needs them.</remarks>
+    public Dictionary<Type, GlyphOccurrenceSummary> GlyphOccurrenceSummaries => _summaries.Value;
+
+    Lazy<Dictionary<Type, GlyphOccurrenceSummary>> _summaries = new(() => []);
 
     /// <summary>Analyzes <paramref name="repository"/>'s documents - those in <paramref name="volumes"/>, or every one - as tokenized by <paramref name="grammar"/>.</summary>
     public CorpusAnalyzer(IDocumentRepository repository, GlyphGrammar grammar, VolumeSelection volumes = null)
@@ -121,24 +124,35 @@ public class CorpusAnalyzer
         CapturedWordCount = ProcessedDocuments.Sum(x => x.CapturedWordCount);
         _digestedText = new(() => new DigestedText(processedDocuments));
 
-        // set GlyphOccurrenceSummaries
-        var rootMatchOccurrencesByType = ProcessedDocuments
+        _summaries = new(() => Summarize(processedDocuments, _grammar));
+        _isInitialized = true;
+    }
+
+    /// <summary>The summaries (see <see cref="GlyphOccurrenceSummaries"/>) of <paramref name="documents"/> as <paramref name="grammar"/> tokenized them.</summary>
+    static Dictionary<Type, GlyphOccurrenceSummary> Summarize(List<ProcessedDocument> documents, GlyphGrammar grammar)
+    {
+        var rootMatchOccurrencesByType = documents
             .SelectMany(document => document.Lines
                 .SelectMany(line => line.Glyphs)
                 .OfType<Glyph>()
                 .Select(glyph => new MatchOccurrence(document.Document.Name, glyph)))
-            .GroupBy(x => x.Glyph.Type);
+            .GroupBy(x => x.Glyph.Type)
+            .ToList();
 
-        GlyphOccurrenceSummaries = rootMatchOccurrencesByType.ToDictionary(x => x.Key, x => new GlyphOccurrenceSummary(x.Key, x));
+        // Each type's summary reads only its own matches, so they're built side by side.
+        var summaries = rootMatchOccurrencesByType
+            .AsParallel()
+            .Select(x => new GlyphOccurrenceSummary(x.Key, x))
+            .ToDictionary(x => x.Type);
 
         // Registered types with zero matches are still represented, so "hide zero-capture" filtering
         // has actual zero-occurrence entries to hide rather than the type disappearing outright.
-        var unmatchedTypes = _grammar.TopLevelTypes
-            .Where(x => typeof(Glyph).IsAssignableFrom(x) && !GlyphOccurrenceSummaries.ContainsKey(x));
+        var unmatchedTypes = grammar.TopLevelTypes
+            .Where(x => typeof(Glyph).IsAssignableFrom(x) && !summaries.ContainsKey(x));
 
         foreach (var type in unmatchedTypes)
-            GlyphOccurrenceSummaries[type] = new GlyphOccurrenceSummary(type);
+            summaries[type] = new GlyphOccurrenceSummary(type);
 
-        _isInitialized = true;
+        return summaries;
     }
 }

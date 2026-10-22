@@ -36,7 +36,11 @@
                     <span class="startup-stage-detail">
                         @if (stage.State == StartupStageState.Running && stage.Total > 0)
                         {
-                            <text>@stage.Done.ToString("N0") of @stage.Total.ToString("N0")</text>
+                            <text>@(stage.Detail is null ? "" : stage.Detail + ": ")@stage.Done.ToString("N0") of @stage.Total.ToString("N0")</text>
+                        }
+                        else if (stage.State == StartupStageState.Running && stage.Detail is not null)
+                        {
+                            <text>@stage.Detail</text>
                         }
                         else if (stage.Took is { } took)
                         {

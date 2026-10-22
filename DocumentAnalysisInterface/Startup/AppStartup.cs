@@ -3,7 +3,8 @@ namespace DocumentAnalysisInterface.Startup;
 /// <summary>One stage of the app's startup (see <see cref="AppStartup"/>), and how far it's got.</summary>
 /// <param name="Done">For a stage that counts its work: how much is done - else 0.</param>
 /// <param name="Total">For a stage that counts its work: how much there is - else 0, meaning the stage runs for as long as it takes.</param>
-public sealed record StartupStage(string Name, StartupStageState State, int Done = 0, int Total = 0, TimeSpan? Took = null);
+/// <param name="Detail">What the stage is at, for one that runs for as long as it takes - e.g. "tokenizing".</param>
+public sealed record StartupStage(string Name, StartupStageState State, int Done = 0, int Total = 0, TimeSpan? Took = null, string Detail = null);
 
 public enum StartupStageState { Pending, Running, Finished }
 
@@ -13,7 +14,7 @@ public enum StartupStageState { Pending, Running, Finished }
 /// how far it's got, and whether it's all done or has failed. The web host starts first, so the browser sees this page
 /// rather than nothing until the work is done; everything that needs the work waits on <see cref="WhenReady"/>.
 /// </summary>
-public sealed class AppStartup
+public sealed class AppStartup(Microsoft.Extensions.Logging.ILogger<AppStartup> logger)
 {
     readonly object _gate = new();
     readonly List<StartupStage> _stages = [];
@@ -78,9 +79,11 @@ public sealed class AppStartup
         Notify(force: true);
     }
 
-    /// <summary>How far the stage under way has got, where it counts its work.</summary>
-    public void Progress(int done, int total)
+    /// <summary>How far the stage under way has got: what it's at (<paramref name="detail"/>), and where it counts its work, how much is done of how much.</summary>
+    public void Progress(int done, int total, string detail = null)
     {
+        var force = false;
+
         lock (_gate)
         {
             var index = _stages.FindIndex(x => x.State == StartupStageState.Running);
@@ -88,10 +91,11 @@ public sealed class AppStartup
             if (index < 0)
                 return;
 
-            _stages[index] = _stages[index] with { Done = done, Total = total };
+            force = done == total || _stages[index].Detail != detail;
+            _stages[index] = _stages[index] with { Done = done, Total = total, Detail = detail };
         }
 
-        Notify(force: done == total);
+        Notify(force);
     }
 
     /// <summary>Everything's ready: the stage under way is finished, and whoever waits on <see cref="WhenReady"/> goes on.</summary>
@@ -100,6 +104,7 @@ public sealed class AppStartup
         lock (_gate)
             FinishRunning();
 
+        Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger, "Startup: ready after {Elapsed:F1} s", _elapsed.Elapsed.TotalSeconds);
         _ready.TrySetResult();
         Notify(force: true);
     }
@@ -116,8 +121,13 @@ public sealed class AppStartup
     {
         var index = _stages.FindIndex(x => x.State == StartupStageState.Running);
 
-        if (index >= 0)
-            _stages[index] = _stages[index] with { State = StartupStageState.Finished, Took = _stage?.Elapsed };
+        if (index < 0)
+            return;
+
+        _stages[index] = _stages[index] with { State = StartupStageState.Finished, Took = _stage?.Elapsed };
+
+        // Logged as well as shown, so a startup's timings can be read back after the page is gone.
+        Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger, "Startup: {Stage} took {Seconds:F1} s ({Elapsed:F1} s in all)", _stages[index].Name, _stage?.Elapsed.TotalSeconds ?? 0, _elapsed.Elapsed.TotalSeconds);
     }
 
     /// <summary>Raises <see cref="Changed"/> - at most every quarter second, unless <paramref name="force"/>d, since a counting stage reports often.</summary>
