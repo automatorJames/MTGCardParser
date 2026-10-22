@@ -542,5 +542,8 @@ public enum Keyword
 
     Mayhem,
 
-    Sneak
+    Sneak,
+
+    [RegexPattern("web-slinging")]
+    WebSlinging
 }

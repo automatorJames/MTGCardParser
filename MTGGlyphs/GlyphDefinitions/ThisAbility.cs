@@ -1,7 +1,7 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"this ability": the ability being read, referred to by itself.</summary>
-/// <exampledoc>Cryptoplasm</exampledoc>
+/// <summary>"this ability", as what a permanent loses: "loses this ability" (a Licid giving up the ability that turned it into an aura).</summary>
+/// <exampledoc>Calming Licid</exampledoc>
 /// <examplecapture>this ability</examplecapture>
 [Dependent]
 public class ThisAbility : Glyph

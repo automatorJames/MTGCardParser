@@ -8,6 +8,9 @@ public enum CopiedSpell
     [RegexPattern("that spell")]
     ThatSpell,
 
+    [RegexPattern("that ability")]
+    ThatAbility,
+
     [RegexPattern("it")]
     It
 }
