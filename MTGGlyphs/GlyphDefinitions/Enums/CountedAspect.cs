@@ -6,5 +6,14 @@ public enum CountedAspect
     BasicLandTypes,
 
     [RegexPattern("colors?")]
-    Colors
+    Colors,
+
+    [RegexPattern("card types?")]
+    CardTypes,
+
+    [RegexPattern("permanent types?")]
+    PermanentTypes,
+
+    [RegexPattern("(?:different )?mana values?")]
+    ManaValues
 }

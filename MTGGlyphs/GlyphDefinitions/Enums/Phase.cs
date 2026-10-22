@@ -36,6 +36,8 @@ public enum Phase
 
     EndStep,
 
+    CleanupStep,
+
     EndOfTurn,
 
     [RegexPattern("your next turn")]

@@ -1,12 +1,12 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"a land", "an artifact", "a non-wall creature", "a green or white creature", "a nontoken white permanent", "a nonland, nontoken permanent", "an artifact or creature", "a mountain an opponent controls", "an untapped creature with power 3 or greater", "another creature you control", "a creature other than this creature": any one permanent of a kind (or of one of several kinds), optionally other than this one, narrowed and by who controls it. Its kind is a referent, for a later "that land".</summary>
+/// <summary>"a land", "an artifact", "a non-wall creature", "a green or white creature", "a nontoken white permanent", "a nonland, nontoken permanent", "an artifact or creature", "a mountain an opponent controls", "an untapped creature with power 3 or greater", "another creature you control", "a creature other than this creature", "a permanent that's one or more colors", "a creature of their choice with flying": any one permanent of a kind (or of one of several kinds), optionally other than this one, chosen by a given player, narrowed and by who controls it. Its kind is a referent, for a later "that land".</summary>
 /// <exampledoc>Ankh of Mishra</exampledoc>
 /// <examplecapture>a land</examplecapture>
 [Dependent]
 public class IndefinitePermanent : Glyph
 {
-    public override Nib[] Nibs => [Prop(Determiner), Prop(Qualifier), Prop(Kind), Prop(Controller), Prop(OtherThan), Prop(With)];
+    public override Nib[] Nibs => [Prop(Determiner), Prop(Qualifier), Prop(Kind), Prop(Controller), Prop(OtherThan), Prop(ChosenBy), Prop(With), Prop(Colored)];
 
     public IndefiniteDeterminer Determiner { get; set; }
     [Optional]
@@ -19,5 +19,9 @@ public class IndefinitePermanent : Glyph
     [Optional]
     public OtherThanThis OtherThan { get; set; }
     [Optional]
+    public OfPlayersChoice ChosenBy { get; set; }
+    [Optional]
     public WithQualifier With { get; set; }
+    [Optional]
+    public ThatsColored Colored { get; set; }
 }

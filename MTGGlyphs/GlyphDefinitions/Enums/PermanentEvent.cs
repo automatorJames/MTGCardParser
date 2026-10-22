@@ -16,6 +16,8 @@ public enum PermanentEvent
 
     IsPutIntoAGraveyard,
 
+    IsPutIntoExileFromTheBattlefield,
+
     IsTurnedFaceUp,
 
     BlocksOrBecomesBlocked,
@@ -52,8 +54,20 @@ public enum PermanentEvent
 
     BecomesMonstrous,
 
+    [RegexPattern("becomes renowned")]
+    BecomesRenowned,
+
     [RegexPattern("mutates")]
     Mutates,
+
+    [RegexPattern("evolves")]
+    Evolves,
+
+    [RegexPattern("exploits a creature")]
+    ExploitsACreature,
+
+    [RegexPattern("crews a vehicle")]
+    CrewsAVehicle,
 
     [RegexPattern("is tapped for mana")]
     IsTappedForMana,
@@ -100,6 +114,9 @@ public enum PermanentEvent
 
     [RegexPattern("deals damage to a creature")]
     DealsDamageToACreature,
+
+    [RegexPattern("deals damage to one or more creatures")]
+    DealsDamageToOneOrMoreCreatures,
 
     [RegexPattern("deals damage", "deal damage")]
     DealsDamage

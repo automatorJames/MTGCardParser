@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>A permanent having (or, as it left, having had) counters on it: "it has a depletion counter on it", "{this} has a pupa counter on it", "it had no time counters on it".</summary>
+/// <summary>A permanent having (or, as it left, having had) counters on it: "it has a depletion counter on it", "{this} has a pupa counter on it", "it had no time counters on it", "it had counters on it".</summary>
 /// <exampledoc>Land Cap</exampledoc>
 /// <examplecapture>it has a depletion counter on it</examplecapture>
 [Dependent]
@@ -9,6 +9,6 @@ public class HasCounters : Glyph
     public override Nib[] Nibs => [Prop(Subject), Alt("has", "had"), Prop(Counters), "on", Prop(Holder)];
 
     public PermanentPhrase Subject { get; set; }
-    public Counters Counters { get; set; }
+    public OneOf<Counters, AnyCounters> Counters { get; set; }
     public PermanentPhrase Holder { get; set; }
 }

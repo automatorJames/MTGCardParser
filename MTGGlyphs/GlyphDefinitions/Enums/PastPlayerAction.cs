@@ -24,5 +24,17 @@ public enum PastPlayerAction
     SearchedLibrary,
 
     [RegexPattern("sacrificed")]
-    Sacrificed
+    Sacrificed,
+
+    [RegexPattern("discarded")]
+    Discarded,
+
+    [RegexPattern("was dealt damage", "were dealt damage", "has been dealt damage")]
+    WasDealtDamage,
+
+    [RegexPattern("attacked with")]
+    AttackedWith,
+
+    [RegexPattern("attacked")]
+    Attacked
 }

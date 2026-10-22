@@ -5,5 +5,10 @@ public enum Possession
     Had,
 
     [RegexPattern("didn't have")]
-    DidntHave
+    DidntHave,
+
+    Has,
+
+    [RegexPattern("doesn't have")]
+    DoesntHave
 }

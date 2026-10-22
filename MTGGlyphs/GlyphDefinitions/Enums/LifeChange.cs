@@ -2,9 +2,9 @@
 
 public enum LifeChange
 {
-    [RegexPattern("gained")]
+    [RegexPattern("gained", "have gained")]
     Gained,
 
-    [RegexPattern("lost")]
+    [RegexPattern("lost", "have lost")]
     Lost
 }

@@ -5,6 +5,12 @@ public enum Whose
     [RegexPattern("(an|your) opponent's")]
     Opponent,
 
+    [RegexPattern("(your|all) opponents'")]
+    Opponents,
+
+    [RegexPattern("the chosen player's")]
+    ChosenPlayers,
+
     [RegexPattern("each of your")]
     EachOfYour,
 
@@ -22,11 +28,17 @@ public enum Whose
     [RegexPattern("their owners?'s?")]
     TheirOwners,
 
+    [RegexPattern("its controller's next")]
+    ItsControllersNext,
+
     [RegexPattern("its controller's")]
     ItsControllers,
 
     [RegexPattern("their controllers'", "their controller's")]
     TheirControllers,
+
+    [RegexPattern("their next")]
+    TheirNext,
 
     Their,
 
@@ -36,11 +48,17 @@ public enum Whose
     [RegexPattern("each player's")]
     EachPlayers,
 
+    [RegexPattern("that player's next")]
+    ThatPlayersNext,
+
     [RegexPattern("that player's")]
     ThatPlayers,
 
     [RegexPattern("enchanted player's")]
     EnchantedPlayers,
+
+    [RegexPattern("defending player's")]
+    DefendingPlayers,
 
     [RegexPattern("a single", "a", "any")]
     Any,

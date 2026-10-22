@@ -19,11 +19,14 @@ public enum WhichPlayer
     [RegexPattern("an opponent of your choice")]
     OpponentOfYourChoice,
 
-    [RegexPattern("an opponent")]
+    [RegexPattern("an opponent", "any opponent")]
     AnyOpponent,
 
     [RegexPattern("no opponent")]
     NoOpponent,
+
+    [RegexPattern("no player", "no one")]
+    NoPlayer,
 
     [RegexPattern("a player", "any player")]
     AnyPlayer,
@@ -32,5 +35,11 @@ public enum WhichPlayer
     Players,
 
     [RegexPattern("defending player")]
-    DefendingPlayer
+    DefendingPlayer,
+
+    [RegexPattern("attacking player", "the attacking player")]
+    AttackingPlayer,
+
+    [RegexPattern("enchanted player")]
+    EnchantedPlayer
 }

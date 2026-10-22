@@ -6,5 +6,8 @@ public enum CreatureKeywordAction
     Explore,
 
     [RegexPattern("connives")]
-    Connive
+    Connive,
+
+    [RegexPattern("endures")]
+    Endure
 }

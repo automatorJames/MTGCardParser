@@ -5,5 +5,8 @@ public enum EntryState
     [RegexPattern("tapped and attacking")]
     TappedAndAttacking,
 
-    Tapped
+    Tapped,
+
+    [RegexPattern("face down")]
+    FaceDown
 }

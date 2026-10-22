@@ -1,12 +1,14 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>What is played or cast: a card named earlier ("that card", "it", "them"), a copy, a target card in a zone ("target instant or sorcery card from an opponent's graveyard"), spells of a kind, or any card or land ("plays a land", "play a card"). Not "this spell": "you cast this spell" is a trigger condition (CastingThisSpell).</summary>
+/// <summary>What is played or cast: a card named earlier ("that card", "it", "them", "one of those cards"), a copy, a target card in a zone ("target instant or sorcery card from an opponent's graveyard"), cards this permanent exiled ("cards exiled with this class"), spells of a kind, or any card or land ("plays a land", "play a card"). Not "this spell": "you cast this spell" is a trigger condition (CastingThisSpell).</summary>
 /// <exampledoc>Isochron Scepter</exampledoc>
 /// <examplecapture>the copy</examplecapture>
 [Dependent]
 public class CastObject : GlyphOneOf
 {
     public TargetCardInZone TargetCardInZone { get; set; }
+    public CardsExiledWithThis CardsExiledWithThis { get; set; }
+    public OneOfThoseCards OneOfThoseCards { get; set; }
     public ThatCardPhrase ThatCardPhrase { get; set; }
     public It It { get; set; }
     public Them Them { get; set; }

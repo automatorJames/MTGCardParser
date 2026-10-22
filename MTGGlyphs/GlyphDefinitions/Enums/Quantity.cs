@@ -78,5 +78,17 @@ public enum Quantity
     Twenty,
 
     [RegexPattern("[1-9][0-9]+")]
-    LargerNumber
+    LargerNumber,
+
+    [RegexPattern("x plus 1", "x plus one")]
+    XPlusOne,
+
+    [RegexPattern("x plus 2", "x plus two")]
+    XPlusTwo,
+
+    [RegexPattern("x plus 3", "x plus three")]
+    XPlusThree,
+
+    [RegexPattern("x minus 1", "x minus one")]
+    XMinusOne
 }

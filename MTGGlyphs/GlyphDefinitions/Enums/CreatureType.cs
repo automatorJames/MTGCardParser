@@ -742,5 +742,18 @@ public enum CreatureType
 
     Walrus,
 
-    Weasel
+    Weasel,
+
+    [RegexPattern("hero", "heroes")]
+    Hero,
+
+    Villain,
+
+    Lesson,
+
+    Omen,
+
+    Cave,
+
+    Spacecraft
 }

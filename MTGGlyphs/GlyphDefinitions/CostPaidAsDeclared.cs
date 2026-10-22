@@ -7,5 +7,5 @@ public class CostPaidAsDeclared : Glyph
 {
     public override Nib[] Nibs => ["this cost is paid as", Prop(Declared), "are declared"];
 
-    public ManyOf<CombatRole> Declared { get; set; }
+    public OneOf<ManyOf<CombatRole>, CombatRole?> Declared { get; set; }
 }

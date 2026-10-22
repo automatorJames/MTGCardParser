@@ -3,8 +3,15 @@
 public enum LandType
 {
     Plains,
+
     Island,
+
     Swamp,
+
     Mountain,
-    Forest
+
+    Forest,
+
+    [RegexPattern("towns?")]
+    Town
 }
