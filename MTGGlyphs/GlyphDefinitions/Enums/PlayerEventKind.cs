@@ -36,5 +36,38 @@ public enum PlayerEventKind
     CommitsACrime,
 
     [RegexPattern("attacks?")]
-    Attacks
+    Attacks,
+
+    [RegexPattern("wins? a coin flip")]
+    WinsACoinFlip,
+
+    [RegexPattern("loses? a coin flip")]
+    LosesACoinFlip,
+
+    [RegexPattern("rolls? one or more dice")]
+    RollsOneOrMoreDice,
+
+    [RegexPattern(@"gets? one or more \{e\} \(energy counters\)")]
+    GetsEnergy,
+
+    [RegexPattern("activates? an exhaust ability")]
+    ActivatesExhaustAbility,
+
+    [RegexPattern("plays? a land")]
+    PlaysALand,
+
+    [RegexPattern("shuffles? (your|their) library")]
+    ShufflesLibrary,
+
+    [RegexPattern("investigates?")]
+    Investigates,
+
+    [RegexPattern("(?:is|are) dealt noncombat damage")]
+    IsDealtNoncombatDamage,
+
+    [RegexPattern("(?:is|are) dealt combat damage")]
+    IsDealtCombatDamage,
+
+    [RegexPattern("(?:is|are) dealt damage")]
+    IsDealtDamage
 }

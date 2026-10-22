@@ -8,6 +8,12 @@ public enum Whose
     [RegexPattern("each of your")]
     EachOfYour,
 
+    [RegexPattern("your first")]
+    YourFirst,
+
+    [RegexPattern("your next")]
+    YourNext,
+
     Your,
 
     [RegexPattern("its owner's")]
@@ -42,7 +48,13 @@ public enum Whose
     [RegexPattern("the next turn's")]
     NextTurns,
 
+    [RegexPattern("that turn's")]
+    ThatTurns,
+
     TheNext,
+
+    [RegexPattern("the first")]
+    TheFirst,
 
     Each,
 

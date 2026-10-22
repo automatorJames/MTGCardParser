@@ -2,8 +2,9 @@
 
 public enum CountedAspect
 {
-    [RegexPattern("basic land types")]
+    [RegexPattern("basic land types?")]
     BasicLandTypes,
 
+    [RegexPattern("colors?")]
     Colors
 }

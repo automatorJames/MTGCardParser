@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>What a qualifier word can be: a supertype ("legendary", "snow"), a card type, a color, how many colors ("multicolored"), tapped or untapped, a status or designation ("face-down", "suspected", "modified"), a combat state ("attacking"), a creature type ("non-wall") or being a token ("nontoken").</summary>
+/// <summary>What a qualifier word can be: a supertype ("legendary", "snow"), a card type, a color, how many colors ("multicolored"), tapped or untapped, a status or designation ("face-down", "suspected", "modified"), a combat state ("attacking"), a creature type ("non-wall"), being a token ("nontoken"), a rules-defined group of cards ("historic", "outlaw") or a spell's status ("kicked").</summary>
 /// <exampledoc>Desert</exampledoc>
 /// <examplecapture>attacking</examplecapture>
 [Dependent]
@@ -15,4 +15,6 @@ public class Quality : GlyphOneOf
     public CombatState? CombatState { get; set; }
     public CreatureType? CreatureType { get; set; }
     public TokenStatus? TokenStatus { get; set; }
+    public CardGroup? CardGroup { get; set; }
+    public SpellStatus? SpellStatus { get; set; }
 }

@@ -28,8 +28,11 @@ public enum PermanentEvent
     [RegexPattern("attacks you or a planeswalker you control")]
     AttacksYouOrAPlaneswalkerYouControl,
 
-    [RegexPattern("attacks you")]
+    [RegexPattern("attacks you", "attack you")]
     AttacksYou,
+
+    [RegexPattern("attacks a player", "attack a player")]
+    AttacksAPlayer,
 
     [RegexPattern("attacks alone", "attack alone")]
     AttacksAlone,
@@ -42,6 +45,7 @@ public enum PermanentEvent
 
     BecomesBlocked,
 
+    [RegexPattern("becomes tapped", "become tapped")]
     BecomesTapped,
 
     BecomesUntapped,

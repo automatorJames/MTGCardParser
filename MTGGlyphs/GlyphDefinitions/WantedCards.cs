@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>The cards a library search looks for: "a basic land card", "up to two forest cards", "a mountain or plains card", "a card named {this}", "a mercenary permanent card with mana value 3 or less", "a creature card with mana value 6 or greater", "a creature card with flying", "a card with the same mana value as this card".</summary>
+/// <summary>The cards a library search looks for: "a basic land card", "up to two forest cards", "a mountain or plains card", "a blue or black creature card", "a card named {this}", "a card named ajani, valiant protector", "a mercenary permanent card with mana value 3 or less", "a creature card with mana value 6 or greater", "a creature card with flying", "a card with the same mana value as this card", "any number of cards with that name".</summary>
 /// <exampledoc>Borderland Ranger</exampledoc>
 /// <examplecapture>a basic land card</examplecapture>
 [Dependent]
@@ -10,12 +10,11 @@ public class WantedCards : Glyph
 
     public Quantity Quantity { get; set; }
     [Optional]
-    [JoinedBy(Joiner.Space)]
-    public CompoundOf<TargetQualifier> Qualifiers { get; set; }
+    public QualifierWords Qualifiers { get; set; }
     [Optional]
     public OneOf<ManyOf<PermanentKind>, PermanentKind> Kind { get; set; }
     [Optional]
-    public NamedThis Named { get; set; }
+    public OneOf<NamedThis, NamedCard> Named { get; set; }
     [Optional]
-    public OneOf<ManaValueLimit, SameCharacteristicAs, WithQualifier> Limit { get; set; }
+    public OneOf<ManaValueLimit, SameCharacteristicAs, OneOf<WithName, WithQualifier>> Limit { get; set; }
 }

@@ -11,5 +11,6 @@ public enum SpellOrdinal
     Seventh,
     Eighth,
     Ninth,
-    Tenth
+    Tenth,
+    Next
 }

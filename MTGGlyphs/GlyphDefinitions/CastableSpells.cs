@@ -14,5 +14,5 @@ public class CastableSpells : Glyph
     [Optional]
     public WithQualifier With { get; set; }
     [Optional]
-    public CastFrom? From { get; set; }
+    public OneOf<CastFrom?, FromAmongCards?> From { get; set; }
 }

@@ -12,6 +12,7 @@ public class CastObject : GlyphOneOf
     public Them Them { get; set; }
     public TheCopy TheCopy { get; set; }
     public CastableSpells CastableSpells { get; set; }
+    public SpellsOfKind SpellsOfKind { get; set; }
     public AnyCard AnyCard { get; set; }
     public IndefinitePermanent IndefinitePermanent { get; set; }
 }

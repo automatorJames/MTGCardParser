@@ -540,5 +540,7 @@ public enum Keyword
 
     Blight,
 
-    Mayhem
+    Mayhem,
+
+    Sneak
 }

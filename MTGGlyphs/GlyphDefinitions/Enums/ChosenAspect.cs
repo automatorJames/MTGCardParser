@@ -6,5 +6,11 @@ public enum ChosenAspect
     OfTheChosenColor,
 
     [RegexPattern("of the chosen type")]
-    OfTheChosenType
+    OfTheChosenType,
+
+    [RegexPattern("of that color")]
+    OfThatColor,
+
+    [RegexPattern("of that (creature |land |card )?type")]
+    OfThatType
 }
