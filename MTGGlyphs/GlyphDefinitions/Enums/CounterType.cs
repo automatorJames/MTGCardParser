@@ -504,5 +504,15 @@ public enum CounterType
 
     Stroopwafel,
 
-    Token
+    Token,
+
+    Plan,
+
+    Conqueror,
+
+    Fire,
+
+    Refine,
+
+    Invasion
 }

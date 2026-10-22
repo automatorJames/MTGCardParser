@@ -5,6 +5,9 @@ public enum PastPermanentEvent
     [RegexPattern("entered the battlefield", "entered")]
     Entered,
 
+    [RegexPattern("didn't enter the battlefield", "didn't enter")]
+    DidntEnter,
+
     [RegexPattern("died")]
     Died,
 
@@ -17,11 +20,17 @@ public enum PastPermanentEvent
     [RegexPattern("attacked")]
     Attacked,
 
+    [RegexPattern("was dealt damage")]
+    WasDealtDamage,
+
     [RegexPattern("was blocked")]
     WasBlocked,
 
     [RegexPattern("blocked")]
     Blocked,
+
+    [RegexPattern("regenerated")]
+    Regenerated,
 
     [RegexPattern("dealt damage to an opponent")]
     DealtDamageToAnOpponent,

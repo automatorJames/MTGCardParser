@@ -13,5 +13,7 @@ public enum PredefinedToken
     Gold,
     Incubator,
     Junk,
-    Shard
+    Shard,
+    Heartwood,
+    Mutavault
 }

@@ -9,7 +9,7 @@ public class SpellsCast : Glyph
     public override Nib[] Nibs => [Prop(Qualifiers), Plural("spell"), Prop(With), Prop(Caster), Prop(Chosen), Prop(Targeting)];
 
     [Optional]
-    public OneOf<ManyOf<TargetQualifier>, CompoundOf<TargetQualifier>, QualifierWords> Qualifiers { get; set; }
+    public CompoundOf<QualifierWords> Qualifiers { get; set; }
     [Optional]
     public OneOf<WithQualifier, ChosenAspect?> With { get; set; }
     [Optional]

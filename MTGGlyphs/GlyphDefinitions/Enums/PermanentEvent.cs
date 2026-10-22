@@ -5,6 +5,9 @@ public enum PermanentEvent
     [RegexPattern("dies", "die")]
     Dies,
 
+    [RegexPattern("enters untapped")]
+    EntersUntapped,
+
     [RegexPattern("enters", "enter")]
     EntersTheBattlefield,
 

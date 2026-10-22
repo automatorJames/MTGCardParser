@@ -9,7 +9,7 @@ public class CardsInZone : Glyph
     public override Nib[] Nibs => [Prop(Qualifiers), Plural("card"), Prop(Named), Prop(With), "in", Prop(Zone), Prop(Narrowed)];
 
     [Optional]
-    public OneOf<ManyOf<TargetQualifier>, QualifierRun, AndOrQualifiers> Qualifiers { get; set; }
+    public CompoundOf<QualifierWords> Qualifiers { get; set; }
     [Optional]
     public NamedThis Named { get; set; }
     [Optional]

@@ -3,5 +3,8 @@
 public enum PerfectSubject
 {
     [RegexPattern("you've")]
-    You
+    You,
+
+    [RegexPattern("they've")]
+    They
 }

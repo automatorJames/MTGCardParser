@@ -6,5 +6,8 @@ public enum CopyingVerb
     Becomes,
 
     [RegexPattern("enters? as")]
-    EntersAs
+    EntersAs,
+
+    [RegexPattern("enters? tapped as")]
+    EntersTappedAs
 }

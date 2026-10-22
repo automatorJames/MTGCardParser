@@ -7,5 +7,8 @@ public enum CombatAction
     Block,
 
     [RegexPattern("be blocked")]
-    BeBlocked
+    BeBlocked,
+
+    [RegexPattern("crew vehicles")]
+    CrewVehicles
 }

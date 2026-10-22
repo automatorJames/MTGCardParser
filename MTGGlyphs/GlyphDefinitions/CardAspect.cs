@@ -1,12 +1,15 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>What a card can be, as in "isn't a creature": a card type, a creature type ("is a human"), a color, tapped or untapped, a combat state ("isn't attacking", "attacking alone"), a status ("equipped", "enchanted", "monstrous"), or a token ("if it isn't a token").</summary>
+/// <summary>What a card can be, as in "isn't a creature": a card type, a creature type ("is a human"), a supertype ("is legendary", "was snow"), not being basic ("was nonbasic"), a color, tapped or untapped, a combat state ("isn't attacking", "attacking alone"), a status ("equipped", "enchanted", "monstrous"), or a token ("if it isn't a token").</summary>
 /// <exampledoc>Animate Artifact</exampledoc>
 /// <examplecapture>creature</examplecapture>
 [Dependent]
 public class CardAspect : GlyphOneOf
 {
     public CardType? CardType { get; set; }
+    public Supertype? Supertype { get; set; }
+    [RegexPattern("nonbasic")]
+    public bool Nonbasic { get; set; }
     public ManaColor? ManaColor { get; set; }
     public TapState? TapState { get; set; }
     public CombatState? CombatState { get; set; }

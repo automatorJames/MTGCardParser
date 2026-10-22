@@ -17,6 +17,12 @@ public enum ModeCount
     [RegexPattern("up to four")]
     UpToFour,
 
+    [RegexPattern("up to that many")]
+    UpToThatMany,
+
+    [RegexPattern("up to x")]
+    UpToX,
+
     [RegexPattern(@"up to five \{p\} worth of modes")]
     UpToFivePawprints,
 

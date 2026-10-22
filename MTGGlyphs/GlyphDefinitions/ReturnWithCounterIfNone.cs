@@ -1,8 +1,9 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Persist's and undying's reminder text: "when this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it"; for a granted ability, "when it dies, …" or "when a creature with undying dies, …".</summary>
+/// <summary>Persist's and undying's reminder text: "when this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it"; for a granted ability, "when it dies, …" or "when a creature with undying dies, …". Tried first, so the general trigger frame doesn't take the fixed text.</summary>
 /// <exampledoc>Aerie Ouphes</exampledoc>
 /// <examplecapture>when this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it</examplecapture>
+[TokenizationOrder(0)]
 public class ReturnWithCounterIfNone : Glyph
 {
     public override Nib[] Nibs => ["when", Prop(Dying), "dies, if it had no", Prop(Had), "counters on it, return it to the battlefield under its owner's control with a", Prop(Gets), "counter on it"];

@@ -3,7 +3,21 @@
 public enum PermanentSubtype
 {
     Saga,
+
     Room,
+
     Role,
-    Background
+
+    Background,
+
+    Case,
+
+    Adventure,
+
+    [RegexPattern("runes?")]
+    Rune,
+
+    Plan,
+
+    Omen
 }

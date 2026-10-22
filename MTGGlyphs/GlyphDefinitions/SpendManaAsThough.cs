@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Spending mana as though it were another kind, as a permission, optionally for one purpose: "spend mana as though it were mana of any color", "spend white mana as though it were red mana", "spend mana as though it were mana of any color to cast planeswalker spells".</summary>
+/// <summary>Spending mana as though it were another kind, as a permission, optionally for one purpose: "spend mana as though it were mana of any color", "spend white mana as though it were red mana", "spend mana as though it were mana of any color to cast planeswalker spells", "… to activate those abilities".</summary>
 /// <exampledoc>Sunglasses of Urza</exampledoc>
 /// <examplecapture>spend white mana as though it were red mana</examplecapture>
 [Dependent]
@@ -12,5 +12,5 @@ public class SpendManaAsThough : Glyph, IPredicate
     public ManaColor? Spent { get; set; }
     public OneOf<ManaOfAnyKind, ManaOfColor> As { get; set; }
     [Optional]
-    public SpendToCast Purpose { get; set; }
+    public OneOf<SpendToCast, SpendToActivate> Purpose { get; set; }
 }

@@ -8,6 +8,12 @@ public enum PlayerEventKind
     [RegexPattern("loses? life")]
     LosesLife,
 
+    [RegexPattern("gains? or loses? life")]
+    GainsOrLosesLife,
+
+    [RegexPattern("pays? life")]
+    PaysLife,
+
     [RegexPattern("draws? (your|their) second card each turn")]
     DrawsSecondCardEachTurn,
 
@@ -20,11 +26,17 @@ public enum PlayerEventKind
     [RegexPattern("cycles? a card")]
     CyclesACard,
 
+    [RegexPattern("cycles? another card")]
+    CyclesAnotherCard,
+
     [RegexPattern("cycles? this card")]
     CyclesThisCard,
 
     [RegexPattern("sacrifices? another permanent")]
     SacrificesAnotherPermanent,
+
+    [RegexPattern("scry or surveil", "scries or surveils")]
+    ScriesOrSurveils,
 
     [RegexPattern("surveils?")]
     Surveils,
@@ -44,6 +56,9 @@ public enum PlayerEventKind
     [RegexPattern("loses? a coin flip")]
     LosesACoinFlip,
 
+    [RegexPattern("clash(?:es)? and wins?")]
+    ClashesAndWins,
+
     [RegexPattern("rolls? one or more dice")]
     RollsOneOrMoreDice,
 
@@ -53,14 +68,38 @@ public enum PlayerEventKind
     [RegexPattern("activates? an exhaust ability")]
     ActivatesExhaustAbility,
 
+    [RegexPattern("activates? a boast ability")]
+    ActivatesBoastAbility,
+
+    [RegexPattern("plays? a land or casts? a spell")]
+    PlaysALandOrCastsASpell,
+
     [RegexPattern("plays? a land")]
     PlaysALand,
 
     [RegexPattern("shuffles? (your|their) library")]
     ShufflesLibrary,
 
+    [RegexPattern("search(?:es)? (your|their) library")]
+    SearchesLibrary,
+
+    [RegexPattern("kicks? a spell")]
+    KicksASpell,
+
     [RegexPattern("investigates?")]
     Investigates,
+
+    [RegexPattern("completes? a dungeon")]
+    CompletesADungeon,
+
+    [RegexPattern("gives? a gift")]
+    GivesAGift,
+
+    [RegexPattern("turns? a permanent face up")]
+    TurnsAPermanentFaceUp,
+
+    [RegexPattern("manifests? dread")]
+    ManifestsDread,
 
     [RegexPattern("(?:is|are) dealt noncombat damage")]
     IsDealtNoncombatDamage,

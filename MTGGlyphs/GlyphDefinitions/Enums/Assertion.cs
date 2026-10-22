@@ -5,5 +5,10 @@ public enum Assertion
     Is,
 
     [RegexPattern("isn't")]
-    Isnt
+    Isnt,
+
+    Was,
+
+    [RegexPattern("wasn't")]
+    Wasnt
 }

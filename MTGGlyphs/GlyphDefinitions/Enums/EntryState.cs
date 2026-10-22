@@ -7,6 +7,8 @@ public enum EntryState
 
     Tapped,
 
+    Untapped,
+
     [RegexPattern("face down")]
     FaceDown
 }

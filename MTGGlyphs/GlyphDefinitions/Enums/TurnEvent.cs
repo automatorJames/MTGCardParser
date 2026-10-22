@@ -36,5 +36,14 @@ public enum TurnEvent
     YouDidntPlayLand,
 
     [RegexPattern("you descended")]
-    YouDescended
+    YouDescended,
+
+    [RegexPattern("you've committed a crime", "you committed a crime")]
+    YouCommittedCrime,
+
+    [RegexPattern("you've scried or surveilled", "you scried or surveilled")]
+    YouScriedOrSurveilled,
+
+    [RegexPattern("a spell was warped")]
+    SpellWasWarped
 }

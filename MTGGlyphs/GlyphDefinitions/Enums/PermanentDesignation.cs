@@ -20,5 +20,7 @@ public enum PermanentDesignation
 
     Renowned,
 
-    Equipped
+    Equipped,
+
+    Enchanted
 }

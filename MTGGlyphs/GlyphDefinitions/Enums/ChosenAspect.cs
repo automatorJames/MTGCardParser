@@ -8,6 +8,9 @@ public enum ChosenAspect
     [RegexPattern("of the chosen type")]
     OfTheChosenType,
 
+    [RegexPattern("of the chosen kind")]
+    OfTheChosenKind,
+
     [RegexPattern("of that color")]
     OfThatColor,
 

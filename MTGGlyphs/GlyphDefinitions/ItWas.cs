@@ -1,7 +1,7 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"it was": a back-reference to an object that has left the battlefield, as a "dies" trigger's condition has it ("if it was a creature", "if it was a human").</summary>
-/// <exampledoc>Avacyn's Collar</exampledoc>
+/// <summary>"it was": a back-reference to the card just named, as it last was ("if it was a creature card", after it's exiled from a graveyard).</summary>
+/// <exampledoc>Scavenging Ooze</exampledoc>
 /// <examplecapture>it was</examplecapture>
 [Dependent]
 [RegexPattern("it was")]

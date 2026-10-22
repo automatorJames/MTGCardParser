@@ -6,5 +6,8 @@ public enum TurnSpan
     ThisTurn,
 
     [RegexPattern("last turn")]
-    LastTurn
+    LastTurn,
+
+    [RegexPattern("this combat")]
+    ThisCombat
 }
