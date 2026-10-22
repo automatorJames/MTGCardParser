@@ -640,10 +640,13 @@ public sealed class GrammarWorkbench : IDisposable
         return step;
     }
 
-    /// <summary>The place a step in <paramref name="round"/> (or a directed one) takes after <paramref name="earlier"/>: one past theirs - null for a person's edit.</summary>
+    /// <summary>
+    /// The place a step in <paramref name="round"/> (or a directed one) takes after <paramref name="earlier"/>: one past the last of theirs -
+    /// null for a person's edit. Not one past how many there are, since the oldest steps fall out of a full history.
+    /// </summary>
     static int? OrdinalOfNext(IEnumerable<WorkbenchStep> earlier, int? round, bool directed) =>
-        round is int number ? earlier.Count(x => x.Round == number) + 1
-        : directed ? earlier.Count(x => x.Directed) + 1
+        round is int number ? (earlier.Where(x => x.Round == number).Max(x => x.Ordinal) ?? 0) + 1
+        : directed ? (earlier.Where(x => x.Directed).Max(x => x.Ordinal) ?? 0) + 1
         : null;
 
     GrammarDefinition RestoreReferences(GrammarDefinition working, GlyphDefinition glyph)

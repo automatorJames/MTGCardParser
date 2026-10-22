@@ -123,6 +123,23 @@ public sealed class WorkspaceTests(CorpusFixture corpus) : IDisposable
     }
 
     [Fact]
+    public async Task A_round_numbers_its_steps_on_past_what_the_history_keeps()
+    {
+        var workspaces = CreateManager();
+        workspaces.Create("Scratch", WorkspaceSeed.Vocabularies);
+        var workbench = workspaces.Active;
+
+        for (int i = 0; i < 102; i++)
+            workbench.Apply(Changes(workbench, i % 2 == 0 ? _animalSnores : _animalSnores.Replace("snores in", "snores loudly in")), $"step {i + 1}", round: 1);
+
+        await workbench.GetCurrentTrialAsync();
+
+        // The oldest steps have fallen out, but the newest keep counting.
+        Assert.Equal(100, workbench.History.Count);
+        Assert.Equal(Enumerable.Range(3, 100).Cast<int?>(), workbench.History.Select(x => x.Ordinal));
+    }
+
+    [Fact]
     public void An_export_compiles_to_the_grammar_it_came_from()
     {
         var workspaces = CreateManager();

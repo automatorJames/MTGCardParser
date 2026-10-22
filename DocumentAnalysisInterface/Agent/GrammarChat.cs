@@ -102,7 +102,7 @@ public sealed class GrammarChat(LocalAgent localAgent, GrammarAgent agent, Works
     public int? LatestRound { get; private set; }
 
     /// <summary>The number in its round of the step the agent is working toward in <see cref="LatestRound"/>: one past those applied.</summary>
-    public int NextStepNumber => LatestRound is int round ? workspaces.Active.History.Count(x => x.Round == round) + 1 : 1;
+    public int NextStepNumber => LatestRound is int round ? (workspaces.Active.History.Where(x => x.Round == round).Max(x => x.Ordinal) ?? 0) + 1 : 1;
 
     /// <summary>The round under way is over - called under the gate.</summary>
     void EndRound()
