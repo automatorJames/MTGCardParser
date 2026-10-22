@@ -65,6 +65,9 @@ public enum PermanentEvent
     [RegexPattern("deals combat damage to a player or planeswalker", "deal combat damage to a player or planeswalker")]
     DealsCombatDamageToAPlayerOrPlaneswalker,
 
+    [RegexPattern("deals combat damage to a player or battle", "deal combat damage to a player or battle")]
+    DealsCombatDamageToAPlayerOrBattle,
+
     [RegexPattern("deals combat damage to a player", "deal combat damage to a player")]
     DealsCombatDamageToAPlayer,
 
@@ -73,6 +76,9 @@ public enum PermanentEvent
 
     [RegexPattern("deals combat damage to you")]
     DealsCombatDamageToYou,
+
+    [RegexPattern("deals combat damage to enchanted player")]
+    DealsCombatDamageToEnchantedPlayer,
 
     [RegexPattern("deals combat damage to a creature")]
     DealsCombatDamageToACreature,
