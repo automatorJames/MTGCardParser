@@ -41,19 +41,26 @@ public class RegexGraph
     public bool SpansClauses { get; }
 
     /// <summary>
-    /// Maps NamedGroupNode FullyQualifiedName -> RegexNode.
+    /// Maps NamedGroupNode FullyQualifiedName -> RegexNode. Built on first use: it walks the whole inlined graph, which
+    /// matching never needs (see <see cref="BuiltRegex.Plan"/>), only the views of it.
     /// </summary>
-    public Dictionary<string, NamedGroupNode> NamedGroupFlatGraph { get; } = [];
+    public Dictionary<string, NamedGroupNode> NamedGroupFlatGraph => _names.Value.FlatGraph;
 
     /// <summary>The characters a match of this graph can begin with - see <see cref="StartCharSet"/>.</summary>
     public StartCharSet StartChars { get; }
+
+    /// <summary>What <see cref="StartChars"/> is made of, for a graph nesting this type to start from rather than walk into it.</summary>
+    internal StartCharSet.Starts StartsAnalysis { get; }
 
     /// <summary>
     /// Maps each NamedGroupNode FullyQualifiedName to a minimum unique simplified
     /// name. The simplified name is typically the name of the node itself
     /// disambiguation is required. For example, "My_Path_To_Node" -> "Node".
+    /// Built on first use, as <see cref="NamedGroupFlatGraph"/> is.
     /// </summary>
-    public Dictionary<string, string> SimpleUniqueNames { get; } = [];
+    public Dictionary<string, string> SimpleUniqueNames => _names.Value.SimpleUniqueNames;
+
+    readonly Lazy<(Dictionary<string, NamedGroupNode> FlatGraph, Dictionary<string, string> SimpleUniqueNames)> _names;
 
     public RegexGraph(Type rootGlyphType, GlyphNode rootNode)
     {
@@ -62,17 +69,29 @@ public class RegexGraph
         RootNode = rootNode;
         SpansClauses = ContainsClauseBreak(rootNode);
         BuiltRegex = new BuiltRegex(RootNode);
-        StartChars = StartCharSet.Of(RootNode);
-        PopulateFlatGraphRecursive();
-        PopulateSimpleUniqueNames();
+        StartsAnalysis = StartCharSet.Analyze(RootNode);
+        StartChars = StartCharSet.Of(StartsAnalysis);
+        _names = new(() =>
+        {
+            var flatGraph = new Dictionary<string, NamedGroupNode>();
+            PopulateFlatGraphRecursive(flatGraph, RootNode);
+            return (flatGraph, SimpleUniqueNamesOf(flatGraph));
+        });
     }
 
-    /// <summary>Whether <paramref name="node"/>'s subtree contains a bare-period <see cref="TextNode"/> - see <see cref="SpansClauses"/>.</summary>
+    /// <summary>
+    /// Whether <paramref name="node"/>'s subtree contains a bare-period <see cref="TextNode"/> - see <see cref="SpansClauses"/>.
+    /// A nested glyph's subtree is its type's own graph, which already knows (so the subtree isn't built to find out).
+    /// </summary>
     static bool ContainsClauseBreak(NamedGroupNode node) =>
         // An enum's children are its members, never text (and are built on each read - see EnumNode).
         node is not EnumNode
         && (node.Children.Any(x => x is TextNode { IsClauseBreak: true })
-            || node.NamedGroupChildren.Any(ContainsClauseBreak));
+            || node.NamedGroupChildren.Any(x => IsNestedGlyph(x) ? GlyphTypeCache.GetRegexGraph(x.Navigation.NodeType).SpansClauses : ContainsClauseBreak(x)));
+
+    /// <summary>Whether <paramref name="node"/> is a nested glyph's group, whose subtree is its type's own graph over again.</summary>
+    public static bool IsNestedGlyph(NamedGroupNode node) =>
+        node is GlyphNode and not DynamicGlyphNode && node.Navigation.IsGlyphType && node.ParentNode is not null;
 
     /// <summary>Builds the root <see cref="Graph.Nodes.RegexNode"/> for <paramref name="rootGlyphType"/> and compiles a full <see cref="RegexGraph"/> from it.</summary>
     public static RegexGraph Create(Type rootGlyphType)
@@ -115,29 +134,32 @@ public class RegexGraph
         return DeterministicPalette.GetPositionalPaletteSet(namedGroupsInDisplayOrder, positionalOverrideColors);
     }
 
-    /// <summary>Depth-first walk populating <see cref="NamedGroupFlatGraph"/> from every named group node in the tree.</summary>
-    void PopulateFlatGraphRecursive(NamedGroupNode node = null)
+    /// <summary>Depth-first walk populating <paramref name="flatGraph"/> from every named group node in the tree.</summary>
+    static void PopulateFlatGraphRecursive(Dictionary<string, NamedGroupNode> flatGraph, NamedGroupNode node)
     {
-        node ??= RootNode;
-        NamedGroupFlatGraph[node.FullyQualifiedName] = node;
+        flatGraph[node.FullyQualifiedName] = node;
 
         foreach (var child in node.NamedGroupChildren)
-            PopulateFlatGraphRecursive(child);
+            PopulateFlatGraphRecursive(flatGraph, child);
     }
 
     /// <summary>Computes <see cref="SimpleUniqueNames"/> by growing each name's suffix (shortest first) until it uniquely identifies that node among all others.</summary>
-    void PopulateSimpleUniqueNames()
+    static Dictionary<string, string> SimpleUniqueNamesOf(Dictionary<string, NamedGroupNode> flatGraph)
     {
+        var simpleUniqueNames = new Dictionary<string, string>();
+
         // A candidate names a key when it's one of the key's own trailing runs of parts, so counting every key's runs
         // once says how many keys each candidate names - rather than testing every candidate against every key.
-        var suffixes = NamedGroupFlatGraph.Keys.ToDictionary(x => x, Suffixes);
+        var suffixes = flatGraph.Keys.ToDictionary(x => x, Suffixes);
         var keysNamed = suffixes.Values.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
 
         // Even the whole name can name more than one key, when it's also the tail of a deeper key (e.g. "Root_A"
         // and "Root_B_Root_A", from a group nested under one named like the root). The whole name is still unique
         // as a result, though: a candidate naming only its own key can never equal another key's whole name.
         foreach (var (fullyQualifiedName, candidates) in suffixes)
-            SimpleUniqueNames[fullyQualifiedName] = candidates.FirstOrDefault(x => keysNamed[x] == 1) ?? fullyQualifiedName;
+            simpleUniqueNames[fullyQualifiedName] = candidates.FirstOrDefault(x => keysNamed[x] == 1) ?? fullyQualifiedName;
+
+        return simpleUniqueNames;
 
         // Shortest first: the last part alone, then the last two, and so on to the whole name.
         static List<string> Suffixes(string fullyQualifiedName)

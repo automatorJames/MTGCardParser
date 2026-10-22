@@ -76,10 +76,16 @@ public abstract class PlanNode
         public PlanNode[] Alternatives { get; } = alternatives;
     }
 
+    /// <summary>A plain group around <see cref="Inner"/>: matches as it does, and keeps the pattern's shape when the plan is written out again.</summary>
+    public sealed class Group(PlanNode inner) : PlanNode
+    {
+        public PlanNode Inner { get; } = inner;
+    }
+
     /// <summary>A nested glyph's group, matched by its own shared plan, and captured under <see cref="Name"/>.</summary>
     public sealed class Call(string name, Quantifier? quantifier, MatchPlan target) : PlanNode
     {
-        /// <summary>The group's name, relative to the plan's root.</summary>
+        /// <summary>The group's name, relative to the plan's root - or null for a call that captures nothing of its own: a type's plan standing for a group's content, within that group's own plan.</summary>
         public string Name { get; } = name;
 
         /// <summary>The group's own quantifier, if any: an optional nested glyph, or a repeated list item.</summary>
@@ -121,6 +127,13 @@ public sealed class MatchPlan
     /// </summary>
     public static int CallThreshold { get; internal set; } = 2_000;
 
+    /// <summary>As <see cref="Shared"/>, with the key the plan was found or built under.</summary>
+    static (MatchPlan Plan, string Key) SharedWithKey(string key, Func<PlanNode> build)
+    {
+        var plan = Shared(key, build);
+        return (plan, plan.Key);
+    }
+
     /// <summary>The plan keyed by <paramref name="key"/>, built by <paramref name="build"/> if no live one has that key - so a nested glyph's content is one plan however many types nest it, and across the generations a definition's grammars are built in.</summary>
     static MatchPlan Shared(string key, Func<PlanNode> build)
     {
@@ -150,10 +163,61 @@ public sealed class MatchPlan
     static readonly Dictionary<string, WeakReference<MatchPlan>> _shared = [];
     static int _sharedSinceSweep;
 
+    /// <summary>The plan written out as one pattern again, every call expanded in place (names as the plan holds them, relative to each called group) - what two ways of building a type's plan can be compared on.</summary>
+    internal string Render()
+    {
+        var text = new StringBuilder();
+        Render(Root, text);
+        return text.ToString();
+    }
+
+    static void Render(PlanNode node, StringBuilder into)
+    {
+        switch (node)
+        {
+            case PlanNode.Leaf leaf:
+                into.Append(leaf.Pattern);
+                break;
+
+            case PlanNode.Sequence sequence:
+                foreach (var item in sequence.Items)
+                    Render(item, into);
+                break;
+
+            case PlanNode.Alternation alternation:
+                for (var i = 0; i < alternation.Alternatives.Length; i++)
+                {
+                    if (i > 0)
+                        into.Append('|');
+
+                    Render(alternation.Alternatives[i], into);
+                }
+                break;
+
+            case PlanNode.Group group:
+                into.Append('(');
+                Render(group.Inner, into);
+                into.Append(')');
+                break;
+
+            case PlanNode.Call call:
+                if (call.Name is null)
+                    Render(call.Target.Root, into);
+                else
+                {
+                    into.Append("(?<").Append(call.Name).Append('>');
+                    Render(call.Target.Root, into);
+                    into.Append(')').Append(call.Quantifier is Quantifier.Optional ? "?" : call.Quantifier is Quantifier.AnyNumber ? "*" : "");
+                }
+                break;
+        }
+    }
+
     static int Count(PlanNode node) => node switch
     {
         PlanNode.Sequence sequence => sequence.Items.Sum(Count),
         PlanNode.Alternation alternation => alternation.Alternatives.Sum(Count),
+        PlanNode.Group group => Count(group.Inner),
         _ => 1,
     };
 
@@ -195,6 +259,8 @@ public sealed class MatchPlan
 
         abstract class Piece;
         sealed class TextPiece(string text, Dictionary<string, string> patterns) : Piece { public string Text = text; public Dictionary<string, string> Patterns = patterns; }
+
+        /// <param name="groupName">The group's name - or null for a call standing for a group's content within the group's own frame, which captures nothing of its own.</param>
         sealed class CallPiece(string groupName, Quantifier? quantifier, MatchPlan target, string key) : Piece { public string GroupName = groupName; public Quantifier? Quantifier = quantifier; public MatchPlan Target = target; public string Key = key; }
         sealed class PlainPiece(Frame inner) : Piece { public Frame Inner = inner; }
         sealed class PipePiece : Piece;
@@ -203,15 +269,76 @@ public sealed class MatchPlan
         readonly Frame _root;
         readonly GlyphNode _rootNode;
 
-        public Collector(GlyphNode root)
+        /// <param name="compositional">Whether large nested glyphs are called (see <see cref="Calls"/>) - false walks every group, as a check on the calls.</param>
+        public Collector(GlyphNode root, bool compositional = true)
         {
             _rootNode = root;
+            _compositional = compositional;
             _root = new() { Owner = root, Text = null };
             _frames.Push(_root);
         }
 
+        readonly bool _compositional;
+
+        /// <summary>For checking the calls: the text the collector accounts for, each call standing in as its type's written pattern - what should equal the written pattern. Kept only when asked (see <see cref="TraceText"/>).</summary>
+        internal StringBuilder TraceText { get; set; }
+
         /// <summary>The length of the flattened regex (see <see cref="BuiltRegex.MinifiedRegex"/>), with escaped spaces plain.</summary>
         public int UnescapedLength { get; private set; }
+
+        /// <summary>The length of the flattened regex as its bricks spell it.</summary>
+        public int RawLength { get; private set; }
+
+        /// <summary>How many named groups the flattened regex has, at every depth - what its length grows by per character of the name of a group it's nested under (see <see cref="AppendCall"/>).</summary>
+        public int GroupCount { get; private set; }
+
+        /// <summary>What the pattern's content ends in (see <see cref="RegexCollector.LastContentRegex"/>).</summary>
+        public string LastContent => LastContentRegex;
+
+        /// <summary>
+        /// A nested glyph's group whose type's pattern is large is called, not walked: its content is the type's own plan,
+        /// shared by every type nesting it, and the inlined graph beneath the group is never built for matching's sake.
+        /// </summary>
+        public override bool Calls(NamedGroupNode group) =>
+            _compositional && IsGlyphGroup(group) && IsLarge(group) && !VariesByProperty(group);
+
+        /// <summary>
+        /// Whether <paramref name="group"/>'s content depends on the property it's bound to, so its type's own plan can't stand for
+        /// it: a list property's <see cref="JoinedByAttribute"/> sets the separator between its items (see <see cref="JoinedItemNode"/>).
+        /// Such a group is walked; the items within it are called as usual.
+        /// </summary>
+        static bool VariesByProperty(NamedGroupNode group) =>
+            group.Navigation.Prop?.GetCustomAttribute<JoinedByAttribute>() is not null;
+
+        /// <summary>Whether <paramref name="group"/>'s type's pattern reaches <see cref="CallThreshold"/> - the one measure of "large", so a group is a call or inlined alike however its plan is built.</summary>
+        static bool IsLarge(NamedGroupNode group) =>
+            GlyphTypeCache.GetRegexGraph(group.Navigation.NodeType).BuiltRegex.RawLength >= CallThreshold;
+
+        public override void AppendCall(NamedGroupNode group)
+        {
+            var called = GlyphTypeCache.GetRegexGraph(group.Navigation.NodeType);
+            var pattern = called.BuiltRegex;
+
+            // Inlined, every group within the called pattern is named under this group rather than under the called type's
+            // root, so the pattern as inlined is longer (or shorter) by that difference per group - and the length is what
+            // orders types for the tokenizer, so it's counted as the inlined pattern would be.
+            var renamed = group.FullyQualifiedName.Length - called.RootNode.FullyQualifiedName.Length;
+            UnescapedLength += pattern.MinifiedRegexLength + pattern.NamedGroupCount * renamed;
+            RawLength += pattern.RawLength + pattern.NamedGroupCount * renamed;
+            GroupCount += pattern.NamedGroupCount;
+            TraceText?.Append(pattern.MinifiedRegex.Replace("(?<" + called.RootNode.FullyQualifiedName + "_", "(?<" + group.FullyQualifiedName + "_", StringComparison.Ordinal));
+
+            foreach (var open in _frames)
+                open.Length += pattern.RawLength + pattern.NamedGroupCount * renamed;
+
+            if (pattern.LastContentRegex is not null)
+                NoteContent(pattern.LastContentRegex);
+
+            var frame = _frames.Peek();
+            FlushLeaf(frame);
+            frame.Pieces.Add(new CallPiece(null, null, pattern.Plan, pattern.Plan.Key));
+            MarkCalls(frame);
+        }
 
         /// <summary>The plan, once <see cref="Complete"/>d.</summary>
         public MatchPlan Plan { get; private set; }
@@ -223,6 +350,12 @@ public sealed class MatchPlan
         {
             base.Append(brick);
             UnescapedLength += BuiltRegex.UnescapedLength(brick.Regex);
+            RawLength += brick.Regex.Length;
+
+            if (brick is RegexBrickGroupOpen)
+                GroupCount++;
+
+            TraceText?.Append(brick.Regex.Replace(BuiltRegex.EscapedSpace, " "));
             var frame = _frames.Peek();
 
             // A glyph's group opens a frame of its own; so does a plain group its owner puts around alternatives (see GlyphOneOfNode).
@@ -275,11 +408,15 @@ public sealed class MatchPlan
                 throw new InvalidOperationException($"{_rootNode.FullyQualifiedName}: a group is opened and never closed");
 
             var prefix = _rootNode.FullyQualifiedName + "_";
-            Plan = Shared(_rootNode.FullyQualifiedName + "/" + Digest(_root, prefix), () => ToPlan(_root, prefix));
+            Plan = Shared((_compositional ? "c:" : "w:") + _rootNode.FullyQualifiedName + "/" + Digest(_root, prefix), () => ToPlan(_root, prefix));
         }
 
         static bool IsGlyphGroup(RegexBrickGroupOpen open) =>
-            open.Parent is GlyphNode node && node is not DynamicGlyphNode && node.Navigation.IsGlyphType && node.ParentNode is not null;
+            open.Parent is NamedGroupNode node && IsGlyphGroup(node);
+
+        /// <summary>Whether <paramref name="node"/> is a nested glyph's group - one with a type whose own plan could stand for its content.</summary>
+        static bool IsGlyphGroup(NamedGroupNode node) =>
+            node is GlyphNode and not DynamicGlyphNode && node.Navigation.IsGlyphType && node.ParentNode is not null;
 
         /// <summary>Whether <paramref name="brick"/> is a plain parenthesis <paramref name="frame"/>'s owner puts around alternatives (not a nib's text, which may start with one).</summary>
         static bool IsPlain(RegexBrick brick, Frame frame, string parenthesis) =>
@@ -293,8 +430,8 @@ public sealed class MatchPlan
 
             var frame = _frames.Peek();
 
-            // Once a glyph's group is large enough to be a call, its own text is never needed again.
-            if (frame.Text is not null && frame.Open is not null && frame.Length >= CallThreshold)
+            // Once a glyph's group is known to be large enough to be a call, its own text is never needed again.
+            if (frame.Text is not null && frame.Open is not null && frame.Length >= CallThreshold && IsLarge(frame.Owner))
                 frame.Text = null;
 
             if (frame.Text is not null)
@@ -327,15 +464,20 @@ public sealed class MatchPlan
         {
             var parent = _frames.Peek();
 
-            if (frame.Text is not null && !frame.HasCalls)
+            if (!IsLarge(frame.Owner) && !frame.HasCalls)
             {
                 Inline(frame, parent);
                 return;
             }
 
             var prefix = frame.Open.GroupName + "_";
-            var key = Digest(frame, prefix);
-            var target = Shared(key, () => ToPlan(frame, prefix));
+            FlushLeaf(frame);
+
+            // A group whose content is nothing but a call to its type's plan is that plan.
+            var (target, key) = frame.Pieces is [CallPiece { GroupName: null } only]
+                ? (only.Target, only.Key)
+                : SharedWithKey((_compositional ? "c:" : "w:") + Digest(frame, prefix), () => ToPlan(frame, prefix));
+
             FlushLeaf(parent);
             parent.Pieces.Add(new CallPiece(frame.Open.GroupName, quantifier, target, key));
             MarkCalls(parent);
@@ -393,7 +535,7 @@ public sealed class MatchPlan
                         break;
 
                     case CallPiece call:
-                        into.Append("{call ").Append(RelativeName(call.GroupName, prefix)).Append(call.Quantifier?.GetDescription()).Append(':').Append(call.Key).Append('}');
+                        into.Append("{call ").Append(call.GroupName is null ? "" : RelativeName(call.GroupName, prefix)).Append(call.Quantifier?.GetDescription()).Append(':').Append(call.Key).Append('}');
                         break;
 
                     case PlainPiece plain:
@@ -426,11 +568,11 @@ public sealed class MatchPlan
                         break;
 
                     case CallPiece call:
-                        items.Add(new PlanNode.Call(RelativeName(call.GroupName, prefix), call.Quantifier, call.Target));
+                        items.Add(new PlanNode.Call(call.GroupName is null ? null : RelativeName(call.GroupName, prefix), call.Quantifier, call.Target));
                         break;
 
                     case PlainPiece plain:
-                        items.Add(ToPlan(plain.Inner, prefix));
+                        items.Add(new PlanNode.Group(ToPlan(plain.Inner, prefix)));
                         break;
 
                     case PipePiece:

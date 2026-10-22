@@ -94,6 +94,15 @@ public class BuiltRegex
     /// <summary>The length of <see cref="MinifiedRegex"/>, known without building it - what orders types for the tokenizer, and measures a pattern.</summary>
     public int MinifiedRegexLength { get; }
 
+    /// <summary>The length of the pattern as its bricks spell it (escaped spaces and all) - what decides whether a group of this type is called rather than inlined (see <see cref="Matching.MatchPlan.CallThreshold"/>).</summary>
+    internal int RawLength { get; }
+
+    /// <summary>The regex of the pattern's last brick that isn't a group bookend - what a collector standing a call in for this pattern notes as appended (see <see cref="RegexCollector.AlreadySeparated"/>).</summary>
+    internal string LastContentRegex { get; }
+
+    /// <summary>How many named groups the pattern has, at every depth (see <see cref="Matching.MatchPlan.Collector.GroupCount"/>).</summary>
+    internal int NamedGroupCount { get; }
+
     /// <summary>
     /// The pattern as the engine matches it (see <see cref="Matching.Matcher"/>): <see cref="MinifiedRegex"/> cut into runs the
     /// regex engine runs as they are, and calls to the plans of the large nested glyphs - shared with every other type
@@ -149,6 +158,9 @@ public class BuiltRegex
         collector.Complete();
         Plan = collector.Plan;
         MinifiedRegexLength = collector.UnescapedLength;
+        RawLength = collector.RawLength;
+        LastContentRegex = collector.LastContent;
+        NamedGroupCount = collector.GroupCount;
 
         // Each built on first use: a type may only ever be matched one way (with the whole-clause rule on,
         // nearly every top-level type only ever has to fill its scope).

@@ -41,13 +41,18 @@ public sealed class StartCharSet
         _chars is null || (c < 128 ? _ascii[c] : _chars.Contains(c));
 
     public static StartCharSet Of(GlyphNode rootNode) =>
-        Analyze(rootNode) is { Chars: { } chars, Nullable: false } ? new(chars) : Any;
+        Of(Analyze(rootNode));
+
+    /// <summary>The set <paramref name="starts"/> comes to: its characters, unless a match could begin further in or with anything.</summary>
+    internal static StartCharSet Of(Starts starts) =>
+        starts is { Chars: { } chars, Nullable: false } ? new(chars) : Any;
 
     public override string ToString() =>
         IsAny ? "any" : string.Concat(_chars.OrderBy(x => x));
 
     /// <summary>What a node's match can begin with: <see cref="Chars"/> null means anything; <see cref="Nullable"/> means it can also match nothing, so whatever follows it can begin the match too.</summary>
-    readonly record struct Starts(HashSet<char> Chars, bool Nullable)
+    /// <summary>What a node's matches can begin with: the characters (null for anything), and whether the node can match nothing, so what follows it can begin the match too.</summary>
+    internal readonly record struct Starts(HashSet<char> Chars, bool Nullable)
     {
         public static Starts Anything => new(null, false);
     }
@@ -55,7 +60,7 @@ public sealed class StartCharSet
     static readonly HashSet<char> _digits = [.. "0123456789"];
     static readonly string _regexSpecials = "()[].^$|?*+\\";
 
-    static Starts Analyze(RegexNode node) =>
+    internal static Starts Analyze(RegexNode node) =>
         node switch
         {
             // A wildcard capture, and a separator-led repetition (see JoinedItemNode): anything.
@@ -63,6 +68,10 @@ public sealed class StartCharSet
             TextNode text => FromRegexText(text.Text),
             TerminalRegexNode terminal => FromRegexText(terminal.RegexString),
             EnumNode enumNode => AnalyzeEnum(enumNode),
+            // A nested glyph's subtree is its type's own graph over again, which has already been analyzed: the same
+            // starts, with this group's own nullability - so the subtree isn't built to find out.
+            NamedGroupNode group when RegexGraph.IsNestedGlyph(group) =>
+                GlyphTypeCache.GetRegexGraph(group.Navigation.NodeType).StartsAnalysis is var starts ? starts with { Nullable = starts.Nullable || group.IsNullable } : default,
             NamedGroupNode group => AnalyzeGroup(group),
             _ => Starts.Anything,
         };

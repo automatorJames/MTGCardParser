@@ -26,6 +26,20 @@ public class GlyphOneOfNode : GlyphNode
     {
         var carriesJoiner = LeadingJoinerPlacement == JoinerPlacement.InsideNodeLeading || TrailingJoinerSuccessor is not null;
 
+        // Called rather than walked (see RegexCollector.Calls): the call stands for the alternatives, grouped as they would be.
+        if (collector.Calls(this))
+        {
+            if (carriesJoiner)
+                collector.Append(new RegexBrick(this, "("));
+
+            collector.AppendCall(this);
+
+            if (carriesJoiner)
+                collector.Append(new RegexBrick(this, ")"));
+
+            return;
+        }
+
         if (!carriesJoiner && !Children.OfType<TextNode>().Any())
         {
             base.AppendInnerContentBricks(collector);

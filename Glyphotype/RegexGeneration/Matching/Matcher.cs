@@ -182,6 +182,7 @@ public static class Matcher
                 PlanNode.Leaf leaf => LeafMatches(leaf, index),
                 PlanNode.Sequence sequence => SequenceMatches(sequence.Items, 0, index),
                 PlanNode.Alternation alternation => alternation.Alternatives.SelectMany(x => Matches(x, index)),
+                PlanNode.Group group => Matches(group.Inner, index),
                 PlanNode.Call call => CallMatches(call, index),
                 _ => throw new InvalidOperationException($"Unknown plan node {node.GetType().Name}"),
             };
@@ -200,6 +201,15 @@ public static class Matcher
         }
 
         IEnumerable<PlanMatch> CallMatches(PlanNode.Call call, int index)
+        {
+            // A type's plan standing for a group's content: the group around it is the capture.
+            if (call.Name is null)
+                return Memoized(call.Target, index);
+
+            return QuantifiedCallMatches(call, index);
+        }
+
+        IEnumerable<PlanMatch> QuantifiedCallMatches(PlanNode.Call call, int index)
         {
             switch (call.Quantifier)
             {

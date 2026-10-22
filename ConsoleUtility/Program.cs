@@ -27,6 +27,21 @@ internal class Program
                 Replay.Run(_cardDataGetter, args[1], int.Parse(args[2]), int.TryParse(args.ElementAtOrDefault(3), out var everyNth) ? everyNth : 1, args.ElementAtOrDefault(4));
                 break;
 
+            // lengthcheck: every type's counted pattern length against the written-out one.
+            case "lengthcheck":
+                LengthCheck.Run();
+                break;
+
+            // check TypeName "text": the type's plan against its flattened regex on one text, at every clause start.
+            case "check":
+                MatchCheck.Run(args[1], args[2], _cardDataGetter, int.TryParse(args.ElementAtOrDefault(3), out var warm) ? warm : 0);
+                break;
+
+            // plancheck [count]: every type's plan built by walking its whole graph, against the one built by calling nested glyphs' plans.
+            case "plancheck":
+                PlanCheck.Run(int.TryParse(args.ElementAtOrDefault(1), out var checkCount) ? checkCount : 5);
+                break;
+
             // plan TypeName [depth]: a glyph type's match plan, calls expanded to the given depth.
             case "plan":
                 PlanDump.Run(args[1], int.TryParse(args.ElementAtOrDefault(2), out var planDepth) ? planDepth : 1);

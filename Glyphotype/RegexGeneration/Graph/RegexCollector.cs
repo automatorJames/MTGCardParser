@@ -9,8 +9,22 @@ public class RegexCollector
     /// <summary>The bricks appended so far, in emission order - none, for a collector that doesn't <see cref="KeepsBricks"/>.</summary>
     public List<RegexBrick> RegexBricks { get; } = [];
 
-    /// <summary>The last brick appended that isn't a group bookend - what <see cref="AlreadySeparated"/> reads.</summary>
-    RegexBrick _lastContent;
+    /// <summary>The regex of the last brick appended that isn't a group bookend - what <see cref="AlreadySeparated"/> reads.</summary>
+    protected string LastContentRegex { get; private set; }
+
+    /// <summary>
+    /// Whether <paramref name="group"/> - a nested glyph's - is to be appended as a call to its type's own pattern (see
+    /// <see cref="AppendCall"/>) rather than walked: a collector building a <see cref="Matching.MatchPlan"/> says so of
+    /// a large one, and so never walks the inlined graph beneath it. Never, by default: the bricks are the whole pattern.
+    /// </summary>
+    public virtual bool Calls(NamedGroupNode group) => false;
+
+    /// <summary>Appends <paramref name="group"/>'s content as a call to its type's pattern, in place of its bricks (see <see cref="Calls"/>).</summary>
+    public virtual void AppendCall(NamedGroupNode group) =>
+        throw new NotSupportedException("This collector walks every group");
+
+    /// <summary>Notes that content ending in <paramref name="regex"/> was appended, as far as <see cref="AlreadySeparated"/> is concerned - what a call stands in for.</summary>
+    protected void NoteContent(string regex) => LastContentRegex = regex;
 
     /// <summary>Whether appended bricks are kept in <see cref="RegexBricks"/>. A collector that only reads them as they come (see <see cref="Matching.MatchPlan.Collector"/>) says no: a large graph's bricks run to millions.</summary>
     protected virtual bool KeepsBricks => true;
@@ -35,14 +49,14 @@ public class RegexCollector
     /// they contribute no matchable text of their own.
     /// </summary>
     public bool AlreadySeparated =>
-        _lastContent?.Regex is string regex
+        LastContentRegex is string regex
         && _trailingSpacePattern.IsMatch(regex);
 
     /// <summary>Appends a brick to the sequence.</summary>
     public virtual void Append(RegexBrick brick)
     {
         if (brick is not RegexBrickGroupBookend)
-            _lastContent = brick;
+            LastContentRegex = brick.Regex;
 
         if (KeepsBricks)
             RegexBricks.Add(brick);

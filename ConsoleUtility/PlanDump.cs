@@ -37,6 +37,11 @@ static class PlanDump
                     Print(alternative, indent + 1, depth);
                 break;
 
+            case PlanNode.Group group:
+                Console.WriteLine($"{pad}group");
+                Print(group.Inner, indent + 1, depth);
+                break;
+
             case PlanNode.Call call:
                 Console.WriteLine($"{pad}call {call.Name}{(call.Quantifier is Glyphotype.Quantifier.Optional ? "?" : call.Quantifier is Glyphotype.Quantifier.AnyNumber ? "*" : "")} -> plan size {call.Target.Size}, key {call.Target.Key[..Math.Min(24, call.Target.Key.Length)]}");
                 if (depth > 0)

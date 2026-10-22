@@ -18,7 +18,7 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>True when this node's regex must come from one or more <see cref="RegexPatternAttribute"/>-declared patterns rather than falling back to <see cref="DefaultPattern"/>.</summary>
     protected virtual bool OneOrMoreRegexPatternsRequired => false;
 
-    bool _childrenInitialized;
+    volatile bool _childrenInitialized;
     List<RegexNode> _children;
 
     /// <summary>
@@ -82,10 +82,21 @@ public abstract class NamedGroupNode : GroupNode
         if (_childrenInitialized)
             return;
 
-        _children = new List<RegexNode>();
-        AddReflectedChildren(_children);
-        _childrenInitialized = true;
+        // Built once, whichever thread asks first: a graph's nodes are made as matching reaches them, from every thread
+        // tokenizing, and a child read mid-build - or a second list built for the same node - would be a child missing.
+        lock (_childrenGate)
+        {
+            if (_childrenInitialized)
+                return;
+
+            var children = new List<RegexNode>();
+            AddReflectedChildren(children);
+            _children = children;
+            _childrenInitialized = true;
+        }
     }
+
+    readonly object _childrenGate = new();
 
     /// <summary>
     /// Populates this node's children. The default implementation adds one <see cref="TerminalRegexNode"/>
@@ -139,6 +150,12 @@ public abstract class NamedGroupNode : GroupNode
     /// <summary>Appends everything between this group's open and close bookends - by default, each child in turn (each responsible for its own leading joiner; see <see cref="RegexNode.AppendRegexBricks"/>). Override to inject additional content, e.g. a leading separator that isn't a plain sibling joiner (see <see cref="JoinedItemNode"/>).</summary>
     protected virtual void AppendInnerContentBricks(RegexCollector collector)
     {
+        if (collector.Calls(this))
+        {
+            collector.AppendCall(this);
+            return;
+        }
+
         foreach (var child in Children)
             child.AppendRegexBricks(collector);
     }

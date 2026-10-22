@@ -31,7 +31,11 @@ public class JoinedItemNode : GlyphNode
     /// </summary>
     protected override void AppendInnerContentBricks(RegexCollector collector)
     {
-        collector.Append(new RegexBrickJoiner(this, ResolveJoiner()));
+        // The separator is the owning X-Of's, so it's emitted where this item is nested in one - not by the item type's
+        // own graph, which stands for the item's content wherever it's nested (see RegexCollector.Calls), separator aside.
+        if (ParentNode is not null)
+            collector.Append(new RegexBrickJoiner(this, ResolveJoiner()));
+
         base.AppendInnerContentBricks(collector);
     }
 

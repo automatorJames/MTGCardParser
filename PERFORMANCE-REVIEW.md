@@ -183,3 +183,21 @@ Still open, in order of what it would buy:
 1. **The rebuilt types' node graphs** are now most of what a step costs: 11 s in the harness and 21 s in the app to build 227 of them, and about 4 to 5 GB held per generation. Hydration and the display walk the inlined graph lazily already; what forces all of it is the brick walk (for the plan and the pattern's length), the clause-break and start-character scans, and the flat name tables. Building those compositionally, from each type's own graph plus the few facts the nesting site adds, would make a rebuild cost milliseconds and hold kilobytes - but the equivalence between a nested group's bricks and its type's own has to be established exactly, which is why it wasn't done here.
 2. The app's build and re-tokenize run about twice the harness's; worth a profile in the app with the UI closed, since the harness is the same code.
 3. Phase C2, the grammar refactors (`Cost` and the other hubs as dynamic slots), is now optional for speed and still worth doing for the grammar's own sake: the cost line reports the grammar's pattern size (681.9 M characters) and each step's change to it.
+
+---
+
+## Results, later still (2026-10-21 evening): the compositional build
+
+The "app slower than the harness" gap turned out not to exist: the morning's harness figures were for the step's saved grammar, and the compiled grammar had grown since (1,027 types; patterns 741 M then 993 M characters by the evening's sessions). On the same grammar both took 30 s to build it, with the same profile - 16 cores busy for 8 s, then a 20 s tail of one or two giant glyphs walking their inlined graphs serially.
+
+So the build was made compositional: a type's plan is built from its own graph, and a large nested glyph's group is a *call* to that type's own plan, never walked - the inlined graph beneath it is built only if something displays it or hydration reaches into it. The plan is checked against the fully walked one for every type (`ConsoleUtility plancheck`: identical for all 1,027), the counted pattern length against the written one (`lengthcheck`: identical, which keeps the tokenizer's order of types), and the corpus parses against the previous engine's (`dump`: identical). Two things had to be learned on the way: a list item's separator comes from the property holding the list, so such a group is walked rather than called; and a nested type's groups are named under the nesting group, so an inlined pattern is longer than the called one by that difference per group, which the count allows for. The startup page also exposed that building the per-glyph occurrence summaries ran serially after tokenizing, inside the startup's critical path; they're now lazy and parallel.
+
+| Full corpus, this machine | Morning | After Phase B | Now |
+|---|---|---|---|
+| Build the compiled grammar (1,027 types) | 30 s, 4.0 GB | 30 s, 4.0 GB | 1.4 s, 12 MB |
+| App start to serving | 60 to 90 s | | 24 s (22 s of it tokenizing) |
+| Hub-glyph evaluate in the app (227 to 242 types rebuilt) | 157 to 261 s | 38.5 s | 8.5 s |
+| Of which: build / re-tokenize / score | 81 / 120 / 37 s | 21 / 16 / 1.6 s | 0.9 / 6.5 / 1.1 s |
+| Process heap after an evaluate | 43 GB | 13 to 19 GB | 3.6 GB |
+
+What's left is the tokenization itself, about 7 to 20 s per pass over the corpus, which is now the whole of a step's cost and of startup's; and the grammar's own growth, which the cost line reports on every step.
