@@ -1,14 +1,17 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"a dragon card from your hand", "this card from your opening hand", "any number of red cards in your hand": a card of a kind, or this card, shown from a hand (an opening hand, for the Chancellors' pregame reveal).</summary>
+/// <summary>"a dragon card from your hand", "this card from your opening hand", "any number of red cards in your hand", "a card at random from their hand": a card of a kind, or this card, shown from a hand (an opening hand, for the Chancellors' pregame reveal), possibly chosen at random.</summary>
 /// <exampledoc>Draconic Roar</exampledoc>
 /// <examplecapture>a dragon card from your hand</examplecapture>
 [Dependent]
 public class RevealedFromHand : Glyph
 {
-    public override Nib[] Nibs => [Prop(Wanted), Alt("from", "in"), Prop(Whose), Prop(Opening), "hand"];
+    public override Nib[] Nibs => [Prop(Wanted), Prop(AtRandom), Alt("from", "in"), Prop(Whose), Prop(Opening), "hand"];
 
     public OneOf<WantedCards, ThisCreature> Wanted { get; set; }
+    [Optional]
+    [RegexPattern("at random")]
+    public bool AtRandom { get; set; }
     public Whose Whose { get; set; }
     [Optional]
     [RegexPattern("opening")]
