@@ -93,9 +93,13 @@
         white-space: normal;
     }
 
+    /* Wrapped rather than scrolled sideways, so a long line reads whole */
     .chat-entry.tool pre {
         max-height: 18rem;
+        overflow-y: auto;
         color: #b5bfcc;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 
 .tool-name {
