@@ -1,0 +1,9 @@
+﻿namespace MTGGlyphs.GlyphDefinitions;
+
+/// <summary>Card-specific rules text of Suncleanser, held as one literal for the game engine until the grammar models it.</summary>
+/// <exampledoc>Suncleanser</exampledoc>
+[TokenizationOrder(-1)]
+public class SuncleanserCard2Rule : Glyph, ICardSpecific
+{
+    public override Nib[] Nibs => ["• target opponent loses all counters"];
+}

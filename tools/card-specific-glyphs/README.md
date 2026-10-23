@@ -23,3 +23,11 @@ Pipeline (Python 3, run with `python -I`):
    pass regenerates it (use `force_whole.json`) as a `Rule`.
 
 `analyze.py S` summarizes the residuals/unparsed outputs (span recurrence, lengths).
+
+## Pending batches (as of 2026-10-23)
+
+`pending/` holds batches 23-31 (clauses 2160-3041 by length, about 880 clauses / 8.7k words), generated with the
+name-collision guard. Apply each file verbatim with the `apply` tool, in file order, with a description such as
+"card-specific literals, batch 23 of 31". If the app refuses a batch because a literal takes words from an existing
+glyph, delete that one declaration and re-apply. After batch 31, run pass 2 (steps 1-5 above) so effect literals
+whose frame never parsed become whole-clause rules.

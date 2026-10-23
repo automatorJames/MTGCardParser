@@ -1,0 +1,9 @@
+﻿namespace MTGGlyphs.GlyphDefinitions;
+
+/// <summary>Card-specific rules text of Platinum Emperion, held as one literal for the game engine until the grammar models it.</summary>
+/// <exampledoc>Platinum Emperion</exampledoc>
+[TokenizationOrder(-1)]
+public class PlatinumEmperion3Rule : Glyph, ICardSpecific
+{
+    public override Nib[] Nibs => ["your life total can't change"];
+}
