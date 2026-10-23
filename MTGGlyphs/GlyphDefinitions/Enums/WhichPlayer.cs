@@ -7,8 +7,11 @@ public enum WhichPlayer
 
     You,
 
-    [RegexPattern("each opponent")]
+    [RegexPattern("each opponent", "each of your opponents")]
     EachOpponent,
+
+    [RegexPattern("each of that player's opponents")]
+    EachOfThatPlayersOpponents,
 
     [RegexPattern("each other player")]
     EachOtherPlayer,

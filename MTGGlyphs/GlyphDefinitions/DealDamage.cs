@@ -1,15 +1,12 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Dealing damage, to one recipient or several: "deals 1 damage to that player", "deals 4 damage to any target and 2 damage to you" - or, after a plural subject, "each deal damage equal to their power to …", each of them dealing it.</summary>
+/// <summary>Dealing damage, to one recipient or several: "deals 1 damage to that player", "deals 4 damage to any target and 2 damage to you", "deal damage equal to their power to …" (after "they each", whose "each" belongs to the subject).</summary>
 /// <exampledoc>Psionic Blast</exampledoc>
 /// <examplecapture>deals 4 damage to any target and 2 damage to you</examplecapture>
 [Dependent]
 public class DealDamage : Glyph, IConjoinedPredicate, IPredicate
 {
-    public override Nib[] Nibs => [Prop(Each), Pattern("deals?"), Prop(Portions)];
+    public override Nib[] Nibs => [Pattern("deals?"), Prop(Portions)];
 
-    [Optional]
-    [RegexPattern("each")]
-    public bool? Each { get; set; }
     public OneOf<ManyOf<DamageTo>, DamageTo> Portions { get; set; }
 }

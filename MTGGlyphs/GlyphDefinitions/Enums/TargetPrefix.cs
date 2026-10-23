@@ -8,5 +8,8 @@ public enum TargetPrefix
     [RegexPattern("up to one")]
     UpToOne,
 
-    Another
+    Another,
+
+    [RegexPattern("a second")]
+    ASecond
 }
