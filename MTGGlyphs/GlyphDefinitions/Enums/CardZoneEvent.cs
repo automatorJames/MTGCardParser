@@ -20,9 +20,18 @@ public enum CardZoneEvent
     [RegexPattern("(is|are) put into your graveyard from your library")]
     PutIntoYourGraveyardFromYourLibrary,
 
+    [RegexPattern("(is|are) put into an opponent's graveyard from their library")]
+    PutIntoAnOpponentsGraveyardFromTheirLibrary,
+
     [RegexPattern("(is|are) put into your hand from your graveyard")]
     PutIntoYourHandFromYourGraveyard,
 
     [RegexPattern("(is|are) put into exile from your graveyard")]
-    ExiledFromYourGraveyard
+    ExiledFromYourGraveyard,
+
+    [RegexPattern("(is|are) put into exile from graveyards and/or the battlefield")]
+    ExiledFromGraveyardsOrTheBattlefield,
+
+    [RegexPattern("(is|are) put into exile")]
+    PutIntoExile
 }

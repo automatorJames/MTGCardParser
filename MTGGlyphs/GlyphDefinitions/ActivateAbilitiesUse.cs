@@ -6,9 +6,9 @@
 [Dependent]
 public class ActivateAbilitiesUse : Glyph
 {
-    public override Nib[] Nibs => [Opt("to"), "activate", Prop(Which), Prop(Of)];
+    public override Nib[] Nibs => [Opt("to"), "activate", Prop(Which), Prop(Owner)];
 
     public OneOf<KeywordAbilities, AbilitiesWord?> Which { get; set; }
     [Optional]
-    public AbilitiesOf Of { get; set; }
+    public AbilitiesOf Owner { get; set; }
 }

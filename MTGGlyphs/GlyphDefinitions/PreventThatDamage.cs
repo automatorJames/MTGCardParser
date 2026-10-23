@@ -5,8 +5,8 @@
 /// <examplecapture>prevent 1 of that damage</examplecapture>
 public class PreventThatDamage : Glyph, IConjoinedPredicate, IPredicate
 {
-    public override Nib[] Nibs => ["prevent", Prop(Part), "that damage"];
+    public override Nib[] Nibs => ["prevent", Prop(Portion), "that damage"];
 
     [Optional]
-    public PartOfDamage Part { get; set; }
+    public PartOfDamage Portion { get; set; }
 }

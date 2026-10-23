@@ -6,9 +6,9 @@
 [Dependent]
 public class DoesntUntap : Glyph, IConjoinedPredicate, IPredicate
 {
-    public override Nib[] Nibs => [Alt("doesn't", "don't"), "untap during", Prop(Step), Prop(If)];
+    public override Nib[] Nibs => [Alt("doesn't", "don't"), "untap during", Prop(Step), Prop(Condition)];
 
     public OneOf<NextPlayersPhase, PlayersPhase> Step { get; set; }
     [Optional]
-    public OneOf<IfState, ForAsLongAs> If { get; set; }
+    public OneOf<IfState, ForAsLongAs> Condition { get; set; }
 }

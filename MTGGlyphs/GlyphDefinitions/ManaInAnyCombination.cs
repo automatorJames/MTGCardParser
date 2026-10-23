@@ -6,8 +6,8 @@
 [Dependent]
 public class ManaInAnyCombination : Glyph
 {
-    public override Nib[] Nibs => [Prop(Quantity), "mana in any combination of", Prop(Of)];
+    public override Nib[] Nibs => [Prop(Quantity), "mana in any combination of", Prop(Colors)];
 
     public Quantity Quantity { get; set; }
-    public OneOf<ManaAndOr, ManyOf<ManaCost>, AnyCombinationOfColors?> Of { get; set; }
+    public OneOf<ManaAndOr, ManyOf<ManaCost>, AnyCombinationOfColors?> Colors { get; set; }
 }

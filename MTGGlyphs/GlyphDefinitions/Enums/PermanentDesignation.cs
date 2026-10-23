@@ -22,5 +22,7 @@ public enum PermanentDesignation
 
     Equipped,
 
-    Enchanted
+    Enchanted,
+
+    Transformed
 }

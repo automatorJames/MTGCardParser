@@ -3,5 +3,12 @@
 public enum ScaleFactor
 {
     Half,
-    Twice
+
+    Twice,
+
+    [RegexPattern("a third of")]
+    AThird,
+
+    [RegexPattern("three times")]
+    ThreeTimes
 }

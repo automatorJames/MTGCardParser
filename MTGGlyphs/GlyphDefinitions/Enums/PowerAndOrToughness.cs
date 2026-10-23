@@ -4,5 +4,6 @@ public enum PowerAndOrToughness
 {
     Power,
     Toughness,
-    PowerAndToughness
+    PowerAndToughness,
+    PowerOrToughness
 }

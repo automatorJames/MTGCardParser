@@ -2,5 +2,6 @@
 
 public enum CardNoun
 {
+    [RegexPattern("card")]
     Card
 }

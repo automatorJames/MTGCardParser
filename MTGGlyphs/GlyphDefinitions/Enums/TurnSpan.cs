@@ -9,5 +9,11 @@ public enum TurnSpan
     LastTurn,
 
     [RegexPattern("this combat")]
-    ThisCombat
+    ThisCombat,
+
+    [RegexPattern("during your last turn")]
+    DuringYourLastTurn,
+
+    [RegexPattern("during its controller's last turn")]
+    DuringItsControllersLastTurn
 }

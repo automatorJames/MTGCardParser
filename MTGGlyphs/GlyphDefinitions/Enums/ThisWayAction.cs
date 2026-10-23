@@ -22,6 +22,8 @@ public enum ThisWayAction
 
     Prevented,
 
+    Chosen,
+
     [RegexPattern("dies", "died")]
     Dies,
 
@@ -38,5 +40,11 @@ public enum ThisWayAction
     Enters,
 
     [RegexPattern("search(?:es)? (?:your|their) library")]
-    SearchesLibrary
+    SearchesLibrary,
+
+    [RegexPattern("put into exile")]
+    PutIntoExile,
+
+    [RegexPattern("put into (?:a|your|their|that) graveyard")]
+    PutIntoAGraveyard
 }

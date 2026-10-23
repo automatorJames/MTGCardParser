@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Each of a group named earlier in the line, receiving something one by one: "each of them", "each of those creatures", "each of those permanents".</summary>
+/// <summary>Each of a group named earlier in the line, receiving something one by one: "each of them", "each of those creatures", "each of those permanents", "each of those vampires".</summary>
 /// <exampledoc>Nature's Panoply</exampledoc>
 /// <examplecapture>each of them</examplecapture>
 [Dependent]
@@ -8,5 +8,5 @@ public class EachOfThem : Glyph
 {
     public override Nib[] Nibs => ["each of", Prop(Group)];
 
-    public OneOf<Them, ThatCard, ThatCardPhrase> Group { get; set; }
+    public OneOf<Them, ThatCard, OneOf<ThatCardPhrase, ThatCreatureOfType>> Group { get; set; }
 }

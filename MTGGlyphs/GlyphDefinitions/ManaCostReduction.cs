@@ -6,7 +6,7 @@
 [Dependent]
 public class ManaCostReduction : Glyph
 {
-    public override Nib[] Nibs => ["reduced by", Prop(By)];
+    public override Nib[] Nibs => ["reduced by", Prop(Reduction)];
 
-    public ManaCost By { get; set; }
+    public ManaCost Reduction { get; set; }
 }

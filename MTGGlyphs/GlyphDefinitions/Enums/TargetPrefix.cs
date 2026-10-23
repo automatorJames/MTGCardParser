@@ -11,5 +11,8 @@ public enum TargetPrefix
     Another,
 
     [RegexPattern("a second")]
-    ASecond
+    ASecond,
+
+    [RegexPattern("a third")]
+    AThird
 }

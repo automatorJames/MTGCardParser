@@ -5,11 +5,11 @@
 /// <examplecapture>flying (this creature can't be blocked except by creatures with flying or reach</examplecapture>
 public class KeywordWithReminder : Glyph
 {
-    public override Nib[] Nibs => [Prop(Before), Prop(Keywords), Prop(Reminder)];
+    public override Nib[] Nibs => [Prop(LeadingKeywords), Prop(Keywords), Prop(Reminder)];
 
     [Optional]
     [JoinedBy(Joiner.Space)]
-    public CompoundOf<KeywordsBeforeSemicolon> Before { get; set; }
+    public CompoundOf<KeywordsBeforeSemicolon> LeadingKeywords { get; set; }
     public CardAbilityLine Keywords { get; set; }
     public ReminderText Reminder { get; set; }
 }

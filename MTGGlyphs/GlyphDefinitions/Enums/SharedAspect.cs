@@ -9,5 +9,8 @@ public enum SharedAspect
     Color,
 
     [RegexPattern("a card type")]
-    CardType
+    CardType,
+
+    [RegexPattern("a permanent type")]
+    PermanentType
 }

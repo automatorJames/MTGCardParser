@@ -6,8 +6,8 @@
 [Dependent]
 public class CountersAndSacrificeCost : Glyph
 {
-    public override Nib[] Nibs => [Prop(Remove), "and", Prop(Then)];
+    public override Nib[] Nibs => [Prop(Remove), "and", Prop(SacrificeOrReturn)];
 
     public PlaceCounters Remove { get; set; }
-    public OneOf<Sacrifice, ReturnCard> Then { get; set; }
+    public OneOf<Sacrifice, ReturnCard> SacrificeOrReturn { get; set; }
 }

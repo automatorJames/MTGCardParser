@@ -6,8 +6,8 @@
 [Dependent]
 public class ShuffleThenDo : Glyph
 {
-    public override Nib[] Nibs => [Alt("shuffle", "shuffles"), ", then", Prop(Then)];
+    public override Nib[] Nibs => [Alt("shuffle", "shuffles"), ", then", Prop(Action)];
 
     [TypeFilter(typeof(IPredicate))]
-    public DynamicGlyph Then { get; set; }
+    public DynamicGlyph Action { get; set; }
 }

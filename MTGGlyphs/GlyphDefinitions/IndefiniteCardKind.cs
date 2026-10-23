@@ -6,10 +6,9 @@
 [Dependent]
 public class IndefiniteCardKind : Glyph
 {
-    public override Nib[] Nibs => [Opt(Pattern("an?")), Prop(Qualifiers), "card", Prop(With)];
+    public override Nib[] Nibs => [Prop(Kind), "card", Prop(With)];
 
+    public OneOf<ArticledCardKind, CompoundOf<QualifierWords>> Kind { get; set; }
     [Optional]
-    public CompoundOf<QualifierWords> Qualifiers { get; set; }
-    [Optional]
-    public WithQualifier With { get; set; }
+    public OneOf<WithQualifier, SymbolInManaCost> With { get; set; }
 }

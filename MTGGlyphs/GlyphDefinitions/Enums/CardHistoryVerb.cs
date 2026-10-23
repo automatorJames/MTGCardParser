@@ -12,5 +12,8 @@ public enum CardHistoryVerb
     CycledOrDiscarded,
 
     [RegexPattern("discarded")]
-    Discarded
+    Discarded,
+
+    [RegexPattern("sacrificed")]
+    Sacrificed
 }

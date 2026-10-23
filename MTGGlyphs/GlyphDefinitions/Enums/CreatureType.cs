@@ -322,6 +322,8 @@ public enum CreatureType
 
     Monkey,
 
+    Moogle,
+
     Moonfolk,
 
     Mountain,
@@ -499,6 +501,8 @@ public enum CreatureType
     Surrakar,
 
     Swamp,
+
+    Symbiote,
 
     Tamiyo,
 

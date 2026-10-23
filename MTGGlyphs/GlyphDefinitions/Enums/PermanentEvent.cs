@@ -8,9 +8,19 @@ public enum PermanentEvent
     [RegexPattern("enters untapped")]
     EntersUntapped,
 
+    [RegexPattern("enters from your graveyard")]
+    EntersFromYourGraveyard,
+
+    [RegexPattern("enters from a graveyard")]
+    EntersFromAGraveyard,
+
     [RegexPattern("enters", "enter")]
     EntersTheBattlefield,
 
+    [RegexPattern("leaves the battlefield without dying", "leave the battlefield without dying")]
+    LeavesTheBattlefieldWithoutDying,
+
+    [RegexPattern("leaves the battlefield", "leave the battlefield")]
     LeavesTheBattlefield,
 
     IsPutIntoAGraveyardFromTheBattlefield,
@@ -20,6 +30,18 @@ public enum PermanentEvent
     IsPutIntoAGraveyard,
 
     IsPutIntoExileFromTheBattlefield,
+
+    [RegexPattern("is returned to your hand from the battlefield")]
+    IsReturnedToYourHandFromTheBattlefield,
+
+    [RegexPattern("is returned to your hand")]
+    IsReturnedToYourHand,
+
+    [RegexPattern("is returned to a player's hand")]
+    IsReturnedToAPlayersHand,
+
+    [RegexPattern("is returned to its owner's hand", "are returned to hand")]
+    IsReturnedToHand,
 
     IsTurnedFaceUp,
 
@@ -38,6 +60,9 @@ public enum PermanentEvent
 
     [RegexPattern("attacks a player", "attack a player")]
     AttacksAPlayer,
+
+    [RegexPattern("attacks a battle", "attack a battle")]
+    AttacksABattle,
 
     [RegexPattern("attacks alone", "attack alone")]
     AttacksAlone,
@@ -75,8 +100,14 @@ public enum PermanentEvent
     [RegexPattern("evolves")]
     Evolves,
 
+    [RegexPattern("trains")]
+    Trains,
+
     [RegexPattern("exploits a creature")]
     ExploitsACreature,
+
+    [RegexPattern("enlists a creature")]
+    EnlistsACreature,
 
     [RegexPattern("crews a vehicle")]
     CrewsAVehicle,
@@ -100,6 +131,9 @@ public enum PermanentEvent
     [RegexPattern("deals combat damage to an opponent", "deal combat damage to an opponent")]
     DealsCombatDamageToAnOpponent,
 
+    [RegexPattern("deals combat damage to one of your opponents", "deal combat damage to one of your opponents")]
+    DealsCombatDamageToOneOfYourOpponents,
+
     [RegexPattern("deals combat damage to you")]
     DealsCombatDamageToYou,
 
@@ -109,14 +143,23 @@ public enum PermanentEvent
     [RegexPattern("deals combat damage to a creature")]
     DealsCombatDamageToACreature,
 
+    [RegexPattern("deals combat damage to one or more blocking creatures")]
+    DealsCombatDamageToOneOrMoreBlockingCreatures,
+
     [RegexPattern("deals combat damage", "deal combat damage")]
     DealsCombatDamage,
 
     [RegexPattern("deals damage to a creature or opponent")]
     DealsDamageToACreatureOrOpponent,
 
+    [RegexPattern("deals damage to a player or planeswalker", "deal damage to a player or planeswalker")]
+    DealsDamageToAPlayerOrPlaneswalker,
+
     [RegexPattern("deals damage to a player", "deal damage to a player")]
     DealsDamageToAPlayer,
+
+    [RegexPattern("deals damage to an opponent or battle", "deal damage to an opponent or battle")]
+    DealsDamageToAnOpponentOrBattle,
 
     [RegexPattern("deals damage to an opponent", "deal damage to an opponent")]
     DealsDamageToAnOpponent,

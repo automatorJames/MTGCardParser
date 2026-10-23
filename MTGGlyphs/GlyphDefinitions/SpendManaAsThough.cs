@@ -6,11 +6,11 @@
 [Dependent]
 public class SpendManaAsThough : Glyph, IPredicate
 {
-    public override Nib[] Nibs => ["spend", Prop(Spent), "mana as though it were", Prop(As), Prop(Purpose)];
+    public override Nib[] Nibs => ["spend", Prop(Spent), "mana as though it were", Prop(TreatedAs), Prop(Purpose)];
 
     [Optional]
     public ManaColor? Spent { get; set; }
-    public OneOf<ManaOfAnyKind, ManaOfColor> As { get; set; }
+    public OneOf<ManaOfAnyKind, ManaOfColor> TreatedAs { get; set; }
     [Optional]
     public OneOf<SpendToCast, SpendToActivate> Purpose { get; set; }
 }

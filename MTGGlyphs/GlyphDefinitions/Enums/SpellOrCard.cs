@@ -3,5 +3,6 @@
 public enum SpellOrCard
 {
     Spell,
-    Card
+    Card,
+    Permanent
 }

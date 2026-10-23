@@ -113,7 +113,7 @@ public enum ManaSymbolKind
     [RegexPattern("x")]
     X,
 
-    [RegexPattern("p")]
+    [RegexPattern("p", "h")]
     Phyrexian,
 
     [RegexPattern("s")]

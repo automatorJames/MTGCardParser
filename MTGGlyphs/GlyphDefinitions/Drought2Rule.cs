@@ -1,0 +1,9 @@
+﻿namespace MTGGlyphs.GlyphDefinitions;
+
+/// <summary>Card-specific rules text of Drought, held as one literal for the game engine until the grammar models it.</summary>
+/// <exampledoc>Drought</exampledoc>
+[TokenizationOrder(-1)]
+public class Drought2Rule : Glyph, ICardSpecific
+{
+    public override Nib[] Nibs => ["spells cost an additional \"sacrifice a swamp\" to cast for each black mana symbol in their mana costs"];
+}

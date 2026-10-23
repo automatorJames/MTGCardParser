@@ -1,9 +1,9 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>An effect delayed to a later point in the turn: "destroy {this} at the beginning of the next end step", "destroy that creature at the beginning of the next end step".</summary>
+/// <summary>An effect delayed to a later point in the turn: "destroy {this} at the beginning of the next end step", "destroy that creature at the beginning of the next end step". Also a predicate, so it can lead an "and" pair ("return it … at the beginning of the next end step and you skip your next draw step").</summary>
 /// <exampledoc>Rocket Launcher</exampledoc>
 /// <examplecapture>destroy {this} at the beginning of the next end step</examplecapture>
-public class DelayedEffect : Glyph
+public class DelayedEffect : Glyph, IPredicate
 {
     public override Nib[] Nibs => [Prop(Effect), Prop(When)];
 

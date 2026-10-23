@@ -23,6 +23,15 @@ public enum PastPermanentEvent
     [RegexPattern("was dealt damage", "were dealt damage")]
     WasDealtDamage,
 
+    [RegexPattern("wasn't dealt damage", "weren't dealt damage")]
+    WasntDealtDamage,
+
+    [RegexPattern("blocked or was blocked by", "blocked or were blocked by")]
+    BlockedOrWasBlockedBy,
+
+    [RegexPattern("was blocked by", "were blocked by")]
+    WasBlockedBy,
+
     [RegexPattern("was blocked", "were blocked")]
     WasBlocked,
 
@@ -37,6 +46,9 @@ public enum PastPermanentEvent
 
     [RegexPattern("dealt combat damage to a player")]
     DealtCombatDamageToAPlayer,
+
+    [RegexPattern("didn't deal combat damage to a creature")]
+    DidntDealCombatDamageToACreature,
 
     [RegexPattern("dealt damage to you")]
     DealtDamageToYou,

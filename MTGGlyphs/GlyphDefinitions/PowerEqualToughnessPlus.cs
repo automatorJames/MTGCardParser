@@ -5,9 +5,9 @@
 /// <examplecapture>{this}'s power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1</examplecapture>
 public class PowerEqualToughnessPlus : Glyph, IPredicate
 {
-    public override Nib[] Nibs => [Prop(Object), "power is equal to", Prop(Amount), "and its toughness is equal to that number plus", Prop(Plus)];
+    public override Nib[] Nibs => [Prop(Object), "power is equal to", Prop(Amount), "and its toughness is equal to that number plus", Prop(ToughnessBonus)];
 
     public OneOf<Its, ObjectPossessive, ShortNamePossessive> Object { get; set; }
     public OneOf<ArithmeticAmount, ScaledAmountExact, Amount> Amount { get; set; }
-    public Quantity Plus { get; set; }
+    public Quantity ToughnessBonus { get; set; }
 }

@@ -6,7 +6,7 @@
 [Dependent]
 public class EachControlledPermanent : Glyph
 {
-    public override Nib[] Nibs => ["each", Prop(Qualifiers), Prop(Kind), Prop(Controller), Prop(Narrowed), Prop(After)];
+    public override Nib[] Nibs => ["each", Prop(Qualifiers), Prop(Kind), Prop(Controller), Prop(Narrowed), Prop(Relation)];
 
     [Optional]
     [JoinedBy(Joiner.Space)]
@@ -18,5 +18,5 @@ public class EachControlledPermanent : Glyph
     [Optional]
     public OneOf<WithQualifier, ChosenAspect?> Narrowed { get; set; }
     [Optional]
-    public OneOf<ThatsInCombat, SharesCreatureType, OneOf<EnteredThisTurn, ThatsOneOfKinds>> After { get; set; }
+    public OneOf<ThatsInCombat, SharesCreatureType, OneOf<EnteredThisTurn, ThatsOneOfKinds>> Relation { get; set; }
 }

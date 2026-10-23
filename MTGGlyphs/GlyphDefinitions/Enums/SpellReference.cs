@@ -2,6 +2,9 @@
 
 public enum SpellReference
 {
+    [RegexPattern("that spell or ability")]
+    ThatSpellOrAbility,
+
     [RegexPattern("that spell", "the spell")]
     ThatSpell,
 

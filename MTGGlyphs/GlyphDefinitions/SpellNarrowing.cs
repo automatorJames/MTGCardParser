@@ -12,7 +12,7 @@ public class SpellNarrowing : GlyphOneOf
     public CastFromZone From { get; set; }
     public CastFromOtherThanHand FromOtherThanHand { get; set; }
     public DuringTurn During { get; set; }
-    public SpellHasFeature Has { get; set; }
+    public SpellHasFeature Feature { get; set; }
     public SymbolInManaCost Symbol { get; set; }
     public SpellOwnership? Ownership { get; set; }
 }

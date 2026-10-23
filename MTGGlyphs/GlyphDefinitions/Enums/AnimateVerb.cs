@@ -2,6 +2,6 @@
 
 public enum AnimateVerb
 {
-    [RegexPattern("becomes? an?")]
+    [RegexPattern("becomes? an?", "become")]
     Becomes
 }

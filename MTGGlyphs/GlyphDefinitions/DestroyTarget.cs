@@ -5,14 +5,14 @@
 /// <examplecapture>destroy target land</examplecapture>
 public class DestroyTarget : Glyph, IConjoinedPredicate, IPredicate
 {
-    public override Nib[] Nibs => [Prop(Verb), Prop(Destroyed), Prop(WithCounters), Prop(Until), Prop(AtEndOfCombat), Prop(Manner)];
+    public override Nib[] Nibs => [Prop(Verb), Prop(Destroyed), Prop(WithCounters), Prop(UntilThisLeaves), Prop(AtEndOfCombat), Prop(Manner)];
 
     public RemovalVerb Verb { get; set; }
     public OneOf<TargetCardInZone, OneOf<PermanentFromZone, TargetSpell>, OneOf<PermanentPhrase, RemovedObjects, OneOf<OneOf<PermanentPair, TargetList>, TargetAndOthers, PermanentOrCard>>> Destroyed { get; set; }
     [Optional]
     public EntersWithCounters WithCounters { get; set; }
     [Optional]
-    public UntilThisLeaves Until { get; set; }
+    public UntilThisLeaves UntilThisLeaves { get; set; }
     [RegexPattern("at end of combat")]
     public bool AtEndOfCombat { get; set; }
     [Optional]

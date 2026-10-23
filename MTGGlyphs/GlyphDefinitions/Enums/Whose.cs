@@ -22,7 +22,7 @@ public enum Whose
 
     Your,
 
-    [RegexPattern("its owner's")]
+    [RegexPattern("its owner's", "his owner's", "her owner's")]
     ItsOwners,
 
     [RegexPattern("their owners?'s?")]
@@ -39,6 +39,9 @@ public enum Whose
 
     [RegexPattern("their next")]
     TheirNext,
+
+    [RegexPattern("their own")]
+    TheirOwn,
 
     Their,
 
@@ -60,7 +63,7 @@ public enum Whose
     [RegexPattern("defending player's")]
     DefendingPlayers,
 
-    [RegexPattern("a single", "a", "any")]
+    [RegexPattern("a player's", "a single", "a", "any")]
     Any,
 
     [RegexPattern("the next turn's")]

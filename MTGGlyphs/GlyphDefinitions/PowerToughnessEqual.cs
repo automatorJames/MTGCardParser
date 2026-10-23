@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>A static ability setting an object's power and/or toughness to an amount: "{this}'s power and toughness are each equal to the number of swamps you control", "molimo's power and toughness are each equal to the number of lands you control", "… equal to 1 plus the number of creatures the chosen player controls", "… equal to twice the number of cards in your hand", "… equal to your life total".</summary>
+/// <summary>A static ability setting an object's power and/or toughness to an amount: "{this}'s power and toughness are each equal to the number of swamps you control", "molimo's power and toughness are each equal to the number of lands you control", "… equal to 1 plus the number of creatures the chosen player controls", "… equal to twice the number of cards in your hand", "… equal to half the highest life total among your opponents, rounded up", "… equal to your life total".</summary>
 /// <exampledoc>Nightmare</exampledoc>
 /// <examplecapture>{this}'s power and toughness are each equal to the number of swamps you control</examplecapture>
 public class PowerToughnessEqual : Glyph, IPredicate
@@ -9,5 +9,5 @@ public class PowerToughnessEqual : Glyph, IPredicate
 
     public OneOf<Its, ObjectPossessive, ShortNamePossessive> Object { get; set; }
     public PowerAndOrToughness PowerAndOrToughness { get; set; }
-    public OneOf<ArithmeticAmount, ScaledAmountExact, Amount> Amount { get; set; }
+    public OneOf<ArithmeticAmount, OneOf<ScaledAmount, ScaledAmountExact>, Amount> Amount { get; set; }
 }

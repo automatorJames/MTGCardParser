@@ -5,14 +5,14 @@
 /// <examplecapture>double target creature's power until end of turn</examplecapture>
 public class DoublePowerToughness : Glyph, IPredicate
 {
-    public override Nib[] Nibs => ["double", Prop(Creature), Opt("the"), "power", Prop(AndToughness), Prop(Of), Prop(Duration)];
+    public override Nib[] Nibs => ["double", Prop(Creature), Opt("the"), "power", Prop(AndToughness), Prop(Doubled), Prop(Duration)];
 
     [Optional]
     public OneOf<Its, ObjectPossessive, TargetPossessive> Creature { get; set; }
     [RegexPattern("and toughness")]
     public bool AndToughness { get; set; }
     [Optional]
-    public DoubledObjects Of { get; set; }
+    public DoubledObjects Doubled { get; set; }
     [Optional]
     public EffectDuration Duration { get; set; }
 }

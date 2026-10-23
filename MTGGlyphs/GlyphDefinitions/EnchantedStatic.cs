@@ -5,8 +5,8 @@
 /// <examplecapture>enchanted land is a swamp</examplecapture>
 public class EnchantedStatic : Glyph
 {
-    public override Nib[] Nibs => ["enchanted", Prop(Kind), Prop(Rest)];
+    public override Nib[] Nibs => ["enchanted", Prop(Kind), Prop(Ability)];
 
     public CardType Kind { get; set; }
-    public DynamicGlyph Rest { get; set; }
+    public DynamicGlyph Ability { get; set; }
 }

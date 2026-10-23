@@ -5,8 +5,8 @@
 /// <examplecapture>choose a creature with the least toughness among creatures you control and put a +1/+1 counter on it</examplecapture>
 public class BolsterRule : Glyph
 {
-    public override Nib[] Nibs => ["choose a creature with the least toughness among", Prop(Among), "and", Prop(Then)];
+    public override Nib[] Nibs => ["choose a creature with the least toughness among", Prop(Among), "and", Prop(PlaceCounters)];
 
     public Permanents Among { get; set; }
-    public PlaceCounters Then { get; set; }
+    public PlaceCounters PlaceCounters { get; set; }
 }

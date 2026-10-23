@@ -6,9 +6,9 @@
 [Dependent]
 public class PayAndDo : Glyph, IPredicate
 {
-    public override Nib[] Nibs => [Pattern("pays?"), Prop(Cost), "and", Prop(Then)];
+    public override Nib[] Nibs => [Pattern("pays?"), Prop(Cost), "and", Prop(Action)];
 
     public Cost Cost { get; set; }
     [TypeFilter(typeof(IConjoinedPredicate))]
-    public DynamicGlyph Then { get; set; }
+    public DynamicGlyph Action { get; set; }
 }
