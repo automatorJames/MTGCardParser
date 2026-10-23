@@ -15,5 +15,8 @@ public enum PlayerThisWayAction
     Cast,
 
     [RegexPattern("mills?", "milled")]
-    Mill
+    Mill,
+
+    [RegexPattern("reveals?", "revealed")]
+    Reveal
 }

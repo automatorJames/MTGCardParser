@@ -3,5 +3,8 @@
 public enum AmountFactor
 {
     [RegexPattern("twice", "double")]
-    Twice
+    Twice,
+
+    [RegexPattern("triple", "three times")]
+    Thrice
 }

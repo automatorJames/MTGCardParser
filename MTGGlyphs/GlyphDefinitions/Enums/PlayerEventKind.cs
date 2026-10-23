@@ -101,6 +101,9 @@ public enum PlayerEventKind
     [RegexPattern("manifests? dread")]
     ManifestsDread,
 
+    [RegexPattern("fully unlocks? a room")]
+    FullyUnlocksARoom,
+
     [RegexPattern("(?:is|are) dealt noncombat damage")]
     IsDealtNoncombatDamage,
 

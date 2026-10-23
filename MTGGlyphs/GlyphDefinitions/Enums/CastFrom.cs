@@ -9,5 +9,17 @@ public enum CastFrom
     Exile,
 
     [RegexPattern("from your graveyard")]
-    Graveyard
+    Graveyard,
+
+    [RegexPattern("from graveyards", "from their graveyards")]
+    Graveyards,
+
+    [RegexPattern("from graveyards or libraries")]
+    GraveyardsOrLibraries,
+
+    [RegexPattern("from graveyards or exile")]
+    GraveyardsOrExile,
+
+    [RegexPattern("from anywhere other than their hands?", "from anywhere other than your hand")]
+    AnywhereButHand
 }

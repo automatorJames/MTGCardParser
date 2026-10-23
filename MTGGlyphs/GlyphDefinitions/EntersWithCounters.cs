@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"with three +1/+1 counters on it", "with a +1/+1 counter on it for each creature card in your graveyard", "with two +1/+1 counters on it and with flying": counters a permanent enters the battlefield with, optionally multiplied, and optionally keywords alongside them.</summary>
+/// <summary>"with three +1/+1 counters on it", "with a +1/+1 counter on it for each creature card in your graveyard", "with two +1/+1 counters on it and with flying", "with your choice of a reach counter or a vigilance counter on it": counters a permanent enters the battlefield with, optionally multiplied, and optionally keywords alongside them.</summary>
 /// <exampledoc>Tetravus</exampledoc>
 /// <examplecapture>with three +1/+1 counters on it</examplecapture>
 [Dependent]
@@ -8,7 +8,7 @@ public class EntersWithCounters : Glyph
 {
     public override Nib[] Nibs => ["with", Prop(Counters), "on it", Prop(PerEach), Prop(AlsoWith)];
 
-    public Counters Counters { get; set; }
+    public OneOf<Counters, ChoiceOfCounters> Counters { get; set; }
     [Optional]
     public ForEach PerEach { get; set; }
     [Optional]

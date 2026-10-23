@@ -20,10 +20,10 @@ public enum PastPermanentEvent
     [RegexPattern("attacked")]
     Attacked,
 
-    [RegexPattern("was dealt damage")]
+    [RegexPattern("was dealt damage", "were dealt damage")]
     WasDealtDamage,
 
-    [RegexPattern("was blocked")]
+    [RegexPattern("was blocked", "were blocked")]
     WasBlocked,
 
     [RegexPattern("blocked")]

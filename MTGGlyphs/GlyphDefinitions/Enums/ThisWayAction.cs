@@ -26,5 +26,17 @@ public enum ThisWayAction
     Dies,
 
     [RegexPattern("dealt damage")]
-    DealtDamage
+    DealtDamage,
+
+    [RegexPattern("regenerates")]
+    Regenerates,
+
+    [RegexPattern("connives")]
+    Connives,
+
+    [RegexPattern("enters")]
+    Enters,
+
+    [RegexPattern("search(?:es)? (?:your|their) library")]
+    SearchesLibrary
 }

@@ -45,10 +45,19 @@ public enum PermanentEvent
     [RegexPattern("attacks", "attack")]
     Attacks,
 
+    [RegexPattern("blocks two or more creatures")]
+    BlocksTwoOrMoreCreatures,
+
+    [RegexPattern("blocks a creature")]
+    BlocksACreature,
+
     [RegexPattern("blocks", "block")]
     Blocks,
 
     BecomesBlocked,
+
+    [RegexPattern("fights", "fight")]
+    Fights,
 
     [RegexPattern("becomes tapped", "become tapped")]
     BecomesTapped,

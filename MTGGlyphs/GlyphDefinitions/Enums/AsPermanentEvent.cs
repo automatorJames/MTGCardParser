@@ -3,5 +3,12 @@
 public enum AsPermanentEvent
 {
     Enters,
-    Attacks
+
+    Attacks,
+
+    [RegexPattern("enters or is turned face up")]
+    EntersOrIsTurnedFaceUp,
+
+    [RegexPattern("is turned face up")]
+    IsTurnedFaceUp
 }
