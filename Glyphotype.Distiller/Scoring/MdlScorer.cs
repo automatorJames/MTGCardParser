@@ -183,7 +183,7 @@ public sealed record MdlScore
     public int CapturedWords { get; init; }
     public double Coverage => Words == 0 ? 1 : (double)CapturedWords / Words;
 
-    /// <summary>Lines with every word inside a match - the lines that are done.</summary>
+    /// <summary>Lines with no unmatched text - the lines that are done.</summary>
     public int FullyCoveredLines { get; init; }
 
     public IReadOnlyList<GlyphContribution> Glyphs { get; init; }

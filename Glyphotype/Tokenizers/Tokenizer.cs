@@ -97,7 +97,7 @@ public class Tokenizer
                 // offered more than the first: everything else is capped at one clause, which is what
                 // stops a greedy wildcard from swallowing clauses it never said it wanted. With the rule lifted,
                 // a type skips all this and runs against the full scope, where it may end partway through.
-                foreach (var candidateEnd in GetCandidateEnds(sourceText, endIndex, clauseEndIndex, requireWholeClauses, rootNode.SpansClauses))
+                foreach (var candidateEnd in GetCandidateEnds(sourceText, currentIndex, endIndex, clauseEndIndex, requireWholeClauses, rootNode.SpansClauses))
                 {
                     if (!rootNode.TryMatch(sourceText, currentIndex, candidateEnd, out var token, requireWholeClauses, tokenizer: this))
                         continue;
@@ -135,7 +135,7 @@ public class Tokenizer
                 {
                     FlushUnmatched(sourceText, tokens, ref unmatchedStartIndex, currentIndex);
 
-                    // A closing parenthesis or quote straight after the period ends the same clause the period
+                    // A closing parenthesis, bracket or quote straight after the period ends the same clause the period
                     // does ("the dog sleeps (the cat eats fish.)"), so it belongs to the break.
                     int breakLength = ClauseBreak.LengthAt(sourceText, currentIndex, endIndex);
 
@@ -290,9 +290,14 @@ public class Tokenizer
     /// partway, which <see cref="RegexGraph.TryMatch"/> decides on its own). Held to it, a type gets the first
     /// clause boundary, and - only if it declares a clause break of its own - each later one in turn,
     /// shortest first, so it settles on the fewest clauses that satisfy it rather than the most.
+    /// <para>
+    /// A clause boundary is offered short of any spaces in front of its period ("only . . . once?"): whitespace
+    /// is never a clause's content, and no glyph can end on it, so a scope that kept it could never be filled.
+    /// The tokenizer steps over those spaces after the match, onto the period, just as it does after any token.
+    /// </para>
     /// </summary>
     internal static IEnumerable<int> GetCandidateEnds(
-        string sourceText, int endIndex, int clauseEndIndex, bool mustConsumeClause, bool spansClauses)
+        string sourceText, int startIndex, int endIndex, int clauseEndIndex, bool mustConsumeClause, bool spansClauses)
     {
         if (!mustConsumeClause)
         {
@@ -300,7 +305,7 @@ public class Tokenizer
             yield break;
         }
 
-        yield return clauseEndIndex;
+        yield return TrimTrailingSpaces(sourceText, startIndex, clauseEndIndex);
 
         if (!spansClauses)
             yield break;
@@ -312,8 +317,17 @@ public class Tokenizer
         while (candidateEnd < endIndex)
         {
             candidateEnd = FindClauseEnd(sourceText, candidateEnd + 1, endIndex);
-            yield return candidateEnd;
+            yield return TrimTrailingSpaces(sourceText, startIndex, candidateEnd);
         }
+    }
+
+    /// <summary><paramref name="end"/> moved back over any spaces before it, but never before <paramref name="startIndex"/>.</summary>
+    static int TrimTrailingSpaces(string sourceText, int startIndex, int end)
+    {
+        while (end > startIndex && sourceText[end - 1] == ' ')
+            end--;
+
+        return end;
     }
 
     /// <summary>

@@ -51,6 +51,39 @@ public class PeriodRuleTests
         Assert.Equal("Tight .", Signature(grammar.Tokenize("it ends. so it goes.")));
     }
 
+    [Fact]
+    public void A_clause_matches_whole_despite_spaces_before_its_period()
+    {
+        var grammar = Build("""
+            public class Ends : Glyph
+            {
+                public override Nib[] Nibs => ["it ends"];
+            }
+
+            public class Goes : Glyph
+            {
+                public override Nib[] Nibs => ["so it goes"];
+            }
+            """);
+
+        Assert.Equal("Ends . . . Goes .", Signature(grammar.Tokenize("it ends . . . so it goes .")));
+    }
+
+    [Theory]
+    [InlineData("[it ends", "[it ends.]")]
+    [InlineData("it ends", "it ends.'\"")]
+    public void A_closing_bracket_or_quote_after_a_period_belongs_to_the_break(string nib, string text)
+    {
+        var grammar = Build($$"""
+            public class Ends : Glyph
+            {
+                public override Nib[] Nibs => ["{{nib}}"];
+            }
+            """);
+
+        Assert.Equal("Ends .", Signature(grammar.Tokenize(text)));
+    }
+
     [Theory]
     [InlineData("""["it ends. so it goes."]""")]
     [InlineData("""["it ends. so it goes", "."]""")]

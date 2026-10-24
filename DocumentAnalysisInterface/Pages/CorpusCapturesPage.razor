@@ -18,6 +18,11 @@
 
         <DocumentPager PageIndex=@pageIndex PageIndexChanged="GoToPage" PageSize=@CorpusCapturesLayout.DocumentsPerPage DocumentCount=@documents.Count />
 
+        @if (documents.Count == 0 && IsWholeCorpusHidden)
+        {
+            <p class="corpus-fully-matched">Every document is fully matched, and "Hide fully matched" is on.</p>
+        }
+
         <CascadingValue Value="_glyphPreviews" IsFixed="true">
             @foreach (var document in documents.Skip(pageIndex * CorpusCapturesLayout.DocumentsPerPage).Take(CorpusCapturesLayout.DocumentsPerPage))
             {
@@ -204,6 +209,12 @@
             _selfRef.Dispose();
         }
     }
+
+    /// <summary>Whether "Hide fully matched" leaves nothing to show because every document of the corpus is fully matched.</summary>
+    bool IsWholeCorpusHidden =>
+        RuntimeSettings.HideFullyMatchedDocuments
+        && DocumentAnalyzer.ProcessedDocuments is { Count: > 0 } all
+        && all.All(x => x.IsFullyMatched);
 
     IEnumerable<ProcessedDocument> GetFilteredDocuments()
     {

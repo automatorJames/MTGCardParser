@@ -88,7 +88,7 @@ public sealed class TokenizationChange
         if (!graph.StartChars.CanStartWith(attempt.Text[attempt.Index]))
             return false;
 
-        return Tokenizer.GetCandidateEnds(attempt.Text, attempt.EndIndex, attempt.ClauseEndIndex, attempt.RequireWholeClauses, graph.SpansClauses)
+        return Tokenizer.GetCandidateEnds(attempt.Text, attempt.Index, attempt.EndIndex, attempt.ClauseEndIndex, attempt.RequireWholeClauses, graph.SpansClauses)
             .Any(end => graph.MatchesRegexAt(attempt.Text, attempt.Index, end, attempt.RequireWholeClauses));
     }
 

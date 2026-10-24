@@ -45,8 +45,8 @@ public class ProcessedLine
     public int WordCount { get; }
 
     /// <summary>
-    /// Count of all words captured by a matched <see cref="RootCaptureTrace"/> on this line
-    /// (i.e. excluding words belonging to <see cref="UnmatchedString"/> spans).
+    /// Count of this line's words (as <see cref="WordCount"/> counts them) that no <see cref="UnmatchedString"/> span
+    /// touches - so it equals <see cref="WordCount"/> exactly when the line has no unmatched text.
     /// </summary>
     public int CapturedWordCount { get; }
 
@@ -60,18 +60,42 @@ public class ProcessedLine
         DataPath = dataPath;
 
         WordCount = CountWords(sourceText.FormattedText);
-        // Clause breaks are excluded alongside unmatched text, for the opposite reason: a period is
-        // modeled, but it isn't a word. WordCount counts it as part of whatever word it trails ("kitchen."
-        // is one word), so counting the ClauseBreak token as a captured word too would credit coverage
-        // that the denominator never had.
-        CapturedWordCount = glyphs
-            .Where(x => !x.CaptureContext.RootCaptureTrace.IsUnmatchedString)
-            .Where(x => !x.CaptureContext.RootCaptureTrace.IsClauseBreak)
-            .Sum(x => CountWords(x.CaptureValue));
+        CapturedWordCount = WordCount - CountUnmatchedWords(sourceText.FormattedText, glyphs);
     }
 
     static int CountWords(string text) =>
         text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
+    /// <summary>
+    /// How many of <paramref name="text"/>'s words any unmatched span touches. Counted over the line's own words rather
+    /// than summed per token: tokens don't split where words do ("investigate.(create" is one word but a glyph, a
+    /// clause break and another glyph), so counting each token's words would credit one word several times over.
+    /// </summary>
+    static int CountUnmatchedWords(string text, List<CaptureUnit> units)
+    {
+        var unmatched = new bool[text.Length];
+
+        foreach (var trace in units.Select(x => x.CaptureContext.RootCaptureTrace).Where(x => x.IsUnmatchedString))
+            Array.Fill(unmatched, true, trace.Index, trace.Length);
+
+        int count = 0;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] == ' ')
+                continue;
+
+            bool touched = false;
+
+            for (; i < text.Length && text[i] != ' '; i++)
+                touched |= unmatched[i];
+
+            if (touched)
+                count++;
+        }
+
+        return count;
+    }
 
     /// <param name="reuse">
     /// The line already processed for a line index and its text, where it would tokenize the same under

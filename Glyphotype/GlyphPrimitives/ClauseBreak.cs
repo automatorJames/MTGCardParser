@@ -1,9 +1,9 @@
-namespace Glyphotype.GlyphPrimitives;
+﻿namespace Glyphotype.GlyphPrimitives;
 
 /// <summary>
 /// The period that separates one clause from the next, as a first-class token rather than leftover text -
-/// along with any closing parentheses or quotes straight after it, which end the same clause (".)" closing a
-/// parenthetical, ".\"" closing a quoted sentence).
+/// along with any closing brackets or quotes straight after it, which end the same clause (".)" closing a
+/// parenthetical, ".\"" closing a quoted sentence, ".'\"" closing a quote within a quote, ".]" a bracketed one).
 /// <para>
 /// Synthesized directly by the <see cref="Tokenizers.Tokenizer"/> (like <see cref="UnmatchedString"/>,
 /// and for the same reason) instead of competing as a top-level type: a clause break sits *between*
@@ -36,11 +36,11 @@ public class ClauseBreak : CaptureUnit
 
     /// <summary>
     /// What may follow a clause-ending <see cref="Period"/> and still belong to the same break: a closing
-    /// parenthesis or quote ends the clause the period does. Left behind, it would open the next clause as a
-    /// lone ")" or "\"" of unmatched text. (The quoted or parenthesized sentence is a clause of its own, not yet
-    /// one nested inside the clause around it.)
+    /// parenthesis, bracket or quote (single or double) ends the clause the period does. Left behind, it would
+    /// open the next clause as a lone ")" or "\"" of unmatched text. (The quoted or parenthesized sentence is a
+    /// clause of its own, not yet one nested inside the clause around it.)
     /// </summary>
-    static readonly char[] _closingChars = [')', '"'];
+    static readonly char[] _closingChars = [')', ']', '"', '\''];
 
     /// <summary>The length of the break starting at the <see cref="Period"/> at <paramref name="index"/>: the period plus any closing characters straight after it, up to <paramref name="endIndex"/>.</summary>
     public static int LengthAt(string sourceText, int index, int endIndex)
