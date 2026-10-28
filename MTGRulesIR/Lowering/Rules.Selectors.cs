@@ -96,7 +96,7 @@ public sealed partial class Lowerer
 
         // "blue or red" is a choice of qualifiers; "tapped, blue" (and any other run) narrows by all of them.
         Rule<ManyOf<G.TargetQualifier>>((g, ctx) =>
-            new QualifierChoice(LowerAll(g.Items, ctx).OfType<Qualifier>().ToList(), g.Conjunction == Conjunction.Or ? "or" : "and"));
+            new QualifierChoice(LowerAll(g.Items, ctx).OfType<Qualifier>().ToList(), g.Conjunction == Glyphotype.Conjunction.Or ? "or" : "and"));
 
         Rule<G.TargetQualifier>((g, ctx) =>
             new Qualifier(Lower(g.Quality, ctx) is Term term ? term.Value : ctx.TextOf(g.Quality), g.IsNegated));
