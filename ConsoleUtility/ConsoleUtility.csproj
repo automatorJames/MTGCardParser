@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Glyphotype\Glyphotype.csproj" />
     <ProjectReference Include="..\MTGGlyphs\MTGGlyphs.csproj" />
     <ProjectReference Include="..\Glyphotype.Distiller\Glyphotype.Distiller.csproj" />
+    <ProjectReference Include="..\MTGRulesIR\MTGRulesIR.csproj" />
   </ItemGroup>
 
 </Project>

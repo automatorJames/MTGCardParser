@@ -47,6 +47,16 @@ internal class Program
                 PlanDump.Run(args[1], int.TryParse(args.ElementAtOrDefault(2), out var planDepth) ? planDepth : 1);
                 break;
 
+            // lower out-dir [every]: the corpus lowered to the rules IR, as rules.jsonl and a report of what stayed opaque.
+            case "lower":
+                Lower.Run(_cardDataGetter, args[1], int.TryParse(args.ElementAtOrDefault(2), out var lowerEvery) ? lowerEvery : 1);
+                break;
+
+            // lowertext "text" [types]: one line of card text lowered to the rules IR, as indented JSON.
+            case "lowertext":
+                Lower.RunText(args[1], args.ElementAtOrDefault(2));
+                break;
+
             // dump out-path [definition.json|-] [every]: every corpus line as the grammar tokenizes it, capture by capture, for diffing engines.
             case "dump":
                 Dump.Run(_cardDataGetter, args[1], args.ElementAtOrDefault(2), int.TryParse(args.ElementAtOrDefault(3), out var dumpEvery) ? dumpEvery : 1);

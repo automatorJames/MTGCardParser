@@ -1,0 +1,11 @@
+global using System.Reflection;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+global using Glyphotype.Attributes;
+global using Glyphotype.BackReferences;
+global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;
+global using Glyphotype.GlyphPrimitives;
+global using Glyphotype.Interfaces;
+global using Glyphotype.RegexGeneration.Graph;
+global using MTGRulesIR.Model;
+global using G = MTGGlyphs.GlyphDefinitions;
