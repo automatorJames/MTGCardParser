@@ -156,7 +156,7 @@ public sealed record GrammarCost(
                 TypeReferenceKind.Glyph => CodeLength.Uniform(grammar.Glyphs.Count),
                 TypeReferenceKind.Vocabulary => CodeLength.Uniform(grammar.Vocabularies.Count),
                 TypeReferenceKind.Primitive => CodeLength.Uniform(_primitives),
-                TypeReferenceKind.OneOf => 1, // two or three alternatives
+                TypeReferenceKind.OneOf => CodeLength.Uniform(OneOfBase.MaxArity - OneOfBase.MinArity + 1), // which arity; the alternatives are costed below
                 _ => 0,
             }
             + reference.Arguments.Sum(TypeReference);

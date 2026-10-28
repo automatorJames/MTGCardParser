@@ -9,5 +9,5 @@ public class TotalOf : Glyph
     public override Nib[] Nibs => ["the total", Prop(Characteristic), "of", Opt("other"), Prop(Group)];
 
     public Characteristic Characteristic { get; set; }
-    public OneOf<Permanents, SacrificedPermanent, ThatCardPhrase, ThatCard> Group { get; set; }
+    public OneOf<Permanents, HandledObject, ThatCardPhrase, ThatCard> Group { get; set; }
 }

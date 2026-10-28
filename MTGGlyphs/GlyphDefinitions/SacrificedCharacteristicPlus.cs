@@ -9,6 +9,6 @@ public class SacrificedCharacteristicPlus : Glyph
     public override Nib[] Nibs => [Prop(Addend), "plus", Prop(Object), "'s", Prop(Characteristic)];
 
     public Quantity Addend { get; set; }
-    public SacrificedPermanent Object { get; set; }
+    public HandledObject Object { get; set; }
     public Characteristic Characteristic { get; set; }
 }

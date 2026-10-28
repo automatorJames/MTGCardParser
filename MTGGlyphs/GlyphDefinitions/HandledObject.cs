@@ -1,10 +1,10 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>"the sacrificed creature", "the sacrificed creatures", "the exiled creature", "the revealed card", "the revealed cards", "the discarded card": the object a cost or an earlier effect handled, named again. (Plain "the exiled card" is <see cref="ThatCardPhrase"/>.)</summary>
+/// <summary>"the sacrificed creature", "the sacrificed creatures", "the exiled creature", "the tapped creature", "the revealed card", "the discarded card", "the chosen card": the object a cost or an earlier effect handled, named again by what was done to it. (Plain "the exiled card" is <see cref="ThatCardPhrase"/>.)</summary>
 /// <exampledoc>Diamond Valley</exampledoc>
 /// <examplecapture>the sacrificed creature</examplecapture>
 [Dependent]
-public class SacrificedPermanent : Glyph
+public class HandledObject : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(How), Plural(Prop(CardType)), Prop(Card)];
 

@@ -10,5 +10,5 @@ public class SharesCharacteristicWith : Glyph
 
     public PermanentPhrase Subject { get; set; }
     public SharedCharacteristic Characteristic { get; set; }
-    public OneOf<ThatCardPhrase, ThatCard, SacrificedPermanent, IndefinitePermanent> Other { get; set; }
+    public OneOf<ThatCardPhrase, ThatCard, HandledObject, IndefinitePermanent> Other { get; set; }
 }

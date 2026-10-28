@@ -8,5 +8,5 @@ public class ThatObjectIsOrWas : Glyph
 {
     public override Nib[] Nibs => [Prop(Object), Pattern("is|was")];
 
-    public OneOf<ThatCard, SacrificedPermanent> Object { get; set; }
+    public OneOf<ThatCard, HandledObject> Object { get; set; }
 }

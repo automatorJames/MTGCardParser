@@ -13,6 +13,6 @@ public class SpellCastTrigger : Glyph
     [Optional]
     public SpellNarrowing Narrowed { get; set; }
     [Optional]
-    public WhileEventCondition While { get; set; }
+    public WhileCondition While { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

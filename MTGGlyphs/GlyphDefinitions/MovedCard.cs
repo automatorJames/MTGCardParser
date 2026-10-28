@@ -18,7 +18,7 @@ public class MovedCard : GlyphOneOf
     public TopCardOfLibrary TopCard { get; set; }
     public AllPermanents AllPermanents { get; set; }
     public PermanentPhrase PermanentPhrase { get; set; }
-    public SacrificedPermanent Handled { get; set; }
+    public HandledObject Handled { get; set; }
     public ThatCard ThatCard { get; set; }
     public Them Them { get; set; }
     public CountedTargets CountedTargets { get; set; }

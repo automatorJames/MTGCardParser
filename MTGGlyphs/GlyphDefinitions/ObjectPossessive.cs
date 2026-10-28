@@ -8,5 +8,5 @@ public class ObjectPossessive : Glyph
 {
     public override Nib[] Nibs => [Prop(Object), "'s"];
 
-    public OneOf<This, ThatCard, ThatCardPhrase, SacrificedPermanent, SpellReference?, ThisCreature, EnchantedPermanent, ThatSource, PossessedShortName> Object { get; set; }
+    public OneOf<This, ThatCard, ThatCardPhrase, HandledObject, SpellReference?, ThisCreature, EnchantedPermanent, ThatSource, PossessedShortName> Object { get; set; }
 }

@@ -7,6 +7,6 @@
 public class DrawCircumstance : GlyphOneOf
 {
     public ExceptFirstDraw ExceptFirstDraw { get; set; }
-    public WhileStateHolds WhileStateHolds { get; set; }
+    public WhileCondition WhileCondition { get; set; }
     public DuringStep DuringStep { get; set; }
 }

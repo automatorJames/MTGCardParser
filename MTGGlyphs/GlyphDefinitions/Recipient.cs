@@ -21,8 +21,7 @@ public class Recipient : GlyphOneOf
     public ManyOf<OneOf<EachObject, EachPermanents>> EachObjects { get; set; }
     public EachObject EachObject { get; set; }
     public EachPermanents EachPermanents { get; set; }
-    public EachOfTargets EachOfTargets { get; set; }
-    public EachOfThem EachOfThem { get; set; }
+    public EachOf EachOf { get; set; }
     public Itself Itself { get; set; }
     public IndefinitePermanent IndefinitePermanent { get; set; }
     public PermanentPhrase PermanentPhrase { get; set; }

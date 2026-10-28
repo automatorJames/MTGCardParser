@@ -3,7 +3,9 @@
 Turns the grammar's remaining unparsed clauses into literal `ICardSpecific` glyphs, one per clause, named for the card:
 
 - `<Card>Rule` - a whole unparsed clause as a top-level literal, `[TokenizationOrder(-1)]` so any general parse that
-  appears later wins over it.
+  appears later wins over it. A card's later clauses are `<Card>Rule2`, `<Card>Rule3`, ... (and `<Card>Effect2`, ...), numbered
+  in the order they appear in the card's text; a card named like an existing general glyph (Flashback, Rebound) gets a
+  `Card` infix instead (`FlashbackCardRule`).
 - `<Card>Effect` - a `[Dependent]` literal for the text after a trigger ("when/whenever ...,"), a phase trigger
   ("at the beginning of ...,"), an activated-ability cost ("...:"), or an opening "(" (reminder text), so the
   existing frame glyph keeps the structure and only the effect is opaque.
@@ -23,11 +25,3 @@ Pipeline (Python 3, run with `python -I`):
    pass regenerates it (use `force_whole.json`) as a `Rule`.
 
 `analyze.py S` summarizes the residuals/unparsed outputs (span recurrence, lengths).
-
-## Pending batches (as of 2026-10-23)
-
-`pending/` holds batches 23-31 (clauses 2160-3041 by length, about 880 clauses / 8.7k words), generated with the
-name-collision guard. Apply each file verbatim with the `apply` tool, in file order, with a description such as
-"card-specific literals, batch 23 of 31". If the app refuses a batch because a literal takes words from an existing
-glyph, delete that one declaration and re-apply. After batch 31, run pass 2 (steps 1-5 above) so effect literals
-whose frame never parsed become whole-clause rules.

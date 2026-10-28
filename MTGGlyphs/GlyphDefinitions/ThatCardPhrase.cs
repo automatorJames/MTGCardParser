@@ -1,6 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Cards named earlier in the line, whatever their type or of one type, optionally counted: "that card", "those cards", "those two cards", "those land cards", "the exiled card", "the exiled cards", "the chosen cards", "the last chosen card", "the other cards". ("the discarded card" is a <see cref="SacrificedPermanent"/>.)</summary>
+/// <summary>Cards named earlier in the line, whatever their type or of one type, optionally counted: "that card", "those cards", "those two cards", "those land cards", "the exiled card", "the exiled cards", "the chosen cards", "the last chosen card", "the other cards". ("the discarded card" is a <see cref="HandledObject"/>.)</summary>
 /// <exampledoc>Faceless Butcher</exampledoc>
 /// <examplecapture>the exiled card</examplecapture>
 [Dependent]

@@ -15,6 +15,6 @@ public class PermanentEventTrigger : Glyph
     [Optional]
     public UnderControlOf Under { get; set; }
     [Optional]
-    public OneOf<ThisPeriod, EventOccurrence?, WhileEventCondition> Period { get; set; }
+    public OneOf<ThisPeriod, EventOccurrence?, WhileCondition> Period { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

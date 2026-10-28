@@ -8,6 +8,6 @@ public class PermanentFromZone : Glyph
 {
     public override Nib[] Nibs => [Prop(Card), "from", Prop(Zone)];
 
-    public OneOf<PermanentPhrase, SacrificedPermanent, ThatCardPhrase, ShortName> Card { get; set; }
+    public OneOf<PermanentPhrase, HandledObject, ThatCardPhrase, ShortName> Card { get; set; }
     public PlayersZone Zone { get; set; }
 }

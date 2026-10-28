@@ -8,6 +8,6 @@ public class ThatCardIs : Glyph
 {
     public override Nib[] Nibs => [Prop(Card), Prop(Tense)];
 
-    public OneOf<ThatCardPhrase, TopCardOfLibrary, SacrificedPermanent> Card { get; set; }
+    public OneOf<ThatCardPhrase, TopCardOfLibrary, HandledObject> Card { get; set; }
     public StateTense Tense { get; set; }
 }

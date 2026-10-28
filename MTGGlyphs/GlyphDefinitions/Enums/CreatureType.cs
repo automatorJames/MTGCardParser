@@ -7,8 +7,6 @@ public enum CreatureType
 
     Aetherborn,
 
-    Ajani,
-
     [RegexPattern("ally", "allies")]
     Ally,
 
@@ -31,8 +29,6 @@ public enum CreatureType
     Army,
 
     Artificer,
-
-    Ashiok,
 
     Assassin,
 
@@ -69,8 +65,6 @@ public enum CreatureType
 
     Boar,
 
-    Bolas,
-
     Bringer,
 
     Brushwagg,
@@ -86,8 +80,6 @@ public enum CreatureType
     Centaur,
 
     Cephalid,
-
-    Chandra,
 
     Chimera,
 
@@ -121,10 +113,6 @@ public enum CreatureType
 
     Dog,
 
-    Domri,
-
-    Dovin,
-
     Dragon,
 
     Drake,
@@ -157,8 +145,6 @@ public enum CreatureType
 
     Elk,
 
-    Elspeth,
-
     Equipment,
 
     Eye,
@@ -184,13 +170,9 @@ public enum CreatureType
 
     Gargoyle,
 
-    Garruk,
-
     Gate,
 
     Giant,
-
-    Gideon,
 
     Gnome,
 
@@ -228,8 +210,6 @@ public enum CreatureType
 
     Horse,
 
-    Huatli,
-
     Human,
 
     Hydra,
@@ -246,21 +226,13 @@ public enum CreatureType
 
     Island,
 
-    Jace,
-
     Jackal,
 
     Jellyfish,
 
     Juggernaut,
 
-    Kaito,
-
-    Karn,
-
     Kavu,
-
-    Kiora,
 
     Kirin,
 
@@ -289,8 +261,6 @@ public enum CreatureType
     Lhurgoyf,
 
     Licid,
-
-    Liliana,
 
     Lizard,
 
@@ -337,8 +307,6 @@ public enum CreatureType
 
     Naga,
 
-    Nahiri,
-
     Narset,
 
     Nautilus,
@@ -350,8 +318,6 @@ public enum CreatureType
     Nightstalker,
 
     Ninja,
-
-    Nissa,
 
     Nixilis,
 
@@ -410,8 +376,6 @@ public enum CreatureType
 
     Rabbit,
 
-    Ral,
-
     Ranger,
 
     Rat,
@@ -426,15 +390,9 @@ public enum CreatureType
 
     Sable,
 
-    Saheeli,
-
     Salamander,
 
     Samurai,
-
-    Samut,
-
-    Sarkhan,
 
     Satyr,
 
@@ -474,8 +432,6 @@ public enum CreatureType
 
     Soltari,
 
-    Sorin,
-
     Spawn,
 
     Specter,
@@ -505,17 +461,11 @@ public enum CreatureType
 
     Symbiote,
 
-    Tamiyo,
-
-    Tezzeret,
-
     Thalakos,
 
     Thopter,
 
     Thrull,
-
-    Tibalt,
 
     Tower,
 
@@ -529,8 +479,6 @@ public enum CreatureType
 
     Turtle,
 
-    Ugin,
-
     Unicorn,
 
     [RegexPattern("urza's")]
@@ -542,13 +490,9 @@ public enum CreatureType
 
     Vehicle,
 
-    Venser,
-
     Viashino,
 
     Volver,
-
-    Vraska,
 
     Wall,
 
@@ -770,27 +714,13 @@ public enum CreatureType
 
     Incubator,
 
-    Teferi,
-
     Junk,
 
     Gold,
 
-    Kaya,
-
     Sorcerer,
 
-    Basri,
-
-    Lukka,
-
-    Vivien,
-
     Yanling,
-
-    Grist,
-
-    Kasmina,
 
     Teyo,
 
@@ -798,9 +728,4 @@ public enum CreatureType
 
     Estrid,
 
-    Calix,
-
-    Niko,
-
-    Wrenn
 }

@@ -31,7 +31,7 @@ public class Subject : GlyphOneOf
     public AllPermanents AllPermanents { get; set; }
     public EachControlledPermanent EachControlled { get; set; }
     public PairedCreatures PairedCreatures { get; set; }
-    public EachOfThem EachOfThem { get; set; }
+    public EachOf EachOf { get; set; }
     public EachCardInZone EachCardInZone { get; set; }
     public EachDamagedObject EachDamaged { get; set; }
     public EachObject EachObject { get; set; }

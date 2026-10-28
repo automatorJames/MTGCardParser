@@ -12,5 +12,5 @@ public class DamageWouldBeDealt : Glyph
     public bool Combat { get; set; }
     public Recipient Recipient { get; set; }
     [Optional]
-    public WhileHasCounters While { get; set; }
+    public WhileCondition While { get; set; }
 }

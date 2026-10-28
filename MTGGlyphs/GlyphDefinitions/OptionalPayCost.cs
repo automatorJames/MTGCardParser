@@ -11,7 +11,7 @@ public class OptionalPayCost : Glyph
     public OneOf<PayOptionType?, UnlessPlayer, MayPayPlayer> PayOptionType { get; set; }
     public OneOf<CostEither, Cost, EnergyAmount> Cost { get; set; }
     [Optional]
-    public OneOf<ForEachCounter, ForEach> PerEach { get; set; }
+    public ForEach PerEach { get; set; }
     [Optional]
     public PlusAdditionalForEach Plus { get; set; }
 }

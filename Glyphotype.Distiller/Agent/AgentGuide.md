@@ -200,7 +200,7 @@ floor"). `public override Joiner Joiner => Joiner.None;` joins nibs with nothing
   as at least one glyph for each of its slots - `evaluate` and `apply` take several declarations at once. Before
   adding one, look for an existing glyph that already takes that construction: a second one for the same shape
   splits its family in two.
-- **`OneOf<A, B>` / `OneOf<A, B, C>`**: exactly one of two or three types. Value types must be nullable:
+- **`OneOf<A, B>`, `OneOf<A, B, C>`, ... up to twelve**: exactly one of the listed types, tried in order. Value types must be nullable:
   `OneOf<Animal?, Person?>`.
 - **`ManyOf<T>`**: a list with a conjunction ("x, y, and z", "x or y").
 - **`CompoundOf<T>`**: a joined run without a conjunction. It's comma-joined by default;

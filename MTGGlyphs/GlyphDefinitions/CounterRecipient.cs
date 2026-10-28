@@ -6,8 +6,7 @@
 [Dependent]
 public class CounterRecipient : GlyphOneOf
 {
-    public EachOfTargets EachOfTargets { get; set; }
-    public EachOfThem EachOfThem { get; set; }
+    public EachOf EachOf { get; set; }
     public OneOfThem OneOfThem { get; set; }
     public EachPermanents EachPermanents { get; set; }
     public AllPermanents AllPermanents { get; set; }
