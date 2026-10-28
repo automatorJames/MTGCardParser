@@ -64,7 +64,7 @@ By headline numbers Sonnet won outright. By fully covered lines Opus did nearly 
   about 25 lines gained a single word ("whenever").
 - Left design debt: frames that overlap existing families (`ConditionalEffect` beside `IfOutcome`; `EnchantedStatic`
   taking `CardType` where `EnchantedPermanent` takes `PermanentKind`; a generic `TriggeredAbility` beside the
-  specific trigger glyphs), and a hard-coded literal where a vocabulary already existed (`DefinedPowerToughness`).
+  specific trigger glyphs; all three consolidated in the 2026-10-28 refinement), and a hard-coded literal where a vocabulary already existed (`DefinedPowerToughness`).
 - Did real modeling when it modeled (its split-damage glyph matched Opus's).
 - Stopped one step short, misreading the status line "step 9 of 10 before checking in" as a reason to pause.
 - Recorded a false engine "fact" in the journal (that `Nib.This` before `'s` needs `Joiner.None`) from a

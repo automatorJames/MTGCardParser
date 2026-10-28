@@ -12,7 +12,7 @@ public class Subject : GlyphOneOf
     public RoleOfTarget RoleOfTarget { get; set; }
     public TargetSpellOrPermanent TargetSpellOrPermanent { get; set; }
     public TargetCardInZone TargetCardInZone { get; set; }
-    public TargetAndOthers TargetAndOthers { get; set; }
+    public ObjectAndOthers ObjectAndOthers { get; set; }
     public SpecificTarget SpecificTarget { get; set; }
     public CountedTargets CountedTargets { get; set; }
     public OrdinalSpellCast OrdinalSpellCast { get; set; }

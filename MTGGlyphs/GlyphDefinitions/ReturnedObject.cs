@@ -12,7 +12,7 @@ public class ReturnedObject : GlyphOneOf
     public AllCardsFromZone AllCardsFromZone { get; set; }
     public TargetSpellOrPermanent TargetSpellOrPermanent { get; set; }
     public TargetSpell TargetSpell { get; set; }
-    public OneOf<PermanentPair, TargetAndOthers> TwoOrMore { get; set; }
+    public OneOf<PermanentPair, ObjectAndOthers> TwoOrMore { get; set; }
     public PermanentPhrase PermanentPhrase { get; set; }
     public IndefinitePermanent IndefinitePermanent { get; set; }
     public IndefiniteCardInZone IndefiniteCardInZone { get; set; }
