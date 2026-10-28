@@ -40,6 +40,8 @@ public static class IrJson
     {
         // Nulls are left out; zeros and falses are written, since an enum's first member (Quantifier.Target, PlayerKind.You) is often the common case, not an absence.
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        // Card text is read by people: apostrophes and dashes stay as they are rather than as escapes.
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Converters = { new JsonStringEnumConverter() },
         TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { AddPolymorphism } },
     };

@@ -15,13 +15,33 @@ public sealed class CorpusLowering
 
     public Lowerer Lowerer => _lowerer;
 
-    public CardRules Lower(ProcessedDocument document)
+    public CardRules Lower(ProcessedDocument document) =>
+        LowerWithOrigins(document).Rules;
+
+    /// <summary>
+    /// <paramref name="document"/> lowered, with where in each line's text each node came from, for the nodes whose
+    /// source is known: the ones a glyph lowered to, and the line's roots.
+    /// </summary>
+    public (CardRules Rules, IReadOnlyList<LineOrigins> Origins) LowerWithOrigins(ProcessedDocument document)
     {
         var types = (document.Document as MTGGlyphs.Data.Card)?.Types ?? "";
-        return new CardRules(document.Document.Name, types, document.Lines.Select(x => LowerLine(document.Document, types, x)).ToList());
+        List<LineRules> lines = [];
+        List<LineOrigins> origins = [];
+
+        foreach (var line in document.Lines)
+        {
+            var (rules, lineOrigins) = LowerLineWithOrigins(document.Document, types, line);
+            lines.Add(rules);
+            origins.Add(lineOrigins);
+        }
+
+        return (new CardRules(document.Document.Name, types, lines), origins);
     }
 
-    public LineRules LowerLine(IDocument document, string types, ProcessedLine line)
+    public LineRules LowerLine(IDocument document, string types, ProcessedLine line) =>
+        LowerLineWithOrigins(document, types, line).Rules;
+
+    (LineRules Rules, LineOrigins Origins) LowerLineWithOrigins(IDocument document, string types, ProcessedLine line)
     {
         var ctx = new LoweringContext(document, line);
         List<Ability> abilities = [];
@@ -33,20 +53,29 @@ public sealed class CorpusLowering
                     continue;
 
                 case UnmatchedString unmatched:
-                    abilities.Add(new OpaqueAbility(unmatched.CaptureValue, "Unmatched"));
+                    var unlowered = new OpaqueAbility(unmatched.CaptureValue, "Unmatched");
+                    ctx.Record(unlowered, unmatched);
+                    abilities.Add(unlowered);
                     continue;
 
                 case Glyph glyph:
                     if (_lowerer.Lower(glyph, ctx) is { } node)
-                        abilities.Add(_lowerer.AsAbility(node, ctx, glyph));
+                    {
+                        var ability = _lowerer.AsAbility(node, ctx, glyph);
+                        ctx.Record(ability, glyph);
+                        abilities.Add(ability);
+                    }
                     continue;
             }
 
         var opaque = abilities.SelectMany(OpaqueNodes.In).Select(x => x.Glyph).ToList();
-        return new LineRules(line.SourceText.LineIndex, line.SourceText.FormattedText, abilities, opaque);
+        return (new LineRules(line.SourceText.LineIndex, line.SourceText.FormattedText, abilities, opaque), new LineOrigins(ctx.Origins, ctx.UnboundReferences));
     }
 
 }
+
+/// <summary>Where one line's nodes came from in its text (see <see cref="LoweringContext.Origins"/>), and how many references stayed unbound.</summary>
+public sealed record LineOrigins(IReadOnlyDictionary<IrNode, Glyphotype.Lowering.SourceSpan> Spans, int UnboundReferences);
 
 /// <summary>Finds the opaque nodes in an IR tree, by walking every node-typed property and list.</summary>
 public static class OpaqueNodes

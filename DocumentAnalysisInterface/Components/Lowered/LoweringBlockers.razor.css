@@ -1,0 +1,77 @@
+.blockers {
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid var(--outline-grey);
+    border-radius: 6px;
+    background-color: var(--dark-grey);
+}
+
+.blockers-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85rem;
+}
+
+    .blockers-table th,
+    .blockers-table td {
+        padding: 5px 12px;
+        border-bottom: 1px solid var(--outline-grey);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .blockers-table th {
+        position: sticky;
+        top: 0;
+        background-color: #2a2d2e;
+        color: #d4d4d4;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    .blockers-table tbody tr {
+        cursor: pointer;
+        transition: background-color var(--transition-time);
+    }
+
+        .blockers-table tbody tr:hover {
+            background-color: color-mix(in srgb, #e06c75 10%, transparent);
+        }
+
+        .blockers-table tbody tr.selected {
+            background-color: color-mix(in srgb, #e06c75 22%, transparent);
+        }
+
+.num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+td.kind {
+    color: #e06c75;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+    td.kind .previewable {
+        cursor: pointer;
+    }
+
+        td.kind .previewable:hover {
+            text-decoration: underline dotted;
+            text-underline-offset: 3px;
+        }
+
+.examples {
+    color: var(--subtext-grey);
+}
+
+.example {
+    display: block;
+    font-style: italic;
+    max-width: 70ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

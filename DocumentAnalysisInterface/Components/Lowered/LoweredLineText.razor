@@ -1,0 +1,74 @@
+@* A line's text, with the span each node came from wrapped so hovering a node lights its text and hovering text
+   lights its nodes (see lowered-rules.js). Spans nest or lie apart - they come from the capture tree - so the text
+   is a tree of segments, each carrying its span key and the color of the first node that came from it. *@
+<pre class="lowered-line-text"><LoweredTextSegment Segment=@_root /></pre>
+
+@code {
+    [Parameter, EditorRequired]
+    public LoweredLine Line { get; set; }
+
+    [CascadingParameter]
+    public LoweredDisplayContext Context { get; set; }
+
+    TextSegment _root;
+
+    protected override void OnParametersSet()
+    {
+        var text = Line.Text ?? "";
+        var palettes = new Dictionary<SourceSpan, HexPalette>();
+
+        foreach (var node in Line.Roots.SelectMany(x => x.Descendants()))
+            if (node.Span is { } span && span.Index >= 0 && span.End <= text.Length && span.Length > 0)
+                palettes.TryAdd(span, Context.PaletteOf(node));
+
+        // Outer spans first, so each one is placed before anything inside it.
+        var spans = palettes.Keys.OrderBy(x => x.Index).ThenByDescending(x => x.Length).ToList();
+        _root = new TextSegment(0, text.Length, null, null);
+        var open = new Stack<TextSegment>();
+        open.Push(_root);
+
+        foreach (var span in spans)
+        {
+            while (open.Peek() != _root && span.Index >= open.Peek().End)
+                open.Pop();
+
+            var parent = open.Peek();
+            // A span crossing its parent's end would break the nesting; it's dropped rather than drawn wrong.
+            if (span.End > parent.End)
+                continue;
+
+            var segment = new TextSegment(span.Index, span.End, LoweredDisplayContext.SpanKey(span), palettes[span].ToColorStyle());
+            parent.Children.Add(segment);
+            open.Push(segment);
+        }
+
+        _root.Fill(text);
+    }
+
+    /// <summary>A stretch of the line's text: a span's, holding its own children in order, with the plain text between them filled in.</summary>
+    public sealed class TextSegment(int start, int end, string key, string style)
+    {
+        public int Start { get; } = start;
+        public int End { get; } = end;
+        public string Key { get; } = key;
+        public string Style { get; } = style;
+        public List<TextSegment> Children { get; } = [];
+        /// <summary>The segment's content in order: plain text (string) between and around its children, and the children themselves.</summary>
+        public List<object> Parts { get; } = [];
+
+        public void Fill(string text)
+        {
+            var at = Start;
+            foreach (var child in Children)
+            {
+                if (child.Start > at)
+                    Parts.Add(text[at..child.Start]);
+                Parts.Add(child);
+                child.Fill(text);
+                at = child.End;
+            }
+            if (End > at)
+                Parts.Add(text[at..End]);
+        }
+    }
+}

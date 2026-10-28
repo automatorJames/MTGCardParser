@@ -74,6 +74,13 @@ public class Program
             services.GetRequiredService<IDocumentRepository>(),
             corpusVolumesPath));
 
+        // The grammar's lowering engine, if the corpus has one: what the Lowered view shows. Generic to the app - it only
+        // reads Glyphotype.Lowering's contract - and composed here, where the grammar is.
+        builder.Services.AddSingleton<Glyphotype.Lowering.ILoweringEngine>(new MTGRulesIR.Display.RulesLoweringEngine());
+        builder.Services.AddSingleton(services => new LoweredCorpus(
+            services.GetRequiredService<ActiveCorpus>(),
+            services.GetService<Glyphotype.Lowering.ILoweringEngine>()));
+
         // An agent's tools over those same workspaces, served at /mcp: whatever an agent does there shows up live in
         // the Grammar Tools tab, and vice versa.
         // How agent sessions run: when to check in, and what a step must achieve. Optional - each setting has a default.

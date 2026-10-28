@@ -43,7 +43,11 @@ public sealed partial class Lowerer
         var type = value.GetType();
 
         if (_rules.TryGetValue(type, out var rule))
-            return Bind(value, rule(value, ctx), ctx);
+        {
+            var lowered = Bind(value, rule(value, ctx), ctx);
+            ctx.Record(lowered, value);
+            return lowered;
+        }
 
         switch (value)
         {
@@ -54,7 +58,9 @@ public sealed partial class Lowerer
                 return Lower(dynamic.Item, ctx);
 
             case BackReference reference:
-                return ctx.Reference(reference);
+                var resolved = ctx.Reference(reference);
+                ctx.Record(resolved, reference);
+                return resolved;
 
             case Enum member:
                 return new Term(member.ToString(), type.Name);
@@ -63,10 +69,14 @@ public sealed partial class Lowerer
                 return new Term(value.ToString(), type.Name);
 
             case Glyph glyph when IsWrapper(type):
-                return Combine(LowerAll(glyph, ctx), ctx.TextOf(glyph), type);
+                var combined = Combine(LowerAll(glyph, ctx), ctx.TextOf(glyph), type);
+                ctx.Record(combined, glyph);
+                return combined;
 
             case Glyph glyph:
-                return new OpaqueNode(ctx.TextOf(glyph), type.Name);
+                var opaque = new OpaqueNode(ctx.TextOf(glyph), type.Name);
+                ctx.Record(opaque, glyph);
+                return opaque;
 
             case IEnumerable list:
                 return Combine(LowerAll(list, ctx), null, type);

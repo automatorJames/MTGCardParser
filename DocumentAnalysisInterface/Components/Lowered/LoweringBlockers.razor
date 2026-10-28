@@ -1,0 +1,49 @@
+@* The kinds that stayed opaque over the corpus, most lines blocked first - the engine's counterpart of the grammar's
+   unmatched text: the top row is the next rule to write. Clicking a row filters the page to the documents it blocks. *@
+<div class="blockers">
+    <table class="blockers-table">
+        <thead>
+            <tr><th>Opaque kind</th><th class="num">Lines</th><th class="num">Times</th><th>For example</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var blocker in Blockers.Take(LoweredLayout.BlockersShown))
+            {
+                var type = Context.GlyphTypeNamed(blocker.Kind);
+                var previewable = type is not null && Context.Previews.Has(type);
+                <tr class="@(blocker.Kind == Selected ? "selected" : "")" @onclick="() => Select(blocker.Kind)" title="Show the documents this kind blocks">
+                    <td class="kind">
+                        <span class="@(previewable ? "previewable" : "")"
+                              data-preview-kind=@(previewable ? Context.Previews.KindOf(type) : null) data-preview-name=@(previewable ? type.Name : null)
+                              @onclick:stopPropagation="previewable" @onclick="() => { if (previewable) Context.Previews.View(type); }">@blocker.Kind</span>
+                    </td>
+                    <td class="num">@blocker.Lines.ToString("N0")</td>
+                    <td class="num">@blocker.Occurrences.ToString("N0")</td>
+                    <td class="examples">
+                        @foreach (var example in blocker.Examples)
+                        {
+                            <span class="example">@example</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<LoweringBlocker> Blockers { get; set; }
+
+    /// <summary>The kind the page is filtered to, if any.</summary>
+    [Parameter]
+    public string Selected { get; set; }
+
+    [Parameter]
+    public EventCallback<string> SelectedChanged { get; set; }
+
+    [CascadingParameter]
+    public LoweredDisplayContext Context { get; set; }
+
+    Task Select(string kind) =>
+        SelectedChanged.InvokeAsync(kind == Selected ? null : kind);
+}

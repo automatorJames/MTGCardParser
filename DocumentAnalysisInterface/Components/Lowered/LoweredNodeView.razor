@@ -1,0 +1,111 @@
+@* One node of a lowered tree. A leaf - a node whose fields are all scalars - reads as one chip; a node with nodes
+   inside it is a block: its head (kind, binding, family, scalar fields, and leaf fields inline), then a row per
+   field that holds nodes. Every element carries the data lowered-rules.js keys hover highlighting off: the node's
+   path in the tree, the key of the text span it came from, and the binding it introduces or refers to. *@
+@if (Node.IsLeaf)
+{
+    <span class="ir-chip ir-status-@StatusClass @(IsPreviewable ? "previewable" : "")" style=@Style
+          data-ir-path=@Path data-ir-span=@SpanKey data-ir-ref=@(Node.RefersTo ?? Node.Binding) title=@Title
+          data-preview-kind=@(IsPreviewable ? Context.Previews.KindOf(GlyphType) : null) data-preview-name=@(IsPreviewable ? GlyphType.Name : null)
+          @onclick="OnChipClick">
+        @switch (Node.Status)
+        {
+            case LoweredNodeStatus.Term:
+                <span class="ir-chip-value">@Node.Text</span>
+                break;
+            case LoweredNodeStatus.Reference:
+                <span class="ir-chip-kind">@(Node.RefersTo ?? "unbound")</span><span class="ir-chip-text">@Node.Text</span>
+                break;
+            case LoweredNodeStatus.Opaque:
+                <span class="ir-chip-kind">@Node.Note</span><span class="ir-chip-text">@Node.Text</span>
+                break;
+            default:
+                <span class="ir-chip-kind">@Node.Kind</span>
+                @if (Node.Binding is not null)
+                {
+                    <span class="ir-binding">@Node.Binding</span>
+                }
+                @foreach (var field in Node.Fields)
+                {
+                    <span class="ir-scalar"><span class="ir-name">@field.Name</span><span class="ir-value">@field.Value</span></span>
+                }
+                break;
+        }
+    </span>
+}
+else
+{
+    <div class="ir-node" style=@Style data-ir-path=@Path data-ir-span=@SpanKey data-ir-ref=@Node.Binding>
+        <div class="ir-head">
+            <span class="ir-kind">@Node.Kind</span>
+            @if (Node.Binding is not null)
+            {
+                <span class="ir-binding">@Node.Binding</span>
+            }
+            <span class="ir-family">@Node.Family</span>
+            @foreach (var field in Node.Fields.Where(x => x.Nodes is null))
+            {
+                <span class="ir-scalar"><span class="ir-name">@field.Name</span><span class="ir-value">@field.Value</span></span>
+            }
+            @foreach (var field in Node.Fields.Where(IsInlineField))
+            {
+                <span class="ir-inline-field"><span class="ir-name">@field.Name</span><LoweredNodeView Node=@field.Nodes[0] Path=@ChildPath(field, 0) /></span>
+            }
+        </div>
+        @foreach (var field in Node.Fields.Where(x => x.Nodes is not null && !IsInlineField(x)))
+        {
+            <div class="ir-field">
+                <span class="ir-name ir-field-name">@field.Name</span>
+                <div class="ir-children">
+                    @for (int i = 0; i < field.Nodes.Count; i++)
+                    {
+                        <LoweredNodeView Node=@field.Nodes[i] Path=@ChildPath(field, i) />
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    public LoweredDisplayContext Context { get; set; }
+
+    [Parameter, EditorRequired]
+    public LoweredNode Node { get; set; }
+
+    /// <summary>This node's place in its line's trees, as an underscore-joined chain from the root - what hover highlighting walks (see lowered-rules.js).</summary>
+    [Parameter, EditorRequired]
+    public string Path { get; set; }
+
+    string Style => Context.PaletteOf(Node).ToColorStyle();
+    string SpanKey => LoweredDisplayContext.SpanKey(Node.Span);
+    string StatusClass => Node.Status.ToString().ToLowerInvariant();
+
+    /// <summary>A field read inline in the head: one node, itself a leaf.</summary>
+    static bool IsInlineField(LoweredField field) =>
+        field.Nodes is [{ IsLeaf: true }];
+
+    string ChildPath(LoweredField field, int index) =>
+        $"{Path}_{field.Name}{(field.Nodes.Count > 1 ? index.ToString() : "")}";
+
+    /// <summary>The glyph an opaque node came from, when the grammar still has it - previewed on hover, opened on click.</summary>
+    Type GlyphType => Node.Status == LoweredNodeStatus.Opaque ? Context.GlyphTypeNamed(Node.Note) : null;
+
+    bool IsPreviewable => GlyphType is { } type && Context.Previews.Has(type);
+
+    string Title =>
+        Node.Status switch
+        {
+            LoweredNodeStatus.Term => $"{Node.Kind}: a {Node.Note} member",
+            LoweredNodeStatus.Reference => Node.RefersTo is null ? $"Reference, unbound{(Node.Note is null ? "" : $" (the grammar found \"{Node.Note}\")")}" : $"Reference to {Node.RefersTo}{(Node.Note is null ? "" : $" (\"{Node.Note}\")")}",
+            LoweredNodeStatus.Opaque => $"Opaque: no rule lowers {Node.Note} yet",
+            _ => $"{Node.Kind} ({Node.Family})",
+        };
+
+    void OnChipClick()
+    {
+        if (IsPreviewable)
+            Context.Previews.View(GlyphType);
+    }
+}

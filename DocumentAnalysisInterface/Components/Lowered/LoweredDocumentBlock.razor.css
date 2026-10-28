@@ -1,0 +1,119 @@
+.lowered-document {
+    width: 100%;
+    min-width: 0;
+    background-color: var(--light-grey);
+    border: 1px solid var(--outline-grey);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    transition: border-color var(--transition-time);
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 500px;
+}
+
+    .lowered-document:hover {
+        border-color: var(--lightest-blue);
+    }
+
+.lowered-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 8px;
+}
+
+.lowered-title {
+    font-family: 'Inter Tight', sans-serif;
+    color: var(--grey, #bdbdbd);
+    font-weight: 100;
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.lowered-volume {
+    filter: brightness(0.6);
+}
+
+.lowered-badge {
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    padding: 2px 10px;
+    border-radius: 12px;
+    border: 1px solid;
+    white-space: nowrap;
+}
+
+.lowered-badge-full {
+    color: var(--teal);
+    border-color: var(--dark-teal);
+}
+
+.lowered-badge-partial {
+    color: #e06c75;
+    border-color: #e06c7566;
+}
+
+.lowered-line {
+    margin-top: 1.5rem;
+}
+
+    .lowered-line:first-of-type {
+        margin-top: 0.5rem;
+    }
+
+.lowered-line-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8em;
+    color: var(--subtext-grey);
+    padding-top: 9px;
+    padding-bottom: 6px;
+    border-top: 1px dashed;
+}
+
+/* A kind that stayed opaque on the line, named up by the label: dashed, in the opaque color, like the node below. */
+.lowered-opaque-kind {
+    color: #e06c75;
+    border: 1px dashed #e06c7599;
+    border-radius: 4px;
+    padding: 0 6px;
+    font-size: 0.75rem;
+}
+
+    .lowered-opaque-kind.previewable {
+        cursor: pointer;
+    }
+
+        .lowered-opaque-kind.previewable:hover {
+            text-decoration: underline dotted;
+            text-underline-offset: 3px;
+        }
+
+.lowered-unbound {
+    color: #d7b46a;
+    font-size: 0.75rem;
+}
+
+.lowered-roots {
+    padding: 6px 0 0 0;
+}
+
+.lowered-text-block {
+    position: relative;
+    margin-top: 1.5rem;
+}
+
+pre.lowered-text {
+    background-color: var(--dark-grey);
+    padding: 1rem;
+    max-height: 480px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: #bdbdbd;
+}

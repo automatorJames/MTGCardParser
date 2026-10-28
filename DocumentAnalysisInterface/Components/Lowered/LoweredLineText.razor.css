@@ -1,0 +1,30 @@
+pre.lowered-line-text {
+    background-color: var(--dark-grey);
+    padding: 0.8rem 1rem;
+    margin: 0;
+    display: block;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    line-height: 26px;
+    color: #d4d4d4;
+    transition: background-color var(--transition-time);
+}
+
+/* The text a node came from: plain until that node (or the text itself) is hovered, then lit in the node's color. */
+::deep .ir-text-span {
+    border-bottom: 1px dotted color-mix(in srgb, var(--color) 45%, transparent);
+    padding-bottom: 1px;
+    transition: color var(--transition-time), background-color var(--transition-time), border-color var(--transition-time);
+}
+
+    ::deep .ir-text-span.highlight-active {
+        color: var(--highlight-color);
+        border-bottom: 2px solid var(--highlight-color);
+        background-color: color-mix(in srgb, var(--color) 18%, transparent);
+    }
+
+    ::deep .ir-text-span.mute-active {
+        color: var(--subtext-grey);
+    }

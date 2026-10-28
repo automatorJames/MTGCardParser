@@ -21,6 +21,7 @@ public sealed class LoweringContext
     public int UnboundReferences { get; private set; }
 
     readonly Dictionary<object, string> _bindings = new(ReferenceEqualityComparer.Instance);
+    readonly Dictionary<IrNode, Glyphotype.Lowering.SourceSpan> _origins = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<object, CaptureTrace> _traces = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<object, object> _enclosingByValue = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<CaptureTrace, object> _enclosingByTrace = [];
@@ -56,6 +57,16 @@ public sealed class LoweringContext
 
         foreach (var child in trace.EffectiveChildren.SelectMany(x => x))
             Index(child, inner);
+    }
+
+    /// <summary>Where each lowered node came from in the line's text, for the nodes whose source is known (see <see cref="Record"/>).</summary>
+    public IReadOnlyDictionary<IrNode, Glyphotype.Lowering.SourceSpan> Origins => _origins;
+
+    /// <summary>Records that <paramref name="node"/> was lowered from <paramref name="value"/>, a glyph captured on this line - the first source wins, since a node is lowered once and then only wrapped.</summary>
+    public void Record(IrNode node, object value)
+    {
+        if (node is not null && value is not null && _traces.TryGetValue(value, out var trace) && !_origins.ContainsKey(node))
+            _origins[node] = new(trace.Index, trace.Length);
     }
 
     /// <summary>The text <paramref name="value"/> was captured from, when it was captured on this line; else its name.</summary>

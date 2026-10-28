@@ -1,0 +1,179 @@
+/* A block node: its family's color on its left edge and its kind; its fields indented under it. */
+.ir-node {
+    position: relative;
+    margin: 4px 0 4px 0;
+    padding: 4px 8px 4px 10px;
+    border-left: 2px solid var(--color);
+    border-radius: 2px;
+    transition: background-color var(--transition-time), opacity var(--transition-time), border-color var(--transition-time);
+}
+
+    /* A faint tint, since every lit ancestor adds its own over the node below it. */
+    .ir-node.highlight-active {
+        border-left-color: var(--highlight-color);
+        background-color: color-mix(in srgb, var(--color) 6%, transparent);
+    }
+
+    .ir-node.mute-active {
+        opacity: 0.4;
+    }
+
+.ir-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    line-height: 22px;
+}
+
+.ir-kind {
+    font-weight: 600;
+    color: var(--color);
+    transition: color var(--transition-time);
+}
+
+.ir-node.highlight-active > .ir-head > .ir-kind {
+    color: var(--highlight-color);
+}
+
+.ir-family {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--subtext-grey);
+    opacity: 0.8;
+}
+
+/* A node's binding, "#1": the tag later references name. Shares the gold the references are drawn in, so the two read as one. */
+.ir-binding {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #d7b46a;
+    border: 1px solid #d7b46a66;
+    border-radius: 10px;
+    padding: 0 6px;
+    line-height: 16px;
+}
+
+/* A scalar field: name, then value, as one small pill. */
+.ir-scalar {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: #d4d4d4;
+}
+
+.ir-name {
+    color: var(--subtext-grey);
+    font-size: 0.78rem;
+}
+
+    .ir-name::after {
+        content: ":";
+    }
+
+.ir-value {
+    color: #d4d4d4;
+}
+
+.ir-inline-field {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.ir-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.ir-field-name {
+    flex: 0 0 auto;
+    padding-top: 7px;
+    min-width: 64px;
+}
+
+.ir-children {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* A leaf node as a chip: its kind (or what it holds), on a faint tint of its color. */
+.ir-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 0 7px;
+    border: 1px solid color-mix(in srgb, var(--color) 55%, transparent);
+    border-radius: 4px;
+    background-color: color-mix(in srgb, var(--color) 9%, transparent);
+    font-size: 0.82rem;
+    line-height: 20px;
+    color: var(--color);
+    white-space: nowrap;
+    transition: color var(--transition-time), border-color var(--transition-time), background-color var(--transition-time), opacity var(--transition-time);
+}
+
+    .ir-chip.highlight-active {
+        color: var(--highlight-color);
+        border-color: var(--highlight-color);
+        background-color: color-mix(in srgb, var(--color) 22%, transparent);
+    }
+
+    .ir-chip.mute-active {
+        opacity: 0.4;
+    }
+
+.ir-chip-kind {
+    font-weight: 600;
+}
+
+/* A term's value stands alone, in the term color. */
+.ir-chip-value {
+    font-weight: 500;
+}
+
+/* The source text an opaque node or a reference holds, in quotes. */
+.ir-chip-text {
+    color: #d4d4d4;
+    font-style: italic;
+    font-weight: 400;
+    max-width: 48ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+    .ir-chip-text::before,
+    .ir-chip-text::after {
+        content: "\201C";
+        color: var(--subtext-grey);
+        font-style: normal;
+    }
+
+    .ir-chip-text::after {
+        content: "\201D";
+    }
+
+.ir-status-opaque {
+    border-style: dashed;
+}
+
+.ir-status-reference .ir-chip-kind::before {
+    content: "\2192 ";
+}
+
+.ir-chip .ir-scalar {
+    font-size: 0.78rem;
+}
+
+.ir-chip.previewable {
+    cursor: pointer;
+}
+
+    .ir-chip.previewable:hover .ir-chip-kind {
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+    }

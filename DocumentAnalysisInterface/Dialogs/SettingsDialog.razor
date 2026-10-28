@@ -1,5 +1,6 @@
-@inject RuntimeSettings RuntimeSettings
+﻿@inject RuntimeSettings RuntimeSettings
 @inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
+@inject LoweredCorpus Lowered
 @using Glyphotype.Interfaces
 @implements IDisposable
 
@@ -99,6 +100,19 @@
                         DisabledReason="@(_agentStatus?.IsAvailable == true ? "A button on each line, to have the agent write glyphs for it" : _agentStatus?.Reason ?? "Checking for a local agent…")" />
             </div>
         </div>
+
+        @if (Lowered.IsAvailable)
+        {
+            <div class="settings-section">
+                <h3 class="settings-section-title">@Lowered.Engine.Name</h3>
+                <div class="settings-row">
+                    <Switch @bind-Value=@RuntimeSettings.HideFullyLoweredDocuments Label="Hide fully lowered" />
+                </div>
+                <div class="settings-row">
+                    <Switch @bind-Value=@RuntimeSettings.ShowLoweredText Label="Show the lowering as text" />
+                </div>
+            </div>
+        }
 
         <div class="settings-section">
             <h3 class="settings-section-title">Glyph Regex</h3>

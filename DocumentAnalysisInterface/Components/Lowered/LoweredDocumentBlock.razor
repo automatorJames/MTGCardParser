@@ -1,0 +1,65 @@
+@* One document as the engine lowered it: its name, whether every line lowered fully, and for each line its text
+   (with the nodes' spans marked) over the trees the line lowered to - each line a hover boundary of its own. *@
+@inject ActiveCorpus CorpusAnalyzer
+@inject RuntimeSettings RuntimeSettings
+
+<div class="lowered-document">
+    <div class="lowered-title-row">
+        <div class="lowered-title">@Document.Document.Name@if (CorpusAnalyzer.GetVolumeName(Document.Document) is { } volumeName)
+            {<span class="lowered-volume"> | @volumeName</span>}</div>
+        @if (Document.IsFullyLowered)
+        {
+            <span class="lowered-badge lowered-badge-full" title="Every line lowered with nothing opaque">fully lowered</span>
+        }
+        else
+        {
+            var opaque = Document.Lines.Sum(x => x.OpaqueKinds.Count);
+            <span class="lowered-badge lowered-badge-partial" title="Nodes the engine has no rule for yet">@opaque opaque</span>
+        }
+    </div>
+
+    @foreach (var line in Document.Lines)
+    {
+        <div class="lowered-line" @key=line.LineIndex>
+            <div class="lowered-line-label">
+                <span>Line #@(line.LineIndex + 1)</span>
+                @foreach (var kind in line.OpaqueKinds.Distinct())
+                {
+                    var type = Context.GlyphTypeNamed(kind);
+                    var previewable = type is not null && Context.Previews.Has(type);
+                    <span class="lowered-opaque-kind @(previewable ? "previewable" : "")" title="Opaque: no rule lowers this glyph yet"
+                          data-preview-kind=@(previewable ? Context.Previews.KindOf(type) : null) data-preview-name=@(previewable ? type.Name : null)
+                          @onclick="() => { if (previewable) Context.Previews.View(type); }">@kind</span>
+                }
+                @if (line.UnboundReferences > 0)
+                {
+                    <span class="lowered-unbound" title="References the engine couldn't bind to the node that introduced them">@line.UnboundReferences unbound</span>
+                }
+            </div>
+            <LoweredLineText Line=@line />
+            <div class="lowered-roots">
+                @for (int i = 0; i < line.Roots.Count; i++)
+                {
+                    <LoweredNodeView Node=@line.Roots[i] Path=@($"r{i}") />
+                }
+            </div>
+        </div>
+    }
+
+    @if (RuntimeSettings.ShowLoweredText && Document.Text is not null)
+    {
+        <div class="lowered-text-block">
+            <CopyButtonOverlay TextToCopy=@Document.Text>
+                <pre class="lowered-text">@Document.Text</pre>
+            </CopyButtonOverlay>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public LoweredDocument Document { get; set; }
+
+    [CascadingParameter]
+    public LoweredDisplayContext Context { get; set; }
+}

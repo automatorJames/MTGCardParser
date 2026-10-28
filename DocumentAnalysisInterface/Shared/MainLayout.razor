@@ -1,4 +1,4 @@
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject RuntimeSettings RuntimeSettings
 @inject NavigationManager Navigation
@@ -6,6 +6,7 @@
 @inject ActiveCorpus CorpusAnalyzer
 @inject WorkspaceManager Workspaces
 @inject DocumentAnalysisInterface.Agent.LocalAgent LocalAgent
+@inject LoweredCorpus Lowered
 
 <div class="page">
     <nav class="top-row px-4">
@@ -14,6 +15,10 @@
             <NavLink href="glyph-regex">Glyph Regex</NavLink>
             <NavLink href="echo-trees">Echo Trees</NavLink>
             <NavLink href="grammar-tools">Grammar Tools</NavLink>
+            @if (Lowered.IsAvailable)
+            {
+                <NavLink href="lowered">@Lowered.Engine.Name</NavLink>
+            }
         </div>
 
         <label class="workspace-switcher" data-tooltip="The grammar every tab shows - switch to inspect another workspace's">
@@ -99,6 +104,7 @@
         "glyph-regex",
         "echo-trees",
         "grammar-tools",
+        "lowered",
     };
 
     protected override void OnInitialized()
@@ -217,6 +223,11 @@
             "echo-trees" =>
             [
                 new("sort-ascending", "Order by word count", RuntimeSettings.OrderByWordCount, v => RuntimeSettings.OrderByWordCount = v),
+            ],
+            "lowered" =>
+            [
+                new("circle-check", "Hide fully lowered", RuntimeSettings.HideFullyLoweredDocuments, v => RuntimeSettings.HideFullyLoweredDocuments = v),
+                new("code", "Show the lowering as text", RuntimeSettings.ShowLoweredText, v => RuntimeSettings.ShowLoweredText = v),
             ],
             _ => [],
         };

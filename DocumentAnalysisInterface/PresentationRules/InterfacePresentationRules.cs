@@ -452,3 +452,21 @@ public static class CaptureDisplay
     /// <summary>What an embedded capture's row says in place of a property name.</summary>
     public const string NoPropertyNote = "no property";
 }
+
+/// <summary>Layout rules of the Lowered page, which shows documents as the app's lowering engine lowers them.</summary>
+public static class LoweredLayout
+{
+    /// <summary>
+    /// How many documents a page shows at once: fewer than Corpus Captures, since every line carries its whole lowered
+    /// tree, and a tree of a long card runs to hundreds of nodes.
+    /// </summary>
+    public const int DocumentsPerPage = 25;
+
+    /// <summary>How many of the kinds that stayed opaque the blockers panel lists, most lines blocked first.</summary>
+    public const int BlockersShown = 40;
+
+    /// <summary>The colors of the node statuses that aren't a family's: opaque text, a terminal, a reference.</summary>
+    public static readonly HexColor OpaqueColor = new("#e06c75");
+    public static readonly HexColor TermColor = new("#9cdcfe");
+    public static readonly HexColor ReferenceColor = new("#d7b46a");
+}

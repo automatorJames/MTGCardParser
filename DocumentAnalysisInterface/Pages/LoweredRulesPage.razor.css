@@ -1,0 +1,134 @@
+.lowered-page {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+    padding: 1rem;
+    max-width: 1600px;
+    margin-inline: auto;
+}
+
+.lowered-unavailable,
+.lowered-empty {
+    margin: 2rem 0;
+    text-align: center;
+    color: var(--subtext-grey);
+    font-size: 0.85rem;
+}
+
+.lowered-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lowered-figures {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 14px;
+    font-size: 0.9rem;
+    color: var(--subtext-grey);
+}
+
+.figure-key {
+    font-weight: 700;
+}
+
+.figure-value {
+    color: #d4d4d4;
+}
+
+.figure-sub {
+    font-size: 0.75rem;
+}
+
+.figure-separator {
+    opacity: 0.5;
+}
+
+::deep .coverage-full {
+    color: var(--teal);
+}
+
+::deep .coverage-partial {
+    color: var(--gold);
+}
+
+::deep .coverage-none {
+    color: #e06c75;
+}
+
+.blockers-toggle {
+    background: none;
+    border: 1px solid var(--outline-grey);
+    border-radius: 12px;
+    color: var(--subtext-grey);
+    padding: 0 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: border-color var(--transition-time), color var(--transition-time);
+}
+
+    .blockers-toggle:hover,
+    .blockers-toggle.open {
+        border-color: #e06c75;
+        color: #d4d4d4;
+    }
+
+/* One chip per family, in the color its nodes take, so the trees below read without a key. */
+.lowered-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.legend-chip {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 8px;
+    border-radius: 4px;
+    color: var(--color);
+    border: 1px solid color-mix(in srgb, var(--color) 55%, transparent);
+    background-color: color-mix(in srgb, var(--color) 9%, transparent);
+}
+
+.legend-status {
+    text-transform: none;
+    letter-spacing: 0;
+    font-style: italic;
+}
+
+.legend-opaque {
+    border-style: dashed;
+}
+
+.lowered-filter-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--subtext-grey);
+}
+
+.lowered-filter-kind {
+    color: #e06c75;
+    font-weight: 600;
+}
+
+.lowered-filter-clear {
+    background: none;
+    border: 1px solid var(--outline-grey);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    line-height: 18px;
+    color: var(--subtext-grey);
+    cursor: pointer;
+}
+
+    .lowered-filter-clear:hover {
+        color: #d4d4d4;
+        border-color: var(--lightest-blue);
+    }

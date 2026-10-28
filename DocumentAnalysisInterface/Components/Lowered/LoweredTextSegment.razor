@@ -1,0 +1,34 @@
+@* One segment of a line's text (see LoweredLineText): plain text as it is, a span as an element keyed for hover. *@
+@if (Segment.Key is null)
+{
+    @foreach (var part in Segment.Parts)
+    {
+        @if (part is LoweredLineText.TextSegment child)
+        {
+            <LoweredTextSegment Segment=@child />
+        }
+        else
+        {
+            @((string)part)
+        }
+    }
+}
+else
+{
+    <span class="ir-text-span" style=@Segment.Style data-ir-span=@Segment.Key>@foreach (var part in Segment.Parts)
+        {
+            @if (part is LoweredLineText.TextSegment child)
+            {
+                <LoweredTextSegment Segment=@child />
+            }
+            else
+            {
+                @((string)part)
+            }
+        }</span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public LoweredLineText.TextSegment Segment { get; set; }
+}

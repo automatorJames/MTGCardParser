@@ -1,4 +1,4 @@
-using DocumentAnalysisInterface.Dialogs;
+﻿using DocumentAnalysisInterface.Dialogs;
 using Glyphotype.Interfaces;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
@@ -66,6 +66,38 @@ namespace DocumentAnalysisInterface
             }
         }
         
+        private bool _hideFullyLoweredDocuments;
+        /// <summary>Whether the Lowered view leaves out documents whose every line lowered with nothing opaque.</summary>
+        public bool HideFullyLoweredDocuments
+        {
+            get => _hideFullyLoweredDocuments;
+            set
+            {
+                if (_hideFullyLoweredDocuments != value)
+                {
+                    _hideFullyLoweredDocuments = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync();
+                }
+            }
+        }
+
+        private bool _showLoweredText;
+        /// <summary>Whether the Lowered view shows each document's lowering as the engine writes it (JSON), under its trees.</summary>
+        public bool ShowLoweredText
+        {
+            get => _showLoweredText;
+            set
+            {
+                if (_showLoweredText != value)
+                {
+                    _showLoweredText = value;
+                    OnChanged?.Invoke();
+                    _ = DebouncedSaveAsync();
+                }
+            }
+        }
+
         private bool _showCoverageStats;
         public bool ShowCoverageStats
         {
@@ -369,6 +401,8 @@ namespace DocumentAnalysisInterface
                     _showEchoes = dto.ShowEchoes;
                     _showLineAgentButtons = dto.ShowLineAgentButtons;
                     _definitionView = dto.DefinitionView;
+                    _hideFullyLoweredDocuments = dto.HideFullyLoweredDocuments;
+                    _showLoweredText = dto.ShowLoweredText;
                 }
             }
             catch
@@ -430,6 +464,8 @@ namespace DocumentAnalysisInterface
         public bool ShowEchoes { get; init; }
         public bool ShowLineAgentButtons { get; init; }
         public DefinitionView DefinitionView { get; init; }
+        public bool HideFullyLoweredDocuments { get; init; }
+        public bool ShowLoweredText { get; init; }
 
         // Parameterless constructor for deserialization
         public RuntimeSettingsDto() { }
@@ -437,6 +473,8 @@ namespace DocumentAnalysisInterface
         public RuntimeSettingsDto(RuntimeSettings runtimeSettings)
         {
             HideFullyMatchedDocuments = runtimeSettings.HideFullyMatchedDocuments;
+            HideFullyLoweredDocuments = runtimeSettings.HideFullyLoweredDocuments;
+            ShowLoweredText = runtimeSettings.ShowLoweredText;
             ShowCoverageStats = runtimeSettings.ShowCoverageStats;
             HideCollapsibleCaptureNodes = runtimeSettings.HideCollapsibleCaptureNodes;
             UseFriendlyCaseNames = runtimeSettings.UseFriendlyCaseNames;
