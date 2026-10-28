@@ -21,6 +21,8 @@ public sealed partial class Lowerer
         RegisterEffects();
         RegisterValues();
         RegisterRoundTwo();
+        RegisterRoundThree();
+        RegisterRoundFour();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -136,6 +138,12 @@ public sealed partial class Lowerer
             null => null,
             T typed => typed,
             KeywordLine line when typeof(T) == typeof(Effect) => (T)(IrNode)new KeywordAction(line.Keywords, line.Other),
+            LabeledAbility { Ability: Effect inner } when typeof(T) == typeof(Effect) => (T)(IrNode)inner,
+            LabeledAbility { Ability: EffectLine line } when typeof(T) == typeof(Effect) => (T)(IrNode)line.Effect,
+            LabeledAbility { Ability: StaticAbility { While: null } statics } when typeof(T) == typeof(Effect) => (T)(IrNode)statics.Effect,
+            LabeledAbility { Ability: SpellAbility spell } when typeof(T) == typeof(Effect) => (T)(IrNode)spell.Effect,
+            LabeledAbility { Ability: ReplacementAbility replacement } when typeof(T) == typeof(Effect) => (T)(IrNode)replacement.Effect,
+            ObjectIs aspect when typeof(T) == typeof(Effect) => (T)(IrNode)new BecomesAspect(aspect.Object, aspect.Aspects, Negated: aspect.Negated, Verb: aspect.Tense),
             Effect effect when typeof(T) == typeof(Ability) => (T)(IrNode)AsAbility(effect, ctx, source),
             ObjectFilter filter when typeof(T) == typeof(Selector) => (T)(IrNode)new ObjectSelector(Quantifier.Any, filter),
             PhaseRef phase when typeof(T) == typeof(Event) => (T)(IrNode)new PhaseEvent(phase),
@@ -156,7 +164,7 @@ public sealed partial class Lowerer
         {
             null => null,
             Ability ability => ability,
-            EntersBattlefield or AsEventHappens => new ReplacementAbility((Effect)node),
+            EntersBattlefield or AsEventHappens or Replacement => new ReplacementAbility((Effect)node),
             Effect effect when IsSpell(ctx.Types) => new SpellAbility(effect),
             Pump { Duration: While lasting } pump => new StaticAbility(pump with { Duration = null }, lasting.Condition),
             Lasting { Duration: While lasting } wrapped => new StaticAbility(wrapped.Effect, lasting.Condition),
@@ -179,6 +187,10 @@ public sealed partial class Lowerer
             DoesntUntap => true,
             GrantAbility => true,
             Animate { Duration: null } => true,
+            BecomesAspect { Duration: null } => true,
+            SetStats => true,
+            MayPlayFrom { Duration: null } => true,
+            ManaRestriction => true,
             Sequence sequence => sequence.Steps.All(IsContinuous),
             _ => false,
         };

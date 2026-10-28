@@ -87,8 +87,11 @@ public sealed partial class Lowerer
         Rule<G.TriggeredAbility>((g, ctx) =>
             new TriggeredAbility(LowerAs<Event>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx)));
 
+        // "if X would happen, Y" is a replacement effect; any other condition is a conditional one.
         Rule<G.ConditionalEffect>((g, ctx) =>
-            new Conditional(LowerAs<Condition>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx)));
+            Lower(g.Condition, ctx) is WouldHappen would
+                ? new Replacement(would, LowerAs<Effect>(g.Effect, ctx))
+                : new Conditional(LowerAs<Condition>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx)));
 
         Rule<G.WhileConditionStatic>((g, ctx) =>
             new StaticAbility(LowerAs<Effect>(g.Effect, ctx), LowerAs<Condition>(g.Condition, ctx)));

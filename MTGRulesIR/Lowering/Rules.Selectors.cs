@@ -94,6 +94,10 @@ public sealed partial class Lowerer
         Rule<G.ControlledBy>((g, ctx) =>
             new Controlled(LowerAs<Selector>(g.Controller, ctx), g.Relation.ToString(), g.Negated));
 
+        // "blue or red" is a choice of qualifiers; "tapped, blue" (and any other run) narrows by all of them.
+        Rule<ManyOf<G.TargetQualifier>>((g, ctx) =>
+            new QualifierChoice(LowerAll(g.Items, ctx).OfType<Qualifier>().ToList(), g.Conjunction == Conjunction.Or ? "or" : "and"));
+
         Rule<G.TargetQualifier>((g, ctx) =>
             new Qualifier(Lower(g.Quality, ctx) is Term term ? term.Value : ctx.TextOf(g.Quality), g.IsNegated));
 

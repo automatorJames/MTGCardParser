@@ -106,3 +106,21 @@ public sealed record TermSet(IReadOnlyList<string> Values, string Vocabulary) : 
 
 /// <summary>What a spell targets, as a qualifier on the spell: "that targets this creature".</summary>
 public sealed record Targeting(Selector Target, string Count = null) : IrNode;
+
+/// <summary>Who casts (or controls) the spells meant, as a qualifier: "you cast", "your opponents cast during your turn".</summary>
+public sealed record CastBy(Selector Player, string Relation, string From = null, bool ThisTurn = false, IrNode During = null) : IrNode;
+
+/// <summary>A qualifier on objects carrying counters: "with a +1/+1 counter on it".</summary>
+public sealed record WithCounters(CounterSpec Counters, IrNode Other = null) : IrNode;
+
+/// <summary>Something a player did: "cast a spell", "attacked", as an event a condition looks back on.</summary>
+public sealed record PlayerAction(Selector Player, string Action, Selector What = null, bool FromHand = false) : IrNode;
+
+/// <summary>One kind of card a player may play or cast: "play lands", "cast creature spells".</summary>
+public sealed record Playable(string Verb, Selector What) : IrNode;
+
+/// <summary>A comparison with another player's measure: "more … than each opponent".</summary>
+public sealed record Compared(string Comparison, Selector Than) : IrNode;
+
+/// <summary>A qualifier on creatures by their combat relation to another: "blocking or blocked by it".</summary>
+public sealed record InCombatWith(Selector Other, string Relation = "BlockingOrBlockedBy") : IrNode;

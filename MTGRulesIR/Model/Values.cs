@@ -137,3 +137,27 @@ public sealed record Not(Condition Condition) : Condition;
 
 /// <summary>Something a player does that a trigger watches for: "you gain life", "an opponent draws their second card each turn".</summary>
 public sealed record PlayerEvent(Selector Player, string Event, string Timing = null) : Event;
+
+/// <summary>An event about to happen, as a replacement effect's condition: "you would draw a card".</summary>
+public sealed record WouldHappen(Selector Subject, Effect What) : Event;
+
+/// <summary>Two amounts compared: "your devotion to white is less than five".</summary>
+public sealed record CompareCount(Quantity Count, string Comparison, Quantity Threshold) : Condition;
+
+/// <summary>How many distinct kinds of an aspect appear among some objects: "card types among cards in your graveyard".</summary>
+public sealed record DistinctCount(string Aspect, Selector Among) : Quantity;
+
+/// <summary>An amount named by reference and adjusted: "twice that much life", "that much life plus 1".</summary>
+public sealed record Adjusted(Quantity Base, string Factor = null, string Adjustment = null) : Quantity;
+
+/// <summary>An amount computed from two others: "the number of cards in their hand minus 4".</summary>
+public sealed record Arithmetic(Quantity Left, string Operator, Quantity Right) : Quantity;
+
+/// <summary>A player's devotion to colors: the mana symbols of those colors among permanents they control.</summary>
+public sealed record Devotion(IReadOnlyList<IrNode> Colors) : Quantity;
+
+/// <summary>A player controlling more or fewer of some permanents than another: "an opponent controls more lands than you".</summary>
+public sealed record CompareControl(Selector Player, Selector Objects, string Bound, Selector ComparedTo) : Condition;
+
+/// <summary>A player's hand size: "you have no cards in hand", "that player has seven or more cards in hand".</summary>
+public sealed record HandSize(Selector Player, IrNode Size, string Verb = null) : Condition;

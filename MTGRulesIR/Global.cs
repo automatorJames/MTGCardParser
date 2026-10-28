@@ -1,6 +1,7 @@
 global using System.Reflection;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
+global using Glyphotype;
 global using Glyphotype.Attributes;
 global using Glyphotype.BackReferences;
 global using Glyphotype.GlyphAnalysisDTOs.SpanAnalysis;

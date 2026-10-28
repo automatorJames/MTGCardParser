@@ -51,3 +51,6 @@ public sealed record ReplacementAbility(Effect Effect) : Ability;
 
 /// <summary>A cost paid as well as casting: "as an additional cost to cast this spell, sacrifice a creature".</summary>
 public sealed record AdditionalCost(Selector Spells, Cost Cost) : Ability;
+
+/// <summary>A cost that may be paid rather than the usual one: "you may pay {1}{w} rather than pay this spell's mana cost".</summary>
+public sealed record AlternativeCost(Cost Cost, IrNode Replaces, Cost Additional = null, Condition If = null) : Ability;

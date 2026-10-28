@@ -38,7 +38,8 @@ public static class IrJson
 
     public static readonly JsonSerializerOptions Options = new()
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+        // Nulls are left out; zeros and falses are written, since an enum's first member (Quantifier.Target, PlayerKind.You) is often the common case, not an absence.
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Converters = { new JsonStringEnumConverter() },
         TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { AddPolymorphism } },
     };

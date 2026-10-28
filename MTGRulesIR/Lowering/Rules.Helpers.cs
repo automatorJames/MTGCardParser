@@ -110,6 +110,8 @@ public sealed partial class Lowerer
                 qualifierList.Add(qualifier);
             else if (node is Term term)
                 qualifierList.Add(new Qualifier(term.Value));
+            else if (node is QualifierChoice { Conjunction: "and" } all)
+                qualifierList.AddRange(all.Options);
             else
                 extra.Add(node);
 

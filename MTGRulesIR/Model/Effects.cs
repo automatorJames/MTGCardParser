@@ -142,3 +142,50 @@ public sealed record Attach(Selector Attachment, Selector To) : Effect;
 public sealed record StillOfKind(IReadOnlyList<string> Kinds) : Effect;
 
 public sealed record Transform(Selector Objects) : Effect;
+
+/// <summary>A choice made as part of an effect: "choose an opponent", "choose a color".</summary>
+public sealed record ChooseEffect(Selector Chooser, IReadOnlyList<IrNode> Choices, IrNode Except = null) : Effect;
+
+/// <summary>Playing or casting a card: "cast it without paying its mana cost", "play that card this turn".</summary>
+public sealed record PlayCard(Selector Player, Selector Card, string From = null, bool Free = false, IrNode ByPaying = null, Duration Duration = null) : Effect;
+
+/// <summary>Objects becoming, or being, some aspects: a color, a type, a designation; "is a black zombie in addition to its other colors and types", "becomes white until end of turn".</summary>
+public sealed record BecomesAspect(Selector Objects, IReadOnlyList<IrNode> Aspects, bool InAddition = false, bool Negated = false, Duration Duration = null, string Verb = null) : Effect;
+
+public sealed record GainControl(Selector Player, Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>A restriction on how mana just added may be spent.</summary>
+public sealed record ManaRestriction(string Rule, IReadOnlyList<IrNode> Uses) : Effect;
+
+/// <summary>An effect that replaces the usual one: "… instead".</summary>
+public sealed record Instead(Effect Effect) : Effect;
+
+public sealed record CopySpell(Selector Spell, IrNode Times = null, bool NewTargets = false, IrNode Except = null) : Effect;
+
+public sealed record GetEnergy(Selector Player, Quantity Amount) : Effect;
+
+/// <summary>A forced attack or block: "attacks each combat if able".</summary>
+public sealed record MustCombat(Selector Objects, IReadOnlyList<string> Actions, string Period = null) : Effect;
+
+/// <summary>A replacement effect: what would happen, and what happens instead.</summary>
+public sealed record Replacement(Event Would, Effect Instead, Duration Duration = null) : Effect;
+
+/// <summary>An effect done once per counted thing: "draw a card for each creature you control".</summary>
+public sealed record ForEachOf(Effect Effect, Quantity Count) : Effect;
+
+/// <summary>A combat permission that ignores a keyword: "can attack as though it didn't have defender".</summary>
+public sealed record CanAsThough(Selector Objects, string Action, string Keyword, bool Had, IReadOnlyList<IrNode> Details = null, Duration Duration = null) : Effect;
+
+public sealed record CantBeRegenerated(Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>Revealing cards from the top of a library until one of some kind turns up.</summary>
+public sealed record RevealUntil(Selector Player, string Verb, ZoneRef Library, IrNode Until) : Effect;
+
+/// <summary>A standing permission to play cards from somewhere other than the hand.</summary>
+public sealed record MayPlayFrom(Selector Player, IReadOnlyList<IrNode> Plays, IrNode From, bool Free = false, IrNode Using = null, Duration Duration = null) : Effect;
+
+/// <summary>The alternative to a preceding condition or choice: "otherwise, …".</summary>
+public sealed record Otherwise(Effect Effect) : Effect;
+
+/// <summary>Setting power and/or toughness to an amount: "{this}'s power and toughness are each equal to the number of swamps you control".</summary>
+public sealed record SetStats(Selector Objects, string Which, Quantity Amount) : Effect;
