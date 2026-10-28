@@ -1,0 +1,39 @@
+@* The guide to the Echo Trees page. *@
+<p class="lead">
+    An <strong>echo</strong> is a run of words that recurs across documents. Echo Trees lists the corpus's echoes and, for each,
+    draws the words that come before and after it wherever it occurs - the contexts it lives in. It is the page to open
+    when the question is <strong>"what recurring phrases is the grammar not capturing yet, and what varies around them?"</strong>
+</p>
+
+<h4>What counts as an echo</h4>
+<p>
+    Only <em>maximal</em> runs are listed: a run that every occurrence extends with the same word, on either side, is folded into
+    the longer run it is part of, so "the top card of" is not listed apart from "the top card of your library" unless something
+    somewhere follows it differently. A run found in only one document is left out too - there is nothing elsewhere for it to echo.
+</p>
+
+<h4>A card</h4>
+<dl class="terms">
+    <dt>Span text</dt>
+    <dd>The echo itself, with its <strong>occurrences</strong> (how many documents' lines contain it) and its <strong>word count</strong>.</dd>
+    <dt>Documents</dt>
+    <dd>A key strip of the documents it occurs in, each in its own color. Hover one to light the path it takes through the tree; the colors are per card, not per document.</dd>
+    <dt>The tree</dt>
+    <dd>The echo sits at the center. To its left, a tree of the words that <em>precede</em> it in each occurrence, read outward; to its right, the words that <em>follow</em>. Where occurrences share a word they share a branch, so the branching shows exactly where the contexts diverge.</dd>
+    <dt>Glyphs</dt>
+    <dd>A second key strip, lighter, of the glyphs that captured text adjacent to the echo. Hover one to see where its captures sit in the tree - that is, how much of the echo's surroundings the grammar already reads.</dd>
+</dl>
+
+<h4>Controls</h4>
+<table class="reference">
+    <tr><th>Search</th><td>Keeps the echoes whose text contains the term.</td></tr>
+    <tr><th><span class="icon oi oi-sort-ascending"></span>Order by word count</th><td>Longest echoes first; off, the most frequent first.</td></tr>
+    <tr><th>Min occurrences</th><td>In the settings dialog: the fewest occurrences an echo needs to be listed.</td></tr>
+    <tr><th>Min words</th><td>In the settings dialog: the fewest words an echo needs to be listed.</td></tr>
+</table>
+<p>Trees are drawn as the page is scrolled, a few at a time, so a long list opens quickly.</p>
+
+<div class="callout tip">
+    <span class="callout-label">Reading a tree for a glyph</span>
+    <p>A frequent echo whose two trees fan out into a handful of alternatives is a construction with slots: the echo is the fixed text, the branches are what a property would capture. That is the shape a new glyph wants.</p>
+</div>

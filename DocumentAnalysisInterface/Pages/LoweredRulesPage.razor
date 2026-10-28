@@ -199,7 +199,7 @@ else
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("initLoweredHover");
+            await JSRuntime.InvokeVoidAsync("initLoweredHover", "lowered-rules");
         }
         catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException)
         {
@@ -215,7 +215,7 @@ else
         DocumentAnalyzer.Changed -= OnCorpusChanged;
         try
         {
-            await JSRuntime.InvokeVoidAsync("disposeLoweredHover");
+            await JSRuntime.InvokeVoidAsync("disposeLoweredHover", "lowered-rules");
         }
         catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException)
         {

@@ -69,6 +69,10 @@
                     <span class="settings-separator"></span>
                 }
 
+                @if (PageGuides.HasGuide(currentRelativePath))
+                {
+                    <HelpButton Label="Reading this page" OnClick="OpenGuide" />
+                }
                 <button class="settings-button" data-tooltip="Settings" aria-label="Settings" @onclick="OpenSettingsDialog">
                     <span class="oi oi-cog" aria-hidden="true"></span>
                 </button>
@@ -90,12 +94,21 @@
 {
     <SettingsDialog OnClose="CloseSettingsDialog" />
 }
+@if (_isGuideOpen)
+{
+    <PageGuideDialog Page="@GetCurrentRelativePath()" OnClose="CloseGuide" />
+}
 
 @code {
     bool _isSettingsDialogOpen;
 
     void OpenSettingsDialog() => _isSettingsDialogOpen = true;
     void CloseSettingsDialog() => _isSettingsDialogOpen = false;
+
+    /// <summary>Whether the guide to the current page is open - the "?" beside the settings button, on every page that has one.</summary>
+    bool _isGuideOpen;
+    void OpenGuide() => _isGuideOpen = true;
+    void CloseGuide() => _isGuideOpen = false;
 
     // Define the ordered list of page routes
     private readonly List<string> _pageRoutes = new()

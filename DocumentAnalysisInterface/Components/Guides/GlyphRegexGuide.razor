@@ -1,0 +1,52 @@
+@* The guide to the Glyph Regex page. *@
+<p class="lead">
+    Every glyph is matched with a regular expression the engine builds from its class: its literal words, its vocabularies'
+    members, and a named group for each property. Glyph Regex shows those expressions, one card per glyph, with each
+    named group in its own color. It is the page to open when the question is
+    <strong>"what exactly does this glyph match, and how often?"</strong>
+</p>
+
+<h4>A card</h4>
+<p>
+    The header names the glyph and counts its <strong>matches</strong>: how many times it captured text anywhere in the corpus,
+    at the top level or nested inside another glyph. The body is the expression, formatted so a named group opens on its
+    own line and its contents sit indented beneath it; a group's color is the color its captures take on the other pages.
+    A long expression is cut short, with a <em>show all</em> link; the copy button in the corner copies it whole.
+</p>
+<p>
+    Hover a group's name and the same group lights up everywhere in the card - its opening, its contents and its closing -
+    while the rest fades, which is how a deeply nested expression is read one group at a time.
+</p>
+
+<h4>Formats</h4>
+<p>The <span class="icon oi oi-code"></span>toggle on the top row cycles through five ways of writing a vocabulary's members, from fullest to tersest:</p>
+<table class="reference">
+    <tr><th>Full</th><td>Every member, alphabetically, each with its count in the corpus - including the ones that never matched.</td></tr>
+    <tr><th>Matched enums only</th><td>Only the members that occurred, most frequent first. The default.</td></tr>
+    <tr><th>Pruned</th><td>As above, and any group that never captured anything - an alternative never taken, an optional part never present - is left out, with everything inside it. A glyph that never matched is pruned whole.</td></tr>
+    <tr><th>Sample</th><td>At most three members per vocabulary, the most frequent, one row each.</td></tr>
+    <tr><th>Minified</th><td>The compiled expression as the engine runs it, in one piece, still colored by group.</td></tr>
+</table>
+<p>The <span class="icon oi oi-tag"></span>toggle chooses how groups are named: by the <em>shortest unique</em> ending of their full name, or <em>numbered</em> by their position in the expression (<code>_17_IsNegated</code>), which stays unique however deep the group sits.</p>
+
+<h4>The footer tray</h4>
+<p>The <span class="icon oi oi-layers"></span>toggle opens a tray under each expression:</p>
+<table class="reference">
+    <tr><th>Matches</th><td>Every capture of the glyph in the corpus: the document, and the captured text colored by group.</td></tr>
+    <tr><th>Type tree</th><td>The glyph's groups as a collapsible tree - the shape of the expression without its text.</td></tr>
+    <tr><th>C# class</th><td>The glyph's declaration, as written, colored by group, with breadcrumbs into the glyphs its properties name.</td></tr>
+</table>
+
+<h4>Other controls</h4>
+<table class="reference">
+    <tr><th>Search</th><td>Keeps the glyphs whose name contains the term.</td></tr>
+    <tr><th><span class="icon oi oi-bar-chart"></span>Order by occurrence count</th><td>Most-matched glyphs first; off, alphabetical.</td></tr>
+    <tr><th><span class="icon oi oi-ban"></span>Hide zero-capture types</th><td>Leaves out glyphs that never matched - which, in a grammar at full coverage, is the list of glyphs that could be deleted.</td></tr>
+    <tr><th><span class="icon oi oi-minus"></span>Hide blank lines</th><td>Closes up the spacing between groups.</td></tr>
+    <tr><th><span class="icon oi oi-list"></span>Show line numbers</th><td>Numbers the formatted lines, for talking about one.</td></tr>
+</table>
+
+<div class="callout tip">
+    <span class="callout-label">What to look for</span>
+    <p>A vocabulary with hundreds of members and three matched is a vocabulary doing little work. An expression that runs to thousands of lines in <em>Full</em> and a dozen in <em>Pruned</em> is a glyph far wider than the corpus asks it to be.</p>
+</div>

@@ -46,7 +46,7 @@
         </div>
     }
 
-    @if (RuntimeSettings.ShowLoweredText && Document.Text is not null)
+    @if (ShowText && RuntimeSettings.ShowLoweredText && Document.Text is not null)
     {
         <div class="lowered-text-block">
             <CopyButtonOverlay TextToCopy=@Document.Text>
@@ -62,4 +62,8 @@
 
     [CascadingParameter]
     public LoweredDisplayContext Context { get; set; }
+
+    /// <summary>Whether the document's lowering as text follows its trees when the setting says so - off where the block is an example rather than the page.</summary>
+    [Parameter]
+    public bool ShowText { get; set; } = true;
 }

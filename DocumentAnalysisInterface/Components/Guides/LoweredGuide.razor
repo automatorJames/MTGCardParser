@@ -1,0 +1,188 @@
+@* The guide to the Lowered page. Generic in its words - the app knows nothing of what the engine's output means - but
+   what it shows is pulled from the engine the app was composed with: its name, its families in their colors, and two
+   of the corpus's own documents, lowered, rendered as the page renders them (hover works here as it does there). *@
+@using DocumentAnalysisInterface.Components.Lowered
+@inject LoweredCorpus Lowered
+@inject ActiveCorpus Corpus
+@inject WorkspaceManager Workspaces
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<p class="lead">
+    The grammar reads a document's text into glyphs: a faithful account of its <em>syntax</em>, deep and detailed. An engine
+    that plays the game, or runs the process, or whatever the documents describe, wants something flatter: the text's
+    <em>meaning</em>, in the few shapes it knows how to act on. <strong>Lowering</strong> is the step from one to the other, and the
+    result is an <strong>intermediate representation</strong> (IR): the document as a tree of records an engine can take as it is.
+    This page shows the corpus lowered by <strong>@EngineName</strong>, and where lowering stopped short.
+</p>
+
+<h4>Words to know</h4>
+<dl class="terms">
+    <dt>Node</dt>
+    <dd>One record of the IR: its <strong>kind</strong> (the engine's name for the shape), the <strong>family</strong> the kind belongs to, and its <strong>fields</strong>. A field is a value or more nodes.</dd>
+    <dt>Family</dt>
+    <dd>A kind of slot: the sort of thing a field can hold. The engine names its own; they are the colors of the page.</dd>
+    <dt>Fully lowered</dt>
+    <dd>A line, or document, every node of which the engine had a shape for. The page's headline figures count these.</dd>
+    <dt>Opaque</dt>
+    <dd>Text the engine has no shape for yet, kept as it was, under the name of the glyph that produced it. An opaque node is well formed - the tree around it is complete - but it is a gap the engine must fill by hand, or the lowering learn to fill.</dd>
+    <dt>Term</dt>
+    <dd>A terminal: a vocabulary member, a number, a word - the leaves the tree ends in.</dd>
+    <dt>Binding and reference</dt>
+    <dd>A node that introduces something later text refers to ("a creature", "each player") carries a <strong>binding</strong>, a tag like <code>#1</code>. A later pronoun or "that <em>thing</em>" lowers to a <strong>reference</strong> pointing at that tag, or to an <em>unbound</em> one when the engine could not say what it meant.</dd>
+</dl>
+
+<h4>The colors</h4>
+<p>Every node is drawn in its family's color, so a tree can be read by color before it is read by name. The engine's families, in its order:</p>
+@if (_context is not null)
+{
+    <p>
+        @foreach (var family in Lowered.Engine.Families)
+        {
+            <span class="swatch" style="--swatch: @_context.FamilyPalettes[family].Normal"></span><span>@family</span><span>&ensp;</span>
+        }
+    </p>
+    <p>
+        Three statuses have colors of their own, whatever the family:
+        <span class="swatch" style="--swatch: @_context.TermPalette.Normal"></span>a term,
+        <span class="swatch" style="--swatch: @_context.ReferencePalette.Normal"></span>a reference (and the binding tags they point at), and
+        <span class="swatch" style="--swatch: @_context.OpaquePalette.Normal"></span>an opaque node, which is also dashed.
+    </p>
+}
+
+<h4>Reading a tree</h4>
+<ul>
+    <li>A node with nodes inside it is a <strong>block</strong>: its kind and family on the first line, its scalar fields beside them as <em>name: value</em>, and a row for each field that holds nodes. The colored edge on its left runs the height of everything it contains.</li>
+    <li>A node with only values in it is a <strong>chip</strong> on one line: its kind and its values. Chips are where most of the reading happens; blocks are the structure between them.</li>
+    <li>The <strong>text</strong> above the trees is the line as the grammar read it. A dotted underline marks text a node came from.</li>
+    <li><strong>Hover</strong> a node: it lights, with every node that contains it and the text it came from; the rest of the line fades. Hover a node with a binding, or a reference, and both ends of the link light together. Hover the text, and the nodes that came from it light.</li>
+    <li>An opaque node, or an opaque kind listed beside a line's number, previews its glyph on hover and opens it on click - the same preview the Corpus Captures tables give.</li>
+</ul>
+
+@if (_ready)
+{
+    <CascadingValue Value="_context" IsFixed="true">
+        <div id="lowered-guide">
+            @if (_bound is not null)
+            {
+                <div class="example live">
+                    <span class="example-label">From this corpus: a document with a reference</span>
+                    <LoweredDocumentBlock Document=@_bound ShowText="false" />
+                    <p class="caption">Hover the chip tagged <code>#1</code>, or the reference pointing at it, and both light - with the text each came from.</p>
+                </div>
+            }
+            @if (_opaque is not null)
+            {
+                <div class="example live">
+                    <span class="example-label">From this corpus: a document with an opaque node</span>
+                    <LoweredDocumentBlock Document=@_opaque ShowText="false" />
+                    <p class="caption">The dashed chip holds the text as it was; its label is the glyph that captured it, named again beside the line's number.</p>
+                </div>
+            }
+        </div>
+    </CascadingValue>
+}
+else if (Lowered.IsAvailable)
+{
+    <LoadingIndicator Label="Finding examples in the corpus..." />
+}
+
+<h4>The top of the page</h4>
+<table class="reference">
+    <tr><th>Figures</th><td>How many documents and lines there are, and how many lowered fully. The lines figure is the one to watch: a document fails on its weakest line.</td></tr>
+    <tr><th>Blockers</th><td>Opens a table of the opaque kinds, most lines blocked first, with how often each occurs and a few of its texts. The top row is the next rule the lowering wants. Click a row to show only the documents it blocks; click it again, or the × after the note, to show all.</td></tr>
+    <tr><th>Search</th><td>Keeps the documents whose name, text, or opaque kinds contain the term.</td></tr>
+    <tr><th><span class="icon oi oi-circle-check"></span>Hide fully lowered</th><td>Leaves out documents with nothing opaque, so what remains is what the engine cannot yet act on.</td></tr>
+    <tr><th><span class="icon oi oi-code"></span>Show the lowering as text</th><td>Under each document, its lowering as the engine writes it out - what an engine would be handed - with a copy button.</td></tr>
+</table>
+
+<div class="callout tip">
+    <span class="callout-label">What this page is for</span>
+    <p>Corpus Captures asks whether the grammar <em>read</em> the text; this page asks whether what it read <em>means</em> something an engine can use. Coverage can be complete while lowering is not - a glyph that holds a clause as one literal reads it and means nothing - so the blockers here, not the unmatched text there, are the measure of what is left.</p>
+</div>
+
+@code {
+    LoweredDisplayContext _context;
+    LoweredDocument _bound;
+    LoweredDocument _opaque;
+    bool _ready;
+    bool _hoverInitialized;
+
+    string EngineName => Lowered.IsAvailable ? Lowered.Engine.Name : "the engine";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Lowered.IsAvailable)
+            return;
+
+        _context = new(Lowered.Engine, Corpus.Grammar, new GlyphPreviews(Workspaces));
+        await Lowered.EnsureInitializedAsync();
+        (_bound, _opaque) = await Task.Run(FindExamples);
+        _ready = true;
+    }
+
+    /// <summary>
+    /// Two short documents of the corpus to show lowered: one fully lowered with a reference bound to a node that introduced
+    /// it, and one with a single opaque node - the first of each found, kept small so the whole tree fits in the dialog.
+    /// </summary>
+    (LoweredDocument Bound, LoweredDocument Opaque) FindExamples()
+    {
+        var documents = Corpus.ProcessedDocuments;
+        var summaries = Lowered.Summaries;
+        LoweredDocument bound = null, opaque = null;
+
+        for (int i = 0; i < summaries.Count && (bound is null || opaque is null); i++)
+        {
+            var summary = summaries[i];
+            var text = documents[i].Document.Text ?? "";
+
+            if (summary.Lines.Count is 0 or > 2 || text.Length > 200)
+                continue;
+
+            if (bound is null && summary.IsFullyLowered)
+            {
+                var lowered = Lowered.Lower(documents[i]);
+                var nodes = lowered.Lines.SelectMany(x => x.Roots).SelectMany(x => x.Descendants()).ToList();
+                if (nodes.Count <= 30 && nodes.Any(x => x.RefersTo is not null))
+                    bound = lowered;
+            }
+            else if (opaque is null && !summary.IsFullyLowered && summary.Lines.Sum(x => x.OpaqueKinds.Count) == 1)
+            {
+                var lowered = Lowered.Lower(documents[i]);
+                if (lowered.Lines.SelectMany(x => x.Roots).SelectMany(x => x.Descendants()).Count() <= 24)
+                    opaque = lowered;
+            }
+        }
+
+        return (bound, opaque);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_ready || _hoverInitialized)
+            return;
+
+        _hoverInitialized = true;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("initLoweredHover", "lowered-guide");
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_hoverInitialized)
+            return;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("disposeLoweredHover", "lowered-guide");
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+    }
+}

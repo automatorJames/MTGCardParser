@@ -1,0 +1,61 @@
+@* The guide to the Grammar Tools page: the page's own "?" buttons go deeper into the score and each table. *@
+<p class="lead">
+    Grammar Tools is where the grammar is changed and scored. Every other page shows the corpus as a grammar reads it;
+    this one holds the grammar itself - its glyphs and vocabularies - and measures each change against the corpus
+    before it is kept. It is the page to open when the question is <strong>"is this grammar getting better?"</strong>
+</p>
+
+<h4>Workspaces</h4>
+<p>
+    A <strong>workspace</strong> is one grammar, scored against the same corpus as the others. The <em>source</em> workspace is the grammar
+    compiled from the C# glyph sources; a <em>scratch</em> workspace is kept as JSON, for experiments that should not touch the sources.
+    The switcher on the top row chooses which one every page shows. Here a workspace can be created (empty, or with the current
+    vocabularies kept), merged into another, renamed, deleted or exported.
+</p>
+
+<h4>Working and committed</h4>
+<p>
+    Each workspace has a <strong>working</strong> definition, the one being edited, and a <strong>committed</strong> one (a <em>checkpoint</em>, in a
+    scratch workspace): the last state kept. The score section shows both and the change between them. Every edit is a
+    <strong>step</strong> in the history, which can be undone, redone, or reverted - one step, a round of the agent's, or all of them.
+    <em>Commit to C#</em> writes the working definition back into the glyph source files, changing only the declarations that changed;
+    <em>Checkpoint</em> marks the working state of a scratch workspace as its new baseline.
+</p>
+
+<h4>The score</h4>
+<p>
+    The score is a <strong>minimum description length</strong>: how many bits it takes to write the whole corpus down using the grammar,
+    with the grammar's own definition counted in. Lower is better. A glyph pays for itself when the text it captures is cheaper to
+    write as "this glyph, these values" than as raw words, and the grammar's definition is what keeps a one-literal-per-document
+    grammar from scoring well. Coverage is reported alongside; the score chooses <em>how</em> to cover text, coverage says
+    <em>whether</em> it is. The <strong>?</strong> beside the section goes through the arithmetic with the current figures.
+</p>
+
+<h4>The tables</h4>
+<dl class="terms">
+    <dt>Glyphs</dt>
+    <dd>One row per glyph: its net bits (what its captures save, less what its definition costs), its occurrences, and the words it covers. Open a row to edit the glyph's source; <em>New glyph</em> adds one. Each section's <strong>?</strong> explains its columns.</dd>
+    <dt>Vocabularies</dt>
+    <dd>One row per enum: how many of its members the corpus uses, what its definition costs, and which glyphs use it.</dd>
+    <dt>Residual hot spots</dt>
+    <dd>The unmatched text that costs the most, ranked: whole spans, and recurring phrases - the next glyphs to write.</dd>
+</dl>
+
+<h4>The agent</h4>
+<p>
+    With a local agent installed, the chat pane runs it over this same grammar: it drafts glyphs, evaluates them against the
+    corpus and applies the ones that pay, checking in as the session's settings say. Its rounds appear in the history as the
+    page's own steps do, with their time, tokens and cost, and can be reverted as a round. The same tools are served to an
+    outside agent at <code>/mcp</code>, so a terminal session and this pane edit one working definition.
+</p>
+
+<h4>Definitions</h4>
+<p>
+    A glyph's definition can be viewed as C#, as JSON, as its formatted or minified regex, or as a diff against the committed
+    version. Hovering a glyph's name anywhere in the app previews it in the view chosen in the settings dialog; clicking opens the viewer.
+</p>
+
+<div class="callout caution">
+    <span class="callout-label">Two rules the apply button keeps</span>
+    <p>A step must cover at least one more word, and must not take words from another glyph. A change that breaks either - a refactor, a glyph replacing a wider one - needs the viewer's approval, which the page asks for.</p>
+</div>

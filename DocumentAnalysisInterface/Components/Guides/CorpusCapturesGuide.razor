@@ -1,0 +1,74 @@
+@* The guide to the Corpus Captures page. *@
+<p class="lead">
+    Corpus Captures shows every document of the corpus as the active grammar reads it: the text, with each stretch a
+    glyph captured underlined in a color, and under it a table per capture saying what was taken out of that text.
+    It is the page to open when the question is <strong>"what did the grammar make of this document?"</strong>
+</p>
+
+<h4>Words to know</h4>
+<dl class="terms">
+    <dt>Glyph</dt>
+    <dd>One construction of the text the grammar knows, written as a small class: a pattern with slots. A glyph that matches a stretch of text <em>captures</em> it.</dd>
+    <dt>Capture</dt>
+    <dd>One match of a glyph: the stretch of text, and what each of the glyph's properties took from it. Captures nest: a glyph's property can be another glyph, with captures of its own.</dd>
+    <dt>Vocabulary</dt>
+    <dd>A closed set of words a property can take, declared as an enum - the leaves of a capture are vocabulary members, numbers, flags and bare text.</dd>
+    <dt>Coverage</dt>
+    <dd>The share of the corpus's words that sit inside some capture. The top row shows it for the whole corpus; <span class="icon">%</span>shows it per document and line too.</dd>
+    <dt>Unmatched text</dt>
+    <dd>Words no glyph captured, drawn in the plain, dimmer text color with no underline. The grammar's to-do list.</dd>
+    <dt>Back-reference</dt>
+    <dd>A pronoun or "that <em>thing</em>" that refers to something captured earlier in the line. The grammar resolves it after reading the line; the table says what it refers to.</dd>
+</dl>
+
+<h4>The text</h4>
+<p>
+    Each line of a document is shown in a dark panel, one clause per row. Every capture underlines its text at a depth that
+    matches its nesting: the glyph that matched the whole clause is the top underline, the captures inside it stack beneath, and
+    each level has its own color. A terminal capture - a vocabulary member, a number, a flag - is <em>over</em>lined instead, in
+    its own color, so the values stand out from the structure around them.
+</p>
+<ul>
+    <li><strong>Hover</strong> any underlined text, or any part of a table below: it and everything that contains it light up, and the rest of the line fades. The colors come from the same palette, so a row in a table and its text in the line always match.</li>
+    <li><strong>Drag</strong> across some text and a <em>Debug regex</em> button appears: it opens a dialog that tries each glyph against exactly that text and shows how far each pattern got.</li>
+    <li>A dotted underline is a level that was hidden by <span class="icon oi oi-collapse-down"></span><em>Hide collapsible nodes</em>: a pass-through level with nothing of its own, whose text borrows the color of the first level inside it.</li>
+</ul>
+
+<h4>The tables</h4>
+<p>
+    Under the text, one table per top-level capture, nested as the captures are. A table's header names its glyph; when a chain of
+    levels led to it, the chain is written out with separators that say how:
+</p>
+<table class="reference">
+    <tr><th><span class="sep">:</span> collapsed</th><td>A property whose type is one glyph - the level was folded into its parent, since it had nothing else to show.</td></tr>
+    <tr><th><span class="sep">»</span> one-of</th><td>A property that could have been any of several glyphs, and which one it turned out to be.</td></tr>
+    <tr><th><span class="sep">⇢</span> dynamic</th><td>A slot that takes any glyph that fits ("if …, <em>any effect</em>"), and the glyph that fitted.</td></tr>
+</table>
+<p>
+    Each row is one property: its name, its type, and the value it captured. <em>(referent)</em> after a value marks something a
+    later back-reference can point to; a back-reference's own row says <em>refers to</em> and names the capture it was resolved to,
+    or <em>unresolved</em> when nothing earlier agreed with it. Hovering a glyph or vocabulary name previews its definition; clicking opens it.
+</p>
+
+<h4>Echoes</h4>
+<p>
+    With <span class="icon oi oi-loop-circular"></span><em>Echoes</em> on, unmatched text gets jagged underlines where a run of its words also appears
+    in other documents - the recurring phrases a glyph could be written for. Longer runs stack in more lanes; clicking one opens its
+    <em>echo tree</em>, the same view the Echo Trees page gives every recurring span.
+</p>
+
+<h4>Controls on the top row</h4>
+<table class="reference">
+    <tr><th>Search</th><td>Keeps the documents whose name or text contains the term (<kbd>Ctrl</kbd>+<kbd>F</kbd> focuses it, <kbd>Esc</kbd> clears it). Name matches come first.</td></tr>
+    <tr><th>Workspace</th><td>Which grammar every page shows: the one compiled from the glyph sources, or a scratch grammar from Grammar Tools.</td></tr>
+    <tr><th><span class="icon oi oi-circle-check"></span>Hide fully matched</th><td>Leaves out documents with no unmatched text, so what remains is what the grammar still misses.</td></tr>
+    <tr><th><span class="icon oi oi-collapse-down"></span>Hide collapsible nodes</th><td>Hides pass-through levels in the text and folds their names into the next header, for a shorter view of deep captures.</td></tr>
+    <tr><th><span class="icon oi oi-text"></span>Friendly case names</th><td>Writes glyph and property names as prose ("Card Type") rather than as declared ("CardType").</td></tr>
+    <tr><th><span class="icon">%</span>Show coverage stats</th><td>Coverage per document and per line, beside their titles.</td></tr>
+    <tr><th><span class="icon material-symbols-outlined">smart_toy</span>Line agent</th><td>With a local agent installed, a button on each line opens a chat in which the agent writes glyphs that capture it; its steps show in the line at once.</td></tr>
+</table>
+
+<div class="callout tip">
+    <span class="callout-label">Reading it quickly</span>
+    <p>Fade in on a line's top underline to see what the grammar took the clause to be, then read down the levels. Plain text with no underline, and a table ending in <em>unresolved</em>, are the two signs that the grammar has more to learn from the line.</p>
+</div>

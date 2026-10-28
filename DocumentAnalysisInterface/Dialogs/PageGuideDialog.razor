@@ -1,0 +1,51 @@
+@* The guide to reading the page the viewer is on: opened by the "?" beside the settings button, one guide per page.
+   The guides themselves are the components under Components/Guides; this is the frame they share. *@
+@using DocumentAnalysisInterface.Components.Guides
+@inject LoweredCorpus Lowered
+<CustomDialog OnBackdropClick="Close" CloseOnEscape="true" ContainerStyle="max-width: min(1120px, 94vw); padding: 1.75rem 2.25rem;">
+    <TitleContent>
+        <div class="guide-title">
+            <span class="guide-kicker">@Kicker</span>
+            <span>Reading this page</span>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="guide-body">
+            @switch (Page)
+            {
+                case PageGuides.CorpusCaptures:
+                    <CorpusCapturesGuide />
+                    break;
+                case PageGuides.GlyphRegex:
+                    <GlyphRegexGuide />
+                    break;
+                case PageGuides.EchoTrees:
+                    <EchoTreesGuide />
+                    break;
+                case PageGuides.GrammarTools:
+                    <GrammarToolsGuide />
+                    break;
+                case PageGuides.Lowered:
+                    <LoweredGuide />
+                    break;
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <button class="btn btn-primary" @onclick="Close">Got it</button>
+    </DialogActions>
+</CustomDialog>
+
+@code {
+    /// <summary>The page's route, as <see cref="PageGuides"/> names them.</summary>
+    [Parameter, EditorRequired]
+    public string Page { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    /// <summary>The page's name - for the lowered page, the engine's, as its tab reads.</summary>
+    string Kicker => Page == PageGuides.Lowered && Lowered.IsAvailable ? Lowered.Engine.Name : PageGuides.NameOf(Page);
+
+    Task Close() => OnClose.InvokeAsync();
+}

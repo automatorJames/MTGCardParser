@@ -1,0 +1,227 @@
+/* The frame every page guide shares. The guides are child components, so their markup is styled with ::deep. */
+
+.guide-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.guide-kicker {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--teal);
+}
+
+.guide-body {
+    max-height: 72vh;
+    overflow-y: auto;
+    padding-right: 0.75rem;
+    color: #cbd5e0;
+    font-size: 0.93rem;
+    line-height: 1.6;
+}
+
+    .guide-body ::deep p {
+        margin: 0 0 0.85rem 0;
+    }
+
+    .guide-body ::deep h4 {
+        margin: 1.6rem 0 0.6rem 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #569cd6;
+    }
+
+    .guide-body ::deep strong {
+        color: #f0f4f8;
+        font-weight: 600;
+    }
+
+    .guide-body ::deep em {
+        color: #e2e8f0;
+    }
+
+    .guide-body ::deep code {
+        padding: 0.05rem 0.35rem;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.06);
+        color: #ce9178;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.82rem;
+    }
+
+    .guide-body ::deep kbd {
+        padding: 0.05rem 0.4rem;
+        border: 1px solid var(--outline-grey);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.04);
+        color: #e2e8f0;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+    }
+
+    .guide-body ::deep .lead {
+        font-size: 1.02rem;
+        color: #e2e8f0;
+    }
+
+    .guide-body ::deep ul,
+    .guide-body ::deep ol {
+        margin: 0 0 0.85rem 0;
+        padding-left: 1.3rem;
+    }
+
+    .guide-body ::deep li {
+        margin-bottom: 0.3rem;
+    }
+
+    /* A term list: what something is called, then what it is. */
+    .guide-body ::deep .terms {
+        display: grid;
+        grid-template-columns: 13rem 1fr;
+        gap: 0.7rem 1.25rem;
+        margin: 0 0 0.85rem 0;
+    }
+
+        .guide-body ::deep .terms dt {
+            font-weight: 600;
+            color: var(--lightest-blue);
+        }
+
+        .guide-body ::deep .terms dd {
+            margin: 0;
+        }
+
+    /* A reference table: one row per control, setting or symbol. */
+    .guide-body ::deep .reference {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.4rem 0 1rem 0;
+    }
+
+        .guide-body ::deep .reference th,
+        .guide-body ::deep .reference td {
+            padding: 0.45rem 0.6rem;
+            border-bottom: 1px solid #333;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        .guide-body ::deep .reference th {
+            width: 11rem;
+            font-weight: 600;
+            color: var(--lightest-blue);
+            white-space: nowrap;
+        }
+
+    /* A worked example, framed. */
+    .guide-body ::deep .example {
+        margin: 0.75rem 0 1rem 0;
+        padding: 0.75rem 1rem;
+        border: 1px solid #3a4150;
+        border-radius: 8px;
+        background-color: rgba(86, 156, 214, 0.05);
+    }
+
+        .guide-body ::deep .example p:last-child {
+            margin-bottom: 0;
+        }
+
+    .guide-body ::deep .example-label,
+    .guide-body ::deep .callout-label {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--faded-blue);
+    }
+
+    .guide-body ::deep .callout {
+        margin: 0.9rem 0;
+        padding: 0.7rem 1rem;
+        border-left: 3px solid var(--faded-blue);
+        border-radius: 0 8px 8px 0;
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+
+        .guide-body ::deep .callout.tip {
+            border-left-color: var(--teal);
+        }
+
+            .guide-body ::deep .callout.tip .callout-label {
+                color: var(--teal);
+            }
+
+        .guide-body ::deep .callout.caution {
+            border-left-color: var(--gold);
+        }
+
+            .guide-body ::deep .callout.caution .callout-label {
+                color: var(--gold);
+            }
+
+        .guide-body ::deep .callout p:last-child {
+            margin-bottom: 0;
+        }
+
+    /* A swatch of a color the page uses, inline with the words about it. */
+    .guide-body ::deep .swatch {
+        display: inline-block;
+        width: 0.85em;
+        height: 0.85em;
+        margin-right: 0.35em;
+        border-radius: 3px;
+        vertical-align: -0.1em;
+        background-color: var(--swatch);
+    }
+
+    /* The separators a property table's header is joined with, shown as they appear. */
+    .guide-body ::deep .sep {
+        display: inline-block;
+        min-width: 1.4em;
+        text-align: center;
+        font-weight: 700;
+        color: var(--header-separator-color);
+    }
+
+    /* A capture as the Corpus Captures text draws one: underlined in a color. */
+    .guide-body ::deep .ul {
+        border-bottom: 2px solid var(--swatch);
+        padding-bottom: 1px;
+    }
+
+    .guide-body ::deep .ol {
+        border-top: 2px solid var(--swatch);
+    }
+
+    /* A page-setting icon named in prose: the icon itself, so it's found on the top row. */
+    .guide-body ::deep .icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        margin-right: 0.3rem;
+        border: 1px solid var(--outline-grey);
+        border-radius: 4px;
+        color: #d4d4d4;
+        font-size: 0.8rem;
+        vertical-align: middle;
+    }
+
+    .guide-body ::deep .live {
+        margin: 0.5rem 0 1rem 0;
+    }
+
+    .guide-body ::deep .caption {
+        margin: 0.35rem 0 0 0;
+        font-size: 0.82rem;
+        color: var(--subtext-grey);
+    }

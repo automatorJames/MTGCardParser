@@ -1,15 +1,14 @@
 // lowered-rules.js
-// Hover highlighting on the Lowered page. Three things link up within one line (a .lowered-line boundary):
+// Hover highlighting on the Lowered page, and wherever else lowered trees are shown (the page's guide). Three things
+// link up within one line (a .lowered-line boundary):
 // - a node's place in its tree (data-ir-path, an underscore-joined chain from the root), so hovering a node lights
 //   it and its ancestors and mutes the rest of the line's nodes;
 // - the text a node came from (data-ir-span, shared by the node and the span of the line's text), so hovering a node
 //   lights its text, and hovering text lights the nodes that came from it;
 // - a binding (data-ir-ref, shared by the node that introduces "#1" and every reference to it), so hovering either
 //   lights both.
-let loweredMouseoverHandler;
-let loweredMouseleaveHandler;
-let loweredLastHovered = null;
-let loweredMarked = [];
+// Each root element (by id) keeps its own handlers, so the page and a dialog over it can both be live.
+const loweredRoots = new Map();
 
 const loweredHighlightClass = 'highlight-active';
 const loweredMuteClass = 'mute-active';
@@ -24,19 +23,22 @@ function loweredIsSelfOrAncestorPath(path, paths) {
     return false;
 }
 
-function initLoweredHover() {
-    const root = document.getElementById('lowered-rules');
-    if (!root) return;
+function initLoweredHover(rootId) {
+    rootId = rootId || 'lowered-rules';
+    const root = document.getElementById(rootId);
+    if (!root || loweredRoots.has(rootId)) return;
+
+    const state = { lastHovered: null, marked: [] };
 
     const clear = () => {
-        loweredMarked.forEach(el => el.classList.remove(loweredHighlightClass, loweredMuteClass));
-        loweredMarked = [];
+        state.marked.forEach(el => el.classList.remove(loweredHighlightClass, loweredMuteClass));
+        state.marked = [];
     };
 
-    loweredMouseoverHandler = (event) => {
+    const mouseover = (event) => {
         const hovered = event.target.closest(loweredHoverSelector);
-        if (hovered === loweredLastHovered) return;
-        loweredLastHovered = hovered;
+        if (hovered === state.lastHovered) return;
+        state.lastHovered = hovered;
         clear();
         if (!hovered) return;
 
@@ -76,31 +78,31 @@ function initLoweredHover() {
                 || (el.dataset.irRef && refs.has(el.dataset.irRef));
             el.classList.add(lit ? loweredHighlightClass : loweredMuteClass);
         });
-        loweredMarked = nodes;
+        state.marked = nodes;
 
         boundary.querySelectorAll('[data-ir-span]:not([data-ir-path])').forEach(el => {
             if (spans.has(el.dataset.irSpan)) {
                 el.classList.add(loweredHighlightClass);
-                loweredMarked.push(el);
+                state.marked.push(el);
             }
         });
     };
 
-    loweredMouseleaveHandler = () => {
-        loweredLastHovered = null;
+    const mouseleave = () => {
+        state.lastHovered = null;
         clear();
     };
 
-    root.addEventListener('mouseover', loweredMouseoverHandler);
-    root.addEventListener('mouseleave', loweredMouseleaveHandler);
+    root.addEventListener('mouseover', mouseover);
+    root.addEventListener('mouseleave', mouseleave);
+    loweredRoots.set(rootId, { root, mouseover, mouseleave });
 }
 
-function disposeLoweredHover() {
-    const root = document.getElementById('lowered-rules');
-    if (root && loweredMouseoverHandler && loweredMouseleaveHandler) {
-        root.removeEventListener('mouseover', loweredMouseoverHandler);
-        root.removeEventListener('mouseleave', loweredMouseleaveHandler);
-    }
-    loweredMouseoverHandler = null;
-    loweredMouseleaveHandler = null;
+function disposeLoweredHover(rootId) {
+    rootId = rootId || 'lowered-rules';
+    const entry = loweredRoots.get(rootId);
+    if (!entry) return;
+    entry.root.removeEventListener('mouseover', entry.mouseover);
+    entry.root.removeEventListener('mouseleave', entry.mouseleave);
+    loweredRoots.delete(rootId);
 }
