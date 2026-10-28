@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A count as card text writes it: digits or words from "0" to "20" ("one", "two", "13"), "x" and sums with it ("x plus 1", "twice x"), "a" or "an", "all", "any number of", "one or more", "an additional", "that many", "twice that many", and "a number of" before "equal to".</summary>
 public enum Quantity
 {
     [RegexPattern("x")]

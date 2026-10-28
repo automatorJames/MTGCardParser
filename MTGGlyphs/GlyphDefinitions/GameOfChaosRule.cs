@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GameOfChaosRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you lose the flip, you lose 1 life and that opponent gains 1 life, and that player decides whether to flip again"];
+    public override Nib[] Nibs => ["if you win the flip, you gain 1 life and target opponent loses 1 life, and you decide whether to flip again"];
 }

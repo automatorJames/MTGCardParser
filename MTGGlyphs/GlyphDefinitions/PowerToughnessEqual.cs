@@ -7,7 +7,7 @@ public class PowerToughnessEqual : Glyph, IPredicate
 {
     public override Nib[] Nibs => [Prop(Object), Prop(PowerAndOrToughness), Alt("are each", "is"), "equal to", Prop(Amount)];
 
-    public OneOf<Its, ObjectPossessive, ShortNamePossessive> Object { get; set; }
+    public OneOf<Its, ObjectPossessive> Object { get; set; }
     public PowerAndOrToughness PowerAndOrToughness { get; set; }
-    public OneOf<ArithmeticAmount, OneOf<ScaledAmount, ScaledAmountExact>, Amount> Amount { get; set; }
+    public OneOf<ArithmeticAmount, ScaledAmount, ScaledAmountExact, Amount> Amount { get; set; }
 }

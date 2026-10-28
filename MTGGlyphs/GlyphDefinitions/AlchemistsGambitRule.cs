@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class AlchemistsGambitRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["[at the beginning of that turn's end step, you lose the game"];
+    public override Nib[] Nibs => ["during that turn, damage can't be prevented"];
 }

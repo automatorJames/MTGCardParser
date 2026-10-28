@@ -9,7 +9,7 @@ public class GainOrLoseLife : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(GainOrLose), Prop(Amount), Prop(Multiplier)];
 
     public GainOrLose GainOrLose { get; set; }
-    public OneOf<LifeQuantity, LifeEqualTo, OneOf<ThatMuchLife, HalfLifeTotal, HalfLifeTotalExact>> Amount { get; set; }
+    public OneOf<LifeQuantity, LifeEqualTo, ThatMuchLife, HalfLifeTotal, HalfLifeTotalExact> Amount { get; set; }
     [Optional]
     public ForEach Multiplier { get; set; }
 }

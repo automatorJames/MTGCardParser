@@ -5,5 +5,5 @@
 [Dependent]
 public class GabrielAngelfireEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["whenever a creature with rampage 3 becomes blocked, it gets +3/+3 until end of turn for each creature blocking it beyond the first"];
+    public override Nib[] Nibs => ["choose flying, first strike, trample, or rampage 3"];
 }

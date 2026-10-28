@@ -9,7 +9,7 @@ public class BecomesCharacteristic : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(Verb), Prop(Value), Prop(InAddition), Prop(Duration)];
 
     public BecomeVerb Verb { get; set; }
-    public OneOf<OneOf<ManaColor?, TypeDesignation?, AllColors?>, CharacteristicOfChoice, OneOf<BecomesLandType, PermanentDesignation?>> Value { get; set; }
+    public OneOf<ManaColor?, TypeDesignation?, AllColors?, CharacteristicOfChoice, BecomesLandType, PermanentDesignation?> Value { get; set; }
     [RegexPattern("in addition to (its|their) other (colors|types|creature types)")]
     public bool InAddition { get; set; }
     [Optional]

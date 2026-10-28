@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What the opponent receives from the gift keyword: "a card", "a tapped fish", "a food", "a treasure", "an extra turn", "an octopus" - "gift a card".</summary>
 public enum GiftKind
 {
     [RegexPattern("a card")]

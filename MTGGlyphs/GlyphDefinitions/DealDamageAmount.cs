@@ -10,5 +10,5 @@ public class DealDamageAmount : Glyph, IPredicate
 
     public OneOf<DamageAmount, ThatDamage> Amount { get; set; }
     [Optional]
-    public DamageRecipientAgain Recipient { get; set; }
+    public DamagedPermanentRef Recipient { get; set; }
 }

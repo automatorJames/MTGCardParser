@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MenacingOgreRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you are one of those players, put two +1/+1 counters on this creature"];
+    public override Nib[] Nibs => ["then those numbers are revealed"];
 }

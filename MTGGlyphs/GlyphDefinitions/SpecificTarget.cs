@@ -33,7 +33,7 @@ public class SpecificTarget : Glyph
     [Optional]
     public ControlledBy ControllerAfterWith { get; set; }
     [Optional]
-    public OneOf<ThatsInCombat, EnteredThisTurn, OneOf<ThatDidThisTurn, AttachedToObject, ThatsColored>> InCombat { get; set; }
+    public OneOf<ThatsInCombat, EnteredThisTurn, ThatDidThisTurn, AttachedToObject, ThatsColored> InCombat { get; set; }
     [RegexPattern("that was dealt damage this turn")]
     public bool DealtDamageThisTurn { get; set; }
 }

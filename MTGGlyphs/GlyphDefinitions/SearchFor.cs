@@ -7,7 +7,7 @@ public class SearchFor : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Alt("search", "searches"), Prop(Owner), Prop(Zones), "for", Prop(Wanted), Prop(FollowUp)];
 
-    public OneOf<Whose?, PlayerPossessive> Owner { get; set; }
+    public Owner Owner { get; set; }
     public SearchedZones Zones { get; set; }
     public OneOf<ManyOf<WantedCards>, WantedCards> Wanted { get; set; }
     [Optional]

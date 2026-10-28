@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class StrongholdGambitRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["the owner of each creature card revealed this way with the lowest mana value puts it onto the battlefield"];
+    public override Nib[] Nibs => ["then each player reveals their chosen card"];
 }

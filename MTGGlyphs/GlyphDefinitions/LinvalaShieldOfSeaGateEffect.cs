@@ -5,5 +5,5 @@
 [Dependent]
 public class LinvalaShieldOfSeaGateEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you have a full party, choose target nonland permanent an opponent controls"];
+    public override Nib[] Nibs => ["choose hexproof or indestructible"];
 }

@@ -13,5 +13,5 @@ public class CastByPlayerFrom : Glyph
     [RegexPattern("didn't")]
     public bool Negated { get; set; }
     [Optional]
-    public CastFromZone From { get; set; }
+    public FromZone From { get; set; }
 }

@@ -8,8 +8,8 @@ public class CopiedWithExceptions : Glyph
 {
     public override Nib[] Nibs => [Prop(Original), Prop(Duration), ",", Prop(Change)];
 
-    public OneOf<PermanentPhrase, IndefinitePermanent, OneOf<AnyObjectInZone, TargetCardInZone>> Original { get; set; }
+    public OneOf<PermanentPhrase, IndefinitePermanent, AnyObjectInZone, TargetCardInZone> Original { get; set; }
     [Optional]
     public EffectDuration Duration { get; set; }
-    public OneOf<CopyChangePair, CopyIsDescribed, OneOf<CopyHasAbility, CopyLegendary, OneOf<CopyGrantsQuoted, CopyEntersWithCounters, OneOf<CopyRenamed, CopyRenamedRetypedGranted>>>> Change { get; set; }
+    public OneOf<CopyChangePair, CopyIsDescribed, CopyHasAbility, CopyLegendary, CopyGrantsQuoted, CopyEntersWithCounters, CopyRenamed, CopyRenamedRetypedGranted> Change { get; set; }
 }

@@ -10,5 +10,5 @@ public class TargetKind : GlyphOneOf
     public CardType? CardType { get; set; }
     public CreatureType? CreatureType { get; set; }
     public PermanentSubtype? Subtype { get; set; }
-    public TokenNoun? Token { get; set; }
+    public TokenWord? Token { get; set; }
 }

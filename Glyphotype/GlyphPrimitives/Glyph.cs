@@ -248,8 +248,7 @@ public abstract class Glyph : CaptureUnit
         typeof(CompoundOf<>),
         typeof(ManyOf<>),
         typeof(OptionalOf<>),
-        typeof(OneOf<,>),
-        typeof(OneOf<,,>),
+        .. OneOfBase.GenericDefinitions,
         typeof(CompoundOfSecondItem<>),
         typeof(ManyOfSecondItem<>),
     ];
@@ -378,7 +377,7 @@ public abstract class Glyph : CaptureUnit
     }
 
     /// <summary>
-    /// Refuses a generic <see cref="OneOf{T1,T2}"/>/<see cref="OneOf{T1,T2,T3}"/> that repeats a type argument
+    /// Refuses a generic <c>OneOf</c> (of any arity) that repeats a type argument
     /// (nullable-unwrapped), e.g. <c>OneOf&lt;int?, int?&gt;</c>. Its alternatives are distinguished only by type,
     /// so two of the same type are the same alternative twice: nothing could say which one matched. (It's also
     /// what names its capture groups - see <see cref="PropertyNib"/>.) Alternatives that genuinely differ in
@@ -388,7 +387,7 @@ public abstract class Glyph : CaptureUnit
     {
         var oneOf = type;
 
-        while (oneOf is not null && !(oneOf.IsGenericType && oneOf.GetGenericTypeDefinition() is var definition && (definition == typeof(OneOf<,>) || definition == typeof(OneOf<,,>))))
+        while (oneOf is not null && !OneOfBase.IsGenericOneOf(oneOf))
             oneOf = oneOf.BaseType;
 
         if (oneOf is null)
@@ -685,4 +684,4 @@ public abstract class Glyph : CaptureUnit
             }
         }
     }
-}
+}

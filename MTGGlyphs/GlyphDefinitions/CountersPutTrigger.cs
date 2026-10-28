@@ -9,7 +9,7 @@ public class CountersPutTrigger : Glyph
 
     public OneOf<Counters, NthCounter> Counters { get; set; }
     public CounterMovement Movement { get; set; }
-    public OneOf<PermanentPhrase, IndefinitePermanent, OneOf<OneOrMorePermanents, Permanents, ShortName>> Permanent { get; set; }
+    public OneOf<PermanentPhrase, IndefinitePermanent, OneOrMorePermanents, Permanents, ShortName> Permanent { get; set; }
     [Optional]
     public OneOf<ThisPeriod, PlayerEventTiming?> Period { get; set; }
     public DynamicGlyph Effect { get; set; }

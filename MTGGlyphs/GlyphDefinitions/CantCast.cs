@@ -9,7 +9,7 @@ public class CantCast : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => ["can't", Prop(Verb), Prop(What), Prop(OrActivate), Prop(Period)];
 
     public PlayVerb Verb { get; set; }
-    public OneOf<MoreThanOneSpell, SpellsCast, PlayableCardType> What { get; set; }
+    public OneOf<MoreThanOneSpell, SpellsCast, PluralKind> What { get; set; }
     [Optional]
     public OrActivateAbilities OrActivate { get; set; }
     [Optional]

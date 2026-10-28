@@ -8,6 +8,6 @@ public class ActedOnThisWay : Glyph
 {
     public override Nib[] Nibs => [Prop(Object), Opt(Pattern("(is|was|are|were)")), Prop(Action), "this way"];
 
-    public OneOf<IndefinitePermanent, OneOf<IndefiniteCard, CardOfChosenKind, CardsSharingAspect>, OneOf<ThatStackObject, ThatCardPhrase, OneOf<PermanentPhrase, WhichPlayer?, DamageFromSource>>> Object { get; set; }
+    public OneOf<IndefinitePermanent, IndefiniteCard, CardOfChosenKind, CardsSharingAspect, ThatStackObject, ThatCardPhrase, PermanentPhrase, WhichPlayer?, DamageFromSource> Object { get; set; }
     public ThisWayAction Action { get; set; }
 }

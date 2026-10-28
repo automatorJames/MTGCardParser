@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class AvatarAangRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["then if you've done all four this turn, transform avatar aang"];
+    public override Nib[] Nibs => ["whenever you waterbend, earthbend, firebend, or airbend, draw a card"];
 }

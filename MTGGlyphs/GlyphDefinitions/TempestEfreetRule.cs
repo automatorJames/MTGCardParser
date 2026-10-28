@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class TempestEfreetRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["put the revealed card into your hand and", Nib.This, "from anywhere into that player's graveyard"];
+    public override Nib[] Nibs => ["exchange ownership of the revealed card and", Nib.This];
 }

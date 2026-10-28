@@ -6,9 +6,8 @@
 [Dependent]
 public class CardOfKind : Glyph
 {
-    public override Nib[] Nibs => [Prop(Article), Prop(Qualifiers), "card"];
+    public override Nib[] Nibs => [Pattern("an?"), Prop(Qualifiers), "card"];
 
-    public ArticleA Article { get; set; }
     [Optional]
     public OneOf<ManyOf<TargetQualifier>, QualifierRun> Qualifiers { get; set; }
 }

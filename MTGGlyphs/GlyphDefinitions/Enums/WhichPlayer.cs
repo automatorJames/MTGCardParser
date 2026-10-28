@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A player or set of players named in rules text: "you", "each opponent", "each player", "an opponent", "any player", "no player", "defending player", "attacking player", "enchanted player"; the subject of player predicates and the player in conditions, triggers and comparisons.</summary>
 public enum WhichPlayer
 {
     [RegexPattern("your opponents")]

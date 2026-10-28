@@ -9,7 +9,7 @@ public class PlayFromZone : Glyph, IPredicate
     public override Nib[] Nibs => [Prop(Plays), "from", Prop(Source), Prop(Free), Prop(Using), Prop(Duration)];
 
     public OneOf<PlayPermission, ManyOf<PlayPermission>> Plays { get; set; }
-    public OneOf<TopOfLibrary, PlayersZone, OneOf<NonBattlefieldZone?, AmongThem>> Source { get; set; }
+    public OneOf<TopOfLibrary, PlayersZone, NonBattlefieldZone?, AmongThem> Source { get; set; }
     [RegexPattern("without paying (its|their) mana costs?")]
     public bool Free { get; set; }
     [Optional]

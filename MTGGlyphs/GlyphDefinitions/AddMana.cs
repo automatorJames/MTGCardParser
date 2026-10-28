@@ -9,5 +9,5 @@ public class AddMana : Glyph, IConjoinedPredicate, IPredicate
 
     [Optional]
     public AddedManaAmount? Amount { get; set; }
-    public OneOf<ManyOf<ManaCost>, ManaCost, OneOf<ManaOfAnyColor, ManaInAnyCombination, AmountOfMana>> Mana { get; set; }
+    public OneOf<ManyOf<ManaCost>, ManaCost, ManaOfAnyColor, ManaInAnyCombination, AmountOfMana> Mana { get; set; }
 }

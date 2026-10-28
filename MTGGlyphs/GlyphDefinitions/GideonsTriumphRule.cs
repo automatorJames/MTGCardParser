@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GideonsTriumphRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you control a gideon planeswalker, that player sacrifices two of those creatures of their choice instead"];
+    public override Nib[] Nibs => ["target opponent sacrifices a creature of their choice that attacked or blocked this turn"];
 }

@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class OddsRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if it comes up tails, copy that spell and you may choose new targets for the copy"];
+    public override Nib[] Nibs => ["if it comes up heads, counter target instant or sorcery spell"];
 }

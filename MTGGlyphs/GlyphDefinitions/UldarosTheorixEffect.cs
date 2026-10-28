@@ -5,5 +5,5 @@
 [Dependent]
 public class UldarosTheorixEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you cast him, exile up to one target nonland card of each card type from your graveyard"];
+    public override Nib[] Nibs => ["permanent spells cast this way become tokens"];
 }

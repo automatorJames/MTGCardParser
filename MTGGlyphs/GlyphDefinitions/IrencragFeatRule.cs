@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class IrencragFeatRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you can cast only one more spell this turn"];
+    public override Nib[] Nibs => ["add seven {r}"];
 }

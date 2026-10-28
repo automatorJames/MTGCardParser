@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MasterOfPredicamentsRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if the player guessed wrong, you may cast the card without paying its mana cost"];
+    public override Nib[] Nibs => ["that player guesses whether the card's mana value is greater than 4"];
 }

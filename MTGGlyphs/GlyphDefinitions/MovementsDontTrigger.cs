@@ -8,5 +8,5 @@ public class MovementsDontTrigger : Glyph
     public override Nib[] Nibs => [Prop(Kinds), Prop(Movements), "don't cause abilities to trigger"];
 
     public OneOf<ManyOf<PluralTargetKind>, PluralTargetKind> Kinds { get; set; }
-    public OneOf<ManyOf<TriggeringMovement>, TriggeringMovement?> Movements { get; set; }
+    public OneOf<ManyOf<TriggeringEvent>, TriggeringEvent?> Movements { get; set; }
 }

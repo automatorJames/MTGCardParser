@@ -196,7 +196,7 @@ static class DefinitionReader
             var definition = type.GetGenericTypeDefinition();
             var arguments = type.GetGenericArguments().Select(ReadTypeReference).ToArray();
 
-            if (definition == typeof(OneOf<,>) || definition == typeof(OneOf<,,>))
+            if (OneOfBase.GenericDefinitions.Contains(definition))
                 return TypeReference.OneOf(arguments);
 
             if (definition == typeof(CompoundOf<>))

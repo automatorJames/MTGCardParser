@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ClockspinningRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["remove that counter from that permanent or card or put another of those counters on it"];
+    public override Nib[] Nibs => ["choose a counter on target permanent or suspended card"];
 }

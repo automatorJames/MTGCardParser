@@ -12,5 +12,5 @@ public class EffectIfCondition : Glyph
     public Subject Subject { get; set; }
     [TypeFilter(typeof(IPredicate))]
     public DynamicGlyph Effect { get; set; }
-    public OneOf<OneOf<CardIsKind, TransformedType>, OneOf<ManaWasSpent, GameState, OneOf<ControlsPermanent, KeywordCostWasPaid, WasKicked>>, GameStateEither> Condition { get; set; }
+    public OneOf<CardIsKind, TransformedType, ManaWasSpent, GameState, ControlsPermanent, KeywordCostWasPaid, WasKicked, GameStateEither> Condition { get; set; }
 }

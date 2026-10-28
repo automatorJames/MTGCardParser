@@ -5,5 +5,5 @@
 [Dependent]
 public class OmenpathJourneyEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["choose a card at random exiled with this enchantment and put it onto the battlefield tapped"];
+    public override Nib[] Nibs => ["search your library for up to five land cards that have different names, exile them, then shuffle"];
 }

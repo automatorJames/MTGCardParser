@@ -5,5 +5,5 @@
 [Dependent]
 public class MaddeningImpEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["destroy each of those creatures that didn't attack this turn"];
+    public override Nib[] Nibs => ["non-wall creatures the active player controls attack this turn if able"];
 }

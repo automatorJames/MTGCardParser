@@ -9,7 +9,7 @@ public class SpellNarrowing : GlyphOneOf
     public SpellTargets Targets { get; set; }
     public SpellColors Colors { get; set; }
     public ChosenAspect? Chosen { get; set; }
-    public CastFromZone From { get; set; }
+    public FromZone From { get; set; }
     public CastFromOtherThanHand FromOtherThanHand { get; set; }
     public DuringTurn During { get; set; }
     public SpellHasFeature Feature { get; set; }

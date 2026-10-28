@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What "choose" picks when it isn't a targeted or described object: a player ("an opponent", "one of your opponents"), a characteristic ("a color", "a creature type", "a basic land type"), a name ("a nonland card name", "a card name other than a basic land card name"), a number ("a number between 1 and 10", "odd or even"), or "any target".</summary>
 public enum Choice
 {
     [RegexPattern("an opponent")]

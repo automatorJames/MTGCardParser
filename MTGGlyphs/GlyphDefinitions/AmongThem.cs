@@ -8,5 +8,5 @@ public class AmongThem : Glyph
 {
     public override Nib[] Nibs => ["among", Prop(Cards)];
 
-    public OneOf<Them, OneOf<ThatCardPhrase, CardsHandledThisWay, Those>, OneOf<SacrificedPermanent, CardsExiledWithThis, AffectedThisWay>> Cards { get; set; }
+    public OneOf<Them, ThatCardPhrase, CardsHandledThisWay, Those, SacrificedPermanent, CardsExiledWithThis, AffectedThisWay> Cards { get; set; }
 }

@@ -12,7 +12,7 @@ public class IsOfType : Glyph, IConjoinedPredicate, IPredicate
     [Optional]
     [RegexPattern("legendary")]
     public bool? Legendary { get; set; }
-    public OneOf<ColoredKind, PluralKind, OneOf<TypeDesignation?, DescribedKinds>> Kind { get; set; }
+    public OneOf<ColoredKind, PluralKind, TypeDesignation?, DescribedKinds> Kind { get; set; }
     [RegexPattern("in addition to (its|their) other (colors and types|creature types|land types|types|colors)")]
     public bool InAddition { get; set; }
     [Optional]

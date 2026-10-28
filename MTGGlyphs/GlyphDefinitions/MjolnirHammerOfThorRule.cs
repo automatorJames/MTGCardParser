@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MjolnirHammerOfThorRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["equip worthy {1} (a creature is worthy if it's a legendary non-villain that's red and/or white"];
+    public override Nib[] Nibs => ["double all damage equipped creature would deal"];
 }

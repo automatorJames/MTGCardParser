@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A keyword action as the third-person verb its subject performs: "explores", "connives", "scries", "surveils", "manifests dread", "amasses zombies" - "it explores", "target player scries 3".</summary>
 public enum CreatureKeywordAction
 {
     [RegexPattern("explores")]

@@ -7,7 +7,7 @@ public class ColorIsSet : Glyph
 {
     public override Nib[] Nibs => [Prop(Objects), Prop(Verb), Prop(Colors)];
 
-    public OneOf<OneOf<This, ThisCreature, EnchantedPermanent>, OneOf<AllPermanents, EachControlledPermanent, Permanents>> Objects { get; set; }
+    public OneOf<This, ThisCreature, EnchantedPermanent, AllPermanents, EachControlledPermanent, Permanents> Objects { get; set; }
     public ColorCopula Verb { get; set; }
     public OneOf<ManyOf<ManaColor>, ManaColor?, SetColor?> Colors { get; set; }
 }

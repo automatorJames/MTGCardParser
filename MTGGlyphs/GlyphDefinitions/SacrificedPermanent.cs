@@ -8,7 +8,7 @@ public class SacrificedPermanent : Glyph
 {
     public override Nib[] Nibs => ["the", Prop(How), Plural(Prop(CardType)), Prop(Card)];
 
-    public HandledHow How { get; set; }
+    public ThisWayAction How { get; set; }
     [Optional]
     public CardType? CardType { get; set; }
     [Optional]

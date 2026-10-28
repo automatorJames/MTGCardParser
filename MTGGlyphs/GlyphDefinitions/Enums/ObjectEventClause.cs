@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>The clause that names an object again by what happened to it, after "the creature" or "the card": "that died", "you exiled", "you chose", "you revealed", "you sacrificed", "you discarded" ("the power of the creature that died").</summary>
 public enum ObjectEventClause
 {
     [RegexPattern("that died")]

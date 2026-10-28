@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class DemonlordBelzenlokRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => [Nib.This, "deals 1 damage to you for each card put into your hand this way"];
+    public override Nib[] Nibs => ["if the card's mana value is 4 or greater, repeat this process"];
 }

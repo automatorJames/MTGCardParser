@@ -9,5 +9,5 @@ public class CardIsInZone : Glyph
     public override Nib[] Nibs => [Prop(Card), "is", Prop(Place)];
 
     public OneOf<This, ThisCreature, ThatCardPhrase> Card { get; set; }
-    public OneOf<InPlayersZone, ExiledState> Place { get; set; }
+    public OneOf<InZone, ExiledState> Place { get; set; }
 }

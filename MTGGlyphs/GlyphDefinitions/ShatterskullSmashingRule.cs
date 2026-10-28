@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ShatterskullSmashingRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if x is 6 or more, shatterskull smashing deals twice x damage divided as you choose among them instead"];
+    public override Nib[] Nibs => ["shatterskull smashing deals x damage divided as you choose among up to two target creatures and/or planeswalkers"];
 }

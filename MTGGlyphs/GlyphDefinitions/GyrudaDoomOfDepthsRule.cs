@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GyrudaDoomOfDepthsRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["put a creature card with an even mana value from among the milled cards onto the battlefield under your control"];
+    public override Nib[] Nibs => ["companion — your starting deck contains only cards with even mana values"];
 }

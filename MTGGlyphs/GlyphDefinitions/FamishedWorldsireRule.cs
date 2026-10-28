@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class FamishedWorldsireRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["it enters with three times that many +1/+1 counters on it"];
+    public override Nib[] Nibs => ["devour land 3 (as this creature enters, you may sacrifice any number of lands"];
 }

@@ -7,7 +7,7 @@ public class ExileTopOfLibrary : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Pattern("exiles?"), Prop(What), Prop(FaceDown)];
 
-    public OneOf<RevealedTopCard, LookedAtTopCard, OneOf<RevealedTop, CardsFromTopOfLibrary, TopCardOfGraveyard>> What { get; set; }
+    public OneOf<TopCardOfLibrary, TopCardsOfLibrary, CardsFromTopOfLibrary, TopCardOfGraveyard> What { get; set; }
     [RegexPattern("face down")]
     public bool FaceDown { get; set; }
 }

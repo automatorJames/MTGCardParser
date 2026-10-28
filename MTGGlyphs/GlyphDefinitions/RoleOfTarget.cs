@@ -9,5 +9,5 @@ public class RoleOfTarget : Glyph
     public override Nib[] Nibs => ["the", Prop(Role), "of", Prop(Target)];
 
     public PlayerRole Role { get; set; }
-    public OneOf<TargetSpellOrPermanent, SpecificTarget, OneOf<TargetCardInZone, TargetSpell>> Target { get; set; }
+    public OneOf<TargetSpellOrPermanent, SpecificTarget, TargetCardInZone, TargetSpell> Target { get; set; }
 }

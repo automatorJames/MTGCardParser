@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class CavernousMawRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["activate only if the number of other caves you control plus the number of cave cards in your graveyard is three or greater"];
+    public override Nib[] Nibs => ["it's still a cave land"];
 }

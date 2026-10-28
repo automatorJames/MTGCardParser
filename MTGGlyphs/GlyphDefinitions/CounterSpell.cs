@@ -7,5 +7,5 @@ public class CounterSpell : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => ["counter", Prop(Countered)];
 
-    public OneOf<TargetAbility, TargetSpell, OneOf<It, OneOf<This, ThisSpell>, ThatStackObject>> Countered { get; set; }
+    public OneOf<TargetAbility, TargetSpell, It, This, ThisSpell, ThatStackObject> Countered { get; set; }
 }

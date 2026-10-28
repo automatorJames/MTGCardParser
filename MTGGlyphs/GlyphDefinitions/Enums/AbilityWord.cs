@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>An ability word, the italic label before the dash of the ability it marks: "landfall", "threshold", "fateful hour", "council's dilemma", "descend 8".</summary>
 public enum AbilityWord
 {
     Landfall,

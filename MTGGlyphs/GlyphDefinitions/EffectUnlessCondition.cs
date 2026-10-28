@@ -9,5 +9,5 @@ public class EffectUnlessCondition : Glyph
     public override Nib[] Nibs => [Prop(Effect), "unless", Prop(Condition)];
 
     public DynamicGlyph Effect { get; set; }
-    public OneOf<OneOf<ManaWasSpent, PlayerControls, CastWithEscape>, GameState, GameStateEither> Condition { get; set; }
+    public OneOf<ManaWasSpent, PlayerControls, CastWithEscape, GameState, GameStateEither> Condition { get; set; }
 }

@@ -5,5 +5,5 @@
 [Dependent]
 public class TomBertAndWilliamEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if they were a creature, return them to the battlefield"];
+    public override Nib[] Nibs => ["they're no longer a creature"];
 }

@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SirensCallRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["ignore this effect for each creature the player didn't control continuously since the beginning of the turn"];
+    public override Nib[] Nibs => ["cast this spell only during an opponent's turn, before attackers are declared"];
 }

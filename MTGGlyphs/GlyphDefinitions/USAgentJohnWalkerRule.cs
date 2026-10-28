@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class USAgentJohnWalkerRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["agent enters, create a colorless equipment artifact token named sturdy shield with \"equipped creature gets +1/+2\" and equip {2}"];
+    public override Nib[] Nibs => ["when u"];
 }

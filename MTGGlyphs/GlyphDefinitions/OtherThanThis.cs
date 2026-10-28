@@ -8,5 +8,5 @@ public class OtherThanThis : Glyph
 {
     public override Nib[] Nibs => ["other than", Prop(Self)];
 
-    public OneOf<This, ThisCreature, OneOf<EnchantedPermanent, ThatCard>> Self { get; set; }
+    public OneOf<This, ThisCreature, EnchantedPermanent, ThatCard> Self { get; set; }
 }

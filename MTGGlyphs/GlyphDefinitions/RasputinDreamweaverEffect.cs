@@ -5,5 +5,5 @@
 [Dependent]
 public class RasputinDreamweaverEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["prevent the next 1 damage that would be dealt to rasputin this turn"];
+    public override Nib[] Nibs => ["if rasputin started the turn untapped, put a dream counter on it"];
 }

@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class AlhammarretHighArbiterRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["your opponents can't cast spells with the chosen name (as long as this creature is on the battlefield)"];
+    public override Nib[] Nibs => ["you choose the name of a nonland card revealed this way"];
 }

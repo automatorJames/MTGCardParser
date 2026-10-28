@@ -7,7 +7,7 @@ public class CostModification : Glyph
 {
     public override Nib[] Nibs => [Prop(Spells), Pattern("costs?"), Prop(Amount), Prop(Change), Prop(Action), Prop(PerEach), Prop(Condition)];
 
-    public OneOf<OneOf<ThisSpell, OrdinalSpellCast, ThisAbility>, OneOf<This, It, They>, OneOf<SpellKindsCast, SpellsCast, OneOf<ActivatedAbilitiesOfGroup, SpellCastThisWay, OneOf<AbilitiesOfKind, KeywordCosts>>>> Spells { get; set; }
+    public OneOf<ThisSpell, OrdinalSpellCast, ThisAbility, This, It, They, SpellKindsCast, SpellsCast, ActivatedAbilitiesOfGroup, SpellCastThisWay, AbilitiesOfKind, KeywordCosts> Spells { get; set; }
     public ManaCost Amount { get; set; }
     public CostChange Change { get; set; }
     [Optional]
@@ -15,5 +15,5 @@ public class CostModification : Glyph
     [Optional]
     public ForEach PerEach { get; set; }
     [Optional]
-    public OneOf<OneOf<ControlCondition, DuringTurn, DuringStep>, IfHappenedThisTurn, OneOf<StateCondition, IfItTargets, ManaAbilityExemption?>> Condition { get; set; }
+    public OneOf<ControlCondition, DuringTurn, DuringStep, IfHappenedThisTurn, StateCondition, IfItTargets, ManaAbilityExemption?> Condition { get; set; }
 }

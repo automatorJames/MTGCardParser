@@ -5,5 +5,5 @@
 [Dependent]
 public class SpawningPoolEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if it regenerates, the next time it would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it"];
+    public override Nib[] Nibs => ["this land becomes a 1/1 black skeleton creature with \"{b}: regenerate this creature\" until end of turn"];
 }

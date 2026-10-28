@@ -8,5 +8,5 @@ public class WithSameName : Glyph
 {
     public override Nib[] Nibs => ["with the same name as", Prop(Object)];
 
-    public OneOf<OneOf<ThatCardPhrase, ThatCard, ThatStackObject>, OneOf<SacrificedPermanent, ThisSpell, It>, OneOf<NamesakePermanent, NamesakeCard, CardsExiledWithThis>> Object { get; set; }
+    public OneOf<ThatCardPhrase, ThatCard, ThatStackObject, SacrificedPermanent, ThisSpell, It, NamesakePermanent, NamesakeCard, CardsExiledWithThis> Object { get; set; }
 }

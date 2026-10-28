@@ -9,7 +9,7 @@ public class CardsFromTopOfLibrary : Glyph
     public override Nib[] Nibs => [Prop(Count), "cards from the top of", Prop(Whose), Pattern("librar(y|ies)"), Prop(EqualTo)];
 
     public OneOf<TopCardCount?, Quantity?> Count { get; set; }
-    public OneOf<Whose?, PlayerPossessive> Whose { get; set; }
+    public Owner Whose { get; set; }
     [Optional]
     public EqualTo EqualTo { get; set; }
 }

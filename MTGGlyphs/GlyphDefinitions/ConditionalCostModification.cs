@@ -8,7 +8,7 @@ public class ConditionalCostModification : Glyph
 {
     public override Nib[] Nibs => [Prop(Spells), Pattern("costs?"), Prop(Amount), Prop(Change), Alt("to cast", "to activate"), "if", Prop(Condition)];
 
-    public OneOf<ThisSpell, ThisAbility, OneOf<This, ThoseSpells>> Spells { get; set; }
+    public OneOf<ThisSpell, ThisAbility, This, ThoseSpells> Spells { get; set; }
     public ManaCost Amount { get; set; }
     public CostChange Change { get; set; }
     public DynamicGlyph Condition { get; set; }

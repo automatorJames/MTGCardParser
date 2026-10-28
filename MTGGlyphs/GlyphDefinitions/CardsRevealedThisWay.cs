@@ -13,5 +13,5 @@ public class CardsRevealedThisWay : Glyph
     public QualifierWords Qualifiers { get; set; }
     [Optional]
     public OneOf<ManaValueLimit, WithQualifier, ChosenAspect?> Bound { get; set; }
-    public HandledHow How { get; set; }
+    public ThisWayAction How { get; set; }
 }

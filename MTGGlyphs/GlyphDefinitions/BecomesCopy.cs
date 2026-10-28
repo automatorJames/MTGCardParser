@@ -9,7 +9,7 @@ public class BecomesCopy : Glyph, IPredicate
     public override Nib[] Nibs => [Prop(Verb), "a copy of", Prop(Original), Prop(Duration)];
 
     public CopyingVerb Verb { get; set; }
-    public OneOf<CopiedWithExceptions, OneOf<PermanentPhrase, IndefinitePermanent>, AnyObjectInZone> Original { get; set; }
+    public OneOf<CopiedWithExceptions, PermanentPhrase, IndefinitePermanent, AnyObjectInZone> Original { get; set; }
     [Optional]
     public EffectDuration Duration { get; set; }
 }

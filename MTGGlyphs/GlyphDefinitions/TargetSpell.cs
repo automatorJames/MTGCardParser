@@ -14,5 +14,5 @@ public class TargetSpell : Glyph
     [Optional]
     public OneOf<ManyOf<TargetQualifier>, QualifierRun> Qualifiers { get; set; }
     [Optional]
-    public OneOf<ManaValueLimit, WithQualifier, OneOf<SpellTargets, ControlledBy>> Bound { get; set; }
+    public OneOf<ManaValueLimit, WithQualifier, SpellTargets, ControlledBy> Bound { get; set; }
 }

@@ -10,7 +10,7 @@ public class IndefinitePermanent : Glyph
 
     public IndefiniteDeterminer Determiner { get; set; }
     [Optional]
-    public OneOf<ManyOf<TargetQualifier>, OneOf<TargetQualifier, CompoundOf<TargetQualifier>>, QualifierWords> Qualifier { get; set; }
+    public OneOf<ManyOf<TargetQualifier>, TargetQualifier, CompoundOf<TargetQualifier>, QualifierWords> Qualifier { get; set; }
     [Referent]
     [Singular]
     public OneOf<ManyOf<PermanentKind>, PermanentKind> Kind { get; set; }

@@ -5,5 +5,5 @@
 [Dependent]
 public class TamThePossibilityEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["to proliferate, choose any number of permanents and/or players, then give each another counter of each kind already there"];
+    public override Nib[] Nibs => ["proliferate x times, where x is the number of planeswalker types among planeswalkers you control"];
 }

@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SamutTheDrivingForceRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["noncreature spells you cast cost {x} less to cast, where x is your speed"];
+    public override Nib[] Nibs => ["other creatures you control get +x/+0, where x is your speed"];
 }

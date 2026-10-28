@@ -5,5 +5,5 @@
 [Dependent]
 public class ErtaisFamiliarEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["mill three cards"];
+    public override Nib[] Nibs => ["until your next upkeep, this creature can't phase out"];
 }

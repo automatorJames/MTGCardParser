@@ -26,5 +26,5 @@ public class Permanents : Glyph
     [Optional]
     public OneOf<WithQualifier, ChosenAspect?> Narrowed { get; set; }
     [Optional]
-    public OneOf<ThatsInCombat, SharesCreatureType, OneOf<EnteredThisTurn, ThatsOneOfKinds, OneOf<AttachedToReference, ThatDidThisTurn, OneOf<ThatAreAttached, CreatedWithThis, OneOf<ThatConvokedIt, BandedWith>>>>> InCombat { get; set; }
+    public OneOf<ThatsInCombat, SharesCreatureType, EnteredThisTurn, ThatsOneOfKinds, AttachedToReference, ThatDidThisTurn, ThatAreAttached, CreatedWithThis, ThatConvokedIt, BandedWith> InCombat { get; set; }
 }

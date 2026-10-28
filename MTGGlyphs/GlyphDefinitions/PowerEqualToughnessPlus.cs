@@ -7,7 +7,7 @@ public class PowerEqualToughnessPlus : Glyph, IPredicate
 {
     public override Nib[] Nibs => [Prop(Object), "power is equal to", Prop(Amount), "and its toughness is equal to that number plus", Prop(ToughnessBonus)];
 
-    public OneOf<Its, ObjectPossessive, ShortNamePossessive> Object { get; set; }
+    public OneOf<Its, ObjectPossessive> Object { get; set; }
     public OneOf<ArithmeticAmount, ScaledAmountExact, Amount> Amount { get; set; }
     public Quantity ToughnessBonus { get; set; }
 }

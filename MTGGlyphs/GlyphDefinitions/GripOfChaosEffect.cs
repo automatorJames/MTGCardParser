@@ -5,5 +5,5 @@
 [Dependent]
 public class GripOfChaosEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if it has a single target, reselect its target at random"];
+    public override Nib[] Nibs => ["select from among all legal targets"];
 }

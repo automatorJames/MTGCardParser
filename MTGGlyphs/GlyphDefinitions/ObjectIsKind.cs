@@ -8,6 +8,6 @@ public class ObjectIsKind : Glyph
 {
     public override Nib[] Nibs => [Prop(Object), Prop(Kind)];
 
-    public OneOf<OneOf<ItIs, ThatIs>, ItWas, ThatObjectIsOrWas> Object { get; set; }
+    public OneOf<ItIs, ThatIs, ItWas, ThatObjectIsOrWas> Object { get; set; }
     public IndefinitePermanent Kind { get; set; }
 }

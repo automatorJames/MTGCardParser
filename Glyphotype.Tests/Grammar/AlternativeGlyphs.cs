@@ -40,6 +40,14 @@ public class KnocksOnTheDoor : Glyph
     public OneOf<TheAnimal, ThePerson, OurNeighbor> Visitor { get; set; }
 }
 
+/// <summary>A wider generic one-of, <see cref="OneOf{T1,T2,T3,T4}"/>: three nested glyphs and an enum.</summary>
+public class WavesAtUs : Glyph
+{
+    public override Nib[] Nibs => [Prop(Waver), "waves at us"];
+
+    public OneOf<TheAnimal, ThePerson, OurNeighbor, Weekday?> Waver { get; set; }
+}
+
 /// <summary>A concrete <see cref="GlyphOneOf"/>: alternatives with names of their own.</summary>
 [Dependent]
 public class Treat : GlyphOneOf

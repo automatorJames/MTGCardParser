@@ -5,5 +5,5 @@
 [Dependent]
 public class DiabolicServitudeEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["exile it and return this enchantment to its owner's hand"];
+    public override Nib[] Nibs => ["exile the creature put onto the battlefield with this enchantment"];
 }

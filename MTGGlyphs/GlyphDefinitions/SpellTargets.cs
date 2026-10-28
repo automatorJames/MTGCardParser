@@ -10,5 +10,5 @@ public class SpellTargets : Glyph
 
     [Optional]
     public SpellTargetCount? Count { get; set; }
-    public OneOf<PlayerOrPermanent, OneOf<PermanentPhrase, Permanents, IndefinitePermanent>, WhichPlayer?> Targeted { get; set; }
+    public OneOf<PlayerOrPermanent, PermanentPhrase, Permanents, IndefinitePermanent, WhichPlayer?> Targeted { get; set; }
 }

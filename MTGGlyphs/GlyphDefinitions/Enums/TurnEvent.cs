@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>Something that happened, or didn't, in a turn, as a condition's event: "you attacked" (raid), "a creature died" (morbid), "a permanent left the battlefield under your control" (revolt), "you gained life", "you didn't play a land", "you've committed a crime", "a spell was warped".</summary>
 public enum TurnEvent
 {
     [RegexPattern("you attacked", "you've attacked", "you attacked with a creature")]

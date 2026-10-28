@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SnowblindRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["y is equal to x or to enchanted creature's toughness minus 1, whichever is smaller"];
+    public override Nib[] Nibs => ["enchanted creature gets -x/-y"];
 }

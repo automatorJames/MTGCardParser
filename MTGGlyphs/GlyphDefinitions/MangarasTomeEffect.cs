@@ -5,5 +5,5 @@
 [Dependent]
 public class MangarasTomeEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["the next time you would draw a card this turn, instead put the top card of the exiled pile into its owner's hand"];
+    public override Nib[] Nibs => ["search your library for five cards, exile them in a face-down pile, and shuffle that pile"];
 }

@@ -7,7 +7,7 @@ public class BecomesTargetTrigger : Glyph
 {
     public override Nib[] Nibs => [Alt("when", "whenever"), Prop(Subject), Pattern("becomes?"), "the target of", Prop(Source), Prop(Controller), Prop(FirstTime), ",", Prop(Effect)];
 
-    public OneOf<ThisOrAnother, PermanentPhrase, OneOf<IndefinitePermanent, OneOrMorePermanents, OneOf<WhichPlayer?, ShortName>>> Subject { get; set; }
+    public OneOf<ThisOrAnother, PermanentPhrase, IndefinitePermanent, OneOrMorePermanents, WhichPlayer?, ShortName> Subject { get; set; }
     public TargetingSource Source { get; set; }
     [Optional]
     public ControlledBy Controller { get; set; }

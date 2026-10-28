@@ -7,7 +7,7 @@ public class CreateToken : Glyph, IAlternativePredicate, IConjoinedPredicate, IP
 {
     public override Nib[] Nibs => [Pattern("creates?"), Prop(Token), Prop(PerEach), Prop(EqualTo)];
 
-    public OneOf<OneOf<TokenWithQuotedAbility, NamedLegendaryToken>, TokenDescription, OneOf<PredefinedTokenWithCounters, PredefinedTokens, OneOf<TokenCopy, CountOfThoseTokens>>> Token { get; set; }
+    public OneOf<TokenWithQuotedAbility, NamedLegendaryToken, TokenDescription, PredefinedTokenWithCounters, PredefinedTokens, TokenCopy, CountOfThoseTokens> Token { get; set; }
     [Optional]
     public ForEach PerEach { get; set; }
     [Optional]

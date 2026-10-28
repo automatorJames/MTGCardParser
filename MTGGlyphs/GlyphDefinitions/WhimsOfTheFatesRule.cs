@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class WhimsOfTheFatesRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["then each player chooses one of their piles at random and sacrifices those permanents"];
+    public override Nib[] Nibs => ["starting with you, each player separates all permanents they control into three piles"];
 }

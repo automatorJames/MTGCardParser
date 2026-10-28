@@ -8,6 +8,6 @@ public class ManaSpent : Glyph
 {
     public override Nib[] Nibs => [Prop(Mana), Opt("that was"), "spent", Prop(Use)];
 
-    public OneOf<ManaCost, ManyOf<ManaCost>, OneOf<ManaFromSource, AnyMana>> Mana { get; set; }
+    public OneOf<ManaCost, ManyOf<ManaCost>, ManaFromSource, AnyMana> Mana { get; set; }
     public OneOf<SpellPaidFor, ThisWay> Use { get; set; }
 }

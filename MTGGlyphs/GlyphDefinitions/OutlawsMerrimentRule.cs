@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class OutlawsMerrimentRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["• 1/2 human rogue with haste and \"when this token enters, it deals 1 damage to any target"];
+    public override Nib[] Nibs => ["create a red and white creature token with those characteristics"];
 }

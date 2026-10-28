@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class FblthpLostOnTheRangeRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you may plot nonland cards from the top of your library"];
+    public override Nib[] Nibs => ["the top card of your library has plot"];
 }

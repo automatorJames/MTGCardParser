@@ -8,5 +8,5 @@ public class UntilThisLeaves : Glyph
 {
     public override Nib[] Nibs => ["until", Prop(Source), "leaves the battlefield"];
 
-    public OneOf<This, ThisCreature, OneOf<It, ShortName>> Source { get; set; }
+    public OneOf<This, ThisCreature, It, ShortName> Source { get; set; }
 }

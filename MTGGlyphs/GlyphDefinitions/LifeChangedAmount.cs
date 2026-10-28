@@ -8,7 +8,7 @@ public class LifeChangedAmount : Glyph
 {
     public override Nib[] Nibs => [Pattern("the (?:(?:total )?amount of )?life"), Prop(Player), Prop(Change), Prop(Turn)];
 
-    public OneOf<WhichPlayer?, OneOf<PlayerReference, TheyPlayer>, PerfectSubject?> Player { get; set; }
+    public OneOf<WhichPlayer?, PlayerReference, TheyPlayer, PerfectSubject?> Player { get; set; }
     public LifeChange Change { get; set; }
     [Optional]
     public TurnSpan? Turn { get; set; }

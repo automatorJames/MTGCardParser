@@ -5,5 +5,5 @@
 [Dependent]
 public class WitchbaneOrbEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you can't be the target of spells or abilities your opponents control, including aura spells"];
+    public override Nib[] Nibs => ["destroy all curses attached to you"];
 }

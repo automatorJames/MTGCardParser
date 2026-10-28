@@ -13,7 +13,7 @@ public class CounterPlacementReplacement : Glyph
     [Optional]
     public CounterPlacer? Replacer { get; set; }
     public CounterIncrease Increase { get; set; }
-    public OneOf<KindOfCounters, EachOfThoseKindsOfCounters> Kinds { get; set; }
+    public OneOf<CountersOfKind, EachOfThoseKindsOfCounters> Kinds { get; set; }
     public OneOf<ThatPermanentOrPlayer, CounterRecipient> NewRecipient { get; set; }
     public OneOf<InsteadRounded, Instead?> Replacement { get; set; }
 }

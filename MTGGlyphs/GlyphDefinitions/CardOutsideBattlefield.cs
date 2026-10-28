@@ -9,7 +9,7 @@ public class CardOutsideBattlefield : Glyph
     public override Nib[] Nibs => [Plural(Alt("card", "spell")), Prop(Bound), Prop(AtRandom), Prop(Owner), Opt(Alt("in", "from")), Prop(Zone), Prop(Narrowed)];
 
     [Optional]
-    public OneOf<ManaValueLimit, WithQualifier, OneOf<ChosenAspect?, ChosenBy?>> Bound { get; set; }
+    public OneOf<ManaValueLimit, WithQualifier, ChosenAspect?, ChosenBy?> Bound { get; set; }
     [Optional]
     [RegexPattern("at random")]
     public bool? AtRandom { get; set; }

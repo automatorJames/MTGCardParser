@@ -10,5 +10,5 @@ public class PlayPermission : Glyph
 
     [Optional]
     public PlayVerb? Verb { get; set; }
-    public OneOf<OneOf<ThisCreature, ThatCard>, PlayableCards, PlayableCardType> What { get; set; }
+    public OneOf<ThisCreature, ThatCard, PlayableCards, PluralKind> What { get; set; }
 }

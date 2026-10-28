@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class FallingStarRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if", Nib.This, "doesn't turn completely over at least once during the flip, it has no effect"];
+    public override Nib[] Nibs => ["flip", Nib.This, "onto the playing area from a height of at least one foot"];
 }

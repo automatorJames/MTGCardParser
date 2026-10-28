@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class AbandonedSarcophagusRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if a card that has a cycling ability would be put into your graveyard from anywhere and it wasn't cycled, exile it instead"];
+    public override Nib[] Nibs => ["you may cast spells that have a cycling ability from your graveyard"];
 }

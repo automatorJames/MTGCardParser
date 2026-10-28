@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MindblazeRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if that library contains exactly the chosen number of cards with the chosen name,", Nib.This, "deals 8 damage to that player"];
+    public override Nib[] Nibs => ["target player reveals their library"];
 }

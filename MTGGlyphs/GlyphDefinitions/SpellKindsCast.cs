@@ -8,7 +8,7 @@ public class SpellKindsCast : Glyph
 {
     public override Nib[] Nibs => [Prop(Kinds), Prop(Caster)];
 
-    public ManyOf<KindOfSpells> Kinds { get; set; }
+    public ManyOf<QualifiedSpellsNoun> Kinds { get; set; }
     [Optional]
     public SpellCaster Caster { get; set; }
 }

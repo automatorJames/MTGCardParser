@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>The spell whose targets may be changed, after "choose new targets for": "the copy", "that copy", "their copy", "the copies" (storm's reminder), "that spell", "the spell", or "it".</summary>
 public enum RetargetedObject
 {
     [RegexPattern("the copy")]

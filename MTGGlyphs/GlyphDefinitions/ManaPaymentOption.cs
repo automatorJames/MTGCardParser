@@ -8,5 +8,5 @@ public class ManaPaymentOption : GlyphOneOf
 {
     public ManaCost Mana { get; set; }
     public AnyAmountOfMana AnyMana { get; set; }
-    public LifeAmount Life { get; set; }
+    public LifeQuantity Life { get; set; }
 }

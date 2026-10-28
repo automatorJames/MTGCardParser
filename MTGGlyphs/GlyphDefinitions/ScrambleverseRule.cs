@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ScrambleverseRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["then each player gains control of each permanent for which they were chosen"];
+    public override Nib[] Nibs => ["for each nonland permanent, choose a player at random"];
 }

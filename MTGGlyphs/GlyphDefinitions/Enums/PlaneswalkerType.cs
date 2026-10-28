@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A planeswalker subtype as a qualifier, lower-cased as card text has it: "ajani", "chandra", "jace", "liliana", "teferi" ("a jace planeswalker card", "each chandra you control").</summary>
 public enum PlaneswalkerType
 {
     Ajani,

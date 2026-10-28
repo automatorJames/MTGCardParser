@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What a player did, or didn't do, earlier this turn: "cast", "didn't cast", "played", "gained life", "lost life", "searched their library", "sacrificed", "discarded", "was dealt combat damage", "attacked with" ("you didn't cast a spell this turn", "an opponent gained life this turn").</summary>
 public enum PastPlayerAction
 {
     [RegexPattern("didn't cast", "haven't cast", "hasn't cast")]

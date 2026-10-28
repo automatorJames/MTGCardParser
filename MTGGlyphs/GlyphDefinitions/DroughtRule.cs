@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class DroughtRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["activated abilities cost an additional \"sacrifice a swamp\" to activate for each black mana symbol in their activation costs"];
+    public override Nib[] Nibs => ["spells cost an additional \"sacrifice a swamp\" to cast for each black mana symbol in their mana costs"];
 }

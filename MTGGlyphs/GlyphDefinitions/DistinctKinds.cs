@@ -9,5 +9,5 @@ public class DistinctKinds : Glyph
     public override Nib[] Nibs => [Prop(Aspect), Alt("among", "of"), Prop(Among)];
 
     public CountedAspect Aspect { get; set; }
-    public OneOf<CardsInZone, OneOf<Permanents, OtherPermanents>, ManaSpentToCast> Among { get; set; }
+    public OneOf<CardsInZone, Permanents, OtherPermanents, ManaSpentToCast> Among { get; set; }
 }

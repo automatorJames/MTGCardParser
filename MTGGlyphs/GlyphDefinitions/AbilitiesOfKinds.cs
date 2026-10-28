@@ -8,5 +8,5 @@ public class AbilitiesOfKinds : Glyph
 {
     public override Nib[] Nibs => ["of", Prop(Sources)];
 
-    public OneOf<ManyOf<PlayableCardType>, CardsInZones> Sources { get; set; }
+    public OneOf<ManyOf<PluralKind>, CardsInZones> Sources { get; set; }
 }

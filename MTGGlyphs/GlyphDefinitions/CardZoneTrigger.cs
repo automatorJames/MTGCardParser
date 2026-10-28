@@ -7,7 +7,7 @@ public class CardZoneTrigger : Glyph
 {
     public override Nib[] Nibs => [Alt("when", "whenever"), Prop(Cards), Prop(Event), Prop(During), ",", Prop(Effect)];
 
-    public OneOf<OneOrMoreCards, AnyCard, OneOf<ThisCreature, This>> Cards { get; set; }
+    public OneOf<OneOrMoreCards, AnyCard, ThisCreature, This> Cards { get; set; }
     public CardZoneEvent Event { get; set; }
     [Optional]
     public DuringTurn During { get; set; }

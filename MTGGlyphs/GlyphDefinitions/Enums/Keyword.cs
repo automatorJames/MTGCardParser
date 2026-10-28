@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A keyword ability, keyword action or ability word as card text names it: "flying", "first strike", "cumulative upkeep", "jump-start", "venture into the dungeon", "landfall" - the name alone, with any cost or amount ("kicker {2}", "ward 1") read by the glyphs around it.</summary>
 public enum Keyword
 {
     Deathtouch,

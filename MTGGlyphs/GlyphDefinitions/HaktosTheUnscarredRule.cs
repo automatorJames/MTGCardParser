@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class HaktosTheUnscarredRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["haktos has protection from each mana value other than the chosen number"];
+    public override Nib[] Nibs => ["as haktos enters, choose 2, 3, or 4 at random"];
 }

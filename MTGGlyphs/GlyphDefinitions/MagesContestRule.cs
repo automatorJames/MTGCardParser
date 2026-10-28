@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MagesContestRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["the high bidder loses life equal to the high bid"];
+    public override Nib[] Nibs => ["you and target spell's controller bid life"];
 }

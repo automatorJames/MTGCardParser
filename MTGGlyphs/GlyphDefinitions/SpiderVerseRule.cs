@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SpiderVerseRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if the copy is a permanent spell, it gains haste"];
+    public override Nib[] Nibs => ["the \"legend rule\" doesn't apply to spiders you control"];
 }

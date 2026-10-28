@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class VoidRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["then target player reveals their hand and discards all nonland cards with mana value equal to the number"];
+    public override Nib[] Nibs => ["destroy all artifacts and creatures with mana value equal to that number"];
 }

@@ -1,7 +1,7 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>A keyword ability an object is given as it's made: the "with ward {2}" of a cloaked 2/2.</summary>
-/// <exampledoc>Cryptic Coat</exampledoc>
+/// <summary>"with ward {2}", "with protection from black", "with toxic 1", "with cumulative upkeep {1}": one keyword ability, possibly with a parameter, that a token or a face-down creature is made with. Plain keywords ("with flying", "with flying or reach") are <see cref="WithKeywords"/>.</summary>
+/// <exampledoc>Ethereal Investigator</exampledoc>
 /// <examplecapture>with ward {2}</examplecapture>
 [Dependent]
 public class WithKeywordAbility : Glyph

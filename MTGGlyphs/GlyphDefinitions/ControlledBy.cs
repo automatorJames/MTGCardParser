@@ -8,7 +8,7 @@ public class ControlledBy : Glyph
 {
     public override Nib[] Nibs => [Prop(Controller), Prop(Negated), Prop(Relation)];
 
-    public OneOf<TheyPlayer, WhichPlayer?, OneOf<PlayerReference, TargetedPlayer>> Controller { get; set; }
+    public OneOf<TheyPlayer, WhichPlayer?, PlayerReference, TargetedPlayer> Controller { get; set; }
     [RegexPattern("don't|doesn't")]
     public bool Negated { get; set; }
     public ControlRelation Relation { get; set; }

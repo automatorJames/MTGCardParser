@@ -14,5 +14,5 @@ public class NumberOf : Glyph
     [Optional]
     [RegexPattern("differently named")]
     public bool? DifferentlyNamed { get; set; }
-    public OneOf<OneOf<PartyCreatures, Permanents>, OneOf<CardsHandledThisTurn, CountersOn, CountersRemovedThisWay>, OneOf<OneOf<AffectedThisWay, CardsExiledWithThis, OwnedCardsInZones>, CardsInZone, DistinctKinds>> Counted { get; set; }
+    public OneOf<PartyCreatures, Permanents, CardsHandledThisTurn, CountersOn, CountersRemovedThisWay, AffectedThisWay, CardsExiledWithThis, OwnedCardsInZones, CardsInZone, DistinctKinds> Counted { get; set; }
 }

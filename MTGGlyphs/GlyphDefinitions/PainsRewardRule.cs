@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class PainsRewardRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["the high bidder loses life equal to the high bid and draws four cards"];
+    public override Nib[] Nibs => ["each player may bid life"];
 }

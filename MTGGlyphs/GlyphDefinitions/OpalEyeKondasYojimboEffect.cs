@@ -5,5 +5,5 @@
 [Dependent]
 public class OpalEyeKondasYojimboEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["the next time a source of your choice would deal damage this turn, that damage is dealt to opal-eye instead"];
+    public override Nib[] Nibs => ["prevent the next 1 damage that would be dealt to opal-eye this turn"];
 }

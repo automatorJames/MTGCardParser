@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class TaintedPactRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["repeat this process until you put a card into your hand or you exile two cards with the same name, whichever comes first"];
+    public override Nib[] Nibs => ["you may put that card into your hand unless it has the same name as another card exiled this way"];
 }

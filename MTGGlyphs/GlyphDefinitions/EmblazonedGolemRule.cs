@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class EmblazonedGolemRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["no more than one mana of each color may be spent this way"];
+    public override Nib[] Nibs => ["spend only colored mana on x"];
 }

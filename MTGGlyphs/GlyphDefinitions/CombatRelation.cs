@@ -8,5 +8,5 @@ public class CombatRelation : Glyph
 {
     public override Nib[] Nibs => [Alt("blocking or blocked by", "blocking or being blocked by", "blocking", "blocked by", "attacking"), Prop(Other)];
 
-    public OneOf<ThisCreature, This, OneOf<It, WhichPlayer?>> Other { get; set; }
+    public OneOf<ThisCreature, This, It, WhichPlayer?> Other { get; set; }
 }

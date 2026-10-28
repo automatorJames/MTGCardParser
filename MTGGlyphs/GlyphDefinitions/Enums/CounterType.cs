@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>The kind of a counter, as card text names it before "counter": "+1/+1", "-1/-1", "charge", "loyalty", "poison", "stun", keyword counters ("flying", "first strike"), and the many named kinds ("doom", "crank!", "third-degree-burn").</summary>
 public enum CounterType
 {
     [RegexPattern(@"\+1/\+1")]

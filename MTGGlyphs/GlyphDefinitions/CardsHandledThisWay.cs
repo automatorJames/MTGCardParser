@@ -13,5 +13,5 @@ public class CardsHandledThisWay : Glyph
     public bool? Other { get; set; }
     [Optional]
     public QualifierWords Qualifiers { get; set; }
-    public HandledHow How { get; set; }
+    public ThisWayAction How { get; set; }
 }

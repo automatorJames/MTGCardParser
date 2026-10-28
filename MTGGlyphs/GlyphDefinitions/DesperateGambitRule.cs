@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class DesperateGambitRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you win the flip, the next time that source would deal damage this turn, it deals double that damage instead"];
+    public override Nib[] Nibs => ["choose a source you control and flip a coin"];
 }

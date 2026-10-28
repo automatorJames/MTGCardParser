@@ -10,7 +10,7 @@ public class TokenDescription : Glyph
 
     public Quantity Quantity { get; set; }
     [Optional]
-    public TokenEntryState? Tapped { get; set; }
+    public EntryState? Tapped { get; set; }
     [Optional]
     public PowerToughness Stats { get; set; }
     public OneOf<ManyOf<ManaColor>, ManaColor?> Colors { get; set; }
@@ -22,7 +22,7 @@ public class TokenDescription : Glyph
     [Optional]
     public TokenName Name { get; set; }
     [Optional]
-    public OneOf<WithKeywords, WithParameterizedKeyword> With { get; set; }
+    public OneOf<WithKeywords, WithKeywordAbility> With { get; set; }
     [Optional]
     public TokenName NameAfterKeywords { get; set; }
     [Optional]

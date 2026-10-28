@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MasterOfTheWildHuntRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["that creature deals damage equal to its power divided as its controller chooses among any number of those wolves"];
+    public override Nib[] Nibs => ["each wolf tapped this way deals damage equal to its power to target creature"];
 }

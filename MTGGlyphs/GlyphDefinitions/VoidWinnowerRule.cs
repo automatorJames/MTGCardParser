@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class VoidWinnowerRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["your opponents can't block with creatures with even mana values"];
+    public override Nib[] Nibs => ["your opponents can't cast spells with even mana values"];
 }

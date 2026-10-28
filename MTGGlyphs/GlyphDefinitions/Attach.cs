@@ -7,6 +7,6 @@ public class Attach : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => ["attach", Prop(Attachment), "to", Prop(AttachedTo)];
 
-    public OneOf<PermanentPhrase, ShortName, OneOf<IndefinitePermanent, CountedPermanents>> Attachment { get; set; }
+    public OneOf<PermanentPhrase, ShortName, IndefinitePermanent, CountedPermanents> Attachment { get; set; }
     public OneOf<PermanentPhrase, IndefinitePermanent> AttachedTo { get; set; }
 }

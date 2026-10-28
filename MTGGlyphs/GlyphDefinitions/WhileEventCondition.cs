@@ -8,5 +8,5 @@ public class WhileEventCondition : Glyph
 {
     public override Nib[] Nibs => ["while", Prop(Condition)];
 
-    public OneOf<PermanentDesignation?, OneOf<BothStates, GameState>, ControlsPermanent> Condition { get; set; }
+    public OneOf<PermanentDesignation?, BothStates, GameState, ControlsPermanent> Condition { get; set; }
 }

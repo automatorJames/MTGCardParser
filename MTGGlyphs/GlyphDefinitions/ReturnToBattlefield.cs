@@ -7,7 +7,7 @@ public class ReturnToBattlefield : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Pattern("returns?"), Prop(Returned), Opt("card"), Prop(Destination), Prop(AndThen)];
 
-    public OneOf<OneOf<PermanentFromZone, AllCardsFromZone, TopCardOfGraveyard>, TargetCardInZone, OneOf<PermanentPhrase, IndefiniteCardInZone, OneOf<Them, EachOfThem, OneOf<ObjectsAffectedThisWay, CountedCardsInZone>>>> Returned { get; set; }
+    public OneOf<PermanentFromZone, AllCardsFromZone, TopCardOfGraveyard, TargetCardInZone, PermanentPhrase, IndefiniteCardInZone, Them, EachOfThem, ObjectsAffectedThisWay, CountedCardsInZone> Returned { get; set; }
     public ToTheBattlefieldUnderControl Destination { get; set; }
     [Optional]
     public AndThen AndThen { get; set; }

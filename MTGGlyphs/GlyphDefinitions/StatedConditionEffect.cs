@@ -8,6 +8,6 @@ public class StatedConditionEffect : Glyph
 {
     public override Nib[] Nibs => ["if", Prop(Condition), ",", Prop(Effect)];
 
-    public OneOf<GameState, WasKicked, OneOf<ControlsPermanent, CardIsKind, OneOf<ManaWasSpent, KeywordCostWasPaid, CastingChoiceMade>>> Condition { get; set; }
+    public OneOf<GameState, WasKicked, ControlsPermanent, CardIsKind, ManaWasSpent, KeywordCostWasPaid, CastingChoiceMade> Condition { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

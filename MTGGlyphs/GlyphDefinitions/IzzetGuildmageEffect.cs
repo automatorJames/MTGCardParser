@@ -5,5 +5,5 @@
 [Dependent]
 public class IzzetGuildmageEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["copy target instant spell you control with mana value 2 or less"];
+    public override Nib[] Nibs => ["copy target sorcery spell you control with mana value 2 or less"];
 }

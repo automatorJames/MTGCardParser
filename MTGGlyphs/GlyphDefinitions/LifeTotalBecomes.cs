@@ -8,5 +8,5 @@ public class LifeTotalBecomes : Glyph, IPredicate
     public override Nib[] Nibs => [Prop(Player), "life total becomes", Prop(NewTotal)];
 
     public Owner Player { get; set; }
-    public OneOf<Quantity?, EqualTo, OneOf<Amount, LifeTotalValue?>> NewTotal { get; set; }
+    public OneOf<Quantity?, EqualTo, Amount, LifeTotalValue?> NewTotal { get; set; }
 }

@@ -10,5 +10,5 @@ public class HasCounters : Glyph
 
     public OneOf<PermanentPhrase, IndefinitePermanent, ShortName> Subject { get; set; }
     public OneOf<Counters, AnyCounters> Counters { get; set; }
-    public OneOf<PermanentPhrase, Him> Holder { get; set; }
+    public PermanentPhrase Holder { get; set; }
 }

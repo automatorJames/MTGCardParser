@@ -7,7 +7,7 @@ public class Choose : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Alt("choose", "chooses"), Prop(Choices), Prop(Except)];
 
-    public OneOf<ManyOf<Choice>, Choice?, OneOf<OneOf<TargetCardInZone, CountedTargets, TargetPlayerWhoOutnumbers>, PermanentPhrase, OneOf<IndefinitePermanent, QualifiedCardName, OneOf<CountedPermanents, ManyOf<SpecificTarget>, KindsFromAmong>>>> Choices { get; set; }
+    public OneOf<ManyOf<Choice>, Choice?, TargetCardInZone, CountedTargets, TargetPlayerWhoOutnumbers, PermanentPhrase, IndefinitePermanent, QualifiedCardName, CountedPermanents, ManyOf<SpecificTarget>, KindsFromAmong> Choices { get; set; }
     [Optional]
     public ExcludedKind Except { get; set; }
 }

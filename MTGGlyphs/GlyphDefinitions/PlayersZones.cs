@@ -8,6 +8,6 @@ public class PlayersZones : Glyph
 {
     public override Nib[] Nibs => [Prop(Whose), Prop(Zones)];
 
-    public OneOf<Whose?, PlayerPossessive> Whose { get; set; }
+    public Owner Whose { get; set; }
     public OneOf<ManyOf<NonBattlefieldZone>, NonBattlefieldZone?> Zones { get; set; }
 }

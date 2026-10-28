@@ -5,5 +5,5 @@
 [Dependent]
 public class CriticalHitEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["return this card from your graveyard to your hand"];
+    public override Nib[] Nibs => ["a natural 20 is a roll that displays 20 on the die"];
 }

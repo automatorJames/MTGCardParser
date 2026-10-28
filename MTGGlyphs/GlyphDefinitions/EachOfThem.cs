@@ -8,5 +8,5 @@ public class EachOfThem : Glyph
 {
     public override Nib[] Nibs => ["each of", Prop(Group)];
 
-    public OneOf<Them, ThatCard, OneOf<ThatCardPhrase, ThatCreatureOfType>> Group { get; set; }
+    public OneOf<Them, ThatCard, ThatCardPhrase, ThatCreatureOfType> Group { get; set; }
 }

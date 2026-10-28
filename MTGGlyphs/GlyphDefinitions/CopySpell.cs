@@ -7,7 +7,7 @@ public class CopySpell : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Alt("copy", "copies"), Prop(Spell), Prop(Times), Prop(Except), Prop(NewTargets)];
 
-    public OneOf<CopiedSpell?, OneOf<TargetSpell, TargetAbility>, CopiedCards> Spell { get; set; }
+    public OneOf<CopiedSpell?, TargetSpell, TargetAbility, CopiedCards> Spell { get; set; }
     [Optional]
     public OneOf<CopyRepetition?, ForEachOtherTarget> Times { get; set; }
     [Optional]

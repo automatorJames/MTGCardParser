@@ -8,5 +8,5 @@ public class UnderControlOf : Glyph
 {
     public override Nib[] Nibs => ["under", Prop(Whose), "control"];
 
-    public OneOf<Whose?, PlayerPossessive> Whose { get; set; }
+    public Owner Whose { get; set; }
 }

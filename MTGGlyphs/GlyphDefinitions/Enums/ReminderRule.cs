@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A stock reminder sentence with nothing variable but which rule it is: "zero is even", "piles can be empty", "round up each time", "they're affected by summoning sickness", "you can't look at it", "do this before you draw", "this effect doesn't end", "that spell won't resolve".</summary>
 public enum ReminderRule
 {
     [RegexPattern("zero is even")]

@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class StruggleForSanityRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["that player returns the cards they exiled this way to their hand and puts the rest into their graveyard"];
+    public override Nib[] Nibs => ["repeat this process until all cards in that hand have been exiled"];
 }

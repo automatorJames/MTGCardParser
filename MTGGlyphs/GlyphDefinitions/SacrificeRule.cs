@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SacrificeRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["add an amount of {b} equal to the", Nib.This, "d creature's mana value"];
+    public override Nib[] Nibs => ["as an additional cost to cast this spell,", Nib.This, "a creature"];
 }

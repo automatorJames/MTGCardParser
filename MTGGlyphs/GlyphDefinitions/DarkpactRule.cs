@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class DarkpactRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["exchange that card with the top card of your library"];
+    public override Nib[] Nibs => ["you own target card in the ante"];
 }

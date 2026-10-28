@@ -10,5 +10,5 @@ public class PlayerActedThisWay : Glyph
 
     public OneOf<WhichPlayer?, PlayerReference> Player { get; set; }
     public PlayerThisWayAction Action { get; set; }
-    public OneOf<IndefinitePermanent, IndefiniteCard, OneOf<ASpell, CountedCards>> Object { get; set; }
+    public OneOf<IndefinitePermanent, IndefiniteCard, ASpell, CountedCards> Object { get; set; }
 }

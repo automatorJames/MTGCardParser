@@ -10,5 +10,5 @@ public class ArithmeticAmount : Glyph
 
     public OneOf<NumberOf, CharacteristicOf, Quantity?> Left { get; set; }
     public ArithmeticOperator Operator { get; set; }
-    public OneOf<NumberOf, CharacteristicOf, OneOf<Quantity?, LifeTotalValue?, ScaledAmountExact>> Right { get; set; }
+    public OneOf<NumberOf, CharacteristicOf, Quantity?, LifeTotalValue?, ScaledAmountExact> Right { get; set; }
 }

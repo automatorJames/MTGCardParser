@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MemoriesReturningRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["then they put one on the bottom of your library"];
+    public override Nib[] Nibs => ["they put one on the bottom of your library"];
 }

@@ -10,5 +10,5 @@ public class ControlCondition : Glyph
 
     public ConditionConnective Connective { get; set; }
     public OneOf<WhichPlayer?, PlayerReference> Controller { get; set; }
-    public OneOf<OneOf<PermanentsThreshold, AtLeastPermanents>, ManyOf<IndefinitePermanent>, OneOf<PermanentOfNamedType, IndefinitePermanent>> Permanent { get; set; }
+    public OneOf<PermanentsThreshold, AtLeastPermanents, ManyOf<IndefinitePermanent>, PermanentOfNamedType, IndefinitePermanent> Permanent { get; set; }
 }

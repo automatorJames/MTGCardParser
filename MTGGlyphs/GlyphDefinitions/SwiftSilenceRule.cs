@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SwiftSilenceRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["draw a card for each spell countered this way"];
+    public override Nib[] Nibs => ["counter all other spells"];
 }

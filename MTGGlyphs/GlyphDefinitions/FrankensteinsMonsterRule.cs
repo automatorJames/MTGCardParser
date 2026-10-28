@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class FrankensteinsMonsterRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["for each creature card exiled this way, this creature enters with a +2/+0, +1/+1, or +0/+2 counter on it"];
+    public override Nib[] Nibs => ["if you can't, put this creature into its owner's graveyard instead of onto the battlefield"];
 }

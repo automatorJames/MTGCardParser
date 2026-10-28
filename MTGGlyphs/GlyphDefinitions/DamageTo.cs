@@ -8,7 +8,7 @@ public class DamageTo : Glyph
 {
     public override Nib[] Nibs => [Prop(Amount), "to", Prop(Recipient), Prop(EqualTo)];
 
-    public OneOf<DamageAmount, MeasuredDamage, OneOf<AnyDamage, ThatDamage, OneOf<DamageThreshold, HalfThatDamage>>> Amount { get; set; }
+    public OneOf<DamageAmount, MeasuredDamage, AnyDamage, ThatDamage, DamageThreshold, HalfThatDamage> Amount { get; set; }
     public Recipient Recipient { get; set; }
     [Optional]
     public EqualTo EqualTo { get; set; }

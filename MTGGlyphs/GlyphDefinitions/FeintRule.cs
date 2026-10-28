@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class FeintRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["prevent all combat damage that would be dealt this turn by that creature and each creature blocking it"];
+    public override Nib[] Nibs => ["tap all creatures blocking target attacking creature"];
 }

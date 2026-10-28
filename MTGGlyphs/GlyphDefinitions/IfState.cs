@@ -8,5 +8,5 @@ public class IfState : Glyph
 {
     public override Nib[] Nibs => [Opt("only"), "if", Prop(Condition)];
 
-    public OneOf<PermanentIs, HasCounters, OneOf<ControlsPermanent, CountersThere, OneOf<CardCountCondition, HappenedThisTurn, OneOf<CardTypesCountCondition, CombatedThisTurn>>>> Condition { get; set; }
+    public OneOf<PermanentIs, HasCounters, ControlsPermanent, CountersThere, CardCountCondition, HappenedThisTurn, CardTypesCountCondition, CombatedThisTurn> Condition { get; set; }
 }

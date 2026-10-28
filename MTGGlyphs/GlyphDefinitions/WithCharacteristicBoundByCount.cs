@@ -10,5 +10,5 @@ public class WithCharacteristicBoundByCount : Glyph
 
     public Characteristic Characteristic { get; set; }
     public Comparison Comparison { get; set; }
-    public OneOf<ControlledKindCount, CountersOnObjectCount, OneOf<CardsInZoneCount, ManaSpentAmount, OneOf<DamageReference?, Quantity?>>> Count { get; set; }
+    public OneOf<ControlledKindCount, CountersOnObjectCount, CardsInZoneCount, ManaSpentAmount, DamageReference?, Quantity?> Count { get; set; }
 }

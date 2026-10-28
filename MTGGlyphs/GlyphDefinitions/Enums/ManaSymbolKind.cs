@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What stands inside a braced mana symbol other than a plain number: the colors "w", "u", "b", "r", "g" and "c", hybrid "w/u", monocolored hybrid "2/w", Phyrexian "w/p" and bare "p", "x", snow "s", energy "e" and the infinity sign. A <see cref="ManaSymbol"/> wraps one in braces.</summary>
 public enum ManaSymbolKind
 {
     [RegexPattern("w")]

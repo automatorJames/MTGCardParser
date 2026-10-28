@@ -15,5 +15,5 @@ public class CardsExiledWithThis : Glyph
     [Optional]
     [RegexPattern("(?:you|they) own")]
     public bool? YouOwn { get; set; }
-    public OneOf<ThisCreature, This, OneOf<ShortNameObject, It>> Source { get; set; }
+    public OneOf<ThisCreature, This, ShortNameObject, It> Source { get; set; }
 }

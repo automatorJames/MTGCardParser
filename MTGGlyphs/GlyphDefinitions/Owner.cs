@@ -1,11 +1,11 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
-/// <summary>Whose zone it is: a plain possessive ("your", "their", "an opponent's") or a targeted player's ("target player's", "defending player's").</summary>
+/// <summary>Whose zone, library, hand, life total or choice it is: a plain possessive ("your", "their", "its owner's", "an opponent's", "that player's") or a targeted player's ("target player's", "target opponent's"). The one possessor type for every "{player}'s {thing}" construction.</summary>
 /// <exampledoc>Clairvoyance</exampledoc>
 /// <examplecapture>target player's</examplecapture>
 [Dependent]
 public class Owner : GlyphOneOf
 {
-    public TargetPlayersPossessive Targeted { get; set; }
     public Whose? Whose { get; set; }
+    public PlayerPossessive Targeted { get; set; }
 }

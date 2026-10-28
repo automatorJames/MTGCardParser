@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ShamansTranceRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you may play lands and cast spells from other players' graveyards this turn as though those cards were in your graveyard"];
+    public override Nib[] Nibs => ["other players can't play lands or cast spells from their graveyards this turn"];
 }

@@ -9,5 +9,5 @@ public class PlayerControls : Glyph
     public override Nib[] Nibs => [Prop(Controller), Pattern("controls?"), Prop(Permanent)];
 
     public WhichPlayer Controller { get; set; }
-    public OneOf<OneOf<PermanentsThreshold, AtLeastPermanents>, OneOf<ManyOf<IndefinitePermanent>, ExtremePermanent>, IndefinitePermanent> Permanent { get; set; }
+    public OneOf<PermanentsThreshold, AtLeastPermanents, ManyOf<IndefinitePermanent>, ExtremePermanent, IndefinitePermanent> Permanent { get; set; }
 }

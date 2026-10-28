@@ -5,5 +5,5 @@
 [Dependent]
 public class NahiriTheUnforgivingEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["until your next turn, up to one target creature attacks a player each combat if able"];
+    public override Nib[] Nibs => ["exile target creature or equipment card with mana value less than nahiri's loyalty from your graveyard"];
 }

@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class WintersChillRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if that player pays only {1}, prevent all combat damage that would be dealt to and dealt by that creature this combat"];
+    public override Nib[] Nibs => ["x can't be greater than the number of snow lands you control"];
 }

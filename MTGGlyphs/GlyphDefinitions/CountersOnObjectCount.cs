@@ -9,5 +9,5 @@ public class CountersOnObjectCount : Glyph
     public override Nib[] Nibs => ["the number of", Prop(Kind), "counters on", Prop(Holder)];
 
     public CounterType Kind { get; set; }
-    public OneOf<OneOf<This, ThisCreature>, It, ShortName> Holder { get; set; }
+    public OneOf<This, ThisCreature, It, ShortName> Holder { get; set; }
 }

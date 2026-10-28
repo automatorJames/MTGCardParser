@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class TazriStalwartSurvivorRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["put all creature cards with activated abilities that aren't mana abilities from among the milled cards into your hand"];
+    public override Nib[] Nibs => ["each creature you control has \"{t}: add one mana of any of this creature's colors"];
 }

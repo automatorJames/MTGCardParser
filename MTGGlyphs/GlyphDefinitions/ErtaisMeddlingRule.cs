@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ErtaisMeddlingRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if the card has no delay counters on it, the player puts it onto the stack as a copy of the original spell"];
+    public override Nib[] Nibs => ["target spell's controller exiles it with x delay counters on it"];
 }

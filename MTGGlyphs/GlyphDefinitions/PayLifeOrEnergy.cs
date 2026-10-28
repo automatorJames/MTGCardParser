@@ -8,7 +8,7 @@ public class PayLifeOrEnergy : Glyph
 {
     public override Nib[] Nibs => [Alt("pay", "paying"), Prop(Amount), Prop(Note)];
 
-    public OneOf<LifeQuantity, ManaCost, OneOf<EnergyAmount, HalfLifeTotal>> Amount { get; set; }
+    public OneOf<LifeQuantity, ManaCost, EnergyAmount, HalfLifeTotal> Amount { get; set; }
     [Optional]
     public EnergyNote Note { get; set; }
 }

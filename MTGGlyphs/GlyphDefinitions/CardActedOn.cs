@@ -6,6 +6,6 @@
 [Dependent]
 public class CardActedOn : GlyphOneOf
 {
-    public LookedAtTopCard Top { get; set; }
+    public TopCardOfLibrary Top { get; set; }
     public SomeCards Cards { get; set; }
 }

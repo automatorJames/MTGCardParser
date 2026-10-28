@@ -9,7 +9,7 @@ public class HasAllActivatedAbilities : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(Verb), "all activated abilities of", Opt("all"), Prop(Source), Prop(Duration)];
 
     public PermanentVerb Verb { get; set; }
-    public OneOf<OneOf<AllPermanents, EachObject>, OneOf<CardsInZoneGroup, CardsExiledWithThis>, PermanentPhrase> Source { get; set; }
+    public OneOf<AllPermanents, EachObject, CardsInZoneGroup, CardsExiledWithThis, PermanentPhrase> Source { get; set; }
     [Optional]
     public EffectDuration Duration { get; set; }
 }

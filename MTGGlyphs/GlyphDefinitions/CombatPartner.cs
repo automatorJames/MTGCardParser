@@ -8,5 +8,5 @@ public class CombatPartner : Glyph
 {
     public override Nib[] Nibs => [Prop(Partner)];
 
-    public OneOf<OneOf<It, ThatCard, ThisCreature>, AnyOneOfKind> Partner { get; set; }
+    public OneOf<It, ThatCard, ThisCreature, AnyOneOfKind> Partner { get; set; }
 }

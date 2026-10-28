@@ -10,7 +10,7 @@ public class PreventDamageDealtBy : Glyph, IPredicate
     public PreventionAmount Amount { get; set; }
     [Optional]
     public DamageKind? Kind { get; set; }
-    public OneOf<OneOf<Permanents, DamageSources>, PermanentPhrase, ChosenSource> Dealer { get; set; }
+    public OneOf<Permanents, DamageSources, PermanentPhrase, ChosenSource> Dealer { get; set; }
     [RegexPattern("this turn")]
     public bool ThisTurnFirst { get; set; }
     [Optional]

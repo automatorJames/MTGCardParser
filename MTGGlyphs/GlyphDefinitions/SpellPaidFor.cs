@@ -8,5 +8,5 @@ public class SpellPaidFor : Glyph
 {
     public override Nib[] Nibs => ["to cast", Prop(Spell)];
 
-    public OneOf<OneOf<It, Them, ThatStackObject>, ThisObject, This> Spell { get; set; }
+    public OneOf<It, Them, ThatStackObject, ThisObject, This> Spell { get; set; }
 }

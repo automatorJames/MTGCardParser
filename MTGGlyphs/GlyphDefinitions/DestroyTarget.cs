@@ -8,7 +8,7 @@ public class DestroyTarget : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(Verb), Prop(Destroyed), Prop(WithCounters), Prop(UntilThisLeaves), Prop(AtEndOfCombat), Prop(Manner)];
 
     public RemovalVerb Verb { get; set; }
-    public OneOf<TargetCardInZone, OneOf<PermanentFromZone, TargetSpell>, OneOf<PermanentPhrase, RemovedObjects, OneOf<OneOf<PermanentPair, TargetList>, TargetAndOthers, PermanentOrCard>>> Destroyed { get; set; }
+    public OneOf<TargetCardInZone, PermanentFromZone, TargetSpell, PermanentPhrase, RemovedObjects, PermanentPair, TargetList, TargetAndOthers, PermanentOrCard> Destroyed { get; set; }
     [Optional]
     public EntersWithCounters WithCounters { get; set; }
     [Optional]

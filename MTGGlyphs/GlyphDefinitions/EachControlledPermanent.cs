@@ -18,5 +18,5 @@ public class EachControlledPermanent : Glyph
     [Optional]
     public OneOf<WithQualifier, ChosenAspect?> Narrowed { get; set; }
     [Optional]
-    public OneOf<ThatsInCombat, SharesCreatureType, OneOf<EnteredThisTurn, ThatsOneOfKinds>> Relation { get; set; }
+    public OneOf<ThatsInCombat, SharesCreatureType, EnteredThisTurn, ThatsOneOfKinds> Relation { get; set; }
 }

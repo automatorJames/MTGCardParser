@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>Something happening to a permanent that a "when" or "whenever" trigger watches for: "enters" ("enters the battlefield"), "dies", "leaves the battlefield", "attacks", "blocks", "becomes tapped", "is dealt damage", "deals combat damage to a player", "is tapped for mana", "mutates", "crews a vehicle", "is put into a graveyard from the battlefield".</summary>
 public enum PermanentEvent
 {
     [RegexPattern("dies", "die")]

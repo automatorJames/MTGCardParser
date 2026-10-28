@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class AirtightAlibiRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["enchanted creature gets +2/+2 and can't become suspected"];
+    public override Nib[] Nibs => ["if it's suspected, it's no longer suspected"];
 }

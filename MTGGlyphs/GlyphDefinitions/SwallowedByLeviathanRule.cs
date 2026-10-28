@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SwallowedByLeviathanRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["surveil 2, then counter the chosen spell unless its controller pays {1} for each card in your graveyard"];
+    public override Nib[] Nibs => ["choose target spell"];
 }

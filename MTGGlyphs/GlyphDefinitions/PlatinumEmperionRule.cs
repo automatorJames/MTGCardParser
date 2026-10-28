@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class PlatinumEmperionRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you can't pay any amount of life except 0"];
+    public override Nib[] Nibs => ["your life total can't change"];
 }

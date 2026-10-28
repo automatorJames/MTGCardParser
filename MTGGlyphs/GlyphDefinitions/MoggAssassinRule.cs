@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MoggAssassinRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you lose the flip, destroy the creature your opponent chose"];
+    public override Nib[] Nibs => ["if you win the flip, destroy the creature you chose"];
 }

@@ -14,7 +14,7 @@ public class Counters : Glyph
     [RegexPattern("additional")]
     public bool Additional { get; set; }
     [Optional]
-    public OpenBound? Bound { get; set; }
+    public CountComparison? Bound { get; set; }
     [Optional]
     public OneOf<CounterType?, PowerToughnessMod> Kind { get; set; }
 }

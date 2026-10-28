@@ -8,8 +8,8 @@ public class PermanentTriggerEvent : Glyph
 {
     public override Nib[] Nibs => [Alt("when", "whenever"), Prop(Subject), Prop(Event), Prop(Under)];
 
-    public OneOf<ThisOrAnother, OneOf<ThisAndOthers, PermanentPhrase>, OneOf<DamagedPermanent, IndefinitePermanent, OneOf<OneOrMorePermanents, ShortName>>> Subject { get; set; }
-    public OneOf<CombatEncounter, OneOf<PermanentEvent?, PutIntoGraveyardEvent>, ManyOf<PermanentEvent?>> Event { get; set; }
+    public OneOf<ThisOrAnother, ThisAndOthers, PermanentPhrase, DamagedPermanent, IndefinitePermanent, OneOrMorePermanents, ShortName> Subject { get; set; }
+    public OneOf<CombatEncounter, PermanentEvent?, PutIntoGraveyardEvent, ManyOf<PermanentEvent?>> Event { get; set; }
     [Optional]
     public UnderControlOf Under { get; set; }
 }

@@ -8,5 +8,5 @@ public class MayPayPlayer : Glyph
 {
     public override Nib[] Nibs => [Prop(Payer), "may pay"];
 
-    public OneOf<WhichPlayer?, PlayerReference, OneOf<TargetedPlayer, TheyPlayer>> Payer { get; set; }
+    public OneOf<WhichPlayer?, PlayerReference, TargetedPlayer, TheyPlayer> Payer { get; set; }
 }

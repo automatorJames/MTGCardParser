@@ -9,7 +9,7 @@ public class IndefiniteCard : Glyph
     public override Nib[] Nibs => [Pattern("an?"), Prop(Qualifiers), "card", Prop(OrToken)];
 
     [Optional]
-    public OneOf<ManyOf<TargetQualifier>, QualifierRun, OneOf<AndOrQualifiers, CompoundOf<TargetQualifier>>> Qualifiers { get; set; }
+    public OneOf<ManyOf<TargetQualifier>, QualifierRun, AndOrQualifiers, CompoundOf<TargetQualifier>> Qualifiers { get; set; }
     [RegexPattern("or token")]
     public bool OrToken { get; set; }
 }

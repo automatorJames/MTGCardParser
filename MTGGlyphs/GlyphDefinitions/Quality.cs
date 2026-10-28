@@ -16,7 +16,7 @@ public class Quality : GlyphOneOf
     public CreatureType? CreatureType { get; set; }
     public PlaneswalkerType? PlaneswalkerType { get; set; }
     public PermanentSubtype? Subtype { get; set; }
-    public TokenStatus? TokenStatus { get; set; }
+    public TokenWord? Token { get; set; }
     public CardGroup? CardGroup { get; set; }
     public SpellStatus? SpellStatus { get; set; }
 }

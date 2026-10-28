@@ -5,5 +5,5 @@
 [Dependent]
 public class AshiokNightmareWeaverEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["put a creature card with mana value x exiled with ashiok onto the battlefield under your control"];
+    public override Nib[] Nibs => ["exile all cards from all opponents' hands and graveyards"];
 }

@@ -14,8 +14,8 @@ public class MovedCard : GlyphOneOf
     public CardsFromAmong CardsFromAmong { get; set; }
     public CountOfThem CountOfThem { get; set; }
     public CardsRevealedThisWay Revealed { get; set; }
-    public LookedAtTop TopCards { get; set; }
-    public LookedAtTopCard TopCard { get; set; }
+    public TopCardsOfLibrary TopCards { get; set; }
+    public TopCardOfLibrary TopCard { get; set; }
     public AllPermanents AllPermanents { get; set; }
     public PermanentPhrase PermanentPhrase { get; set; }
     public SacrificedPermanent Handled { get; set; }

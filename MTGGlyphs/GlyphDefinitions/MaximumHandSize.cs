@@ -7,7 +7,7 @@ public class MaximumHandSize : Glyph
 {
     public override Nib[] Nibs => [Prop(Whose), "maximum hand size is", Prop(Size), Prop(Duration)];
 
-    public OneOf<Whose?, PlayerPossessive> Whose { get; set; }
+    public Owner Whose { get; set; }
     public OneOf<HandSizeChange, Quantity?> Size { get; set; }
     [Optional]
     public ForTheRestOfTheGame Duration { get; set; }

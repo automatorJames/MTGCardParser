@@ -8,7 +8,7 @@ public class SkipNext : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(Verb), Prop(Step), Prop(Turn)];
 
     public SkipVerb Verb { get; set; }
-    public OneOf<NextPlayersPhase, PlayersPhase, OneOf<NextTurns, SkippedEvent?>> Step { get; set; }
+    public OneOf<NextPlayersPhase, PlayersPhase, NextTurns, SkippedEvent?> Step { get; set; }
     [Optional]
     public TurnSpan? Turn { get; set; }
 }

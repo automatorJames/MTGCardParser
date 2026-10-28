@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ManaClashRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["repeat this process until both players' coins come up heads on the same flip"];
+    public override Nib[] Nibs => [Nib.This, "deals 1 damage to each player whose coin comes up tails"];
 }

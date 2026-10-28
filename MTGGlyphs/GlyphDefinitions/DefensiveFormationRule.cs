@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class DefensiveFormationRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you can divide that creature's combat damage as you choose among any of the creatures blocking it"];
+    public override Nib[] Nibs => ["rather than the attacking player, you assign the combat damage of each creature attacking you"];
 }

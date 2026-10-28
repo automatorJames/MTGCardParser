@@ -5,5 +5,5 @@
 [Dependent]
 public class SilverquillTheDisputantEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["as you cast that spell, you may sacrifice a creature with power 1 or greater"];
+    public override Nib[] Nibs => ["copy the spell and you may choose new targets for the copy"];
 }

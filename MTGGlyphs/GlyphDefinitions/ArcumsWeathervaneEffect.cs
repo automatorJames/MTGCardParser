@@ -5,5 +5,5 @@
 [Dependent]
 public class ArcumsWeathervaneEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["target snow land is no longer snow"];
+    public override Nib[] Nibs => ["target nonsnow basic land becomes snow"];
 }

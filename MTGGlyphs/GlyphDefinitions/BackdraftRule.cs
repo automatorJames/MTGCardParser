@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class BackdraftRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => [Nib.This, "deals damage to that player equal to half the damage dealt by one of those sorcery spells this turn, rounded down"];
+    public override Nib[] Nibs => ["choose a player who cast one or more sorcery spells this turn"];
 }

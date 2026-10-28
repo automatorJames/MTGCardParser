@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SentinelOfLostLoreRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["• put target card you don't own in exile that has an adventure on the bottom of its owner's library"];
+    public override Nib[] Nibs => ["• return target card you own in exile that has an adventure to your hand"];
 }

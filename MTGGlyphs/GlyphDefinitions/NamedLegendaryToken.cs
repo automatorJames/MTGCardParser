@@ -16,5 +16,5 @@ public class NamedLegendaryToken : Glyph
     [JoinedBy(Joiner.Space)]
     public CompoundOf<CardType> Types { get; set; }
     [Optional]
-    public OneOf<WithKeywords, WithParameterizedKeyword> With { get; set; }
+    public OneOf<WithKeywords, WithKeywordAbility> With { get; set; }
 }

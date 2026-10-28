@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class NotOfThisWorldRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["this spell costs {7} less to cast if it targets a spell or ability that targets a creature you control with power 7 or greater"];
+    public override Nib[] Nibs => ["counter target spell or ability that targets a permanent you control"];
 }

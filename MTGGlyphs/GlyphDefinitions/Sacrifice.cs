@@ -10,7 +10,7 @@ public class Sacrifice : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Pattern("sacrific(?:es?|ing)"), Prop(Sacrificed), Prop(ChosenBy)];
 
-    public OneOf<PermanentPhrase, OneOf<ManyOf<IndefinitePermanent>, IndefinitePermanent>, OneOf<CountedPermanents, Them, OneOf<TheRest, ShortName>>> Sacrificed { get; set; }
+    public OneOf<PermanentPhrase, ManyOf<IndefinitePermanent>, IndefinitePermanent, CountedPermanents, Them, TheRest, ShortName> Sacrificed { get; set; }
     [Optional]
     public OfPlayersChoice ChosenBy { get; set; }
 }

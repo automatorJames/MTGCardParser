@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class EurekaRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["repeat this process until no one puts a card onto the battlefield"];
+    public override Nib[] Nibs => ["starting with you, each player may put a permanent card from their hand onto the battlefield"];
 }

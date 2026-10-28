@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class PhyrexianPortalRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["search the other pile for a card, put it into your hand, then shuffle the rest of that pile into your library"];
+    public override Nib[] Nibs => ["exile one of those piles"];
 }

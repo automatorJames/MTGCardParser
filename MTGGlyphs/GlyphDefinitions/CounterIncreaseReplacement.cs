@@ -10,6 +10,6 @@ public class CounterIncreaseReplacement : Glyph
     public Counters Counters { get; set; }
     public CounterRecipient Recipient { get; set; }
     public CounterIncrease Increase { get; set; }
-    public OneOf<KindOfCounters, EachOfThoseKindsOfCounters> Kinds { get; set; }
+    public OneOf<CountersOfKind, EachOfThoseKindsOfCounters> Kinds { get; set; }
     public CounterRecipient Again { get; set; }
 }

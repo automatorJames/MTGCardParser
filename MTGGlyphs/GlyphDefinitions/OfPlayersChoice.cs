@@ -8,5 +8,5 @@ public class OfPlayersChoice : Glyph
 {
     public override Nib[] Nibs => ["of", Prop(Chooser), "choice"];
 
-    public OneOf<Whose?, PlayerPossessive> Chooser { get; set; }
+    public Owner Chooser { get; set; }
 }

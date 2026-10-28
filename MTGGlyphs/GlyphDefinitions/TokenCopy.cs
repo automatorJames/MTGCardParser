@@ -10,7 +10,7 @@ public class TokenCopy : Glyph
 
     public Quantity Quantity { get; set; }
     [Optional]
-    public TokenEntryState? Tapped { get; set; }
+    public EntryState? Tapped { get; set; }
     [Optional]
     public PowerToughness Stats { get; set; }
     public OneOf<CopiedWithExceptions, PermanentPhrase, IndefinitePermanent> Original { get; set; }

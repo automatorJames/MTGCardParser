@@ -11,7 +11,7 @@ public class PlayerDidThisTurn : Glyph
     public OneOf<WhichPlayer?, PlayerReference, PerfectSubject?> Player { get; set; }
     public PastPlayerAction Action { get; set; }
     [Optional]
-    public OneOf<IndefiniteSpell, IndefinitePermanent, OneOf<PermanentsThreshold, WantedCards>> What { get; set; }
+    public OneOf<IndefiniteSpell, IndefinitePermanent, PermanentsThreshold, WantedCards> What { get; set; }
     [RegexPattern("from (your|their) hand")]
     public bool FromHand { get; set; }
     public TurnSpan Turn { get; set; }

@@ -9,5 +9,5 @@ public class CharacteristicOfObject : Glyph
     public override Nib[] Nibs => ["the", Prop(Characteristic), "of", Prop(Object)];
 
     public Characteristic Characteristic { get; set; }
-    public OneOf<OneOf<ThatCardPhrase, SacrificedPermanent, ThatCard>, OneOf<TheAffectedThisWay, ThatStackObject, SpecificTarget>, ObjectNamedByEvent> Object { get; set; }
+    public OneOf<ThatCardPhrase, SacrificedPermanent, ThatCard, TheAffectedThisWay, ThatStackObject, SpecificTarget, ObjectNamedByEvent> Object { get; set; }
 }

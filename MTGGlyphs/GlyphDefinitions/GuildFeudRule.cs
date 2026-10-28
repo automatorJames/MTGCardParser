@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GuildFeudRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if two creatures are put onto the battlefield this way, those creatures fight each other"];
+    public override Nib[] Nibs => ["you do the same with the top three cards of your library"];
 }

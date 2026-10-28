@@ -5,5 +5,5 @@
 [Dependent]
 public class WerewolfPackLeaderEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you attacked with creatures with total power 6 or greater this combat, draw a card"];
+    public override Nib[] Nibs => ["until end of turn, this creature has base power and toughness 5/3, gains trample, and isn't a human"];
 }

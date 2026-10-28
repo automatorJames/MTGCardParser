@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class TimesifterRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if two or more players' cards are tied for greatest, the tied players repeat this process until the tie is broken"];
+    public override Nib[] Nibs => ["the player who exiled the card with the greatest mana value takes an extra turn after this one"];
 }

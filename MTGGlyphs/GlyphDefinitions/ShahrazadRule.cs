@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ShahrazadRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["each player who doesn't win the subgame loses half their life, rounded up"];
+    public override Nib[] Nibs => ["players play a magic subgame, using their libraries as their decks"];
 }

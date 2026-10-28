@@ -33,7 +33,7 @@ public record PropertyNib : Nib
         // A generic OneOf's alternatives are only named Alternative1..N, so its type arguments are the meaningful
         // labels (unambiguous: a generic OneOf may not repeat a type - see Glyph.GetOneOfTypeArgumentError). A
         // GlyphOneOf names its alternatives itself, so it keeps those names.
-        if (IsClosedGeneric(declaringType, typeof(OneOf<,>)) || IsClosedGeneric(declaringType, typeof(OneOf<,,>)))
+        if (OneOfBase.IsGenericOneOf(declaringType))
             return safeTypeName;
 
         if (IsClosedGeneric(declaringType, typeof(CompoundOf<>)) && Name == nameof(CompoundOf<object>.FirstItem))
@@ -84,4 +84,4 @@ public record PropertyNib : Nib
             || underlyingElementType == typeof(bool) // Bools are also allowable terminals in regex graphs
             || PrimitiveTerminal.IsSupported(underlyingElementType); // As are parsed primitives, e.g. int
     }
-}
+}

@@ -7,7 +7,7 @@ public class GainControl : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => [Pattern("gains? control of"), Prop(Permanent), Prop(Duration)];
 
-    public OneOf<PermanentPhrase, OneOf<AllPermanents, CountedTargets>, IndefinitePermanent> Permanent { get; set; }
+    public OneOf<PermanentPhrase, AllPermanents, CountedTargets, IndefinitePermanent> Permanent { get; set; }
     [Optional]
     public EffectDuration Duration { get; set; }
 }

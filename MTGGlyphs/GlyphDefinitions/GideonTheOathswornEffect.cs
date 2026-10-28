@@ -5,5 +5,5 @@
 [Dependent]
 public class GideonTheOathswornEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["he can't attack if he was cast this turn"];
+    public override Nib[] Nibs => ["exile gideon and each creature your opponents control"];
 }

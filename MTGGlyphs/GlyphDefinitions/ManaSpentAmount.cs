@@ -9,5 +9,5 @@ public class ManaSpentAmount : Glyph
     public override Nib[] Nibs => ["the amount of", Prop(Kind), "spent to cast", Prop(Spell)];
 
     public SpentManaKind Kind { get; set; }
-    public OneOf<It, ThisSpell, OneOf<ThatStackObject, ThisCreature>> Spell { get; set; }
+    public OneOf<It, ThisSpell, ThatStackObject, ThisCreature> Spell { get; set; }
 }

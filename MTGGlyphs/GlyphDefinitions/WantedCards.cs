@@ -18,5 +18,5 @@ public class WantedCards : Glyph
     [Optional]
     public OneOf<NamedThis, NamedCard> Named { get; set; }
     [Optional]
-    public OneOf<ManaValueLimit, SameCharacteristicAs, OneOf<WithName, WithQualifier, SharesCreatureType>> Limit { get; set; }
+    public OneOf<ManaValueLimit, SameCharacteristicAs, WithName, WithQualifier, SharesCreatureType> Limit { get; set; }
 }

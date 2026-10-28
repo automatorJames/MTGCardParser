@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A depth below the top of a library a card is put at, after "into its owner's library": "second from the top", "third from the top", "seventh from the top", or the player's pick "second from the top or on the bottom".</summary>
 public enum LibraryDepth
 {
     [RegexPattern("second from the top or on the bottom")]

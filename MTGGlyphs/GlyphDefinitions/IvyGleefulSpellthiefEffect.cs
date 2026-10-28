@@ -5,5 +5,5 @@
 [Dependent]
 public class IvyGleefulSpellthiefEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you may copy that spell"];
+    public override Nib[] Nibs => ["a copy of an aura spell becomes a token"];
 }

@@ -1,4 +1,4 @@
-namespace Glyphotype.Definitions;
+﻿namespace Glyphotype.Definitions;
 
 public enum TypeReferenceKind
 {
@@ -17,7 +17,7 @@ public enum TypeReferenceKind
     /// <summary>A <see cref="DynamicGlyph"/>: resolved at match time by tokenizing its captured text.</summary>
     Dynamic,
 
-    /// <summary>A generic <see cref="OneOf{T1,T2}"/>/<see cref="OneOf{T1,T2,T3}"/> over two or three alternatives.</summary>
+    /// <summary>A generic <c>OneOf</c> over two to twelve alternatives (<see cref="OneOf{T1,T2}"/>, <see cref="OneOf{T1,T2,T3}"/>, …).</summary>
     OneOf,
 
     /// <summary>A <see cref="CompoundOf{T}"/> over one item type.</summary>

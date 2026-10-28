@@ -7,7 +7,7 @@ public class Unattach : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => ["unattach", Prop(Attachment), Prop(From)];
 
-    public OneOf<PermanentPhrase, ShortName, OneOf<IndefinitePermanent, CountedPermanents>> Attachment { get; set; }
+    public OneOf<PermanentPhrase, ShortName, IndefinitePermanent, CountedPermanents> Attachment { get; set; }
     [Optional]
     public UnattachedFrom From { get; set; }
 }

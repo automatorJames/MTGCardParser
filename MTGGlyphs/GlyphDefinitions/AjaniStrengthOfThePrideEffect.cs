@@ -5,5 +5,5 @@
 [Dependent]
 public class AjaniStrengthOfThePrideEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you have at least 15 life more than your starting life total, exile ajani and each artifact and creature your opponents control"];
+    public override Nib[] Nibs => ["you gain life equal to the number of creatures you control plus the number of planeswalkers you control"];
 }

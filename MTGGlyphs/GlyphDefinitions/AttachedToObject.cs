@@ -8,5 +8,5 @@ public class AttachedToObject : Glyph
 {
     public override Nib[] Nibs => ["attached to", Prop(Host)];
 
-    public OneOf<AttachmentHost, OneOf<It, Them, This>> Host { get; set; }
+    public OneOf<AttachmentHost, It, Them, This> Host { get; set; }
 }

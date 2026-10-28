@@ -9,5 +9,5 @@ public class KeywordActionOn : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(Action), Prop(Object)];
 
     public Keyword Action { get; set; }
-    public OneOf<PermanentPhrase, CountedTargets, OneOf<CardActedOn, IndefinitePermanent>> Object { get; set; }
+    public OneOf<PermanentPhrase, CountedTargets, CardActedOn, IndefinitePermanent> Object { get; set; }
 }

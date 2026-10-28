@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What protection is from when it's a quality chosen or referred to rather than listed: "the chosen color", "the color of your choice", "the color of its controller's choice", "that color", "each of its colors", "each color", "everything", "the chosen name".</summary>
 public enum ChosenQuality
 {
     [RegexPattern("the chosen color")]

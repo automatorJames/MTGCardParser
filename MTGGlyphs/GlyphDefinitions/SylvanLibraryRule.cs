@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SylvanLibraryRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["for each of those cards, pay 4 life or put the card on top of your library"];
+    public override Nib[] Nibs => ["if you do, choose two cards in your hand drawn this turn"];
 }

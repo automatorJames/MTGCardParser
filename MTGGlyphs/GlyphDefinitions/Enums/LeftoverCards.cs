@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>The cards left over from a look-at or reveal effect, as the object of "put": "the rest", "the rest of the cards", "the rest of the revealed cards", "all cards revealed this way".</summary>
 public enum LeftoverCards
 {
     [RegexPattern("the rest")]

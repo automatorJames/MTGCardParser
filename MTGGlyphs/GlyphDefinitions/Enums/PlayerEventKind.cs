@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>Something a player does or has done to them that a "whenever" trigger watches for, singular or plural: "gain life", "lose life", "draw your second card each turn", "discard a card", "surveil", "commit a crime", "win a coin flip", "roll one or more dice", "play a land", "search your library", "is dealt damage" ("whenever you gain life, ...", "whenever an opponent is dealt combat damage, ...").</summary>
 public enum PlayerEventKind
 {
     [RegexPattern("gains? life")]

@@ -5,5 +5,5 @@
 [Dependent]
 public class NorthStarEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["for one spell this turn, you may spend mana as though it were mana of any type to pay that spell's mana cost"];
+    public override Nib[] Nibs => ["additional costs are still paid normally"];
 }

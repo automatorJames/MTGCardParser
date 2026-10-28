@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SearchForSurvivorsRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["an opponent chooses a card at random in your graveyard"];
+    public override Nib[] Nibs => ["reorder your graveyard at random"];
 }

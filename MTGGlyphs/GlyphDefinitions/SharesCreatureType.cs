@@ -9,5 +9,5 @@ public class SharesCreatureType : Glyph
     public override Nib[] Nibs => ["that", Pattern("shares?"), Prop(Aspect), "with", Prop(With)];
 
     public SharedAspect Aspect { get; set; }
-    public OneOf<OneOf<It, ThisCreature, EnchantedPermanent>, SacrificedPermanent, ThatCardPhrase> With { get; set; }
+    public OneOf<It, ThisCreature, EnchantedPermanent, SacrificedPermanent, ThatCardPhrase> With { get; set; }
 }

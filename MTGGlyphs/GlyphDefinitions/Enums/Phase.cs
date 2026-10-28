@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A step, phase or turn as a point in time: "untap step", "upkeep" ("upkeep step"), "draw step", "first main phase" ("precombat main phase"), "combat" ("combat phase"), "declare blockers step", "combat damage step", "end step", "end of turn", "your next turn", "turn" ("at the beginning of your upkeep", "until end of turn").</summary>
 public enum Phase
 {
     UntapStep,

@@ -8,5 +8,5 @@ public class ThatTarget : Glyph
 {
     public override Nib[] Nibs => ["that target", Prop(Target)];
 
-    public OneOf<PermanentPhrase, WhichPlayer?, OneOf<IndefinitePermanent, ShortName>> Target { get; set; }
+    public OneOf<PermanentPhrase, WhichPlayer?, IndefinitePermanent, ShortName> Target { get; set; }
 }

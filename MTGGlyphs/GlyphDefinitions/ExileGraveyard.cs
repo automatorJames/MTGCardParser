@@ -7,5 +7,5 @@ public class ExileGraveyard : Glyph, IConjoinedPredicate, IPredicate
 {
     public override Nib[] Nibs => ["exile", Prop(Whose), Plural("graveyard")];
 
-    public OneOf<TargetPlayersPossessive, Whose?> Whose { get; set; }
+    public OneOf<TargetPossessive, Whose?> Whose { get; set; }
 }

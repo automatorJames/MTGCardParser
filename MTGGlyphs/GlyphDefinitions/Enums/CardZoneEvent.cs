@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A card changing zones, as a trigger's event: "leave your graveyard", "is put into your graveyard from your library", "are put into a graveyard from anywhere", "is put into exile from your graveyard", "leaves an opponent's graveyard".</summary>
 public enum CardZoneEvent
 {
     [RegexPattern("leaves your graveyard", "leave your graveyard")]

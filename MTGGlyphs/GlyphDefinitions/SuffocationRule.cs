@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class SuffocationRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => [Nib.This, "deals 4 damage to the controller of the last red instant or sorcery spell that dealt damage to you this turn"];
+    public override Nib[] Nibs => ["cast this spell only if you were dealt damage this turn by a red instant or sorcery spell"];
 }

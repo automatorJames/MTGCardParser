@@ -5,5 +5,5 @@
 [Dependent]
 public class SoulgorgerOrggEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you gain life equal to the life you lost when it entered"];
+    public override Nib[] Nibs => ["you lose all but 1 life"];
 }

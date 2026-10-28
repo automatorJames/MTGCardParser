@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class OviyaAutomechArtisanRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you put an artifact onto the battlefield this way, put two +1/+1 counters on it"];
+    public override Nib[] Nibs => ["each creature that's attacking one of your opponents has trample"];
 }

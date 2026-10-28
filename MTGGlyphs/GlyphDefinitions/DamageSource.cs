@@ -8,5 +8,5 @@ public class DamageSource : Glyph
 {
     public override Nib[] Nibs => ["by", Prop(Sources)];
 
-    public OneOf<EnchantedPermanent, OneOf<Permanents, DamageSources>, OneOf<PermanentPhrase, ChosenSource, OneOf<TargetSpell, PlayableCards>>> Sources { get; set; }
+    public OneOf<EnchantedPermanent, Permanents, DamageSources, PermanentPhrase, ChosenSource, TargetSpell, PlayableCards> Sources { get; set; }
 }

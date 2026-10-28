@@ -10,6 +10,6 @@ public class LoyaltyCost : Glyph
     public override Nib[] Nibs => ["[", Prop(Sign), Prop(Amount), "]"];
 
     [Optional]
-    public LoyaltySign? Sign { get; set; }
+    public PlusMinus? Sign { get; set; }
     public Quantity Amount { get; set; }
 }

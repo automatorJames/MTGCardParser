@@ -43,6 +43,36 @@ public abstract class OneOfBase : Glyph
         return levels.SelectMany(x => x).ToArray();
     }
 
+    /// <summary>The open generic <c>OneOf</c> definitions, by arity: <see cref="OneOf{T1,T2}"/> first, up to twelve alternatives.</summary>
+    public static readonly IReadOnlyList<Type> GenericDefinitions =
+    [
+        typeof(OneOf<,>),
+        typeof(OneOf<,,>),
+        typeof(OneOf<,,,>),
+        typeof(OneOf<,,,,>),
+        typeof(OneOf<,,,,,>),
+        typeof(OneOf<,,,,,,>),
+        typeof(OneOf<,,,,,,,>),
+        typeof(OneOf<,,,,,,,,>),
+        typeof(OneOf<,,,,,,,,,>),
+        typeof(OneOf<,,,,,,,,,,>),
+        typeof(OneOf<,,,,,,,,,,,>),
+    ];
+
+    /// <summary>The fewest and most alternatives a generic <c>OneOf</c> takes.</summary>
+    public const int MinArity = 2;
+    public const int MaxArity = 12;
+
+    /// <summary>Whether <paramref name="type"/> is a generic <c>OneOf</c> of any arity - open, or closed over particular alternatives.</summary>
+    public static bool IsGenericOneOf(Type type) =>
+        type.IsGenericType && GenericDefinitions.Contains(type.GetGenericTypeDefinition());
+
+    /// <summary>The open generic <c>OneOf</c> definition taking <paramref name="arity"/> alternatives, e.g. <see cref="OneOf{T1,T2,T3}"/> for 3.</summary>
+    public static Type GetGenericDefinition(int arity) =>
+        arity is >= MinArity and <= MaxArity
+            ? GenericDefinitions[arity - MinArity]
+            : throw new ArgumentOutOfRangeException(nameof(arity), $"A OneOf takes {MinArity} to {MaxArity} alternatives, not {arity}");
+
     public override string ValidateStructure()
     {
         var graph = GlyphTypeCache.GetRegexGraph(Type);
@@ -56,4 +86,4 @@ public abstract class OneOfBase : Glyph
 
         return base.ValidateStructure();
     }
-}
+}

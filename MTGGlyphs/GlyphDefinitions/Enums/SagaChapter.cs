@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A Saga's chapter number as a roman numeral, "i" through "vi", as the reminder text names the last one: "sacrifice after iii".</summary>
 public enum SagaChapter
 {
     [RegexPattern("i")]

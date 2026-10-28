@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What the effect just described did to an object, before "this way": "tapped", "sacrificed", "exiled", "revealed", "milled", "dies", "dealt damage", "put into exile", "searches their library", as in "a creature is dealt damage this way", "creature tapped this way", "that creature dies this way".</summary>
 public enum ThisWayAction
 {
     Tapped,

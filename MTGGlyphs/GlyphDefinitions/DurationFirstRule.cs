@@ -8,6 +8,6 @@ public class DurationFirstRule : Glyph
 {
     public override Nib[] Nibs => [Prop(Duration), ",", Prop(Effect)];
 
-    public OneOf<UntilPhase, UntilEndOfPlayersTurn, OneOf<DuringTurn, ForTheRestOfTheGame, ForAsLongAs>> Duration { get; set; }
+    public OneOf<UntilPhase, UntilEndOfPlayersTurn, DuringTurn, ForTheRestOfTheGame, ForAsLongAs> Duration { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

@@ -8,5 +8,5 @@ public class EffectDuration : Glyph
 {
     public override Nib[] Nibs => [Prop(Span)];
 
-    public OneOf<UntilPhase, ControlCondition, OneOf<ForAsLongAs, WhileState, OneOf<UntilCastFromExile, UntilThisLeaves, DuringPhase>>> Span { get; set; }
+    public OneOf<UntilPhase, ControlCondition, ForAsLongAs, WhileState, UntilCastFromExile, UntilThisLeaves, DuringPhase> Span { get; set; }
 }

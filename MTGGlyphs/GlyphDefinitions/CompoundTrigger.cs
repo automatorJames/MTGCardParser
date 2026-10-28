@@ -7,7 +7,7 @@ public class CompoundTrigger : Glyph
 {
     public override Nib[] Nibs => [Prop(First), "and", Prop(Second), ",", Prop(Effect)];
 
-    public OneOf<PermanentTriggerEvent, PlayerTriggerEvent, OneOf<SpellTriggerEvent, AtOrUntilPlayerPhase>> First { get; set; }
-    public OneOf<PermanentTriggerEvent, PlayerTriggerEvent, OneOf<SpellTriggerEvent, AtOrUntilPlayerPhase>> Second { get; set; }
+    public OneOf<PermanentTriggerEvent, PlayerTriggerEvent, SpellTriggerEvent, AtOrUntilPlayerPhase> First { get; set; }
+    public OneOf<PermanentTriggerEvent, PlayerTriggerEvent, SpellTriggerEvent, AtOrUntilPlayerPhase> Second { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

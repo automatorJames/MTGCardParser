@@ -8,6 +8,6 @@ public class LifeChangedThisTurn : Glyph
 {
     public override Nib[] Nibs => [Prop(Change), "life", Prop(Turn)];
 
-    public PastLifeChange Change { get; set; }
+    public LifeChange Change { get; set; }
     public TurnSpan Turn { get; set; }
 }

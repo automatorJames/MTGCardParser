@@ -6,9 +6,9 @@
 [Dependent]
 public class RevealedThing : GlyphOneOf
 {
-    public RevealedHand Hand { get; set; }
-    public RevealedTop Top { get; set; }
-    public RevealedTopCard TopCard { get; set; }
+    public PlayersHand Hand { get; set; }
+    public TopCardsOfLibrary Top { get; set; }
+    public TopCardOfLibrary TopCard { get; set; }
     public CardsFromTopOfLibrary FromTop { get; set; }
     public RevealedFromHand FromHand { get; set; }
     public CardsFromOutsideGame FromOutside { get; set; }

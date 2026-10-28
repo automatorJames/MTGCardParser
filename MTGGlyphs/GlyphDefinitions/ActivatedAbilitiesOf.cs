@@ -8,5 +8,5 @@ public class ActivatedAbilitiesOf : Glyph
 {
     public override Nib[] Nibs => [Prop(Owner), "activated abilities"];
 
-    public OneOf<Its, EnchantedPossessive, OneOf<ObjectPossessive, Their>> Owner { get; set; }
+    public OneOf<Its, ObjectPossessive, Their> Owner { get; set; }
 }

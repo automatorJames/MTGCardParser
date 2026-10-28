@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class ZenosYaeGalvusRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["until end of turn, creatures other than zenos yae galvus and the chosen creature get -2/-2"];
+    public override Nib[] Nibs => ["my first friend — when zenos yae galvus enters, choose a creature an opponent controls"];
 }

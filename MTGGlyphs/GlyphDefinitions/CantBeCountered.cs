@@ -7,5 +7,5 @@ public class CantBeCountered : Glyph
 {
     public override Nib[] Nibs => [Prop(Spell), Alt("can't be countered", "can't be copied")];
 
-    public OneOf<OneOf<ThisSpell, OrdinalSpellCast>, TargetSpell, ThatStackObject> Spell { get; set; }
+    public OneOf<ThisSpell, OrdinalSpellCast, TargetSpell, ThatStackObject> Spell { get; set; }
 }

@@ -8,7 +8,7 @@ public class TapOrUntap : Glyph, IConjoinedPredicate, IPredicate
     public override Nib[] Nibs => [Prop(Action), Prop(Permanent), Prop(During)];
 
     public TapAction Action { get; set; }
-    public OneOf<OneOf<ManyOf<AllPermanents>, PermanentPhrase, PermanentPair>, OneOf<IndefinitePermanent, EachDamagedObject>, OneOf<PermanentGroup, CountedPermanents, EachPermanents>> Permanent { get; set; }
+    public OneOf<ManyOf<AllPermanents>, PermanentPhrase, PermanentPair, IndefinitePermanent, EachDamagedObject, PermanentGroup, CountedPermanents, EachPermanents> Permanent { get; set; }
     [Optional]
     public DuringStep During { get; set; }
 }

@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>The zone a spell is cast (or a card played) from: "from your hand", "from exile", "from your graveyard or from exile", "from graveyards", "from anywhere other than their hands", as in "cast that card from exile", "spells you cast from your graveyard".</summary>
 public enum CastFrom
 {
     [RegexPattern("from your hand")]

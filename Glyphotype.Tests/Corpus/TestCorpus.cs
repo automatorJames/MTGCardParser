@@ -75,13 +75,16 @@ public static class TestCorpus
             Doc("the clock goes.", "«the clock goes» ."),
             Doc("the clock goes tick, tock.", "«the clock goes tick, tock» .")),
 
-        .. Section("OneOf<,> and OneOf<,,>",
+        .. Section("OneOf<,>, OneOf<,,> and OneOf<,,,>",
             Doc("the dog greets us at the door.", "GreetsUs{Greeter={Dog}} ."),
             Doc("the baker greets us at the door.", "GreetsUs{Greeter={Baker}} ."),
             Doc("the horse knocks on the door.", "KnocksOnTheDoor{Visitor={TheAnimal{Animal=Horse}}} ."),
             Doc("the teacher knocks on the door.", "KnocksOnTheDoor{Visitor={ThePerson{Person=Teacher}}} ."),
             Doc("our neighbor knocks on the door.", "KnocksOnTheDoor{Visitor={OurNeighbor}} ."),
-            Doc("our neighbour knocks on the door.", "«our neighbour knocks on the door» .")),
+            Doc("our neighbour knocks on the door.", "«our neighbour knocks on the door» ."),
+            Doc("the dog waves at us.", "WavesAtUs{Waver={TheAnimal{Animal=Dog}}} ."),
+            Doc("our neighbor waves at us.", "WavesAtUs{Waver={OurNeighbor}} ."),
+            Doc("monday waves at us.", "WavesAtUs{Waver={Monday}} .")),
 
         .. Section("GlyphOneOf",
             Doc("the baker offers the dog some bread.", "OffersTreat{Person=Baker, Animal=Dog, Treat=Treat{Bread}} ."),

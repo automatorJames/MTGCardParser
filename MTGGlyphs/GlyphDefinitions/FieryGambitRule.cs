@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class FieryGambitRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if you win three or more flips, draw nine cards and untap all lands you control"];
+    public override Nib[] Nibs => ["flip a coin until you lose a flip or choose to stop flipping"];
 }

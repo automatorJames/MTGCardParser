@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class DrainPowerRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["then that player loses all unspent mana and you add the mana lost this way"];
+    public override Nib[] Nibs => ["target player activates a mana ability of each land they control"];
 }

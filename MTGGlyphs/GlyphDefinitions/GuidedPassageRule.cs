@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GuidedPassageRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["an opponent chooses from among them a creature card, a land card, and a noncreature, nonland card"];
+    public override Nib[] Nibs => ["reveal the cards in your library"];
 }

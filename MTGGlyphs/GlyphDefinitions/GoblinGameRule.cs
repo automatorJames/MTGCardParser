@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GoblinGameRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["if two or more players are tied for fewest, each loses half their life, rounded up"];
+    public override Nib[] Nibs => ["each player hides at least one item, then all players reveal them simultaneously"];
 }

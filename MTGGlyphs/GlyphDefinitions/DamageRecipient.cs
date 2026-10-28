@@ -8,5 +8,5 @@ public class DamageRecipient : Glyph
 {
     public override Nib[] Nibs => ["to", Prop(Recipient)];
 
-    public OneOf<PermanentPhrase, WhichPlayer?, OneOf<YouOrAPermanentYouControl, AnotherPlayer>> Recipient { get; set; }
+    public OneOf<PermanentPhrase, WhichPlayer?, YouOrAPermanentYouControl, AnotherPlayer> Recipient { get; set; }
 }

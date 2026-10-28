@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class GlenElendrasAnswerRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["create a 1/1 blue and black faerie creature token with flying for each spell and ability countered this way"];
+    public override Nib[] Nibs => ["counter all spells your opponents control and all abilities your opponents control"];
 }

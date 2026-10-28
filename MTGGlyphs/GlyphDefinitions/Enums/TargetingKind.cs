@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>What's barred from targeting something: "spells or abilities", "spells or activated abilities", "spells" ("blue or black spells"), or "abilities" ("abilities from artifact sources").</summary>
 public enum TargetingKind
 {
     [RegexPattern("spells or abilities")]

@@ -8,7 +8,7 @@ public class CardIsKind : Glyph
 {
     public override Nib[] Nibs => [Prop(Card), Pattern("an?"), Prop(Kind), Alt("card", "spell"), Prop(Chosen)];
 
-    public OneOf<OneOf<ItIs, ThatCardIs, ItIsnt>, ItWas> Card { get; set; }
+    public OneOf<ItIs, ThatCardIs, ItIsnt, ItWas> Card { get; set; }
     public OneOf<ManyOf<PermanentKind>, PermanentKind, QualifierWords> Kind { get; set; }
     [Optional]
     public OneOf<ChosenAspect?, WithQualifier> Chosen { get; set; }

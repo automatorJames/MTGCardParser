@@ -8,5 +8,5 @@ public class ActivatedAbilitiesOfGroup : Glyph
 {
     public override Nib[] Nibs => ["activated abilities of", Prop(Group)];
 
-    public OneOf<EnchantedPermanent, Permanents, OneOf<NamedSources, PermanentPhrase>> Group { get; set; }
+    public OneOf<EnchantedPermanent, Permanents, NamedSources, PermanentPhrase> Group { get; set; }
 }

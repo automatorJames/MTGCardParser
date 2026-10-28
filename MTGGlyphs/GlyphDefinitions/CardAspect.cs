@@ -13,7 +13,7 @@ public class CardAspect : GlyphOneOf
     public ManaColor? ManaColor { get; set; }
     public TapState? TapState { get; set; }
     public CombatState? CombatState { get; set; }
-    public PermanentStatus? Status { get; set; }
+    public PermanentDesignation? Status { get; set; }
     public CreatureType? CreatureType { get; set; }
     public LandType? LandType { get; set; }
     [RegexPattern("token")]

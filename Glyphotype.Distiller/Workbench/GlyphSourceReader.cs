@@ -413,7 +413,7 @@ public static class GlyphSourceReader
 
                     return (generic.Identifier.Text, arguments.Length) switch
                     {
-                        ("OneOf", 2 or 3) => TypeReference.OneOf(arguments),
+                        ("OneOf", >= OneOfBase.MinArity and <= OneOfBase.MaxArity) => TypeReference.OneOf(arguments),
                         ("CompoundOf", 1) => TypeReference.CompoundOf(arguments[0]),
                         ("ManyOf", 1) => TypeReference.ManyOf(arguments[0]),
                         ("OptionalOf", 1) => TypeReference.OptionalOf(arguments[0]),

@@ -5,5 +5,5 @@
 [Dependent]
 public class PerplexingChimeraEffect : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["you may exchange control of this creature and that spell"];
+    public override Nib[] Nibs => ["if the spell becomes a permanent, you control that permanent"];
 }

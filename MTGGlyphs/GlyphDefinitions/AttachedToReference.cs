@@ -8,5 +8,5 @@ public class AttachedToReference : Glyph
 {
     public override Nib[] Nibs => [Opt(Alt("that's", "that are")), "attached to", Prop(Host)];
 
-    public OneOf<OneOf<It, Them, This>, ThatCard, OneOf<AttachmentTarget, AttachmentHostKind>> Host { get; set; }
+    public OneOf<It, Them, This, ThatCard, AttachmentTarget, AttachmentHostKind> Host { get; set; }
 }

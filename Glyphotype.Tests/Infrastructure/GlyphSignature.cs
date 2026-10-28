@@ -23,7 +23,7 @@ namespace Glyphotype.Tests.Infrastructure;
 /// </summary>
 public static class GlyphSignature
 {
-    static readonly Type[] _compactPrimitives = [typeof(OneOf<,>), typeof(OneOf<,,>), typeof(CompoundOf<>), typeof(ManyOf<>), typeof(OptionalOf<>)];
+    static readonly Type[] _compactPrimitives = [.. OneOfBase.GenericDefinitions, typeof(CompoundOf<>), typeof(ManyOf<>), typeof(OptionalOf<>)];
 
     public static string Of(ProcessedLine line) =>
         string.Join(" ", line.Glyphs.Select(Of));

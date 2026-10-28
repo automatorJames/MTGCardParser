@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A possessive saying whose zone, life, turn or object is meant: "your", "their", "its owner's", "its controller's", "each player's", "that player's", "an opponent's", "the chosen player's", the ordered forms "your next", "the first", "that turn's", and the articles "a", "the", "each", "all" ("your next turn", "its owner's graveyard", "each player's hand").</summary>
 public enum Whose
 {
     [RegexPattern("(an|your) opponent's")]

@@ -411,12 +411,7 @@ public static class GrammarEmitter
                     ? primitive
                     : throw new InvalidOperationException($"'{reference.Name}' isn't a supported primitive ({string.Join(", ", PrimitiveTerminal.SupportedDisplayNames)})"),
                 TypeReferenceKind.Dynamic => typeof(DynamicGlyph),
-                TypeReferenceKind.OneOf => (reference.Arguments.Count switch
-                {
-                    2 => typeof(OneOf<,>),
-                    3 => typeof(OneOf<,,>),
-                    _ => throw new InvalidOperationException($"A OneOf takes two or three alternatives, not {reference.Arguments.Count}"),
-                }).MakeGenericType(reference.Arguments.Select(Resolve).ToArray()),
+                TypeReferenceKind.OneOf => OneOfBase.GetGenericDefinition(reference.Arguments.Count).MakeGenericType(reference.Arguments.Select(Resolve).ToArray()),
                 TypeReferenceKind.CompoundOf => typeof(CompoundOf<>).MakeGenericType(ResolveSingleArgument(reference)),
                 TypeReferenceKind.ManyOf => typeof(ManyOf<>).MakeGenericType(ResolveSingleArgument(reference)),
                 TypeReferenceKind.OptionalOf => typeof(OptionalOf<>).MakeGenericType(ResolveSingleArgument(reference)),

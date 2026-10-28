@@ -8,7 +8,7 @@ public class CastSpellsUse : Glyph
 {
     public override Nib[] Nibs => [Opt("to"), "cast", Prop(Spells), Prop(Narrowed)];
 
-    public OneOf<IndefiniteSpell, PlayableCards, OneOf<ManyOf<IndefiniteSpell>, ManyOf<PlayableCards>>> Spells { get; set; }
+    public OneOf<IndefiniteSpell, PlayableCards, ManyOf<IndefiniteSpell>, ManyOf<PlayableCards>> Spells { get; set; }
     [Optional]
     public SpellNarrowing Narrowed { get; set; }
 }

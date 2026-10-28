@@ -7,6 +7,6 @@ public class WhileConditionStatic : Glyph
 {
     public override Nib[] Nibs => ["as long as", Prop(Condition), ",", Prop(Effect)];
 
-    public OneOf<BothStates, GameState, OneOf<CardIsKind, IsOnBattlefield>> Condition { get; set; }
+    public OneOf<BothStates, GameState, CardIsKind, IsOnBattlefield> Condition { get; set; }
     public DynamicGlyph Effect { get; set; }
 }

@@ -6,9 +6,9 @@
 [Dependent]
 public class LookedAtThing : GlyphOneOf
 {
-    public LookedAtHand Hand { get; set; }
-    public LookedAtTop Top { get; set; }
-    public LookedAtTopCard TopCard { get; set; }
+    public PlayersHand Hand { get; set; }
+    public TopCardsOfLibrary Top { get; set; }
+    public TopCardOfLibrary TopCard { get; set; }
     public CardsFromTopOfLibrary FromTop { get; set; }
     public CardsExiledWithThis ExiledCards { get; set; }
     public PermanentPhrase Permanent { get; set; }

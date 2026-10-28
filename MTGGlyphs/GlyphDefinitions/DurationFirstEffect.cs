@@ -7,7 +7,7 @@ public class DurationFirstEffect : Glyph
 {
     public override Nib[] Nibs => [Prop(Duration), ",", Prop(Subject), Prop(Predicate)];
 
-    public OneOf<UntilPhase, UntilEndOfPlayersTurn, OneOf<DuringTurn, ForTheRestOfTheGame, OneOf<DuringPhase, ThisPeriod>>> Duration { get; set; }
+    public OneOf<UntilPhase, UntilEndOfPlayersTurn, DuringTurn, ForTheRestOfTheGame, DuringPhase, ThisPeriod> Duration { get; set; }
     [Optional]
     public Subject Subject { get; set; }
     [TypeFilter(typeof(IPredicate))]

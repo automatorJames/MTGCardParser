@@ -8,7 +8,7 @@ public class ItIsOfType : Glyph
     public override Nib[] Nibs => [Prop(It), Pattern("an?"), Prop(Kind), "in addition to its other", Prop(Scope), Prop(Duration)];
 
     public ItIs It { get; set; }
-    public OneOf<ColoredKind, PluralKind, OneOf<TypeDesignation?, DescribedKinds>> Kind { get; set; }
+    public OneOf<ColoredKind, PluralKind, TypeDesignation?, DescribedKinds> Kind { get; set; }
     public OtherTypesScope Scope { get; set; }
     [Optional]
     public EffectDuration Duration { get; set; }

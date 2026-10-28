@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class LurrusOfTheDreamDenRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["once during each of your turns, you may cast a permanent spell with mana value 2 or less from your graveyard"];
+    public override Nib[] Nibs => ["companion — each permanent card in your starting deck has mana value 2 or less"];
 }

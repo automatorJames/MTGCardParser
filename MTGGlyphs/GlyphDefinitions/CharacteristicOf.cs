@@ -8,6 +8,6 @@ public class CharacteristicOf : Glyph
 {
     public override Nib[] Nibs => [Prop(Object), Prop(Characteristic)];
 
-    public OneOf<OneOf<Its, Their, PersonalPossessive>, ObjectPossessive, TargetPossessive> Object { get; set; }
+    public OneOf<Its, Their, PersonalPossessive, ObjectPossessive, TargetPossessive> Object { get; set; }
     public Characteristic Characteristic { get; set; }
 }

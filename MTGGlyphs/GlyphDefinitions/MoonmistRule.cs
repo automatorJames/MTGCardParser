@@ -5,5 +5,5 @@
 [TokenizationOrder(-1)]
 public class MoonmistRule : Glyph, ICardSpecific
 {
-    public override Nib[] Nibs => ["prevent all combat damage that would be dealt this turn by creatures other than werewolves and wolves"];
+    public override Nib[] Nibs => ["transform all humans"];
 }

@@ -1,5 +1,6 @@
 ﻿namespace MTGGlyphs.GlyphDefinitions;
 
+/// <summary>A subtype as card text names it, mostly creature types ("elf", "assembly-worker", "ally"/"allies") but also planeswalker ("ajani"), artifact ("clue", "equipment"), enchantment ("aura", "curse"), land ("desert", "urza's") and spell ("arcane") subtypes; in token descriptions, "becomes a …" and "is also a …" effects, and "protection from goblins".</summary>
 public enum CreatureType
 {
     Advisor,

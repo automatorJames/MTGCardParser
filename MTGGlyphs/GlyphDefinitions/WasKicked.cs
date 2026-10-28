@@ -8,7 +8,7 @@ public class WasKicked : Glyph
 {
     public override Nib[] Nibs => [Prop(Subject), Alt("was", "wasn't"), Prop(How), Prop(Twice), Prop(Kicker)];
 
-    public OneOf<This, OneOf<It, PersonalPronoun, ThatCard>, OneOf<ThisObject, ShortName, SpellReference?>> Subject { get; set; }
+    public OneOf<This, It, PersonalPronoun, ThatCard, ThisObject, ShortName, SpellReference?> Subject { get; set; }
     public OneOf<OptionalCostVerb?, CastUsingKeyword> How { get; set; }
     [Optional]
     [RegexPattern("twice")]
