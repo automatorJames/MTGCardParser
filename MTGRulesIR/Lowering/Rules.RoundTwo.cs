@@ -15,7 +15,7 @@ public sealed partial class Lowerer
         Rule<G.WhereXIs>((g, ctx) => new LetVariable(LowerAs<Effect>(g.Effect, ctx), "X", LowerAs<Quantity>(g.Definition, ctx)));
         Rule<G.DurationFirstEffect>((g, ctx) => WithSubject(ctx, g.Subject, () => Lasting(LowerAs<Effect>(g.Predicate, ctx), DurationOf(Lower(g.Duration, ctx)))));
         Rule<G.EffectIfCondition>((g, ctx) => WithSubject(ctx, g.Subject, () => new Conditional(LowerAs<Condition>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx))));
-        Rule<G.UnlessPaid>((g, ctx) => new UnlessPaid(LowerAs<Effect>(g.Effect, ctx), Lower(g.Payment, ctx)));
+        Rule<G.UnlessPaid>((g, ctx) => new UnlessPaid(LowerAs<Effect>(g.Effect, ctx), PaymentOf(Lower(g.Payment, ctx), ctx, g.Payment)));
         Rule<G.OptionalPayment>((g, ctx) => Lower(g.Payment, ctx) is PayCost pay ? new Optional(pay, pay.Player) : Lower(g.Payment, ctx));
         Rule<G.OptionalPayCost>((g, ctx) =>
             new PayCost(
@@ -47,11 +47,9 @@ public sealed partial class Lowerer
             if (g.Prepared)
                 states.Add("Prepared");
 
-            List<IrNode> with = [.. LowerAll(g.With, ctx), .. LowerAll(g.AlsoWith, ctx)];
-            if (g.Duration is not null)
-                with.Add(new ThisTurn(g.Duration.Period.ToString()));
+            var with = EffectsOf([.. LowerAll(g.With, ctx), .. LowerAll(g.AlsoWith, ctx)]);
 
-            return new EntersBattlefield(ctx.Subject ?? new Self(), OrNull(states), OrNull(with), g.Condition is null ? null : LowerAs<Condition>(g.Condition, ctx));
+            return new EntersBattlefield(ctx.Subject ?? new Self(), OrNull(states), OrNull(with), g.Condition is null ? null : LowerAs<Condition>(g.Condition, ctx), g.Duration is null ? null : new ThisTurn(g.Duration.Period.ToString()));
         });
         Rule<G.AndEntersWith>((g, ctx) => Lower(g.With, ctx));
         Rule<G.EntersWithAbility>((g, ctx) =>
@@ -60,7 +58,7 @@ public sealed partial class Lowerer
             var keywords = KeywordsOf(g.Ability, ctx, other);
             return other.Count == 0 ? new Pump(null, Keywords: keywords)
                 : other.Count == 1 && keywords.Count == 0 ? new GrantAbility(null, AsAbility(other[0], ctx, g.Ability))
-                : new Pump(null, Keywords: OrNull(keywords), OtherBuffs: other);
+                : Seq([new Pump(null, Keywords: OrNull(keywords)), .. EffectsOf(other)]);
         });
         Rule<G.RiotChoice>((g, ctx) =>
             new ChoiceOf([
@@ -77,10 +75,10 @@ public sealed partial class Lowerer
             new SearchLibrary(
                 g.Searcher is null ? Actor(ctx) : LowerAs<Selector>(g.Searcher.Player, ctx),
                 g.Zones.ToString(),
-                LowerAll(g.Wanted, ctx),
+                LowerAllAs<Selector>(g.Wanted, ctx),
                 g.Revealed,
-                Lower(g.Placement, ctx),
-                Lower(g.Ending, ctx),
+                g.Placement is null ? null : LowerAs<Effect>(g.Placement, ctx),
+                g.Ending is null ? null : LowerAs<Effect>(g.Ending, ctx),
                 g.Searcher?.May == true));
         Rule<G.WantedCards>((g, ctx) =>
             new ObjectSelector(
@@ -154,7 +152,7 @@ public sealed partial class Lowerer
                 g.Change.ToString(),
                 g.Action?.ToString(),
                 g.PerEach is null ? null : LowerAs<Quantity>(g.PerEach, ctx),
-                g.Condition is null ? null : Lower(g.Condition, ctx)));
+                g.Condition is null ? null : LowerAs<Condition>(g.Condition, ctx)));
         Rule<G.SpellsCast>((g, ctx) =>
             new ObjectSelector(Quantifier.All, FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.With, g.Caster, g.WithAfterCaster, g.Chosen, g.From, g.Targeting, g.Sharing]) with { Kinds = ["spell"] }));
         Rule<G.BecomesCreature>((g, ctx) =>
@@ -162,18 +160,22 @@ public sealed partial class Lowerer
             var stats = Lower(g.Stats, ctx) as StatsMod;
             List<IrNode> other = [];
             List<string> types = [];
-            IrNode baseStats = null;
+            IrNode baseNode = null;
 
             switch (g.Types.GetResolvedValue())
             {
                 case G.AnimatedTypes animated:
                     types = Terms(animated.Types.Items, ctx, other);
-                    baseStats = Lower(animated.Base, ctx);
+                    baseNode = Lower(animated.Base, ctx);
                     break;
                 case G.WithBaseStats withBase:
-                    baseStats = Lower(withBase.Stats, ctx);
+                    baseNode = Lower(withBase.Stats, ctx);
                     break;
             }
+
+            var baseStats = BaseStatsOf(baseNode);
+            if (baseNode is not null && baseStats is null || other.Count > 0)
+                return Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.BecomesCreature));
 
             var keywords = g.With is null ? null : Lower(g.With, ctx) switch
             {
@@ -200,7 +202,7 @@ public sealed partial class Lowerer
             new DoesntUntap(ctx.Subject ?? new Self(), PhaseRefOf(g.Step, ctx) ?? new PhaseRef(ctx.TextOf(g.Step)), g.Condition is null ? null : LowerAs<Condition>(g.Condition, ctx)));
         Rule<G.NextPlayersPhase>((g, ctx) => new PhaseRef(g.Phase.ToString(), Whose: PlayerOf(g.Whose), Next: true));
         Rule<G.OtherPermanents>((g, ctx) => Group(g.Permanents, Quantifier.All, ctx, other: true));
-        Rule<G.ManaOfAnyColor>((g, ctx) => new ManaChoice(QuantityOf(g.Quantity), Lower(g.Choice, ctx)));
+        Rule<G.ManaOfAnyColor>((g, ctx) => Lower(g.Choice, ctx) is Term choice ? new ManaChoice(QuantityOf(g.Quantity), choice.Value) : new OpaqueManaOption(ctx.TextOf(g), nameof(G.ManaOfAnyColor)));
         Rule<G.KeywordWithAmountAndCost>((g, ctx) => new KeywordInstance(g.Keyword.ToString(), QuantityOf(g.Amount), new PayMana(g.Cost.Items.Select(SymbolText).ToList())));
 
         // Durations and phases.
@@ -217,8 +219,13 @@ public sealed partial class Lowerer
         Rule<G.NoPermanents>((g, ctx) =>
             LowerAs<Selector>(g.Permanents, ctx) is ObjectSelector selector ? selector with { Quantifier = Quantifier.Count, Count = new Fixed(0) } : (Selector)Opaque(typeof(Selector), ctx.TextOf(g), nameof(G.NoPermanents)));
         Rule<G.PermanentIs>((g, ctx) =>
-            new ObjectIs(LowerAs<Selector>(g.Subject, ctx), LowerAll(g.Aspect, ctx), g.Assertion is G.Assertion.Isnt or G.Assertion.Wasnt, g.Assertion is G.Assertion.Was or G.Assertion.Wasnt ? "Was" : "Is"));
-        Rule<G.ItsAspect>((g, ctx) => new ObjectIs(LowerAs<Selector>(g.Subject, ctx), [Lower(g.Aspect, ctx)], g.Negated, "Is"));
+            AspectsOf(LowerAll(g.Aspect, ctx)) is { } aspects
+                ? new ObjectIs(LowerAs<Selector>(g.Subject, ctx), aspects, g.Assertion is G.Assertion.Isnt or G.Assertion.Wasnt, g.Assertion is G.Assertion.Was or G.Assertion.Wasnt ? "Was" : "Is")
+                : Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.PermanentIs)));
+        Rule<G.ItsAspect>((g, ctx) =>
+            AspectsOf([Lower(g.Aspect, ctx)]) is { } aspects
+                ? new ObjectIs(LowerAs<Selector>(g.Subject, ctx), aspects, g.Negated, "Is")
+                : Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.ItsAspect)));
         Rule<G.CardAspect>((g, ctx) =>
             g.CardType is { } cardType ? new Term(cardType.ToString(), nameof(G.CardType))
             : g.Supertype is { } supertype ? new Term(supertype.ToString(), nameof(G.Supertype))
@@ -235,14 +242,14 @@ public sealed partial class Lowerer
         {
             var kind = LowerAs<Selector>(g.Kind, ctx) as ObjectSelector;
             var hasQualifiers = kind?.Filter is { } filter && (filter.Qualifiers is not null || filter.With is not null || filter.Controller is not null);
-            return new IsKind(LowerAs<Selector>(g.Object, ctx), kind?.Filter?.Kinds ?? [], false, hasQualifiers ? [kind.Filter] : null);
+            return new IsKind(LowerAs<Selector>(g.Object, ctx), kind?.Filter?.Kinds ?? [], false, hasQualifiers ? kind.Filter : null);
         });
         Rule<G.ThatObjectIsOrWas>((g, ctx) => LowerAs<Selector>(g.Object, ctx));
         Rule<G.IfGameState>((g, ctx) => LowerAs<Condition>(g.State, ctx));
         Rule<G.IfState>((g, ctx) => LowerAs<Condition>(g.Condition, ctx));
         Rule<G.StateCondition>((g, ctx) => g.Connective == G.ConditionConnective.Unless ? new Not(LowerAs<Condition>(g.State, ctx)) : LowerAs<Condition>(g.State, ctx));
         Rule<G.IfHappenedThisTurn>((g, ctx) => LowerAs<Condition>(g.Event, ctx));
-        Rule<G.HappenedThisTurn>((g, ctx) => new Happened(Lower(g.Event, ctx), g.Turn.ToString()));
+        Rule<G.HappenedThisTurn>((g, ctx) => new Happened(EventOf(Lower(g.Event, ctx), ctx, g.Event), g.Turn.ToString()));
         Rule<G.WhileCondition>((g, ctx) => LowerAs<Condition>(g.Condition, ctx));
         Rule<G.WasKicked>((g, ctx) =>
             new WasCastWith(LowerAs<Selector>(g.Subject, ctx), Lower(g.How, ctx) is Term how ? how.Value : ctx.TextOf(g.How), ctx.TextOf(g)?.Contains("wasn't") == true, g.Twice));
@@ -253,7 +260,7 @@ public sealed partial class Lowerer
             return new HasCountersCondition(LowerAs<Selector>(g.Subject, ctx), counters as CounterSpec, text.Contains("doesn't have"), text.Contains(" had ") ? "Had" : "Has", counters is CounterSpec ? null : counters);
         });
         Rule<G.CountersThere>((g, ctx) => new HasCountersCondition(LowerAs<Selector>(g.Holder, ctx), Lower(g.Counters, ctx) as CounterSpec));
-        Rule<G.CardIsInZone>((g, ctx) => new IsInZone(LowerAs<Selector>(g.Card, ctx), Lower(g.Place, ctx)));
+        Rule<G.CardIsInZone>((g, ctx) => ZoneOf(g.Place, ctx) is { } place ? new IsInZone(LowerAs<Selector>(g.Card, ctx), place) : Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.CardIsInZone)));
 
         // Selectors.
         Rule<G.ShortName>((g, ctx) => new Self());
@@ -362,19 +369,18 @@ public sealed partial class Lowerer
     /// <summary>Objects put onto the battlefield as <paramref name="destination"/> says: tapped, under whose control, transformed, attached, with counters.</summary>
     ChangeZone ToBattlefield(Selector objects, G.ToTheBattlefieldUnderControl destination, LoweringContext ctx)
     {
-        List<IrNode> details = [];
+        List<string> states = [];
         var tapped = destination.State is G.EntryState.Tapped or G.EntryState.TappedAndAttacking || destination.StateAfterControl is G.EntryState.Tapped or G.EntryState.TappedAndAttacking;
 
-        details.AddRange(LowerAll(destination.WithCounters, ctx));
-        details.AddRange(LowerAll(destination.Attached, ctx));
+        var with = EffectsOf([.. LowerAll(destination.WithCounters, ctx), .. LowerAll(destination.Attached, ctx)]);
         if (destination.Transformed == true || destination.AndTransformed == true)
-            details.Add(new Term("Transformed", nameof(G.EntryState)));
+            states.Add("Transformed");
         if (destination.State is G.EntryState.TappedAndAttacking || destination.StateAfterControl is G.EntryState.TappedAndAttacking)
-            details.Add(new Term("Attacking", nameof(G.EntryState)));
+            states.Add("Attacking");
         if (destination.State is G.EntryState.FaceDown || destination.StateAfterControl is G.EntryState.FaceDown)
-            details.Add(new Term("FaceDown", nameof(G.EntryState)));
+            states.Add("FaceDown");
 
-        return new ChangeZone(objects, new ZoneRef("Battlefield"), tapped, destination.Control is null ? null : LowerAs<Selector>(destination.Control.Whose, ctx), OrNull(details));
+        return new ChangeZone(objects, new ZoneRef("Battlefield"), tapped, destination.Control is null ? null : LowerAs<Selector>(destination.Control.Whose, ctx), OrNull(states), OrNull(with));
     }
 
     static ObjectSelector TopOfLibrary(Quantity count, Selector owner) =>

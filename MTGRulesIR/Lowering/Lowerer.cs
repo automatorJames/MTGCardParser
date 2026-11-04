@@ -148,7 +148,6 @@ public sealed partial class Lowerer
             null => null,
             T typed => typed,
             KeywordLine line when typeof(T) == typeof(Effect) => (T)(IrNode)new KeywordAction(line.Keywords, line.Other),
-            LabeledAbility { Ability: Effect inner } when typeof(T) == typeof(Effect) => (T)(IrNode)inner,
             LabeledAbility { Ability: EffectLine line } when typeof(T) == typeof(Effect) => (T)(IrNode)line.Effect,
             LabeledAbility { Ability: StaticAbility { While: null } statics } when typeof(T) == typeof(Effect) => (T)(IrNode)statics.Effect,
             LabeledAbility { Ability: SpellAbility spell } when typeof(T) == typeof(Effect) => (T)(IrNode)spell.Effect,

@@ -169,7 +169,7 @@ public sealed record CastBy(Selector Player, string Relation, string From = null
 public sealed record WithCounters(CounterSpec Counters, IrNode Other = null) : Predicate;
 
 /// <summary>Something a player did: "cast a spell", "attacked", as an event a condition looks back on.</summary>
-public sealed record PlayerAction(Selector Player, string Action, Selector What = null, bool FromHand = false) : IrNode;
+public sealed record PlayerAction(Selector Player, string Action, Selector What = null, bool FromHand = false) : Event;
 
 /// <summary>One kind of card a player may play or cast: "play lands", "cast creature spells".</summary>
 public sealed record Playable(string Verb, Selector What) : IrNode;

@@ -11,7 +11,7 @@ public sealed partial class Lowerer
             var manner = g.Manner?.ToString();
 
             Effect effect = g.Verb == G.RemovalVerb.Exile
-                ? new Exile(objects, g.UntilThisLeaves is null ? null : new UntilThisLeaves(), g.WithCounters is null ? null : Lower(g.WithCounters, ctx), manner)
+                ? new Exile(objects, g.UntilThisLeaves is null ? null : new UntilThisLeaves(), g.WithCounters is null ? null : CountersOf(Lower(g.WithCounters, ctx)), manner)
                 : new Destroy(objects, manner);
 
             return g.AtEndOfCombat ? new Delayed(new PhaseEvent(new PhaseRef("EndOfCombatStep", "End")), effect) : effect;
@@ -48,7 +48,7 @@ public sealed partial class Lowerer
             List<Effect> pumps = [];
 
             foreach (var node in LowerAll(g.Buffs, ctx))
-                pumps.Add(node is BuffGroup group ? PumpOf(group, duration, perEach, ctx) : new Pump(ctx.Subject, OtherBuffs: [node], Duration: duration, PerEach: perEach));
+                pumps.Add(node is BuffGroup group ? PumpOf(group, duration, perEach, ctx) : EffectOf(node));
 
             return pumps.Count == 1 ? pumps[0] : new Sequence(pumps);
         });
@@ -80,7 +80,8 @@ public sealed partial class Lowerer
         Rule<G.PlaceCounters>((g, ctx) =>
         {
             var objects = g.Place is null ? ctx.Subject ?? new Self() : LowerAs<Selector>(g.Place.Permanent, ctx);
-            var counters = Lower(g.Counters, ctx) is CounterSpec spec ? spec : new CounterSpec(null, null, Other: Lower(g.Counters, ctx));
+            if (Lower(g.Counters, ctx) is not CounterSpec counters)
+                return Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.PlaceCounters));
             return g.Action == G.CounterAction.Remove ? new RemoveCounters(objects, counters) : new PutCounters(objects, counters);
         });
 
@@ -93,14 +94,14 @@ public sealed partial class Lowerer
                 _ => null,
             };
 
-            return new CounterSpec(kind, LowerAs<Quantity>(g.Quantity, ctx), g.Additional, g.Bound?.ToString(), g.Prefix is null ? null : new Term(g.Prefix.ToString(), nameof(G.CountPrefix)));
+            return new CounterSpec(kind, LowerAs<Quantity>(g.Quantity, ctx), g.Additional, g.Bound?.ToString(), g.Prefix?.ToString());
         });
 
         Rule<G.CreateToken>((g, ctx) =>
         {
             var token = Lower(g.Token, ctx);
             var count = g.EqualTo is not null ? LowerAs<Quantity>(g.EqualTo, ctx) : token is TokenSpecWithCount withCount ? withCount.Count : null;
-            return new CreateTokens(token is TokenSpecWithCount t ? t.Token : token, count, g.PerEach is null ? null : LowerAs<Quantity>(g.PerEach, ctx));
+            return new CreateTokens(TokenOf(token, ctx, g.Token), count, g.PerEach is null ? null : LowerAs<Quantity>(g.PerEach, ctx));
         });
 
         Rule<G.TokenDescription>((g, ctx) =>
@@ -109,17 +110,21 @@ public sealed partial class Lowerer
             var keywords = KeywordsOf(g.With, ctx, other);
             var stats = Lower(g.Stats, ctx) as StatsMod;
             var name = g.Name ?? g.NameAfterKeywords;
+            var types = Terms(g.Types.Items, ctx, other);
+            var subtypes = g.Subtypes is null ? null : Terms(g.Subtypes.Items, ctx, other);
+            var colors = Terms(g.Colors, ctx, other);
+            var abilities = TokenAbilitiesOf(other, keywords);
 
             return new TokenSpecWithCount(
                 new TokenSpec(
-                    OrNull(Terms(g.Types.Items, ctx, other)),
-                    g.Subtypes is null ? null : OrNull(Terms(g.Subtypes.Items, ctx, other)),
-                    OrNull(Terms(g.Colors, ctx, other)),
+                    OrNull(types),
+                    subtypes is null ? null : OrNull(subtypes),
+                    OrNull(colors),
                     stats?.Power,
                     stats?.Toughness,
                     name is null ? null : ctx.TextOf(name)?.Replace("named ", ""),
                     OrNull(keywords),
-                    OrNull(other),
+                    OrNull(abilities),
                     g.Tapped is G.EntryState.Tapped or G.EntryState.TappedAndAttacking,
                     g.Tapped is G.EntryState.TappedAndAttacking || g.Attacking is not null),
                 QuantityOf(g.Quantity));
@@ -138,32 +143,20 @@ public sealed partial class Lowerer
         {
             var destination = g.Destination.GetResolvedValue();
             var zone = ZoneOf(destination, ctx) ?? new ZoneRef("?");
-            List<IrNode> details = [];
             var tapped = g.Tapped == true;
-            Selector under = null;
 
             if (destination is G.ToTheBattlefieldUnderControl battlefield)
-            {
-                tapped |= battlefield.State is G.EntryState.Tapped or G.EntryState.TappedAndAttacking || battlefield.StateAfterControl is G.EntryState.Tapped or G.EntryState.TappedAndAttacking;
-                under = zone.Owner;
-                zone = zone with { Owner = null };
-                details.AddRange(LowerAll(battlefield.WithCounters, ctx));
-                details.AddRange(LowerAll(battlefield.Attached, ctx));
-                if (battlefield.Transformed == true || battlefield.AndTransformed == true)
-                    details.Add(new Term("Transformed", nameof(G.EntryState)));
-                if (battlefield.State is G.EntryState.TappedAndAttacking || battlefield.StateAfterControl is G.EntryState.TappedAndAttacking)
-                    details.Add(new Term("Attacking", nameof(G.EntryState)));
-                if (battlefield.State is G.EntryState.FaceDown || battlefield.StateAfterControl is G.EntryState.FaceDown)
-                    details.Add(new Term("FaceDown", nameof(G.EntryState)));
-            }
-            else if (destination is not G.IntoZone and not null)
-                details.AddRange(LowerAll(destination, ctx).Where(x => x is not ZoneRef));
+                return ToBattlefield(LowerAs<Selector>(g.Moved, ctx), battlefield, ctx) with { Tapped = tapped || (battlefield.State is G.EntryState.Tapped or G.EntryState.TappedAndAttacking || battlefield.StateAfterControl is G.EntryState.Tapped or G.EntryState.TappedAndAttacking) };
 
-            return new ChangeZone(LowerAs<Selector>(g.Moved, ctx), zone, tapped, under, OrNull(details));
+            List<Effect> with = [];
+            if (destination is not G.IntoZone and not null)
+                with.AddRange(EffectsOf(LowerAll(destination, ctx).Where(x => x is not ZoneRef)));
+
+            return new ChangeZone(LowerAs<Selector>(g.Moved, ctx), zone, tapped, With: OrNull(with));
         });
 
         Rule<G.AddMana>((g, ctx) =>
-            new AddMana(LowerAll(g.Mana, ctx), g.Amount?.ToString()));
+            new AddMana(LowerAll(g.Mana, ctx).Select(ManaOptionOf).ToList(), g.Amount?.ToString()));
 
         Rule<G.ManaCost>((g, ctx) => new ManaAmount(g.Items.Select(SymbolText).ToList()));
         Rule<G.ManaSymbol>((g, ctx) => new Term(SymbolText(g), nameof(G.ManaSymbol)));
@@ -172,22 +165,48 @@ public sealed partial class Lowerer
         {
             List<IrNode> rest = [];
             var by = Terms(g.By, ctx, rest);
-            return new CantBeTargeted(ctx.Subject ?? new Self(), OrNull(by) ?? [ctx.TextOf(g.By)], g.Whose is null ? null : Lower(g.Whose, ctx), g.Period is null ? null : new ThisTurn(g.Period.Period.ToString()));
+            return new CantBeTargeted(ctx.Subject ?? new Self(), OrNull(by) ?? [ctx.TextOf(g.By)], g.Whose is null ? null : Lower(g.Whose, ctx) as Controlled, g.Period is null ? null : new ThisTurn(g.Period.Period.ToString()));
         });
 
         Rule<G.CombatRestriction>((g, ctx) =>
         {
-            List<IrNode> details = [];
-            var actions = Terms(g.Action, ctx, details);
+            List<IrNode> rest = [];
+            var actions = Terms(g.Action, ctx, rest);
+            Selector by = null;
+            string recipient = null;
+            List<string> modifiers = [];
+            List<Condition> conditions = [];
+
             foreach (var part in new object[] { g.Attacked, g.OrAction, g.By, g.AndOr, g.Blocked, g.Blockee, g.Condition })
-                details.AddRange(LowerAll(part, ctx));
+                foreach (var node in LowerAll(part, ctx))
+                    switch (node)
+                    {
+                        case Selector selector when by is null:
+                            by = selector;
+                            break;
+                        case Condition condition:
+                            conditions.Add(condition);
+                            break;
+                        case Term { Vocabulary: nameof(G.AttackRecipient) } term:
+                            recipient = term.Value;
+                            break;
+                        case Term { Vocabulary: nameof(G.CombatRestriction) } term:
+                            modifiers.Add(term.Value);
+                            break;
+                        default:
+                            rest.Add(node);
+                            break;
+                    }
+
+            if (rest.Count > 0)
+                return Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.CombatRestriction));
             if (g.Alone)
-                details.Add(new Term("Alone", nameof(G.CombatRestriction)));
+                modifiers.Add("Alone");
             if (g.Except)
-                details.Add(new Term("Except", nameof(G.CombatRestriction)));
+                modifiers.Add("Except");
 
             var duration = DurationOf(Lower(g.Duration ?? (object)g.LaterDuration, ctx));
-            return new CombatRestriction(ctx.Subject ?? new Self(), actions, OrNull(details), duration);
+            return new CombatRestriction(ctx.Subject ?? new Self(), actions, by, recipient, OrNull(modifiers), conditions.Count == 0 ? null : conditions.Count == 1 ? conditions[0] : new And(conditions), duration);
         });
 
         Rule<G.ForEach>((g, ctx) => new CountOf(LowerAs<Selector>(g.Counted, ctx)));
@@ -198,7 +217,7 @@ public sealed partial class Lowerer
         Rule<G.EntersWithCounters>((g, ctx) =>
             Lower(g.Counters, ctx) is CounterSpec spec
                 ? new PutCounters(null, spec with { Count = Multiply(spec.Count, g.PerEach is null ? null : LowerAs<Quantity>(g.PerEach, ctx)) })
-                : new OpaqueNode(ctx.TextOf(g), nameof(G.EntersWithCounters)));
+                : new OpaqueEffect(ctx.TextOf(g), nameof(G.EntersWithCounters)));
     }
 
     /// <summary>The buffs a verb gives, before they're folded into a <see cref="Pump"/>.</summary>
@@ -207,11 +226,13 @@ public sealed partial class Lowerer
     /// <summary>A token description with the count it was written with ("two 1/1 … tokens"), before the count moves to <see cref="CreateTokens"/>.</summary>
     sealed record TokenSpecWithCount(TokenSpec Token, Quantity Count) : IrNode;
 
-    Pump PumpOf(BuffGroup group, Duration duration, Quantity perEach, LoweringContext ctx)
+    /// <summary>A buff group as a pump - stats, keywords, base stats - followed by any buff that is an effect of its own (becoming a type, say), each given the group's duration where it has none.</summary>
+    Effect PumpOf(BuffGroup group, Duration duration, Quantity perEach, LoweringContext ctx)
     {
         Quantity power = null, toughness = null;
+        StatsMod baseStats = null;
         List<KeywordInstance> keywords = [];
-        List<IrNode> other = [];
+        List<Effect> other = [];
 
         foreach (var buff in group.Buffs)
             switch (buff)
@@ -226,11 +247,18 @@ public sealed partial class Lowerer
                 case Term { Vocabulary: nameof(G.Keyword) } term:
                     keywords.Add(new KeywordInstance(term.Value));
                     break;
+                case Term { Vocabulary: nameof(G.BasePowerToughness) } term when BaseStatsOf(term) is { } parsed:
+                    baseStats = parsed;
+                    break;
+                case BecomesAspect { Duration: null } becomes:
+                    other.Add(becomes with { Duration = duration });
+                    break;
                 default:
-                    other.Add(buff);
+                    other.Add(EffectOf(buff));
                     break;
             }
 
-        return new Pump(ctx.Subject, power, toughness, OrNull(keywords), OrNull(other), duration, group.Verb == G.PermanentVerb.Lose, perEach);
+        var pump = new Pump(ctx.Subject, power, toughness, OrNull(keywords), baseStats, duration, group.Verb == G.PermanentVerb.Lose, perEach);
+        return other.Count == 0 ? pump : new Sequence([pump, .. other]);
     }
 }

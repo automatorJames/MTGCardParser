@@ -72,7 +72,10 @@ public sealed partial class Lowerer
             List<IrNode> qualified = [];
             var kinds = Terms(g.Kind, ctx, qualified);
             qualified.AddRange(LowerAll(g.Chosen, ctx));
-            return new IsKind(LowerAs<Selector>(g.Card, ctx), kinds, g.Card.GetResolvedValue() is G.ItIsnt, OrNull(qualified));
+            var filter = new Filter();
+            foreach (var node in qualified)
+                filter.Add(node, ctx, g);
+            return new IsKind(LowerAs<Selector>(g.Card, ctx), kinds, g.Card.GetResolvedValue() is G.ItIsnt, qualified.Count == 0 ? null : filter.ToFilter());
         });
 
         Rule<G.Cost>((g, ctx) =>

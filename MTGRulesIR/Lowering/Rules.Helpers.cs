@@ -198,6 +198,181 @@ public sealed partial class Lowerer
             _ => new OpaquePredicate(ctx.TextOf(source) ?? node.ToString(), source?.GetType().Name ?? node.GetType().Name),
         };
 
+    /// <summary>Each node as an effect: itself when it is one, else an opaque effect holding its text.</summary>
+    static List<Effect> EffectsOf(IEnumerable<IrNode> nodes) =>
+        nodes.Select(EffectOf).ToList();
+
+    static Effect EffectOf(IrNode node) =>
+        node switch
+        {
+            Effect effect => effect,
+            IOpaque opaque => new OpaqueEffect(opaque.Text, opaque.Glyph),
+            _ => new OpaqueEffect(node.ToString(), node.GetType().Name),
+        };
+
+    /// <summary>A lowered token: the spec, with or without its count; anything else opaque.</summary>
+    static Token TokenOf(IrNode node, LoweringContext ctx, object source) =>
+        node switch
+        {
+            TokenSpecWithCount counted => counted.Token,
+            Token token => token,
+            IOpaque opaque => new OpaqueToken(opaque.Text, opaque.Glyph),
+            _ => new OpaqueToken(ctx.TextOf(source) ?? node?.ToString(), source?.GetType().Name ?? node?.GetType().Name),
+        };
+
+    /// <summary>
+    /// What a token has beyond its stats: keywords go to <paramref name="keywords"/>, granted abilities (and the
+    /// keywords granted alongside them) come back as the token's abilities, and anything else is an opaque ability.
+    /// </summary>
+    static List<Ability> TokenAbilitiesOf(IEnumerable<IrNode> nodes, List<KeywordInstance> keywords)
+    {
+        List<Ability> abilities = [];
+
+        foreach (var node in nodes)
+            switch (node)
+            {
+                case null:
+                    break;
+                case HasKeywords has:
+                    keywords.AddRange(has.Keywords.Select(x => new KeywordInstance(x)));
+                    break;
+                case KeywordInstance keyword:
+                    keywords.Add(keyword);
+                    break;
+                case Pump { Power: null, Toughness: null, BaseStats: null, Duration: null } pump:
+                    keywords.AddRange(pump.Keywords ?? []);
+                    break;
+                case GrantAbility grant:
+                    abilities.Add(grant.Ability);
+                    keywords.AddRange(grant.Alongside ?? []);
+                    break;
+                case Sequence sequence:
+                    abilities.AddRange(TokenAbilitiesOf(sequence.Steps, keywords));
+                    break;
+                case Ability ability:
+                    abilities.Add(ability);
+                    break;
+                case IOpaque opaque:
+                    abilities.Add(new OpaqueAbility(opaque.Text, opaque.Glyph));
+                    break;
+                default:
+                    abilities.Add(new OpaqueAbility(node.ToString(), node.GetType().Name));
+                    break;
+            }
+
+        return abilities;
+    }
+
+    static ManaOption ManaOptionOf(IrNode node) =>
+        node switch
+        {
+            ManaOption option => option,
+            Term { Vocabulary: nameof(G.ManaSymbol) } symbol => new ManaAmount([symbol.Value]),
+            IOpaque opaque => new OpaqueManaOption(opaque.Text, opaque.Glyph),
+            _ => new OpaqueManaOption(node.ToString(), node.GetType().Name),
+        };
+
+    /// <summary>A payment as a <see cref="PayCost"/>: a cost wrapped, an opaque node as an opaque cost.</summary>
+    static PayCost PaymentOf(IrNode node, LoweringContext ctx, object source) =>
+        node switch
+        {
+            PayCost pay => pay,
+            Cost cost => new PayCost(cost),
+            IOpaque opaque => new PayCost(new OpaqueCost(opaque.Text, opaque.Glyph)),
+            _ => new PayCost(new OpaqueCost(ctx.TextOf(source) ?? node?.ToString(), source?.GetType().Name ?? node?.GetType().Name)),
+        };
+
+    /// <summary>What's done with the cards a search found, after they're found: exiled, or revealed.</summary>
+    static Effect SearchFollowUp(string kind, Selector searcher)
+    {
+        var found = new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: ["card"], Qualifiers: [new Qualifier("Found")]));
+        return kind switch
+        {
+            "Exile" => new Exile(found),
+            "Reveal" => new Reveal(searcher, found),
+            _ => new OpaqueEffect(kind, nameof(G.SearchFollowUp)),
+        };
+    }
+
+    /// <summary>A lowered node as an event: itself, a named turn event for a vocabulary member, else opaque.</summary>
+    static Event EventOf(IrNode node, LoweringContext ctx, object source) =>
+        node switch
+        {
+            Event happening => happening,
+            Term term => new NamedEvent(term.Value),
+            IOpaque opaque => new OpaqueEvent(opaque.Text, opaque.Glyph),
+            _ => new OpaqueEvent(ctx.TextOf(source) ?? node?.ToString(), source?.GetType().Name ?? node?.GetType().Name),
+        };
+
+    /// <summary>
+    /// Lowered aspects as terms - a vocabulary member as itself, a kind with qualifiers as a term per part - or null
+    /// when one of them is no term at all (a token description, something opaque), which the caller then handles.
+    /// </summary>
+    static List<Term> AspectsOf(IEnumerable<IrNode> nodes)
+    {
+        List<Term> terms = [];
+
+        foreach (var node in nodes)
+            switch (node)
+            {
+                case Term term:
+                    terms.Add(term);
+                    break;
+                case QualifiedKind kind:
+                    terms.Add(new Term(kind.Kind, "Kind"));
+                    terms.AddRange(kind.Qualifiers.Select(x => new Term(x.Quality, nameof(Qualifier))));
+                    break;
+                default:
+                    return null;
+            }
+
+        return terms;
+    }
+
+    /// <summary>The subject becoming what the nodes say: terms as a <see cref="BecomesAspect"/>, a token description as an <see cref="Animate"/>, anything else opaque.</summary>
+    IrNode BecomesOf(List<IrNode> nodes, bool inAddition, Duration duration, string verb, LoweringContext ctx, object source) =>
+        nodes is [TokenSpec spec] ? AnimateOf(spec, ctx.Subject ?? new Self(), inAddition, duration)
+        : AspectsOf(nodes) is { } aspects ? new BecomesAspect(ctx.Subject ?? new Self(), aspects, inAddition, Duration: duration, Verb: verb)
+        : Opaque(typeof(Effect), ctx.TextOf(source), source.GetType().Name);
+
+    /// <summary>A token description as an animation of the subject: "becomes a 3/3 green elemental creature".</summary>
+    static Animate AnimateOf(TokenSpec spec, Selector objects, bool inAddition, Duration duration) =>
+        new(objects, spec.Power, spec.Toughness, spec.Colors, spec.Subtypes, spec.Types, null, spec.Keywords, false, null, inAddition, duration);
+
+    static readonly System.Text.RegularExpressions.Regex _baseStats = new(@"^base (power and toughness|power|toughness) ([0-9x]+)(?:/([0-9x]+))?$");
+
+    /// <summary>"base power and toughness 4/4", "base power 8", "base toughness 1" as stats; null when the node isn't that.</summary>
+    static StatsMod BaseStatsOf(IrNode node)
+    {
+        if (node is StatsMod stats)
+            return stats;
+
+        if (node is not Term { Vocabulary: nameof(G.BasePowerToughness) } term || _baseStats.Match(term.Value) is not { Success: true } match)
+            return null;
+
+        var first = StatOf(match.Groups[2].Value);
+        var second = match.Groups[3].Success ? StatOf(match.Groups[3].Value) : null;
+
+        return match.Groups[1].Value switch
+        {
+            "power" => new StatsMod(first, null),
+            "toughness" => new StatsMod(null, first),
+            _ => new StatsMod(first, second),
+        };
+    }
+
+    static Quantity StatOf(string text) =>
+        int.TryParse(text, out var value) ? new Fixed(value) : new Variable(text);
+
+    /// <summary>Counters a lowered node describes: a spec as itself, or the counters a put-counters effect places.</summary>
+    static CounterSpec CountersOf(IrNode node) =>
+        node switch
+        {
+            CounterSpec spec => spec,
+            PutCounters put => put.Counters,
+            _ => null,
+        };
+
     /// <summary>A selector narrowed by a further predicate, or by a qualifier word, when it has a filter to take it.</summary>
     static Selector Narrow(Selector selector, IrNode narrowing, LoweringContext ctx, object source = null)
     {

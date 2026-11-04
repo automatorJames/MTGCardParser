@@ -64,7 +64,7 @@ public sealed record OutcomeCondition(Selector Player, string Result) : Conditio
 public sealed record SelfOnBattlefield : Condition;
 
 /// <summary>An object named earlier is (or isn't) of some kinds: "it's a creature card".</summary>
-public sealed record IsKind(Selector Object, IReadOnlyList<string> Kinds, bool Negated = false, IReadOnlyList<IrNode> Qualified = null) : Condition;
+public sealed record IsKind(Selector Object, IReadOnlyList<string> Kinds, bool Negated = false, ObjectFilter Qualified = null) : Condition;
 
 public sealed record And(IReadOnlyList<Condition> Conditions) : Condition;
 
@@ -74,7 +74,10 @@ public abstract record Event : IrNode;
 public sealed record OpaqueEvent(string Text, string Glyph) : Event, IOpaque;
 
 /// <summary>Something happening to objects a selector picks out: they enter, die, attack, become tapped, …</summary>
-public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, IReadOnlyList<IrNode> Details = null) : Event;
+public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null) : Event;
+
+/// <summary>Something that happened in the turn, named: "a creature died", "you attacked", "you gained life".</summary>
+public sealed record NamedEvent(string Kind) : Event;
 
 /// <summary>A creature meeting another in combat: "blocks or becomes blocked by a non-wall creature".</summary>
 public sealed record CombatEncounterEvent(Selector Subject, string Encounter, Selector Other) : Event;
@@ -113,16 +116,16 @@ public sealed record Bound(Quantity Value, string Comparison) : Quantity;
 public sealed record Scaled(Quantity Base, string Factor, string Rounding = null) : Quantity;
 
 /// <summary>Mana of a color chosen as it's added: "one mana of any color".</summary>
-public sealed record ManaChoice(Quantity Count, IrNode Choice) : IrNode;
+public sealed record ManaChoice(Quantity Count, string Choice) : ManaOption;
 
 /// <summary>Throughout a step, phase or turn: "during your upkeep".</summary>
 public sealed record DuringPhase(PhaseRef Phase) : Duration;
 
 /// <summary>An object being, or not being, some things: "{this} is tapped", "it isn't a creature", "that creature was a human".</summary>
-public sealed record ObjectIs(Selector Object, IReadOnlyList<IrNode> Aspects, bool Negated = false, string Tense = null) : Condition;
+public sealed record ObjectIs(Selector Object, IReadOnlyList<Term> Aspects, bool Negated = false, string Tense = null) : Condition;
 
 /// <summary>Something happened earlier in a span: "you attacked this turn", "a creature died this turn".</summary>
-public sealed record Happened(IrNode Event, string Span) : Condition;
+public sealed record Happened(Event Event, string Span) : Condition;
 
 /// <summary>How a spell was cast: "{this} was kicked", "it wasn't kicked".</summary>
 public sealed record WasCastWith(Selector Spell, string How, bool Negated = false, bool Twice = false) : Condition;
@@ -131,7 +134,7 @@ public sealed record WasCastWith(Selector Spell, string How, bool Negated = fals
 public sealed record HasCountersCondition(Selector Holder, CounterSpec Counters, bool Negated = false, string Tense = null, IrNode Other = null) : Condition;
 
 /// <summary>A card being in a zone or state: "this card is in your graveyard", "this card is suspended".</summary>
-public sealed record IsInZone(Selector Object, IrNode Place) : Condition;
+public sealed record IsInZone(Selector Object, ZoneRef Place) : Condition;
 
 public sealed record Not(Condition Condition) : Condition;
 
@@ -154,10 +157,10 @@ public sealed record Adjusted(Quantity Base, string Factor = null, string Adjust
 public sealed record Arithmetic(Quantity Left, string Operator, Quantity Right) : Quantity;
 
 /// <summary>A player's devotion to colors: the mana symbols of those colors among permanents they control.</summary>
-public sealed record Devotion(IReadOnlyList<IrNode> Colors) : Quantity;
+public sealed record Devotion(IReadOnlyList<string> Colors) : Quantity;
 
 /// <summary>A player controlling more or fewer of some permanents than another: "an opponent controls more lands than you".</summary>
 public sealed record CompareControl(Selector Player, Selector Objects, string Bound, Selector ComparedTo) : Condition;
 
 /// <summary>A player's hand size: "you have no cards in hand", "that player has seven or more cards in hand".</summary>
-public sealed record HandSize(Selector Player, IrNode Size, string Verb = null) : Condition;
+public sealed record HandSize(Selector Player, Quantity Size = null, Compared ComparedTo = null, string Verb = null) : Condition;

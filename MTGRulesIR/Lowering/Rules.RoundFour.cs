@@ -38,15 +38,21 @@ public sealed partial class Lowerer
         {
             List<IrNode> other = [];
             var stats = Lower(g.Stats, ctx);
-            var keywords = g.With is null ? null : Lower(g.With, ctx) is HasKeywords has ? has.Keywords.Select(x => new KeywordInstance(x)).ToList() : null;
+            List<KeywordInstance> keywords = [];
+            if (g.With is not null)
+                other.Add(Lower(g.With, ctx));
+            var kinds = Terms(g.Kinds.Items, ctx, other);
+            if (stats is not (null or Term or StatsMod))
+                other.Add(stats);
+            var abilities = TokenAbilitiesOf(other, keywords);
             return new TokenSpec(
                 g.Creature == true ? ["Creature"] : null,
-                OrNull(Terms(g.Kinds.Items, ctx, other)),
+                OrNull(kinds),
                 stats is Term color ? [color.Value] : null,
                 (stats as StatsMod)?.Power,
                 (stats as StatsMod)?.Toughness,
-                Keywords: keywords,
-                Other: OrNull([.. other, .. stats is null or Term or StatsMod ? [] : new[] { stats }]));
+                Keywords: OrNull(keywords),
+                Abilities: OrNull(abilities));
         });
         Rule<G.BecomesLandType>((g, ctx) => new Term(g.LandType.ToString(), nameof(G.LandType)));
         Rule<G.CharacteristicOfChoice>((g, ctx) => new Term($"{g.Characteristic}OfYourChoice", nameof(G.CharacteristicOfChoice)));
@@ -61,7 +67,7 @@ public sealed partial class Lowerer
             return count;
         });
         Rule<G.ComparedHandSize>((g, ctx) => new Compared(g.Comparison.ToString(), LowerAs<Selector>(g.Other, ctx)));
-        Rule<G.DevotionTo>((g, ctx) => new Devotion(LowerAll(g.Colors, ctx)));
+        Rule<G.DevotionTo>((g, ctx) => new Devotion(Terms(g.Colors, ctx)));
         Rule<G.FromZone>((g, ctx) => ZoneOf(g.Zone, ctx));
         Rule<G.PlayerFindsCard>((g, ctx) => new PlayerAction(LowerAs<Selector>(g.Player, ctx), g.Verb.ToString(), LowerAs<Selector>(g.Card, ctx)));
         Rule<G.CardIsFound>((g, ctx) => new PlayerAction(null, "Reveal", LowerAs<Selector>(g.Card, ctx)));
@@ -85,7 +91,7 @@ public sealed partial class Lowerer
         {
             List<IrNode> other = [];
             var keywords = KeywordsOf(g.Keywords, ctx, other);
-            return Seq(new Pump(null, Keywords: OrNull(keywords), OtherBuffs: OrNull(other)), new GrantAbility(null, AsAbility(Lower(g.Ability, ctx), ctx, g.Ability)));
+            return Seq([new Pump(null, Keywords: OrNull(keywords)), .. EffectsOf(other), new GrantAbility(null, AsAbility(Lower(g.Ability, ctx), ctx, g.Ability))]);
         });
         Rule<G.WithQuotedAbilityAndEquip>((g, ctx) =>
             Seq(new GrantAbility(null, AsAbility(Lower(g.Ability, ctx), ctx, g.Ability)), new Pump(null, Keywords: [new KeywordInstance("Equip", Cost: new PayMana(g.Cost.Items.Select(SymbolText).ToList()))])));

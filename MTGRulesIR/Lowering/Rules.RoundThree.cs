@@ -15,12 +15,16 @@ public sealed partial class Lowerer
         Rule<G.AsLongAs>((g, ctx) =>
             new StaticAbility(
                 LowerAs<Effect>(g.Effect, ctx),
-                new ObjectIs(LowerAs<Selector>(g.Subject, ctx), [Lower(g.Aspect, ctx)], g.Assertion is G.Assertion.Isnt or G.Assertion.Wasnt, g.Assertion is G.Assertion.Was or G.Assertion.Wasnt ? "Was" : "Is")));
+                AspectsOf([Lower(g.Aspect, ctx)]) is { } aspects
+                    ? new ObjectIs(LowerAs<Selector>(g.Subject, ctx), aspects, g.Assertion is G.Assertion.Isnt or G.Assertion.Wasnt, g.Assertion is G.Assertion.Was or G.Assertion.Wasnt ? "Was" : "Is")
+                    : (Condition)Opaque(typeof(Condition), ctx.TextOf(g.Aspect), nameof(G.AsLongAs))));
         Rule<G.AlternativeCost>((g, ctx) =>
-            new AlternativeCost(LowerAs<Cost>(g.Cost, ctx), Lower(g.Replaced, ctx), g.AdditionalCost is null ? null : CostOf(Lower(g.AdditionalCost, ctx), g.AdditionalCost, ctx), g.Provided is null ? null : LowerAs<Condition>(g.Provided, ctx)));
+            Lower(g.Replaced, ctx) is Term replaced
+                ? new AlternativeCost(LowerAs<Cost>(g.Cost, ctx), replaced.Value, g.AdditionalCost is null ? null : CostOf(Lower(g.AdditionalCost, ctx), g.AdditionalCost, ctx), g.Provided is null ? null : LowerAs<Condition>(g.Provided, ctx))
+                : Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.AlternativeCost)));
         Rule<G.BecomesTargetTrigger>((g, ctx) =>
             new TriggeredAbility(
-                new ObjectEvent(LowerAs<Selector>(g.Subject, ctx), ["BecomesTarget"], Only: g.FirstTime ? "FirstTimeEachTurn" : null, Details: OrNull(LowerAll(new object[] { g.Source, g.Controller }, ctx))),
+                new ObjectEvent(LowerAs<Selector>(g.Subject, ctx), ["BecomesTarget"], Only: g.FirstTime ? "FirstTimeEachTurn" : null, By: Lower(g.Source, ctx) is Term source ? source.Value : null, ByController: Lower(g.Controller, ctx) as Controlled),
                 LowerAs<Effect>(g.Effect, ctx)));
         Rule<G.DieReplacement>((g, ctx) =>
         {
@@ -41,24 +45,35 @@ public sealed partial class Lowerer
                 ctx.Subject = previous;
             }
         });
-        Rule<G.LevelUpRestriction>((g, ctx) => new ActivationLimits([new Timing("SorcerySpeed", Detail: new Term(g.Keyword.ToString(), nameof(G.Keyword)))]));
+        Rule<G.LevelUpRestriction>((g, ctx) => new ActivationLimits([new Timing("SorcerySpeed", Detail: g.Keyword.ToString())]));
         Rule<G.SagaSacrificeAfter>((g, ctx) => null);
         Rule<G.ScryOneLook>((g, ctx) => new LookAt(new PlayerSelector(PlayerKind.You), TopOfLibrary(new Fixed(1), new PlayerSelector(PlayerKind.You))));
         Rule<G.QuotedAbility>((g, ctx) => AsAbility(Lower(g.Ability, ctx), ctx, g.Ability));
 
         // Effects.
-        Rule<G.Choose>((g, ctx) => new ChooseEffect(Actor(ctx), LowerAll(g.Choices, ctx), g.Except is null ? null : Lower(g.Except, ctx)));
+        Rule<G.Choose>((g, ctx) =>
+        {
+            List<string> kinds = [];
+            List<Selector> from = [];
+            foreach (var choice in LowerAll(g.Choices, ctx))
+                if (choice is Term term)
+                    kinds.Add(term.Value);
+                else
+                    from.Add(Coerce<Selector>(choice, g.Choices, ctx));
+            var except = g.Except is null ? null : Lower(g.Except, ctx) switch { TermSet set => set.Values, Term term => [term.Value], _ => [ctx.TextOf(g.Except)] };
+            return new ChooseEffect(Actor(ctx), OrNull(kinds), OrNull(from), except);
+        });
         Rule<G.PlayCard>((g, ctx) =>
             new PlayCard(Actor(ctx), LowerAs<Selector>(g.Card, ctx), g.From?.ToString(), g.Free is not null, g.ByPaying is null ? null : Lower(g.ByPaying, ctx), DurationOf(Lower(g.Period, ctx))));
         Rule<G.IsOfType>((g, ctx) =>
         {
-            List<IrNode> aspects = LowerAll(g.Kind, ctx);
+            List<IrNode> nodes = LowerAll(g.Kind, ctx);
             if (g.Legendary == true)
-                aspects.Insert(0, new Term("Legendary", nameof(G.Supertype)));
-            return new BecomesAspect(ctx.Subject ?? new Self(), aspects, g.InAddition, Duration: DurationOf(Lower(g.Duration, ctx)), Verb: g.Verb.ToString());
+                nodes.Insert(0, new Term("Legendary", nameof(G.Supertype)));
+            return BecomesOf(nodes, g.InAddition, DurationOf(Lower(g.Duration, ctx)), g.Verb.ToString(), ctx, g);
         });
         Rule<G.BecomesCharacteristic>((g, ctx) =>
-            new BecomesAspect(ctx.Subject ?? new Self(), [Lower(g.Value, ctx)], g.InAddition, Duration: DurationOf(Lower(g.Duration, ctx)), Verb: g.Verb.ToString()));
+            BecomesOf([Lower(g.Value, ctx)], g.InAddition, DurationOf(Lower(g.Duration, ctx)), g.Verb.ToString(), ctx, g));
         Rule<G.PayLifeOrEnergy>((g, ctx) =>
             new PayCost(g.Amount.GetResolvedValue() switch
             {
@@ -69,9 +84,22 @@ public sealed partial class Lowerer
         Rule<G.PerformsKeywordAction>((g, ctx) =>
             new KeywordAction([new KeywordInstance(g.Action.ToString(), g.Amount is { } amount ? QuantityOf(amount) : null)], g.Again ? [new Term("Again", nameof(G.PerformsKeywordAction))] : null));
         Rule<G.GainControl>((g, ctx) => new GainControl(Actor(ctx), LowerAs<Selector>(g.Permanent, ctx), DurationOf(Lower(g.Duration, ctx))));
-        Rule<G.ManaSpendingRestriction>((g, ctx) => new ManaRestriction(g.Rule.ToString(), LowerAll(g.Uses, ctx)));
+        Rule<G.ManaSpendingRestriction>((g, ctx) =>
+            LowerAll(g.Uses, ctx).Select(x => x as Playable).ToList() is var uses && uses.All(x => x is not null)
+                ? new ManaRestriction(g.Rule.ToString(), uses)
+                : Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.ManaSpendingRestriction)));
         Rule<G.CopySpell>((g, ctx) =>
-            new CopySpell(LowerAs<Selector>(g.Spell, ctx), g.Times is null ? null : Lower(g.Times, ctx), g.NewTargets, g.Except is null ? null : Lower(g.Except, ctx)));
+            new CopySpell(
+                LowerAs<Selector>(g.Spell, ctx),
+                g.Times is null ? null : Lower(g.Times, ctx) switch
+                {
+                    Term { Value: "Twice" } => new Fixed(2),
+                    Term { Value: "XTimes" } => new Variable("x"),
+                    Quantity times => times,
+                    var other => Coerce<Quantity>(other, g.Times, ctx),
+                },
+                g.NewTargets,
+                g.Except is null ? null : Lower(g.Except, ctx)));
         Rule<G.DiscardHand>((g, ctx) => new Discard(Actor(ctx), new Special("All")));
         Rule<G.DiscardThisCard>((g, ctx) => new Discard(Actor(ctx), new Fixed(1), new ObjectFilter(With: [new Related(Relation.Is, new Self())])));
         Rule<G.GetEnergy>((g, ctx) => new GetEnergy(Actor(ctx), Multiply(LowerAs<Quantity>(g.Amount, ctx), g.Multiplier is null ? null : LowerAs<Quantity>(g.Multiplier, ctx))));
@@ -83,17 +111,22 @@ public sealed partial class Lowerer
                 g.Action.ToString(),
                 g.Keyword.ToString(),
                 ctx.TextOf(g.Possession)?.Contains("had") == true && ctx.TextOf(g.Possession)?.Contains("didn't") != true,
-                OrNull(LowerAll(new object[] { g.Blocked, g.Duration }, ctx)),
+                g.Blocked is null ? null : LowerAs<Selector>(g.Blocked, ctx),
+                g.Duration is null ? null : DurationOf(Lower(g.Duration, ctx)),
                 DurationOf(Lower(g.While, ctx))));
         Rule<G.CantBeRegenerated>((g, ctx) => new CantBeRegenerated(ctx.Subject ?? new Self(), g.Duration is null ? null : new ThisTurn(g.Duration.Period.ToString())));
         Rule<G.RevealCards>((g, ctx) => new Reveal(Actor(ctx), LowerAs<Selector>(g.Cards, ctx)));
-        Rule<G.RevealUntil>((g, ctx) => new RevealUntil(Actor(ctx), g.Verb.ToString(), ZoneOf(g.Library, ctx), Lower(g.StopCondition, ctx)));
+        Rule<G.RevealUntil>((g, ctx) => new RevealUntil(Actor(ctx), g.Verb.ToString(), ZoneOf(g.Library, ctx), LowerAs<Event>(g.StopCondition, ctx)));
         Rule<G.LookAndRearrange>((g, ctx) => Seq(new LookAt(Actor(ctx), LowerAs<Selector>(g.What, ctx)), LowerAs<Effect>(g.Rearrangement, ctx)));
         Rule<G.PlayFromZone>((g, ctx) =>
-            new MayPlayFrom(Actor(ctx), LowerAll(g.Plays, ctx), Lower(g.Source, ctx), g.Free, g.Using is null ? null : Lower(g.Using, ctx), DurationOf(Lower(g.Duration, ctx))));
+            LowerAll(g.Plays, ctx).Select(x => x as Playable).ToList() is var plays && plays.All(x => x is not null) && ZoneOf(g.Source, ctx) is { } from
+                ? new MayPlayFrom(Actor(ctx), plays, from, g.Free, g.Using is null ? null : Lower(g.Using, ctx), DurationOf(Lower(g.Duration, ctx)))
+                : Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.PlayFromZone)));
         Rule<G.PowerToughnessEqual>((g, ctx) => new SetStats(LowerAs<Selector>(g.Object, ctx), g.PowerAndOrToughness.ToString(), LowerAs<Quantity>(g.Amount, ctx)));
         Rule<G.SearchFor>((g, ctx) =>
-            new SearchLibrary(LowerAs<Selector>(g.Owner, ctx), g.Zones.ToString(), LowerAll(g.Wanted, ctx), Ending: g.FollowUp is null ? null : new Term(g.FollowUp.ToString(), "SearchFollowUp")));
+            LowerAs<Selector>(g.Owner, ctx) is var owner
+                ? new SearchLibrary(owner, g.Zones.ToString(), LowerAllAs<Selector>(g.Wanted, ctx), Ending: g.FollowUp is null ? null : SearchFollowUp(g.FollowUp.ToString(), owner))
+                : null);
         Rule<G.DrawOrDiscardCardsEqualTo>((g, ctx) =>
         {
             var count = LowerAs<Quantity>(g.Count, ctx);
@@ -130,7 +163,13 @@ public sealed partial class Lowerer
         Rule<G.ControlsMoreThan>((g, ctx) =>
             new CompareControl(LowerAs<Selector>(g.Controller, ctx), LowerAs<Selector>(g.Permanents, ctx), g.Bound.ToString(), LowerAs<Selector>(g.Compared, ctx)));
         Rule<G.DevotionThreshold>((g, ctx) => new CompareCount(LowerAs<Quantity>(g.Devotion, ctx), "<", QuantityOf(g.Threshold)));
-        Rule<G.HandSizeCondition>((g, ctx) => new HandSize(LowerAs<Selector>(g.Player, ctx), Lower(g.Size, ctx), g.Verb.ToString()));
+        Rule<G.HandSizeCondition>((g, ctx) =>
+            Lower(g.Size, ctx) switch
+            {
+                Quantity size => new HandSize(LowerAs<Selector>(g.Player, ctx), size, Verb: g.Verb.ToString()),
+                Compared compared => new HandSize(LowerAs<Selector>(g.Player, ctx), ComparedTo: compared, Verb: g.Verb.ToString()),
+                _ => Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.HandSizeCondition)),
+            });
         Rule<G.InZone>((g, ctx) => ZoneOf(g.Zone, ctx));
         Rule<G.ExiledState>((g, ctx) => new ZoneRef("Exile", Position: g.Counters is null ? g.State.ToString() : $"{g.State} {ctx.TextOf(g.Counters)}"));
 
@@ -176,7 +215,7 @@ public sealed partial class Lowerer
         });
         Rule<G.TokenWithQuotedAbility>((g, ctx) =>
             Lower(g.Token, ctx) is TokenSpecWithCount token
-                ? token with { Token = token.Token with { Other = [.. token.Token.Other ?? [], Lower(g.Quoted, ctx)] } }
-                : new OpaqueNode(ctx.TextOf(g), nameof(G.TokenWithQuotedAbility)));
+                ? token with { Token = token.Token with { Abilities = [.. token.Token.Abilities ?? [], AsAbility(Lower(g.Quoted, ctx), ctx, g.Quoted)] } }
+                : new OpaqueToken(ctx.TextOf(g), nameof(G.TokenWithQuotedAbility)));
     }
 }

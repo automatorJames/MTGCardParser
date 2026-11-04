@@ -32,13 +32,13 @@ public sealed record LoseLife(Selector Player, Quantity Amount) : Effect;
 
 public sealed record Destroy(Selector Objects, string Manner = null) : Effect;
 
-public sealed record Exile(Selector Objects, Duration Until = null, IrNode WithCounters = null, string Manner = null) : Effect;
+public sealed record Exile(Selector Objects, Duration Until = null, CounterSpec WithCounters = null, string Manner = null) : Effect;
 
 /// <summary>
 /// Objects getting, having or losing buffs: a power/toughness change, keywords, or both ("gets +1/+1 and has flying
-/// until end of turn"). Buffs the lowering doesn't model sit in <paramref name="OtherBuffs"/>.
+/// until end of turn"), or base power and toughness set outright ("has base power and toughness 4/4").
 /// </summary>
-public sealed record Pump(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<IrNode> OtherBuffs = null, Duration Duration = null, bool Remove = false, Quantity PerEach = null) : Effect;
+public sealed record Pump(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<KeywordInstance> Keywords = null, StatsMod BaseStats = null, Duration Duration = null, bool Remove = false, Quantity PerEach = null) : Effect;
 
 public sealed record Tap(Selector Objects, IrNode During = null) : Effect;
 
@@ -50,29 +50,44 @@ public sealed record PutCounters(Selector Objects, CounterSpec Counters) : Effec
 
 public sealed record RemoveCounters(Selector Objects, CounterSpec Counters) : Effect;
 
-/// <summary>Counters of a kind, counted: "three +1/+1 counters", "a doom counter", "two or more charge counters".</summary>
-public sealed record CounterSpec(string Kind, Quantity Count, bool Additional = false, string Bound = null, IrNode Other = null) : IrNode;
+/// <summary>Counters of a kind, counted: "three +1/+1 counters", "a doom counter", "two or more charge counters", "exactly three tide counters".</summary>
+public sealed record CounterSpec(string Kind, Quantity Count, bool Additional = false, string Bound = null, string Prefix = null) : IrNode;
 
-/// <summary>Creating tokens: the token (a <see cref="TokenSpec"/> when described in full), how many, and a per-each multiplier.</summary>
-public sealed record CreateTokens(IrNode Token, Quantity Count = null, Quantity PerEach = null) : Effect;
+/// <summary>Creating tokens: the token, how many, and a per-each multiplier.</summary>
+public sealed record CreateTokens(Token Token, Quantity Count = null, Quantity PerEach = null) : Effect;
 
-public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<IrNode> Other = null, bool Tapped = false, bool Attacking = false, string Predefined = null) : IrNode;
+/// <summary>What a created token is: described in full (<see cref="TokenSpec"/>), or something the lowering can't yet say (a copy of a permanent, for now).</summary>
+public abstract record Token : IrNode;
+
+public sealed record OpaqueToken(string Text, string Glyph) : Token, IOpaque;
+
+/// <summary>A token described in full: its types, subtypes, colors, stats, name, keywords, and the abilities it has beyond keywords.</summary>
+public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<Ability> Abilities = null, bool Tapped = false, bool Attacking = false, string Predefined = null) : Token;
 
 public sealed record Sacrifice(Selector Player, Selector Objects) : Effect;
 
 /// <summary>Moving objects to a zone ("return … to its owner's hand", "put … onto the battlefield tapped under your control").</summary>
-public sealed record ChangeZone(Selector Objects, ZoneRef To, bool Tapped = false, Selector UnderControlOf = null, IReadOnlyList<IrNode> Details = null) : Effect;
+public sealed record ChangeZone(Selector Objects, ZoneRef To, bool Tapped = false, Selector UnderControlOf = null, IReadOnlyList<string> States = null, IReadOnlyList<Effect> With = null) : Effect;
 
 /// <summary>Adding mana: one option, or a choice among several ("add {b} or {r}").</summary>
-public sealed record AddMana(IReadOnlyList<IrNode> Options, string Amount = null) : Effect;
+public sealed record AddMana(IReadOnlyList<ManaOption> Options, string Amount = null) : Effect;
 
-public sealed record ManaAmount(IReadOnlyList<string> Symbols) : IrNode;
+/// <summary>One way mana can be added: a fixed amount of symbols, or a choice ("one mana of any color").</summary>
+public abstract record ManaOption : IrNode;
+
+public sealed record OpaqueManaOption(string Text, string Glyph) : ManaOption, IOpaque;
+
+public sealed record ManaAmount(IReadOnlyList<string> Symbols) : ManaOption;
 
 /// <summary>Objects that can't be the target of some spells or abilities.</summary>
-public sealed record CantBeTargeted(Selector Objects, IReadOnlyList<string> By = null, IrNode Controller = null, Duration Duration = null) : Effect;
+public sealed record CantBeTargeted(Selector Objects, IReadOnlyList<string> By = null, Controlled Controller = null, Duration Duration = null) : Effect;
 
-/// <summary>A combat restriction: what the objects can't do ("attack", "block"), and the details that qualify it.</summary>
-public sealed record CombatRestriction(Selector Objects, IReadOnlyList<string> Cant, IReadOnlyList<IrNode> Details = null, Duration Duration = null) : Effect;
+/// <summary>
+/// A combat restriction: what the objects can't do ("attack", "block"), whom it concerns (<paramref name="By"/>: the
+/// creatures that can't block them, or that they can't block), the player it concerns ("can't attack you"), modifiers
+/// ("alone", "except by"), and a condition under which it holds.
+/// </summary>
+public sealed record CombatRestriction(Selector Objects, IReadOnlyList<string> Cant, Selector By = null, string Recipient = null, IReadOnlyList<string> Modifiers = null, Condition If = null, Duration Duration = null) : Effect;
 
 /// <summary>Keyword actions done as an effect: "scry 2", "investigate", "bolster 1".</summary>
 public sealed record KeywordAction(IReadOnlyList<KeywordInstance> Actions, IReadOnlyList<IrNode> Other = null) : Effect;
@@ -84,10 +99,10 @@ public sealed record ChooseModes(string Count, Selector Chooser = null) : Effect
 public sealed record ChoiceOf(IReadOnlyList<Effect> Options) : Effect;
 
 /// <summary>How a permanent enters the battlefield: tapped, with counters, with an ability, under a condition.</summary>
-public sealed record EntersBattlefield(Selector Objects, IReadOnlyList<string> States = null, IReadOnlyList<IrNode> With = null, Condition If = null) : Effect;
+public sealed record EntersBattlefield(Selector Objects, IReadOnlyList<string> States = null, IReadOnlyList<Effect> With = null, Condition If = null, Duration Duration = null) : Effect;
 
 /// <summary>Searching zones for cards and putting them somewhere.</summary>
-public sealed record SearchLibrary(Selector Searcher, string Zones, IReadOnlyList<IrNode> Wanted, bool Reveal = false, IrNode Placement = null, IrNode Ending = null, bool Optional = false) : Effect;
+public sealed record SearchLibrary(Selector Searcher, string Zones, IReadOnlyList<Selector> Wanted, bool Reveal = false, Effect Placement = null, Effect Ending = null, bool Optional = false) : Effect;
 
 public sealed record Shuffle(Selector Player = null) : Effect;
 
@@ -98,9 +113,9 @@ public sealed record LetVariable(Effect Effect, string Name, Quantity Definition
 public sealed record PayCost(Cost Cost, Selector Player = null, Quantity PerEach = null, IrNode Plus = null) : Effect;
 
 /// <summary>An effect that happens unless a payment is made.</summary>
-public sealed record UnlessPaid(Effect Effect, IrNode Payment) : Effect;
+public sealed record UnlessPaid(Effect Effect, PayCost Payment) : Effect;
 
-public sealed record PreventDamage(IrNode Amount, string Kind = null, Selector To = null, Selector Source = null, Duration Duration = null, bool ToAndBy = false) : Effect;
+public sealed record PreventDamage(Quantity Amount, string Kind = null, Selector To = null, Selector Source = null, Duration Duration = null, bool ToAndBy = false) : Effect;
 
 public sealed record Reveal(Selector Player, Selector What) : Effect;
 
@@ -115,7 +130,7 @@ public sealed record GrantAbility(Selector Objects, Ability Ability, IReadOnlyLi
 public sealed record Mill(Selector Player, Quantity Count) : Effect;
 
 /// <summary>A change to what spells or abilities cost.</summary>
-public sealed record CostModification(Selector Spells, PayMana Amount, string Change, string Action = null, Quantity PerEach = null, IrNode Condition = null) : Effect;
+public sealed record CostModification(Selector Spells, PayMana Amount, string Change, string Action = null, Quantity PerEach = null, Condition Condition = null) : Effect;
 
 /// <summary>Something done as an event happens rather than after it: "as {this} enters, choose an opponent".</summary>
 public sealed record AsEventHappens(Event When, Effect Effect) : Effect;
@@ -126,7 +141,7 @@ public sealed record WhenDone(Selector Player, Effect Effect) : Effect;
 public sealed record Regenerate(Selector Objects) : Effect;
 
 /// <summary>A permanent becoming a creature or another kind of permanent, for a time.</summary>
-public sealed record Animate(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<string> Colors = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Types = null, IrNode BaseStats = null, IReadOnlyList<KeywordInstance> Keywords = null, bool AllCreatureTypes = false, string Still = null, bool InAddition = false, Duration Duration = null) : Effect;
+public sealed record Animate(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<string> Colors = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Types = null, StatsMod BaseStats = null, IReadOnlyList<KeywordInstance> Keywords = null, bool AllCreatureTypes = false, string Still = null, bool InAddition = false, Duration Duration = null) : Effect;
 
 public sealed record DoesntUntap(Selector Objects, PhaseRef Step, Condition If = null) : Effect;
 
@@ -144,23 +159,24 @@ public sealed record StillOfKind(IReadOnlyList<string> Kinds) : Effect;
 public sealed record Transform(Selector Objects) : Effect;
 
 /// <summary>A choice made as part of an effect: "choose an opponent", "choose a color".</summary>
-public sealed record ChooseEffect(Selector Chooser, IReadOnlyList<IrNode> Choices, IrNode Except = null) : Effect;
+/// <summary>A player choosing something: a kind of thing ("choose a color", "choose a creature type"), or an object or player ("choose a creature"), possibly with exceptions ("other than wall").</summary>
+public sealed record ChooseEffect(Selector Chooser, IReadOnlyList<string> Kinds = null, IReadOnlyList<Selector> From = null, IReadOnlyList<string> Except = null) : Effect;
 
 /// <summary>Playing or casting a card: "cast it without paying its mana cost", "play that card this turn".</summary>
 public sealed record PlayCard(Selector Player, Selector Card, string From = null, bool Free = false, IrNode ByPaying = null, Duration Duration = null) : Effect;
 
 /// <summary>Objects becoming, or being, some aspects: a color, a type, a designation; "is a black zombie in addition to its other colors and types", "becomes white until end of turn".</summary>
-public sealed record BecomesAspect(Selector Objects, IReadOnlyList<IrNode> Aspects, bool InAddition = false, bool Negated = false, Duration Duration = null, string Verb = null) : Effect;
+public sealed record BecomesAspect(Selector Objects, IReadOnlyList<Term> Aspects, bool InAddition = false, bool Negated = false, Duration Duration = null, string Verb = null) : Effect;
 
 public sealed record GainControl(Selector Player, Selector Objects, Duration Duration = null) : Effect;
 
 /// <summary>A restriction on how mana just added may be spent.</summary>
-public sealed record ManaRestriction(string Rule, IReadOnlyList<IrNode> Uses) : Effect;
+public sealed record ManaRestriction(string Rule, IReadOnlyList<Playable> Uses) : Effect;
 
 /// <summary>An effect that replaces the usual one: "… instead".</summary>
 public sealed record Instead(Effect Effect) : Effect;
 
-public sealed record CopySpell(Selector Spell, IrNode Times = null, bool NewTargets = false, IrNode Except = null) : Effect;
+public sealed record CopySpell(Selector Spell, Quantity Times = null, bool NewTargets = false, IrNode Except = null) : Effect;
 
 public sealed record GetEnergy(Selector Player, Quantity Amount) : Effect;
 
@@ -174,15 +190,15 @@ public sealed record Replacement(Event Would, Effect Instead, Duration Duration 
 public sealed record ForEachOf(Effect Effect, Quantity Count) : Effect;
 
 /// <summary>A combat permission that ignores a keyword: "can attack as though it didn't have defender".</summary>
-public sealed record CanAsThough(Selector Objects, string Action, string Keyword, bool Had, IReadOnlyList<IrNode> Details = null, Duration Duration = null) : Effect;
+public sealed record CanAsThough(Selector Objects, string Action, string Keyword, bool Had, Selector Blocked = null, Duration During = null, Duration Duration = null) : Effect;
 
 public sealed record CantBeRegenerated(Selector Objects, Duration Duration = null) : Effect;
 
 /// <summary>Revealing cards from the top of a library until one of some kind turns up.</summary>
-public sealed record RevealUntil(Selector Player, string Verb, ZoneRef Library, IrNode Until) : Effect;
+public sealed record RevealUntil(Selector Player, string Verb, ZoneRef Library, Event Until) : Effect;
 
 /// <summary>A standing permission to play cards from somewhere other than the hand.</summary>
-public sealed record MayPlayFrom(Selector Player, IReadOnlyList<IrNode> Plays, IrNode From, bool Free = false, IrNode Using = null, Duration Duration = null) : Effect;
+public sealed record MayPlayFrom(Selector Player, IReadOnlyList<Playable> Plays, ZoneRef From, bool Free = false, IrNode Using = null, Duration Duration = null) : Effect;
 
 /// <summary>The alternative to a preceding condition or choice: "otherwise, …".</summary>
 public sealed record Otherwise(Effect Effect) : Effect;

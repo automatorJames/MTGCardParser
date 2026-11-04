@@ -20,9 +20,9 @@ public sealed class RulesLoweringEngine : ILoweringEngine
 
     public string Name => "Rules IR";
 
-    /// <summary>The IR's families, as <see cref="IrNode"/>'s abstract subclasses name them, with "Part" for the records that are pieces of others (a filter, a damage portion, a counter spec).</summary>
+    /// <summary>The IR's families, as <see cref="IrNode"/>'s abstract subclasses name them, with "Part" for the records that are pieces of others (a filter, a damage portion, a counter spec); the newer families come after it so the older ones keep their colors.</summary>
     public IReadOnlyList<string> Families { get; } =
-        [nameof(Ability), nameof(Effect), nameof(Selector), nameof(Quantity), nameof(Duration), nameof(Condition), nameof(Event), nameof(Cost), PartFamily];
+        [nameof(Ability), nameof(Effect), nameof(Selector), nameof(Quantity), nameof(Duration), nameof(Condition), nameof(Event), nameof(Cost), PartFamily, nameof(Predicate), nameof(Token), nameof(ManaOption)];
 
     const string PartFamily = "Part";
 

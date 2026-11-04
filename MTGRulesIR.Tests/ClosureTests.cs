@@ -23,12 +23,11 @@ public sealed class ClosureTests
     [Fact]
     public void UntypedSlotHoldingANodeIsOpen()
     {
-        var pump = new Pump(new Self(), OtherBuffs: [new Term("Hexproof", "Keyword")]);
-        var line = Line(new StaticAbility(pump));
+        var line = Line(new KeywordLine([], Other: [new Term("Hexproof", "Keyword")]));
 
         Assert.True(line.FullyLowered);
         Assert.False(line.EngineClosed);
-        Assert.Equal(["Pump.OtherBuffs"], line.Open);
+        Assert.Equal(["KeywordLine.Other"], line.Open);
     }
 
     [Fact]
@@ -43,7 +42,7 @@ public sealed class ClosureTests
     [Fact]
     public void EmptyUntypedListIsNotOpen()
     {
-        var line = Line(new StaticAbility(new Pump(new Self(), OtherBuffs: [])));
+        var line = Line(new KeywordLine([], Other: []));
 
         Assert.True(line.EngineClosed);
     }
@@ -63,8 +62,8 @@ public sealed class ClosureTests
         var card = new CardRules("Sample", "Instant",
         [
             Line(new SpellAbility(new Draw(new PlayerSelector(PlayerKind.You), new Fixed(1)))),
-            Line(new StaticAbility(new Pump(new Self(), OtherBuffs: [new Term("Hexproof", "Keyword")]))),
-            Line(new StaticAbility(new Pump(new Self(), OtherBuffs: [new OpaqueNode("odd text", "OddGlyph")]))),
+            Line(new KeywordLine([], Other: [new Term("Hexproof", "Keyword")])),
+            Line(new KeywordLine([], Other: [new OpaqueNode("odd text", "OddGlyph")])),
         ]);
 
         var report = new LoweringReport();
@@ -75,7 +74,7 @@ public sealed class ClosureTests
         Assert.Equal(1, report.LinesEngineClosed);
         Assert.Equal(0, report.CardsEngineClosed);
         var text = report.ToText();
-        Assert.Contains("      1 lines       1x  Pump.OtherBuffs", text);
+        Assert.Contains("      1 lines       1x  KeywordLine.Other", text);
         Assert.Contains("      1 lines       1x  OddGlyph", text);
     }
 

@@ -58,9 +58,9 @@ public sealed partial class Lowerer
             {
                 List<IrNode> details = [];
                 var events = Terms(g.Event, ctx, details);
-                trigger = events.Count == 0 && details.Count > 0
+                trigger = details.Count > 0
                     ? (Event)Opaque(typeof(Event), ctx.TextOf(g.Event), g.Event.GetResolvedType()?.Name)
-                    : new ObjectEvent(subject, events, under, only, whileCondition, OrNull(details));
+                    : new ObjectEvent(subject, events, under, only, whileCondition);
             }
 
             return new TriggeredAbility(trigger, LowerAs<Effect>(g.Effect, ctx));
@@ -124,19 +124,19 @@ public sealed partial class Lowerer
             new EnchantAbility(new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifiers, controller: g.Controller, narrowing: [g.With, g.CardOutsideBattlefield]))));
 
         Rule<G.ActivationRestriction>((g, ctx) =>
-            new ActivationLimits(LowerAll(g.Timings, ctx).Select(x => x as Timing ?? new Timing("Other", Detail: x)).ToList()));
+            new ActivationLimits(LowerAll(g.Timings, ctx).Select(x => x as Timing ?? new Timing("Other", Detail: x is IOpaque opaque ? opaque.Text : x.ToString())).ToList()));
 
         // A one-of whose alternatives include plain bools, so it's read property by property rather than by its resolved value.
         Rule<G.ActivationTiming>((g, ctx) =>
-            g.During is not null ? new Timing("During", PhaseRefOf(g.During, ctx), Detail: PhaseRefOf(g.During, ctx) is null ? Lower(g.During, ctx) : null)
-            : g.Before is not null ? new Timing("Before", Detail: Lower(g.Before, ctx))
+            g.During is not null ? new Timing("During", PhaseRefOf(g.During, ctx), Detail: PhaseRefOf(g.During, ctx) is null ? ctx.TextOf(g.During) : null)
+            : g.Before is not null ? new Timing("Before", Detail: ctx.TextOf(g.Before))
             : g.OnceEachTurn ? new Timing("OnceEachTurn")
             : g.Once ? new Timing("Once")
             : g.AsASorcery ? new Timing("SorcerySpeed")
             : g.AsAnInstant ? new Timing("InstantSpeed")
             : g.OnlyIf is not null ? new Timing("If", If: LowerAs<Condition>(g.OnlyIf, ctx))
             : g.OnlyIfState is not null ? new Timing("If", If: LowerAs<Condition>(g.OnlyIfState, ctx))
-            : new Timing("Other", Detail: new OpaqueNode(ctx.TextOf(g), nameof(G.ActivationTiming))));
+            : new Timing("Other", Detail: ctx.TextOf(g)));
 
         Rule<G.DelayedEffect>((g, ctx) =>
             new Delayed(PhaseEventOf(g.When, ctx), LowerAs<Effect>(g.Effect, ctx)));
