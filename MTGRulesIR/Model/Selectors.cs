@@ -94,6 +94,8 @@ public enum Relation
     SharesColorWith,
     /// <summary>Sharing a name with the object.</summary>
     SharesNameWith,
+    /// <summary>Exiled by the object's effect: "cards exiled with this creature".</summary>
+    ExiledWith,
 }
 
 /// <summary>Objects in a <see cref="Relation"/> to another object or group.</summary>

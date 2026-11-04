@@ -21,8 +21,40 @@ public sealed record Draw(Selector Player, Quantity Count, bool UpTo = false, bo
 
 public sealed record Discard(Selector Player, Quantity Count, ObjectFilter Filter = null, bool AtRandom = false) : Effect;
 
-/// <summary>A source dealing damage, to one recipient or several.</summary>
-public sealed record DealDamage(Selector Source, IReadOnlyList<DamagePortion> Portions) : Effect;
+/// <summary>A source dealing damage, to one recipient or several, perhaps divided among them as the controller chooses, perhaps of a kind (combat, noncombat).</summary>
+public sealed record DealDamage(Selector Source, IReadOnlyList<DamagePortion> Portions, string Divided = null, string Kind = null) : Effect;
+
+/// <summary>A creature fighting another, or creatures fighting each other.</summary>
+public sealed record Fight(Selector Fighter, Selector Opponent = null, bool EachOther = false) : Effect;
+
+/// <summary>Spells that creatures tapped while casting help pay for: convoke, as an effect on other spells.</summary>
+public sealed record Convoke(Selector Spells) : Effect;
+
+/// <summary>Cards shuffled into a library.</summary>
+public sealed record ShuffleInto(Selector Cards, ZoneRef Library) : Effect;
+
+/// <summary>A player winning or losing the game, or being unable to: "you lose the game", "you can't lose the game this turn".</summary>
+public sealed record GameOutcome(Selector Player, string Result, bool Cant = false, bool ThisTurn = false, bool ForZeroLife = false) : Effect;
+
+/// <summary>Objects becoming, or entering as, a copy of another, with the exceptions the text makes.</summary>
+public sealed record BecomeCopy(Selector Objects, Selector Of, string Verb, Duration Duration = null, IReadOnlyList<Effect> Exceptions = null) : Effect;
+
+/// <summary>What creatures may block beyond the usual: only some creatures, an additional creature, any number.</summary>
+public sealed record CanBlock(Selector Objects, Selector Only = null, string Count = null, string Period = null) : Effect;
+
+/// <summary>A player barred from playing or casting: "can't cast spells", "can't cast more than one spell each turn", "can't play lands or activate abilities".</summary>
+public sealed record CantPlay(Selector Player, string Verb, Selector What = null, Quantity MoreThan = null, Selector OrActivate = null, Duration Duration = null) : Effect;
+
+/// <summary>A player getting an emblem with an ability.</summary>
+public sealed record CreateEmblem(Selector Player, Ability Ability) : Effect;
+
+public sealed record FlipCoin(Selector Player) : Effect;
+
+/// <summary>Spells castable as though they had flash, perhaps for a period, perhaps for more mana.</summary>
+public sealed record CastAsThoughFlash(Selector Spells, Duration Duration = null, PayMana Extra = null) : Effect;
+
+/// <summary>Permanents their controller may choose not to untap during a step.</summary>
+public sealed record MayNotUntap(Selector Objects, PhaseRef Step) : Effect;
 
 public sealed record DamagePortion(Quantity Amount, Selector To) : IrNode;
 
@@ -60,6 +92,9 @@ public sealed record CreateTokens(Token Token, Quantity Count = null, Quantity P
 public abstract record Token : IrNode;
 
 public sealed record OpaqueToken(string Text, string Glyph) : Token, IOpaque;
+
+/// <summary>A token that is a copy of another object, with the exceptions the text makes ("except it's a 1/1").</summary>
+public sealed record TokenCopy(Selector Of, bool Tapped = false, StatsMod Stats = null, IReadOnlyList<Effect> Exceptions = null) : Token;
 
 /// <summary>A token described in full: its types, subtypes, colors, stats, name, keywords, and the abilities it has beyond keywords.</summary>
 public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<Ability> Abilities = null, bool Tapped = false, bool Attacking = false, string Predefined = null) : Token;
@@ -184,7 +219,7 @@ public sealed record GetEnergy(Selector Player, Quantity Amount) : Effect;
 public sealed record MustCombat(Selector Objects, IReadOnlyList<string> Actions, string Period = null) : Effect;
 
 /// <summary>A replacement effect: what would happen, and what happens instead.</summary>
-public sealed record Replacement(Event Would, Effect Instead, Duration Duration = null) : Effect;
+public sealed record Replacement(Event Would, Effect Instead, Duration Duration = null, bool NextTime = false) : Effect;
 
 /// <summary>An effect done once per counted thing: "draw a card for each creature you control".</summary>
 public sealed record ForEachOf(Effect Effect, Quantity Count) : Effect;

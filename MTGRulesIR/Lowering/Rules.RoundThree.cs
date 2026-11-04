@@ -181,7 +181,7 @@ public sealed partial class Lowerer
         Rule<G.WithCharacteristicValue>((g, ctx) => new CharacteristicBound([g.Characteristic.ToString()], LowerAs<Quantity>(g.Value, ctx), Comparison.Equal));
         Rule<G.WithCountersOnIt>((g, ctx) => Lower(g.Counters, ctx) is CounterSpec spec ? new WithCounters(spec) : new WithCounters(null, Lower(g.Counters, ctx)));
         Rule<G.ThatMuchLife>((g, ctx) =>
-            g.Factor is null && g.Adjustment is null ? new Special("ThatMuch") : new Adjusted(new Special("ThatMuch"), g.Factor?.ToString(), g.Adjustment is null ? null : ctx.TextOf(g.Adjustment)));
+            AdjustedOf(new Special("ThatMuch"), g.Factor, g.Adjustment, ctx));
         Rule<G.CombatantsBy>((g, ctx) =>
             new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifiers, narrowing: [g.With]), Count: g.Count is null ? null : LowerAs<Quantity>(g.Count, ctx)));
         Rule<G.AffectedThisWay>((g, ctx) =>
@@ -214,8 +214,8 @@ public sealed partial class Lowerer
                 : new QualifiedKind(new Term(g.Kinds.ToString(), nameof(G.TargetingObjects)), [.. qualifiers, .. g.From is null ? [] : new[] { Q(ctx.TextOf(g.From), "From") }]);
         });
         Rule<G.TokenWithQuotedAbility>((g, ctx) =>
-            Lower(g.Token, ctx) is TokenSpecWithCount token
-                ? token with { Token = token.Token with { Abilities = [.. token.Token.Abilities ?? [], AsAbility(Lower(g.Quoted, ctx), ctx, g.Quoted)] } }
+            Lower(g.Token, ctx) is TokenSpecWithCount { Token: TokenSpec spec } token
+                ? token with { Token = spec with { Abilities = [.. spec.Abilities ?? [], AsAbility(Lower(g.Quoted, ctx), ctx, g.Quoted)] } }
                 : new OpaqueToken(ctx.TextOf(g), nameof(G.TokenWithQuotedAbility)));
     }
 }

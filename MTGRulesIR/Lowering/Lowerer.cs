@@ -23,6 +23,7 @@ public sealed partial class Lowerer
         RegisterRoundTwo();
         RegisterRoundThree();
         RegisterRoundFour();
+        RegisterRoundFive();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -156,6 +157,9 @@ public sealed partial class Lowerer
             FlavorAbility { Ability: StaticAbility { While: null } statics } when typeof(T) == typeof(Effect) => (T)(IrNode)statics.Effect,
             FlavorAbility { Ability: SpellAbility spell } when typeof(T) == typeof(Effect) => (T)(IrNode)spell.Effect,
             FlavorAbility { Ability: ReplacementAbility replacement } when typeof(T) == typeof(Effect) => (T)(IrNode)replacement.Effect,
+            TriggeredAbility { If: null } trigger when typeof(T) == typeof(Effect) => (T)(IrNode)new Delayed(trigger.Trigger, trigger.Effect),
+            Effect effect when typeof(T) == typeof(Event) => (T)(IrNode)new EffectEvent(effect),
+            Effect effect when typeof(T) == typeof(Condition) => (T)(IrNode)new Did(effect),
             ObjectIs aspect when typeof(T) == typeof(Effect) => (T)(IrNode)new BecomesAspect(aspect.Object, aspect.Aspects, Negated: aspect.Negated, Verb: aspect.Tense),
             Effect effect when typeof(T) == typeof(Ability) => (T)(IrNode)AsAbility(effect, ctx, source),
             ObjectFilter filter when typeof(T) == typeof(Selector) => (T)(IrNode)new ObjectSelector(Quantifier.Any, filter),

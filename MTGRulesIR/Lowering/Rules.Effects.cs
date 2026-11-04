@@ -183,8 +183,11 @@ public sealed partial class Lowerer
                 foreach (var node in LowerAll(part, ctx))
                     switch (node)
                     {
-                        case Selector selector when by is null:
-                            by = selector;
+                        case Selector selector:
+                            by = by is null ? selector : new Union([by, selector], Connective.Or);
+                            break;
+                        case Term { Vocabulary: nameof(G.CombatAction) } action:
+                            actions.Add(action.Value);
                             break;
                         case Condition condition:
                             conditions.Add(condition);
@@ -207,7 +210,7 @@ public sealed partial class Lowerer
             if (g.Except)
                 modifiers.Add("Except");
 
-            var duration = DurationOf(Lower(g.Duration ?? (object)g.LaterDuration, ctx));
+            var duration = DurationOf(Lower(g.Duration ?? (object)g.LaterDuration ?? g.Blockee?.Duration, ctx));
             return new CombatRestriction(ctx.Subject ?? new Self(), actions, by, recipient, OrNull(modifiers), conditions.Count == 0 ? null : conditions.Count == 1 ? conditions[0] : new And(conditions), duration);
         });
 
@@ -226,7 +229,7 @@ public sealed partial class Lowerer
     sealed record BuffGroup(G.PermanentVerb Verb, List<IrNode> Buffs, bool Additional) : IrNode;
 
     /// <summary>A token description with the count it was written with ("two 1/1 … tokens"), before the count moves to <see cref="CreateTokens"/>.</summary>
-    sealed record TokenSpecWithCount(TokenSpec Token, Quantity Count) : IrNode;
+    sealed record TokenSpecWithCount(Token Token, Quantity Count) : IrNode;
 
     /// <summary>A buff group as a pump - stats, keywords, base stats - followed by any buff that is an effect of its own (becoming a type, say), each given the group's duration where it has none.</summary>
     Effect PumpOf(BuffGroup group, Duration duration, Quantity perEach, LoweringContext ctx)

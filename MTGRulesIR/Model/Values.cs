@@ -79,7 +79,7 @@ public sealed record OpaqueEvent(string Text, string Glyph) : Event, IOpaque;
 /// counts, a condition on it, what targets it (for becoming a target), and whose zone it concerns ("is put into an
 /// opponent's graveyard").
 /// </summary>
-public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null, Selector ZoneOwner = null) : Event;
+public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null, Selector ZoneOwner = null, Selector Other = null) : Event;
 
 /// <summary>Something that happened in the turn, named: "a creature died", "you attacked", "you gained life".</summary>
 public sealed record NamedEvent(string Kind) : Event;
@@ -111,6 +111,12 @@ public sealed record PayLife(Quantity Amount) : Cost;
 /// <summary>A cost that is an action: sacrificing, discarding, exiling, tapping another permanent, removing counters.</summary>
 public sealed record ActionCost(Effect Action) : Cost;
 
+/// <summary>One of several costs, the payer's choice: "{r}{r} or 2 life".</summary>
+public sealed record CostChoice(IReadOnlyList<Cost> Options) : Cost;
+
+/// <summary>Several costs paid together: "{1}{g}, pay 3 life".</summary>
+public sealed record CompoundCost(IReadOnlyList<Cost> Parts) : Cost;
+
 /// <summary>A zone, and whose when it's a player's: "your hand", "its owner's graveyard", "the battlefield".</summary>
 public sealed record ZoneRef(string Zone, Selector Owner = null, string Position = null, string Order = null, string State = null, CounterSpec WithCounters = null) : IrNode;
 
@@ -132,6 +138,12 @@ public sealed record ObjectIs(Selector Object, IReadOnlyList<Term> Aspects, bool
 /// <summary>Something happened earlier in a span: "you attacked this turn", "a creature died this turn".</summary>
 public sealed record Happened(Event Event, string Span) : Condition;
 
+/// <summary>Whether an effect was done: "if you sacrifice a creature" as a condition on having done so.</summary>
+public sealed record Did(Effect Effect) : Condition;
+
+/// <summary>Whether an object was acted on by an earlier effect on the line: "if a card was milled this way".</summary>
+public sealed record WasAffectedThisWay(Selector Object, string Action) : Condition;
+
 /// <summary>How a spell was cast: "{this} was kicked", "it wasn't kicked".</summary>
 public sealed record WasCastWith(Selector Spell, string How, bool Negated = false, bool Twice = false) : Condition;
 
@@ -149,6 +161,9 @@ public sealed record PlayerEvent(Selector Player, string Event, string Timing = 
 /// <summary>An event about to happen, as a replacement effect's condition: "you would draw a card".</summary>
 public sealed record WouldHappen(Selector Subject, Effect What) : Event;
 
+/// <summary>An effect's happening as an event: "whenever you sacrifice a creature".</summary>
+public sealed record EffectEvent(Effect Effect) : Event;
+
 /// <summary>Two amounts compared: "your devotion to white is less than five".</summary>
 public sealed record CompareCount(Quantity Count, Comparison Comparison, Quantity Threshold) : Condition;
 
@@ -156,7 +171,10 @@ public sealed record CompareCount(Quantity Count, Comparison Comparison, Quantit
 public sealed record DistinctCount(string Aspect, Selector Among) : Quantity;
 
 /// <summary>An amount named by reference and adjusted: "twice that much life", "that much life plus 1".</summary>
-public sealed record Adjusted(Quantity Base, string Factor = null, string Adjustment = null) : Quantity;
+public sealed record Adjusted(Quantity Base, string Factor = null, Quantity Adjustment = null, bool Minus = false) : Quantity;
+
+/// <summary>The greatest (or least) of a characteristic among a group: "the greatest power among creatures you control".</summary>
+public sealed record Extreme(string Characteristic, Selector Among, string Which = "Greatest", bool Other = false) : Quantity;
 
 /// <summary>An amount computed from two others: "the number of cards in their hand minus 4".</summary>
 public sealed record Arithmetic(Quantity Left, string Operator, Quantity Right) : Quantity;

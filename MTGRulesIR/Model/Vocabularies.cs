@@ -34,15 +34,15 @@ public static class Vocabularies
         ["ZoneRef.Order"] = [typeof(G.LibraryOrder)],
         ["ZoneRef.State"] = [typeof(G.ExileStatus)],
         ["LabeledAbility.Word"] = [typeof(G.AbilityWord)],
-        ["ObjectEvent.Events"] = [typeof(G.PermanentEvent), typeof(ObjectEventKind), typeof(G.PastPermanentEvent), typeof(G.DepartureEvent), typeof(G.ObjectTurnEvent), typeof(G.EnteringWay), typeof(G.AsPermanentEvent), typeof(G.ThisWayAction)],
-        ["ObjectEvent.Only"] = [typeof(G.EventOccurrence)],
+        ["ObjectEvent.Events"] = [typeof(G.PermanentEvent), typeof(ObjectEventKind), typeof(G.PastPermanentEvent), typeof(G.DepartureEvent), typeof(G.ObjectTurnEvent), typeof(G.EnteringWay), typeof(G.AsPermanentEvent), typeof(G.ThisWayAction), typeof(G.CardZoneEvent)],
+        ["ObjectEvent.Only"] = [typeof(G.EventOccurrence), typeof(G.TurnOwner)],
         ["ObjectEvent.By"] = [typeof(G.TargetingSource)],
         ["PlayerEvent.Event"] = [typeof(G.PlayerEventKind)],
         ["PlayerEvent.Timing"] = [typeof(G.PlayerEventTiming)],
         ["NamedEvent.Kind"] = [typeof(G.TurnEvent)],
         ["PlayerAction.Action"] = [typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile)],
         ["CombatEncounterEvent.Encounter"] = [typeof(G.CombatEncounterKind)],
-        ["Happened.Span"] = [typeof(G.TurnSpan)],
+        ["Happened.Span"] = [typeof(G.TurnSpan), typeof(EventSpan)],
         ["ThisTurn.Period"] = [typeof(G.TurnPeriod)],
         ["MustCombat.Period"] = [typeof(G.CombatPeriod)],
         ["MustCombat.Actions"] = [typeof(G.CombatAction)],
@@ -98,6 +98,16 @@ public static class Vocabularies
         ["CostModification.Action"] = [typeof(G.CostedAction)],
         ["CostModification.Change"] = [typeof(G.CostChange)],
         ["QualifiedKind.Kind"] = [typeof(G.CardType), typeof(G.CreatureType), typeof(G.PlayerIdentity)],
+        ["GameOutcome.Result"] = [typeof(G.GameResult)],
+        ["BecomeCopy.Verb"] = [typeof(G.CopyingVerb)],
+        ["CanBlock.Count"] = [typeof(G.BlockCount)],
+        ["CanBlock.Period"] = [typeof(G.BlockPeriod)],
+        ["CantPlay.Verb"] = [typeof(G.PlayVerb)],
+        ["DealDamage.Divided"] = [typeof(G.DamageDivision)],
+        ["DealDamage.Kind"] = [typeof(G.DamageKind)],
+        ["WasAffectedThisWay.Action"] = [typeof(G.ThisWayAction)],
+        ["Extreme.Characteristic"] = [typeof(G.Characteristic)],
+        ["Extreme.Which"] = [typeof(ExtremeKind)],
     };
 
     static readonly System.Text.RegularExpressions.Regex ManaSymbol = new(@"^\{(\d+|[wubrgcsxe]|[wubrg2]/[wubrgp]|[wubrg]/[wubrg]/p)\}$");
@@ -140,7 +150,7 @@ public enum AffectedThisWay { ExiledThisWay, RevealedThisWay, DestroyedThisWay, 
 public enum ExileManner { InsteadOfAnywhereElse }
 
 /// <summary>How objects came to be the ones meant: found by a search, left over from a choice, acted on earlier.</summary>
-public enum Provenance { Found, TheRest }
+public enum Provenance { Found, TheRest, Chosen }
 
 /// <summary>A qualifier setting objects apart from others on the line: "another", "named {this}", "or tied".</summary>
 public enum Distinction { Other, NamedThis, OrTied }
@@ -158,7 +168,13 @@ public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command 
 public enum Comparison { Equal, Less, LessOrEqual, Greater, GreaterOrEqual }
 
 /// <summary>Kinds of object the lowering names itself, beside the grammar's card types: "card", "spell", "counter", "any target".</summary>
-public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName }
+public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent }
+
+/// <summary>A span an event is looked for in beyond the turn: "this way", by an earlier effect on the line.</summary>
+public enum EventSpan { ThisWay }
+
+/// <summary>Which end of a range: the greatest or the least.</summary>
+public enum ExtremeKind { Greatest, Least }
 
 /// <summary>Amounts named rather than counted, beyond the grammar's quantity words: "those" cards named earlier.</summary>
 public enum SpecialAmount { Those, ThatMuch }
