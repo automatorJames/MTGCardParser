@@ -66,7 +66,7 @@ public sealed record OpaquePredicate(string Text, string Glyph) : Predicate, IOp
 public sealed record HasKeywords(IReadOnlyList<string> Keywords, bool Negated = false) : Predicate;
 
 /// <summary>A "with …" qualifier bounding a characteristic: "with power 2 or less".</summary>
-public sealed record CharacteristicBound(IReadOnlyList<string> Characteristics, Quantity Value, string Comparison, bool Total = false) : Predicate;
+public sealed record CharacteristicBound(IReadOnlyList<string> Characteristics, Quantity Value, Comparison Comparison, bool Total = false) : Predicate;
 
 /// <summary>Objects with exactly these stats: "target 1/1 creature".</summary>
 public sealed record HasStats(Quantity Power, Quantity Toughness) : Predicate;
@@ -150,19 +150,19 @@ public sealed record PlayerSelector(PlayerKind Kind, Selector Of = null, string 
 public sealed record Reference(string Binding, string Text, string Antecedent = null) : Selector;
 
 /// <summary>Several selectors together: "you and each creature you control", "target player or planeswalker".</summary>
-public sealed record Union(IReadOnlyList<Selector> Members, string Conjunction = "and") : Selector;
+public sealed record Union(IReadOnlyList<Selector> Members, Connective Conjunction = Connective.And) : Selector;
 
 /// <summary>Who chooses which object an effect applies to: "of their choice".</summary>
 public sealed record ChosenBy(Selector Player) : Predicate;
 
 /// <summary>An alternative kind with qualifiers of its own, beside a filter's kinds: "red planeswalker" in "target red creature or red planeswalker".</summary>
-public sealed record QualifiedKind(string Kind, IReadOnlyList<Qualifier> Qualifiers) : Predicate;
+public sealed record QualifiedKind(Term Kind, IReadOnlyList<Qualifier> Qualifiers) : Predicate;
 
 /// <summary>Qualifiers any of which may hold: "blue or red", "instant and/or sorcery".</summary>
-public sealed record QualifierChoice(IReadOnlyList<Qualifier> Options, string Conjunction = "or") : Predicate;
+public sealed record QualifierChoice(IReadOnlyList<Qualifier> Options, Connective Conjunction = Connective.Or) : Predicate;
 
 /// <summary>Several vocabulary members where one is expected: "artifacts, legendaries, and/or sagas".</summary>
-public sealed record TermSet(IReadOnlyList<string> Values, string Vocabulary) : IrNode;
+public sealed record TermSet(IReadOnlyList<Term> Members) : IrNode;
 
 /// <summary>What a spell targets, as a qualifier on the spell: "that targets this creature".</summary>
 public sealed record Targeting(Selector Target, string Count = null) : Predicate;

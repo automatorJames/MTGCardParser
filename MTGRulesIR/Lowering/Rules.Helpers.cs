@@ -89,7 +89,7 @@ public sealed partial class Lowerer
             if (node is Term term)
                 terms.Add(term);
             else if (node is TermSet set)
-                terms.AddRange(set.Values.Select(x => new Term(x, set.Vocabulary)));
+                terms.AddRange(set.Members);
             else
                 rest?.Add(node);
 
@@ -97,7 +97,29 @@ public sealed partial class Lowerer
     }
 
     /// <summary>A kind of object the lowering names itself: "card", "spell", "counter", "any".</summary>
-    static Term Kind(string value) => new(value, "Kind");
+    static Term Kind(string value) => new(value switch
+    {
+        "card" => nameof(ObjectKind.Card),
+        "spell" => nameof(ObjectKind.Spell),
+        "any" => nameof(ObjectKind.Any),
+        "counter" => nameof(ObjectKind.Counter),
+        "token" => nameof(ObjectKind.Token),
+        "permanent" => nameof(ObjectKind.Permanent),
+        "player" => nameof(ObjectKind.Player),
+        "card name" => nameof(ObjectKind.CardName),
+        _ => value,
+    }, nameof(ObjectKind));
+
+    /// <summary>A comparison from the grammar's words or the symbols the rules use.</summary>
+    static Comparison ComparisonOf(string text) =>
+        text switch
+        {
+            "<" or "FewerThan" or "Less" or "Fewer" or "AtMost" => Comparison.Less,
+            "<=" or "OrFewer" or "OrLess" => Comparison.LessOrEqual,
+            ">" or "MoreThan" or "Greater" or "More" => Comparison.Greater,
+            ">=" or "OrMore" or "OrGreater" or "AtLeast" => Comparison.GreaterOrEqual,
+            _ => Comparison.Equal,
+        };
 
     /// <summary>A kind of object named by a vocabulary member.</summary>
     static Term Kind(Enum member) => new(member.ToString(), member.GetType().Name);
@@ -130,7 +152,7 @@ public sealed partial class Lowerer
             filter.Add(node, ctx, kinds);
 
         foreach (var node in LowerAll(qualifiers, ctx))
-            if (node is QualifierChoice { Conjunction: "and" } all)
+            if (node is QualifierChoice { Conjunction: Connective.And } all)
                 filter.Qualifiers.AddRange(all.Options);
             else
                 filter.Add(node, ctx, qualifiers);
@@ -335,8 +357,8 @@ public sealed partial class Lowerer
                     terms.Add(term);
                     break;
                 case QualifiedKind kind:
-                    terms.Add(new Term(kind.Kind, "Kind"));
-                    terms.AddRange(kind.Qualifiers.Select(x => new Term(x.Quality, nameof(Qualifier))));
+                    terms.Add(kind.Kind);
+                    terms.AddRange(kind.Qualifiers.Select(x => new Term(x.Quality, x.Vocabulary ?? nameof(Qualifier))));
                     break;
                 default:
                     return null;

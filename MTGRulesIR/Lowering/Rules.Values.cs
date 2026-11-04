@@ -49,10 +49,10 @@ public sealed partial class Lowerer
 
             return g.Count?.GetResolvedValue() switch
             {
-                null => new CountCondition(cards, ">=", new Fixed(1)),
-                G.AtLeastCount atLeast => new CountCondition(cards, ">=", LowerAs<Quantity>(atLeast.Count, ctx)),
-                G.NoneCount => new CountCondition(cards, "==", new Fixed(0)),
-                G.FewerThanCount fewer => new CountCondition(cards, "<", LowerAs<Quantity>(Property(fewer, "Count"), ctx)),
+                null => new CountCondition(cards, Comparison.GreaterOrEqual, new Fixed(1)),
+                G.AtLeastCount atLeast => new CountCondition(cards, Comparison.GreaterOrEqual, LowerAs<Quantity>(atLeast.Count, ctx)),
+                G.NoneCount => new CountCondition(cards, Comparison.Equal, new Fixed(0)),
+                G.FewerThanCount fewer => new CountCondition(cards, Comparison.Less, LowerAs<Quantity>(Property(fewer, "Count"), ctx)),
                 var other => (Condition)Opaque(typeof(Condition), ctx.TextOf(g), other.GetType().Name),
             };
         });
@@ -61,7 +61,9 @@ public sealed partial class Lowerer
             new Controls(LowerAs<Selector>(g.Controller, ctx), LowerAs<Selector>(g.Permanent, ctx), g.DoesNot, Tense: g.Tense.ToString()));
 
         Rule<G.Outcome>((g, ctx) =>
-            new OutcomeCondition(LowerAs<Selector>(g.Player, ctx), Lower(g.Result, ctx) is Term term ? term.Value : ctx.TextOf(g.Result)));
+            Lower(g.Result, ctx) is Term term
+                ? new OutcomeCondition(LowerAs<Selector>(g.Player, ctx), term.Value)
+                : Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.Outcome)));
 
         Rule<G.IsOnBattlefield>((g, ctx) => new SelfOnBattlefield());
 

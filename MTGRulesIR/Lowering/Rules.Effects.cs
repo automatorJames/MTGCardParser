@@ -165,7 +165,9 @@ public sealed partial class Lowerer
         {
             List<IrNode> rest = [];
             var by = Terms(g.By, ctx, rest);
-            return new CantBeTargeted(ctx.Subject ?? new Self(), OrNull(by) ?? [ctx.TextOf(g.By)], g.Whose is null ? null : Lower(g.Whose, ctx) as Controlled, g.Period is null ? null : new ThisTurn(g.Period.Period.ToString()));
+            if (by.Count == 0 || rest.Count > 0)
+                return Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.CantBeTargeted));
+            return new CantBeTargeted(ctx.Subject ?? new Self(), by, g.Whose is null ? null : Lower(g.Whose, ctx) as Controlled, g.Period is null ? null : new ThisTurn(g.Period.Period.ToString()));
         });
 
         Rule<G.CombatRestriction>((g, ctx) =>

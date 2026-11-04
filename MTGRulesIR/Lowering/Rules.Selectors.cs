@@ -96,7 +96,7 @@ public sealed partial class Lowerer
 
         // "blue or red" is a choice of qualifiers; "tapped, blue" (and any other run) narrows by all of them.
         Rule<ManyOf<G.TargetQualifier>>((g, ctx) =>
-            new QualifierChoice(LowerAll(g.Items, ctx).OfType<Qualifier>().ToList(), g.Conjunction == Glyphotype.Conjunction.Or ? "or" : "and"));
+            new QualifierChoice(LowerAll(g.Items, ctx).OfType<Qualifier>().ToList(), g.Conjunction == Glyphotype.Conjunction.Or ? Connective.Or : Connective.And));
 
         Rule<G.TargetQualifier>((g, ctx) =>
             Lower(g.Quality, ctx) is Term term ? new Qualifier(term.Value, g.IsNegated, term.Vocabulary) : new Qualifier(ctx.TextOf(g.Quality), g.IsNegated));
@@ -111,7 +111,7 @@ public sealed partial class Lowerer
         });
 
         Rule<G.WithCharacteristicBound>((g, ctx) =>
-            new CharacteristicBound(Terms(g.Characteristic, ctx), LowerAs<Quantity>(g.Quantity, ctx), g.Comparison.ToString(), g.Total));
+            new CharacteristicBound(Terms(g.Characteristic, ctx), LowerAs<Quantity>(g.Quantity, ctx), ComparisonOf(g.Comparison.ToString()), g.Total));
 
         Rule<G.CardsInZone>((g, ctx) =>
             new ObjectSelector(Quantifier.All, FilterOf(ctx, qualifiers: g.Qualifiers, zone: g.Zone, narrowing: [g.Named, g.With, g.Narrowed]) with { Kinds = [Kind("card")] }));

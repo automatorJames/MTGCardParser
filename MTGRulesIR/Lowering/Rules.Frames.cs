@@ -46,14 +46,18 @@ public sealed partial class Lowerer
                 var period = Lower(g.Period, ctx);
                 if (period is Condition condition)
                     whileCondition = condition;
+                else if (period is Term term)
+                    only = term.Value;
                 else if (period is not null)
-                    only = period is Term term ? term.Value : ctx.TextOf(g.Period);
+                    return Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.TriggeredAbility));
             }
 
             Event trigger;
 
             if (g.Event.GetResolvedValue() is G.CombatEncounter encounter)
                 trigger = new CombatEncounterEvent(subject, encounter.Encounter.ToString(), LowerAs<Selector>(encounter.Other, ctx));
+            else if (LowerAll(g.Event, ctx) is [ObjectEvent partial])
+                trigger = partial with { Subject = subject, UnderControlOf = under, Only = only, While = whileCondition };
             else
             {
                 List<IrNode> details = [];
@@ -67,7 +71,12 @@ public sealed partial class Lowerer
         });
 
         Rule<G.PutIntoGraveyardEvent>((g, ctx) =>
-            new Term($"IsPutInto{g.Whose}Graveyard{g.Origin}", nameof(G.PermanentEvent)));
+            new ObjectEvent(null, [g.Origin switch
+            {
+                G.GraveyardOrigin.FromTheBattlefield => nameof(G.PermanentEvent.IsPutIntoAGraveyardFromTheBattlefield),
+                G.GraveyardOrigin.FromAnywhere => nameof(G.PermanentEvent.IsPutIntoAGraveyardFromAnywhere),
+                _ => nameof(G.PermanentEvent.IsPutIntoAGraveyard),
+            }], ZoneOwner: g.Whose == G.Whose.Any ? null : PlayerOf(g.Whose)));
 
         Rule<G.PhaseTrigger>((g, ctx) =>
             new TriggeredAbility(PhaseEventOf(g.When, ctx), LowerAs<Effect>(g.Effect, ctx)));
@@ -124,19 +133,21 @@ public sealed partial class Lowerer
             new EnchantAbility(new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifiers, controller: g.Controller, narrowing: [g.With, g.CardOutsideBattlefield]))));
 
         Rule<G.ActivationRestriction>((g, ctx) =>
-            new ActivationLimits(LowerAll(g.Timings, ctx).Select(x => x as Timing ?? new Timing("Other", Detail: x is IOpaque opaque ? opaque.Text : x.ToString())).ToList()));
+            LowerAll(g.Timings, ctx).Select(x => x as Timing).ToList() is var timings && timings.All(x => x is not null)
+                ? new ActivationLimits(timings)
+                : Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.ActivationRestriction)));
 
         // A one-of whose alternatives include plain bools, so it's read property by property rather than by its resolved value.
         Rule<G.ActivationTiming>((g, ctx) =>
-            g.During is not null ? new Timing("During", PhaseRefOf(g.During, ctx), Detail: PhaseRefOf(g.During, ctx) is null ? ctx.TextOf(g.During) : null)
-            : g.Before is not null ? new Timing("Before", Detail: ctx.TextOf(g.Before))
+            g.During is not null ? (PhaseRefOf(g.During, ctx) is { } during ? new Timing(nameof(TimingKind.During), during) : new OpaqueNode(ctx.TextOf(g), nameof(G.ActivationTiming)))
+            : g.Before is not null ? (PhaseRefOf(g.Before, ctx) is { } before ? new Timing(nameof(TimingKind.Before), before) : new OpaqueNode(ctx.TextOf(g), nameof(G.ActivationTiming)))
             : g.OnceEachTurn ? new Timing("OnceEachTurn")
             : g.Once ? new Timing("Once")
             : g.AsASorcery ? new Timing("SorcerySpeed")
             : g.AsAnInstant ? new Timing("InstantSpeed")
             : g.OnlyIf is not null ? new Timing("If", If: LowerAs<Condition>(g.OnlyIf, ctx))
             : g.OnlyIfState is not null ? new Timing("If", If: LowerAs<Condition>(g.OnlyIfState, ctx))
-            : new Timing("Other", Detail: ctx.TextOf(g)));
+            : new OpaqueNode(ctx.TextOf(g), nameof(G.ActivationTiming)));
 
         Rule<G.DelayedEffect>((g, ctx) =>
             new Delayed(PhaseEventOf(g.When, ctx), LowerAs<Effect>(g.Effect, ctx)));

@@ -11,7 +11,7 @@ public sealed partial class Lowerer
         Rule<G.ImperativePair>((g, ctx) => Lower(g.Actions, ctx));
         Rule<G.BothSubjectsDo>((g, ctx) => Seq(LowerAs<Effect>(g.First, ctx), LowerAs<Effect>(g.Second, ctx)));
         Rule<G.AndThen>((g, ctx) => LowerAs<Effect>(g.Effect, ctx));
-        Rule<G.FlavorWordAbility>((g, ctx) => new LabeledAbility(ctx.TextOf(g)?.Split('—')[0].Trim(), AsAbility(Lower(g.Ability, ctx), ctx, g.Ability)));
+        Rule<G.FlavorWordAbility>((g, ctx) => new FlavorAbility(ctx.TextOf(g)?.Split('—')[0].Trim(), AsAbility(Lower(g.Ability, ctx), ctx, g.Ability)));
         Rule<G.WhereXIs>((g, ctx) => new LetVariable(LowerAs<Effect>(g.Effect, ctx), "X", LowerAs<Quantity>(g.Definition, ctx)));
         Rule<G.DurationFirstEffect>((g, ctx) => WithSubject(ctx, g.Subject, () => Lasting(LowerAs<Effect>(g.Predicate, ctx), DurationOf(Lower(g.Duration, ctx)))));
         Rule<G.EffectIfCondition>((g, ctx) => WithSubject(ctx, g.Subject, () => new Conditional(LowerAs<Condition>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx))));
@@ -27,7 +27,7 @@ public sealed partial class Lowerer
         Rule<G.AsThisEnters>((g, ctx) => new AsEventHappens(LowerAs<Event>(g.Moment, ctx), LowerAs<Effect>(g.Effect, ctx)));
         Rule<G.CastingThisSpell>((g, ctx) => new ObjectEvent(new Self(), ["Cast"]));
         Rule<G.PermanentAsEvent>((g, ctx) => new ObjectEvent(LowerAs<Selector>(g.Permanent, ctx), [g.Event.ToString()]));
-        Rule<G.EntersOrTransformsInto>((g, ctx) => new Term("EntersOrTransforms", nameof(G.PermanentEvent)));
+        Rule<G.EntersOrTransformsInto>((g, ctx) => new Term(nameof(ObjectEventKind.EntersOrTransforms), nameof(ObjectEventKind)));
         Rule<G.PlayerEvent>((g, ctx) =>
             new PlayerEvent(
                 Lower(g.Player, ctx) is Selector player ? player : new PlayerSelector(g.Player.GetResolvedValue()?.ToString()?.Contains("Opponent") == true ? PlayerKind.AnyOpponent : PlayerKind.AnyPlayer),
@@ -97,7 +97,7 @@ public sealed partial class Lowerer
         Rule<G.PutRestOnBottom>((g, ctx) =>
             new ChangeZone(new ObjectSelector(Quantifier.Rest, new ObjectFilter(Kinds: [Kind("card")], Qualifiers: [Q(g.Rest)])), ZoneOf(g.Destination, ctx) ?? new ZoneRef("?")));
         Rule<G.LibraryPlacement>((g, ctx) =>
-            new ZoneRef("Library", g.Library is null ? null : LowerAs<Selector>(g.Library.Owner, ctx), g.Order is null ? g.End.ToString() : $"{g.End} {g.Order}"));
+            new ZoneRef("Library", g.Library is null ? null : LowerAs<Selector>(g.Library.Owner, ctx), g.End.ToString(), g.Order?.ToString()));
         Rule<G.ExileTopOfLibrary>((g, ctx) => new Exile(LowerAs<Selector>(g.What, ctx), Manner: g.FaceDown ? "FaceDown" : null));
         Rule<G.TopCardsOfLibrary>((g, ctx) => TopOfLibrary(QuantityOf(g.Quantity), LowerAs<Selector>(g.Owner, ctx)));
         Rule<G.TopCardOfLibrary>((g, ctx) => TopOfLibrary(new Fixed(1), LowerAs<Selector>(g.Owner, ctx)));
@@ -114,7 +114,7 @@ public sealed partial class Lowerer
             new ChooseCards(Actor(ctx), QuantityOf(g.Count), FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.With, g.TrailingWith]) with { Kinds = [Kind("card")] }, LowerAs<Selector>(g.Source, ctx), ctx.TextOf(g)?.Contains("up to") == true));
         Rule<G.AmongThem>((g, ctx) => LowerAs<Selector>(g.Cards, ctx));
         Rule<G.PlayersZones>((g, ctx) =>
-            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef(string.Join("/", Terms(g.Zones, ctx)), LowerAs<Selector>(g.Whose, ctx)))));
+            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef(Terms(g.Zones, ctx) is { Count: > 0 } zones ? string.Join("/", zones) : OpenSlots.Placeholder, LowerAs<Selector>(g.Whose, ctx)))));
         Rule<G.OfPlayersChoice>((g, ctx) => new ChosenBy(LowerAs<Selector>(g.Chooser, ctx)));
         Rule<G.ChooseNewTargets>((g, ctx) => new ChangeTargets(LowerAs<Selector>(g.Spell, ctx)));
         Rule<G.RetargetedObject>((retargeted, ctx) => new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [Kind(retargeted)])));
@@ -213,9 +213,9 @@ public sealed partial class Lowerer
         // Conditions.
         Rule<G.PlayerControls>((g, ctx) => new Controls(Player(g.Controller), LowerAs<Selector>(g.Permanent, ctx)));
         Rule<G.PermanentsThreshold>((g, ctx) =>
-            Group(g.Permanents, Quantifier.Count, ctx, other: g.Other, count: new Bound(QuantityOf(g.Count), g.Bound.ToString().Contains("More") || g.Bound.ToString().Contains("Greater") ? ">=" : "<=")));
+            Group(g.Permanents, Quantifier.Count, ctx, other: g.Other, count: new Bound(QuantityOf(g.Count), g.Bound.ToString().Contains("More") || g.Bound.ToString().Contains("Greater") ? Comparison.GreaterOrEqual : Comparison.LessOrEqual)));
         Rule<G.AtLeastPermanents>((g, ctx) =>
-            Group(g.Kinds, Quantifier.Count, ctx, other: ctx.TextOf(g)?.Contains(" other ") == true, count: new Bound(QuantityOf(g.Count), ">=")));
+            Group(g.Kinds, Quantifier.Count, ctx, other: ctx.TextOf(g)?.Contains(" other ") == true, count: new Bound(QuantityOf(g.Count), Comparison.GreaterOrEqual)));
         Rule<G.NoPermanents>((g, ctx) =>
             LowerAs<Selector>(g.Permanents, ctx) is ObjectSelector selector ? selector with { Quantifier = Quantifier.Count, Count = new Fixed(0) } : (Selector)Opaque(typeof(Selector), ctx.TextOf(g), nameof(G.NoPermanents)));
         Rule<G.PermanentIs>((g, ctx) =>
@@ -235,8 +235,8 @@ public sealed partial class Lowerer
             : g.Status is { } status ? new Term(status.ToString(), nameof(G.PermanentDesignation))
             : g.CreatureType is { } creatureType ? new Term(creatureType.ToString(), nameof(G.CreatureType))
             : g.LandType is { } landType ? new Term(landType.ToString(), nameof(G.LandType))
-            : g.Nonbasic ? new Term("Nonbasic", nameof(G.CardAspect))
-            : g.Token ? new Term("Token", nameof(G.CardAspect))
+            : g.Nonbasic ? new Term(nameof(CardAspectWord.Nonbasic), nameof(CardAspectWord))
+            : g.Token ? new Term(nameof(CardAspectWord.Token), nameof(CardAspectWord))
             : new OpaqueNode(ctx.TextOf(g), nameof(G.CardAspect)));
         Rule<G.ObjectIsKind>((g, ctx) =>
         {
@@ -252,7 +252,9 @@ public sealed partial class Lowerer
         Rule<G.HappenedThisTurn>((g, ctx) => new Happened(EventOf(Lower(g.Event, ctx), ctx, g.Event), g.Turn.ToString()));
         Rule<G.WhileCondition>((g, ctx) => LowerAs<Condition>(g.Condition, ctx));
         Rule<G.WasKicked>((g, ctx) =>
-            new WasCastWith(LowerAs<Selector>(g.Subject, ctx), Lower(g.How, ctx) is Term how ? how.Value : ctx.TextOf(g.How), ctx.TextOf(g)?.Contains("wasn't") == true, g.Twice));
+            Lower(g.How, ctx) is Term how
+                ? new WasCastWith(LowerAs<Selector>(g.Subject, ctx), how.Value, ctx.TextOf(g)?.Contains("wasn't") == true, g.Twice)
+                : Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.WasKicked)));
         Rule<G.HasCounters>((g, ctx) =>
         {
             var counters = Lower(g.Counters, ctx);
@@ -269,9 +271,9 @@ public sealed partial class Lowerer
         Rule<G.PossessedShortName>((g, ctx) => new Self());
         Rule<G.PluralTargetKind>((g, ctx) => Lower(g.Kind, ctx));
         Rule<G.QualifiedTargetKind>((g, ctx) =>
-            new QualifiedKind(Lower(g.Kind, ctx) is Term kind ? kind.Value : ctx.TextOf(g.Kind), LowerAll(g.Qualifiers, ctx).OfType<Qualifier>().ToList()));
-        Rule<G.PluralKindsAndOr>((g, ctx) => new TermSet([.. Terms(g.First.Items, ctx), .. Terms(g.Last, ctx)], nameof(G.PermanentKind)));
-        Rule<G.AndOrQualifiers>((g, ctx) => new QualifierChoice(LowerAll(new object[] { g.First, g.Second }, ctx).OfType<Qualifier>().ToList(), "and/or"));
+            new QualifiedKind(Lower(g.Kind, ctx) is Term kind ? kind : new Term(ctx.TextOf(g.Kind), null), LowerAll(g.Qualifiers, ctx).OfType<Qualifier>().ToList()));
+        Rule<G.PluralKindsAndOr>((g, ctx) => new TermSet([.. TermsOf(g.First.Items, ctx), .. TermsOf(g.Last, ctx)]));
+        Rule<G.AndOrQualifiers>((g, ctx) => new QualifierChoice(LowerAll(new object[] { g.First, g.Second }, ctx).OfType<Qualifier>().ToList(), Connective.AndOr));
         Rule<G.EachObject>((g, ctx) =>
             g.Kind.GetResolvedValue() is G.PlayerIdentity identity && g.Qualifiers is null && g.With is null
                 ? new PlayerSelector(identity == G.PlayerIdentity.Opponent ? PlayerKind.EachOpponent : PlayerKind.EachPlayer)
@@ -306,7 +308,7 @@ public sealed partial class Lowerer
         Rule<G.ThatStackObject>((g, ctx) => new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [Kind(g.Kind)])));
         Rule<G.ExtremePermanent>((g, ctx) =>
             new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [Kind(g.Kind)], Qualifiers: g.OrTied == true ? [Q(Distinction.OrTied)] : null, With: [PredicateOf(Lower(g.Extreme, ctx), ctx, g.Extreme)]), Count: new Fixed(1)));
-        Rule<G.ManaValueLimit>((g, ctx) => new CharacteristicBound(["ManaValue"], QuantityOf(g.Amount), ctx.TextOf(g)?.EndsWith("more") == true ? "Greater" : "Less"));
+        Rule<G.ManaValueLimit>((g, ctx) => new CharacteristicBound(["ManaValue"], QuantityOf(g.Amount), ctx.TextOf(g)?.EndsWith("more") == true ? Comparison.GreaterOrEqual : Comparison.LessOrEqual));
         Rule<G.SpellTargets>((g, ctx) => new Targeting(LowerAs<Selector>(g.Targeted, ctx), g.Count?.ToString()));
 
         // Amounts.

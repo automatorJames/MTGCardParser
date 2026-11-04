@@ -143,13 +143,38 @@ public sealed class VocabularyCensus
         return vocabulary is null ? slot : $"{slot}[{vocabulary}]";
     }
 
-    /// <summary>The enum a slot's values must belong to - from the vocabulary in its name, or from <see cref="Vocabularies.Slots"/> - or null when the slot is open.</summary>
-    public static Type EnumOf(string slot)
+    /// <summary>The enums a slot's values must belong to - from the vocabulary in its name, or from <see cref="Vocabularies.Slots"/> - or null when the slot is open.</summary>
+    public static Type[] EnumsOf(string slot)
     {
         var bracket = slot.IndexOf('[');
         return bracket >= 0
-            ? Vocabularies.Find(slot[(bracket + 1)..^1])
+            ? Vocabularies.Find(slot[(bracket + 1)..^1]) is { } found ? [found] : null
             : Vocabularies.Slots.GetValueOrDefault(slot);
+    }
+
+    /// <summary>Whether <paramref name="value"/> belongs to the slot's vocabulary: one of its enums, or its pattern.</summary>
+    public static bool Belongs(string slot, string value) =>
+        EnumsOf(slot) is { } enums ? enums.Any(x => Enum.IsDefined(x, value))
+        : Vocabularies.Patterns.TryGetValue(slot, out var pattern) && pattern.IsMatch(value);
+
+    /// <summary>Whether the slot has a vocabulary declared, by enum or by pattern.</summary>
+    public static bool IsClosed(string slot) =>
+        EnumsOf(slot) is not null || Vocabularies.Patterns.ContainsKey(slot);
+
+    static string VocabularyName(string slot) =>
+        EnumsOf(slot) is { } enums ? string.Join("|", enums.Select(x => x.Name)) : "pattern";
+
+    /// <summary>The enums that define most of <paramref name="values"/>, as a hint at which vocabulary an open slot could be declared to hold: "  ~ PermanentEvent (78/81), ...".</summary>
+    static string Candidates(IReadOnlyCollection<string> values)
+    {
+        var candidates = Vocabularies.All
+            .Select(x => (Enum: x, Covered: values.Count(v => Enum.IsDefined(x, v))))
+            .Where(x => x.Covered * 2 >= values.Count)
+            .OrderByDescending(x => x.Covered).ThenBy(x => Enum.GetNames(x.Enum).Length)
+            .Take(3)
+            .ToList();
+
+        return candidates.Count == 0 ? "" : "  ~ " + string.Join(", ", candidates.Select(x => $"{x.Enum.Name} ({x.Covered}/{values.Count})"));
     }
 
     /// <summary>The slots, their distinct values, and how many lines each value appeared in.</summary>
@@ -158,8 +183,8 @@ public sealed class VocabularyCensus
 
     /// <summary>The values of each slot that lie outside its enum, for the slots that have one.</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Outsiders =>
-        _slots.Where(x => EnumOf(x.Key) is not null)
-            .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value.Keys.Where(v => !Enum.IsDefined(EnumOf(x.Key), v)).ToList());
+        _slots.Where(x => IsClosed(x.Key))
+            .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value.Keys.Where(v => !Belongs(x.Key, v)).ToList());
 
     /// <summary>
     /// The open slots first, widest vocabulary first, with their values by lines descending; then the closed slots,
@@ -168,15 +193,15 @@ public sealed class VocabularyCensus
     public string ToText(int valuesPerSlot = 200)
     {
         var text = new StringBuilder();
-        var open = _slots.Where(x => EnumOf(x.Key) is null).OrderByDescending(x => x.Value.Count).ThenBy(x => x.Key, StringComparer.Ordinal).ToList();
-        var closed = _slots.Where(x => EnumOf(x.Key) is not null).OrderBy(x => x.Key, StringComparer.Ordinal).ToList();
+        var open = _slots.Where(x => !IsClosed(x.Key)).OrderByDescending(x => x.Value.Count).ThenBy(x => x.Key, StringComparer.Ordinal).ToList();
+        var closed = _slots.Where(x => IsClosed(x.Key)).OrderBy(x => x.Key, StringComparer.Ordinal).ToList();
         var outsiders = Outsiders;
         text.AppendLine($"String slots: {_slots.Count}, open {open.Count} with {open.Sum(x => x.Value.Count):N0} distinct values, closed {closed.Count} with {outsiders.Sum(x => x.Value.Count):N0} values outside their vocabulary");
 
         foreach (var (slot, values) in open)
         {
             text.AppendLine();
-            text.AppendLine($"{slot}: {values.Count} values, {values.Values.SelectMany(x => x).Distinct().Count():N0} lines");
+            text.AppendLine($"{slot}: {values.Count} values, {values.Values.SelectMany(x => x).Distinct().Count():N0} lines{Candidates(values.Keys)}");
 
             foreach (var (value, lines) in values.OrderByDescending(x => x.Value.Count).ThenBy(x => x.Key, StringComparer.Ordinal).Take(valuesPerSlot))
                 text.AppendLine($"{lines.Count,8}  {value}");
@@ -192,8 +217,8 @@ public sealed class VocabularyCensus
         {
             var outside = outsiders[slot];
             text.AppendLine(outside.Count == 0
-                ? $"  {slot}: {values.Count} values, all in {EnumOf(slot).Name}"
-                : $"  {slot}: {values.Count} values, {outside.Count} outside {EnumOf(slot).Name}: {string.Join(", ", outside.OrderByDescending(v => values[v].Count).Take(12))}{(outside.Count > 12 ? ", ..." : "")}");
+                ? $"  {slot}: {values.Count} values, all in {VocabularyName(slot)}"
+                : $"  {slot}: {values.Count} values, {outside.Count} outside {VocabularyName(slot)}: {string.Join(", ", outside.OrderByDescending(v => values[v].Count).Take(12))}{(outside.Count > 12 ? ", ..." : "")}");
         }
 
         return text.ToString();

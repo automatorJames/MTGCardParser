@@ -45,7 +45,7 @@ public sealed partial class Lowerer
                 ctx.Subject = previous;
             }
         });
-        Rule<G.LevelUpRestriction>((g, ctx) => new ActivationLimits([new Timing("SorcerySpeed", Detail: g.Keyword.ToString())]));
+        Rule<G.LevelUpRestriction>((g, ctx) => new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed), Keyword: g.Keyword.ToString())]));
         Rule<G.SagaSacrificeAfter>((g, ctx) => null);
         Rule<G.ScryOneLook>((g, ctx) => new LookAt(new PlayerSelector(PlayerKind.You), TopOfLibrary(new Fixed(1), new PlayerSelector(PlayerKind.You))));
         Rule<G.QuotedAbility>((g, ctx) => AsAbility(Lower(g.Ability, ctx), ctx, g.Ability));
@@ -60,7 +60,7 @@ public sealed partial class Lowerer
                     kinds.Add(term.Value);
                 else
                     from.Add(Coerce<Selector>(choice, g.Choices, ctx));
-            var except = g.Except is null ? null : Lower(g.Except, ctx) switch { TermSet set => set.Values, Term term => [term.Value], _ => [ctx.TextOf(g.Except)] };
+            var except = g.Except is null ? null : Lower(g.Except, ctx) switch { TermSet set => set.Members.Select(x => x.Value).ToList(), Term term => [term.Value], _ => [ctx.TextOf(g.Except)] };
             return new ChooseEffect(Actor(ctx), OrNull(kinds), OrNull(from), except);
         });
         Rule<G.PlayCard>((g, ctx) =>
@@ -155,14 +155,14 @@ public sealed partial class Lowerer
             var count = new DistinctCount(Lower(g.Kinds, ctx) is Term kinds ? kinds.Value : ctx.TextOf(g.Kinds), LowerAs<Selector>(g.Among, ctx));
             return g.Count.GetResolvedValue() switch
             {
-                G.AtLeastCount atLeast => new CompareCount(count, ">=", LowerAs<Quantity>(atLeast.Count, ctx)),
-                G.Quantity exact => new CompareCount(count, "==", QuantityOf(exact)),
-                _ => new CompareCount(count, ">=", new Fixed(1)),
+                G.AtLeastCount atLeast => new CompareCount(count, Comparison.GreaterOrEqual, LowerAs<Quantity>(atLeast.Count, ctx)),
+                G.Quantity exact => new CompareCount(count, Comparison.Equal, QuantityOf(exact)),
+                _ => new CompareCount(count, Comparison.GreaterOrEqual, new Fixed(1)),
             };
         });
         Rule<G.ControlsMoreThan>((g, ctx) =>
             new CompareControl(LowerAs<Selector>(g.Controller, ctx), LowerAs<Selector>(g.Permanents, ctx), g.Bound.ToString(), LowerAs<Selector>(g.Compared, ctx)));
-        Rule<G.DevotionThreshold>((g, ctx) => new CompareCount(LowerAs<Quantity>(g.Devotion, ctx), "<", QuantityOf(g.Threshold)));
+        Rule<G.DevotionThreshold>((g, ctx) => new CompareCount(LowerAs<Quantity>(g.Devotion, ctx), Comparison.Less, QuantityOf(g.Threshold)));
         Rule<G.HandSizeCondition>((g, ctx) =>
             Lower(g.Size, ctx) switch
             {
@@ -171,14 +171,14 @@ public sealed partial class Lowerer
                 _ => Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.HandSizeCondition)),
             });
         Rule<G.InZone>((g, ctx) => ZoneOf(g.Zone, ctx));
-        Rule<G.ExiledState>((g, ctx) => new ZoneRef("Exile", Position: g.Counters is null ? g.State.ToString() : $"{g.State} {ctx.TextOf(g.Counters)}"));
+        Rule<G.ExiledState>((g, ctx) => new ZoneRef("Exile", State: g.State.ToString(), WithCounters: g.Counters is null ? null : CountersOf(Lower(g.Counters, ctx)) ?? new CounterSpec(OpenSlots.Placeholder, null)));
 
         // Selectors and qualifiers.
         Rule<G.ThisObject>((g, ctx) => new Self());
         Rule<G.PlayersHand>((g, ctx) => new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef("Hand", LowerAs<Selector>(g.Owner, ctx)))));
         Rule<G.NextDamage>((g, ctx) => QuantityOf(g.Quantity));
         Rule<G.SpellCaster>((g, ctx) => new CastBy(Player(g.Player), g.Relation.ToString(), g.From?.ToString(), g.ThisTurn == true, g.During is null ? null : PhaseRefOf(g.During, ctx)));
-        Rule<G.WithCharacteristicValue>((g, ctx) => new CharacteristicBound([g.Characteristic.ToString()], LowerAs<Quantity>(g.Value, ctx), "Equal"));
+        Rule<G.WithCharacteristicValue>((g, ctx) => new CharacteristicBound([g.Characteristic.ToString()], LowerAs<Quantity>(g.Value, ctx), Comparison.Equal));
         Rule<G.WithCountersOnIt>((g, ctx) => Lower(g.Counters, ctx) is CounterSpec spec ? new WithCounters(spec) : new WithCounters(null, Lower(g.Counters, ctx)));
         Rule<G.ThatMuchLife>((g, ctx) =>
             g.Factor is null && g.Adjustment is null ? new Special("ThatMuch") : new Adjusted(new Special("ThatMuch"), g.Factor?.ToString(), g.Adjustment is null ? null : ctx.TextOf(g.Adjustment)));
@@ -199,8 +199,8 @@ public sealed partial class Lowerer
             return g.Count is null || selector is not ObjectSelector counted ? selector : counted with { Count = LowerAs<Quantity>(g.Count, ctx) };
         });
         Rule<G.ThisOrAnother>((g, ctx) =>
-            new Union([new Self(), new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifier, controller: g.Controller, narrowing: [g.With]), Other: true)], "or"));
-        Rule<G.PlayerOrPermanent>((g, ctx) => new Union([Player(g.Player), LowerAs<Selector>(g.Permanent, ctx)], "or"));
+            new Union([new Self(), new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifier, controller: g.Controller, narrowing: [g.With]), Other: true)], Connective.Or));
+        Rule<G.PlayerOrPermanent>((g, ctx) => new Union([Player(g.Player), LowerAs<Selector>(g.Permanent, ctx)], Connective.Or));
         Rule<G.PermanentOrPlayer>((g, ctx) => new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [Kind("permanent"), Kind("player")])));
         Rule<G.YouAndEach>((g, ctx) => new Union([new PlayerSelector(PlayerKind.You), LowerAs<Selector>(g.Each, ctx)]));
         Rule<G.TargetAndEach>((g, ctx) => new Union([LowerAs<Selector>(g.Target, ctx), LowerAs<Selector>(g.Each, ctx)]));
@@ -211,7 +211,7 @@ public sealed partial class Lowerer
             var qualifiers = LowerAll(g.Qualifier, ctx).OfType<Qualifier>().ToList();
             return qualifiers.Count == 0 && g.From is null
                 ? new Term(g.Kinds.ToString(), nameof(G.TargetingObjects))
-                : new QualifiedKind(g.Kinds.ToString(), [.. qualifiers, .. g.From is null ? [] : new[] { Q(ctx.TextOf(g.From), "From") }]);
+                : new QualifiedKind(new Term(g.Kinds.ToString(), nameof(G.TargetingObjects)), [.. qualifiers, .. g.From is null ? [] : new[] { Q(ctx.TextOf(g.From), "From") }]);
         });
         Rule<G.TokenWithQuotedAbility>((g, ctx) =>
             Lower(g.Token, ctx) is TokenSpecWithCount token

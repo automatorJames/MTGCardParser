@@ -41,10 +41,13 @@ public sealed record EnchantAbility(Selector Target) : Ability;
 public sealed record ActivationLimits(IReadOnlyList<Timing> Timings) : Ability;
 
 /// <summary>One activation limit: its kind ("SorcerySpeed", "OnceEachTurn", "During", "If", …) and the phase or condition it names.</summary>
-public sealed record Timing(string Kind, PhaseRef Phase = null, Condition If = null, string Detail = null) : IrNode;
+public sealed record Timing(string Kind, PhaseRef Phase = null, Condition If = null, string Keyword = null) : IrNode;
 
 /// <summary>An ability under an ability word ("landfall —", "threshold —"); the word only labels it.</summary>
 public sealed record LabeledAbility(string Word, Ability Ability) : Ability;
+
+/// <summary>An ability under a flavor word - a name the card gives it, with no rules meaning: "Hero's Reward — …".</summary>
+public sealed record FlavorAbility(string Name, Ability Ability) : Ability;
 
 /// <summary>A replacement effect the card states as a line: how it enters the battlefield, or what happens as an event happens.</summary>
 public sealed record ReplacementAbility(Effect Effect) : Ability;

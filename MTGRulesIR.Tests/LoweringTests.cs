@@ -25,7 +25,7 @@ public sealed class LoweringTests(GrammarFixture fixture)
         Assert.Equal(new Fixed(3), portion.Amount);
         var target = Assert.IsType<ObjectSelector>(portion.To);
         Assert.Equal(Quantifier.Target, target.Quantifier);
-        Assert.Equal(["any"], target.Filter.Kinds.Select(x => x.Value));
+        Assert.Equal(["Any"], target.Filter.Kinds.Select(x => x.Value));
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class LoweringTests(GrammarFixture fixture)
         Assert.Equal("Shroud", Assert.Single(pump.Keywords).Keyword);
         Assert.Equal(Quantifier.Attached, Assert.IsType<ObjectSelector>(pump.Objects).Quantifier);
         var count = Assert.IsType<CountCondition>(statics.While);
-        Assert.Equal(">=", count.Comparison);
+        Assert.Equal(Comparison.GreaterOrEqual, count.Comparison);
         Assert.Equal(new Fixed(7), count.Threshold);
         var cards = Assert.IsType<ObjectSelector>(count.Of);
         Assert.Equal("Graveyard", cards.Filter.Zone.Zone);

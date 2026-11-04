@@ -52,7 +52,7 @@ public abstract record Condition : IrNode;
 public sealed record OpaqueCondition(string Text, string Glyph) : Condition, IOpaque;
 
 /// <summary>A count of objects compared with a threshold: "there are seven or more cards in your graveyard".</summary>
-public sealed record CountCondition(Selector Of, string Comparison, Quantity Threshold) : Condition;
+public sealed record CountCondition(Selector Of, Comparison Comparison, Quantity Threshold) : Condition;
 
 /// <summary>A player controlling (or not) what a selector picks out: "you control a forest", "you don't control an ogre".</summary>
 public sealed record Controls(Selector Player, Selector Objects, bool Negated = false, string Connective = null, string Tense = null) : Condition;
@@ -74,7 +74,12 @@ public abstract record Event : IrNode;
 public sealed record OpaqueEvent(string Text, string Glyph) : Event, IOpaque;
 
 /// <summary>Something happening to objects a selector picks out: they enter, die, attack, become tapped, …</summary>
-public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null) : Event;
+/// <summary>
+/// Something happening to an object: the events by name, the controller it happens under, how often or when it
+/// counts, a condition on it, what targets it (for becoming a target), and whose zone it concerns ("is put into an
+/// opponent's graveyard").
+/// </summary>
+public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null, Selector ZoneOwner = null) : Event;
 
 /// <summary>Something that happened in the turn, named: "a creature died", "you attacked", "you gained life".</summary>
 public sealed record NamedEvent(string Kind) : Event;
@@ -107,10 +112,10 @@ public sealed record PayLife(Quantity Amount) : Cost;
 public sealed record ActionCost(Effect Action) : Cost;
 
 /// <summary>A zone, and whose when it's a player's: "your hand", "its owner's graveyard", "the battlefield".</summary>
-public sealed record ZoneRef(string Zone, Selector Owner = null, string Position = null) : IrNode;
+public sealed record ZoneRef(string Zone, Selector Owner = null, string Position = null, string Order = null, string State = null, CounterSpec WithCounters = null) : IrNode;
 
 /// <summary>An amount at or beyond a bound: "two or more" (">="), "two or fewer" ("<=").</summary>
-public sealed record Bound(Quantity Value, string Comparison) : Quantity;
+public sealed record Bound(Quantity Value, Comparison Comparison) : Quantity;
 
 /// <summary>A scaled amount with its rounding: "half the number of zombies you control, rounded down".</summary>
 public sealed record Scaled(Quantity Base, string Factor, string Rounding = null) : Quantity;
@@ -145,7 +150,7 @@ public sealed record PlayerEvent(Selector Player, string Event, string Timing = 
 public sealed record WouldHappen(Selector Subject, Effect What) : Event;
 
 /// <summary>Two amounts compared: "your devotion to white is less than five".</summary>
-public sealed record CompareCount(Quantity Count, string Comparison, Quantity Threshold) : Condition;
+public sealed record CompareCount(Quantity Count, Comparison Comparison, Quantity Threshold) : Condition;
 
 /// <summary>How many distinct kinds of an aspect appear among some objects: "card types among cards in your graveyard".</summary>
 public sealed record DistinctCount(string Aspect, Selector Among) : Quantity;
