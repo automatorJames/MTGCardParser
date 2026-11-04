@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Concurrent;
-
 namespace MTGRulesIR.Lowering;
 
 /// <summary>Lowers whole documents: each line's top-level glyphs to abilities, classified by the card's types where the glyph alone doesn't say what frame it is.</summary>
@@ -69,39 +66,11 @@ public sealed class CorpusLowering
             }
 
         var opaque = abilities.SelectMany(OpaqueNodes.In).Select(x => x.Glyph).ToList();
-        return (new LineRules(line.SourceText.LineIndex, line.SourceText.FormattedText, abilities, opaque), new LineOrigins(ctx.Origins, ctx.UnboundReferences));
+        var open = abilities.SelectMany(OpenSlots.In).ToList();
+        return (new LineRules(line.SourceText.LineIndex, line.SourceText.FormattedText, abilities, opaque, open), new LineOrigins(ctx.Origins, ctx.UnboundReferences));
     }
 
 }
 
 /// <summary>Where one line's nodes came from in its text (see <see cref="LoweringContext.Origins"/>), and how many references stayed unbound.</summary>
 public sealed record LineOrigins(IReadOnlyDictionary<IrNode, Glyphotype.Lowering.SourceSpan> Spans, int UnboundReferences);
-
-/// <summary>Finds the opaque nodes in an IR tree, by walking every node-typed property and list.</summary>
-public static class OpaqueNodes
-{
-    static readonly ConcurrentDictionary<Type, PropertyInfo[]> _properties = new();
-
-    public static IEnumerable<IOpaque> In(IrNode node)
-    {
-        if (node is null)
-            yield break;
-
-        if (node is IOpaque opaque)
-            yield return opaque;
-
-        foreach (var property in _properties.GetOrAdd(node.GetType(), x => x.GetProperties().Where(p => p.GetIndexParameters().Length == 0).ToArray()))
-        {
-            var value = property.GetValue(node);
-
-            if (value is IrNode child)
-                foreach (var found in In(child))
-                    yield return found;
-            else if (value is IEnumerable list and not string)
-                foreach (var item in list)
-                    if (item is IrNode element)
-                        foreach (var found in In(element))
-                            yield return found;
-        }
-    }
-}

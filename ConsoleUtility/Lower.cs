@@ -7,8 +7,9 @@ namespace ConsoleUtility;
 
 /// <summary>
 /// <c>lower out-dir [every]</c>: the corpus (or every Nth document) tokenized and lowered to the rules IR, written as
-/// <c>rules.jsonl</c> (one card's <see cref="CardRules"/> per line) and <c>report.txt</c> (what stayed opaque, by
-/// glyph type), with the headline numbers printed.
+/// <c>rules.jsonl</c> (one card's <see cref="CardRules"/> per line), <c>report.txt</c> (what stayed opaque, by glyph
+/// type, and which untyped slots keep lowered lines from engine closure) and <c>census.txt</c> (the values every
+/// string slot took - the vocabularies still to be closed), with the headline numbers printed.
 /// <para>
 /// <c>lowertext "text" [types]</c>: one line of card text (with <c>{this}</c> for the card's name) lowered and printed
 /// as indented JSON, for looking at what a construction becomes.
@@ -32,16 +33,19 @@ static class Lower
 
         Directory.CreateDirectory(outDir);
         var report = new LoweringReport();
+        var census = new VocabularyCensus();
 
         using (var writer = new StreamWriter(Path.Combine(outDir, "rules.jsonl")))
             foreach (var card in cards)
             {
                 report.Add(card);
+                census.Add(card);
                 writer.WriteLine(IrJson.Serialize(card));
             }
 
         var text = report.ToText();
         File.WriteAllText(Path.Combine(outDir, "report.txt"), text);
+        File.WriteAllText(Path.Combine(outDir, "census.txt"), census.ToText());
         Console.WriteLine(text);
     }
 
