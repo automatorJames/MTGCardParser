@@ -175,7 +175,7 @@ public sealed partial class Lowerer
 
         // Selectors and qualifiers.
         Rule<G.ThisObject>((g, ctx) => new Self());
-        Rule<G.PlayersHand>((g, ctx) => new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: ["card"], Zone: new ZoneRef("Hand", LowerAs<Selector>(g.Owner, ctx)))));
+        Rule<G.PlayersHand>((g, ctx) => new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef("Hand", LowerAs<Selector>(g.Owner, ctx)))));
         Rule<G.NextDamage>((g, ctx) => QuantityOf(g.Quantity));
         Rule<G.SpellCaster>((g, ctx) => new CastBy(Player(g.Player), g.Relation.ToString(), g.From?.ToString(), g.ThisTurn == true, g.During is null ? null : PhaseRefOf(g.During, ctx)));
         Rule<G.WithCharacteristicValue>((g, ctx) => new CharacteristicBound([g.Characteristic.ToString()], LowerAs<Quantity>(g.Value, ctx), "Equal"));
@@ -187,31 +187,31 @@ public sealed partial class Lowerer
         Rule<G.AffectedThisWay>((g, ctx) =>
         {
             var filter = FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifiers, narrowing: [g.Chosen, g.From]);
-            return new ObjectSelector(Quantifier.Those, filter with { Qualifiers = [.. filter.Qualifiers ?? [], new Qualifier(g.Action + "ThisWay")] });
+            return new ObjectSelector(Quantifier.Those, filter with { Qualifiers = [.. filter.Qualifiers ?? [], Q(g.Action + "ThisWay", "AffectedThisWay")] });
         });
         Rule<G.RevealedFromHand>((g, ctx) =>
         {
             var hand = new ZoneRef("Hand", PlayerOf(g.Whose), g.Opening ? "Opening" : null);
             var wanted = LowerAs<Selector>(g.Wanted, ctx);
             var selector = wanted is ObjectSelector objects
-                ? objects with { Filter = (objects.Filter ?? new ObjectFilter()) with { Zone = hand, Qualifiers = g.AtRandom ? [.. objects.Filter?.Qualifiers ?? [], new Qualifier("AtRandom")] : objects.Filter?.Qualifiers } }
+                ? objects with { Filter = (objects.Filter ?? new ObjectFilter()) with { Zone = hand, Qualifiers = g.AtRandom ? [.. objects.Filter?.Qualifiers ?? [], Q(Manner.AtRandom)] : objects.Filter?.Qualifiers } }
                 : wanted;
             return g.Count is null || selector is not ObjectSelector counted ? selector : counted with { Count = LowerAs<Quantity>(g.Count, ctx) };
         });
         Rule<G.ThisOrAnother>((g, ctx) =>
             new Union([new Self(), new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, qualifiers: g.Qualifier, controller: g.Controller, narrowing: [g.With]), Other: true)], "or"));
         Rule<G.PlayerOrPermanent>((g, ctx) => new Union([Player(g.Player), LowerAs<Selector>(g.Permanent, ctx)], "or"));
-        Rule<G.PermanentOrPlayer>((g, ctx) => new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: ["permanent", "player"])));
+        Rule<G.PermanentOrPlayer>((g, ctx) => new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [Kind("permanent"), Kind("player")])));
         Rule<G.YouAndEach>((g, ctx) => new Union([new PlayerSelector(PlayerKind.You), LowerAs<Selector>(g.Each, ctx)]));
         Rule<G.TargetAndEach>((g, ctx) => new Union([LowerAs<Selector>(g.Target, ctx), LowerAs<Selector>(g.Each, ctx)]));
-        Rule<G.TargetSpellOrPermanent>((g, ctx) => new ObjectSelector(Quantifier.Target, FilterOf(ctx, narrowing: [g.With]) with { Kinds = ["spell", g.Kind.ToString()] }));
+        Rule<G.TargetSpellOrPermanent>((g, ctx) => new ObjectSelector(Quantifier.Target, FilterOf(ctx, narrowing: [g.With]) with { Kinds = [Kind("spell"), Kind(g.Kind)] }));
         Rule<G.ControlledByWho>((g, ctx) => new Controlled(Player(g.Controller)));
         Rule<G.TargetingObjects>((g, ctx) =>
         {
             var qualifiers = LowerAll(g.Qualifier, ctx).OfType<Qualifier>().ToList();
             return qualifiers.Count == 0 && g.From is null
                 ? new Term(g.Kinds.ToString(), nameof(G.TargetingObjects))
-                : new QualifiedKind(g.Kinds.ToString(), [.. qualifiers, .. g.From is null ? [] : new[] { new Qualifier("From:" + ctx.TextOf(g.From)) }]);
+                : new QualifiedKind(g.Kinds.ToString(), [.. qualifiers, .. g.From is null ? [] : new[] { Q(ctx.TextOf(g.From), "From") }]);
         });
         Rule<G.TokenWithQuotedAbility>((g, ctx) =>
             Lower(g.Token, ctx) is TokenSpecWithCount token

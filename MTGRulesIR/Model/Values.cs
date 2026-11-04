@@ -64,7 +64,7 @@ public sealed record OutcomeCondition(Selector Player, string Result) : Conditio
 public sealed record SelfOnBattlefield : Condition;
 
 /// <summary>An object named earlier is (or isn't) of some kinds: "it's a creature card".</summary>
-public sealed record IsKind(Selector Object, IReadOnlyList<string> Kinds, bool Negated = false, ObjectFilter Qualified = null) : Condition;
+public sealed record IsKind(Selector Object, IReadOnlyList<Term> Kinds, bool Negated = false, ObjectFilter Qualified = null) : Condition;
 
 public sealed record And(IReadOnlyList<Condition> Conditions) : Condition;
 

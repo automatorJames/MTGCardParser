@@ -12,7 +12,7 @@ public sealed class PredicateTests(GrammarFixture fixture)
     {
         var ability = fixture.LowerAbility("{t}: add {b} for each charge counter on this artifact", "Artifact");
 
-        var filter = NodeWalker.Nodes(ability).OfType<ObjectSelector>().First(x => x.Filter.Kinds?.Contains("counter") == true).Filter;
+        var filter = NodeWalker.Nodes(ability).OfType<ObjectSelector>().First(x => x.Filter.Kinds?.Any(k => k.Value == "counter") == true).Filter;
         var related = Assert.IsType<Related>(Assert.Single(filter.With));
         Assert.Equal(Relation.On, related.Relation);
         Assert.IsType<Self>(related.To);

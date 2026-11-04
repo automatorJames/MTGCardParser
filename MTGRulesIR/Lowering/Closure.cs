@@ -87,14 +87,15 @@ public static class OpenSlots
 
 /// <summary>
 /// The leaf vocabulary of a lowered corpus: every string-typed slot (a <c>string</c> or a list of them) that isn't
-/// free text, by <c>Record.Property</c>, and the distinct values it took with how many lines each appeared in. Each
-/// slot is a vocabulary the engine will switch on; a slot's list is its to-do list for becoming an enum, and a long
-/// tail in it is a slot being used as an escape hatch. Free text - card text, names, glyph type names, bindings - is
-/// left out by property name.
+/// free text, by <c>Record.Property</c> - split by vocabulary where the record names one in a <c>Vocabulary</c>
+/// property, as <see cref="Term"/> and <see cref="Qualifier"/> do - and the distinct values it took with how many
+/// lines each appeared in. A slot whose vocabulary is an enum (a grammar vocabulary, or one of
+/// <see cref="Vocabularies"/>) is closed, and only values outside the enum are listed; the rest are the vocabularies
+/// still to be closed. Free text - card text, names, glyph type names, bindings - is left out by property name.
 /// </summary>
 public sealed class VocabularyCensus
 {
-    static readonly HashSet<string> _freeText = ["Text", "Name", "Glyph", "Binding", "Antecedent", "Types"];
+    static readonly HashSet<string> _freeText = ["Text", "Name", "Glyph", "Binding", "Antecedent", "Types", "Vocabulary"];
 
     public static bool IsFreeText(PropertyInfo property) => _freeText.Contains(property.Name);
 
@@ -123,7 +124,7 @@ public sealed class VocabularyCensus
 
     void Count(IrNode node, PropertyInfo property, string value, string lineKey)
     {
-        var slot = node.GetType().Name + "." + property.Name;
+        var slot = SlotOf(node, property);
 
         if (!_slots.TryGetValue(slot, out var values))
             _slots[slot] = values = [];
@@ -134,17 +135,45 @@ public sealed class VocabularyCensus
         lines.Add(lineKey);
     }
 
+    /// <summary><c>Record.Property</c>, with the node's vocabulary in brackets when it names one: <c>Qualifier.Quality[CardType]</c>.</summary>
+    static string SlotOf(IrNode node, PropertyInfo property)
+    {
+        var slot = node.GetType().Name + "." + property.Name;
+        var vocabulary = node.GetType().GetProperty("Vocabulary")?.GetValue(node) as string;
+        return vocabulary is null ? slot : $"{slot}[{vocabulary}]";
+    }
+
+    /// <summary>The enum a slot's values must belong to - from the vocabulary in its name, or from <see cref="Vocabularies.Slots"/> - or null when the slot is open.</summary>
+    public static Type EnumOf(string slot)
+    {
+        var bracket = slot.IndexOf('[');
+        return bracket >= 0
+            ? Vocabularies.Find(slot[(bracket + 1)..^1])
+            : Vocabularies.Slots.GetValueOrDefault(slot);
+    }
+
     /// <summary>The slots, their distinct values, and how many lines each value appeared in.</summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> Slots =>
         _slots.ToDictionary(x => x.Key, x => (IReadOnlyDictionary<string, int>)x.Value.ToDictionary(v => v.Key, v => v.Value.Count));
 
-    /// <summary>One section per slot, widest vocabulary first; within a slot, values by lines, descending.</summary>
+    /// <summary>The values of each slot that lie outside its enum, for the slots that have one.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Outsiders =>
+        _slots.Where(x => EnumOf(x.Key) is not null)
+            .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value.Keys.Where(v => !Enum.IsDefined(EnumOf(x.Key), v)).ToList());
+
+    /// <summary>
+    /// The open slots first, widest vocabulary first, with their values by lines descending; then the closed slots,
+    /// each on a line, with any values outside their enum called out.
+    /// </summary>
     public string ToText(int valuesPerSlot = 200)
     {
         var text = new StringBuilder();
-        text.AppendLine($"String slots: {_slots.Count}, distinct values {_slots.Sum(x => x.Value.Count):N0}");
+        var open = _slots.Where(x => EnumOf(x.Key) is null).OrderByDescending(x => x.Value.Count).ThenBy(x => x.Key, StringComparer.Ordinal).ToList();
+        var closed = _slots.Where(x => EnumOf(x.Key) is not null).OrderBy(x => x.Key, StringComparer.Ordinal).ToList();
+        var outsiders = Outsiders;
+        text.AppendLine($"String slots: {_slots.Count}, open {open.Count} with {open.Sum(x => x.Value.Count):N0} distinct values, closed {closed.Count} with {outsiders.Sum(x => x.Value.Count):N0} values outside their vocabulary");
 
-        foreach (var (slot, values) in _slots.OrderByDescending(x => x.Value.Count).ThenBy(x => x.Key, StringComparer.Ordinal))
+        foreach (var (slot, values) in open)
         {
             text.AppendLine();
             text.AppendLine($"{slot}: {values.Count} values, {values.Values.SelectMany(x => x).Distinct().Count():N0} lines");
@@ -154,6 +183,17 @@ public sealed class VocabularyCensus
 
             if (values.Count > valuesPerSlot)
                 text.AppendLine($"          ... {values.Count - valuesPerSlot} more");
+        }
+
+        text.AppendLine();
+        text.AppendLine("Closed slots:");
+
+        foreach (var (slot, values) in closed)
+        {
+            var outside = outsiders[slot];
+            text.AppendLine(outside.Count == 0
+                ? $"  {slot}: {values.Count} values, all in {EnumOf(slot).Name}"
+                : $"  {slot}: {values.Count} values, {outside.Count} outside {EnumOf(slot).Name}: {string.Join(", ", outside.OrderByDescending(v => values[v].Count).Take(12))}{(outside.Count > 12 ? ", ..." : "")}");
         }
 
         return text.ToString();

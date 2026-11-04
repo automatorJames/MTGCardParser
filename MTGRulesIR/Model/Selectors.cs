@@ -40,10 +40,15 @@ public sealed record ObjectSelector(Quantifier Quantifier, ObjectFilter Filter, 
 /// who controls or owns them, further "with …" and relative clauses as <see cref="Predicate"/>s, and the zone
 /// they're in when not the battlefield.
 /// </summary>
-public sealed record ObjectFilter(IReadOnlyList<string> Kinds = null, IReadOnlyList<Qualifier> Qualifiers = null, Controlled Controller = null, IReadOnlyList<Predicate> With = null, ZoneRef Zone = null) : IrNode;
+public sealed record ObjectFilter(IReadOnlyList<Term> Kinds = null, IReadOnlyList<Qualifier> Qualifiers = null, Controlled Controller = null, IReadOnlyList<Predicate> With = null, ZoneRef Zone = null) : IrNode;
 
-/// <summary>One qualifier word, possibly negated: "tapped", "nonblack".</summary>
-public sealed record Qualifier(string Quality, bool Negated = false) : IrNode;
+/// <summary>
+/// One qualifier word, possibly negated: "tapped", "nonblack". <paramref name="Vocabulary"/> names the closed set the
+/// word belongs to - a grammar vocabulary (a card type, a color, a creature type) or one the lowering defines (see
+/// <see cref="Vocabularies"/>) - so the engine switches on the vocabulary first; null means the lowering hasn't
+/// classified the word yet.
+/// </summary>
+public sealed record Qualifier(string Quality, bool Negated = false, string Vocabulary = null) : IrNode;
 
 /// <summary>Who controls or owns something: "you control", "an opponent controls", "you don't control", "target player owns".</summary>
 public sealed record Controlled(Selector Player, string Relation = "Control", bool Negated = false) : IrNode;

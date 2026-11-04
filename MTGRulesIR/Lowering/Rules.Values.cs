@@ -70,7 +70,7 @@ public sealed partial class Lowerer
         Rule<G.CardIsKind>((g, ctx) =>
         {
             List<IrNode> qualified = [];
-            var kinds = Terms(g.Kind, ctx, qualified);
+            var kinds = TermsOf(g.Kind, ctx, qualified);
             qualified.AddRange(LowerAll(g.Chosen, ctx));
             var filter = new Filter();
             foreach (var node in qualified)

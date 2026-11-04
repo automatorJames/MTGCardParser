@@ -82,7 +82,7 @@ public sealed partial class Lowerer
                 LowerAs<Effect>(g.Effect, ctx)));
 
         Rule<G.IndefiniteSpell>((g, ctx) =>
-            new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: null, qualifiers: g.Qualifiers, narrowing: [g.With]) with { Kinds = ["spell"] }, Other: g.Determiner == G.IndefiniteDeterminer.Another));
+            new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: null, qualifiers: g.Qualifiers, narrowing: [g.With]) with { Kinds = [Kind("spell")] }, Other: g.Determiner == G.IndefiniteDeterminer.Another));
 
         Rule<G.TriggeredAbility>((g, ctx) =>
             new TriggeredAbility(LowerAs<Event>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx)));

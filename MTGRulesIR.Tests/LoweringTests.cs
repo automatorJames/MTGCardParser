@@ -25,7 +25,7 @@ public sealed class LoweringTests(GrammarFixture fixture)
         Assert.Equal(new Fixed(3), portion.Amount);
         var target = Assert.IsType<ObjectSelector>(portion.To);
         Assert.Equal(Quantifier.Target, target.Quantifier);
-        Assert.Equal(["any"], target.Filter.Kinds);
+        Assert.Equal(["any"], target.Filter.Kinds.Select(x => x.Value));
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public sealed class LoweringTests(GrammarFixture fixture)
         var triggered = Assert.IsType<TriggeredAbility>(ability);
         var trigger = Assert.IsType<ObjectEvent>(triggered.Trigger);
         var land = Assert.IsType<ObjectSelector>(trigger.Subject);
-        Assert.Equal(["Land"], land.Filter.Kinds);
+        Assert.Equal(["Land"], land.Filter.Kinds.Select(x => x.Value));
         Assert.NotNull(land.Binding);
 
         var controller = Assert.IsType<PlayerSelector>(Assert.Single(Assert.IsType<DealDamage>(triggered.Effect).Portions).To);

@@ -9,11 +9,11 @@ public sealed partial class Lowerer
         Rule<G.SplitLookedAtCards>((g, ctx) =>
             Seq(
                 new ChangeZone(LowerAs<Selector>(g.Cards, ctx), ZoneOf(g.Chosen, ctx) ?? new ZoneRef("?")),
-                new ChangeZone(new ObjectSelector(Quantifier.Rest, new ObjectFilter(Kinds: ["card"])), ZoneOf(g.Rest, ctx) ?? new ZoneRef("?"))));
+                new ChangeZone(new ObjectSelector(Quantifier.Rest, new ObjectFilter(Kinds: [Kind("card")])), ZoneOf(g.Rest, ctx) ?? new ZoneRef("?"))));
         Rule<G.CardsFromAmong>((g, ctx) =>
         {
             var count = g.Count.GetResolvedValue();
-            var filter = FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.Bound]) with { Kinds = ["card"] };
+            var filter = FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.Bound]) with { Kinds = [Kind("card")] };
             return new ObjectSelector(
                 Quantifier.Count,
                 filter with { With = [.. filter.With ?? [], new Related(Relation.Among, LowerAs<Selector>(g.Among, ctx))] },
@@ -21,19 +21,19 @@ public sealed partial class Lowerer
                 UpTo: count is G.UpToCount);
         });
         Rule<G.PutThemBack>((g, ctx) =>
-            new ChangeZone(new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: ["card"])), new ZoneRef("Library", Position: "Top AnyOrder")));
+            new ChangeZone(new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [Kind("card")])), new ZoneRef("Library", Position: "Top AnyOrder")));
         Rule<G.PlayPermission>((g, ctx) => new Playable(g.Verb?.ToString(), LowerAs<Selector>(g.What, ctx)));
         Rule<G.TopOfLibrary>((g, ctx) => new ZoneRef("Library", LowerAs<Selector>(g.Owner, ctx), "Top"));
-        Rule<G.CardsInPlayersZone>((g, ctx) => new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: ["card"], Zone: ZoneOf(g.Zone, ctx))));
+        Rule<G.CardsInPlayersZone>((g, ctx) => new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: ZoneOf(g.Zone, ctx))));
         Rule<G.DamagedPermanent>((g, ctx) =>
             Lower(g.Source, ctx) switch
             {
                 Selector source => Narrow(LowerAs<Selector>(g.Permanent, ctx), Relation.DealtDamageBy, source),
-                Term thisWay => Narrow(LowerAs<Selector>(g.Permanent, ctx), new Qualifier("DealtDamage" + thisWay.Value), ctx),
+                Term thisWay => Narrow(LowerAs<Selector>(g.Permanent, ctx), Q("DealtDamage" + thisWay.Value, nameof(DamageHistory)), ctx),
                 var other => Narrow(LowerAs<Selector>(g.Permanent, ctx), other, ctx, g.Source),
             });
         Rule<G.ColoredKind>((g, ctx) =>
-            new QualifiedKind(Lower(g.Kind, ctx) is Term kind ? kind.Value : ctx.TextOf(g.Kind), [new Qualifier(g.Color.ToString())]));
+            new QualifiedKind(Lower(g.Kind, ctx) is Term kind ? kind.Value : ctx.TextOf(g.Kind), [Q(g.Color)]));
         Rule<G.DescribedKinds>((g, ctx) =>
         {
             List<IrNode> other = [];
@@ -73,19 +73,19 @@ public sealed partial class Lowerer
         Rule<G.CardIsFound>((g, ctx) => new PlayerAction(null, "Reveal", LowerAs<Selector>(g.Card, ctx)));
         Rule<G.MoreThanCount>((g, ctx) => new Bound(QuantityOf(g.Count), ">"));
         Rule<G.IndefiniteCard>((g, ctx) =>
-            new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers) with { Kinds = g.OrToken ? ["card", "token"] : ["card"] }));
+            new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers) with { Kinds = g.OrToken ? [Kind("card"), Kind("token")] : [Kind("card")] }));
         Rule<G.ASource>((g, ctx) =>
-            new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers, controller: g.Controller) with { Kinds = [g.Noun.ToString()] }, Other: ctx.TextOf(g)?.StartsWith("another") == true));
+            new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers, controller: g.Controller) with { Kinds = [Kind(g.Noun)] }, Other: ctx.TextOf(g)?.StartsWith("another") == true));
         Rule<G.CountersOfKind>((g, ctx) =>
             new CounterSpec(g.Kind?.GetResolvedValue() switch { G.CounterType type => PatternOf(type), G.PowerToughnessMod mod => ctx.TextOf(mod), _ => null }, null));
         Rule<G.AnyCounters>((g, ctx) => new CounterSpec(null, null));
         Rule<G.CreaturesBlockingOrBlockedBy>((g, ctx) =>
-            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: ["Creature"], With: [new InCombatWith(LowerAs<Selector>(g.Combatant, ctx))])));
+            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("Creature")], With: [new InCombatWith(LowerAs<Selector>(g.Combatant, ctx))])));
         Rule<G.EqualToSmallCount>((g, ctx) => LowerAs<Quantity>(g.Count, ctx));
         Rule<G.ExcludedKind>((g, ctx) => new TermSet(Terms(g.Kinds, ctx), "Excluded"));
-        Rule<G.QualifiedCardName>((g, ctx) => new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers) with { Kinds = ["card name"] }));
+        Rule<G.QualifiedCardName>((g, ctx) => new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers) with { Kinds = [Kind("card name")] }));
         Rule<G.TargetPlayerWhoOutnumbers>((g, ctx) =>
-            new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [g.Player.ToString()], Qualifiers: g.Proviso is null ? null : [new Qualifier(g.Proviso.ToString())], With: [new Compared("More", LowerAs<Selector>(g.Compared, ctx), LowerAs<Selector>(g.Measure, ctx))])));
+            new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [Kind(g.Player)], Qualifiers: g.Proviso is null ? null : [Q(g.Proviso)], With: [new Compared("More", LowerAs<Selector>(g.Compared, ctx), LowerAs<Selector>(g.Measure, ctx))])));
         Rule<G.WithQuotedAbility>((g, ctx) => new GrantAbility(null, AsAbility(Lower(g.Ability, ctx), ctx, g.Ability)));
         Rule<G.WithKeywordsAndQuotedAbility>((g, ctx) =>
         {
@@ -96,19 +96,19 @@ public sealed partial class Lowerer
         Rule<G.WithQuotedAbilityAndEquip>((g, ctx) =>
             Seq(new GrantAbility(null, AsAbility(Lower(g.Ability, ctx), ctx, g.Ability)), new Pump(null, Keywords: [new KeywordInstance("Equip", Cost: new PayMana(g.Cost.Items.Select(SymbolText).ToList()))])));
         Rule<G.PlayersCounters>((g, ctx) =>
-            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: ["counter"], Qualifiers: [new Qualifier(PatternOf(g.Kind))], Controller: new Controlled(LowerAs<Selector>(g.Player, ctx), "Has"))));
+            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("counter")], Qualifiers: [Q(PatternOf(g.Kind), "CounterKind")], Controller: new Controlled(LowerAs<Selector>(g.Player, ctx), "Has"))));
         Rule<G.CountersOn>((g, ctx) =>
-            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: ["counter"], Qualifiers: g.CounterType is { } type ? [new Qualifier(PatternOf(type))] : null, With: [new Related(Relation.On, LowerAs<Selector>(g.Object, ctx))])));
+            new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("counter")], Qualifiers: g.CounterType is { } type ? [Q(PatternOf(type), "CounterKind")] : null, With: [new Related(Relation.On, LowerAs<Selector>(g.Object, ctx))])));
         Rule<G.BasePowerToughness>((g, ctx) => new Term(ctx.TextOf(g), nameof(G.BasePowerToughness)));
         Rule<G.EnchantedPermanentsController>((g, ctx) =>
-            new PlayerSelector(PlayerKind.ControllerOf, new ObjectSelector(Quantifier.Attached, FilterOf(ctx, kinds: g.Kind) with { Qualifiers = [new Qualifier("Enchanted")] })));
+            new PlayerSelector(PlayerKind.ControllerOf, new ObjectSelector(Quantifier.Attached, FilterOf(ctx, kinds: g.Kind) with { Qualifiers = [Q("Enchanted", "Attachment")] })));
         Rule<G.NthSpellThisTurn>((g, ctx) =>
         {
-            var filter = FilterOf(ctx, qualifiers: g.Qualifiers) with { Kinds = ["spell"] };
-            return new ObjectSelector(Quantifier.Any, filter with { Qualifiers = [.. filter.Qualifiers ?? [], new Qualifier(g.Ordinal.ToString()), new Qualifier(g.Period.ToString())] });
+            var filter = FilterOf(ctx, qualifiers: g.Qualifiers) with { Kinds = [Kind("spell")] };
+            return new ObjectSelector(Quantifier.Any, filter with { Qualifiers = [.. filter.Qualifiers ?? [], Q(g.Ordinal), Q(g.Period)] });
         });
         Rule<G.CopiedSpell>((copied, ctx) =>
-            copied == G.CopiedSpell.ThisSpell ? new Self() : new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [copied.ToString()])));
+            copied == G.CopiedSpell.ThisSpell ? new Self() : new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [Kind(copied)])));
 
         // Quick wins from the report after round four.
         Rule<G.PermanentFromZone>((g, ctx) =>
@@ -118,9 +118,9 @@ public sealed partial class Lowerer
         Rule<G.CountOfThem>((g, ctx) =>
             new ObjectSelector(Quantifier.Count, new ObjectFilter(With: [new Related(Relation.Among, new Reference(null, "them"))]), Count: QuantityOf(g.Quantity), UpTo: ctx.TextOf(g)?.StartsWith("up to") == true));
         Rule<G.EnergySymbols>((g, ctx) => new Fixed((ctx.TextOf(g) ?? "").Split("{e}").Length - 1));
-        Rule<G.NamedThis>((g, ctx) => new Qualifier("NamedThis", g.Not));
+        Rule<G.NamedThis>((g, ctx) => Q(Distinction.NamedThis, g.Not));
         Rule<G.AnyCard>((g, ctx) =>
-            new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.With]) with { Kinds = ["card"] }, Other: ctx.TextOf(g)?.StartsWith("another") == true));
+            new ObjectSelector(Quantifier.Any, FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.With]) with { Kinds = [Kind("card")] }, Other: ctx.TextOf(g)?.StartsWith("another") == true));
         Rule<G.CastSpellsUse>((g, ctx) => new Playable("Cast", g.Narrowed is null ? LowerAs<Selector>(g.Spells, ctx) : Narrow(LowerAs<Selector>(g.Spells, ctx), Lower(g.Narrowed, ctx), ctx, g.Narrowed)));
         Rule<G.HaveDo>((g, ctx) =>
         {
@@ -137,7 +137,7 @@ public sealed partial class Lowerer
         });
         Rule<G.EndOfCombatEffect>((g, ctx) => WithSubject(ctx, g.Subject, () => new Delayed(new PhaseEvent(new PhaseRef("EndOfCombatStep", "End")), LowerAs<Effect>(g.Effect, ctx))));
         Rule<G.CantBeCountered>((g, ctx) => new CantBeTargeted(LowerAs<Selector>(g.Spell, ctx), [ctx.TextOf(g)?.Contains("copied") == true ? "Copied" : "Countered"]));
-        Rule<G.ThatToken>((g, ctx) => new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: ["token"])));
+        Rule<G.ThatToken>((g, ctx) => new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [Kind("token")])));
         Rule<G.PerfectSubject>((subject, ctx) => new PlayerSelector(subject == G.PerfectSubject.You ? PlayerKind.You : PlayerKind.ThatPlayer));
         Rule<G.TurnOwner>((owner, ctx) =>
             owner.ToString() switch

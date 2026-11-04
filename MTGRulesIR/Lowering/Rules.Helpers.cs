@@ -77,20 +77,36 @@ public sealed partial class Lowerer
     }
 
     /// <summary>The names of the vocabulary members among <paramref name="value"/>'s nodes; anything else goes to <paramref name="rest"/>.</summary>
-    List<string> Terms(object value, LoweringContext ctx, List<IrNode> rest = null)
+    List<string> Terms(object value, LoweringContext ctx, List<IrNode> rest = null) =>
+        TermsOf(value, ctx, rest).Select(x => x.Value).ToList();
+
+    /// <summary>The vocabulary members among <paramref name="value"/>'s nodes, each with its vocabulary; anything else goes to <paramref name="rest"/>.</summary>
+    List<Term> TermsOf(object value, LoweringContext ctx, List<IrNode> rest = null)
     {
-        List<string> names = [];
+        List<Term> terms = [];
 
         foreach (var node in LowerAll(value, ctx))
             if (node is Term term)
-                names.Add(term.Value);
+                terms.Add(term);
             else if (node is TermSet set)
-                names.AddRange(set.Values);
+                terms.AddRange(set.Values.Select(x => new Term(x, set.Vocabulary)));
             else
                 rest?.Add(node);
 
-        return names;
+        return terms;
     }
+
+    /// <summary>A kind of object the lowering names itself: "card", "spell", "counter", "any".</summary>
+    static Term Kind(string value) => new(value, "Kind");
+
+    /// <summary>A kind of object named by a vocabulary member.</summary>
+    static Term Kind(Enum member) => new(member.ToString(), member.GetType().Name);
+
+    /// <summary>A qualifier from a vocabulary member, its vocabulary being the member's enum.</summary>
+    static Qualifier Q(Enum member, bool negated = false) => new(member.ToString(), negated, member.GetType().Name);
+
+    /// <summary>A qualifier from a word the lowering makes, in a vocabulary it names (see <see cref="Vocabularies"/>).</summary>
+    static Qualifier Q(string value, string vocabulary, bool negated = false) => new(value, negated, vocabulary);
 
     static IReadOnlyList<T> OrNull<T>(List<T> list) => list.Count == 0 ? null : list;
 
@@ -108,7 +124,7 @@ public sealed partial class Lowerer
     {
         var filter = new Filter();
         List<IrNode> extra = [];
-        filter.Kinds.AddRange(Terms(kinds, ctx, extra));
+        filter.Kinds.AddRange(TermsOf(kinds, ctx, extra));
 
         foreach (var node in extra)
             filter.Add(node, ctx, kinds);
@@ -138,7 +154,7 @@ public sealed partial class Lowerer
     /// <summary>An <see cref="ObjectFilter"/> being assembled: lists for the slots, and the sorting of a lowered node into them.</summary>
     sealed class Filter
     {
-        public List<string> Kinds = [];
+        public List<Term> Kinds = [];
         public List<Qualifier> Qualifiers = [];
         public Controlled Controller;
         public List<Predicate> With = [];
@@ -170,7 +186,7 @@ public sealed partial class Lowerer
                     With.Add(new OfChosen(chosen.Value));
                     break;
                 case Term term:
-                    Qualifiers.Add(new Qualifier(term.Value));
+                    Qualifiers.Add(new Qualifier(term.Value, Vocabulary: term.Vocabulary));
                     break;
                 default:
                     With.Add(PredicateOf(node, ctx, source));
@@ -285,7 +301,7 @@ public sealed partial class Lowerer
     /// <summary>What's done with the cards a search found, after they're found: exiled, or revealed.</summary>
     static Effect SearchFollowUp(string kind, Selector searcher)
     {
-        var found = new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: ["card"], Qualifiers: [new Qualifier("Found")]));
+        var found = new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [Kind("card")], Qualifiers: [Q(Provenance.Found)]));
         return kind switch
         {
             "Exile" => new Exile(found),

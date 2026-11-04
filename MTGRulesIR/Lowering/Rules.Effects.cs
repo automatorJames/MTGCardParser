@@ -211,7 +211,7 @@ public sealed partial class Lowerer
 
         Rule<G.ForEach>((g, ctx) => new CountOf(LowerAs<Selector>(g.Counted, ctx)));
         Rule<G.EqualTo>((g, ctx) => LowerAs<Quantity>(g.Measure, ctx));
-        Rule<G.NumberOf>((g, ctx) => new CountOf(g.Other == true ? Narrow(LowerAs<Selector>(g.Counted, ctx), new Qualifier("Other"), ctx) : LowerAs<Selector>(g.Counted, ctx)));
+        Rule<G.NumberOf>((g, ctx) => new CountOf(g.Other == true ? Narrow(LowerAs<Selector>(g.Counted, ctx), Q(Distinction.Other), ctx) : LowerAs<Selector>(g.Counted, ctx)));
         Rule<G.UpToCount>((g, ctx) => LowerAs<Quantity>(g.Count, ctx));
         Rule<G.AtLeastCount>((g, ctx) => LowerAs<Quantity>(g.Count, ctx));
         Rule<G.EntersWithCounters>((g, ctx) =>

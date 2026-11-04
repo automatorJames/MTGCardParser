@@ -97,4 +97,24 @@ public sealed class ClosureTests
         Assert.DoesNotContain("OpaqueAbility.Text", census.Slots.Keys);
         Assert.DoesNotContain("OpaqueAbility.Glyph", census.Slots.Keys);
     }
+
+    [Fact]
+    public void CensusSplitsByVocabularyAndChecksEnums()
+    {
+        var card = new CardRules("Sample", "Instant",
+        [
+            Line(new SpellAbility(new Destroy(new ObjectSelector(Quantifier.Target, new ObjectFilter(
+                Kinds: [new Term("Creature", nameof(MTGGlyphs.GlyphDefinitions.CardType))],
+                Qualifiers: [new Qualifier("Top", Vocabulary: nameof(Position)), new Qualifier("Sideways", Vocabulary: nameof(Position)), new Qualifier("Odd")]))))),
+        ]);
+
+        var census = new VocabularyCensus();
+        census.Add(card);
+
+        Assert.Equal(["Top", "Sideways"], census.Slots["Qualifier.Quality[Position]"].Keys);
+        Assert.Equal(["Sideways"], census.Outsiders["Qualifier.Quality[Position]"]);
+        Assert.Empty(census.Outsiders["Term.Value[CardType]"]);
+        Assert.Equal(["Odd"], census.Slots["Qualifier.Quality"].Keys);
+        Assert.Contains("1 outside Position: Sideways", census.ToText());
+    }
 }
