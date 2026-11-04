@@ -16,7 +16,7 @@ public static class Vocabularies
         ["TokenSpec.Types"] = [typeof(G.CardType)],
         ["TokenSpec.Colors"] = [typeof(G.ManaColor)],
         ["TokenSpec.Subtypes"] = [typeof(G.CreatureType), typeof(G.LandType), typeof(G.PermanentSubtype), typeof(G.PlaneswalkerType)],
-        ["TokenSpec.Predefined"] = [typeof(G.PredefinedToken)],
+        ["TokenSpec.Predefined"] = [typeof(G.PredefinedToken), typeof(G.RoleKind)],
         ["Animate.Types"] = [typeof(G.CardType)],
         ["Animate.Colors"] = [typeof(G.ManaColor)],
         ["Animate.Subtypes"] = [typeof(G.CreatureType), typeof(G.LandType), typeof(G.PermanentSubtype), typeof(G.PlaneswalkerType)],
@@ -35,12 +35,12 @@ public static class Vocabularies
         ["ZoneRef.State"] = [typeof(G.ExileStatus)],
         ["LabeledAbility.Word"] = [typeof(G.AbilityWord)],
         ["ObjectEvent.Events"] = [typeof(G.PermanentEvent), typeof(ObjectEventKind), typeof(G.PastPermanentEvent), typeof(G.DepartureEvent), typeof(G.ObjectTurnEvent), typeof(G.EnteringWay), typeof(G.AsPermanentEvent), typeof(G.ThisWayAction), typeof(G.CardZoneEvent)],
-        ["ObjectEvent.Only"] = [typeof(G.EventOccurrence), typeof(G.TurnOwner)],
+        ["ObjectEvent.Only"] = [typeof(G.EventOccurrence), typeof(G.TurnOwner), typeof(G.TurnSpan), typeof(EventSpan)],
         ["ObjectEvent.By"] = [typeof(G.TargetingSource)],
         ["PlayerEvent.Event"] = [typeof(G.PlayerEventKind)],
         ["PlayerEvent.Timing"] = [typeof(G.PlayerEventTiming)],
-        ["NamedEvent.Kind"] = [typeof(G.TurnEvent)],
-        ["PlayerAction.Action"] = [typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile)],
+        ["NamedEvent.Kind"] = [typeof(G.TurnEvent), typeof(EventKind)],
+        ["PlayerAction.Action"] = [typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile), typeof(G.PlayerThisWayAction)],
         ["CombatEncounterEvent.Encounter"] = [typeof(G.CombatEncounterKind)],
         ["Happened.Span"] = [typeof(G.TurnSpan), typeof(EventSpan)],
         ["ThisTurn.Period"] = [typeof(G.TurnPeriod)],
@@ -57,7 +57,7 @@ public static class Vocabularies
         ["PhaseRef.Part"] = [typeof(G.PhasePart)],
         ["Special.Kind"] = [typeof(G.Quantity), typeof(SpecialAmount)],
         ["CantBeTargeted.By"] = [typeof(TargetingBy)],
-        ["ManaChoice.Choice"] = [typeof(G.ManaChoice)],
+        ["ManaChoice.Choice"] = [typeof(G.ManaChoice), typeof(ManaChoiceKind)],
         ["AddMana.Amount"] = [typeof(G.AddedManaAmount)],
         ["ManaRestriction.Rule"] = [typeof(G.ManaSpendingRule)],
         ["OfChosen.Characteristic"] = [typeof(G.ChosenAspect)],
@@ -92,7 +92,7 @@ public static class Vocabularies
         ["HasCountersCondition.Tense"] = [typeof(Possession)],
         ["ObjectIs.Tense"] = [typeof(G.Assertion)],
         ["BecomesAspect.Verb"] = [typeof(G.TypeCopula), typeof(G.Assertion), typeof(G.BecomeVerb)],
-        ["Playable.Verb"] = [typeof(G.PlayVerb)],
+        ["Playable.Verb"] = [typeof(G.PlayVerb), typeof(UseVerb)],
         ["RevealUntil.Verb"] = [typeof(G.RevealOrExile)],
         ["PreventDamage.Kind"] = [typeof(G.DamageKind)],
         ["CostModification.Action"] = [typeof(G.CostedAction)],
@@ -108,6 +108,13 @@ public static class Vocabularies
         ["WasAffectedThisWay.Action"] = [typeof(G.ThisWayAction)],
         ["Extreme.Characteristic"] = [typeof(G.Characteristic)],
         ["Extreme.Which"] = [typeof(ExtremeKind)],
+        ["Remains.State"] = [typeof(G.RemainingState)],
+        ["Skip.Event"] = [typeof(G.SkippedEvent)],
+        ["ManaSpent.Color"] = [typeof(G.ManaColor)],
+        ["Distinct.Characteristic"] = [typeof(G.Characteristic)],
+        ["SharesCharacteristic.Characteristic"] = [typeof(G.Characteristic)],
+        ["CharacteristicCompared.Characteristic"] = [typeof(G.Characteristic)],
+        ["CharacteristicCompared.OtherCharacteristic"] = [typeof(G.Characteristic)],
     };
 
     static readonly System.Text.RegularExpressions.Regex ManaSymbol = new(@"^\{(\d+|[wubrgcsxe]|[wubrg2]/[wubrgp]|[wubrg]/[wubrg]/p)\}$");
@@ -121,6 +128,7 @@ public static class Vocabularies
     {
         ["PayMana.Symbols"] = ManaSymbol,
         ["ManaAmount.Symbols"] = ManaSymbol,
+        ["ManaChoice.Among"] = ManaSymbol,
         ["CounterSpec.Kind"] = CounterName,
         ["Qualifier.Quality[CounterKind]"] = CounterName,
     };
@@ -168,10 +176,19 @@ public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command 
 public enum Comparison { Equal, Less, LessOrEqual, Greater, GreaterOrEqual }
 
 /// <summary>Kinds of object the lowering names itself, beside the grammar's card types: "card", "spell", "counter", "any target".</summary>
-public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent }
+public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door }
+
+/// <summary>Events the lowering names beyond the turn's: the last counter being removed.</summary>
+public enum EventKind { LastCounterRemoved }
+
+/// <summary>Ways mana may be chosen beyond the grammar's: any combination of colors.</summary>
+public enum ManaChoiceKind { AnyCombination }
+
+/// <summary>What mana may be spent to do, beyond playing and casting.</summary>
+public enum UseVerb { Activate, PayKeywordCost, TurnFaceUp, UnlockDoor }
 
 /// <summary>A span an event is looked for in beyond the turn: "this way", by an earlier effect on the line.</summary>
-public enum EventSpan { ThisWay }
+public enum EventSpan { ThisWay, ThisCombat, LastTurn }
 
 /// <summary>Which end of a range: the greatest or the least.</summary>
 public enum ExtremeKind { Greatest, Least }
@@ -192,7 +209,7 @@ public enum TargetingBy { Countered, Copied, SpellsOrAbilities, Spells, Abilitie
 public enum CombatModifier { Except, Alone }
 
 /// <summary>How creatures stand to one another in combat.</summary>
-public enum CombatRelation { BlockingOrBlockedBy }
+public enum CombatRelation { BlockingOrBlockedBy, Blocking, BlockedBy, Attacking }
 
 /// <summary>States a permanent may enter the battlefield in beyond tapped: transformed, attacking, face down.</summary>
 public enum ZoneEntryState { Transformed, Attacking, FaceDown }

@@ -97,7 +97,7 @@ public sealed record OpaqueToken(string Text, string Glyph) : Token, IOpaque;
 public sealed record TokenCopy(Selector Of, bool Tapped = false, StatsMod Stats = null, IReadOnlyList<Effect> Exceptions = null) : Token;
 
 /// <summary>A token described in full: its types, subtypes, colors, stats, name, keywords, and the abilities it has beyond keywords.</summary>
-public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<Ability> Abilities = null, bool Tapped = false, bool Attacking = false, string Predefined = null) : Token;
+public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<Ability> Abilities = null, bool Tapped = false, bool Attacking = false, string Predefined = null, Selector AttachedTo = null) : Token;
 
 public sealed record Sacrifice(Selector Player, Selector Objects) : Effect;
 
@@ -125,7 +125,19 @@ public sealed record CantBeTargeted(Selector Objects, IReadOnlyList<string> By =
 public sealed record CombatRestriction(Selector Objects, IReadOnlyList<string> Cant, Selector By = null, string Recipient = null, IReadOnlyList<string> Modifiers = null, Condition If = null, Duration Duration = null) : Effect;
 
 /// <summary>Keyword actions done as an effect: "scry 2", "investigate", "bolster 1".</summary>
-public sealed record KeywordAction(IReadOnlyList<KeywordInstance> Actions, IReadOnlyList<IrNode> Other = null) : Effect;
+public sealed record KeywordAction(IReadOnlyList<KeywordInstance> Actions, IReadOnlyList<IrNode> Other = null, Selector Objects = null) : Effect;
+
+/// <summary>A class gaining a level.</summary>
+public sealed record GainClassLevel(int Level) : Effect;
+
+/// <summary>Objects staying as they are: tapped, on the battlefield, exiled.</summary>
+public sealed record Remains(Selector Objects, string State) : Effect;
+
+/// <summary>A player skipping a step, phase, turn or event: "skip your next untap step", "skip that draw".</summary>
+public sealed record Skip(Selector Player = null, PhaseRef Phase = null, string Event = null, Quantity Turns = null) : Effect;
+
+/// <summary>Damage that would be dealt to one thing dealt to another instead.</summary>
+public sealed record RedirectDamage(Quantity Amount, Selector From, Selector To, Selector Source = null, bool Combat = false, bool ToAndBy = false, Duration Duration = null) : Effect;
 
 /// <summary>The head of a modal spell or ability: how many modes are chosen, and by whom when not the controller. The modes follow as <see cref="Mode"/> lines.</summary>
 public sealed record ChooseModes(string Count, Selector Chooser = null) : Effect;
@@ -154,7 +166,16 @@ public sealed record PreventDamage(Quantity Amount, string Kind = null, Selector
 
 public sealed record Reveal(Selector Player, Selector What) : Effect;
 
-public sealed record LookAt(Selector Player, Selector What) : Effect;
+public sealed record LookAt(Selector Player, Selector What, bool AnyTime = false) : Effect;
+
+/// <summary>A player taking an extra turn.</summary>
+public sealed record ExtraTurn(Selector Player, bool AfterThisOne = false) : Effect;
+
+/// <summary>Additional land plays: "play an additional land this turn", "play two additional lands on each of your turns".</summary>
+public sealed record ExtraLandPlays(Selector Player, Quantity Count, bool EachTurn = false, Duration Duration = null) : Effect;
+
+/// <summary>An alternative cost offered within an effect: "if you attacked this turn, you may pay {u} rather than pay this spell's mana cost".</summary>
+public sealed record AlternativeCostOffer(AlternativeCost Alternative) : Effect;
 
 /// <summary>An effect that lasts for a duration stated apart from it: "until end of turn, you may play that card".</summary>
 public sealed record Lasting(Effect Effect, Duration Duration) : Effect;

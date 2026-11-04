@@ -48,24 +48,13 @@ public sealed partial class Lowerer
                     whileCondition = condition;
                 else if (period is Term term)
                     only = term.Value;
+                else if (period is ThisTurn turn)
+                    only = turn.Period == "Turn" ? nameof(G.TurnSpan.ThisTurn) : nameof(EventSpan.ThisCombat);
                 else if (period is not null)
-                    return Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.TriggeredAbility));
+                    return Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.PermanentEventTrigger));
             }
 
-            Event trigger;
-
-            if (g.Event.GetResolvedValue() is G.CombatEncounter encounter)
-                trigger = new CombatEncounterEvent(subject, encounter.Encounter.ToString(), LowerAs<Selector>(encounter.Other, ctx));
-            else if (LowerAll(g.Event, ctx) is [ObjectEvent partial])
-                trigger = partial with { Subject = subject, UnderControlOf = under, Only = only, While = whileCondition };
-            else
-            {
-                List<IrNode> details = [];
-                var events = Terms(g.Event, ctx, details);
-                trigger = details.Count > 0
-                    ? (Event)Opaque(typeof(Event), ctx.TextOf(g.Event), g.Event.GetResolvedType()?.Name)
-                    : new ObjectEvent(subject, events, under, only, whileCondition);
-            }
+            var trigger = ObjectEventOf(g.Event, subject, under, only, whileCondition, ctx);
 
             return new TriggeredAbility(trigger, LowerAs<Effect>(g.Effect, ctx));
         });

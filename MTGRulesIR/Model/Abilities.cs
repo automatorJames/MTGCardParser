@@ -32,13 +32,25 @@ public sealed record LoyaltyAbility(Quantity Change, Effect Effect) : Ability;
 public sealed record ChapterAbility(IReadOnlyList<int> Chapters, Effect Effect) : Ability;
 
 /// <summary>One mode of a modal spell or ability.</summary>
-public sealed record Mode(Effect Effect) : Ability;
+public sealed record Mode(Effect Effect, Cost Cost = null) : Ability;
+
+/// <summary>A row of a die-roll table: the results it covers and what happens on them.</summary>
+public sealed record DieResultRow(int Low, int High, Effect Effect) : Ability;
+
+/// <summary>A level bracket of a leveler: "level 1-3", "level 4+". The abilities and stats that follow belong to it.</summary>
+public sealed record LevelRange(int Low, int High = 0, bool OrMore = false) : Ability;
+
+/// <summary>A power/toughness line of its own, as in a level bracket.</summary>
+public sealed record StatsLine(Quantity Power, Quantity Toughness) : Ability;
+
+/// <summary>A row of a station table: the charge counters needed, and the ability or stats gained at that many.</summary>
+public sealed record StationThresholdRow(int Threshold, Ability Ability) : Ability;
 
 /// <summary>An aura's "enchant …": what it can be attached to.</summary>
 public sealed record EnchantAbility(Selector Target) : Ability;
 
 /// <summary>Limits on when the card's ability may be activated: "activate only as a sorcery", "activate only once each turn".</summary>
-public sealed record ActivationLimits(IReadOnlyList<Timing> Timings) : Ability;
+public sealed record ActivationLimits(IReadOnlyList<Timing> Timings, bool ForCasting = false) : Ability;
 
 /// <summary>One activation limit: its kind ("SorcerySpeed", "OnceEachTurn", "During", "If", …) and the phase or condition it names.</summary>
 public sealed record Timing(string Kind, PhaseRef Phase = null, Condition If = null, string Keyword = null) : IrNode;

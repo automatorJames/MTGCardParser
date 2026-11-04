@@ -29,6 +29,9 @@ public sealed partial class Lowerer
             Lower(g.Source, ctx) switch
             {
                 Selector source => Narrow(LowerAs<Selector>(g.Permanent, ctx), Relation.DealtDamageBy, source),
+                Predicate predicate => Narrow(
+                    ctx.TextOf(g.Source)?.Contains("this turn") == true ? Narrow(LowerAs<Selector>(g.Permanent, ctx), Q(DamageHistory.DealtDamageThisTurn), ctx) : LowerAs<Selector>(g.Permanent, ctx),
+                    predicate, ctx, g.Source),
                 Term thisWay => Narrow(LowerAs<Selector>(g.Permanent, ctx), Q("DealtDamage" + thisWay.Value, nameof(DamageHistory)), ctx),
                 var other => Narrow(LowerAs<Selector>(g.Permanent, ctx), other, ctx, g.Source),
             });

@@ -13,6 +13,9 @@ public sealed record Variable(string Name) : Quantity;
 /// <summary>The number of objects a selector picks out ("the number of swamps you control", "for each creature you control").</summary>
 public sealed record CountOf(Selector Of) : Quantity;
 
+/// <summary>A player's life total.</summary>
+public sealed record LifeTotal(Selector Player) : Quantity;
+
 /// <summary>A characteristic of an object, as an amount: "its power", "that creature's toughness".</summary>
 public sealed record CharacteristicOf(Selector Of, string Characteristic) : Quantity;
 
@@ -127,7 +130,7 @@ public sealed record Bound(Quantity Value, Comparison Comparison) : Quantity;
 public sealed record Scaled(Quantity Base, string Factor, string Rounding = null) : Quantity;
 
 /// <summary>Mana of a color chosen as it's added: "one mana of any color".</summary>
-public sealed record ManaChoice(Quantity Count, string Choice) : ManaOption;
+public sealed record ManaChoice(Quantity Count, string Choice, IReadOnlyList<string> Among = null) : ManaOption;
 
 /// <summary>Throughout a step, phase or turn: "during your upkeep".</summary>
 public sealed record DuringPhase(PhaseRef Phase) : Duration;
@@ -140,6 +143,15 @@ public sealed record Happened(Event Event, string Span) : Condition;
 
 /// <summary>Whether an effect was done: "if you sacrifice a creature" as a condition on having done so.</summary>
 public sealed record Did(Effect Effect) : Condition;
+
+/// <summary>How much mana, and of what color and from what, was spent to cast or activate something.</summary>
+public sealed record ManaSpent(Quantity Amount, Selector For, string Color = null, bool Exactly = false, Selector From = null) : Condition;
+
+/// <summary>Whether a spell targets something: "if it targets a creature with power 3 or less".</summary>
+public sealed record Targets(Selector Spell, Selector Target) : Condition;
+
+/// <summary>Who cast a spell, and from where: "you cast it from your hand".</summary>
+public sealed record WasCast(Selector Spell, Selector By, ZoneRef From = null, bool Negated = false) : Condition;
 
 /// <summary>Whether an object was acted on by an earlier effect on the line: "if a card was milled this way".</summary>
 public sealed record WasAffectedThisWay(Selector Object, string Action) : Condition;
@@ -163,6 +175,9 @@ public sealed record WouldHappen(Selector Subject, Effect What) : Event;
 
 /// <summary>An effect's happening as an event: "whenever you sacrifice a creature".</summary>
 public sealed record EffectEvent(Effect Effect) : Event;
+
+/// <summary>Any of several events: "when you cycle this card and when this creature dies".</summary>
+public sealed record EitherEvent(IReadOnlyList<Event> Events) : Event;
 
 /// <summary>Two amounts compared: "your devotion to white is less than five".</summary>
 public sealed record CompareCount(Quantity Count, Comparison Comparison, Quantity Threshold) : Condition;

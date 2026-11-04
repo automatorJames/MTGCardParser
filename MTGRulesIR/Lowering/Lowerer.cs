@@ -24,6 +24,8 @@ public sealed partial class Lowerer
         RegisterRoundThree();
         RegisterRoundFour();
         RegisterRoundFive();
+        RegisterRoundSix();
+        RegisterRoundSeven();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -158,6 +160,12 @@ public sealed partial class Lowerer
             FlavorAbility { Ability: SpellAbility spell } when typeof(T) == typeof(Effect) => (T)(IrNode)spell.Effect,
             FlavorAbility { Ability: ReplacementAbility replacement } when typeof(T) == typeof(Effect) => (T)(IrNode)replacement.Effect,
             TriggeredAbility { If: null } trigger when typeof(T) == typeof(Effect) => (T)(IrNode)new Delayed(trigger.Trigger, trigger.Effect),
+            Happened { Event: ObjectEvent inner } happened when typeof(T) == typeof(Event) => (T)(IrNode)(inner with { Only = inner.Only ?? happened.Span }),
+            Happened happened when typeof(T) == typeof(Event) => (T)(IrNode)happened.Event,
+            Term term when typeof(T) == typeof(Selector) && term.Vocabulary is nameof(G.SpellReference) or "Its" or "PersonalPronoun" or "ThatPlayer" => (T)(IrNode)new Reference(null, term.Value),
+            Term { Vocabulary: "String", Value: "its" or "that" or "it" or "them" or "they" } term when typeof(T) == typeof(Selector) => (T)(IrNode)new Reference(null, term.Value),
+            Term { Vocabulary: "String", Value: "that many" } when typeof(T) == typeof(Quantity) => (T)(IrNode)new Special("ThatMany"),
+            AlternativeCost alternative when typeof(T) == typeof(Effect) => (T)(IrNode)new AlternativeCostOffer(alternative),
             Effect effect when typeof(T) == typeof(Event) => (T)(IrNode)new EffectEvent(effect),
             Effect effect when typeof(T) == typeof(Condition) => (T)(IrNode)new Did(effect),
             ObjectIs aspect when typeof(T) == typeof(Effect) => (T)(IrNode)new BecomesAspect(aspect.Object, aspect.Aspects, Negated: aspect.Negated, Verb: aspect.Tense),

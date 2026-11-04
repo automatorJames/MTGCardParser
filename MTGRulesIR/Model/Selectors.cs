@@ -8,6 +8,9 @@ public sealed record OpaqueSelector(string Text, string Glyph) : Selector, IOpaq
 /// <summary>The card itself: "{this}", "this creature", "this spell".</summary>
 public sealed record Self : Selector;
 
+/// <summary>The ability this text is part of: "this ability".</summary>
+public sealed record SelfAbility : Selector;
+
 /// <summary>How objects are picked from those the filter admits.</summary>
 public enum Quantifier
 {
@@ -115,6 +118,18 @@ public sealed record Satisfying(Condition Condition) : Predicate;
 
 /// <summary>Objects an earlier effect acted on: "each creature put into a graveyard this way".</summary>
 public sealed record AffectedBy(Effect Effect) : Predicate;
+
+/// <summary>Cards with a name: "a card named Scion of Darkness".</summary>
+public sealed record Named(string Name) : Predicate;
+
+/// <summary>Objects differing from one another in a characteristic: "with different names".</summary>
+public sealed record Distinct(string Characteristic) : Predicate;
+
+/// <summary>Objects sharing a characteristic with another: "with the same name as that card".</summary>
+public sealed record SharesCharacteristic(string Characteristic, Selector With) : Predicate;
+
+/// <summary>Objects whose characteristic compares to another object's: "with power less than this creature's power".</summary>
+public sealed record CharacteristicCompared(string Characteristic, Comparison Comparison, Selector Other, string OtherCharacteristic) : Predicate;
 
 public enum PlayerKind
 {

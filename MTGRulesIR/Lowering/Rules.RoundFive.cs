@@ -175,7 +175,7 @@ public sealed partial class Lowerer
         Rule<G.MayChooseNotToUntap>((g, ctx) =>
             new MayNotUntap(
                 LowerAs<Selector>(g.Permanent, ctx),
-                new PhaseRef(g.Step.Phase.ToString(), Whose: g.Step.Whose?.GetResolvedValue() is G.Whose whose ? PlayerOf(whose) : g.Step.Whose is null ? null : LowerAs<Selector>(g.Step.Whose, ctx))));
+                PlayersPhaseOf(g.Step, ctx)));
     }
 
     /// <summary>One cost, or several written together, as a cost.</summary>
