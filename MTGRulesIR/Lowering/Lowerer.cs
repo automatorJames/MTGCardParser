@@ -26,6 +26,7 @@ public sealed partial class Lowerer
         RegisterRoundFive();
         RegisterRoundSix();
         RegisterRoundSeven();
+        RegisterRoundEight();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -163,8 +164,14 @@ public sealed partial class Lowerer
             Happened { Event: ObjectEvent inner } happened when typeof(T) == typeof(Event) => (T)(IrNode)(inner with { Only = inner.Only ?? happened.Span }),
             Happened happened when typeof(T) == typeof(Event) => (T)(IrNode)happened.Event,
             Term term when typeof(T) == typeof(Selector) && term.Vocabulary is nameof(G.SpellReference) or "Its" or "PersonalPronoun" or "ThatPlayer" => (T)(IrNode)new Reference(null, term.Value),
-            Term { Vocabulary: "String", Value: "its" or "that" or "it" or "them" or "they" } term when typeof(T) == typeof(Selector) => (T)(IrNode)new Reference(null, term.Value),
-            Term { Vocabulary: "String", Value: "that many" } when typeof(T) == typeof(Quantity) => (T)(IrNode)new Special("ThatMany"),
+            Term { Vocabulary: "String" or "string", Value: "its" or "that" or "it" or "them" or "they" } term when typeof(T) == typeof(Selector) => (T)(IrNode)new Reference(null, term.Value),
+            Term { Vocabulary: "String" or "string", Value: "lands" } when typeof(T) == typeof(Selector) => (T)(IrNode)new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [new Term(nameof(G.CardType.Land), nameof(G.CardType))])),
+            Term { Vocabulary: "String" or "string", Value: "that many" } when typeof(T) == typeof(Quantity) => (T)(IrNode)new Special("ThatMany"),
+            Term { Vocabulary: "String" or "string", Value: "saddled" } when typeof(T) == typeof(Condition) => (T)(IrNode)new ObjectIs(ctx.Subject ?? new Self(), [new Term("Saddled", nameof(G.PermanentDesignation))]),
+            Term { Vocabulary: nameof(G.CounterSet), Value: nameof(G.CounterSet.ThatMany) } when typeof(T) == typeof(Quantity) => (T)(IrNode)new Special("ThatMany"),
+            Term { Vocabulary: nameof(G.CounterSet) } when typeof(T) == typeof(Quantity) => (T)(IrNode)new Special("All"),
+            Term { Vocabulary: nameof(G.CounterSet) } term when typeof(T) == typeof(Selector) => (T)(IrNode)new Reference(null, term.Value.ToLowerInvariant()),
+            Term { Vocabulary: nameof(G.DividedRecipients) } term when typeof(T) == typeof(Selector) => (T)(IrNode)new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [term.Value == nameof(G.DividedRecipients.TargetCreatures) ? new Term(nameof(G.CardType.Creature), nameof(G.CardType)) : new Term(nameof(ObjectKind.Any), nameof(ObjectKind))])),
             AlternativeCost alternative when typeof(T) == typeof(Effect) => (T)(IrNode)new AlternativeCostOffer(alternative),
             Effect effect when typeof(T) == typeof(Event) => (T)(IrNode)new EffectEvent(effect),
             Effect effect when typeof(T) == typeof(Condition) => (T)(IrNode)new Did(effect),
@@ -175,7 +182,10 @@ public sealed partial class Lowerer
             PhaseRef phase when typeof(T) == typeof(Duration) => (T)(IrNode)new UntilPhase(phase),
             Condition condition when typeof(T) == typeof(Duration) => (T)(IrNode)new While(condition),
             IOpaque opaque => (T)Opaque(typeof(T), opaque.Text, opaque.Glyph),
-            _ => (T)Opaque(typeof(T), ctx.TextOf(source) ?? node.ToString(), $"{source?.GetType().Name}→{node.GetType().Name}"),
+            Term { Vocabulary: nameof(G.CardType) or nameof(G.PermanentKind) or nameof(G.CreatureType) or nameof(G.LandType) } term when typeof(T) == typeof(Selector) => (T)(IrNode)new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [term])),
+            Term { Vocabulary: nameof(G.PermanentDesignation) or nameof(G.TapState) or nameof(G.CombatState) } term when typeof(T) == typeof(Condition) => (T)(IrNode)new ObjectIs(ctx.Subject ?? new Self(), [term]),
+            Term term => (T)Opaque(typeof(T), ctx.TextOf(source) ?? term.Value, $"{source?.GetType().Name}→Term[{term.Vocabulary}] as {typeof(T).Name}"),
+            _ => (T)Opaque(typeof(T), ctx.TextOf(source) ?? node.ToString(), $"{source?.GetType().Name}→{node.GetType().Name} as {typeof(T).Name}"),
         };
 
     /// <summary>
@@ -206,6 +216,17 @@ public sealed partial class Lowerer
         effect switch
         {
             Pump { Duration: null } => true,
+            LoseAllAbilities => true,
+            CantBeActivated => true,
+            MustBlock { Duration: null } => true,
+            NoMaximumHandSize { Duration: null } => true,
+            CanBlock => true,
+            CantPlay { Duration: null } => true,
+            ExtraLandPlays { Duration: null } => true,
+            Convoke => true,
+            GameOutcome { ThisTurn: false } => true,
+            CastAsThoughFlash { Duration: null } => true,
+            MayNotUntap => true,
             CantBeTargeted { Duration: null } => true,
             CombatRestriction { Duration: null } => true,
             CostModification => true,

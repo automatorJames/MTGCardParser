@@ -50,7 +50,7 @@ public sealed partial class Lowerer
             foreach (var node in LowerAll(g.Buffs, ctx))
                 pumps.Add(node is BuffGroup group ? PumpOf(group, duration, perEach, ctx) : EffectOf(node));
 
-            return pumps.Count == 1 ? pumps[0] : new Sequence(pumps);
+            return Seq([.. pumps]);
         });
 
         Rule<G.GainedOrLostBuff>((g, ctx) =>
@@ -260,12 +260,15 @@ public sealed partial class Lowerer
                 case BecomesAspect { Duration: null } becomes:
                     other.Add(becomes with { Duration = duration });
                     break;
+                case ObjectSelector { Filter.Kinds: [{ Value: nameof(ObjectKind.Ability) }] }:
+                    other.Add(duration is null ? new LoseAllAbilities(ctx.Subject) : new Lasting(new LoseAllAbilities(ctx.Subject), duration));
+                    break;
                 default:
                     other.Add(EffectOf(buff));
                     break;
             }
 
         var pump = new Pump(ctx.Subject, power, toughness, OrNull(keywords), baseStats, duration, group.Verb == G.PermanentVerb.Lose, perEach);
-        return other.Count == 0 ? pump : new Sequence([pump, .. other]);
+        return other.Count == 0 ? pump : Seq([pump, .. other]);
     }
 }

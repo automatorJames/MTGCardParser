@@ -99,6 +99,8 @@ public enum Relation
     SharesNameWith,
     /// <summary>Exiled by the object's effect: "cards exiled with this creature".</summary>
     ExiledWith,
+    /// <summary>In the player's party: "creatures in your party".</summary>
+    InPartyOf,
 }
 
 /// <summary>Objects in a <see cref="Relation"/> to another object or group.</summary>
@@ -127,6 +129,9 @@ public sealed record Distinct(string Characteristic) : Predicate;
 
 /// <summary>Objects sharing a characteristic with another: "with the same name as that card".</summary>
 public sealed record SharesCharacteristic(string Characteristic, Selector With) : Predicate;
+
+/// <summary>Objects with the greatest or least of a characteristic, among a group: "with the greatest power among creatures you control".</summary>
+public sealed record HasExtreme(string Characteristic, string Which, Selector Among = null) : Predicate;
 
 /// <summary>Objects whose characteristic compares to another object's: "with power less than this creature's power".</summary>
 public sealed record CharacteristicCompared(string Characteristic, Comparison Comparison, Selector Other, string OtherCharacteristic) : Predicate;
@@ -191,7 +196,7 @@ public sealed record CastBy(Selector Player, string Relation, string From = null
 public sealed record WithCounters(CounterSpec Counters, IrNode Other = null) : Predicate;
 
 /// <summary>Something a player did: "cast a spell", "attacked", as an event a condition looks back on.</summary>
-public sealed record PlayerAction(Selector Player, string Action, Selector What = null, bool FromHand = false) : Event;
+public sealed record PlayerAction(Selector Player, string Action, Selector What = null, bool FromHand = false, Quantity Count = null) : Event;
 
 /// <summary>One kind of card a player may play or cast: "play lands", "cast creature spells".</summary>
 public sealed record Playable(string Verb, Selector What) : IrNode;

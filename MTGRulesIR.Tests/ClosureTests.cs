@@ -117,4 +117,12 @@ public sealed class ClosureTests
         Assert.Equal(["Odd"], census.Slots["Qualifier.Quality"].Keys);
         Assert.Contains("1 outside Position: Sideways", census.ToText());
     }
+
+    [Fact]
+    public void DeclaredVocabulariesAreEnums()
+    {
+        foreach (var (slot, types) in Vocabularies.Slots)
+            foreach (var type in types)
+                Assert.True(type.IsEnum, $"{slot} is declared to hold {type.Name}, which is not an enum");
+    }
 }

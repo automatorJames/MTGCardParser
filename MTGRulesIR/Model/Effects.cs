@@ -56,6 +56,36 @@ public sealed record CastAsThoughFlash(Selector Spells, Duration Duration = null
 /// <summary>Permanents their controller may choose not to untap during a step.</summary>
 public sealed record MayNotUntap(Selector Objects, PhaseRef Step) : Effect;
 
+/// <summary>Abilities that can't be activated, perhaps excepting mana abilities.</summary>
+public sealed record CantBeActivated(Selector Abilities, bool ExceptMana = false) : Effect;
+
+/// <summary>Objects phasing out or in.</summary>
+public sealed record Phasing(Selector Objects, string Direction, Duration Duration = null) : Effect;
+
+/// <summary>Counters moved from one object to another.</summary>
+public sealed record MoveCounters(CounterSpec Counters, Selector From, Selector To) : Effect;
+
+/// <summary>Counters distributed among objects as the controller chooses.</summary>
+public sealed record DistributeCounters(CounterSpec Counters, Selector Among, string Range, bool Targeted = false) : Effect;
+
+/// <summary>The counters of a kind on an object doubled.</summary>
+public sealed record DoubleCounters(string Kind, Selector On, bool EachKind = false) : Effect;
+
+/// <summary>Doing the preceding process again: once, any number of times, once for each of some things.</summary>
+public sealed record Repeat(Quantity Times = null, Selector ForEach = null) : Effect;
+
+/// <summary>An additional phase added to the turn: "after this main phase, there is an additional combat phase followed by an additional main phase".</summary>
+public sealed record AdditionalPhase(string Phase, string Anchor = null, string Count = null, bool After = false, bool FollowedByMainPhase = false) : Effect;
+
+/// <summary>A player having no maximum hand size.</summary>
+public sealed record NoMaximumHandSize(Selector Player, Duration Duration = null) : Effect;
+
+/// <summary>Creatures that must block an attacker if able.</summary>
+public sealed record MustBlock(Selector Blockers, Selector Attacker, Duration Duration = null) : Effect;
+
+/// <summary>Objects losing all abilities.</summary>
+public sealed record LoseAllAbilities(Selector Objects) : Effect;
+
 public sealed record DamagePortion(Quantity Amount, Selector To) : IrNode;
 
 public sealed record GainLife(Selector Player, Quantity Amount) : Effect;
@@ -197,7 +227,7 @@ public sealed record WhenDone(Selector Player, Effect Effect) : Effect;
 public sealed record Regenerate(Selector Objects) : Effect;
 
 /// <summary>A permanent becoming a creature or another kind of permanent, for a time.</summary>
-public sealed record Animate(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<string> Colors = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Types = null, StatsMod BaseStats = null, IReadOnlyList<KeywordInstance> Keywords = null, bool AllCreatureTypes = false, string Still = null, bool InAddition = false, Duration Duration = null) : Effect;
+public sealed record Animate(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<string> Colors = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Types = null, StatsMod BaseStats = null, IReadOnlyList<KeywordInstance> Keywords = null, bool AllCreatureTypes = false, string Still = null, bool InAddition = false, Duration Duration = null, bool Transforms = false) : Effect;
 
 public sealed record DoesntUntap(Selector Objects, PhaseRef Step, Condition If = null) : Effect;
 

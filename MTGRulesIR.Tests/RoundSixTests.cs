@@ -43,4 +43,24 @@ public sealed class RoundSixTests(GrammarFixture fixture)
 
         Assert.Empty(rules.Lines[0].Abilities);
     }
+
+    [Fact]
+    public void ModularCountersAreItsCounters()
+    {
+        var rules = fixture.Lower("when it dies, you may put its +1/+1 counters on target artifact creature.");
+
+        Assert.True(rules.Lines[0].FullyLowered);
+        var put = rules.Lines[0].Abilities.SelectMany(NodeWalker.Nodes).OfType<PutCounters>().Single();
+        Assert.Equal("+1/+1", put.Counters.Kind);
+    }
+
+    [Fact]
+    public void LosingAllAbilitiesIsItsOwnEffect()
+    {
+        var ability = fixture.LowerAbility("all creatures lose all abilities and have base power and toughness 1/1", "Enchantment");
+
+        var sequence = Assert.IsType<Sequence>(Assert.IsType<StaticAbility>(ability).Effect);
+        Assert.Contains(sequence.Steps, x => x is LoseAllAbilities);
+        Assert.Contains(sequence.Steps, x => x is Pump { BaseStats: not null });
+    }
 }

@@ -40,7 +40,7 @@ public static class Vocabularies
         ["PlayerEvent.Event"] = [typeof(G.PlayerEventKind)],
         ["PlayerEvent.Timing"] = [typeof(G.PlayerEventTiming)],
         ["NamedEvent.Kind"] = [typeof(G.TurnEvent), typeof(EventKind)],
-        ["PlayerAction.Action"] = [typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile), typeof(G.PlayerThisWayAction)],
+        ["PlayerAction.Action"] = [typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile), typeof(G.PlayerThisWayAction), typeof(G.PlayerTurnAction)],
         ["CombatEncounterEvent.Encounter"] = [typeof(G.CombatEncounterKind)],
         ["Happened.Span"] = [typeof(G.TurnSpan), typeof(EventSpan)],
         ["ThisTurn.Period"] = [typeof(G.TurnPeriod)],
@@ -55,7 +55,7 @@ public static class Vocabularies
         ["ChooseModes.Count"] = [typeof(G.ModeCount)],
         ["PhaseRef.Phase"] = [typeof(G.Phase)],
         ["PhaseRef.Part"] = [typeof(G.PhasePart)],
-        ["Special.Kind"] = [typeof(G.Quantity), typeof(SpecialAmount)],
+        ["Special.Kind"] = [typeof(G.Quantity), typeof(SpecialAmount), typeof(G.RepeatCount)],
         ["CantBeTargeted.By"] = [typeof(TargetingBy)],
         ["ManaChoice.Choice"] = [typeof(G.ManaChoice), typeof(ManaChoiceKind)],
         ["AddMana.Amount"] = [typeof(G.AddedManaAmount)],
@@ -112,7 +112,18 @@ public static class Vocabularies
         ["Skip.Event"] = [typeof(G.SkippedEvent)],
         ["ManaSpent.Color"] = [typeof(G.ManaColor)],
         ["Distinct.Characteristic"] = [typeof(G.Characteristic)],
-        ["SharesCharacteristic.Characteristic"] = [typeof(G.Characteristic)],
+        ["SharesCharacteristic.Characteristic"] = [typeof(G.Characteristic), typeof(G.SharedAspect)],
+        ["Phasing.Direction"] = [typeof(G.PhaseDirection)],
+        ["DistributeCounters.Range"] = [typeof(G.DistributionRange)],
+        ["AdditionalPhase.Phase"] = [typeof(G.Phase)],
+        ["AdditionalPhase.Anchor"] = [typeof(G.PhaseAnchor)],
+        ["AdditionalPhase.Count"] = [typeof(G.AdditionalCount)],
+        ["AmountThisWay.Kind"] = [typeof(G.ThisWayAmount)],
+        ["HasDesignation.Designation"] = [typeof(G.PlayerDesignation)],
+        ["ChoiceMade.Choice"] = [typeof(G.CastingChoice)],
+        ["HasKeywordsCondition.Keywords"] = [typeof(G.Keyword)],
+        ["HasExtreme.Characteristic"] = [typeof(G.Characteristic)],
+        ["HasExtreme.Which"] = [typeof(G.Superlative)],
         ["CharacteristicCompared.Characteristic"] = [typeof(G.Characteristic)],
         ["CharacteristicCompared.OtherCharacteristic"] = [typeof(G.Characteristic)],
     };
@@ -131,6 +142,7 @@ public static class Vocabularies
         ["ManaChoice.Among"] = ManaSymbol,
         ["CounterSpec.Kind"] = CounterName,
         ["Qualifier.Quality[CounterKind]"] = CounterName,
+        ["DoubleCounters.Kind"] = CounterName,
     };
 
 
@@ -152,7 +164,7 @@ public static class Vocabularies
 public enum Position { Top, Bottom, TopOrBottom, Second, Third, SecondFromTheTopOrBottom }
 
 /// <summary>Objects an earlier effect on the line acted on: "the exiled card" as "exiled this way".</summary>
-public enum AffectedThisWay { ExiledThisWay, RevealedThisWay, DestroyedThisWay, DiscardedThisWay, SacrificedThisWay, TappedThisWay, PutIntoAGraveyardThisWay, ReturnedThisWay, MilledThisWay }
+public enum AffectedThisWay { ExiledThisWay, RevealedThisWay, DestroyedThisWay, DiscardedThisWay, SacrificedThisWay, TappedThisWay, PutIntoAGraveyardThisWay, ReturnedThisWay, MilledThisWay, RemovedThisWay }
 
 /// <summary>Where an exiled card goes instead of its usual destination: "exile it instead of putting it anywhere else".</summary>
 public enum ExileManner { InsteadOfAnywhereElse }
@@ -176,10 +188,10 @@ public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command 
 public enum Comparison { Equal, Less, LessOrEqual, Greater, GreaterOrEqual }
 
 /// <summary>Kinds of object the lowering names itself, beside the grammar's card types: "card", "spell", "counter", "any target".</summary>
-public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door }
+public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door, Pile }
 
 /// <summary>Events the lowering names beyond the turn's: the last counter being removed.</summary>
-public enum EventKind { LastCounterRemoved }
+public enum EventKind { LastCounterRemoved, UnlockThisDoor, ClassBecomesLevel }
 
 /// <summary>Ways mana may be chosen beyond the grammar's: any combination of colors.</summary>
 public enum ManaChoiceKind { AnyCombination }
@@ -197,10 +209,10 @@ public enum ExtremeKind { Greatest, Least }
 public enum SpecialAmount { Those, ThatMuch }
 
 /// <summary>When an activated ability may be activated.</summary>
-public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If }
+public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If, AnyPlayer }
 
 /// <summary>Events of an object the lowering names beyond the grammar's permanent events: being cast, becoming a target.</summary>
-public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms }
+public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved }
 
 /// <summary>What something can't be the target of, or can't be done to it: countered, copied, targeted by spells or abilities.</summary>
 public enum TargetingBy { Countered, Copied, SpellsOrAbilities, Spells, Abilities }

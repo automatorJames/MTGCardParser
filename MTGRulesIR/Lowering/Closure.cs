@@ -154,7 +154,7 @@ public sealed class VocabularyCensus
 
     /// <summary>Whether <paramref name="value"/> belongs to the slot's vocabulary: one of its enums, or its pattern.</summary>
     public static bool Belongs(string slot, string value) =>
-        EnumsOf(slot) is { } enums ? enums.Any(x => Enum.IsDefined(x, value))
+        EnumsOf(slot) is { } enums ? enums.Any(x => x.IsEnum && Enum.IsDefined(x, value))
         : Vocabularies.Patterns.TryGetValue(slot, out var pattern) && pattern.IsMatch(value);
 
     /// <summary>Whether the slot has a vocabulary declared, by enum or by pattern.</summary>

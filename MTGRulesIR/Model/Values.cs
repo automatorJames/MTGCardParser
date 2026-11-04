@@ -16,6 +16,9 @@ public sealed record CountOf(Selector Of) : Quantity;
 /// <summary>A player's life total.</summary>
 public sealed record LifeTotal(Selector Player) : Quantity;
 
+/// <summary>An amount an earlier effect on the line produced: "the life lost this way", "the damage prevented this way".</summary>
+public sealed record AmountThisWay(string Kind) : Quantity;
+
 /// <summary>A characteristic of an object, as an amount: "its power", "that creature's toughness".</summary>
 public sealed record CharacteristicOf(Selector Of, string Characteristic) : Quantity;
 
@@ -82,10 +85,10 @@ public sealed record OpaqueEvent(string Text, string Glyph) : Event, IOpaque;
 /// counts, a condition on it, what targets it (for becoming a target), and whose zone it concerns ("is put into an
 /// opponent's graveyard").
 /// </summary>
-public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null, Selector ZoneOwner = null, Selector Other = null) : Event;
+public sealed record ObjectEvent(Selector Subject, IReadOnlyList<string> Events, Selector UnderControlOf = null, string Only = null, Condition While = null, string By = null, Controlled ByController = null, Selector ZoneOwner = null, Selector Other = null, Selector Actor = null, CounterSpec Counters = null) : Event;
 
 /// <summary>Something that happened in the turn, named: "a creature died", "you attacked", "you gained life".</summary>
-public sealed record NamedEvent(string Kind) : Event;
+public sealed record NamedEvent(string Kind, Quantity Amount = null) : Event;
 
 /// <summary>A creature meeting another in combat: "blocks or becomes blocked by a non-wall creature".</summary>
 public sealed record CombatEncounterEvent(Selector Subject, string Encounter, Selector Other) : Event;
@@ -94,7 +97,7 @@ public sealed record CombatEncounterEvent(Selector Subject, string Encounter, Se
 public sealed record PhaseEvent(PhaseRef At) : Event;
 
 /// <summary>A player casting a spell the filter admits.</summary>
-public sealed record SpellCastEvent(Selector Caster, Selector Spell, bool OrCopy = false, Condition While = null) : Event;
+public sealed record SpellCastEvent(Selector Caster, Selector Spell, bool OrCopy = false, Condition While = null, bool NextThisTurn = false) : Event;
 
 /// <summary>What is paid to activate an ability or cast a spell.</summary>
 public abstract record Cost : IrNode;
@@ -147,6 +150,18 @@ public sealed record Did(Effect Effect) : Condition;
 /// <summary>How much mana, and of what color and from what, was spent to cast or activate something.</summary>
 public sealed record ManaSpent(Quantity Amount, Selector For, string Color = null, bool Exactly = false, Selector From = null) : Condition;
 
+/// <summary>Whether a player has a designation: "you have the city's blessing".</summary>
+public sealed record HasDesignation(Selector Player, string Designation) : Condition;
+
+/// <summary>Whether a choice was made while casting: "the gift was promised", "evidence was collected".</summary>
+public sealed record ChoiceMade(string Choice) : Condition;
+
+/// <summary>Whether it is a player's phase or turn: "it's your turn", "it's not an opponent's turn".</summary>
+public sealed record ItsPhase(PhaseRef Phase, bool Negated = false) : Condition;
+
+/// <summary>Whether an object has keywords: "that creature has infect", "it doesn't have suspend".</summary>
+public sealed record HasKeywordsCondition(Selector Object, IReadOnlyList<string> Keywords, bool Negated = false) : Condition;
+
 /// <summary>Whether a spell targets something: "if it targets a creature with power 3 or less".</summary>
 public sealed record Targets(Selector Spell, Selector Target) : Condition;
 
@@ -171,7 +186,7 @@ public sealed record Not(Condition Condition) : Condition;
 public sealed record PlayerEvent(Selector Player, string Event, string Timing = null) : Event;
 
 /// <summary>An event about to happen, as a replacement effect's condition: "you would draw a card".</summary>
-public sealed record WouldHappen(Selector Subject, Effect What) : Event;
+public sealed record WouldHappen(Selector Subject, Effect What, Condition While = null) : Event;
 
 /// <summary>An effect's happening as an event: "whenever you sacrifice a creature".</summary>
 public sealed record EffectEvent(Effect Effect) : Event;
