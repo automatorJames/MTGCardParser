@@ -73,7 +73,7 @@ public sealed partial class Lowerer
         Rule<G.CopySpell>((g, ctx) =>
             new CopySpell(LowerAs<Selector>(g.Spell, ctx), g.Times is null ? null : Lower(g.Times, ctx), g.NewTargets, g.Except is null ? null : Lower(g.Except, ctx)));
         Rule<G.DiscardHand>((g, ctx) => new Discard(Actor(ctx), new Special("All")));
-        Rule<G.DiscardThisCard>((g, ctx) => new Discard(Actor(ctx), new Fixed(1), new ObjectFilter(With: [new Self()])));
+        Rule<G.DiscardThisCard>((g, ctx) => new Discard(Actor(ctx), new Fixed(1), new ObjectFilter(With: [new Related(Relation.Is, new Self())])));
         Rule<G.GetEnergy>((g, ctx) => new GetEnergy(Actor(ctx), Multiply(LowerAs<Quantity>(g.Amount, ctx), g.Multiplier is null ? null : LowerAs<Quantity>(g.Multiplier, ctx))));
         Rule<G.AttacksIfAble>((g, ctx) =>
             new MustCombat(ctx.Subject ?? new Self(), g.OrBlocks ? [g.Action.ToString(), "Block"] : [g.Action.ToString()], g.Period?.ToString()));
@@ -138,7 +138,7 @@ public sealed partial class Lowerer
         Rule<G.ThisObject>((g, ctx) => new Self());
         Rule<G.PlayersHand>((g, ctx) => new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: ["card"], Zone: new ZoneRef("Hand", LowerAs<Selector>(g.Owner, ctx)))));
         Rule<G.NextDamage>((g, ctx) => QuantityOf(g.Quantity));
-        Rule<G.SpellCaster>((g, ctx) => new CastBy(Player(g.Player), g.Relation.ToString(), g.From?.ToString(), g.ThisTurn == true, g.During is null ? null : Lower(g.During, ctx)));
+        Rule<G.SpellCaster>((g, ctx) => new CastBy(Player(g.Player), g.Relation.ToString(), g.From?.ToString(), g.ThisTurn == true, g.During is null ? null : PhaseRefOf(g.During, ctx)));
         Rule<G.WithCharacteristicValue>((g, ctx) => new CharacteristicBound([g.Characteristic.ToString()], LowerAs<Quantity>(g.Value, ctx), "Equal"));
         Rule<G.WithCountersOnIt>((g, ctx) => Lower(g.Counters, ctx) is CounterSpec spec ? new WithCounters(spec) : new WithCounters(null, Lower(g.Counters, ctx)));
         Rule<G.ThatMuchLife>((g, ctx) =>

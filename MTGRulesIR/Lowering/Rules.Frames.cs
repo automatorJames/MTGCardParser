@@ -76,7 +76,7 @@ public sealed partial class Lowerer
             new TriggeredAbility(
                 new SpellCastEvent(
                     Player(g.Caster),
-                    g.Narrowed is null ? LowerAs<Selector>(g.Spell, ctx) : Narrow(LowerAs<Selector>(g.Spell, ctx), Lower(g.Narrowed, ctx)),
+                    g.Narrowed is null ? LowerAs<Selector>(g.Spell, ctx) : Narrow(LowerAs<Selector>(g.Spell, ctx), Lower(g.Narrowed, ctx), ctx, g.Narrowed),
                     g.Verb == G.CastVerb.CastOrCopy,
                     g.While is null ? null : LowerAs<Condition>(g.While.Condition, ctx)),
                 LowerAs<Effect>(g.Effect, ctx)));
@@ -146,10 +146,4 @@ public sealed partial class Lowerer
         Rule<G.MayDo>((g, ctx) => new Optional(LowerAs<Effect>(g.Predicate, ctx), ctx.Subject));
     }
 
-    /// <summary>A selector narrowed by a further clause ("that targets this creature"), kept under its filter's <see cref="ObjectFilter.With"/>.</summary>
-    static Selector Narrow(Selector selector, IrNode narrowing) =>
-        narrowing is null ? selector
-        : selector is ObjectSelector objects
-            ? objects with { Filter = (objects.Filter ?? new ObjectFilter()) with { With = [.. objects.Filter?.With ?? [], narrowing] } }
-            : selector;
 }

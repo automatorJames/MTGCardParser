@@ -94,48 +94,126 @@ public sealed partial class Lowerer
 
     static IReadOnlyList<T> OrNull<T>(List<T> list) => list.Count == 0 ? null : list;
 
+    /// <summary>A narrowing given with the relation it stands in, for <see cref="FilterOf"/>: "from among them" is <c>In(Relation.Among, them)</c>.</summary>
+    sealed record In(Relation Relation, object Glyph);
+
     /// <summary>
     /// An object filter from a glyph's parts: its kinds (vocabulary members), qualifier words, controller phrase,
-    /// zone, and any further narrowing (<paramref name="with"/>), each lowered where a rule exists and kept as a
-    /// node under <see cref="ObjectFilter.With"/> otherwise.
+    /// zone, and any further narrowing, each lowered where a rule exists. Whatever lowers to a qualifier, controller
+    /// or zone fills that slot wherever it came from; everything else becomes a <see cref="Predicate"/> (see
+    /// <see cref="PredicateOf"/>). A narrowing that is a selector needs its <see cref="Relation"/> said, by wrapping
+    /// it in <see cref="In"/>.
     /// </summary>
     ObjectFilter FilterOf(LoweringContext ctx, object kinds = null, object qualifiers = null, object controller = null, object zone = null, params object[] narrowing)
     {
+        var filter = new Filter();
         List<IrNode> extra = [];
-        var kindNames = Terms(kinds, ctx, extra);
+        filter.Kinds.AddRange(Terms(kinds, ctx, extra));
 
-        List<Qualifier> qualifierList = [];
+        foreach (var node in extra)
+            filter.Add(node, ctx, kinds);
+
         foreach (var node in LowerAll(qualifiers, ctx))
-            if (node is Qualifier qualifier)
-                qualifierList.Add(qualifier);
-            else if (node is Term term)
-                qualifierList.Add(new Qualifier(term.Value));
-            else if (node is QualifierChoice { Conjunction: "and" } all)
-                qualifierList.AddRange(all.Options);
+            if (node is QualifierChoice { Conjunction: "and" } all)
+                filter.Qualifiers.AddRange(all.Options);
             else
-                extra.Add(node);
+                filter.Add(node, ctx, qualifiers);
 
-        Controlled controlled = null;
         foreach (var node in LowerAll(controller, ctx))
-            if (node is Controlled c)
-                controlled = c;
-            else
-                extra.Add(node);
+            filter.Add(node, ctx, controller);
 
-        ZoneRef zoneRef = null;
         foreach (var node in LowerAll(zone, ctx))
-            if (node is ZoneRef z)
-                zoneRef = z;
-            else if (node is Term term)
-                zoneRef = new ZoneRef(term.Value);
-            else
-                extra.Add(node);
+            filter.Add(node, ctx, zone);
 
         foreach (var part in narrowing)
-            extra.AddRange(LowerAll(part, ctx));
+            if (part is In related)
+                filter.With.Add(Lower(related.Glyph, ctx) is Selector to ? new Related(related.Relation, to) : new OpaquePredicate(ctx.TextOf(related.Glyph), related.Glyph.GetType().Name));
+            else
+                foreach (var node in LowerAll(part, ctx))
+                    filter.Add(node, ctx, part);
 
-        return new ObjectFilter(OrNull(kindNames), OrNull(qualifierList), controlled, OrNull(extra), zoneRef);
+        return filter.ToFilter();
     }
+
+    /// <summary>An <see cref="ObjectFilter"/> being assembled: lists for the slots, and the sorting of a lowered node into them.</summary>
+    sealed class Filter
+    {
+        public List<string> Kinds = [];
+        public List<Qualifier> Qualifiers = [];
+        public Controlled Controller;
+        public List<Predicate> With = [];
+        public ZoneRef Zone;
+
+        public void Add(IrNode node, LoweringContext ctx, object source)
+        {
+            switch (node)
+            {
+                case null:
+                    break;
+                case Qualifier qualifier:
+                    Qualifiers.Add(qualifier);
+                    break;
+                case Controlled controlled when Controller is null:
+                    Controller = controlled;
+                    break;
+                case ZoneRef zone when Zone is null:
+                    Zone = zone;
+                    break;
+                case ObjectFilter other:
+                    Kinds.AddRange(other.Kinds ?? []);
+                    Qualifiers.AddRange(other.Qualifiers ?? []);
+                    Controller ??= other.Controller;
+                    Zone ??= other.Zone;
+                    With.AddRange(other.With ?? []);
+                    break;
+                case Term { Vocabulary: nameof(G.ChosenAspect) } chosen:
+                    With.Add(new OfChosen(chosen.Value));
+                    break;
+                case Term term:
+                    Qualifiers.Add(new Qualifier(term.Value));
+                    break;
+                default:
+                    With.Add(PredicateOf(node, ctx, source));
+                    break;
+            }
+        }
+
+        public ObjectFilter ToFilter() =>
+            new(OrNull(Kinds), OrNull(Qualifiers), Controller, OrNull(With), Zone);
+    }
+
+    /// <summary>
+    /// A lowered node as a predicate: itself when it is one, a condition as <see cref="Satisfying"/>, stats as
+    /// <see cref="HasStats"/>, a phase as <see cref="CastDuring"/>; anything else - a selector whose relation wasn't
+    /// said, an effect, a value - is opaque, named by the glyph it came from.
+    /// </summary>
+    static Predicate PredicateOf(IrNode node, LoweringContext ctx, object source) =>
+        node switch
+        {
+            Predicate predicate => predicate,
+            Condition condition => new Satisfying(condition),
+            StatsMod stats => new HasStats(stats.Power, stats.Toughness),
+            DuringPhase during => new CastDuring(during.Phase),
+            IOpaque opaque => new OpaquePredicate(opaque.Text, opaque.Glyph),
+            _ => new OpaquePredicate(ctx.TextOf(source) ?? node.ToString(), source?.GetType().Name ?? node.GetType().Name),
+        };
+
+    /// <summary>A selector narrowed by a further predicate, or by a qualifier word, when it has a filter to take it.</summary>
+    static Selector Narrow(Selector selector, IrNode narrowing, LoweringContext ctx, object source = null)
+    {
+        if (narrowing is null || selector is not ObjectSelector objects)
+            return selector;
+
+        var filter = objects.Filter ?? new ObjectFilter();
+        return narrowing is Qualifier qualifier
+            ? objects with { Filter = filter with { Qualifiers = [.. filter.Qualifiers ?? [], qualifier] } }
+            : objects with { Filter = filter with { With = [.. filter.With ?? [], PredicateOf(narrowing, ctx, source)] } };
+    }
+
+    static Selector Narrow(Selector selector, Relation relation, Selector to) =>
+        selector is ObjectSelector objects
+            ? objects with { Filter = (objects.Filter ?? new ObjectFilter()) with { With = [.. objects.Filter?.With ?? [], new Related(relation, to)] } }
+            : selector;
 
     /// <summary>The keywords among <paramref name="value"/>'s nodes, as instances; anything else goes to <paramref name="other"/>.</summary>
     List<KeywordInstance> KeywordsOf(object value, LoweringContext ctx, List<IrNode> other)

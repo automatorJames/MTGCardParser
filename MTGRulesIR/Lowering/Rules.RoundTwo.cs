@@ -123,7 +123,7 @@ public sealed partial class Lowerer
         Rule<G.DiscardThatCard>((g, ctx) =>
             g.Verb == G.CardVerb.Draw
                 ? new Draw(Actor(ctx), new Special("Those"))
-                : new Discard(Actor(ctx), null, new ObjectFilter(With: [LowerAs<Selector>(g.Card, ctx)])));
+                : new Discard(Actor(ctx), null, new ObjectFilter(With: [new Related(Relation.Is, LowerAs<Selector>(g.Card, ctx))])));
         Rule<G.Mill>((g, ctx) => new Mill(Actor(ctx), Multiply(QuantityOf(g.Quantity), g.PerEach is null ? null : LowerAs<Quantity>(g.PerEach, ctx))));
         Rule<G.CounterSpell>((g, ctx) => new CounterSpell(LowerAs<Selector>(g.Countered, ctx)));
         Rule<G.Regenerate>((g, ctx) => new Regenerate(LowerAs<Selector>(g.Regenerated, ctx)));
@@ -272,7 +272,7 @@ public sealed partial class Lowerer
         Rule<G.EachDamagedObject>((g, ctx) =>
             new ObjectSelector(Quantifier.Each, FilterOf(ctx, kinds: g.Kind) with { Qualifiers = [new Qualifier("DealtDamage" + (Lower(g.When, ctx) is Term when ? when.Value : "ThisWay"))] }));
         Rule<G.UpToPermanents>((g, ctx) => Group(g.Permanents, Quantifier.Count, ctx, count: QuantityOf(g.Count), upTo: true));
-        Rule<G.CountedObjects>((g, ctx) => g.Other ? Narrow(LowerAs<Selector>(g.Objects, ctx), new Qualifier("Other")) : LowerAs<Selector>(g.Objects, ctx));
+        Rule<G.CountedObjects>((g, ctx) => g.Other ? Narrow(LowerAs<Selector>(g.Objects, ctx), new Qualifier("Other"), ctx) : LowerAs<Selector>(g.Objects, ctx));
         Rule<G.IndefiniteCardInZone>((g, ctx) => new ObjectSelector(Quantifier.Any, CardFilter(g.Card, ctx, g.Qualifiers), Other: ctx.TextOf(g)?.StartsWith("another") == true));
         Rule<G.CountedCardsInZone>((g, ctx) =>
         {
@@ -287,18 +287,18 @@ public sealed partial class Lowerer
         Rule<G.AllCardsFromZone>((g, ctx) => new ObjectSelector(Quantifier.All, CardFilter(g.Card, ctx, g.Qualifiers)));
         Rule<G.HandledObject>((g, ctx) =>
             new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: g.CardType is { } type ? [type.ToString()] : ["card"], Qualifiers: [new Qualifier(g.How.ToString())])));
-        Rule<G.OneOfThem>((g, ctx) => new ObjectSelector(Quantifier.Any, new ObjectFilter(With: [LowerAs<Selector>(g.Group, ctx)]), Count: new Fixed(1)));
+        Rule<G.OneOfThem>((g, ctx) => new ObjectSelector(Quantifier.Any, new ObjectFilter(With: [new Related(Relation.Among, LowerAs<Selector>(g.Group, ctx))]), Count: new Fixed(1)));
         Rule<G.ObjectsAffectedThisWay>((g, ctx) =>
             new ObjectSelector(
                 g.Quantifier.ToString() switch { "Each" => Quantifier.Each, "All" => Quantifier.All, _ => Quantifier.Any },
-                new ObjectFilter(Qualifiers: [new Qualifier("AffectedThisWay")], With: [Lower(g.Affected, ctx)])));
+                new ObjectFilter(With: [Lower(g.Affected, ctx) is Effect affected ? new AffectedBy(affected) : PredicateOf(Lower(g.Affected, ctx), ctx, g.Affected)])));
         Rule<G.TargetSpell>((g, ctx) =>
             new ObjectSelector(Quantifier.Target, FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.Bound]) with { Kinds = ["spell"] }, Count: g.UpTo is null ? null : LowerAs<Quantity>(g.UpTo, ctx), UpTo: g.UpTo is not null));
         Rule<G.TargetAbility>((g, ctx) =>
-            new ObjectSelector(Quantifier.Target, FilterOf(ctx, controller: g.Controller, narrowing: [g.Source]) with { Kinds = [g.Kind.ToString()] }));
+            new ObjectSelector(Quantifier.Target, FilterOf(ctx, controller: g.Controller, narrowing: [g.Source is null ? null : new In(Relation.AbilityOf, g.Source)]) with { Kinds = [g.Kind.ToString()] }));
         Rule<G.ThatStackObject>((g, ctx) => new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [g.Kind.ToString()])));
         Rule<G.ExtremePermanent>((g, ctx) =>
-            new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [g.Kind.ToString()], Qualifiers: g.OrTied == true ? [new Qualifier("OrTied")] : null, With: [Lower(g.Extreme, ctx)]), Count: new Fixed(1)));
+            new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [g.Kind.ToString()], Qualifiers: g.OrTied == true ? [new Qualifier("OrTied")] : null, With: [PredicateOf(Lower(g.Extreme, ctx), ctx, g.Extreme)]), Count: new Fixed(1)));
         Rule<G.ManaValueLimit>((g, ctx) => new CharacteristicBound(["ManaValue"], QuantityOf(g.Amount), ctx.TextOf(g)?.EndsWith("more") == true ? "Greater" : "Less"));
         Rule<G.SpellTargets>((g, ctx) => new Targeting(LowerAs<Selector>(g.Targeted, ctx), g.Count?.ToString()));
 

@@ -129,7 +129,7 @@ public sealed partial class Lowerer
             new TokenSpecWithCount(new TokenSpec(Predefined: g.Kind.ToString(), Tapped: g.Tapped), QuantityOf(g.Quantity)));
 
         Rule<G.Sacrifice>((g, ctx) =>
-            new Sacrifice(Actor(ctx), g.ChosenBy is null ? LowerAs<Selector>(g.Sacrificed, ctx) : Narrow(LowerAs<Selector>(g.Sacrificed, ctx), Lower(g.ChosenBy, ctx))));
+            new Sacrifice(Actor(ctx), g.ChosenBy is null ? LowerAs<Selector>(g.Sacrificed, ctx) : Narrow(LowerAs<Selector>(g.Sacrificed, ctx), Lower(g.ChosenBy, ctx), ctx, g.ChosenBy)));
 
         Rule<G.ReturnCard>((g, ctx) =>
             new ChangeZone(LowerAs<Selector>(g.Returned, ctx), ZoneOf(g.Destination, ctx)));
@@ -192,7 +192,7 @@ public sealed partial class Lowerer
 
         Rule<G.ForEach>((g, ctx) => new CountOf(LowerAs<Selector>(g.Counted, ctx)));
         Rule<G.EqualTo>((g, ctx) => LowerAs<Quantity>(g.Measure, ctx));
-        Rule<G.NumberOf>((g, ctx) => new CountOf(g.Other == true ? Narrow(LowerAs<Selector>(g.Counted, ctx), new Qualifier("Other")) : LowerAs<Selector>(g.Counted, ctx)));
+        Rule<G.NumberOf>((g, ctx) => new CountOf(g.Other == true ? Narrow(LowerAs<Selector>(g.Counted, ctx), new Qualifier("Other"), ctx) : LowerAs<Selector>(g.Counted, ctx)));
         Rule<G.UpToCount>((g, ctx) => LowerAs<Quantity>(g.Count, ctx));
         Rule<G.AtLeastCount>((g, ctx) => LowerAs<Quantity>(g.Count, ctx));
         Rule<G.EntersWithCounters>((g, ctx) =>
