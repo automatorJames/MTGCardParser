@@ -160,6 +160,13 @@ public static class KeywordAbilities
                         With: [new CharacteristicBound(["ManaValue"], new Fixed(amount), Comparison.LessOrEqual)], Zone: new ZoneRef(nameof(Zone.Graveyard), You))),
                     new ZoneRef(nameof(Zone.Hand), You))));
                 break;
+            // Fabricate N: when it enters, N +1/+1 counters on it or N 1/1 colorless servo artifact creature tokens.
+            case "Fabricate" when keyword.Amount is Fixed:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]), new ChoiceOf([
+                    new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(amount))),
+                    new CreateTokens(new TokenSpec(Types: ["Artifact", "Creature"], Subtypes: ["Servo"], Power: new Fixed(1), Toughness: new Fixed(1)), new Fixed(amount)),
+                ]));
+                break;
             // Evoke: cast for the evoke cost (see Game), it's sacrificed when it enters.
             case "Evoke" when keyword.Cost is not null:
                 yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]), new Sacrifice(You, new Self()), new WasCastWith(new Self(), "Evoked"));

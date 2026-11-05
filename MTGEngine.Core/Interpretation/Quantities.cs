@@ -51,6 +51,9 @@ public static class Quantities
             }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
+            // "You gain life equal to the life lost this way": what the step before did.
+            case AmountThisWay { Kind: "LifeLost" or "DamageDealt" or "DamagePrevented" }:
+                return ctx.LastAmount;
             case TotalOf total:
                 return Resolver.Objects(total.Of, ctx).Select(ctx.State.Object).Where(x => x is not null)
                     .Sum(x => Filters.CharacteristicValue(total.Characteristic, x, Characteristics.Of(ctx.State, x)));
@@ -246,6 +249,23 @@ public static class Conditions
                 if (targets.Target is PlayerSelector)
                     return chosen.Any(t => t.IsPlayer && Resolver.Players(targets.Target, ctx).Contains(t.Player.Value));
                 return null;
+            }
+            // "If an opponent controls more lands than you", "unless you control more creatures than defending player".
+            case CompareControl compare when compare.Objects is ObjectSelector { Filter: var filter }:
+            {
+                int Count(PlayerId player) => state.Battlefield.Count(x => x.Controller == player && Filters.Matches(state, filter, x, ctx.Controller, ctx.Source, ctx: ctx));
+                var subjects = compare.Player is null ? [ctx.Controller] : Resolver.Players(compare.Player, ctx);
+                bool Beats(int mine, int theirs) => compare.Bound == "AtMost" ? mine < theirs : mine > theirs;
+                return subjects.Any(subject =>
+                {
+                    var others = compare.ComparedTo is PlayerSelector { Kind: PlayerKind.EachOtherPlayer }
+                        ? state.PlayersInGame.Where(p => p != subject).ToList()
+                        : Resolver.Players(compare.ComparedTo, ctx).Where(p => p != subject).ToList();
+                    if (others.Count == 0)
+                        return false;
+                    var any = compare.ComparedTo is PlayerSelector { Kind: PlayerKind.AnyOpponent or PlayerKind.AnyPlayer };
+                    return any ? others.Any(o => Beats(Count(subject), Count(o))) : others.All(o => Beats(Count(subject), Count(o)));
+                });
             }
             case Controls controls:
             {

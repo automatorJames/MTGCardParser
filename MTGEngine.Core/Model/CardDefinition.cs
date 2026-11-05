@@ -131,8 +131,26 @@ public sealed record CardDefinition(
             // you control a zombie": a permission that holds while its card is where it works (a static, read by Game).
             EffectLine { Effect: Optional { Effect: MayPlayFrom optional } } => PlayFromStatic(optional),
             EffectLine { Effect: MayPlayFrom permission } => PlayFromStatic(permission),
+            _ when OfferedAlternative(ability) is { } offered => offered,
             _ => ability,
         };
+
+    /// <summary>"If you attacked this turn, you may pay {u} rather than pay this spell's mana cost": the alternative cost, under its condition.</summary>
+    public static AlternativeCost OfferedAlternative(Ability ability)
+    {
+        var effect = ability switch
+        {
+            SpellAbility spell => spell.Effect,
+            EffectLine line => line.Effect,
+            _ => null,
+        };
+        return effect switch
+        {
+            AlternativeCostOffer { Alternative: { Replaces: "ThisSpellsManaCost" } alternative } => alternative,
+            Conditional { If: var holds, Then: AlternativeCostOffer { Alternative: { Replaces: "ThisSpellsManaCost", If: null } alternative }, Else: null } => alternative with { If = holds },
+            _ => null,
+        };
+    }
 
     /// <summary>A permanent's effect line that states a continuous effect, as the static ability it is: "this creature attacks each combat if able", "as long as …, it gets +1/+1".</summary>
     public static Ability AsStatic(Ability ability) =>

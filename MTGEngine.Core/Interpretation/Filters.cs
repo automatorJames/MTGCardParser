@@ -65,10 +65,34 @@ public static class Filters
         }
 
         foreach (var predicate in filter.With ?? [])
-            if (!PredicateMatches(state, predicate, obj, traits, you, source, ctx))
+            if (predicate is HasExtreme extreme)
+            {
+                if (!IsExtreme(state, filter, extreme, obj, traits, you, source, ctx))
+                    return false;
+            }
+            else if (!PredicateMatches(state, predicate, obj, traits, you, source, ctx))
                 return false;
 
         return true;
+    }
+
+    /// <summary>"The creature with the greatest power among creatures you control", "each creature with the least toughness": the most (or least) among the filter's other matches, ties included.</summary>
+    static bool IsExtreme(GameState state, ObjectFilter filter, HasExtreme extreme, GameObject obj, Characteristics traits, PlayerId you, ObjectId? source, EffectContext ctx)
+    {
+        if (_comparing > 2)
+            return false;
+        _comparing++;
+        try
+        {
+            var rest = filter with { With = filter.With.Where(x => x is not HasExtreme).ToList() };
+            var among = extreme.Among is ObjectSelector { Filter: var amongFilter } ? amongFilter : rest;
+            var values = state.Battlefield.Where(x => Matches(state, among, x, you, source, ctx: ctx)).Select(x => CharacteristicValue(extreme.Characteristic, x, Characteristics.Of(state, x))).ToList();
+            var mine = CharacteristicValue(extreme.Characteristic, obj, traits);
+            if (values.Count == 0)
+                return true;
+            return extreme.Which is "Least" or "Lowest" or "Smallest" ? mine <= values.Min() : mine >= values.Max();
+        }
+        finally { _comparing--; }
     }
 
     public static bool KindMatches(Term kind, GameObject obj, Characteristics traits, GameState state = null) =>
@@ -153,7 +177,16 @@ public static class Filters
                 nameof(ObjectKind.Permanent) => obj.Zone == Zone.Battlefield,
                 _ => false,
             },
-            "Distinction" => qualifier.Quality == nameof(Distinction.Other) ? obj.Id != source : false,
+            "Distinction" => qualifier.Quality switch
+            {
+                nameof(Distinction.Other) => obj.Id != source,
+                // "Cards named {this}".
+                nameof(Distinction.NamedThis) => source is { } named && state?.Object(named) is { } self && obj.Card.Name == self.Card.Name,
+                // "The creature with the greatest toughness or tied for it": ties count already (see IsExtreme).
+                nameof(Distinction.OrTied) => true,
+                nameof(Distinction.NotOnTheBattlefield) => obj.Zone != Zone.Battlefield,
+                _ => false,
+            },
             "Keyword" => traits.HasKeyword(qualifier.Quality),
             "Position" => true,
             "Provenance" => true,

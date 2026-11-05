@@ -104,7 +104,7 @@ public static class InterpreterSupport
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(RedirectDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
-        typeof(CopySpell), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
+        typeof(CopySpell), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
     ];
@@ -117,14 +117,14 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _quantities =
     [
         typeof(Fixed), typeof(Variable), typeof(CountOf), typeof(TotalOf), typeof(LifeTotal), typeof(DamageOrLifeTotal), typeof(Negated), typeof(Product), typeof(Arithmetic),
-        typeof(Adjusted), typeof(Scaled), typeof(CharacteristicOf), typeof(Special), typeof(Bound), typeof(Extreme), typeof(DistinctCount), typeof(Devotion),
+        typeof(Adjusted), typeof(Scaled), typeof(CharacteristicOf), typeof(Special), typeof(Bound), typeof(Extreme), typeof(DistinctCount), typeof(Devotion), typeof(AmountThisWay),
     ];
 
     static readonly HashSet<Type> _conditions =
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
-        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent),
+        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent), typeof(CompareControl),
     ];
 
     static readonly HashSet<Type> _events =
@@ -139,7 +139,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _predicates =
     [
-        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
+        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
         typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
     ];
 
@@ -174,7 +174,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<string> _kindVocabularies =
     [
-        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "TapState", "CombatState", "RetargetedObject", "CopiedSpell", "SourceNoun", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
+        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "TapState", "CombatState", "RetargetedObject", "CopiedSpell", "SourceNoun", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind", nameof(ChosenCharacteristic),
     ];
 
     /// <summary>
@@ -240,6 +240,9 @@ public static class InterpreterSupport
     /// <summary>The names of the nodes under <paramref name="root"/> (itself included) that the interpreter can't handle.</summary>
     public static IEnumerable<string> Unsupported(IrNode root)
     {
+        // "If an opponent cast a red spell this turn, you may pay {w} rather than pay this spell's mana cost" is an alternative cost with a condition.
+        if (root is Ability offering && CardDefinition.OfferedAlternative(offering) is { } offered)
+            root = offered;
         var replaced = new HashSet<IrNode>(ReferenceEqualityComparer.Instance);
         foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
             if (node is Replacement replacement && Game.DamageReplacement(replacement) is not null)
@@ -317,6 +320,7 @@ public static class InterpreterSupport
             Qualifier { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Quality) => $"Qualifier[PermanentDesignation.{designation.Quality}]",
             Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
             Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
+            Qualifier { Vocabulary: "Distinction", Quality: not (nameof(Distinction.Other) or nameof(Distinction.NamedThis) or nameof(Distinction.OrTied) or nameof(Distinction.NotOnTheBattlefield)) } distinction => $"Qualifier[Distinction.{distinction.Quality}]",
             Term term when term.Vocabulary != "PermanentDesignation" && !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
             Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On or Relation.ExiledWith or Relation.AbilityOf or Relation.InPartyOf) } related => $"Related.{related.Relation}",
             Happened happened when !HappenedHandled(happened) => $"Happened[{happened.Event?.GetType().Name}{(happened.Event is NamedEvent named ? "." + named.Kind : "")}]",
@@ -327,7 +331,7 @@ public static class InterpreterSupport
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
             ZoneRef { Position: not (null or "Top" or "Bottom" or "TopOrBottom") } zone => $"ZoneRef.Position.{zone.Position}",
             PutCounters { Counters.Kind: null } => "PutCounters.Kind",
-            ManaChoice { Choice: not ("AnyColor" or "AnyOneColor" or "AnyCombination") } choice => $"ManaChoice.{choice.Choice}",
+            ManaChoice { Choice: not ("AnyColor" or "AnyOneColor" or "AnyCombination" or "TheChosenColor") } choice => $"ManaChoice.{choice.Choice}",
             Destroy { Manner: not (null or "CantBeRegenerated") } destroy => $"Destroy.{destroy.Manner}",
             Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
             CombatEncounterEvent encounter when !Triggers.EncounterKinds.Contains(encounter.Encounter) => $"CombatEncounterEvent.{encounter.Encounter}",

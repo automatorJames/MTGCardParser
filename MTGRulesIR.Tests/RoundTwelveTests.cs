@@ -39,4 +39,13 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
 
         Assert.DoesNotContain(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Filter?.Kinds?.Any(k => k.Vocabulary == "StackObjectKind") == true);
     }
+
+    [Fact]
+    public void TheExiledCardIsOneThisExiled()
+    {
+        var ability = fixture.LowerAbility("when this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control.");
+
+        var those = Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Quantifier == Quantifier.Those);
+        Assert.Contains(those.Filter.With, x => x is Related { Relation: Relation.ExiledWith, To: Self });
+    }
 }

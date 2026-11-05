@@ -125,9 +125,14 @@ public static class Interpreter
                     game.Skip(lose.Amount, "amount not evaluable");
                     return ctx;
                 }
+                var lost = 0;
                 foreach (var player in Resolver.Players(lose.Player, ctx))
+                {
+                    var before = game.State.Player(player).Life;
                     game.ChangeLife(player, -amount.Value, "lose");
-                return ctx with { LastAmount = amount.Value };
+                    lost += Math.Max(0, before - game.State.Player(player).Life);
+                }
+                return ctx with { LastAmount = lost };
             }
 
             case SetLifeTotal set:
@@ -323,6 +328,36 @@ public static class Interpreter
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
+            // "Double the number of +1/+1 counters on it": as many again of that kind (each kind, for "each kind of counter").
+            case DoubleCounters doubled:
+            {
+                var objects = doubled.On is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(doubled.On, ctx);
+                foreach (var obj in objects.Select(state.Object).Where(x => x is not null).ToList())
+                    foreach (var (kind, count) in obj.CounterMap.Where(c => (doubled.EachKind || c.Key == doubled.Kind) && c.Key is not ("deathtouch-damage" or "regeneration-shield") && c.Value > 0).ToList())
+                        game.Emit(new CountersChanged(obj.Id, kind, count));
+                return ctx;
+            }
+
+            // "Double its power until end of turn" is +X/+0 where X is its power; "switch its power and toughness" is the
+            // difference, each way (both as of now).
+            case DoubleStats or SwitchStats:
+            {
+                var (selector, duration) = effect is DoubleStats d ? (d.Objects, d.Duration) : (((SwitchStats)effect).Objects, ((SwitchStats)effect).Duration);
+                var until = UntilTurn(duration, state);
+                if (until is null && duration is not null)
+                    return Skipped(game, effect, $"duration {duration.GetType().Name}", ctx);
+                var objects = selector is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(selector, ctx);
+                foreach (var obj in objects.Select(state.Object).Where(x => x is { Zone: Zone.Battlefield }).ToList())
+                {
+                    var traits = Characteristics.Of(state, obj);
+                    var (power, toughness) = effect is DoubleStats { Which: var which }
+                        ? (which is "Power" or "PowerAndToughness" ? Math.Max(0, traits.Power) : 0, which is "Toughness" or "PowerAndToughness" ? Math.Max(0, traits.Toughness) : 0)
+                        : (traits.Toughness - traits.Power, traits.Power - traits.Toughness);
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(obj.Id, power, toughness, [], until == -1 ? null : until), effect, ctx)));
+                }
+                return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
+            }
+
             case LoseAllAbilities lose:
             {
                 var objects = Resolver.Objects(lose.Objects, ctx);
@@ -494,6 +529,16 @@ public static class Interpreter
                             var pick = game.Decide(new ChooseOne(ctx.Controller, "Choose a color", Colors.All.Select(x => x.ToString()).ToImmutableList()));
                             var color = Colors.All[Math.Clamp(pick.Index, 0, 4)];
                             game.Emit(new ManaAdded(ctx.Controller, color, count));
+                            break;
+                        }
+                        // "Add one mana of the chosen color": the color chosen as the source entered.
+                        case ManaChoice { Choice: "TheChosenColor" } chosen:
+                        {
+                            var count = Quantities.Evaluate(chosen.Count, ctx) ?? 1;
+                            if (ctx.Source is { } chooser && Colors.OfName(state.Object(chooser)?.Chosen("Color")) is { } color)
+                                game.Emit(new ManaAdded(ctx.Controller, color, count));
+                            else
+                                game.Skip(option, "no chosen color");
                             break;
                         }
                         // "Add two mana in any combination of colors": a color for each.
@@ -1070,6 +1115,11 @@ public static class Interpreter
         // "Unless you discard two cards": the action names who does it.
         if (unless.Payment.Cost is ActionCost { Action: var action } && action.GetType().GetProperty("Player")?.GetValue(action) is Selector actor && Resolver.Players(actor, ctx) is [var doer, ..])
             return doer;
+        // "Sacrifice it unless you exile a creature you control": what the cost uses is yours, or what it saves is.
+        if (unless.Payment.Cost is ActionCost { Action: var owned } && MTGRulesIR.Lowering.NodeWalker.Nodes(owned).OfType<ObjectFilter>().Any(x => x.Controller is { Player: PlayerSelector { Kind: PlayerKind.You }, Negated: false }))
+            return ctx.Controller;
+        if (unless.Effect is Sacrifice { Objects: Self } or Sacrifice { Player: PlayerSelector { Kind: PlayerKind.You } })
+            return ctx.Controller;
         foreach (var target in ctx.TargetsBySelector.Values.SelectMany(x => x))
         {
             if (target.IsPlayer)

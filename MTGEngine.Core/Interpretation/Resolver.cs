@@ -108,7 +108,11 @@ public static class Resolver
             case ObjectSelector { Quantifier: Quantifier.Those } those:
             {
                 var pool = (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
-                return pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx) || those.Filter?.Kinds is null).ToImmutableList();
+                var matched = pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx) || those.Filter?.Kinds is null).ToImmutableList();
+                // "When this leaves the battlefield, return the exiled card": nothing earlier in the ability was exiled, so it's what this exiled before.
+                if (matched.Count == 0 && those.Filter?.With?.Any(x => x is Related { Relation: Relation.ExiledWith }) == true)
+                    matched = state.Objects.Values.Where(obj => Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx)).Select(x => x.Id).ToImmutableList();
+                return matched;
             }
             case ObjectSelector { Quantifier: Quantifier.Rest }:
                 return Leftovers(ctx);

@@ -89,6 +89,9 @@ public static class ManaPayment
                         case ManaChoice { Choice: "AnyColor" or "AnyOneColor" or "AnyCombination" }:
                             options.AddRange(Colors.All.Select(x => (Color?)x));
                             break;
+                        case ManaChoice { Choice: "TheChosenColor" } when Colors.OfName(obj.Chosen("Color")) is { } chosen:
+                            options.Add(chosen);
+                            break;
                     }
             }
 

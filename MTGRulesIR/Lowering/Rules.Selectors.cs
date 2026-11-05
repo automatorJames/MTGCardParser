@@ -64,7 +64,13 @@ public sealed partial class Lowerer
         Rule<G.CardOutsideBattlefield>((g, ctx) => CardFilter(g, ctx));
 
         Rule<G.ThatCardPhrase>((g, ctx) =>
-            new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: g.CardType is { } type ? [Kind(type)] : null), Count: g.Count is { } count ? QuantityOf(count) : null));
+        {
+            var selector = new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: g.CardType is { } type ? [Kind(type)] : null), Count: g.Count is { } count ? QuantityOf(count) : null);
+            // "The exiled card" is one this exiled, whether earlier in the ability or by another of its abilities.
+            if (ctx.TextOf(g)?.Contains("exiled", StringComparison.OrdinalIgnoreCase) == true)
+                selector = selector with { Filter = selector.Filter with { Kinds = selector.Filter.Kinds ?? [Kind("card")], With = [new Related(Relation.ExiledWith, new Self())] } };
+            return selector;
+        });
 
         Rule<G.TheRest>((g, ctx) => new ObjectSelector(Quantifier.Rest, null));
 
