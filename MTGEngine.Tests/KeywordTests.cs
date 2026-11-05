@@ -179,6 +179,15 @@ public sealed class KeywordTests
     }
 
     [Fact]
+    public void ADoubleFacedCardDoesntHaveItsBackFacesKeywords()
+    {
+        // The database lists keywords of both faces; Delver of Secrets' front face doesn't fly.
+        var rules = new CardRules("Delver of Secrets // Insectile Aberration", "Creature", [], new CardInfo("{U}", Subtypes: "Human,Wizard", Power: "1", Toughness: "1", Keywords: ["Flying", "Transform"]));
+
+        Assert.DoesNotContain("Flying", CardDefinition.From(rules).Keywords);
+    }
+
+    [Fact]
     public void DevoidIsColorlessAndChangelingIsEveryType()
     {
         var devoid = With(Cards.Vanilla("Eldrazi", "{1}{C}{R}", 2, 2, "Eldrazi"), new KeywordInstance("Devoid"));

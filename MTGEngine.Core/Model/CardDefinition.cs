@@ -32,9 +32,9 @@ public sealed record CardDefinition(
         var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap)
             .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x))).ToImmutableList();
         abilities = KeywordAbilities.Expand(abilities, spell).ToImmutableList();
-        var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
-            .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).SelectMany(KeywordAbilities.NamesOf))
-            .ToImmutableHashSet();
+        // A card's keywords are its keyword lines'. The database's keyword list also names ability words, keyword
+        // actions, and a double-faced card's back face (Delver of Secrets would fly), so it isn't read.
+        var keywords = abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).SelectMany(KeywordAbilities.NamesOf).ToImmutableHashSet();
         var colors = keywords.Contains("Devoid") ? ImmutableHashSet<Color>.Empty : cost.Colored.Keys.Concat(cost.Hybrid.SelectMany(x => x)).ToImmutableHashSet();
 
         return new CardDefinition(
