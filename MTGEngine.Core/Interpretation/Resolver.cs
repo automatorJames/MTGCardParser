@@ -15,9 +15,15 @@ public sealed record EffectContext(
     TargetRef? Subject = null,
     TargetRef? TriggerSubject = null,
     int LastAmount = 0,
-    ImmutableList<TargetRef> Affected = null)
+    ImmutableList<TargetRef> Affected = null,
+    GameState Frozen = null,
+    ImmutableList<TargetRef> Rest = null)
 {
-    public GameState State => Game.State;
+    public GameState State => Frozen ?? Game.State;
+
+    /// <summary>A context over a state alone, for evaluating static conditions and filters where no effect is running.</summary>
+    public static EffectContext Snapshot(GameState state, PlayerId controller, ObjectId? source) =>
+        new(null, controller, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), Frozen: state);
 
     public Dictionary<string, ImmutableList<TargetRef>> Binds => Bindings ?? new();
 
@@ -29,6 +35,8 @@ public sealed record EffectContext(
             bySelector[slots[i].Selector] = [item.Targets[i]];
 
         var bindings = new Dictionary<string, ImmutableList<TargetRef>>();
+        foreach (var (key, value) in item.Bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty)
+            bindings[key] = value;
         foreach (var slot in slots)
             if (slot.Binding is { } binding && bySelector.TryGetValue(slot.Selector, out var chosen))
                 bindings[binding] = chosen;
@@ -84,11 +92,19 @@ public static class Resolver
                 return pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx) || those.Filter?.Kinds is null).ToImmutableList();
             }
             case ObjectSelector { Quantifier: Quantifier.Rest }:
-                return [];
+                return (ctx.Rest ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
             case ObjectSelector selector2:
             {
+                var position = selector2.Filter?.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "Position")?.Quality;
                 var matches = Candidates(selector2.Filter, ctx).Where(obj => Filters.Matches(state, selector2.Filter, obj, ctx.Controller, ctx.Source, selector2.Other ? ctx.Source : null, ctx: ctx)).Select(x => x.Id).ToImmutableList();
-                var result = selector2.Quantifier == Quantifier.Count && selector2.Count is Fixed count ? matches.Take(count.Value).ToImmutableList() : matches;
+                if (position is "Top" or "Bottom" && selector2.Filter?.Zone?.Zone == nameof(Zone.Library))
+                {
+                    var owners = selector2.Filter.Zone.Owner is null ? [ctx.Controller] : Players(selector2.Filter.Zone.Owner, ctx);
+                    var ordered = owners.SelectMany(p => position == "Top" ? state.Player(p).Library : state.Player(p).Library.Reverse()).Where(matches.Contains).ToImmutableList();
+                    var wanted = selector2.Quantifier == Quantifier.Count ? Quantities.Evaluate(selector2.Count, ctx) ?? 1 : 1;
+                    return ordered.Take(wanted).ToImmutableList();
+                }
+                var result = selector2.Quantifier == Quantifier.Count && Quantities.Evaluate(selector2.Count, ctx) is { } count && selector2.Count is not Bound ? matches.Take(count).ToImmutableList() : matches;
                 if (selector2.Binding is { } binding)
                     ctx.Binds[binding] = result.Select(TargetRef.Of).ToImmutableList();
                 return result;
@@ -222,7 +238,7 @@ public static class TargetSlots
                 switch (node)
                 {
                     case ObjectSelector { Quantifier: Quantifier.Target } objects when seen.Add(node):
-                        yield return new TargetSlot(objects, objects.Binding, objects.UpTo, (objects.Count as Fixed)?.Value ?? 1);
+                        yield return new TargetSlot(objects, objects.Binding, objects.UpTo || objects.Count is Special { Kind: "AnyNumber" }, objects.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : (objects.Count as Fixed)?.Value ?? 1);
                         break;
                     case PlayerSelector { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent } player when seen.Add(node):
                         yield return new TargetSlot(player, player.Binding, false, 1);

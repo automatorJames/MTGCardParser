@@ -1,7 +1,7 @@
 namespace MTGEngine.Core;
 
 /// <summary>A triggered ability that has triggered: its source, the ability, and what it triggered on.</summary>
-public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller);
+public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller, DelayedTrigger Delayed = null);
 
 /// <summary>Matches the IR's trigger events against the game's events.</summary>
 public static class Triggers
@@ -18,9 +18,24 @@ public static class Triggers
         {
             if (after.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
                 continue;
-            foreach (var ability in source.Card.Abilities.OfType<TriggeredAbility>())
+            foreach (var ability in Characteristics.AbilitiesOf(after, source).OfType<TriggeredAbility>())
                 if (Match(ability.Trigger, evt, source, after, before) is { } matched && matched.Fires)
                     yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
+        }
+
+        foreach (var delayed in after.DelayedTriggers)
+        {
+            var source = (delayed.Source is { } id ? after.Object(id) ?? before.Object(id) : null)
+                ?? new GameObject(new ObjectId(-delayed.Id), new CardDefinition("delayed", ManaCost.Free, [], [], [], null, null, null, [], [], []), delayed.Controller, delayed.Controller, Zone.Command);
+            var when = delayed.When;
+            // "when that creature dies" names what the effect bound; the subject matched is the one the trigger was set up for.
+            if (when is ObjectEvent { Subject: ObjectSelector { Quantifier: Quantifier.Target } or Reference } objectEvent && delayed.Subject is { IsObject: true } bound)
+                when = objectEvent with { Subject = new Self() };
+            var matched = when is ObjectEvent && delayed.Subject is { IsObject: true } subject
+                ? Match(when, evt, (after.Object(subject.Object.Value) ?? before.Object(subject.Object.Value) ?? source) with { Controller = delayed.Controller }, after, before)
+                : Match(when, evt, source, after, before);
+            if (matched is { Fires: true })
+                yield return new PendingTrigger(source, new TriggeredAbility(delayed.When, delayed.Effect), matched.Subject ?? delayed.Subject, delayed.Controller, delayed);
         }
     }
 
@@ -37,8 +52,6 @@ public static class Triggers
             {
                 var at = phase.At;
                 if (Conditions.StepOf(at.Phase) is not { } wanted || wanted != step.Step)
-                    return null;
-                if (at.Part == "End" && wanted != Step.End)
                     return null;
                 var whose = at.Whose switch
                 {

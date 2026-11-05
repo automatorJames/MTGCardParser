@@ -27,7 +27,7 @@ public static class ManaPayment
                 if (Colors.OfBasicLandType(subtype) is { } color)
                     options.Add(color);
 
-            foreach (var ability in obj.Card.Abilities.OfType<ActivatedAbility>())
+            foreach (var ability in traits.Abilities.OfType<ActivatedAbility>())
             {
                 if (!ability.Costs.All(x => x is TapSelf))
                     continue;

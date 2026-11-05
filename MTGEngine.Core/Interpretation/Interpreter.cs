@@ -473,11 +473,154 @@ public static class Interpreter
                 return ctx;
             }
 
-            case Regenerate:
-            case KeywordAction:
+            case KeywordAction action:
+                return KeywordActions.Execute(action, ctx);
+
+            case UnlessPaid unless:
+            {
+                var payer = Payer(unless, ctx);
+                var paid = false;
+                if (payer is { } who && !state.Player(who).Lost)
+                    switch (unless.Payment.Cost)
+                    {
+                        case PayMana mana:
+                        {
+                            var cost = ManaCost.Parse(string.Concat(mana.Symbols));
+                            if (ManaPayment.CanPay(state, who, cost) && game.Decide(new YesNo(who, $"Pay {cost} to prevent: {Describe(unless.Effect)}?")).Yes)
+                                paid = game.PayMana(who, cost);
+                            break;
+                        }
+                        case PayLife life:
+                        {
+                            var amount = Quantities.Evaluate(life.Amount, ctx) ?? 0;
+                            if (state.Player(who).Life >= amount && game.Decide(new YesNo(who, $"Pay {amount} life to prevent: {Describe(unless.Effect)}?")).Yes)
+                            {
+                                game.ChangeLife(who, -amount, "cost");
+                                paid = true;
+                            }
+                            break;
+                        }
+                        default:
+                            game.Skip(unless.Payment.Cost, "unless-cost kind");
+                            break;
+                    }
+                game.LastOptionalTaken = paid;
+                return paid ? ctx : Execute(unless.Effect, ctx);
+            }
+
+            case CombatRestriction restriction:
+            {
+                var objects = restriction.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(restriction.Objects, ctx);
+                var until = UntilTurn(restriction.Duration, state);
+                if (until is null)
+                    return Skipped(game, restriction, $"duration {restriction.Duration?.GetType().Name}", ctx);
+                if (restriction.If is not null || restriction.By is not null || restriction.Modifiers is { Count: > 0 })
+                    return Skipped(game, restriction, "conditional restriction", ctx);
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: restriction.Cant.ToImmutableList())));
+                return ctx;
+            }
+
+            case GrantAbility grant:
+            {
+                var objects = grant.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(grant.Objects, ctx);
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, (grant.Alongside ?? []).Select(x => x.Keyword).ToImmutableList(), null, Abilities: [grant.Ability])));
+                return ctx;
+            }
+
+            case Delayed delayed:
+            {
+                var expires = delayed.When is ObjectEvent { Only: "ThisTurn" or "ThisCombat" } || delayed.When is PhaseEvent { At.Next: false } ? state.Turn : (int?)null;
+                var subject = ctx.TriggerSubject ?? ctx.Last?.FirstOrDefault();
+                game.Emit(new DelayedTriggerCreated(new DelayedTrigger(state.NextDelayedId, delayed.When, delayed.Effect, ctx.Controller, ctx.Source, subject, expires)));
+                return ctx;
+            }
+
+            case SearchLibrary search:
+            {
+                var searchers = search.Searcher is null ? [ctx.Controller] : Resolver.Players(search.Searcher, ctx);
+                if (search.Optional && !game.Decide(new YesNo(ctx.Controller, "Search your library?")).Yes)
+                    return ctx;
+                List<TargetRef> found = [];
+                foreach (var searcher in searchers)
+                    foreach (var wanted in search.Wanted ?? [])
+                    {
+                        if (wanted is not ObjectSelector selector)
+                            continue;
+                        var count = selector.Quantifier == Quantifier.Count ? Quantities.Evaluate(selector.Count, ctx) ?? 1 : selector.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : 1;
+                        var library = state.InZone(Zone.Library, searcher).Where(x => Filters.Matches(state, (selector.Filter ?? new ObjectFilter()) with { Zone = null }, x with { Zone = Zone.Battlefield }, searcher, ctx.Source, ctx: ctx) || Filters.Matches(state, selector.Filter, x, searcher, ctx.Source, ctx: ctx)).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
+                        var take = Math.Min(count, library.Count);
+                        if (take == 0)
+                            continue;
+                        var chosen = game.Decide(new ChooseTargets(searcher, "Search: choose cards", library, 0, take)).Targets?.Where(library.Contains).Distinct().Take(take).ToList() ?? library.Take(take).ToList();
+                        found.AddRange(chosen);
+                    }
+                ctx = ctx with { Affected = found.ToImmutableList(), Last = found.Count > 0 ? found.ToImmutableList() : ctx.Last };
+                if (search.Placement is not null)
+                    ctx = Execute(search.Placement, ctx);
+                else
+                    foreach (var card in found)
+                        game.MoveToZone(card.Object.Value, Zone.Hand);
+                if (search.Ending is not null)
+                    ctx = Execute(search.Ending, ctx);
+                else
+                    foreach (var searcher in searchers)
+                        game.Shuffle(searcher);
+                return ctx;
+            }
+
+            case DoesntUntap doesnt:
+            {
+                var objects = Resolver.Objects(doesnt.Objects, ctx);
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], state.Turn + 1, DoesntUntap: true)));
+                return ctx;
+            }
+
+            case ChooseCards choose:
+            {
+                var choosers = Resolver.Players(choose.Chooser, ctx);
+                var chooser = choosers.Count > 0 ? choosers[0] : ctx.Controller;
+                var from = Resolver.Objects(choose.From, ctx);
+                var pool = from.Count > 0 ? from : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+                var candidates = pool.Where(id => state.Object(id) is { } obj && (choose.Filter is null || Filters.Matches(state, choose.Filter with { Zone = null }, obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx))).Select(TargetRef.Of).ToImmutableList();
+                var count = Math.Min(Quantities.Evaluate(choose.Count, ctx) ?? 1, candidates.Count);
+                var picked = candidates.Count == 0 ? [] : game.Decide(new ChooseTargets(chooser, "Choose cards", candidates, choose.UpTo ? 0 : count, count)).Targets?.Where(candidates.Contains).Distinct().Take(count).ToImmutableList() ?? candidates.Take(count).ToImmutableList();
+                var rest = pool.Select(TargetRef.Of).Where(x => !picked.Contains(x)).ToImmutableList();
+                return ctx with { Affected = picked, Last = picked, Rest = rest };
+            }
+
+            case ChooseModes:
+                return ctx;
+
+            case Regenerate regenerate:
+            {
+                foreach (var id in Resolver.Objects(regenerate.Objects, ctx))
+                    game.Emit(new CountersChanged(id, "regeneration-shield", 1));
+                return ctx;
+            }
+
             default:
                 return Skipped(game, effect, "effect not interpreted", ctx);
         }
+    }
+
+    /// <summary>Who an "unless … pays" asks: the named player, else the controller of what the effect targets, else that player, else an opponent.</summary>
+    static PlayerId? Payer(UnlessPaid unless, EffectContext ctx)
+    {
+        if (unless.Payment.Player is not null && Resolver.Players(unless.Payment.Player, ctx) is [var named, ..])
+            return named;
+        foreach (var target in ctx.TargetsBySelector.Values.SelectMany(x => x))
+        {
+            if (target.IsPlayer)
+                return target.Player;
+            if (ctx.State.Object(target.Object.Value) is { } obj)
+                return obj.Controller;
+        }
+        if (ctx.Last?.FirstOrDefault(x => x.IsPlayer) is { IsPlayer: true } last)
+            return last.Player;
+        return ctx.State.OpponentsOf(ctx.Controller).FirstOrDefault();
     }
 
     static EffectContext Skipped(Game game, IrNode node, string why, EffectContext ctx)

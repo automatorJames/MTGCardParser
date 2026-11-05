@@ -104,6 +104,8 @@ public static class Filters
             },
             "Distinction" => qualifier.Quality == nameof(Distinction.Other) ? obj.Id != source : false,
             "Keyword" => traits.HasKeyword(qualifier.Quality),
+            "Position" => true,
+            "Provenance" => true,
             "AttachedBy" => true,
             "Kind" => qualifier.Quality == "Token" ? obj.IsToken : qualifier.Quality == "Nontoken" ? !obj.IsToken : false,
             _ => false,
@@ -161,6 +163,8 @@ public static class Filters
                 return counters.Counters.Kind is { } kind
                     ? (counters.Counters.Count is Fixed count ? obj.CountersOf(kind) >= count.Value : obj.CountersOf(kind) > 0)
                     : obj.CounterMap.Count > 0;
+            case ChosenBy:
+                return true;
             case Satisfying satisfying when ctx is not null:
                 return Conditions.Evaluate(satisfying.Condition, ctx with { Subject = TargetRef.Of(obj.Id) }) == true;
             default:

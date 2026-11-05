@@ -135,6 +135,8 @@ public sealed partial class Game
                 foreach (var obj in State.Battlefield.Where(x => x.Controller == active && x.Tapped).ToList())
                     if (!DoesntUntap(obj))
                         Emit(new Untapped(obj.Id));
+                foreach (var stale in State.Temporary.Where(x => x.DoesntUntap && State.Object(x.Target)?.Controller == active).ToList())
+                    Emit(new TemporaryEffectsExpired(State.Turn));
                 return;
 
             case Step.Draw:
@@ -175,7 +177,8 @@ public sealed partial class Game
     }
 
     bool DoesntUntap(GameObject obj) =>
-        obj.Card.Abilities.Any(x => x is StaticAbility { Effect: DoesntUntap { Objects: Self } });
+        obj.Card.Abilities.Any(x => x is StaticAbility { Effect: DoesntUntap { Objects: Self, If: null } })
+        || State.Temporary.Any(x => x.Target == obj.Id && x.DoesntUntap);
 
     void Cleanup()
     {
@@ -288,24 +291,45 @@ public sealed partial class Game
 
         foreach (var obj in state.Battlefield.Where(x => x.Controller == player))
         {
-            if (state.Temporary.Any(x => x.Target == obj.Id && x.LosesAbilities))
+            var traits = Characteristics.Of(state, obj);
+            if (traits.LostAbilities)
                 continue;
-            var sorceryOnly = obj.Card.Abilities.Any(x => x is ActivationLimits { Timings: var timings } && timings.Any(t => t.Kind == nameof(TimingKind.SorcerySpeed)));
+            var abilities = traits.Abilities;
+            var limits = abilities.OfType<ActivationLimits>().SelectMany(x => x.Timings).ToList();
+            var sorceryOnly = limits.Any(t => t.Kind == nameof(TimingKind.SorcerySpeed));
+            var onceEachTurn = limits.Any(t => t.Kind is nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once));
             var index = -1;
-            foreach (var ability in obj.Card.Abilities)
+            foreach (var ability in abilities)
             {
                 index++;
-                if (ability is not ActivatedAbility activated)
-                    continue;
-                if (activated.Effect is AddMana)
-                    continue;
-                if (sorceryOnly && !sorcerySpeed)
-                    continue;
-                if (!CanPayCosts(obj, activated.Costs, player))
-                    continue;
-                if (!TargetsAvailable(TargetSlots.Of([activated.Effect]).ToList(), player, obj.Id))
-                    continue;
-                actions.Add(new ActivateAbility(obj.Id, index, Interpreter.Describe(activated.Effect)));
+                switch (ability)
+                {
+                    case ActivatedAbility activated:
+                        if (activated.Effect is AddMana)
+                            continue;
+                        if (sorceryOnly && !sorcerySpeed)
+                            continue;
+                        if (onceEachTurn && state.Activations.GetValueOrDefault($"{obj.Id}:{index}") > 0)
+                            continue;
+                        if (!CanPayCosts(obj, activated.Costs, player))
+                            continue;
+                        if (!TargetsAvailable(TargetSlots.Of([activated.Effect]).ToList(), player, obj.Id))
+                            continue;
+                        actions.Add(new ActivateAbility(obj.Id, index, Interpreter.Describe(activated.Effect)));
+                        break;
+                    case LoyaltyAbility loyalty:
+                    {
+                        if (!sorcerySpeed || state.Activations.Keys.Any(k => k.StartsWith($"{obj.Id}:")))
+                            continue;
+                        var change = (loyalty.Change as Fixed)?.Value ?? 0;
+                        if (obj.CountersOf("loyalty") + change < 0)
+                            continue;
+                        if (!TargetsAvailable(TargetSlots.Of([loyalty.Effect]).ToList(), player, obj.Id))
+                            continue;
+                        actions.Add(new ActivateAbility(obj.Id, index, $"[{change:+#;-#;0}] {Interpreter.Describe(loyalty.Effect)}"));
+                        break;
+                    }
+                }
             }
         }
 
@@ -321,7 +345,45 @@ public sealed partial class Game
                 return [new TargetSlot(enchant.Target is ObjectSelector objects ? objects with { Quantifier = Quantifier.Target } : enchant.Target, null, false, 1)];
             return [];
         }
-        return TargetSlots.Of(card.SpellEffects).ToList();
+        // A modal spell's targets depend on the modes chosen as it's cast, so they're checked then, not here.
+        return TargetSlots.Of(card.SpellEffects.Where(x => x is not ModalEffect)).ToList();
+    }
+
+    /// <summary>A modal effect with its modes chosen by <paramref name="player"/>: the chosen modes' effects in sequence; any other effect as it is.</summary>
+    (Effect Effect, ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings) ResolveModes(Effect effect, PlayerId player)
+    {
+        if (effect is not ModalEffect modal)
+            return (effect, null);
+
+        var (min, max) = modal.Count switch
+        {
+            "One" or "UpToOne" => (modal.Count == "One" ? 1 : 0, 1),
+            "Two" or "Both" => (2, 2),
+            "Three" => (3, 3),
+            "Four" => (4, 4),
+            "OneOrBoth" or "UpToTwo" => (modal.Count == "OneOrBoth" ? 1 : 0, 2),
+            "OneOrMore" => (1, modal.Modes.Count),
+            "AnyNumber" or "UpToFour" or "UpToX" or "UpToThatMany" => (0, modal.Modes.Count),
+            _ => (1, 1),
+        };
+        max = Math.Min(max, modal.Modes.Count);
+
+        List<int> chosen = [];
+        var options = modal.Modes.Select(m => Interpreter.Describe(m.Effect)).ToImmutableList();
+        for (var i = 0; i < max; i++)
+        {
+            var remaining = Enumerable.Range(0, modal.Modes.Count).Where(m => !chosen.Contains(m)).ToList();
+            if (remaining.Count == 0)
+                break;
+            if (chosen.Count >= min && i > 0 && !Decide(new YesNo(player, "Choose another mode?")).Yes)
+                break;
+            var pick = Decide(new ChooseOne(player, "Choose a mode", remaining.Select(m => options[m]).ToImmutableList())).Index;
+            chosen.Add(remaining[Math.Clamp(pick, 0, remaining.Count - 1)]);
+        }
+
+        Emit(new ModesChosen(player, chosen.ToImmutableList()));
+        var steps = chosen.Select(m => modal.Modes[m].Effect).ToList();
+        return (steps.Count == 1 ? steps[0] : new Sequence(steps), null);
     }
 
     bool TargetsAvailable(List<TargetSlot> slots, PlayerId player, ObjectId? source) =>
@@ -402,7 +464,18 @@ public sealed partial class Game
         var x = card.ManaCost.X > 0 && maxX > 0 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
         var cost = card.ManaCost.WithX(x);
 
-        var slots = SpellSlots(card);
+        List<Effect> effects = [];
+        ImmutableDictionary<string, ImmutableList<TargetRef>> bindings = null;
+        if (!card.IsPermanentCard)
+            foreach (var spellEffect in card.SpellEffects)
+            {
+                var (resolved, modeBindings) = ResolveModes(spellEffect, player);
+                effects.Add(resolved);
+                if (modeBindings is not null)
+                    bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(modeBindings);
+            }
+
+        var slots = card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
         var targets = ChooseTargetsFor(slots, player, id);
         if (targets is null)
             return;
@@ -411,18 +484,37 @@ public sealed partial class Game
             return;
 
         MoveToZone(id, Zone.Stack, player);
-        var effects = card.IsPermanentCard ? ImmutableList<Effect>.Empty : card.SpellEffects.ToImmutableList();
-        var item = new StackItem(State.NextStackId, player, id, StackKind.Spell, effects, targets, x, Spell: id, Description: card.Name);
+        var item = new StackItem(State.NextStackId, player, id, StackKind.Spell, effects.ToImmutableList(), targets, x, Spell: id, Description: card.Name, Bindings: bindings);
         Emit(new SpellCast(item));
     }
 
     void Activate(ObjectId source, int index, PlayerId player)
     {
         var obj = State.Object(source);
-        if (obj is null || obj.Card.Abilities.ElementAtOrDefault(index) is not ActivatedAbility ability)
+        if (obj is null)
+            return;
+        var found = Characteristics.AbilitiesOf(State, obj).ElementAtOrDefault(index);
+
+        if (found is LoyaltyAbility loyalty)
+        {
+            var change = (loyalty.Change as Fixed)?.Value ?? 0;
+            var (loyaltyEffect, loyaltyBindings) = ResolveModes(loyalty.Effect, player);
+            var loyaltySlots = TargetSlots.Of([loyaltyEffect]).ToList();
+            var loyaltyTargets = ChooseTargetsFor(loyaltySlots, player, source);
+            if (loyaltyTargets is null)
+                return;
+            if (change != 0)
+                Emit(new CountersChanged(source, "loyalty", change));
+            var loyaltyItem = new StackItem(State.NextStackId, player, source, StackKind.Activated, [loyaltyEffect], loyaltyTargets, 0, Description: $"{obj.Card.Name} [{change:+#;-#;0}]", AbilityIndex: index, Bindings: loyaltyBindings);
+            Emit(new AbilityActivated(loyaltyItem));
+            return;
+        }
+
+        if (found is not ActivatedAbility ability)
             return;
 
-        var slots = TargetSlots.Of([ability.Effect]).ToList();
+        var (effect, bindings) = ResolveModes(ability.Effect, player);
+        var slots = TargetSlots.Of([effect]).ToList();
         var targets = ChooseTargetsFor(slots, player, source);
         if (targets is null)
             return;
@@ -468,7 +560,7 @@ public sealed partial class Game
                     break;
             }
 
-        var item = new StackItem(State.NextStackId, player, source, StackKind.Activated, [ability.Effect], targets, 0, Description: $"{obj.Card.Name}: {Interpreter.Describe(ability.Effect)}", Costs: ability.Costs.ToImmutableList());
+        var item = new StackItem(State.NextStackId, player, source, StackKind.Activated, [effect], targets, 0, Description: $"{obj.Card.Name}: {Interpreter.Describe(effect)}", Costs: ability.Costs.ToImmutableList(), AbilityIndex: index, Bindings: bindings);
         Emit(new AbilityActivated(item));
     }
 
@@ -538,6 +630,8 @@ public sealed partial class Game
         var ctx = EffectContext.For(this, item, item.Subject);
         foreach (var effect in item.Effects)
             ctx = Interpreter.Execute(effect, ctx);
+        if (item.Kind == StackKind.Triggered && item.DelayedId is { } delayedId)
+            Emit(new DelayedTriggerRemoved(delayedId));
 
         if (item.Spell is { } cardId && State.Object(cardId)?.Zone == Zone.Stack)
             MoveToZone(cardId, Zone.Graveyard);
@@ -615,6 +709,12 @@ public sealed partial class Game
                         continue;
                     }
                 }
+                if (obj.Card.IsPlaneswalker && obj.CountersOf("loyalty") <= 0)
+                {
+                    MoveToZone(obj.Id, Zone.Graveyard);
+                    changed = true;
+                    continue;
+                }
                 if (obj.Card.IsAura && (obj.AttachedTo is null || State.Object(obj.AttachedTo.Value)?.Zone != Zone.Battlefield))
                 {
                     MoveToZone(obj.Id, Zone.Graveyard);
@@ -664,13 +764,16 @@ public sealed partial class Game
                         continue;
                 }
 
-                var slots = TargetSlots.Of([trigger.Ability.Effect]).ToList();
+                var slots = TargetSlots.Of([trigger.Ability.Effect is ModalEffect modal ? new Sequence(modal.Modes.Select(m => m.Effect).ToList()) : trigger.Ability.Effect]).ToList();
                 var targets = ChooseTargetsFor(slots, controller, trigger.Source.Id);
                 if (targets is null)
                     continue;
 
-                var item = new StackItem(State.NextStackId, controller, trigger.Source.Id, StackKind.Triggered, [trigger.Ability.Effect], targets, 0,
-                    Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject);
+                var (effect, bindings) = ResolveModes(trigger.Ability.Effect, controller);
+                var item = new StackItem(State.NextStackId, controller, trigger.Source.Zone == Zone.Command ? null : trigger.Source.Id, StackKind.Triggered, [effect], targets, 0,
+                    Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject, Bindings: bindings, DelayedId: trigger.Delayed?.Id);
+                if (trigger.Delayed is { } fired)
+                    Emit(new DelayedTriggerRemoved(fired.Id));
                 Emit(new Triggered(item));
                 any = true;
             }
@@ -688,8 +791,74 @@ public sealed partial class Game
         if (obj is null)
             return;
         var to = controller ?? (zone == Zone.Battlefield ? obj.Controller : obj.Owner);
+
+        List<Effect> onEntry = [];
+        if (zone == Zone.Battlefield)
+            tapped |= EntryReplacements(obj, to, onEntry);
+
         Emit(new ZoneMoved(id, obj.Zone, zone, to, tapped, position, attachTo is not null, attachTo));
+
+        if (zone == Zone.Battlefield)
+        {
+            if (obj.Card.IsPlaneswalker && obj.Card.Loyalty is { } loyalty)
+                Emit(new CountersChanged(id, "loyalty", loyalty));
+            if (onEntry.Count > 0)
+            {
+                var ctx = new EffectContext(this, to, id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), Last: [TargetRef.Of(id)]);
+                foreach (var effect in onEntry)
+                    Interpreter.Execute(effect, ctx);
+            }
+        }
     }
+
+    /// <summary>
+    /// How <paramref name="obj"/> enters the battlefield under its own and others' replacement abilities: whether it
+    /// enters tapped, and the effects that happen as it enters (counters, choices). "Enters tapped unless …" applies
+    /// when its condition can't be judged.
+    /// </summary>
+    bool EntryReplacements(GameObject obj, PlayerId controller, List<Effect> onEntry)
+    {
+        var tapped = false;
+        var entering = obj with { Zone = Zone.Battlefield, Controller = controller };
+
+        void Consider(ReplacementAbility replacement, GameObject source)
+        {
+            switch (replacement.Effect)
+            {
+                case EntersBattlefield enters:
+                {
+                    var self = enters.Objects is null or Self;
+                    if (self ? source.Id != obj.Id : !Applies(enters.Objects, source, entering))
+                        return;
+                    if (enters.If is { } condition && Conditions.Evaluate(condition, EffectContext.Snapshot(State, controller, obj.Id)) == false)
+                        return;
+                    if (enters.States?.Contains("Tapped") == true)
+                        tapped = true;
+                    onEntry.AddRange(enters.With ?? []);
+                    return;
+                }
+                case AsEventHappens { When: ObjectEvent { Subject: Self or null } when } happens when when.Events.Any(x => x is "EntersTheBattlefield" or "EntersOrTransforms") && source.Id == obj.Id:
+                    onEntry.Add(happens.Effect);
+                    return;
+            }
+        }
+
+        foreach (var replacement in obj.Card.Abilities.OfType<ReplacementAbility>())
+            Consider(replacement, entering);
+        foreach (var other in State.Battlefield.Where(x => x.Id != obj.Id))
+            foreach (var replacement in other.Card.Abilities.OfType<ReplacementAbility>())
+                Consider(replacement, other);
+
+        return tapped;
+    }
+
+    bool Applies(Selector objects, GameObject source, GameObject obj) =>
+        objects switch
+        {
+            ObjectSelector selector => Filters.Matches(State, selector.Filter, obj, source.Controller, source.Id, selector.Other ? source.Id : null),
+            Union union => union.Members.Any(x => Applies(x, source, obj)),
+            _ => false,
+        };
 
     public void Draw(PlayerId player, int count)
     {
@@ -756,6 +925,14 @@ public sealed partial class Game
             return false;
         if (Characteristics.Of(State, obj).HasKeyword("Indestructible"))
             return false;
+        if (!cantBeRegenerated && obj.CountersOf("regeneration-shield") > 0)
+        {
+            Emit(new CountersChanged(id, "regeneration-shield", -1));
+            Emit(new Tapped(id));
+            Emit(new RemovedFromCombat(id));
+            Emit(new DamageRemovedFrom(id));
+            return true;
+        }
         Emit(new Destroyed(id));
         MoveToZone(id, Zone.Graveyard);
         return true;
@@ -790,6 +967,18 @@ public sealed partial class Game
         if (State.Object(id) is { Zone: Zone.Battlefield, Tapped: true })
             Emit(new Untapped(id));
     }
+
+    /// <summary>A token copy of a card, for populate and the like.</summary>
+    public ObjectId CreateCopyToken(CardDefinition original, PlayerId controller)
+    {
+        var id = new ObjectId(State.NextObjectId);
+        Emit(new ObjectCreated(new GameObject(id, original with { IsToken = true }, controller, controller, Zone.Battlefield, EnteredThisTurn: true)));
+        Emit(new ZoneMoved(id, Zone.Command, Zone.Battlefield, controller));
+        return id;
+    }
+
+    /// <summary>Pays a mana cost from the pool and untapped sources; false (and nothing paid) when it can't be.</summary>
+    public bool PayMana(PlayerId player, ManaCost cost) => Pay(player, cost);
 
     public ObjectId CreateToken(TokenSpec spec, PlayerId controller)
     {

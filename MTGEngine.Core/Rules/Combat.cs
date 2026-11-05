@@ -16,7 +16,7 @@ public sealed partial class Game
             .Where(x =>
             {
                 var traits = Characteristics.Of(State, x);
-                return traits.IsCreature && !traits.HasKeyword("Defender") && (!x.EnteredThisTurn || traits.HasKeyword("Haste"));
+                return traits.IsCreature && !traits.HasKeyword("Defender") && !traits.Cant("Attack") && (!x.EnteredThisTurn || traits.HasKeyword("Haste"));
             })
             .Select(x => x.Id)
             .ToImmutableList();
@@ -77,6 +77,8 @@ public sealed partial class Game
 
     static bool CanBlock(Characteristics blocker, Characteristics attacker, GameObject blockerObj, GameObject attackerObj)
     {
+        if (blocker.Cant("Block") || attacker.Cant("BeBlocked"))
+            return false;
         if (attacker.HasKeyword("Flying") && !blocker.HasKeyword("Flying") && !blocker.HasKeyword("Reach"))
             return false;
         if (attacker.HasKeyword("Shadow") != blocker.HasKeyword("Shadow"))

@@ -1,0 +1,114 @@
+namespace MTGEngine.Core;
+
+/// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
+public static class KeywordActions
+{
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal"];
+
+    public static EffectContext Execute(KeywordAction action, EffectContext ctx)
+    {
+        var game = ctx.Game;
+        foreach (var keyword in action.Actions)
+        {
+            var amount = Quantities.Evaluate(keyword.Amount, ctx) ?? 1;
+            switch (keyword.Keyword)
+            {
+                case "Scry":
+                    Scry(game, ctx.Controller, amount, toGraveyard: false);
+                    break;
+                case "Surveil":
+                    Scry(game, ctx.Controller, amount, toGraveyard: true);
+                    break;
+                case "Investigate":
+                    for (var i = 0; i < amount; i++)
+                        game.CreateToken(new TokenSpec(Types: ["Artifact"], Subtypes: ["Clue"], Predefined: "Clue"), ctx.Controller);
+                    break;
+                case "Bolster":
+                {
+                    var mine = ctx.State.Battlefield.Where(x => x.Controller == ctx.Controller && Characteristics.Of(ctx.State, x).IsCreature).ToList();
+                    if (mine.Count == 0)
+                        break;
+                    var least = mine.Min(x => Characteristics.Of(ctx.State, x).Toughness);
+                    var candidates = mine.Where(x => Characteristics.Of(ctx.State, x).Toughness == least).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
+                    var chosen = candidates.Count == 1 ? candidates[0] : game.Decide(new ChooseTargets(ctx.Controller, "Bolster", candidates, 1, 1)).Targets?.FirstOrDefault() ?? candidates[0];
+                    if (chosen.IsObject)
+                        game.Emit(new CountersChanged(chosen.Object.Value, "+1/+1", amount));
+                    break;
+                }
+                case "Proliferate":
+                {
+                    foreach (var obj in ctx.State.Battlefield.Where(x => x.CounterMap.Count > 0).ToList())
+                        foreach (var kind in obj.CounterMap.Keys.Where(k => k != "deathtouch-damage").ToList())
+                            if (obj.Controller == ctx.Controller || kind == "-1/-1")
+                                game.Emit(new CountersChanged(obj.Id, kind, 1));
+                    foreach (var player in ctx.State.PlayersInGame.Where(p => ctx.State.Player(p).Poison > 0 && p != ctx.Controller).ToList())
+                        game.Emit(new PoisonChanged(player, 1));
+                    break;
+                }
+                case "Explore":
+                {
+                    var explorer = ctx.Source is { } s && ctx.State.Object(s) is { Zone: Zone.Battlefield } ? s : (ctx.Last?.FirstOrDefault(x => x.IsObject).Object);
+                    var library = ctx.State.Player(ctx.Controller).Library;
+                    if (library.Count == 0)
+                        break;
+                    var top = library[0];
+                    if (ctx.State.Object(top).Card.IsLand)
+                        game.Emit(new Drew(ctx.Controller, top));
+                    else
+                    {
+                        if (explorer is { } id)
+                            game.Emit(new CountersChanged(id, "+1/+1", 1));
+                        if (game.Decide(new YesNo(ctx.Controller, "Explore: put the card into your graveyard?")).Yes)
+                            game.MoveToZone(top, Zone.Graveyard);
+                    }
+                    break;
+                }
+                case "Adapt":
+                    if (ctx.Source is { } adapting && ctx.State.Object(adapting) is { } creature && creature.CountersOf("+1/+1") == 0)
+                        game.Emit(new CountersChanged(adapting, "+1/+1", amount));
+                    break;
+                case "Monstrosity":
+                    if (ctx.Source is { } monster && ctx.State.Object(monster) is { } beast && beast.CountersOf("monstrous") == 0)
+                    {
+                        game.Emit(new CountersChanged(monster, "+1/+1", amount));
+                        game.Emit(new CountersChanged(monster, "monstrous", 1));
+                    }
+                    break;
+                case "Populate":
+                {
+                    var tokens = ctx.State.Battlefield.Where(x => x.Controller == ctx.Controller && x.IsToken && Characteristics.Of(ctx.State, x).IsCreature).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
+                    if (tokens.Count == 0)
+                        break;
+                    var chosen = tokens.Count == 1 ? tokens[0] : game.Decide(new ChooseTargets(ctx.Controller, "Populate", tokens, 1, 1)).Targets?.FirstOrDefault() ?? tokens[0];
+                    if (chosen.IsObject && ctx.State.Object(chosen.Object.Value) is { } original)
+                        game.CreateCopyToken(original.Card, ctx.Controller);
+                    break;
+                }
+                case "Fateseal":
+                {
+                    foreach (var opponent in ctx.State.OpponentsOf(ctx.Controller).ToList())
+                        Scry(game, opponent, amount, toGraveyard: false, chooser: ctx.Controller);
+                    break;
+                }
+                default:
+                    game.Skip(keyword, $"keyword action {keyword.Keyword}");
+                    break;
+            }
+        }
+        return ctx;
+    }
+
+    static void Scry(Game game, PlayerId player, int count, bool toGraveyard, PlayerId? chooser = null)
+    {
+        var library = game.State.Player(player).Library;
+        var top = library.Take(count).ToImmutableList();
+        if (top.Count == 0)
+            return;
+        var away = game.Decide(new ChooseTargets(chooser ?? player, toGraveyard ? "Surveil: cards to put into your graveyard" : "Scry: cards to put on the bottom", top.Select(TargetRef.Of).ToImmutableList(), 0, top.Count))
+            .Targets?.Where(x => x.IsObject).Select(x => x.Object.Value).Where(top.Contains).Distinct().ToImmutableList() ?? [];
+        var kept = top.Where(x => !away.Contains(x)).ToImmutableList();
+        game.Emit(new Scryed(player, kept, away));
+        foreach (var id in away)
+            game.MoveToZone(id, toGraveyard ? Zone.Graveyard : Zone.Library, position: int.MaxValue);
+    }
+}

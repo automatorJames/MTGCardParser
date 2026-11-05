@@ -73,7 +73,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _abilities =
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
-        typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility),
+        typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -84,6 +84,8 @@ public static class InterpreterSupport
         typeof(LoseAllAbilities), typeof(Animate), typeof(ChangeZone), typeof(ShuffleInto), typeof(Shuffle), typeof(Discard), typeof(Mill),
         typeof(CounterSpell), typeof(AddMana), typeof(GainControl), typeof(Fight), typeof(Attach), typeof(GameOutcome), typeof(ExtraTurn),
         typeof(LookAt), typeof(Reveal), typeof(LetVariable), typeof(ForEachOf), typeof(ChoiceOf), typeof(RemoveFromCombat),
+        typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
+        typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -100,7 +102,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _conditions =
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
-        typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did),
+        typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition),
     ];
 
     static readonly HashSet<Type> _events =
@@ -116,7 +118,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy),
     ];
 
     static readonly HashSet<Type> _durations =
@@ -127,7 +129,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _other =
     [
         typeof(Term), typeof(ObjectFilter), typeof(Qualifier), typeof(Controlled), typeof(ZoneRef), typeof(PhaseRef), typeof(DamagePortion),
-        typeof(CounterSpec), typeof(TokenSpec), typeof(KeywordInstance), typeof(StatsMod), typeof(ManaAmount), typeof(ManaChoice),
+        typeof(CounterSpec), typeof(TokenSpec), typeof(KeywordInstance), typeof(StatsMod), typeof(ManaAmount), typeof(ManaChoice), typeof(Timing), typeof(PayCost),
     ];
 
     static readonly HashSet<string> _objectEvents =
@@ -143,7 +145,7 @@ public static class InterpreterSupport
     static readonly HashSet<string> _qualifierVocabularies =
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
-        "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind",
+        "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
@@ -200,10 +202,9 @@ public static class InterpreterSupport
             Animate { Duration: { } duration } when !Keeps(duration) => $"Animate.Duration[{Describe(duration)}]",
             Animate { Types: { Count: > 0 } } => "Animate.Types",
             Animate { Transforms: true } => "Animate.Transforms",
-            ObjectSelector { Quantifier: Quantifier.Rest } => "ObjectSelector.Rest",
-            ObjectSelector { Quantifier: Quantifier.Count, Count: not (Fixed or Bound) } => "ObjectSelector.Count",
+            ObjectSelector { Quantifier: Quantifier.Count, Count: null } => "ObjectSelector.Count",
             PlayerSelector { Kind: PlayerKind.Chosen or PlayerKind.EnchantedPlayer or PlayerKind.NoPlayer } player => $"PlayerSelector.{player.Kind}",
-            Special { Kind: not ("ThatMany" or "ThatMuch" or "All") } special => $"Special.{special.Kind}",
+            Special { Kind: not ("ThatMany" or "ThatMuch" or "All" or "AnyNumber") } special => $"Special.{special.Kind}",
             Variable { Name: not ("X" or "x") } variable => $"Variable.{variable.Name}",
             ObjectEvent objectEvent when objectEvent.Events.All(x => !_objectEvents.Contains(x)) => $"ObjectEvent.{objectEvent.Events.FirstOrDefault()}",
             ObjectEvent { While: not null } => "ObjectEvent.While",
@@ -223,9 +224,26 @@ public static class InterpreterSupport
             Exile { Until: not null } => "Exile.Until",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
             TriggeredAbility { If: { } condition } when Problem(condition) is { } problem => problem,
+            KeywordAction action when action.Actions.Any(x => !KeywordActions.Supported.Contains(x.Keyword)) => $"KeywordAction.{action.Actions.First(x => !KeywordActions.Supported.Contains(x.Keyword)).Keyword}",
+            KeywordAction { Other: { Count: > 0 } } => "KeywordAction.Other",
+            UnlessPaid { Payment.Cost: not (PayMana or PayLife) } unless => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
+            UnlessPaid { Payment.PerEach: not null } => "UnlessPaid.PerEach",
+            CombatRestriction { If: not null } => "CombatRestriction.If",
+            CombatRestriction { By: not null } => "CombatRestriction.By",
+            CombatRestriction { Modifiers: { Count: > 0 } } => "CombatRestriction.Modifiers",
+            CombatRestriction { Duration: { } duration } when !Keeps(duration) => $"CombatRestriction.Duration[{Describe(duration)}]",
+            SearchLibrary { Zones: not (null or "Library") } search => $"SearchLibrary.{search.Zones}",
+            EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
+            EntersBattlefield { Duration: not null } => "EntersBattlefield.Duration",
+            ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",
+            ReplacementAbility { Effect: AsEventHappens { When: not ObjectEvent } } => "AsEventHappens.When",
+            AsEventHappens { When: ObjectEvent happens } when happens.Events.All(x => x is not ("EntersTheBattlefield" or "EntersOrTransforms")) => $"AsEventHappens.{happens.Events.FirstOrDefault()}",
+            Timing timing when timing.Kind is not (nameof(TimingKind.SorcerySpeed) or nameof(TimingKind.InstantSpeed) or nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once)) => $"Timing.{timing.Kind}",
+            ActivationLimits { ForCasting: true } => "ActivationLimits.ForCasting",
+            PayCost { Plus: not null } => "PayCost.Plus",
+            Mode { Cost: not null } => "Mode.Cost",
             ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: not (Sacrifice or Tap or Discard or PayCost or Exile or RemoveCounters) }) => "ActivatedAbility.Costs",
             KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
-            StaticAbility { While: not null } => "StaticAbility.While",
             StaticAbility statics when !IsStaticHandled(statics.Effect) => $"StaticAbility[{statics.Effect.GetType().Name}]",
             _ => null,
         };
@@ -235,6 +253,10 @@ public static class InterpreterSupport
         effect switch
         {
             Pump { Duration: null } => true,
+            CombatRestriction { Duration: null, If: null, By: null } => true,
+            GrantAbility => true,
+            LoseAllAbilities => true,
+            DoesntUntap { If: null } => true,
             Sequence sequence => sequence.Steps.All(IsStaticHandled),
             _ => false,
         };

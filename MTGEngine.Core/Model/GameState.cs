@@ -40,7 +40,10 @@ public sealed record StackItem(
     ObjectId? Spell = null,
     string Description = null,
     ImmutableList<Cost> Costs = null,
-    TargetRef? Subject = null)
+    TargetRef? Subject = null,
+    int AbilityIndex = -1,
+    ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings = null,
+    int? DelayedId = null)
 {
     public override string ToString() => Description ?? (Spell is not null ? $"spell {Spell}" : $"ability of {Source}");
 }
@@ -48,7 +51,10 @@ public sealed record StackItem(
 public enum StackKind { Spell, Activated, Triggered }
 
 /// <summary>A pump or keyword grant that lasts until a turn ends (or forever, for one with no end).</summary>
-public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false);
+public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false);
+
+/// <summary>A trigger an effect set up for later: "when that creature dies this turn, …". One-shot; gone after it fires or its turn ends.</summary>
+public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn);
 
 public sealed record PlayerState(
     PlayerId Id,
@@ -108,8 +114,15 @@ public sealed record GameState(
     int ConsecutivePasses = 0,
     bool CombatDamageDealt = false,
     ImmutableList<ObjectId> AttackedThisTurn = null,
-    ImmutableList<ObjectId> DiedThisTurn = null)
+    ImmutableList<ObjectId> DiedThisTurn = null,
+    ImmutableDictionary<string, int> ActivationsThisTurn = null,
+    ImmutableList<DelayedTrigger> Delayed = null,
+    int NextDelayedId = 1)
 {
+    public ImmutableDictionary<string, int> Activations => ActivationsThisTurn ?? ImmutableDictionary<string, int>.Empty;
+
+    public ImmutableList<DelayedTrigger> DelayedTriggers => Delayed ?? ImmutableList<DelayedTrigger>.Empty;
+
     public PlayerState Player(PlayerId id) => Players[id.Value];
 
     public GameObject Object(ObjectId id) => Objects.TryGetValue(id, out var found) ? found : null;

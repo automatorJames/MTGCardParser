@@ -225,8 +225,12 @@ public static class Conditions
                 var players = Resolver.Players(action.Player, ctx);
                 return players.Any(p => action.Action == "GainedLife" ? state.Player(p).LifeGainedThisTurn > 0 : state.Player(p).LifeLostThisTurn > 0);
             }
-            case Did did:
-                return ctx.Game.LastOptionalTaken;
+            case Did:
+                return ctx.Game?.LastOptionalTaken;
+            case OutcomeCondition { Result: "Did" }:
+                return ctx.Game?.LastOptionalTaken;
+            case OutcomeCondition { Result: "DidNot" or "Cannot" }:
+                return ctx.Game is null ? null : !ctx.Game.LastOptionalTaken;
             case OutcomeCondition:
                 return null;
             default:
@@ -244,7 +248,8 @@ public static class Conditions
             "DeclareAttackers" => Step.DeclareAttackers,
             "DeclareBlockers" => Step.DeclareBlockers,
             "CombatDamage" => Step.CombatDamage,
-            "EndOfCombat" => Step.EndCombat,
+            "EndOfCombat" or "EndOfCombatStep" or "CombatEnd" => Step.EndCombat,
+            "NextEndStep" or "TheNextEndStep" => Step.End,
             "Untap" => Step.Untap,
             "Cleanup" => Step.Cleanup,
             "MainPhase" or "PrecombatMainPhase" or "FirstMainPhase" => Step.Main1,

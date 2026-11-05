@@ -40,6 +40,7 @@ public sealed record CombatEnded : GameEvent;
 public sealed record TemporaryEffectAdded(TemporaryEffect Effect) : GameEvent;
 public sealed record TemporaryEffectsExpired(int Turn) : GameEvent;
 public sealed record DamageRemoved : GameEvent;
+public sealed record DamageRemovedFrom(ObjectId Object) : GameEvent;
 public sealed record SummoningSicknessCleared(PlayerId Player) : GameEvent;
 public sealed record ControlChanged(ObjectId Object, PlayerId Controller) : GameEvent;
 public sealed record Attached(ObjectId Attachment, ObjectId? To) : GameEvent;
@@ -54,6 +55,10 @@ public sealed record GameEnded(PlayerId? Winner, string Reason) : GameEvent;
 public sealed record ChoiceMade(PlayerId Player, string Prompt, string Choice) : GameEvent;
 public sealed record Note(string Text) : GameEvent;
 public sealed record EffectSkipped(string Kind, string Why) : GameEvent;
+public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
+public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
+public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
+public sealed record Scryed(PlayerId Player, ImmutableList<ObjectId> Top, ImmutableList<ObjectId> Bottom) : GameEvent;
 
 /// <summary>Applies an event to a state. The only place state changes; the rules kernel only decides which events happen.</summary>
 public static class Reducer
@@ -73,6 +78,7 @@ public static class Reducer
                     CombatDamageDealt = false,
                     AttackedThisTurn = ImmutableList<ObjectId>.Empty,
                     DiedThisTurn = ImmutableList<ObjectId>.Empty,
+                    ActivationsThisTurn = ImmutableDictionary<string, int>.Empty,
                     Players = state.Players.Select(p => p with { LandsPlayedThisTurn = 0, LifeGainedThisTurn = 0, LifeLostThisTurn = 0, SpellsCastThisTurn = 0 }).ToImmutableArray(),
                 };
 
@@ -218,7 +224,16 @@ public static class Reducer
             }
 
             case AbilityActivated activated:
-                return state with { Stack = state.Stack.Add(activated.Item), NextStackId = Math.Max(state.NextStackId, activated.Item.Id + 1), ConsecutivePasses = 0 };
+            {
+                var key = $"{activated.Item.Source}:{activated.Item.AbilityIndex}";
+                return state with
+                {
+                    Stack = state.Stack.Add(activated.Item),
+                    NextStackId = Math.Max(state.NextStackId, activated.Item.Id + 1),
+                    ConsecutivePasses = 0,
+                    ActivationsThisTurn = state.Activations.SetItem(key, state.Activations.GetValueOrDefault(key) + 1),
+                };
+            }
 
             case Triggered triggered:
                 return state with { Stack = state.Stack.Add(triggered.Item), NextStackId = Math.Max(state.NextStackId, triggered.Item.Id + 1), ConsecutivePasses = 0 };
@@ -265,7 +280,17 @@ public static class Reducer
                 return state with { Temporary = state.Temporary.Add(temporary.Effect) };
 
             case TemporaryEffectsExpired expired:
-                return state with { Temporary = state.Temporary.RemoveAll(x => x.UntilEndOfTurn is { } until && until <= expired.Turn) };
+                return state with
+                {
+                    Temporary = state.Temporary.RemoveAll(x => x.UntilEndOfTurn is { } until && until <= expired.Turn),
+                    Delayed = state.DelayedTriggers.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                };
+
+            case DelayedTriggerCreated created:
+                return state with { Delayed = state.DelayedTriggers.Add(created.Trigger), NextDelayedId = Math.Max(state.NextDelayedId, created.Trigger.Id + 1) };
+
+            case DelayedTriggerRemoved removed:
+                return state with { Delayed = state.DelayedTriggers.RemoveAll(x => x.Id == removed.Id) };
 
             case DamageRemoved:
             {
@@ -274,6 +299,9 @@ public static class Reducer
                     next = next.WithObject(obj with { Damage = 0, Counters = obj.CounterMap.Remove("deathtouch-damage") });
                 return next;
             }
+
+            case DamageRemovedFrom removedFrom:
+                return state.Object(removedFrom.Object) is { } healed ? state.WithObject(healed with { Damage = 0, Counters = healed.CounterMap.Remove("deathtouch-damage") }) : state;
 
             case SummoningSicknessCleared cleared:
             {

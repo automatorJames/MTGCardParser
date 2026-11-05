@@ -27,7 +27,7 @@ public sealed record CardDefinition(
     {
         var info = rules.Info ?? new CardInfo();
         var cost = ManaCost.Parse(info.ManaCost);
-        var abilities = rules.Lines.SelectMany(x => x.Abilities).ToImmutableList();
+        var abilities = Modal.Rewrite(rules.Lines.SelectMany(x => x.Abilities)).ToImmutableList();
         var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
             .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).Select(x => Normalize(x.Keyword)))
             .ToImmutableHashSet();
@@ -58,6 +58,8 @@ public sealed record CardDefinition(
         var abilities = (spec.Abilities ?? []).ToImmutableList();
         if (spec.Keywords is { Count: > 0 })
             abilities = abilities.Add(new KeywordLine(spec.Keywords));
+        if (spec.Predefined is { } predefined && PredefinedAbilities(predefined) is { } given && abilities.Count == 0)
+            abilities = given;
 
         return new CardDefinition(
             name,
@@ -83,6 +85,16 @@ public sealed record CardDefinition(
         };
 
     static ImmutableHashSet<string> PredefinedSubtypes(string predefined) => [predefined];
+
+    /// <summary>The rules text of the predefined tokens, as IR: treasure, food, clue.</summary>
+    static ImmutableList<Ability> PredefinedAbilities(string predefined) =>
+        predefined switch
+        {
+            "Treasure" => [new ActivatedAbility([new TapSelf(), new ActionCost(new Sacrifice(new PlayerSelector(PlayerKind.You), new Self()))], new AddMana([new ManaChoice(new Fixed(1), "AnyColor")]))],
+            "Food" => [new ActivatedAbility([new PayMana(["{2}"]), new TapSelf(), new ActionCost(new Sacrifice(new PlayerSelector(PlayerKind.You), new Self()))], new GainLife(new PlayerSelector(PlayerKind.You), new Fixed(3)))],
+            "Clue" => [new ActivatedAbility([new PayMana(["{2}"]), new ActionCost(new Sacrifice(new PlayerSelector(PlayerKind.You), new Self()))], new Draw(new PlayerSelector(PlayerKind.You), new Fixed(1)))],
+            _ => null,
+        };
 
     public static ImmutableHashSet<string> Split(string text) =>
         string.IsNullOrWhiteSpace(text)
