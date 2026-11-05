@@ -1,7 +1,7 @@
 namespace MTGEngine.Core;
 
 /// <summary>A triggered ability that has triggered: its source, the ability, and what it triggered on.</summary>
-public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller, DelayedTrigger Delayed = null);
+public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller, DelayedTrigger Delayed = null, int AbilityIndex = -1);
 
 /// <summary>Matches the IR's trigger events against the game's events.</summary>
 public static class Triggers

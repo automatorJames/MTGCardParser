@@ -34,6 +34,21 @@ public sealed record Characteristics(
 
     public static bool IsLandType(string subtype) => _landTypes.Contains(subtype);
 
+    /// <summary>
+    /// The allowance a "can … as though" grants, as a restriction word the combat rules read: attacking despite
+    /// defender or as though it had haste, blocking creatures with shadow. Being blockable as though a creature didn't
+    /// have landwalk is what the engine already does, so it grants nothing. Null for one the engine doesn't know.
+    /// </summary>
+    public static string AsThough(CanAsThough asThough) =>
+        (asThough.Action, asThough.Keyword) switch
+        {
+            ("Attack", "Defender") => "AttackDespiteDefender",
+            ("Attack", "Haste") => "AttackAsThoughHaste",
+            ("Block", "Shadow") => "BlockShadow",
+            ("BeBlocked", { } walk) when walk.EndsWith("walk") => "Landwalk",
+            _ => null,
+        };
+
     /// <summary>Runs a condition judged inside characteristics (a lasting effect's "for as long as"), where nested characteristics leave statics out so it can't recurse.</summary>
     public static T Judging<T>(Func<T> judge)
     {
@@ -190,6 +205,9 @@ public sealed record Characteristics(
                     foreach (var cant in restriction.Cant)
                         rules.Add(new CombatRule(cant, restriction.By, restriction.If, restriction.Modifiers, restriction.Recipient, source.Id, source.Controller));
                     break;
+                case CanAsThough asThough when AsThough(asThough) is { } allowance:
+                    restrictions.Add(allowance);
+                    break;
                 case MustCombat must:
                     foreach (var action in must.Actions)
                         restrictions.Add("Must" + action);
@@ -297,6 +315,7 @@ public sealed record Characteristics(
             MustCombat { Period: null or "EachCombat" } => [effect],
             CantBeTargeted { Duration: null } => [effect],
             SetStats => [effect],
+            CanAsThough { Duration: null } => [effect],
             GrantAbility => [effect],
             LoseAllAbilities => [effect],
             BecomesAspect { Duration: null } => [effect],
@@ -317,6 +336,7 @@ public sealed record Characteristics(
             MustCombat must => must.Objects ?? new Self(),
             CantBeTargeted cantBe => cantBe.Objects ?? new Self(),
             SetStats set => set.Objects ?? new Self(),
+            CanAsThough asThough => asThough.Objects ?? new Self(),
             Animate animate => animate.Objects ?? new Self(),
             // Prevention is read by the damage rules (Game.Prevent), not applied to an object's characteristics.
             PreventDamage => new Self(),

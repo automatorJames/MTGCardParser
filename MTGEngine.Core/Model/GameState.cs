@@ -17,7 +17,8 @@ public sealed record GameObject(
     bool FaceDown = false,
     int ZoneChangeCount = 0,
     ImmutableHashSet<string> CastWith = null,
-    ImmutableDictionary<string, string> Choices = null)
+    ImmutableDictionary<string, string> Choices = null,
+    ManaPool SpentToCast = null)
 {
     /// <summary>How the object was cast, while it's the spell or the permanent that spell became: "Kicked", "AdditionalCost", an alternative cost's name.</summary>
     public bool WasCastWith(string how) => CastWith?.Contains(how) == true;
@@ -71,6 +72,12 @@ public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, 
     }
 }
 
+/// <summary>"Target player can't cast instant or sorcery spells this turn", "you can't play lands": who, what, judged from whose side, and until when.</summary>
+public sealed record PlayRestriction(PlayerId Player, string Verb, Selector What, ObjectId? Source, PlayerId Controller, int? ExpiresAfterTurn, bool OrActivate = false, Quantity MoreThan = null);
+
+/// <summary>A card a permanent exiled, for "cards exiled with this artifact".</summary>
+public sealed record ExileLink(ObjectId Source, int SourceZoneChanges, ObjectId Card, int CardZoneChanges);
+
 /// <summary>A link from a permanent to what it exiled "until this leaves the battlefield".</summary>
 public sealed record LinkedExile(ObjectId Source, int SourceZoneChanges, ImmutableList<(ObjectId Card, int ZoneChangeCount)> Exiled);
 
@@ -92,7 +99,8 @@ public sealed record PlayerState(
     bool DrewFromEmptyLibrary = false,
     int LifeGainedThisTurn = 0,
     int LifeLostThisTurn = 0,
-    int SpellsCastThisTurn = 0)
+    int SpellsCastThisTurn = 0,
+    int Energy = 0)
 {
     public ImmutableList<ObjectId> ZoneList(Zone zone) =>
         zone switch
@@ -145,8 +153,13 @@ public sealed record GameState(
     ImmutableList<ZoneReplacement> ZoneReplacements = null,
     ImmutableList<GameEvent> ThisTurnEvents = null,
     ImmutableList<GameEvent> LastTurnEvents = null,
-    ImmutableList<LinkedExile> LinkedExiles = null)
+    ImmutableList<LinkedExile> LinkedExiles = null,
+    ImmutableList<ExileLink> ExileLinks = null,
+    ImmutableList<PlayRestriction> PlayRestrictions = null)
 {
+    public ImmutableList<ExileLink> ExileLinkList => ExileLinks ?? ImmutableList<ExileLink>.Empty;
+    public ImmutableList<PlayRestriction> PlayRestrictionList => PlayRestrictions ?? ImmutableList<PlayRestriction>.Empty;
+
     public ImmutableList<LinkedExile> LinkedExileList => LinkedExiles ?? ImmutableList<LinkedExile>.Empty;
 
     /// <summary>What happened this turn and last turn, for "if a creature died this turn" (see <see cref="History"/>).</summary>

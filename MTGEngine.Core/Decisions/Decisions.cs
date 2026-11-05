@@ -45,5 +45,5 @@ public interface IDecisionMaker
 public abstract record LegalAction;
 public sealed record PassPriority : LegalAction { public override string ToString() => "pass"; }
 public sealed record PlayLand(ObjectId Card) : LegalAction { public override string ToString() => $"play land {Card}"; }
-public sealed record CastSpell(ObjectId Card, int MaxX = 0, bool Free = false) : LegalAction { public override string ToString() => Free ? $"cast {Card} free" : $"cast {Card}"; }
+public sealed record CastSpell(ObjectId Card, int MaxX = 0, bool Free = false, int Alternative = -1) : LegalAction { public override string ToString() => Free ? $"cast {Card} free" : Alternative >= 0 ? $"cast {Card} (alternative {Alternative})" : $"cast {Card}"; }
 public sealed record ActivateAbility(ObjectId Source, int Index, string Text) : LegalAction { public override string ToString() => $"activate {Source}[{Index}]"; }

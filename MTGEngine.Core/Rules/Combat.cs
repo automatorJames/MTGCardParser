@@ -16,7 +16,8 @@ public sealed partial class Game
             .Where(x =>
             {
                 var traits = Characteristics.Of(State, x);
-                return traits.IsCreature && !traits.HasKeyword("Defender") && !traits.Cant("Attack") && !AttackForbidden(traits) && (!x.EnteredThisTurn || traits.HasKeyword("Haste"));
+                return traits.IsCreature && (!traits.HasKeyword("Defender") || traits.Cant("AttackDespiteDefender")) && !traits.Cant("Attack") && !AttackForbidden(traits)
+                    && (!x.EnteredThisTurn || traits.HasKeyword("Haste") || traits.Cant("AttackAsThoughHaste"));
             })
             .Select(x => x.Id)
             .ToImmutableList();
@@ -129,7 +130,7 @@ public sealed partial class Game
             return false;
         if (attacker.HasKeyword("Flying") && !blocker.HasKeyword("Flying") && !blocker.HasKeyword("Reach"))
             return false;
-        if (attacker.HasKeyword("Shadow") != blocker.HasKeyword("Shadow"))
+        if (attacker.HasKeyword("Shadow") != blocker.HasKeyword("Shadow") && !(attacker.HasKeyword("Shadow") && blocker.Cant("BlockShadow")))
             return false;
         if (attacker.HasKeyword("Horsemanship") && !blocker.HasKeyword("Horsemanship"))
             return false;

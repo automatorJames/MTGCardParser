@@ -17,6 +17,20 @@ public static class Filters
         if (filter.Kinds is { Count: > 0 } kinds && !kinds.Any(kind => KindMatches(kind, obj, traits, state)))
             return false;
 
+        // "The second spell you cast each turn": count what its controller cast before it this turn that fits the rest of the filter.
+        if (filter.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "SpellOrdinal") is { } ordinal)
+        {
+            var wanted = ordinal.Quality switch { "First" => 1, "Second" => 2, "Third" => 3, _ => 0 };
+            var rest = filter with { Qualifiers = filter.Qualifiers.Where(q => q != ordinal).ToList() };
+            if (!Matches(state, rest, obj, you, source, other, withStatics, ctx))
+                return false;
+            if (wanted == 0)
+                return true;
+            var before = state.ThisTurnEventList.OfType<SpellCast>().TakeWhile(x => x.Item.Spell != obj.Id)
+                .Count(x => x.Item.Controller == obj.Controller && x.Item.Spell is { } earlier && state.Object(earlier) is { } spell && Matches(state, rest with { Zone = null }, spell with { Zone = Zone.Stack }, you, source, null, withStatics, ctx));
+            return before + 1 == wanted != ordinal.Negated;
+        }
+
         // "Instant and sorcery cards" names two types no card has both of: either will do.
         var qualifiers = filter.Qualifiers ?? [];
         var eitherSpellType = qualifiers.Count(q => q.Vocabulary == "CardType" && !q.Negated && q.Quality is "Instant" or "Sorcery") == 2;
@@ -184,6 +198,11 @@ public static class Filters
                 return ctx is null ? obj.Id != source : !Resolver.Objects(related.To, ctx).Contains(obj.Id);
             case Related { Relation: Relation.AttachedTo } related:
                 return obj.AttachedTo is { } host && (ctx is null ? host == source : Resolver.Objects(related.To, ctx).Contains(host));
+            case Related { Relation: Relation.ExiledWith } exiledWith:
+            {
+                var holders = exiledWith.To is Self ? (source is { } own ? [own] : []) : ctx is not null ? Resolver.Objects(exiledWith.To, ctx) : [];
+                return obj.Zone == Zone.Exile && state.ExileLinkList.Any(x => holders.Contains(x.Source) && x.Card == obj.Id && x.CardZoneChanges == obj.ZoneChangeCount);
+            }
             case Related { Relation: Relation.Among } related when ctx is not null:
                 return Resolver.Objects(related.To, ctx).Contains(obj.Id);
             case Related { Relation: Relation.Is } related when ctx is not null:

@@ -149,6 +149,9 @@ public static class Interpreter
                 var objects = Resolver.Objects(exile.Objects, ctx);
                 foreach (var id in objects)
                     game.MoveToZone(id, Zone.Exile);
+                if (ctx.Source is { } exiler && game.State.Object(exiler) is { } by)
+                    foreach (var card in objects.Select(game.State.Object).Where(x => x is { Zone: Zone.Exile }))
+                        game.Emit(new ExiledWith(new ExileLink(exiler, by.ZoneChangeCount, card.Id, card.ZoneChangeCount)));
                 if (exile.Until is UntilThisLeaves && ctx.Source is { } keeper && game.State.Object(keeper) is { Zone: Zone.Battlefield } holder)
                 {
                     var exiled = objects.Select(game.State.Object).Where(x => x is { Zone: Zone.Exile }).Select(x => (x.Id, x.ZoneChangeCount)).ToImmutableList();
@@ -402,7 +405,7 @@ public static class Interpreter
                 List<TargetRef> affected = [];
                 foreach (var player in players)
                 {
-                    var hand = state.InZone(Zone.Hand, player).Where(x => discard.Filter is null || Filters.Matches(game.State, discard.Filter with { Zone = null }, x, ctx.Controller, ctx.Source, ctx: ctx)).Select(x => x.Id).ToList();
+                    var hand = state.InZone(Zone.Hand, player).Where(x => discard.Filter is null || Resolver.PoolMatches(discard.Filter, x, ctx)).Select(x => x.Id).ToList();
                     var take = Math.Min(count, hand.Count);
                     IEnumerable<ObjectId> chosen;
                     if (take >= hand.Count)
@@ -559,6 +562,35 @@ public static class Interpreter
                         }
                     }
                 return ctx with { Last = found.ToImmutableList(), Affected = revealed.ToImmutableList(), Rest = revealed.Except(found).ToImmutableList() };
+            }
+
+            case CantPlay cantPlay:
+            {
+                var until = cantPlay.Duration is DuringPhase ? state.Turn + 1 : UntilTurn(cantPlay.Duration, state);
+                if (until is null)
+                    return Skipped(game, cantPlay, "duration", ctx);
+                foreach (var player in Resolver.Players(cantPlay.Player, ctx))
+                    game.Emit(new PlayRestricted(new PlayRestriction(player, cantPlay.Verb, cantPlay.What, ctx.Source, ctx.Controller, until == -1 ? null : until, cantPlay.OrActivate is not null, cantPlay.MoreThan)));
+                return ctx;
+            }
+
+            case GetEnergy energy:
+            {
+                var amount = Quantities.Evaluate(energy.Amount, ctx) ?? 1;
+                foreach (var player in energy.Player is null ? [ctx.Controller] : Resolver.Players(energy.Player, ctx))
+                    game.Emit(new EnergyChanged(player, amount));
+                return ctx with { LastAmount = amount };
+            }
+
+            case CanAsThough asThough:
+            {
+                var objects = asThough.Objects is null ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(asThough.Objects, ctx);
+                var until = UntilTurn(asThough.Duration, state);
+                if (Characteristics.AsThough(asThough) is not { } allowance || until is null)
+                    return Skipped(game, asThough, "as though", ctx);
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: [allowance]), effect, ctx)));
+                return ctx;
             }
 
             case PlayCard play:
@@ -791,6 +823,16 @@ public static class Interpreter
                 var paid = false;
                 switch (pay.Cost)
                 {
+                    case PayMana energy when energy.Symbols.All(x => x.Equals("{e}", StringComparison.OrdinalIgnoreCase)):
+                    {
+                        var needed = energy.Symbols.Count * (pay.PerEach is null ? 1 : Quantities.Evaluate(pay.PerEach, ctx) ?? 1);
+                        if (state.Player(payer).Energy >= needed)
+                        {
+                            game.Emit(new EnergyChanged(payer, -needed));
+                            paid = true;
+                        }
+                        break;
+                    }
                     case PayMana mana when mana.Symbols.All(x => !x.Contains('e', StringComparison.OrdinalIgnoreCase)):
                     {
                         var cost = ManaCost.Parse(string.Concat(mana.Symbols));

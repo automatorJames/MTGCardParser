@@ -10,7 +10,7 @@ public static class ManaPayment
     /// <summary>A permanent that can be tapped for mana now, with the colors it could make (null entry = colorless).</summary>
     public sealed record Source(ObjectId Id, ImmutableArray<Color?> Options, int Amount = 1);
 
-    public static ImmutableList<Source> Sources(GameState state, PlayerId player)
+    public static ImmutableList<Source> Sources(GameState state, PlayerId player, bool convoke = false)
     {
         List<Source> sources = [];
 
@@ -59,6 +59,12 @@ public static class ManaPayment
                 sources.Add(new Source(obj.Id, options.Distinct().ToImmutableArray(), amount));
         }
 
+        // Convoke: each untapped creature (summoning sick or not) can pay for {1} or one mana of its color.
+        if (convoke)
+            foreach (var creature in state.Battlefield.Where(x => x.Controller == player && !x.Tapped && sources.All(s => s.Id != x.Id)))
+                if (Characteristics.Of(state, creature) is { IsCreature: true } traits)
+                    sources.Add(new Source(creature.Id, [.. traits.Colors.Select(c => (Color?)c), null]));
+
         return sources.ToImmutableList();
     }
 
@@ -72,13 +78,13 @@ public static class ManaPayment
     }
 
     /// <summary>The sources to tap, and the color each makes, to pay <paramref name="cost"/> together with the pool; null when it can't be paid.</summary>
-    public static ImmutableList<(Source Source, Color? Color)> Plan(GameState state, PlayerId player, ManaCost cost)
+    public static ImmutableList<(Source Source, Color? Color)> Plan(GameState state, PlayerId player, ManaCost cost, bool convoke = false)
     {
         var pool = state.Player(player).Pool;
         if (pool.Pay(cost) is not null)
             return [];
 
-        var sources = Sources(state, player);
+        var sources = Sources(state, player, convoke);
         // Requirements: colored symbols, hybrid symbols, then generic (any color or colorless) and colorless-only.
         List<ImmutableArray<Color?>> requirements = [];
         foreach (var (color, amount) in cost.Colored)
@@ -151,7 +157,7 @@ public static class ManaPayment
         return false;
     }
 
-    public static bool CanPay(GameState state, PlayerId player, ManaCost cost) => Plan(state, player, cost) is not null;
+    public static bool CanPay(GameState state, PlayerId player, ManaCost cost, bool convoke = false) => Plan(state, player, cost, convoke) is not null;
 
     /// <summary>The largest X for which <paramref name="cost"/> is payable.</summary>
     public static int MaxX(GameState state, PlayerId player, ManaCost cost)

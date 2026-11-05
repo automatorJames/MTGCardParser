@@ -270,6 +270,43 @@ public sealed partial class Game
         }
     }
 
+    /// <summary>The restrictions on what <paramref name="player"/> may cast or play now: those set up for a while, and static ones on permanents.</summary>
+    IEnumerable<PlayRestriction> RestrictionsOn(PlayerId player)
+    {
+        foreach (var restriction in State.PlayRestrictionList.Where(x => x.Player == player))
+            yield return restriction;
+        foreach (var source in State.Battlefield.ToList())
+            foreach (var ability in Characteristics.AbilitiesOf(State, source).OfType<StaticAbility>())
+                if (ability.Effect is CantPlay cantPlay)
+                {
+                    var ctx = new EffectContext(this, source.Controller, source.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+                    if (ability.While is { } condition && Conditions.Evaluate(condition, ctx) != true)
+                        continue;
+                    if (Resolver.Players(cantPlay.Player, ctx).Contains(player))
+                        yield return new PlayRestriction(player, cantPlay.Verb, cantPlay.What, source.Id, source.Controller, null, cantPlay.OrActivate is not null, cantPlay.MoreThan);
+                }
+    }
+
+    /// <summary>Whether a restriction forbids <paramref name="player"/> casting (or playing, for a land) <paramref name="card"/> now.</summary>
+    bool Forbidden(PlayerId player, GameObject card)
+    {
+        foreach (var restriction in RestrictionsOn(player))
+        {
+            if (restriction.Verb is not ("Cast" or "Play") || restriction.Verb == "Cast" && card.Card.IsLand)
+                continue;
+            if (restriction.MoreThan is { } most)
+            {
+                var ctx = new EffectContext(this, restriction.Controller, restriction.Source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+                if (State.ThisTurnEventList.OfType<SpellCast>().Count(x => x.Item.Controller == player) < (Quantities.Evaluate(most, ctx) ?? 1))
+                    continue;
+            }
+            var asCast = card with { Zone = card.Card.IsLand ? Zone.Battlefield : Zone.Stack, Controller = player };
+            if (restriction.What is not ObjectSelector { Filter: var filter } || Filters.Matches(State, filter with { Zone = null }, asCast, restriction.Controller, restriction.Source))
+                return true;
+        }
+        return false;
+    }
+
     public ImmutableList<LegalAction> LegalActions(PlayerId player)
     {
         List<LegalAction> actions = [new PassPriority()];
@@ -284,6 +321,8 @@ public sealed partial class Game
                 continue;
             var card = obj.Card;
 
+            if (Forbidden(player, obj))
+                continue;
             if (card.IsLand)
             {
                 if (sorcerySpeed && playerState.LandsPlayedThisTurn < 1)
@@ -296,11 +335,13 @@ public sealed partial class Game
                 continue;
             if (!card.Abilities.OfType<ActivationLimits>().Where(x => x.ForCasting).SelectMany(x => x.Timings).All(t => TimingAllows(t, obj, player)))
                 continue;
-            if (!CanAffordToCast(obj, player))
-                continue;
             if (!TargetsAvailable(SpellSlots(card), player, id))
                 continue;
-            actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0));
+            if (CanAffordToCast(obj, player))
+                actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0));
+            foreach (var (index, alternative) in Alternatives(card))
+                if (CanAffordAlternative(obj, player, alternative))
+                    actions.Add(new CastSpell(id, 0, Alternative: index));
         }
 
         foreach (var (permission, obj) in Permitted(player).ToList())
@@ -321,7 +362,8 @@ public sealed partial class Game
             actions.Add(new CastSpell(obj.Id, !permission.Free && card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0, permission.Free));
         }
 
-        foreach (var obj in state.Battlefield.Where(x => x.Controller == player))
+        var noActivating = RestrictionsOn(player).Any(x => x.OrActivate);
+        foreach (var obj in state.Battlefield.Where(x => x.Controller == player && !noActivating))
         {
             var traits = Characteristics.Of(state, obj);
             if (traits.LostAbilities)
@@ -438,7 +480,7 @@ public sealed partial class Game
                         return false;
                     break;
                 case PayMana mana:
-                    if (!ManaPayment.CanPay(State, player, ManaCost.Parse(string.Concat(mana.Symbols))))
+                    if (State.Player(player).Energy < EnergyIn(mana) || !ManaPayment.CanPay(State, player, ManaCost.Parse(string.Concat(mana.Symbols.Where(x => !IsEnergy(x))))))
                         return false;
                     break;
                 case PayLife life:
@@ -467,6 +509,11 @@ public sealed partial class Game
         return true;
     }
 
+    static bool IsEnergy(string symbol) => symbol.Equals("{e}", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>How many energy counters a cost's symbols ask for ("pay {e}{e}").</summary>
+    static int EnergyIn(PayMana mana) => mana.Symbols.Count(IsEnergy);
+
     static IEnumerable<Cost> Flatten(IEnumerable<Cost> costs) =>
         costs.SelectMany(x => x is CompoundCost compound ? Flatten(compound.Parts) : [x]);
 
@@ -487,7 +534,7 @@ public sealed partial class Game
                 Emit(new LandPlayed(player, land.Card));
                 return;
             case CastSpell cast:
-                Cast(cast.Card, player, cast.MaxX, cast.Free);
+                Cast(cast.Card, player, cast.MaxX, cast.Free, cast.Alternative);
                 return;
             case ActivateAbility activate:
                 Activate(activate.Source, activate.Index, player);
@@ -537,7 +584,9 @@ public sealed partial class Game
                     Emit(new Untapped(source));
                     break;
                 case PayMana mana:
-                    if (!Pay(player, ManaCost.Parse(string.Concat(mana.Symbols))))
+                    if (EnergyIn(mana) is > 0 and var energy)
+                        Emit(new EnergyChanged(player, -energy));
+                    if (!Pay(player, ManaCost.Parse(string.Concat(mana.Symbols.Where(x => !IsEnergy(x))))))
                         return;
                     break;
                 case PayLife { Amount: Fixed life }:
@@ -610,9 +659,9 @@ public sealed partial class Game
         return targets.ToImmutableList();
     }
 
-    bool Pay(PlayerId player, ManaCost cost)
+    bool Pay(PlayerId player, ManaCost cost, bool convoke = false)
     {
-        var plan = ManaPayment.Plan(State, player, cost);
+        var plan = ManaPayment.Plan(State, player, cost, convoke);
         if (plan is null)
             return false;
 
@@ -622,12 +671,17 @@ public sealed partial class Game
             Emit(new ManaAdded(player, color, source.Amount));
         }
 
-        var remaining = State.Player(player).Pool.Pay(cost);
+        var pool = State.Player(player).Pool;
+        var remaining = pool.Pay(cost);
         if (remaining is null)
             return false;
         Emit(new ManaPaid(player, remaining));
+        _lastSpent = new ManaPool(Colors.All.Where(c => pool.Of(c) > remaining.Of(c)).ToImmutableDictionary(c => c, c => pool.Of(c) - remaining.Of(c)), pool.Colorless - remaining.Colorless);
         return true;
     }
+
+    /// <summary>The mana the last payment spent, for "if {u} was spent to cast it".</summary>
+    ManaPool _lastSpent = ManaPool.Empty;
 
     void ResolveTop()
     {
@@ -777,10 +831,10 @@ public sealed partial class Game
     {
         var pending = _pending.ToList();
         _pending.Clear();
-        if (pending.Count == 0)
-            return false;
 
-        List<PendingTrigger> triggered = [];
+        List<PendingTrigger> triggered = [.. StateTriggers()];
+        if (pending.Count == 0 && triggered.Count == 0)
+            return false;
         foreach (var (evt, before, after) in pending)
             triggered.AddRange(Triggers.For(evt, after, before));
         // "Whenever one or more creatures die" triggers once for all that happened together.
@@ -808,7 +862,7 @@ public sealed partial class Game
 
                 var (effect, bindings) = ResolveModes(trigger.Ability.Effect, controller);
                 var item = new StackItem(State.NextStackId, controller, trigger.Source.Zone == Zone.Command ? null : trigger.Source.Id, StackKind.Triggered, [effect], targets, 0,
-                    Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject, Bindings: bindings, DelayedId: trigger.Delayed?.Id);
+                    Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject, Bindings: bindings, DelayedId: trigger.Delayed?.Id, AbilityIndex: trigger.AbilityIndex);
                 if (trigger.Delayed is { } fired)
                     Emit(new DelayedTriggerRemoved(fired.Id));
                 Emit(new Triggered(item));
@@ -818,6 +872,29 @@ public sealed partial class Game
         // Putting triggers on the stack emits events of its own; those don't trigger anything, so drop them.
         _pending.Clear();
         return any;
+    }
+
+    /// <summary>
+    /// State triggers whose condition holds now ("when this enchantment has no counters on it, sacrifice it"): each
+    /// triggers once, and again only after that instance has left the stack.
+    /// </summary>
+    IEnumerable<PendingTrigger> StateTriggers()
+    {
+        foreach (var source in State.Battlefield.ToList())
+        {
+            var index = -1;
+            foreach (var ability in Characteristics.AbilitiesOf(State, source))
+            {
+                index++;
+                if (ability is not TriggeredAbility { Trigger: ConditionEvent { Condition: var condition } } trigger)
+                    continue;
+                if (State.Stack.Any(x => x.Kind == StackKind.Triggered && x.Source == source.Id && x.AbilityIndex == index))
+                    continue;
+                var ctx = new EffectContext(this, source.Controller, source.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+                if (Conditions.Evaluate(condition, ctx) == true)
+                    yield return new PendingTrigger(source, trigger, null, source.Controller, AbilityIndex: index);
+            }
+        }
     }
 
     // ---- Primitive actions ----------------------------------------------------------------------------------------

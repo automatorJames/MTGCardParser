@@ -7,14 +7,23 @@ namespace MTGEngine.Core;
 /// </summary>
 public sealed partial class Game
 {
-    void Cast(ObjectId id, PlayerId player, int maxX, bool free = false)
+    void Cast(ObjectId id, PlayerId player, int maxX, bool free = false, int alternative = -1)
     {
         var obj = State.Object(id);
         var card = obj.Card;
-        var x = card.ManaCost.X > 0 && maxX > 0 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var mana = free ? ManaCost.Free : card.ManaCost.WithX(x);
+        var x = card.ManaCost.X > 0 && maxX > 0 && alternative < 0 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
+        var mana = free || alternative >= 0 ? ManaCost.Free : card.ManaCost.WithX(x);
         var options = ImmutableHashSet.CreateBuilder<string>();
         List<Effect> actions = [];
+
+        // "You may exile two green cards from your hand rather than pay this spell's mana cost."
+        if (alternative >= 0 && Alternatives(card).FirstOrDefault(a => a.Index == alternative).Alternative is { } chosen)
+        {
+            options.Add("Alternative");
+            foreach (var part in new[] { chosen.Cost, chosen.Additional }.Where(c => c is not null))
+                if (!PlanAdditional(part, player, id, 0, ref mana, actions, options))
+                    return;
+        }
 
         // Kicker: an optional additional mana cost, decided as the spell is cast.
         foreach (var kicker in Kickers(card))
@@ -51,8 +60,12 @@ public sealed partial class Game
         for (var i = 0; i < slots.Count && i < targets.Count; i++)
             bySelector[slots[i].Selector] = [targets[i]];
         var total = free ? mana : CostToCast(obj, player, mana, bySelector);
-        if (!Pay(player, total))
+        _lastSpent = ManaPool.Empty;
+        if (!Pay(player, total, HasConvoke(card)))
             return;
+        var spent = _lastSpent;
+        options.Add("Cast");
+        options.Add("From" + obj.Zone);
 
         MoveToZone(id, Zone.Stack, player);
         if (actions.Count > 0)
@@ -72,16 +85,34 @@ public sealed partial class Game
             ctx.Binds["#cost"] = paid.ToImmutableList();
             bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(ctx.Binds);
         }
-        if (options.Count > 0)
-            Emit(new CastOptionsChosen(id, options.ToImmutable()));
+        Emit(new CastOptionsChosen(id, options.ToImmutable(), spent));
         var item = new StackItem(State.NextStackId, player, id, StackKind.Spell, effects.ToImmutableList(), targets, x, Spell: id, Description: card.Name, Bindings: bindings);
         Emit(new SpellCast(item));
     }
 
     /// <summary>Whether <paramref name="player"/> could cast <paramref name="obj"/> now as far as its costs go: mana (with cost changes) and additional costs.</summary>
     bool CanAffordToCast(GameObject obj, PlayerId player) =>
-        ManaPayment.CanPay(State, player, CostToCast(obj, player, obj.Card.ManaCost.WithX(0).Plus(RequiredAdditionalMana(obj.Card)), null))
+        ManaPayment.CanPay(State, player, CostToCast(obj, player, obj.Card.ManaCost.WithX(0).Plus(RequiredAdditionalMana(obj.Card)), null), HasConvoke(obj.Card))
         && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0));
+
+    /// <summary>Whether a spell has convoke: the keyword, or "this spell has convoke".</summary>
+    static bool HasConvoke(CardDefinition card) =>
+        card.Keywords.Contains("Convoke") || card.Abilities.Any(a => a is StaticAbility { Effect: Convoke { Spells: Self or null } });
+
+    /// <summary>The ways to cast a card "rather than pay this spell's mana cost", with their conditions.</summary>
+    static IEnumerable<(int Index, AlternativeCost Alternative)> Alternatives(CardDefinition card) =>
+        card.Abilities.OfType<AlternativeCost>().Select((alternative, i) => (i, alternative)).Where(x => x.alternative.Replaces == "ThisSpellsManaCost");
+
+    /// <summary>Whether <paramref name="player"/> could cast <paramref name="obj"/> now for an alternative cost: its condition holds and its costs can be paid.</summary>
+    bool CanAffordAlternative(GameObject obj, PlayerId player, AlternativeCost alternative)
+    {
+        if (alternative.If is { } condition && Conditions.Evaluate(condition, new EffectContext(this, player, obj.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance))) != true)
+            return false;
+        var mana = new[] { alternative.Cost, alternative.Additional }.OfType<PayMana>().Aggregate(ManaCost.Free, (sum, m) => sum.Plus(ManaCost.Parse(string.Concat(m.Symbols))));
+        return ManaPayment.CanPay(State, player, mana.Plus(RequiredAdditionalMana(obj.Card)), HasConvoke(obj.Card))
+            && new[] { alternative.Cost, alternative.Additional }.Where(c => c is not null and not MTGRulesIR.Model.PayMana).All(c => AdditionalPayable(c, player, obj.Id, 0))
+            && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0));
+    }
 
     static IEnumerable<ManaCost> Kickers(CardDefinition card) =>
         card.Abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords)
@@ -282,7 +313,8 @@ public sealed partial class Game
                     case Sacrifice { Objects: ObjectSelector objects }:
                         return Matching(objects, o => o.Controller == player && o.Zone == Zone.Battlefield) >= Wanted(objects);
                     case Discard discard:
-                        return State.Player(player).Hand.Count(h => h != spell) >= (discard.Count is Special { Kind: "All" } ? 0 : Count(discard.Count));
+                        return State.Player(player).Hand.Count(h => h != spell && (discard.Filter is null || State.Object(h) is { } card && Resolver.PoolMatches(discard.Filter, card, ctx)))
+                            >= (discard.Count is Special { Kind: "All" } ? 0 : Count(discard.Count));
                     case Exile { Objects: ObjectSelector objects }:
                         return Matching(objects) >= Wanted(objects);
                     case Reveal { What: ObjectSelector objects }:

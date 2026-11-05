@@ -74,7 +74,7 @@ public static class InterpreterSupport
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
         typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(FlavorAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
-        typeof(ChapterAbility), typeof(AdditionalCost),
+        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -89,7 +89,7 @@ public static class InterpreterSupport
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
-        typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil),
+        typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -107,12 +107,12 @@ public static class InterpreterSupport
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
-        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay),
+        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent),
     ];
 
     static readonly HashSet<Type> _events =
     [
-        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent), typeof(EffectEvent), typeof(WouldHappen), typeof(CombatEncounterEvent),
+        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent), typeof(EffectEvent), typeof(WouldHappen), typeof(CombatEncounterEvent), typeof(ConditionEvent),
     ];
 
     static readonly HashSet<Type> _costs =
@@ -151,7 +151,7 @@ public static class InterpreterSupport
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
         "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind",
-        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction",
+        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "SpellOrdinal",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
@@ -226,11 +226,11 @@ public static class InterpreterSupport
             Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
             Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
             Term term when term.Vocabulary != "PermanentDesignation" && !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
-            Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On) } related => $"Related.{related.Relation}",
+            Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On or Relation.ExiledWith) } related => $"Related.{related.Relation}",
             Happened happened when !HappenedHandled(happened) => $"Happened[{happened.Event?.GetType().Name}{(happened.Event is NamedEvent named ? "." + named.Kind : "")}]",
             PayCost { Cost: ActionCost { Action: var paid } } when !Game.PayableActions.Contains(paid.GetType()) => $"PayCost[ActionCost.{paid.GetType().Name}]",
             PayCost { Cost: not (PayMana or PayLife or ActionCost) } pay => $"PayCost[{pay.Cost?.GetType().Name}]",
-            PayCost { Cost: PayMana mana } when mana.Symbols.Any(x => x.Contains('e', StringComparison.OrdinalIgnoreCase)) => "PayCost.Energy",
+            PayCost { Cost: PayMana mana } when mana.Symbols.Any(x => x.Contains('e', StringComparison.OrdinalIgnoreCase)) && !mana.Symbols.All(x => x.Equals("{e}", StringComparison.OrdinalIgnoreCase)) => "PayCost.Energy",
             Controlled { Relation: not ("Control" or "Own") } controlled => $"Controlled.{controlled.Relation}",
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
             ZoneRef { Position: not (null or "Top" or "Bottom") } zone => $"ZoneRef.Position.{zone.Position}",
@@ -241,6 +241,8 @@ public static class InterpreterSupport
             Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
             CombatEncounterEvent encounter when !Triggers.EncounterKinds.Contains(encounter.Encounter) => $"CombatEncounterEvent.{encounter.Encounter}",
             RevealUntil { Until: not PlayerAction { What: ObjectSelector } } => "RevealUntil.Until",
+            CantPlay { Verb: not ("Cast" or "Play") } cantPlay => $"CantPlay.{cantPlay.Verb}",
+            CanAsThough asThough when Characteristics.AsThough(asThough) is null => $"CanAsThough.{asThough.Action}.{asThough.Keyword}",
             Remains remains when remains.State is not ("Tapped" or "Untapped" or "OnTheBattlefield" or "Exiled") => $"Remains.{remains.State}",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
             TriggeredAbility { If: { } condition } when Problem(condition) is { } problem => problem,
@@ -272,6 +274,8 @@ public static class InterpreterSupport
             ReplacementAbility { Effect: AsEventHappens { When: not ObjectEvent } } => "AsEventHappens.When",
             AsEventHappens { When: ObjectEvent happens } when happens.Events.All(x => x is not ("EntersTheBattlefield" or "EntersOrTransforms" or "Enters")) => $"AsEventHappens.{happens.Events.FirstOrDefault()}",
             AdditionalCost { Spells: not Self } => "AdditionalCost.Spells",
+            AlternativeCost { Replaces: not "ThisSpellsManaCost" } alternative => $"AlternativeCost.{alternative.Replaces}",
+            Convoke { Spells: not (null or Self) } => "Convoke.Spells",
             ChooseEffect { Kinds: [var kind, ..] } when kind != "Opponent" && Choices.Category(kind) is not ("Color" or "CreatureType" or "CardName" or "LandType" or "CardType" or "OddOrEven") => $"ChooseEffect.{kind}",
             ChooseEffect { Kinds: null or [], From: not [PlayerSelector or ObjectSelector, ..] } => "ChooseEffect.From",
             OfChosen chosen when !Choices.Supported.Contains(chosen.Characteristic) => $"OfChosen.{chosen.Characteristic}",
@@ -313,6 +317,9 @@ public static class InterpreterSupport
             MustCombat { Period: null or "EachCombat" } => true,
             CantBeTargeted { Duration: null } => true,
             SetStats => true,
+            CantPlay => true,
+            Convoke { Spells: null or Self } => true,
+            CanAsThough { Duration: null } => true,
             GrantAbility => true,
             LoseAllAbilities => true,
             DoesntUntap { If: null } => true,

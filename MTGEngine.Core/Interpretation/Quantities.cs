@@ -133,6 +133,29 @@ public static class Conditions
             }
             case Not not:
                 return !Evaluate(not.Condition, ctx);
+            case WasCast wasCast:
+            {
+                var objects = Resolver.Objects(wasCast.Spell ?? new Self(), ctx).Select(state.Object).Where(x => x is not null).ToList();
+                if (objects.Count == 0)
+                    return wasCast.Negated;
+                var holds = objects.Any(x => x.WasCastWith("Cast") && (wasCast.From is not { Zone: var from } || x.WasCastWith("From" + from)));
+                return holds != wasCast.Negated;
+            }
+            case ManaSpent spent:
+            {
+                var objects = Resolver.Objects(spent.For ?? new Self(), ctx).Select(state.Object).Where(x => x?.SpentToCast is not null).ToList();
+                if (objects.Count == 0)
+                    return false;
+                var pool = objects[0].SpentToCast;
+                var amount = spent.Color is { } colorName ? Colors.OfName(colorName) is { } color ? pool.Of(color) : colorName == "Colorless" ? pool.Colorless : 0 : pool.Total;
+                return spent.Amount switch
+                {
+                    Bound bound when Quantities.Evaluate(bound.Value, ctx) is { } threshold => Filters.Compare(amount, bound.Comparison, threshold),
+                    Fixed exactly => spent.Exactly ? amount == exactly.Value : amount >= exactly.Value,
+                    null => amount > 0,
+                    _ => null,
+                };
+            }
             case WasCastWith { Twice: false } cast:
             {
                 var objects = Resolver.Objects(cast.Spell, ctx).Select(state.Object).Where(x => x is not null).ToList();

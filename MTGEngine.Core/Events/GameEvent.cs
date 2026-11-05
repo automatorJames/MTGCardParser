@@ -58,7 +58,10 @@ public sealed record EffectSkipped(string Kind, string Why) : GameEvent;
 public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
-public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options) : GameEvent;
+public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
+public sealed record ExiledWith(ExileLink Link) : GameEvent;
+public sealed record PlayRestricted(PlayRestriction Restriction) : GameEvent;
+public sealed record EnergyChanged(PlayerId Player, int Delta) : GameEvent;
 public sealed record LinkedExileCreated(LinkedExile Link) : GameEvent;
 public sealed record LinkedExileEnded(ObjectId Source) : GameEvent;
 public sealed record ZoneReplacementCreated(ZoneReplacement Replacement) : GameEvent;
@@ -152,6 +155,7 @@ public static class Reducer
                     ZoneChangeCount = obj.ZoneChangeCount + 1,
                     // A permanent spell keeps how it was cast; anything else is a new object without history.
                     CastWith = entering && moved.From == Zone.Stack ? obj.CastWith : null,
+                    SpentToCast = entering && moved.From == Zone.Stack ? obj.SpentToCast : null,
                     Choices = null,
                 });
                 // Attachments to something that left come off.
@@ -307,7 +311,20 @@ public static class Reducer
                     Shields = state.ShieldList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     Permissions = state.PermissionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     ZoneReplacements = state.ZoneReplacementList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    PlayRestrictions = state.PlayRestrictionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
+
+            case ExiledWith exiled:
+                return state with { ExileLinks = state.ExileLinkList.Add(exiled.Link) };
+
+            case PlayRestricted restricted:
+                return state with { PlayRestrictions = state.PlayRestrictionList.Add(restricted.Restriction) };
+
+            case EnergyChanged energy:
+            {
+                var player = state.Player(energy.Player);
+                return state.WithPlayer(player with { Energy = Math.Max(0, player.Energy + energy.Delta) });
+            }
 
             case LinkedExileCreated linked:
                 return state with { LinkedExiles = state.LinkedExileList.Add(linked.Link) };
@@ -365,7 +382,7 @@ public static class Reducer
                 return state.Object(attached.Attachment) is { } attachment ? state.WithObject(attachment with { AttachedTo = attached.To }) : state;
 
             case CastOptionsChosen options:
-                return state.Object(options.Spell) is { } spell ? state.WithObject(spell with { CastWith = options.Options }) : state;
+                return state.Object(options.Spell) is { } spell ? state.WithObject(spell with { CastWith = options.Options, SpentToCast = options.Spent }) : state;
 
             case ChoiceRecorded choice:
                 return state.Object(choice.Object) is { } chooser ? state.WithObject(chooser with { Choices = (chooser.Choices ?? ImmutableDictionary<string, string>.Empty).SetItem(choice.Kind, choice.Value) }) : state;
