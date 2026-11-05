@@ -11,10 +11,18 @@ public sealed partial class Game
     {
         var obj = State.Object(id);
         var card = obj.Card;
-        var x = card.ManaCost.X > 0 && maxX > 0 && alternative < 0 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var mana = free || alternative >= 0 ? ManaCost.Free : card.ManaCost.WithX(x);
+        var x = card.ManaCost.X > 0 && maxX > 0 && alternative == -1 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
+        var mana = free || alternative >= 0 || alternative == Flashback ? ManaCost.Free : card.ManaCost.WithX(x);
         var options = ImmutableHashSet.CreateBuilder<string>();
         List<Effect> actions = [];
+
+        if (alternative == Flashback && FlashbackCost(card) is { } flashback)
+        {
+            mana = ManaCost.Free;
+            options.Add("Flashback");
+            if (!PlanAdditional(flashback, player, id, 0, ref mana, actions, options))
+                return;
+        }
 
         // "You may exile two green cards from your hand rather than pay this spell's mana cost."
         if (alternative >= 0 && Alternatives(card).FirstOrDefault(a => a.Index == alternative).Alternative is { } chosen)
@@ -31,6 +39,13 @@ public sealed partial class Game
             {
                 mana = mana.Plus(kicker);
                 options.Add("Kicked");
+            }
+
+        foreach (var buyback in OptionalCosts(card, "Buyback"))
+            if (ManaPayment.CanPay(State, player, CostToCast(obj, player, mana.Plus(buyback), null)) && Decide(new YesNo(player, $"Pay buyback {buyback}?")).Yes)
+            {
+                mana = mana.Plus(buyback);
+                options.Add("Buyback");
             }
 
         foreach (var cost in AdditionalCostsOf(card))
@@ -68,6 +83,8 @@ public sealed partial class Game
         options.Add("From" + obj.Zone);
 
         MoveToZone(id, Zone.Stack, player);
+        if (options.Contains("Flashback") && State.Object(id) is { } onStack)
+            Emit(new ZoneReplacementCreated(new ZoneReplacement("LeaveTheStack", [(id, onStack.ZoneChangeCount)], Zone.Exile, null)));
         if (actions.Count > 0)
         {
             var ctx = new EffectContext(this, player, id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x, new Dictionary<string, ImmutableList<TargetRef>>());
@@ -114,9 +131,12 @@ public sealed partial class Game
             && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0));
     }
 
-    static IEnumerable<ManaCost> Kickers(CardDefinition card) =>
+    static IEnumerable<ManaCost> Kickers(CardDefinition card) => OptionalCosts(card, "Kicker");
+
+    /// <summary>The mana of a card's optional extra cost keyword ("kicker {4}", "buyback {3}").</summary>
+    static IEnumerable<ManaCost> OptionalCosts(CardDefinition card, string keyword) =>
         card.Abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords)
-            .Where(x => CardDefinition.Normalize(x.Keyword) == "Kicker" && x.Cost is PayMana)
+            .Where(x => CardDefinition.Normalize(x.Keyword) == keyword && x.Cost is PayMana)
             .Select(x => ManaCost.Parse(string.Concat(((PayMana)x.Cost).Symbols)));
 
     static IEnumerable<Cost> AdditionalCostsOf(CardDefinition card) =>

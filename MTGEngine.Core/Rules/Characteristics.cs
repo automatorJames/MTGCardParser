@@ -173,8 +173,11 @@ public sealed record Characteristics(
             {
                 abilities.Add(ability);
                 if (ability is KeywordLine line)
+                {
                     foreach (var keyword in line.Keywords)
-                        keywords.Add(CardDefinition.Normalize(keyword.Keyword));
+                        keywords.UnionWith(KeywordAbilities.NamesOf(keyword));
+                    abilities.AddRange(KeywordAbilities.Expand([line], false).Skip(1));
+                }
             }
         }
 
@@ -187,15 +190,16 @@ public sealed record Characteristics(
                     power += factor * ((pump.Power as Fixed)?.Value ?? 0);
                     toughness += factor * ((pump.Toughness as Fixed)?.Value ?? 0);
                     foreach (var keyword in pump.Keywords ?? [])
-                        if (pump.Remove)
-                            keywords.Remove(CardDefinition.Normalize(keyword.Keyword));
-                        else
-                            keywords.Add(CardDefinition.Normalize(keyword.Keyword));
+                        foreach (var named in KeywordAbilities.NamesOf(keyword))
+                            if (pump.Remove)
+                                keywords.Remove(named);
+                            else
+                                keywords.Add(named);
                     break;
                 }
                 case Animate animate:
                     foreach (var keyword in animate.Keywords ?? [])
-                        keywords.Add(CardDefinition.Normalize(keyword.Keyword));
+                        keywords.UnionWith(KeywordAbilities.NamesOf(keyword));
                     break;
                 case CombatRestriction { By: null, If: null, Modifiers: null or { Count: 0 }, Recipient: null } restriction:
                     foreach (var cant in restriction.Cant)
@@ -224,10 +228,13 @@ public sealed record Characteristics(
                 case GrantAbility grant:
                     abilities.Add(grant.Ability);
                     if (grant.Ability is KeywordLine line)
+                    {
                         foreach (var keyword in line.Keywords)
-                            keywords.Add(CardDefinition.Normalize(keyword.Keyword));
+                            keywords.UnionWith(KeywordAbilities.NamesOf(keyword));
+                        abilities.AddRange(KeywordAbilities.Expand([line], false).Skip(1));
+                    }
                     foreach (var keyword in grant.Alongside ?? [])
-                        keywords.Add(CardDefinition.Normalize(keyword.Keyword));
+                        keywords.UnionWith(KeywordAbilities.NamesOf(keyword));
                     break;
                 case LoseAllAbilities:
                     lost = true;

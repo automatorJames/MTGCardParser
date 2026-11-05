@@ -71,6 +71,13 @@ public sealed partial class Game
     /// <summary>The damage left after prevention shields and static prevention abilities: what would be dealt by <paramref name="source"/> to <paramref name="target"/>.</summary>
     int Prevent(ObjectId? source, TargetRef target, int amount, bool combat)
     {
+        // Protection: damage from what a permanent has protection from is prevented.
+        if (target.IsObject && State.Object(target.Object.Value) is { } victim && source is { } from && State.Object(from) is { } dealer
+            && Keywords.ProtectedFrom(State, victim, Characteristics.Of(State, victim), dealer))
+        {
+            Emit(new DamagePrevented(source, target, amount));
+            return 0;
+        }
         foreach (var shield in State.ShieldList.ToList())
         {
             if (amount <= 0)

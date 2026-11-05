@@ -344,6 +344,28 @@ public sealed partial class Game
                     actions.Add(new CastSpell(id, 0, Alternative: index));
         }
 
+        // Abilities that work from the hand or graveyard (cycling, unearth), and flashback.
+        foreach (var obj in playerState.Hand.Concat(playerState.Graveyard).Select(state.Object).Where(x => x is not null).ToList())
+        {
+            var abilities = obj.Card.Abilities;
+            for (var index = 0; index < abilities.Count; index++)
+            {
+                if (abilities[index] is not ZoneAbility zoned || zoned.Zone != obj.Zone)
+                    continue;
+                var limits = index + 1 < abilities.Count && abilities[index + 1] is ActivationLimits following ? following.Timings : [];
+                if (limits.Any(t => t.Kind == nameof(TimingKind.SorcerySpeed)) && !sorcerySpeed)
+                    continue;
+                if (!CanPayCosts(obj, zoned.Ability.Costs, player) || !TargetsAvailable(TargetSlots.Of([zoned.Ability.Effect]).ToList(), player, obj.Id))
+                    continue;
+                actions.Add(new ActivateAbility(obj.Id, index, Interpreter.Describe(zoned.Ability.Effect)));
+            }
+            if (obj.Zone == Zone.Graveyard && FlashbackCost(obj.Card) is { } flashback && !Forbidden(player, obj)
+                && (obj.Card.IsInstant || obj.Card.Keywords.Contains("Flash") || sorcerySpeed)
+                && AdditionalPayable(flashback, player, obj.Id, 0) && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0))
+                && TargetsAvailable(SpellSlots(obj.Card), player, obj.Id))
+                actions.Add(new CastSpell(obj.Id, 0, Alternative: Flashback));
+        }
+
         foreach (var (permission, obj) in Permitted(player).ToList())
         {
             var card = obj.Card;
@@ -369,13 +391,14 @@ public sealed partial class Game
             if (traits.LostAbilities || traits.Cant("Activate") || traits.Cant("ActivateNonMana"))
                 continue;
             var abilities = traits.Abilities;
-            var limits = abilities.OfType<ActivationLimits>().SelectMany(x => x.Timings).ToList();
-            var sorceryOnly = limits.Any(t => t.Kind == nameof(TimingKind.SorcerySpeed));
-            var onceEachTurn = limits.Any(t => t.Kind is nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once));
             var index = -1;
             foreach (var ability in abilities)
             {
                 index++;
+                // "Activate only as a sorcery" follows the ability it limits.
+                var limits = index + 1 < abilities.Count && abilities[index + 1] is ActivationLimits following ? following.Timings.ToList() : [];
+                var sorceryOnly = limits.Any(t => t.Kind == nameof(TimingKind.SorcerySpeed));
+                var onceEachTurn = limits.Any(t => t.Kind is nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once));
                 switch (ability)
                 {
                     case ActivatedAbility activated:
@@ -499,6 +522,14 @@ public sealed partial class Game
                     if (source.CountersOf(remove.Counters.Kind) < ((remove.Counters.Count as Fixed)?.Value ?? 1))
                         return false;
                     break;
+                case DiscardThis:
+                    if (source.Zone != Zone.Hand)
+                        return false;
+                    break;
+                case TapCreaturesWithPower crew:
+                    if (CrewCandidates(source, player).Sum(x => Characteristics.Of(State, x).Power) < crew.Power)
+                        return false;
+                    break;
                 case ActionCost { Action: var action }:
                     if (!ActionPayable(action, player, source.Id, 0))
                         return false;
@@ -530,6 +561,17 @@ public sealed partial class Game
             }
         return cost.AdjustGeneric(-reduction);
     }
+
+    /// <summary>The untapped creatures besides the vehicle that could crew it.</summary>
+    IEnumerable<GameObject> CrewCandidates(GameObject vehicle, PlayerId player) =>
+        State.Battlefield.Where(x => x.Controller == player && x.Id != vehicle.Id && !x.Tapped && Characteristics.Of(State, x).IsCreature);
+
+    /// <summary>The alternative index that marks casting with flashback.</summary>
+    const int Flashback = -2;
+
+    /// <summary>A card's flashback cost, if it has flashback.</summary>
+    static Cost FlashbackCost(CardDefinition card) =>
+        card.Abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).FirstOrDefault(x => CardDefinition.Normalize(x.Keyword) == "Flashback")?.Cost;
 
     static bool IsEnergy(string symbol) => symbol.Equals("{e}", StringComparison.OrdinalIgnoreCase);
 
@@ -570,6 +612,8 @@ public sealed partial class Game
         if (obj is null)
             return;
         var found = Characteristics.AbilitiesOf(State, obj).ElementAtOrDefault(index);
+        if (found is ZoneAbility { Ability: var fromZone } zoneAbility && zoneAbility.Zone == obj.Zone)
+            found = fromZone;
 
         if (found is LoyaltyAbility loyalty)
         {
@@ -648,6 +692,23 @@ public sealed partial class Game
                 {
                     var costCtx = Interpreter.Execute(action, new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance)));
                     paid.AddRange(costCtx.Affected ?? costCtx.Last ?? []);
+                    break;
+                }
+                case DiscardThis:
+                    Discard(player, source);
+                    paid.Add(TargetRef.Of(source));
+                    break;
+                case TapCreaturesWithPower crew:
+                {
+                    // Tap the strongest first until the total is enough.
+                    var total = 0;
+                    foreach (var creature in CrewCandidates(obj, player).OrderByDescending(x => Characteristics.Of(State, x).Power).ToList())
+                    {
+                        if (total >= crew.Power)
+                            break;
+                        total += Characteristics.Of(State, creature).Power;
+                        Emit(new Tapped(creature.Id));
+                    }
                     break;
                 }
             }
@@ -732,8 +793,8 @@ public sealed partial class Game
         if (item.Kind == StackKind.Triggered && item.DelayedId is { } delayedId)
             Emit(new DelayedTriggerRemoved(delayedId));
 
-        if (item.Spell is { } cardId && State.Object(cardId)?.Zone == Zone.Stack)
-            MoveToZone(cardId, Zone.Graveyard);
+        if (item.Spell is { } cardId && State.Object(cardId) is { Zone: Zone.Stack } resolved)
+            MoveToZone(cardId, resolved.WasCastWith("Buyback") ? Zone.Hand : Zone.Graveyard);
 
         Emit(new Resolved(item.Id));
     }
@@ -825,7 +886,8 @@ public sealed partial class Game
                     changed = true;
                     continue;
                 }
-                if (obj.Card.IsAura && (obj.AttachedTo is null || State.Object(obj.AttachedTo.Value)?.Zone != Zone.Battlefield))
+                if (obj.Card.IsAura && (obj.AttachedTo is null || State.Object(obj.AttachedTo.Value) is not { Zone: Zone.Battlefield } enchanted
+                    || Keywords.ProtectedFrom(State, enchanted, Characteristics.Of(State, enchanted), obj)))
                 {
                     MoveToZone(obj.Id, Zone.Graveyard);
                     changed = true;
@@ -1048,6 +1110,8 @@ public sealed partial class Game
         var lifelink = traits?.HasKeyword("Lifelink") == true;
         var deathtouch = traits?.HasKeyword("Deathtouch") == true;
         var infect = traits?.HasKeyword("Infect") == true;
+        var wither = infect || traits?.HasKeyword("Wither") == true;
+        var toxic = traits?.Keywords.Where(x => x.StartsWith("Toxic:", StringComparison.Ordinal)).Sum(x => int.TryParse(x[6..], out var n) ? n : 0) ?? 0;
 
         if (target.IsPlayer)
         {
@@ -1058,16 +1122,19 @@ public sealed partial class Game
                 Emit(new PoisonChanged(target.Player.Value, amount));
             else
                 Emit(new LifeChanged(target.Player.Value, -amount, "damage"));
+            if (combat && toxic > 0)
+                Emit(new PoisonChanged(target.Player.Value, toxic));
         }
         else
         {
             var victim = State.Object(target.Object.Value);
             if (victim is null || victim.Zone != Zone.Battlefield)
                 return;
-            Emit(new DamageDealt(source, target, amount, combat, lifelink, deathtouch));
+            var asCounters = wither && Characteristics.Of(State, victim).IsCreature;
+            Emit(new DamageDealt(source, target, amount, combat, lifelink, deathtouch, asCounters));
             if (victim.Card.IsPlaneswalker)
                 Emit(new CountersChanged(victim.Id, "loyalty", -amount));
-            if (infect)
+            if (asCounters)
                 Emit(new CountersChanged(victim.Id, "-1/-1", amount));
         }
 

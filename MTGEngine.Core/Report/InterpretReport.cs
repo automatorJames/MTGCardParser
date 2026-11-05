@@ -255,7 +255,7 @@ public static class InterpreterSupport
             KeywordAction { Other: { Count: > 0 } } => "KeywordAction.Other",
             UnlessPaid { Payment.Cost: ActionCost { Action: var unlessAction } } when !Game.PayableActions.Contains(unlessAction.GetType()) => $"UnlessPaid[ActionCost.{unlessAction.GetType().Name}]",
             UnlessPaid { Payment.Cost: not (PayMana or PayLife or ActionCost) } unless => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
-            UnlessPaid { Payment.PerEach: not null } => "UnlessPaid.PerEach",
+            UnlessPaid { Payment.PerEach: not null, Payment.Cost: not PayMana } => "UnlessPaid.PerEach",
             CombatRestriction { Modifiers: { Count: > 0 } modifiers } when modifiers.Any(x => x is not ("Alone" or "Except")) => "CombatRestriction.Modifiers",
             CombatRestriction { By: not (null or Self or ObjectSelector) } => "CombatRestriction.By",
             CombatRestriction restriction when restriction.Cant.Any(x => x is not ("Attack" or "Block" or "BeBlocked")) => $"CombatRestriction.Cant.{restriction.Cant.First(x => x is not ("Attack" or "Block" or "BeBlocked"))}",
@@ -301,6 +301,7 @@ public static class InterpreterSupport
             Mode { Cost: not null } => "Mode.Cost",
             ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: var action } && !Game.PayableActions.Contains(action.GetType())) => "ActivatedAbility.Costs",
             KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
+            KeywordLine line when line.Keywords.FirstOrDefault(x => !Keywords.Handles(x.Keyword)) is { } keyword => $"Keyword.{CardDefinition.Normalize(keyword.Keyword)}",
             StaticAbility statics when !IsStaticHandled(statics.Effect) => $"StaticAbility[{statics.Effect.GetType().Name}]",
             _ => null,
         };

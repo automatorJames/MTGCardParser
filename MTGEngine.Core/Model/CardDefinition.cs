@@ -31,9 +31,11 @@ public sealed record CardDefinition(
         // On an instant or sorcery, "if that creature would die this turn, exile it instead" is set up as the spell resolves.
         var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap)
             .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x))).ToImmutableList();
+        abilities = KeywordAbilities.Expand(abilities, spell).ToImmutableList();
         var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
-            .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).Select(x => Normalize(x.Keyword)))
+            .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).SelectMany(KeywordAbilities.NamesOf))
             .ToImmutableHashSet();
+        var colors = keywords.Contains("Devoid") ? ImmutableHashSet<Color>.Empty : cost.Colored.Keys.Concat(cost.Hybrid.SelectMany(x => x)).ToImmutableHashSet();
 
         return new CardDefinition(
             rules.Name,
@@ -46,7 +48,7 @@ public sealed record CardDefinition(
             Stat(info.Loyalty),
             abilities,
             keywords,
-            cost.Colored.Keys.Concat(cost.Hybrid.SelectMany(x => x)).ToImmutableHashSet(),
+            colors,
             PrintedPower: info.Power,
             PrintedToughness: info.Toughness);
     }
@@ -61,6 +63,7 @@ public sealed record CardDefinition(
         var abilities = (spec.Abilities ?? []).ToImmutableList();
         if (spec.Keywords is { Count: > 0 })
             abilities = abilities.Add(new KeywordLine(spec.Keywords));
+        abilities = KeywordAbilities.Expand(abilities, false).ToImmutableList();
         if (spec.Predefined is { } predefined && PredefinedAbilities(predefined) is { } given && abilities.Count == 0)
             abilities = given;
 
@@ -74,7 +77,7 @@ public sealed record CardDefinition(
             Stat(spec.Toughness),
             null,
             abilities,
-            (spec.Keywords ?? []).Select(x => Normalize(x.Keyword)).ToImmutableHashSet(),
+            (spec.Keywords ?? []).SelectMany(KeywordAbilities.NamesOf).ToImmutableHashSet(),
             colors,
             IsToken: true);
     }
@@ -102,9 +105,13 @@ public sealed record CardDefinition(
                 keywordAt = i;
                 break;
             }
-        return keywordAt < 0 || line.Text?.Contains('(') != true
-            ? abilities
-            : abilities.Where((ability, i) => i <= keywordAt || ability is not SpellAbility);
+        if (line.Text?.Contains('(') != true)
+            return abilities;
+        // A line of keywords the engine carries out: what follows them is their reminder text, which the engine doesn't need.
+        for (var i = 0; i < abilities.Count; i++)
+            if (abilities[i] is KeywordLine handled && handled.Keywords.All(k => MTGEngine.Core.Keywords.Handles(k.Keyword)))
+                return abilities.Take(i + 1);
+        return keywordAt < 0 ? abilities : abilities.Where((ability, i) => i <= keywordAt || ability is not SpellAbility);
     }
 
     /// <summary>An ability word or flavor word only labels the ability it introduces; the engine acts on the ability.</summary>

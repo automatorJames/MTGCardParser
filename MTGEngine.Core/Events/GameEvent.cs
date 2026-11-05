@@ -19,7 +19,7 @@ public sealed record LibraryShuffled(PlayerId Player, ImmutableList<ObjectId> Or
 public sealed record Drew(PlayerId Player, ObjectId? Card) : GameEvent;
 public sealed record Tapped(ObjectId Object) : GameEvent;
 public sealed record Untapped(ObjectId Object) : GameEvent;
-public sealed record DamageDealt(ObjectId? Source, TargetRef Target, int Amount, bool Combat, bool Lifelink = false, bool Deathtouch = false) : GameEvent;
+public sealed record DamageDealt(ObjectId? Source, TargetRef Target, int Amount, bool Combat, bool Lifelink = false, bool Deathtouch = false, bool AsCounters = false) : GameEvent;
 public sealed record LifeChanged(PlayerId Player, int Delta, string Reason) : GameEvent;
 public sealed record CountersChanged(ObjectId Object, string Kind, int Delta) : GameEvent;
 public sealed record ManaAdded(PlayerId Player, Color? Color, int Amount) : GameEvent;
@@ -200,7 +200,7 @@ public static class Reducer
             case DamageDealt damage:
             {
                 if (damage.Target.Object is { } id && state.Object(id) is { } obj)
-                    return state.WithObject(obj with { Damage = obj.Damage + damage.Amount, Counters = damage.Deathtouch ? obj.CounterMap.SetItem("deathtouch-damage", 1) : obj.Counters });
+                    return state.WithObject(obj with { Damage = obj.Damage + (damage.AsCounters ? 0 : damage.Amount), Counters = damage.Deathtouch ? obj.CounterMap.SetItem("deathtouch-damage", 1) : obj.Counters });
                 return state;
             }
 

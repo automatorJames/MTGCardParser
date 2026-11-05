@@ -86,6 +86,7 @@ public sealed partial class Game
             "IsPutIntoAGraveyard" or "IsPutIntoAGraveyardFromAnywhere" => zone == Zone.Graveyard,
             "LeaveTheBattlefield" or "LeavesTheBattlefield" => obj.Zone == Zone.Battlefield && zone != Zone.Battlefield,
             "Countered" => countered,
+            "LeaveTheStack" => obj.Zone == Zone.Stack,
             _ => false,
         };
 

@@ -218,7 +218,7 @@ public static class Interpreter
                 var all = removeAll.Counters.Count is Special { Kind: "All" } or null;
                 var removed = 0;
                 foreach (var id in objects)
-                    foreach (var (kind, have) in state.Object(id)?.CounterMap.Where(x => x.Key is not ("regeneration-shield" or "deathtouch-damage" or "monstrous")).ToList() ?? [])
+                    foreach (var (kind, have) in state.Object(id)?.CounterMap.Where(x => x.Key is not ("regeneration-shield" or "deathtouch-damage" or "monstrous" or "echo-paid")).ToList() ?? [])
                     {
                         var take = all ? have : Math.Min(have, (Quantities.Evaluate(removeAll.Counters.Count, ctx) ?? 1) - removed);
                         if (take <= 0)
@@ -292,11 +292,11 @@ public static class Interpreter
                     power = -power;
                     toughness = -toughness;
                 }
-                var keywords = (pump.Keywords ?? []).Select(x => x.Keyword).ToImmutableList();
+                var keywords = (pump.Keywords ?? []).SelectMany(KeywordAbilities.NamesOf).ToImmutableList();
                 if (pump.ChoiceOf is { Count: > 0 } options)
                 {
                     var choice = game.Decide(new ChooseOne(ctx.Controller, "Choose a keyword", options.Select(x => x.Keyword).ToImmutableList()));
-                    keywords = keywords.Add(options[Math.Clamp(choice.Index, 0, options.Count - 1)].Keyword);
+                    keywords = keywords.AddRange(KeywordAbilities.NamesOf(options[Math.Clamp(choice.Index, 0, options.Count - 1)]));
                 }
                 var until = UntilTurn(pump.Duration, state);
                 if (until is null && pump.Duration is not null)
@@ -740,6 +740,8 @@ public static class Interpreter
                         case PayMana mana:
                         {
                             var cost = ManaCost.Parse(string.Concat(mana.Symbols));
+                            if (unless.Payment.PerEach is { } perEach)
+                                cost = Enumerable.Repeat(cost, Math.Max(0, Quantities.Evaluate(perEach, ctx) ?? 1)).Aggregate(ManaCost.Free, (sum, one) => sum.Plus(one));
                             if (ManaPayment.CanPay(state, who, cost) && game.Decide(new YesNo(who, $"Pay {cost} to prevent: {Describe(unless.Effect)}?")).Yes)
                                 paid = game.PayMana(who, cost);
                             break;

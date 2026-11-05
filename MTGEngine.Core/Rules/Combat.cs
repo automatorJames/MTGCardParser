@@ -111,6 +111,14 @@ public sealed partial class Game
     /// <summary>The combat rules of the blocker and the attacker: "can't block creatures with power 2 or greater", "can't be blocked by walls", conditional "can't block".</summary>
     bool RulesAllowBlock(Characteristics blockerTraits, GameObject blocker, Characteristics attackerTraits, GameObject attacker)
     {
+        // Protection: creatures with the quality can't block it.
+        if (Keywords.ProtectedFrom(State, attacker, attackerTraits, blocker))
+            return false;
+        // Landwalk: unblockable while the defending player controls a land of the type.
+        foreach (var keyword in attackerTraits.Keywords)
+            if (Keywords.Landwalk(keyword) is { } landType && !attackerTraits.Cant("Landwalk")
+                && State.Battlefield.Any(x => x.Controller == blocker.Controller && Characteristics.Of(State, x).Subtypes.Contains(landType)))
+                return false;
         // "Can block only creatures with flying."
         foreach (var rule in blockerTraits.Rules.Where(r => r.Cant == "BlockOnly"))
             if (!RuleNames(rule, attacker))

@@ -357,7 +357,7 @@ public static class TargetSlots
 
                 if (!playersToo || anyTarget || objectKinds is { Count: > 0 })
                     foreach (var obj in Resolver.Candidates(objectFilter, ctx))
-                        if (Filters.Matches(state, objectFilter, obj, controller, source, objects.Other ? source : null, ctx: ctx) && !Protected(state, obj, controller))
+                        if (Filters.Matches(state, objectFilter, obj, controller, source, objects.Other ? source : null, ctx: ctx) && !Protected(state, obj, controller, source))
                             candidates.Add(TargetRef.Of(obj.Id));
 
                 return candidates.ToImmutableList();
@@ -367,9 +367,11 @@ public static class TargetSlots
         }
     }
 
-    static bool Protected(GameState state, GameObject obj, PlayerId by)
+    static bool Protected(GameState state, GameObject obj, PlayerId by, ObjectId? source)
     {
         var traits = Characteristics.Of(state, obj);
+        if (source is { } targeting && state.Object(targeting) is { } spell && Keywords.ProtectedFrom(state, obj, traits, spell))
+            return true;
         return traits.HasKeyword("Shroud") || traits.Cant("BeTargeted") || (traits.HasKeyword("Hexproof") || traits.Cant("BeTargetedByOpponents")) && obj.Controller != by;
     }
 }

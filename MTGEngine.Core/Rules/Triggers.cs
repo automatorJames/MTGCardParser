@@ -28,6 +28,16 @@ public static class Triggers
                     yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
         }
 
+        // Persist and undying: a creature that died without a -1/-1 (or +1/+1) counter returns with one.
+        if (evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Graveyard } died && before.Object(died.Object) is { } fallen)
+        {
+            var traits = Characteristics.Of(before, fallen);
+            foreach (var (keyword, counter) in new[] { ("Persist", "-1/-1"), ("Undying", "+1/+1") })
+                if (traits.IsCreature && traits.HasKeyword(keyword) && fallen.CountersOf(counter) == 0)
+                    yield return new PendingTrigger(fallen, new TriggeredAbility(new NamedEvent(keyword),
+                        new Sequence([new ChangeZone(new Self(), new ZoneRef(nameof(Zone.Battlefield))), new PutCounters(new Self(), new CounterSpec(counter, new Fixed(1)))])), null, fallen.Controller);
+        }
+
         // A saga's chapter abilities trigger as lore counters reach their numbers.
         if (evt is CountersChanged { Kind: "lore", Delta: > 0 } lore && after.Object(lore.Object) is { Zone: Zone.Battlefield } saga)
         {

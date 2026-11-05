@@ -89,7 +89,8 @@ public static class Filters
             },
             "CardType" when kind.Value == nameof(ObjectKind.Permanent) => obj.Zone == Zone.Battlefield,
             "CardType" => traits.Types.Contains(kind.Value),
-            "CreatureType" or "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" or "SpellSubtype" => traits.Subtypes.Contains(kind.Value),
+            "CreatureType" => traits.Subtypes.Contains(kind.Value) || traits.HasKeyword("Changeling"),
+            "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" or "SpellSubtype" => traits.Subtypes.Contains(kind.Value),
             "Supertype" => obj.Card.Supertypes.Contains(kind.Value),
             "PermanentKind" => traits.Types.Contains(kind.Value) || traits.Subtypes.Contains(kind.Value),
             "PermanentDesignation" => Designated(state, obj, kind.Value),
@@ -124,7 +125,8 @@ public static class Filters
         var holds = qualifier.Vocabulary switch
         {
             "CardType" => traits.Types.Contains(qualifier.Quality),
-            "CreatureType" or "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" => traits.Subtypes.Contains(qualifier.Quality),
+            "CreatureType" => traits.Subtypes.Contains(qualifier.Quality) || traits.HasKeyword("Changeling"),
+            "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" => traits.Subtypes.Contains(qualifier.Quality),
             "Supertype" => obj.Card.Supertypes.Contains(qualifier.Quality),
             "ManaColor" => Colors.OfName(qualifier.Quality) is { } color && traits.Colors.Contains(color),
             "ColorCount" or "Colorfulness" => qualifier.Quality switch
