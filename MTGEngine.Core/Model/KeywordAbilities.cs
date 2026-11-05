@@ -62,6 +62,10 @@ public static class KeywordAbilities
                 ])));
                 yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
                 break;
+            case "LevelUp" when keyword.Cost is { } cost:
+                yield return new ActivatedAbility([cost], new PutCounters(new Self(), new CounterSpec("level", new Fixed(1))));
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
             case "Crew":
                 yield return new ActivatedAbility([new TapCreaturesWithPower(amount)], new Animate(new Self(), Types: ["Creature"], InAddition: true, Duration: new ThisTurn()));
                 break;

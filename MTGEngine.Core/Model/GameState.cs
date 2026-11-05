@@ -18,7 +18,9 @@ public sealed record GameObject(
     int ZoneChangeCount = 0,
     ImmutableHashSet<string> CastWith = null,
     ImmutableDictionary<string, string> Choices = null,
-    ManaPool SpentToCast = null)
+    ManaPool SpentToCast = null,
+    CardDefinition OriginalCard = null,
+    int? CopyUntilTurn = null)
 {
     /// <summary>How the object was cast, while it's the spell or the permanent that spell became: "Kicked", "AdditionalCost", an alternative cost's name.</summary>
     public bool WasCastWith(string how) => CastWith?.Contains(how) == true;

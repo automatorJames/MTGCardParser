@@ -61,6 +61,7 @@ public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : Ga
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
 public sealed record SpellCopied(StackItem Item) : GameEvent;
 public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets) : GameEvent;
+public sealed record BecameCopy(ObjectId Object, CardDefinition Copy, int? UntilTurn) : GameEvent;
 public sealed record TurnedFace(ObjectId Object, bool FaceDown) : GameEvent;
 public sealed record StepSkipScheduled(PlayerId Player, Step Step) : GameEvent;
 public sealed record StepSkipped(PlayerId Player, Step Step) : GameEvent;
@@ -148,6 +149,10 @@ public static class Reducer
                 var entering = moved.To == Zone.Battlefield;
                 next = next.WithObject(obj with
                 {
+                    // A copy is a copy only while it stays where it became one.
+                    Card = obj.OriginalCard ?? obj.Card,
+                    OriginalCard = null,
+                    CopyUntilTurn = null,
                     Zone = moved.To,
                     Controller = moved.Controller,
                     Tapped = entering && moved.Tapped,
@@ -316,6 +321,14 @@ public static class Reducer
             case TemporaryEffectAdded temporary:
                 return state with { Temporary = state.Temporary.Add(temporary.Effect) };
 
+            case TemporaryEffectsExpired expired when state.Objects.Values.Any(x => x.CopyUntilTurn is { } until && until <= expired.Turn):
+            {
+                var reverted = state;
+                foreach (var copy in state.Objects.Values.Where(x => x.CopyUntilTurn is { } until && until <= expired.Turn))
+                    reverted = reverted.WithObject(copy with { Card = copy.OriginalCard ?? copy.Card, OriginalCard = null, CopyUntilTurn = null });
+                return ApplyCore(reverted, expired);
+            }
+
             case TemporaryEffectsExpired expired:
                 return state with
                 {
@@ -326,6 +339,11 @@ public static class Reducer
                     ZoneReplacements = state.ZoneReplacementList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     PlayRestrictions = state.PlayRestrictionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
+
+            case BecameCopy copied:
+                return state.Object(copied.Object) is { } copier
+                    ? state.WithObject(copier with { OriginalCard = copier.OriginalCard ?? copier.Card, Card = copied.Copy with { IsToken = copier.Card.IsToken }, CopyUntilTurn = copied.UntilTurn })
+                    : state;
 
             case TurnedFace turned:
                 return state.Object(turned.Object) is { } turning ? state.WithObject(turning with { FaceDown = turned.FaceDown }) : state;

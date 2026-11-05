@@ -11,7 +11,7 @@ public static class Keywords
         // Casting.
         "Flash", "Kicker", "Convoke", "Flashback", "Buyback", "Affinity",
         // Expanded into abilities (see KeywordAbilities).
-        "Equip", "Cycling", "Unearth", "Crew", "Prowess", "Exalted", "Flanking", "Bushido", "Bloodthirst", "Ward", "Echo", "CumulativeUpkeep",
+        "Equip", "Cycling", "Unearth", "LevelUp", "Crew", "Prowess", "Exalted", "Flanking", "Bushido", "Bloodthirst", "Ward", "Echo", "CumulativeUpkeep",
         "Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt",
         // Read where they apply.
         "Protection", "Devoid", "Changeling", "Wither", "Toxic", "Persist", "Undying",

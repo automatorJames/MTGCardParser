@@ -14,6 +14,9 @@ public sealed partial class Game
     readonly List<GameEvent> _log = [];
     readonly List<(GameEvent Event, GameState Before, GameState After)> _pending = [];
     PlayerId _defender;
+
+    /// <summary>The extra mana the modes just chosen cost ("+ {1} — …"), added to the spell being cast.</summary>
+    ManaCost _modeCost = ManaCost.Free;
     bool _skippingCombat;
     bool _attackersThisCombat;
 
@@ -260,6 +263,7 @@ public sealed partial class Game
     {
         var player = State.ActivePlayer;
         var passes = 0;
+        var stalls = 0;
         var inGame = State.PlayersInGame.Count();
 
         while (!State.Over)
@@ -300,7 +304,18 @@ public sealed partial class Game
             }
 
             passes = 0;
+            var before = State;
             Perform(action, player, response);
+            // An action that changed nothing (a cast that couldn't be paid after all) three times running is taken as a pass.
+            // Events that change nothing leave the very same state, so the reference says whether anything happened.
+            stalls = ReferenceEquals(State, before) ? stalls + 1 : 0;
+            if (stalls >= 3)
+            {
+                stalls = 0;
+                Emit(new Passed(player));
+                passes++;
+                player = State.NextInTurnOrder(player);
+            }
         }
     }
 
@@ -532,6 +547,7 @@ public sealed partial class Game
         }
 
         Emit(new ModesChosen(player, chosen.ToImmutableList()));
+        _modeCost = chosen.Select(m => modal.Modes[m].Cost).OfType<PayMana>().Aggregate(ManaCost.Free, (sum, cost) => sum.Plus(ManaCost.Parse(string.Concat(cost.Symbols))));
         var steps = chosen.Select(m => modal.Modes[m].Effect).ToList();
         return (steps.Count == 1 ? steps[0] : new Sequence(steps), null);
     }
@@ -1111,6 +1127,10 @@ public sealed partial class Game
 
         foreach (var replacement in obj.Card.Abilities.OfType<ReplacementAbility>())
             Consider(replacement, entering);
+        // "You may have this creature enter as a copy of any creature on the battlefield."
+        foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
+            if (line.Effect is BecomeCopy { Verb: "EntersAs" } or Optional { Effect: BecomeCopy { Verb: "EntersAs" } })
+                onEntry.Add(line.Effect);
         // "If this creature was kicked, it enters with …": an entry replacement stated as an effect line under a condition.
         foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
             if (line.Effect is Conditional { Then: EntersBattlefield { Objects: null or Self } enters, Else: null } conditional

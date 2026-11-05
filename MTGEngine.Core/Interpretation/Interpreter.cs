@@ -673,6 +673,38 @@ public static class Interpreter
                 return ctx;
             }
 
+            case BecomeCopy copy:
+            {
+                var until = UntilTurn(copy.Duration, state);
+                if (until is null)
+                    return Skipped(game, copy, "copy duration", ctx);
+                var copiers = copy.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(copy.Objects, ctx);
+                // "Any creature on the battlefield" is chosen now; a target or reference is what it names.
+                var originals = copy.Of switch
+                {
+                    ObjectSelector { Quantifier: Quantifier.Any } any => Resolver.Objects(any with { Quantifier = Quantifier.All }, ctx).Where(id => !copiers.Contains(id)).ToImmutableList(),
+                    var named => Resolver.Objects(named, ctx),
+                };
+                if (originals.Count == 0)
+                    return ctx;
+                var options = originals.Select(TargetRef.Of).ToImmutableList();
+                var picked = options.Count == 1 ? options[0] : game.Decide(new ChooseTargets(ctx.Controller, "Choose what to copy", options, 1, 1)).Targets?.FirstOrDefault(options.Contains) ?? options[0];
+                if (state.Object(picked.Object.Value) is not { } original)
+                    return ctx;
+                foreach (var id in copiers)
+                {
+                    game.Emit(new BecameCopy(id, original.Card, until == -1 ? null : until));
+                    foreach (var exception in copy.Exceptions ?? [])
+                        Execute(exception, ctx with { Source = id, Last = [TargetRef.Of(id)] });
+                }
+                return ctx;
+            }
+
+            case GainClassLevel gain:
+                if (ctx.Source is { } classCard && state.Object(classCard) is { } leveled && leveled.CountersOf("class-level") < gain.Level - 1)
+                    game.Emit(new CountersChanged(classCard, "class-level", gain.Level - 1 - leveled.CountersOf("class-level")));
+                return ctx;
+
             case TurnFace turn:
             {
                 foreach (var id in Resolver.Objects(turn.Objects, ctx))

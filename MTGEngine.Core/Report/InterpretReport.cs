@@ -74,7 +74,7 @@ public static class InterpreterSupport
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
         typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(FlavorAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
-        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost), typeof(DieResultRow),
+        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost), typeof(DieResultRow), typeof(LevelRange), typeof(StatsLine),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -92,6 +92,7 @@ public static class InterpreterSupport
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
+        typeof(GainClassLevel), typeof(BecomeCopy),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -244,6 +245,7 @@ public static class InterpreterSupport
             RevealUntil { Until: not PlayerAction { What: ObjectSelector } } => "RevealUntil.Until",
             CantPlay { Verb: not ("Cast" or "Play") } cantPlay => $"CantPlay.{cantPlay.Verb}",
             CopySpell { Except: not null } => "CopySpell.Except",
+            BecomeCopy { Duration: { } duration } when !Keeps(duration) => $"BecomeCopy.Duration[{Describe(duration)}]",
             CastAsThoughFlash { Extra: not null } => "CastAsThoughFlash.Extra",
             Skip skip when skip.Event is not null || Game.SkippableStep(skip.Phase?.Phase) is null => $"Skip.{skip.Phase?.Phase ?? skip.Event}",
             ChangeTargets { To: not (null or Self) } => "ChangeTargets.To",
@@ -300,7 +302,7 @@ public static class InterpreterSupport
             CastBy cast when cast.Relation is not ("Control" or "Cast") || cast.Relation == "Cast" && (cast.ThisTurn || cast.From is not null || cast.During is not null) => $"CastBy.{cast.Relation}{(cast.ThisTurn ? ".ThisTurn" : "")}{(cast.From is not null ? ".From" : "")}",
             Timing timing when !Game.TimingKinds.Contains(timing.Kind) => $"Timing.{timing.Kind}",
             PayCost { Plus: not null } => "PayCost.Plus",
-            Mode { Cost: not null } => "Mode.Cost",
+            Mode { Cost: not (null or PayMana) } => "Mode.Cost",
             ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: var action } && !Game.PayableActions.Contains(action.GetType())) => "ActivatedAbility.Costs",
             KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
             KeywordLine line when line.Keywords.FirstOrDefault(x => !Keywords.Handles(x.Keyword)) is { } keyword => $"Keyword.{CardDefinition.Normalize(keyword.Keyword)}",

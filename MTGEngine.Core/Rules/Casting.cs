@@ -60,6 +60,7 @@ public sealed partial class Game
 
         List<Effect> effects = [];
         ImmutableDictionary<string, ImmutableList<TargetRef>> bindings = null;
+        _modeCost = ManaCost.Free;
         if (!card.IsPermanentCard)
             foreach (var spellEffect in card.SpellEffects)
             {
@@ -71,6 +72,7 @@ public sealed partial class Game
                     bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(modeBindings);
             }
 
+        mana = mana.Plus(_modeCost);
         var slots = options.Contains("FaceDown") ? [] : card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
         var targets = ChooseTargetsFor(slots, player, id);
         if (targets is null)
