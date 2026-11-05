@@ -100,7 +100,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _quantities =
     [
-        typeof(Fixed), typeof(Variable), typeof(CountOf), typeof(LifeTotal), typeof(Negated), typeof(Product), typeof(Arithmetic),
+        typeof(Fixed), typeof(Variable), typeof(CountOf), typeof(TotalOf), typeof(LifeTotal), typeof(Negated), typeof(Product), typeof(Arithmetic),
         typeof(Adjusted), typeof(Scaled), typeof(CharacteristicOf), typeof(Special), typeof(Bound), typeof(Extreme), typeof(DistinctCount), typeof(Devotion),
     ];
 

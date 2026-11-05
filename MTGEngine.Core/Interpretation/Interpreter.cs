@@ -513,6 +513,13 @@ public static class Interpreter
             case Attach attach:
             {
                 var attachments = Resolver.Objects(attach.Attachment, ctx);
+                // "Unattach all equipment from target creature": no host.
+                if (attach.To is null)
+                {
+                    foreach (var id in attachments)
+                        game.Emit(new Attached(id, null));
+                    return ctx;
+                }
                 var hosts = Resolver.Objects(attach.To, ctx);
                 if (attachments.Count > 0 && hosts.Count > 0)
                     game.Emit(new Attached(attachments[0], hosts[0]));

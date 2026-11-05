@@ -23,6 +23,9 @@ public static class Quantities
             }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
+            case TotalOf total:
+                return Resolver.Objects(total.Of, ctx).Select(ctx.State.Object).Where(x => x is not null)
+                    .Sum(x => Filters.CharacteristicValue(total.Characteristic, x, Characteristics.Of(ctx.State, x)));
             case LifeTotal life:
                 return Resolver.Players(life.Player, ctx) is [var player, ..] ? ctx.State.Player(player).Life : null;
             case Negated negated:

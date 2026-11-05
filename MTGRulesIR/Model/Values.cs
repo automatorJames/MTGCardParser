@@ -13,6 +13,9 @@ public sealed record Variable(string Name) : Quantity;
 /// <summary>The number of objects a selector picks out ("the number of swamps you control", "for each creature you control").</summary>
 public sealed record CountOf(Selector Of) : Quantity;
 
+/// <summary>"The total power of creatures you control": a characteristic summed over a group.</summary>
+public sealed record TotalOf(Selector Of, string Characteristic) : Quantity;
+
 /// <summary>A player's life total.</summary>
 public sealed record LifeTotal(Selector Player) : Quantity;
 

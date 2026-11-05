@@ -150,6 +150,9 @@ public sealed partial class Lowerer
             g.Mana.GetResolvedValue() switch
             {
                 G.ManaCost { Items.Count: 1 } cost => new ManaSpent(new Fixed(1), LowerAs<Selector>(g.Use, ctx), ColorOf(SymbolText(cost.Items[0]))),
+                // "{w}{w} was spent", "{b}{r} was spent": so much of each color.
+                G.ManaCost cost when cost.Items.Select(x => ColorOf(SymbolText(x))).ToList() is var colors && colors.All(c => c != OpenSlots.Placeholder) =>
+                    colors.GroupBy(c => c).Select(same => (Condition)new ManaSpent(new Fixed(same.Count()), LowerAs<Selector>(g.Use, ctx), same.Key)).ToList() is var parts && parts.Count == 1 ? parts[0] : new And(parts),
                 G.ManaFromSource source => new ManaSpent(null, LowerAs<Selector>(g.Use, ctx), From: LowerAs<Selector>(source.Source, ctx)),
                 _ => Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.ManaWasSpent)),
             });
