@@ -143,3 +143,65 @@ public sealed class EngineRoundTenTests
         Assert.True(game.P0().Life >= 21);
     }
 }
+
+/// <summary>The eleventh engine round: morph and disguise - cast face down for {3} as a 2/2, turned face up for their cost.</summary>
+public sealed class FaceDownTests
+{
+    static ObjectId Put(Game game, CardDefinition card, int player, Zone zone = Zone.Battlefield)
+    {
+        var id = new ObjectId(game.State.NextObjectId);
+        var owner = new PlayerId(player);
+        game.Emit(new ObjectCreated(new GameObject(id, card, owner, owner, Zone.Hand)));
+        if (zone != Zone.Hand)
+            game.MoveToZone(id, zone, owner);
+        game.Emit(new SummoningSicknessCleared(owner));
+        return id;
+    }
+
+    static CardDefinition Morphling() =>
+        CardDefinition.From(new CardRules("Hidden Angel", "Creature",
+        [
+            new LineRules(0, "flying", [new KeywordLine([new KeywordInstance("Flying")])], []),
+            new LineRules(1, "morph {2}{w}", [new KeywordLine([new KeywordInstance("Morph", Cost: new PayMana(["{2}", "{w}"]))])], []),
+            new LineRules(2, "when this creature is turned face up, you gain 3 life.",
+                [new TriggeredAbility(new ObjectEvent(new Self(), ["IsTurnedFaceUp"]), new GainLife(new PlayerSelector(PlayerKind.You), new Fixed(3)))], []),
+        ], new CardInfo("{4}{W}{W}", Subtypes: "Angel", Power: "5", Toughness: "5")));
+
+    [Fact]
+    public void AMorphIsCastFaceDownAsANamelessTwoTwo()
+    {
+        var game = GameExtensions.Started(new Deck("A", [Morphling(), .. Enumerable.Repeat(Cards.Basic("Plains"), 20)]), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new GreedyAgent(attacks: false), new PassiveAgent());
+        for (var i = 0; i < 2; i++)
+            Put(game, Cards.Basic("Plains"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        var angel = game.Find("Hidden Angel", Zone.Battlefield);
+        Assert.NotNull(angel);
+        Assert.True(angel.FaceDown);
+        var traits = Characteristics.Of(game.State, angel);
+        Assert.Equal((2, 2), (traits.Power, traits.Toughness));
+        Assert.False(traits.HasKeyword("Flying"));
+        Assert.Empty(traits.Subtypes);
+    }
+
+    [Fact]
+    public void TurningAMorphFaceUpRevealsItAndTriggers()
+    {
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Plains"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent());
+        var angel = Put(game, Morphling(), 0);
+        game.Emit(new TurnedFace(angel, FaceDown: true));
+        for (var i = 0; i < 3; i++)
+            Put(game, Cards.Basic("Plains"), 0);
+
+        Assert.Contains(game.LegalActions(new PlayerId(0)), x => x is TurnFaceUp);
+        game.TurnUp(angel, pay: true);
+        game.CheckStateAndTriggers();
+        game.PlayTurn(new PlayerId(1));
+
+        var traits = Characteristics.Of(game.State, game.State.Object(angel));
+        Assert.Equal(5, traits.Power);
+        Assert.True(traits.HasKeyword("Flying"));
+        Assert.Equal(23, game.P0().Life);
+    }
+}

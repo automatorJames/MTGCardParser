@@ -16,6 +16,12 @@ public sealed partial class Game
         var options = ImmutableHashSet.CreateBuilder<string>();
         List<Effect> actions = [];
 
+        if (alternative == FaceDownCast)
+        {
+            mana = ManaCost.Parse("{3}");
+            options.Add("FaceDown");
+        }
+
         if (alternative == Flashback && FlashbackCost(card) is { } flashback)
         {
             mana = ManaCost.Free;
@@ -65,7 +71,7 @@ public sealed partial class Game
                     bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(modeBindings);
             }
 
-        var slots = card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
+        var slots = options.Contains("FaceDown") ? [] : card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
         var targets = ChooseTargetsFor(slots, player, id);
         if (targets is null)
             return;
@@ -74,7 +80,7 @@ public sealed partial class Game
         var bySelector = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
         for (var i = 0; i < slots.Count && i < targets.Count; i++)
             bySelector[slots[i].Selector] = [targets[i]];
-        var total = free ? mana : CostToCast(obj, player, mana, bySelector);
+        var total = free || options.Contains("FaceDown") ? mana : CostToCast(obj, player, mana, bySelector);
         _lastSpent = ManaPool.Empty;
         if (!Pay(player, total, HasConvoke(card), new ManaPayment.Purpose(Spell: obj)))
             return;

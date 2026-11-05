@@ -75,8 +75,13 @@ public sealed record Characteristics(
         return computed;
     }
 
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CardDefinition, CardDefinition> _faceDown = new();
+
     static Characteristics Compute(GameState state, GameObject obj, bool withStatics)
     {
+        // A face-down spell or permanent is a nameless, colorless 2/2 creature with no abilities.
+        if (obj.FaceDown && obj.Zone is Zone.Battlefield or Zone.Stack)
+            obj = obj with { Card = _faceDown.GetValue(obj.Card, Game.FaceDownCard) };
         var card = obj.Card;
         var power = card.Power ?? 0;
         var toughness = card.Toughness ?? 0;
@@ -281,6 +286,8 @@ public sealed record Characteristics(
         foreach (var source in state.Battlefield.Concat(state.Emblems))
         {
             if (state.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
+                continue;
+            if (source.FaceDown)
                 continue;
             // Printed and temporarily granted statics; statics granted by other statics would recurse, so only those.
             var abilities = source.Card.Abilities.Concat(state.Temporary.Where(x => x.Target == source.Id && x.ActiveIn(state)).SelectMany(x => x.Abilities ?? []));

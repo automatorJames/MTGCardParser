@@ -61,6 +61,7 @@ public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : Ga
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
 public sealed record SpellCopied(StackItem Item) : GameEvent;
 public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets) : GameEvent;
+public sealed record TurnedFace(ObjectId Object, bool FaceDown) : GameEvent;
 public sealed record StepSkipScheduled(PlayerId Player, Step Step) : GameEvent;
 public sealed record StepSkipped(PlayerId Player, Step Step) : GameEvent;
 public sealed record TappedForMana(ObjectId Object, PlayerId Player) : GameEvent;
@@ -156,7 +157,8 @@ public static class Reducer
                     AttachedTo = entering ? moved.AttachTo : null,
                     Attacking = false,
                     Blocking = null,
-                    FaceDown = false,
+                    // A face-down spell becomes a face-down permanent; anything else that moves is face up.
+                    FaceDown = entering && moved.From == Zone.Stack && obj.FaceDown,
                     ZoneChangeCount = obj.ZoneChangeCount + 1,
                     // A permanent spell keeps how it was cast; anything else is a new object without history.
                     CastWith = entering && moved.From == Zone.Stack ? obj.CastWith : null,
@@ -325,6 +327,9 @@ public static class Reducer
                     PlayRestrictions = state.PlayRestrictionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
 
+            case TurnedFace turned:
+                return state.Object(turned.Object) is { } turning ? state.WithObject(turning with { FaceDown = turned.FaceDown }) : state;
+
             case StepSkipScheduled scheduled:
                 return state with { SkipNext = state.SkipList.Add((scheduled.Player, scheduled.Step)) };
 
@@ -399,7 +404,7 @@ public static class Reducer
                 return state.Object(attached.Attachment) is { } attachment ? state.WithObject(attachment with { AttachedTo = attached.To }) : state;
 
             case CastOptionsChosen options:
-                return state.Object(options.Spell) is { } spell ? state.WithObject(spell with { CastWith = options.Options, SpentToCast = options.Spent }) : state;
+                return state.Object(options.Spell) is { } spell ? state.WithObject(spell with { CastWith = options.Options, SpentToCast = options.Spent, FaceDown = options.Options.Contains("FaceDown") }) : state;
 
             case ChoiceRecorded choice:
                 return state.Object(choice.Object) is { } chooser ? state.WithObject(chooser with { Choices = (chooser.Choices ?? ImmutableDictionary<string, string>.Empty).SetItem(choice.Kind, choice.Value) }) : state;

@@ -321,6 +321,8 @@ public static class Triggers
                     Subject(trigger, discarded.Card, source, after, before),
                 "CountersPut" when evt is CountersChanged { Delta: > 0 } put =>
                     Subject(trigger, put.Object, source, after, before),
+                "IsTurnedFaceUp" when evt is TurnedFace { FaceDown: false } turnedUp =>
+                    Subject(trigger, turnedUp.Object, source, after, before),
                 "IsTappedForMana" when evt is TappedForMana tappedForMana =>
                     Subject(trigger, tappedForMana.Object, source, after, before) is { Fires: true } forMana ? forMana with { Subject = TargetRef.Of(tappedForMana.Player) } : null,
                 "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted && TargetedBy(trigger, ItemOf(evt), source, after) =>

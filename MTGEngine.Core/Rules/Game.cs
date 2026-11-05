@@ -385,10 +385,15 @@ public sealed partial class Game
                 continue;
             if (CanAffordToCast(obj, player))
                 actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0));
+            // Morph and disguise: cast it face down as a 2/2 creature for {3}, at sorcery speed.
+            if (sorcerySpeed && FaceUpKeyword(card) is not null && ManaPayment.CanPay(state, player, ManaCost.Parse("{3}")))
+                actions.Add(new CastSpell(id, 0, Alternative: FaceDownCast));
             foreach (var (index, alternative) in Alternatives(card))
                 if (CanAffordAlternative(obj, player, alternative))
                     actions.Add(new CastSpell(id, 0, Alternative: index));
         }
+
+        actions.AddRange(FaceUpActions(player));
 
         // Abilities that work from the hand or graveyard (cycling, unearth), and flashback.
         foreach (var obj in playerState.Hand.Concat(playerState.Graveyard).Select(state.Object).Where(x => x is not null).ToList())
@@ -645,6 +650,9 @@ public sealed partial class Game
                 return;
             case CastSpell cast:
                 Cast(cast.Card, player, cast.MaxX, cast.Free, cast.Alternative);
+                return;
+            case TurnFaceUp turn:
+                TurnUp(turn.Permanent, pay: true);
                 return;
             case ActivateAbility activate:
                 Activate(activate.Source, activate.Index, player);

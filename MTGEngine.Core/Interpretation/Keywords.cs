@@ -16,6 +16,8 @@ public static class Keywords
         // Read where they apply.
         "Protection", "Devoid", "Changeling", "Wither", "Toxic", "Persist", "Undying",
         "Swampwalk", "Islandwalk", "Forestwalk", "Mountainwalk", "Plainswalk",
+        // Cast face down, turned face up for their cost.
+        "Morph", "Megamorph", "Disguise",
     ];
 
     /// <summary>

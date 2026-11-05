@@ -673,6 +673,16 @@ public static class Interpreter
                 return ctx;
             }
 
+            case TurnFace turn:
+            {
+                foreach (var id in Resolver.Objects(turn.Objects, ctx))
+                    if (turn.Direction is "Up" or "FaceUp")
+                        game.TurnUp(id, pay: false);
+                    else
+                        game.Emit(new TurnedFace(id, FaceDown: true));
+                return ctx;
+            }
+
             case FlipCoin flip:
             {
                 var flipper = flip.Player is null ? ctx.Controller : Resolver.Players(flip.Player, ctx).FirstOrDefault(ctx.Controller);

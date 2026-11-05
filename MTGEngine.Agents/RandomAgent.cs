@@ -24,7 +24,7 @@ public sealed class RandomAgent(int seed, double aggression = 0.7) : IDecisionMa
                 var spells = options.Select((x, i) => (x, i)).Where(p => p.x is CastSpell).ToList();
                 if (spells.Count > 0 && _rng.NextDouble() < 0.9)
                     return DecisionResponse.Choose(spells[_rng.Next(spells.Count)].i);
-                var abilities = options.Select((x, i) => (x, i)).Where(p => p.x is ActivateAbility).ToList();
+                var abilities = options.Select((x, i) => (x, i)).Where(p => p.x is ActivateAbility or TurnFaceUp).ToList();
                 if (abilities.Count > 0 && _rng.NextDouble() < 0.3)
                     return DecisionResponse.Choose(abilities[_rng.Next(abilities.Count)].i);
                 return DecisionResponse.Pass;
