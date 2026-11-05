@@ -100,7 +100,7 @@ public sealed record Exile(Selector Objects, Duration Until = null, CounterSpec 
 /// Objects getting, having or losing buffs: a power/toughness change, keywords, or both ("gets +1/+1 and has flying
 /// until end of turn"), or base power and toughness set outright ("has base power and toughness 4/4").
 /// </summary>
-public sealed record Pump(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<KeywordInstance> Keywords = null, StatsMod BaseStats = null, Duration Duration = null, bool Remove = false, Quantity PerEach = null) : Effect;
+public sealed record Pump(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<KeywordInstance> Keywords = null, StatsMod BaseStats = null, Duration Duration = null, bool Remove = false, Quantity PerEach = null, IReadOnlyList<KeywordInstance> ChoiceOf = null) : Effect;
 
 public sealed record Tap(Selector Objects, IrNode During = null) : Effect;
 
@@ -233,7 +233,7 @@ public sealed record DoesntUntap(Selector Objects, PhaseRef Step, Condition If =
 
 public sealed record CounterSpell(Selector Objects) : Effect;
 
-public sealed record ChangeTargets(Selector Spell) : Effect;
+public sealed record ChangeTargets(Selector Spell, Selector To = null) : Effect;
 
 public sealed record ChooseCards(Selector Chooser, Quantity Count, ObjectFilter Filter, Selector From, bool UpTo = false) : Effect;
 
@@ -291,3 +291,27 @@ public sealed record Otherwise(Effect Effect) : Effect;
 
 /// <summary>Setting power and/or toughness to an amount: "{this}'s power and toughness are each equal to the number of swamps you control".</summary>
 public sealed record SetStats(Selector Objects, string Which, Quantity Amount) : Effect;
+
+/// <summary>Creatures that must be blocked if able: "must be blocked this turn if able".</summary>
+public sealed record MustBeBlocked(Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>Creatures that assign no combat damage: "assigns no combat damage this turn".</summary>
+public sealed record AssignsNoCombatDamage(Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>A life total set to an amount: "target player's life total becomes 20".</summary>
+public sealed record SetLifeTotal(Selector Player, Quantity Amount) : Effect;
+
+/// <summary>Control of the objects exchanged: "exchange control of this creature and target creature".</summary>
+public sealed record ExchangeControl(IReadOnlyList<Selector> Objects) : Effect;
+
+/// <summary>Damage that can't be prevented: the damage just dealt (<paramref name="Which"/>), or any damage a source would deal.</summary>
+public sealed record DamageCantBePrevented(string Which = null, Selector Source = null, Duration Duration = null) : Effect;
+
+/// <summary>Dice rolled: "roll a d20".</summary>
+public sealed record RollDice(Selector Player, Quantity Count, int Faces) : Effect;
+
+/// <summary>Players who can't gain life: "your opponents can't gain life this turn".</summary>
+public sealed record CantGainLife(Selector Player, Duration Duration = null, bool RestOfGame = false) : Effect;
+
+/// <summary>Creatures removed from combat: "remove target blocking creature from combat".</summary>
+public sealed record RemoveFromCombat(Selector Objects) : Effect;

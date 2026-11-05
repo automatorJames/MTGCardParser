@@ -27,6 +27,7 @@ public sealed partial class Lowerer
         RegisterRoundSix();
         RegisterRoundSeven();
         RegisterRoundEight();
+        RegisterRoundNine();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -161,6 +162,12 @@ public sealed partial class Lowerer
             FlavorAbility { Ability: SpellAbility spell } when typeof(T) == typeof(Effect) => (T)(IrNode)spell.Effect,
             FlavorAbility { Ability: ReplacementAbility replacement } when typeof(T) == typeof(Effect) => (T)(IrNode)replacement.Effect,
             TriggeredAbility { If: null } trigger when typeof(T) == typeof(Effect) => (T)(IrNode)new Delayed(trigger.Trigger, trigger.Effect),
+            FlavorAbility { Ability: TriggeredAbility { If: null } trigger } when typeof(T) == typeof(Effect) => (T)(IrNode)new Delayed(trigger.Trigger, trigger.Effect),
+            FlavorAbility { Ability: StaticAbility { While: { } held } statics } when typeof(T) == typeof(Effect) => (T)(IrNode)new Lasting(statics.Effect, new While(held)),
+            LabeledAbility { Ability: TriggeredAbility { If: null } trigger } when typeof(T) == typeof(Effect) => (T)(IrNode)new Delayed(trigger.Trigger, trigger.Effect),
+            While lasting when typeof(T) == typeof(Condition) => (T)(IrNode)lasting.Condition,
+            Scaled { Base: LifeTotal } scaled when typeof(T) == typeof(Cost) => (T)(IrNode)new PayLife(scaled),
+            Effect effect when typeof(T) == typeof(Cost) => (T)(IrNode)new ActionCost(effect),
             Happened { Event: ObjectEvent inner } happened when typeof(T) == typeof(Event) => (T)(IrNode)(inner with { Only = inner.Only ?? happened.Span }),
             Happened happened when typeof(T) == typeof(Event) => (T)(IrNode)happened.Event,
             Term term when typeof(T) == typeof(Selector) && term.Vocabulary is nameof(G.SpellReference) or "Its" or "PersonalPronoun" or "ThatPlayer" => (T)(IrNode)new Reference(null, term.Value),
@@ -219,6 +226,11 @@ public sealed partial class Lowerer
             LoseAllAbilities => true,
             CantBeActivated => true,
             MustBlock { Duration: null } => true,
+            MustBeBlocked { Duration: null } => true,
+            AssignsNoCombatDamage { Duration: null } => true,
+            CantGainLife { Duration: null } => true,
+            DamageCantBePrevented { Which: null, Duration: null } => true,
+            ExchangeControl => false,
             NoMaximumHandSize { Duration: null } => true,
             CanBlock => true,
             CantPlay { Duration: null } => true,

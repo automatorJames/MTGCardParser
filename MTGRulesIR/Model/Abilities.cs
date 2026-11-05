@@ -69,3 +69,6 @@ public sealed record AdditionalCost(Selector Spells, Cost Cost) : Ability;
 
 /// <summary>A cost that may be paid rather than the usual one: "you may pay {1}{w} rather than pay this spell's mana cost".</summary>
 public sealed record AlternativeCost(Cost Cost, string Replaces, Cost Additional = null, Condition If = null) : Ability;
+
+/// <summary>Keywords of which one is chosen: "your choice of flying, trample, or haste".</summary>
+public sealed record KeywordChoice(IReadOnlyList<KeywordInstance> Options) : IrNode;

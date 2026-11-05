@@ -202,7 +202,6 @@ public sealed partial class Lowerer
             new DoesntUntap(ctx.Subject ?? new Self(), PhaseRefOf(g.Step, ctx) ?? new PhaseRef(ctx.TextOf(g.Step)), g.Condition is null ? null : LowerAs<Condition>(g.Condition, ctx)));
         Rule<G.NextPlayersPhase>((g, ctx) => new PhaseRef(g.Phase.ToString(), Whose: PlayerOf(g.Whose), Next: true));
         Rule<G.OtherPermanents>((g, ctx) => Group(g.Permanents, Quantifier.All, ctx, other: true));
-        Rule<G.ManaOfAnyColor>((g, ctx) => Lower(g.Choice, ctx) is Term choice ? new ManaChoice(QuantityOf(g.Quantity), choice.Value) : new OpaqueManaOption(ctx.TextOf(g), nameof(G.ManaOfAnyColor)));
         Rule<G.KeywordWithAmountAndCost>((g, ctx) => new KeywordInstance(g.Keyword.ToString(), QuantityOf(g.Amount), new PayMana(g.Cost.Items.Select(SymbolText).ToList())));
 
         // Durations and phases.
@@ -249,7 +248,10 @@ public sealed partial class Lowerer
         Rule<G.IfState>((g, ctx) => LowerAs<Condition>(g.Condition, ctx));
         Rule<G.StateCondition>((g, ctx) => g.Connective == G.ConditionConnective.Unless ? new Not(LowerAs<Condition>(g.State, ctx)) : LowerAs<Condition>(g.State, ctx));
         Rule<G.IfHappenedThisTurn>((g, ctx) => LowerAs<Condition>(g.Event, ctx));
-        Rule<G.HappenedThisTurn>((g, ctx) => new Happened(EventOf(Lower(g.Event, ctx), ctx, g.Event), g.Turn.ToString()));
+        Rule<G.HappenedThisTurn>((g, ctx) =>
+            Lower(g.Event, ctx) is Happened happened
+                ? happened with { Span = g.Turn.ToString() }
+                : new Happened(EventOf(Lower(g.Event, ctx), ctx, g.Event), g.Turn.ToString()));
         Rule<G.WhileCondition>((g, ctx) => LowerAs<Condition>(g.Condition, ctx));
         Rule<G.WasKicked>((g, ctx) =>
             Lower(g.How, ctx) is Term how
@@ -374,7 +376,7 @@ public sealed partial class Lowerer
         List<string> states = [];
         var tapped = destination.State is G.EntryState.Tapped or G.EntryState.TappedAndAttacking || destination.StateAfterControl is G.EntryState.Tapped or G.EntryState.TappedAndAttacking;
 
-        var with = EffectsOf([.. LowerAll(destination.WithCounters, ctx), .. LowerAll(destination.Attached, ctx)]);
+        var with = EffectsOf([.. LowerAll(destination.WithCounters, ctx), .. LowerAll(destination.Attached, ctx).Select(x => x is Related { Relation: Relation.AttachedTo } attached ? new Attach(objects, attached.To) : x)]);
         if (destination.Transformed == true || destination.AndTransformed == true)
             states.Add("Transformed");
         if (destination.State is G.EntryState.TappedAndAttacking || destination.StateAfterControl is G.EntryState.TappedAndAttacking)

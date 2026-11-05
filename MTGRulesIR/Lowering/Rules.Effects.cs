@@ -239,6 +239,7 @@ public sealed partial class Lowerer
         Quantity power = null, toughness = null;
         StatsMod baseStats = null;
         List<KeywordInstance> keywords = [];
+        IReadOnlyList<KeywordInstance> choiceOf = null;
         List<Effect> other = [];
 
         foreach (var buff in group.Buffs)
@@ -250,6 +251,9 @@ public sealed partial class Lowerer
                     break;
                 case KeywordInstance keyword:
                     keywords.Add(keyword);
+                    break;
+                case KeywordChoice choice:
+                    choiceOf = choice.Options;
                     break;
                 case Term { Vocabulary: nameof(G.Keyword) } term:
                     keywords.Add(new KeywordInstance(term.Value));
@@ -268,7 +272,7 @@ public sealed partial class Lowerer
                     break;
             }
 
-        var pump = new Pump(ctx.Subject, power, toughness, OrNull(keywords), baseStats, duration, group.Verb == G.PermanentVerb.Lose, perEach);
+        var pump = new Pump(ctx.Subject, power, toughness, OrNull(keywords), baseStats, duration, group.Verb == G.PermanentVerb.Lose, perEach, choiceOf);
         return other.Count == 0 ? pump : Seq([pump, .. other]);
     }
 }

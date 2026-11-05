@@ -133,7 +133,7 @@ public sealed record Bound(Quantity Value, Comparison Comparison) : Quantity;
 public sealed record Scaled(Quantity Base, string Factor, string Rounding = null) : Quantity;
 
 /// <summary>Mana of a color chosen as it's added: "one mana of any color".</summary>
-public sealed record ManaChoice(Quantity Count, string Choice, IReadOnlyList<string> Among = null) : ManaOption;
+public sealed record ManaChoice(Quantity Count, string Choice, IReadOnlyList<string> Among = null, Selector Producer = null) : ManaOption;
 
 /// <summary>Throughout a step, phase or turn: "during your upkeep".</summary>
 public sealed record DuringPhase(PhaseRef Phase) : Duration;
@@ -217,3 +217,15 @@ public sealed record CompareControl(Selector Player, Selector Objects, string Bo
 
 /// <summary>A player's hand size: "you have no cards in hand", "that player has seven or more cards in hand".</summary>
 public sealed record HandSize(Selector Player, Quantity Size = null, Compared ComparedTo = null, string Verb = null) : Condition;
+
+/// <summary>A state becoming true, as a trigger: "when you control no swamps".</summary>
+public sealed record ConditionEvent(Condition Condition) : Event;
+
+/// <summary>Whether a creature is paired (soulbond): "as long as this creature is paired with another creature".</summary>
+public sealed record IsPaired(Selector Object, Selector With = null) : Condition;
+
+/// <summary>Damage or life changed over a span, as an amount: "1 damage dealt to you this turn", "1 life they gained".</summary>
+public sealed record DamageOrLifeTotal(string Unit, string Change, Selector Player = null, string When = null) : Quantity;
+
+/// <summary>A keyword action as a cost: "waterbend {3}", "sunburst".</summary>
+public sealed record KeywordCost(KeywordInstance Keyword) : Cost;

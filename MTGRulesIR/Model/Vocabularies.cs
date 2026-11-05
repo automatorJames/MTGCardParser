@@ -23,7 +23,7 @@ public static class Vocabularies
         ["Animate.Still"] = [typeof(G.CardType)],
         ["StillOfKind.Kinds"] = [typeof(G.CardType), typeof(G.CreatureType)],
         ["Devotion.Colors"] = [typeof(G.ManaColor)],
-        ["KeywordInstance.Keyword"] = [typeof(G.Keyword)],
+        ["KeywordInstance.Keyword"] = [typeof(G.Keyword), typeof(KeywordWord)],
         ["HasKeywords.Keywords"] = [typeof(G.Keyword)],
         ["CanAsThough.Keyword"] = [typeof(G.Keyword)],
         ["CanAsThough.Action"] = [typeof(G.CombatAction)],
@@ -40,7 +40,7 @@ public static class Vocabularies
         ["PlayerEvent.Event"] = [typeof(G.PlayerEventKind)],
         ["PlayerEvent.Timing"] = [typeof(G.PlayerEventTiming)],
         ["NamedEvent.Kind"] = [typeof(G.TurnEvent), typeof(EventKind)],
-        ["PlayerAction.Action"] = [typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile), typeof(G.PlayerThisWayAction), typeof(G.PlayerTurnAction)],
+        ["PlayerAction.Action"] = [typeof(UseVerb), typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile), typeof(G.PlayerThisWayAction), typeof(G.PlayerTurnAction)],
         ["CombatEncounterEvent.Encounter"] = [typeof(G.CombatEncounterKind)],
         ["Happened.Span"] = [typeof(G.TurnSpan), typeof(EventSpan)],
         ["ThisTurn.Period"] = [typeof(G.TurnPeriod)],
@@ -55,7 +55,7 @@ public static class Vocabularies
         ["ChooseModes.Count"] = [typeof(G.ModeCount)],
         ["PhaseRef.Phase"] = [typeof(G.Phase)],
         ["PhaseRef.Part"] = [typeof(G.PhasePart)],
-        ["Special.Kind"] = [typeof(G.Quantity), typeof(SpecialAmount), typeof(G.RepeatCount)],
+        ["Special.Kind"] = [typeof(G.Quantity), typeof(SpecialAmount), typeof(G.RepeatCount), typeof(G.LifeTotalValue)],
         ["CantBeTargeted.By"] = [typeof(TargetingBy)],
         ["ManaChoice.Choice"] = [typeof(G.ManaChoice), typeof(ManaChoiceKind)],
         ["AddMana.Amount"] = [typeof(G.AddedManaAmount)],
@@ -81,7 +81,13 @@ public static class Vocabularies
         ["CastBy.From"] = [typeof(G.CastFrom)],
         ["CastBy.Relation"] = [typeof(G.SpellRelation)],
         ["Targeting.Count"] = [typeof(G.SpellTargetCount)],
-        ["WasCastWith.How"] = [typeof(G.OptionalCostVerb)],
+        ["WasCastWith.How"] = [typeof(G.OptionalCostVerb), typeof(G.Keyword)],
+        ["ActedOn.Action"] = [typeof(G.CardHistoryVerb)],
+        ["ActedOn.Span"] = [typeof(G.TurnSpan)],
+        ["DamageOrLifeTotal.Unit"] = [typeof(G.DamageOrLife)],
+        ["DamageOrLifeTotal.Change"] = [typeof(G.DamageOrLifeChange)],
+        ["DamageOrLifeTotal.When"] = [typeof(G.DamageOrLifeWhen)],
+        ["DamageCantBePrevented.Which"] = [typeof(G.DamageScope)],
         ["OutcomeCondition.Result"] = [typeof(G.OutcomeResult)],
         ["Arithmetic.Operator"] = [typeof(G.ArithmeticOperator)],
         ["Scaled.Rounding"] = [typeof(G.Rounding)],
@@ -173,7 +179,7 @@ public enum ExileManner { InsteadOfAnywhereElse }
 public enum Provenance { Found, TheRest, Chosen }
 
 /// <summary>A qualifier setting objects apart from others on the line: "another", "named {this}", "or tied".</summary>
-public enum Distinction { Other, NamedThis, OrTied }
+public enum Distinction { Other, NamedThis, OrTied, BeyondTheFirst }
 
 /// <summary>How a choice is made: "at random".</summary>
 public enum Manner { AtRandom }
@@ -188,13 +194,19 @@ public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command 
 public enum Comparison { Equal, Less, LessOrEqual, Greater, GreaterOrEqual }
 
 /// <summary>Kinds of object the lowering names itself, beside the grammar's card types: "card", "spell", "counter", "any target".</summary>
-public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door, Pile }
+public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door, Pile, Target, Copy }
 
 /// <summary>Events the lowering names beyond the turn's: the last counter being removed.</summary>
 public enum EventKind { LastCounterRemoved, UnlockThisDoor, ClassBecomesLevel }
 
 /// <summary>Ways mana may be chosen beyond the grammar's: any combination of colors.</summary>
-public enum ManaChoiceKind { AnyCombination }
+/// <summary>Keyword actions the grammar names only in text, as keywords.</summary>
+public enum KeywordWord { Behold }
+
+/// <summary>What kind of ability an ability selector picks out.</summary>
+public enum AbilityCategory { Activated, Triggered, Static, Mana, Loyalty }
+
+public enum ManaChoiceKind { AnyCombination, AnyTypeCouldProduce, AnyTypeProduced, AnyColorCouldProduce, AnyColorProduced, AnyColorAmong }
 
 /// <summary>What mana may be spent to do, beyond playing and casting.</summary>
 public enum UseVerb { Activate, PayKeywordCost, TurnFaceUp, UnlockDoor }

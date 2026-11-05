@@ -206,3 +206,6 @@ public sealed record Compared(string Comparison, Selector Than, Selector Measure
 
 /// <summary>A qualifier on creatures by their combat relation to another: "blocking or blocked by it".</summary>
 public sealed record InCombatWith(Selector Other, string Relation = "BlockingOrBlockedBy") : Predicate;
+
+/// <summary>Cards a player did something with over a span: "cards you've drawn this turn".</summary>
+public sealed record ActedOn(Selector By, string Action, string Span = "ThisTurn") : Predicate;
