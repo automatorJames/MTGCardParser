@@ -125,6 +125,26 @@ public static class KeywordAbilities
                     new Sequence([new UnlessPaid(new Sacrifice(You, new Self()), new PayCost(cost)), new PutCounters(new Self(), new CounterSpec("echo-paid", new Fixed(1)))]),
                     new HasCountersCondition(new Self(), new CounterSpec("echo-paid", null), Negated: true));
                 break;
+            // Vanishing N: enters with N time counters; each upkeep one comes off, and when the last does it's sacrificed.
+            case "Vanishing" when keyword.Amount is Fixed { Value: > 0 }:
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(new Self(), new CounterSpec("time", new Fixed(amount)))]));
+                yield return new TriggeredAbility(
+                    new PhaseEvent(new PhaseRef("Upkeep", Whose: You)),
+                    new Sequence([
+                        new RemoveCounters(new Self(), new CounterSpec("time", new Fixed(1))),
+                        new Conditional(new HasCountersCondition(new Self(), new CounterSpec("time", null), Negated: true), new Sacrifice(You, new Self())),
+                    ]),
+                    new HasCountersCondition(new Self(), new CounterSpec("time", null)));
+                break;
+            // Fading N: enters with N fade counters; each upkeep one comes off, or it's sacrificed if none can.
+            case "Fading" when keyword.Amount is Fixed { Value: > 0 }:
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(new Self(), new CounterSpec("fade", new Fixed(amount)))]));
+                yield return new TriggeredAbility(
+                    new PhaseEvent(new PhaseRef("Upkeep", Whose: You)),
+                    new Conditional(new HasCountersCondition(new Self(), new CounterSpec("fade", null)),
+                        new RemoveCounters(new Self(), new CounterSpec("fade", new Fixed(1))),
+                        new Sacrifice(You, new Self())));
+                break;
             case "CumulativeUpkeep" when keyword.Cost is { } cost:
             {
                 var age = new CountOf(new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [new Term("Counter", nameof(ObjectKind))], Qualifiers: [new Qualifier("age", Vocabulary: "CounterKind")], With: [new Related(Relation.On, new Self())])));

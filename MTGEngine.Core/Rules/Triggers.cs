@@ -251,6 +251,21 @@ public static class Triggers
                 return new Matched(fits, TargetRef.Of(ability.Item.Controller));
             }
 
+            // "When you play another land", "whenever you play an island".
+            case EffectEvent { Effect: PlayCard { Card: ObjectSelector played } play } when evt is LandPlayed land:
+            {
+                if (!PlayerIs(play.Player, land.Player, source) || after.Object(land.Land) is not { } landObj)
+                    return null;
+                var filter = played.Filter with { Kinds = played.Filter.Kinds?.Where(x => x.Value is not (nameof(ObjectKind.Card) or nameof(ObjectKind.Spell))).ToList() is { Count: > 0 } kinds ? kinds : null };
+                return new Matched(Filters.Matches(after, filter, landObj, source.Controller, source.Id, played.Other ? source.Id : null), TargetRef.Of(land.Land));
+            }
+            // "Whenever an opponent casts an enchantment spell", said as playing a card.
+            case EffectEvent { Effect: PlayCard { Card: ObjectSelector cast } castPlay } when evt is SpellCast:
+                return Match(new SpellCastEvent(castPlay.Player, cast with
+                {
+                    Filter = cast.Filter with { Kinds = cast.Filter.Kinds?.Select(x => x.Value == nameof(ObjectKind.Card) ? new Term(nameof(ObjectKind.Spell), nameof(ObjectKind)) : x).ToList() },
+                }), evt, source, after, before);
+
             case EffectEvent { Effect: Draw draw } when evt is Drew { Card: not null } drew:
                 return new Matched(PlayerIs(draw.Player, drew.Player, source), TargetRef.Of(drew.Player));
 

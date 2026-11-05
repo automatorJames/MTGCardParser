@@ -230,6 +230,10 @@ public static class InterpreterSupport
         foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
             if (node is Replacement replacement && Game.DamageReplacement(replacement) is not null)
                 replaced.Add(replacement.Instead is Sequence { Steps: [var first, ..] } ? first : replacement.Instead);
+        // An event inside a history condition ("if a creature entered this turn") is read by History, not matched as a trigger.
+        foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
+            if (node is Happened { Event: ObjectEvent historical } happened && HappenedHandled(happened))
+                replaced.Add(historical);
         foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
             if (!replaced.Contains(node) && Problem(node) is { } problem)
                 yield return problem;
@@ -344,7 +348,7 @@ public static class InterpreterSupport
             MustCombat must when must.Period is not (null or "EachCombat" or "ThisTurn") || must.Actions.Any(x => x is not ("Attack" or "Block")) => "MustCombat.Kind",
             CantBeTargeted cantBe when cantBe.By?.Any(x => x is not ("Countered" or "Spells" or "SpellsOrAbilities")) == true => $"CantBeTargeted.{cantBe.By.First(x => x is not ("Countered" or "Spells" or "SpellsOrAbilities"))}",
             CantBeTargeted { Duration: { } duration } when !Keeps(duration) => $"CantBeTargeted.Duration[{Describe(duration)}]",
-            EffectEvent { Effect: not (Draw or Sacrifice) } effectEvent => $"EffectEvent.{effectEvent.Effect?.GetType().Name}",
+            EffectEvent { Effect: not (Draw or Sacrifice or PlayCard { Card: ObjectSelector }) } effectEvent => $"EffectEvent.{effectEvent.Effect?.GetType().Name}",
             CombatRestriction { Duration: { } duration } when !Keeps(duration) => $"CombatRestriction.Duration[{Describe(duration)}]",
             SearchLibrary { Zones: not (null or "Library" or "LibraryAndOrGraveyard") } search => $"SearchLibrary.{search.Zones}",
             EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
@@ -385,6 +389,8 @@ public static class InterpreterSupport
             KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
             KeywordLine line when line.Keywords.FirstOrDefault(x => !Keywords.Handles(x.Keyword)) is { } keyword => $"Keyword.{CardDefinition.Normalize(keyword.Keyword)}",
             KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) == "Suspend" && !Game.Suspendable(x)) => "Keyword.Suspend.X",
+            KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) is "Vanishing" or "Fading" && x.Amount is not Fixed { Value: > 0 }) => "Keyword.Vanishing.Amount",
+            KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) == "Foretell" && x.Cost is not PayMana) => "Keyword.Foretell.Cost",
             KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) == "Typecycling" && string.IsNullOrEmpty(x.Parameter)) => "Keyword.Typecycling.Type",
             StaticAbility statics when !IsStaticHandled(Characteristics.WithoutPhase(statics.Effect)) => $"StaticAbility[{statics.Effect.GetType().Name}]",
             _ => null,

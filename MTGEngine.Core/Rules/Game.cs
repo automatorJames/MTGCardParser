@@ -449,6 +449,7 @@ public sealed partial class Game
         }
 
         actions.AddRange(FaceUpActions(player));
+        actions.AddRange(ForetellActions(player, sorcerySpeed));
 
         // Abilities that work from the hand or graveyard (cycling, unearth), and flashback.
         foreach (var obj in playerState.Hand.Concat(playerState.Graveyard).Select(state.Object).Where(x => x is not null).ToList())
@@ -716,6 +717,9 @@ public sealed partial class Game
                 return;
             case CastSpell { Alternative: SuspendCast } suspend:
                 Suspend(suspend.Card, player);
+                return;
+            case CastSpell { Alternative: ForetellExile } foretell:
+                Foretell(foretell.Card, player);
                 return;
             case CastSpell cast:
                 Cast(cast.Card, player, cast.MaxX, cast.Free, cast.Alternative);
