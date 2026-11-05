@@ -61,6 +61,9 @@ public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : Ga
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
 public sealed record SpellCopied(StackItem Item) : GameEvent;
 public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets) : GameEvent;
+public sealed record StepSkipScheduled(PlayerId Player, Step Step) : GameEvent;
+public sealed record StepSkipped(PlayerId Player, Step Step) : GameEvent;
+public sealed record TappedForMana(ObjectId Object, PlayerId Player) : GameEvent;
 public sealed record ExiledWith(ExileLink Link) : GameEvent;
 public sealed record PlayRestricted(PlayRestriction Restriction) : GameEvent;
 public sealed record EnergyChanged(PlayerId Player, int Delta) : GameEvent;
@@ -321,6 +324,12 @@ public static class Reducer
                     ZoneReplacements = state.ZoneReplacementList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     PlayRestrictions = state.PlayRestrictionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
+
+            case StepSkipScheduled scheduled:
+                return state with { SkipNext = state.SkipList.Add((scheduled.Player, scheduled.Step)) };
+
+            case StepSkipped skipped:
+                return state with { SkipNext = state.SkipList.Remove((skipped.Player, skipped.Step)) };
 
             case ExiledWith exiled:
                 return state with { ExileLinks = state.ExileLinkList.Add(exiled.Link) };

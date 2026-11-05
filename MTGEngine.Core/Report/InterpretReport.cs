@@ -74,7 +74,7 @@ public static class InterpreterSupport
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
         typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(FlavorAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
-        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost),
+        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost), typeof(DieResultRow),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -91,6 +91,7 @@ public static class InterpreterSupport
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
+        typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -124,7 +125,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
     ];
 
     static readonly HashSet<Type> _durations =
@@ -145,7 +146,7 @@ public static class InterpreterSupport
         "AttacksAlone", "AttacksYou", "AttacksAPlayer", "Blocks", "BlocksOrBecomesBlocked", "BlocksACreature", "BecomesBlocked", "BecomesTapped",
         "BecomesUntapped", "DealsCombatDamageToAPlayer", "DealsCombatDamageToAPlayerOrPlaneswalker", "DealsCombatDamageToAnOpponent", "DealsCombatDamageToYou",
         "DealsCombatDamage", "DealsDamage", "DealsDamageToAPlayer", "DealsDamageToAnOpponent", "DealsDamageToACreature", "DealsDamageToYou",
-        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters", "BecomesTarget", "Die", "LeaveTheBattlefield", "Countered",
+        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters", "BecomesTarget", "Die", "LeaveTheBattlefield", "Countered", "IsTappedForMana",
     ];
 
     static readonly HashSet<string> _qualifierVocabularies =
@@ -217,13 +218,12 @@ public static class InterpreterSupport
             Special { Kind: not ("ThatMany" or "ThatMuch" or "All" or "AnyNumber" or "OneOrMore") } special => $"Special.{special.Kind}",
             Variable { Name: not ("X" or "x") } variable => $"Variable.{variable.Name}",
             ObjectEvent objectEvent when objectEvent.Events.All(x => !_objectEvents.Contains(x)) => $"ObjectEvent.{objectEvent.Events.FirstOrDefault()}",
-            ObjectEvent { While: not null } => "ObjectEvent.While",
             ObjectEvent { By: not null } byEvent when byEvent.Events.Any(x => x != "BecomesTarget") || !Triggers.TargetedByKinds.Contains(byEvent.By) => "ObjectEvent.By",
             PhaseEvent phase when Conditions.StepOf(phase.At.Phase) is null => $"PhaseEvent.{phase.At.Phase}",
             TriggeredAbility { Trigger: PlayerAction { Action: "AttackedWith" or "Activate" } } => null,
             TriggeredAbility { Trigger: PlayerAction or NamedEvent } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
             Delayed { When: PlayerAction or NamedEvent } delayed => $"Delayed[{delayed.When.GetType().Name}]",
-            PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife") => $"PlayerEvent.{playerEvent.Event}",
+            PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife" or "Attacks" or "DiscardsACard" or "CyclesOrDiscardsACard" or "CyclesACard" or "CyclesThisCard" or "DrawsSecondCardEachTurn" or "SacrificesAnotherPermanent" or "ScriesOrSurveils") => $"PlayerEvent.{playerEvent.Event}",
             Qualifier { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Quality) => $"Qualifier[PermanentDesignation.{designation.Quality}]",
             Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
             Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
@@ -244,6 +244,8 @@ public static class InterpreterSupport
             RevealUntil { Until: not PlayerAction { What: ObjectSelector } } => "RevealUntil.Until",
             CantPlay { Verb: not ("Cast" or "Play") } cantPlay => $"CantPlay.{cantPlay.Verb}",
             CopySpell { Except: not null } => "CopySpell.Except",
+            CastAsThoughFlash { Extra: not null } => "CastAsThoughFlash.Extra",
+            Skip skip when skip.Event is not null || Game.SkippableStep(skip.Phase?.Phase) is null => $"Skip.{skip.Phase?.Phase ?? skip.Event}",
             ChangeTargets { To: not (null or Self) } => "ChangeTargets.To",
             CanBlock { Count: not null } => "CanBlock.Count",
             ManaRestriction restriction when restriction.Uses.Any(x => x.Verb is not ("Cast" or "Activate")) => $"ManaRestriction.{restriction.Uses.First(x => x.Verb is not ("Cast" or "Activate")).Verb}",
@@ -268,7 +270,7 @@ public static class InterpreterSupport
             CantBeTargeted { Duration: { } duration } when !Keeps(duration) => $"CantBeTargeted.Duration[{Describe(duration)}]",
             EffectEvent { Effect: not (Draw or Sacrifice) } effectEvent => $"EffectEvent.{effectEvent.Effect?.GetType().Name}",
             CombatRestriction { Duration: { } duration } when !Keeps(duration) => $"CombatRestriction.Duration[{Describe(duration)}]",
-            SearchLibrary { Zones: not (null or "Library") } search => $"SearchLibrary.{search.Zones}",
+            SearchLibrary { Zones: not (null or "Library" or "LibraryAndOrGraveyard") } search => $"SearchLibrary.{search.Zones}",
             EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
             EntersBattlefield { Duration: not null } => "EntersBattlefield.Duration",
             ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens or Replacement) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",
@@ -325,6 +327,8 @@ public static class InterpreterSupport
             CantBeTargeted { Duration: null } => true,
             SetStats => true,
             CantPlay => true,
+            CastAsThoughFlash { Extra: null } => true,
+            MayNotUntap => true,
             CanBlock { Only: not null, Count: null } => true,
             CantBeActivated => true,
             Convoke { Spells: null or Self } => true,

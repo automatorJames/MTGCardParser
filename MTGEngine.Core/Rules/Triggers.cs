@@ -28,6 +28,12 @@ public static class Triggers
                     yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
         }
 
+        // "When you cycle this card" works from wherever the card went.
+        if (evt is AbilityActivated { Item: { Costs: { } paidCosts, Source: { } cycledCard } } && paidCosts.Any(x => x is DiscardThis) && (after.Object(cycledCard) ?? before.Object(cycledCard)) is { } cycler)
+            foreach (var ability in cycler.Card.Abilities.OfType<TriggeredAbility>())
+                if (ability.Trigger is PlayerEvent { Event: "CyclesThisCard" } || ability.Trigger is EitherEvent either && either.Events.Any(x => x is PlayerEvent { Event: "CyclesThisCard" }))
+                    yield return new PendingTrigger(cycler, ability, null, cycler.Controller);
+
         // Persist and undying: a creature that died without a -1/-1 (or +1/+1) counter returns with one.
         if (evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Graveyard } died && before.Object(died.Object) is { } fallen)
         {
@@ -184,6 +190,24 @@ public static class Triggers
                 return new Matched(true, TargetRef.Of(spellId));
             }
 
+            case PlayerEvent { Event: "Attacks" } attacks when evt is AttackersDeclared { Attackers.Count: > 0 } declared:
+                return new Matched(PlayerIs(attacks.Player, declared.Player, source), TargetRef.Of(declared.Player));
+
+            case PlayerEvent { Event: "DiscardsACard" or "CyclesOrDiscardsACard" } discards when evt is Discarded discarded:
+                return new Matched(PlayerIs(discards.Player, discarded.Player, source) && (discards.Event == "DiscardsACard" || discarded.Card != source.Id), TargetRef.Of(discarded.Player));
+
+            case PlayerEvent { Event: "CyclesACard" or "CyclesOrDiscardsACard" } cycles when evt is AbilityActivated { Item.Costs: { } costs } cycled && costs.Any(x => x is DiscardThis):
+                return new Matched(PlayerIs(cycles.Player, cycled.Item.Controller, source) && (cycles.Event == "CyclesACard" || cycled.Item.Source != source.Id), TargetRef.Of(cycled.Item.Controller));
+
+            case PlayerEvent { Event: "DrawsSecondCardEachTurn" } second when evt is Drew { Card: not null } drew:
+                return new Matched(PlayerIs(second.Player, drew.Player, source) && after.ThisTurnEventList.OfType<Drew>().Count(x => x.Player == drew.Player && x.Card is not null) == 2, TargetRef.Of(drew.Player));
+
+            case PlayerEvent { Event: "SacrificesAnotherPermanent" } sacrifices when evt is Sacrificed sacrificed:
+                return new Matched(PlayerIs(sacrifices.Player, sacrificed.Player, source) && sacrificed.Object != source.Id, TargetRef.Of(sacrificed.Object));
+
+            case PlayerEvent { Event: "ScriesOrSurveils" } scries when evt is Scryed scryed:
+                return new Matched(PlayerIs(scries.Player, scryed.Player, source), TargetRef.Of(scryed.Player));
+
             case PlayerEvent playerEvent when evt is LifeChanged life:
             {
                 var fits = playerEvent.Event switch
@@ -297,6 +321,8 @@ public static class Triggers
                     Subject(trigger, discarded.Card, source, after, before),
                 "CountersPut" when evt is CountersChanged { Delta: > 0 } put =>
                     Subject(trigger, put.Object, source, after, before),
+                "IsTappedForMana" when evt is TappedForMana tappedForMana =>
+                    Subject(trigger, tappedForMana.Object, source, after, before) is { Fires: true } forMana ? forMana with { Subject = TargetRef.Of(tappedForMana.Player) } : null,
                 "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted && TargetedBy(trigger, ItemOf(evt), source, after) =>
                     targeted.Where(x => x.IsObject).Select(x => Subject(trigger, x.Object.Value, source, after, before)).FirstOrDefault(x => x is { Fires: true }) is { } hit
                         ? hit with { Subject = ItemOf(evt)?.Spell is { } spell ? TargetRef.Of(spell) : hit.Subject }
@@ -304,6 +330,9 @@ public static class Triggers
                 _ => null,
             };
 
+            // "Whenever this creature attacks while saddled."
+            if (result is { Fires: true } && trigger.While is { } condition && Conditions.Evaluate(condition, EffectContext.Snapshot(after, source.Controller, source.Id) with { Subject = result.Subject }) != true)
+                continue;
             if (result is { Fires: true })
                 return result;
         }

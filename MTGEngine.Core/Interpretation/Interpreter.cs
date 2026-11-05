@@ -577,6 +577,30 @@ public static class Interpreter
                 return ctx with { Last = found.ToImmutableList(), Affected = revealed.ToImmutableList(), Rest = revealed.Except(found).ToImmutableList() };
             }
 
+            case Skip skip when Game.SkippableStep(skip.Phase?.Phase) is { } skipped:
+            {
+                foreach (var player in skip.Player is null ? [ctx.Controller] : Resolver.Players(skip.Player, ctx))
+                    game.Emit(new StepSkipScheduled(player, skipped));
+                return ctx;
+            }
+
+            case MustBlock mustBlock:
+            {
+                var until = UntilTurn(mustBlock.Duration, state) ?? state.Turn;
+                foreach (var id in Resolver.Objects(mustBlock.Blockers, ctx))
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: ["MustBlock"]), effect, ctx)));
+                return ctx;
+            }
+
+            case CastAsThoughFlash flash:
+            {
+                var until = UntilTurn(flash.Duration, state);
+                if (until is null)
+                    return Skipped(game, flash, "duration", ctx);
+                game.Emit(new PlayRestricted(new PlayRestriction(ctx.Controller, "Flash", flash.Spells, ctx.Source, ctx.Controller, until == -1 ? null : until)));
+                return ctx;
+            }
+
             case CantPlay cantPlay:
             {
                 var until = cantPlay.Duration is DuringPhase ? state.Turn + 1 : UntilTurn(cantPlay.Duration, state);
@@ -647,6 +671,26 @@ public static class Interpreter
                 foreach (var spell in spells)
                     game.ChangeTargets(spell, ctx.Controller, ctx.Source, change.To);
                 return ctx;
+            }
+
+            case FlipCoin flip:
+            {
+                var flipper = flip.Player is null ? ctx.Controller : Resolver.Players(flip.Player, ctx).FirstOrDefault(ctx.Controller);
+                game.WonLastFlip = game.Rng.Next(2) == 0;
+                game.LastOptionalTaken = game.WonLastFlip;
+                game.Emit(new ChoiceMade(flipper, "flip", game.WonLastFlip ? "won" : "lost"));
+                return ctx;
+            }
+
+            case RollDice roll:
+            {
+                var count = Quantities.Evaluate(roll.Count, ctx) ?? 1;
+                var total = 0;
+                for (var i = 0; i < count; i++)
+                    total += game.Rng.Next(1, Math.Max(2, roll.Faces) + 1);
+                game.LastDieRoll = total;
+                game.Emit(new ChoiceMade(ctx.Controller, $"d{roll.Faces}", total.ToString()));
+                return ctx with { LastAmount = total };
             }
 
             case PlayCard play:
@@ -826,7 +870,8 @@ public static class Interpreter
                         if (wanted is not ObjectSelector selector)
                             continue;
                         var count = selector.Quantifier == Quantifier.Count ? Quantities.Evaluate(selector.Count, ctx) ?? 1 : selector.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : 1;
-                        var library = state.InZone(Zone.Library, searcher).Where(x => Filters.Matches(state, (selector.Filter ?? new ObjectFilter()) with { Zone = null }, x with { Zone = Zone.Battlefield }, searcher, ctx.Source, ctx: ctx) || Filters.Matches(state, selector.Filter, x, searcher, ctx.Source, ctx: ctx)).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
+                        var searched = search.Zones is "LibraryAndOrGraveyard" ? state.InZone(Zone.Library, searcher).Concat(state.InZone(Zone.Graveyard, searcher)) : state.InZone(Zone.Library, searcher);
+                        var library = searched.Where(x => Filters.Matches(state, (selector.Filter ?? new ObjectFilter()) with { Zone = null }, x with { Zone = Zone.Battlefield }, searcher, ctx.Source, ctx: ctx) || Filters.Matches(state, selector.Filter, x, searcher, ctx.Source, ctx: ctx)).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
                         var take = Math.Min(count, library.Count);
                         if (take == 0)
                             continue;

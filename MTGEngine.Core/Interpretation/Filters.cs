@@ -242,6 +242,18 @@ public static class Filters
                     _ => false,
                 });
             }
+            case Named named:
+                return string.Equals(obj.Card.Name, named.Name, StringComparison.OrdinalIgnoreCase);
+            case InCombatWith combat:
+            {
+                var others = combat.Other is Self ? (source is { } own ? [own] : []) : ctx is not null ? Resolver.Objects(combat.Other, ctx) : [];
+                return others.Any(o => combat.Relation switch
+                {
+                    "Blocking" => obj.Blocking == o,
+                    "BlockedBy" => state.Object(o)?.Blocking == obj.Id,
+                    _ => obj.Blocking == o || state.Object(o)?.Blocking == obj.Id,
+                });
+            }
             case SharesCharacteristic shares:
             {
                 var others = shares.With switch

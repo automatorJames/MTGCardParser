@@ -7,11 +7,43 @@ namespace MTGEngine.Core;
 /// the first rather than adding to it: a step followed by "if C, instead E" becomes "if C then E else the step", with
 /// what E leaves unsaid (its target, its source) taken from the step it replaces.
 /// </summary>
+/// <summary>"1—9 | exile the top card of your library": the row of a die's table whose range the roll fell in.</summary>
+public sealed record DieResult(int Low, int High) : Condition;
+
 public static class InsteadRewrite
 {
+    /// <summary>A die's table of results joins the ability that rolls it: each row a step that happens if the roll fell in its range.</summary>
+    static List<Ability> JoinDieRows(List<Ability> list)
+    {
+        for (var i = 1; i < list.Count; i++)
+        {
+            if (list[i] is not DieResultRow row)
+                continue;
+            var roller = list.FindLastIndex(i - 1, a => a is not DieResultRow);
+            if (roller < 0)
+                continue;
+            var step = new Conditional(new DieResult(row.Low, row.High), row.Effect);
+            Ability joined = list[roller] switch
+            {
+                SpellAbility spell => spell with { Effect = new Sequence([spell.Effect, step]) },
+                TriggeredAbility triggered => triggered with { Effect = new Sequence([triggered.Effect, step]) },
+                ActivatedAbility activated => activated with { Effect = new Sequence([activated.Effect, step]) },
+                LoyaltyAbility loyalty => loyalty with { Effect = new Sequence([loyalty.Effect, step]) },
+                ChapterAbility chapter => chapter with { Effect = new Sequence([chapter.Effect, step]) },
+                _ => null,
+            };
+            if (joined is null)
+                continue;
+            list[roller] = joined;
+            list.RemoveAt(i);
+            i--;
+        }
+        return list;
+    }
+
     public static IEnumerable<Ability> Rewrite(IEnumerable<Ability> abilities)
     {
-        var list = abilities.Select(RewriteAbility).ToList();
+        var list = JoinDieRows(abilities.Select(RewriteAbility).ToList());
         for (var i = 1; i < list.Count; i++)
             if (list[i] is SpellAbility { Effect: StillOfKind { Kinds: [var kind, ..] } } && list[i - 1] is SpellAbility before)
             {

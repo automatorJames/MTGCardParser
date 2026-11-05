@@ -155,8 +155,12 @@ public sealed record GameState(
     ImmutableList<GameEvent> LastTurnEvents = null,
     ImmutableList<LinkedExile> LinkedExiles = null,
     ImmutableList<ExileLink> ExileLinks = null,
-    ImmutableList<PlayRestriction> PlayRestrictions = null)
+    ImmutableList<PlayRestriction> PlayRestrictions = null,
+    ImmutableList<(PlayerId Player, Step Step)> SkipNext = null)
 {
+    /// <summary>Steps players skip the next time they come: "you skip your next untap step".</summary>
+    public ImmutableList<(PlayerId Player, Step Step)> SkipList => SkipNext ?? ImmutableList<(PlayerId, Step)>.Empty;
+
     public ImmutableList<ExileLink> ExileLinkList => ExileLinks ?? ImmutableList<ExileLink>.Empty;
     public ImmutableList<PlayRestriction> PlayRestrictionList => PlayRestrictions ?? ImmutableList<PlayRestriction>.Empty;
 

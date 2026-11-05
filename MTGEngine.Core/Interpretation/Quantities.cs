@@ -338,6 +338,12 @@ public static class Conditions
                 return ctx.Game?.LastOptionalTaken;
             case OutcomeCondition { Result: "DidNot" or "Cannot" }:
                 return ctx.Game is null ? null : !ctx.Game.LastOptionalTaken;
+            case OutcomeCondition { Result: "WonFlip" or "Won" }:
+                return ctx.Game?.WonLastFlip;
+            case OutcomeCondition { Result: "LostFlip" or "Lost" }:
+                return ctx.Game is null ? null : !ctx.Game.WonLastFlip;
+            case DieResult roll:
+                return ctx.Game is { } rolled ? rolled.LastDieRoll >= roll.Low && rolled.LastDieRoll <= roll.High : null;
             case OutcomeCondition:
                 return null;
             default:

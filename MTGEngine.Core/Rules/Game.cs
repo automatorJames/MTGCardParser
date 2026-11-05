@@ -14,6 +14,7 @@ public sealed partial class Game
     readonly List<GameEvent> _log = [];
     readonly List<(GameEvent Event, GameState Before, GameState After)> _pending = [];
     PlayerId _defender;
+    bool _skippingCombat;
     bool _attackersThisCombat;
 
     public GameState State { get; private set; }
@@ -28,6 +29,12 @@ public sealed partial class Game
 
     /// <summary>Whether the last library search an effect offered happened, for "if you search your library this way".</summary>
     public bool SearchedThisWay { get; set; }
+
+    /// <summary>Whether the last coin flip was won, for "if you win the flip".</summary>
+    public bool WonLastFlip { get; set; }
+
+    /// <summary>The last die roll's result, for a die's table of results.</summary>
+    public int LastDieRoll { get; set; }
     public Dictionary<string, int> Skips { get; } = new();
     public int MaxHandSize { get; init; } = 7;
 
@@ -125,9 +132,32 @@ public sealed partial class Game
         }
     }
 
+    /// <summary>The step "skip your next … step" names, for the steps the engine can skip (a whole combat is its beginning step).</summary>
+    public static Step? SkippableStep(string phase) =>
+        phase switch
+        {
+            "UntapStep" or "Untap" => Step.Untap,
+            "UpkeepStep" or "Upkeep" => Step.Upkeep,
+            "DrawStep" or "Draw" => Step.Draw,
+            "CombatPhase" or "Combat" => Step.BeginCombat,
+            _ => null,
+        };
+
     void BeginStep(Step step)
     {
         var active = State.ActivePlayer;
+
+        // "You skip your next untap step"; skipping combat skips all its steps.
+        if (State.SkipList.Contains((active, step)))
+        {
+            Emit(new StepSkipped(active, step));
+            if (step == Step.BeginCombat)
+                _skippingCombat = true;
+            return;
+        }
+        if (_skippingCombat && step is Step.DeclareAttackers or Step.DeclareBlockers or Step.CombatDamage or Step.EndCombat)
+            return;
+        _skippingCombat = false;
 
         if (step is Step.DeclareBlockers or Step.CombatDamage && !_attackersThisCombat)
             return;
@@ -139,7 +169,7 @@ public sealed partial class Game
             case Step.Untap:
                 Emit(new SummoningSicknessCleared(active));
                 foreach (var obj in State.Battlefield.Where(x => x.Controller == active && x.Tapped).ToList())
-                    if (!DoesntUntap(obj))
+                    if (!DoesntUntap(obj) && !(MayStayTapped(obj) && !Decide(new YesNo(active, $"Untap {obj.Card.Name}?")).Yes))
                         Emit(new Untapped(obj.Id));
                 foreach (var stale in State.Temporary.Where(x => x.DoesntUntap && State.Object(x.Target)?.Controller == active).ToList())
                     Emit(new TemporaryEffectsExpired(State.Turn));
@@ -187,6 +217,10 @@ public sealed partial class Game
                 return;
         }
     }
+
+    /// <summary>"You may choose not to untap this artifact during your untap step."</summary>
+    bool MayStayTapped(GameObject obj) =>
+        Characteristics.AbilitiesOf(State, obj).Any(x => x is StaticAbility { Effect: MayNotUntap { Objects: Self or null } });
 
     bool DoesntUntap(GameObject obj) =>
         obj.Card.Abilities.Any(x => x is StaticAbility { Effect: DoesntUntap { Objects: Self, If: null } })
@@ -277,6 +311,12 @@ public sealed partial class Game
             yield return restriction;
         foreach (var source in State.Battlefield.ToList())
             foreach (var ability in Characteristics.AbilitiesOf(State, source).OfType<StaticAbility>())
+            {
+                if (ability.Effect is CastAsThoughFlash { Extra: null } asFlash && source.Controller == player)
+                {
+                    yield return new PlayRestriction(player, "Flash", asFlash.Spells, source.Id, source.Controller, null);
+                    continue;
+                }
                 if (ability.Effect is CantPlay cantPlay)
                 {
                     var ctx = new EffectContext(this, source.Controller, source.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
@@ -285,7 +325,13 @@ public sealed partial class Game
                     if (Resolver.Players(cantPlay.Player, ctx).Contains(player))
                         yield return new PlayRestriction(player, cantPlay.Verb, cantPlay.What, source.Id, source.Controller, null, cantPlay.OrActivate is not null, cantPlay.MoreThan);
                 }
+            }
     }
+
+    /// <summary>Whether <paramref name="player"/> may cast <paramref name="card"/> as though it had flash ("you may cast creature spells as though they had flash").</summary>
+    bool AsThoughFlash(PlayerId player, GameObject card) =>
+        RestrictionsOn(player).Any(x => x.Verb == "Flash"
+            && (x.What is not ObjectSelector { Filter: var filter } || Filters.Matches(State, filter with { Zone = null }, card with { Zone = Zone.Stack, Controller = player }, x.Controller, x.Source)));
 
     /// <summary>Whether a restriction forbids <paramref name="player"/> casting (or playing, for a land) <paramref name="card"/> now.</summary>
     bool Forbidden(PlayerId player, GameObject card)
@@ -330,7 +376,7 @@ public sealed partial class Game
                 continue;
             }
 
-            var instantSpeed = card.IsInstant || card.Keywords.Contains("Flash");
+            var instantSpeed = card.IsInstant || card.Keywords.Contains("Flash") || AsThoughFlash(player, obj);
             if (!instantSpeed && !sorcerySpeed)
                 continue;
             if (!card.Abilities.OfType<ActivationLimits>().Where(x => x.ForCasting).SelectMany(x => x.Timings).All(t => TimingAllows(t, obj, player)))
@@ -751,6 +797,7 @@ public sealed partial class Game
         foreach (var (source, color) in plan)
         {
             Emit(new Tapped(source.Id));
+            Emit(new TappedForMana(source.Id, player));
             Emit(new ManaAdded(player, color, source.Amount));
         }
 
