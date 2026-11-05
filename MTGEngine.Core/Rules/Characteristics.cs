@@ -86,6 +86,9 @@ public sealed record Characteristics(
         var power = card.Power ?? 0;
         var toughness = card.Toughness ?? 0;
         var keywords = card.Keywords.ToBuilder();
+        // A creature cast as its last time counter was removed has haste.
+        if (obj.Zone == Zone.Battlefield && obj.WasCastWith("Suspended"))
+            keywords.Add("Haste");
         var restrictions = ImmutableHashSet.CreateBuilder<string>();
         var rules = ImmutableList.CreateBuilder<CombatRule>();
         var abilities = card.Abilities.ToBuilder();
@@ -342,6 +345,29 @@ public sealed record Characteristics(
         };
     }
 
+    /// <summary>
+    /// Whether <paramref name="effect"/>, stated by a permanent's line without a trigger or cost ("creatures you control
+    /// get +1/+1", "this creature attacks each combat if able", "during your turn, …"), is a continuous effect the static
+    /// rules apply - so the line is a static ability.
+    /// </summary>
+    public static bool IsContinuous(Effect effect) =>
+        effect switch
+        {
+            Sequence sequence => sequence.Steps.Count > 0 && sequence.Steps.All(IsContinuous),
+            _ => WithoutPhase(effect) is { } plain && Continuous(plain).Any() && ObjectsOf(plain) is not null,
+        };
+
+    /// <summary>The effect without a "during your turn" duration (applied by <see cref="During"/>), or itself.</summary>
+    public static Effect WithoutPhase(Effect effect)
+    {
+        var property = effect.GetType().GetProperty("Duration");
+        if (property?.GetValue(effect) is not DuringPhase)
+            return effect;
+        var copy = (Effect)effect.GetType().GetMethod("<Clone>$")!.Invoke(effect, null);
+        property.SetValue(copy, null);
+        return copy;
+    }
+
     static IEnumerable<Effect> Continuous(Effect effect) =>
         effect switch
         {
@@ -359,6 +385,7 @@ public sealed record Characteristics(
             BecomesAspect { Duration: null } => [effect],
             Animate { Duration: null, Transforms: false } => [effect],
             PreventDamage { Duration: null } => [effect],
+            MayPlayFrom { Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -380,6 +407,8 @@ public sealed record Characteristics(
             Animate animate => animate.Objects ?? new Self(),
             // Prevention is read by the damage rules (Game.Prevent), not applied to an object's characteristics.
             PreventDamage => new Self(),
+            // So are permissions to play from elsewhere (Game.StaticPermitted).
+            MayPlayFrom => new Self(),
             _ => null,
         };
 

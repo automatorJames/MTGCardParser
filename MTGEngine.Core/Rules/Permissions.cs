@@ -56,6 +56,51 @@ public sealed partial class Game
             .Select(x => (Permission: x, Card: State.Object(x.Card)))
             .Where(x => x.Card is not null && x.Card.ZoneChangeCount == x.Permission.ZoneChangeCount && x.Card.Zone is not (Zone.Hand or Zone.Battlefield or Zone.Stack));
 
+    /// <summary>
+    /// Whether the engine carries out a static "you may play from": yours, of cards from the top of your library ("you may
+    /// play lands from the top of your library"), or a card's own from its graveyard or exile ("you may cast this card
+    /// from your graveyard as long as you control a zombie").
+    /// </summary>
+    public static bool PlayFromHandled(MayPlayFrom from) =>
+        from is { Player: PlayerSelector { Kind: PlayerKind.You }, Duration: null or While, Using: null, Free: false, Plays.Count: > 0 }
+        && (from.From is { Zone: nameof(Zone.Library), Position: "Top" } && from.Plays.All(x => x.What is ObjectSelector)
+            || from.From?.Zone is nameof(Zone.Graveyard) or nameof(Zone.Exile) && from.Plays.All(x => x.What is Self));
+
+    /// <summary>Whether a play permission's verb and selector allow <paramref name="player"/> playing <paramref name="card"/>: "play" lands or spells, "cast" spells only.</summary>
+    bool PlayableBy(Playable play, GameObject card, PlayerId player, ObjectId source)
+    {
+        if (play.Verb == "Cast" && card.Card.IsLand)
+            return false;
+        if (play.What is Self)
+            return card.Id == source;
+        var asPlayed = card with { Zone = card.Card.IsLand ? Zone.Battlefield : Zone.Stack, Controller = player };
+        return play.What is ObjectSelector { Filter: var filter } && (filter is null || Filters.Matches(State, filter with { Zone = null }, asPlayed, player, source));
+    }
+
+    /// <summary>The cards static abilities let <paramref name="player"/> play from elsewhere now: from the top of their library, or a card's own from its graveyard or exile.</summary>
+    IEnumerable<(PlayPermission Permission, GameObject Card)> StaticPermitted(PlayerId player)
+    {
+        var you = State.Player(player);
+        if (you.Library.Count > 0 && State.Object(you.Library[0]) is { } top)
+            foreach (var (effect, _, source) in Characteristics.StaticEffects(State))
+                if (effect is MayPlayFrom { From.Zone: nameof(Zone.Library) } fromTop && source.Controller == player && PlayFromHandled(fromTop) && fromTop.Plays.Any(x => PlayableBy(x, top, player, source.Id)))
+                {
+                    yield return (new PlayPermission(top.Id, player, top.ZoneChangeCount, null, false), top);
+                    break;
+                }
+
+        foreach (var obj in State.Objects.Values.Where(x => x.Owner == player && x.Zone is Zone.Graveyard or Zone.Exile && !x.FaceDown).ToList())
+            foreach (var ability in obj.Card.Abilities.Concat(State.Temporary.Where(x => x.Target == obj.Id && x.ActiveIn(State)).SelectMany(x => x.Abilities ?? [])).OfType<StaticAbility>())
+            {
+                if (ability.Effect is not MayPlayFrom own || !PlayFromHandled(own) || own.From.Zone != obj.Zone.ToString() || !own.Plays.Any(x => PlayableBy(x, obj, player, obj.Id)))
+                    continue;
+                if (ability.While is { } condition && Conditions.Evaluate(condition, new EffectContext(this, player, obj.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance))) != true)
+                    continue;
+                yield return (new PlayPermission(obj.Id, player, obj.ZoneChangeCount, null, false), obj);
+                break;
+            }
+    }
+
     /// <summary>Whether an activation or casting timing restriction allows acting now: "activate only if …", "only during your turn", "only during combat".</summary>
     bool TimingAllows(Timing timing, GameObject obj, PlayerId player)
     {

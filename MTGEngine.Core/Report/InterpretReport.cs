@@ -23,7 +23,8 @@ public sealed class InterpretReport
             if (line.EngineClosed)
                 _linesClosed++;
 
-            var unsupported = line.Abilities.SelectMany(InterpreterSupport.Unsupported).Distinct().ToList();
+            // The engine drops a handled or casting keyword's reminder text, so its lowering doesn't need running.
+            var unsupported = CardDefinition.WithoutCastingReminders(line).SelectMany(InterpreterSupport.Unsupported).Concat(InterpreterSupport.OnPermanent(card, line)).Distinct().ToList();
             if (line.EngineClosed && unsupported.Count == 0)
             {
                 _linesExecutable++;
@@ -81,18 +82,18 @@ public static class InterpreterSupport
     [
         typeof(Sequence), typeof(Optional), typeof(Conditional), typeof(Lasting), typeof(Instead), typeof(WhenDone),
         typeof(DealDamage), typeof(Draw), typeof(GainLife), typeof(LoseLife), typeof(SetLifeTotal), typeof(Destroy), typeof(Exile),
-        typeof(Sacrifice), typeof(Tap), typeof(Untap), typeof(PutCounters), typeof(RemoveCounters), typeof(CreateTokens), typeof(Pump),
+        typeof(Sacrifice), typeof(Tap), typeof(Untap), typeof(TapOrUntap), typeof(PutCounters), typeof(RemoveCounters), typeof(CreateTokens), typeof(Pump),
         typeof(LoseAllAbilities), typeof(Animate), typeof(ChangeZone), typeof(ShuffleInto), typeof(Shuffle), typeof(Discard), typeof(Mill),
         typeof(CounterSpell), typeof(AddMana), typeof(GainControl), typeof(Fight), typeof(Attach), typeof(GameOutcome), typeof(ExtraTurn),
         typeof(LookAt), typeof(Reveal), typeof(LetVariable), typeof(ForEachOf), typeof(ChoiceOf), typeof(RemoveFromCombat),
         typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
-        typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(CostModification),
+        typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(RedirectDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
-        typeof(GainClassLevel), typeof(BecomeCopy),
+        typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -102,7 +103,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _quantities =
     [
-        typeof(Fixed), typeof(Variable), typeof(CountOf), typeof(TotalOf), typeof(LifeTotal), typeof(Negated), typeof(Product), typeof(Arithmetic),
+        typeof(Fixed), typeof(Variable), typeof(CountOf), typeof(TotalOf), typeof(LifeTotal), typeof(DamageOrLifeTotal), typeof(Negated), typeof(Product), typeof(Arithmetic),
         typeof(Adjusted), typeof(Scaled), typeof(CharacteristicOf), typeof(Special), typeof(Bound), typeof(Extreme), typeof(DistinctCount), typeof(Devotion),
     ];
 
@@ -161,6 +162,45 @@ public static class InterpreterSupport
     [
         nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "TapState", "CombatState", "RetargetedObject", "CopiedSpell", "SourceNoun", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
     ];
+
+    /// <summary>
+    /// A permanent's line that is an effect with no trigger or cost does something only as a static ability or where the
+    /// engine reads it (as the permanent enters, a permission); otherwise it's lowered but never run.
+    /// </summary>
+    public static IEnumerable<string> OnPermanent(CardRules card, LineRules line)
+    {
+        if (card.Types?.Contains("Instant") == true || card.Types?.Contains("Sorcery") == true)
+            yield break;
+        if (line.Abilities is not [var first, ..] || CardDefinition.Unwrap(first) is not EffectLine effectLine)
+            yield break;
+        if (CardDefinition.AsStatic(effectLine) is StaticAbility statics)
+        {
+            if (!IsStaticHandled(Characteristics.WithoutPhase(statics.Effect)))
+                yield return $"StaticAbility[{statics.Effect.GetType().Name}]";
+            yield break;
+        }
+        var read = effectLine.Effect switch
+        {
+            Conditional { Then: EntersBattlefield, Else: null } => true,
+            LetVariable { Effect: EntersBattlefield { Objects: null or Self, If: null, With.Count: > 0 } } => true,
+            BecomeCopy { Verb: "EntersAs" } or Optional { Effect: BecomeCopy { Verb: "EntersAs" } } => true,
+            CantBeTargeted { Objects: Self } => true,
+            // Looking at hidden cards changes nothing in the game (the engine keeps no secrets from its agents).
+            Optional { Effect: LookAt } or LookAt => true,
+            _ => false,
+        };
+        if (!read)
+            yield return $"EffectLine.OnPermanent[{Describe(effectLine.Effect)}]";
+    }
+
+    static string Describe(Effect effect) =>
+        effect switch
+        {
+            Optional optional => "Optional." + optional.Effect?.GetType().Name,
+            Conditional conditional => "Conditional." + conditional.Then?.GetType().Name,
+            LetVariable let => "LetVariable." + let.Effect?.GetType().Name,
+            _ => effect?.GetType().Name,
+        };
 
     /// <summary>The names of the nodes under <paramref name="root"/> (itself included) that the interpreter can't handle.</summary>
     public static IEnumerable<string> Unsupported(IrNode root)
@@ -293,6 +333,10 @@ public static class InterpreterSupport
             BecomesAspect { Duration: { } duration } when !Keeps(duration) => $"BecomesAspect.Duration[{Describe(duration)}]",
             BecomesAspect aspect when aspect.Aspects.FirstOrDefault(x => !AspectHandled(x)) is { } unhandled => $"BecomesAspect[{unhandled.Vocabulary}]",
             PreventDamage { Amount: Special { Kind: "ThatMuch" } } => "PreventDamage.ThatMuch",
+            RedirectDamage { Amount: Special { Kind: not "All" } } => "RedirectDamage.Amount",
+            MayPlayFrom from when !Game.PlayFromHandled(from) => "MayPlayFrom",
+            DamageOrLifeTotal total when !(total is { Unit: "Damage", Change: "Prevented", When: "ThisWay" } || total is { When: "ThisTurn", Player: not null } && (total.Unit == "Life" && total.Change is "Gained" or "Lost" || total.Unit == "Damage" && total.Change == "Dealt")) => $"DamageOrLifeTotal.{total.Unit}{total.Change}{total.When}",
+            RedirectDamage { Duration: { } redirectFor } when !Keeps(redirectFor) => $"RedirectDamage.Duration[{Describe(redirectFor)}]",
             PreventDamage { Duration: { } duration } when !Keeps(duration) => $"PreventDamage.Duration[{Describe(duration)}]",
             CostModification { Action: "Activate", Spells: SelfAbility } => null,
             CostModification { Action: not (null or "Cast") } modification => $"CostModification.{modification.Action}",
@@ -306,7 +350,9 @@ public static class InterpreterSupport
             ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: var action } && !Game.PayableActions.Contains(action.GetType())) => "ActivatedAbility.Costs",
             KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
             KeywordLine line when line.Keywords.FirstOrDefault(x => !Keywords.Handles(x.Keyword)) is { } keyword => $"Keyword.{CardDefinition.Normalize(keyword.Keyword)}",
-            StaticAbility statics when !IsStaticHandled(statics.Effect) => $"StaticAbility[{statics.Effect.GetType().Name}]",
+            KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) == "Suspend" && !Game.Suspendable(x)) => "Keyword.Suspend.X",
+            KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) == "Typecycling" && string.IsNullOrEmpty(x.Parameter)) => "Keyword.Typecycling.Type",
+            StaticAbility statics when !IsStaticHandled(Characteristics.WithoutPhase(statics.Effect)) => $"StaticAbility[{statics.Effect.GetType().Name}]",
             _ => null,
         };
     }
@@ -341,10 +387,11 @@ public static class InterpreterSupport
             BecomesAspect { Duration: null } => true,
             Animate { Duration: null, Transforms: false } => true,
             PreventDamage { Duration: null, Amount: Special { Kind: "All" } or Fixed } => true,
+            MayPlayFrom from => Game.PlayFromHandled(from),
             CostModification { Spells: Self or ObjectSelector } => true,
             CostModification { Spells: SelfAbility, Action: "Activate" } => true,
             ManaRestriction => true,
-            Sequence sequence => sequence.Steps.All(IsStaticHandled),
+            Sequence sequence => sequence.Steps.All(x => IsStaticHandled(Characteristics.WithoutPhase(x))),
             _ => false,
         };
 

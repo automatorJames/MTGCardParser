@@ -78,6 +78,20 @@ public static class Quantities
             }
             case Special { Kind: "ThatMany" or "ThatMuch" }:
                 return ctx.LastAmount;
+            // "For each 1 damage prevented this way": what the shield just stopped.
+            case DamageOrLifeTotal { Unit: "Damage", Change: "Prevented", When: "ThisWay" }:
+                return ctx.LastAmount;
+            case DamageOrLifeTotal { When: "ThisTurn", Player: { } whose } total when total.Unit == "Life" && total.Change is "Gained" or "Lost" || total.Unit == "Damage" && total.Change == "Dealt":
+            {
+                var players = Resolver.Players(whose, ctx).ToHashSet();
+                var events = ctx.State.ThisTurnEventList;
+                return total.Change switch
+                {
+                    "Gained" => events.OfType<LifeChanged>().Where(x => x.Delta > 0 && players.Contains(x.Player)).Sum(x => x.Delta),
+                    "Lost" => events.OfType<LifeChanged>().Where(x => x.Delta < 0 && players.Contains(x.Player)).Sum(x => -x.Delta),
+                    _ => events.OfType<DamageDealt>().Where(x => x.Target.IsPlayer && players.Contains(x.Target.Player.Value)).Sum(x => x.Amount),
+                };
+            }
             case Special { Kind: "All" }:
                 return int.MaxValue;
             case Bound bound:

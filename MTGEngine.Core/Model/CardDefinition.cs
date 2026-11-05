@@ -30,7 +30,8 @@ public sealed record CardDefinition(
         var spell = rules.Types?.Contains("Instant") == true || rules.Types?.Contains("Sorcery") == true;
         // On an instant or sorcery, "if that creature would die this turn, exile it instead" is set up as the spell resolves.
         var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap)
-            .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x))).ToImmutableList();
+            .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x)
+            .Select(x => spell ? x : AsStatic(x)))).ToImmutableList();
         abilities = Levels.Rewrite(KeywordAbilities.Expand(abilities, spell)).ToImmutableList();
         // A card's keywords are its keyword lines'. The database's keyword list also names ability words, keyword
         // actions, and a double-faced card's back face (Delver of Secrets would fly), so it isn't read.
@@ -87,7 +88,7 @@ public sealed record CardDefinition(
     [
         "Flashback", "JumpStart", "Harmonize", "Overload", "Gift", "Awaken", "Storm", "Conspire", "Convoke", "Retrace", "Escape", "Replicate",
         "Splice", "Buyback", "Entwine", "Kicker", "Multikicker", "Cascade", "Delve", "Emerge", "Spectacle", "Surge", "Madness", "Miracle",
-        "Foretell", "Disturb", "Casualty", "Bargain", "Cleave", "Squad", "Plot", "Improvise", "Affinity", "Evoke", "Dash", "Blitz", "Prowl",
+        "Foretell", "Disturb", "Casualty", "Bargain", "Cleave", "Squad", "Plot", "Improvise", "Affinity", "Evoke", "Dash", "Blitz", "Prowl", "Rebound", "Suspend",
     ];
 
     /// <summary>
@@ -95,7 +96,7 @@ public sealed record CardDefinition(
     /// exile it.)" is the keyword, not a spell that exiles something. Reminders of keyword actions and triggered
     /// keywords ("fading", "extort") state the keyword's own rules and stay.
     /// </summary>
-    static IEnumerable<Ability> WithoutCastingReminders(LineRules line)
+    public static IEnumerable<Ability> WithoutCastingReminders(LineRules line)
     {
         var abilities = line.Abilities;
         var keywordAt = -1;
@@ -120,8 +121,24 @@ public sealed record CardDefinition(
         {
             LabeledAbility labeled => Unwrap(labeled.Ability),
             FlavorAbility flavor => Unwrap(flavor.Ability),
+            // "You may play lands from the top of your library", "you may cast this card from your graveyard as long as
+            // you control a zombie": a permission that holds while its card is where it works (a static, read by Game).
+            EffectLine { Effect: Optional { Effect: MayPlayFrom optional } } => PlayFromStatic(optional),
+            EffectLine { Effect: MayPlayFrom permission } => PlayFromStatic(permission),
             _ => ability,
         };
+
+    /// <summary>A permanent's effect line that states a continuous effect, as the static ability it is: "this creature attacks each combat if able", "as long as …, it gets +1/+1".</summary>
+    public static Ability AsStatic(Ability ability) =>
+        ability switch
+        {
+            EffectLine { Effect: var effect } when Characteristics.IsContinuous(effect) => new StaticAbility(effect),
+            EffectLine { Effect: Conditional { If: var holds, Then: var then, Else: null } } when then is not null && Characteristics.IsContinuous(then) => new StaticAbility(then, holds),
+            _ => ability,
+        };
+
+    static StaticAbility PlayFromStatic(MayPlayFrom permission) =>
+        new(permission with { Duration = null }, permission.Duration is While holds ? holds.Condition : null);
 
     static ImmutableHashSet<string> PredefinedTypes(string predefined) =>
         predefined switch

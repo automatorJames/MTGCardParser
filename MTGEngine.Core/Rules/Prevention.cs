@@ -4,7 +4,8 @@ namespace MTGEngine.Core;
 /// A damage prevention shield: "prevent the next 3 damage that would be dealt to target creature this turn",
 /// "prevent all combat damage that would be dealt this turn". What it protects and whose damage it stops are either
 /// fixed when it's made (the target, the chosen source) or a selector read when damage would be dealt ("creatures you
-/// control"); none means any. <see cref="Remaining"/> null prevents all of it.
+/// control"); none means any. <see cref="Remaining"/> null prevents all of it. A shield with
+/// <see cref="RedirectTo"/> deals the damage it stops to that instead ("is dealt to this creature instead").
 /// </summary>
 public sealed record PreventionShield(
     int Id,
@@ -18,7 +19,8 @@ public sealed record PreventionShield(
     Selector FromSelector,
     int? ExpiresAfterTurn,
     bool OneShot = false,
-    Effect Then = null);
+    Effect Then = null,
+    ImmutableList<TargetRef> RedirectTo = null);
 
 public sealed partial class Game
 {
@@ -40,6 +42,27 @@ public sealed partial class Game
         Emit(new ShieldCreated(new PreventionShield(State.NextShieldId, ctx.Controller, ctx.Source, amount, combat, to, toSelector, from?.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList(), fromSelector, expires)));
         if (prevent.ToAndBy)
             Emit(new ShieldCreated(new PreventionShield(State.NextShieldId, ctx.Controller, ctx.Source, amount, combat, null, null, to?.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList(), toSelector, expires)));
+    }
+
+    /// <summary>
+    /// Makes the shield a redirection describes: "the next 1 damage that would be dealt to target creature this turn is
+    /// dealt to this creature instead", "all combat damage that would be dealt to you by unblocked creatures this turn".
+    /// </summary>
+    public bool CreateRedirect(RedirectDamage redirect, EffectContext ctx)
+    {
+        var amount = redirect.Amount is Special { Kind: "All" } ? (int?)null : Quantities.Evaluate(redirect.Amount, ctx);
+        if (amount is null && redirect.Amount is not Special { Kind: "All" })
+            return false;
+        var to = Resolver.Targets(redirect.To, ctx);
+        if (to.Count == 0)
+            return true;
+        var until = Interpreter.UntilTurn(redirect.Duration, State);
+        var expires = until is null or -1 ? State.Turn : until;
+        var (from, fromSelector) = Fix(redirect.From, ctx, choose: false);
+        var (by, bySelector) = Fix(redirect.Source, ctx, choose: true);
+        Emit(new ShieldCreated(new PreventionShield(State.NextShieldId, ctx.Controller, ctx.Source, amount, redirect.Combat, from, fromSelector,
+            by?.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList(), bySelector, expires, RedirectTo: [to[0]])));
+        return true;
     }
 
     /// <summary>A selector as the objects and players it means now, or kept as a selector when it describes a group to be read when damage happens. "A source of your choice" is chosen now.</summary>
@@ -78,17 +101,24 @@ public sealed partial class Game
             Emit(new DamagePrevented(source, target, amount));
             return 0;
         }
+        var redirected = new List<(TargetRef To, int Amount)>();
         foreach (var shield in State.ShieldList.ToList())
         {
             if (amount <= 0)
                 break;
             if (!Applies(shield, source, target, combat))
                 continue;
+            // Damage isn't redirected to what it would already be dealt to, or to a permanent that's gone.
+            if (shield.RedirectTo is { } redirectTo && (redirectTo.Contains(target) || redirectTo[0].IsObject && State.Object(redirectTo[0].Object.Value) is not { Zone: Zone.Battlefield }))
+                continue;
             var prevented = shield.Remaining is { } remaining ? Math.Min(remaining, amount) : amount;
             if (prevented <= 0)
                 continue;
             amount -= prevented;
-            Emit(new DamagePrevented(source, target, prevented));
+            if (shield.RedirectTo is { } instead)
+                redirected.Add((instead[0], prevented));
+            else
+                Emit(new DamagePrevented(source, target, prevented));
             if (shield.Remaining is not null || shield.OneShot)
                 Emit(new ShieldUsed(shield.Id, shield.OneShot ? int.MaxValue : prevented));
             AfterPreventing(shield, target, prevented);
@@ -106,6 +136,8 @@ public sealed partial class Game
             AfterPreventing(shield, target, prevented);
         }
 
+        foreach (var (to, dealt) in redirected)
+            DealDamage(source, to, dealt, combat);
         return amount;
     }
 

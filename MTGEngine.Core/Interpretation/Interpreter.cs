@@ -199,6 +199,23 @@ public static class Interpreter
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
+            case TapOrUntap either:
+            {
+                var objects = Resolver.Objects(either.Objects, ctx);
+                foreach (var id in objects)
+                {
+                    var obj = game.State.Object(id);
+                    if (obj is null)
+                        continue;
+                    var options = ImmutableList.Create("Tap", "Untap");
+                    if (game.Decide(new ChooseOne(ctx.Controller, $"Tap or untap {obj.Card.Name}?", options)).Index == 0)
+                        game.Tap(id);
+                    else
+                        game.Untap(id);
+                }
+                return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
+            }
+
             case PutCounters put:
             {
                 var count = Quantities.Evaluate(put.Counters.Count, ctx) ?? 1;
@@ -357,6 +374,11 @@ public static class Interpreter
             case Replacement replacement:
                 if (!game.CreateReplacement(replacement, ctx))
                     return Skipped(game, replacement, "replacement", ctx);
+                return ctx;
+
+            case RedirectDamage redirect:
+                if (!game.CreateRedirect(redirect, ctx))
+                    return Skipped(game, redirect, "redirection amount", ctx);
                 return ctx;
 
             case PreventDamage prevent:

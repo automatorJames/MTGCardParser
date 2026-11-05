@@ -122,7 +122,14 @@ public sealed partial class Lowerer
         };
 
     /// <summary>A kind of object named by a vocabulary member.</summary>
-    static Term Kind(Enum member) => new(member.ToString(), member.GetType().Name);
+    /// <summary>A vocabulary member as a term; the bare nouns "card" and "spell" are the IR's own kinds of object.</summary>
+    static Term Kind(Enum member) =>
+        member switch
+        {
+            G.CardNoun.Card => new(nameof(ObjectKind.Card), nameof(ObjectKind)),
+            G.StackObjectKind.Spell => new(nameof(ObjectKind.Spell), nameof(ObjectKind)),
+            _ => new(member.ToString(), member.GetType().Name),
+        };
 
     /// <summary>A qualifier from a vocabulary member, its vocabulary being the member's enum.</summary>
     static Qualifier Q(Enum member, bool negated = false) => new(member.ToString(), negated, member.GetType().Name);

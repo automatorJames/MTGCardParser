@@ -7,13 +7,15 @@ namespace MTGEngine.Core;
 /// </summary>
 public sealed partial class Game
 {
-    void Cast(ObjectId id, PlayerId player, int maxX, bool free = false, int alternative = -1)
+    void Cast(ObjectId id, PlayerId player, int maxX, bool free = false, int alternative = -1, string also = null)
     {
         var obj = State.Object(id);
         var card = obj.Card;
         var x = card.ManaCost.X > 0 && maxX > 0 && alternative == -1 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var mana = free || alternative >= 0 || alternative == Flashback ? ManaCost.Free : card.ManaCost.WithX(x);
+        var mana = free || alternative >= 0 || alternative is Flashback or MadnessCast ? ManaCost.Free : card.ManaCost.WithX(x);
         var options = ImmutableHashSet.CreateBuilder<string>();
+        if (also is not null)
+            options.Add(also);
         List<Effect> actions = [];
 
         if (alternative == FaceDownCast)
@@ -27,6 +29,13 @@ public sealed partial class Game
             mana = ManaCost.Free;
             options.Add("Flashback");
             if (!PlanAdditional(flashback, player, id, 0, ref mana, actions, options))
+                return;
+        }
+
+        if (alternative == MadnessCast && KeywordCost(card, "Madness") is { } madness)
+        {
+            options.Add("Madness");
+            if (!PlanAdditional(madness, player, id, 0, ref mana, actions, options))
                 return;
         }
 

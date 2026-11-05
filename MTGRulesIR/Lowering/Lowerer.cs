@@ -70,7 +70,7 @@ public sealed partial class Lowerer
                 return resolved;
 
             case Enum member:
-                return new Term(member.ToString(), type.Name);
+                return Kind(member);
 
             case bool or int or string:
                 return new Term(value.ToString(), type.Name);

@@ -111,7 +111,8 @@ public sealed partial class Lowerer
         Rule<G.KeywordWithAmount>((g, ctx) => new KeywordInstance(g.Keyword.ToString(), QuantityOf(g.Amount)));
 
         Rule<G.KeywordWithCost>((g, ctx) =>
-            new KeywordInstance(g.Keyword.ToString(), Cost: new PayMana(g.Cost.Items.Select(SymbolText).ToList()), Parameter: g.AndOr is null ? null : ctx.TextOf(g.AndOr)));
+            new KeywordInstance(g.Keyword.ToString(), Cost: new PayMana(g.Cost.Items.Select(SymbolText).ToList()),
+                Parameter: g.AndOr is not null ? ctx.TextOf(g.AndOr) : g.Keyword == G.Keyword.Typecycling ? CycledType(ctx.TextOf(g)) : null));
 
         Rule<G.Protection>((g, ctx) =>
             new KeywordInstance(g.Kind.ToString(), Parameter: string.Join(" ", new object[] { g.From, g.AndFrom }.Where(x => x is not null).Select(ctx.TextOf))));
@@ -119,6 +120,12 @@ public sealed partial class Lowerer
         Rule<G.CombatEncounter>((g, ctx) =>
             new CombatEncounterEvent(null, g.Encounter.ToString(), LowerAs<Selector>(g.Other, ctx)));
     }
+
+    /// <summary>The type a typecycling keyword searches for: "basic land" in "basic landcycling {1}", "sliver" in "slivercycling {3}".</summary>
+    static string CycledType(string text) =>
+        System.Text.RegularExpressions.Regex.Match(text ?? "", @"^\s*(.*?)\s*cycling", System.Text.RegularExpressions.RegexOptions.IgnoreCase) is { Success: true } match && match.Groups[1].Value.Length > 0
+            ? match.Groups[1].Value.ToLowerInvariant()
+            : null;
 
     static Selector NextOf(G.NextPhaseOf next) =>
         next switch

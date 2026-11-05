@@ -215,6 +215,11 @@ public sealed partial class Game
                 Priority();
                 return;
 
+            case Step.Upkeep:
+                TickSuspended(active);
+                Priority();
+                return;
+
             default:
                 Priority();
                 return;
@@ -406,6 +411,8 @@ public sealed partial class Game
             foreach (var (index, alternative) in Alternatives(card))
                 if (CanAffordAlternative(obj, player, alternative))
                     actions.Add(new CastSpell(id, 0, Alternative: index));
+            if (CanSuspend(obj, player, sorcerySpeed))
+                actions.Add(new CastSpell(id, 0, Alternative: SuspendCast));
         }
 
         actions.AddRange(FaceUpActions(player));
@@ -432,7 +439,7 @@ public sealed partial class Game
                 actions.Add(new CastSpell(obj.Id, 0, Alternative: Flashback));
         }
 
-        foreach (var (permission, obj) in Permitted(player).ToList())
+        foreach (var (permission, obj) in Permitted(player).Concat(StaticPermitted(player)).DistinctBy(x => x.Card.Id).ToList())
         {
             var card = obj.Card;
             if (card.IsLand)
@@ -636,9 +643,15 @@ public sealed partial class Game
     /// <summary>The alternative index that marks casting with flashback.</summary>
     const int Flashback = -2;
 
+    /// <summary>The alternative index that marks casting for a madness cost.</summary>
+    const int MadnessCast = -4;
+
     /// <summary>A card's flashback cost, if it has flashback.</summary>
-    static Cost FlashbackCost(CardDefinition card) =>
-        card.Abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).FirstOrDefault(x => CardDefinition.Normalize(x.Keyword) == "Flashback")?.Cost;
+    static Cost FlashbackCost(CardDefinition card) => KeywordCost(card, "Flashback");
+
+    /// <summary>The cost a keyword of <paramref name="card"/> names ("madness {1}{r}"), if it has that keyword.</summary>
+    static Cost KeywordCost(CardDefinition card, string keyword) =>
+        card.Abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).FirstOrDefault(x => CardDefinition.Normalize(x.Keyword) == keyword)?.Cost;
 
     static bool IsEnergy(string symbol) => symbol.Equals("{e}", StringComparison.OrdinalIgnoreCase);
 
@@ -656,6 +669,9 @@ public sealed partial class Game
         return [];
     }
 
+    /// <summary>Takes a legal action for <paramref name="player"/> outside the priority loop (tools and tests).</summary>
+    public void Take(LegalAction action, PlayerId player) => Perform(action, player, new DecisionResponse());
+
     void Perform(LegalAction action, PlayerId player, DecisionResponse response)
     {
         switch (action)
@@ -663,6 +679,9 @@ public sealed partial class Game
             case PlayLand land:
                 MoveToZone(land.Card, Zone.Battlefield, player);
                 Emit(new LandPlayed(player, land.Card));
+                return;
+            case CastSpell { Alternative: SuspendCast } suspend:
+                Suspend(suspend.Card, player);
                 return;
             case CastSpell cast:
                 Cast(cast.Card, player, cast.MaxX, cast.Free, cast.Alternative);
@@ -865,7 +884,18 @@ public sealed partial class Game
             Emit(new DelayedTriggerRemoved(delayedId));
 
         if (item.Spell is { } cardId && State.Object(cardId) is { Zone: Zone.Stack } resolved)
-            MoveToZone(cardId, resolved.WasCastWith("Buyback") ? Zone.Hand : Zone.Graveyard);
+        {
+            // Rebound: cast from the hand, it's exiled as it resolves, and may be cast free at its owner's next upkeep.
+            if (!resolved.IsToken && resolved.WasCastWith("FromHand") && resolved.Card.Keywords.Contains("Rebound"))
+            {
+                MoveToZone(cardId, Zone.Exile);
+                var you = new PlayerSelector(PlayerKind.You);
+                Emit(new DelayedTriggerCreated(new DelayedTrigger(State.NextDelayedId, new PhaseEvent(new PhaseRef("Upkeep", Whose: you, Next: true)),
+                    new PlayCard(you, new Self(), Free: true), item.Controller, cardId, null, null)));
+            }
+            else
+                MoveToZone(cardId, resolved.WasCastWith("Buyback") ? Zone.Hand : Zone.Graveyard);
+        }
 
         Emit(new Resolved(item.Id));
     }
@@ -1131,6 +1161,10 @@ public sealed partial class Game
         foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
             if (line.Effect is BecomeCopy { Verb: "EntersAs" } or Optional { Effect: BecomeCopy { Verb: "EntersAs" } })
                 onEntry.Add(line.Effect);
+        // "This creature enters with x +1/+1 counters on it, where x is …": the counters, with x known.
+        foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
+            if (line.Effect is LetVariable { Effect: EntersBattlefield { Objects: null or Self, If: null, With: { Count: > 0 } counters } } let)
+                onEntry.Add(let with { Effect = new Sequence(counters) });
         // "If this creature was kicked, it enters with …": an entry replacement stated as an effect line under a condition.
         foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
             if (line.Effect is Conditional { Then: EntersBattlefield { Objects: null or Self } enters, Else: null } conditional
@@ -1253,6 +1287,17 @@ public sealed partial class Game
         if (State.Object(id)?.Zone != Zone.Hand)
             return;
         Emit(new Discarded(player, id));
+        // Madness: the card is discarded into exile, and its owner may cast it for its madness cost; if not, it goes to the graveyard.
+        if (State.Object(id) is { IsToken: false } discarded && KeywordCost(discarded.Card, "Madness") is { } madness)
+        {
+            MoveToZone(id, Zone.Exile);
+            if (State.Object(id) is { Zone: Zone.Exile } exiled && AdditionalPayable(madness, player, id, 0) && TargetsAvailable(SpellSlots(exiled.Card), player, id)
+                && Decide(new YesNo(player, $"Cast {exiled.Card.Name} for its madness cost?")).Yes)
+                Cast(id, player, 0, alternative: MadnessCast);
+            if (State.Object(id) is { Zone: Zone.Exile })
+                MoveToZone(id, Zone.Graveyard);
+            return;
+        }
         MoveToZone(id, Zone.Graveyard);
     }
 

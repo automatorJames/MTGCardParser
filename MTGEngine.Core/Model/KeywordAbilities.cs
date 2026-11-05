@@ -20,6 +20,20 @@ public static class KeywordAbilities
     static readonly Duration EndOfTurn = new UntilPhase(new PhaseRef("EndOfTurn"));
     static ObjectSelector Creatures(ObjectFilter filter = null) => new(Quantifier.Any, filter ?? new ObjectFilter(Kinds: [new Term("Creature", "CardType")]));
 
+    static readonly ImmutableHashSet<string> _basicLandTypes = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
+
+    /// <summary>What a typecycling keyword searches for: "basic land" a basic land card, "plains" a Plains card, "sliver" a Sliver card.</summary>
+    static ObjectFilter CycledFilter(string type)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+            return null;
+        var library = new ZoneRef(nameof(Zone.Library));
+        if (type == "basic land")
+            return new ObjectFilter(Qualifiers: [new Qualifier("Basic", Vocabulary: "Supertype"), new Qualifier("Land", Vocabulary: "CardType")], Zone: library);
+        var name = char.ToUpperInvariant(type[0]) + type[1..];
+        return new ObjectFilter(Kinds: [new Term(name, _basicLandTypes.Contains(name) ? "LandType" : "CreatureType")], Zone: library);
+    }
+
     /// <summary>The keyword actions a spell's keyword line does as it resolves ("scry 1.").</summary>
     public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt"];
 
@@ -52,6 +66,12 @@ public static class KeywordAbilities
                 break;
             case "Cycling" when keyword.Cost is { } cost:
                 yield return new ZoneAbility(Zone.Hand, new ActivatedAbility([cost, new DiscardThis()], new Draw(You, new Fixed(1))));
+                break;
+            case "Typecycling" when keyword.Cost is { } cost && CycledFilter(keyword.Parameter) is { } wanted:
+                yield return new ZoneAbility(Zone.Hand, new ActivatedAbility([cost, new DiscardThis()], new SearchLibrary(You, nameof(Zone.Library),
+                    [new ObjectSelector(Quantifier.Count, wanted, new Fixed(1))], Reveal: true,
+                    Placement: new ChangeZone(new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))], Qualifiers: [new Qualifier("Found", Vocabulary: "Provenance")])), new ZoneRef(nameof(Zone.Hand))),
+                    Ending: new Shuffle())));
                 break;
             case "Unearth" when keyword.Cost is { } cost:
                 yield return new ZoneAbility(Zone.Graveyard, new ActivatedAbility([cost], new Sequence([
