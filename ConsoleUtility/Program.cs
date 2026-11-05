@@ -62,6 +62,11 @@ internal class Program
                 Interpret.Run(args[1], args.ElementAtOrDefault(2));
                 break;
 
+            // simulate rules.jsonl [games] [seed]: random games of the corpus's executable cards; exceptions and run-time skips.
+            case "simulate":
+                Simulate.Run(args[1], int.TryParse(args.ElementAtOrDefault(2), out var simulated) ? simulated : 200, int.TryParse(args.ElementAtOrDefault(3), out var simulateSeed) ? simulateSeed : 1);
+                break;
+
             // dump out-path [definition.json|-] [every]: every corpus line as the grammar tokenizes it, capture by capture, for diffing engines.
             case "dump":
                 Dump.Run(_cardDataGetter, args[1], args.ElementAtOrDefault(2), int.TryParse(args.ElementAtOrDefault(3), out var dumpEvery) ? dumpEvery : 1);

@@ -57,10 +57,26 @@ public sealed record Characteristics(
         finally { _judgingCondition--; }
     }
 
+    /// <summary>Characteristics already worked out for a state: states are immutable, so an answer holds for as long as the state does.</summary>
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<GameState, System.Collections.Concurrent.ConcurrentDictionary<(GameObject, bool), Characteristics>> _cache = new();
+
     public static Characteristics Of(GameState state, GameObject obj, bool withStatics = true)
     {
         // A static's condition is judged on characteristics without statics, so conditions can't recurse into themselves.
         withStatics &= _judgingCondition == 0;
+        // Only the answers judged outside a condition are kept: inside one, the same question is asked with statics left out.
+        if (_judgingCondition > 0)
+            return Compute(state, obj, withStatics);
+        var known = _cache.GetOrCreateValue(state);
+        if (known.TryGetValue((obj, withStatics), out var cached))
+            return cached;
+        var computed = Compute(state, obj, withStatics);
+        known[(obj, withStatics)] = computed;
+        return computed;
+    }
+
+    static Characteristics Compute(GameState state, GameObject obj, bool withStatics)
+    {
         var card = obj.Card;
         var power = card.Power ?? 0;
         var toughness = card.Toughness ?? 0;

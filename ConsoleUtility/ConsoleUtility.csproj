@@ -23,6 +23,7 @@
     <ProjectReference Include="..\Glyphotype.Distiller\Glyphotype.Distiller.csproj" />
     <ProjectReference Include="..\MTGRulesIR\MTGRulesIR.csproj" />
     <ProjectReference Include="..\MTGEngine.Core\MTGEngine.Core.csproj" />
+    <ProjectReference Include="..\MTGEngine.Agents\MTGEngine.Agents.csproj" />
   </ItemGroup>
 
 </Project>
