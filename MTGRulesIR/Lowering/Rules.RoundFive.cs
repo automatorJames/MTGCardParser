@@ -198,5 +198,5 @@ public sealed partial class Lowerer
     static Quantity AdjustedOf(Quantity amount, Enum factor, G.AmountAdjustment adjustment, LoweringContext ctx) =>
         factor is null && adjustment is null
             ? amount
-            : new Adjusted(amount, factor?.ToString(), adjustment is null ? null : QuantityOf(adjustment.Amount), adjustment is not null && ctx.TextOf(adjustment)?.StartsWith("minus") == true);
+            : new Adjusted(amount, factor?.ToString(), adjustment is null ? null : QuantityOf(adjustment.Amount), adjustment is not null && ctx.TextOf(adjustment)?.TrimStart().StartsWith("minus", StringComparison.OrdinalIgnoreCase) == true);
 }

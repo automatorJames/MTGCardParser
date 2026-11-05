@@ -100,6 +100,15 @@ public sealed class CorpusLowering
                             abilities[^1] = merged;
                             continue;
                         }
+                        // "Flip a coin. When you win the flip, copy that spell." "Regenerate it. When it regenerates this way, …"
+                        // A "when" on what the ability before it just did is part of that ability, not a state trigger.
+                        if (ability is TriggeredAbility { Trigger: ConditionEvent { Condition: OutcomeCondition or WasAffectedThisWay } reflexive, If: null } whenDone
+                            && abilities.Count > 0 && reminders[^1] == reminder && Continue(abilities[^1], new Conditional(reflexive.Condition, whenDone.Effect)) is { } joined)
+                        {
+                            ctx.Record(joined, glyph);
+                            abilities[^1] = joined;
+                            continue;
+                        }
                         ctx.Record(ability, glyph);
                         abilities.Add(ability);
                         reminders.Add(reminder);

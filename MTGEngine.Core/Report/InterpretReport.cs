@@ -212,6 +212,16 @@ public static class InterpreterSupport
         foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
             if (!replaced.Contains(node) && Problem(node) is { } problem)
                 yield return problem;
+        // Damage modifiers ("deals double that damage instead") are read from permanents' abilities, not set up by effects.
+        var standing = (root is Ability ability ? CardDefinition.Unwrap(ability) : null) switch
+        {
+            ReplacementAbility { Effect: Replacement stated } => stated,
+            StaticAbility { Effect: Replacement stated } => stated,
+            _ => null,
+        };
+        foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
+            if (node is Replacement modifier && !ReferenceEquals(modifier, standing) && Game.DamageReplacement(modifier) is null && Game.ZoneReplacementOf(modifier) is null && Game.DamageModifier(modifier) is not null)
+                yield return "Replacement.DamageModifier.Temporary";
     }
 
     static string Problem(IrNode node)
@@ -316,7 +326,7 @@ public static class InterpreterSupport
             EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
             EntersBattlefield { Duration: not null } => "EntersBattlefield.Duration",
             ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens or Replacement) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",
-            Replacement replacement when Game.DamageReplacement(replacement) is null && Game.ZoneReplacementOf(replacement) is null => $"Replacement[{replacement.Would?.GetType().Name}{(replacement.Would is WouldHappen { What: var what } ? "." + what?.GetType().Name : "")}]",
+            Replacement replacement when Game.DamageReplacement(replacement) is null && Game.ZoneReplacementOf(replacement) is null && Game.DamageModifier(replacement) is null => $"Replacement[{replacement.Would?.GetType().Name}{(replacement.Would is WouldHappen { What: var what } ? "." + what?.GetType().Name : "")}]",
             Replacement { Duration: { } duration } when !Keeps(duration) => $"Replacement.Duration[{Describe(duration)}]",
             WouldHappen { What: not DealDamage } would => $"WouldHappen.{would.What?.GetType().Name}",
             Qualifier { Vocabulary: "DamageHistory", Quality: not "DealtDamageThisWay" } history => $"Qualifier[DamageHistory.{history.Quality}]",
@@ -388,6 +398,7 @@ public static class InterpreterSupport
             Animate { Duration: null, Transforms: false } => true,
             PreventDamage { Duration: null, Amount: Special { Kind: "All" } or Fixed } => true,
             MayPlayFrom from => Game.PlayFromHandled(from),
+            Replacement replacement => Game.DamageModifier(replacement) is not null || Game.DamageReplacement(replacement) is not null,
             CostModification { Spells: Self or ObjectSelector } => true,
             CostModification { Spells: SelfAbility, Action: "Activate" } => true,
             ManaRestriction => true,

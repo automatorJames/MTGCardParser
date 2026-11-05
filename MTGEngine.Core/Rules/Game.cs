@@ -81,19 +81,33 @@ public sealed partial class Game
         return game;
     }
 
+    /// <summary>More events or decisions than any real turn has: the game is looping, and stops with what it was doing rather than hang.</summary>
+    const int RunawayLimit = 200_000;
+    int _eventsThisTurn, _decisionsThisTurn;
+
     public void Emit(GameEvent evt)
     {
         var before = State;
         State = Reducer.Apply(State, evt);
         _log.Add(evt);
         _pending.Add((evt, before, State));
+        _eventsThisTurn = evt is TurnBegan ? 0 : _eventsThisTurn + 1;
+        if (evt is TurnBegan)
+            _decisionsThisTurn = 0;
+        if (_eventsThisTurn > RunawayLimit)
+            throw Runaway("events");
     }
 
     public DecisionResponse Decide(Decision decision)
     {
+        if (++_decisionsThisTurn > RunawayLimit)
+            throw Runaway("decisions: last " + decision);
         var response = _agents[decision.Player.Value].Decide(State, decision) ?? new DecisionResponse();
         return response;
     }
+
+    InvalidOperationException Runaway(string what) =>
+        new($"runaway turn ({what}); last events: " + string.Join(" | ", _log.TakeLast(12)));
 
     /// <summary>Notes an IR node the engine couldn't act on, and goes on.</summary>
     public void Skip(IrNode node, string why)
@@ -1211,6 +1225,7 @@ public sealed partial class Game
     {
         if (amount <= 0)
             return;
+        amount = Modify(source, target, amount, combat);
         amount = Prevent(source, target, amount, combat);
         if (amount <= 0)
             return;

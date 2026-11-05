@@ -24,6 +24,9 @@ public sealed record PreventionShield(
 
 public sealed partial class Game
 {
+    /// <summary>The redirection shields whose damage is being dealt now, so two can't send damage back and forth.</summary>
+    readonly HashSet<int> _redirecting = [];
+
     /// <summary>Makes the shields a prevention effect describes (two for "dealt to and dealt by").</summary>
     public void CreateShields(PreventDamage prevent, EffectContext ctx)
     {
@@ -101,22 +104,22 @@ public sealed partial class Game
             Emit(new DamagePrevented(source, target, amount));
             return 0;
         }
-        var redirected = new List<(TargetRef To, int Amount)>();
+        var redirected = new List<(TargetRef To, int Amount, int Shield)>();
         foreach (var shield in State.ShieldList.ToList())
         {
             if (amount <= 0)
                 break;
             if (!Applies(shield, source, target, combat))
                 continue;
-            // Damage isn't redirected to what it would already be dealt to, or to a permanent that's gone.
-            if (shield.RedirectTo is { } redirectTo && (redirectTo.Contains(target) || redirectTo[0].IsObject && State.Object(redirectTo[0].Object.Value) is not { Zone: Zone.Battlefield }))
+            // Damage isn't redirected to what it would already be dealt to, to a permanent that's gone, or by a shield that already redirected it.
+            if (shield.RedirectTo is { } redirectTo && (_redirecting.Contains(shield.Id) || redirectTo.Contains(target) || redirectTo[0].IsObject && State.Object(redirectTo[0].Object.Value) is not { Zone: Zone.Battlefield }))
                 continue;
             var prevented = shield.Remaining is { } remaining ? Math.Min(remaining, amount) : amount;
             if (prevented <= 0)
                 continue;
             amount -= prevented;
             if (shield.RedirectTo is { } instead)
-                redirected.Add((instead[0], prevented));
+                redirected.Add((instead[0], prevented, shield.Id));
             else
                 Emit(new DamagePrevented(source, target, prevented));
             if (shield.Remaining is not null || shield.OneShot)
@@ -136,8 +139,12 @@ public sealed partial class Game
             AfterPreventing(shield, target, prevented);
         }
 
-        foreach (var (to, dealt) in redirected)
-            DealDamage(source, to, dealt, combat);
+        foreach (var (to, dealt, shieldId) in redirected)
+        {
+            _redirecting.Add(shieldId);
+            try { DealDamage(source, to, dealt, combat); }
+            finally { _redirecting.Remove(shieldId); }
+        }
         return amount;
     }
 

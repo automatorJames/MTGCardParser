@@ -222,3 +222,76 @@ public sealed class PermanentEffectLineTests
         Assert.Contains(game.Log, x => x is AttackersDeclared declared && declared.Attackers.Contains(firebird));
     }
 }
+
+/// <summary>Damage modifiers: "it deals double that damage instead", "that much damage plus 2", "minus 1".</summary>
+public sealed class DamageModifierTests
+{
+    static ObjectId Put(Game game, CardDefinition card, int player)
+    {
+        var id = new ObjectId(game.State.NextObjectId);
+        var owner = new PlayerId(player);
+        game.Emit(new ObjectCreated(new GameObject(id, card, owner, owner, Zone.Hand)));
+        game.MoveToZone(id, Zone.Battlefield, owner);
+        game.Emit(new SummoningSicknessCleared(owner));
+        return id;
+    }
+
+    static Game Started() =>
+        GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Mountain"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent());
+
+    [Fact]
+    public void GratuitousViolenceDoublesYourCreaturesDamage()
+    {
+        var game = Started();
+        Put(game, Cards.Named("Gratuitous Violence"), 0);
+        var mine = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var theirs = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+
+        game.DealDamage(mine, TargetRef.Of(new PlayerId(1)), 2, combat: true);
+        game.DealDamage(theirs, TargetRef.Of(new PlayerId(0)), 2, combat: true);
+
+        Assert.Equal(16, game.P1().Life);
+        Assert.Equal(18, game.P0().Life);
+    }
+
+    [Fact]
+    public void TorbranAddsTwoToRedSourcesAgainstOpponents()
+    {
+        var game = Started();
+        var torbran = Put(game, Cards.Named("Torbran, Thane of Red Fell"), 0);
+
+        game.DealDamage(torbran, TargetRef.Of(new PlayerId(1)), 2, combat: true);
+        game.DealDamage(torbran, TargetRef.Of(new PlayerId(0)), 2, combat: false);
+
+        Assert.Equal(16, game.P1().Life);
+        Assert.Equal(18, game.P0().Life);
+    }
+
+    [Fact]
+    public void BenevolentUnicornReducesSpellDamage()
+    {
+        var game = Started();
+        Put(game, Cards.Named("Benevolent Unicorn"), 1);
+        var bolt = new ObjectId(game.State.NextObjectId);
+        game.Emit(new ObjectCreated(new GameObject(bolt, Cards.Named("Lightning Bolt"), new PlayerId(0), new PlayerId(0), Zone.Stack)));
+        var creature = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+
+        game.DealDamage(bolt, TargetRef.Of(new PlayerId(1)), 3, combat: false);
+        game.DealDamage(creature, TargetRef.Of(new PlayerId(1)), 2, combat: true);
+
+        Assert.Equal(20 - 2 - 2, game.P1().Life);
+    }
+}
+
+public sealed class ReflexiveTriggerTests
+{
+    [Fact]
+    public void BreechesFlipResultsArePartOfItsTrigger()
+    {
+        // "When you win the flip" was a state trigger on the last flip, so it fired again after every resolution.
+        var card = Cards.Named("Breeches, the Blastmaker");
+
+        Assert.DoesNotContain(card.Abilities, x => x is TriggeredAbility { Trigger: ConditionEvent });
+        Assert.Contains(card.Abilities, x => x is TriggeredAbility { Trigger: SpellCastEvent });
+    }
+}

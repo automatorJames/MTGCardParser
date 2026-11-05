@@ -42,6 +42,81 @@ public sealed partial class Game
         return false;
     }
 
+    /// <summary>
+    /// A damage replacement that changes how much is dealt, to the same recipient by the same source: "it deals double
+    /// that damage instead", "it deals that much damage plus 1 instead", "minus 1".
+    /// </summary>
+    public static (Selector From, Selector To, string Kind, Adjusted Amount)? DamageModifier(Replacement replacement)
+    {
+        if (replacement.Would is not WouldHappen { What: DealDamage dealt } would)
+            return null;
+        if (replacement.Instead is not Instead { Effect: DealDamage { Portions: [{ Amount: Adjusted { Base: Special { Kind: "ThatMuch" } } adjusted, To: Reference or Self or null }] } instead })
+            return null;
+        if (instead.Source is not (Reference or Self or null) || dealt.Portions?.Any(x => x.Amount is not null) == true)
+            return null;
+        var valid = adjusted.Factor == "Twice" && adjusted.Adjustment is null || adjusted.Factor is null && adjusted.Adjustment is Fixed;
+        return valid ? (dealt.Source ?? would.Subject, dealt.Portions?.FirstOrDefault()?.To, dealt.Kind, adjusted) : null;
+    }
+
+    /// <summary>The damage <paramref name="source"/> would deal to <paramref name="target"/> after the modifiers on permanents and emblems: doubled, or more or less by a number.</summary>
+    int Modify(ObjectId? source, TargetRef target, int amount, bool combat)
+    {
+        foreach (var holder in State.Battlefield.Concat(State.Emblems).ToList())
+            foreach (var ability in Characteristics.AbilitiesOf(State, holder))
+            {
+                var (replacement, holds) = CardDefinition.Unwrap(ability) switch
+                {
+                    ReplacementAbility { Effect: Replacement stated } => (stated, (Condition)null),
+                    StaticAbility { Effect: Replacement stated, While: var condition } => (stated, condition),
+                    _ => (null, null),
+                };
+                if (replacement is null || DamageModifier(replacement) is not { } modifier)
+                    continue;
+                if (modifier.Kind == "Combat" && !combat || modifier.Kind == "Noncombat" && combat)
+                    continue;
+                var ctx = EffectContext.Snapshot(State, holder.Controller, holder.Id);
+                if (holds is not null && Conditions.Evaluate(holds, ctx) != true || replacement.Would is WouldHappen { While: { } whilst } && Conditions.Evaluate(whilst, ctx) != true)
+                    continue;
+                if (!DamageSide(modifier.From, source is { } dealer ? TargetRef.Of(dealer) : null, holder) || !DamageSide(modifier.To, target, holder))
+                    continue;
+                amount = modifier.Amount.Factor == "Twice" ? amount * 2 : amount + (modifier.Amount.Minus ? -1 : 1) * ((Fixed)modifier.Amount.Adjustment).Value;
+            }
+        return Math.Max(0, amount);
+    }
+
+    /// <summary>Whether a modifier's source or recipient selector means <paramref name="side"/>: "a source you control", "a permanent or player", "an opponent", "this creature".</summary>
+    bool DamageSide(Selector selector, TargetRef? side, GameObject holder)
+    {
+        switch (selector)
+        {
+            case null or Reference:
+                return true;
+            case Self:
+                return side is { IsObject: true } self && self.Object == holder.Id;
+            case Union union:
+                return union.Members.Any(x => DamageSide(x, side, holder));
+            case PlayerSelector players:
+                return side is { IsPlayer: true } named && Resolver.Players(State, players, holder.Controller, holder.Id).Contains(named.Player.Value);
+            case ObjectSelector objects when side is { IsPlayer: true } player:
+            {
+                if (objects.Filter?.Kinds?.Any(x => x.Value == nameof(ObjectKind.Player)) != true)
+                    return false;
+                var whose = objects.Filter.Controller;
+                return whose is null || Resolver.Players(State, whose.Player, holder.Controller, holder.Id).Contains(player.Player.Value) != whose.Negated;
+            }
+            case ObjectSelector objects when side is { IsObject: true } thing && State.Object(thing.Object.Value) is { } obj:
+            {
+                var kinds = objects.Filter?.Kinds?.Where(x => x.Value != nameof(ObjectKind.Player)).ToList();
+                if (objects.Filter?.Kinds is { Count: > 0 } && kinds.Count == 0)
+                    return false;
+                var filter = (objects.Filter ?? new ObjectFilter()) with { Kinds = kinds is { Count: > 0 } ? kinds : null };
+                return Filters.Matches(State, filter, obj, holder.Controller, holder.Id, objects.Other ? holder.Id : null);
+            }
+            default:
+                return false;
+        }
+    }
+
     /// <summary>A damage replacement's parts: "the next time target creature would deal damage, prevent that damage", "if damage would be dealt to this creature, prevent that damage. remove a counter".</summary>
     public static (Selector From, Selector To, bool CombatOnly, Effect Then)? DamageReplacement(Replacement replacement)
     {

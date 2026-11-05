@@ -98,7 +98,7 @@ public static class Filters
             "TapState" => kind.Value == "Tapped" ? obj.Tapped : !obj.Tapped,
             // "The copy", "the copies", "that spell": a pool the resolver supplies (what the copying step made).
             "RetargetedObject" or "CopiedSpell" => true,
-            "SourceNoun" => true,
+            "SourceNoun" => kind.Value != nameof(ObjectKind.Spell) || obj.Zone == Zone.Stack,
             "CombatState" => kind.Value switch { "Attacking" => obj.Attacking, "Blocking" => obj.Blocking is not null, _ => false },
             _ => false,
         };
