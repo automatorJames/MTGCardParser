@@ -10,7 +10,7 @@ public sealed record OpaqueAbility(string Text, string Glyph) : Ability, IOpaque
 public sealed record KeywordLine(IReadOnlyList<KeywordInstance> Keywords, IReadOnlyList<IrNode> Other = null) : Ability;
 
 /// <summary>One keyword, with the parameter it takes, if any: "bushido 1" has an amount, "cycling {2}" a cost, "protection from red" a parameter.</summary>
-public sealed record KeywordInstance(string Keyword, Quantity Amount = null, Cost Cost = null, string Parameter = null) : IrNode;
+public sealed record KeywordInstance(string Keyword, Quantity Amount = null, Cost Cost = null, string Parameter = null, StatsMod Stats = null) : IrNode;
 
 /// <summary>A continuous effect the permanent has as long as it's on the battlefield, possibly only while a condition holds.</summary>
 public sealed record StaticAbility(Effect Effect, Condition While = null) : Ability;
@@ -72,3 +72,6 @@ public sealed record AlternativeCost(Cost Cost, string Replaces, Cost Additional
 
 /// <summary>Keywords of which one is chosen: "your choice of flying, trample, or haste".</summary>
 public sealed record KeywordChoice(IReadOnlyList<KeywordInstance> Options) : IrNode;
+
+/// <summary>The ability this text is part of, granted elsewhere: "except it has this ability".</summary>
+public sealed record SameAbility : Ability;

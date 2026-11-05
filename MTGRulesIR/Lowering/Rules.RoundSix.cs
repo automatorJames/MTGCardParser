@@ -114,7 +114,9 @@ public sealed partial class Lowerer
         Rule<G.SpellNarrowing>((g, ctx) =>
             g.From is not null ? new CastFrom(ZoneOf(g.From, ctx) ?? new ZoneRef(OpenSlots.Placeholder))
             : g.During is not null ? new CastDuring(TurnOf(g.During.Turn))
-            : Lower((object)g.Targets ?? g.Colors ?? g.Chosen ?? g.FromOtherThanHand ?? g.Feature ?? g.Symbol ?? (object)g.Ownership, ctx));
+            : g.Chosen is { } chosen ? new OfChosen(chosen.ToString())
+            : g.FromOtherThanHand is { } otherThan ? new Not(new WasCast(new Reference(null, "it"), null, new ZoneRef(nameof(Zone.Hand), PlayerOf(otherThan.Whose))))
+            : Lower((object)g.Targets ?? g.Colors ?? g.Feature ?? g.Symbol ?? (object)g.Ownership, ctx));
         Rule<G.CountedPlayers>((g, ctx) =>
             g.Who is not null
                 ? Opaque(typeof(Selector), ctx.TextOf(g), nameof(G.CountedPlayers))

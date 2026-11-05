@@ -29,7 +29,7 @@ public sealed partial class Lowerer
         Rule<G.ChapterAbility>((g, ctx) =>
             new ChapterAbility(g.Chapters.Items.Select(x => (int)x + 1).ToList(), LowerAs<Effect>(g.Effect, ctx)));
 
-        Rule<G.Mode>((g, ctx) => new Mode(LowerAs<Effect>(g.Effect, ctx)));
+        Rule<G.Mode>((g, ctx) => Lower(g.Effect, ctx) is Mode tiered ? tiered : new Mode(LowerAs<Effect>(g.Effect, ctx)));
 
         Rule<G.ChooseOne>((g, ctx) =>
             new ChooseModes(g.Count.ToString(), g.Chooser is { } chooser ? Player(chooser) : null));

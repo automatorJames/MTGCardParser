@@ -142,7 +142,7 @@ public abstract record ManaOption : IrNode;
 
 public sealed record OpaqueManaOption(string Text, string Glyph) : ManaOption, IOpaque;
 
-public sealed record ManaAmount(IReadOnlyList<string> Symbols) : ManaOption;
+public sealed record ManaAmount(IReadOnlyList<string> Symbols, Quantity Count = null) : ManaOption;
 
 /// <summary>Objects that can't be the target of some spells or abilities.</summary>
 public sealed record CantBeTargeted(Selector Objects, IReadOnlyList<string> By = null, Controlled Controller = null, Duration Duration = null) : Effect;
@@ -315,3 +315,39 @@ public sealed record CantGainLife(Selector Player, Duration Duration = null, boo
 
 /// <summary>Creatures removed from combat: "remove target blocking creature from combat".</summary>
 public sealed record RemoveFromCombat(Selector Objects) : Effect;
+
+/// <summary>Power and toughness switched: "switch target creature's power and toughness until end of turn".</summary>
+public sealed record SwitchStats(Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>Objects turned face up or face down.</summary>
+public sealed record TurnFace(Selector Objects, string Direction) : Effect;
+
+/// <summary>Objects separated into piles: "separate all creatures target player controls into two piles".</summary>
+public sealed record SeparateIntoPiles(Selector Objects, int Piles, bool FaceDown = false) : Effect;
+
+/// <summary>Power and/or toughness doubled: "double target creature's power until end of turn".</summary>
+public sealed record DoubleStats(Selector Objects, string Which, Duration Duration = null) : Effect;
+
+/// <summary>Mana spendable as though it were another kind: "you may spend mana as though it were mana of any color to cast that spell".</summary>
+public sealed record SpendManaAsThough(Selector Player, string Spent = null, string AsThough = null, IReadOnlyList<Playable> For = null) : Effect;
+
+/// <summary>A choice among named options: "choose khans or dragons".</summary>
+public sealed record ChooseOption(Selector Chooser, IReadOnlyList<Term> Options) : Effect;
+
+/// <summary>Crewing or saddling with power counted as greater: "crews vehicles as though its power were 2 greater".</summary>
+public sealed record CrewsAsThoughPowerGreater(Selector Objects, string Action, Quantity Amount) : Effect;
+
+/// <summary>The preceding ability extended to more keywords or more objects: "the same is true for fear, first strike, …".</summary>
+public sealed record SameIsTrueFor(IReadOnlyList<KeywordInstance> Keywords = null, Selector Objects = null) : Effect;
+
+/// <summary>Playing with the top card of a library revealed.</summary>
+public sealed record PlayWithTopCardRevealed(Selector Player) : Effect;
+
+/// <summary>A granted keyword's cost defined as the card's mana cost: "the madness cost is equal to its mana cost".</summary>
+public sealed record KeywordCostIsManaCost(string Keyword, Selector Of) : Effect;
+
+/// <summary>Mana that doesn't empty as steps and phases end.</summary>
+public sealed record ManaDoesntEmpty(Duration Duration = null) : Effect;
+
+/// <summary>A card that may begin the game on the battlefield from the opening hand.</summary>
+public sealed record BeginGameOnBattlefield : Effect;

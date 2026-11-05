@@ -22,7 +22,7 @@ public static class Vocabularies
         ["Animate.Subtypes"] = [typeof(G.CreatureType), typeof(G.LandType), typeof(G.PermanentSubtype), typeof(G.PlaneswalkerType)],
         ["Animate.Still"] = [typeof(G.CardType)],
         ["StillOfKind.Kinds"] = [typeof(G.CardType), typeof(G.CreatureType)],
-        ["Devotion.Colors"] = [typeof(G.ManaColor)],
+        ["Devotion.Colors"] = [typeof(G.ManaColor), typeof(G.ManaChoice)],
         ["KeywordInstance.Keyword"] = [typeof(G.Keyword), typeof(KeywordWord)],
         ["HasKeywords.Keywords"] = [typeof(G.Keyword)],
         ["CanAsThough.Keyword"] = [typeof(G.Keyword)],
@@ -60,7 +60,7 @@ public static class Vocabularies
         ["ManaChoice.Choice"] = [typeof(G.ManaChoice), typeof(ManaChoiceKind)],
         ["AddMana.Amount"] = [typeof(G.AddedManaAmount)],
         ["ManaRestriction.Rule"] = [typeof(G.ManaSpendingRule)],
-        ["OfChosen.Characteristic"] = [typeof(G.ChosenAspect)],
+        ["OfChosen.Characteristic"] = [typeof(G.ChosenAspect), typeof(ChosenCharacteristic)],
         ["SearchLibrary.Zones"] = [typeof(G.SearchedZones)],
         ["Controlled.Relation"] = [typeof(G.ControlRelation), typeof(Possession)],
         ["Controls.Connective"] = [typeof(G.ConditionConnective)],
@@ -86,7 +86,14 @@ public static class Vocabularies
         ["ActedOn.Span"] = [typeof(G.TurnSpan)],
         ["DamageOrLifeTotal.Unit"] = [typeof(G.DamageOrLife)],
         ["DamageOrLifeTotal.Change"] = [typeof(G.DamageOrLifeChange)],
-        ["DamageOrLifeTotal.When"] = [typeof(G.DamageOrLifeWhen)],
+        ["DamageOrLifeTotal.When"] = [typeof(G.DamageOrLifeWhen), typeof(G.TurnSpan)],
+        ["TurnFace.Direction"] = [typeof(G.FaceDirection)],
+        ["DoubleStats.Which"] = [typeof(G.PowerAndOrToughness)],
+        ["SpendManaAsThough.Spent"] = [typeof(G.ManaColor)],
+        ["SpendManaAsThough.AsThough"] = [typeof(G.AnyManaKind), typeof(G.ManaColor)],
+        ["CrewsAsThoughPowerGreater.Action"] = [typeof(G.CrewAction)],
+        ["KeywordCostIsManaCost.Keyword"] = [typeof(G.Keyword)],
+        ["AbilityResolvedNthTime.Ordinal"] = [typeof(G.SpellOrdinal)],
         ["DamageCantBePrevented.Which"] = [typeof(G.DamageScope)],
         ["OutcomeCondition.Result"] = [typeof(G.OutcomeResult)],
         ["Arithmetic.Operator"] = [typeof(G.ArithmeticOperator)],
@@ -170,7 +177,7 @@ public static class Vocabularies
 public enum Position { Top, Bottom, TopOrBottom, Second, Third, SecondFromTheTopOrBottom }
 
 /// <summary>Objects an earlier effect on the line acted on: "the exiled card" as "exiled this way".</summary>
-public enum AffectedThisWay { ExiledThisWay, RevealedThisWay, DestroyedThisWay, DiscardedThisWay, SacrificedThisWay, TappedThisWay, PutIntoAGraveyardThisWay, ReturnedThisWay, MilledThisWay, RemovedThisWay }
+public enum AffectedThisWay { ExiledThisWay, RevealedThisWay, DestroyedThisWay, DiscardedThisWay, SacrificedThisWay, TappedThisWay, PutIntoAGraveyardThisWay, ReturnedThisWay, MilledThisWay, RemovedThisWay, CastThisWay }
 
 /// <summary>Where an exiled card goes instead of its usual destination: "exile it instead of putting it anywhere else".</summary>
 public enum ExileManner { InsteadOfAnywhereElse }
@@ -179,7 +186,7 @@ public enum ExileManner { InsteadOfAnywhereElse }
 public enum Provenance { Found, TheRest, Chosen }
 
 /// <summary>A qualifier setting objects apart from others on the line: "another", "named {this}", "or tied".</summary>
-public enum Distinction { Other, NamedThis, OrTied, BeyondTheFirst }
+public enum Distinction { Other, NamedThis, OrTied, BeyondTheFirst, NotOnTheBattlefield }
 
 /// <summary>How a choice is made: "at random".</summary>
 public enum Manner { AtRandom }
@@ -224,7 +231,7 @@ public enum SpecialAmount { Those, ThatMuch }
 public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If, AnyPlayer }
 
 /// <summary>Events of an object the lowering names beyond the grammar's permanent events: being cast, becoming a target.</summary>
-public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved }
+public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved, Discarded }
 
 /// <summary>What something can't be the target of, or can't be done to it: countered, copied, targeted by spells or abilities.</summary>
 public enum TargetingBy { Countered, Copied, SpellsOrAbilities, Spells, Abilities }
@@ -245,7 +252,7 @@ public enum Possession { Has, Had }
 public enum Connective { And, Or, AndOr }
 
 /// <summary>A characteristic a player chooses: "a color of your choice", "the creature type of your choice".</summary>
-public enum ChosenCharacteristic { ColorOfYourChoice, BasicLandTypeOfYourChoice, CreatureTypeOfYourChoice, ColorOrColorsOfYourChoice }
+public enum ChosenCharacteristic { ColorOfYourChoice, BasicLandTypeOfYourChoice, CreatureTypeOfYourChoice, ColorOrColorsOfYourChoice, Name }
 
 /// <summary>Words about a card that are neither type nor color: "nonbasic", "token".</summary>
 public enum CardAspectWord { Nonbasic, Token }

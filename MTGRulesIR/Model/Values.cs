@@ -229,3 +229,12 @@ public sealed record DamageOrLifeTotal(string Unit, string Change, Selector Play
 
 /// <summary>A keyword action as a cost: "waterbend {3}", "sunburst".</summary>
 public sealed record KeywordCost(KeywordInstance Keyword) : Cost;
+
+/// <summary>How many times this ability has resolved this turn: "this is the third time this ability has resolved this turn".</summary>
+public sealed record AbilityResolvedNthTime(string Ordinal) : Condition;
+
+/// <summary>Whether the objects exist: "there are five or more other creatures on the battlefield", "there are no creatures on the battlefield".</summary>
+public sealed record ThereAre(Selector Objects) : Condition;
+
+/// <summary>A pawprint cost: "{p}{p} — …".</summary>
+public sealed record PawprintCost(int Count) : Cost;

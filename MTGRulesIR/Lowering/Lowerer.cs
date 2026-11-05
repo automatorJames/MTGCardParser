@@ -28,6 +28,7 @@ public sealed partial class Lowerer
         RegisterRoundSeven();
         RegisterRoundEight();
         RegisterRoundNine();
+        RegisterRoundTen();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -168,6 +169,9 @@ public sealed partial class Lowerer
             While lasting when typeof(T) == typeof(Condition) => (T)(IrNode)lasting.Condition,
             Scaled { Base: LifeTotal } scaled when typeof(T) == typeof(Cost) => (T)(IrNode)new PayLife(scaled),
             Effect effect when typeof(T) == typeof(Cost) => (T)(IrNode)new ActionCost(effect),
+            KeywordInstance keyword when typeof(T) == typeof(Cost) => (T)(IrNode)new KeywordCost(keyword),
+            BuffGroup group when typeof(T) == typeof(Effect) => (T)(IrNode)PumpOf(group, null, null, ctx),
+            ObjectEvent happening when typeof(T) == typeof(Condition) => (T)(IrNode)new Happened(happening, null),
             Happened { Event: ObjectEvent inner } happened when typeof(T) == typeof(Event) => (T)(IrNode)(inner with { Only = inner.Only ?? happened.Span }),
             Happened happened when typeof(T) == typeof(Event) => (T)(IrNode)happened.Event,
             Term term when typeof(T) == typeof(Selector) && term.Vocabulary is nameof(G.SpellReference) or "Its" or "PersonalPronoun" or "ThatPlayer" => (T)(IrNode)new Reference(null, term.Value),
@@ -188,6 +192,7 @@ public sealed partial class Lowerer
             PhaseRef phase when typeof(T) == typeof(Event) => (T)(IrNode)new PhaseEvent(phase),
             PhaseRef phase when typeof(T) == typeof(Duration) => (T)(IrNode)new UntilPhase(phase),
             Condition condition when typeof(T) == typeof(Duration) => (T)(IrNode)new While(condition),
+            Condition condition when typeof(T) == typeof(Event) => (T)(IrNode)new ConditionEvent(condition),
             IOpaque opaque => (T)Opaque(typeof(T), opaque.Text, opaque.Glyph),
             Term { Vocabulary: nameof(G.CardType) or nameof(G.PermanentKind) or nameof(G.CreatureType) or nameof(G.LandType) } term when typeof(T) == typeof(Selector) => (T)(IrNode)new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [term])),
             Term { Vocabulary: nameof(G.PermanentDesignation) or nameof(G.TapState) or nameof(G.CombatState) } term when typeof(T) == typeof(Condition) => (T)(IrNode)new ObjectIs(ctx.Subject ?? new Self(), [term]),
@@ -231,6 +236,12 @@ public sealed partial class Lowerer
             CantGainLife { Duration: null } => true,
             DamageCantBePrevented { Which: null, Duration: null } => true,
             ExchangeControl => false,
+            SameIsTrueFor => true,
+            PlayWithTopCardRevealed => true,
+            KeywordCostIsManaCost => true,
+            BeginGameOnBattlefield => true,
+            SpendManaAsThough => true,
+            CrewsAsThoughPowerGreater => true,
             NoMaximumHandSize { Duration: null } => true,
             CanBlock => true,
             CantPlay { Duration: null } => true,

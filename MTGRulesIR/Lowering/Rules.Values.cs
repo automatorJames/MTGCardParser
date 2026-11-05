@@ -99,6 +99,7 @@ public sealed partial class Lowerer
                 Effect effect => new ActionCost(effect),
                 Cost cost => cost,
                 Quantity amount when value is G.LifeEqualTo => new PayLife(amount),
+                KeywordInstance keyword => new KeywordCost(keyword),
                 IOpaque opaque => new OpaqueCost(opaque.Text, opaque.Glyph),
                 null => null,
                 var other => new OpaqueCost(ctx.TextOf(value), $"{value.GetType().Name}→{other.GetType().Name}"),
