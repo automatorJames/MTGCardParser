@@ -15,8 +15,16 @@ public sealed record GameObject(
     bool Attacking = false,
     ObjectId? Blocking = null,
     bool FaceDown = false,
-    int ZoneChangeCount = 0)
+    int ZoneChangeCount = 0,
+    ImmutableHashSet<string> CastWith = null,
+    ImmutableDictionary<string, string> Choices = null)
 {
+    /// <summary>How the object was cast, while it's the spell or the permanent that spell became: "Kicked", "AdditionalCost", an alternative cost's name.</summary>
+    public bool WasCastWith(string how) => CastWith?.Contains(how) == true;
+
+    /// <summary>A choice made for the object ("as this enters, choose a color"), by kind: "Color", "CreatureType", "CardName", …</summary>
+    public string Chosen(string kind) => Choices?.GetValueOrDefault(kind);
+
     public ImmutableDictionary<string, int> CounterMap => Counters ?? ImmutableDictionary<string, int>.Empty;
 
     public int CountersOf(string kind) => CounterMap.GetValueOrDefault(kind);
@@ -51,7 +59,7 @@ public sealed record StackItem(
 public enum StackKind { Spell, Activated, Triggered }
 
 /// <summary>A pump or keyword grant that lasts until a turn ends (or forever, for one with no end).</summary>
-public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false);
+public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false, TypeChange TypeChange = null);
 
 /// <summary>A trigger an effect set up for later: "when that creature dies this turn, …". One-shot; gone after it fires or its turn ends.</summary>
 public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn);
@@ -117,8 +125,12 @@ public sealed record GameState(
     ImmutableList<ObjectId> DiedThisTurn = null,
     ImmutableDictionary<string, int> ActivationsThisTurn = null,
     ImmutableList<DelayedTrigger> Delayed = null,
-    int NextDelayedId = 1)
+    int NextDelayedId = 1,
+    ImmutableList<PreventionShield> Shields = null,
+    int NextShieldId = 1)
 {
+    public ImmutableList<PreventionShield> ShieldList => Shields ?? ImmutableList<PreventionShield>.Empty;
+
     public ImmutableDictionary<string, int> Activations => ActivationsThisTurn ?? ImmutableDictionary<string, int>.Empty;
 
     public ImmutableList<DelayedTrigger> DelayedTriggers => Delayed ?? ImmutableList<DelayedTrigger>.Empty;

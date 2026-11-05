@@ -170,6 +170,12 @@ public sealed partial class Game
                 Cleanup();
                 return;
 
+            case Step.Main1:
+                foreach (var saga in State.Battlefield.Where(x => x.Controller == active && x.Card.IsSaga).ToList())
+                    Emit(new CountersChanged(saga.Id, "lore", 1));
+                Priority();
+                return;
+
             default:
                 Priority();
                 return;
@@ -282,11 +288,11 @@ public sealed partial class Game
             var instantSpeed = card.IsInstant || card.Keywords.Contains("Flash");
             if (!instantSpeed && !sorcerySpeed)
                 continue;
-            if (!ManaPayment.CanPay(state, player, card.ManaCost.WithX(0)))
+            if (!CanAffordToCast(obj, player))
                 continue;
             if (!TargetsAvailable(SpellSlots(card), player, id))
                 continue;
-            actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, card.ManaCost) : 0));
+            actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0));
         }
 
         foreach (var obj in state.Battlefield.Where(x => x.Controller == player))
@@ -455,37 +461,6 @@ public sealed partial class Game
                 Activate(activate.Source, activate.Index, player);
                 return;
         }
-    }
-
-    void Cast(ObjectId id, PlayerId player, int maxX)
-    {
-        var obj = State.Object(id);
-        var card = obj.Card;
-        var x = card.ManaCost.X > 0 && maxX > 0 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var cost = card.ManaCost.WithX(x);
-
-        List<Effect> effects = [];
-        ImmutableDictionary<string, ImmutableList<TargetRef>> bindings = null;
-        if (!card.IsPermanentCard)
-            foreach (var spellEffect in card.SpellEffects)
-            {
-                var (resolved, modeBindings) = ResolveModes(spellEffect, player);
-                effects.Add(resolved);
-                if (modeBindings is not null)
-                    bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(modeBindings);
-            }
-
-        var slots = card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
-        var targets = ChooseTargetsFor(slots, player, id);
-        if (targets is null)
-            return;
-
-        if (!Pay(player, cost))
-            return;
-
-        MoveToZone(id, Zone.Stack, player);
-        var item = new StackItem(State.NextStackId, player, id, StackKind.Spell, effects.ToImmutableList(), targets, x, Spell: id, Description: card.Name, Bindings: bindings);
-        Emit(new SpellCast(item));
     }
 
     void Activate(ObjectId source, int index, PlayerId player)
@@ -709,6 +684,12 @@ public sealed partial class Game
                         continue;
                     }
                 }
+                if (obj.Card.IsSaga && obj.Card.FinalChapter is { } final && obj.CountersOf("lore") >= final && !State.Stack.Any(x => x.Source == obj.Id && x.Kind == StackKind.Triggered))
+                {
+                    Sacrifice(obj.Controller, obj.Id);
+                    changed = true;
+                    continue;
+                }
                 if (obj.Card.IsPlaneswalker && obj.CountersOf("loyalty") <= 0)
                 {
                     MoveToZone(obj.Id, Zone.Graveyard);
@@ -802,6 +783,8 @@ public sealed partial class Game
         {
             if (obj.Card.IsPlaneswalker && obj.Card.Loyalty is { } loyalty)
                 Emit(new CountersChanged(id, "loyalty", loyalty));
+            if (obj.Card.IsSaga)
+                Emit(new CountersChanged(id, "lore", 1));
             if (onEntry.Count > 0)
             {
                 var ctx = new EffectContext(this, to, id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), Last: [TargetRef.Of(id)]);
@@ -837,7 +820,7 @@ public sealed partial class Game
                     onEntry.AddRange(enters.With ?? []);
                     return;
                 }
-                case AsEventHappens { When: ObjectEvent { Subject: Self or null } when } happens when when.Events.Any(x => x is "EntersTheBattlefield" or "EntersOrTransforms") && source.Id == obj.Id:
+                case AsEventHappens { When: ObjectEvent { Subject: Self or null } when } happens when when.Events.Any(x => x is "EntersTheBattlefield" or "EntersOrTransforms" or "Enters") && source.Id == obj.Id:
                     onEntry.Add(happens.Effect);
                     return;
             }
@@ -845,6 +828,11 @@ public sealed partial class Game
 
         foreach (var replacement in obj.Card.Abilities.OfType<ReplacementAbility>())
             Consider(replacement, entering);
+        // "If this creature was kicked, it enters with …": an entry replacement stated as an effect line under a condition.
+        foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
+            if (line.Effect is Conditional { Then: EntersBattlefield { Objects: null or Self } enters, Else: null } conditional
+                && Conditions.Evaluate(conditional.If, EffectContext.Snapshot(State, controller, obj.Id)) == true)
+                Consider(new ReplacementAbility(enters), entering);
         foreach (var other in State.Battlefield.Where(x => x.Id != obj.Id))
             foreach (var replacement in other.Card.Abilities.OfType<ReplacementAbility>())
                 Consider(replacement, other);
@@ -884,6 +872,9 @@ public sealed partial class Game
 
     public void DealDamage(ObjectId? source, TargetRef target, int amount, bool combat)
     {
+        if (amount <= 0)
+            return;
+        amount = Prevent(source, target, amount, combat);
         if (amount <= 0)
             return;
         var dealer = source is { } s ? State.Object(s) : null;

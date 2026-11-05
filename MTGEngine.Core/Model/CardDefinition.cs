@@ -27,7 +27,7 @@ public sealed record CardDefinition(
     {
         var info = rules.Info ?? new CardInfo();
         var cost = ManaCost.Parse(info.ManaCost);
-        var abilities = Modal.Rewrite(rules.Lines.SelectMany(x => x.Abilities).Select(Unwrap)).ToImmutableList();
+        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(x => x.Abilities).Select(Unwrap))).ToImmutableList();
         var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
             .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).Select(x => Normalize(x.Keyword)))
             .ToImmutableHashSet();
@@ -127,6 +127,10 @@ public sealed record CardDefinition(
     public bool IsPlaneswalker => Types.Contains("Planeswalker");
     public bool IsAura => Subtypes.Contains("Aura");
     public bool IsEquipment => Subtypes.Contains("Equipment");
+    public bool IsSaga => Subtypes.Contains("Saga");
+
+    /// <summary>A saga's last chapter number; null when it has no chapters.</summary>
+    public int? FinalChapter => Abilities.OfType<ChapterAbility>().SelectMany(x => x.Chapters).DefaultIfEmpty().Max() is var last and > 0 ? last : null;
     public bool IsPermanentCard => IsCreature || IsLand || IsArtifact || IsEnchantment || IsPlaneswalker || Types.Contains("Battle");
     public bool IsBasicLand => IsLand && Supertypes.Contains("Basic");
 

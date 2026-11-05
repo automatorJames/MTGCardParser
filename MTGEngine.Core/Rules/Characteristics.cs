@@ -2,8 +2,9 @@ namespace MTGEngine.Core;
 
 /// <summary>
 /// An object's characteristics as they are now: printed values, then counters, temporary effects, and the static
-/// abilities of permanents on the battlefield. A light version of the layer system: enough for anthems, pumps,
-/// +1/+1 counters, keyword grants, granted abilities, combat restrictions and losing all abilities.
+/// abilities of permanents on the battlefield. A light version of the layer system: type, subtype and color changes
+/// first, then abilities, then power and toughness - enough for anthems, pumps, +1/+1 counters, keyword grants,
+/// granted abilities, combat restrictions, losing all abilities, animation and "nonbasic lands are mountains".
 /// </summary>
 public sealed record Characteristics(
     int Power,
@@ -25,6 +26,11 @@ public sealed record Characteristics(
 
     [ThreadStatic] static int _judgingCondition;
 
+    static readonly ImmutableHashSet<string> _landTypes =
+        ["Plains", "Island", "Swamp", "Mountain", "Forest", "Desert", "Gate", "Cave", "Lair", "Locus", "Mine", "Power-Plant", "Tower", "Sphere", "Town", "Urza's"];
+
+    public static bool IsLandType(string subtype) => _landTypes.Contains(subtype);
+
     public static Characteristics Of(GameState state, GameObject obj, bool withStatics = true)
     {
         // A static's condition is judged on characteristics without statics, so conditions can't recurse into themselves.
@@ -35,10 +41,45 @@ public sealed record Characteristics(
         var keywords = card.Keywords.ToBuilder();
         var restrictions = ImmutableHashSet.CreateBuilder<string>();
         var abilities = card.Abilities.ToBuilder();
+        var types = card.Types;
+        var subtypes = card.Subtypes;
+        var colors = card.Colors;
         var lost = false;
 
         var temporary = state.Temporary.Where(x => x.Target == obj.Id).ToList();
         var statics = withStatics ? StaticEffects(state).Where(x => Applies(state, x.Objects, x.Source, obj)).ToList() : [];
+
+        // Types, subtypes and colors (layers 4 and 5): statics, then effects for a while in the order they began.
+        var loseLandAbilities = false;
+        void Change(TypeChange change)
+        {
+            if (change is null)
+                return;
+            if (change.Types is { Count: > 0 })
+                types = change.InAddition ? types.Union(change.Types) : change.Types.ToImmutableHashSet();
+            if (change.Subtypes is { Count: > 0 })
+            {
+                if (change.InAddition)
+                    subtypes = subtypes.Union(change.Subtypes);
+                else if (change.Subtypes.All(IsLandType) && types.Contains("Land"))
+                {
+                    // A land given a land type loses its other land types and the abilities of its rules text (305.7).
+                    subtypes = subtypes.Where(x => !IsLandType(x)).ToImmutableHashSet().Union(change.Subtypes);
+                    loseLandAbilities = true;
+                }
+                else
+                    subtypes = change.Subtypes.ToImmutableHashSet();
+            }
+            if (change.Colors is { } newColors)
+                colors = change.InAddition ? colors.Union(newColors) : newColors.ToImmutableHashSet();
+        }
+        foreach (var (effect, _, source) in statics)
+            Change(TypeChangeOf(effect, source));
+        foreach (var effect in temporary)
+            Change(effect.TypeChange);
+        if (loseLandAbilities)
+            foreach (var printed in card.Abilities)
+                abilities.Remove(printed);
 
         foreach (var effect in temporary)
         {
@@ -56,11 +97,20 @@ public sealed record Characteristics(
         }
 
         foreach (var (effect, _, _) in statics)
-            if (effect is Pump { BaseStats: { } stats })
+        {
+            var stats = effect switch
+            {
+                Pump { BaseStats: { } pumped } => pumped,
+                Animate { BaseStats: { } animated } => animated,
+                Animate { Power: not null } or Animate { Toughness: not null } => new StatsMod(((Animate)effect).Power, ((Animate)effect).Toughness),
+                _ => null,
+            };
+            if (stats is not null)
             {
                 if (stats.Power is Fixed p) power = p.Value;
                 if (stats.Toughness is Fixed t) toughness = t.Value;
             }
+        }
 
         power += obj.CountersOf("+1/+1") - obj.CountersOf("-1/-1");
         toughness += obj.CountersOf("+1/+1") - obj.CountersOf("-1/-1");
@@ -97,6 +147,10 @@ public sealed record Characteristics(
                             keywords.Add(CardDefinition.Normalize(keyword.Keyword));
                     break;
                 }
+                case Animate animate:
+                    foreach (var keyword in animate.Keywords ?? [])
+                        keywords.Add(CardDefinition.Normalize(keyword.Keyword));
+                    break;
                 case CombatRestriction restriction:
                     foreach (var cant in restriction.Cant)
                         restrictions.Add(cant);
@@ -116,11 +170,20 @@ public sealed record Characteristics(
                     break;
             }
 
-        return new Characteristics(power, toughness, keywords.ToImmutable(), card.Types, card.Subtypes, card.Colors, lost, restrictions.ToImmutable(), abilities.ToImmutable());
+        return new Characteristics(power, toughness, keywords.ToImmutable(), types, subtypes, colors, lost, restrictions.ToImmutable(), abilities.ToImmutable());
     }
 
     /// <summary>The abilities an object has now: printed, granted for a while, and granted by statics on the battlefield.</summary>
     public static ImmutableList<Ability> AbilitiesOf(GameState state, GameObject obj) => Of(state, obj).Abilities;
+
+    /// <summary>The type, subtype and color change a static effect makes, read for <paramref name="source"/> (whose choices "the chosen type" means); null for none.</summary>
+    public static TypeChange TypeChangeOf(Effect effect, GameObject source) =>
+        effect switch
+        {
+            BecomesAspect aspect => TypeChange.OfAspects(aspect.Aspects, aspect.InAddition, source),
+            Animate animate => TypeChange.OfAnimate(animate),
+            _ => null,
+        };
 
     /// <summary>The continuous effects of static abilities on the battlefield whose condition (if any) holds now: each effect with what it applies to and its source.</summary>
     public static IEnumerable<(Effect Effect, Selector Objects, GameObject Source)> StaticEffects(GameState state)
@@ -156,6 +219,9 @@ public sealed record Characteristics(
             CombatRestriction { Duration: null, If: null } => [effect],
             GrantAbility => [effect],
             LoseAllAbilities => [effect],
+            BecomesAspect { Duration: null, Negated: false } => [effect],
+            Animate { Duration: null, Transforms: false } => [effect],
+            PreventDamage { Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -167,6 +233,10 @@ public sealed record Characteristics(
             CombatRestriction restriction => restriction.Objects ?? new Self(),
             GrantAbility grant => grant.Objects ?? new Self(),
             LoseAllAbilities lose => lose.Objects ?? new Self(),
+            BecomesAspect aspect => aspect.Objects ?? new Self(),
+            Animate animate => animate.Objects ?? new Self(),
+            // Prevention is read by the damage rules (Game.Prevent), not applied to an object's characteristics.
+            PreventDamage => new Self(),
             _ => null,
         };
 
@@ -189,5 +259,58 @@ public sealed record Characteristics(
             default:
                 return false;
         }
+    }
+}
+
+/// <summary>A change to an object's card types, subtypes and colors: added to what it has, or instead of it.</summary>
+public sealed record TypeChange(ImmutableList<string> Types = null, ImmutableList<string> Subtypes = null, ImmutableList<Color> Colors = null, bool InAddition = false)
+{
+    /// <summary>The change "is the chosen type", "are mountains", "becomes an artifact" describes; null when an aspect isn't one the engine can apply.</summary>
+    public static TypeChange OfAspects(IEnumerable<Term> aspects, bool inAddition, GameObject source)
+    {
+        var types = ImmutableList.CreateBuilder<string>();
+        var subtypes = ImmutableList.CreateBuilder<string>();
+        ImmutableList<Color>.Builder colors = null;
+        foreach (var aspect in aspects)
+            switch (aspect.Vocabulary)
+            {
+                case "CardType":
+                    types.Add(aspect.Value);
+                    break;
+                case "CreatureType" or "LandType" or "ArtifactType" or "EnchantmentType" or "PermanentSubtype":
+                    subtypes.Add(aspect.Value);
+                    break;
+                case "ManaColor":
+                    colors ??= ImmutableList.CreateBuilder<Color>();
+                    if (MTGEngine.Core.Colors.OfName(aspect.Value) is { } color)
+                        colors.Add(color);
+                    break;
+                case "TypeDesignation" when aspect.Value == "ChosenType" && (source?.Chosen("CreatureType") ?? source?.Chosen("LandType")) is { } chosenType:
+                    subtypes.Add(chosenType);
+                    break;
+                case "TypeDesignation" when aspect.Value == "ChosenColor" && MTGEngine.Core.Colors.OfName(source?.Chosen("Color")) is { } chosenColor:
+                    colors ??= ImmutableList.CreateBuilder<Color>();
+                    colors.Add(chosenColor);
+                    break;
+                case "TypeDesignation" when aspect.Value is "ChosenType" or "ChosenColor":
+                    return new TypeChange(InAddition: true);
+                default:
+                    return null;
+            }
+        // Adding a creature type to a creature is always "in addition"; a type word alone ("is an artifact") adds to what it is.
+        return new TypeChange(types.ToImmutable(), subtypes.ToImmutable(), colors?.ToImmutable(), inAddition || types.Count > 0 && subtypes.Count == 0 || subtypes.Count > 0 && subtypes.All(x => !Characteristics.IsLandType(x)) && types.Count == 0);
+    }
+
+    /// <summary>The type change of "becomes a 3/3 red elemental creature [that's still a land]".</summary>
+    public static TypeChange OfAnimate(Animate animate)
+    {
+        if (animate.Types is not { Count: > 0 } && animate.Subtypes is not { Count: > 0 } && animate.Colors is not { Count: > 0 })
+            return null;
+        var keep = animate.InAddition || animate.Still is not null;
+        var colors = animate.Colors?.Select(MTGEngine.Core.Colors.OfName).Where(x => x is not null).Select(x => x.Value).ToImmutableList();
+        var types = (animate.Types ?? []).Select(CardDefinition.Normalize).ToImmutableList();
+        if (animate.Still is { } still)
+            types = types.Add(CardDefinition.Normalize(still));
+        return new TypeChange(types, animate.Subtypes?.ToImmutableList(), colors is { Count: > 0 } ? colors : null, keep);
     }
 }

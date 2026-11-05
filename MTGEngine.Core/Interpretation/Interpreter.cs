@@ -259,14 +259,39 @@ public static class Interpreter
                 var until = UntilTurn(animate.Duration, state);
                 if (until is null && animate.Duration is not null)
                     return Skipped(game, animate, $"duration {animate.Duration.GetType().Name}", ctx);
-                if (animate.Types is { Count: > 0 } || animate.Transforms)
-                    return Skipped(game, animate, "type change", ctx);
-                var objects = Resolver.Objects(animate.Objects, ctx);
-                var stats = animate.BaseStats ?? (animate.Power is not null || animate.Toughness is not null ? new StatsMod(animate.Power, animate.Toughness) : null);
+                if (animate.Transforms)
+                    return Skipped(game, animate, "transforms", ctx);
+                var objects = animate.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(animate.Objects, ctx);
+                var stats = animate.BaseStats ?? (animate.Power is not null || animate.Toughness is not null ? new StatsMod(Evaluated(animate.Power, ctx), Evaluated(animate.Toughness, ctx)) : null);
+                var change = TypeChange.OfAnimate(animate);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, (animate.Keywords ?? []).Select(x => x.Keyword).ToImmutableList(), until == -1 ? null : until, stats)));
-                return ctx;
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, (animate.Keywords ?? []).Select(x => x.Keyword).ToImmutableList(), until == -1 ? null : until, stats, TypeChange: change)));
+                return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
+
+            case BecomesAspect aspect:
+            {
+                var until = UntilTurn(aspect.Duration, state);
+                if (until is null || aspect.Negated)
+                    return Skipped(game, aspect, "aspect duration", ctx);
+                var source = ctx.Source is { } sourceId ? state.Object(sourceId) : null;
+                var aspects = aspect.Aspects.Select(term => ChosenNow(term, ctx)).ToList();
+                if (TypeChange.OfAspects(aspects, aspect.InAddition, source) is not { } change)
+                    return Skipped(game, aspect, "aspect", ctx);
+                var objects = aspect.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(aspect.Objects, ctx);
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, TypeChange: change)));
+                return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
+            }
+
+            case ChooseEffect choose:
+                return Choose(choose, ctx);
+
+            case PreventDamage prevent:
+                if (prevent.Amount is Special { Kind: "ThatMuch" })
+                    return Skipped(game, prevent, "prevent that damage", ctx);
+                game.CreateShields(prevent, ctx);
+                return ctx;
 
             case ChangeZone change:
             {
@@ -594,6 +619,10 @@ public static class Interpreter
             case ChooseModes:
                 return ctx;
 
+            // A cost change is a rule of casting (see Game.CostToCast), not something that happens on resolution.
+            case CostModification:
+                return ctx;
+
             case PayCost pay:
             {
                 var payer = pay.Player is null ? ctx.Controller : Resolver.Players(pay.Player, ctx).FirstOrDefault(ctx.Controller);
@@ -699,4 +728,80 @@ public static class Interpreter
     }
 
     public static string Describe(IrNode node) => node?.GetType().Name ?? "nothing";
+
+    /// <summary>A quantity as a fixed number now, for effects that keep it ("becomes an X/X creature").</summary>
+    static Quantity Evaluated(Quantity quantity, EffectContext ctx) =>
+        quantity is null or Fixed ? quantity : Quantities.Evaluate(quantity, ctx) is { } value ? new Fixed(value) : quantity;
+
+    /// <summary>"Becomes the color of your choice": the choice made now, as the aspect it names.</summary>
+    static Term ChosenNow(Term aspect, EffectContext ctx)
+    {
+        if (aspect.Vocabulary != nameof(ChosenCharacteristic))
+            return aspect;
+        var (kind, vocabulary) = aspect.Value switch
+        {
+            "ColorOfYourChoice" or "ColorOrColorsOfYourChoice" => ("Color", "ManaColor"),
+            "BasicLandTypeOfYourChoice" => ("BasicLandType", "LandType"),
+            "CreatureTypeOfYourChoice" => ("CreatureType", "CreatureType"),
+            _ => (null, null),
+        };
+        if (kind is null)
+            return aspect;
+        var options = Choices.Options(kind, ctx.Controller, ctx, null);
+        var pick = ctx.Game.Decide(new ChooseOne(ctx.Controller, $"Choose a {kind}", options)).Index;
+        return new Term(options[Math.Clamp(pick, 0, options.Count - 1)], vocabulary);
+    }
+
+    /// <summary>
+    /// "Choose a color / creature type / card name", recorded on the effect's source so "the chosen type" reads it;
+    /// "choose one of them" picks among what the previous step found; "choose target opponent" names who was targeted.
+    /// </summary>
+    static EffectContext Choose(ChooseEffect choose, EffectContext ctx)
+    {
+        var game = ctx.Game;
+        var state = ctx.State;
+        var chooser = Resolver.Players(choose.Chooser, ctx).FirstOrDefault(ctx.Controller);
+
+        if (choose.Kinds is [var kind, ..])
+        {
+            if (kind == "Opponent")
+            {
+                var opponents = state.OpponentsOf(chooser).ToImmutableList();
+                if (opponents.Count == 0)
+                    return ctx;
+                var picked = opponents[Math.Clamp(game.Decide(new ChooseOne(chooser, "Choose an opponent", opponents.Select(x => state.Player(x).Name).ToImmutableList())).Index, 0, opponents.Count - 1)];
+                if (ctx.Source is { } holder)
+                    game.Emit(new ChoiceRecorded(holder, "Player", picked.Value.ToString()));
+                return ctx with { Last = [TargetRef.Of(picked)] };
+            }
+            var options = Choices.Options(kind, chooser, ctx, choose.Except);
+            if (options is not { Count: > 0 })
+                return Skipped(game, choose, $"choice of {kind}", ctx);
+            var value = options[Math.Clamp(game.Decide(new ChooseOne(chooser, $"Choose a {kind}", options)).Index, 0, options.Count - 1)];
+            game.Emit(new ChoiceMade(chooser, kind, value));
+            if (ctx.Source is { } source)
+                game.Emit(new ChoiceRecorded(source, Choices.Category(kind), value));
+            return ctx;
+        }
+
+        if (choose.From is [PlayerSelector players, ..])
+            return ctx with { Last = Resolver.Players(players, ctx).Select(TargetRef.Of).ToImmutableList() };
+
+        if (choose.From is [ObjectSelector objects, ..])
+        {
+            var among = objects.Filter?.With?.OfType<Related>().FirstOrDefault(x => x.Relation == Relation.Among);
+            var pool = among is not null
+                ? (Resolver.Objects(among.To, ctx) is { Count: > 0 } named ? named : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList())
+                : Resolver.Objects(objects with { Quantifier = Quantifier.All }, ctx);
+            var rest = objects.Filter with { With = objects.Filter.With?.Where(x => x != among).ToList() };
+            var candidates = pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, rest with { Zone = null }, obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx)).Select(TargetRef.Of).ToImmutableList();
+            var count = Math.Min(objects.Quantifier == Quantifier.Count ? Quantities.Evaluate(objects.Count, ctx) ?? 1 : 1, candidates.Count);
+            var picked = candidates.Count == 0 ? [] : game.Decide(new ChooseTargets(chooser, "Choose", candidates, objects.UpTo ? 0 : count, count)).Targets?.Where(candidates.Contains).Distinct().Take(count).ToImmutableList() ?? candidates.Take(count).ToImmutableList();
+            if (picked.Count < count && !objects.UpTo)
+                picked = picked.AddRange(candidates.Except(picked).Take(count - picked.Count));
+            return ctx with { Affected = picked, Last = picked, Rest = pool.Select(TargetRef.Of).Where(x => !picked.Contains(x)).ToImmutableList() };
+        }
+
+        return Skipped(game, choose, "choice", ctx);
+    }
 }

@@ -122,6 +122,18 @@ public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Color
     /// <summary>This cost with each X worth <paramref name="x"/> generic mana.</summary>
     public ManaCost WithX(int x) => this with { Generic = Generic + X * x, X = 0 };
 
+    /// <summary>This cost and <paramref name="other"/> together: kicker, additional costs.</summary>
+    public ManaCost Plus(ManaCost other)
+    {
+        var colored = Colored.ToBuilder();
+        foreach (var (color, amount) in other.Colored)
+            colored[color] = colored.GetValueOrDefault(color) + amount;
+        return new ManaCost(Generic + other.Generic, colored.ToImmutable(), Hybrid.AddRange(other.Hybrid), X + other.X, Colorless + other.Colorless);
+    }
+
+    /// <summary>This cost with <paramref name="amount"/> more generic mana, or less when negative (never below none: reductions only take generic mana).</summary>
+    public ManaCost AdjustGeneric(int amount) => this with { Generic = Math.Max(0, Generic + amount) };
+
     public override string ToString()
     {
         var parts = new List<string>();

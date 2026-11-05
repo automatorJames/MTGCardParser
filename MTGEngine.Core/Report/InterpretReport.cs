@@ -74,6 +74,7 @@ public static class InterpreterSupport
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
         typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(FlavorAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
+        typeof(ChapterAbility), typeof(AdditionalCost),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -86,6 +87,7 @@ public static class InterpreterSupport
         typeof(LookAt), typeof(Reveal), typeof(LetVariable), typeof(ForEachOf), typeof(ChoiceOf), typeof(RemoveFromCombat),
         typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
+        typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(CostModification),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -103,6 +105,7 @@ public static class InterpreterSupport
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
+        typeof(WasCastWith), typeof(Targets),
     ];
 
     static readonly HashSet<Type> _events =
@@ -112,13 +115,13 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _costs =
     [
-        typeof(PayMana), typeof(TapSelf), typeof(UntapSelf), typeof(PayLife), typeof(ActionCost), typeof(CompoundCost),
+        typeof(PayMana), typeof(TapSelf), typeof(UntapSelf), typeof(PayLife), typeof(ActionCost), typeof(CompoundCost), typeof(CostChoice),
     ];
 
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen),
     ];
 
     static readonly HashSet<Type> _durations =
@@ -139,7 +142,7 @@ public static class InterpreterSupport
         "AttacksAlone", "AttacksYou", "AttacksAPlayer", "Blocks", "BlocksOrBecomesBlocked", "BlocksACreature", "BecomesBlocked", "BecomesTapped",
         "BecomesUntapped", "DealsCombatDamageToAPlayer", "DealsCombatDamageToAPlayerOrPlaneswalker", "DealsCombatDamageToAnOpponent", "DealsCombatDamageToYou",
         "DealsCombatDamage", "DealsDamage", "DealsDamageToAPlayer", "DealsDamageToAnOpponent", "DealsDamageToACreature", "DealsDamageToYou",
-        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut",
+        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters",
     ];
 
     static readonly HashSet<string> _qualifierVocabularies =
@@ -200,7 +203,6 @@ public static class InterpreterSupport
         {
             Pump { Duration: { } duration } when !Keeps(duration) => $"Pump.Duration[{Describe(duration)}]",
             Animate { Duration: { } duration } when !Keeps(duration) => $"Animate.Duration[{Describe(duration)}]",
-            Animate { Types: { Count: > 0 } } => "Animate.Types",
             Animate { Transforms: true } => "Animate.Transforms",
             ObjectSelector { Quantifier: Quantifier.Count, Count: null } => "ObjectSelector.Count",
             PlayerSelector { Kind: PlayerKind.Chosen or PlayerKind.EnchantedPlayer or PlayerKind.NoPlayer } player => $"PlayerSelector.{player.Kind}",
@@ -242,7 +244,21 @@ public static class InterpreterSupport
             EntersBattlefield { Duration: not null } => "EntersBattlefield.Duration",
             ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",
             ReplacementAbility { Effect: AsEventHappens { When: not ObjectEvent } } => "AsEventHappens.When",
-            AsEventHappens { When: ObjectEvent happens } when happens.Events.All(x => x is not ("EntersTheBattlefield" or "EntersOrTransforms")) => $"AsEventHappens.{happens.Events.FirstOrDefault()}",
+            AsEventHappens { When: ObjectEvent happens } when happens.Events.All(x => x is not ("EntersTheBattlefield" or "EntersOrTransforms" or "Enters")) => $"AsEventHappens.{happens.Events.FirstOrDefault()}",
+            AdditionalCost { Spells: not Self } => "AdditionalCost.Spells",
+            ChooseEffect { Kinds: [var kind, ..] } when kind != "Opponent" && Choices.Category(kind) is not ("Color" or "CreatureType" or "CardName" or "LandType" or "CardType" or "OddOrEven") => $"ChooseEffect.{kind}",
+            ChooseEffect { Kinds: null or [], From: not [PlayerSelector or ObjectSelector, ..] } => "ChooseEffect.From",
+            OfChosen chosen when !Choices.Supported.Contains(chosen.Characteristic) => $"OfChosen.{chosen.Characteristic}",
+            BecomesAspect { Negated: true } => "BecomesAspect.Negated",
+            BecomesAspect { Duration: { } duration } when !Keeps(duration) => $"BecomesAspect.Duration[{Describe(duration)}]",
+            BecomesAspect aspect when aspect.Aspects.FirstOrDefault(x => !AspectHandled(x)) is { } unhandled => $"BecomesAspect[{unhandled.Vocabulary}]",
+            PreventDamage { Amount: Special { Kind: "ThatMuch" } } => "PreventDamage.ThatMuch",
+            PreventDamage { Duration: { } duration } when !Keeps(duration) => $"PreventDamage.Duration[{Describe(duration)}]",
+            CostModification { Action: not (null or "Cast") } modification => $"CostModification.{modification.Action}",
+            WasCastWith { Twice: true } => "WasCastWith.Twice",
+            WasCastWith cast when cast.How is not ("Kicked" or "AdditionalCost") => $"WasCastWith.{cast.How}",
+            Targets { Spell: not Self } => "Targets.Spell",
+            CastBy cast when cast.Relation is not ("Control" or "Cast") || cast.Relation == "Cast" && (cast.ThisTurn || cast.From is not null || cast.During is not null) => $"CastBy.{cast.Relation}{(cast.ThisTurn ? ".ThisTurn" : "")}{(cast.From is not null ? ".From" : "")}",
             Timing timing when timing.Kind is not (nameof(TimingKind.SorcerySpeed) or nameof(TimingKind.InstantSpeed) or nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once)) => $"Timing.{timing.Kind}",
             ActivationLimits { ForCasting: true } => "ActivationLimits.ForCasting",
             PayCost { Plus: not null } => "PayCost.Plus",
@@ -271,7 +287,20 @@ public static class InterpreterSupport
             GrantAbility => true,
             LoseAllAbilities => true,
             DoesntUntap { If: null } => true,
+            BecomesAspect { Duration: null, Negated: false } => true,
+            Animate { Duration: null, Transforms: false } => true,
+            PreventDamage { Duration: null, Amount: Special { Kind: "All" } or Fixed } => true,
+            CostModification { Spells: Self or ObjectSelector } => true,
             Sequence sequence => sequence.Steps.All(IsStaticHandled),
+            _ => false,
+        };
+
+    static bool AspectHandled(Term aspect) =>
+        aspect.Vocabulary switch
+        {
+            "CardType" or "CreatureType" or "LandType" or "ArtifactType" or "EnchantmentType" or "PermanentSubtype" or "ManaColor" => true,
+            "TypeDesignation" => aspect.Value is "ChosenType" or "ChosenColor",
+            nameof(ChosenCharacteristic) => aspect.Value is "ColorOfYourChoice" or "ColorOrColorsOfYourChoice" or "BasicLandTypeOfYourChoice" or "CreatureTypeOfYourChoice",
             _ => false,
         };
 

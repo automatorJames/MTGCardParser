@@ -23,7 +23,7 @@ public static class ManaPayment
             List<Color?> options = [];
             var amount = 1;
 
-            foreach (var subtype in obj.Card.Subtypes)
+            foreach (var subtype in traits.Subtypes)
                 if (Colors.OfBasicLandType(subtype) is { } color)
                     options.Add(color);
 

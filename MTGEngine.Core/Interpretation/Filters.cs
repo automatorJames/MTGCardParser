@@ -17,8 +17,16 @@ public static class Filters
         if (filter.Kinds is { Count: > 0 } kinds && !kinds.Any(kind => KindMatches(kind, obj, traits)))
             return false;
 
-        foreach (var qualifier in filter.Qualifiers ?? [])
-            if (!QualifierMatches(qualifier, obj, traits, source))
+        // "Instant and sorcery cards" names two types no card has both of: either will do.
+        var qualifiers = filter.Qualifiers ?? [];
+        var eitherSpellType = qualifiers.Count(q => q.Vocabulary == "CardType" && !q.Negated && q.Quality is "Instant" or "Sorcery") == 2;
+        foreach (var qualifier in qualifiers)
+            if (eitherSpellType && qualifier.Vocabulary == "CardType" && !qualifier.Negated && qualifier.Quality is "Instant" or "Sorcery")
+            {
+                if (!traits.Types.Contains("Instant") && !traits.Types.Contains("Sorcery"))
+                    return false;
+            }
+            else if (!QualifierMatches(qualifier, obj, traits, source))
                 return false;
 
         if (filter.Controller is { } controlled)
@@ -163,12 +171,16 @@ public static class Filters
                 return KindMatches(qualified.Kind, obj, traits) && qualified.Qualifiers.All(x => QualifierMatches(x, obj, traits, source));
             case CastBy { Relation: "Control" } cast when ctx is not null:
                 return Resolver.Players(cast.Player, ctx).Contains(obj.Controller);
+            case CastBy { Relation: "Cast", ThisTurn: false, From: null, During: null } cast:
+                return obj.Zone == Zone.Stack && (ctx is not null ? Resolver.Players(cast.Player, ctx) : Resolver.Players(state, cast.Player, you, source)).Contains(obj.Controller);
             case WithCounters counters:
                 return counters.Counters.Kind is { } kind
                     ? (counters.Counters.Count is Fixed count ? obj.CountersOf(kind) >= count.Value : obj.CountersOf(kind) > 0)
                     : obj.CounterMap.Count > 0;
             case ChosenBy:
                 return true;
+            case OfChosen chosen:
+                return Choices.Matches(chosen.Characteristic, source is { } holder ? state.Object(holder) : null, obj, traits) == true;
             case Satisfying satisfying when ctx is not null:
                 return Conditions.Evaluate(satisfying.Condition, ctx with { Subject = TargetRef.Of(obj.Id) }) == true;
             default:

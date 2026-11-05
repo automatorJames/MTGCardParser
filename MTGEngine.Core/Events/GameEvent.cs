@@ -58,6 +58,11 @@ public sealed record EffectSkipped(string Kind, string Why) : GameEvent;
 public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
+public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options) : GameEvent;
+public sealed record ShieldCreated(PreventionShield Shield) : GameEvent;
+public sealed record ShieldUsed(int Id, int Amount) : GameEvent;
+public sealed record DamagePrevented(ObjectId? Source, TargetRef Target, int Amount) : GameEvent;
+public sealed record ChoiceRecorded(ObjectId Object, string Kind, string Value) : GameEvent;
 public sealed record Scryed(PlayerId Player, ImmutableList<ObjectId> Top, ImmutableList<ObjectId> Bottom) : GameEvent;
 
 /// <summary>Applies an event to a state. The only place state changes; the rules kernel only decides which events happen.</summary>
@@ -133,6 +138,9 @@ public static class Reducer
                     Blocking = null,
                     FaceDown = false,
                     ZoneChangeCount = obj.ZoneChangeCount + 1,
+                    // A permanent spell keeps how it was cast; anything else is a new object without history.
+                    CastWith = entering && moved.From == Zone.Stack ? obj.CastWith : null,
+                    Choices = null,
                 });
                 // Attachments to something that left come off.
                 foreach (var attached in next.Objects.Values.Where(x => x.AttachedTo == obj.Id))
@@ -284,7 +292,20 @@ public static class Reducer
                 {
                     Temporary = state.Temporary.RemoveAll(x => x.UntilEndOfTurn is { } until && until <= expired.Turn),
                     Delayed = state.DelayedTriggers.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    Shields = state.ShieldList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
+
+            case ShieldCreated created:
+                return state with { Shields = state.ShieldList.Add(created.Shield with { Id = state.NextShieldId }), NextShieldId = state.NextShieldId + 1 };
+
+            case ShieldUsed used:
+            {
+                var shield = state.ShieldList.FirstOrDefault(x => x.Id == used.Id);
+                if (shield is null)
+                    return state;
+                var left = (shield.Remaining ?? 0) - used.Amount;
+                return state with { Shields = left <= 0 ? state.ShieldList.Remove(shield) : state.ShieldList.Replace(shield, shield with { Remaining = left }) };
+            }
 
             case DelayedTriggerCreated created:
                 return state with { Delayed = state.DelayedTriggers.Add(created.Trigger), NextDelayedId = Math.Max(state.NextDelayedId, created.Trigger.Id + 1) };
@@ -316,6 +337,12 @@ public static class Reducer
 
             case Attached attached:
                 return state.Object(attached.Attachment) is { } attachment ? state.WithObject(attachment with { AttachedTo = attached.To }) : state;
+
+            case CastOptionsChosen options:
+                return state.Object(options.Spell) is { } spell ? state.WithObject(spell with { CastWith = options.Options }) : state;
+
+            case ChoiceRecorded choice:
+                return state.Object(choice.Object) is { } chooser ? state.WithObject(chooser with { Choices = (chooser.Choices ?? ImmutableDictionary<string, string>.Empty).SetItem(choice.Kind, choice.Value) }) : state;
 
             case PoisonChanged poison:
             {

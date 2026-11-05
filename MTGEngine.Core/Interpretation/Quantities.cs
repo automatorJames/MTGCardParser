@@ -133,6 +133,20 @@ public static class Conditions
             }
             case Not not:
                 return !Evaluate(not.Condition, ctx);
+            case WasCastWith { Twice: false } cast:
+            {
+                var objects = Resolver.Objects(cast.Spell, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                return objects.Count == 0 ? null : objects.Any(x => x.WasCastWith(cast.How)) != cast.Negated;
+            }
+            case Targets targets when targets.Spell is Self:
+            {
+                var chosen = ctx.TargetsBySelector.Values.SelectMany(x => x).Distinct().ToList();
+                if (targets.Target is ObjectSelector { Filter: var filter })
+                    return chosen.Any(t => t.IsObject && state.Object(t.Object.Value) is { } obj && Filters.Matches(state, filter, obj, ctx.Controller, ctx.Source, ctx: ctx));
+                if (targets.Target is PlayerSelector)
+                    return chosen.Any(t => t.IsPlayer && Resolver.Players(targets.Target, ctx).Contains(t.Player.Value));
+                return null;
+            }
             case Controls controls:
             {
                 var players = Resolver.Players(controls.Player, ctx);

@@ -23,6 +23,16 @@ public static class Triggers
                     yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
         }
 
+        // A saga's chapter abilities trigger as lore counters reach their numbers.
+        if (evt is CountersChanged { Kind: "lore", Delta: > 0 } lore && after.Object(lore.Object) is { Zone: Zone.Battlefield } saga)
+        {
+            var now = saga.CountersOf("lore");
+            var was = now - lore.Delta;
+            foreach (var chapter in Characteristics.AbilitiesOf(after, saga).OfType<ChapterAbility>())
+                if (chapter.Chapters.Any(n => n > was && n <= now))
+                    yield return new PendingTrigger(saga, new TriggeredAbility(new NamedEvent("Chapter"), chapter.Effect), null, saga.Controller);
+        }
+
         foreach (var delayed in after.DelayedTriggers)
         {
             var source = (delayed.Source is { } id ? after.Object(id) ?? before.Object(id) : null)
@@ -119,7 +129,7 @@ public static class Triggers
         {
             var result = name switch
             {
-                "EntersTheBattlefield" or "EntersOrTransforms" or "EntersUntapped" when evt is ZoneMoved { To: Zone.Battlefield } entered =>
+                "EntersTheBattlefield" or "Enters" or "EntersOrTransforms" or "EntersUntapped" when evt is ZoneMoved { To: Zone.Battlefield } entered =>
                     Subject(trigger, entered.Object, source, after, before: null, under: trigger.UnderControlOf),
                 "Dies" or "IsPutIntoAGraveyardFromTheBattlefield" when evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Graveyard } died =>
                     Subject(trigger, died.Object, source, after, before),
