@@ -1,0 +1,254 @@
+namespace MTGEngine.Core;
+
+/// <summary>Quantities as numbers in the game now; null when the engine can't evaluate one.</summary>
+public static class Quantities
+{
+    public static int? Evaluate(Quantity quantity, EffectContext ctx)
+    {
+        switch (quantity)
+        {
+            case null:
+                return 1;
+            case Fixed fixedValue:
+                return fixedValue.Value;
+            case Variable { Name: "X" or "x" }:
+                return ctx.X;
+            case CountOf count:
+                return Resolver.Targets(count.Of, ctx).Count;
+            case LifeTotal life:
+                return Resolver.Players(life.Player, ctx) is [var player, ..] ? ctx.State.Player(player).Life : null;
+            case Negated negated:
+                return -Evaluate(negated.Of, ctx);
+            case Product product:
+                return Evaluate(product.Left, ctx) * Evaluate(product.Right, ctx);
+            case Arithmetic arithmetic:
+            {
+                var left = Evaluate(arithmetic.Left, ctx);
+                var right = Evaluate(arithmetic.Right, ctx);
+                return arithmetic.Operator switch
+                {
+                    "Plus" or "+" => left + right,
+                    "Minus" or "-" => left - right,
+                    _ => null,
+                };
+            }
+            case Adjusted adjusted:
+            {
+                var value = Evaluate(adjusted.Base, ctx);
+                var adjustment = adjusted.Adjustment is null ? 0 : Evaluate(adjusted.Adjustment, ctx);
+                return adjusted.Factor switch
+                {
+                    "Twice" or "Double" => value * 2 + (adjusted.Minus ? -adjustment : adjustment),
+                    null => value + (adjusted.Minus ? -adjustment : adjustment),
+                    _ => null,
+                };
+            }
+            case Scaled scaled:
+            {
+                var value = Evaluate(scaled.Base, ctx);
+                if (value is null)
+                    return null;
+                return scaled.Factor switch
+                {
+                    "Half" => scaled.Rounding == "Up" ? (value.Value + 1) / 2 : value.Value / 2,
+                    "Twice" => value * 2,
+                    "ThreeTimes" => value * 3,
+                    "AThird" => scaled.Rounding == "Up" ? (value.Value + 2) / 3 : value.Value / 3,
+                    _ => null,
+                };
+            }
+            case CharacteristicOf characteristic:
+            {
+                var objects = Resolver.Objects(characteristic.Of, ctx);
+                if (objects.Count == 0)
+                    return null;
+                var obj = ctx.State.Object(objects[0]);
+                return obj is null ? null : Filters.CharacteristicValue(characteristic.Characteristic, obj, Characteristics.Of(ctx.State, obj));
+            }
+            case Special { Kind: "ThatMany" or "ThatMuch" }:
+                return ctx.LastAmount;
+            case Special { Kind: "All" }:
+                return int.MaxValue;
+            case Bound bound:
+                return Evaluate(bound.Value, ctx);
+            case Extreme extreme:
+            {
+                var values = Resolver.Objects(extreme.Among, ctx).Select(ctx.State.Object).Where(x => x is not null).Select(x => Filters.CharacteristicValue(extreme.Characteristic, x, Characteristics.Of(ctx.State, x))).ToList();
+                if (values.Count == 0)
+                    return 0;
+                return extreme.Which == "Least" ? values.Min() : values.Max();
+            }
+            case DistinctCount distinct:
+            {
+                var objects = Resolver.Objects(distinct.Among, ctx).Select(ctx.State.Object).Where(x => x is not null).ToList();
+                return distinct.Aspect switch
+                {
+                    "Color" or "Colors" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Colors).Distinct().Count(),
+                    "CardType" or "CardTypes" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Types).Distinct().Count(),
+                    "CreatureType" or "CreatureTypes" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Subtypes).Distinct().Count(),
+                    "Name" or "Names" => objects.Select(x => x.Card.Name).Distinct().Count(),
+                    _ => null,
+                };
+            }
+            case Devotion devotion:
+            {
+                var colors = devotion.Colors.Select(Colors.OfName).Where(x => x is not null).Select(x => x.Value).ToList();
+                return ctx.State.Battlefield.Where(x => x.Controller == ctx.Controller).Sum(x => colors.Sum(c => x.Card.ManaCost.Colored.GetValueOrDefault(c)) + x.Card.ManaCost.Hybrid.Count(h => h.Any(colors.Contains)));
+            }
+            default:
+                return null;
+        }
+    }
+}
+
+/// <summary>Conditions as true or false in the game now; null when the engine can't evaluate one.</summary>
+public static class Conditions
+{
+    public static bool? Evaluate(Condition condition, EffectContext ctx)
+    {
+        var state = ctx.State;
+        switch (condition)
+        {
+            case null:
+                return true;
+            case And and:
+            {
+                bool? result = true;
+                foreach (var part in and.Conditions)
+                {
+                    var value = Evaluate(part, ctx);
+                    if (value is null)
+                        return null;
+                    result &= value;
+                }
+                return result;
+            }
+            case Not not:
+                return !Evaluate(not.Condition, ctx);
+            case Controls controls:
+            {
+                var players = Resolver.Players(controls.Player, ctx);
+                var objects = Resolver.Objects(controls.Objects, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                var count = objects.Count(x => players.Contains(x.Controller));
+                var holds = controls.Objects is ObjectSelector { Count: Bound bound } && Quantities.Evaluate(bound.Value, ctx) is { } threshold
+                    ? Filters.Compare(count, bound.Comparison, threshold)
+                    : controls.Objects is ObjectSelector { Count: Fixed { Value: 0 } } ? count == 0 : count > 0;
+                return holds != controls.Negated;
+            }
+            case CountCondition counted:
+            {
+                var count = Resolver.Targets(counted.Of, ctx).Count;
+                var threshold = Quantities.Evaluate(counted.Threshold, ctx);
+                return threshold is null ? null : Filters.Compare(count, counted.Comparison, threshold.Value);
+            }
+            case CompareCount compare:
+            {
+                var count = Quantities.Evaluate(compare.Count, ctx);
+                var threshold = Quantities.Evaluate(compare.Threshold, ctx);
+                return count is null || threshold is null ? null : Filters.Compare(count.Value, compare.Comparison, threshold.Value);
+            }
+            case ThereAre exist:
+            {
+                var objects = Resolver.Objects(exist.Objects, ctx);
+                if (exist.Objects is ObjectSelector { Count: Fixed { Value: 0 } })
+                    return objects.Count == 0;
+                if (exist.Objects is ObjectSelector { Count: Bound bound } && Quantities.Evaluate(bound.Value, ctx) is { } threshold)
+                    return Filters.Compare(objects.Count, bound.Comparison, threshold);
+                return objects.Count > 0;
+            }
+            case IsKind kind:
+            {
+                var objects = Resolver.Objects(kind.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                if (objects.Count == 0)
+                    return null;
+                var holds = objects.All(obj =>
+                {
+                    var traits = Characteristics.Of(state, obj);
+                    return kind.Kinds.Any(k => Filters.KindMatches(k, obj, traits)) && (kind.Qualified is null || Filters.Matches(state, kind.Qualified with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx));
+                });
+                return holds != kind.Negated;
+            }
+            case ObjectIs aspect:
+            {
+                var objects = Resolver.Objects(aspect.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                if (objects.Count == 0)
+                    return null;
+                var holds = objects.All(obj =>
+                {
+                    var traits = Characteristics.Of(state, obj);
+                    return aspect.Aspects.All(term => term.Vocabulary switch
+                    {
+                        "TapState" => term.Value == "Tapped" ? obj.Tapped : !obj.Tapped,
+                        "CombatState" => term.Value == "Attacking" ? obj.Attacking : term.Value == "Blocking" ? obj.Blocking is not null : false,
+                        _ => Filters.KindMatches(term, obj, traits) || Filters.QualifierMatches(new Qualifier(term.Value, Vocabulary: term.Vocabulary), obj, traits, ctx.Source),
+                    });
+                });
+                return holds != aspect.Negated;
+            }
+            case HasKeywordsCondition keywords:
+            {
+                var objects = Resolver.Objects(keywords.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                if (objects.Count == 0)
+                    return null;
+                return objects.All(obj => keywords.Keywords.All(Characteristics.Of(state, obj).HasKeyword)) != keywords.Negated;
+            }
+            case HasCountersCondition counters:
+            {
+                var holders = Resolver.Targets(counters.Holder, ctx);
+                if (holders.Count == 0)
+                    return null;
+                var holds = holders.All(holder =>
+                {
+                    var amount = holder.IsObject ? state.Object(holder.Object.Value)?.CountersOf(counters.Counters.Kind) ?? 0 : counters.Counters.Kind == "poison" ? state.Player(holder.Player.Value).Poison : 0;
+                    return counters.Counters.Count switch
+                    {
+                        Bound bound when Quantities.Evaluate(bound.Value, ctx) is { } threshold => Filters.Compare(amount, bound.Comparison, threshold),
+                        Fixed fixedValue => amount >= fixedValue.Value,
+                        _ => amount > 0,
+                    };
+                });
+                return holds != counters.Negated;
+            }
+            case IsInZone inZone:
+            {
+                var objects = Resolver.Objects(inZone.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                return objects.Count == 0 ? null : Enum.TryParse<Zone>(inZone.Place.Zone, out var zone) && objects.All(x => x.Zone == zone);
+            }
+            case ItsPhase phase:
+            {
+                var whose = Resolver.Players(phase.Phase.Whose, ctx);
+                var holds = (whose.Count == 0 || whose.Contains(state.ActivePlayer)) && (phase.Phase.Phase is null or "Turn" || StepOf(phase.Phase.Phase) == state.Step);
+                return holds != phase.Negated;
+            }
+            case Happened { Event: PlayerAction action } happened when action.Action is "GainedLife" or "LostLife":
+            {
+                var players = Resolver.Players(action.Player, ctx);
+                return players.Any(p => action.Action == "GainedLife" ? state.Player(p).LifeGainedThisTurn > 0 : state.Player(p).LifeLostThisTurn > 0);
+            }
+            case Did did:
+                return ctx.Game.LastOptionalTaken;
+            case OutcomeCondition:
+                return null;
+            default:
+                return null;
+        }
+    }
+
+    public static Step? StepOf(string phase) =>
+        phase switch
+        {
+            "Upkeep" => Step.Upkeep,
+            "Draw" or "DrawStep" => Step.Draw,
+            "EndStep" or "End" or "EndOfTurn" => Step.End,
+            "Combat" or "BeginningOfCombat" => Step.BeginCombat,
+            "DeclareAttackers" => Step.DeclareAttackers,
+            "DeclareBlockers" => Step.DeclareBlockers,
+            "CombatDamage" => Step.CombatDamage,
+            "EndOfCombat" => Step.EndCombat,
+            "Untap" => Step.Untap,
+            "Cleanup" => Step.Cleanup,
+            "MainPhase" or "PrecombatMainPhase" or "FirstMainPhase" => Step.Main1,
+            "PostcombatMainPhase" or "SecondMainPhase" => Step.Main2,
+            _ => null,
+        };
+}

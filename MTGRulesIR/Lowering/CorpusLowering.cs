@@ -32,8 +32,18 @@ public sealed class CorpusLowering
             origins.Add(lineOrigins);
         }
 
-        return (new CardRules(document.Document.Name, types, lines), origins);
+        return (new CardRules(document.Document.Name, types, lines, InfoOf(document.Document as MTGGlyphs.Data.Card)), origins);
     }
+
+    static CardInfo InfoOf(MTGGlyphs.Data.Card card) =>
+        card is null ? null : new CardInfo(
+            card.ManaCost,
+            card.Supertypes,
+            card.Subtypes,
+            card.Power,
+            card.Toughness,
+            card.Loyalty,
+            string.IsNullOrEmpty(card.Keywords) ? null : card.Keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
     public LineRules LowerLine(IDocument document, string types, ProcessedLine line) =>
         LowerLineWithOrigins(document, types, line).Rules;

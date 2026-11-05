@@ -1,0 +1,213 @@
+namespace MTGEngine.Core;
+
+/// <summary>A triggered ability that has triggered: its source, the ability, and what it triggered on.</summary>
+public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller);
+
+/// <summary>Matches the IR's trigger events against the game's events.</summary>
+public static class Triggers
+{
+    /// <summary>The triggered abilities that <paramref name="evt"/> sets off, given the state just after it (and the state just before, for leaves-the-battlefield triggers).</summary>
+    public static IEnumerable<PendingTrigger> For(GameEvent evt, GameState after, GameState before)
+    {
+        // Permanents on the battlefield now, plus the object that just left it (its own leaves/dies triggers look back).
+        var sources = after.Battlefield.ToList();
+        if (evt is ZoneMoved { From: Zone.Battlefield } left && before.Object(left.Object) is { } leaver)
+            sources.Add(leaver);
+
+        foreach (var source in sources)
+        {
+            if (after.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
+                continue;
+            foreach (var ability in source.Card.Abilities.OfType<TriggeredAbility>())
+                if (Match(ability.Trigger, evt, source, after, before) is { } matched && matched.Fires)
+                    yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
+        }
+    }
+
+    sealed record Matched(bool Fires, TargetRef? Subject = null);
+
+    static Matched Match(Event trigger, GameEvent evt, GameObject source, GameState after, GameState before)
+    {
+        switch (trigger)
+        {
+            case ObjectEvent objectEvent:
+                return MatchObjectEvent(objectEvent, evt, source, after, before);
+
+            case PhaseEvent phase when evt is StepBegan step:
+            {
+                var at = phase.At;
+                if (Conditions.StepOf(at.Phase) is not { } wanted || wanted != step.Step)
+                    return null;
+                if (at.Part == "End" && wanted != Step.End)
+                    return null;
+                var whose = at.Whose switch
+                {
+                    null => true,
+                    PlayerSelector { Kind: PlayerKind.You } => step.Player == source.Controller,
+                    PlayerSelector { Kind: PlayerKind.EachOpponent or PlayerKind.AnyOpponent or PlayerKind.YourOpponents } => step.Player != source.Controller,
+                    PlayerSelector { Kind: PlayerKind.EachPlayer or PlayerKind.AnyPlayer or PlayerKind.Players } => true,
+                    _ => false,
+                };
+                return new Matched(whose, TargetRef.Of(step.Player));
+            }
+
+            case SpellCastEvent cast when evt is SpellCast spellCast:
+            {
+                var caster = cast.Caster switch
+                {
+                    null => true,
+                    PlayerSelector { Kind: PlayerKind.You } => spellCast.Item.Controller == source.Controller,
+                    PlayerSelector { Kind: PlayerKind.EachOpponent or PlayerKind.AnyOpponent } => spellCast.Item.Controller != source.Controller,
+                    PlayerSelector => true,
+                    _ => false,
+                };
+                if (!caster || spellCast.Item.Spell is not { } spellId || after.Object(spellId) is not { } spell)
+                    return null;
+                var filter = cast.Spell is ObjectSelector selector ? selector.Filter : null;
+                if (filter is not null && !Filters.Matches(after, filter with { Zone = null }, spell, source.Controller, source.Id, source.Id == spell.Id ? null : null))
+                    return null;
+                return new Matched(true, TargetRef.Of(spellId));
+            }
+
+            case PlayerEvent playerEvent when evt is LifeChanged life:
+            {
+                var fits = playerEvent.Event switch
+                {
+                    "GainsLife" => life.Delta > 0,
+                    "LosesLife" => life.Delta < 0,
+                    "GainsOrLosesLife" => life.Delta != 0,
+                    _ => false,
+                };
+                if (!fits)
+                    return null;
+                var who = playerEvent.Player switch
+                {
+                    PlayerSelector { Kind: PlayerKind.You } => life.Player == source.Controller,
+                    PlayerSelector { Kind: PlayerKind.EachOpponent or PlayerKind.AnyOpponent } => life.Player != source.Controller,
+                    _ => true,
+                };
+                return new Matched(who, TargetRef.Of(life.Player));
+            }
+
+            case EitherEvent either:
+                foreach (var option in either.Events)
+                    if (Match(option, evt, source, after, before) is { Fires: true } matched)
+                        return matched;
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    static Matched MatchObjectEvent(ObjectEvent trigger, GameEvent evt, GameObject source, GameState after, GameState before)
+    {
+        foreach (var name in trigger.Events)
+        {
+            var result = name switch
+            {
+                "EntersTheBattlefield" or "EntersOrTransforms" or "EntersUntapped" when evt is ZoneMoved { To: Zone.Battlefield } entered =>
+                    Subject(trigger, entered.Object, source, after, before: null, under: trigger.UnderControlOf),
+                "Dies" or "IsPutIntoAGraveyardFromTheBattlefield" when evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Graveyard } died =>
+                    Subject(trigger, died.Object, source, after, before),
+                "IsPutIntoAGraveyardFromAnywhere" or "IsPutIntoAGraveyard" when evt is ZoneMoved { To: Zone.Graveyard } toGraveyard =>
+                    Subject(trigger, toGraveyard.Object, source, after, before),
+                "LeavesTheBattlefield" or "LeavesTheBattlefieldWithoutDying" when evt is ZoneMoved { From: Zone.Battlefield } leaves =>
+                    Subject(trigger, leaves.Object, source, after, before),
+                "IsPutIntoExileFromTheBattlefield" when evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Exile } exiled =>
+                    Subject(trigger, exiled.Object, source, after, before),
+                "Attacks" or "AttacksOrBlocks" or "AttacksAlone" or "AttacksYou" or "AttacksAPlayer" when evt is AttackersDeclared attackers =>
+                    name == "AttacksAlone" && attackers.Attackers.Count != 1 ? null : AnySubject(trigger, attackers.Attackers, source, after),
+                "Blocks" or "AttacksOrBlocks" or "BlocksOrBecomesBlocked" or "BlocksACreature" when evt is BlockersDeclared blockers =>
+                    AnySubject(trigger, blockers.Blocks.Keys, source, after),
+                "BecomesBlocked" or "BlocksOrBecomesBlocked" when evt is BlockersDeclared blocked =>
+                    AnySubject(trigger, blocked.Blocks.Values.Distinct(), source, after),
+                "BecomesTapped" when evt is Tapped tapped => Subject(trigger, tapped.Object, source, after, before),
+                "BecomesUntapped" when evt is Untapped untapped => Subject(trigger, untapped.Object, source, after, before),
+                "DealsCombatDamageToAPlayer" or "DealsCombatDamageToAPlayerOrPlaneswalker" or "DealsCombatDamageToAnOpponent" or "DealsCombatDamageToYou"
+                    when evt is DamageDealt { Combat: true, Target.IsPlayer: true, Source: { } dealer } combat && (name != "DealsCombatDamageToYou" || combat.Target.Player == source.Controller) && (name != "DealsCombatDamageToAnOpponent" || combat.Target.Player != source.Controller) =>
+                    Subject(trigger, dealer, source, after, before) is { Fires: true } m ? m with { Subject = combat.Target } : null,
+                "DealsCombatDamage" when evt is DamageDealt { Combat: true, Source: { } dealer2 } combat2 =>
+                    Subject(trigger, dealer2, source, after, before) is { Fires: true } m2 ? m2 with { Subject = combat2.Target } : null,
+                "DealsDamage" or "DealsDamageToAPlayer" or "DealsDamageToAnOpponent" or "DealsDamageToACreature" or "DealsDamageToYou" or "DealsDamageToAPlayerOrPlaneswalker"
+                    when evt is DamageDealt { Source: { } dealer3 } any && Recipient(name, any, source, after) =>
+                    Subject(trigger, dealer3, source, after, before) is { Fires: true } m3 ? m3 with { Subject = any.Target } : null,
+                "IsDealtDamage" or "IsDealtCombatDamage" when evt is DamageDealt { Target.IsObject: true } hit && (name == "IsDealtDamage" || hit.Combat) =>
+                    Subject(trigger, hit.Target.Object.Value, source, after, before) is { Fires: true } m4 ? m4 with { Subject = hit.Source is { } s ? TargetRef.Of(s) : null } : null,
+                "Cast" when evt is SpellCast cast && cast.Item.Spell is { } spellId =>
+                    Subject(trigger, spellId, source, after, before),
+                "Discarded" when evt is Discarded discarded =>
+                    Subject(trigger, discarded.Card, source, after, before),
+                "CountersPut" when evt is CountersChanged { Delta: > 0 } put =>
+                    Subject(trigger, put.Object, source, after, before),
+                _ => null,
+            };
+
+            if (result is { Fires: true })
+                return result;
+        }
+
+        return null;
+    }
+
+    static bool Recipient(string name, DamageDealt damage, GameObject source, GameState state) =>
+        name switch
+        {
+            "DealsDamageToAPlayer" or "DealsDamageToAPlayerOrPlaneswalker" => damage.Target.IsPlayer,
+            "DealsDamageToAnOpponent" => damage.Target.IsPlayer && damage.Target.Player != source.Controller,
+            "DealsDamageToYou" => damage.Target.Player == source.Controller,
+            "DealsDamageToACreature" => damage.Target.IsObject && state.Object(damage.Target.Object.Value)?.Card.IsCreature == true,
+            _ => true,
+        };
+
+    /// <summary>Whether the trigger's subject describes <paramref name="id"/>: the source itself, or a filter it matches.</summary>
+    static Matched Subject(ObjectEvent trigger, ObjectId id, GameObject source, GameState after, GameState before, Selector under = null)
+    {
+        var state = after.Object(id) is not null ? after : before;
+        var obj = state?.Object(id) ?? before?.Object(id);
+        if (obj is null)
+            return null;
+
+        bool fits;
+        switch (trigger.Subject)
+        {
+            case Self:
+            case null:
+                fits = id == source.Id;
+                break;
+            case ObjectSelector selector:
+            {
+                var lookback = before?.Object(id) ?? obj;
+                var zoneless = selector.Filter is null ? null : selector.Filter with { Zone = null };
+                fits = Filters.Matches(before ?? after, zoneless, lookback with { Zone = Zone.Battlefield }, source.Controller, source.Id, selector.Other ? source.Id : null)
+                    || Filters.Matches(after, zoneless, obj with { Zone = Zone.Battlefield }, source.Controller, source.Id, selector.Other ? source.Id : null);
+                if (fits && selector.Other && id == source.Id)
+                    fits = false;
+                break;
+            }
+            case Union union:
+                fits = union.Members.Any(member => Subject(trigger with { Subject = member }, id, source, after, before, under)?.Fires == true);
+                break;
+            default:
+                return null;
+        }
+
+        if (fits && (under ?? trigger.UnderControlOf) is PlayerSelector controller)
+            fits = controller.Kind switch
+            {
+                PlayerKind.You => obj.Controller == source.Controller,
+                PlayerKind.EachOpponent or PlayerKind.AnyOpponent => obj.Controller != source.Controller,
+                _ => true,
+            };
+
+        return new Matched(fits, TargetRef.Of(id));
+    }
+
+    static Matched AnySubject(ObjectEvent trigger, IEnumerable<ObjectId> ids, GameObject source, GameState after)
+    {
+        foreach (var id in ids)
+            if (Subject(trigger, id, source, after, null) is { Fires: true } matched)
+                return matched;
+        return null;
+    }
+}

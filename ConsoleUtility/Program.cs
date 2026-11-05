@@ -57,6 +57,11 @@ internal class Program
                 Lower.RunText(args[1], args.ElementAtOrDefault(2));
                 break;
 
+            // interpret rules.jsonl [out-dir]: what of the lowered corpus the engine's interpreter can execute, and the node kinds in the way.
+            case "interpret":
+                Interpret.Run(args[1], args.ElementAtOrDefault(2));
+                break;
+
             // dump out-path [definition.json|-] [every]: every corpus line as the grammar tokenizes it, capture by capture, for diffing engines.
             case "dump":
                 Dump.Run(_cardDataGetter, args[1], args.ElementAtOrDefault(2), int.TryParse(args.ElementAtOrDefault(3), out var dumpEvery) ? dumpEvery : 1);
