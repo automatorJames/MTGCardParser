@@ -88,7 +88,8 @@ public static class InterpreterSupport
         typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(CostModification),
-        typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats),
+        typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
+        typeof(Otherwise), typeof(StillOfKind), typeof(Remains),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -111,7 +112,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _events =
     [
-        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent), typeof(EffectEvent),
+        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent), typeof(EffectEvent), typeof(WouldHappen), typeof(CombatEncounterEvent),
     ];
 
     static readonly HashSet<Type> _costs =
@@ -127,7 +128,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _durations =
     [
-        typeof(ThisTurn), typeof(UntilPhase),
+        typeof(ThisTurn), typeof(UntilPhase), typeof(While), typeof(UntilThisLeaves),
     ];
 
     static readonly HashSet<Type> _other =
@@ -143,26 +144,30 @@ public static class InterpreterSupport
         "AttacksAlone", "AttacksYou", "AttacksAPlayer", "Blocks", "BlocksOrBecomesBlocked", "BlocksACreature", "BecomesBlocked", "BecomesTapped",
         "BecomesUntapped", "DealsCombatDamageToAPlayer", "DealsCombatDamageToAPlayerOrPlaneswalker", "DealsCombatDamageToAnOpponent", "DealsCombatDamageToYou",
         "DealsCombatDamage", "DealsDamage", "DealsDamageToAPlayer", "DealsDamageToAnOpponent", "DealsDamageToACreature", "DealsDamageToYou",
-        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters",
+        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters", "BecomesTarget",
     ];
 
     static readonly HashSet<string> _qualifierVocabularies =
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
         "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind",
-        "LeftoverCards", "AffectedThisWay",
+        "LeftoverCards", "AffectedThisWay", "DamageHistory",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
     [
-        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
+        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
     ];
 
     /// <summary>The names of the nodes under <paramref name="root"/> (itself included) that the interpreter can't handle.</summary>
     public static IEnumerable<string> Unsupported(IrNode root)
     {
+        var replaced = new HashSet<IrNode>(ReferenceEqualityComparer.Instance);
         foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
-            if (Problem(node) is { } problem)
+            if (node is Replacement replacement && Game.DamageReplacement(replacement) is not null)
+                replaced.Add(replacement.Instead is Sequence { Steps: [var first, ..] } ? first : replacement.Instead);
+        foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
+            if (!replaced.Contains(node) && Problem(node) is { } problem)
                 yield return problem;
     }
 
@@ -208,7 +213,7 @@ public static class InterpreterSupport
             Animate { Transforms: true } => "Animate.Transforms",
             ObjectSelector { Quantifier: Quantifier.Count, Count: null } => "ObjectSelector.Count",
             PlayerSelector { Kind: PlayerKind.Chosen or PlayerKind.EnchantedPlayer or PlayerKind.NoPlayer } player => $"PlayerSelector.{player.Kind}",
-            Special { Kind: not ("ThatMany" or "ThatMuch" or "All" or "AnyNumber") } special => $"Special.{special.Kind}",
+            Special { Kind: not ("ThatMany" or "ThatMuch" or "All" or "AnyNumber" or "OneOrMore") } special => $"Special.{special.Kind}",
             Variable { Name: not ("X" or "x") } variable => $"Variable.{variable.Name}",
             ObjectEvent objectEvent when objectEvent.Events.All(x => !_objectEvents.Contains(x)) => $"ObjectEvent.{objectEvent.Events.FirstOrDefault()}",
             ObjectEvent { While: not null } => "ObjectEvent.While",
@@ -232,7 +237,9 @@ public static class InterpreterSupport
             ManaChoice { Choice: not ("AnyColor" or "AnyOneColor") } choice => $"ManaChoice.{choice.Choice}",
             DealDamage { Divided: not null } => "DealDamage.Divided",
             Destroy { Manner: not (null or "CantBeRegenerated") } destroy => $"Destroy.{destroy.Manner}",
-            Exile { Until: not null } => "Exile.Until",
+            Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
+            CombatEncounterEvent encounter when !Triggers.EncounterKinds.Contains(encounter.Encounter) => $"CombatEncounterEvent.{encounter.Encounter}",
+            Remains remains when remains.State is not ("Tapped" or "Untapped" or "OnTheBattlefield" or "Exiled") => $"Remains.{remains.State}",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
             TriggeredAbility { If: { } condition } when Problem(condition) is { } problem => problem,
             KeywordAction action when action.Actions.Any(x => !KeywordActions.Supported.Contains(x.Keyword)) => $"KeywordAction.{action.Actions.First(x => !KeywordActions.Supported.Contains(x.Keyword)).Keyword}",
@@ -254,7 +261,11 @@ public static class InterpreterSupport
             SearchLibrary { Zones: not (null or "Library") } search => $"SearchLibrary.{search.Zones}",
             EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
             EntersBattlefield { Duration: not null } => "EntersBattlefield.Duration",
-            ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",
+            ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens or Replacement) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",
+            Replacement replacement when Game.DamageReplacement(replacement) is null && Game.ZoneReplacementOf(replacement) is null => $"Replacement[{replacement.Would?.GetType().Name}{(replacement.Would is WouldHappen { What: var what } ? "." + what?.GetType().Name : "")}]",
+            Replacement { Duration: { } duration } when !Keeps(duration) => $"Replacement.Duration[{Describe(duration)}]",
+            WouldHappen { What: not DealDamage } would => $"WouldHappen.{would.What?.GetType().Name}",
+            Qualifier { Vocabulary: "DamageHistory", Quality: not "DealtDamageThisWay" } history => $"Qualifier[DamageHistory.{history.Quality}]",
             ReplacementAbility { Effect: AsEventHappens { When: not ObjectEvent } } => "AsEventHappens.When",
             AsEventHappens { When: ObjectEvent happens } when happens.Events.All(x => x is not ("EntersTheBattlefield" or "EntersOrTransforms" or "Enters")) => $"AsEventHappens.{happens.Events.FirstOrDefault()}",
             AdditionalCost { Spells: not Self } => "AdditionalCost.Spells",
@@ -282,7 +293,7 @@ public static class InterpreterSupport
     }
 
     static bool HappenedHandled(Happened happened) =>
-        happened switch
+        History.Supported(happened) || happened switch
         {
             { Event: NamedEvent { Kind: "YouAttacked" }, Span: "ThisTurn" or null } => true,
             { Event: PlayerAction { Action: "Cast", What: null or ObjectSelector { Filter: null or { Qualifiers: null, With: null } } }, Span: "ThisTurn" or null } => true,
@@ -325,6 +336,7 @@ public static class InterpreterSupport
             UntilPhase { Phase.Phase: "EndOfTurn" or "EndStep" or "Cleanup" or "End" } => true,
             UntilPhase { Phase.Phase: "Turn", Phase.Next: true } => true,
             UntilPhase { Phase.Phase: "Untap" or "Upkeep" or "YourNextTurn" } => true,
+            While or UntilThisLeaves => true,
             _ => false,
         };
 

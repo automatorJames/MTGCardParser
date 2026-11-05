@@ -60,6 +60,8 @@ public sealed class CorpusLowering
             ActivatedAbility activated => activated with { Effect = Then(activated.Effect, next) },
             LoyaltyAbility loyalty => loyalty with { Effect = Then(loyalty.Effect, next) },
             ChapterAbility chapter => chapter with { Effect = Then(chapter.Effect, next) },
+            // "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from it."
+            ReplacementAbility { Effect: Replacement replacement } => new ReplacementAbility(replacement with { Instead = Then(replacement.Instead, next) }),
             LabeledAbility labeled when Continue(labeled.Ability, next) is { } inner => labeled with { Ability = inner },
             FlavorAbility flavor when Continue(flavor.Ability, next) is { } inner => flavor with { Ability = inner },
             _ => null,

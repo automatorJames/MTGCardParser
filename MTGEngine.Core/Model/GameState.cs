@@ -59,7 +59,20 @@ public sealed record StackItem(
 public enum StackKind { Spell, Activated, Triggered }
 
 /// <summary>A pump or keyword grant that lasts until a turn ends (or forever, for one with no end).</summary>
-public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false, TypeChange TypeChange = null, ImmutableList<CombatRule> CombatRules = null);
+public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false, TypeChange TypeChange = null, ImmutableList<CombatRule> CombatRules = null,
+    Condition While = null, ObjectId? WhileSource = null, PlayerId? WhileController = null, int WhileSourceZoneChanges = -1)
+{
+    /// <summary>Whether a lasting effect is in force: "for as long as you control this creature" holds, and "until this leaves the battlefield" hasn't happened.</summary>
+    public bool ActiveIn(GameState state)
+    {
+        if (WhileSourceZoneChanges >= 0 && (WhileSource is not { } holder || state.Object(holder) is not { Zone: Zone.Battlefield } source || source.ZoneChangeCount != WhileSourceZoneChanges))
+            return false;
+        return While is null || Characteristics.Judging(() => Conditions.Evaluate(While, EffectContext.Snapshot(state, WhileController ?? default, WhileSource))) == true;
+    }
+}
+
+/// <summary>A link from a permanent to what it exiled "until this leaves the battlefield".</summary>
+public sealed record LinkedExile(ObjectId Source, int SourceZoneChanges, ImmutableList<(ObjectId Card, int ZoneChangeCount)> Exiled);
 
 /// <summary>A trigger an effect set up for later: "when that creature dies this turn, …". One-shot; gone after it fires or its turn ends.</summary>
 public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn);
@@ -128,8 +141,20 @@ public sealed record GameState(
     int NextDelayedId = 1,
     ImmutableList<PreventionShield> Shields = null,
     int NextShieldId = 1,
-    ImmutableList<PlayPermission> Permissions = null)
+    ImmutableList<PlayPermission> Permissions = null,
+    ImmutableList<ZoneReplacement> ZoneReplacements = null,
+    ImmutableList<GameEvent> ThisTurnEvents = null,
+    ImmutableList<GameEvent> LastTurnEvents = null,
+    ImmutableList<LinkedExile> LinkedExiles = null)
 {
+    public ImmutableList<LinkedExile> LinkedExileList => LinkedExiles ?? ImmutableList<LinkedExile>.Empty;
+
+    /// <summary>What happened this turn and last turn, for "if a creature died this turn" (see <see cref="History"/>).</summary>
+    public ImmutableList<GameEvent> ThisTurnEventList => ThisTurnEvents ?? ImmutableList<GameEvent>.Empty;
+    public ImmutableList<GameEvent> LastTurnEventList => LastTurnEvents ?? ImmutableList<GameEvent>.Empty;
+
+    public ImmutableList<ZoneReplacement> ZoneReplacementList => ZoneReplacements ?? ImmutableList<ZoneReplacement>.Empty;
+
     public ImmutableList<PlayPermission> PermissionList => Permissions ?? ImmutableList<PlayPermission>.Empty;
 
     public ImmutableList<PreventionShield> ShieldList => Shields ?? ImmutableList<PreventionShield>.Empty;

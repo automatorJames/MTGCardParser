@@ -27,7 +27,10 @@ public sealed record CardDefinition(
     {
         var info = rules.Info ?? new CardInfo();
         var cost = ManaCost.Parse(info.ManaCost);
-        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap))).ToImmutableList();
+        var spell = rules.Types?.Contains("Instant") == true || rules.Types?.Contains("Sorcery") == true;
+        // On an instant or sorcery, "if that creature would die this turn, exile it instead" is set up as the spell resolves.
+        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap)
+            .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x))).ToImmutableList();
         var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
             .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).Select(x => Normalize(x.Keyword)))
             .ToImmutableHashSet();

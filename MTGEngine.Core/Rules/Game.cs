@@ -22,6 +22,9 @@ public sealed partial class Game
     public int Seed { get; }
     public Queue<PlayerId> ExtraTurns { get; } = new();
     public bool LastOptionalTaken { get; set; }
+
+    /// <summary>Whether the last condition an effect checked held, for the "otherwise" after it.</summary>
+    public bool LastConditionHeld { get; set; }
     public Dictionary<string, int> Skips { get; } = new();
     public int MaxHandSize { get; init; } = 7;
 
@@ -655,7 +658,7 @@ public sealed partial class Game
             return;
         }
         Emit(new Countered(item.Id));
-        MoveToZone(spell, Zone.Graveyard);
+        MoveToZone(spell, State.Object(spell) is { } countered ? Redirect(countered, Zone.Graveyard, countered: true) : Zone.Graveyard);
     }
 
     // ---- State-based actions and triggers -----------------------------------------------------------------------
@@ -757,6 +760,9 @@ public sealed partial class Game
         List<PendingTrigger> triggered = [];
         foreach (var (evt, before, after) in pending)
             triggered.AddRange(Triggers.For(evt, after, before));
+        // "Whenever one or more creatures die" triggers once for all that happened together.
+        var once = new HashSet<(ObjectId, TriggeredAbility)>();
+        triggered.RemoveAll(x => x.Ability.Trigger is ObjectEvent { Subject: ObjectSelector { Count: Special { Kind: "OneOrMore" } } } && !once.Add((x.Source.Id, x.Ability)));
 
         if (triggered.Count == 0)
             return false;
@@ -798,13 +804,24 @@ public sealed partial class Game
         var obj = State.Object(id);
         if (obj is null)
             return;
+        zone = Redirect(obj, zone, countered: false);
         var to = controller ?? (zone == Zone.Battlefield ? obj.Controller : obj.Owner);
 
         List<Effect> onEntry = [];
         if (zone == Zone.Battlefield)
             tapped |= EntryReplacements(obj, to, onEntry);
 
-        Emit(new ZoneMoved(id, obj.Zone, zone, to, tapped, position, attachTo is not null, attachTo));
+        Emit(new ZoneMoved(id, obj.Zone, zone, to, tapped, position, attachTo is not null, attachTo, obj.Zone == Zone.Battlefield ? obj.Controller : null));
+
+        // What this permanent exiled "until it leaves the battlefield" comes back.
+        if (obj.Zone == Zone.Battlefield && zone != Zone.Battlefield)
+            foreach (var link in State.LinkedExileList.Where(x => x.Source == id && x.SourceZoneChanges == obj.ZoneChangeCount).ToList())
+            {
+                Emit(new LinkedExileEnded(id));
+                foreach (var (card, changes) in link.Exiled)
+                    if (State.Object(card) is { Zone: Zone.Exile } exiled && exiled.ZoneChangeCount == changes)
+                        MoveToZone(card, Zone.Battlefield, exiled.Owner);
+            }
 
         if (zone == Zone.Battlefield)
         {

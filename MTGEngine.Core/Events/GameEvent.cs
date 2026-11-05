@@ -13,7 +13,7 @@ public sealed record StepBegan(Step Step, PlayerId Player) : GameEvent;
 public sealed record PriorityGiven(PlayerId Player) : GameEvent;
 public sealed record Passed(PlayerId Player) : GameEvent;
 public sealed record ObjectCreated(GameObject Object, ImmutableList<ObjectId> LibraryOrder = null) : GameEvent;
-public sealed record ZoneMoved(ObjectId Object, Zone From, Zone To, PlayerId Controller, bool Tapped = false, int Position = -1, bool Attached = false, ObjectId? AttachTo = null) : GameEvent;
+public sealed record ZoneMoved(ObjectId Object, Zone From, Zone To, PlayerId Controller, bool Tapped = false, int Position = -1, bool Attached = false, ObjectId? AttachTo = null, PlayerId? LeftController = null) : GameEvent;
 public sealed record ObjectCeased(ObjectId Object) : GameEvent;
 public sealed record LibraryShuffled(PlayerId Player, ImmutableList<ObjectId> Order) : GameEvent;
 public sealed record Drew(PlayerId Player, ObjectId? Card) : GameEvent;
@@ -59,6 +59,9 @@ public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options) : GameEvent;
+public sealed record LinkedExileCreated(LinkedExile Link) : GameEvent;
+public sealed record LinkedExileEnded(ObjectId Source) : GameEvent;
+public sealed record ZoneReplacementCreated(ZoneReplacement Replacement) : GameEvent;
 public sealed record PermissionGranted(PlayPermission Permission) : GameEvent;
 public sealed record ShieldCreated(PreventionShield Shield) : GameEvent;
 public sealed record ShieldUsed(int Id, int Amount) : GameEvent;
@@ -70,6 +73,14 @@ public sealed record Scryed(PlayerId Player, ImmutableList<ObjectId> Top, Immuta
 public static class Reducer
 {
     public static GameState Apply(GameState state, GameEvent evt)
+    {
+        var next = ApplyCore(state, evt);
+        if (evt is TurnBegan)
+            return next with { LastTurnEvents = state.ThisTurnEventList, ThisTurnEvents = ImmutableList<GameEvent>.Empty };
+        return History.Kept(evt) ? next with { ThisTurnEvents = next.ThisTurnEventList.Add(evt) } : next;
+    }
+
+    static GameState ApplyCore(GameState state, GameEvent evt)
     {
         switch (evt)
         {
@@ -295,7 +306,17 @@ public static class Reducer
                     Delayed = state.DelayedTriggers.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     Shields = state.ShieldList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     Permissions = state.PermissionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    ZoneReplacements = state.ZoneReplacementList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
+
+            case LinkedExileCreated linked:
+                return state with { LinkedExiles = state.LinkedExileList.Add(linked.Link) };
+
+            case LinkedExileEnded ended:
+                return state with { LinkedExiles = state.LinkedExileList.RemoveAll(x => x.Source == ended.Source) };
+
+            case ZoneReplacementCreated replacement:
+                return state with { ZoneReplacements = state.ZoneReplacementList.Add(replacement.Replacement) };
 
             case PermissionGranted granted:
                 return state with { Permissions = state.PermissionList.Add(granted.Permission) };

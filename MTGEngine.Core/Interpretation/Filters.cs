@@ -46,7 +46,7 @@ public static class Filters
         else if (filter.Kinds is null || filter.Kinds.All(x => x.Vocabulary != nameof(ObjectKind) || x.Value is nameof(ObjectKind.Permanent) or nameof(ObjectKind.Any)))
         {
             // A filter with no zone describes permanents, unless it names cards or spells.
-            if (obj.Zone != Zone.Battlefield && !(filter.Kinds?.Any(x => x.Value is nameof(ObjectKind.Spell) or nameof(ObjectKind.Card)) ?? false))
+            if (obj.Zone != Zone.Battlefield && !(filter.Kinds?.Any(x => x.Value is nameof(ObjectKind.Spell) or nameof(ObjectKind.Card) or nameof(ObjectKind.Source)) ?? false))
                 return false;
         }
 
@@ -79,6 +79,7 @@ public static class Filters
             "Supertype" => obj.Card.Supertypes.Contains(kind.Value),
             "PermanentKind" => traits.Types.Contains(kind.Value) || traits.Subtypes.Contains(kind.Value),
             "PermanentDesignation" => Designated(state, obj, kind.Value),
+            "ManaColor" => Colors.OfName(kind.Value) is { } color ? traits.Colors.Contains(color) : kind.Value == "Colorless" && traits.Colors.Count == 0,
             _ => false,
         };
 
@@ -120,8 +121,8 @@ public static class Filters
             {
                 "Attacking" => obj.Attacking,
                 "Blocking" => obj.Blocking is not null,
-                "Blocked" => false,
-                "Unblocked" => obj.Attacking,
+                "Blocked" => state is not null && History.WasBlocked(state, obj.Id),
+                "Unblocked" => obj.Attacking && (state is null || !History.WasBlocked(state, obj.Id)),
                 "AttackingAlone" => obj.Attacking,
                 _ => false,
             },
@@ -141,7 +142,7 @@ public static class Filters
             "CounterKind" => true,
             "PermanentDesignation" => Designated(state, obj, qualifier.Quality),
             // Leftovers and "… this way" name a pool the resolver supplies; within it they hold.
-            "LeftoverCards" or "AffectedThisWay" => true,
+            "LeftoverCards" or "AffectedThisWay" or "DamageHistory" => true,
             _ => false,
         };
 

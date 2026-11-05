@@ -264,6 +264,8 @@ public static class Conditions
                 var holds = (whose.Count == 0 || whose.Contains(state.ActivePlayer)) && (phase.Phase.Phase is null or "Turn" || StepOf(phase.Phase.Phase) == state.Step);
                 return holds != phase.Negated;
             }
+            case Happened history when History.Supported(history):
+                return History.Evaluate(history, ctx);
             case Happened { Event: PlayerAction action } happened when action.Action is "GainedLife" or "LostLife":
             {
                 var players = Resolver.Players(action.Player, ctx);
@@ -278,6 +280,20 @@ public static class Conditions
                     players = state.PlayersInGame.ToImmutableList();
                 var spells = players.Sum(p => state.Player(p).SpellsCastThisTurn);
                 return cast.Count is Bound bound && Quantities.Evaluate(bound.Value, ctx) is { } threshold ? Filters.Compare(spells, bound.Comparison, threshold) : spells > 0;
+            }
+            case Did { Effect: Remains remains }:
+            {
+                var objects = Resolver.Objects(remains.Objects, ctx).Select(state.Object).ToList();
+                if (objects.Count == 0)
+                    return false;
+                return objects.All(x => x is not null && remains.State switch
+                {
+                    "Tapped" => x.Zone == Zone.Battlefield && x.Tapped,
+                    "Untapped" => x.Zone == Zone.Battlefield && !x.Tapped,
+                    "OnTheBattlefield" => x.Zone == Zone.Battlefield,
+                    "Exiled" => x.Zone == Zone.Exile,
+                    _ => false,
+                });
             }
             case Did:
                 return ctx.Game?.LastOptionalTaken;

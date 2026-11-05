@@ -34,6 +34,14 @@ public sealed record Characteristics(
 
     public static bool IsLandType(string subtype) => _landTypes.Contains(subtype);
 
+    /// <summary>Runs a condition judged inside characteristics (a lasting effect's "for as long as"), where nested characteristics leave statics out so it can't recurse.</summary>
+    public static T Judging<T>(Func<T> judge)
+    {
+        _judgingCondition++;
+        try { return judge(); }
+        finally { _judgingCondition--; }
+    }
+
     public static Characteristics Of(GameState state, GameObject obj, bool withStatics = true)
     {
         // A static's condition is judged on characteristics without statics, so conditions can't recurse into themselves.
@@ -50,7 +58,7 @@ public sealed record Characteristics(
         var colors = card.Colors;
         var lost = false;
 
-        var temporary = state.Temporary.Where(x => x.Target == obj.Id).ToList();
+        var temporary = state.Temporary.Where(x => x.Target == obj.Id && x.ActiveIn(state)).ToList();
         var statics = withStatics ? StaticEffects(state).Where(x => Applies(state, x.Objects, x.Source, obj)).ToList() : [];
 
         // Types, subtypes and colors (layers 4 and 5): statics, then effects for a while in the order they began.
@@ -225,7 +233,7 @@ public sealed record Characteristics(
             if (state.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
                 continue;
             // Printed and temporarily granted statics; statics granted by other statics would recurse, so only those.
-            var abilities = source.Card.Abilities.Concat(state.Temporary.Where(x => x.Target == source.Id).SelectMany(x => x.Abilities ?? []));
+            var abilities = source.Card.Abilities.Concat(state.Temporary.Where(x => x.Target == source.Id && x.ActiveIn(state)).SelectMany(x => x.Abilities ?? []));
             foreach (var ability in abilities.OfType<StaticAbility>())
             {
                 if (ability.While is { } condition)

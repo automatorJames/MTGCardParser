@@ -19,7 +19,12 @@ public static class Triggers
             if (after.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
                 continue;
             foreach (var ability in Characteristics.AbilitiesOf(after, source).OfType<TriggeredAbility>())
-                if (Match(ability.Trigger, evt, source, after, before) is { } matched && matched.Fires)
+                if (ability.Trigger is CombatEncounterEvent encounter)
+                {
+                    foreach (var other in Encounters(encounter, evt, source, after))
+                        yield return new PendingTrigger(source, ability, other, source.Controller);
+                }
+                else if (Match(ability.Trigger, evt, source, after, before) is { } matched && matched.Fires)
                     yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
         }
 
@@ -50,6 +55,47 @@ public static class Triggers
     }
 
     sealed record Matched(bool Fires, TargetRef? Subject = null);
+
+    static StackItem ItemOf(GameEvent evt) =>
+        evt switch
+        {
+            SpellCast cast => cast.Item,
+            AbilityActivated activated => activated.Item,
+            Triggered triggered => triggered.Item,
+            _ => null,
+        };
+
+    static ImmutableList<TargetRef> TargetsOf(GameEvent evt) => ItemOf(evt)?.Targets ?? [];
+
+    /// <summary>"Whenever this creature blocks or becomes blocked by a nonblack creature": each pairing in a block declaration, with the other creature as the subject.</summary>
+    static IEnumerable<TargetRef> Encounters(CombatEncounterEvent encounter, GameEvent evt, GameObject source, GameState after)
+    {
+        if (evt is not BlockersDeclared blocks)
+            yield break;
+        bool IsSubject(ObjectId id) => encounter.Subject switch
+        {
+            Self or null => id == source.Id,
+            ObjectSelector selector => after.Object(id) is { } obj && Filters.Matches(after, selector.Filter, obj, source.Controller, source.Id),
+            _ => false,
+        };
+        bool IsOther(ObjectId id) => encounter.Other switch
+        {
+            null => true,
+            ObjectSelector selector => after.Object(id) is { } obj && Filters.Matches(after, selector.Filter, obj, source.Controller, source.Id),
+            _ => false,
+        };
+        var blocking = encounter.Encounter is "Blocks" or "BlocksOrBecomesBlockedBy";
+        var blocked = encounter.Encounter is "BecomesBlockedBy" or "BlocksOrBecomesBlockedBy";
+        foreach (var (blocker, attacker) in blocks.Blocks)
+        {
+            if (blocking && IsSubject(blocker) && IsOther(attacker))
+                yield return TargetRef.Of(attacker);
+            if (blocked && IsSubject(attacker) && IsOther(blocker))
+                yield return TargetRef.Of(blocker);
+        }
+    }
+
+    public static readonly ImmutableHashSet<string> EncounterKinds = ["Blocks", "BecomesBlockedBy", "BlocksOrBecomesBlockedBy"];
 
     /// <summary>Whether <paramref name="player"/> is who a trigger's player selector names, from <paramref name="source"/>'s controller's side.</summary>
     static bool PlayerIs(Selector selector, PlayerId player, GameObject source) =>
@@ -191,6 +237,10 @@ public static class Triggers
                     Subject(trigger, discarded.Card, source, after, before),
                 "CountersPut" when evt is CountersChanged { Delta: > 0 } put =>
                     Subject(trigger, put.Object, source, after, before),
+                "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted =>
+                    targeted.Where(x => x.IsObject).Select(x => Subject(trigger, x.Object.Value, source, after, before)).FirstOrDefault(x => x is { Fires: true }) is { } hit
+                        ? hit with { Subject = ItemOf(evt)?.Spell is { } spell ? TargetRef.Of(spell) : hit.Subject }
+                        : null,
                 _ => null,
             };
 

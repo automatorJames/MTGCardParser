@@ -13,6 +13,13 @@ public static class InsteadRewrite
     {
         var list = abilities.Select(RewriteAbility).ToList();
         for (var i = 1; i < list.Count; i++)
+            if (list[i] is SpellAbility { Effect: StillOfKind { Kinds: [var kind, ..] } } && list[i - 1] is SpellAbility before)
+            {
+                list[i - 1] = new SpellAbility(Still(before.Effect, kind));
+                list.RemoveAt(i);
+                i--;
+            }
+        for (var i = 1; i < list.Count; i++)
             if (list[i] is SpellAbility { Effect: var effect } && IsInstead(effect) && list[i - 1] is SpellAbility previous)
             {
                 list[i - 1] = new SpellAbility(Merge(previous.Effect, (Conditional)effect));
@@ -33,11 +40,30 @@ public static class InsteadRewrite
             _ => ability,
         };
 
+    /// <summary>"Becomes a 3/3 elemental creature. It's still a land.": the animation keeps the kind.</summary>
+    static Effect Still(Effect effect, string kind) =>
+        effect switch
+        {
+            Animate animate => animate with { Still = animate.Still ?? kind },
+            Lasting lasting => lasting with { Effect = Still(lasting.Effect, kind) },
+            Optional optional => optional with { Effect = Still(optional.Effect, kind) },
+            Conditional conditional => conditional with { Then = Still(conditional.Then, kind) },
+            Sequence sequence when sequence.Steps.Count > 0 => new Sequence([.. sequence.Steps.Take(sequence.Steps.Count - 1), Still(sequence.Steps[^1], kind)]),
+            _ => effect,
+        };
+
     static Effect RewriteEffect(Effect effect)
     {
         if (effect is not Sequence sequence)
             return effect;
         var steps = sequence.Steps.Select(RewriteEffect).ToList();
+        for (var i = 1; i < steps.Count; i++)
+            if (steps[i] is StillOfKind { Kinds: [var kind, ..] })
+            {
+                steps[i - 1] = Still(steps[i - 1], kind);
+                steps.RemoveAt(i);
+                i--;
+            }
         for (var i = 1; i < steps.Count; i++)
             if (IsInstead(steps[i]) && !IsInstead(steps[i - 1]))
             {

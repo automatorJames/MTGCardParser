@@ -42,8 +42,16 @@ public static class Interpreter
                     game.Skip(conditional.If, "condition not evaluable");
                     return ctx;
                 }
+                game.LastConditionHeld = holds.Value;
                 return holds.Value ? Execute(conditional.Then, ctx) : Execute(conditional.Else, ctx);
             }
+
+            case Otherwise otherwise:
+                return game.LastConditionHeld ? ctx : Execute(otherwise.Effect, ctx);
+
+            // "It's still a land" is folded into the animation before it (see CardDefinition); alone it changes nothing.
+            case StillOfKind:
+                return ctx;
 
             case Lasting lasting:
                 return Execute(WithDuration(lasting.Effect, lasting.Duration), ctx);
@@ -141,6 +149,12 @@ public static class Interpreter
                 var objects = Resolver.Objects(exile.Objects, ctx);
                 foreach (var id in objects)
                     game.MoveToZone(id, Zone.Exile);
+                if (exile.Until is UntilThisLeaves && ctx.Source is { } keeper && game.State.Object(keeper) is { Zone: Zone.Battlefield } holder)
+                {
+                    var exiled = objects.Select(game.State.Object).Where(x => x is { Zone: Zone.Exile }).Select(x => (x.Id, x.ZoneChangeCount)).ToImmutableList();
+                    if (exiled.Count > 0)
+                        game.Emit(new LinkedExileCreated(new LinkedExile(keeper, holder.ZoneChangeCount, exiled)));
+                }
                 return ctx with { Affected = objects.Select(TargetRef.Of).ToImmutableList(), Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
@@ -222,7 +236,7 @@ public static class Interpreter
                             if (copy.Tapped)
                                 game.Tap(token);
                             if (copy.Stats is { } stats)
-                                game.Emit(new TemporaryEffectAdded(new TemporaryEffect(token, 0, 0, [], null, stats)));
+                                game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(token, 0, 0, [], null, stats), effect, ctx)));
                             foreach (var exception in copy.Exceptions ?? [])
                                 Execute(exception, ctx with { Source = token, Last = [TargetRef.Of(token)] });
                             copies.Add(TargetRef.Of(token));
@@ -263,7 +277,7 @@ public static class Interpreter
                 if (until is null && pump.Duration is not null)
                     return Skipped(game, pump, $"duration {pump.Duration.GetType().Name}", ctx);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, power, toughness, pump.Remove ? [] : keywords, until == -1 ? null : until, pump.BaseStats)));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, power, toughness, pump.Remove ? [] : keywords, until == -1 ? null : until, pump.BaseStats), effect, ctx)));
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
@@ -271,7 +285,7 @@ public static class Interpreter
             {
                 var objects = Resolver.Objects(lose.Objects, ctx);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], null, LosesAbilities: true)));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], null, LosesAbilities: true), effect, ctx)));
                 return ctx;
             }
 
@@ -286,7 +300,7 @@ public static class Interpreter
                 var stats = animate.BaseStats ?? (animate.Power is not null || animate.Toughness is not null ? new StatsMod(Evaluated(animate.Power, ctx), Evaluated(animate.Toughness, ctx)) : null);
                 var change = TypeChange.OfAnimate(animate);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, (animate.Keywords ?? []).Select(x => x.Keyword).ToImmutableList(), until == -1 ? null : until, stats, TypeChange: change)));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, (animate.Keywords ?? []).Select(x => x.Keyword).ToImmutableList(), until == -1 ? null : until, stats, TypeChange: change), effect, ctx)));
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
@@ -301,12 +315,17 @@ public static class Interpreter
                     return Skipped(game, aspect, "aspect", ctx);
                 var objects = aspect.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(aspect.Objects, ctx);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, TypeChange: change)));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, TypeChange: change), effect, ctx)));
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
             case ChooseEffect choose:
                 return Choose(choose, ctx);
+
+            case Replacement replacement:
+                if (!game.CreateReplacement(replacement, ctx))
+                    return Skipped(game, replacement, "replacement", ctx);
+                return ctx;
 
             case PreventDamage prevent:
                 if (prevent.Amount is Special { Kind: "ThatMuch" })
@@ -513,7 +532,7 @@ public static class Interpreter
             {
                 var objects = cantRegenerate.Objects is null ? (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList() : Resolver.Objects(cantRegenerate.Objects, ctx);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], state.Turn, Restrictions: ["BeRegenerated"])));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], state.Turn, Restrictions: ["BeRegenerated"]), effect, ctx)));
                 return ctx;
             }
 
@@ -527,7 +546,7 @@ public static class Interpreter
                 if (until is null)
                     return Skipped(game, cantBe, "duration", ctx);
                 foreach (var id in Resolver.Objects(cantBe.Objects, ctx))
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: [restriction])));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: [restriction]), effect, ctx)));
                 return ctx;
             }
 
@@ -536,7 +555,7 @@ public static class Interpreter
                 var objects = must.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(must.Objects, ctx);
                 var until = must.Period is "ThisTurn" ? state.Turn : (int?)null;
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until, Restrictions: must.Actions.Select(x => "Must" + x).ToImmutableList())));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until, Restrictions: must.Actions.Select(x => "Must" + x).ToImmutableList()), effect, ctx)));
                 return ctx;
             }
 
@@ -550,7 +569,7 @@ public static class Interpreter
                 {
                     var traits = state.Object(id) is { } obj ? Characteristics.Of(state, obj) : null;
                     var stats = new StatsMod(set.Which is "Toughness" ? new Fixed(traits?.Power ?? 0) : new Fixed(amount.Value), set.Which is "Power" ? new Fixed(traits?.Toughness ?? 0) : new Fixed(amount.Value));
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], null, stats)));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], null, stats), effect, ctx)));
                 }
                 return ctx;
             }
@@ -629,11 +648,11 @@ public static class Interpreter
                 {
                     var rules = restriction.Cant.Select(cant => new CombatRule(cant, restriction.By, restriction.If, restriction.Modifiers, restriction.Recipient, ctx.Source ?? default, ctx.Controller)).ToImmutableList();
                     foreach (var id in objects)
-                        game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, CombatRules: rules)));
+                        game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, CombatRules: rules), effect, ctx)));
                     return ctx;
                 }
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: restriction.Cant.ToImmutableList())));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: restriction.Cant.ToImmutableList()), effect, ctx)));
                 return ctx;
             }
 
@@ -641,7 +660,7 @@ public static class Interpreter
             {
                 var objects = grant.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(grant.Objects, ctx);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, (grant.Alongside ?? []).Select(x => x.Keyword).ToImmutableList(), null, Abilities: [grant.Ability])));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, (grant.Alongside ?? []).Select(x => x.Keyword).ToImmutableList(), null, Abilities: [grant.Ability]), effect, ctx)));
                 return ctx;
             }
 
@@ -690,7 +709,7 @@ public static class Interpreter
             {
                 var objects = Resolver.Objects(doesnt.Objects, ctx);
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], state.Turn + 1, DoesntUntap: true)));
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], state.Turn + 1, DoesntUntap: true), effect, ctx)));
                 return ctx;
             }
 
@@ -787,18 +806,27 @@ public static class Interpreter
             UntilPhase { Phase.Phase: "EndOfTurn" or "EndStep" or "Cleanup" or "End" } => state.Turn,
             UntilPhase { Phase.Phase: "Turn", Phase.Next: true } => state.Turn + 1,
             UntilPhase { Phase.Phase: "Untap" or "Upkeep" or "YourNextTurn" } => state.Turn + 1,
+            While or UntilThisLeaves => -1,
             _ => null,
         };
 
-    static Effect WithDuration(Effect effect, Duration duration) =>
-        effect switch
+    /// <summary>An effect with a duration given by the words around it ("until end of turn, …", "… for as long as …"): set on any effect that has an unset one.</summary>
+    static Effect WithDuration(Effect effect, Duration duration)
+    {
+        switch (effect)
         {
-            Pump { Duration: null } pump => pump with { Duration = duration },
-            Animate { Duration: null } animate => animate with { Duration = duration },
-            PlayCard { Duration: null } play => play with { Duration = duration },
-            Sequence sequence => new Sequence(sequence.Steps.Select(x => WithDuration(x, duration)).ToList()),
-            _ => effect,
-        };
+            case Sequence sequence:
+                return new Sequence(sequence.Steps.Select(x => WithDuration(x, duration)).ToList());
+            case Optional optional:
+                return optional with { Effect = WithDuration(optional.Effect, duration) };
+        }
+        var property = effect.GetType().GetProperty("Duration");
+        if (property is null || !property.CanWrite || property.GetValue(effect) is not null)
+            return effect;
+        var copy = (Effect)effect.GetType().GetMethod("<Clone>$")!.Invoke(effect, null);
+        property.SetValue(copy, duration);
+        return copy;
+    }
 
     /// <summary>Objects for a selector where a player chooses them ("sacrifice a creature"): the filter's matches narrowed to the player's own, chosen down to the count.</summary>
     static ImmutableList<ObjectId> ChooseFromSelector(Selector selector, PlayerId player, EffectContext ctx, string prompt, bool mustControl)
@@ -820,6 +848,18 @@ public static class Interpreter
     }
 
     public static string Describe(IrNode node) => node?.GetType().Name ?? "nothing";
+
+    /// <summary>A temporary effect with the lasting its effect states: "for as long as …" judged as it goes, "until this leaves the battlefield" ended when the source does.</summary>
+    static TemporaryEffect Hold(TemporaryEffect temporary, Effect effect, EffectContext ctx)
+    {
+        var duration = effect.GetType().GetProperty("Duration")?.GetValue(effect) as Duration;
+        return duration switch
+        {
+            While lasting => temporary with { UntilEndOfTurn = null, While = lasting.Condition, WhileSource = ctx.Source, WhileController = ctx.Controller },
+            UntilThisLeaves when ctx.Source is { } source && ctx.State.Object(source) is { } holder => temporary with { UntilEndOfTurn = null, WhileSource = source, WhileSourceZoneChanges = holder.ZoneChangeCount },
+            _ => temporary,
+        };
+    }
 
     /// <summary>A quantity as a fixed number now, for effects that keep it ("becomes an X/X creature").</summary>
     static Quantity Evaluated(Quantity quantity, EffectContext ctx) =>

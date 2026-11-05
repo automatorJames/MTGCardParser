@@ -148,6 +148,9 @@ public static class Resolver
             return null;
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "LeftoverCards") == true)
             return Leftovers(ctx);
+        // "Each creature dealt damage this way": what the damage step before hit.
+        if (filter.Qualifiers?.Any(q => q.Vocabulary == "DamageHistory" && q.Quality == "DealtDamageThisWay") == true)
+            return (ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "AffectedThisWay") == true)
             return (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
         if (filter.With?.OfType<Related>().FirstOrDefault(x => x.Relation == Relation.Among) is { } among)
@@ -164,7 +167,7 @@ public static class Resolver
         var rest = filter with
         {
             Zone = null,
-            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "Position")).ToList(),
+            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "Position")).ToList(),
             With = filter.With?.Where(p => p is not Related { Relation: Relation.Among }).ToList(),
         };
         var namesCards = rest.Kinds?.Any(x => x.Value is nameof(ObjectKind.Card) or nameof(ObjectKind.Spell)) == true;

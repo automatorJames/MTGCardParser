@@ -187,7 +187,9 @@ public sealed partial class Game
 
             if (blockers.Count == 0)
             {
-                assignments.Add((attacker.Id, TargetRef.Of(_defender), power));
+                // A blocked creature stays blocked when its blockers are gone; only trample gets its damage through.
+                if (!History.WasBlocked(state, attacker.Id) || traits.HasKeyword("Trample"))
+                    assignments.Add((attacker.Id, TargetRef.Of(_defender), power));
                 continue;
             }
 

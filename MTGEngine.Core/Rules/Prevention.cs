@@ -16,7 +16,9 @@ public sealed record PreventionShield(
     Selector ToSelector,
     ImmutableList<ObjectId> From,
     Selector FromSelector,
-    int? ExpiresAfterTurn);
+    int? ExpiresAfterTurn,
+    bool OneShot = false,
+    Effect Then = null);
 
 public sealed partial class Game
 {
@@ -80,11 +82,12 @@ public sealed partial class Game
                 continue;
             amount -= prevented;
             Emit(new DamagePrevented(source, target, prevented));
-            if (shield.Remaining is not null)
-                Emit(new ShieldUsed(shield.Id, prevented));
+            if (shield.Remaining is not null || shield.OneShot)
+                Emit(new ShieldUsed(shield.Id, shield.OneShot ? int.MaxValue : prevented));
+            AfterPreventing(shield, target, prevented);
         }
 
-        foreach (var shield in StaticShields())
+        foreach (var shield in StaticShields().Concat(ReplacementShields()))
         {
             if (amount <= 0)
                 break;
@@ -93,9 +96,19 @@ public sealed partial class Game
             var prevented = shield.Remaining is { } remaining ? Math.Min(remaining, amount) : amount;
             amount -= prevented;
             Emit(new DamagePrevented(source, target, prevented));
+            AfterPreventing(shield, target, prevented);
         }
 
         return amount;
+    }
+
+    /// <summary>What a replacement does besides preventing: "prevent that damage. remove a +1/+1 counter from this creature".</summary>
+    void AfterPreventing(PreventionShield shield, TargetRef target, int prevented)
+    {
+        if (shield.Then is not { } then)
+            return;
+        var ctx = new EffectContext(this, shield.Controller, shield.Source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), Last: [target], LastAmount: prevented);
+        Interpreter.Execute(then, ctx);
     }
 
     /// <summary>Prevention stated by static abilities on the battlefield ("prevent all damage that would be dealt to this creature by artifact creatures").</summary>
