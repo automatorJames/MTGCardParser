@@ -61,7 +61,7 @@ public sealed partial class Game
             bySelector[slots[i].Selector] = [targets[i]];
         var total = free ? mana : CostToCast(obj, player, mana, bySelector);
         _lastSpent = ManaPool.Empty;
-        if (!Pay(player, total, HasConvoke(card)))
+        if (!Pay(player, total, HasConvoke(card), new ManaPayment.Purpose(Spell: obj)))
             return;
         var spent = _lastSpent;
         options.Add("Cast");
@@ -92,7 +92,7 @@ public sealed partial class Game
 
     /// <summary>Whether <paramref name="player"/> could cast <paramref name="obj"/> now as far as its costs go: mana (with cost changes) and additional costs.</summary>
     bool CanAffordToCast(GameObject obj, PlayerId player) =>
-        ManaPayment.CanPay(State, player, CostToCast(obj, player, obj.Card.ManaCost.WithX(0).Plus(RequiredAdditionalMana(obj.Card)), null), HasConvoke(obj.Card))
+        ManaPayment.CanPay(State, player, CostToCast(obj, player, obj.Card.ManaCost.WithX(0).Plus(RequiredAdditionalMana(obj.Card)), null), HasConvoke(obj.Card), new ManaPayment.Purpose(Spell: obj))
         && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0));
 
     /// <summary>Whether a spell has convoke: the keyword, or "this spell has convoke".</summary>
@@ -109,7 +109,7 @@ public sealed partial class Game
         if (alternative.If is { } condition && Conditions.Evaluate(condition, new EffectContext(this, player, obj.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance))) != true)
             return false;
         var mana = new[] { alternative.Cost, alternative.Additional }.OfType<PayMana>().Aggregate(ManaCost.Free, (sum, m) => sum.Plus(ManaCost.Parse(string.Concat(m.Symbols))));
-        return ManaPayment.CanPay(State, player, mana.Plus(RequiredAdditionalMana(obj.Card)), HasConvoke(obj.Card))
+        return ManaPayment.CanPay(State, player, mana.Plus(RequiredAdditionalMana(obj.Card)), HasConvoke(obj.Card), new ManaPayment.Purpose(Spell: obj))
             && new[] { alternative.Cost, alternative.Additional }.Where(c => c is not null and not MTGRulesIR.Model.PayMana).All(c => AdditionalPayable(c, player, obj.Id, 0))
             && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0));
     }

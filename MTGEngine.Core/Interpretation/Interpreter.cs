@@ -80,11 +80,17 @@ public static class Interpreter
                         continue;
                     }
                     var targets = portion.To is null ? (ctx.TriggerSubject is { } subject ? [subject] : ctx.Last ?? []) : Resolver.Targets(portion.To, ctx);
-                    foreach (var target in targets)
+                    // "Divided as you choose among one, two, or three targets": as evenly as it goes, the first ones getting the remainder.
+                    var shares = damage.Divided is not null && targets.Count > 0
+                        ? targets.Select((_, n) => amount.Value / targets.Count + (n < amount.Value % targets.Count ? 1 : 0)).ToList()
+                        : targets.Select(_ => amount.Value).ToList();
+                    for (var n = 0; n < targets.Count; n++)
                     {
-                        game.DealDamage(source, target, amount.Value, combat: false);
-                        total += amount.Value;
-                        hit.Add(target);
+                        if (shares[n] <= 0)
+                            continue;
+                        game.DealDamage(source, targets[n], shares[n], combat: false);
+                        total += shares[n];
+                        hit.Add(targets[n]);
                     }
                 }
                 return ctx with { LastAmount = total, Last = hit.Count > 0 ? hit.ToImmutableList() : ctx.Last };
@@ -590,6 +596,49 @@ public static class Interpreter
                     return Skipped(game, asThough, "as though", ctx);
                 foreach (var id in objects)
                     game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: [allowance]), effect, ctx)));
+                return ctx;
+            }
+
+            case CantBeActivated cantActivate:
+            {
+                var holders = Characteristics.AbilityHolders(cantActivate.Abilities) switch
+                {
+                    ObjectSelector { Quantifier: Quantifier.Attached } => ctx.Last?.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList() ?? [],
+                    var selector => Resolver.Objects(selector, ctx),
+                };
+                foreach (var id in holders)
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], state.Turn, Restrictions: [cantActivate.ExceptMana ? "ActivateNonMana" : "Activate"]), effect, ctx)));
+                return ctx;
+            }
+
+            case CreateEmblem emblem:
+            {
+                foreach (var player in emblem.Player is null ? [ctx.Controller] : Resolver.Players(emblem.Player, ctx))
+                {
+                    var id = new ObjectId(game.State.NextObjectId);
+                    var card = new CardDefinition("Emblem", ManaCost.Free, [], ["Emblem"], [], null, null, null, [CardDefinition.Unwrap(emblem.Ability)], [], [], IsToken: false);
+                    game.Emit(new ObjectCreated(new GameObject(id, card, player, player, Zone.Command)));
+                }
+                return ctx;
+            }
+
+            case CopySpell copy:
+            {
+                var spells = copy.Spell is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(copy.Spell, ctx);
+                if (spells.Count == 0 && ctx.TriggerSubject is { IsObject: true } subject)
+                    spells = [subject.Object.Value];
+                var times = copy.Times is null ? 1 : Quantities.Evaluate(copy.Times, ctx) ?? 1;
+                List<TargetRef> copies = [];
+                foreach (var spell in spells.Where(id => state.Object(id)?.Zone == Zone.Stack))
+                    copies.AddRange(game.CopySpell(spell, ctx.Controller, times, copy.NewTargets).Select(TargetRef.Of));
+                return ctx with { Last = copies.ToImmutableList(), Affected = copies.ToImmutableList() };
+            }
+
+            case ChangeTargets change:
+            {
+                var spells = Resolver.Objects(change.Spell, ctx);
+                foreach (var spell in spells)
+                    game.ChangeTargets(spell, ctx.Controller, ctx.Source, change.To);
                 return ctx;
             }
 

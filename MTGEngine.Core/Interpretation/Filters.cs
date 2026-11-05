@@ -95,6 +95,9 @@ public static class Filters
             "PermanentDesignation" => Designated(state, obj, kind.Value),
             "ManaColor" => Colors.OfName(kind.Value) is { } color ? traits.Colors.Contains(color) : kind.Value == "Colorless" && traits.Colors.Count == 0,
             "TapState" => kind.Value == "Tapped" ? obj.Tapped : !obj.Tapped,
+            // "The copy", "the copies", "that spell": a pool the resolver supplies (what the copying step made).
+            "RetargetedObject" or "CopiedSpell" => true,
+            "SourceNoun" => true,
             "CombatState" => kind.Value switch { "Attacking" => obj.Attacking, "Blocking" => obj.Blocking is not null, _ => false },
             _ => false,
         };
@@ -124,7 +127,7 @@ public static class Filters
             "CreatureType" or "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" => traits.Subtypes.Contains(qualifier.Quality),
             "Supertype" => obj.Card.Supertypes.Contains(qualifier.Quality),
             "ManaColor" => Colors.OfName(qualifier.Quality) is { } color && traits.Colors.Contains(color),
-            "ColorCount" => qualifier.Quality switch
+            "ColorCount" or "Colorfulness" => qualifier.Quality switch
             {
                 "Colorless" => traits.Colors.Count == 0,
                 "Monocolored" => traits.Colors.Count == 1,
@@ -159,6 +162,8 @@ public static class Filters
             "PermanentDesignation" => Designated(state, obj, qualifier.Quality),
             // Leftovers and "… this way" name a pool the resolver supplies; within it they hold.
             "LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" => true,
+            // "Each turn" in "your second spell each turn" is the period the ordinal counts over; "activated" in "activated abilities of …" is read where abilities are.
+            "SpellCountPeriod" or "AbilityCategory" => true,
             _ => false,
         };
 

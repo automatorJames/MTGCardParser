@@ -366,7 +366,7 @@ public sealed partial class Game
         foreach (var obj in state.Battlefield.Where(x => x.Controller == player && !noActivating))
         {
             var traits = Characteristics.Of(state, obj);
-            if (traits.LostAbilities)
+            if (traits.LostAbilities || traits.Cant("Activate") || traits.Cant("ActivateNonMana"))
                 continue;
             var abilities = traits.Abilities;
             var limits = abilities.OfType<ActivationLimits>().SelectMany(x => x.Timings).ToList();
@@ -480,7 +480,7 @@ public sealed partial class Game
                         return false;
                     break;
                 case PayMana mana:
-                    if (State.Player(player).Energy < EnergyIn(mana) || !ManaPayment.CanPay(State, player, ManaCost.Parse(string.Concat(mana.Symbols.Where(x => !IsEnergy(x))))))
+                    if (State.Player(player).Energy < EnergyIn(mana) || !ManaPayment.CanPay(State, player, ActivationCost(source, mana), purpose: new ManaPayment.Purpose(Activating: source)))
                         return false;
                     break;
                 case PayLife life:
@@ -507,6 +507,28 @@ public sealed partial class Game
                     return false;
             }
         return true;
+    }
+
+    /// <summary>An activated ability's mana cost after "this ability costs {1} less to activate for each …" on its permanent.</summary>
+    ManaCost ActivationCost(GameObject source, PayMana mana)
+    {
+        var cost = ManaCost.Parse(string.Concat(mana.Symbols.Where(x => !IsEnergy(x))));
+        var reduction = 0;
+        foreach (var ability in source.Card.Abilities)
+            foreach (var (modification, condition, variable) in CostModifications(ability))
+            {
+                if (modification.Spells is not SelfAbility || modification.Action != "Activate")
+                    continue;
+                var ctx = new EffectContext(this, source.Controller, source.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+                if (variable is { } let && Quantities.Evaluate(let.Definition, ctx) is { } value)
+                    ctx = ctx with { X = value };
+                if (condition is not null && Conditions.Evaluate(condition, ctx) != true || modification.Condition is not null && Conditions.Evaluate(modification.Condition, ctx) != true)
+                    continue;
+                var times = modification.PerEach is null ? 1 : Quantities.Evaluate(modification.PerEach, ctx) ?? 0;
+                var amount = ManaCost.Parse(string.Concat(modification.Amount?.Symbols ?? [])).Generic * times;
+                reduction += modification.Change == "Less" ? amount : -amount;
+            }
+        return cost.AdjustGeneric(-reduction);
     }
 
     static bool IsEnergy(string symbol) => symbol.Equals("{e}", StringComparison.OrdinalIgnoreCase);
@@ -586,7 +608,7 @@ public sealed partial class Game
                 case PayMana mana:
                     if (EnergyIn(mana) is > 0 and var energy)
                         Emit(new EnergyChanged(player, -energy));
-                    if (!Pay(player, ManaCost.Parse(string.Concat(mana.Symbols.Where(x => !IsEnergy(x))))))
+                    if (!Pay(player, ActivationCost(obj, mana), purpose: new ManaPayment.Purpose(Activating: obj)))
                         return;
                     break;
                 case PayLife { Amount: Fixed life }:
@@ -659,9 +681,9 @@ public sealed partial class Game
         return targets.ToImmutableList();
     }
 
-    bool Pay(PlayerId player, ManaCost cost, bool convoke = false)
+    bool Pay(PlayerId player, ManaCost cost, bool convoke = false, ManaPayment.Purpose purpose = null)
     {
-        var plan = ManaPayment.Plan(State, player, cost, convoke);
+        var plan = ManaPayment.Plan(State, player, cost, convoke, purpose);
         if (plan is null)
             return false;
 

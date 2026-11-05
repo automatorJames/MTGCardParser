@@ -10,7 +10,7 @@ public static class Triggers
     public static IEnumerable<PendingTrigger> For(GameEvent evt, GameState after, GameState before)
     {
         // Permanents on the battlefield now, plus the object that just left it (its own leaves/dies triggers look back).
-        var sources = after.Battlefield.ToList();
+        var sources = after.Battlefield.Concat(after.Emblems).ToList();
         if (evt is ZoneMoved { From: Zone.Battlefield } left && before.Object(left.Object) is { } leaver)
             sources.Add(leaver);
 
@@ -192,6 +192,29 @@ public static class Triggers
                     _ => true,
                 };
                 return new Matched(who, TargetRef.Of(life.Player));
+            }
+
+            case PlayerAction { Action: "AttackedWith" } attacked when evt is AttackersDeclared declared:
+            {
+                if (!PlayerIs(attacked.Player, declared.Player, source))
+                    return null;
+                var count = declared.Attackers.Count(id => attacked.What is not ObjectSelector selector || after.Object(id) is { } attacker && Filters.Matches(after, selector.Filter, attacker, source.Controller, source.Id));
+                var wanted = attacked.What is ObjectSelector { Count: Bound bound } && bound.Value is Fixed least ? (bound.Comparison, least.Value) : (Comparison.GreaterOrEqual, 1);
+                return new Matched(Filters.Compare(count, wanted.Item1, wanted.Item2), TargetRef.Of(declared.Player));
+            }
+
+            case PlayerAction { Action: "Activate" } activated when evt is AbilityActivated ability:
+            {
+                if (!PlayerIs(activated.Player, ability.Item.Controller, source))
+                    return null;
+                var holder = ability.Item.Source is { } id ? after.Object(id) : null;
+                var fits = Characteristics.AbilityHolders(activated.What) switch
+                {
+                    Self => holder?.Id == source.Id,
+                    ObjectSelector { Filter: var filter } => holder is not null && Filters.Matches(after, filter, holder, source.Controller, source.Id),
+                    _ => true,
+                };
+                return new Matched(fits, TargetRef.Of(ability.Item.Controller));
             }
 
             case EffectEvent { Effect: Draw draw } when evt is Drew { Card: not null } drew:

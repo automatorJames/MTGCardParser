@@ -182,6 +182,9 @@ public sealed record GameState(
 
     public IEnumerable<GameObject> Battlefield => Objects.Values.Where(x => x.Zone == Zone.Battlefield).OrderBy(x => x.Id.Value);
 
+    /// <summary>Emblems: objects in the command zone, whose abilities work from there.</summary>
+    public IEnumerable<GameObject> Emblems => Objects.Values.Where(x => x.Zone == Zone.Command && x.Card.Types.Contains("Emblem")).OrderBy(x => x.Id.Value);
+
     public IEnumerable<GameObject> InZone(Zone zone) => Objects.Values.Where(x => x.Zone == zone).OrderBy(x => x.Id.Value);
 
     public IEnumerable<GameObject> InZone(Zone zone, PlayerId player) =>

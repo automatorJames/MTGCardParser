@@ -59,6 +59,8 @@ public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
+public sealed record SpellCopied(StackItem Item) : GameEvent;
+public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets) : GameEvent;
 public sealed record ExiledWith(ExileLink Link) : GameEvent;
 public sealed record PlayRestricted(PlayRestriction Restriction) : GameEvent;
 public sealed record EnergyChanged(PlayerId Player, int Delta) : GameEvent;
@@ -258,6 +260,12 @@ public static class Reducer
                     ActivationsThisTurn = state.Activations.SetItem(key, state.Activations.GetValueOrDefault(key) + 1),
                 };
             }
+
+            case SpellCopied copied:
+                return state with { Stack = state.Stack.Add(copied.Item), NextStackId = Math.Max(state.NextStackId, copied.Item.Id + 1), ConsecutivePasses = 0 };
+
+            case TargetsChanged changed:
+                return state with { Stack = state.Stack.Select(x => x.Id == changed.StackId ? x with { Targets = changed.Targets } : x).ToImmutableList() };
 
             case Triggered triggered:
                 return state with { Stack = state.Stack.Add(triggered.Item), NextStackId = Math.Max(state.NextStackId, triggered.Item.Id + 1), ConsecutivePasses = 0 };

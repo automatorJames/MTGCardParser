@@ -7,10 +7,25 @@ namespace MTGEngine.Core;
 /// </summary>
 public static class ManaPayment
 {
+    /// <summary>What a payment is for, so mana that can be spent only on some things is used only for those: the spell being cast, or the object whose ability is being activated.</summary>
+    public sealed record Purpose(GameObject Spell = null, GameObject Activating = null);
+
+    /// <summary>Whether a mana restriction ("spend this mana only to cast creature spells", "can't be spent to cast nonartifact spells") lets its mana pay for <paramref name="purpose"/>.</summary>
+    public static bool Allows(ManaRestriction restriction, Purpose purpose, GameState state, GameObject source)
+    {
+        bool Use(Playable use) => use.Verb switch
+        {
+            "Cast" => purpose?.Spell is { } spell && (use.What is not ObjectSelector { Filter: var filter } || Filters.Matches(state, filter with { Zone = null }, spell with { Zone = Zone.Stack }, source.Controller, source.Id)),
+            "Activate" => purpose?.Activating is not null,
+            _ => false,
+        };
+        return restriction.Rule == "NotFor" ? !restriction.Uses.Any(Use) : restriction.Uses.Any(Use);
+    }
+
     /// <summary>A permanent that can be tapped for mana now, with the colors it could make (null entry = colorless).</summary>
     public sealed record Source(ObjectId Id, ImmutableArray<Color?> Options, int Amount = 1);
 
-    public static ImmutableList<Source> Sources(GameState state, PlayerId player, bool convoke = false)
+    public static ImmutableList<Source> Sources(GameState state, PlayerId player, bool convoke = false, Purpose purpose = null)
     {
         List<Source> sources = [];
 
@@ -18,6 +33,8 @@ public static class ManaPayment
         {
             var traits = Characteristics.Of(state, obj);
             if (traits.IsCreature && obj.EnteredThisTurn && !traits.HasKeyword("Haste"))
+                continue;
+            if (traits.Cant("Activate"))
                 continue;
 
             List<Color?> options = [];
@@ -27,11 +44,16 @@ public static class ManaPayment
                 if (Colors.OfBasicLandType(subtype) is { } color)
                     options.Add(color);
 
-            foreach (var ability in traits.Abilities.OfType<ActivatedAbility>())
+            for (var index = 0; index < traits.Abilities.Count; index++)
             {
+                if (traits.Abilities[index] is not ActivatedAbility ability)
+                    continue;
                 if (!ability.Costs.All(x => x is TapSelf))
                     continue;
                 if (ability.Effect is not AddMana add)
+                    continue;
+                // "Spend this mana only to …" follows the mana ability it restricts.
+                if (index + 1 < traits.Abilities.Count && traits.Abilities[index + 1] is StaticAbility { Effect: ManaRestriction restriction } && !Allows(restriction, purpose, state, obj))
                     continue;
                 foreach (var option in add.Options)
                     switch (option)
@@ -78,13 +100,13 @@ public static class ManaPayment
     }
 
     /// <summary>The sources to tap, and the color each makes, to pay <paramref name="cost"/> together with the pool; null when it can't be paid.</summary>
-    public static ImmutableList<(Source Source, Color? Color)> Plan(GameState state, PlayerId player, ManaCost cost, bool convoke = false)
+    public static ImmutableList<(Source Source, Color? Color)> Plan(GameState state, PlayerId player, ManaCost cost, bool convoke = false, Purpose purpose = null)
     {
         var pool = state.Player(player).Pool;
         if (pool.Pay(cost) is not null)
             return [];
 
-        var sources = Sources(state, player, convoke);
+        var sources = Sources(state, player, convoke, purpose);
         // Requirements: colored symbols, hybrid symbols, then generic (any color or colorless) and colorless-only.
         List<ImmutableArray<Color?>> requirements = [];
         foreach (var (color, amount) in cost.Colored)
@@ -157,13 +179,13 @@ public static class ManaPayment
         return false;
     }
 
-    public static bool CanPay(GameState state, PlayerId player, ManaCost cost, bool convoke = false) => Plan(state, player, cost, convoke) is not null;
+    public static bool CanPay(GameState state, PlayerId player, ManaCost cost, bool convoke = false, Purpose purpose = null) => Plan(state, player, cost, convoke, purpose) is not null;
 
     /// <summary>The largest X for which <paramref name="cost"/> is payable.</summary>
-    public static int MaxX(GameState state, PlayerId player, ManaCost cost)
+    public static int MaxX(GameState state, PlayerId player, ManaCost cost, Purpose purpose = null)
     {
         var x = 0;
-        while (x < 30 && CanPay(state, player, cost.WithX(x + 1)))
+        while (x < 30 && CanPay(state, player, cost.WithX(x + 1), purpose: purpose))
             x++;
         return x;
     }

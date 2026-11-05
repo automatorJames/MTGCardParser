@@ -151,6 +151,9 @@ public static class Resolver
         // "The sacrificed creature", "the discarded card": what the costs took, else what the step before affected.
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "ThisWayAction") == true)
             return ((ctx.Bindings?.TryGetValue("#cost", out var paid) == true && paid.Count > 0 ? paid : null) ?? ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+        // "The copy", "the copies": what the step before made.
+        if (filter.Kinds?.Any(k => k.Vocabulary is "RetargetedObject" or "CopiedSpell") == true)
+            return (ctx.Last ?? ctx.Affected ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
         // "Each creature dealt damage this way": what the damage step before hit.
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "DamageHistory" && q.Quality == "DealtDamageThisWay") == true)
             return (ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
@@ -170,6 +173,7 @@ public static class Resolver
         var rest = filter with
         {
             Zone = null,
+            Kinds = filter.Kinds?.Any(k => k.Vocabulary is "RetargetedObject" or "CopiedSpell") == true ? null : filter.Kinds,
             Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" or "Position")).ToList(),
             With = filter.With?.Where(p => p is not Related { Relation: Relation.Among }).ToList(),
         };

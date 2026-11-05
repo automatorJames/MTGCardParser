@@ -111,6 +111,10 @@ public sealed partial class Game
     /// <summary>The combat rules of the blocker and the attacker: "can't block creatures with power 2 or greater", "can't be blocked by walls", conditional "can't block".</summary>
     bool RulesAllowBlock(Characteristics blockerTraits, GameObject blocker, Characteristics attackerTraits, GameObject attacker)
     {
+        // "Can block only creatures with flying."
+        foreach (var rule in blockerTraits.Rules.Where(r => r.Cant == "BlockOnly"))
+            if (!RuleNames(rule, attacker))
+                return false;
         foreach (var rule in blockerTraits.Rules.Where(r => r.Cant == "Block" && r.Modifiers is not { Count: > 0 }))
             if ((rule.By is null || RuleNames(rule, attacker)) && RuleHolds(rule))
                 return false;

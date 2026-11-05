@@ -208,6 +208,12 @@ public sealed record Characteristics(
                 case CanAsThough asThough when AsThough(asThough) is { } allowance:
                     restrictions.Add(allowance);
                     break;
+                case CanBlock { Only: { } only, Count: null }:
+                    rules.Add(new CombatRule("BlockOnly", only, null, null, null, source.Id, source.Controller));
+                    break;
+                case CantBeActivated cantActivate:
+                    restrictions.Add(cantActivate.ExceptMana ? "ActivateNonMana" : "Activate");
+                    break;
                 case MustCombat must:
                     foreach (var action in must.Actions)
                         restrictions.Add("Must" + action);
@@ -249,7 +255,7 @@ public sealed record Characteristics(
     /// <summary>The continuous effects of static abilities on the battlefield whose condition (if any) holds now: each effect with what it applies to and its source.</summary>
     public static IEnumerable<(Effect Effect, Selector Objects, GameObject Source)> StaticEffects(GameState state)
     {
-        foreach (var source in state.Battlefield)
+        foreach (var source in state.Battlefield.Concat(state.Emblems))
         {
             if (state.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
                 continue;
@@ -316,6 +322,8 @@ public sealed record Characteristics(
             CantBeTargeted { Duration: null } => [effect],
             SetStats => [effect],
             CanAsThough { Duration: null } => [effect],
+            CanBlock { Only: not null, Count: null } => [effect],
+            CantBeActivated => [effect],
             GrantAbility => [effect],
             LoseAllAbilities => [effect],
             BecomesAspect { Duration: null } => [effect],
@@ -337,10 +345,26 @@ public sealed record Characteristics(
             CantBeTargeted cantBe => cantBe.Objects ?? new Self(),
             SetStats set => set.Objects ?? new Self(),
             CanAsThough asThough => asThough.Objects ?? new Self(),
+            CanBlock canBlock => canBlock.Objects ?? new Self(),
+            CantBeActivated cantActivate => AbilityHolders(cantActivate.Abilities),
             Animate animate => animate.Objects ?? new Self(),
             // Prevention is read by the damage rules (Game.Prevent), not applied to an object's characteristics.
             PreventDamage => new Self(),
             _ => null,
+        };
+
+    /// <summary>
+    /// What "its activated abilities", "activated abilities of artifacts" belong to: the selector the abilities are of,
+    /// with a reference ("its", on an aura) read as the enchanted permanent.
+    /// </summary>
+    public static Selector AbilityHolders(Selector abilities) =>
+        abilities switch
+        {
+            ObjectSelector { Filter.With: { } with } when with.OfType<Related>().FirstOrDefault(x => x.Relation == Relation.AbilityOf) is { } of =>
+                of.To is Reference ? new ObjectSelector(Quantifier.Attached, null) : of.To,
+            ObjectSelector { Filter.Kinds: { } kinds } selector when kinds.Any(x => x.Value == nameof(ObjectKind.Ability)) =>
+                selector with { Filter = selector.Filter with { Kinds = kinds.Where(x => x.Value != nameof(ObjectKind.Ability)).ToList() is { Count: > 0 } rest ? rest : null, Qualifiers = selector.Filter.Qualifiers?.Where(q => q.Vocabulary != "AbilityCategory").ToList() } },
+            _ => abilities ?? new Self(),
         };
 
     /// <summary>Whether a static effect from <paramref name="source"/> applies to <paramref name="obj"/>: its selector, matched without statics (so anthems don't recurse).</summary>
