@@ -89,7 +89,7 @@ public static class InterpreterSupport
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
-        typeof(Otherwise), typeof(StillOfKind), typeof(Remains),
+        typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -107,7 +107,7 @@ public static class InterpreterSupport
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
-        typeof(WasCastWith), typeof(Targets), typeof(HandSize),
+        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay),
     ];
 
     static readonly HashSet<Type> _events =
@@ -123,12 +123,12 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic),
     ];
 
     static readonly HashSet<Type> _durations =
     [
-        typeof(ThisTurn), typeof(UntilPhase), typeof(While), typeof(UntilThisLeaves),
+        typeof(ThisTurn), typeof(UntilPhase), typeof(While), typeof(UntilThisLeaves), typeof(DuringPhase),
     ];
 
     static readonly HashSet<Type> _other =
@@ -144,19 +144,19 @@ public static class InterpreterSupport
         "AttacksAlone", "AttacksYou", "AttacksAPlayer", "Blocks", "BlocksOrBecomesBlocked", "BlocksACreature", "BecomesBlocked", "BecomesTapped",
         "BecomesUntapped", "DealsCombatDamageToAPlayer", "DealsCombatDamageToAPlayerOrPlaneswalker", "DealsCombatDamageToAnOpponent", "DealsCombatDamageToYou",
         "DealsCombatDamage", "DealsDamage", "DealsDamageToAPlayer", "DealsDamageToAnOpponent", "DealsDamageToACreature", "DealsDamageToYou",
-        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters", "BecomesTarget",
+        "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters", "BecomesTarget", "Die", "LeaveTheBattlefield", "Countered",
     ];
 
     static readonly HashSet<string> _qualifierVocabularies =
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
         "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind",
-        "LeftoverCards", "AffectedThisWay", "DamageHistory",
+        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
     [
-        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
+        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "TapState", "CombatState", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
     ];
 
     /// <summary>The names of the nodes under <paramref name="root"/> (itself included) that the interpreter can't handle.</summary>
@@ -217,7 +217,7 @@ public static class InterpreterSupport
             Variable { Name: not ("X" or "x") } variable => $"Variable.{variable.Name}",
             ObjectEvent objectEvent when objectEvent.Events.All(x => !_objectEvents.Contains(x)) => $"ObjectEvent.{objectEvent.Events.FirstOrDefault()}",
             ObjectEvent { While: not null } => "ObjectEvent.While",
-            ObjectEvent { By: not null } => "ObjectEvent.By",
+            ObjectEvent { By: not null } byEvent when byEvent.Events.Any(x => x != "BecomesTarget") || !Triggers.TargetedByKinds.Contains(byEvent.By) => "ObjectEvent.By",
             PhaseEvent phase when Conditions.StepOf(phase.At.Phase) is null => $"PhaseEvent.{phase.At.Phase}",
             TriggeredAbility { Trigger: PlayerAction or NamedEvent } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
             Delayed { When: PlayerAction or NamedEvent } delayed => $"Delayed[{delayed.When.GetType().Name}]",
@@ -228,23 +228,26 @@ public static class InterpreterSupport
             Term term when term.Vocabulary != "PermanentDesignation" && !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
             Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On) } related => $"Related.{related.Relation}",
             Happened happened when !HappenedHandled(happened) => $"Happened[{happened.Event?.GetType().Name}{(happened.Event is NamedEvent named ? "." + named.Kind : "")}]",
-            PayCost { Cost: not (PayMana or PayLife) } pay => $"PayCost[{pay.Cost?.GetType().Name}]",
+            PayCost { Cost: ActionCost { Action: var paid } } when !Game.PayableActions.Contains(paid.GetType()) => $"PayCost[ActionCost.{paid.GetType().Name}]",
+            PayCost { Cost: not (PayMana or PayLife or ActionCost) } pay => $"PayCost[{pay.Cost?.GetType().Name}]",
             PayCost { Cost: PayMana mana } when mana.Symbols.Any(x => x.Contains('e', StringComparison.OrdinalIgnoreCase)) => "PayCost.Energy",
             Controlled { Relation: not ("Control" or "Own") } controlled => $"Controlled.{controlled.Relation}",
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
             ZoneRef { Position: not (null or "Top" or "Bottom") } zone => $"ZoneRef.Position.{zone.Position}",
-            CounterSpec { Kind: null } => "CounterSpec.Kind",
+            PutCounters { Counters.Kind: null } => "PutCounters.Kind",
             ManaChoice { Choice: not ("AnyColor" or "AnyOneColor") } choice => $"ManaChoice.{choice.Choice}",
             DealDamage { Divided: not null } => "DealDamage.Divided",
             Destroy { Manner: not (null or "CantBeRegenerated") } destroy => $"Destroy.{destroy.Manner}",
             Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
             CombatEncounterEvent encounter when !Triggers.EncounterKinds.Contains(encounter.Encounter) => $"CombatEncounterEvent.{encounter.Encounter}",
+            RevealUntil { Until: not PlayerAction { What: ObjectSelector } } => "RevealUntil.Until",
             Remains remains when remains.State is not ("Tapped" or "Untapped" or "OnTheBattlefield" or "Exiled") => $"Remains.{remains.State}",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
             TriggeredAbility { If: { } condition } when Problem(condition) is { } problem => problem,
             KeywordAction action when action.Actions.Any(x => !KeywordActions.Supported.Contains(x.Keyword)) => $"KeywordAction.{action.Actions.First(x => !KeywordActions.Supported.Contains(x.Keyword)).Keyword}",
             KeywordAction { Other: { Count: > 0 } } => "KeywordAction.Other",
-            UnlessPaid { Payment.Cost: not (PayMana or PayLife) } unless => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
+            UnlessPaid { Payment.Cost: ActionCost { Action: var unlessAction } } when !Game.PayableActions.Contains(unlessAction.GetType()) => $"UnlessPaid[ActionCost.{unlessAction.GetType().Name}]",
+            UnlessPaid { Payment.Cost: not (PayMana or PayLife or ActionCost) } unless => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
             UnlessPaid { Payment.PerEach: not null } => "UnlessPaid.PerEach",
             CombatRestriction { Modifiers: { Count: > 0 } modifiers } when modifiers.Any(x => x is not ("Alone" or "Except")) => "CombatRestriction.Modifiers",
             CombatRestriction { By: not (null or Self or ObjectSelector) } => "CombatRestriction.By",
@@ -272,7 +275,8 @@ public static class InterpreterSupport
             ChooseEffect { Kinds: [var kind, ..] } when kind != "Opponent" && Choices.Category(kind) is not ("Color" or "CreatureType" or "CardName" or "LandType" or "CardType" or "OddOrEven") => $"ChooseEffect.{kind}",
             ChooseEffect { Kinds: null or [], From: not [PlayerSelector or ObjectSelector, ..] } => "ChooseEffect.From",
             OfChosen chosen when !Choices.Supported.Contains(chosen.Characteristic) => $"OfChosen.{chosen.Characteristic}",
-            BecomesAspect { Negated: true } => "BecomesAspect.Negated",
+            SharesCharacteristic shares when shares.Characteristic is not ("Name" or "Color" or "CreatureType" or "CardType") => $"SharesCharacteristic.{shares.Characteristic}",
+            BecomesAspect { Negated: true } negated when negated.Aspects.Any(x => x.Vocabulary != "CardType") => "BecomesAspect.Negated",
             BecomesAspect { Duration: { } duration } when !Keeps(duration) => $"BecomesAspect.Duration[{Describe(duration)}]",
             BecomesAspect aspect when aspect.Aspects.FirstOrDefault(x => !AspectHandled(x)) is { } unhandled => $"BecomesAspect[{unhandled.Vocabulary}]",
             PreventDamage { Amount: Special { Kind: "ThatMuch" } } => "PreventDamage.ThatMuch",
@@ -285,7 +289,7 @@ public static class InterpreterSupport
             Timing timing when !Game.TimingKinds.Contains(timing.Kind) => $"Timing.{timing.Kind}",
             PayCost { Plus: not null } => "PayCost.Plus",
             Mode { Cost: not null } => "Mode.Cost",
-            ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: not (Sacrifice or Tap or Discard or PayCost or Exile or RemoveCounters) }) => "ActivatedAbility.Costs",
+            ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: var action } && !Game.PayableActions.Contains(action.GetType())) => "ActivatedAbility.Costs",
             KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
             StaticAbility statics when !IsStaticHandled(statics.Effect) => $"StaticAbility[{statics.Effect.GetType().Name}]",
             _ => null,
@@ -312,7 +316,7 @@ public static class InterpreterSupport
             GrantAbility => true,
             LoseAllAbilities => true,
             DoesntUntap { If: null } => true,
-            BecomesAspect { Duration: null, Negated: false } => true,
+            BecomesAspect { Duration: null } => true,
             Animate { Duration: null, Transforms: false } => true,
             PreventDamage { Duration: null, Amount: Special { Kind: "All" } or Fixed } => true,
             CostModification { Spells: Self or ObjectSelector } => true,
@@ -337,6 +341,7 @@ public static class InterpreterSupport
             UntilPhase { Phase.Phase: "Turn", Phase.Next: true } => true,
             UntilPhase { Phase.Phase: "Untap" or "Upkeep" or "YourNextTurn" } => true,
             While or UntilThisLeaves => true,
+            DuringPhase => true,
             _ => false,
         };
 

@@ -32,7 +32,10 @@ public static class History
     ];
 
     /// <summary>Whether <see cref="Evaluate"/> can answer this condition.</summary>
+    public static readonly ImmutableHashSet<string> ThisWayActions = ["Discard", "Discarded", "Sacrifice", "Sacrificed", "Cast", "Exile", "Exiled", "Mill", "Milled", "Reveal", "Revealed", "SearchedLibrary"];
+
     public static bool Supported(Happened happened) =>
+        happened is { Span: "ThisWay", Event: PlayerAction { Action: var thisWay } } && ThisWayActions.Contains(thisWay) ||
         happened.Span is "ThisTurn" or "LastTurn" or null && happened.Event switch
         {
             NamedEvent named => NamedEvents.Contains(named.Kind),
@@ -48,6 +51,16 @@ public static class History
         var state = ctx.State;
         var events = happened.Span == "LastTurn" ? state.LastTurnEventList : state.ThisTurnEventList;
         var you = ctx.Controller;
+
+        // "If you discard a creature card this way": among what the step before affected.
+        if (happened is { Span: "ThisWay", Event: PlayerAction thisWay })
+        {
+            if (thisWay.Action == "SearchedLibrary")
+                return ctx.Game?.SearchedThisWay;
+            var pool = (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => state.Object(x.Object.Value)).Where(x => x is not null).ToList();
+            var matching = thisWay.What is ObjectSelector { Filter: var wanted } ? pool.Count(x => Resolver.PoolMatches(wanted ?? new ObjectFilter(), x, ctx)) : pool.Count;
+            return thisWay.Count is { } needed ? Holds(matching, needed, ctx) : matching > 0;
+        }
 
         switch (happened.Event)
         {

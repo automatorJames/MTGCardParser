@@ -138,6 +138,15 @@ public static class Conditions
                 var objects = Resolver.Objects(cast.Spell, ctx).Select(state.Object).Where(x => x is not null).ToList();
                 return objects.Count == 0 ? null : objects.Any(x => x.WasCastWith(cast.How)) != cast.Negated;
             }
+            case WasAffectedThisWay affected:
+            {
+                var pool = (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => state.Object(x.Object.Value)).Where(x => x is not null).ToList();
+                return affected.Object switch
+                {
+                    ObjectSelector { Filter: var filter } => pool.Any(x => Resolver.PoolMatches(filter ?? new ObjectFilter(), x, ctx)),
+                    var named => Resolver.Objects(named, ctx).Any(id => pool.Any(x => x.Id == id)),
+                };
+            }
             case HandSize hand:
             {
                 var players = Resolver.Players(hand.Player, ctx);
@@ -243,7 +252,9 @@ public static class Conditions
                     return null;
                 var holds = holders.All(holder =>
                 {
-                    var amount = holder.IsObject ? state.Object(holder.Object.Value)?.CountersOf(counters.Counters.Kind) ?? 0 : counters.Counters.Kind == "poison" ? state.Player(holder.Player.Value).Poison : 0;
+                    var amount = counters.Counters.Kind is not { } kind
+                        ? holder.IsObject ? state.Object(holder.Object.Value)?.CounterMap.Values.Sum() ?? 0 : state.Player(holder.Player.Value).Poison
+                        : holder.IsObject ? state.Object(holder.Object.Value)?.CountersOf(kind) ?? 0 : kind == "poison" ? state.Player(holder.Player.Value).Poison : 0;
                     return counters.Counters.Count switch
                     {
                         Bound bound when Quantities.Evaluate(bound.Value, ctx) is { } threshold => Filters.Compare(amount, bound.Comparison, threshold),

@@ -25,6 +25,9 @@ public sealed partial class Game
 
     /// <summary>Whether the last condition an effect checked held, for the "otherwise" after it.</summary>
     public bool LastConditionHeld { get; set; }
+
+    /// <summary>Whether the last library search an effect offered happened, for "if you search your library this way".</summary>
+    public bool SearchedThisWay { get; set; }
     public Dictionary<string, int> Skips { get; } = new();
     public int MaxHandSize { get; init; } = 7;
 
@@ -450,8 +453,12 @@ public sealed partial class Game
                     if (State.Player(player).Hand.Count < ((discard.Count as Fixed)?.Value ?? 1))
                         return false;
                     break;
-                case ActionCost { Action: RemoveCounters remove }:
-                    if (remove.Counters.Kind is null || source.CountersOf(remove.Counters.Kind) < ((remove.Counters.Count as Fixed)?.Value ?? 1))
+                case ActionCost { Action: RemoveCounters { Objects: null or Self } remove } when remove.Counters.Kind is not null:
+                    if (source.CountersOf(remove.Counters.Kind) < ((remove.Counters.Count as Fixed)?.Value ?? 1))
+                        return false;
+                    break;
+                case ActionCost { Action: var action }:
+                    if (!ActionPayable(action, player, source.Id, 0))
                         return false;
                     break;
                 default:
@@ -519,6 +526,7 @@ public sealed partial class Game
         if (targets is null)
             return;
 
+        List<TargetRef> paid = [];
         foreach (var cost in Flatten(ability.Costs))
             switch (cost)
             {
@@ -537,13 +545,17 @@ public sealed partial class Game
                     break;
                 case ActionCost { Action: Sacrifice { Objects: Self } }:
                     Sacrifice(player, source);
+                    paid.Add(TargetRef.Of(source));
                     break;
                 case ActionCost { Action: Sacrifice sacrifice }:
                 {
                     var candidates = SacrificeCandidates(sacrifice, player, source).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
                     var chosen = candidates.Count == 1 ? candidates : Decide(new ChooseTargets(player, "Sacrifice", candidates, 1, 1)).Targets ?? candidates.Take(1).ToImmutableList();
                     if (chosen.FirstOrDefault(x => x.IsObject) is { IsObject: true } pick)
+                    {
                         Sacrifice(player, pick.Object.Value);
+                        paid.Add(pick);
+                    }
                     break;
                 }
                 case ActionCost { Action: Discard discard }:
@@ -552,13 +564,24 @@ public sealed partial class Game
                     var hand = State.Player(player).Hand.Select(TargetRef.Of).ToImmutableList();
                     var chosen = Decide(new ChooseTargets(player, "Discard", hand, count, count)).Targets ?? hand.Take(count).ToImmutableList();
                     foreach (var card in chosen.Where(x => x.IsObject).Take(count).ToList())
+                    {
                         Discard(player, card.Object.Value);
+                        paid.Add(card);
+                    }
                     break;
                 }
-                case ActionCost { Action: RemoveCounters remove }:
+                case ActionCost { Action: RemoveCounters { Objects: null or Self } remove } when remove.Counters.Kind is not null:
                     Emit(new CountersChanged(source, remove.Counters.Kind, -((remove.Counters.Count as Fixed)?.Value ?? 1)));
                     break;
+                case ActionCost { Action: var action }:
+                {
+                    var costCtx = Interpreter.Execute(action, new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance)));
+                    paid.AddRange(costCtx.Affected ?? costCtx.Last ?? []);
+                    break;
+                }
             }
+        // What the costs took, for "the sacrificed creature's power", "the discarded card's mana value".
+        bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItem("#cost", paid.ToImmutableList());
 
         var item = new StackItem(State.NextStackId, player, source, StackKind.Activated, [effect], targets, 0, Description: $"{obj.Card.Name}: {Interpreter.Describe(effect)}", Costs: ability.Costs.ToImmutableList(), AbilityIndex: index, Bindings: bindings);
         Emit(new AbilityActivated(item));

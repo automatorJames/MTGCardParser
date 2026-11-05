@@ -80,6 +80,8 @@ public static class Filters
             "PermanentKind" => traits.Types.Contains(kind.Value) || traits.Subtypes.Contains(kind.Value),
             "PermanentDesignation" => Designated(state, obj, kind.Value),
             "ManaColor" => Colors.OfName(kind.Value) is { } color ? traits.Colors.Contains(color) : kind.Value == "Colorless" && traits.Colors.Count == 0,
+            "TapState" => kind.Value == "Tapped" ? obj.Tapped : !obj.Tapped,
+            "CombatState" => kind.Value switch { "Attacking" => obj.Attacking, "Blocking" => obj.Blocking is not null, _ => false },
             _ => false,
         };
 
@@ -142,7 +144,7 @@ public static class Filters
             "CounterKind" => true,
             "PermanentDesignation" => Designated(state, obj, qualifier.Quality),
             // Leftovers and "… this way" name a pool the resolver supplies; within it they hold.
-            "LeftoverCards" or "AffectedThisWay" or "DamageHistory" => true,
+            "LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" => true,
             _ => false,
         };
 
@@ -212,6 +214,27 @@ public static class Filters
                     PlayerSelector { Kind: PlayerKind.You } => target.Player == you,
                     PlayerSelector => target.IsPlayer,
                     _ => false,
+                });
+            }
+            case SharesCharacteristic shares:
+            {
+                var others = shares.With switch
+                {
+                    Self => source is { } own && state.Object(own) is { } self ? [self] : [],
+                    _ when ctx is not null => Resolver.Objects(shares.With, ctx).Select(state.Object).Where(x => x is not null).ToList(),
+                    _ => [],
+                };
+                return others.Any(other =>
+                {
+                    var theirs = Characteristics.Of(state, other, withStatics: false);
+                    return shares.Characteristic switch
+                    {
+                        "Name" => other.Card.Name == obj.Card.Name,
+                        "Color" => traits.Colors.Overlaps(theirs.Colors),
+                        "CreatureType" => traits.Subtypes.Where(x => !Characteristics.IsLandType(x)).Any(theirs.Subtypes.Contains),
+                        "CardType" => traits.Types.Overlaps(theirs.Types),
+                        _ => false,
+                    };
                 });
             }
             case OfChosen chosen:

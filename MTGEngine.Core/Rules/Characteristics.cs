@@ -84,6 +84,8 @@ public sealed record Characteristics(
             }
             if (change.Colors is { } newColors)
                 colors = change.InAddition ? colors.Union(newColors) : newColors.ToImmutableHashSet();
+            if (change.Removes is { Count: > 0 } removed)
+                types = types.Except(removed);
         }
         foreach (var (effect, _, source) in statics)
             Change(TypeChangeOf(effect, source));
@@ -220,6 +222,7 @@ public sealed record Characteristics(
     public static TypeChange TypeChangeOf(Effect effect, GameObject source) =>
         effect switch
         {
+            BecomesAspect { Negated: true } aspect => new TypeChange(Removes: aspect.Aspects.Where(x => x.Vocabulary == "CardType").Select(x => x.Value).ToImmutableList()),
             BecomesAspect aspect => TypeChange.OfAspects(aspect.Aspects, aspect.InAddition, source),
             Animate animate => TypeChange.OfAnimate(animate),
             _ => null,
@@ -245,16 +248,50 @@ public sealed record Characteristics(
                     if (holds != true)
                         continue;
                 }
-                foreach (var effect in Continuous(ability.Effect))
+                foreach (var effect in Continuous(During(ability.Effect, state, source)))
                     if (ObjectsOf(effect) is { } objects)
                         yield return (effect, objects, source);
             }
         }
     }
 
+    /// <summary>A static effect "during your turn" as the effect without its phase when it's that phase now, nothing when it isn't.</summary>
+    static Effect During(Effect effect, GameState state, GameObject source)
+    {
+        if (effect is Sequence sequence)
+            return new Sequence(sequence.Steps.Select(x => During(x, state, source)).Where(x => x is not null).ToList());
+        var property = effect.GetType().GetProperty("Duration");
+        if (property?.GetValue(effect) is not DuringPhase during)
+            return effect;
+        if (!PhaseHolds(during.Phase, state, source))
+            return null;
+        var copy = (Effect)effect.GetType().GetMethod("<Clone>$")!.Invoke(effect, null);
+        property.SetValue(copy, null);
+        return copy;
+    }
+
+    /// <summary>Whether it's the named phase of the named player's turn now, read from <paramref name="source"/>'s controller's side.</summary>
+    public static bool PhaseHolds(PhaseRef phase, GameState state, GameObject source)
+    {
+        var whose = phase.Whose switch
+        {
+            null => true,
+            PlayerSelector { Kind: PlayerKind.You } => state.ActivePlayer == source.Controller,
+            PlayerSelector { Kind: PlayerKind.EachOpponent or PlayerKind.AnyOpponent or PlayerKind.YourOpponents } => state.ActivePlayer != source.Controller,
+            _ => true,
+        };
+        return whose && phase.Phase switch
+        {
+            null or "Turn" => true,
+            "CombatPhase" or "Combat" => state.Step is Step.BeginCombat or Step.DeclareAttackers or Step.DeclareBlockers or Step.CombatDamage or Step.EndCombat,
+            var named => Conditions.StepOf(named) == state.Step,
+        };
+    }
+
     static IEnumerable<Effect> Continuous(Effect effect) =>
         effect switch
         {
+            null => [],
             Pump { Duration: null } => [effect],
             CombatRestriction { Duration: null } => [effect],
             MustCombat { Period: null or "EachCombat" } => [effect],
@@ -262,7 +299,7 @@ public sealed record Characteristics(
             SetStats => [effect],
             GrantAbility => [effect],
             LoseAllAbilities => [effect],
-            BecomesAspect { Duration: null, Negated: false } => [effect],
+            BecomesAspect { Duration: null } => [effect],
             Animate { Duration: null, Transforms: false } => [effect],
             PreventDamage { Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
@@ -309,7 +346,7 @@ public sealed record Characteristics(
 }
 
 /// <summary>A change to an object's card types, subtypes and colors: added to what it has, or instead of it.</summary>
-public sealed record TypeChange(ImmutableList<string> Types = null, ImmutableList<string> Subtypes = null, ImmutableList<Color> Colors = null, bool InAddition = false)
+public sealed record TypeChange(ImmutableList<string> Types = null, ImmutableList<string> Subtypes = null, ImmutableList<Color> Colors = null, bool InAddition = false, ImmutableList<string> Removes = null)
 {
     /// <summary>The change "is the chosen type", "are mountains", "becomes an artifact" describes; null when an aspect isn't one the engine can apply.</summary>
     public static TypeChange OfAspects(IEnumerable<Term> aspects, bool inAddition, GameObject source)

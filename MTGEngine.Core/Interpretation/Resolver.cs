@@ -86,13 +86,6 @@ public static class Resolver
                 return ctx.TargetsBySelector.TryGetValue(targeted, out var chosen) ? chosen.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList() : [];
             case ObjectSelector { Quantifier: Quantifier.Attached }:
                 return ctx.Source is { } attachment && state.Object(attachment)?.AttachedTo is { } host ? [host] : [];
-            case ObjectSelector { Quantifier: Quantifier.Those } those:
-            {
-                var pool = (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
-                return pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx) || those.Filter?.Kinds is null).ToImmutableList();
-            }
-            case ObjectSelector { Quantifier: Quantifier.Rest }:
-                return Leftovers(ctx);
             case ObjectSelector pooled when PoolOf(pooled, ctx) is { } pool:
             {
                 var matching = pool.Where(id => state.Object(id) is { } obj && PoolMatches(pooled.Filter, obj, ctx)).ToImmutableList();
@@ -112,6 +105,13 @@ public static class Resolver
                     ctx.Binds[poolBinding] = matching.Select(TargetRef.Of).ToImmutableList();
                 return matching;
             }
+            case ObjectSelector { Quantifier: Quantifier.Those } those:
+            {
+                var pool = (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+                return pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx) || those.Filter?.Kinds is null).ToImmutableList();
+            }
+            case ObjectSelector { Quantifier: Quantifier.Rest }:
+                return Leftovers(ctx);
             case ObjectSelector selector2:
             {
                 var position = selector2.Filter?.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "Position")?.Quality;
@@ -148,6 +148,9 @@ public static class Resolver
             return null;
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "LeftoverCards") == true)
             return Leftovers(ctx);
+        // "The sacrificed creature", "the discarded card": what the costs took, else what the step before affected.
+        if (filter.Qualifiers?.Any(q => q.Vocabulary == "ThisWayAction") == true)
+            return ((ctx.Bindings?.TryGetValue("#cost", out var paid) == true && paid.Count > 0 ? paid : null) ?? ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
         // "Each creature dealt damage this way": what the damage step before hit.
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "DamageHistory" && q.Quality == "DealtDamageThisWay") == true)
             return (ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
@@ -162,12 +165,12 @@ public static class Resolver
     }
 
     /// <summary>Whether a pooled object fits the rest of its selector's filter, wherever it is (a card looked at in the library is still "a creature card").</summary>
-    static bool PoolMatches(ObjectFilter filter, GameObject obj, EffectContext ctx)
+    public static bool PoolMatches(ObjectFilter filter, GameObject obj, EffectContext ctx)
     {
         var rest = filter with
         {
             Zone = null,
-            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "Position")).ToList(),
+            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" or "Position")).ToList(),
             With = filter.With?.Where(p => p is not Related { Relation: Relation.Among }).ToList(),
         };
         var namesCards = rest.Kinds?.Any(x => x.Value is nameof(ObjectKind.Card) or nameof(ObjectKind.Spell)) == true;

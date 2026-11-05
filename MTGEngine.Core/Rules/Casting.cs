@@ -58,12 +58,18 @@ public sealed partial class Game
         if (actions.Count > 0)
         {
             var ctx = new EffectContext(this, player, id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x, new Dictionary<string, ImmutableList<TargetRef>>());
+            List<TargetRef> paid = [];
             foreach (var action in actions)
             {
                 ctx = Interpreter.Execute(action, ctx);
-                if (BindingOf(action) is { } binding && ctx.Affected is { Count: > 0 } affected)
-                    ctx.Binds[binding] = affected;
+                if (ctx.Affected is { Count: > 0 } affected)
+                {
+                    paid.AddRange(affected);
+                    if (BindingOf(action) is { } binding)
+                        ctx.Binds[binding] = affected;
+                }
             }
+            ctx.Binds["#cost"] = paid.ToImmutableList();
             bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(ctx.Binds);
         }
         if (options.Count > 0)
@@ -227,12 +233,6 @@ public sealed partial class Game
     bool AdditionalPayable(Cost cost, PlayerId player, ObjectId spell, int x)
     {
         var ctx = new EffectContext(this, player, spell, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x);
-        int Count(Quantity quantity) => quantity is Special { Kind: "AnyNumber" } ? 0 : Quantities.Evaluate(quantity, ctx) ?? 1;
-        int Matching(ObjectSelector objects, Func<GameObject, bool> also = null) =>
-            Resolver.Candidates(objects.Filter, ctx).Count(o => o.Id != spell && Filters.Matches(State, objects.Filter, o, player, spell, ctx: ctx) && (also?.Invoke(o) ?? true));
-        int Wanted(ObjectSelector objects) =>
-            objects.Count is Special { Kind: "AnyNumber" } ? 0 : objects.Quantifier == Quantifier.Count ? Count(objects.Count) : 1;
-
         switch (cost)
         {
             case PayMana symbols:
@@ -244,16 +244,41 @@ public sealed partial class Game
             case CostChoice choice:
                 return choice.Options.Any(p => AdditionalPayable(p, player, spell, x));
             case ActionCost { Action: var action }:
-                switch (action)
-                {
+                return ActionPayable(action, player, spell, x);
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>The action costs the engine can pay: what <see cref="ActionPayable"/> knows how to judge.</summary>
+    public static readonly ImmutableHashSet<Type> PayableActions =
+    [
+        typeof(Optional), typeof(PayCost), typeof(ChoiceOf), typeof(Sequence), typeof(Sacrifice), typeof(Discard), typeof(Exile), typeof(Reveal), typeof(Tap),
+        typeof(Untap), typeof(ChangeZone), typeof(PutCounters), typeof(RemoveCounters), typeof(Mill), typeof(ChooseEffect),
+    ];
+
+    /// <summary>Whether <paramref name="player"/> can do <paramref name="action"/> as a cost now: enough to sacrifice, discard, exile, reveal, tap, return, mill, or counters to remove.</summary>
+    public bool ActionPayable(Effect action, PlayerId player, ObjectId? source, int x)
+    {
+        var spell = source ?? default;
+        var ctx = new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x);
+        int Count(Quantity quantity) => quantity is Special { Kind: "AnyNumber" } ? 0 : Quantities.Evaluate(quantity, ctx) ?? 1;
+        int Matching(ObjectSelector objects, Func<GameObject, bool> also = null) =>
+            Resolver.Candidates(objects.Filter, ctx).Count(o => o.Id != spell && Filters.Matches(State, objects.Filter, o, player, source, objects.Other ? source : null, ctx: ctx) && (also?.Invoke(o) ?? true));
+        int Wanted(ObjectSelector objects) =>
+            objects.Count is Special { Kind: "AnyNumber" } ? 0 : objects.Quantifier == Quantifier.Count ? Count(objects.Count) : 1;
+        var self = source is { } id ? State.Object(id) : null;
+
+        switch (action)
+        {
                     case Optional:
                         return true;
                     case PayCost pay:
                         return AdditionalPayable(pay.Cost, player, spell, x);
                     case ChoiceOf choice:
-                        return choice.Options.Any(o => AdditionalPayable(new ActionCost(o), player, spell, x));
+                        return choice.Options.Any(o => ActionPayable(o, player, source, x));
                     case Sequence sequence:
-                        return sequence.Steps.All(s => AdditionalPayable(new ActionCost(s), player, spell, x));
+                        return sequence.Steps.All(s => ActionPayable(s, player, source, x));
                     case Sacrifice { Objects: ObjectSelector objects }:
                         return Matching(objects, o => o.Controller == player && o.Zone == Zone.Battlefield) >= Wanted(objects);
                     case Discard discard:
@@ -270,11 +295,26 @@ public sealed partial class Game
                         return Matching(objects) >= 1;
                     case ChooseEffect:
                         return true;
+                    case Sacrifice { Objects: Self }:
+                        return self is { Zone: Zone.Battlefield };
+                    case Tap { Objects: Self }:
+                        return self is { Zone: Zone.Battlefield, Tapped: false };
+                    case Untap { Objects: Self }:
+                        return self is { Zone: Zone.Battlefield, Tapped: true };
+                    case Untap { Objects: ObjectSelector objects }:
+                        return Matching(objects, o => o.Tapped) >= Wanted(objects);
+                    case Exile { Objects: Self } or ChangeZone { Objects: Self } or Reveal { What: Self }:
+                        return self is not null;
+                    case Mill mill:
+                        return State.Player(player).Library.Count >= Count(mill.Count);
+                    case RemoveCounters { Objects: null or Self } remove:
+                        return self is not null && (remove.Counters.Kind is { } kind ? self.CountersOf(kind) : self.CounterMap.Values.Sum()) >= (remove.Counters.Count is Special { Kind: "All" } ? 0 : Count(remove.Counters.Count));
+                    case RemoveCounters { Objects: ObjectSelector objects } remove:
+                        return Matching(objects, o => remove.Counters.Kind is { } kind ? o.CountersOf(kind) > 0 : o.CounterMap.Count > 0) >= 1;
+                    case PutCounters { Objects: null or Self }:
+                        return self is not null;
                     default:
-                        return !InterpreterSupport.Unsupported(action).Any();
-                }
-            default:
-                return false;
+                        return false;
         }
     }
 

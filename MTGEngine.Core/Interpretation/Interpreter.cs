@@ -202,11 +202,27 @@ public static class Interpreter
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
+            case RemoveCounters { Counters.Kind: null } removeAll:
+            {
+                // "Remove all counters from …", "remove a counter from …": every kind, or one of any kind.
+                var objects = removeAll.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(removeAll.Objects, ctx);
+                var all = removeAll.Counters.Count is Special { Kind: "All" } or null;
+                var removed = 0;
+                foreach (var id in objects)
+                    foreach (var (kind, have) in state.Object(id)?.CounterMap.Where(x => x.Key is not ("regeneration-shield" or "deathtouch-damage" or "monstrous")).ToList() ?? [])
+                    {
+                        var take = all ? have : Math.Min(have, (Quantities.Evaluate(removeAll.Counters.Count, ctx) ?? 1) - removed);
+                        if (take <= 0)
+                            continue;
+                        game.Emit(new CountersChanged(id, kind, -take));
+                        removed += take;
+                    }
+                return ctx with { LastAmount = removed };
+            }
+
             case RemoveCounters remove:
             {
                 var kind = remove.Counters.Kind;
-                if (kind is null)
-                    return Skipped(game, remove, "counter kind unknown", ctx);
                 var objects = remove.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(remove.Objects, ctx);
                 var removed = 0;
                 foreach (var id in objects)
@@ -307,8 +323,15 @@ public static class Interpreter
             case BecomesAspect aspect:
             {
                 var until = UntilTurn(aspect.Duration, state);
-                if (until is null || aspect.Negated)
+                if (until is null)
                     return Skipped(game, aspect, "aspect duration", ctx);
+                if (aspect.Negated)
+                {
+                    var removes = new TypeChange(Removes: aspect.Aspects.Where(x => x.Vocabulary == "CardType").Select(x => x.Value).ToImmutableList());
+                    foreach (var id in aspect.Objects is null ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(aspect.Objects, ctx))
+                        game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, TypeChange: removes), effect, ctx)));
+                    return ctx;
+                }
                 var source = ctx.Source is { } sourceId ? state.Object(sourceId) : null;
                 var aspects = aspect.Aspects.Select(term => ChosenNow(term, ctx)).ToList();
                 if (TypeChange.OfAspects(aspects, aspect.InAddition, source) is not { } change)
@@ -518,6 +541,26 @@ public static class Interpreter
                 return shown.Count == 0 ? ctx : ctx with { Last = shown, Affected = shown };
             }
 
+            case RevealUntil until when until.Until is PlayerAction { What: ObjectSelector wanted }:
+            {
+                var players = until.Player is null ? [ctx.Controller] : Resolver.Players(until.Player, ctx);
+                List<TargetRef> revealed = [];
+                List<TargetRef> found = [];
+                foreach (var player in players)
+                    foreach (var id in game.State.Player(player).Library.ToList())
+                    {
+                        revealed.Add(TargetRef.Of(id));
+                        if (until.Verb == "Exile")
+                            game.MoveToZone(id, Zone.Exile);
+                        if (game.State.Object(id) is { } card && Resolver.PoolMatches(wanted.Filter ?? new ObjectFilter(), card, ctx))
+                        {
+                            found.Add(TargetRef.Of(id));
+                            break;
+                        }
+                    }
+                return ctx with { Last = found.ToImmutableList(), Affected = revealed.ToImmutableList(), Rest = revealed.Except(found).ToImmutableList() };
+            }
+
             case PlayCard play:
             {
                 var player = play.Player is null ? ctx.Controller : Resolver.Players(play.Player, ctx).FirstOrDefault(ctx.Controller);
@@ -630,6 +673,13 @@ public static class Interpreter
                             }
                             break;
                         }
+                        case ActionCost { Action: var action }:
+                            if (game.ActionPayable(action, who, ctx.Source, ctx.X) && game.Decide(new YesNo(who, $"{Describe(action)} to prevent: {Describe(unless.Effect)}?")).Yes)
+                            {
+                                Execute(action, ctx with { Controller = who });
+                                paid = true;
+                            }
+                            break;
                         default:
                             game.Skip(unless.Payment.Cost, "unless-cost kind");
                             break;
@@ -675,8 +725,10 @@ public static class Interpreter
             case SearchLibrary search:
             {
                 var searchers = search.Searcher is null ? [ctx.Controller] : Resolver.Players(search.Searcher, ctx);
+                game.SearchedThisWay = false;
                 if (search.Optional && !game.Decide(new YesNo(ctx.Controller, "Search your library?")).Yes)
                     return ctx;
+                game.SearchedThisWay = true;
                 List<TargetRef> found = [];
                 foreach (var searcher in searchers)
                     foreach (var wanted in search.Wanted ?? [])
@@ -754,6 +806,12 @@ public static class Interpreter
                             paid = true;
                         }
                         break;
+                    case ActionCost { Action: var action } when game.ActionPayable(action, payer, ctx.Source, ctx.X):
+                        ctx = Execute(action, ctx with { Controller = payer }) with { Controller = ctx.Controller };
+                        paid = true;
+                        break;
+                    case ActionCost:
+                        break;
                     default:
                         game.Skip(pay.Cost, "payment kind");
                         break;
@@ -779,6 +837,9 @@ public static class Interpreter
     {
         if (unless.Payment.Player is not null && Resolver.Players(unless.Payment.Player, ctx) is [var named, ..])
             return named;
+        // "Unless you discard two cards": the action names who does it.
+        if (unless.Payment.Cost is ActionCost { Action: var action } && action.GetType().GetProperty("Player")?.GetValue(action) is Selector actor && Resolver.Players(actor, ctx) is [var doer, ..])
+            return doer;
         foreach (var target in ctx.TargetsBySelector.Values.SelectMany(x => x))
         {
             if (target.IsPlayer)

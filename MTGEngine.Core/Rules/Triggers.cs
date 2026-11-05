@@ -67,6 +67,31 @@ public static class Triggers
 
     static ImmutableList<TargetRef> TargetsOf(GameEvent evt) => ItemOf(evt)?.Targets ?? [];
 
+    public static readonly ImmutableHashSet<string> TargetedByKinds = ["SpellOrAbility", "Spell", "InstantOrSorcerySpell", "AuraSpell"];
+
+    /// <summary>Whether what's targeting is what "becomes the target of …" names: any spell or ability, a spell, an instant or sorcery spell, an aura spell, one an opponent controls.</summary>
+    static bool TargetedBy(ObjectEvent trigger, StackItem item, GameObject source, GameState after)
+    {
+        var spell = item.Spell is { } id ? after.Object(id) : null;
+        var kind = trigger.By switch
+        {
+            null or "SpellOrAbility" => true,
+            "Spell" => item.Kind == StackKind.Spell,
+            "InstantOrSorcerySpell" => spell is not null && (spell.Card.IsInstant || spell.Card.IsSorcery),
+            "AuraSpell" => spell is not null && spell.Card.IsAura,
+            _ => false,
+        };
+        if (!kind)
+            return false;
+        if (trigger.ByController is { } controller)
+        {
+            var players = Resolver.Players(after, controller.Player, source.Controller, source.Id);
+            if (players.Contains(item.Controller) == controller.Negated)
+                return false;
+        }
+        return true;
+    }
+
     /// <summary>"Whenever this creature blocks or becomes blocked by a nonblack creature": each pairing in a block declaration, with the other creature as the subject.</summary>
     static IEnumerable<TargetRef> Encounters(CombatEncounterEvent encounter, GameEvent evt, GameObject source, GameState after)
     {
@@ -205,11 +230,11 @@ public static class Triggers
             {
                 "EntersTheBattlefield" or "Enters" or "EntersOrTransforms" or "EntersUntapped" when evt is ZoneMoved { To: Zone.Battlefield } entered =>
                     Subject(trigger, entered.Object, source, after, before: null, under: trigger.UnderControlOf),
-                "Dies" or "IsPutIntoAGraveyardFromTheBattlefield" when evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Graveyard } died =>
+                "Dies" or "Die" or "IsPutIntoAGraveyardFromTheBattlefield" when evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Graveyard } died =>
                     Subject(trigger, died.Object, source, after, before),
                 "IsPutIntoAGraveyardFromAnywhere" or "IsPutIntoAGraveyard" when evt is ZoneMoved { To: Zone.Graveyard } toGraveyard =>
                     Subject(trigger, toGraveyard.Object, source, after, before),
-                "LeavesTheBattlefield" or "LeavesTheBattlefieldWithoutDying" when evt is ZoneMoved { From: Zone.Battlefield } leaves =>
+                "LeavesTheBattlefield" or "LeaveTheBattlefield" or "LeavesTheBattlefieldWithoutDying" when evt is ZoneMoved { From: Zone.Battlefield } leaves =>
                     Subject(trigger, leaves.Object, source, after, before),
                 "IsPutIntoExileFromTheBattlefield" when evt is ZoneMoved { From: Zone.Battlefield, To: Zone.Exile } exiled =>
                     Subject(trigger, exiled.Object, source, after, before),
@@ -233,11 +258,13 @@ public static class Triggers
                     Subject(trigger, hit.Target.Object.Value, source, after, before) is { Fires: true } m4 ? m4 with { Subject = hit.Source is { } s ? TargetRef.Of(s) : null } : null,
                 "Cast" when evt is SpellCast cast && cast.Item.Spell is { } spellId =>
                     Subject(trigger, spellId, source, after, before),
+                "Countered" when evt is Countered countered && before.Stack.FirstOrDefault(x => x.Id == countered.StackId)?.Spell is { } counteredSpell =>
+                    Subject(trigger, counteredSpell, source, after, before),
                 "Discarded" when evt is Discarded discarded =>
                     Subject(trigger, discarded.Card, source, after, before),
                 "CountersPut" when evt is CountersChanged { Delta: > 0 } put =>
                     Subject(trigger, put.Object, source, after, before),
-                "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted =>
+                "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted && TargetedBy(trigger, ItemOf(evt), source, after) =>
                     targeted.Where(x => x.IsObject).Select(x => Subject(trigger, x.Object.Value, source, after, before)).FirstOrDefault(x => x is { Fires: true }) is { } hit
                         ? hit with { Subject = ItemOf(evt)?.Spell is { } spell ? TargetRef.Of(spell) : hit.Subject }
                         : null,
