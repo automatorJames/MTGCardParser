@@ -37,7 +37,7 @@ public static class ManaPayment
     }
 
     /// <summary>A permanent that can be tapped for mana now, with the colors it could make (null entry = colorless).</summary>
-    public sealed record Source(ObjectId Id, ImmutableArray<Color?> Options, int Amount = 1, bool Snow = false);
+    public sealed record Source(ObjectId Id, ImmutableArray<Color?> Options, int Amount = 1, bool Snow = false, bool Delve = false);
 
     public static ImmutableList<Source> Sources(GameState state, PlayerId player, bool convoke = false, Purpose purpose = null)
     {
@@ -101,6 +101,18 @@ public static class ManaPayment
                 if (Characteristics.Of(state, creature) is { IsCreature: true } traits)
                     sources.Add(new Source(creature.Id, [.. traits.Colors.Select(c => (Color?)c), null]));
 
+        // Improvise: each untapped artifact can pay for {1}. Delve: each card exiled from your graveyard pays for {1}.
+        if (purpose?.Spell is { } spell)
+        {
+            if (spell.Card.Keywords.Contains("Improvise"))
+                foreach (var artifact in state.Battlefield.Where(x => x.Controller == player && !x.Tapped && sources.All(s => s.Id != x.Id)))
+                    if (Characteristics.Of(state, artifact).Types.Contains("Artifact"))
+                        sources.Add(new Source(artifact.Id, [null]));
+            if (spell.Card.Keywords.Contains("Delve"))
+                foreach (var card in state.Player(player).Graveyard.Where(x => x != spell.Id))
+                    sources.Add(new Source(card, [null], Delve: true));
+        }
+
         return sources.ToImmutableList();
     }
 
@@ -163,7 +175,7 @@ public static class ManaPayment
             return [];
 
         // Snow symbols need snow sources, so the others are paid from non-snow sources where they can be.
-        sources = sources.OrderBy(x => x.Snow).ToImmutableList();
+        sources = sources.OrderBy(x => x.Snow).ThenBy(x => x.Delve).ToImmutableList();
         var used = new bool[sources.Count];
         var plan = new List<(Source, Color?)>();
         if (!Assign(remaining.OrderBy(x => x.Length).ToList(), 0, sources, used, plan))

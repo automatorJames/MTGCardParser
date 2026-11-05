@@ -112,6 +112,12 @@ public sealed record CardDefinition(
         for (var i = 0; i < abilities.Count; i++)
             if (abilities[i] is KeywordLine handled && handled.Keywords.All(k => MTGEngine.Core.Keywords.Handles(k.Keyword)))
                 return abilities.Take(i + 1);
+        // "When this creature enters, it connives. (draw a card, then discard a card. …)": the reminder of a keyword
+        // action the engine carries out, at the end of the line, explains the action.
+        if (line.Text.TrimEnd().EndsWith(')'))
+            for (var i = 0; i < abilities.Count - 1; i++)
+                if (MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<KeywordAction>().Any(x => x.Actions.All(a => KeywordActions.Supported.Contains(a.Keyword))))
+                    return abilities.Take(i + 1);
         return keywordAt < 0 ? abilities : abilities.Where((ability, i) => i <= keywordAt || ability is not SpellAbility);
     }
 

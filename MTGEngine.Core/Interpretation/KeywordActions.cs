@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -88,6 +88,28 @@ public static class KeywordActions
                 {
                     foreach (var opponent in ctx.State.OpponentsOf(ctx.Controller).ToList())
                         Scry(game, opponent, amount, toGraveyard: false, chooser: ctx.Controller);
+                    break;
+                }
+                // Connive: draw a card, then discard a card; if a nonland card was discarded, the conniver gets a +1/+1 counter.
+                case "Connive":
+                {
+                    var connivers = action.Objects is { } who ? Resolver.Objects(who, ctx) : ctx.Source is { } own ? [own] : [];
+                    foreach (var conniver in connivers.ToList())
+                    {
+                        var player = ctx.State.Object(conniver)?.Controller ?? ctx.Controller;
+                        game.Draw(player, amount);
+                        var hand = ctx.State.Player(player).Hand;
+                        if (hand.Count == 0)
+                            continue;
+                        var take = Math.Min(amount, hand.Count);
+                        var discarded = (take >= hand.Count ? hand : game.Decide(new ChooseTargets(player, "Connive: discard", hand.Select(TargetRef.Of).ToImmutableList(), take, take))
+                            .Targets?.Where(x => x.IsObject && hand.Contains(x.Object.Value)).Select(x => x.Object.Value).Take(take) ?? hand.Take(take)).ToList();
+                        var nonland = discarded.Count(id => ctx.State.Object(id) is { } card && !card.Card.IsLand);
+                        foreach (var id in discarded)
+                            game.Discard(player, id);
+                        if (nonland > 0 && ctx.State.Object(conniver) is { Zone: Zone.Battlefield })
+                            game.Emit(new CountersChanged(conniver, "+1/+1", nonland));
+                    }
                     break;
                 }
                 default:

@@ -444,12 +444,14 @@ public sealed partial class Game
             foreach (var (index, alternative) in Alternatives(card))
                 if (CanAffordAlternative(obj, player, alternative))
                     actions.Add(new CastSpell(id, 0, Alternative: index));
+            actions.AddRange(KeywordCastActions(obj, player));
             if (CanSuspend(obj, player, sorcerySpeed))
                 actions.Add(new CastSpell(id, 0, Alternative: SuspendCast));
         }
 
         actions.AddRange(FaceUpActions(player));
         actions.AddRange(ForetellActions(player, sorcerySpeed));
+        actions.AddRange(PlotActions(player, sorcerySpeed));
 
         // Abilities that work from the hand or graveyard (cycling, unearth), and flashback.
         foreach (var obj in playerState.Hand.Concat(playerState.Graveyard).Select(state.Object).Where(x => x is not null).ToList())
@@ -557,7 +559,7 @@ public sealed partial class Game
     }
 
     /// <summary>A modal effect with its modes chosen by <paramref name="player"/>: the chosen modes' effects in sequence; any other effect as it is.</summary>
-    (Effect Effect, ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings) ResolveModes(Effect effect, PlayerId player)
+    (Effect Effect, ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings) ResolveModes(Effect effect, PlayerId player, ManaCost entwine = null)
     {
         if (effect is not ModalEffect modal)
             return (effect, null);
@@ -577,7 +579,10 @@ public sealed partial class Game
 
         List<int> chosen = [];
         var options = modal.Modes.Select(m => Interpreter.Describe(m.Effect)).ToImmutableList();
-        for (var i = 0; i < max; i++)
+        var entwined = entwine is not null && Decide(new YesNo(player, $"Pay entwine {entwine}?")).Yes;
+        if (entwined)
+            chosen.AddRange(Enumerable.Range(0, modal.Modes.Count));
+        for (var i = 0; i < max && !entwined; i++)
         {
             var remaining = Enumerable.Range(0, modal.Modes.Count).Where(m => !chosen.Contains(m)).ToList();
             if (remaining.Count == 0)
@@ -589,7 +594,7 @@ public sealed partial class Game
         }
 
         Emit(new ModesChosen(player, chosen.ToImmutableList()));
-        _modeCost = chosen.Select(m => modal.Modes[m].Cost).OfType<PayMana>().Aggregate(ManaCost.Free, (sum, cost) => sum.Plus(ManaCost.Parse(string.Concat(cost.Symbols))));
+        _modeCost = chosen.Select(m => modal.Modes[m].Cost).OfType<PayMana>().Aggregate(entwined ? entwine : ManaCost.Free, (sum, cost) => sum.Plus(ManaCost.Parse(string.Concat(cost.Symbols))));
         var steps = chosen.Select(m => modal.Modes[m].Effect).ToList();
         return (steps.Count == 1 ? steps[0] : new Sequence(steps), null);
     }
@@ -717,6 +722,9 @@ public sealed partial class Game
                 return;
             case CastSpell { Alternative: SuspendCast } suspend:
                 Suspend(suspend.Card, player);
+                return;
+            case CastSpell { Alternative: PlotExile } plot:
+                Plot(plot.Card, player);
                 return;
             case CastSpell { Alternative: ForetellExile } foretell:
                 Foretell(foretell.Card, player);
@@ -887,6 +895,12 @@ public sealed partial class Game
 
         foreach (var (source, color) in plan)
         {
+            if (source.Delve)
+            {
+                MoveToZone(source.Id, Zone.Exile);
+                Emit(new ManaAdded(player, color, 1));
+                continue;
+            }
             Emit(new Tapped(source.Id));
             Emit(new TappedForMana(source.Id, player));
             Emit(new ManaAdded(player, color, source.Amount));

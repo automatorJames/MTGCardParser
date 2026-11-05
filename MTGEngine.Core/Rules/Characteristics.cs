@@ -86,8 +86,8 @@ public sealed record Characteristics(
         var power = card.Power ?? 0;
         var toughness = card.Toughness ?? 0;
         var keywords = card.Keywords.ToBuilder();
-        // A creature cast as its last time counter was removed has haste.
-        if (obj.Zone == Zone.Battlefield && obj.WasCastWith("Suspended"))
+        // A creature cast as its last time counter was removed has haste, and one cast for its dash cost.
+        if (obj.Zone == Zone.Battlefield && (obj.WasCastWith("Suspended") || obj.WasCastWith("Dashed")))
             keywords.Add("Haste");
         var restrictions = ImmutableHashSet.CreateBuilder<string>();
         var rules = ImmutableList.CreateBuilder<CombatRule>();

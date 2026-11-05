@@ -44,6 +44,14 @@ public static class Triggers
                         new Sequence([new ChangeZone(new Self(), new ZoneRef(nameof(Zone.Battlefield))), new PutCounters(new Self(), new CounterSpec(counter, new Fixed(1)))])), null, fallen.Controller);
         }
 
+        // Storm: when it's cast, copy it for each spell cast before it this turn.
+        if (evt is SpellCast { Item: { Spell: { } stormId } stormItem } && after.Object(stormId) is { Zone: Zone.Stack } storm && storm.Card.Keywords.Contains("Storm"))
+        {
+            var before_ = after.ThisTurnEventList.OfType<SpellCast>().TakeWhile(x => x.Item.Id != stormItem.Id).Count();
+            if (before_ > 0)
+                yield return new PendingTrigger(storm, new TriggeredAbility(new NamedEvent("Storm"), new CopySpell(new Self(), new Fixed(before_), NewTargets: true)), null, stormItem.Controller);
+        }
+
         // A saga's chapter abilities trigger as lore counters reach their numbers.
         if (evt is CountersChanged { Kind: "lore", Delta: > 0 } lore && after.Object(lore.Object) is { Zone: Zone.Battlefield } saga)
         {

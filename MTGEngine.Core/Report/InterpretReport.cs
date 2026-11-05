@@ -11,11 +11,13 @@ public sealed class InterpretReport
 {
     int _cards, _cardsExecutable, _lines, _linesExecutable, _linesClosed, _linesClosedExecutable;
     readonly Dictionary<string, (int Lines, string Example)> _blockers = new();
+    readonly Dictionary<string, (int Cards, string Example)> _soleBlockers = new();
 
     public void Add(CardRules card)
     {
         _cards++;
         var allExecutable = true;
+        var cardBlockers = new HashSet<string>();
 
         foreach (var line in card.Lines)
         {
@@ -35,6 +37,7 @@ public sealed class InterpretReport
                 allExecutable = false;
                 foreach (var kind in line.EngineClosed ? unsupported : unsupported.Count == 0 ? ["(not engine-closed)"] : unsupported)
                 {
+                    cardBlockers.Add(kind);
                     var (count, example) = _blockers.GetValueOrDefault(kind);
                     _blockers[kind] = (count + 1, example ?? line.Text);
                 }
@@ -43,6 +46,12 @@ public sealed class InterpretReport
 
         if (allExecutable)
             _cardsExecutable++;
+        else if (cardBlockers.Count == 1)
+        {
+            var kind = cardBlockers.Single();
+            var (count, example) = _soleBlockers.GetValueOrDefault(kind);
+            _soleBlockers[kind] = (count + 1, example ?? card.Name);
+        }
     }
 
     public double LineFraction => _lines == 0 ? 0 : (double)_linesExecutable / _lines;
@@ -56,6 +65,10 @@ public sealed class InterpretReport
         text.AppendLine($"Node kinds the interpreter doesn't handle, by lines blocked (top {top} of {_blockers.Count}):");
         foreach (var (kind, (count, example)) in _blockers.OrderByDescending(x => x.Value.Lines).ThenBy(x => x.Key, StringComparer.Ordinal).Take(top))
             text.AppendLine($"{count,7} lines  {kind}  e.g. {Truncate(example, 90)}");
+        text.AppendLine();
+        text.AppendLine($"Node kinds that are a card's only blocker, by cards they'd make executable (top {top} of {_soleBlockers.Count}):");
+        foreach (var (kind, (count, example)) in _soleBlockers.OrderByDescending(x => x.Value.Cards).ThenBy(x => x.Key, StringComparer.Ordinal).Take(top))
+            text.AppendLine($"{count,7} cards  {kind}  e.g. {example}");
         return text.ToString();
     }
 

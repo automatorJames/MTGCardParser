@@ -153,6 +153,22 @@ public static class KeywordAbilities
                     new Sequence([new PutCounters(new Self(), new CounterSpec("age", new Fixed(1))), new UnlessPaid(new Sacrifice(You, new Self()), new PayCost(cost, PerEach: age))]));
                 break;
             }
+            // Soulshift N: when it dies, you may return a spirit card with mana value N or less from your graveyard to your hand.
+            case "Soulshift" when keyword.Amount is Fixed:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Dies"]), new Optional(new ChangeZone(
+                    new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))], Qualifiers: [new Qualifier("Spirit", Vocabulary: "CreatureType")],
+                        With: [new CharacteristicBound(["ManaValue"], new Fixed(amount), Comparison.LessOrEqual)], Zone: new ZoneRef(nameof(Zone.Graveyard), You))),
+                    new ZoneRef(nameof(Zone.Hand), You))));
+                break;
+            // Evoke: cast for the evoke cost (see Game), it's sacrificed when it enters.
+            case "Evoke" when keyword.Cost is not null:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]), new Sacrifice(You, new Self()), new WasCastWith(new Self(), "Evoked"));
+                break;
+            // Dash: cast for the dash cost (see Game), it has haste and returns to its owner's hand at the next end step.
+            case "Dash" when keyword.Cost is not null:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]),
+                    new Delayed(new PhaseEvent(new PhaseRef("EndStep", Next: true)), new ChangeZone(new Self(), new ZoneRef(nameof(Zone.Hand)))), new WasCastWith(new Self(), "Dashed"));
+                break;
             case "Affinity" when AffinityKind(keyword.Parameter) is { } kind:
                 yield return new StaticAbility(new CostModification(new Self(), new PayMana(["{1}"]), "Less", "Cast",
                     new CountOf(new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [kind], Controller: new Controlled(You))))));

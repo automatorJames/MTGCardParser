@@ -12,7 +12,7 @@ public sealed partial class Game
         var obj = State.Object(id);
         var card = obj.Card;
         var x = card.ManaCost.X > 0 && maxX > 0 && alternative == -1 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var mana = free || alternative >= 0 || alternative is Flashback or MadnessCast or ForetoldCast ? ManaCost.Free : card.ManaCost.WithX(x);
+        var mana = free || alternative >= 0 || alternative is Flashback or MadnessCast or ForetoldCast or EvokeCast or DashCast or PlottedCast ? ManaCost.Free : card.ManaCost.WithX(x);
         var options = ImmutableHashSet.CreateBuilder<string>();
         if (also is not null)
             options.Add(also);
@@ -45,6 +45,15 @@ public sealed partial class Game
             if (!PlanAdditional(madness, player, id, 0, ref mana, actions, options))
                 return;
         }
+
+        if (KeywordCast(card, alternative) is var (keywordCost, keywordOption))
+        {
+            options.Add(keywordOption);
+            if (!PlanAdditional(keywordCost, player, id, 0, ref mana, actions, options))
+                return;
+        }
+        if (alternative == PlottedCast)
+            options.Add("Plotted");
 
         // "You may exile two green cards from your hand rather than pay this spell's mana cost."
         if (alternative >= 0 && Alternatives(card).FirstOrDefault(a => a.Index == alternative).Alternative is { } chosen)
@@ -82,7 +91,10 @@ public sealed partial class Game
             {
                 if (Specialize(spellEffect, options) is not { } specialized)
                     continue;
-                var (resolved, modeBindings) = ResolveModes(specialized, player);
+                // Entwine: all the modes for an extra cost, if it can be paid on top of what's due.
+                var entwine = OptionalCosts(card, "Entwine").FirstOrDefault();
+                var entwinable = entwine is not null && ManaPayment.CanPay(State, player, CostToCast(obj, player, mana.Plus(entwine), null), HasConvoke(card), new ManaPayment.Purpose(Spell: obj)) ? entwine : null;
+                var (resolved, modeBindings) = ResolveModes(specialized, player, entwinable);
                 effects.Add(resolved);
                 if (modeBindings is not null)
                     bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(modeBindings);
