@@ -22,7 +22,7 @@ public sealed partial class Game
         {
             var (to, toSelector) = Fix(damage.To, ctx, choose: false);
             var (from, fromSelector) = Fix(damage.From, ctx, choose: true);
-            Emit(new ShieldCreated(new PreventionShield(0, ctx.Controller, ctx.Source, null, damage.CombatOnly, to, toSelector,
+            Emit(new ShieldCreated(new PreventionShield(0, ctx.Controller, ctx.Source, damage.Amount, damage.CombatOnly, to, toSelector,
                 from?.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList(), fromSelector, expires ?? State.Turn, replacement.NextTime, damage.Then)));
             return true;
         }
@@ -118,7 +118,7 @@ public sealed partial class Game
     }
 
     /// <summary>A damage replacement's parts: "the next time target creature would deal damage, prevent that damage", "if damage would be dealt to this creature, prevent that damage. remove a counter".</summary>
-    public static (Selector From, Selector To, bool CombatOnly, Effect Then)? DamageReplacement(Replacement replacement)
+    public static (Selector From, Selector To, bool CombatOnly, Effect Then, int? Amount)? DamageReplacement(Replacement replacement)
     {
         if (replacement.Would is not WouldHappen { What: DealDamage dealt } would)
             return null;
@@ -126,15 +126,22 @@ public sealed partial class Game
         Effect then = null;
         if (replacement.Instead is PreventDamage only)
             prevent = only;
+        // "If damage would be dealt to this creature, put that many -1/-1 counters on it instead": the damage is
+        // prevented and the counters put, "that many" being the damage.
+        else if (replacement.Instead is Instead { Effect: PutCounters or Mill or Exile or MTGRulesIR.Model.Sacrifice } instead)
+        {
+            prevent = new PreventDamage(Amount: new Special("All"));
+            then = instead.Effect;
+        }
         else if (replacement.Instead is Sequence { Steps: [PreventDamage first, ..] } sequence)
         {
             prevent = first;
             var rest = sequence.Steps.Skip(1).ToList();
             then = rest.Count == 0 ? null : rest.Count == 1 ? rest[0] : new Sequence(rest);
         }
-        if (prevent is null || prevent.Amount is not (Special { Kind: "ThatMuch" or "All" } or null))
+        if (prevent is null || prevent.Amount is not (Special { Kind: "ThatMuch" or "All" } or Fixed or null))
             return null;
-        return (dealt.Source ?? would.Subject, dealt.Portions.FirstOrDefault()?.To, dealt.Kind == "Combat", then);
+        return (dealt.Source ?? would.Subject, dealt.Portions.FirstOrDefault()?.To, dealt.Kind == "Combat", then, prevent.Amount is Fixed { Value: var some } ? some : null);
     }
 
     /// <summary>A zone replacement's parts: "if this creature would die, exile it instead".</summary>
@@ -203,7 +210,7 @@ public sealed partial class Game
                         };
                     var to = FixedOf(damage.To);
                     var from = FixedOf(damage.From);
-                    yield return new PreventionShield(0, source.Controller, source.Id, null, damage.CombatOnly, to, to is null ? damage.To : null,
+                    yield return new PreventionShield(0, source.Controller, source.Id, damage.Amount, damage.CombatOnly, to, to is null ? damage.To : null,
                         from?.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList(), from is null ? damage.From : null, null, false, damage.Then);
                 }
     }

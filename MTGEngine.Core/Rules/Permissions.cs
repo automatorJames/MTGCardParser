@@ -106,7 +106,7 @@ public sealed partial class Game
     {
         switch (timing.Kind)
         {
-            case nameof(TimingKind.SorcerySpeed) or nameof(TimingKind.InstantSpeed) or nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once):
+            case nameof(TimingKind.SorcerySpeed) or nameof(TimingKind.InstantSpeed) or nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once) or "AnyPlayer":
                 return true;
             case "If":
                 return Conditions.Evaluate(timing.If, new EffectContext(this, player, obj.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance))) == true;
@@ -139,7 +139,7 @@ public sealed partial class Game
         };
 
     public static readonly ImmutableHashSet<string> TimingKinds =
-        [nameof(TimingKind.SorcerySpeed), nameof(TimingKind.InstantSpeed), nameof(TimingKind.OnceEachTurn), nameof(TimingKind.Once), "If", "During"];
+        [nameof(TimingKind.SorcerySpeed), nameof(TimingKind.InstantSpeed), nameof(TimingKind.OnceEachTurn), nameof(TimingKind.Once), "If", "During", "AnyPlayer"];
 
     /// <summary>Whether a combat rule applies now: its condition holds (judged from its source).</summary>
     bool RuleHolds(CombatRule rule) =>

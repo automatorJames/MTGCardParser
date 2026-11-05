@@ -329,6 +329,10 @@ public static class Triggers
                 "DealsCombatDamageToAPlayer" or "DealsCombatDamageToAPlayerOrPlaneswalker" or "DealsCombatDamageToAnOpponent" or "DealsCombatDamageToYou"
                     when evt is DamageDealt { Combat: true, Target.IsPlayer: true, Source: { } dealer } combat && (name != "DealsCombatDamageToYou" || combat.Target.Player == source.Controller) && (name != "DealsCombatDamageToAnOpponent" || combat.Target.Player != source.Controller) =>
                     Subject(trigger, dealer, source, after, before) is { Fires: true } m ? m with { Subject = combat.Target } : null,
+                "DealsCombatDamageToACreature" when evt is DamageDealt { Combat: true, Source: { } dealer5 } combat5 && Recipient("DealsDamageToACreature", combat5, source, after) =>
+                    Subject(trigger, dealer5, source, after, before) is { Fires: true } m5 ? m5 with { Subject = combat5.Target } : null,
+                "LeaveYourGraveyard" or "LeavesYourGraveyard" when evt is ZoneMoved { From: Zone.Graveyard } left && before.Object(left.Object)?.Owner == source.Controller =>
+                    Subject(trigger, left.Object, source, after, before, judgedIn: Zone.Graveyard),
                 "DealsCombatDamage" when evt is DamageDealt { Combat: true, Source: { } dealer2 } combat2 =>
                     Subject(trigger, dealer2, source, after, before) is { Fires: true } m2 ? m2 with { Subject = combat2.Target } : null,
                 "DealsDamage" or "DealsDamageToAPlayer" or "DealsDamageToAnOpponent" or "DealsDamageToACreature" or "DealsDamageToYou" or "DealsDamageToAPlayerOrPlaneswalker"
@@ -376,7 +380,7 @@ public static class Triggers
         };
 
     /// <summary>Whether the trigger's subject describes <paramref name="id"/>: the source itself, or a filter it matches.</summary>
-    static Matched Subject(ObjectEvent trigger, ObjectId id, GameObject source, GameState after, GameState before, Selector under = null)
+    static Matched Subject(ObjectEvent trigger, ObjectId id, GameObject source, GameState after, GameState before, Selector under = null, Zone judgedIn = Zone.Battlefield)
     {
         var state = after.Object(id) is not null ? after : before;
         var obj = state?.Object(id) ?? before?.Object(id);
@@ -394,8 +398,8 @@ public static class Triggers
             {
                 var lookback = before?.Object(id) ?? obj;
                 var zoneless = selector.Filter is null ? null : selector.Filter with { Zone = null };
-                fits = Filters.Matches(before ?? after, zoneless, lookback with { Zone = Zone.Battlefield }, source.Controller, source.Id, selector.Other ? source.Id : null)
-                    || Filters.Matches(after, zoneless, obj with { Zone = Zone.Battlefield }, source.Controller, source.Id, selector.Other ? source.Id : null);
+                fits = Filters.Matches(before ?? after, zoneless, lookback with { Zone = judgedIn }, source.Controller, source.Id, selector.Other ? source.Id : null)
+                    || Filters.Matches(after, zoneless, obj with { Zone = judgedIn }, source.Controller, source.Id, selector.Other ? source.Id : null);
                 if (fits && selector.Other && id == source.Id)
                     fits = false;
                 break;

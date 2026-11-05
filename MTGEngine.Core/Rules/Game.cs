@@ -264,8 +264,8 @@ public sealed partial class Game
         Characteristics.AbilitiesOf(State, obj).Any(x => x is StaticAbility { Effect: MayNotUntap { Objects: Self or null } });
 
     bool DoesntUntap(GameObject obj) =>
-        obj.Card.Abilities.Any(x => x is StaticAbility { Effect: DoesntUntap { Objects: Self, If: null } })
-        || State.Temporary.Any(x => x.Target == obj.Id && x.DoesntUntap);
+        State.Temporary.Any(x => x.Target == obj.Id && x.DoesntUntap)
+        || Characteristics.StaticEffects(State).Any(x => x.Effect is DoesntUntap && Characteristics.Covers(State, x.Objects, x.Source, obj));
 
     void Cleanup()
     {
@@ -494,7 +494,8 @@ public sealed partial class Game
         }
 
         var noActivating = RestrictionsOn(player).Any(x => x.OrActivate);
-        foreach (var obj in state.Battlefield.Where(x => x.Controller == player && !noActivating))
+        // "Any player may activate this ability" lets others activate it too.
+        foreach (var obj in state.Battlefield.Where(x => !noActivating && (x.Controller == player || x.Card.Abilities.OfType<ActivationLimits>().Any(l => l.Timings.Any(t => t.Kind == "AnyPlayer")))))
         {
             var traits = Characteristics.Of(state, obj);
             if (traits.LostAbilities || traits.Cant("Activate") || traits.Cant("ActivateNonMana"))
@@ -510,7 +511,8 @@ public sealed partial class Game
                 var onceEachTurn = limits.Any(t => t.Kind is nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once));
                 switch (ability)
                 {
-                    case ActivatedAbility activated:
+                    case ActivatedAbility activated when obj.Controller == player
+                        || limits.Any(t => t.Kind == "AnyPlayer") && !Flatten(activated.Costs).Any(c => c is TapSelf or UntapSelf or ActionCost { Action: MTGRulesIR.Model.Sacrifice { Objects: Self } }):
                         // Mana abilities that only tap are used as payment needs them; others ("{1}: add {r}", "sacrifice this: add {c}") are activated for the pool.
                         if (activated.Effect is AddMana && activated.Costs.All(x => x is TapSelf))
                             continue;
@@ -526,7 +528,7 @@ public sealed partial class Game
                             continue;
                         actions.Add(new ActivateAbility(obj.Id, index, Interpreter.Describe(activated.Effect)));
                         break;
-                    case LoyaltyAbility loyalty:
+                    case LoyaltyAbility loyalty when obj.Controller == player:
                     {
                         if (!sorcerySpeed || state.Activations.Keys.Any(k => k.StartsWith($"{obj.Id}:")))
                             continue;

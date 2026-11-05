@@ -184,6 +184,8 @@ public static class Filters
         return owners.Contains(wanted == Zone.Battlefield ? obj.Controller : obj.Owner);
     }
 
+    [ThreadStatic] static int _comparing;
+
     static bool PredicateMatches(GameState state, Predicate predicate, GameObject obj, Characteristics traits, PlayerId you, ObjectId? source, EffectContext ctx)
     {
         switch (predicate)
@@ -198,6 +200,26 @@ public static class Filters
                 if (threshold is null)
                     return false;
                 return bound.Characteristics.All(characteristic => Compare(CharacteristicValue(characteristic, obj, traits), bound.Comparison, threshold.Value));
+            }
+            // "With power less than this creature's power", "with toughness greater than its power".
+            case CharacteristicCompared compared:
+            {
+                var other = compared.Other switch
+                {
+                    Self => source is { } own ? state.Object(own) : null,
+                    Reference { Text: "its" } => obj,
+                    _ when ctx is not null => Resolver.Objects(compared.Other, ctx).Select(state.Object).FirstOrDefault(x => x is not null),
+                    _ => null,
+                };
+                if (other is null || _comparing > 2)
+                    return false;
+                _comparing++;
+                try
+                {
+                    var otherTraits = other.Id == obj.Id ? traits : Characteristics.Of(state, other);
+                    return Compare(CharacteristicValue(compared.Characteristic, obj, traits), compared.Comparison, CharacteristicValue(compared.OtherCharacteristic, other, otherTraits));
+                }
+                finally { _comparing--; }
             }
             case CharacteristicBound bound:
                 return bound.Value is Fixed fixedValue && bound.Characteristics.All(characteristic => Compare(CharacteristicValue(characteristic, obj, traits), bound.Comparison, fixedValue.Value));

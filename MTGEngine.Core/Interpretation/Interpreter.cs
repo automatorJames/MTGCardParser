@@ -401,7 +401,9 @@ public static class Interpreter
                         continue;
                     if (zone == Zone.Battlefield && !obj.Card.IsPermanentCard)
                         continue;
-                    game.MoveToZone(id, zone, controller ?? (zone == Zone.Battlefield ? ctx.Controller : null), change.Tapped, position);
+                    // "On their choice of the top or bottom of their library": the owner chooses.
+                    var at = change.To.Position == "TopOrBottom" ? (game.Decide(new YesNo(obj.Owner, $"Put {obj.Card.Name} on top of your library?")).Yes ? 0 : int.MaxValue) : position;
+                    game.MoveToZone(id, zone, controller ?? (zone == Zone.Battlefield ? ctx.Controller : null), change.Tapped, at);
                 }
                 var moved = objects.Select(TargetRef.Of).ToImmutableList();
                 return ctx with { Affected = moved, Last = moved };
@@ -492,6 +494,17 @@ public static class Interpreter
                             var pick = game.Decide(new ChooseOne(ctx.Controller, "Choose a color", Colors.All.Select(x => x.ToString()).ToImmutableList()));
                             var color = Colors.All[Math.Clamp(pick.Index, 0, 4)];
                             game.Emit(new ManaAdded(ctx.Controller, color, count));
+                            break;
+                        }
+                        // "Add two mana in any combination of colors": a color for each.
+                        case ManaChoice { Choice: "AnyCombination" } combination:
+                        {
+                            var count = Quantities.Evaluate(combination.Count, ctx) ?? 1;
+                            for (var n = 0; n < count; n++)
+                            {
+                                var pick = game.Decide(new ChooseOne(ctx.Controller, "Choose a color", Colors.All.Select(x => x.ToString()).ToImmutableList()));
+                                game.Emit(new ManaAdded(ctx.Controller, Colors.All[Math.Clamp(pick.Index, 0, 4)], 1));
+                            }
                             break;
                         }
                         default:

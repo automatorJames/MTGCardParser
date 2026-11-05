@@ -3,6 +3,28 @@ namespace MTGEngine.Core;
 /// <summary>Quantities as numbers in the game now; null when the engine can't evaluate one.</summary>
 public static class Quantities
 {
+    static readonly string[] _partyRoles = ["Cleric", "Rogue", "Warrior", "Wizard"];
+
+    /// <summary>The most party roles the creatures can fill, each creature filling one.</summary>
+    static int PartySize(List<Characteristics> creatures)
+    {
+        int Best(int role, HashSet<int> used)
+        {
+            if (role == _partyRoles.Length)
+                return 0;
+            var best = Best(role + 1, used);
+            for (var i = 0; i < creatures.Count; i++)
+                if (!used.Contains(i) && (creatures[i].Subtypes.Contains(_partyRoles[role]) || creatures[i].HasKeyword("Changeling")))
+                {
+                    used.Add(i);
+                    best = Math.Max(best, 1 + Best(role + 1, used));
+                    used.Remove(i);
+                }
+            return best;
+        }
+        return Best(0, []);
+    }
+
     public static int? Evaluate(Quantity quantity, EffectContext ctx)
     {
         switch (quantity)
@@ -20,6 +42,12 @@ public static class Quantities
                 var holders = on is null ? ctx.State.Battlefield.Select(x => x.Id).ToImmutableList() : Resolver.Objects(on, ctx);
                 return holders.Select(ctx.State.Object).Where(x => x is not null)
                     .Sum(x => kind is null ? x.CounterMap.Where(c => c.Key != "deathtouch-damage" && c.Key != "regeneration-shield").Sum(c => c.Value) : x.CountersOf(kind));
+            }
+            // "The number of creatures in your party": up to one each of cleric, rogue, warrior and wizard.
+            case CountOf { Of: ObjectSelector { Filter.With: { } with } party } when with.OfType<Related>().FirstOrDefault(r => r.Relation == Relation.InPartyOf) is { } inParty:
+            {
+                var players = Resolver.Players(inParty.To, ctx);
+                return players.Sum(player => PartySize(ctx.State.Battlefield.Where(x => x.Controller == player).Select(x => Characteristics.Of(ctx.State, x)).Where(x => x.IsCreature).ToList()));
             }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
@@ -209,7 +237,8 @@ public static class Conditions
                     };
                 });
             }
-            case Targets targets when targets.Spell is Self:
+            // "This spell costs {1} less to cast if it targets …": "it" is the spell.
+            case Targets targets when targets.Spell is Self or Reference { Text: "it" }:
             {
                 var chosen = ctx.TargetsBySelector.Values.SelectMany(x => x).Distinct().ToList();
                 if (targets.Target is ObjectSelector { Filter: var filter })

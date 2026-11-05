@@ -139,7 +139,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _predicates =
     [
-        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
+        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
         typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
     ];
 
@@ -162,6 +162,7 @@ public static class InterpreterSupport
         "BecomesUntapped", "DealsCombatDamageToAPlayer", "DealsCombatDamageToAPlayerOrPlaneswalker", "DealsCombatDamageToAnOpponent", "DealsCombatDamageToYou",
         "DealsCombatDamage", "DealsDamage", "DealsDamageToAPlayer", "DealsDamageToAnOpponent", "DealsDamageToACreature", "DealsDamageToYou",
         "DealsDamageToAPlayerOrPlaneswalker", "IsDealtDamage", "IsDealtCombatDamage", "Cast", "Discarded", "CountersPut", "Enters", "BecomesTarget", "Die", "LeaveTheBattlefield", "Countered", "IsTappedForMana", "IsTurnedFaceUp",
+        "DealsCombatDamageToACreature", "LeaveYourGraveyard", "LeavesYourGraveyard",
     ];
 
     static readonly HashSet<string> _qualifierVocabularies =
@@ -317,16 +318,16 @@ public static class InterpreterSupport
             Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
             Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
             Term term when term.Vocabulary != "PermanentDesignation" && !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
-            Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On or Relation.ExiledWith or Relation.AbilityOf) } related => $"Related.{related.Relation}",
+            Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On or Relation.ExiledWith or Relation.AbilityOf or Relation.InPartyOf) } related => $"Related.{related.Relation}",
             Happened happened when !HappenedHandled(happened) => $"Happened[{happened.Event?.GetType().Name}{(happened.Event is NamedEvent named ? "." + named.Kind : "")}]",
             PayCost { Cost: ActionCost { Action: var paid } } when !Game.PayableActions.Contains(paid.GetType()) => $"PayCost[ActionCost.{paid.GetType().Name}]",
             PayCost { Cost: not (PayMana or PayLife or ActionCost) } pay => $"PayCost[{pay.Cost?.GetType().Name}]",
             PayCost { Cost: PayMana mana } when mana.Symbols.Any(x => x.Contains('e', StringComparison.OrdinalIgnoreCase)) && !mana.Symbols.All(x => x.Equals("{e}", StringComparison.OrdinalIgnoreCase)) => "PayCost.Energy",
             Controlled { Relation: not ("Control" or "Own") } controlled => $"Controlled.{controlled.Relation}",
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
-            ZoneRef { Position: not (null or "Top" or "Bottom") } zone => $"ZoneRef.Position.{zone.Position}",
+            ZoneRef { Position: not (null or "Top" or "Bottom" or "TopOrBottom") } zone => $"ZoneRef.Position.{zone.Position}",
             PutCounters { Counters.Kind: null } => "PutCounters.Kind",
-            ManaChoice { Choice: not ("AnyColor" or "AnyOneColor") } choice => $"ManaChoice.{choice.Choice}",
+            ManaChoice { Choice: not ("AnyColor" or "AnyOneColor" or "AnyCombination") } choice => $"ManaChoice.{choice.Choice}",
             Destroy { Manner: not (null or "CantBeRegenerated") } destroy => $"Destroy.{destroy.Manner}",
             Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
             CombatEncounterEvent encounter when !Triggers.EncounterKinds.Contains(encounter.Encounter) => $"CombatEncounterEvent.{encounter.Encounter}",
@@ -393,7 +394,7 @@ public static class InterpreterSupport
             CostModification { Action: not (null or "Cast") } modification => $"CostModification.{modification.Action}",
             WasCastWith { Twice: true } => "WasCastWith.Twice",
             WasCastWith cast when cast.How is not ("Kicked" or "AdditionalCost") => $"WasCastWith.{cast.How}",
-            Targets { Spell: not Self } => "Targets.Spell",
+            Targets { Spell: not (Self or Reference { Text: "it" }) } => "Targets.Spell",
             CastBy cast when cast.Relation is not ("Control" or "Cast") || cast.Relation == "Cast" && (cast.ThisTurn || cast.From is not null || cast.During is not null) => $"CastBy.{cast.Relation}{(cast.ThisTurn ? ".ThisTurn" : "")}{(cast.From is not null ? ".From" : "")}",
             Timing timing when !Game.TimingKinds.Contains(timing.Kind) => $"Timing.{timing.Kind}",
             PayCost { Plus: not null } => "PayCost.Plus",

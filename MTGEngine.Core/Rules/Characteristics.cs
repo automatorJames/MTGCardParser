@@ -388,6 +388,7 @@ public sealed record Characteristics(
             MayPlayFrom { Duration: null } => [effect],
             GainControl { Duration: null } => [effect],
             ExtraLandPlays { EachTurn: true, Duration: null } => [effect],
+            DoesntUntap { If: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -415,6 +416,8 @@ public sealed record Characteristics(
             GainControl gain => gain.Objects ?? new Self(),
             // And land plays (Game.LandPlays).
             ExtraLandPlays => new Self(),
+            // And untapping (Game.DoesntUntap).
+            DoesntUntap doesnt => doesnt.Objects ?? new Self(),
             _ => null,
         };
 

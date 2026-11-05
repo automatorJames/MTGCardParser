@@ -145,8 +145,23 @@ public sealed partial class Game
 
     /// <summary>Whether <paramref name="player"/> could cast <paramref name="obj"/> now as far as its costs go: mana (with cost changes) and additional costs.</summary>
     bool CanAffordToCast(GameObject obj, PlayerId player) =>
-        ManaPayment.CanPay(State, player, CostToCast(obj, player, obj.Card.ManaCost.WithX(0).Plus(RequiredAdditionalMana(obj.Card)), null), HasConvoke(obj.Card), new ManaPayment.Purpose(Spell: obj))
+        ManaPayment.CanPay(State, player, CostToCast(obj, player, obj.Card.ManaCost.WithX(0).Plus(RequiredAdditionalMana(obj.Card)), PossibleTargets(obj, player)), HasConvoke(obj.Card), new ManaPayment.Purpose(Spell: obj))
         && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0));
+
+    /// <summary>
+    /// Every legal target for each of a spell's target slots, so a cost change that depends on its targets ("costs {3}
+    /// less if it targets a tapped creature") counts when some choice would earn it; the cost is judged again with the
+    /// targets chosen.
+    /// </summary>
+    Dictionary<IrNode, ImmutableList<TargetRef>> PossibleTargets(GameObject obj, PlayerId player)
+    {
+        if (!obj.Card.Abilities.SelectMany(CostModifications).Any(x => x.Modification.Spells is Self && MTGRulesIR.Lowering.NodeWalker.Nodes(x.Modification).Concat(x.Condition is null ? [] : MTGRulesIR.Lowering.NodeWalker.Nodes(x.Condition)).Any(n => n is Targets)))
+            return null;
+        var targets = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
+        foreach (var slot in SpellSlots(obj.Card))
+            targets[slot.Selector] = TargetSlots.Candidates(slot, this, player, obj.Id);
+        return targets;
+    }
 
     /// <summary>Whether a spell has convoke: the keyword, or "this spell has convoke".</summary>
     static bool HasConvoke(CardDefinition card) =>

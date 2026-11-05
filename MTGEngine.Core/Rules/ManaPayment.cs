@@ -64,7 +64,8 @@ public static class ManaPayment
                     continue;
                 if (!ability.Costs.All(x => x is TapSelf))
                     continue;
-                if (ability.Effect is not AddMana add)
+                // "Add x mana in any combination of colors, where x is …": the mana, read as one.
+                if ((ability.Effect is LetVariable { Effect: AddMana inner } ? inner : ability.Effect) is not AddMana add)
                     continue;
                 // "Spend this mana only to …" follows the mana ability it restricts.
                 if (index + 1 < traits.Abilities.Count && traits.Abilities[index + 1] is StaticAbility { Effect: ManaRestriction restriction } && !Allows(restriction, purpose, state, obj))
@@ -85,7 +86,7 @@ public static class ManaPayment
                             }
                             break;
                         }
-                        case ManaChoice { Choice: "AnyColor" or "AnyOneColor" }:
+                        case ManaChoice { Choice: "AnyColor" or "AnyOneColor" or "AnyCombination" }:
                             options.AddRange(Colors.All.Select(x => (Color?)x));
                             break;
                     }
