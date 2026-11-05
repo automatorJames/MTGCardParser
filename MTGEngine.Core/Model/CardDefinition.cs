@@ -27,7 +27,7 @@ public sealed record CardDefinition(
     {
         var info = rules.Info ?? new CardInfo();
         var cost = ManaCost.Parse(info.ManaCost);
-        var abilities = Modal.Rewrite(rules.Lines.SelectMany(x => x.Abilities)).ToImmutableList();
+        var abilities = Modal.Rewrite(rules.Lines.SelectMany(x => x.Abilities).Select(Unwrap)).ToImmutableList();
         var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
             .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).Select(x => Normalize(x.Keyword)))
             .ToImmutableHashSet();
@@ -75,6 +75,15 @@ public sealed record CardDefinition(
             colors,
             IsToken: true);
     }
+
+    /// <summary>An ability word or flavor word only labels the ability it introduces; the engine acts on the ability.</summary>
+    public static Ability Unwrap(Ability ability) =>
+        ability switch
+        {
+            LabeledAbility labeled => Unwrap(labeled.Ability),
+            FlavorAbility flavor => Unwrap(flavor.Ability),
+            _ => ability,
+        };
 
     static ImmutableHashSet<string> PredefinedTypes(string predefined) =>
         predefined switch

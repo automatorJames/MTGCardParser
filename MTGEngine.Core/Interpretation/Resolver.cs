@@ -263,16 +263,19 @@ public static class TargetSlots
                 var filter = objects.Filter;
                 List<TargetRef> candidates = [];
                 var anyTarget = filter?.Kinds?.Any(x => x.Value == nameof(ObjectKind.Any)) == true;
-                var playersToo = anyTarget || filter?.Kinds?.Any(x => x.Value == nameof(ObjectKind.Player)) == true;
+                bool IsPlayerKind(Term x) => x.Value == nameof(ObjectKind.Player) || x.Vocabulary == "PlayerIdentity";
+                var playersToo = anyTarget || filter?.Kinds?.Any(IsPlayerKind) == true;
+                var opponentsOnly = filter?.Qualifiers?.Any(q => q.Quality == "Opponent") == true || filter?.Kinds?.Any(x => x.Vocabulary == "PlayerIdentity" && x.Value == "Opponent") == true;
 
                 if (playersToo)
-                    candidates.AddRange(state.PlayersInGame.Where(p => !filter.Qualifiers?.Any(q => q.Quality == "Opponent") == true || p != controller).Select(TargetRef.Of));
+                    candidates.AddRange(state.PlayersInGame.Where(p => !opponentsOnly || p != controller).Select(TargetRef.Of));
 
+                var objectKinds = filter?.Kinds?.Where(x => !IsPlayerKind(x)).ToList();
                 var objectFilter = anyTarget
                     ? new ObjectFilter(Kinds: [new Term("Creature", "CardType"), new Term("Planeswalker", "CardType"), new Term("Battle", "CardType")])
-                    : filter;
+                    : playersToo ? filter with { Kinds = objectKinds } : filter;
 
-                if (!playersToo || anyTarget)
+                if (!playersToo || anyTarget || objectKinds is { Count: > 0 })
                     foreach (var obj in Resolver.Candidates(objectFilter, ctx))
                         if (Filters.Matches(state, objectFilter, obj, controller, source, objects.Other ? source : null, ctx: ctx) && !Protected(state, obj, controller))
                             candidates.Add(TargetRef.Of(obj.Id));

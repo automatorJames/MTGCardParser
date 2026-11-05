@@ -13,6 +13,14 @@ public static class Quantities
                 return fixedValue.Value;
             case Variable { Name: "X" or "x" }:
                 return ctx.X;
+            case CountOf { Of: ObjectSelector { Filter.Kinds: [{ Value: nameof(ObjectKind.Counter) }] } counters }:
+            {
+                var kind = counters.Filter.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "CounterKind")?.Quality;
+                var on = counters.Filter.With?.OfType<Related>().FirstOrDefault(r => r.Relation == Relation.On)?.To;
+                var holders = on is null ? ctx.State.Battlefield.Select(x => x.Id).ToImmutableList() : Resolver.Objects(on, ctx);
+                return holders.Select(ctx.State.Object).Where(x => x is not null)
+                    .Sum(x => kind is null ? x.CounterMap.Where(c => c.Key != "deathtouch-damage" && c.Key != "regeneration-shield").Sum(c => c.Value) : x.CountersOf(kind));
+            }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
             case LifeTotal life:
@@ -225,6 +233,16 @@ public static class Conditions
                 var players = Resolver.Players(action.Player, ctx);
                 return players.Any(p => action.Action == "GainedLife" ? state.Player(p).LifeGainedThisTurn > 0 : state.Player(p).LifeLostThisTurn > 0);
             }
+            case Happened { Event: NamedEvent { Kind: "YouAttacked" }, Span: "ThisTurn" or null }:
+                return (state.AttackedThisTurn ?? []).Any(id => state.Object(id)?.Controller == ctx.Controller);
+            case Happened { Event: PlayerAction { Action: "Cast", What: null or ObjectSelector { Filter: null or { Qualifiers: null, With: null } } } cast, Span: "ThisTurn" or null } happened:
+            {
+                var players = Resolver.Players(cast.Player, ctx);
+                if (players.Count == 0)
+                    players = state.PlayersInGame.ToImmutableList();
+                var spells = players.Sum(p => state.Player(p).SpellsCastThisTurn);
+                return cast.Count is Bound bound && Quantities.Evaluate(bound.Value, ctx) is { } threshold ? Filters.Compare(spells, bound.Comparison, threshold) : spells > 0;
+            }
             case Did:
                 return ctx.Game?.LastOptionalTaken;
             case OutcomeCondition { Result: "Did" }:
@@ -244,7 +262,7 @@ public static class Conditions
             "Upkeep" => Step.Upkeep,
             "Draw" or "DrawStep" => Step.Draw,
             "EndStep" or "End" or "EndOfTurn" => Step.End,
-            "Combat" or "BeginningOfCombat" => Step.BeginCombat,
+            "Combat" or "BeginningOfCombat" or "CombatPhase" or "BeginningOfCombatStep" => Step.BeginCombat,
             "DeclareAttackers" => Step.DeclareAttackers,
             "DeclareBlockers" => Step.DeclareBlockers,
             "CombatDamage" => Step.CombatDamage,

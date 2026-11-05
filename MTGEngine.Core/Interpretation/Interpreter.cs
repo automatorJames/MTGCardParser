@@ -594,6 +594,35 @@ public static class Interpreter
             case ChooseModes:
                 return ctx;
 
+            case PayCost pay:
+            {
+                var payer = pay.Player is null ? ctx.Controller : Resolver.Players(pay.Player, ctx).FirstOrDefault(ctx.Controller);
+                var paid = false;
+                switch (pay.Cost)
+                {
+                    case PayMana mana when mana.Symbols.All(x => !x.Contains('e', StringComparison.OrdinalIgnoreCase)):
+                    {
+                        var cost = ManaCost.Parse(string.Concat(mana.Symbols));
+                        if (pay.PerEach is not null)
+                            cost = cost with { Generic = cost.Generic * (Quantities.Evaluate(pay.PerEach, ctx) ?? 1) };
+                        paid = ManaPayment.CanPay(state, payer, cost) && game.PayMana(payer, cost);
+                        break;
+                    }
+                    case PayLife life when Quantities.Evaluate(life.Amount, ctx) is { } amount:
+                        if (state.Player(payer).Life >= amount)
+                        {
+                            game.ChangeLife(payer, -amount, "cost");
+                            paid = true;
+                        }
+                        break;
+                    default:
+                        game.Skip(pay.Cost, "payment kind");
+                        break;
+                }
+                game.LastOptionalTaken = paid;
+                return ctx;
+            }
+
             case Regenerate regenerate:
             {
                 foreach (var id in Resolver.Objects(regenerate.Objects, ctx))

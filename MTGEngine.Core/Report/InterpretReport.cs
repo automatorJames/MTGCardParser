@@ -73,7 +73,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _abilities =
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
-        typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
+        typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(FlavorAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -85,7 +85,7 @@ public static class InterpreterSupport
         typeof(CounterSpell), typeof(AddMana), typeof(GainControl), typeof(Fight), typeof(Attach), typeof(GameOutcome), typeof(ExtraTurn),
         typeof(LookAt), typeof(Reveal), typeof(LetVariable), typeof(ForEachOf), typeof(ChoiceOf), typeof(RemoveFromCombat),
         typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
-        typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens),
+        typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -102,12 +102,12 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _conditions =
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
-        typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition),
+        typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
     ];
 
     static readonly HashSet<Type> _events =
     [
-        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent),
+        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent),
     ];
 
     static readonly HashSet<Type> _costs =
@@ -145,12 +145,12 @@ public static class InterpreterSupport
     static readonly HashSet<string> _qualifierVocabularies =
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
-        "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance",
+        "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
     [
-        nameof(ObjectKind), "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
+        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind",
     ];
 
     /// <summary>The names of the nodes under <paramref name="root"/> (itself included) that the interpreter can't handle.</summary>
@@ -210,10 +210,15 @@ public static class InterpreterSupport
             ObjectEvent { While: not null } => "ObjectEvent.While",
             ObjectEvent { By: not null } => "ObjectEvent.By",
             PhaseEvent phase when Conditions.StepOf(phase.At.Phase) is null => $"PhaseEvent.{phase.At.Phase}",
+            TriggeredAbility { Trigger: PlayerAction or NamedEvent } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
+            Delayed { When: PlayerAction or NamedEvent } delayed => $"Delayed[{delayed.When.GetType().Name}]",
             PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife") => $"PlayerEvent.{playerEvent.Event}",
             Qualifier qualifier when !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
             Term term when !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
-            Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is) } related => $"Related.{related.Relation}",
+            Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On) } related => $"Related.{related.Relation}",
+            Happened happened when !HappenedHandled(happened) => $"Happened[{happened.Event?.GetType().Name}{(happened.Event is NamedEvent named ? "." + named.Kind : "")}]",
+            PayCost { Cost: not (PayMana or PayLife) } pay => $"PayCost[{pay.Cost?.GetType().Name}]",
+            PayCost { Cost: PayMana mana } when mana.Symbols.Any(x => x.Contains('e', StringComparison.OrdinalIgnoreCase)) => "PayCost.Energy",
             Controlled { Relation: not ("Control" or "Own") } controlled => $"Controlled.{controlled.Relation}",
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
             ZoneRef { Position: not (null or "Top" or "Bottom") } zone => $"ZoneRef.Position.{zone.Position}",
@@ -248,6 +253,15 @@ public static class InterpreterSupport
             _ => null,
         };
     }
+
+    static bool HappenedHandled(Happened happened) =>
+        happened switch
+        {
+            { Event: NamedEvent { Kind: "YouAttacked" }, Span: "ThisTurn" or null } => true,
+            { Event: PlayerAction { Action: "Cast", What: null or ObjectSelector { Filter: null or { Qualifiers: null, With: null } } }, Span: "ThisTurn" or null } => true,
+            { Event: PlayerAction { Action: "GainedLife" or "LostLife" } } => true,
+            _ => false,
+        };
 
     static bool IsStaticHandled(Effect effect) =>
         effect switch

@@ -52,6 +52,8 @@ public static class Filters
     public static bool KindMatches(Term kind, GameObject obj, Characteristics traits) =>
         kind.Vocabulary switch
         {
+            "TokenWord" => obj.IsToken,
+            "PlayerIdentity" => false,
             nameof(ObjectKind) => kind.Value switch
             {
                 nameof(ObjectKind.Any) => true,
@@ -108,6 +110,8 @@ public static class Filters
             "Provenance" => true,
             "AttachedBy" => true,
             "Kind" => qualifier.Quality == "Token" ? obj.IsToken : qualifier.Quality == "Nontoken" ? !obj.IsToken : false,
+            "TokenWord" => qualifier.Quality == "Token" ? obj.IsToken : false,
+            "CounterKind" => true,
             _ => false,
         };
 
