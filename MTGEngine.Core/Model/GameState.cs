@@ -86,6 +86,9 @@ public sealed record LinkedExile(ObjectId Source, int SourceZoneChanges, Immutab
 /// <summary>A trigger an effect set up for later: "when that creature dies this turn, …". One-shot; gone after it fires or its turn ends.</summary>
 public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn);
 
+/// <summary>Mana in a pool that a restriction limits, with the object whose ability made it (for "spend this mana only to activate abilities of artifacts").</summary>
+public sealed record RestrictedMana(Color? Color, int Amount, ManaRestriction Restriction, ObjectId Source, PlayerId Controller);
+
 public sealed record PlayerState(
     PlayerId Id,
     string Name,
@@ -102,8 +105,12 @@ public sealed record PlayerState(
     int LifeGainedThisTurn = 0,
     int LifeLostThisTurn = 0,
     int SpellsCastThisTurn = 0,
-    int Energy = 0)
+    int Energy = 0,
+    ImmutableList<RestrictedMana> Restricted = null)
 {
+    /// <summary>Mana in the pool that can be spent only on some things ("spend this mana only to cast creature spells"), apart from <see cref="Pool"/>.</summary>
+    public ImmutableList<RestrictedMana> RestrictedList => Restricted ?? ImmutableList<RestrictedMana>.Empty;
+
     public ImmutableList<ObjectId> ZoneList(Zone zone) =>
         zone switch
         {

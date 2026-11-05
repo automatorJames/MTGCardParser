@@ -23,7 +23,10 @@ public sealed record DamageDealt(ObjectId? Source, TargetRef Target, int Amount,
 public sealed record LifeChanged(PlayerId Player, int Delta, string Reason) : GameEvent;
 public sealed record CountersChanged(ObjectId Object, string Kind, int Delta) : GameEvent;
 public sealed record ManaAdded(PlayerId Player, Color? Color, int Amount) : GameEvent;
-public sealed record ManaPaid(PlayerId Player, ManaPool Remaining) : GameEvent;
+public sealed record ManaPaid(PlayerId Player, ManaPool Remaining, ImmutableList<RestrictedMana> RestrictedLeft = null) : GameEvent;
+
+/// <summary>Mana just added to the pool becomes restricted: "add {r}{r}{r}. spend this mana only to cast artifact spells".</summary>
+public sealed record ManaRestricted(PlayerId Player, RestrictedMana Mana) : GameEvent;
 public sealed record PoolEmptied(PlayerId Player) : GameEvent;
 public sealed record LandPlayed(PlayerId Player, ObjectId Land) : GameEvent;
 public sealed record SpellCast(StackItem Item) : GameEvent;
@@ -241,10 +244,20 @@ public static class Reducer
             }
 
             case ManaPaid paid:
-                return state.WithPlayer(state.Player(paid.Player) with { Pool = paid.Remaining });
+                return state.WithPlayer(state.Player(paid.Player) with { Pool = paid.Remaining, Restricted = paid.RestrictedLeft ?? state.Player(paid.Player).Restricted });
+
+            case ManaRestricted restricted:
+            {
+                var player = state.Player(restricted.Player);
+                var mana = restricted.Mana;
+                var pool = mana.Color is { } color
+                    ? player.Pool with { Colored = player.Pool.Colored.SetItem(color, Math.Max(0, player.Pool.Of(color) - mana.Amount)) }
+                    : player.Pool with { Colorless = Math.Max(0, player.Pool.Colorless - mana.Amount) };
+                return state.WithPlayer(player with { Pool = pool, Restricted = player.RestrictedList.Add(mana) });
+            }
 
             case PoolEmptied emptied:
-                return state.WithPlayer(state.Player(emptied.Player) with { Pool = ManaPool.Empty });
+                return state.WithPlayer(state.Player(emptied.Player) with { Pool = ManaPool.Empty, Restricted = null });
 
             case LandPlayed land:
             {

@@ -24,7 +24,7 @@ public sealed class InterpretReport
                 _linesClosed++;
 
             // The engine drops a handled or casting keyword's reminder text, so its lowering doesn't need running.
-            var unsupported = CardDefinition.WithoutCastingReminders(line).SelectMany(InterpreterSupport.Unsupported).Concat(InterpreterSupport.OnPermanent(card, line)).Distinct().ToList();
+            var unsupported = CardDefinition.WithoutCastingReminders(line).SelectMany(InterpreterSupport.Unsupported).Concat(InterpreterSupport.OnPermanent(card, line)).Concat(InterpreterSupport.PoolRestrictions(line)).Distinct().ToList();
             if (line.EngineClosed && unsupported.Count == 0)
             {
                 _linesExecutable++;
@@ -93,7 +93,7 @@ public static class InterpreterSupport
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
-        typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom),
+        typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -191,6 +191,27 @@ public static class InterpreterSupport
         };
         if (!read)
             yield return $"EffectLine.OnPermanent[{Describe(effectLine.Effect)}]";
+    }
+
+    /// <summary>
+    /// "Spend this mana only to …" is kept for the mana ability it follows, or the mana added just before it in an
+    /// effect; elsewhere it isn't tied to any mana.
+    /// </summary>
+    public static IEnumerable<string> PoolRestrictions(LineRules line)
+    {
+        var abilities = line.Abilities.Select(CardDefinition.Unwrap).ToList();
+        for (var i = 0; i < abilities.Count; i++)
+        {
+            var restrictions = MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<ManaRestriction>().ToList();
+            if (restrictions.Count == 0)
+                continue;
+            // After a mana ability, or right after adding mana in a sequence ("add {r}{r}{r}. spend this mana only to …").
+            var kept = abilities[i] is StaticAbility { Effect: ManaRestriction } or SpellAbility { Effect: ManaRestriction } && i > 0 && abilities[i - 1] is ActivatedAbility { Effect: AddMana } or SpellAbility { Effect: AddMana }
+                || MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<Sequence>().Any(s => s.Steps.Zip(s.Steps.Skip(1)).Any(p => p.First is AddMana && p.Second is ManaRestriction))
+                    && restrictions.Count == MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<Sequence>().Sum(s => s.Steps.Zip(s.Steps.Skip(1)).Count(p => p.First is AddMana && p.Second is ManaRestriction));
+            if (!kept)
+                yield return "ManaRestriction.PoolMana";
+        }
     }
 
     static string Describe(Effect effect) =>

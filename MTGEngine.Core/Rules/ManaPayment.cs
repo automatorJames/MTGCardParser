@@ -11,15 +11,29 @@ public static class ManaPayment
     public sealed record Purpose(GameObject Spell = null, GameObject Activating = null);
 
     /// <summary>Whether a mana restriction ("spend this mana only to cast creature spells", "can't be spent to cast nonartifact spells") lets its mana pay for <paramref name="purpose"/>.</summary>
-    public static bool Allows(ManaRestriction restriction, Purpose purpose, GameState state, GameObject source)
+    public static bool Allows(ManaRestriction restriction, Purpose purpose, GameState state, GameObject source) =>
+        Allows(restriction, purpose, state, source.Controller, source.Id);
+
+    public static bool Allows(ManaRestriction restriction, Purpose purpose, GameState state, PlayerId controller, ObjectId sourceId)
     {
         bool Use(Playable use) => use.Verb switch
         {
-            "Cast" => purpose?.Spell is { } spell && (use.What is not ObjectSelector { Filter: var filter } || Filters.Matches(state, filter with { Zone = null }, spell with { Zone = Zone.Stack }, source.Controller, source.Id)),
+            "Cast" => purpose?.Spell is { } spell && (use.What is not ObjectSelector { Filter: var filter } || Filters.Matches(state, filter with { Zone = null }, spell with { Zone = Zone.Stack }, controller, sourceId)),
             "Activate" => purpose?.Activating is not null,
             _ => false,
         };
         return restriction.Rule == "NotFor" ? !restriction.Uses.Any(Use) : restriction.Uses.Any(Use);
+    }
+
+    /// <summary>The pool's mana that can pay for <paramref name="purpose"/>: the unrestricted, and restricted mana whose restriction allows it.</summary>
+    public static ManaPool Usable(GameState state, PlayerId player, Purpose purpose)
+    {
+        var you = state.Player(player);
+        var pool = you.Pool;
+        foreach (var mana in you.RestrictedList)
+            if (Allows(mana.Restriction, purpose, state, mana.Controller, mana.Source))
+                pool = mana.Color is { } color ? pool.Add(color, mana.Amount) : pool.AddColorless(mana.Amount);
+        return pool;
     }
 
     /// <summary>A permanent that can be tapped for mana now, with the colors it could make (null entry = colorless).</summary>
@@ -102,7 +116,7 @@ public static class ManaPayment
     /// <summary>The sources to tap, and the color each makes, to pay <paramref name="cost"/> together with the pool; null when it can't be paid.</summary>
     public static ImmutableList<(Source Source, Color? Color)> Plan(GameState state, PlayerId player, ManaCost cost, bool convoke = false, Purpose purpose = null)
     {
-        var pool = state.Player(player).Pool;
+        var pool = Usable(state, player, purpose);
         if (pool.Pay(cost) is not null)
             return [];
 

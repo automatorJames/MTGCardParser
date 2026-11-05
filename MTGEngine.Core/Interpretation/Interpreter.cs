@@ -501,6 +501,11 @@ public static class Interpreter
                 return ctx;
             }
 
+            case ManaRestriction restriction:
+                if (ctx.Source is { } maker)
+                    game.RestrictRecentMana(ctx.Controller, restriction, maker);
+                return ctx;
+
             case GainControl control:
             {
                 var players = Resolver.Players(control.Player, ctx);

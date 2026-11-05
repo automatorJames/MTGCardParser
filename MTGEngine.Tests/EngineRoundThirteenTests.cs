@@ -295,3 +295,56 @@ public sealed class ReflexiveTriggerTests
         Assert.Contains(card.Abilities, x => x is TriggeredAbility { Trigger: SpellCastEvent });
     }
 }
+
+/// <summary>Restricted mana in the pool, and mana abilities with costs besides {T}.</summary>
+public sealed class RestrictedManaTests
+{
+    static ObjectId Put(Game game, CardDefinition card, int player, Zone zone = Zone.Battlefield)
+    {
+        var id = new ObjectId(game.State.NextObjectId);
+        var owner = new PlayerId(player);
+        game.Emit(new ObjectCreated(new GameObject(id, card, owner, owner, Zone.Hand)));
+        if (zone != Zone.Hand)
+            game.MoveToZone(id, zone, owner);
+        game.Emit(new SummoningSicknessCleared(owner));
+        return id;
+    }
+
+    static Game Started() =>
+        GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Mountain"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent());
+
+    [Fact]
+    public void GeosurgeManaPaysOnlyForArtifactsAndCreatures()
+    {
+        var game = Started();
+        var surge = Put(game, Cards.Named("Geosurge"), 0, Zone.Hand);
+        var ctx = new EffectContext(game, new PlayerId(0), surge, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+        foreach (var effect in Cards.Named("Geosurge").SpellEffects)
+            ctx = Interpreter.Execute(effect, ctx);
+
+        Assert.Equal(0, game.P0().Pool.Total);
+        Assert.Equal(7, game.P0().RestrictedList.Sum(x => x.Amount));
+        var giantId = Put(game, Cards.Vanilla("Giant", "{6}{R}", 7, 7), 0, Zone.Hand);
+        var boltId = Put(game, Cards.Named("Lightning Bolt"), 0, Zone.Hand);
+        var creature = game.State.Object(giantId);
+        var bolt = game.State.Object(boltId);
+        Assert.True(ManaPayment.CanPay(game.State, new PlayerId(0), creature.Card.ManaCost, purpose: new ManaPayment.Purpose(Spell: creature)));
+        Assert.False(ManaPayment.CanPay(game.State, new PlayerId(0), bolt.Card.ManaCost, purpose: new ManaPayment.Purpose(Spell: bolt)));
+    }
+
+    [Fact]
+    public void AgentOfStromgaldTurnsRedManaBlack()
+    {
+        var game = Started();
+        var agent = Put(game, Cards.Named("Agent of Stromgald"), 0);
+        Put(game, Cards.Basic("Mountain"), 0);
+        game.Emit(new TurnBegan(1, new PlayerId(0)));
+        game.Emit(new StepBegan(Step.Main1, new PlayerId(0)));
+
+        var activate = Assert.Single(game.LegalActions(new PlayerId(0)), x => x is ActivateAbility a && a.Source == agent);
+        game.Take(activate, new PlayerId(0));
+
+        Assert.Equal(1, game.P0().Pool.Of(Color.Black));
+        Assert.Empty(game.State.Stack);
+    }
+}

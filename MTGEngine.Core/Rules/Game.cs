@@ -272,7 +272,7 @@ public sealed partial class Game
 
     void EmptyPools()
     {
-        foreach (var player in State.Players.Where(x => !x.Pool.IsEmpty))
+        foreach (var player in State.Players.Where(x => !x.Pool.IsEmpty || x.RestrictedList.Count > 0))
             Emit(new PoolEmptied(player.Id));
     }
 
@@ -489,7 +489,8 @@ public sealed partial class Game
                 switch (ability)
                 {
                     case ActivatedAbility activated:
-                        if (activated.Effect is AddMana)
+                        // Mana abilities that only tap are used as payment needs them; others ("{1}: add {r}", "sacrifice this: add {c}") are activated for the pool.
+                        if (activated.Effect is AddMana && activated.Costs.All(x => x is TapSelf))
                             continue;
                         if (sorceryOnly && !sorcerySpeed)
                             continue;
@@ -818,6 +819,16 @@ public sealed partial class Game
         // What the costs took, for "the sacrificed creature's power", "the discarded card's mana value".
         bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItem("#cost", paid.ToImmutableList());
 
+        // A mana ability doesn't use the stack; "spend this mana only to …" after it restricts what it made.
+        if (effect is AddMana)
+        {
+            Interpreter.Execute(effect, new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance)));
+            var abilities = Characteristics.AbilitiesOf(State, State.Object(source) ?? obj);
+            if (index + 1 < abilities.Count && abilities[index + 1] is StaticAbility { Effect: ManaRestriction restriction })
+                RestrictRecentMana(player, restriction, source);
+            return;
+        }
+
         var item = new StackItem(State.NextStackId, player, source, StackKind.Activated, [effect], targets, 0, Description: $"{obj.Card.Name}: {Interpreter.Describe(effect)}", Costs: ability.Costs.ToImmutableList(), AbilityIndex: index, Bindings: bindings);
         Emit(new AbilityActivated(item));
     }
@@ -858,13 +869,46 @@ public sealed partial class Game
             Emit(new ManaAdded(player, color, source.Amount));
         }
 
-        var pool = State.Player(player).Pool;
-        var remaining = pool.Pay(cost);
+        var usable = ManaPayment.Usable(State, player, purpose);
+        var remaining = usable.Pay(cost);
         if (remaining is null)
             return false;
-        Emit(new ManaPaid(player, remaining));
-        _lastSpent = new ManaPool(Colors.All.Where(c => pool.Of(c) > remaining.Of(c)).ToImmutableDictionary(c => c, c => pool.Of(c) - remaining.Of(c)), pool.Colorless - remaining.Colorless);
+        // What was spent, by color, comes out of the restricted mana that may pay for this first, then the rest of the pool.
+        var spent = Colors.All.ToDictionary(c => c, c => usable.Of(c) - remaining.Of(c));
+        var spentColorless = usable.Colorless - remaining.Colorless;
+        _lastSpent = new ManaPool(spent.Where(x => x.Value > 0).ToImmutableDictionary(), spentColorless);
+        var restricted = ImmutableList.CreateBuilder<RestrictedMana>();
+        foreach (var mana in State.Player(player).RestrictedList)
+        {
+            var left = mana.Amount;
+            if (ManaPayment.Allows(mana.Restriction, purpose, State, mana.Controller, mana.Source))
+            {
+                var due = mana.Color is { } c ? spent[c] : spentColorless;
+                var take = Math.Min(due, left);
+                left -= take;
+                if (mana.Color is { } color)
+                    spent[color] -= take;
+                else
+                    spentColorless -= take;
+            }
+            if (left > 0)
+                restricted.Add(mana with { Amount = left });
+        }
+        var pool = State.Player(player).Pool;
+        var after = new ManaPool(Colors.All.ToImmutableDictionary(c => c, c => Math.Max(0, pool.Of(c) - spent[c])), Math.Max(0, pool.Colorless - spentColorless));
+        Emit(new ManaPaid(player, after, restricted.ToImmutable()));
         return true;
+    }
+
+    /// <summary>
+    /// Restricts the mana <paramref name="player"/> was just given ("add {r}{r}{r}. spend this mana only to cast artifact
+    /// spells"): the mana added since the last event that wasn't mana being added.
+    /// </summary>
+    public void RestrictRecentMana(PlayerId player, ManaRestriction restriction, ObjectId source)
+    {
+        var recent = _log.AsEnumerable().Reverse().TakeWhile(x => x is ManaAdded or EffectSkipped).OfType<ManaAdded>().Where(x => x.Player == player).ToList();
+        foreach (var added in recent)
+            Emit(new ManaRestricted(player, new RestrictedMana(added.Color, added.Amount, restriction, source, player)));
     }
 
     /// <summary>The mana the last payment spent, for "if {u} was spent to cast it".</summary>
