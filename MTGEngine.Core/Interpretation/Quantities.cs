@@ -221,7 +221,7 @@ public static class Conditions
             case Controls controls:
             {
                 var players = Resolver.Players(controls.Player, ctx);
-                var objects = Resolver.Objects(controls.Objects, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                var objects = Resolver.Objects(controls.Objects, ctx).Select(state.Object).Where(x => x is { Zone: Zone.Battlefield }).ToList();
                 var count = objects.Count(x => players.Contains(x.Controller));
                 var holds = controls.Objects is ObjectSelector { Count: Bound bound } && Quantities.Evaluate(bound.Value, ctx) is { } threshold
                     ? Filters.Compare(count, bound.Comparison, threshold)
@@ -345,6 +345,15 @@ public static class Conditions
                     "Exiled" => x.Zone == Zone.Exile,
                     _ => false,
                 });
+            }
+            // "If this permanent is an enchantment", "if it's a land card", "if all lands on the battlefield are islands": what something is now, not something done.
+            case Did { Effect: BecomesAspect { Aspects.Count: > 0 } aspect }:
+            {
+                var objects = Resolver.Objects(aspect.Objects ?? new Self(), ctx).Select(state.Object).Where(x => x is not null).ToList();
+                if (objects.Count == 0)
+                    return false;
+                var holds = objects.All(x => aspect.Aspects.All(term => Filters.KindMatches(term, x, Characteristics.Of(state, x), state)));
+                return holds != aspect.Negated;
             }
             case Did:
                 return ctx.Game?.LastOptionalTaken;

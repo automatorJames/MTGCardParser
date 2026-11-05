@@ -133,6 +133,8 @@ public sealed record CardDefinition(
         ability switch
         {
             EffectLine { Effect: var effect } when Characteristics.IsContinuous(effect) => new StaticAbility(effect),
+            // "You may play an additional land on each of your turns": the "may" is the permission itself.
+            EffectLine { Effect: Optional { Effect: ExtraLandPlays extra } } when Characteristics.IsContinuous(extra) => new StaticAbility(extra),
             EffectLine { Effect: Conditional { If: var holds, Then: var then, Else: null } } when then is not null && Characteristics.IsContinuous(then) => new StaticAbility(then, holds),
             _ => ability,
         };

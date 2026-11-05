@@ -82,7 +82,7 @@ public sealed partial class Game
     }
 
     /// <summary>More events or decisions than any real turn has: the game is looping, and stops with what it was doing rather than hang.</summary>
-    const int RunawayLimit = 200_000;
+    const int RunawayEvents = 50_000, RunawayDecisions = 10_000, RunawayObjects = 1_500;
     int _eventsThisTurn, _decisionsThisTurn;
 
     public void Emit(GameEvent evt)
@@ -94,20 +94,29 @@ public sealed partial class Game
         _eventsThisTurn = evt is TurnBegan ? 0 : _eventsThisTurn + 1;
         if (evt is TurnBegan)
             _decisionsThisTurn = 0;
-        if (_eventsThisTurn > RunawayLimit)
+        if (_eventsThisTurn > RunawayEvents)
             throw Runaway("events");
+        if (evt is TemporaryEffectAdded && State.Temporary.Count > RunawayObjects)
+            throw Runaway("temporary effects: " + string.Join(", ", State.Temporary.GroupBy(x => State.Object(x.Target)?.Card.Name + (x.UntilEndOfTurn is null ? " (no end)" : "")).OrderByDescending(x => x.Count()).Take(5).Select(x => $"{x.Count()} on {x.Key}")) + "; last " + evt);
+        if (evt is ObjectCreated && State.Objects.Count > RunawayObjects)
+            throw Runaway("objects: " + string.Join(", ", State.Objects.Values.GroupBy(x => x.Card.Name).OrderByDescending(x => x.Count()).Take(5).Select(x => $"{x.Count()} {x.Key}")));
     }
 
     public DecisionResponse Decide(Decision decision)
     {
-        if (++_decisionsThisTurn > RunawayLimit)
+        if (++_decisionsThisTurn > RunawayDecisions)
             throw Runaway("decisions: last " + decision);
         var response = _agents[decision.Player.Value].Decide(State, decision) ?? new DecisionResponse();
         return response;
     }
 
-    InvalidOperationException Runaway(string what) =>
-        new($"runaway turn ({what}); last events: " + string.Join(" | ", _log.TakeLast(12)));
+    InvalidOperationException Runaway(string what)
+    {
+        var turn = _log.Skip(_log.FindLastIndex(x => x is TurnBegan) is var start and >= 0 ? start : 0).ToList();
+        var activated = turn.OfType<AbilityActivated>().GroupBy(x => x.Item.Description).OrderByDescending(x => x.Count()).Take(3).Select(x => $"{x.Count()}x {x.Key}");
+        var mana = turn.OfType<ManaAdded>().Count();
+        return new($"runaway turn ({what}); most activated this turn: {string.Join("; ", activated)}; mana added {mana} times; last events: " + string.Join(" | ", _log.TakeLast(8)));
+    }
 
     /// <summary>Notes an IR node the engine couldn't act on, and goes on.</summary>
     public void Skip(IrNode node, string why)
@@ -238,6 +247,16 @@ public sealed partial class Game
                 Priority();
                 return;
         }
+    }
+
+    /// <summary>How many lands <paramref name="player"/> may play this turn: one, plus "you may play an additional land on each of your turns" and "… this turn".</summary>
+    int LandPlays(PlayerId player)
+    {
+        var plays = 1 + State.Player(player).ExtraLandsThisTurn;
+        foreach (var (effect, _, source) in Characteristics.StaticEffects(State))
+            if (effect is ExtraLandPlays { EachTurn: true } extra && Resolver.Players(State, extra.Player ?? new PlayerSelector(PlayerKind.You), source.Controller, source.Id).Contains(player))
+                plays += extra.Count is Special { Kind: "AnyNumber" } ? 1000 : (extra.Count as Fixed)?.Value ?? 1;
+        return plays;
     }
 
     /// <summary>"You may choose not to untap this artifact during your untap step."</summary>
@@ -405,7 +424,7 @@ public sealed partial class Game
                 continue;
             if (card.IsLand)
             {
-                if (sorcerySpeed && playerState.LandsPlayedThisTurn < 1)
+                if (sorcerySpeed && playerState.LandsPlayedThisTurn < LandPlays(player))
                     actions.Add(new PlayLand(id));
                 continue;
             }
@@ -458,7 +477,7 @@ public sealed partial class Game
             var card = obj.Card;
             if (card.IsLand)
             {
-                if (sorcerySpeed && playerState.LandsPlayedThisTurn < 1)
+                if (sorcerySpeed && playerState.LandsPlayedThisTurn < LandPlays(player))
                     actions.Add(new PlayLand(obj.Id));
                 continue;
             }
@@ -870,7 +889,7 @@ public sealed partial class Game
         }
 
         var usable = ManaPayment.Usable(State, player, purpose);
-        var remaining = usable.Pay(cost);
+        var remaining = usable.Pay(cost.SnowAsGeneric);
         if (remaining is null)
             return false;
         // What was spent, by color, comes out of the restricted mana that may pay for this first, then the rest of the pool.
@@ -999,6 +1018,7 @@ public sealed partial class Game
         for (var round = 0; round < 50; round++)
         {
             var changed = false;
+            UpdateControl();
 
             foreach (var player in State.Players.Where(x => !x.Lost))
                 if (player.Life <= 0 || player.DrewFromEmptyLibrary || player.Poison >= 10)

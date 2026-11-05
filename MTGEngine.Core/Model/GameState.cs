@@ -99,6 +99,7 @@ public sealed record PlayerState(
     ImmutableList<ObjectId> Exile,
     ManaPool Pool,
     int LandsPlayedThisTurn = 0,
+    int ExtraLandsThisTurn = 0,
     bool Lost = false,
     int Poison = 0,
     bool DrewFromEmptyLibrary = false,
@@ -165,8 +166,12 @@ public sealed record GameState(
     ImmutableList<LinkedExile> LinkedExiles = null,
     ImmutableList<ExileLink> ExileLinks = null,
     ImmutableList<PlayRestriction> PlayRestrictions = null,
-    ImmutableList<(PlayerId Player, Step Step)> SkipNext = null)
+    ImmutableList<(PlayerId Player, Step Step)> SkipNext = null,
+    ImmutableList<ControlEffect> ControlEffects = null)
 {
+    /// <summary>The effects that change who controls permanents (see <see cref="ControlEffect"/>).</summary>
+    public ImmutableList<ControlEffect> ControlEffectList => ControlEffects ?? ImmutableList<ControlEffect>.Empty;
+
     /// <summary>Steps players skip the next time they come: "you skip your next untap step".</summary>
     public ImmutableList<(PlayerId Player, Step Step)> SkipList => SkipNext ?? ImmutableList<(PlayerId, Step)>.Empty;
 

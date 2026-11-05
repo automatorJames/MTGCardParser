@@ -501,6 +501,11 @@ public static class Interpreter
                 return ctx;
             }
 
+            case ExtraLandPlays { EachTurn: false } extra when extra.Duration is null or ThisTurn && extra.Count is Fixed:
+                foreach (var player in Resolver.Players(extra.Player ?? new PlayerSelector(PlayerKind.You), ctx))
+                    game.Emit(new ExtraLandsGranted(player, ((Fixed)extra.Count).Value));
+                return ctx;
+
             case ManaRestriction restriction:
                 if (ctx.Source is { } maker)
                     game.RestrictRecentMana(ctx.Controller, restriction, maker);
@@ -510,12 +515,10 @@ public static class Interpreter
             {
                 var players = Resolver.Players(control.Player, ctx);
                 var player = players.Count > 0 ? players[0] : ctx.Controller;
-                foreach (var id in Resolver.Objects(control.Objects, ctx))
-                    if (state.Object(id)?.Zone == Zone.Battlefield)
-                        game.Emit(new ControlChanged(id, player));
-                if (control.Duration is not null)
-                    game.Skip(control.Duration, "control change duration (treated as permanent)");
-                return ctx;
+                var objects = Resolver.Objects(control.Objects, ctx);
+                if (!game.GainControl(objects, player, control.Duration, ctx))
+                    return Skipped(game, control, "control change duration", ctx);
+                return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
             case Fight fight:

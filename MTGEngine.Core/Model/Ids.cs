@@ -69,9 +69,9 @@ public static class Colors
 
 /// <summary>
 /// A mana cost: generic mana, colored mana by color, hybrid symbols (any one of their colors), X symbols, and
-/// colorless-only mana ({C}). Phyrexian symbols count as their color here; snow and other riders are ignored.
+/// colorless-only mana ({C}), and snow mana ({S}: one mana from a snow source). Phyrexian symbols count as their color here.
 /// </summary>
-public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Colored, ImmutableList<ImmutableArray<Color>> Hybrid, int X = 0, int Colorless = 0)
+public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Colored, ImmutableList<ImmutableArray<Color>> Hybrid, int X = 0, int Colorless = 0, int Snow = 0)
 {
     public static readonly ManaCost Free = new(0, ImmutableDictionary<Color, int>.Empty, ImmutableList<ImmutableArray<Color>>.Empty);
 
@@ -82,7 +82,7 @@ public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Color
         if (string.IsNullOrWhiteSpace(text))
             return Free;
 
-        int generic = 0, x = 0, colorless = 0;
+        int generic = 0, x = 0, colorless = 0, snow = 0;
         var colored = ImmutableDictionary.CreateBuilder<Color, int>();
         var hybrid = ImmutableList.CreateBuilder<ImmutableArray<Color>>();
 
@@ -96,6 +96,8 @@ public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Color
                 x++;
             else if (symbol == "C")
                 colorless++;
+            else if (symbol == "S")
+                snow++;
             else if (symbol.Contains('/'))
             {
                 var parts = symbol.Split('/').Select(Colors.OfSymbol).Where(c => c is not null).Select(c => c.Value).ToImmutableArray();
@@ -110,10 +112,13 @@ public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Color
                 colored[color] = colored.GetValueOrDefault(color) + 1;
         }
 
-        return new ManaCost(generic, colored.ToImmutable(), hybrid.ToImmutable(), x, colorless);
+        return new ManaCost(generic, colored.ToImmutable(), hybrid.ToImmutable(), x, colorless, snow);
     }
 
-    public int ManaValue => Generic + Colorless + Colored.Values.Sum() + Hybrid.Count;
+    public int ManaValue => Generic + Colorless + Colored.Values.Sum() + Hybrid.Count + Snow;
+
+    /// <summary>This cost with its snow symbols as generic mana, for paying from a pool the snow sources have just filled.</summary>
+    public ManaCost SnowAsGeneric => Snow == 0 ? this : this with { Generic = Generic + Snow, Snow = 0 };
 
     public int ColoredCount => Colored.Values.Sum() + Hybrid.Count;
 
@@ -128,7 +133,7 @@ public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Color
         var colored = Colored.ToBuilder();
         foreach (var (color, amount) in other.Colored)
             colored[color] = colored.GetValueOrDefault(color) + amount;
-        return new ManaCost(Generic + other.Generic, colored.ToImmutable(), Hybrid.AddRange(other.Hybrid), X + other.X, Colorless + other.Colorless);
+        return new ManaCost(Generic + other.Generic, colored.ToImmutable(), Hybrid.AddRange(other.Hybrid), X + other.X, Colorless + other.Colorless, Snow + other.Snow);
     }
 
     /// <summary>This cost with <paramref name="amount"/> more generic mana, or less when negative (never below none: reductions only take generic mana).</summary>
@@ -140,6 +145,7 @@ public sealed record ManaCost(int Generic, ImmutableDictionary<Color, int> Color
         for (var i = 0; i < X; i++) parts.Add("{X}");
         if (Generic > 0) parts.Add($"{{{Generic}}}");
         for (var i = 0; i < Colorless; i++) parts.Add("{C}");
+        for (var i = 0; i < Snow; i++) parts.Add("{S}");
         foreach (var color in Colors.All)
             for (var i = 0; i < Colored.GetValueOrDefault(color); i++)
                 parts.Add("{" + Symbol(color) + "}");
@@ -177,6 +183,9 @@ public sealed record ManaPool(ImmutableDictionary<Color, int> Colored, int Color
     /// <summary>The pool after paying <paramref name="cost"/>, or null when it can't: colored first, then hybrid, then generic from whatever's left (colorless first).</summary>
     public ManaPool Pay(ManaCost cost)
     {
+        // The pool doesn't remember which mana came from snow sources.
+        if (cost.Snow > 0)
+            return null;
         var colored = Colored.ToBuilder();
         var colorless = Colorless;
 

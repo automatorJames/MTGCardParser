@@ -37,7 +37,7 @@ public static class ManaPayment
     }
 
     /// <summary>A permanent that can be tapped for mana now, with the colors it could make (null entry = colorless).</summary>
-    public sealed record Source(ObjectId Id, ImmutableArray<Color?> Options, int Amount = 1);
+    public sealed record Source(ObjectId Id, ImmutableArray<Color?> Options, int Amount = 1, bool Snow = false);
 
     public static ImmutableList<Source> Sources(GameState state, PlayerId player, bool convoke = false, Purpose purpose = null)
     {
@@ -92,7 +92,7 @@ public static class ManaPayment
             }
 
             if (options.Count > 0)
-                sources.Add(new Source(obj.Id, options.Distinct().ToImmutableArray(), amount));
+                sources.Add(new Source(obj.Id, options.Distinct().ToImmutableArray(), amount, obj.Card.Supertypes.Contains("Snow")));
         }
 
         // Convoke: each untapped creature (summoning sick or not) can pay for {1} or one mana of its color.
@@ -159,12 +159,24 @@ public static class ManaPayment
                 remaining.Add(requirement);
         }
 
-        if (remaining.Count == 0)
+        if (remaining.Count == 0 && cost.Snow == 0)
             return [];
 
+        // Snow symbols need snow sources, so the others are paid from non-snow sources where they can be.
+        sources = sources.OrderBy(x => x.Snow).ToImmutableList();
         var used = new bool[sources.Count];
         var plan = new List<(Source, Color?)>();
-        return Assign(remaining.OrderBy(x => x.Length).ToList(), 0, sources, used, plan) ? plan.ToImmutableList() : null;
+        if (!Assign(remaining.OrderBy(x => x.Length).ToList(), 0, sources, used, plan))
+            return null;
+        for (var snow = 0; snow < cost.Snow; snow++)
+        {
+            var index = Enumerable.Range(0, sources.Count).FirstOrDefault(i => !used[i] && sources[i].Snow, -1);
+            if (index < 0)
+                return null;
+            used[index] = true;
+            plan.Add((sources[index], sources[index].Options[0]));
+        }
+        return plan.ToImmutableList();
     }
 
     static bool Assign(List<ImmutableArray<Color?>> requirements, int index, ImmutableList<Source> sources, bool[] used, List<(Source, Color?)> plan)

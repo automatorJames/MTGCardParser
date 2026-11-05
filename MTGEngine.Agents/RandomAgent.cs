@@ -11,6 +11,10 @@ public sealed class RandomAgent(int seed, double aggression = 0.7) : IDecisionMa
 {
     readonly Random _rng = new(seed);
 
+    /// <summary>How often this turn each ability was chosen; past a few times an ability is left alone, so a free repeatable one can't fill a turn.</summary>
+    readonly Dictionary<(int Turn, ObjectId Source, int Index), int> _activated = [];
+    const int RepeatsPerTurn = 8;
+
     public DecisionResponse Decide(GameState state, Decision decision)
     {
         switch (decision)
@@ -24,9 +28,15 @@ public sealed class RandomAgent(int seed, double aggression = 0.7) : IDecisionMa
                 var spells = options.Select((x, i) => (x, i)).Where(p => p.x is CastSpell).ToList();
                 if (spells.Count > 0 && _rng.NextDouble() < 0.9)
                     return DecisionResponse.Choose(spells[_rng.Next(spells.Count)].i);
-                var abilities = options.Select((x, i) => (x, i)).Where(p => p.x is ActivateAbility or TurnFaceUp).ToList();
+                var abilities = options.Select((x, i) => (x, i))
+                    .Where(p => p.x is TurnFaceUp || p.x is ActivateAbility a && _activated.GetValueOrDefault((state.Turn, a.Source, a.Index)) < RepeatsPerTurn).ToList();
                 if (abilities.Count > 0 && _rng.NextDouble() < 0.3)
-                    return DecisionResponse.Choose(abilities[_rng.Next(abilities.Count)].i);
+                {
+                    var pick = abilities[_rng.Next(abilities.Count)];
+                    if (pick.x is ActivateAbility chosen)
+                        _activated[(state.Turn, chosen.Source, chosen.Index)] = _activated.GetValueOrDefault((state.Turn, chosen.Source, chosen.Index)) + 1;
+                    return DecisionResponse.Choose(pick.i);
+                }
                 return DecisionResponse.Pass;
             }
 

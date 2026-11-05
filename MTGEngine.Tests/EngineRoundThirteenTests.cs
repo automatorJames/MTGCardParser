@@ -348,3 +348,139 @@ public sealed class RestrictedManaTests
         Assert.Empty(game.State.Stack);
     }
 }
+
+/// <summary>Control effects: until end of turn, for as long as, and an aura's static.</summary>
+public sealed class ControlTests
+{
+    static ObjectId Put(Game game, CardDefinition card, int player, Zone zone = Zone.Battlefield)
+    {
+        var id = new ObjectId(game.State.NextObjectId);
+        var owner = new PlayerId(player);
+        game.Emit(new ObjectCreated(new GameObject(id, card, owner, owner, Zone.Hand)));
+        if (zone != Zone.Hand)
+            game.MoveToZone(id, zone, owner);
+        game.Emit(new SummoningSicknessCleared(owner));
+        return id;
+    }
+
+    static Game Started(IDecisionMaker first) =>
+        GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Mountain"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), first, new PassiveAgent());
+
+    [Fact]
+    public void ThreatenGivesControlBackAtEndOfTurn()
+    {
+        var game = Started(new PassiveAgent());
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var threaten = Put(game, Cards.Named("Threaten"), 0, Zone.Hand);
+        var effects = Cards.Named("Threaten").SpellEffects;
+        var slot = TargetSlots.Of(effects).First();
+        var withTarget = new EffectContext(game, new PlayerId(0), threaten, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance) { [slot.Selector] = [TargetRef.Of(bears)] });
+
+        foreach (var effect in effects)
+            withTarget = Interpreter.Execute(effect, withTarget);
+        Assert.Equal(new PlayerId(0), game.State.Object(bears).Controller);
+        Assert.True(Characteristics.Of(game.State, game.State.Object(bears)).HasKeyword("Haste"));
+
+        game.Emit(new TemporaryEffectsExpired(game.State.Turn));
+        game.CheckStateAndTriggers();
+        Assert.Equal(new PlayerId(1), game.State.Object(bears).Controller);
+    }
+
+    [Fact]
+    public void MindControlTakesTheCreatureWhileAttached()
+    {
+        var game = Started(new PassiveAgent());
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var aura = Put(game, Cards.Named("Mind Control"), 0);
+        game.Emit(new Attached(aura, bears));
+        game.CheckStateAndTriggers();
+        Assert.Equal(new PlayerId(0), game.State.Object(bears).Controller);
+
+        game.Destroy(aura);
+        game.CheckStateAndTriggers();
+        Assert.Equal(new PlayerId(1), game.State.Object(bears).Controller);
+    }
+
+    [Fact]
+    public void AladdinKeepsTheArtifactOnlyWhileYouControlHim()
+    {
+        var game = Started(new PassiveAgent());
+        var aladdin = Put(game, Cards.Named("Aladdin"), 0);
+        var thopter = Put(game, Cards.Named("Ornithopter"), 1);
+        var effect = Cards.Named("Aladdin").Abilities.OfType<ActivatedAbility>().Single().Effect;
+        var slot = TargetSlots.Of([effect]).Single();
+        var ctx = new EffectContext(game, new PlayerId(0), aladdin, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance) { [slot.Selector] = [TargetRef.Of(thopter)] });
+
+        Interpreter.Execute(effect, ctx);
+        game.CheckStateAndTriggers();
+        Assert.Equal(new PlayerId(0), game.State.Object(thopter).Controller);
+
+        game.Destroy(aladdin);
+        game.CheckStateAndTriggers();
+        Assert.Equal(new PlayerId(1), game.State.Object(thopter).Controller);
+    }
+}
+
+public sealed class ExtraLandTests
+{
+    [Fact]
+    public void ExplorationAllowsASecondLand()
+    {
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Forest"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new GreedyAgent(attacks: false), new PassiveAgent());
+        var id = new ObjectId(game.State.NextObjectId);
+        game.Emit(new ObjectCreated(new GameObject(id, Cards.Named("Exploration"), new PlayerId(0), new PlayerId(0), Zone.Hand)));
+        game.MoveToZone(id, Zone.Battlefield, new PlayerId(0));
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(2, game.Log.OfType<LandPlayed>().Count());
+    }
+}
+
+public sealed class IsACheckTests
+{
+    [Fact]
+    public void OpalAvengerBecomesACreatureOnce()
+    {
+        // "If this permanent is an enchantment" was read as "if you did", so the state trigger refired without end.
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Plains"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent());
+        var id = new ObjectId(game.State.NextObjectId);
+        game.Emit(new ObjectCreated(new GameObject(id, Cards.Named("Opal Avenger"), new PlayerId(0), new PlayerId(0), Zone.Hand)));
+        game.MoveToZone(id, Zone.Battlefield, new PlayerId(0));
+        game.ChangeLife(new PlayerId(0), -10, "test");
+
+        game.PlayTurn(new PlayerId(0));
+
+        var traits = Characteristics.Of(game.State, game.State.Object(id));
+        Assert.True(traits.IsCreature);
+        Assert.Equal((3, 5), (traits.Power, traits.Toughness));
+        Assert.Single(game.State.Temporary, x => x.Target == id);
+    }
+}
+
+public sealed class SnowManaTests
+{
+    [Fact]
+    public void SnowCostsNeedSnowSources()
+    {
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Island"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent());
+        void Land(CardDefinition card)
+        {
+            var id = new ObjectId(game.State.NextObjectId);
+            game.Emit(new ObjectCreated(new GameObject(id, card, new PlayerId(0), new PlayerId(0), Zone.Hand)));
+            game.MoveToZone(id, Zone.Battlefield, new PlayerId(0));
+        }
+        var cost = ManaCost.Parse("{s}{s}");
+        Assert.Equal(2, cost.Snow);
+
+        Land(Cards.Basic("Island"));
+        Land(Cards.Basic("Island"));
+        Assert.False(ManaPayment.CanPay(game.State, new PlayerId(0), cost));
+
+        var snowy = Cards.Basic("Island") with { Supertypes = ["Basic", "Snow"] };
+        Land(snowy);
+        Land(snowy);
+        Assert.True(ManaPayment.CanPay(game.State, new PlayerId(0), cost.Plus(ManaCost.Parse("{u}{u}"))));
+        Assert.False(ManaPayment.CanPay(game.State, new PlayerId(0), cost.Plus(ManaCost.Parse("{u}{u}{u}"))));
+    }
+}

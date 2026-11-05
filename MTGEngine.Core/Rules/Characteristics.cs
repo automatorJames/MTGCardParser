@@ -386,6 +386,8 @@ public sealed record Characteristics(
             Animate { Duration: null, Transforms: false } => [effect],
             PreventDamage { Duration: null } => [effect],
             MayPlayFrom { Duration: null } => [effect],
+            GainControl { Duration: null } => [effect],
+            ExtraLandPlays { EachTurn: true, Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -409,6 +411,10 @@ public sealed record Characteristics(
             PreventDamage => new Self(),
             // So are permissions to play from elsewhere (Game.StaticPermitted).
             MayPlayFrom => new Self(),
+            // And control (Game.UpdateControl).
+            GainControl gain => gain.Objects ?? new Self(),
+            // And land plays (Game.LandPlays).
+            ExtraLandPlays => new Self(),
             _ => null,
         };
 
@@ -427,6 +433,9 @@ public sealed record Characteristics(
         };
 
     /// <summary>Whether a static effect from <paramref name="source"/> applies to <paramref name="obj"/>: its selector, matched without statics (so anthems don't recurse).</summary>
+    /// <summary>Whether a static's selector, read from <paramref name="source"/>, covers <paramref name="obj"/>.</summary>
+    public static bool Covers(GameState state, Selector objects, GameObject source, GameObject obj) => Applies(state, objects, source, obj);
+
     static bool Applies(GameState state, Selector objects, GameObject source, GameObject obj)
     {
         if (obj.Zone != Zone.Battlefield)

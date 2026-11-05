@@ -93,7 +93,7 @@ public static class InterpreterSupport
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
-        typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction),
+        typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -316,6 +316,9 @@ public static class InterpreterSupport
             RevealUntil { Until: not PlayerAction { What: ObjectSelector } } => "RevealUntil.Until",
             CantPlay { Verb: not ("Cast" or "Play") } cantPlay => $"CantPlay.{cantPlay.Verb}",
             CopySpell { Except: not null } => "CopySpell.Except",
+            ExtraLandPlays { EachTurn: false } oneTurn when !(oneTurn.Duration is null or ThisTurn && oneTurn.Count is Fixed) => "ExtraLandPlays.Duration",
+            ExtraLandPlays { EachTurn: true, Count: not (Fixed or Special { Kind: "AnyNumber" }) } => "ExtraLandPlays.Count",
+            GainControl { Duration: { } controlFor } when !Game.ControlDurationKept(controlFor) => $"GainControl.Duration[{Describe(controlFor)}]",
             BecomeCopy { Duration: { } duration } when !Keeps(duration) => $"BecomeCopy.Duration[{Describe(duration)}]",
             CastAsThoughFlash { Extra: not null } => "CastAsThoughFlash.Extra",
             Skip skip when skip.Event is not null || Game.SkippableStep(skip.Phase?.Phase) is null => $"Skip.{skip.Phase?.Phase ?? skip.Event}",
@@ -423,6 +426,8 @@ public static class InterpreterSupport
             CostModification { Spells: Self or ObjectSelector } => true,
             CostModification { Spells: SelfAbility, Action: "Activate" } => true,
             ManaRestriction => true,
+            GainControl { Duration: null } => true,
+            ExtraLandPlays { EachTurn: true, Duration: null, Count: Fixed or Special { Kind: "AnyNumber" } } => true,
             Sequence sequence => sequence.Steps.All(x => IsStaticHandled(Characteristics.WithoutPhase(x))),
             _ => false,
         };

@@ -46,6 +46,10 @@ public sealed record DamageRemoved : GameEvent;
 public sealed record DamageRemovedFrom(ObjectId Object) : GameEvent;
 public sealed record SummoningSicknessCleared(PlayerId Player) : GameEvent;
 public sealed record ControlChanged(ObjectId Object, PlayerId Controller) : GameEvent;
+public sealed record ControlEffectCreated(ControlEffect Effect) : GameEvent;
+/// <summary>"You may play an additional land this turn."</summary>
+public sealed record ExtraLandsGranted(PlayerId Player, int Count) : GameEvent;
+public sealed record ControlEffectEnded(int Id) : GameEvent;
 public sealed record Attached(ObjectId Attachment, ObjectId? To) : GameEvent;
 public sealed record Discarded(PlayerId Player, ObjectId Card) : GameEvent;
 public sealed record Sacrificed(PlayerId Player, ObjectId Object) : GameEvent;
@@ -109,7 +113,7 @@ public static class Reducer
                     AttackedThisTurn = ImmutableList<ObjectId>.Empty,
                     DiedThisTurn = ImmutableList<ObjectId>.Empty,
                     ActivationsThisTurn = ImmutableDictionary<string, int>.Empty,
-                    Players = state.Players.Select(p => p with { LandsPlayedThisTurn = 0, LifeGainedThisTurn = 0, LifeLostThisTurn = 0, SpellsCastThisTurn = 0 }).ToImmutableArray(),
+                    Players = state.Players.Select(p => p with { LandsPlayedThisTurn = 0, ExtraLandsThisTurn = 0, LifeGainedThisTurn = 0, LifeLostThisTurn = 0, SpellsCastThisTurn = 0 }).ToImmutableArray(),
                 };
 
             case StepBegan step:
@@ -351,6 +355,8 @@ public static class Reducer
                     Permissions = state.PermissionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     ZoneReplacements = state.ZoneReplacementList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     PlayRestrictions = state.PlayRestrictionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    // Control effects that run out end at the next check, which gives the permanent back.
+                    ControlEffects = state.ControlEffects?.Select(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn ? x with { Expired = true } : x).ToImmutableList(),
                 };
 
             case BecameCopy copied:
@@ -427,6 +433,18 @@ public static class Reducer
                     next = next.WithObject(obj with { EnteredThisTurn = false });
                 return next;
             }
+
+            case ExtraLandsGranted extra:
+            {
+                var player = state.Player(extra.Player);
+                return state.WithPlayer(player with { ExtraLandsThisTurn = player.ExtraLandsThisTurn + extra.Count });
+            }
+
+            case ControlEffectCreated created:
+                return state with { ControlEffects = state.ControlEffectList.Add(created.Effect) };
+
+            case ControlEffectEnded ended:
+                return state with { ControlEffects = state.ControlEffectList.RemoveAll(x => x.Id == ended.Id) };
 
             case ControlChanged control:
                 return state.Object(control.Object) is { } controlled ? state.WithObject(controlled with { Controller = control.Controller, EnteredThisTurn = true }) : state;
