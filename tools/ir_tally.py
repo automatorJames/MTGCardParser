@@ -16,7 +16,7 @@ for raw in open(path, encoding='utf-8'):
         seen = set()
         for n in walk(line['Abilities']):
             if n.get('$kind') == kind:
-                try: key = str(eval(expr, {'k': k, 'n': n}))
+                try: key = str(eval(expr, {'k': k, 'n': n, 'json': json}))
                 except Exception as e: key = 'ERR ' + type(e).__name__
                 if key in seen: continue
                 seen.add(key); counts[key] += 1; examples.setdefault(key, card['Name'] + ': ' + line['Text'][:110])

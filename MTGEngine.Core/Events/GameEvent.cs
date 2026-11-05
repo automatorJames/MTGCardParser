@@ -59,6 +59,7 @@ public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options) : GameEvent;
+public sealed record PermissionGranted(PlayPermission Permission) : GameEvent;
 public sealed record ShieldCreated(PreventionShield Shield) : GameEvent;
 public sealed record ShieldUsed(int Id, int Amount) : GameEvent;
 public sealed record DamagePrevented(ObjectId? Source, TargetRef Target, int Amount) : GameEvent;
@@ -293,7 +294,11 @@ public static class Reducer
                     Temporary = state.Temporary.RemoveAll(x => x.UntilEndOfTurn is { } until && until <= expired.Turn),
                     Delayed = state.DelayedTriggers.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     Shields = state.ShieldList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    Permissions = state.PermissionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                 };
+
+            case PermissionGranted granted:
+                return state with { Permissions = state.PermissionList.Add(granted.Permission) };
 
             case ShieldCreated created:
                 return state with { Shields = state.ShieldList.Add(created.Shield with { Id = state.NextShieldId }), NextShieldId = state.NextShieldId + 1 };

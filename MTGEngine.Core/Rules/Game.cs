@@ -288,11 +288,31 @@ public sealed partial class Game
             var instantSpeed = card.IsInstant || card.Keywords.Contains("Flash");
             if (!instantSpeed && !sorcerySpeed)
                 continue;
+            if (!card.Abilities.OfType<ActivationLimits>().Where(x => x.ForCasting).SelectMany(x => x.Timings).All(t => TimingAllows(t, obj, player)))
+                continue;
             if (!CanAffordToCast(obj, player))
                 continue;
             if (!TargetsAvailable(SpellSlots(card), player, id))
                 continue;
             actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0));
+        }
+
+        foreach (var (permission, obj) in Permitted(player).ToList())
+        {
+            var card = obj.Card;
+            if (card.IsLand)
+            {
+                if (sorcerySpeed && playerState.LandsPlayedThisTurn < 1)
+                    actions.Add(new PlayLand(obj.Id));
+                continue;
+            }
+            if (!(card.IsInstant || card.Keywords.Contains("Flash")) && !sorcerySpeed)
+                continue;
+            if (!permission.Free && !CanAffordToCast(obj, player))
+                continue;
+            if (!TargetsAvailable(SpellSlots(card), player, obj.Id))
+                continue;
+            actions.Add(new CastSpell(obj.Id, !permission.Free && card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0, permission.Free));
         }
 
         foreach (var obj in state.Battlefield.Where(x => x.Controller == player))
@@ -316,6 +336,8 @@ public sealed partial class Game
                         if (sorceryOnly && !sorcerySpeed)
                             continue;
                         if (onceEachTurn && state.Activations.GetValueOrDefault($"{obj.Id}:{index}") > 0)
+                            continue;
+                        if (!limits.All(t => TimingAllows(t, obj, player)))
                             continue;
                         if (!CanPayCosts(obj, activated.Costs, player))
                             continue;
@@ -455,7 +477,7 @@ public sealed partial class Game
                 Emit(new LandPlayed(player, land.Card));
                 return;
             case CastSpell cast:
-                Cast(cast.Card, player, cast.MaxX);
+                Cast(cast.Card, player, cast.MaxX, cast.Free);
                 return;
             case ActivateAbility activate:
                 Activate(activate.Source, activate.Index, player);
@@ -627,6 +649,11 @@ public sealed partial class Game
         var item = State.Stack.FirstOrDefault(x => x.Spell == spell);
         if (item is null)
             return;
+        if (State.Object(spell) is { } obj && (CantBeCountered(obj) || Characteristics.Of(State, obj).Cant("BeCountered")))
+        {
+            Emit(new Note($"{obj.Card.Name} can't be countered"));
+            return;
+        }
         Emit(new Countered(item.Id));
         MoveToZone(spell, Zone.Graveyard);
     }
@@ -914,9 +941,10 @@ public sealed partial class Game
         var obj = State.Object(id);
         if (obj is null || obj.Zone != Zone.Battlefield)
             return false;
-        if (Characteristics.Of(State, obj).HasKeyword("Indestructible"))
+        var traits = Characteristics.Of(State, obj);
+        if (traits.HasKeyword("Indestructible"))
             return false;
-        if (!cantBeRegenerated && obj.CountersOf("regeneration-shield") > 0)
+        if (!cantBeRegenerated && !traits.Cant("BeRegenerated") && obj.CountersOf("regeneration-shield") > 0)
         {
             Emit(new CountersChanged(id, "regeneration-shield", -1));
             Emit(new Tapped(id));

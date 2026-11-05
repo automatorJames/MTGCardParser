@@ -27,7 +27,7 @@ public sealed record CardDefinition(
     {
         var info = rules.Info ?? new CardInfo();
         var cost = ManaCost.Parse(info.ManaCost);
-        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(x => x.Abilities).Select(Unwrap))).ToImmutableList();
+        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap))).ToImmutableList();
         var keywords = Split(info.Keywords is null ? null : string.Join(",", info.Keywords))
             .Union(abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).Select(x => Normalize(x.Keyword)))
             .ToImmutableHashSet();
@@ -74,6 +74,34 @@ public sealed record CardDefinition(
             (spec.Keywords ?? []).Select(x => Normalize(x.Keyword)).ToImmutableHashSet(),
             colors,
             IsToken: true);
+    }
+
+    /// <summary>Keywords that change how a spell is cast; their reminder text describes that, not something the spell does.</summary>
+    static readonly ImmutableHashSet<string> _castingKeywords =
+    [
+        "Flashback", "JumpStart", "Harmonize", "Overload", "Gift", "Awaken", "Storm", "Conspire", "Convoke", "Retrace", "Escape", "Replicate",
+        "Splice", "Buyback", "Entwine", "Kicker", "Multikicker", "Cascade", "Delve", "Emerge", "Spectacle", "Surge", "Madness", "Miracle",
+        "Foretell", "Disturb", "Casualty", "Bargain", "Cleave", "Squad", "Plot", "Improvise", "Affinity", "Evoke", "Dash", "Blitz", "Prowl",
+    ];
+
+    /// <summary>
+    /// A line's abilities without what a casting keyword's reminder text was lowered to: "flashback {1}{u} (… then
+    /// exile it.)" is the keyword, not a spell that exiles something. Reminders of keyword actions and triggered
+    /// keywords ("fading", "extort") state the keyword's own rules and stay.
+    /// </summary>
+    static IEnumerable<Ability> WithoutCastingReminders(LineRules line)
+    {
+        var abilities = line.Abilities;
+        var keywordAt = -1;
+        for (var i = 0; i < abilities.Count; i++)
+            if (abilities[i] is KeywordLine keywords && keywords.Keywords.Any(k => _castingKeywords.Contains(Normalize(k.Keyword))))
+            {
+                keywordAt = i;
+                break;
+            }
+        return keywordAt < 0 || line.Text?.Contains('(') != true
+            ? abilities
+            : abilities.Where((ability, i) => i <= keywordAt || ability is not SpellAbility);
     }
 
     /// <summary>An ability word or flavor word only labels the ability it introduces; the engine acts on the ability.</summary>

@@ -138,6 +138,28 @@ public static class Conditions
                 var objects = Resolver.Objects(cast.Spell, ctx).Select(state.Object).Where(x => x is not null).ToList();
                 return objects.Count == 0 ? null : objects.Any(x => x.WasCastWith(cast.How)) != cast.Negated;
             }
+            case HandSize hand:
+            {
+                var players = Resolver.Players(hand.Player, ctx);
+                if (players.Count == 0)
+                    return null;
+                return players.Any(p =>
+                {
+                    var size = state.Player(p).Hand.Count;
+                    if (hand.ComparedTo is { } compared)
+                    {
+                        var comparison = compared.Comparison switch { "More" or "Greater" => Comparison.Greater, "Fewer" or "Less" => Comparison.Less, _ => Comparison.Equal };
+                        return Resolver.Players(compared.Than, ctx).Where(o => o != p).All(o => Filters.Compare(size, comparison, state.Player(o).Hand.Count));
+                    }
+                    return hand.Size switch
+                    {
+                        Fixed exactly => size == exactly.Value,
+                        Bound bound when Quantities.Evaluate(bound.Value, ctx) is { } threshold => Filters.Compare(size, bound.Comparison, threshold),
+                        null => size > 0,
+                        _ => false,
+                    };
+                });
+            }
             case Targets targets when targets.Spell is Self:
             {
                 var chosen = ctx.TargetsBySelector.Values.SelectMany(x => x).Distinct().ToList();
@@ -186,7 +208,7 @@ public static class Conditions
                 var holds = objects.All(obj =>
                 {
                     var traits = Characteristics.Of(state, obj);
-                    return kind.Kinds.Any(k => Filters.KindMatches(k, obj, traits)) && (kind.Qualified is null || Filters.Matches(state, kind.Qualified with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx));
+                    return kind.Kinds.Any(k => Filters.KindMatches(k, obj, traits, state)) && (kind.Qualified is null || Filters.Matches(state, kind.Qualified with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx));
                 });
                 return holds != kind.Negated;
             }
@@ -202,7 +224,7 @@ public static class Conditions
                     {
                         "TapState" => term.Value == "Tapped" ? obj.Tapped : !obj.Tapped,
                         "CombatState" => term.Value == "Attacking" ? obj.Attacking : term.Value == "Blocking" ? obj.Blocking is not null : false,
-                        _ => Filters.KindMatches(term, obj, traits) || Filters.QualifierMatches(new Qualifier(term.Value, Vocabulary: term.Vocabulary), obj, traits, ctx.Source),
+                        _ => Filters.KindMatches(term, obj, traits, state) || Filters.QualifierMatches(new Qualifier(term.Value, Vocabulary: term.Vocabulary), obj, traits, ctx.Source, state),
                     });
                 });
                 return holds != aspect.Negated;

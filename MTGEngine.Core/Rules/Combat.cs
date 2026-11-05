@@ -16,7 +16,7 @@ public sealed partial class Game
             .Where(x =>
             {
                 var traits = Characteristics.Of(State, x);
-                return traits.IsCreature && !traits.HasKeyword("Defender") && !traits.Cant("Attack") && (!x.EnteredThisTurn || traits.HasKeyword("Haste"));
+                return traits.IsCreature && !traits.HasKeyword("Defender") && !traits.Cant("Attack") && !AttackForbidden(traits) && (!x.EnteredThisTurn || traits.HasKeyword("Haste"));
             })
             .Select(x => x.Id)
             .ToImmutableList();
@@ -26,6 +26,11 @@ public sealed partial class Game
 
         var response = Decide(new ChooseAttackers(active, candidates, opponents.Select(TargetRef.Of).ToImmutableList()));
         var attackers = (response.Objects ?? ImmutableList<ObjectId>.Empty).Where(candidates.Contains).Distinct().ToImmutableList();
+        // Creatures that attack each combat if able do.
+        attackers = attackers.AddRange(candidates.Where(id => !attackers.Contains(id) && Characteristics.Of(State, State.Object(id)).Cant("MustAttack")));
+        // "Can't attack alone."
+        if (attackers.Count == 1 && Characteristics.Of(State, State.Object(attackers[0])).Rules.Any(r => r.Cant == "Attack" && r.Modifiers?.Contains("Alone") == true && RuleHolds(r)))
+            attackers = [];
         if (attackers.Count == 0)
             return;
 
@@ -46,7 +51,7 @@ public sealed partial class Game
             foreach (var attacker in attackers)
             {
                 var attackerTraits = Characteristics.Of(State, attacker);
-                if (CanBlock(blockerTraits, attackerTraits, blocker, attacker))
+                if (CanBlock(blockerTraits, attackerTraits, blocker, attacker) && RulesAllowBlock(blockerTraits, blocker, attackerTraits, attacker))
                     legal.Add((blocker.Id, attacker.Id));
             }
         }
@@ -61,6 +66,27 @@ public sealed partial class Game
             .Select(x => x.First())
             .ToList();
 
+        // Creatures that block each combat if able do.
+        foreach (var blocker in blockers)
+            if (Characteristics.Of(State, blocker).Cant("MustBlock") && chosen.All(x => x.Blocker != blocker.Id) && legal.FirstOrDefault(x => x.Blocker == blocker.Id) is { Blocker.Value: > 0 } forced)
+                chosen.Add(forced);
+
+        // "Can't be blocked except by three or more creatures", "can't be blocked by more than one creature".
+        foreach (var attacker in attackers)
+            foreach (var rule in Characteristics.Of(State, attacker).Rules.Where(r => r.Cant == "BeBlocked" && !r.LimitsWhich && RuleHolds(r)))
+            {
+                var (least, most) = rule.BlockerCount;
+                var count = chosen.Count(x => x.Attacker == attacker.Id);
+                if (count > 0 && count < least)
+                    chosen.RemoveAll(x => x.Attacker == attacker.Id);
+                else if (count > most)
+                    chosen.RemoveAll(x => x.Attacker == attacker.Id && chosen.Where(y => y.Attacker == attacker.Id).Skip(most).Contains(x));
+            }
+
+        // "Can't block alone."
+        if (chosen.Count == 1 && Characteristics.Of(State, State.Object(chosen[0].Blocker)).Rules.Any(r => r.Cant == "Block" && r.Modifiers?.Contains("Alone") == true && RuleHolds(r)))
+            chosen.Clear();
+
         if (chosen.Count == 0)
             return;
 
@@ -73,6 +99,28 @@ public sealed partial class Game
             return;
 
         Emit(new BlockersDeclared(defender, chosen.ToImmutableDictionary(x => x.Blocker, x => x.Attacker)));
+    }
+
+    /// <summary>Whether no one attacking may be attacked by this creature: "can't attack unless …", "creatures can't attack you".</summary>
+    bool AttackForbidden(Characteristics traits) =>
+        traits.Rules.Any(r => r.Cant == "Attack" && r.Modifiers is not { Count: > 0 } && r.By is null
+            && (r.Recipient is null || r.Recipient is "You" or "YouOrYourPlaneswalkers" && r.Controller == _defender)
+            && RuleHolds(r));
+
+    /// <summary>The combat rules of the blocker and the attacker: "can't block creatures with power 2 or greater", "can't be blocked by walls", conditional "can't block".</summary>
+    bool RulesAllowBlock(Characteristics blockerTraits, GameObject blocker, Characteristics attackerTraits, GameObject attacker)
+    {
+        foreach (var rule in blockerTraits.Rules.Where(r => r.Cant == "Block" && r.Modifiers is not { Count: > 0 }))
+            if ((rule.By is null || RuleNames(rule, attacker)) && RuleHolds(rule))
+                return false;
+        foreach (var rule in attackerTraits.Rules.Where(r => r.Cant == "BeBlocked" && r.Modifiers is not { Count: > 0 }))
+            if ((rule.By is null || rule.LimitsWhich && RuleNames(rule, blocker)) && RuleHolds(rule))
+                return false;
+        // "Can't be blocked except by walls."
+        foreach (var rule in attackerTraits.Rules.Where(r => r.Cant == "BeBlocked" && r.Modifiers?.Contains("Except") == true && r.LimitsWhich))
+            if (!RuleNames(rule, blocker) && RuleHolds(rule))
+                return false;
+        return true;
     }
 
     static bool CanBlock(Characteristics blocker, Characteristics attacker, GameObject blockerObj, GameObject attackerObj)

@@ -14,7 +14,7 @@ public static class Filters
 
         var traits = Characteristics.Of(state, obj, withStatics);
 
-        if (filter.Kinds is { Count: > 0 } kinds && !kinds.Any(kind => KindMatches(kind, obj, traits)))
+        if (filter.Kinds is { Count: > 0 } kinds && !kinds.Any(kind => KindMatches(kind, obj, traits, state)))
             return false;
 
         // "Instant and sorcery cards" names two types no card has both of: either will do.
@@ -26,7 +26,7 @@ public static class Filters
                 if (!traits.Types.Contains("Instant") && !traits.Types.Contains("Sorcery"))
                     return false;
             }
-            else if (!QualifierMatches(qualifier, obj, traits, source))
+            else if (!QualifierMatches(qualifier, obj, traits, source, state))
                 return false;
 
         if (filter.Controller is { } controlled)
@@ -57,7 +57,7 @@ public static class Filters
         return true;
     }
 
-    public static bool KindMatches(Term kind, GameObject obj, Characteristics traits) =>
+    public static bool KindMatches(Term kind, GameObject obj, Characteristics traits, GameState state = null) =>
         kind.Vocabulary switch
         {
             "TokenWord" => obj.IsToken,
@@ -73,14 +73,33 @@ public static class Filters
                 nameof(ObjectKind.Player) => false,
                 _ => false,
             },
+            "CardType" when kind.Value == nameof(ObjectKind.Permanent) => obj.Zone == Zone.Battlefield,
             "CardType" => traits.Types.Contains(kind.Value),
             "CreatureType" or "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" or "SpellSubtype" => traits.Subtypes.Contains(kind.Value),
             "Supertype" => obj.Card.Supertypes.Contains(kind.Value),
             "PermanentKind" => traits.Types.Contains(kind.Value) || traits.Subtypes.Contains(kind.Value),
+            "PermanentDesignation" => Designated(state, obj, kind.Value),
             _ => false,
         };
 
-    public static bool QualifierMatches(Qualifier qualifier, GameObject obj, Characteristics traits, ObjectId? source)
+    /// <summary>The designations the engine tracks: equipped, enchanted, face down, monstrous, modified.</summary>
+    public static readonly ImmutableHashSet<string> Designations = ["Equipped", "Enchanted", "FaceDown", "Monstrous", "Modified"];
+
+    public static bool Designated(GameState state, GameObject obj, string designation)
+    {
+        bool Attached(Func<GameObject, bool> kind) => state?.Battlefield.Any(x => x.AttachedTo == obj.Id && kind(x)) == true;
+        return designation switch
+        {
+            "Equipped" => Attached(x => x.Card.IsEquipment),
+            "Enchanted" => Attached(x => x.Card.IsAura),
+            "FaceDown" => obj.FaceDown,
+            "Monstrous" => obj.CountersOf("monstrous") > 0,
+            "Modified" => obj.CounterMap.Keys.Any(k => k is not ("regeneration-shield" or "deathtouch-damage" or "monstrous")) || Attached(x => x.Card.IsEquipment || x.Card.IsAura && x.Controller == obj.Controller),
+            _ => false,
+        };
+    }
+
+    public static bool QualifierMatches(Qualifier qualifier, GameObject obj, Characteristics traits, ObjectId? source, GameState state = null)
     {
         var holds = qualifier.Vocabulary switch
         {
@@ -120,6 +139,9 @@ public static class Filters
             "Kind" => qualifier.Quality == "Token" ? obj.IsToken : qualifier.Quality == "Nontoken" ? !obj.IsToken : false,
             "TokenWord" => qualifier.Quality == "Token" ? obj.IsToken : false,
             "CounterKind" => true,
+            "PermanentDesignation" => Designated(state, obj, qualifier.Quality),
+            // Leftovers and "… this way" name a pool the resolver supplies; within it they hold.
+            "LeftoverCards" or "AffectedThisWay" => true,
             _ => false,
         };
 
@@ -165,10 +187,10 @@ public static class Filters
                 return Resolver.Objects(related.To, ctx).Contains(obj.Id);
             case QualifierChoice choice:
                 return choice.Conjunction == Connective.And
-                    ? choice.Options.All(x => QualifierMatches(x, obj, traits, source))
-                    : choice.Options.Any(x => QualifierMatches(x, obj, traits, source));
+                    ? choice.Options.All(x => QualifierMatches(x, obj, traits, source, state))
+                    : choice.Options.Any(x => QualifierMatches(x, obj, traits, source, state));
             case QualifiedKind qualified:
-                return KindMatches(qualified.Kind, obj, traits) && qualified.Qualifiers.All(x => QualifierMatches(x, obj, traits, source));
+                return KindMatches(qualified.Kind, obj, traits, state) && qualified.Qualifiers.All(x => QualifierMatches(x, obj, traits, source, state));
             case CastBy { Relation: "Control" } cast when ctx is not null:
                 return Resolver.Players(cast.Player, ctx).Contains(obj.Controller);
             case CastBy { Relation: "Cast", ThisTurn: false, From: null, During: null } cast:
@@ -179,6 +201,18 @@ public static class Filters
                     : obj.CounterMap.Count > 0;
             case ChosenBy:
                 return true;
+            case Targeting targeting:
+            {
+                var item = state.Stack.LastOrDefault(x => x.Spell == obj.Id) ?? state.Stack.LastOrDefault(x => x.Spell is null && x.Source == obj.Id);
+                return item is not null && item.Targets.Any(target => targeting.Target switch
+                {
+                    Self => target.Object == source,
+                    ObjectSelector selector => target.IsObject && state.Object(target.Object.Value) is { } targeted && Matches(state, selector.Filter, targeted, you, source, ctx: ctx),
+                    PlayerSelector { Kind: PlayerKind.You } => target.Player == you,
+                    PlayerSelector => target.IsPlayer,
+                    _ => false,
+                });
+            }
             case OfChosen chosen:
                 return Choices.Matches(chosen.Characteristic, source is { } holder ? state.Object(holder) : null, obj, traits) == true;
             case Satisfying satisfying when ctx is not null:

@@ -69,6 +69,24 @@ public sealed class LoweringContext
             _origins[node] = new(trace.Index, trace.Length);
     }
 
+    /// <summary>Whether <paramref name="glyph"/>, a glyph at the top of this line, was captured inside parentheses - reminder text.</summary>
+    public bool InParentheses(Glyph glyph)
+    {
+        var text = Line.SourceText?.FormattedText;
+        var trace = glyph.CaptureContext?.RootCaptureTrace;
+        if (text is null || trace is null)
+            return false;
+        var index = trace.Index;
+        if (index < 0 || index > text.Length || trace.CaptureValue is { Length: > 0 } captured && string.CompareOrdinal(text, index, captured, 0, captured.Length) != 0)
+            index = trace.CaptureValue is { Length: > 0 } value ? text.IndexOf(value, StringComparison.Ordinal) : -1;
+        if (index < 0)
+            return false;
+        var depth = 0;
+        for (var i = 0; i < index; i++)
+            depth += text[i] == '(' ? 1 : text[i] == ')' ? -1 : 0;
+        return depth > 0;
+    }
+
     /// <summary>The text <paramref name="value"/> was captured from, when it was captured on this line; else its name.</summary>
     public string TextOf(object value) =>
         value switch

@@ -15,8 +15,11 @@ public sealed record Characteristics(
     ImmutableHashSet<Color> Colors,
     bool LostAbilities,
     ImmutableHashSet<string> Restrictions,
-    ImmutableList<Ability> Abilities)
+    ImmutableList<Ability> Abilities,
+    ImmutableList<CombatRule> CombatRules = null)
 {
+    public ImmutableList<CombatRule> Rules => CombatRules ?? ImmutableList<CombatRule>.Empty;
+
     public bool HasKeyword(string keyword) => Keywords.Contains(CardDefinition.Normalize(keyword));
 
     public bool IsCreature => Types.Contains("Creature");
@@ -40,6 +43,7 @@ public sealed record Characteristics(
         var toughness = card.Toughness ?? 0;
         var keywords = card.Keywords.ToBuilder();
         var restrictions = ImmutableHashSet.CreateBuilder<string>();
+        var rules = ImmutableList.CreateBuilder<CombatRule>();
         var abilities = card.Abilities.ToBuilder();
         var types = card.Types;
         var subtypes = card.Subtypes;
@@ -96,8 +100,24 @@ public sealed record Characteristics(
             }
         }
 
-        foreach (var (effect, _, _) in statics)
+        foreach (var (effect, _, source) in statics)
         {
+            if (effect is SetStats set)
+            {
+                // A characteristic-defining ability: its count is judged without statics, so it can't count itself into a loop.
+                int? value;
+                _judgingCondition++;
+                try { value = Quantities.Evaluate(set.Amount, EffectContext.Snapshot(state, source.Controller, source.Id)); }
+                finally { _judgingCondition--; }
+                if (value is { } amount)
+                {
+                    if (set.Which is "Power" or "PowerAndToughness")
+                        power = amount;
+                    if (set.Which is "Toughness" or "PowerAndToughness")
+                        toughness = amount;
+                }
+                continue;
+            }
             var stats = effect switch
             {
                 Pump { BaseStats: { } pumped } => pumped,
@@ -123,6 +143,7 @@ public sealed record Characteristics(
                 keywords.Add(CardDefinition.Normalize(keyword));
             foreach (var restriction in effect.Restrictions ?? [])
                 restrictions.Add(restriction);
+            rules.AddRange(effect.CombatRules ?? []);
             foreach (var ability in effect.Abilities ?? [])
             {
                 abilities.Add(ability);
@@ -132,7 +153,7 @@ public sealed record Characteristics(
             }
         }
 
-        foreach (var (effect, _, _) in statics)
+        foreach (var (effect, _, source) in statics)
             switch (effect)
             {
                 case Pump pump:
@@ -151,9 +172,20 @@ public sealed record Characteristics(
                     foreach (var keyword in animate.Keywords ?? [])
                         keywords.Add(CardDefinition.Normalize(keyword.Keyword));
                     break;
-                case CombatRestriction restriction:
+                case CombatRestriction { By: null, If: null, Modifiers: null or { Count: 0 }, Recipient: null } restriction:
                     foreach (var cant in restriction.Cant)
                         restrictions.Add(cant);
+                    break;
+                case CombatRestriction restriction:
+                    foreach (var cant in restriction.Cant)
+                        rules.Add(new CombatRule(cant, restriction.By, restriction.If, restriction.Modifiers, restriction.Recipient, source.Id, source.Controller));
+                    break;
+                case MustCombat must:
+                    foreach (var action in must.Actions)
+                        restrictions.Add("Must" + action);
+                    break;
+                case CantBeTargeted cantBe when cantBe.By?.Any(x => x is "Spells" or "SpellsOrAbilities") == true:
+                    restrictions.Add(cantBe.Controller is not null ? "BeTargetedByOpponents" : "BeTargeted");
                     break;
                 case GrantAbility grant:
                     abilities.Add(grant.Ability);
@@ -170,7 +202,7 @@ public sealed record Characteristics(
                     break;
             }
 
-        return new Characteristics(power, toughness, keywords.ToImmutable(), types, subtypes, colors, lost, restrictions.ToImmutable(), abilities.ToImmutable());
+        return new Characteristics(power, toughness, keywords.ToImmutable(), types, subtypes, colors, lost, restrictions.ToImmutable(), abilities.ToImmutable(), rules.ToImmutable());
     }
 
     /// <summary>The abilities an object has now: printed, granted for a while, and granted by statics on the battlefield.</summary>
@@ -216,7 +248,10 @@ public sealed record Characteristics(
         effect switch
         {
             Pump { Duration: null } => [effect],
-            CombatRestriction { Duration: null, If: null } => [effect],
+            CombatRestriction { Duration: null } => [effect],
+            MustCombat { Period: null or "EachCombat" } => [effect],
+            CantBeTargeted { Duration: null } => [effect],
+            SetStats => [effect],
             GrantAbility => [effect],
             LoseAllAbilities => [effect],
             BecomesAspect { Duration: null, Negated: false } => [effect],
@@ -234,6 +269,9 @@ public sealed record Characteristics(
             GrantAbility grant => grant.Objects ?? new Self(),
             LoseAllAbilities lose => lose.Objects ?? new Self(),
             BecomesAspect aspect => aspect.Objects ?? new Self(),
+            MustCombat must => must.Objects ?? new Self(),
+            CantBeTargeted cantBe => cantBe.Objects ?? new Self(),
+            SetStats set => set.Objects ?? new Self(),
             Animate animate => animate.Objects ?? new Self(),
             // Prevention is read by the damage rules (Game.Prevent), not applied to an object's characteristics.
             PreventDamage => new Self(),

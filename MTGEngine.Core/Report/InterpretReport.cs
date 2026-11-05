@@ -88,6 +88,7 @@ public static class InterpreterSupport
         typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(CostModification),
+        typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -105,12 +106,12 @@ public static class InterpreterSupport
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
-        typeof(WasCastWith), typeof(Targets),
+        typeof(WasCastWith), typeof(Targets), typeof(HandSize),
     ];
 
     static readonly HashSet<Type> _events =
     [
-        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent),
+        typeof(ObjectEvent), typeof(PhaseEvent), typeof(SpellCastEvent), typeof(PlayerEvent), typeof(EitherEvent), typeof(PlayerAction), typeof(NamedEvent), typeof(EffectEvent),
     ];
 
     static readonly HashSet<Type> _costs =
@@ -121,7 +122,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting),
     ];
 
     static readonly HashSet<Type> _durations =
@@ -132,7 +133,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _other =
     [
         typeof(Term), typeof(ObjectFilter), typeof(Qualifier), typeof(Controlled), typeof(ZoneRef), typeof(PhaseRef), typeof(DamagePortion),
-        typeof(CounterSpec), typeof(TokenSpec), typeof(KeywordInstance), typeof(StatsMod), typeof(ManaAmount), typeof(ManaChoice), typeof(Timing), typeof(PayCost),
+        typeof(CounterSpec), typeof(TokenSpec), typeof(TokenCopy), typeof(Compared), typeof(KeywordInstance), typeof(StatsMod), typeof(ManaAmount), typeof(ManaChoice), typeof(Timing), typeof(PayCost),
     ];
 
     static readonly HashSet<string> _objectEvents =
@@ -149,6 +150,7 @@ public static class InterpreterSupport
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
         "ColorCount", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind",
+        "LeftoverCards", "AffectedThisWay",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
@@ -189,7 +191,7 @@ public static class InterpreterSupport
                 return name;
             case Duration when !_durations.Contains(type):
                 return name;
-            case Token when type != typeof(TokenSpec):
+            case Token when type != typeof(TokenSpec) && type != typeof(TokenCopy):
                 return name;
             case ManaOption when type != typeof(ManaAmount) && type != typeof(ManaChoice):
                 return name;
@@ -215,8 +217,10 @@ public static class InterpreterSupport
             TriggeredAbility { Trigger: PlayerAction or NamedEvent } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
             Delayed { When: PlayerAction or NamedEvent } delayed => $"Delayed[{delayed.When.GetType().Name}]",
             PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife") => $"PlayerEvent.{playerEvent.Event}",
-            Qualifier qualifier when !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
-            Term term when !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
+            Qualifier { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Quality) => $"Qualifier[PermanentDesignation.{designation.Quality}]",
+            Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
+            Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
+            Term term when term.Vocabulary != "PermanentDesignation" && !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
             Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On) } related => $"Related.{related.Relation}",
             Happened happened when !HappenedHandled(happened) => $"Happened[{happened.Event?.GetType().Name}{(happened.Event is NamedEvent named ? "." + named.Kind : "")}]",
             PayCost { Cost: not (PayMana or PayLife) } pay => $"PayCost[{pay.Cost?.GetType().Name}]",
@@ -235,9 +239,17 @@ public static class InterpreterSupport
             KeywordAction { Other: { Count: > 0 } } => "KeywordAction.Other",
             UnlessPaid { Payment.Cost: not (PayMana or PayLife) } unless => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
             UnlessPaid { Payment.PerEach: not null } => "UnlessPaid.PerEach",
-            CombatRestriction { If: not null } => "CombatRestriction.If",
-            CombatRestriction { By: not null } => "CombatRestriction.By",
-            CombatRestriction { Modifiers: { Count: > 0 } } => "CombatRestriction.Modifiers",
+            CombatRestriction { Modifiers: { Count: > 0 } modifiers } when modifiers.Any(x => x is not ("Alone" or "Except")) => "CombatRestriction.Modifiers",
+            CombatRestriction { By: not (null or Self or ObjectSelector) } => "CombatRestriction.By",
+            CombatRestriction restriction when restriction.Cant.Any(x => x is not ("Attack" or "Block" or "BeBlocked")) => $"CombatRestriction.Cant.{restriction.Cant.First(x => x is not ("Attack" or "Block" or "BeBlocked"))}",
+            CombatRestriction { Recipient: not (null or "You" or "YouOrYourPlaneswalkers") } restriction => $"CombatRestriction.Recipient.{restriction.Recipient}",
+            PlayCard { Duration: { } duration } when !Keeps(duration) => $"PlayCard.Duration[{Describe(duration)}]",
+            PlayCard { ByPaying: not null } => "PlayCard.ByPaying",
+            PlayCard { From: not null } => "PlayCard.From",
+            MustCombat must when must.Period is not (null or "EachCombat" or "ThisTurn") || must.Actions.Any(x => x is not ("Attack" or "Block")) => "MustCombat.Kind",
+            CantBeTargeted cantBe when cantBe.By?.Any(x => x is not ("Countered" or "Spells" or "SpellsOrAbilities")) == true => $"CantBeTargeted.{cantBe.By.First(x => x is not ("Countered" or "Spells" or "SpellsOrAbilities"))}",
+            CantBeTargeted { Duration: { } duration } when !Keeps(duration) => $"CantBeTargeted.Duration[{Describe(duration)}]",
+            EffectEvent { Effect: not (Draw or Sacrifice) } effectEvent => $"EffectEvent.{effectEvent.Effect?.GetType().Name}",
             CombatRestriction { Duration: { } duration } when !Keeps(duration) => $"CombatRestriction.Duration[{Describe(duration)}]",
             SearchLibrary { Zones: not (null or "Library") } search => $"SearchLibrary.{search.Zones}",
             EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
@@ -259,8 +271,7 @@ public static class InterpreterSupport
             WasCastWith cast when cast.How is not ("Kicked" or "AdditionalCost") => $"WasCastWith.{cast.How}",
             Targets { Spell: not Self } => "Targets.Spell",
             CastBy cast when cast.Relation is not ("Control" or "Cast") || cast.Relation == "Cast" && (cast.ThisTurn || cast.From is not null || cast.During is not null) => $"CastBy.{cast.Relation}{(cast.ThisTurn ? ".ThisTurn" : "")}{(cast.From is not null ? ".From" : "")}",
-            Timing timing when timing.Kind is not (nameof(TimingKind.SorcerySpeed) or nameof(TimingKind.InstantSpeed) or nameof(TimingKind.OnceEachTurn) or nameof(TimingKind.Once)) => $"Timing.{timing.Kind}",
-            ActivationLimits { ForCasting: true } => "ActivationLimits.ForCasting",
+            Timing timing when !Game.TimingKinds.Contains(timing.Kind) => $"Timing.{timing.Kind}",
             PayCost { Plus: not null } => "PayCost.Plus",
             Mode { Cost: not null } => "Mode.Cost",
             ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: not (Sacrifice or Tap or Discard or PayCost or Exile or RemoveCounters) }) => "ActivatedAbility.Costs",
@@ -283,7 +294,10 @@ public static class InterpreterSupport
         effect switch
         {
             Pump { Duration: null } => true,
-            CombatRestriction { Duration: null, If: null, By: null } => true,
+            CombatRestriction { Duration: null } => true,
+            MustCombat { Period: null or "EachCombat" } => true,
+            CantBeTargeted { Duration: null } => true,
+            SetStats => true,
             GrantAbility => true,
             LoseAllAbilities => true,
             DoesntUntap { If: null } => true,

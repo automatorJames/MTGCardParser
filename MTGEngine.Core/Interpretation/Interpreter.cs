@@ -9,6 +9,9 @@ public static class Interpreter
 {
     public static EffectContext Execute(Effect effect, EffectContext ctx)
     {
+        // Steps leave what they found under bindings ("the rest" after "put one of them into your hand"), so there's always somewhere to put it.
+        if (ctx.Bindings is null)
+            ctx = ctx with { Bindings = new Dictionary<string, ImmutableList<TargetRef>>() };
         var game = ctx.Game;
         var state = ctx.State;
 
@@ -208,6 +211,24 @@ public static class Interpreter
             case CreateTokens create:
             {
                 var count = (Quantities.Evaluate(create.Count, ctx) ?? 1) * (create.PerEach is null ? 1 : Quantities.Evaluate(create.PerEach, ctx) ?? 1);
+                if (create.Token is TokenCopy copy)
+                {
+                    var originals = copy.Of is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(copy.Of, ctx);
+                    List<TargetRef> copies = [];
+                    foreach (var original in originals.Select(state.Object).Where(x => x is not null))
+                        for (var i = 0; i < count; i++)
+                        {
+                            var token = game.CreateCopyToken(original.Card, ctx.Controller);
+                            if (copy.Tapped)
+                                game.Tap(token);
+                            if (copy.Stats is { } stats)
+                                game.Emit(new TemporaryEffectAdded(new TemporaryEffect(token, 0, 0, [], null, stats)));
+                            foreach (var exception in copy.Exceptions ?? [])
+                                Execute(exception, ctx with { Source = token, Last = [TargetRef.Of(token)] });
+                            copies.Add(TargetRef.Of(token));
+                        }
+                    return ctx with { Affected = copies.ToImmutableList(), Last = copies.ToImmutableList() };
+                }
                 if (create.Token is not TokenSpec spec)
                     return Skipped(game, create, "token not described", ctx);
                 List<TargetRef> made = [];
@@ -466,8 +487,73 @@ public static class Interpreter
                 return ctx;
             }
 
-            case LookAt or Reveal:
+            case LookAt look:
+            {
+                var seen = Resolver.Objects(look.What, ctx).Select(TargetRef.Of).ToImmutableList();
+                return seen.Count == 0 ? ctx : ctx with { Last = seen, Affected = seen };
+            }
+
+            case Reveal reveal:
+            {
+                var shown = Resolver.Objects(reveal.What, ctx).Select(TargetRef.Of).ToImmutableList();
+                return shown.Count == 0 ? ctx : ctx with { Last = shown, Affected = shown };
+            }
+
+            case PlayCard play:
+            {
+                var player = play.Player is null ? ctx.Controller : Resolver.Players(play.Player, ctx).FirstOrDefault(ctx.Controller);
+                var cards = play.Card is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(play.Card, ctx);
+                if (UntilTurn(play.Duration, state) is null)
+                    return Skipped(game, play, "play duration", ctx);
+                game.GrantPlay(play, cards, player, ctx);
                 return ctx;
+            }
+
+            case CantBeRegenerated cantRegenerate:
+            {
+                var objects = cantRegenerate.Objects is null ? (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList() : Resolver.Objects(cantRegenerate.Objects, ctx);
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], state.Turn, Restrictions: ["BeRegenerated"])));
+                return ctx;
+            }
+
+            case CantBeTargeted cantBe:
+            {
+                var by = cantBe.By ?? [];
+                if (by.Contains("Countered") && cantBe.Objects is Self)
+                    return ctx;
+                var restriction = by.Contains("Countered") ? "BeCountered" : cantBe.Controller is not null ? "BeTargetedByOpponents" : "BeTargeted";
+                var until = UntilTurn(cantBe.Duration, state);
+                if (until is null)
+                    return Skipped(game, cantBe, "duration", ctx);
+                foreach (var id in Resolver.Objects(cantBe.Objects, ctx))
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: [restriction])));
+                return ctx;
+            }
+
+            case MustCombat must:
+            {
+                var objects = must.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(must.Objects, ctx);
+                var until = must.Period is "ThisTurn" ? state.Turn : (int?)null;
+                foreach (var id in objects)
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until, Restrictions: must.Actions.Select(x => "Must" + x).ToImmutableList())));
+                return ctx;
+            }
+
+            case SetStats set:
+            {
+                var amount = Quantities.Evaluate(set.Amount, ctx);
+                if (amount is null)
+                    return Skipped(game, set, "amount", ctx);
+                var objects = set.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(set.Objects, ctx);
+                foreach (var id in objects)
+                {
+                    var traits = state.Object(id) is { } obj ? Characteristics.Of(state, obj) : null;
+                    var stats = new StatsMod(set.Which is "Toughness" ? new Fixed(traits?.Power ?? 0) : new Fixed(amount.Value), set.Which is "Power" ? new Fixed(traits?.Toughness ?? 0) : new Fixed(amount.Value));
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], null, stats)));
+                }
+                return ctx;
+            }
 
             case LetVariable let:
             {
@@ -539,8 +625,13 @@ public static class Interpreter
                 var until = UntilTurn(restriction.Duration, state);
                 if (until is null)
                     return Skipped(game, restriction, $"duration {restriction.Duration?.GetType().Name}", ctx);
-                if (restriction.If is not null || restriction.By is not null || restriction.Modifiers is { Count: > 0 })
-                    return Skipped(game, restriction, "conditional restriction", ctx);
+                if (restriction.If is not null || restriction.By is not null || restriction.Modifiers is { Count: > 0 } || restriction.Recipient is not null)
+                {
+                    var rules = restriction.Cant.Select(cant => new CombatRule(cant, restriction.By, restriction.If, restriction.Modifiers, restriction.Recipient, ctx.Source ?? default, ctx.Controller)).ToImmutableList();
+                    foreach (var id in objects)
+                        game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, CombatRules: rules)));
+                    return ctx;
+                }
                 foreach (var id in objects)
                     game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: restriction.Cant.ToImmutableList())));
                 return ctx;
@@ -704,6 +795,7 @@ public static class Interpreter
         {
             Pump { Duration: null } pump => pump with { Duration = duration },
             Animate { Duration: null } animate => animate with { Duration = duration },
+            PlayCard { Duration: null } play => play with { Duration = duration },
             Sequence sequence => new Sequence(sequence.Steps.Select(x => WithDuration(x, duration)).ToList()),
             _ => effect,
         };

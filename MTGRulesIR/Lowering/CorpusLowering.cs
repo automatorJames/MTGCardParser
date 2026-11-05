@@ -48,10 +48,29 @@ public sealed class CorpusLowering
     public LineRules LowerLine(IDocument document, string types, ProcessedLine line) =>
         LowerLineWithOrigins(document, types, line).Rules;
 
+    /// <summary><paramref name="ability"/> with <paramref name="next"/> done after its effect, for the abilities that have one; null for any other.</summary>
+    static Ability Continue(Ability ability, Effect next)
+    {
+        static Effect Then(Effect first, Effect then) =>
+            first is Sequence sequence ? new Sequence([.. sequence.Steps, then]) : new Sequence([first, then]);
+
+        return ability switch
+        {
+            TriggeredAbility triggered => triggered with { Effect = Then(triggered.Effect, next) },
+            ActivatedAbility activated => activated with { Effect = Then(activated.Effect, next) },
+            LoyaltyAbility loyalty => loyalty with { Effect = Then(loyalty.Effect, next) },
+            ChapterAbility chapter => chapter with { Effect = Then(chapter.Effect, next) },
+            LabeledAbility labeled when Continue(labeled.Ability, next) is { } inner => labeled with { Ability = inner },
+            FlavorAbility flavor when Continue(flavor.Ability, next) is { } inner => flavor with { Ability = inner },
+            _ => null,
+        };
+    }
+
     (LineRules Rules, LineOrigins Origins) LowerLineWithOrigins(IDocument document, string types, ProcessedLine line)
     {
         var ctx = new LoweringContext(document, line);
         List<Ability> abilities = [];
+        List<bool> reminders = [];
 
         foreach (var unit in line.Glyphs)
             switch (unit)
@@ -63,14 +82,25 @@ public sealed class CorpusLowering
                     var unlowered = new OpaqueAbility(unmatched.CaptureValue, "Unmatched");
                     ctx.Record(unlowered, unmatched);
                     abilities.Add(unlowered);
+                    reminders.Add(false);
                     continue;
 
                 case Glyph glyph:
                     if (_lowerer.Lower(glyph, ctx) is { } node)
                     {
                         var ability = _lowerer.AsAbility(node, ctx, glyph);
+                        var reminder = ctx.InParentheses(glyph);
+                        // "Whenever …, you may discard a card. If you do, draw a card." The sentences after an ability's
+                        // first continue its effect, on the same side of any reminder parenthesis.
+                        if (ability is EffectLine continued && abilities.Count > 0 && reminders[^1] == reminder && Continue(abilities[^1], continued.Effect) is { } merged)
+                        {
+                            ctx.Record(merged, glyph);
+                            abilities[^1] = merged;
+                            continue;
+                        }
                         ctx.Record(ability, glyph);
                         abilities.Add(ability);
+                        reminders.Add(reminder);
                     }
                     continue;
             }

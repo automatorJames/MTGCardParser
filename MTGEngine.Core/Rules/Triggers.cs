@@ -51,6 +51,17 @@ public static class Triggers
 
     sealed record Matched(bool Fires, TargetRef? Subject = null);
 
+    /// <summary>Whether <paramref name="player"/> is who a trigger's player selector names, from <paramref name="source"/>'s controller's side.</summary>
+    static bool PlayerIs(Selector selector, PlayerId player, GameObject source) =>
+        selector switch
+        {
+            null => true,
+            PlayerSelector { Kind: PlayerKind.You } => player == source.Controller,
+            PlayerSelector { Kind: PlayerKind.EachOpponent or PlayerKind.AnyOpponent or PlayerKind.YourOpponents } => player != source.Controller,
+            PlayerSelector { Kind: PlayerKind.EachPlayer or PlayerKind.AnyPlayer or PlayerKind.Players } => true,
+            _ => false,
+        };
+
     static Matched Match(Event trigger, GameEvent evt, GameObject source, GameState after, GameState before)
     {
         switch (trigger)
@@ -110,6 +121,23 @@ public static class Triggers
                     _ => true,
                 };
                 return new Matched(who, TargetRef.Of(life.Player));
+            }
+
+            case EffectEvent { Effect: Draw draw } when evt is Drew { Card: not null } drew:
+                return new Matched(PlayerIs(draw.Player, drew.Player, source), TargetRef.Of(drew.Player));
+
+            case EffectEvent { Effect: Sacrifice sacrifice } when evt is Sacrificed sacrificed:
+            {
+                if (!PlayerIs(sacrifice.Player, sacrificed.Player, source))
+                    return null;
+                var victim = before.Object(sacrificed.Object) ?? after.Object(sacrificed.Object);
+                var fits = sacrifice.Objects switch
+                {
+                    Self => sacrificed.Object == source.Id,
+                    ObjectSelector selector => victim is not null && Filters.Matches(before, selector.Filter, victim with { Zone = Zone.Battlefield }, source.Controller, source.Id, selector.Other ? source.Id : null),
+                    _ => false,
+                };
+                return new Matched(fits, TargetRef.Of(sacrificed.Object));
             }
 
             case EitherEvent either:

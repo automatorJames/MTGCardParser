@@ -111,7 +111,8 @@ public sealed partial class Lowerer
         });
 
         Rule<G.WithCharacteristicBound>((g, ctx) =>
-            new CharacteristicBound(Terms(g.Characteristic, ctx), LowerAs<Quantity>(g.Quantity, ctx), ComparisonOf(g.Comparison.ToString()), g.Total));
+            // "With power 3 or greater", "mana value 2 or less": the bound includes its number.
+            new CharacteristicBound(Terms(g.Characteristic, ctx), LowerAs<Quantity>(g.Quantity, ctx), g.Comparison == G.Comparison.Less ? Comparison.LessOrEqual : Comparison.GreaterOrEqual, g.Total));
 
         Rule<G.CardsInZone>((g, ctx) =>
             new ObjectSelector(Quantifier.All, FilterOf(ctx, qualifiers: g.Qualifiers, zone: g.Zone, narrowing: [g.Named, g.With, g.Narrowed]) with { Kinds = [Kind("card")] }));

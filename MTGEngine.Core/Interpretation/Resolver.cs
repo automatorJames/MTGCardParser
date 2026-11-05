@@ -92,7 +92,26 @@ public static class Resolver
                 return pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, those.Filter with { Zone = null }, obj, ctx.Controller, ctx.Source, ctx: ctx) || those.Filter?.Kinds is null).ToImmutableList();
             }
             case ObjectSelector { Quantifier: Quantifier.Rest }:
-                return (ctx.Rest ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+                return Leftovers(ctx);
+            case ObjectSelector pooled when PoolOf(pooled, ctx) is { } pool:
+            {
+                var matching = pool.Where(id => state.Object(id) is { } obj && PoolMatches(pooled.Filter, obj, ctx)).ToImmutableList();
+                var wanted = pooled.Quantifier switch
+                {
+                    Quantifier.Count => Quantities.Evaluate(pooled.Count, ctx),
+                    Quantifier.Any => 1,
+                    _ => null,
+                };
+                if (wanted is { } count && (count < matching.Count || pooled.UpTo))
+                {
+                    var picked = Choose(matching, count, pooled.UpTo, ctx);
+                    ctx.Binds["#rest"] = pool.Except(picked).Select(TargetRef.Of).ToImmutableList();
+                    matching = picked;
+                }
+                if (pooled.Binding is { } poolBinding)
+                    ctx.Binds[poolBinding] = matching.Select(TargetRef.Of).ToImmutableList();
+                return matching;
+            }
             case ObjectSelector selector2:
             {
                 var position = selector2.Filter?.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "Position")?.Quality;
@@ -112,6 +131,57 @@ public static class Resolver
             default:
                 return [];
         }
+    }
+
+    /// <summary>What "the rest" means: what the last choice left, from the context or from a choice the resolver made.</summary>
+    static ImmutableList<ObjectId> Leftovers(EffectContext ctx) =>
+        (ctx.Rest ?? (ctx.Bindings?.TryGetValue("#rest", out var rest) == true ? rest : null) ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+
+    /// <summary>
+    /// The objects a selector chooses among, when it names a pool rather than the game: "one of them" (among what a
+    /// reference means), "the rest", "cards revealed this way" (what the last step affected). Null for none of those.
+    /// </summary>
+    static ImmutableList<ObjectId> PoolOf(ObjectSelector selector, EffectContext ctx)
+    {
+        var filter = selector.Filter;
+        if (filter is null)
+            return null;
+        if (filter.Qualifiers?.Any(q => q.Vocabulary == "LeftoverCards") == true)
+            return Leftovers(ctx);
+        if (filter.Qualifiers?.Any(q => q.Vocabulary == "AffectedThisWay") == true)
+            return (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+        if (filter.With?.OfType<Related>().FirstOrDefault(x => x.Relation == Relation.Among) is { } among)
+        {
+            var named = Objects(among.To, ctx);
+            return named.Count > 0 ? named : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+        }
+        return null;
+    }
+
+    /// <summary>Whether a pooled object fits the rest of its selector's filter, wherever it is (a card looked at in the library is still "a creature card").</summary>
+    static bool PoolMatches(ObjectFilter filter, GameObject obj, EffectContext ctx)
+    {
+        var rest = filter with
+        {
+            Zone = null,
+            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "Position")).ToList(),
+            With = filter.With?.Where(p => p is not Related { Relation: Relation.Among }).ToList(),
+        };
+        var namesCards = rest.Kinds?.Any(x => x.Value is nameof(ObjectKind.Card) or nameof(ObjectKind.Spell)) == true;
+        return Filters.Matches(ctx.State, rest, namesCards || obj.Zone == Zone.Battlefield ? obj : obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx);
+    }
+
+    /// <summary><paramref name="count"/> of <paramref name="candidates"/>, chosen by the effect's controller (the first ones when there's no game to ask).</summary>
+    static ImmutableList<ObjectId> Choose(ImmutableList<ObjectId> candidates, int count, bool upTo, EffectContext ctx)
+    {
+        count = Math.Min(count, candidates.Count);
+        if (ctx.Game is null || count == 0)
+            return candidates.Take(count).ToImmutableList();
+        var options = candidates.Select(TargetRef.Of).ToImmutableList();
+        var picked = ctx.Game.Decide(new ChooseTargets(ctx.Controller, "Choose", options, upTo ? 0 : count, count)).Targets?.Where(options.Contains).Distinct().Take(count).Select(x => x.Object.Value).ToList() ?? [];
+        if (!upTo && picked.Count < count)
+            picked.AddRange(candidates.Except(picked).Take(count - picked.Count));
+        return picked.ToImmutableList();
     }
 
     /// <summary>The objects a filter could mean: those in its zone, or on the battlefield when it names none, or cards and spells where it names those.</summary>
@@ -290,6 +360,6 @@ public static class TargetSlots
     static bool Protected(GameState state, GameObject obj, PlayerId by)
     {
         var traits = Characteristics.Of(state, obj);
-        return traits.HasKeyword("Shroud") || traits.HasKeyword("Hexproof") && obj.Controller != by;
+        return traits.HasKeyword("Shroud") || traits.Cant("BeTargeted") || (traits.HasKeyword("Hexproof") || traits.Cant("BeTargetedByOpponents")) && obj.Controller != by;
     }
 }

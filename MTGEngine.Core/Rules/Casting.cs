@@ -7,12 +7,12 @@ namespace MTGEngine.Core;
 /// </summary>
 public sealed partial class Game
 {
-    void Cast(ObjectId id, PlayerId player, int maxX)
+    void Cast(ObjectId id, PlayerId player, int maxX, bool free = false)
     {
         var obj = State.Object(id);
         var card = obj.Card;
         var x = card.ManaCost.X > 0 && maxX > 0 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var mana = card.ManaCost.WithX(x);
+        var mana = free ? ManaCost.Free : card.ManaCost.WithX(x);
         var options = ImmutableHashSet.CreateBuilder<string>();
         List<Effect> actions = [];
 
@@ -50,7 +50,7 @@ public sealed partial class Game
         var bySelector = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
         for (var i = 0; i < slots.Count && i < targets.Count; i++)
             bySelector[slots[i].Selector] = [targets[i]];
-        var total = CostToCast(obj, player, mana, bySelector);
+        var total = free ? mana : CostToCast(obj, player, mana, bySelector);
         if (!Pay(player, total))
             return;
 

@@ -59,7 +59,7 @@ public sealed record StackItem(
 public enum StackKind { Spell, Activated, Triggered }
 
 /// <summary>A pump or keyword grant that lasts until a turn ends (or forever, for one with no end).</summary>
-public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false, TypeChange TypeChange = null);
+public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, ImmutableList<string> Keywords, int? UntilEndOfTurn, StatsMod BaseStats = null, bool LosesAbilities = false, ImmutableList<string> Restrictions = null, ImmutableList<Ability> Abilities = null, bool DoesntUntap = false, TypeChange TypeChange = null, ImmutableList<CombatRule> CombatRules = null);
 
 /// <summary>A trigger an effect set up for later: "when that creature dies this turn, …". One-shot; gone after it fires or its turn ends.</summary>
 public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn);
@@ -127,8 +127,11 @@ public sealed record GameState(
     ImmutableList<DelayedTrigger> Delayed = null,
     int NextDelayedId = 1,
     ImmutableList<PreventionShield> Shields = null,
-    int NextShieldId = 1)
+    int NextShieldId = 1,
+    ImmutableList<PlayPermission> Permissions = null)
 {
+    public ImmutableList<PlayPermission> PermissionList => Permissions ?? ImmutableList<PlayPermission>.Empty;
+
     public ImmutableList<PreventionShield> ShieldList => Shields ?? ImmutableList<PreventionShield>.Empty;
 
     public ImmutableDictionary<string, int> Activations => ActivationsThisTurn ?? ImmutableDictionary<string, int>.Empty;
