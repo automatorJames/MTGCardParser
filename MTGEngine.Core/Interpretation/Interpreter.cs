@@ -387,6 +387,21 @@ public static class Interpreter
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 
+            case BecomesAspect { Aspects: [{ Vocabulary: "PermanentDesignation", Value: "Saddled" }], Negated: false } saddled:
+                return Execute(new BecomeSaddled(saddled.Objects), ctx);
+
+            case BecomeSaddled saddle:
+            {
+                foreach (var id in saddle.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(saddle.Objects, ctx))
+                    game.Emit(new ChoiceRecorded(id, "SaddledTurn", state.Turn.ToString()));
+                return ctx;
+            }
+
+            case EnterAttacking:
+                if (ctx.Source is { } sneaking && game.State.Object(sneaking) is { Zone: Zone.Battlefield })
+                    game.Emit(new EnteredAttacking(sneaking));
+                return ctx;
+
             case BecomesAspect aspect:
             {
                 var until = UntilTurn(aspect.Duration, state);

@@ -40,7 +40,8 @@ public sealed partial class Game
 
     /// <summary>The casting keywords that replace the mana cost when cast from the hand, with their indices and the option a spell cast that way records.</summary>
     static readonly (string Keyword, int Index, string Option)[] _keywordCasts =
-        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened"), ("Bestow", BestowCast, "Bestowed"), ("Overload", OverloadCast, "Overloaded")];
+        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened"), ("Bestow", BestowCast, "Bestowed"), ("Overload", OverloadCast, "Overloaded"),
+         ("Surge", SurgeCast, "Surge"), ("Spectacle", SpectacleCast, "Spectacle"), ("Blitz", BlitzCast, "Blitz")];
 
     /// <summary>Exiles a warped permanent at the end step; its owner may cast it from exile on a later turn.</summary>
     public void ExileForLater(ObjectId id)
@@ -62,7 +63,7 @@ public sealed partial class Game
     {
         foreach (var (keyword, index, _) in _keywordCasts)
             if (KeywordCost(obj.Card, keyword) is { } cost && AdditionalPayable(cost, player, obj.Id, 0) && KeywordCastPayable(obj, player, cost)
-                && (index != BestowCast || TargetsAvailable([_bestowSlot], player, obj.Id)))
+                && (index != BestowCast || TargetsAvailable([_bestowSlot], player, obj.Id)) && KeywordCastAllowed(index, player))
                 yield return new CastSpell(obj.Id, 0, Alternative: index);
     }
 
@@ -72,7 +73,7 @@ public sealed partial class Game
 
     /// <summary>The keyword cost and option for a keyword alternative index; null for other indices.</summary>
     static (Cost Cost, string Option)? KeywordCast(CardDefinition card, int alternative) =>
-        _keywordCasts.Append((Keyword: "Escape", Index: EscapeCast, Option: "Escaped")).Where(x => x.Index == alternative).Select(x => KeywordCost(card, x.Keyword) is { } cost ? (cost, x.Option) : ((Cost, string)?)null).FirstOrDefault();
+        _keywordCasts.Concat(_otherZoneCasts).Where(x => x.Index == alternative).Select(x => KeywordCost(card, x.Keyword) is { } cost ? (cost, x.Option) : ((Cost, string)?)null).FirstOrDefault();
 
     /// <summary>"Start your engines!": a player who controls such a permanent and has no speed gets speed 1.</summary>
     void StartEngines()

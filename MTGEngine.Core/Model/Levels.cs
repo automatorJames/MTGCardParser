@@ -11,17 +11,35 @@ public static class Levels
     static Condition Counters(string kind, int count, Comparison comparison) =>
         new HasCountersCondition(new Self(), new CounterSpec(kind, new Bound(new Fixed(count), comparison)));
 
-    static Condition Range(LevelRange range) =>
+    static Condition Range(LevelRange range, string counter) =>
         range.OrMore || range.High <= 0
-            ? Counters("level", range.Low, Comparison.GreaterOrEqual)
-            : new And([Counters("level", range.Low, Comparison.GreaterOrEqual), Counters("level", range.High, Comparison.LessOrEqual)]);
+            ? Counters(counter, range.Low, Comparison.GreaterOrEqual)
+            : new And([Counters(counter, range.Low, Comparison.GreaterOrEqual), Counters(counter, range.High, Comparison.LessOrEqual)]);
 
     /// <summary>A class is level 1 to begin with; each level gained after that is a "class-level" counter.</summary>
     static Condition ClassLevel(int level) => Counters("class-level", level - 1, Comparison.GreaterOrEqual);
 
     static Condition Both(Condition first, Condition second) => first is null ? second : new And([first, second]);
 
-    public static IEnumerable<Ability> Rewrite(IEnumerable<Ability> abilities)
+    /// <summary>A spacecraft's "N+ | ability" row holds while it has N or more charge counters; with power and toughness, it's an artifact creature at its highest row.</summary>
+    static IEnumerable<Ability> Stationed(List<Ability> list, bool stationCreature)
+    {
+        var rows = list.OfType<StationThresholdRow>().ToList();
+        if (rows.Count == 0)
+            return list;
+        List<Ability> rewritten = [];
+        foreach (var ability in list)
+            rewritten.AddRange(ability is StationThresholdRow row
+                ? Rewrite([new LevelRange(row.Threshold, 0, true), row.Ability], "charge")
+                : [ability]);
+        if (stationCreature)
+            rewritten.Add(new StaticAbility(new Animate(new Self(), Types: ["Creature"], InAddition: true), Counters("charge", rows.Max(x => x.Threshold), Comparison.GreaterOrEqual)));
+        return rewritten;
+    }
+
+    public static IEnumerable<Ability> Rewrite(IEnumerable<Ability> abilities, bool stationCreature) => Rewrite(Stationed(abilities.ToList(), stationCreature).ToList(), "level");
+
+    static IEnumerable<Ability> Rewrite(IEnumerable<Ability> abilities, string counter)
     {
         Condition holds = null;
         var list = abilities.ToList();
@@ -31,7 +49,7 @@ public static class Levels
             switch (ability)
             {
                 case LevelRange range:
-                    holds = Range(range);
+                    holds = Range(range, counter);
                     continue;
                 case ActivatedAbility { Effect: GainClassLevel gain } activated:
                     holds = ClassLevel(gain.Level);

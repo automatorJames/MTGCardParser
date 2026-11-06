@@ -224,7 +224,9 @@ public static class Conditions
             }
             case WasCastWith { Twice: false } cast:
             {
-                var objects = Resolver.Objects(cast.Spell, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                // A permanent that has left the battlefield ("when it dies, if it was cast for its blitz cost") as it last was there.
+                var objects = Resolver.Objects(cast.Spell, ctx).Select(state.Object).Where(x => x is not null)
+                    .Select(x => x.Zone is Zone.Graveyard or Zone.Exile && state.LastKnownOf(x.Id) is { } known && known.ZoneChangeCount == x.ZoneChangeCount - 1 ? known : x).ToList();
                 return objects.Count == 0 ? null : objects.Any(x => x.WasCastWith(cast.How)) != cast.Negated;
             }
             case WasAffectedThisWay affected:

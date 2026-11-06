@@ -48,6 +48,12 @@ public sealed record EffectContext(
 /// <summary>Selectors as objects and players in the game now.</summary>
 public static class Resolver
 {
+    /// <summary>What was chosen for a target selector: its own slot's choice, or the choice for the slot bound to the same name (the same target named again).</summary>
+    static ImmutableList<TargetRef> Chosen(IrNode selector, string binding, EffectContext ctx) =>
+        ctx.TargetsBySelector.TryGetValue(selector, out var chosen) ? chosen
+        : binding is not null && ctx.Bindings?.TryGetValue(binding, out var named) == true ? named
+        : [];
+
     public static ImmutableList<TargetRef> Targets(Selector selector, EffectContext ctx)
     {
         switch (selector)
@@ -61,7 +67,7 @@ public static class Resolver
             case Reference reference:
                 return Referenced(reference, ctx);
             case ObjectSelector { Quantifier: Quantifier.Target } targeted:
-                return ctx.TargetsBySelector.TryGetValue(targeted, out var chosen) ? chosen : [];
+                return Chosen(targeted, targeted.Binding, ctx);
             case ObjectSelector { Filter.Kinds: [{ Value: nameof(ObjectKind.Player) }] } players:
                 return ctx.State.PlayersInGame.Where(p => PlayerFilterMatches(players.Filter, p, ctx)).Select(TargetRef.Of).ToImmutableList();
             default:
@@ -100,7 +106,7 @@ public static class Resolver
             case Union union:
                 return union.Members.SelectMany(x => Objects(x, ctx)).Distinct().ToImmutableList();
             case ObjectSelector { Quantifier: Quantifier.Target } targeted:
-                return ctx.TargetsBySelector.TryGetValue(targeted, out var chosen) ? chosen.Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList() : [];
+                return Chosen(targeted, targeted.Binding, ctx).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
             case ObjectSelector { Quantifier: Quantifier.Attached }:
                 return ctx.Source is { } attachment && state.Object(attachment)?.AttachedTo is { } host ? [host] : [];
             case ObjectSelector pooled when PoolOf(pooled, ctx) is { } pool:
@@ -250,7 +256,7 @@ public static class Resolver
             case ObjectSelector { Filter.Kinds: [{ Value: nameof(ObjectKind.Player) }] } players:
                 return state.PlayersInGame.Where(p => PlayerFilterMatches(players.Filter, p, ctx)).ToImmutableList();
             case ObjectSelector { Quantifier: Quantifier.Target } targeted:
-                return ctx.TargetsBySelector.TryGetValue(targeted, out var chosen) ? chosen.Where(x => x.IsPlayer).Select(x => x.Player.Value).ToImmutableList() : [];
+                return Chosen(targeted, targeted.Binding, ctx).Where(x => x.IsPlayer).Select(x => x.Player.Value).ToImmutableList();
             default:
                 return [];
         }
@@ -273,7 +279,7 @@ public static class Resolver
             case PlayerKind.EachOtherPlayer:
                 return state.OpponentsOf(you).ToImmutableList();
             case PlayerKind.TargetPlayer or PlayerKind.TargetOpponent:
-                return ctx is not null && ctx.TargetsBySelector.TryGetValue(player, out var chosen) ? chosen.Where(x => x.IsPlayer).Select(x => x.Player.Value).ToImmutableList() : [];
+                return ctx is null ? [] : Chosen(player, player.Binding, ctx).Where(x => x.IsPlayer).Select(x => x.Player.Value).ToImmutableList();
             case PlayerKind.ControllerOf or PlayerKind.OwnerOf:
             {
                 if (ctx is null)
@@ -331,18 +337,24 @@ public sealed record TargetSlot(Selector Selector, string Binding, bool UpTo, in
 
 public static class TargetSlots
 {
-    /// <summary>Every target selector among the effects, in walk order; players and objects alike.</summary>
+    /// <summary>
+    /// Every target selector among the effects, in walk order; players and objects alike. A selector bound to a
+    /// name another one already has is the same target again ("target creature gets +1/+1 and gains flying"), not
+    /// another slot.
+    /// </summary>
     public static IEnumerable<TargetSlot> Of(IEnumerable<IrNode> roots)
     {
         var seen = new HashSet<IrNode>(ReferenceEqualityComparer.Instance);
+        var bound = new HashSet<string>();
+        bool Fresh(IrNode node, string binding) => seen.Add(node) && (binding is null || bound.Add(binding));
         foreach (var root in roots)
             foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
                 switch (node)
                 {
-                    case ObjectSelector { Quantifier: Quantifier.Target } objects when seen.Add(node):
+                    case ObjectSelector { Quantifier: Quantifier.Target } objects when Fresh(node, objects.Binding):
                         yield return new TargetSlot(objects, objects.Binding, objects.UpTo || objects.Count is Special { Kind: "AnyNumber" }, objects.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : (objects.Count as Fixed)?.Value ?? 1);
                         break;
-                    case PlayerSelector { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent } player when seen.Add(node):
+                    case PlayerSelector { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent } player when Fresh(node, player.Binding):
                         yield return new TargetSlot(player, player.Binding, false, 1);
                         break;
                 }

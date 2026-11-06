@@ -10,10 +10,11 @@ public static class Keywords
         "Indestructible", "Hexproof", "Shroud", "Infect", "Fear", "Intimidate", "Shadow", "Horsemanship",
         // Casting.
         "Flash", "Kicker", "Convoke", "Flashback", "Buyback", "Affinity", "Rebound", "Madness", "Suspend", "Foretell",
-        "Evoke", "Dash", "Plot", "Entwine", "Storm", "Delve", "Improvise", "Spree", "Offspring", "Warp", "Awaken", "Bestow", "Overload", "Escape", "Retrace", "SplitSecond", "Casualty", "Cascade", "Dredge",
+        "Evoke", "Dash", "Plot", "Entwine", "Storm", "Delve", "Improvise", "Spree", "Offspring", "Warp", "Awaken", "Bestow", "Overload", "Escape", "Retrace", "SplitSecond", "Casualty", "Cascade", "Dredge", "Sneak", "Surge", "Spectacle", "Blitz", "JumpStart",
         // Expanded into abilities (see KeywordAbilities).
         "Equip", "Cycling", "Typecycling", "Unearth", "LevelUp", "Crew", "Prowess", "Exalted", "Flanking", "Bushido", "Bloodthirst", "Ward", "Echo", "CumulativeUpkeep", "Vanishing", "Fading", "Soulshift", "Fabricate", "Backup", "StartYourEngines", "Renown", "Sunburst", "Learn", "Ninjutsu",
         "Scavenge", "Embalm", "Eternalize", "Transmute", "Modular", "Unleash", "Mentor", "Evolve", "Extort", "Clash",
+        "Saddle", "Station", "Riot", "Afflict", "Annihilator", "Outlast", "Decayed", "Reinforce", "Ingest",
         "Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt",
         // Read where they apply.
         "Protection", "Devoid", "Changeling", "Wither", "Toxic", "Persist", "Undying", "TotemArmor",

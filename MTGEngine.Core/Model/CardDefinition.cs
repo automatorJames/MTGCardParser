@@ -32,7 +32,7 @@ public sealed record CardDefinition(
         var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(LastingUntaps(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap))
             .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x)
             .Select(x => spell ? x : AsStatic(x)))).ToImmutableList();
-        abilities = Levels.Rewrite(KeywordAbilities.Expand(abilities, spell)).ToImmutableList();
+        abilities = Levels.Rewrite(KeywordAbilities.Expand(abilities, spell), stationCreature: info.Power is not null).ToImmutableList();
         // A card's keywords are its keyword lines'. The database's keyword list also names ability words, keyword
         // actions, and a double-faced card's back face (Delver of Secrets would fly), so it isn't read.
         var keywords = abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).SelectMany(KeywordAbilities.NamesOf).ToImmutableHashSet();

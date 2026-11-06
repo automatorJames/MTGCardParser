@@ -454,6 +454,7 @@ public sealed partial class Game
         actions.AddRange(FaceUpActions(player));
         actions.AddRange(ForetellActions(player, sorcerySpeed));
         actions.AddRange(PlotActions(player, sorcerySpeed));
+        actions.AddRange(SneakActions(player));
 
         // Abilities that work from the hand or graveyard (cycling, unearth), and flashback.
         foreach (var obj in playerState.Hand.Concat(playerState.Graveyard).Select(state.Object).Where(x => x is not null).ToList())
@@ -831,6 +832,22 @@ public sealed partial class Game
                     {
                         Discard(player, card.Object.Value);
                         paid.Add(card);
+                    }
+                    break;
+                }
+                // "Tap an untapped creature you control": chosen among the untapped ones (an effect's "tap a creature" may pick any).
+                case ActionCost { Action: Tap { Objects: ObjectSelector { Quantifier: not Quantifier.Target } tapping } }:
+                {
+                    var tapCtx = new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+                    var count = tapping.Quantifier == Quantifier.Count ? Quantities.Evaluate(tapping.Count, tapCtx) ?? 1 : 1;
+                    var untapped = Resolver.Candidates(tapping.Filter, tapCtx)
+                        .Where(o => o.Zone == Zone.Battlefield && !o.Tapped && Filters.Matches(State, tapping.Filter, o, player, source, tapping.Other ? source : null, ctx: tapCtx))
+                        .Select(o => TargetRef.Of(o.Id)).ToImmutableList();
+                    var chosen = untapped.Count <= count ? untapped : Decide(new ChooseTargets(player, "Tap", untapped, count, count)).Targets ?? untapped.Take(count).ToImmutableList();
+                    foreach (var tapped in chosen.Where(x => x.IsObject).Take(count).ToList())
+                    {
+                        Emit(new Tapped(tapped.Object.Value));
+                        paid.Add(tapped);
                     }
                     break;
                 }
@@ -1273,6 +1290,12 @@ public sealed partial class Game
 
         foreach (var replacement in obj.Card.Abilities.OfType<ReplacementAbility>())
             Consider(replacement, entering);
+        // Sneak: a creature cast for its sneak cost enters tapped and attacking.
+        if (obj.WasCastWith("Sneak") && obj.Card.IsCreature)
+        {
+            tapped = true;
+            onEntry.Add(new EnterAttacking());
+        }
         // "You may have this creature enter as a copy of any creature on the battlefield."
         foreach (var line in obj.Card.Abilities.OfType<EffectLine>())
             if (line.Effect is BecomeCopy { Verb: "EntersAs" } or Optional { Effect: BecomeCopy { Verb: "EntersAs" } })

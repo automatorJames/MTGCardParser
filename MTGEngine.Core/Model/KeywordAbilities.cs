@@ -30,6 +30,12 @@ public sealed record CountersItHad(string Kind) : Quantity;
 /// <summary>Evolve's condition: the creature that entered has greater power or greater toughness than this creature.</summary>
 public sealed record Evolves : Condition;
 
+/// <summary>Saddle's effect, and "it becomes saddled until end of turn": the permanent is saddled this turn.</summary>
+public sealed record BecomeSaddled(Selector Objects = null) : Effect;
+
+/// <summary>A creature cast for its sneak cost enters attacking (and tapped).</summary>
+public sealed record EnterAttacking : Effect;
+
 /// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
 public sealed record CollectEvidence(int Total) : Effect;
 
@@ -308,6 +314,59 @@ public static class KeywordAbilities
                         new Optional(new PayCost(new PayMana(["{w/b}"]))),
                         new Conditional(new OutcomeCondition(You, "Did"), new Sequence([new LoseLife(new PlayerSelector(PlayerKind.EachOpponent), new Fixed(1)), new GainLife(You, new Special("ThatMuch"))])),
                     ]));
+                break;
+            // Saddle N: tap other untapped creatures you control with total power N or more: it becomes saddled until end of turn, as a sorcery.
+            case "Saddle":
+                yield return new ActivatedAbility([new TapCreaturesWithPower(amount)], new BecomeSaddled());
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
+            // Station: tap another creature you control: charge counters equal to its power on this permanent, as a sorcery.
+            case "Station":
+                yield return new ActivatedAbility([new ActionCost(new Tap(new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Controller: new Controlled(You)), Other: true)))],
+                    new PutCounters(new Self(), new CounterSpec("charge", new CharacteristicOf(new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Qualifiers: [new Qualifier("Tapped", Vocabulary: "ThisWayAction")])), "Power"))));
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
+            // Riot: it enters with a +1/+1 counter or with haste (haste matters only the turn it enters).
+            case "Riot":
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new ChoiceOf([
+                    new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(1))),
+                    new Pump(new Self(), Keywords: [new KeywordInstance("Haste")], Duration: EndOfTurn),
+                ])]));
+                break;
+            // Afflict N: whenever it becomes blocked, defending player loses N life.
+            case "Afflict" when keyword.Amount is Fixed:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["BecomesBlocked"]), new LoseLife(new PlayerSelector(PlayerKind.DefendingPlayer), new Fixed(amount)));
+                break;
+            // Annihilator N: whenever it attacks, defending player sacrifices N permanents.
+            case "Annihilator" when keyword.Amount is Fixed:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Attacks"]), new Sacrifice(new PlayerSelector(PlayerKind.DefendingPlayer),
+                    new ObjectSelector(Quantifier.Count, new ObjectFilter(Kinds: [new Term("Permanent", "CardType")]), new Fixed(amount))));
+                break;
+            // Outlast {cost}: {cost}, {T}: a +1/+1 counter on it, as a sorcery.
+            case "Outlast" when keyword.Cost is { } cost:
+                yield return new ActivatedAbility([cost, new TapSelf()], new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(1))));
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
+            // Decayed: it can't block; when it attacks, it's sacrificed at end of combat.
+            case "Decayed":
+                yield return new StaticAbility(new CombatRestriction(new Self(), ["Block"]));
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Attacks"]), new Delayed(new PhaseEvent(new PhaseRef("EndOfCombat")), new Sacrifice(You, new Self())));
+                break;
+            // Reinforce N, {cost}: {cost}, discard this card: N +1/+1 counters on target creature.
+            case "Reinforce" when keyword.Cost is { } cost && keyword.Amount is Fixed:
+                yield return new ZoneAbility(Zone.Hand, new ActivatedAbility([cost, new DiscardThis()],
+                    new PutCounters(new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")])), new CounterSpec("+1/+1", new Fixed(amount)))));
+                break;
+            // Ingest: whenever it deals combat damage to a player, that player exiles the top card of their library.
+            case "Ingest":
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["DealsCombatDamageToAPlayer"]), new Exile(new ObjectSelector(Quantifier.Count,
+                    new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))], Qualifiers: [new Qualifier("Top", Vocabulary: "Position")], Zone: new ZoneRef(nameof(Zone.Library), new PlayerSelector(PlayerKind.ThatPlayer))), new Fixed(1))));
+                break;
+            // Blitz: cast for the blitz cost (see Game), it has haste, draws a card when it dies, and is sacrificed at the next end step.
+            case "Blitz" when keyword.Cost is not null:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]),
+                    new Delayed(new PhaseEvent(new PhaseRef("EndStep", Next: true)), new Sacrifice(You, new Self())), new WasCastWith(new Self(), "Blitz"));
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Dies"]), new Draw(You, new Fixed(1)), new WasCastWith(new Self(), "Blitz"));
                 break;
             case "Affinity" when AffinityKind(keyword.Parameter) is { } kind:
                 yield return new StaticAbility(new CostModification(new Self(), new PayMana(["{1}"]), "Less", "Cast",

@@ -88,7 +88,7 @@ public static class InterpreterSupport
     [
         typeof(KeywordLine), typeof(SpellAbility), typeof(TriggeredAbility), typeof(ActivatedAbility), typeof(StaticAbility),
         typeof(EffectLine), typeof(EnchantAbility), typeof(LabeledAbility), typeof(FlavorAbility), typeof(ReplacementAbility), typeof(LoyaltyAbility), typeof(ActivationLimits), typeof(Mode),
-        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost), typeof(DieResultRow), typeof(LevelRange), typeof(StatsLine),
+        typeof(ChapterAbility), typeof(AdditionalCost), typeof(AlternativeCost), typeof(DieResultRow), typeof(LevelRange), typeof(StationThresholdRow), typeof(StatsLine),
     ];
 
     static readonly HashSet<Type> _effects =
@@ -473,6 +473,7 @@ public static class InterpreterSupport
         {
             "CardType" or "CreatureType" or "LandType" or "ArtifactType" or "EnchantmentType" or "PermanentSubtype" or "ManaColor" => true,
             "TypeDesignation" => aspect.Value is "ChosenType" or "ChosenColor",
+            "PermanentDesignation" => aspect.Value == "Saddled",
             nameof(ChosenCharacteristic) => aspect.Value is "ColorOfYourChoice" or "ColorOrColorsOfYourChoice" or "BasicLandTypeOfYourChoice" or "CreatureTypeOfYourChoice",
             _ => false,
         };

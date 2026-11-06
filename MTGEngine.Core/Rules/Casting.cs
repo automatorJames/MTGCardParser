@@ -54,6 +54,14 @@ public sealed partial class Game
         }
         if (alternative == PlottedCast)
             options.Add("Plotted");
+        if (alternative == JumpStartCast)
+        {
+            options.Add("JumpStart");
+            if (!PlanAdditional(_jumpStartCost, player, id, 0, ref mana, actions, options))
+                return;
+        }
+        if (alternative == SneakCast && !PlanAdditional(_sneakReturn, player, id, 0, ref mana, actions, options))
+            return;
         if (alternative == RetraceCast)
         {
             options.Add("Retraced");
@@ -138,7 +146,7 @@ public sealed partial class Game
         options.Add("From" + obj.Zone);
 
         MoveToZone(id, Zone.Stack, player);
-        if (options.Contains("Flashback") && State.Object(id) is { } onStack)
+        if ((options.Contains("Flashback") || options.Contains("JumpStart")) && State.Object(id) is { } onStack)
             Emit(new ZoneReplacementCreated(new ZoneReplacement("LeaveTheStack", [(id, onStack.ZoneChangeCount)], Zone.Exile, null)));
         if (actions.Count > 0)
         {
