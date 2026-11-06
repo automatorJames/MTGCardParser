@@ -17,7 +17,7 @@ public static class Keywords
         "Saddle", "Station", "Riot", "Afflict", "Annihilator", "Outlast", "Decayed", "Reinforce", "Ingest", "Graft", "Incubate", "Earthbend",
         "Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt",
         // Read where they apply.
-        "Protection", "Devoid", "Changeling", "Wither", "Toxic", "Persist", "Undying", "TotemArmor",
+        "Protection", "Devoid", "Changeling", "Wither", "Toxic", "Persist", "Undying", "TotemArmor", "Phasing",
         "Swampwalk", "Islandwalk", "Forestwalk", "Mountainwalk", "Plainswalk",
         // Cast face down, turned face up for their cost.
         "Morph", "Megamorph", "Disguise",

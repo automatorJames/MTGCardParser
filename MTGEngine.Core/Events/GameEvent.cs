@@ -92,6 +92,8 @@ public sealed record ShieldCreated(PreventionShield Shield) : GameEvent;
 public sealed record ShieldUsed(int Id, int Amount) : GameEvent;
 public sealed record DamagePrevented(ObjectId? Source, TargetRef Target, int Amount) : GameEvent;
 public sealed record ChoiceRecorded(ObjectId Object, string Kind, string Value) : GameEvent;
+/// <summary>A permanent phased out (or back in).</summary>
+public sealed record PhaseChanged(ObjectId Object, bool Out) : GameEvent;
 public sealed record Scryed(PlayerId Player, ImmutableList<ObjectId> Top, ImmutableList<ObjectId> Bottom) : GameEvent;
 
 /// <summary>Applies an event to a state. The only place state changes; the rules kernel only decides which events happen.</summary>
@@ -477,6 +479,9 @@ public static class Reducer
 
             case CastOptionsChosen options:
                 return state.Object(options.Spell) is { } spell ? state.WithObject(spell with { CastWith = options.Options, SpentToCast = options.Spent, FaceDown = options.Options.Contains("FaceDown") }) : state;
+
+            case PhaseChanged phase:
+                return state.Object(phase.Object) is { } phased ? state.WithObject(phased with { PhasedOut = phase.Out, Attacking = phase.Out ? false : phased.Attacking, Blocking = phase.Out ? null : phased.Blocking }) : state;
 
             case ChoiceRecorded choice:
                 return state.Object(choice.Object) is { } chooser ? state.WithObject(chooser with { Choices = (chooser.Choices ?? ImmutableDictionary<string, string>.Empty).SetItem(choice.Kind, choice.Value) }) : state;

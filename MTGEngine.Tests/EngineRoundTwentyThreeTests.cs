@@ -495,4 +495,38 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(3, traits.Power);
         Assert.Contains(Color.White, traits.Colors);
     }
+
+    [Fact]
+    public void BreezekeeperPhasesOutAndBackIn()
+    {
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Island"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new GreedyAgent(attacks: false), new PassiveAgent(), 0);
+        var keeper = Put(game, Cards.Named("Breezekeeper"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+        Assert.True(game.State.Object(keeper).PhasedOut);
+        Assert.DoesNotContain(game.State.Battlefield, x => x.Id == keeper);
+
+        game.PlayTurn(new PlayerId(1));
+        game.PlayTurn(new PlayerId(0));
+        Assert.False(game.State.Object(keeper).PhasedOut);
+    }
+
+    [Fact]
+    public void OublietteHoldsACreatureOutUntilItLeaves()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 3);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var oubliette = Put(game, Cards.Named("Oubliette"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+        Assert.True(game.State.Object(bears).PhasedOut);
+
+        game.PlayTurn(new PlayerId(1));
+        Assert.True(game.State.Object(bears).PhasedOut);
+
+        game.Destroy(oubliette);
+        game.CheckStateAndTriggers();
+        Assert.False(game.State.Object(bears).PhasedOut);
+    }
 }

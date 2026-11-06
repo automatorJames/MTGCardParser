@@ -204,6 +204,7 @@ public sealed partial class Game
         switch (step)
         {
             case Step.Untap:
+                PhaseAtUntap(active);
                 Emit(new SummoningSicknessCleared(active));
                 foreach (var obj in State.Battlefield.Where(x => x.Controller == active && x.Tapped).ToList())
                     if (!DoesntUntap(obj) && !(MayStayTapped(obj) && !Decide(new YesNo(active, $"Untap {obj.Card.Name}?")).Yes))
@@ -1141,7 +1142,7 @@ public sealed partial class Game
     {
         for (var round = 0; round < 50; round++)
         {
-            var changed = false;
+            var changed = PhaseInWhenSourcesLeave();
             UpdateControl();
             StartEngines();
 

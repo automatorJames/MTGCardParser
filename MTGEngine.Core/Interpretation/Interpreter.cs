@@ -516,6 +516,18 @@ public static class Interpreter
                 return ctx with { Affected = [TargetRef.Of(first.Id), TargetRef.Of(second.Id)] };
             }
 
+            // "Target creature phases out", "… phases out until this enchantment leaves the battlefield".
+            case Phasing phasing when phasing.Duration is null or UntilThisLeaves:
+            {
+                var objects = phasing.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(phasing.Objects, ctx);
+                foreach (var id in objects)
+                    if (phasing.Direction == "In")
+                        game.PhaseIn(id);
+                    else
+                        game.PhaseOut(id, phasing.Duration is UntilThisLeaves ? ctx.Source : null);
+                return ctx with { Affected = objects.Select(TargetRef.Of).ToImmutableList() };
+            }
+
             case MoveCounters move:
             {
                 var from = move.From is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(move.From, ctx);

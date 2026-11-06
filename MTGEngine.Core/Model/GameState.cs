@@ -20,7 +20,8 @@ public sealed record GameObject(
     ImmutableDictionary<string, string> Choices = null,
     ManaPool SpentToCast = null,
     CardDefinition OriginalCard = null,
-    int? CopyUntilTurn = null)
+    int? CopyUntilTurn = null,
+    bool PhasedOut = false)
 {
     /// <summary>How the object was cast, while it's the spell or the permanent that spell became: "Kicked", "AdditionalCost", an alternative cost's name.</summary>
     public bool WasCastWith(string how) => CastWith?.Contains(how) == true;
@@ -215,7 +216,8 @@ public sealed record GameState(
 
     public GameObject Object(ObjectId id) => Objects.TryGetValue(id, out var found) ? found : null;
 
-    public IEnumerable<GameObject> Battlefield => Objects.Values.Where(x => x.Zone == Zone.Battlefield).OrderBy(x => x.Id.Value);
+    /// <summary>The permanents on the battlefield, leaving out those phased out (treated as though they don't exist).</summary>
+    public IEnumerable<GameObject> Battlefield => Objects.Values.Where(x => x.Zone == Zone.Battlefield && !x.PhasedOut).OrderBy(x => x.Id.Value);
 
     /// <summary>Emblems: objects in the command zone, whose abilities work from there.</summary>
     public IEnumerable<GameObject> Emblems => Objects.Values.Where(x => x.Zone == Zone.Command && x.Card.Types.Contains("Emblem")).OrderBy(x => x.Id.Value);
