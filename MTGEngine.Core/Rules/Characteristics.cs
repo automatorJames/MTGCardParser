@@ -76,12 +76,31 @@ public sealed record Characteristics(
     }
 
     static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CardDefinition, CardDefinition> _faceDown = new();
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CardDefinition, CardDefinition> _prototyped = new();
+
+    /// <summary>A card's prototype: "prototype {1}{w} — 2/2" as its mana cost, the colors of that cost, and that power and toughness.</summary>
+    static CardDefinition Prototyped(CardDefinition card)
+    {
+        if (card.Abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).FirstOrDefault(x => x.Keyword == "Prototype") is not { Cost: PayMana cost } prototype)
+            return card;
+        var mana = ManaCost.Parse(string.Concat(cost.Symbols));
+        return card with
+        {
+            ManaCost = mana,
+            Colors = mana.Colored.Keys.Concat(mana.Hybrid.SelectMany(x => x)).ToImmutableHashSet(),
+            Power = prototype.Stats?.Power is Fixed { Value: var power } ? power : card.Power,
+            Toughness = prototype.Stats?.Toughness is Fixed { Value: var toughness } ? toughness : card.Toughness,
+        };
+    }
 
     static Characteristics Compute(GameState state, GameObject obj, bool withStatics)
     {
         // A face-down spell or permanent is a nameless, colorless 2/2 creature with no abilities.
         if (obj.FaceDown && obj.Zone is Zone.Battlefield or Zone.Stack)
             obj = obj with { Card = _faceDown.GetValue(obj.Card, Game.FaceDownCard) };
+        // Cast for its prototype cost, it has the prototype's mana cost, color, power and toughness.
+        else if (obj.WasCastWith("Prototyped") && obj.Zone is Zone.Battlefield or Zone.Stack)
+            obj = obj with { Card = _prototyped.GetValue(obj.Card, Prototyped) };
         var card = obj.Card;
         var power = card.Power ?? 0;
         var toughness = card.Toughness ?? 0;

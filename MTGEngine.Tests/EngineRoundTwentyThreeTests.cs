@@ -480,4 +480,19 @@ public sealed class EngineRoundTwentyThreeTests
 
         Assert.Equal(3, game.BattlefieldOf(0).Count(x => x.Card.IsToken));
     }
+
+    [Fact]
+    public void SteelSeraphCastForItsPrototypeIsSmaller()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Lands(game, "Plains", 3);
+        var seraph = Put(game, Cards.Named("Steel Seraph"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        var traits = Characteristics.Of(game.State, game.State.Object(seraph));
+        Assert.Equal(Zone.Battlefield, game.State.Object(seraph).Zone);
+        Assert.Equal(3, traits.Power);
+        Assert.Contains(Color.White, traits.Colors);
+    }
 }

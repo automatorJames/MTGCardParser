@@ -25,6 +25,7 @@ public sealed partial class Game
     const int SurgeCast = -20;
     const int SpectacleCast = -21;
     const int BlitzCast = -22;
+    const int PrototypeCast = -23;
 
     /// <summary>Keyword costs paid instead of the mana cost that aren't offered from the hand at the usual times (see <see cref="KeywordCast"/>).</summary>
     static readonly (string Keyword, int Index, string Option)[] _otherZoneCasts = [("Escape", EscapeCast, "Escaped"), ("Sneak", SneakCast, "Sneak")];

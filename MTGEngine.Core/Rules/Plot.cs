@@ -41,7 +41,7 @@ public sealed partial class Game
     /// <summary>The casting keywords that replace the mana cost when cast from the hand, with their indices and the option a spell cast that way records.</summary>
     static readonly (string Keyword, int Index, string Option)[] _keywordCasts =
         [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened"), ("Bestow", BestowCast, "Bestowed"), ("Overload", OverloadCast, "Overloaded"),
-         ("Surge", SurgeCast, "Surge"), ("Spectacle", SpectacleCast, "Spectacle"), ("Blitz", BlitzCast, "Blitz")];
+         ("Surge", SurgeCast, "Surge"), ("Spectacle", SpectacleCast, "Spectacle"), ("Blitz", BlitzCast, "Blitz"), ("Prototype", PrototypeCast, "Prototyped")];
 
     /// <summary>Exiles a warped permanent at the end step; its owner may cast it from exile on a later turn.</summary>
     public void ExileForLater(ObjectId id)
