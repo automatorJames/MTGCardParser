@@ -163,6 +163,7 @@ public sealed record GameState(
     ImmutableList<ObjectId> DiedThisTurn = null,
     ImmutableDictionary<string, int> ActivationsThisTurn = null,
     ImmutableList<DelayedTrigger> Delayed = null,
+    ImmutableDictionary<ObjectId, int> AbilityResolutionsThisTurn = null,
     int NextDelayedId = 1,
     ImmutableList<PreventionShield> Shields = null,
     int NextShieldId = 1,

@@ -200,6 +200,9 @@ public static class Quantities
 /// <summary>Conditions as true or false in the game now; null when the engine can't evaluate one.</summary>
 public static class Conditions
 {
+    static int? Ordinal(string ordinal) =>
+        ordinal switch { "First" => 1, "Second" => 2, "Third" => 3, "Fourth" => 4, "Fifth" => 5, _ => null };
+
     public static bool? Evaluate(Condition condition, EffectContext ctx)
     {
         var state = ctx.State;
@@ -211,6 +214,8 @@ public static class Conditions
                 return ctx.Source is { } tappedSource && ctx.State.Object(tappedSource) is { Tapped: true };
             case AtMaxSpeed:
                 return ctx.State.Player(ctx.Controller).Speed >= 4;
+            case AbilityResolvedNthTime nth when Ordinal(nth.Ordinal) is { } wanted:
+                return ctx.Source is { } resolving && (ctx.State.AbilityResolutionsThisTurn?.GetValueOrDefault(resolving) ?? 0) == wanted;
             case Evolves:
             {
                 if (ctx.Source is not { } evolving || state.Object(evolving) is not { } self || ctx.TriggerSubject is not { IsObject: true } entered || state.Object(entered.Object.Value) is not { } other)

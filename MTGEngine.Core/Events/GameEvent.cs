@@ -123,6 +123,7 @@ public static class Reducer
                     AttackedThisTurn = ImmutableList<ObjectId>.Empty,
                     DiedThisTurn = ImmutableList<ObjectId>.Empty,
                     ActivationsThisTurn = ImmutableDictionary<string, int>.Empty,
+                    AbilityResolutionsThisTurn = ImmutableDictionary<ObjectId, int>.Empty,
                     Players = state.Players.Select(p => p with { LandsPlayedThisTurn = 0, ExtraLandsThisTurn = 0, LifeGainedThisTurn = 0, LifeLostThisTurn = 0, SpellsCastThisTurn = 0 }).ToImmutableArray(),
                 };
 
@@ -482,6 +483,13 @@ public static class Reducer
 
             case PhaseChanged phase:
                 return state.Object(phase.Object) is { } phased ? state.WithObject(phased with { PhasedOut = phase.Out, Attacking = phase.Out ? false : phased.Attacking, Blocking = phase.Out ? null : phased.Blocking }) : state;
+
+            // "If this is the second time this ability has resolved this turn": abilities' resolutions this turn, by source.
+            case ResolutionBegan began when state.Stack.FirstOrDefault(x => x.Id == began.StackId) is { Kind: not StackKind.Spell, Source: { } resolving }:
+            {
+                var counts = state.AbilityResolutionsThisTurn ?? ImmutableDictionary<ObjectId, int>.Empty;
+                return state with { AbilityResolutionsThisTurn = counts.SetItem(resolving, counts.GetValueOrDefault(resolving) + 1) };
+            }
 
             case ChoiceRecorded choice:
                 return state.Object(choice.Object) is { } chooser ? state.WithObject(chooser with { Choices = (chooser.Choices ?? ImmutableDictionary<string, string>.Empty).SetItem(choice.Kind, choice.Value) }) : state;

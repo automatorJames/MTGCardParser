@@ -617,4 +617,21 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Contains(game.Log.OfType<ManaAdded>(), x => x.Player == new PlayerId(0) && x.Color == Color.Green);
         Assert.True(game.Log.OfType<ManaAdded>().Where(x => x.Player == new PlayerId(0)).Sum(x => x.Amount) >= 4);
     }
+
+    [Fact]
+    public void TannukDrawsTheSecondTimeItsAbilityResolves()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Put(game, Cards.Named("Tannuk, Memorial Ensign"), 0);
+        game.Emit(new TurnBegan(1, new PlayerId(0)));
+
+        Put(game, Cards.Basic("Mountain"), 0);
+        game.ResolveStack();
+        Assert.Equal(20, game.P0().Library.Count);
+
+        Put(game, Cards.Basic("Mountain"), 0);
+        game.ResolveStack();
+        Assert.Equal(18, game.P1().Life);
+        Assert.Equal(19, game.P0().Library.Count);
+    }
 }

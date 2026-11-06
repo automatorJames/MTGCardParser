@@ -122,7 +122,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _conditions =
     [
-        typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs),
+        typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs), typeof(AbilityResolvedNthTime),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
         typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent), typeof(CompareControl),
     ];
